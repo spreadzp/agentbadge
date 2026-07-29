@@ -1,0 +1,154 @@
+direction: right
+
+# ── Layer 1: AI Agent Discovery ──
+
+AI Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+  label: "AI Agent\n(Claude, Cursor, GPT)"
+}
+
+# ── Layer 2: Discovery Endpoints ──
+
+Discovery Layer: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  label: "Discovery Endpoints"
+
+  Agent Card: {
+    shape: rectangle
+    style.fill: "#FFF8E1"
+    style.stroke: "#FFB74D"
+    label: "/.well-known/agent-card.json\n(A2A identity manifest)"
+  }
+
+  LLMs TXT: {
+    shape: rectangle
+    style.fill: "#FFF8E1"
+    style.stroke: "#FFB74D"
+    label: "/llms.txt\n(LLM-friendly API spec)"
+  }
+
+  AI Sitemap: {
+    shape: rectangle
+    style.fill: "#FFF8E1"
+    style.stroke: "#FFB74D"
+    label: "/ai-sitemap.xml\n(Resource discovery map)"
+  }
+
+  JSON Search: {
+    shape: rectangle
+    style.fill: "#FFF8E1"
+    style.stroke: "#FFB74D"
+    label: "/api/search?q=...\n(Agents & tasks search)"
+  }
+}
+
+# ── Layer 3: API Layer ──
+
+API Layer: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  label: "API Layer"
+
+  HATEOAS: {
+    shape: rectangle
+    style.fill: "#E8F5E9"
+    style.stroke: "#81C784"
+    label: "_links in responses\n(HATEOAS navigation)"
+  }
+
+  Error Codes: {
+    shape: rectangle
+    style.fill: "#E8F5E9"
+    style.stroke: "#81C784"
+    label: "Machine-readable codes\n(INVALID_JSON, RATE_LIMITED, ...)"
+  }
+
+  Content Negotiation: {
+    shape: rectangle
+    style.fill: "#E8F5E9"
+    style.stroke: "#81C784"
+    label: "Accept header\n(html / json / markdown)"
+  }
+
+  OpenAPI: {
+    shape: rectangle
+    style.fill: "#E8F5E9"
+    style.stroke: "#81C784"
+    label: "/api/specs\n(OpenAPI 3.1 spec)"
+  }
+}
+
+# ── Layer 4: MCP Tools ──
+
+MCP Discovery: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  label: "MCP Discovery Tools (5)"
+
+  get_agent_card: {shape: text; style.font-size: 11}
+  search_agents: {shape: text; style.font-size: 11}
+  get_server_info: {shape: text; style.font-size: 11}
+  get_ai_sitemap: {shape: text; style.font-size: 11}
+  list_guides: {shape: text; style.font-size: 11}
+}
+
+# ── Layer 5: SEO Layer ──
+
+SEO: {
+  shape: rectangle
+  style.fill: "#E3F2FD"
+  style.stroke: "#2196F3"
+  label: "SEO (Search Engine)"
+
+  Page Titles: {
+    shape: rectangle
+    style.fill: "#E3F2FD"
+    style.stroke: "#64B5F6"
+    label: "Per-page <title> tags\n(9 unique titles)"
+  }
+
+  Guides: {
+    shape: rectangle
+    style.fill: "#E3F2FD"
+    style.stroke: "#64B5F6"
+    label: "Markdown guides\n(/agent-guide, /market-guide,\n/medical-guide)"
+  }
+
+  Pagination: {
+    shape: rectangle
+    style.fill: "#E3F2FD"
+    style.stroke: "#64B5F6"
+    label: "Pagination + _links\n(/agents?page=2)"
+  }
+}
+
+# ── Connections: Discovery Flow ──
+
+AI Agent -> Discovery Layer.Agent Card: "1. GET /.well-known/agent-card.json" {style.animated: true}
+AI Agent -> Discovery Layer.LLMs TXT: "2. GET /llms.txt" {style.animated: true}
+AI Agent -> Discovery Layer.AI Sitemap: "3. GET /ai-sitemap.xml" {style.animated: true}
+AI Agent -> Discovery Layer.JSON Search: "4. GET /api/search?q=payment" {style.animated: true}
+
+# ── Connections: API Layer ──
+
+Discovery Layer -> API Layer.HATEOAS: "Responses include _links" {style.animated: true}
+Discovery Layer -> API Layer.Error Codes: "Errors include code field" {style.animated: true}
+Discovery Layer -> API Layer.Content Negotiation: "Accept: application/json" {style.animated: true}
+Discovery Layer -> API Layer.OpenAPI: "GET /api/specs" {style.animated: true}
+
+# ── Connections: MCP Tools ──
+
+AI Agent -> MCP Discovery: "MCP protocol (stdio/HTTP)" {style.animated: true; style.stroke: "#9C27B0"}
+MCP Discovery -> Discovery Layer: "Wraps HTTP endpoints" {style.animated: true; style.stroke: "#9C27B0"; style.stroke-dash: 3}
+
+# ── Connections: SEO ──
+
+AI Agent -> SEO.Page Titles: "Crawler indexing" {style.animated: true; style.stroke: "#2196F3"; style.stroke-dash: 3}
+AI Agent -> SEO.Guides: "Markdown content" {style.animated: true; style.stroke: "#2196F3"; style.stroke-dash: 3}
+AI Agent -> SEO.Pagination: "Page navigation" {style.animated: true; style.stroke: "#2196F3"; style.stroke-dash: 3}
