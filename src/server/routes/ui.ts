@@ -22,7 +22,7 @@
 
 import { Hono, type Context } from "hono";
 import { html, raw } from "hono/html";
-import { Dashboard } from "../../views/dashboard";
+import { Dashboard, type DashboardSsrData } from "../../views/dashboard";
 import { FeedFragment } from "../../views/feed-fragment";
 import { PassportDetailCard, PassportNotFound } from "../../views/passport-card";
 import { AgentsFragment, type AgentWithActive } from "../../views/agents-fragment";
@@ -68,8 +68,100 @@ export const uiRoutes = new Hono();
  * The uiRoutes must be registered AFTER any JSON health/status routes
  * but the dashboard takes precedence for the "/" path.
  */
-uiRoutes.get("/", (c) => {
-  const pageHtml = Dashboard();
+uiRoutes.get("/", async (c) => {
+  const tokenId = process.env.PASSPORT_TOKEN_ID;
+  const auditTopicId = process.env.AUDIT_TOPIC_ID;
+
+  const ssrData: DashboardSsrData = {};
+
+  // Fetch stats data (same service calls as /ui/stats)
+  if (tokenId) {
+    try {
+      const nfts = await getNftsForToken(tokenId);
+      const totalIssued = nfts.length;
+      const activeCount = nfts.filter((n: NftInfo) => !n.deleted).length;
+      const revokedCount = nfts.filter((n: NftInfo) => n.deleted).length;
+
+      let totalUpgrades = 0;
+      if (auditTopicId) {
+        try {
+          const messages = await getTopicMessages(auditTopicId);
+          for (const msg of messages) {
+            try {
+              const parsed = JSON.parse(msg.message) as Record<string, unknown>;
+              if (parsed.type === "tier_upgraded") totalUpgrades++;
+            } catch {
+              // Skip malformed
+            }
+          }
+        } catch {
+          // Audit topic fetch failed — skip
+        }
+      }
+
+      const byTier: Record<Tier, number> = { bronze: 0, silver: 0, gold: 0, platinum: 0 };
+      const activeNfts = nfts.filter((n: NftInfo) => !n.deleted);
+      await Promise.all(
+        activeNfts.map(async (nft: NftInfo) => {
+          if (!nft.metadata) return;
+          try {
+            const metadata = await retrieveMetadata(nft.metadata);
+            if (metadata.tier) {
+              byTier[metadata.tier]++;
+            }
+          } catch {
+            // IPFS fetch failed — skip
+          }
+        }),
+      );
+
+      ssrData.stats = { totalIssued, totalUpgrades, activeCount, revokedCount, byTier };
+      ssrData.feed = nfts.sort((a: NftInfo, b: NftInfo) => b.serial_number - a.serial_number);
+    } catch {
+      // Mirror Node fetch failed — leave stats/feed as empty states
+    }
+  }
+
+  // Fetch audit events (same service calls as /ui/audit)
+  if (auditTopicId) {
+    try {
+      const messages = await getTopicMessages(auditTopicId);
+      const VALID_TYPES = new Set([
+        "passport_issued",
+        "tier_upgraded",
+        "passport_revoked",
+        "agent_registered",
+        "agent_deregistered",
+      ]);
+
+      const events: AuditEventWithTx[] = [];
+      for (const msg of messages) {
+        try {
+          const parsed = JSON.parse(msg.message) as Record<string, unknown>;
+          if (!VALID_TYPES.has(parsed.type as string)) continue;
+          events.push({
+            ...(parsed as unknown as AuditMessage),
+            consensusTimestamp: msg.consensus_timestamp,
+          });
+        } catch {
+          // Skip malformed
+        }
+      }
+      ssrData.audit = events;
+    } catch {
+      // Audit topic fetch failed — leave as empty state
+    }
+  }
+
+  // Fetch marketplace tasks (same service call as /ui/market/tasks)
+  try {
+    const result = marketListTasks({ limit: 100 });
+    ssrData.tasks = result.tasks;
+  } catch {
+    // Marketplace cache cold — leave as empty state
+  }
+
+  const pageHtml = Dashboard(ssrData);
   return c.html(pageHtml);
 });
 // Root page uses default title (no title arg) — "AgentGate — On-chain Identity for AI Agents on Hedera"
