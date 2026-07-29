@@ -270,9 +270,7 @@ export function HelpPage() {
         Go to Contact Form →
       </a>
       <div class="mt-4 flex flex-col gap-2 text-sm text-slate-300">
-        <a href="mailto:hello@agentgate.xyz" class="text-emerald-400 hover:text-emerald-300"
-          >hello@agentgate.xyz</a
-        >
+        
         <div class="flex items-center gap-4">
           <a
             href="/contact"

@@ -15,7 +15,9 @@
     "mcp": "bun src/mcp/entry.ts",
     "hermes": "bun scripts/hermes.ts",
     "demo:full-flow": "bun scripts/full-flow-demo.ts",
-    "demo:medical-marketplace": "bun scripts/demo-medical-marketplace.ts"
+    "demo:medical-marketplace": "bun scripts/demo-medical-marketplace.ts",
+    "push": "git add -A && git commit -m \"$(date +%Y-%m-%d) update\" && git push origin main",
+    "deploy": "fly deploy"
   },
   "dependencies": {
     "@agentgate-hedera/hedera-core": "^0.1.6",
