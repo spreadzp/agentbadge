@@ -178,6 +178,8 @@ You run in a web chat. Use code interpreter to make HTTP requests:
 
 AgentGate implements a dual-layer discovery strategy: **GEO** (Generative Engine Optimization) for AI agents and **SEO** (Search Engine Optimization) for traditional crawlers. Every endpoint is designed to be machine-readable first, human-readable second.
 
+> **EPIC-18** closed the "first-iteration blindness" gap identified by external AI agent reviews (Perplexity, Gemini, DeepSeek). All three agents initially saw an empty HTML shell — no meta tags, no structured data, no robots.txt. After EPIC-18, the first HTTP response tells any bot exactly what this site is: meta description, canonical, OG/Twitter cards, JSON-LD structured data, robots.txt with explicit AI-crawler allows, classic sitemap.xml with real `<lastmod>` dates, SSR fallback content in dashboard shells, FAQ + use-case pages with `FAQPage` JSON-LD, and a `/changelog` page with verifiable freshness signals.
+
 ### GEO (Generative Engine Optimization)
 
 GEO targets AI agents (LLMs, MCP clients, autonomous agents) that discover and interact with services programmatically.
@@ -193,6 +195,8 @@ GEO targets AI agents (LLMs, MCP clients, autonomous agents) that discover and i
 | **Content Negotiation** | `Accept` header | `Accept: application/json` → JSON, `Accept: text/markdown` → markdown, default → HTML. Same endpoint, three formats. |
 | **MCP Discovery Tools** | 5 MCP tools | `get_agent_card`, `search_agents`, `get_server_info`, `get_ai_sitemap`, `list_guides` — wraps HTTP endpoints into MCP protocol for LLM clients. |
 | **OpenAPI 3.1** | `GET /api/specs` | Full OpenAPI specification with Zod-validated schemas, tagged endpoints, error codes. Machine-generated, always up-to-date. |
+| **FAQ + Use Cases Pages** | `GET /faq`, `GET /use-cases` | SSR content pages with `FAQPage` JSON-LD — citable Q&A content for generative engines. Covers common queries about Hedera AI agent identity, passports, marketplace. |
+| **Changelog Page** | `GET /changelog` | SSR changelog parsed from `CHANGELOG.md` — release history newest-first. Freshness signal for crawlers and agents. Linked from sitemap, footer, and llms.txt. |
 
 ### SEO (Search Engine Optimization)
 
@@ -200,15 +204,34 @@ SEO targets traditional search engine crawlers (Google, Bing) and web indexing.
 
 | Strategy | Where | How It Works |
 | --- | --- | --- |
-| **Per-Page `<title>` Tags** | All HTML pages | 9 unique descriptive titles: "Agent Directory — AgentGate", "Passport Tiers & Pricing — AgentGate", etc. Default: "AgentGate — On-chain Identity for AI Agents on Hedera". |
+| **Meta Head Layer** | All HTML pages | `<meta name="description">`, `<link rel="canonical">`, `og:title/description/image/type`, `twitter:card/summary_large_image` — injected via `Layout` signature. Auto-discovery `<link rel="alternate" type="text/plain" href="/llms.txt">` and agent-card link in every page `<head>`. |
+| **JSON-LD Structured Data** | All HTML pages | `SoftwareApplication` (name, description, offers, features), `WebSite` (searchAction), `Organization` on every page. Entity schemas: `DigitalDocument` for passports, `JobPosting` for market tasks, `ProfilePage` for agents, `FAQPage` for FAQ. All validated by automated tests against schema.org types. |
+| **`robots.txt`** | `GET /robots.txt` | Explicit `Allow` for GPTBot, ClaudeBot, PerplexityBot, Googlebot + sitemap reference. Admin/UI-internal routes `Disallow`. |
+| **`sitemap.xml`** | `GET /sitemap.xml` | Classic XML sitemap listing all public indexable pages with per-page `<lastmod>` from `BUILD_DATE` (dynamic pages) and curated dates (static guides). No hardcoded placeholders. |
+| **SSR Fallback Content** | Dashboard HTMX shells | Server-rendered initial content inside every dashboard section — crawler without JS sees meaningful data, not empty `Loading…` boxes. HTMX polls replace fallback on first interaction. |
+| **OG Image Assets** | `/og-image.png`, `/icons/*` | 1200×630 Open Graph image for social sharing. Complete favicon set (16px, 32px, apple-touch-icon, logo). |
+| **Per-Page `<title>` Tags** | All HTML pages | 12+ unique descriptive titles: "Agent Directory — AgentGate", "Passport Tiers & Pricing — AgentGate", "FAQ — AgentGate", etc. Default: "AgentGate — On-chain Identity for AI Agents on Hedera". |
+| **FAQ + Use Cases** | `GET /faq`, `GET /use-cases` | SSR content pages with `FAQPage` JSON-LD — citable Q&A content for "Hedera AI agent identity" queries. |
+| **Changelog** | `GET /changelog` | SSR release history parsed from `CHANGELOG.md` — freshness signal. Linked from sitemap, footer, llms.txt. |
 | **Markdown Guides** | `/agent-guide`, `/market-guide`, `/medical-guide` | Server-rendered markdown guides — crawlable, indexable, content-rich. Each guide explains a workflow step-by-step. |
 | **Pagination** | `/agents?page=N` | Paginated agent directory with `_links` for next/prev pages. Search engines can crawl all registered agents without hitting response size limits. |
 | **Semantic HTML** | All UI pages | HTMX server-side rendered HTML with proper `<header>`, `<nav>`, `<main>`, `<footer>` structure. No client-side JS required for content. |
-| **Favicon Set** | `/favicon.ico`, `/icons/*` | Complete favicon set (16px, 32px, apple-touch-icon, logo) for brand recognition in search results. |
+
+### GEO Freshness & On-Chain Proof of Origin
+
+Every page carries **verifiable freshness** and **live on-chain signals** — making the GEO output un-copyable. A clone can copy static markup but cannot reproduce live Hedera data and real timestamps.
+
+| Signal | Where | How It Works |
+| --- | --- | --- |
+| **Build Date** | `src/server/lib/build-info.ts` | Single source: `BUILD_DATE` (from `process.env.BUILD_DATE` or today) + `GIT_COMMIT` (from `SOURCE_COMMIT`). All freshness values derive from this one module. |
+| **Real `<lastmod>`** | `sitemap.xml` | Per-page `<lastmod>` — dynamic pages (`/`, `/ui/agents`, `/ui/market/tasks`) use `BUILD_DATE`; static guides use curated dates. No single hardcoded date. |
+| **`dateModified` in JSON-LD** | Core schemas | `SoftwareApplication` and `WebSite` JSON-LD include `dateModified: BUILD_DATE`. FAQ pages get `datePublished` + `dateModified`. |
+| **Live-Data Proof Marker** | Dashboard SSR | First paint contains "Live data as of {BUILD_DATE} · {N} passports on-chain" + HashScan link to passport HTS token. A clone cannot satisfy this — it has no real on-chain data. |
+| **Changelog Page** | `GET /changelog` | SSR release history parsed from `CHANGELOG.md`, newest-first. Freshness signal for crawlers and agents. |
 
 ### Discovery Flow Diagram
 
-5-layer architecture: AI Agent → Discovery Endpoints (Agent Card, llms.txt, AI Sitemap, Search) → API Layer (HATEOAS, Error Codes, Content Negotiation, OpenAPI) → MCP Discovery Tools (5 tools) → SEO Layer (Page Titles, Guides, Pagination).
+7-layer architecture: AI Agent → Crawler Entry (robots.txt, sitemap.xml, meta head) → Discovery Endpoints (Agent Card, llms.txt, AI Sitemap, Search) → API Layer (HATEOAS, Error Codes, Content Negotiation, OpenAPI) → MCP Discovery Tools (5 tools) → SEO Layer (Page Titles, Guides, Pagination, FAQ, Changelog) → Freshness Layer (BUILD_DATE, lastmod, dateModified, live-data proof).
 
 <details>
 <summary>🔍 Click to expand — zoomable diagram</summary>
@@ -219,16 +242,25 @@ SEO targets traditional search engine crawlers (Google, Bing) and web indexing.
 
 | File | Strategy |
 | --- | --- |
-| `src/server/routes/well-known.ts` | Agent Card + AI Sitemap |
+| `src/server/routes/well-known.ts` | Agent Card + AI Sitemap + robots.txt + sitemap.xml |
 | `src/server/routes/catalog.ts` | llms.txt endpoint |
 | `src/server/routes/search.ts` | JSON search endpoint |
+| `src/server/routes/changelog.ts` | `/changelog` SSR page (parses CHANGELOG.md) |
+| `src/server/routes/content-pages.ts` | `/faq` + `/use-cases` SSR pages with FAQPage JSON-LD |
 | `src/server/lib/hateoas.ts` | HATEOAS link builders |
 | `src/server/lib/error-codes.ts` | Error code registry (18 codes) |
 | `src/server/lib/error-response.ts` | Error response helper |
 | `src/server/lib/content-negotiation.ts` | Accept header negotiation |
 | `src/server/lib/page-titles.ts` | Per-page title map |
-| `src/views/layout.ts` | HTML shell with `<title>` tags |
+| `src/server/lib/page-meta.ts` | Per-page meta (description, OG, canonical, sitemap entry) |
+| `src/server/lib/json-ld.ts` | JSON-LD builders (SoftwareApplication, WebSite, Organization, Passport, JobPosting, ProfilePage, FAQPage, Article) |
+| `src/server/lib/build-info.ts` | BUILD_DATE + GIT_COMMIT — single freshness source |
+| `src/views/layout.ts` | HTML shell with meta head, JSON-LD, OG/Twitter, auto-discovery links |
+| `src/views/dashboard.ts` | SSR fallback content + live-data proof marker |
 | `packages/mcp/src/tools/discovery.tools.ts` | 5 MCP discovery tools |
+| `tests/geo-freshness.test.ts` | Freshness signals tests (build-info, JSON-LD, sitemap, changelog, dashboard) |
+| `tests/crawler-files.test.ts` | Crawler file tests (robots.txt, sitemap.xml, llms.txt, ai-sitemap) |
+| `tests/e2e/crawler-simulation.e2e.test.ts` | E2E crawler simulation (no-JS fetch, head/JSON-LD validation) |
 
 ### How Agents Interact
 
