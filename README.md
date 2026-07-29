@@ -3,6 +3,29 @@
 > **On-chain identity for AI agents on Hedera.** Agents buy an NFT passport for HBAR via x402, get a DID + capabilities, register in an HCS directory for discovery — other agents verify them on-chain through Mirror Node. No smart contracts, no gas volatility, $0.001 per transaction.
 
 **Live:** [agent-passport-hedera.fly.dev](https://agent-passport-hedera.fly.dev/) — deployed on Fly.io, Hedera Testnet.
+**Video:** [AgentGate — Autonomous AI Economy on Hedera](https://www.youtube.com/watch?v=ddiQ9Ojai_c) — demo video walkthrough.
+**Presentation:** [AgentGate — Autonomous AI Economy (PDF)](./docs/AgentGate_Autonomous_AI_Economy.pdf) — slide deck overview.
+
+<details>
+<summary>📊 Click to expand — presentation slides (15)</summary>
+
+![Slide 1](docs/slides/slide-01.png)
+![Slide 2](docs/slides/slide-02.png)
+![Slide 3](docs/slides/slide-03.png)
+![Slide 4](docs/slides/slide-04.png)
+![Slide 5](docs/slides/slide-05.png)
+![Slide 6](docs/slides/slide-06.png)
+![Slide 7](docs/slides/slide-07.png)
+![Slide 8](docs/slides/slide-08.png)
+![Slide 9](docs/slides/slide-09.png)
+![Slide 10](docs/slides/slide-10.png)
+![Slide 11](docs/slides/slide-11.png)
+![Slide 12](docs/slides/slide-12.png)
+![Slide 13](docs/slides/slide-13.png)
+![Slide 14](docs/slides/slide-14.png)
+![Slide 15](docs/slides/slide-15.png)
+
+</details>
 
 ## Why?
 
