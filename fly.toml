@@ -7,6 +7,7 @@ primary_region = "ams"
   auto_stop_machines = false
   auto_start_machines = false
   min_machines_running = 1
+  max_machines = 1
 
 [vm]
   memory = "512mb"
