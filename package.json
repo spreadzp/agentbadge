@@ -18,7 +18,7 @@
     "demo:medical-marketplace": "bun scripts/demo-medical-marketplace.ts"
   },
   "dependencies": {
-    "@agentgate-hedera/hedera-core": "^0.1.4",
+    "@agentgate-hedera/hedera-core": "^0.1.6",
     "@agentgate-hedera/mcp": "^0.1.4",
     "@agentgate-hedera/passport": "^0.1.4",
     "@hashgraph/sdk": "^2.55.0",
