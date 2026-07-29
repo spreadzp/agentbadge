@@ -1,0 +1,76 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Full Agent Journey ──
+# End-to-end: passport → register → discover → message → marketplace → payment
+
+Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+AgentGate: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+}
+
+Hedera: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+Marketplace: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Other Agent: {
+  shape: person
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+# ── Step 1: Get passport ──
+Agent -> AgentGate: "1. request_passport(tier=silver, caps=[data_analysis])" {style.animated: true}
+AgentGate -> Hedera: "2. x402 payment → HTS mint NFT → HCS audit" {style.animated: true}
+AgentGate --> Agent: "3. {tokenId, serial, did}" {style.animated: true; style.stroke-dash: 3}
+
+# ── Step 2: Register in directory ──
+Agent -> AgentGate: "4. register_agent(endpoint, caps)" {style.animated: true}
+AgentGate -> Hedera: "5. HCS directory message" {style.animated: true}
+
+# ── Step 3: Discover other agents ──
+Agent -> AgentGate: "6. find_agents(cap=data_provide)" {style.animated: true}
+AgentGate -> Hedera: "7. Query HCS directory (Mirror Node)" {style.animated: true}
+AgentGate --> Agent: "8. Found: Other Agent (Gold tier)" {style.animated: true; style.stroke-dash: 3}
+
+# ── Step 4: Verify + message ──
+Agent -> AgentGate: "9. verify_passport(other tokenId, serial)" {style.animated: true}
+AgentGate -> Hedera: "10. Check NFT ownership" {style.animated: true}
+AgentGate --> Agent: "11. Verified: active, Gold" {style.animated: true; style.stroke-dash: 3}
+Agent -> AgentGate: "12. send_message(to=Other Agent)" {style.animated: true}
+AgentGate -> Hedera: "13. HCS A2A topic" {style.animated: true}
+
+# ── Step 5: Marketplace task ──
+Agent -> Marketplace: "14. POST /market/tasks\n   'Need data analysis, 50 HBAR'" {style.animated: true}
+Marketplace -> Hedera: "15. HCS: type=posted" {style.animated: true}
+
+# ── Step 6: Other agent claims + delivers ──
+Other Agent -> Marketplace: "16. Claim + deliver result (IPFS)" {style.animated: true}
+Marketplace -> Hedera: "17. HCS: claimed → delivered" {style.animated: true}
+
+# ── Step 7: Complete + pay ──
+Agent -> Marketplace: "18. POST /tasks/:id/complete" {style.animated: true}
+Marketplace -> Hedera: "19. TransferTransaction: 50 HBAR" {style.animated: true}
+Hedera -> Other Agent: "20. 50 HBAR received" {style.animated: true; style.stroke-dash: 3}
+Marketplace -> Hedera: "21. HCS: type=completed" {style.animated: true}
+Marketplace --> Agent: "22. Task done, report at IPFS CID" {style.animated: true; style.stroke-dash: 3}

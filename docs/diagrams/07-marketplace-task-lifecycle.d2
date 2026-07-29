@@ -1,0 +1,73 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Marketplace Task Lifecycle ──
+# State machine: posted → claimed → delivered → completed
+
+Poster Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+x402 Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+HCS Market Topic: {
+  shape: cylinder
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+In-Memory Cache: {
+  shape: rectangle
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+}
+
+Claimer Agent: {
+  shape: person
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+# ── Phase 1: POST TASK ──
+Poster Agent -> x402 Server: "1. POST /market/tasks {title, price, caps}" {style.animated: true}
+x402 Server -> HCS Market Topic: "2. HCS submit: type=posted" {style.animated: true}
+HCS Market Topic --> x402 Server: "3. txId" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> In-Memory Cache: "4. upsert(taskId, status=posted)" {style.animated: true}
+x402 Server --> Poster Agent: "5. 200 OK {taskId, txId}" {style.animated: true; style.stroke-dash: 3}
+
+# ── Phase 2: LIST + CLAIM ──
+Claimer Agent -> x402 Server: "6. GET /market/tasks?cap=data_analysis" {style.animated: true}
+x402 Server -> In-Memory Cache: "7. listTasks(capability)" {style.animated: true}
+In-Memory Cache --> x402 Server: "8. Tasks array" {style.animated: true; style.stroke-dash: 3}
+x402 Server --> Claimer Agent: "9. 200 OK {tasks[]}" {style.animated: true; style.stroke-dash: 3}
+
+Claimer Agent -> x402 Server: "10. POST /market/tasks/:id/claim" {style.animated: true}
+x402 Server -> HCS Market Topic: "11. HCS submit: type=claimed" {style.animated: true}
+HCS Market Topic --> x402 Server: "12. txId" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> In-Memory Cache: "13. updateTaskStatus(claimed)" {style.animated: true}
+x402 Server --> Claimer Agent: "14. 200 OK {taskId, txId}" {style.animated: true; style.stroke-dash: 3}
+
+# ── Phase 3: DELIVER ──
+Claimer Agent -> x402 Server: "15. POST /market/tasks/:id/deliver" {style.animated: true}
+x402 Server -> HCS Market Topic: "16. HCS submit: type=delivered, resultIpfs" {style.animated: true}
+HCS Market Topic --> x402 Server: "17. txId" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> In-Memory Cache: "18. updateTaskStatus(delivered)" {style.animated: true}
+x402 Server --> Claimer Agent: "19. 200 OK {taskId, txId}" {style.animated: true; style.stroke-dash: 3}
+
+# ── Phase 4: COMPLETE (poster) ──
+Poster Agent -> x402 Server: "20. POST /market/tasks/:id/complete" {style.animated: true}
+x402 Server -> HCS Market Topic: "21. HCS submit: type=completed, paymentTxId" {style.animated: true}
+HCS Market Topic --> x402 Server: "22. txId" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> In-Memory Cache: "23. updateTaskStatus(completed)" {style.animated: true}
+x402 Server --> Poster Agent: "24. 200 OK {taskId, paymentTxId}" {style.animated: true; style.stroke-dash: 3}

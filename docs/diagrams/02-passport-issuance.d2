@@ -1,0 +1,72 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Passport Issuance Sequence ──
+# Flow: Agent → MCP → x402 Server → Facilitator → Hedera → IPFS
+
+Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+MCP Server: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+}
+
+x402 Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Facilitator: {
+  shape: hexagon
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+Hedera: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+IPFS: {
+  shape: cylinder
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+}
+
+# Step 1: Request
+Agent -> MCP Server: "1. request_passport(tier=silver)" {style.animated: true}
+MCP Server -> x402 Server: "2. POST /passport/request" {style.animated: true}
+
+# Step 2: 402 Payment Required
+x402 Server --> MCP Server: "3. 402 Payment Required (50 HBAR)" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent: "4. Sign TransferTransaction" {style.animated: true; style.stroke-dash: 3}
+
+# Step 3: Payment
+Agent -> MCP Server: "5. Signed transaction" {style.animated: true}
+MCP Server -> x402 Server: "6. POST + X-PAYMENT header" {style.animated: true}
+x402 Server -> Facilitator: "7. /settle" {style.animated: true}
+Facilitator -> Hedera: "8. Co-sign + submit TransferTx" {style.animated: true}
+Facilitator --> x402 Server: "9. Settlement confirmed" {style.animated: true; style.stroke-dash: 3}
+
+# Step 4: Mint NFT
+x402 Server -> IPFS: "10. Upload metadata JSON (tier, DID, caps)" {style.animated: true}
+IPFS --> x402 Server: "11. Return CID" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> Hedera: "12. HTS mint NFT (metadata=CID)" {style.animated: true}
+x402 Server -> Hedera: "13. HTS transfer NFT to agent" {style.animated: true}
+x402 Server -> Hedera: "14. HCS audit: passport_issued" {style.animated: true}
+
+# Step 5: Response
+x402 Server --> MCP Server: "15. 200 OK {tokenId, serial, did, hashScan}" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent: "16. Passport issued!" {style.animated: true; style.stroke-dash: 3}

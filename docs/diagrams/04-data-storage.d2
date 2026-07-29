@@ -1,0 +1,94 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Data Storage Map ──
+# Where each piece of data lives and how it's read
+
+# ── On-Chain (Hedera) ──
+
+HTS NFT Token: {
+  shape: package
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "Owner (accountId)": {shape: text; style.font-size: 12}
+  "Metadata (IPFS CID, ≤100 bytes)": {shape: text; style.font-size: 12}
+  "Serial number": {shape: text; style.font-size: 12}
+  "Freeze = non-transferable": {shape: text; style.font-size: 12; style.font-color: "#C62828"}
+}
+
+HCS Audit Topic: {
+  shape: queue
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "passport_issued": {shape: text; style.font-size: 12}
+  "tier_upgraded": {shape: text; style.font-size: 12}
+  "passport_revoked": {shape: text; style.font-size: 12}
+  "Immutable, ordered, timestamped": {shape: text; style.font-size: 11; style.font-color: "#C62828"}
+}
+
+HCS Directory Topic: {
+  shape: queue
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "agent_register messages": {shape: text; style.font-size: 12}
+  "{ did, name, endpoint, caps }": {shape: text; style.font-size: 12}
+  "Public, no submitKey": {shape: text; style.font-size: 11; style.font-color: "#C62828"}
+}
+
+# ── Off-Chain ──
+
+IPFS: {
+  shape: cylinder
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+  "Metadata JSON": {shape: text; style.font-size: 12}
+  "tier, capabilities, DID": {shape: text; style.font-size: 12}
+  "agentName, issuedAt": {shape: text; style.font-size: 12}
+  "CID = content hash (immutable)": {shape: text; style.font-size: 11; style.font-color: "#C62828"}
+}
+
+# ── Read Layer ──
+
+Mirror Node API: {
+  shape: cloud
+  style.fill: "#E1F5FE"
+  style.stroke: "#0288D1"
+  "Free REST API": {shape: text; style.font-size: 12}
+  "GET /tokens/{id}/nfts/{serial}": {shape: text; style.font-size: 11}
+  "GET /topics/{id}/messages": {shape: text; style.font-size: 11}
+}
+
+# ── In-Memory Cache ──
+
+Server Cache: {
+  shape: rectangle
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  "Directory cache": {shape: text; style.font-size: 12}
+  "Rebuilt from HCS on restart": {shape: text; style.font-size: 11; style.font-color: "#C62828"}
+}
+
+# ── Relationships ──
+
+HTS NFT Token -> Mirror Node API: "Query NFT ownership" {style.animated: true}
+HCS Audit Topic -> Mirror Node API: "Query audit messages" {style.animated: true}
+HCS Directory Topic -> Mirror Node API: "Query directory" {style.animated: true}
+HTS NFT Token -> IPFS: "metadata field = CID pointer" {style.animated: true; style.stroke-dash: 3}
+IPFS -> Mirror Node API: "HTTP gateway by CID" {style.animated: true; style.stroke-dash: 3}
+Mirror Node API -> Server Cache: "Populate on startup" {style.animated: true}
+
+# ── No Database ──
+
+No Database: {
+  shape: text
+  style.font-size: 16
+  style.font-color: "#C62828"
+  style.bold: true
+}
+
+Server Cache -> No Database: "No DB needed" {style.stroke: "#C62828"; style.stroke-dash: 5}

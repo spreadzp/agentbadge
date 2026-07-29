@@ -1,0 +1,79 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Agent Discovery & Verification ──
+# Agent B finds Agent A via HCS directory, verifies passport, contacts directly
+
+Agent B: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+MCP Server: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+}
+
+x402 Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Mirror Node: {
+  shape: cloud
+  style.fill: "#E1F5FE"
+  style.stroke: "#0288D1"
+}
+
+HCS Directory: {
+  shape: queue
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "passport.directory topic": {shape: text; style.font-size: 12}
+}
+
+HTS NFT: {
+  shape: package
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "Agent A passport": {shape: text; style.font-size: 12}
+}
+
+Agent A: {
+  shape: person
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "endpoint: agent-a.fly.dev": {shape: text; style.font-size: 12}
+}
+
+# Step 1: Find agents
+Agent B -> MCP Server: "1. find_agents(capability=data_provide)" {style.animated: true}
+MCP Server -> x402 Server: "2. GET /agents?capability=data_provide" {style.animated: true}
+x402 Server -> Mirror Node: "3. GET /topics/{dirId}/messages" {style.animated: true}
+Mirror Node -> HCS Directory: "4. Read messages" {style.animated: true}
+HCS Directory --> Mirror Node: "5. Return all entries" {style.animated: true; style.stroke-dash: 3}
+Mirror Node --> x402 Server: "6. Raw messages" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> x402 Server: "7. Filter by capability" {style.animated: true}
+x402 Server --> MCP Server: "8. [{ did, name, endpoint, tier }]" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent B: "9. Found: TradingBot (Silver)" {style.animated: true; style.stroke-dash: 3}
+
+# Step 2: Verify passport
+Agent B -> MCP Server: "10. verify_passport(tokenId, serial)" {style.animated: true}
+MCP Server -> x402 Server: "11. GET /passport/:tokenId/:serial" {style.animated: true}
+x402 Server -> Mirror Node: "12. GET /tokens/{id}/nfts/{serial}" {style.animated: true}
+Mirror Node -> HTS NFT: "13. Check ownership" {style.animated: true}
+HTS NFT --> Mirror Node: "14. Owner: 0.0.7654321" {style.animated: true; style.stroke-dash: 3}
+Mirror Node --> x402 Server: "15. NFT data + metadata CID" {style.animated: true; style.stroke-dash: 3}
+x402 Server --> MCP Server: "16. Active, Silver, caps OK" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent B: "17. Verified!" {style.animated: true; style.stroke-dash: 3}
+
+# Step 3: Direct contact
+Agent B -> Agent A: "18. POST /api/process (x402 payment)" {style.animated: true; style.stroke: "#E91E63"}

@@ -1,0 +1,1045 @@
+/**
+ * Marketplace REST API routes.
+ *
+ * Reference: SLICE-9-3
+ *
+ * POST   /market/tasks   — post a new task to the marketplace
+ * GET    /market/tasks   — list marketplace tasks with optional filters
+ * GET    /market/tasks/:taskId — get a specific task
+ * POST   /market/tasks/:taskId/claim — claim a task
+ * POST   /market/tasks/:taskId/deliver — deliver task results
+ * POST   /market/tasks/:taskId/complete — complete task with P2P HBAR payment
+ */
+
+import { Hono } from "hono";
+import { describeRoute } from "hono-openapi";
+import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage } from "@agentgate-hedera/hedera-core";
+import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
+import { ErrorCodes } from "../lib/error-codes";
+import { errorResponse } from "../lib/error-response";
+import { taskLinks } from "../lib/hateoas";
+
+export const marketRoutes = new Hono();
+
+// ─── POST /market/tasks ──────────────────────────────────────────
+
+marketRoutes.post(
+  "/market/tasks",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Post a new task to the marketplace",
+    description:
+      "Submit a task to the marketplace HCS topic. Poster passport is verified via Mirror Node.",
+    responses: {
+      200: { description: "Task posted successfully" },
+      400: { description: "Invalid request body or DID format" },
+      403: { description: "Poster passport not found or revoked" },
+      500: { description: "HCS submission failure" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { posterDid, title, description, priceHbar, capabilities, deadline } = body as {
+      posterDid?: string;
+      title?: string;
+      description?: string;
+      priceHbar?: number;
+      capabilities?: string[];
+      deadline?: number;
+    };
+
+    if (!posterDid || !title || !description || !priceHbar || !capabilities) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required fields: posterDid, title, description, priceHbar, capabilities");
+    }
+
+    if (!isValidA2ADid(posterDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    if (!Array.isArray(capabilities) || capabilities.length === 0) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_CAPABILITIES, "capabilities must be a non-empty array");
+    }
+
+    if (typeof priceHbar !== "number" || priceHbar <= 0) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a positive number");
+    }
+
+    const posterValid = await verifyA2ADid(posterDid);
+    if (!posterValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
+    }
+
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const taskId = `task-${timestamp}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const message = {
+        type: "task_posted" as const,
+        taskId,
+        posterDid,
+        title,
+        description,
+        priceHbar,
+        capabilities,
+        deadline,
+        timestamp,
+      };
+
+      const fullMessage = JSON.stringify(message);
+      if (Buffer.byteLength(fullMessage, "utf8") > 4096) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Task payload exceeds 4KB limit");
+      }
+
+      const txId = await submitTaskMessage(message);
+
+      const cached = {
+        taskId,
+        posterDid,
+        title,
+        description,
+        priceHbar,
+        capabilities,
+        deadline,
+        status: "posted" as const,
+        txId,
+        consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+        createdAt: timestamp,
+      };
+      upsert(cached);
+
+      logger.info("Marketplace task posted", { txId, taskId, posterDid });
+
+      return c.json({ txId, taskId, timestamp, _links: taskLinks(taskId, posterDid, "posted") }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "HCS submission failed";
+      logger.error("Marketplace task submission failed", { error: msg });
+      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── GET /market/tasks?capability=X&limit=Y&offset=Z ─────────────
+
+marketRoutes.get(
+  "/market/tasks",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "List marketplace tasks",
+    description:
+      "Retrieve marketplace tasks with optional capability filter and pagination. Sorted newest first.",
+    responses: {
+      200: { description: "Tasks retrieved successfully" },
+      400: { description: "Invalid pagination parameters" },
+      500: { description: "Cache error" },
+    },
+  }),
+  async (c) => {
+    const capability = c.req.query("capability");
+    const limitParam = c.req.query("limit");
+    const offsetParam = c.req.query("offset");
+
+    try {
+      const { limit, offset } = validatePagination(limitParam, offsetParam);
+      const result = listTasks({ capability, limit, offset });
+      const tasksWithLinks = result.tasks.map((t) => ({
+        ...t,
+        _links: taskLinks(t.taskId, t.posterDid, t.status),
+      }));
+
+      return c.json(
+        {
+          tasks: tasksWithLinks,
+          count: tasksWithLinks.length,
+          total: result.total,
+          limit,
+          offset,
+        },
+        200,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Cache error";
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── GET /market/tasks/:taskId ────────────────────────────────────
+
+marketRoutes.get(
+  "/market/tasks/:taskId",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Get a specific task by ID",
+    description: "Retrieve a single marketplace task by its task ID.",
+    responses: {
+      200: { description: "Task retrieved successfully" },
+      404: { description: "Task not found" },
+    },
+  }),
+  async (c) => {
+    const taskId = c.req.param("taskId");
+    const task = get(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    return c.json({ task: { ...task, _links: taskLinks(task.taskId, task.posterDid, task.status) } }, 200);
+  },
+);
+
+// ─── POST /market/tasks/:taskId/claim ─────────────────────────────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/claim",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Claim a task",
+    description: "Claim a marketplace task. Task must be in 'posted' status. Claimer passport is verified.",
+    responses: {
+      200: { description: "Task claimed successfully" },
+      400: { description: "Invalid request body or DID format" },
+      403: { description: "Claimer passport not found or revoked" },
+      404: { description: "Task not found" },
+      409: { description: "Task is not in 'posted' status" },
+      500: { description: "HCS submission failure" },
+    },
+  }),
+  async (c) => {
+    const taskId = c.req.param("taskId");
+
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { claimerDid } = body as { claimerDid?: string };
+
+    if (!claimerDid || !isValidA2ADid(claimerDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid claimerDid format");
+    }
+
+    const claimerValid = await verifyA2ADid(claimerDid);
+    if (!claimerValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
+    }
+
+    const task = getTaskById(taskId);
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (task.status !== "posted") {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot claim`);
+    }
+
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_claimed" as const,
+        taskId,
+        claimerDid,
+        timestamp,
+      };
+      const txId = await submitTaskMessage(message);
+
+      updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
+
+      logger.info("Marketplace task claimed", { txId, taskId, claimerDid });
+
+      return c.json({ taskId, txId, timestamp }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "HCS submission failed";
+      logger.error("Marketplace task claim failed", { error: msg });
+      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/deliver ───────────────────────────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/deliver",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Deliver task results",
+    description: "Submit results for a claimed task. Only the claimer can deliver. resultBody max 4KB — use IPFS for larger results.",
+    responses: {
+      200: { description: "Task delivered successfully" },
+      400: { description: "Invalid request body, missing results, or resultBody too large" },
+      403: { description: "Only the claimer can deliver" },
+      404: { description: "Task not found" },
+      409: { description: "Task is not in 'claimed' status" },
+      500: { description: "HCS submission failure" },
+    },
+  }),
+  async (c) => {
+    const taskId = c.req.param("taskId");
+
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { claimerDid, resultIpfs, resultBody } = body as {
+      claimerDid?: string;
+      resultIpfs?: string;
+      resultBody?: string;
+    };
+
+    if (!claimerDid || !isValidA2ADid(claimerDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid claimerDid format");
+    }
+
+    if (!resultIpfs && !resultBody) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Either resultIpfs or resultBody required");
+    }
+
+    if (resultBody && Buffer.byteLength(resultBody, "utf8") > 4096) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `resultBody too large (${Buffer.byteLength(resultBody, "utf8")} bytes, max 4096). Use IPFS for larger results.`);
+    }
+
+    const claimerValid = await verifyA2ADid(claimerDid);
+    if (!claimerValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
+    }
+
+    const task = getTaskById(taskId);
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (task.status !== "claimed") {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot deliver`);
+    }
+
+    if (task.claimerDid !== claimerDid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only claimer can deliver");
+    }
+
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_delivered" as const,
+        taskId,
+        claimerDid,
+        resultIpfs,
+        resultBody,
+        timestamp,
+      };
+      const txId = await submitTaskMessage(message);
+
+      updateTaskStatus(taskId, "delivered", { resultIpfs, resultBody, deliverTxId: txId });
+
+      logger.info("Marketplace task delivered", { txId, taskId, claimerDid });
+
+      return c.json({ taskId, txId, timestamp }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "HCS submission failed";
+      logger.error("Marketplace task delivery failed", { error: msg });
+      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/claim-with-key (SLICE-15-4) ───────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/claim-with-key",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Claim a task with agent-signed HCS message (convenience: prepare + sign + submit)",
+    description:
+      "Combines HCS message preparation → signing → submission. " +
+      "Provide claimerDid and claimerPrivateKey. Server creates HCS transaction with agent as payer, " +
+      "signs it, submits to Hedera. HCS transaction ID uses claimer's account. (SLICE-15-4)",
+    responses: {
+      200: { description: "Task claimed with agent-signed HCS transaction" },
+      400: { description: "Missing required fields or invalid input" },
+      403: { description: "Claimer passport not found or revoked" },
+      404: { description: "Task not found" },
+      409: { description: "Task is not in 'posted' status" },
+      500: { description: "HCS submission failure" },
+    },
+  }),
+  async (c) => {
+    const taskId = c.req.param("taskId");
+
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { claimerDid, claimerPrivateKey } = body as {
+      claimerDid?: string;
+      claimerPrivateKey?: string;
+    };
+
+    if (!claimerDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: claimerDid");
+    }
+    if (!claimerPrivateKey) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: claimerPrivateKey");
+    }
+    if (!isValidA2ADid(claimerDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid claimerDid format");
+    }
+
+    const claimerValid = await verifyA2ADid(claimerDid);
+    if (!claimerValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
+    }
+
+    const task = getTaskById(taskId);
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+    if (task.status !== "posted") {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot claim`);
+    }
+
+    try {
+      const fromAccountId = await didToAccountId(claimerDid);
+      if (!fromAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_claimed" as const,
+        taskId,
+        claimerDid,
+        timestamp,
+      };
+
+      const { txBytes } = await prepareTopicMessageTransaction(fromAccountId, message);
+      const { signature, publicKey } = signTransactionBytes(txBytes, claimerPrivateKey);
+      const sigB64Array = JSON.parse(signature) as string[];
+      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
+
+      updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
+
+      logger.info("Marketplace task claimed with key", { txId, taskId, claimerDid });
+
+      return c.json({ taskId, txId, timestamp }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Signed claim failed";
+      logger.error("Signed claim failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/deliver-with-key (SLICE-15-4) ─────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/deliver-with-key",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Deliver task results with agent-signed HCS message (convenience: prepare + sign + submit)",
+    description:
+      "Combines HCS message preparation → signing → submission. " +
+      "Provide claimerDid, claimerPrivateKey, and either resultBody or resultIpfs. " +
+      "Server creates HCS transaction with agent as payer, signs it, submits to Hedera. (SLICE-15-4)",
+    responses: {
+      200: { description: "Task delivered with agent-signed HCS transaction" },
+      400: { description: "Missing required fields or invalid input" },
+      403: { description: "Only the claimer can deliver" },
+      404: { description: "Task not found" },
+      409: { description: "Task is not in 'claimed' status" },
+      500: { description: "HCS submission failure" },
+    },
+  }),
+  async (c) => {
+    const taskId = c.req.param("taskId");
+
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { claimerDid, resultIpfs, resultBody, claimerPrivateKey } = body as {
+      claimerDid?: string;
+      resultIpfs?: string;
+      resultBody?: string;
+      claimerPrivateKey?: string;
+    };
+
+    if (!claimerDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: claimerDid");
+    }
+    if (!claimerPrivateKey) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: claimerPrivateKey");
+    }
+    if (!isValidA2ADid(claimerDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid claimerDid format");
+    }
+    if (!resultIpfs && !resultBody) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Either resultIpfs or resultBody required");
+    }
+    if (resultBody && Buffer.byteLength(resultBody, "utf8") > 4096) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `resultBody too large (${Buffer.byteLength(resultBody, "utf8")} bytes, max 4096). Use IPFS for larger results.`);
+    }
+
+    const claimerValid = await verifyA2ADid(claimerDid);
+    if (!claimerValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
+    }
+
+    const task = getTaskById(taskId);
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+    if (task.status !== "claimed") {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot deliver`);
+    }
+    if (task.claimerDid !== claimerDid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only claimer can deliver");
+    }
+
+    try {
+      const fromAccountId = await didToAccountId(claimerDid);
+      if (!fromAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_delivered" as const,
+        taskId,
+        claimerDid,
+        resultIpfs,
+        resultBody,
+        timestamp,
+      };
+
+      const { txBytes } = await prepareTopicMessageTransaction(fromAccountId, message);
+      const { signature, publicKey } = signTransactionBytes(txBytes, claimerPrivateKey);
+      const sigB64Array = JSON.parse(signature) as string[];
+      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
+
+      updateTaskStatus(taskId, "delivered", { resultIpfs, resultBody, deliverTxId: txId });
+
+      logger.info("Marketplace task delivered with key", { txId, taskId, claimerDid });
+
+      return c.json({ taskId, txId, timestamp }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Signed delivery failed";
+      logger.error("Signed delivery failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/prepare-payment ──────────────────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/prepare-payment",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Prepare a P2P HBAR payment for task completion",
+    description:
+      "Prepares a frozen TransferTransaction for offline signing by the poster. " +
+      "Returns base64-encoded txBytes, txId, and resolved account IDs. " +
+      "Poster signs locally and submits via /complete with txBytes + publicKey + signature. (SLICE-12-2)",
+    responses: {
+      200: { description: "Transaction prepared successfully" },
+      400: { description: "Task not in delivered status or missing claimer" },
+      403: { description: "Caller is not the poster or passport revoked" },
+      404: { description: "Task not found" },
+      500: { description: "Transaction preparation failure" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { posterDid } = body as { posterDid?: string };
+
+    if (!posterDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterDid");
+    }
+
+    if (!isValidA2ADid(posterDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    const taskId = c.req.param("taskId");
+    const task = getTaskById(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (task.posterDid !== posterDid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can prepare payment");
+    }
+
+    const posterValid = await verifyA2ADid(posterDid);
+    if (!posterValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
+    }
+
+    if (task.status !== "delivered") {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Task must be in delivered status, current: ${task.status}`);
+    }
+
+    if (!task.claimerDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Task has no claimer assigned");
+    }
+
+    try {
+      const fromAccountId = await didToAccountId(posterDid);
+      if (!fromAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+      }
+
+      const toAccountId = await didToAccountId(task.claimerDid);
+      if (!toAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+      }
+
+      const { txBytes, txId } = await prepareTransferTransaction(
+        fromAccountId,
+        toAccountId,
+        task.priceHbar,
+      );
+
+      logger.info("Payment prepared", { taskId, txId, fromAccountId, toAccountId });
+
+      return c.json(
+        { txBytes, txId, fromAccountId, toAccountId, amountHbar: task.priceHbar },
+        200,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Transaction preparation failed";
+      logger.error("Payment preparation failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/complete ──────────────────────────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/complete",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Complete a task with P2P HBAR payment",
+    description:
+      "Poster completes a delivered task by transferring HBAR to the claimer. " +
+      "Accepts either signature-based payment (txBytes + publicKey + signature from prepare-payment) " +
+      "or legacy private key payment (posterPrivateKey). Operator fallback is removed. (SLICE-12-3)",
+    responses: {
+      200: { description: "Task completed successfully" },
+      400: { description: "Task not in delivered status, missing claimer, or missing payment fields" },
+      403: { description: "Caller is not the poster or passport revoked" },
+      404: { description: "Task not found" },
+      500: { description: "Payment or HCS submission failure" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { posterDid, txBytes, publicKey, signature, posterPrivateKey } = body as {
+      posterDid?: string;
+      txBytes?: string;
+      publicKey?: string;
+      signature?: string;
+      posterPrivateKey?: string;
+    };
+
+    if (!posterDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterDid");
+    }
+
+    if (!isValidA2ADid(posterDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    const taskId = c.req.param("taskId");
+    const task = getTaskById(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (task.posterDid !== posterDid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can complete this task");
+    }
+
+    const posterValid = await verifyA2ADid(posterDid);
+    if (!posterValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
+    }
+
+    if (task.status !== "delivered") {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Task must be in delivered status, current: ${task.status}`);
+    }
+
+    if (!task.claimerDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Task has no claimer assigned");
+    }
+
+    const hasSignature = txBytes && publicKey && signature;
+    const hasPrivateKey = !!posterPrivateKey;
+
+    if (!hasSignature && !hasPrivateKey) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Payment method required: provide (txBytes + publicKey + signature) or posterPrivateKey");
+    }
+
+    try {
+      const toAccountId = await didToAccountId(task.claimerDid);
+      if (!toAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+      }
+
+      let paymentTxId: string;
+      if (hasSignature) {
+        const sigB64Array = JSON.parse(signature!) as string[];
+        const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+        paymentTxId = await transferHbarWithSignature(txBytes!, publicKey!, signatureBytes);
+      } else {
+        const fromAccountId = await didToAccountId(posterDid);
+        if (!fromAccountId) {
+          return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+        }
+        paymentTxId = await transferHbarWithKey(fromAccountId, posterPrivateKey!, toAccountId, task.priceHbar);
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_completed" as const,
+        taskId,
+        paymentTxId,
+        timestamp,
+      };
+
+      const hcsTxId = await submitTaskMessage(message);
+
+      updateTaskStatus(taskId, "completed", { paymentTxId, completedTxId: hcsTxId });
+
+      logger.info("Marketplace task completed", { hcsTxId, taskId, paymentTxId });
+
+      return c.json({ taskId, paymentTxId, completedAt: timestamp }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Payment or HCS submission failed";
+      logger.error("Marketplace task completion failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/sign — sign frozen transaction bytes (SLICE-15-1) ───
+
+marketRoutes.post(
+  "/market/sign",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Sign frozen Hedera transaction bytes with a private key",
+    description:
+      "Takes base64-encoded frozen transaction bytes and a private key, returns the signature and public key. " +
+      "Pure local operation — no network calls. Supports both ECDSA (0x... hex) and ED25519 (302e... DER) key formats. (SLICE-15-1)",
+    responses: {
+      200: { description: "Signature and public key returned" },
+      400: { description: "Missing or invalid txBytes / privateKey" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { txBytes, privateKey } = body as { txBytes?: string; privateKey?: string };
+
+    if (!txBytes) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: txBytes");
+    }
+    if (!privateKey) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: privateKey");
+    }
+
+    try {
+      const result = signTransactionBytes(txBytes, privateKey);
+      return c.json(result, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Signing failed";
+      logger.error("Signing failed", { error: msg });
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, msg);
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/complete-with-key (SLICE-15-2) ───
+
+marketRoutes.post(
+  "/market/tasks/:taskId/complete-with-key",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Complete task with private key (convenience: prepare + sign + submit + complete in one call)",
+    description:
+      "Combines prepare_payment → sign → complete into a single call. " +
+      "Provide posterDid and posterPrivateKey. Server prepares frozen transfer, signs it, submits to Hedera, and completes the task. (SLICE-15-2)",
+    responses: {
+      200: { description: "Task completed with paymentTxId" },
+      400: { description: "Missing required fields or task not in delivered status" },
+      403: { description: "Not the task poster or passport invalid" },
+      404: { description: "Task not found" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { posterDid, posterPrivateKey } = body as { posterDid?: string; posterPrivateKey?: string };
+
+    if (!posterDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterDid");
+    }
+    if (!posterPrivateKey) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterPrivateKey");
+    }
+    if (!isValidA2ADid(posterDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    const taskId = c.req.param("taskId");
+    const task = getTaskById(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (task.posterDid !== posterDid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can complete this task");
+    }
+
+    const posterValid = await verifyA2ADid(posterDid);
+    if (!posterValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
+    }
+
+    if (task.status !== "delivered") {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Task must be in delivered status, current: ${task.status}`);
+    }
+
+    if (!task.claimerDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Task has no claimer assigned");
+    }
+
+    try {
+      const fromAccountId = await didToAccountId(posterDid);
+      if (!fromAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+      }
+
+      const toAccountId = await didToAccountId(task.claimerDid);
+      if (!toAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+      }
+
+      // 1. Prepare frozen transfer transaction
+      const { txBytes } = await prepareTransferTransaction(
+        fromAccountId,
+        toAccountId,
+        task.priceHbar,
+      );
+
+      // 2. Sign the frozen transaction bytes
+      const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
+
+      // 3. Submit signed transaction to Hedera
+      const sigB64Array = JSON.parse(signature) as string[];
+      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const paymentTxId = await transferHbarWithSignature(txBytes, publicKey, signatureBytes);
+
+      // 4. Complete task with paymentTxId
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_completed" as const,
+        taskId,
+        paymentTxId,
+        timestamp,
+      };
+
+      const hcsTxId = await submitTaskMessage(message);
+
+      updateTaskStatus(taskId, "completed", { paymentTxId, completedTxId: hcsTxId });
+
+      logger.info("Marketplace task completed with key", { hcsTxId, taskId, paymentTxId });
+
+      return c.json({ taskId, paymentTxId, completedAt: timestamp }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Convenience completion failed";
+      logger.error("Complete-with-key failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/signed (SLICE-15-3) ──────────────────────
+
+marketRoutes.post(
+  "/market/tasks/signed",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Post a task with agent-signed HCS message (convenience: prepare + sign + submit in one call)",
+    description:
+      "Combines HCS message preparation → signing → submission into a single call. " +
+      "Provide posterDid and posterPrivateKey. Server creates HCS transaction with agent as payer, " +
+      "signs it, submits to Hedera, and caches the task. HCS transaction ID uses agent's account. (SLICE-15-3)",
+    responses: {
+      200: { description: "Task posted with agent-signed HCS transaction" },
+      400: { description: "Missing required fields or invalid input" },
+      403: { description: "Poster passport not found or revoked" },
+      500: { description: "HCS submission failure" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { posterDid, title, description, priceHbar, capabilities, deadline, posterPrivateKey } = body as {
+      posterDid?: string;
+      title?: string;
+      description?: string;
+      priceHbar?: number;
+      capabilities?: string[];
+      deadline?: number;
+      posterPrivateKey?: string;
+    };
+
+    if (!posterDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterDid");
+    }
+    if (!title) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: title");
+    }
+    if (!description) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: description");
+    }
+    if (!priceHbar) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: priceHbar");
+    }
+    if (!capabilities) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: capabilities");
+    }
+    if (!posterPrivateKey) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterPrivateKey");
+    }
+
+    if (!isValidA2ADid(posterDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    if (!Array.isArray(capabilities) || capabilities.length === 0) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_CAPABILITIES, "capabilities must be a non-empty array");
+    }
+
+    if (typeof priceHbar !== "number" || priceHbar <= 0) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a positive number");
+    }
+
+    const posterValid = await verifyA2ADid(posterDid);
+    if (!posterValid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
+    }
+
+    try {
+      const fromAccountId = await didToAccountId(posterDid);
+      if (!fromAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const taskId = `task-${timestamp}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const message = {
+        type: "task_posted" as const,
+        taskId,
+        posterDid,
+        title,
+        description,
+        priceHbar,
+        capabilities,
+        deadline,
+        timestamp,
+      };
+
+      const fullMessage = JSON.stringify(message);
+      if (Buffer.byteLength(fullMessage, "utf8") > 4096) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Task payload exceeds 4KB limit");
+      }
+
+      // 1. Prepare frozen HCS transaction with agent as payer
+      const { txBytes } = await prepareTopicMessageTransaction(fromAccountId, message);
+
+      // 2. Sign the frozen transaction bytes with agent's private key
+      const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
+
+      // 3. Submit signed transaction to HCS
+      const sigB64Array = JSON.parse(signature) as string[];
+      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
+
+      const cached = {
+        taskId,
+        posterDid,
+        title,
+        description,
+        priceHbar,
+        capabilities,
+        deadline,
+        status: "posted" as const,
+        txId,
+        consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+        createdAt: timestamp,
+      };
+      upsert(cached);
+
+      logger.info("Marketplace task posted with key", { txId, taskId, posterDid });
+
+      return c.json({ txId, taskId, timestamp }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Signed task posting failed";
+      logger.error("Signed task posting failed", { error: msg });
+      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+    }
+  },
+);

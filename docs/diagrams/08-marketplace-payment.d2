@@ -1,0 +1,83 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Marketplace Payment Flow (Signature-Based) ──
+# 3-step offline signing: prepare → sign locally → complete
+
+Poster Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Local Signing: {
+  shape: rectangle
+  style.fill: "#E3F2FD"
+  style.stroke: "#1976D2"
+}
+
+x402 Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Mirror Node: {
+  shape: rectangle
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+}
+
+Hedera: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+HCS Market Topic: {
+  shape: cylinder
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+}
+
+Claimer Agent: {
+  shape: person
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+# Phase 1: Prepare payment
+Poster Agent -> x402 Server: "1. POST /market/tasks/:id/prepare-payment" {style.animated: true}
+Poster Agent -> x402 Server: "   {posterDid}" {style.animated: true}
+x402 Server -> Mirror Node: "2. Verify poster passport" {style.animated: true}
+Mirror Node --> x402 Server: "3. Confirmed" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> Mirror Node: "4. Resolve claimerDid → accountId" {style.animated: true}
+Mirror Node --> x402 Server: "5. 0.0.973xxxx" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> Hedera: "6. TransferTransaction.freeze()\n   from=poster, to=claimer, amount=priceHbar" {style.animated: true}
+Hedera --> x402 Server: "7. Frozen txBytes" {style.animated: true; style.stroke-dash: 3}
+x402 Server --> Poster Agent: "8. {txBytes, txId, fromAccountId, toAccountId}" {style.animated: true; style.stroke-dash: 3}
+
+# Phase 2: Sign locally (offline — private key never leaves agent)
+Poster Agent -> Local Signing: "9. signTransactionBytes(txBytes, privateKey)" {style.animated: true}
+Local Signing -> Local Signing: "10. Sign each inner transaction\n    (N signatures for N chunks)" {style.animated: true; style.stroke-dash: 3}
+Local Signing --> Poster Agent: "11. {publicKey, signature (JSON array)}" {style.animated: true; style.stroke-dash: 3}
+
+# Phase 3: Complete with signature
+Poster Agent -> x402 Server: "12. POST /market/tasks/:id/complete" {style.animated: true}
+Poster Agent -> x402 Server: "    {posterDid, txBytes, publicKey, signature}" {style.animated: true}
+x402 Server -> x402 Server: "13. Parse signature JSON array" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> Hedera: "14. TransferTransaction\n    .addSignature(publicKey, sig[])" {style.animated: true}
+Hedera --> x402 Server: "15. paymentTxId confirmed" {style.animated: true; style.stroke-dash: 3}
+
+# Phase 4: HCS audit + response
+x402 Server -> HCS Market Topic: "16. HCS: type=completed, paymentTxId" {style.animated: true}
+HCS Market Topic --> x402 Server: "17. hcsTxId" {style.animated: true; style.stroke-dash: 3}
+x402 Server --> Poster Agent: "18. 200 OK {taskId, paymentTxId}" {style.animated: true; style.stroke-dash: 3}
+
+# Claimer receives payment
+Hedera -> Claimer Agent: "19. HBAR received (priceHbar)" {style.animated: true; style.stroke-dash: 3}

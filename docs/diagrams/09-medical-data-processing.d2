@@ -1,0 +1,80 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Medical Data Processing Marketplace ──
+# Provider agent offers medical analysis, consumer agent buys it
+
+Consumer Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Marketplace: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Provider Agent: {
+  shape: person
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+Medical Processor: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+}
+
+IPFS: {
+  shape: cylinder
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+}
+
+Hedera: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+# ── Phase 1: Provider registers service ──
+Provider Agent -> Marketplace: "1. register_agent(cap=medical-analysis)" {style.animated: true}
+Marketplace -> Hedera: "2. HCS directory: provider registered" {style.animated: true}
+
+# ── Phase 2: Consumer posts task ──
+Consumer Agent -> Marketplace: "3. POST /market/tasks\n   'Analyze patient vitals + labs'" {style.animated: true}
+Marketplace -> Hedera: "4. HCS: type=posted, price=100 HBAR" {style.animated: true}
+
+# ── Phase 3: Provider discovers + claims ──
+Provider Agent -> Marketplace: "5. list_tasks(cap=medical-analysis)" {style.animated: true}
+Marketplace --> Provider Agent: "6. Task found" {style.animated: true; style.stroke-dash: 3}
+Provider Agent -> Marketplace: "7. POST /tasks/:id/claim" {style.animated: true}
+Marketplace -> Hedera: "8. HCS: type=claimed" {style.animated: true}
+
+# ── Phase 4: Provider processes data ──
+Provider Agent -> Medical Processor: "9. Process patient data\n   (vitals, lab results)" {style.animated: true}
+Medical Processor -> Medical Processor: "10. Analyze + generate recommendations" {style.animated: true; style.stroke-dash: 3}
+Medical Processor -> IPFS: "11. Upload HTML report" {style.animated: true}
+IPFS --> Provider Agent: "12. CID returned" {style.animated: true; style.stroke-dash: 3}
+
+# ── Phase 5: Provider delivers result ──
+Provider Agent -> Marketplace: "13. POST /tasks/:id/deliver\n   {resultIpfs: CID}" {style.animated: true}
+Marketplace -> Hedera: "14. HCS: type=delivered" {style.animated: true}
+
+# ── Phase 6: Consumer completes + pays ──
+Consumer Agent -> Marketplace: "15. POST /tasks/:id/complete" {style.animated: true}
+Marketplace -> Hedera: "16. TransferTransaction: 100 HBAR" {style.animated: true}
+Hedera -> Provider Agent: "17. 100 HBAR received" {style.animated: true; style.stroke-dash: 3}
+Marketplace -> Hedera: "18. HCS: type=completed" {style.animated: true}
+
+# ── Phase 7: Consumer reads report ──
+Consumer Agent -> IPFS: "19. Fetch HTML report via CID" {style.animated: true}
+IPFS --> Consumer Agent: "20. Medical analysis report" {style.animated: true; style.stroke-dash: 3}

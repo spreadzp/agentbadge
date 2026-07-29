@@ -1,0 +1,87 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Layer 1: Agent Interface ──
+
+AI Agent (Claude/Cursor): {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+# ── Layer 2: MCP Server ──
+
+MCP Server: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  20 Tools: {shape: text; style.font-size: 12}
+}
+
+# ── Layer 3: x402 Server (Hono) ──
+
+x402 Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  Hono HTTP (port 4021): {shape: text; style.font-size: 12}
+  HTMX Dashboard: {shape: text; style.font-size: 12}
+}
+
+# ── Layer 4: Hedera Testnet ──
+
+Hedera Testnet: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  HTS NFT Passport: {shape: text; style.font-size: 12}
+  HCS Audit Topic: {shape: text; style.font-size: 12}
+  HCS Directory Topic: {shape: text; style.font-size: 12}
+}
+
+# ── External Services ──
+
+IPFS (nft.storage): {
+  shape: cylinder
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+}
+
+Mirror Node API: {
+  shape: cloud
+  style.fill: "#E1F5FE"
+  style.stroke: "#0288D1"
+}
+
+blocky402 Facilitator: {
+  shape: hexagon
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+# ── Connections ──
+
+AI Agent (Claude/Cursor) -> MCP Server: MCP stdio/HTTP {style.animated: true}
+MCP Server -> x402 Server: HTTP calls {style.animated: true}
+x402 Server -> blocky402 Facilitator: /settle (HBAR) {style.animated: true}
+blocky402 Facilitator -> Hedera Testnet: co-sign + submit {style.animated: true}
+x402 Server -> Hedera Testnet: HTS mint + HCS submit {style.animated: true}
+x402 Server -> IPFS (nft.storage): upload metadata JSON {style.animated: true}
+x402 Server -> Mirror Node API: read queries (free) {style.animated: true}
+AI Agent (Claude/Cursor) -> Mirror Node API: verify (free, direct) {style.animated: true; style.stroke-dash: 3}
+
+# ── Browser Dashboard ──
+
+Browser Dashboard: {
+  shape: rectangle
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  "HTMX + Tailwind": {shape: text; style.font-size: 12}
+}
+
+Browser Dashboard -> x402 Server: HTMX fragments {style.animated: true}

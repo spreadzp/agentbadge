@@ -1,0 +1,77 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Tier Upgrade Sequence ──
+# Agent upgrades from Silver to Gold
+
+Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+MCP Server: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+}
+
+x402 Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Facilitator: {
+  shape: hexagon
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+Hedera: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "HTS (metadata key update)": {shape: text; style.font-size: 12}
+  "HCS (audit message)": {shape: text; style.font-size: 12}
+}
+
+IPFS: {
+  shape: cylinder
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+}
+
+# Step 1: Request upgrade
+Agent -> MCP Server: "1. upgrade_tier(tokenId, serial, tier=gold)" {style.animated: true}
+MCP Server -> x402 Server: "2. POST /passport/:id/upgrade" {style.animated: true}
+
+# Step 2: Calculate price
+x402 Server -> x402 Server: "3. Price = (200-50) + 10% = 165 HBAR" {style.animated: true}
+x402 Server --> MCP Server: "4. 402 Payment Required (165 HBAR)" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent: "5. Sign TransferTransaction" {style.animated: true; style.stroke-dash: 3}
+
+# Step 3: Payment
+Agent -> MCP Server: "6. Signed transaction" {style.animated: true}
+MCP Server -> x402 Server: "7. POST + X-PAYMENT header" {style.animated: true}
+x402 Server -> Facilitator: "8. /settle (165 HBAR)" {style.animated: true}
+Facilitator -> Hedera: "9. Co-sign + submit" {style.animated: true}
+Facilitator --> x402 Server: "10. Settlement confirmed" {style.animated: true; style.stroke-dash: 3}
+
+# Step 4: Update metadata (NOT a new NFT)
+x402 Server -> IPFS: "11. Upload new metadata JSON (Gold)" {style.animated: true}
+IPFS --> x402 Server: "12. New CID" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> Hedera: "13. HTS update NFT metadata (new CID)" {style.animated: true; style.stroke: "#C62828"}
+x402 Server -> Hedera: "14. HCS audit: tier_upgraded silver→gold" {style.animated: true}
+
+# Step 5: Response
+x402 Server --> MCP Server: "15. 200 OK { tier: gold, newCaps }" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent: "16. Upgraded to Gold!" {style.animated: true; style.stroke-dash: 3}
+
+# Note: same tokenId + same serial + same DID forever
+x402 Server -> x402 Server: "Same NFT, same DID, only metadata changes" {style.animated: true; style.stroke: "#C62828"; style.stroke-dash: 5}

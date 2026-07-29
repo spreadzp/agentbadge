@@ -1,0 +1,7 @@
+.env
+node_modules/
+dist/
+storage/
+graphify-out/
+MEDICAL-DATA-WORKFLOW.md
+docs/AGENT-MEDICAL-TASKS-GUIDE.md

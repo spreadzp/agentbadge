@@ -1,0 +1,70 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── A2A Messaging Flow ──
+# Agent A sends a message to Agent B via HCS topic
+
+Agent A: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+MCP Server: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+}
+
+x402 Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Mirror Node: {
+  shape: rectangle
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+}
+
+HCS A2A Topic: {
+  shape: cylinder
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+Agent B: {
+  shape: person
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+# Step 1: Send message
+Agent A -> MCP Server: "1. send_message(from=A, to=B, body)" {style.animated: true}
+MCP Server -> x402 Server: "2. POST /a2a/send" {style.animated: true}
+
+# Step 2: Verify passports
+x402 Server -> Mirror Node: "3. Verify A passport (NFT ownership)" {style.animated: true}
+Mirror Node --> x402 Server: "4. Active, Silver tier" {style.animated: true; style.stroke-dash: 3}
+x402 Server -> Mirror Node: "5. Verify B passport (NFT ownership)" {style.animated: true}
+Mirror Node --> x402 Server: "6. Active, Gold tier" {style.animated: true; style.stroke-dash: 3}
+
+# Step 3: Submit to HCS
+x402 Server -> HCS A2A Topic: "7. Submit message {from, to, body, ts}" {style.animated: true}
+HCS A2A Topic --> x402 Server: "8. txId confirmed" {style.animated: true; style.stroke-dash: 3}
+x402 Server --> MCP Server: "9. 200 OK {txId, timestamp}" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent A: "10. Message sent!" {style.animated: true; style.stroke-dash: 3}
+
+# Step 4: Agent B reads inbox
+Agent B -> MCP Server: "11. get_inbox(did=B)" {style.animated: true}
+MCP Server -> x402 Server: "12. GET /a2a/inbox?did=B" {style.animated: true}
+x402 Server -> Mirror Node: "13. Query HCS messages (to=B)" {style.animated: true}
+Mirror Node --> x402 Server: "14. Messages array" {style.animated: true; style.stroke-dash: 3}
+x402 Server --> MCP Server: "15. 200 OK {messages[]}" {style.animated: true; style.stroke-dash: 3}
+MCP Server --> Agent B: "16. You have 1 new message from A" {style.animated: true; style.stroke-dash: 3}
