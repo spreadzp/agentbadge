@@ -1,5 +1,6 @@
 import { html } from "hono/html";
 import { Layout } from "./layout";
+import { PageMeta } from "../server/lib/page-meta";
 
 /**
  * Help page — describes what the site is, lists available pages,
@@ -293,5 +294,5 @@ export function HelpPage() {
       </div>
     </section>`;
 
-  return Layout(content.toString(), "Help & Documentation");
+  return Layout(content.toString(), "Help & Documentation", PageMeta["/ui/help"]);
 }

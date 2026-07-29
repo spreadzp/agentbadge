@@ -1,15 +1,22 @@
 import { html, raw } from "hono/html";
+import { type PageMeta, SITE_DESCRIPTION, BASE_URL } from "../server/lib/page-meta";
+import { renderJsonLd, defaultCoreSchemas } from "../server/lib/json-ld";
 
 /**
  * HTML shell layout with HTMX + Tailwind CDN.
- * (SLICE-4-1, SLICE-4-3, hackathon-flow.md:385-391)
+ * (SLICE-4-1, SLICE-4-3, SLICE-18-1, SLICE-18-4)
  *
  * Style: slate-* palette + emerald accents, matching Facilitator project.
  */
-export function Layout(children: string, title?: string) {
+export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd?: object[]) {
   const pageTitle = title
     ? `${title} — AgentGate`
     : "AgentGate — On-chain Identity for AI Agents on Hedera";
+  const description = meta?.description ?? SITE_DESCRIPTION;
+  const canonicalPath = meta?.path ?? "/";
+  const canonicalUrl = `${BASE_URL}${canonicalPath}`;
+  const ogImage = `${BASE_URL}/icons/og-image.png`;
+  const jsonLdHtml = renderJsonLd(jsonLd ?? defaultCoreSchemas());
   return html`<!DOCTYPE html>
     <html lang="en" class="h-full bg-slate-950 text-slate-100">
       <head>
@@ -20,6 +27,22 @@ export function Layout(children: string, title?: string) {
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <title>${pageTitle}</title>
+        <meta name="description" content="${description}" />
+        <link rel="canonical" href="${canonicalUrl}" />
+        <meta property="og:title" content="${pageTitle}" />
+        <meta property="og:description" content="${description}" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="${canonicalUrl}" />
+        <meta property="og:image" content="${ogImage}" />
+        <meta property="og:site_name" content="AgentGate" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${pageTitle}" />
+        <meta name="twitter:description" content="${description}" />
+        <meta name="twitter:image" content="${ogImage}" />
+        <link rel="alternate" type="text/plain" title="LLM Context" href="/llms.txt" />
+        <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
+        <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
+        ${raw(jsonLdHtml)}
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>

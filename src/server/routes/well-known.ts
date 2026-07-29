@@ -3,12 +3,14 @@
  *
  * SLICE-17-1: GET /.well-known/agent-card.json
  * SLICE-17-9: GET /ai-sitemap.xml
+ * SLICE-18-3: GET /robots.txt, GET /sitemap.xml
  */
 
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { serverAgentCardSchema, openApiConfig } from "../openapi";
+import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 
 export const wellKnownRoutes = new Hono();
 
@@ -199,6 +201,101 @@ wellKnownRoutes.get(
   }),
   (c) => {
     const xml = buildAiSitemap();
+    return new Response(xml, {
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);
+
+// ─── robots.txt (SLICE-18-3) ──────────────────────────────────
+
+wellKnownRoutes.get(
+  "/robots.txt",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "robots.txt — crawler directives",
+    description:
+      "Returns robots.txt with allow rules for major crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended) and disallow for admin/internal paths.",
+    responses: {
+      200: {
+        description: "robots.txt",
+        content: { "text/plain": {} },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    const body = `User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /ui/a2a/inbox/fragment
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: ${baseUrl}/sitemap.xml
+`;
+    return new Response(body, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "public, max-age=86400",
+      },
+    });
+  },
+);
+
+// ─── sitemap.xml (SLICE-18-3) ─────────────────────────────────
+
+// TODO(18-11): replace with BUILD_DATE from build-info.ts
+const BUILD_DATE =
+  process.env.BUILD_DATE ?? new Date().toISOString().slice(0, 10);
+
+function buildSitemap(): string {
+  const baseUrl = BASE_URL;
+
+  const urls = PUBLIC_PAGES.map(
+    (p) => `  <url>
+    <loc>${baseUrl}${p.path}</loc>
+    <lastmod>${BUILD_DATE}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`,
+  ).join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>`;
+}
+
+wellKnownRoutes.get(
+  "/sitemap.xml",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "sitemap.xml — classic XML sitemap for search engines",
+    description:
+      "Returns a standard XML sitemap listing all public indexable pages with lastmod, changefreq, and priority.",
+    responses: {
+      200: {
+        description: "Sitemap XML",
+        content: { "application/xml": {} },
+      },
+    },
+  }),
+  (c) => {
+    const xml = buildSitemap();
     return new Response(xml, {
       headers: {
         "Content-Type": "application/xml; charset=utf-8",

@@ -39,6 +39,8 @@ import { AgentProfilePage } from "../../views/agent-profile";
 import { Layout } from "../../views/layout";
 import { PageHeader } from "../../views/page-header";
 import { PageTitles } from "../lib/page-titles";
+import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
+import { passportLd, jobPostingLd, profilePageLd, defaultCoreSchemas } from "../lib/json-ld";
 import { getAcceptedFormat } from "../lib/content-negotiation";
 import { getCatalog, getNftsForToken, getNftInfo, getTopicMessages, isValidA2ADid, prepareA2ATopicMessage, signTransactionBytes, submitSignedTopicMessage } from "@agentgate-hedera/hedera-core";
 import type { NftInfo, Tier, Capability, AuditMessage, CachedA2AMessage } from "@agentgate-hedera/hedera-core";
@@ -53,8 +55,8 @@ function isHtmxRequest(c: Context): boolean {
 }
 
 /** Wrap fragment in Layout if direct browser access, return raw if HTMX. */
-function wrapFragment(c: Context, fragment: string, title?: string): string {
-  return isHtmxRequest(c) ? fragment : Layout(fragment, title).toString();
+function wrapFragment(c: Context, fragment: string, title?: string, meta?: PageMeta, jsonLd?: object[]): string {
+  return isHtmxRequest(c) ? fragment : Layout(fragment, title, meta, jsonLd).toString();
 }
 
 export const uiRoutes = new Hono();
@@ -288,7 +290,7 @@ uiRoutes.get("/ui/agents", async (c) => {
       title: "Agent Directory",
       description: "All agents with on-chain passports. Registered agents appear here with their capabilities, tier, and endpoint.",
     }).toString())}<section class="mt-8"><h2 class="text-lg font-semibold text-white">Registered Agents</h2><div class="mt-4">${raw(AgentsFragment({ agents }).toString())}</div></section>`.toString();
-    return c.html(wrapFragment(c, fragment, PageTitles["/ui/agents"]));
+    return c.html(wrapFragment(c, fragment, PageTitles["/ui/agents"], PageMetaRegistry["/ui/agents"]));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return c.html(
@@ -427,7 +429,12 @@ uiRoutes.get("/ui/agents/:param1/:param2?", async (c) => {
     }
 
     const pageContent = AgentProfilePage({ agent });
-    return c.html(Layout(pageContent.toString(), "Agent Profile").toString());
+    const entitySchemas = [
+      ...defaultCoreSchemas(),
+      profilePageLd(agent),
+      passportLd({ tokenId: agent.tokenId, serial: agent.serial, tier: agent.tier, ownerDID: agent.did }),
+    ];
+    return c.html(Layout(pageContent.toString(), "Agent Profile", undefined, entitySchemas).toString());
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return c.html(Layout(html`<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-red-400">Agent profile error: ${message}</div>`.toString(), "Agent Profile").toString(), 500);
@@ -534,7 +541,7 @@ uiRoutes.get("/ui/search", async (c) => {
         badge: "Mirror Node",
         title: "Search Agents",
         description: "Find agents by DID, token ID, name, or skills. Search runs against on-chain passports and the HCS directory.",
-      }).toString())}<section class="mt-8"><h2 class="text-lg font-semibold text-white">Search</h2><div class="mt-4">${raw(formHtml)}</div></section>`.toString(), PageTitles["/ui/search"]));
+      }).toString())}<section class="mt-8"><h2 class="text-lg font-semibold text-white">Search</h2><div class="mt-4">${raw(formHtml)}</div></section>`.toString(), PageTitles["/ui/search"], PageMetaRegistry["/ui/search"]));
     }
 
     let matched: DirectoryEntry[] = allAgents;
@@ -583,6 +590,7 @@ uiRoutes.get("/ui/search", async (c) => {
           description: "Find agents by DID, token ID, name, or skills. Search runs against on-chain passports and the HCS directory.",
         }).toString())}<section class="mt-8"><h2 class="text-lg font-semibold text-white">Results</h2><div class="mt-4">${raw(resultsHtml)}</div></section>`.toString(),
         PageTitles["/ui/search"],
+        PageMetaRegistry["/ui/search"],
       ),
     );
   } catch (err) {
@@ -763,7 +771,7 @@ uiRoutes.get("/ui/catalog", (c) => {
     badge: "HTS Pricing",
     title: "Passport Tiers",
     description: "Choose a tier for your agent passport. Each tier unlocks more capabilities and higher reputation on the Hedera network.",
-  }).toString())}<section class="mt-8"><h2 class="text-lg font-semibold text-white">Available Tiers</h2><div class="mt-4">${raw(CatalogFragment({ tiers }).toString())}</div></section>`.toString(), PageTitles["/ui/catalog"]));
+  }).toString())}<section class="mt-8"><h2 class="text-lg font-semibold text-white">Available Tiers</h2><div class="mt-4">${raw(CatalogFragment({ tiers }).toString())}</div></section>`.toString(), PageTitles["/ui/catalog"], PageMetaRegistry["/ui/catalog"]));
 });
 
 /**
@@ -775,7 +783,7 @@ uiRoutes.get("/ui/catalog", (c) => {
 uiRoutes.get("/ui/passport/request", (c) => {
   const tier = c.req.query("tier") ?? "bronze";
   const tiers = getCatalog();
-  return c.html(wrapFragment(c, PassportRequestForm({ tiers, selectedTier: tier }).toString(), PageTitles["/ui/passport/request"]));
+  return c.html(wrapFragment(c, PassportRequestForm({ tiers, selectedTier: tier }).toString(), PageTitles["/ui/passport/request"], PageMetaRegistry["/ui/passport/request"]));
 });
 
 /**
@@ -876,7 +884,7 @@ uiRoutes.get("/ui/a2a", (c) => {
         </section>`
       : ""}
   `;
-  return c.html(Layout(page.toString(), PageTitles["/ui/a2a"]).toString());
+  return c.html(Layout(page.toString(), PageTitles["/ui/a2a"], PageMetaRegistry["/ui/a2a"]).toString());
 });
 
 /**
@@ -1109,7 +1117,7 @@ uiRoutes.get("/ui/market/tasks", (c) => {
   }
 
   const fragment = MarketplaceTaskBoardFragment(result.tasks);
-  return c.html(wrapFragment(c, fragment.toString(), PageTitles["/ui/market/tasks"]));
+  return c.html(wrapFragment(c, fragment.toString(), PageTitles["/ui/market/tasks"], PageMetaRegistry["/ui/market/tasks"]));
 });
 
 /**
@@ -1142,7 +1150,8 @@ uiRoutes.get("/ui/market/tasks/:id", (c) => {
   const wrapped = html`<div class="htmx-poll-wrapper" hx-get="${pollUrl}" hx-trigger="every 10s" hx-swap="outerHTML">
     ${fragment}
   </div>`;
-  return c.html(wrapFragment(c, wrapped.toString(), "Task Details"));
+  const entitySchemas = [...defaultCoreSchemas(), jobPostingLd(task)];
+  return c.html(wrapFragment(c, wrapped.toString(), "Task Details", undefined, entitySchemas));
 });
 
 /**

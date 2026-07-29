@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageHeader } from "./page-header";
+import { PageMeta } from "../server/lib/page-meta";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 
 /**
@@ -573,5 +574,5 @@ export function MedicalDemoPage(task?: CachedMarketTask) {
       }
     </script>`;
 
-  return Layout(content.toString(), "Medical Data Demo");
+  return Layout(content.toString(), "Medical Data Demo", PageMeta["/ui/medical-demo"]);
 }

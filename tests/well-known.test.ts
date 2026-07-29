@@ -149,4 +149,125 @@ describe("Well-known routes", () => {
       }
     });
   });
+
+  // ─── robots.txt (SLICE-18-3) ──────────────────────────────────
+
+  describe("GET /robots.txt", () => {
+    it("returns 200 with text/plain content", async () => {
+      const res = await app.request("/robots.txt");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toContain("text/plain");
+    });
+
+    it("sets Cache-Control to 86400", async () => {
+      const res = await app.request("/robots.txt");
+      expect(res.headers.get("Cache-Control")).toBe("public, max-age=86400");
+    });
+
+    it("allows all crawlers and disallows admin", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+
+      expect(text).toContain("User-agent: *");
+      expect(text).toContain("Allow: /");
+      expect(text).toContain("Disallow: /admin");
+      expect(text).toContain("Disallow: /ui/a2a/inbox/fragment");
+    });
+
+    it("includes AI crawler directives", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+
+      expect(text).toContain("GPTBot");
+      expect(text).toContain("ClaudeBot");
+      expect(text).toContain("PerplexityBot");
+      expect(text).toContain("Google-Extended");
+    });
+
+    it("includes Sitemap line with absolute URL", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+
+      expect(text).toContain("Sitemap:");
+      expect(text).toMatch(/Sitemap:\s+https?:\/\/.+\/sitemap\.xml/);
+    });
+  });
+
+  // ─── sitemap.xml (SLICE-18-3) ─────────────────────────────────
+
+  describe("GET /sitemap.xml", () => {
+    it("returns 200 with application/xml content", async () => {
+      const res = await app.request("/sitemap.xml");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toContain("application/xml");
+    });
+
+    it("sets Cache-Control to 3600", async () => {
+      const res = await app.request("/sitemap.xml");
+      expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
+    });
+
+    it("returns valid XML with urlset root", async () => {
+      const res = await app.request("/sitemap.xml");
+      const text = await res.text();
+
+      expect(text).toContain("<?xml");
+      expect(text).toContain("<urlset");
+      expect(text).toContain("</urlset>");
+    });
+
+    it("contains at least 10 url entries", async () => {
+      const res = await app.request("/sitemap.xml");
+      const text = await res.text();
+      const count = (text.match(/<url>/g) || []).length;
+      expect(count).toBeGreaterThanOrEqual(10);
+    });
+
+    it("all loc URLs are absolute (start with http)", async () => {
+      const res = await app.request("/sitemap.xml");
+      const text = await res.text();
+
+      const locs = text
+        .match(/<loc>([^<]+)<\/loc>/g)
+        ?.map((m) => m.replace(/<\/?loc>/g, "")) ?? [];
+
+      expect(locs.length).toBeGreaterThan(0);
+      for (const loc of locs) {
+        expect(loc).toMatch(/^https?:\/\//);
+      }
+    });
+
+    it("each url has loc, lastmod, changefreq, and priority", async () => {
+      const res = await app.request("/sitemap.xml");
+      const text = await res.text();
+
+      const blocks = text
+        .split("<url>")
+        .slice(1)
+        .map((b) => b.split("</url>")[0]);
+
+      for (const block of blocks) {
+        expect(block).toContain("<loc>");
+        expect(block).toContain("<lastmod>");
+        expect(block).toContain("<changefreq>");
+        expect(block).toContain("<priority>");
+      }
+    });
+
+    it("does not include disallowed paths (/admin)", async () => {
+      const res = await app.request("/sitemap.xml");
+      const text = await res.text();
+
+      expect(text).not.toContain("/admin");
+    });
+
+    it("includes home page with priority 1.0", async () => {
+      const res = await app.request("/sitemap.xml");
+      const text = await res.text();
+
+      const homeBlock = text.split("<url>").find((s) => s.includes("</loc>\n    <lastmod>") && s.match(/<\/loc>\s*<lastmod>/) && s.includes("/</loc>"));
+      expect(homeBlock).toBeDefined();
+      expect(homeBlock).toContain("<priority>1.0</priority>");
+    });
+  });
 });

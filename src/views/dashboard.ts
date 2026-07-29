@@ -1,5 +1,6 @@
 import { html } from "hono/html";
 import { Layout } from "./layout";
+import { PageMeta } from "../server/lib/page-meta";
 
 /**
  * Main dashboard page — renders layout with live passport feed container.
@@ -71,5 +72,5 @@ export function Dashboard() {
         <p class="text-slate-400">Loading tasks…</p>
       </div>
     </section>`;
-  return Layout(content.toString());
+  return Layout(content.toString(), undefined, PageMeta["/"]);
 }
