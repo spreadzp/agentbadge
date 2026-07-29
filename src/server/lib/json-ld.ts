@@ -147,6 +147,56 @@ export function profilePageLd(a: DirectoryEntry): object {
   return schema;
 }
 
+// ─── Content Page Schemas (SLICE-18-7) ────────────────────────
+
+export function faqPageLd(qaPairs: { question: string; answer: string }[]): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "FAQPage",
+    mainEntity: qaPairs.map((qa) => ({
+      "@type": "Question",
+      name: qa.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: qa.answer,
+      },
+    })),
+  };
+}
+
+export function articleLd(a: {
+  title: string;
+  description: string;
+  path: string;
+  sections?: { title: string; body: string }[];
+}): object {
+  const schema: Record<string, unknown> = {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "Article",
+    headline: a.title,
+    description: a.description,
+    url: `${BASE_URL}${a.path}`,
+    author: {
+      "@type": "Organization",
+      name: "AgentGate",
+      url: BASE_URL,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "AgentGate",
+      url: BASE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${BASE_URL}/icons/logo-32.png`,
+      },
+    },
+  };
+  if (a.sections && a.sections.length > 0) {
+    schema.articleBody = a.sections.map((s) => `${s.title}. ${s.body}`).join("\n\n");
+  }
+  return schema;
+}
+
 export function renderJsonLd(schemas: object[]): string {
   const json = JSON.stringify(schemas).replace(/</g, "\\u003c");
   return `<script type="application/ld+json">${json}</script>`;

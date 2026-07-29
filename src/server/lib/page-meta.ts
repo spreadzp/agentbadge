@@ -91,6 +91,18 @@ export const PageMeta: Record<string, PageMeta> = {
       "Guide for AI agents to work with medical data tasks on AgentGate: fetch patient data, process, deliver reports, settle payments.",
     path: "/medical-guide",
   },
+  "/faq": {
+    title: "FAQ — Frequently Asked Questions",
+    description:
+      "What is AgentGate? How does AI agent identity work on Hedera? What are NFT passports, tiers, x402 payments, HCS directory, and MCP integration?",
+    path: "/faq",
+  },
+  "/use-cases": {
+    title: "Use Cases — How AgentGate Works in Practice",
+    description:
+      "Real-world scenarios for on-chain AI agent identity on Hedera: verified hiring, x402 payments, medical workflows, reputation gating, cross-agent discovery.",
+    path: "/use-cases",
+  },
 };
 
 export interface SitemapEntry {
@@ -111,4 +123,6 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/agent-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/market-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/medical-guide", changefreq: "weekly", priority: "0.8" },
+  { path: "/faq", changefreq: "monthly", priority: "0.7" },
+  { path: "/use-cases", changefreq: "monthly", priority: "0.7" },
 ];

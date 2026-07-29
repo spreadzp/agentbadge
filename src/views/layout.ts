@@ -201,6 +201,8 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
               <a href="/agent-guide" class="footer-pop hover:text-emerald-400">Agent Guide</a>
               <a href="/market-guide" class="footer-pop hover:text-emerald-400">Market Guide</a>
               <a href="/medical-guide" class="footer-pop hover:text-emerald-400">Medical Guide</a>
+              <a href="/faq" class="footer-pop hover:text-emerald-400">FAQ</a>
+              <a href="/use-cases" class="footer-pop hover:text-emerald-400">Use Cases</a>
               <a href="/ui/medical-demo" class="footer-pop hover:text-emerald-400">Medical Demo</a>
               <a href="https://hashscan.io/testnet" target="_blank" rel="noopener" class="footer-pop hover:text-emerald-400">HashScan</a>
             </div>
