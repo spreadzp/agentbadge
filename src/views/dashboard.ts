@@ -5,6 +5,7 @@ import { StatsFragment } from "./stats-fragment";
 import { FeedFragment } from "./feed-fragment";
 import { AuditFragment, type AuditEventWithTx } from "./audit-fragment";
 import { MarketplaceTaskBoardFragment } from "./marketplace-fragment";
+import { BUILD_DATE } from "../server/lib/build-info";
 import type { NftInfo, Tier, CachedMarketTask } from "@agentgate-hedera/hedera-core";
 
 /**
@@ -87,6 +88,11 @@ export function Dashboard(ssrData?: DashboardSsrData) {
       <p class="mt-3 max-w-2xl text-slate-300">
         Live passport feed on Hedera Network. Agents mint on-chain identity NFTs, register in the
         HCS directory, and get discovered by other agents.
+      </p>
+      <p class="mt-3 text-xs text-slate-400">
+        Live data as of ${BUILD_DATE}
+        ${ssrData?.stats ? ` · ${ssrData.stats.totalIssued} passports on-chain` : ""}
+        · <a href="https://hashscan.io/testnet/token/${process.env.PASSPORT_TOKEN_ID ?? "0.0.9681741"}" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">Verify on HashScan</a>
       </p>
     </section>
 

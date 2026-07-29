@@ -8,6 +8,7 @@ import { agentGuideRoutes } from "../src/server/routes/agent-guide";
 import { marketGuideRoutes } from "../src/server/routes/market-guide";
 import { medicalGuideRoutes } from "../src/server/routes/medical-guide";
 import { contentPageRoutes } from "../src/server/routes/content-pages";
+import { changelogRoutes } from "../src/server/routes/changelog";
 import { catalogRoutes } from "../src/server/routes/catalog";
 import { corsMiddleware } from "../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../src/server/middleware/rate-limit";
@@ -28,6 +29,7 @@ function makeCrawlerTestApp(): Hono {
   app.route("/", marketGuideRoutes);
   app.route("/", medicalGuideRoutes);
   app.route("/", contentPageRoutes);
+  app.route("/", changelogRoutes);
   return app;
 }
 

@@ -1,4 +1,5 @@
 import { SITE_DESCRIPTION, BASE_URL } from "./page-meta";
+import { BUILD_DATE } from "./build-info";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 import type { DirectoryEntry } from "@agentgate-hedera/passport";
 
@@ -27,6 +28,7 @@ export function softwareApplicationLd(): object {
       "Task marketplace with HBAR payments",
       "MCP server (32 tools)",
     ],
+    dateModified: BUILD_DATE,
   };
 }
 
@@ -44,6 +46,7 @@ export function webSiteLd(): object {
       },
       "query-input": "required name=search_term_string",
     },
+    dateModified: BUILD_DATE,
   };
 }
 
@@ -153,6 +156,8 @@ export function faqPageLd(qaPairs: { question: string; answer: string }[]): obje
   return {
     "@context": SCHEMA_CONTEXT,
     "@type": "FAQPage",
+    datePublished: BUILD_DATE,
+    dateModified: BUILD_DATE,
     mainEntity: qaPairs.map((qa) => ({
       "@type": "Question",
       name: qa.question,

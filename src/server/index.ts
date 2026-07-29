@@ -47,6 +47,7 @@ import { marketGuideRoutes } from "./routes/market-guide";
 import { medicalGuideRoutes } from "./routes/medical-guide";
 import { contactRoutes } from "./routes/contact";
 import { contentPageRoutes } from "./routes/content-pages";
+import { changelogRoutes } from "./routes/changelog";
 import { wellKnownRoutes } from "./routes/well-known";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -151,6 +152,7 @@ app.route("/", marketGuideRoutes);
 app.route("/", medicalGuideRoutes);
 app.route("/", contactRoutes);
 app.route("/", contentPageRoutes);
+app.route("/", changelogRoutes);
 app.route("/api/demo", demo);
 
 // OpenAPI spec + Swagger UI

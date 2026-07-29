@@ -11,6 +11,7 @@ import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
+import { BUILD_DATE } from "../lib/build-info";
 
 export const wellKnownRoutes = new Hono();
 
@@ -258,9 +259,20 @@ Sitemap: ${baseUrl}/sitemap.xml
 
 // ─── sitemap.xml (SLICE-18-3) ─────────────────────────────────
 
-// TODO(18-11): replace with BUILD_DATE from build-info.ts
-const BUILD_DATE =
-  process.env.BUILD_DATE ?? new Date().toISOString().slice(0, 10);
+// Per-page lastmod: dynamic pages use BUILD_DATE, static guides use curated dates
+const STATIC_LASTMOD: Record<string, string> = {
+  "/agent-guide": "2026-07-25",
+  "/market-guide": "2026-07-25",
+  "/medical-guide": "2026-07-25",
+  "/faq": "2026-07-29",
+  "/use-cases": "2026-07-29",
+  "/contact": "2026-07-24",
+  "/changelog": BUILD_DATE,
+};
+
+function pageLastmod(path: string): string {
+  return STATIC_LASTMOD[path] ?? BUILD_DATE;
+}
 
 function buildSitemap(): string {
   const baseUrl = BASE_URL;
@@ -268,7 +280,7 @@ function buildSitemap(): string {
   const urls = PUBLIC_PAGES.map(
     (p) => `  <url>
     <loc>${baseUrl}${p.path}</loc>
-    <lastmod>${BUILD_DATE}</lastmod>
+    <lastmod>${pageLastmod(p.path)}</lastmod>
     <changefreq>${p.changefreq}</changefreq>
     <priority>${p.priority}</priority>
   </url>`,

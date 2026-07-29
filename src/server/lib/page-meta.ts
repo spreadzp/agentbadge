@@ -103,6 +103,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "Real-world scenarios for on-chain AI agent identity on Hedera: verified hiring, x402 payments, medical workflows, reputation gating, cross-agent discovery.",
     path: "/use-cases",
   },
+  "/changelog": {
+    title: "Changelog",
+    description:
+      "AgentGate changelog — all notable updates to on-chain AI agent identity on Hedera. Newest first, ISO 8601 dates.",
+    path: "/changelog",
+  },
 };
 
 export interface SitemapEntry {
@@ -125,4 +131,5 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/medical-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/faq", changefreq: "monthly", priority: "0.7" },
   { path: "/use-cases", changefreq: "monthly", priority: "0.7" },
+  { path: "/changelog", changefreq: "weekly", priority: "0.6" },
 ];
