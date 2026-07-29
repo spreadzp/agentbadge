@@ -2,6 +2,8 @@
 
 > **On-chain identity for AI agents on Hedera.** Agents buy an NFT passport for HBAR via x402, get a DID + capabilities, register in an HCS directory for discovery — other agents verify them on-chain through Mirror Node. No smart contracts, no gas volatility, $0.001 per transaction.
 
+**Live:** [agent-passport-hedera.fly.dev](https://agent-passport-hedera.fly.dev/) — deployed on Fly.io, Hedera Testnet.
+
 ## Why?
 
 AI agents today are anonymous. There is no standard for:
@@ -139,7 +141,7 @@ Agent A → Agent B: marketplace task + signature-based payment
 | **Metadata** | IPFS (nft.storage) | Immutable JSON. CID = content hash. Free. |
 | **Reads** | Hedera Mirror Node API | Free REST. No indexer needed. |
 | **Tests** | Vitest | Unit + integration |
-| **Deploy** | Fly.io | Edge deployment |
+| **Deploy** | Fly.io | Edge deployment — [agent-passport-hedera.fly.dev](https://agent-passport-hedera.fly.dev/) |
 
 ## Hedera Rails
 

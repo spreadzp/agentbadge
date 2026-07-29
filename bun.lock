@@ -5,7 +5,7 @@
     "": {
       "name": "agentgate",
       "dependencies": {
-        "@agentgate-hedera/hedera-core": "^0.1.6",
+        "@agentgate-hedera/hedera-core": "^0.1.7",
         "@agentgate-hedera/mcp": "^0.1.4",
         "@agentgate-hedera/passport": "^0.1.4",
         "@hashgraph/sdk": "^2.55.0",
@@ -39,7 +39,7 @@
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, ""],
 
-    "@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.6", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-+jGiCQUecaTYxt2EHYt5sqzch/YU7F9DfdpFdb3L+DkhETyEHsNq3gvN8GNDAHzj8mIWI5PNerFaLHRCLijI+Q=="],
+    "@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.7", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-xtaJ0LLHu9EpGEjZKbwQRgU7xge+G/hqJSjmyR/u/JsIGazY1Q0MwqdWqOluw6jZYEry4LpbAceYs/GEsE9Qxw=="],
 
     "@agentgate-hedera/mcp": ["@agentgate-hedera/mcp@0.1.4", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@agentgate-hedera/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-fIsLi8c1PtZo6D5uV/5S43unAlJJdrNlAnBb9l69L86ykdt/aCZehBUklUQqZiD7WikvnEpdcXvCplO3vtBosA=="],
 
@@ -806,6 +806,10 @@
     "zod": ["zod@4.4.3", "", {}, ""],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
+
+    "@agentgate-hedera/mcp/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.6", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-+jGiCQUecaTYxt2EHYt5sqzch/YU7F9DfdpFdb3L+DkhETyEHsNq3gvN8GNDAHzj8mIWI5PNerFaLHRCLijI+Q=="],
+
+    "@agentgate-hedera/passport/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.6", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-+jGiCQUecaTYxt2EHYt5sqzch/YU7F9DfdpFdb3L+DkhETyEHsNq3gvN8GNDAHzj8mIWI5PNerFaLHRCLijI+Q=="],
 
     "@apm-js-collab/code-transformer-bundler-plugins/es-module-lexer": ["es-module-lexer@2.3.1", "", {}, ""],
 
