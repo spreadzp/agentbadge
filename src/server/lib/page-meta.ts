@@ -127,11 +127,23 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentGate — on-chain identity for AI agents on Hedera. Learn about NFT passports, HCS directory, A2A messaging, and x402 payments.",
     path: "/about",
   },
+  "/terms": {
+    title: "Terms of Service",
+    description:
+      "AgentGate Terms of Service: MIT-licensed open-source project, testnet service, no warranty, acceptable use policy for on-chain AI agent identity.",
+    path: "/terms",
+  },
+  "/privacy": {
+    title: "Privacy Policy",
+    description:
+      "AgentGate Privacy Policy: on-chain data is public, no cookies, no third-party analytics, GDPR/CCPA rights, LLM crawler permissions specified.",
+    path: "/privacy",
+  },
 };
 
 export interface SitemapEntry {
   path: string;
-  changefreq: "daily" | "weekly" | "monthly";
+  changefreq: "daily" | "weekly" | "monthly" | "yearly";
   priority: string;
 }
 
@@ -153,4 +165,6 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/changelog", changefreq: "weekly", priority: "0.6" },
   { path: "/pricing", changefreq: "weekly", priority: "0.8" },
   { path: "/about", changefreq: "monthly", priority: "0.7" },
+  { path: "/terms", changefreq: "yearly", priority: "0.5" },
+  { path: "/privacy", changefreq: "yearly", priority: "0.5" },
 ];
