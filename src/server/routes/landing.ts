@@ -1,14 +1,7 @@
 import { Hono } from "hono";
 import { html, raw } from "hono/html";
 import { LandingLayout } from "../../views/landing/layout";
-import { HeroSection } from "../../views/landing/hero";
-import { LiveStatsSection } from "../../views/landing/live-stats";
-import { ProblemSolutionSection } from "../../views/landing/problem-solution";
-import { FeaturesSection } from "../../views/landing/features";
-import { HowItWorksSection } from "../../views/landing/how-it-works";
-import { ForWhoSection } from "../../views/landing/for-who";
-import { ArchitectureSection } from "../../views/landing/architecture";
-import { PricingPreviewSection } from "../../views/landing/pricing-preview";
+import { LandingPage } from "../../views/landing/landing-page";
 import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
 import { defaultCoreSchemas, landingJsonLd } from "../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo, type Tier } from "@agentgate-hedera/hedera-core";
@@ -77,7 +70,7 @@ landingRoutes.get("/", async (c) => {
     // Marketplace cache cold — leave as 0
   }
 
-  const content = HeroSection().toString() + LiveStatsSection({ totalIssued, activeCount, totalUpgrades, tasksCount }).toString() + ProblemSolutionSection().toString() + FeaturesSection().toString() + HowItWorksSection().toString() + ForWhoSection().toString() + ArchitectureSection().toString() + PricingPreviewSection().toString();
+  const content = LandingPage({ totalIssued, activeCount, totalUpgrades, tasksCount }).toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
   return c.html(pageHtml);
 });
