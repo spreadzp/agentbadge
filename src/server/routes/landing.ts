@@ -4,6 +4,7 @@ import { LandingLayout } from "../../views/landing/layout";
 import { HeroSection } from "../../views/landing/hero";
 import { LiveStatsSection } from "../../views/landing/live-stats";
 import { ProblemSolutionSection } from "../../views/landing/problem-solution";
+import { FeaturesSection } from "../../views/landing/features";
 import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
 import { defaultCoreSchemas, landingJsonLd } from "../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo, type Tier } from "@agentgate-hedera/hedera-core";
@@ -72,7 +73,7 @@ landingRoutes.get("/", async (c) => {
     // Marketplace cache cold — leave as 0
   }
 
-  const content = HeroSection().toString() + LiveStatsSection({ totalIssued, activeCount, totalUpgrades, tasksCount }).toString() + ProblemSolutionSection().toString();
+  const content = HeroSection().toString() + LiveStatsSection({ totalIssued, activeCount, totalUpgrades, tasksCount }).toString() + ProblemSolutionSection().toString() + FeaturesSection().toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
   return c.html(pageHtml);
 });
