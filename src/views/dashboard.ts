@@ -145,5 +145,5 @@ export function Dashboard(ssrData?: DashboardSsrData) {
         ${raw(tasksHtml)}
       </div>
     </section>`;
-  return Layout(content.toString(), undefined, PageMeta["/"]);
+  return Layout(content.toString(), undefined, PageMeta["/dashboard"]);
 }

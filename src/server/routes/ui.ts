@@ -62,13 +62,12 @@ function wrapFragment(c: Context, fragment: string, title?: string, meta?: PageM
 export const uiRoutes = new Hono();
 
 /**
- * GET / — dashboard page (full HTML).
+ * GET /dashboard — dashboard page (full HTML).
  *
- * NOTE: This overrides the root route registered in index.ts.
- * The uiRoutes must be registered AFTER any JSON health/status routes
- * but the dashboard takes precedence for the "/" path.
+ * (SLICE-19-2: moved from GET / to GET /dashboard so that
+ * GET / can serve the landing page from landing.ts)
  */
-uiRoutes.get("/", async (c) => {
+uiRoutes.get("/dashboard", async (c) => {
   const tokenId = process.env.PASSPORT_TOKEN_ID;
   const auditTopicId = process.env.AUDIT_TOPIC_ID;
 
@@ -164,7 +163,7 @@ uiRoutes.get("/", async (c) => {
   const pageHtml = Dashboard(ssrData);
   return c.html(pageHtml);
 });
-// Root page uses default title (no title arg) — "AgentGate — On-chain Identity for AI Agents on Hedera"
+// Dashboard page uses PageMeta["/dashboard"] title — "Dashboard — AgentGate"
 
 /**
  * GET /ui/feed — HTML fragment with recent passports.

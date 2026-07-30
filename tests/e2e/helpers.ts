@@ -10,6 +10,7 @@ import { agentRoutes } from "../../src/server/routes/agents";
 import { a2aRoutes } from "../../src/server/routes/a2a";
 import { marketRoutes } from "../../src/server/routes/market";
 import { uiRoutes } from "../../src/server/routes/ui";
+import { landingRoutes } from "../../src/server/routes/landing";
 import { didRoutes } from "../../src/server/routes/did";
 import { mcpRoutes } from "../../src/server/routes/mcp";
 import { agentGuideRoutes } from "../../src/server/routes/agent-guide";
@@ -31,6 +32,7 @@ export function makeTestApp(): Hono {
   app.route("/", agentRoutes);
   app.route("/", a2aRoutes);
   app.route("/", marketRoutes);
+  app.route("/", landingRoutes);
   app.route("/", uiRoutes);
   app.route("/", didRoutes);
   app.route("/", mcpRoutes);

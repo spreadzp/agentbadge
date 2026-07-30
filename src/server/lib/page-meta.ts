@@ -14,10 +14,16 @@ export const BASE_URL =
 
 export const PageMeta: Record<string, PageMeta> = {
   "/": {
-    title: "Dashboard",
+    title: "On-Chain Identity for AI Agents on Hedera",
     description:
       "AgentGate — on-chain identity for AI agents on Hedera. Mint NFT passports, register in HCS directory, discover and verify agents on-chain.",
     path: "/",
+  },
+  "/dashboard": {
+    title: "Dashboard",
+    description:
+      "AgentGate dashboard — live passport feed, stats, audit stream, agent directory, and marketplace on Hedera.",
+    path: "/dashboard",
   },
   "/ui/agents": {
     title: "Agent Directory",
@@ -119,7 +125,8 @@ export interface SitemapEntry {
 
 // TODO(18-7): add /faq and /use-cases when those pages exist
 export const PUBLIC_PAGES: SitemapEntry[] = [
-  { path: "/", changefreq: "daily", priority: "1.0" },
+  { path: "/", changefreq: "weekly", priority: "1.0" },
+  { path: "/dashboard", changefreq: "daily", priority: "0.9" },
   { path: "/ui/agents", changefreq: "daily", priority: "0.8" },
   { path: "/ui/catalog", changefreq: "weekly", priority: "0.8" },
   { path: "/ui/market/tasks", changefreq: "daily", priority: "0.8" },

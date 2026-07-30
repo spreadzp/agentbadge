@@ -91,7 +91,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
 
               <!-- Mobile dropdown: absolute overlay below header -->
               <div class="absolute left-0 right-0 top-full z-50 flex flex-col gap-1 overflow-hidden border-b border-slate-800 bg-slate-900 px-4 py-0 text-sm transition-all duration-200 max-h-0 peer-checked:max-h-80 peer-checked:py-3 md:hidden">
-                <a href="/" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/dashboard" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10" /></svg>
                   Dashboard
                 </a>
@@ -148,7 +148,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
             </label>
 
             <nav class="flex flex-col gap-1 text-sm">
-              <a href="/" title="Dashboard" class="nav-item-pop flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">
+              <a href="/dashboard" title="Dashboard" class="nav-item-pop flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">
                 <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10" /></svg>
                 <span class="nav-text">Dashboard</span>
               </a>
