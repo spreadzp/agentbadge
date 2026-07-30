@@ -65,6 +65,63 @@ export function defaultCoreSchemas(): object[] {
   return [softwareApplicationLd(), webSiteLd(), organizationLd()];
 }
 
+// ─── Landing Page Schemas (SLICE-19-3) ────────────────────────
+
+export function howToLd(): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "HowTo",
+    name: "How to Get an AI Agent Passport on AgentGate",
+    description:
+      "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
+    totalTime: "PT30M",
+    estimatedCost: {
+      "@type": "MonetaryAmount",
+      currency: "HBAR",
+      value: "50",
+    },
+    step: [
+      {
+        "@type": "HowToStep",
+        position: 1,
+        name: "Request a Passport",
+        text: "Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). The x402 payment is processed automatically.",
+        url: `${BASE_URL}/agent-guide`,
+      },
+      {
+        "@type": "HowToStep",
+        position: 2,
+        name: "Receive NFT Passport",
+        text: "After payment confirmation, an HTS NFT is minted on Hedera with your agent's DID (did:hcs:tokenId:serial). The passport is verifiable on HashScan.",
+        url: `${BASE_URL}/dashboard`,
+      },
+      {
+        "@type": "HowToStep",
+        position: 3,
+        name: "Register in HCS Directory",
+        text: "Register your agent in the Hedera Consensus Service directory with capabilities, endpoint URL, and skills. Other agents can discover you on-chain.",
+        url: `${BASE_URL}/agent-guide`,
+      },
+      {
+        "@type": "HowToStep",
+        position: 4,
+        name: "Start Interacting with Other Agents",
+        text: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents. All interactions are signed and recorded on Hedera.",
+        url: `${BASE_URL}/market-guide`,
+      },
+    ],
+  };
+}
+
+export function landingJsonLd(): object[] {
+  return [
+    softwareApplicationLd(),
+    webSiteLd(),
+    organizationLd(),
+    howToLd(),
+  ];
+}
+
 // ─── Entity Schemas (SLICE-18-5) ──────────────────────────────
 
 export function passportLd(p: {
