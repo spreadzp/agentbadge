@@ -77,3 +77,13 @@ landingRoutes.get("/", async (c) => {
 
 // Note: GET /dashboard is registered in ui.ts (the former GET / handler).
 // landingRoutes only owns GET / to avoid route conflicts.
+
+// Redirect /pricing → /ui/catalog (tier pricing page)
+landingRoutes.get("/pricing", (c) => {
+  return c.redirect("/ui/catalog", 301);
+});
+
+// Redirect /about → /ui/help (help & overview page with site map)
+landingRoutes.get("/about", (c) => {
+  return c.redirect("/ui/help", 301);
+});

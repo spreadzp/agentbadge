@@ -43,9 +43,9 @@ describe("SLICE-19-5: Live Stats section (SSR + HTMX polling)", () => {
       expect(html).toContain("every 10s");
     });
 
-    it("hx-get points to /ui/stats", () => {
+    it("hx-get points to /ui/landing-stats", () => {
       const html = LiveStatsSection({ totalIssued: 0, activeCount: 0, totalUpgrades: 0, tasksCount: 0 }).toString();
-      expect(html).toContain('hx-get="/ui/stats"');
+      expect(html).toContain('hx-get="/ui/landing-stats"');
     });
 
     it("shows 0 for empty state", () => {

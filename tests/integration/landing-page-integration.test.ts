@@ -4,7 +4,7 @@ import { setupMockEnv } from "../e2e/helpers";
 import { landingRoutes } from "../../src/server/routes/landing";
 import type { Hono as HonoType } from "hono";
 
-describe("SLICE-19-13: Landing page integration — meta, JSON-LD, no-JS, hx-boost", () => {
+describe("SLICE-19-13: Landing page integration — meta, JSON-LD, no-JS, full navigation", () => {
   let app: HonoType;
   let landingHtml: string;
 
@@ -116,14 +116,10 @@ describe("SLICE-19-13: Landing page integration — meta, JSON-LD, no-JS, hx-boo
     });
   });
 
-  // ─── hx-boost ─────────────────────────────────────────────
-  describe("hx-boost", () => {
-    it("contains hx-boost attribute", () => {
-      expect(landingHtml).toContain("hx-boost");
-    });
-
-    it("hx-boost is set to true", () => {
-      expect(landingHtml).toContain('hx-boost="true"');
+  // ─── no hx-boost (full page navigation for CTAs) ─────────
+  describe("no hx-boost", () => {
+    it("does not contain hx-boost attribute", () => {
+      expect(landingHtml).not.toContain("hx-boost");
     });
   });
 

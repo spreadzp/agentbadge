@@ -24,7 +24,8 @@ import { CtaFooterSection } from "./cta-footer";
  * 8. Pricing Preview
  * 9. CTA Footer
  *
- * Wraps content in hx-boost div for progressive enhancement.
+ * Sections are rendered as plain HTML — no hx-boost wrapper so that
+ * CTA links navigate to full pages with their own layout (sidebar, footer).
  */
 export function LandingPage(props: {
   totalIssued: number;
@@ -44,5 +45,5 @@ export function LandingPage(props: {
     CtaFooterSection().toString(),
   ];
 
-  return html`<div hx-boost="true">${raw(sections.join(""))}</div>`;
+  return html`<div>${raw(sections.join(""))}</div>`;
 }

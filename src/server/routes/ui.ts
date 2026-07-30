@@ -28,6 +28,7 @@ import { PassportDetailCard, PassportNotFound } from "../../views/passport-card"
 import { AgentsFragment, type AgentWithActive } from "../../views/agents-fragment";
 import { SearchForm, SearchResults, parseSearchQuery } from "../../views/search-fragment";
 import { StatsFragment } from "../../views/stats-fragment";
+import { LandingStatsFragment } from "../../views/landing/landing-stats-fragment";
 import { AuditFragment, type AuditEventWithTx } from "../../views/audit-fragment";
 import { CatalogFragment } from "../../views/catalog-fragment";
 import { PassportRequestForm } from "../../views/passport-request-form";
@@ -781,6 +782,57 @@ uiRoutes.get("/ui/stats", async (c) => {
       </div>`.toString(),
     );
   }
+});
+
+/**
+ * GET /ui/landing-stats — landing page stats fragment (HTMX-polled every 10s).
+ *
+ * Returns 4 cards with icons matching the landing page SSR format.
+ * Separate from /ui/stats (dashboard) to keep landing page styling consistent.
+ */
+uiRoutes.get("/ui/landing-stats", async (c) => {
+  const tokenId = process.env.PASSPORT_TOKEN_ID;
+  const auditTopicId = process.env.AUDIT_TOPIC_ID;
+
+  let totalIssued = 0;
+  let activeCount = 0;
+  let totalUpgrades = 0;
+  let tasksCount = 0;
+
+  if (tokenId) {
+    try {
+      const nfts = await getNftsForToken(tokenId);
+      totalIssued = nfts.length;
+      activeCount = nfts.filter((n: NftInfo) => !n.deleted).length;
+
+      if (auditTopicId) {
+        try {
+          const messages = await getTopicMessages(auditTopicId);
+          for (const msg of messages) {
+            try {
+              const parsed = JSON.parse(msg.message) as Record<string, unknown>;
+              if (parsed.type === "tier_upgraded") totalUpgrades++;
+            } catch {
+              // Skip malformed
+            }
+          }
+        } catch {
+          // Audit topic fetch failed — skip
+        }
+      }
+    } catch {
+      // Mirror Node fetch failed — leave as zeros
+    }
+  }
+
+  try {
+    const result = marketListTasks({ limit: 100 });
+    tasksCount = result.tasks.length;
+  } catch {
+    // Marketplace cache cold — leave as 0
+  }
+
+  return c.html(LandingStatsFragment({ totalIssued, activeCount, totalUpgrades, tasksCount }).toString());
 });
 
 /**

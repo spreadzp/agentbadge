@@ -115,6 +115,18 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentGate changelog — all notable updates to on-chain AI agent identity on Hedera. Newest first, ISO 8601 dates.",
     path: "/changelog",
   },
+  "/pricing": {
+    title: "Pricing — Passport Tiers",
+    description:
+      "AgentGate passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
+    path: "/pricing",
+  },
+  "/about": {
+    title: "About AgentGate",
+    description:
+      "AgentGate — on-chain identity for AI agents on Hedera. Learn about NFT passports, HCS directory, A2A messaging, and x402 payments.",
+    path: "/about",
+  },
 };
 
 export interface SitemapEntry {
@@ -139,4 +151,6 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/faq", changefreq: "monthly", priority: "0.7" },
   { path: "/use-cases", changefreq: "monthly", priority: "0.7" },
   { path: "/changelog", changefreq: "weekly", priority: "0.6" },
+  { path: "/pricing", changefreq: "weekly", priority: "0.8" },
+  { path: "/about", changefreq: "monthly", priority: "0.7" },
 ];

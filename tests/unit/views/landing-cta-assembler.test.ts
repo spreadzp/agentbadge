@@ -42,9 +42,9 @@ describe("SLICE-19-11: LandingPage assembler", () => {
       expect(html.length).toBeGreaterThan(0);
     });
 
-    it("wraps content in hx-boost div", () => {
+    it("wraps content in a div (no hx-boost for full page navigation)", () => {
       const html = LandingPage({ totalIssued: 0, activeCount: 0, totalUpgrades: 0, tasksCount: 0 }).toString();
-      expect(html).toContain("hx-boost");
+      expect(html).not.toContain("hx-boost");
     });
 
     it("contains all 9 sections in order", () => {

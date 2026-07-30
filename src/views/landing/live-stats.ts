@@ -33,25 +33,25 @@ export function LiveStatsSection(data: {
         <!-- HTMX polling container -->
         <div
           id="landing-stats"
-          hx-get="/ui/stats"
+          hx-get="/ui/landing-stats"
           hx-trigger="load, every 10s"
           class="fade-in-up grid grid-cols-2 gap-4 md:grid-cols-4"
         >
           ${raw(
-            cards
-              .map(
-                (card) => html`<div class="hover-lift rounded-xl border border-slate-800 bg-slate-900/80 p-6 text-center">
+    cards
+      .map(
+        (card) => html`<div class="hover-lift rounded-xl border border-slate-800 bg-slate-900/80 p-6 text-center">
                     <div class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
-                      <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <svg class="h-5 w-5 ${card.color}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="${card.icon}" />
                       </svg>
                     </div>
                     <div class="text-3xl font-bold ${card.color}">${card.value}</div>
                     <div class="mt-1 text-xs uppercase tracking-wide text-slate-400">${card.label}</div>
                   </div>`,
-              )
-              .join(""),
-          )}
+      )
+      .join(""),
+  )}
         </div>
       </div>
     </section>
