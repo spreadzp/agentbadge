@@ -17,6 +17,10 @@ export function Footer(): ReturnType<typeof html> {
         <a href="/medical-guide" class="footer-pop hover:text-emerald-400">Medical Guide</a>
         <a href="/faq" class="footer-pop hover:text-emerald-400">FAQ</a>
         <a href="/use-cases" class="footer-pop hover:text-emerald-400">Use Cases</a>
+        <a href="/about" class="footer-pop hover:text-emerald-400">About</a>
+        <a href="/pricing" class="footer-pop hover:text-emerald-400">Pricing</a>
+        <a href="/terms" class="footer-pop hover:text-emerald-400">Terms</a>
+        <a href="/privacy" class="footer-pop hover:text-emerald-400">Privacy</a>
         <a href="/changelog" class="footer-pop hover:text-emerald-400">Changelog</a>
         <a href="/ui/medical-demo" class="footer-pop hover:text-emerald-400">Medical Demo</a>
         <a href="https://hashscan.io/testnet" target="_blank" rel="noopener" class="footer-pop hover:text-emerald-400">HashScan</a>

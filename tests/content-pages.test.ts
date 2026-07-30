@@ -1,8 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { contentPageRoutes } from "../src/server/routes/content-pages";
+import { wellKnownRoutes } from "../src/server/routes/well-known";
 import { FaqPage, FAQ_ENTRIES } from "../src/views/faq-page";
 import { UseCasesPage, USE_CASES } from "../src/views/use-cases-page";
+import { AboutPage } from "../src/views/about-page";
+import { PricingPage } from "../src/views/pricing-page";
+import { TermsPage } from "../src/views/terms-page";
+import { PrivacyPage } from "../src/views/privacy-page";
 import { faqPageLd, articleLd } from "../src/server/lib/json-ld";
 import { PUBLIC_PAGES, PageMeta } from "../src/server/lib/page-meta";
 
@@ -214,5 +219,270 @@ describe("Content pages integration", () => {
     const ucMeta = PageMeta["/use-cases"];
     expect(faqMeta.title).not.toBe(ucMeta.title);
     expect(faqMeta.description).not.toBe(ucMeta.description);
+  });
+});
+
+// ─── Unit: About page ─────────────────────────────────────────
+
+describe("AboutPage unit", () => {
+  it("renders mission, architecture, and roadmap sections", () => {
+    const html = AboutPage().toString();
+    expect(html).toContain("Mission");
+    expect(html).toContain("Architecture");
+    expect(html).toContain("Roadmap");
+    expect(html).toContain("Open source");
+  });
+
+  it("includes canonical terminology", () => {
+    const html = AboutPage().toString();
+    expect(html).toContain("HTS");
+    expect(html).toContain("HCS");
+    expect(html).toContain("DID");
+    expect(html).toContain("x402");
+    expect(html).toContain("MCP");
+    expect(html).toContain("HBAR");
+    expect(html).toContain("Mirror Node");
+  });
+
+  it("includes GitHub link", () => {
+    const html = AboutPage().toString();
+    expect(html).toContain("github.com/spreadzp/agentgate");
+  });
+
+  it("includes unique title and description via PageMeta", () => {
+    const meta = PageMeta["/about"];
+    expect(meta).toBeDefined();
+    expect(meta.title).toContain("About");
+    expect(meta.description.length).toBeGreaterThan(50);
+    expect(meta.path).toBe("/about");
+  });
+});
+
+// ─── Unit: Pricing page ───────────────────────────────────────
+
+describe("PricingPage unit", () => {
+  it("renders 4 tier cards with HBAR prices", () => {
+    const html = PricingPage().toString();
+    expect(html).toContain("Bronze");
+    expect(html).toContain("10");
+    expect(html).toContain("Silver");
+    expect(html).toContain("50");
+    expect(html).toContain("Gold");
+    expect(html).toContain("200");
+    expect(html).toContain("Platinum");
+    expect(html).toContain("500");
+    expect(html).toContain("HBAR");
+  });
+
+  it("includes upgrade pricing table", () => {
+    const html = PricingPage().toString();
+    expect(html).toContain("Upgrade");
+    expect(html).toContain("+40");
+    expect(html).toContain("+150");
+    expect(html).toContain("+300");
+  });
+
+  it("includes comparison table", () => {
+    const html = PricingPage().toString();
+    expect(html).toContain("Comparison");
+    expect(html).toContain("Self-hosted");
+    expect(html).toContain("Centralized");
+  });
+
+  it("includes mint links with tier parameter", () => {
+    const html = PricingPage().toString();
+    expect(html).toContain("/ui/passport/request?tier=bronze");
+    expect(html).toContain("/ui/passport/request?tier=silver");
+    expect(html).toContain("/ui/passport/request?tier=gold");
+    expect(html).toContain("/ui/passport/request?tier=platinum");
+  });
+
+  it("includes unique title and description via PageMeta", () => {
+    const meta = PageMeta["/pricing"];
+    expect(meta).toBeDefined();
+    expect(meta.title).toContain("Pricing");
+    expect(meta.description.length).toBeGreaterThan(50);
+    expect(meta.path).toBe("/pricing");
+  });
+});
+
+// ─── Unit: Terms page ─────────────────────────────────────────
+
+describe("TermsPage unit", () => {
+  it("renders 10 numbered sections", () => {
+    const html = TermsPage().toString();
+    for (let i = 1; i <= 10; i++) {
+      expect(html).toContain(`${i}.`);
+    }
+  });
+
+  it("includes MIT license reference", () => {
+    const html = TermsPage().toString();
+    expect(html).toContain("MIT");
+    expect(html).toContain("LICENSE");
+  });
+
+  it("includes testnet disclaimer", () => {
+    const html = TermsPage().toString();
+    expect(html).toContain("Testnet");
+  });
+
+  it("includes unique title and description via PageMeta", () => {
+    const meta = PageMeta["/terms"];
+    expect(meta).toBeDefined();
+    expect(meta.title).toContain("Terms");
+    expect(meta.description.length).toBeGreaterThan(50);
+    expect(meta.path).toBe("/terms");
+  });
+});
+
+// ─── Unit: Privacy page ───────────────────────────────────────
+
+describe("PrivacyPage unit", () => {
+  it("renders privacy sections", () => {
+    const html = PrivacyPage().toString();
+    expect(html).toContain("on-chain");
+    expect(html).toContain("cookies");
+    expect(html).toContain("GDPR");
+    expect(html).toContain("LLM");
+  });
+
+  it("includes third-party services", () => {
+    const html = PrivacyPage().toString();
+    expect(html).toContain("Fly.io");
+    expect(html).toContain("Hedera");
+    expect(html).toContain("Pinata");
+  });
+
+  it("includes unique title and description via PageMeta", () => {
+    const meta = PageMeta["/privacy"];
+    expect(meta).toBeDefined();
+    expect(meta.title).toContain("Privacy");
+    expect(meta.description.length).toBeGreaterThan(50);
+    expect(meta.path).toBe("/privacy");
+  });
+});
+
+// ─── Integration: About, Pricing, Terms, Privacy routes ───────
+
+describe("Epic 20: Static content pages integration", () => {
+  it("GET /about returns 200 with mission content", async () => {
+    const res = await app.request("/about");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("About AgentGate");
+    expect(html).toContain("Mission");
+    expect(html).not.toContain("Loading");
+  });
+
+  it("GET /about includes Article JSON-LD", async () => {
+    const res = await app.request("/about");
+    const html = await res.text();
+    expect(html).toContain("application/ld+json");
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    expect(match).not.toBeNull();
+    const schemas = JSON.parse(match![1]);
+    const article = schemas.find((s: { "@type": string }) => s["@type"] === "Article");
+    expect(article).toBeDefined();
+    expect(article.headline).toContain("AgentGate");
+  });
+
+  it("GET /pricing returns 200 with tier prices", async () => {
+    const res = await app.request("/pricing");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Bronze");
+    expect(html).toContain("Platinum");
+    expect(html).toContain("HBAR");
+    expect(html).not.toContain("Loading");
+  });
+
+  it("GET /pricing includes Article JSON-LD", async () => {
+    const res = await app.request("/pricing");
+    const html = await res.text();
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    expect(match).not.toBeNull();
+    const schemas = JSON.parse(match![1]);
+    const article = schemas.find((s: { "@type": string }) => s["@type"] === "Article");
+    expect(article).toBeDefined();
+    expect(article.headline).toContain("Pricing");
+  });
+
+  it("GET /terms returns 200 with legal content", async () => {
+    const res = await app.request("/terms");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Terms of Service");
+    expect(html).toContain("MIT");
+    expect(html).not.toContain("Loading");
+  });
+
+  it("GET /privacy returns 200 with privacy content", async () => {
+    const res = await app.request("/privacy");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Privacy");
+    expect(html).toContain("GDPR");
+    expect(html).not.toContain("Loading");
+  });
+
+  it("all 4 pages appear in sitemap PUBLIC_PAGES", () => {
+    const paths = PUBLIC_PAGES.map((p) => p.path);
+    expect(paths).toContain("/about");
+    expect(paths).toContain("/pricing");
+    expect(paths).toContain("/terms");
+    expect(paths).toContain("/privacy");
+  });
+
+  it("all 4 pages have distinct titles and descriptions", () => {
+    const metas = [PageMeta["/about"], PageMeta["/pricing"], PageMeta["/terms"], PageMeta["/privacy"]];
+    const titles = metas.map((m) => m.title);
+    const descs = metas.map((m) => m.description);
+    expect(new Set(titles).size).toBe(4);
+    expect(new Set(descs).size).toBe(4);
+  });
+
+  it("all 4 pages appear in footer nav", async () => {
+    const res = await app.request("/about");
+    const html = await res.text();
+    expect(html).toContain('href="/about"');
+    expect(html).toContain('href="/pricing"');
+    expect(html).toContain('href="/terms"');
+    expect(html).toContain('href="/privacy"');
+  });
+});
+
+// ─── Integration: LLM Policy endpoint ──────────────────────────
+
+describe("Epic 20: LLM Policy endpoint", () => {
+  const policyApp = new Hono();
+  policyApp.route("/", wellKnownRoutes);
+
+  it("GET /.well-known/llm-policy.json returns 200", async () => {
+    const res = await policyApp.request("/.well-known/llm-policy.json");
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.policy).toContain("AgentGate");
+    expect(json.version).toBe("1.0");
+  });
+
+  it("LLM policy includes training, RAG, and summarization sections", async () => {
+    const res = await policyApp.request("/.well-known/llm-policy.json");
+    const json = await res.json();
+    expect(json.training).toBeDefined();
+    expect(json.training.preTraining).toBe("disallowed");
+    expect(json.retrievalAugmentedGeneration).toBeDefined();
+    expect(json.retrievalAugmentedGeneration.rAGIndexing).toBe("allowed");
+    expect(json.summarizationAndQuotation).toBeDefined();
+    expect(json.summarizationAndQuotation.summarization).toBe("allowed-with-attribution");
+  });
+
+  it("LLM policy includes preferred crawl endpoints", async () => {
+    const res = await policyApp.request("/.well-known/llm-policy.json");
+    const json = await res.json();
+    expect(json.preferredCrawlEndpoints).toBeDefined();
+    expect(Array.isArray(json.preferredCrawlEndpoints)).toBe(true);
+    expect(json.preferredCrawlEndpoints).toContain("/about");
+    expect(json.preferredCrawlEndpoints).toContain("/pricing");
   });
 });
