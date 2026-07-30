@@ -4,11 +4,14 @@
  * SLICE-17-1: GET /.well-known/agent-card.json
  * SLICE-17-9: GET /ai-sitemap.xml
  * SLICE-18-3: GET /robots.txt, GET /sitemap.xml
+ * Epic 20: GET /.well-known/llm-policy.json
  */
 
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
@@ -95,6 +98,44 @@ wellKnownRoutes.get(
       "Cache-Control": "public, max-age=3600",
     });
   },
+);
+
+// ─── LLM Policy (Epic 20) ──────────────────────────────────────
+
+function loadLlmPolicy(): object {
+  const candidates = [
+    resolve(process.cwd(), "public/.well-known/llm-policy.json"),
+    resolve(process.cwd(), "../public/.well-known/llm-policy.json"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) {
+      try {
+        return JSON.parse(readFileSync(p, "utf-8"));
+      } catch {
+        // fallthrough to default
+      }
+    }
+  }
+  return {
+    policy: "AgentGate LLM Crawler Policy",
+    version: "1.0",
+    summary: "Default policy. See repository for the canonical version.",
+  };
+}
+
+wellKnownRoutes.get(
+  "/.well-known/llm-policy.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "LLM crawler policy",
+    description:
+      "Returns a JSON document specifying how LLM providers and crawlers may use AgentGate content. Covers pre-training, fine-tuning, RAG indexing, summarization, quotation, and agentic actions.",
+    responses: { 200: { description: "LLM policy JSON" } },
+  }),
+  (c) =>
+    c.json(loadLlmPolicy(), 200, {
+      "Cache-Control": "public, max-age=86400",
+    }),
 );
 
 /**
