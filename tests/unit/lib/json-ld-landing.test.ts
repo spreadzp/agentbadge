@@ -108,6 +108,67 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
     });
   });
 
+  // ─── SLICE-21-2: OfferCatalog + Extended Organization ────
+  describe("SLICE-21-2: softwareApplicationLd() OfferCatalog", () => {
+    it("offers is OfferCatalog with 4 Offer items", () => {
+      const schema = softwareApplicationLd() as Record<string, unknown>;
+      const offers = schema.offers as Record<string, unknown>;
+      expect(offers["@type"]).toBe("OfferCatalog");
+      expect(offers.name).toBe("AgentGate Passport Tiers");
+      const items = offers.itemListElement as Record<string, unknown>[];
+      expect(items).toHaveLength(4);
+      for (const item of items) {
+        expect(item["@type"]).toBe("Offer");
+        expect(item.price).toBeDefined();
+        expect(item.priceCurrency).toBe("HBAR");
+        expect(item.name).toBeDefined();
+        expect(item.description).toBeDefined();
+        expect(item.url).toBeDefined();
+      }
+    });
+
+    it("OfferCatalog includes Bronze (10 HBAR), Silver (50), Gold (200), Platinum (500)", () => {
+      const schema = softwareApplicationLd() as Record<string, unknown>;
+      const items = (schema.offers as Record<string, unknown>).itemListElement as Record<string, unknown>[];
+      const prices = items.map((i) => i.price);
+      expect(prices).toContain("10");
+      expect(prices).toContain("50");
+      expect(prices).toContain("200");
+      expect(prices).toContain("500");
+    });
+
+    it("each Offer has url pointing to /pricing", () => {
+      const schema = softwareApplicationLd() as Record<string, unknown>;
+      const items = (schema.offers as Record<string, unknown>).itemListElement as Record<string, unknown>[];
+      for (const item of items) {
+        expect(item.url).toBe(`${BASE_URL}/pricing`);
+      }
+    });
+  });
+
+  describe("SLICE-21-2: organizationLd() extensions", () => {
+    it("includes foundingDate", () => {
+      const schema = organizationLd() as Record<string, unknown>;
+      expect(schema.foundingDate).toBe("2026");
+    });
+
+    it("includes contactPoint with correct fields", () => {
+      const schema = organizationLd() as Record<string, unknown>;
+      const cp = schema.contactPoint as Record<string, unknown>;
+      expect(cp["@type"]).toBe("ContactPoint");
+      expect(cp.contactType).toBe("customer support");
+      expect(cp.url).toBe(`${BASE_URL}/contact`);
+      expect(cp.availableLanguage).toEqual(["English"]);
+    });
+
+    it("sameAs includes GitHub repository", () => {
+      const schema = organizationLd() as Record<string, unknown>;
+      const sameAs = schema.sameAs as string[];
+      expect(sameAs).toContain("https://github.com/spreadzp/agentgate");
+      expect(sameAs.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   // ─── Existing schemas still work (no regression) ─────────
   describe("No regression: existing schemas", () => {
     it("softwareApplicationLd still returns valid schema", () => {

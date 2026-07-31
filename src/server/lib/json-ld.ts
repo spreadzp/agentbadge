@@ -2,6 +2,7 @@ import { SITE_DESCRIPTION, BASE_URL } from "./page-meta";
 import { BUILD_DATE } from "./build-info";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 import type { DirectoryEntry } from "@agentgate-hedera/passport";
+import { getCatalog } from "@agentgate-hedera/hedera-core";
 
 const SCHEMA_CONTEXT = "https://schema.org";
 
@@ -15,10 +16,16 @@ export function softwareApplicationLd(): object {
     operatingSystem: "Any",
     url: BASE_URL,
     offers: {
-      "@type": "Offer",
-      price: "0.001",
-      priceCurrency: "USD",
-      description: "NFT passport mint on Hedera (HTS)",
+      "@type": "OfferCatalog",
+      name: "AgentGate Passport Tiers",
+      itemListElement: getCatalog().map((tier) => ({
+        "@type": "Offer",
+        name: `${tier.name.charAt(0).toUpperCase() + tier.name.slice(1)} Passport`,
+        price: String(tier.price),
+        priceCurrency: "HBAR",
+        description: `${tier.name} tier — capabilities: ${tier.capabilities.join(", ")}`,
+        url: `${BASE_URL}/pricing`,
+      })),
     },
     keywords: ["Hedera", "AI Agents", "HTS", "HCS", "DID", "x402", "MCP"],
     featureList: [
@@ -57,7 +64,17 @@ export function organizationLd(): object {
     name: "AgentGate",
     url: BASE_URL,
     logo: `${BASE_URL}/icons/logo-32.png`,
-    sameAs: ["https://raw.githubusercontent.com/spreadzp/agentgate/refs/heads/main/AGENT-REFERENCE.md"],
+    foundingDate: "2026",
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      url: `${BASE_URL}/contact`,
+      availableLanguage: ["English"],
+    },
+    sameAs: [
+      "https://github.com/spreadzp/agentgate",
+      "https://raw.githubusercontent.com/spreadzp/agentgate/refs/heads/main/AGENT-REFERENCE.md",
+    ],
   };
 }
 
