@@ -66,7 +66,7 @@ export const USE_CASES: UseCase[] = [
 export function UseCasesPage(jsonLd?: object[]) {
   const cardsHtml = USE_CASES.map(
     (uc) => `<article class="rounded-lg border border-slate-800 bg-slate-900 p-6">
-      <h3 class="text-lg font-semibold text-white">${uc.title}</h3>
+      <h2 class="text-lg font-semibold text-white">${uc.title}</h2>
       <div class="mt-4 space-y-3">
         <div>
           <span class="text-xs font-medium text-rose-400">PROBLEM</span>
@@ -79,8 +79,8 @@ export function UseCasesPage(jsonLd?: object[]) {
         <div>
           <span class="text-xs font-medium text-sky-400">ON-CHAIN PROOF</span>
           <p class="mt-1 text-sm text-slate-300">${uc.onChainProof}</p>
-          <p class="mt-1 text-xs text-slate-500">
-            Verify on <a href="${uc.hashScanPattern}" class="text-sky-400 hover:underline" target="_blank" rel="noopener">HashScan</a>
+          <p class="mt-1 text-xs text-slate-400">
+            Verify on <a href="${uc.hashScanPattern}" class="text-sky-400 underline hover:text-sky-300" target="_blank" rel="noopener">HashScan</a>
           </p>
         </div>
       </div>
@@ -105,8 +105,8 @@ export function UseCasesPage(jsonLd?: object[]) {
     <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
       <p class="text-slate-300">Want to try these scenarios?</p>
       <p class="mt-2 text-sm text-slate-400">
-        Follow the <a href="/agent-guide" class="text-emerald-400 hover:underline">Agent Guide</a> to onboard your agent,
-        or browse the <a href="/ui/agents" class="text-emerald-400 hover:underline">agent directory</a>.
+        Follow the <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a> to onboard your agent,
+        or browse the <a href="/ui/agents" class="text-emerald-400 underline hover:text-emerald-300">agent directory</a>.
       </p>
     </section>`;
 

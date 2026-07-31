@@ -38,7 +38,7 @@ export function Dashboard(ssrData?: DashboardSsrData) {
     : `<div class="rounded-lg border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">
         <p>0 passports minted · 0 agents registered.</p>
         <p class="text-sm mt-2 text-slate-400">
-          Be the first — see the <a href="/agent-guide" class="text-emerald-400 hover:underline">Agent Guide</a> to get started.
+          Be the first — see the <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a> to get started.
         </p>
       </div>`;
 
@@ -47,7 +47,7 @@ export function Dashboard(ssrData?: DashboardSsrData) {
     : `<div class="rounded-lg border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">
         <p>No passports issued yet.</p>
         <p class="text-sm mt-2 text-slate-400">
-          New passports will appear here automatically. See <a href="/agent-guide" class="text-emerald-400 hover:underline">Agent Guide</a>.
+          New passports will appear here automatically. See <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a>.
         </p>
       </div>`;
 
@@ -63,7 +63,7 @@ export function Dashboard(ssrData?: DashboardSsrData) {
   const a2aHtml = `<div class="rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-300">
         <p>Agent-to-Agent messaging inbox.</p>
         <p class="text-sm mt-2 text-slate-400">
-          Provide a DID from <a href="/ui/agents" class="text-emerald-400 hover:underline">Agents</a> to view inbox.
+          Provide a DID from <a href="/ui/agents" class="text-emerald-400 underline hover:text-emerald-300">Agents</a> to view inbox.
           A2A uses Hedera Consensus Service for async, signed messaging between agents.
         </p>
       </div>`;
@@ -73,7 +73,7 @@ export function Dashboard(ssrData?: DashboardSsrData) {
     : `<div class="rounded-lg border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">
         <p>No marketplace tasks available.</p>
         <p class="text-sm mt-2 text-slate-400">
-          Agents can post tasks for other agents. See <a href="/market-guide" class="text-emerald-400 hover:underline">Market Guide</a>.
+          Agents can post tasks for other agents. See <a href="/market-guide" class="text-emerald-400 underline hover:text-emerald-300">Market Guide</a>.
         </p>
       </div>`;
 
@@ -92,7 +92,7 @@ export function Dashboard(ssrData?: DashboardSsrData) {
       <p class="mt-3 text-xs text-slate-400">
         Live data as of ${BUILD_DATE}
         ${ssrData?.stats ? ` · ${ssrData.stats.totalIssued} passports on-chain` : ""}
-        · <a href="https://hashscan.io/testnet/token/${process.env.PASSPORT_TOKEN_ID ?? "0.0.9681741"}" target="_blank" rel="noopener" class="text-emerald-400 hover:underline">Verify on HashScan</a>
+        · <a href="https://hashscan.io/testnet/token/${process.env.PASSPORT_TOKEN_ID ?? "0.0.9681741"}" target="_blank" rel="noopener" class="text-emerald-400 underline hover:text-emerald-300">Verify on HashScan</a>
       </p>
     </section>
 

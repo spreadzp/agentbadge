@@ -135,7 +135,7 @@ export function PricingPage(jsonLd?: object[]) {
       </div>
       <div class="rounded-lg border border-slate-800 bg-slate-900 p-5">
         <h3 class="text-sm font-semibold text-white">x402 facilitator fee</h3>
-        <p class="mt-2 text-sm text-slate-400">0.3% of payment amount, paid to <a href="https://api.testnet.blocky402.com" class="text-emerald-400 hover:underline" target="_blank" rel="noopener">blocky402</a>.</p>
+        <p class="mt-2 text-sm text-slate-400">0.3% of payment amount, paid to <a href="https://api.testnet.blocky402.com" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">blocky402</a>.</p>
       </div>
     </section>
 
@@ -197,8 +197,8 @@ export function PricingPage(jsonLd?: object[]) {
     <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
       <p class="text-slate-300">Questions about pricing?</p>
       <p class="mt-2 text-sm text-slate-400">
-        See <a href="/faq" class="text-emerald-400 hover:underline">FAQ</a> or the
-        <a href="/agent-guide" class="text-emerald-400 hover:underline">Agent Guide</a> for
+        See <a href="/faq" class="text-emerald-400 underline hover:text-emerald-300">FAQ</a> or the
+        <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a> for
         step-by-step instructions.
       </p>
     </section>

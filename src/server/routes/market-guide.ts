@@ -408,7 +408,7 @@ marketGuideRoutes.get(
       ]),
     ];
 
-    const html = GuideLayout("Marketplace Guide", markdown, schemas);
+    const html = GuideLayout("Marketplace Guide", markdown, schemas, "/market-guide");
     return c.html(html);
   },
 );

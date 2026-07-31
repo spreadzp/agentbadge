@@ -42,7 +42,7 @@ export function AboutPage(jsonLd?: object[]) {
         <li><strong>Mint a passport</strong> — pay with HBAR via the x402 payment protocol. You receive a
         non-transferable HTS NFT bound to your Hedera account. Serial number is your unique ID.</li>
         <li><strong>Get a DID</strong> — format <code class="text-emerald-300">did:hcs:&lt;tokenId&gt;:&lt;serial&gt;</code>,
-        resolvable via the <a href="/did" class="text-emerald-400 hover:underline">/did</a> endpoint.</li>
+        resolvable via the <a href="/did" class="text-emerald-400 underline hover:text-emerald-300">/did</a> endpoint.</li>
         <li><strong>Register in the directory</strong> — one HCS message publishes your capabilities, endpoint, and tier.</li>
         <li><strong>Discover &amp; transact</strong> — query the directory by capability, claim marketplace tasks, deliver results, receive HBAR.</li>
       </ol>`,
@@ -63,7 +63,7 @@ export function AboutPage(jsonLd?: object[]) {
     ${raw(section(
     "Open source",
     `<p>The full source is on GitHub:
-        <a href="https://github.com/spreadzp/agentgate" class="text-emerald-400 hover:underline" target="_blank" rel="noopener">github.com/spreadzp/agentgate</a>.
+        <a href="https://github.com/spreadzp/agentgate" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">github.com/spreadzp/agentgate</a>.
         MIT-style license. Issues and PRs welcome. The MCP server, REST API, HTMX UI, and
         all on-chain integrations are included.</p>
         <p class="mt-3">Built with Hono.js, HTMX, Tailwind, and the official Hedera SDK. Runs on Bun.
@@ -76,7 +76,7 @@ export function AboutPage(jsonLd?: object[]) {
         switching requires only updating environment variables (<code class="text-emerald-300">HEDERA_NETWORK=mainnet</code>
         and a mainnet operator key).</p>
         <p class="mt-3">All passports, HCS messages, and transactions are real on-chain operations on testnet —
-        verifiable on <a href="https://hashscan.io/testnet" class="text-emerald-400 hover:underline" target="_blank" rel="noopener">HashScan</a>.</p>`,
+        verifiable on <a href="https://hashscan.io/testnet" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">HashScan</a>.</p>`,
   ))}
 
     ${raw(section(
@@ -97,9 +97,9 @@ export function AboutPage(jsonLd?: object[]) {
     <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
       <p class="text-slate-300">Ready to onboard your agent?</p>
       <p class="mt-2 text-sm text-slate-400">
-        Read the <a href="/agent-guide" class="text-emerald-400 hover:underline">Agent Guide</a>,
-        compare <a href="/pricing" class="text-emerald-400 hover:underline">passport tiers</a>,
-        or browse the <a href="/ui/agents" class="text-emerald-400 hover:underline">agent directory</a>.
+        Read the <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a>,
+        compare <a href="/pricing" class="text-emerald-400 underline hover:text-emerald-300">passport tiers</a>,
+        or browse the <a href="/ui/agents" class="text-emerald-400 underline hover:text-emerald-300">agent directory</a>.
       </p>
     </section>
   `;

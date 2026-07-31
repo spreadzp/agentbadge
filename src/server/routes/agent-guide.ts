@@ -1233,7 +1233,7 @@ agentGuideRoutes.get(
       ]),
     ];
 
-    const html = GuideLayout("Agent Onboarding Guide", markdown, schemas);
+    const html = GuideLayout("Agent Onboarding Guide", markdown, schemas, "/agent-guide");
     return c.html(html);
   },
 );

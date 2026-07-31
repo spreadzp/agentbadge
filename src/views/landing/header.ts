@@ -11,7 +11,7 @@ export function LandingHeader(): ReturnType<typeof html> {
     <nav class="px-4 py-3">
       <div class="relative flex items-center justify-between">
         <a href="/" class="flex items-center gap-2 font-semibold text-white">
-          <img src="/icons/logo-32.png" alt="AgentGate" class="h-7 w-7 rounded" />
+          <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" fetchpriority="high" class="h-7 w-7 rounded" /></picture>
           AgentGate
         </a>
 

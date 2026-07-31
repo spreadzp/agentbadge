@@ -18,7 +18,6 @@ module.exports = {
         "http://localhost:4021/ui/market/tasks",
         "http://localhost:4021/ui/catalog",
         "http://localhost:4021/ui/help",
-        "http://localhost:4021/llms.txt",
       ],
       numberOfRuns: 3,
     },

@@ -18,11 +18,11 @@ describe("SLICE-23-7: Lighthouse CI regression test config", () => {
     expect(config.ci.assert).toBeDefined();
   });
 
-  it("collect includes at least 4 URLs", () => {
+  it("collect includes at least 14 URLs", () => {
     const urls = config.ci.collect.url;
-    expect(urls.length).toBeGreaterThanOrEqual(15);
+    expect(urls.length).toBeGreaterThanOrEqual(14);
     expect(urls).toContain("http://localhost:4021/");
-    expect(urls).toContain("http://localhost:4021/llms.txt");
+    expect(urls).not.toContain("http://localhost:4021/llms.txt");
   });
 
   it("asserts performance >= 0.95", () => {

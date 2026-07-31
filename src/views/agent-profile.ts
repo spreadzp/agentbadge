@@ -63,31 +63,31 @@ export function AgentProfilePage({ agent }: { agent: AgentWithActive }) {
 
       <div class="mt-6 space-y-3 text-sm">
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-slate-500">DID</span>
+          <span class="text-slate-400">DID</span>
           <span class="font-mono text-slate-300">${agent.did}</span>
         </div>
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-slate-500">Account</span>
-          <a href="${accountHashScanUrl}" target="_blank" rel="noopener" class="font-mono text-emerald-400 hover:underline">${agent.accountId || "—"}</a>
+          <span class="text-slate-400">Account</span>
+          <a href="${accountHashScanUrl}" target="_blank" rel="noopener" class="font-mono text-emerald-400 underline hover:text-emerald-300">${agent.accountId || "—"}</a>
         </div>
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-slate-500">HBAR Balance</span>
+          <span class="text-slate-400">HBAR Balance</span>
           <span class="font-mono ${agent.hbarBalance != null ? 'text-amber-300' : 'text-slate-500'}">${agent.hbarBalance != null ? `${agent.hbarBalance.toFixed(2)} ℏ` : "—"}</span>
         </div>
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-slate-500">NFT Serial</span>
+          <span class="text-slate-400">NFT Serial</span>
           <span class="font-mono text-slate-300">#${agent.serial}</span>
         </div>
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-slate-500">Token ID</span>
+          <span class="text-slate-400">Token ID</span>
           <span class="font-mono text-slate-300">${agent.tokenId}</span>
         </div>
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-slate-500">Endpoint</span>
+          <span class="text-slate-400">Endpoint</span>
           <span class="font-mono text-slate-300 break-all">${agent.endpoint || "—"}</span>
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-slate-500">Registered</span>
+          <span class="text-slate-400">Registered</span>
           <span class="text-slate-300">${issuedDate}</span>
         </div>
       </div>
@@ -101,7 +101,7 @@ export function AgentProfilePage({ agent }: { agent: AgentWithActive }) {
       ? agent.capabilities.map(
         (cap) => html`<span class="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-300">${cap}</span>`,
       )
-      : html`<span class="text-sm text-slate-500">No capabilities declared.</span>`
+      : html`<span class="text-sm text-slate-400">No capabilities declared.</span>`
     }
       </div>
     </div>

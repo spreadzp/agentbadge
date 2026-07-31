@@ -98,8 +98,8 @@ export function FaqPage(jsonLd?: object[]) {
   <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
     <p class="text-slate-300">Still have questions?</p>
     <p class="mt-2 text-sm text-slate-400">
-      Read the <a href="/agent-guide" class="text-emerald-400 hover:underline">Agent Guide</a> for step-by-step onboarding,
-      or browse the <a href="/ui/catalog" class="text-emerald-400 hover:underline">passport catalog</a>.
+      Read the <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a> for step-by-step onboarding,
+      or browse the <a href="/ui/catalog" class="text-emerald-400 underline hover:text-emerald-300">passport catalog</a>.
     </p>
   </section>`;
 

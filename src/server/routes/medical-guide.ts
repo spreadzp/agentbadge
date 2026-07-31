@@ -877,7 +877,7 @@ medicalGuideRoutes.get(
       ]),
     ];
 
-    const html = GuideLayout("Medical Data Skills Guide", markdown, schemas);
+    const html = GuideLayout("Medical Data Skills Guide", markdown, schemas, "/medical-guide");
     return c.html(html);
   },
 );

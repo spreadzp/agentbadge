@@ -23,13 +23,13 @@
 import { Hono, type Context } from "hono";
 import { html, raw } from "hono/html";
 import { Dashboard, type DashboardSsrData } from "../../views/dashboard";
-import { FeedFragment } from "../../views/feed-fragment";
+import { FeedFragment, PassportCard } from "../../views/feed-fragment";
 import { PassportDetailCard, PassportNotFound } from "../../views/passport-card";
-import { AgentsFragment, type AgentWithActive } from "../../views/agents-fragment";
+import { AgentsFragment, AgentRow, type AgentWithActive } from "../../views/agents-fragment";
 import { SearchForm, SearchResults, parseSearchQuery } from "../../views/search-fragment";
 import { StatsFragment } from "../../views/stats-fragment";
 import { LandingStatsFragment } from "../../views/landing/landing-stats-fragment";
-import { AuditFragment, type AuditEventWithTx } from "../../views/audit-fragment";
+import { AuditFragment, AuditRow, type AuditEventWithTx } from "../../views/audit-fragment";
 import { CatalogFragment } from "../../views/catalog-fragment";
 import { PassportRequestForm } from "../../views/passport-request-form";
 import { HelpPage } from "../../views/help-page";
@@ -187,7 +187,13 @@ uiRoutes.get("/ui/feed", async (c) => {
     const nfts = await getNftsForToken(tokenId);
     // Sort by serial descending (most recent first)
     const sorted = nfts.sort((a: NftInfo, b: NftInfo) => b.serial_number - a.serial_number);
-    const fragment = FeedFragment({ nfts: sorted });
+    const offset = parseInt(c.req.query("offset") ?? "0", 10) || 0;
+    const PAGE_SIZE = 4;
+    const page = sorted.slice(offset, offset + PAGE_SIZE);
+    const remaining = sorted.length - offset - PAGE_SIZE;
+    const fragment = html`${page.map((nft: NftInfo) => raw(PassportCard({ nft }).toString())).join("")}${remaining > 0
+      ? html`<button type="button" hx-get="/ui/feed?offset=${offset + PAGE_SIZE}" hx-target="this" hx-swap="outerHTML" class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">Show more (${remaining} remaining)</button>`
+      : ""}`.toString();
     return c.html(fragment);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -376,6 +382,17 @@ uiRoutes.get("/ui/agents", async (c) => {
 
     // Sort by serial descending (most recent first)
     agents.sort((a, b) => b.serial - a.serial);
+
+    const offset = parseInt(c.req.query("offset") ?? "0", 10) || 0;
+    if (offset > 0) {
+      const PAGE_SIZE = 4;
+      const page = agents.slice(offset, offset + PAGE_SIZE);
+      const remaining = agents.length - offset - PAGE_SIZE;
+      const fragment = html`${page.map((agent) => raw(AgentRow({ agent }).toString())).join("")}${remaining > 0
+        ? html`<button type="button" hx-get="/ui/agents?offset=${offset + PAGE_SIZE}" hx-target="this" hx-swap="outerHTML" class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">Show more (${remaining} remaining)</button>`
+        : ""}`.toString();
+      return c.html(fragment);
+    }
 
     const fragment = html`${raw(PageHeader({
       badge: "HCS Directory",
@@ -876,6 +893,18 @@ uiRoutes.get("/ui/audit", async (c) => {
       } catch {
         // Skip malformed
       }
+    }
+
+    const offset = parseInt(c.req.query("offset") ?? "0", 10) || 0;
+    if (offset > 0) {
+      const PAGE_SIZE = 4;
+      const sorted = [...events].reverse();
+      const page = sorted.slice(offset, offset + PAGE_SIZE);
+      const remaining = sorted.length - offset - PAGE_SIZE;
+      const fragment = html`${page.map((event) => raw(AuditRow({ event }).toString())).join("")}${remaining > 0
+        ? html`<button type="button" hx-get="/ui/audit?offset=${offset + PAGE_SIZE}" hx-target="this" hx-swap="outerHTML" class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">Show more (${remaining} remaining)</button>`
+        : ""}`.toString();
+      return c.html(fragment);
     }
 
     return c.html(wrapFragment(c, AuditFragment({ events }).toString(), "Audit Stream"));

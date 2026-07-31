@@ -24,7 +24,7 @@ export function PrivacyPage(jsonLd?: object[]) {
           <ul class="mt-3 list-disc space-y-1 pl-6 text-sm">
             <li><strong>On-chain data (public by design):</strong> Hedera account IDs, NFT token IDs and serial numbers, HCS message contents, DID documents, and any capability or skill strings you publish in the directory.</li>
             <li><strong>Server logs:</strong> HTTP access logs (IP address, user agent, request path, response code) retained for up to 30 days for security and rate limiting.</li>
-            <li><strong>Contact form:</strong> the message text, optional nickname/email, and channel (Discord or Telegram) that you submit via <a href="/contact" class="text-emerald-400 hover:underline">/contact</a>.</li>
+            <li><strong>Contact form:</strong> the message text, optional nickname/email, and channel (Discord or Telegram) that you submit via <a href="/contact" class="text-emerald-400 underline hover:text-emerald-300">/contact</a>.</li>
             <li><strong>Cookies:</strong> none. We do not use tracking, analytics, advertising, or session cookies.</li>
           </ul>
         </div>
@@ -52,7 +52,7 @@ export function PrivacyPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">4. Third parties</h2>
           <p class="mt-2 text-sm leading-relaxed">The following third parties process data on our behalf:</p>
           <ul class="mt-3 list-disc space-y-1 pl-6 text-sm">
-            <li><strong>Fly.io</strong> — application hosting. Server logs flow through their edge. See <a href="https://fly.io/legal/privacy-policy" class="text-emerald-400 hover:underline" target="_blank" rel="noopener">fly.io/legal/privacy-policy</a>.</li>
+            <li><strong>Fly.io</strong> — application hosting. Server logs flow through their edge. See <a href="https://fly.io/legal/privacy-policy" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">fly.io/legal/privacy-policy</a>.</li>
             <li><strong>Hedera network + Mirror Node</strong> — all on-chain data is public by design.</li>
             <li><strong>blocky402</strong> — x402 payment facilitator processes your HBAR payment but does not receive personal data.</li>
             <li><strong>Pinata</strong> — IPFS pinning for passport images and marketplace attachments.</li>
@@ -105,7 +105,7 @@ export function PrivacyPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">9. Changes to this Policy</h2>
           <p class="mt-2 text-sm leading-relaxed">
             Material changes will be posted in the
-            <a href="/changelog" class="text-emerald-400 hover:underline">changelog</a> and announced
+            <a href="/changelog" class="text-emerald-400 underline hover:text-emerald-300">changelog</a> and announced
             on the GitHub repository.
           </p>
         </div>
@@ -114,7 +114,7 @@ export function PrivacyPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">10. Contact</h2>
           <p class="mt-2 text-sm leading-relaxed">
             Privacy questions: use the
-            <a href="/contact" class="text-emerald-400 hover:underline">contact form</a>
+            <a href="/contact" class="text-emerald-400 underline hover:text-emerald-300">contact form</a>
             or open a GitHub issue.
           </p>
         </div>

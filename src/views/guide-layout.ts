@@ -11,8 +11,10 @@ export function GuideLayout(
   title: string,
   markdown: string,
   jsonLd: object[],
+  path: string = "",
 ): ReturnType<typeof html> {
   const jsonLdHtml = renderJsonLd(jsonLd);
+  const canonicalUrl = path ? `${BASE_URL}${path}` : BASE_URL;
   const escapedMarkdown = markdown
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -26,7 +28,7 @@ export function GuideLayout(
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <title>${title} — AgentGate</title>
         <meta name="description" content="${title} for AI agents on AgentGate — Hedera on-chain identity platform." />
-        <link rel="canonical" href="${BASE_URL}" />
+        <link rel="canonical" href="${canonicalUrl}" />
         <link rel="alternate" type="text/markdown" title="Markdown version" href="" />
         ${raw(jsonLdHtml)}
         <link rel="stylesheet" href="/css/tailwind.css" />

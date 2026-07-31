@@ -32,7 +32,7 @@ export function TermsPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">2. The Service is provided "as is"</h2>
           <p class="mt-2 text-sm leading-relaxed">
             AgentGate is open-source software released under the MIT License (see
-            <a href="https://github.com/spreadzp/agentgate/blob/main/LICENSE" class="text-emerald-400 hover:underline" target="_blank" rel="noopener">LICENSE</a>).
+            <a href="https://github.com/spreadzp/agentgate/blob/main/LICENSE" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">LICENSE</a>).
             It is provided without warranty of any kind, express or implied, including but not limited
             to the warranties of merchantability, fitness for a particular purpose, and noninfringement.
           </p>
@@ -82,7 +82,7 @@ export function TermsPage(jsonLd?: object[]) {
             Passport mint fees are collected via the x402 payment protocol. The fee is non-refundable
             once the on-chain HTS mint transaction succeeds. Hedera network fees and x402 facilitator
             fees are charged separately and visible in the
-            <a href="/pricing" class="text-emerald-400 hover:underline">pricing</a> page.
+            <a href="/pricing" class="text-emerald-400 underline hover:text-emerald-300">pricing</a> page.
           </p>
         </div>
 
@@ -108,7 +108,7 @@ export function TermsPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">9. Changes to these Terms</h2>
           <p class="mt-2 text-sm leading-relaxed">
             We may update these Terms. Material changes will be announced in the
-            <a href="/changelog" class="text-emerald-400 hover:underline">changelog</a>
+            <a href="/changelog" class="text-emerald-400 underline hover:text-emerald-300">changelog</a>
             and on the GitHub repository. Continued use of the Service after a change constitutes
             acceptance of the new Terms.
           </p>
@@ -118,9 +118,9 @@ export function TermsPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">10. Contact</h2>
           <p class="mt-2 text-sm leading-relaxed">
             Questions about these Terms? Use the
-            <a href="/contact" class="text-emerald-400 hover:underline">contact form</a>
+            <a href="/contact" class="text-emerald-400 underline hover:text-emerald-300">contact form</a>
             or open an issue on
-            <a href="https://github.com/spreadzp/agentgate/issues" class="text-emerald-400 hover:underline" target="_blank" rel="noopener">GitHub</a>.
+            <a href="https://github.com/spreadzp/agentgate/issues" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">GitHub</a>.
           </p>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { openAPIRouteHandler } from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
@@ -64,6 +65,7 @@ const app = new Hono();
 
 app.use(corsMiddleware());
 app.use(securityHeaders());
+app.use(compress());
 app.use(requestLoggerMiddleware());
 app.use((c, next) => signatureVerificationMiddleware(c as any, next));
 app.use(rateLimitMiddleware());
@@ -133,12 +135,18 @@ app.get("/health", (c) => {
 });
 
 // Serve static files from public/ (favicon, icons, logo, CSS)
-app.use("/favicon.ico", serveStatic({ root: "./public", path: "/favicon.ico" }));
-app.use("/icons/*", serveStatic({ root: "./public" }));
-app.use("/css/*", serveStatic({ root: "./public" }), (c, next) => {
+app.use("/favicon.ico", (c, next) => {
+  c.header("Cache-Control", "public, max-age=86400");
+  return next();
+}, serveStatic({ root: "./public", path: "/favicon.ico" }));
+app.use("/icons/*", (c, next) => {
   c.header("Cache-Control", "public, max-age=31536000, immutable");
   return next();
-});
+}, serveStatic({ root: "./public" }));
+app.use("/css/*", (c, next) => {
+  c.header("Cache-Control", "public, max-age=31536000, immutable");
+  return next();
+}, serveStatic({ root: "./public" }));
 
 app.route("/", passportRoutes);
 app.route("/", verifyRoutes);

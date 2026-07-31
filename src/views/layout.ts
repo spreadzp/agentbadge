@@ -84,7 +84,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
           <nav class="px-4 py-3">
             <div class="relative flex items-center justify-between">
               <a href="/" class="flex items-center gap-2 font-semibold text-white">
-                <img src="/icons/logo-32.png" alt="AgentGate" class="h-7 w-7 rounded" />
+                <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" class="h-7 w-7 rounded" /></picture>
                 AgentGate
               </a>
 
@@ -98,35 +98,35 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
 
               <!-- Mobile dropdown: absolute overlay below header -->
               <div class="absolute left-0 right-0 top-full z-50 flex flex-col gap-1 overflow-hidden border-b border-slate-800 bg-slate-900 px-4 py-0 text-sm transition-all duration-200 max-h-0 peer-checked:max-h-80 peer-checked:py-3 md:hidden">
-                <a href="/dashboard" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/dashboard" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10" /></svg>
                   Dashboard
                 </a>
-                <a href="/ui/agents" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/ui/agents" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm-6 0a3 3 0 100-6 3 3 0 000 6z" /></svg>
                   Agents
                 </a>
-                <a href="/ui/search" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/ui/search" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   Search
                 </a>
-                <a href="/ui/catalog" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/ui/catalog" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
                   Catalog
                 </a>
-                <a href="/ui/a2a" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/ui/a2a" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   A2A Inbox
                 </a>
-                <a href="/ui/market/tasks" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/ui/market/tasks" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                   Marketplace
                 </a>
-                <a href="/ui/help" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/ui/help" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   Help
                 </a>
-                <a href="/contact" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">
+                <a href="/contact" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   Contact
                 </a>

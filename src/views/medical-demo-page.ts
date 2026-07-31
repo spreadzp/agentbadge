@@ -506,7 +506,7 @@ export function MedicalDemoPage(task?: CachedMarketTask) {
         </div>
       </div>
       <p class="mt-3 text-xs text-slate-400">
-        See <a href="/agent-guide" class="text-emerald-400 hover:underline">Agent Guide</a> for passport setup instructions.
+        See <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a> for passport setup instructions.
       </p>
     </section>
 
