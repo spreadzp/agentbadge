@@ -7,5 +7,7 @@ docs/
 storage/
 .git/
 graphify-out/
+.lighthouseci/
+lighthouserc.cjs
 *.md
 .windsurf/
