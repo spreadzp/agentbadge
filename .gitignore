@@ -3,6 +3,8 @@ node_modules/
 dist/
 storage/
 graphify-out/
+.lighthouseci/
 public/css/
+package-lock.json
 MEDICAL-DATA-WORKFLOW.md
 docs/AGENT-MEDICAL-TASKS-GUIDE.md
