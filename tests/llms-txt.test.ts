@@ -62,7 +62,7 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
     });
 
     it("contains Content Pages section with /faq and /use-cases", () => {
-      expect(txt).toContain("### Content Pages");
+      expect(txt).toContain("## Content Pages");
       expect(txt).toContain("/faq");
       expect(txt).toContain("/use-cases");
     });
@@ -93,10 +93,10 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
       app.route("/", catalogRoutes);
     });
 
-    it("returns 200 with text/plain content type", async () => {
+    it("returns 200 with text/markdown content type", async () => {
       const res = await app.request("/llms.txt");
       expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toContain("text/plain");
+      expect(res.headers.get("content-type")).toContain("text/markdown");
     });
 
     it("response body contains new sections", async () => {
@@ -104,7 +104,7 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
       const text = await res.text();
       expect(text).toContain("### MCP Tools");
       expect(text).toContain("### Curl Examples");
-      expect(text).toContain("### Content Pages");
+      expect(text).toContain("## Content Pages");
     });
 
     it("response body contains tool table with categories", async () => {

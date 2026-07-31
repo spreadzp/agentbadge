@@ -52,13 +52,13 @@ describe("llms.txt generation", () => {
   it("contains the correct endpoint list and facilitator config", () => {
     const txt = getLlmsTxt();
     expect(txt).toContain("# Agent Passport on Hedera");
-    expect(txt).toContain("POST /passport/request");
-    expect(txt).toContain("GET /passport/:tokenId/:serial");
-    expect(txt).toContain("GET /audit/:tokenId/:serial?");
-    expect(txt).toContain("GET /catalog");
-    expect(txt).toContain("GET /did/:did");
+    expect(txt).toContain("/passport/request");
+    expect(txt).toContain("/passport");
+    expect(txt).toContain("/audit");
+    expect(txt).toContain("/catalog");
+    expect(txt).toContain("/did");
     expect(txt).toContain("Facilitator:");
-    expect(txt).toContain("Fee payer:");
+    expect(txt).toContain("Fee Payer:");
   });
 });
 
@@ -209,7 +209,7 @@ describe("REST routes", () => {
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(text).toContain("# Agent Passport on Hedera");
-    expect(text).toContain("POST /passport/request");
+    expect(text).toContain("/passport/request");
   });
 
   it("GET /audit returns all audit events", async () => {

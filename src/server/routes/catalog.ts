@@ -38,11 +38,11 @@ catalogRoutes.get(
   "/llms.txt",
   describeRoute({
     tags: ["Catalog"],
-    summary: "LLM-friendly catalog (plain text)",
+    summary: "LLM-friendly catalog (Markdown)",
     responses: {
       200: {
-        description: "LLM catalog in plain text",
-        content: { "text/plain": {} },
+        description: "LLM catalog in Markdown format",
+        content: { "text/markdown": {} },
       },
     },
   }),
@@ -50,7 +50,7 @@ catalogRoutes.get(
     const txt = getLlmsTxt();
     return new Response(txt, {
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Type": "text/markdown; charset=utf-8",
         "Cache-Control": "public, max-age=3600",
       },
     });

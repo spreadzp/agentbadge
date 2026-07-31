@@ -56,7 +56,7 @@ export function LandingLayout(
         <meta name="twitter:title" content="${pageTitle}" />
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
-        <link rel="alternate" type="text/plain" title="LLM Context" href="/llms.txt" />
+        <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
         ${raw(jsonLdHtml)}

@@ -334,10 +334,10 @@ describe("SLICE-18-9: E2E Crawler-Simulation", () => {
       txt = getLlmsTxt();
     });
 
-    it("GET /llms.txt returns 200 with text/plain", async () => {
+    it("GET /llms.txt returns 200 with text/markdown", async () => {
       const res = await app.request("/llms.txt");
       expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toContain("text/plain");
+      expect(res.headers.get("content-type")).toContain("text/markdown");
     });
 
     it("contains MCP Tools section with 32 tools", () => {
@@ -355,7 +355,7 @@ describe("SLICE-18-9: E2E Crawler-Simulation", () => {
     });
 
     it("contains Content Pages section with /faq and /use-cases", () => {
-      expect(txt).toContain("### Content Pages");
+      expect(txt).toContain("## Content Pages");
       expect(txt).toContain("/faq");
       expect(txt).toContain("/use-cases");
     });
