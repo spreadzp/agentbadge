@@ -28,6 +28,7 @@ import {
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
+import { securityHeaders } from "./middleware/security-headers";
 import { openApiConfig } from "./openapi";
 import { passportRoutes } from "./routes/passport";
 import { mcpRoutes } from "./routes/mcp";
@@ -62,6 +63,7 @@ initSentry();
 const app = new Hono();
 
 app.use(corsMiddleware());
+app.use(securityHeaders());
 app.use(requestLoggerMiddleware());
 app.use((c, next) => signatureVerificationMiddleware(c as any, next));
 app.use(rateLimitMiddleware());
