@@ -296,6 +296,36 @@ export function articleLd(a: {
   return schema;
 }
 
+// ─── Content Page Helpers (SLICE-21-3) ───────────────────────
+
+export function webPageLd(opts: {
+  title: string;
+  description: string;
+  path: string;
+  datePublished?: string;
+  dateModified?: string;
+}): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "WebPage",
+    name: opts.title,
+    description: opts.description,
+    url: `${BASE_URL}${opts.path}`,
+    inLanguage: "en",
+    isPartOf: { "@type": "WebSite", name: "AgentGate", url: BASE_URL },
+    datePublished: opts.datePublished ?? BUILD_DATE,
+    dateModified: opts.dateModified ?? BUILD_DATE,
+  };
+}
+
+export function aboutPageLd(opts: {
+  title: string;
+  description: string;
+  path: string;
+}): object {
+  return articleLd(opts);
+}
+
 export function renderJsonLd(schemas: object[]): string {
   const json = JSON.stringify(schemas).replace(/</g, "\\u003c");
   return `<script type="application/ld+json">${json}</script>`;

@@ -5,6 +5,9 @@ import {
   organizationLd,
   howToLd,
   breadcrumbListLd,
+  webPageLd,
+  aboutPageLd,
+  articleLd,
   landingJsonLd,
   renderJsonLd,
 } from "../../../src/server/lib/json-ld";
@@ -282,6 +285,75 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
       const sameAs = schema.sameAs as string[];
       expect(sameAs).toContain("https://github.com/spreadzp/agentgate");
       expect(sameAs.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // ─── SLICE-21-3: webPageLd + aboutPageLd ────────────────
+  describe("SLICE-21-3: webPageLd()", () => {
+    it("returns WebPage schema with required fields", () => {
+      const schema = webPageLd({
+        title: "About AgentGate",
+        description: "Learn about the AgentGate platform.",
+        path: "/about",
+      }) as Record<string, unknown>;
+      expect(schema["@type"]).toBe("WebPage");
+      expect(schema["@context"]).toBe("https://schema.org");
+      expect(schema.name).toBe("About AgentGate");
+      expect(schema.description).toBe("Learn about the AgentGate platform.");
+      expect(schema.url).toBe(`${BASE_URL}/about`);
+      expect(schema.inLanguage).toBe("en");
+    });
+
+    it("includes isPartOf referencing WebSite", () => {
+      const schema = webPageLd({
+        title: "Test",
+        description: "Test",
+        path: "/test",
+      }) as Record<string, unknown>;
+      const isPartOf = schema.isPartOf as Record<string, unknown>;
+      expect(isPartOf["@type"]).toBe("WebSite");
+      expect(isPartOf.name).toBe("AgentGate");
+      expect(isPartOf.url).toBe(BASE_URL);
+    });
+
+    it("defaults datePublished and dateModified to BUILD_DATE", () => {
+      const schema = webPageLd({
+        title: "Test",
+        description: "Test",
+        path: "/test",
+      }) as Record<string, unknown>;
+      expect(schema.datePublished).toBeDefined();
+      expect(schema.dateModified).toBeDefined();
+    });
+
+    it("accepts custom datePublished and dateModified", () => {
+      const schema = webPageLd({
+        title: "Test",
+        description: "Test",
+        path: "/test",
+        datePublished: "2026-01-01",
+        dateModified: "2026-07-31",
+      }) as Record<string, unknown>;
+      expect(schema.datePublished).toBe("2026-01-01");
+      expect(schema.dateModified).toBe("2026-07-31");
+    });
+  });
+
+  describe("SLICE-21-3: aboutPageLd()", () => {
+    it("returns Article schema (alias for articleLd)", () => {
+      const opts = { title: "About", description: "About page", path: "/about" };
+      const schema = aboutPageLd(opts) as Record<string, unknown>;
+      expect(schema["@type"]).toBe("Article");
+      expect(schema.headline).toBe("About");
+      expect(schema.description).toBe("About page");
+      expect(schema.url).toBe(`${BASE_URL}/about`);
+    });
+
+    it("output matches articleLd() output", () => {
+      const opts = { title: "Test", description: "Test desc", path: "/test" };
+      const about = aboutPageLd(opts);
+      const article = articleLd(opts);
+      expect(about).toEqual(article);
     });
   });
 
