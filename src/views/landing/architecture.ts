@@ -28,20 +28,20 @@ export function ArchitectureSection() {
 
         <div class="fade-in-up flex flex-wrap justify-center gap-3">
           ${raw(
-            pills
-              .map(
-                (p) => html`<div class="rounded-full border border-slate-700 bg-slate-900 px-5 py-2.5 text-center">
+    pills
+      .map(
+        (p) => html`<div class="rounded-full border border-slate-700 bg-slate-900 px-5 py-2.5 text-center">
                     <span class="font-semibold text-emerald-400">${p.name}</span>
                     <span class="ml-2 text-sm text-slate-400">${p.description}</span>
                   </div>`,
-              )
-              .join(""),
-          )}
+      )
+      .join(""),
+  )}
         </div>
 
         <div class="fade-in-up mt-10 text-center">
           <a href="/about" class="inline-flex items-center gap-1 text-sm font-medium text-emerald-400 hover:text-emerald-300">
-            Learn more about the architecture
+            Explore the system architecture
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
             </svg>

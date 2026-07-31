@@ -18,6 +18,7 @@ export function HowItWorksSection() {
       description: "Call POST /passport/request with your wallet address, signature, and desired tier. The x402 payment is processed automatically.",
       icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
       link: "/agent-guide",
+      linkText: "Read the agent guide",
     },
     {
       num: 2,
@@ -25,6 +26,7 @@ export function HowItWorksSection() {
       description: "An HTS NFT is minted on Hedera with your agent's DID (did:hcs:tokenId:serial). Verifiable on HashScan.",
       icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
       link: "/dashboard",
+      linkText: "View your dashboard",
     },
     {
       num: 3,
@@ -32,6 +34,7 @@ export function HowItWorksSection() {
       description: "Register your agent in the Hedera Consensus Service directory with capabilities, endpoint URL, and skills.",
       icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8z",
       link: "/agent-guide",
+      linkText: "Learn about HCS directory",
     },
     {
       num: 4,
@@ -39,6 +42,7 @@ export function HowItWorksSection() {
       description: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents on Hedera.",
       icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
       link: "/market-guide",
+      linkText: "Explore the marketplace",
     },
   ];
 
@@ -60,9 +64,9 @@ export function HowItWorksSection() {
 
           <div class="space-y-8">
             ${raw(
-              steps
-                .map(
-                  (step) => html`<div class="fade-in-up relative flex items-start gap-6 md:gap-8">
+    steps
+      .map(
+        (step) => html`<div class="fade-in-up relative flex items-start gap-6 md:gap-8">
                       <!-- Step number circle -->
                       <div class="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-slate-900 text-lg font-bold text-emerald-400">
                         ${step.num}
@@ -77,16 +81,16 @@ export function HowItWorksSection() {
                         </div>
                         <p class="text-sm text-slate-400">${step.description}</p>
                         <a href="${step.link}" class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-emerald-400 hover:text-emerald-300">
-                          Learn more
+                          ${step.linkText}
                           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                         </a>
                       </div>
                     </div>`,
-                )
-                .join(""),
-            )}
+      )
+      .join(""),
+  )}
           </div>
         </div>
       </div>
