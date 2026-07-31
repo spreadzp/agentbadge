@@ -20,7 +20,7 @@ describe("SLICE-23-7: Lighthouse CI regression test config", () => {
 
   it("collect includes at least 4 URLs", () => {
     const urls = config.ci.collect.url;
-    expect(urls.length).toBeGreaterThanOrEqual(4);
+    expect(urls.length).toBeGreaterThanOrEqual(15);
     expect(urls).toContain("http://localhost:4021/");
     expect(urls).toContain("http://localhost:4021/llms.txt");
   });
