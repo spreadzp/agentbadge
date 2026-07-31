@@ -94,8 +94,8 @@ export function LandingLayout(
             to { opacity: 1; transform: translateY(0); }
           }
           @keyframes gradient-shift {
-            0%, 100% { transform: translateX(0%); }
-            50% { transform: translateX(-50%); }
+            0% { transform: translate(0%, 0%); }
+            100% { transform: translate(50%, 50%); }
           }
           @keyframes pulse-glow {
             0%, 100% { opacity: 0.4; transform: scale(1); }
@@ -103,9 +103,9 @@ export function LandingLayout(
           }
           .fade-in-up { animation: fade-in-up 0.6s ease-out; }
           .gradient-animated {
-            background: linear-gradient(120deg, #10b981, #0ea5e9, #10b981);
+            background: linear-gradient(135deg, #10b981, #0ea5e9, #a855f7, #10b981);
             background-size: 200% 200%;
-            animation: gradient-shift 8s ease infinite;
+            animation: gradient-shift 8s linear infinite alternate;
             will-change: transform;
           }
           .pulse-glow {

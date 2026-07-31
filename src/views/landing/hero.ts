@@ -61,15 +61,15 @@ export function HeroSection() {
           <!-- Stats row -->
           <div class="fade-in-up mt-16 grid grid-cols-3 gap-4 sm:gap-8">
             <div class="text-center">
-              <div class="text-2xl font-bold text-white sm:text-3xl">20+</div>
+              <div class="text-2xl font-bold text-emerald-400 sm:text-3xl">20+</div>
               <div class="mt-1 text-xs text-slate-400 sm:text-sm">Passports Minted</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-white sm:text-3xl">32</div>
+              <div class="text-2xl font-bold text-sky-400 sm:text-3xl">32</div>
               <div class="mt-1 text-xs text-slate-400 sm:text-sm">MCP Tools</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-white sm:text-3xl">4</div>
+              <div class="text-2xl font-bold text-purple-400 sm:text-3xl">4</div>
               <div class="mt-1 text-xs text-slate-400 sm:text-sm">Tiers Available</div>
             </div>
           </div>
