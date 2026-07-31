@@ -126,7 +126,7 @@ export function LandingLayout(
       </head>
       <body class="min-h-full">
         <!-- Skip to content (accessibility) -->
-        <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white">
+        <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-emerald-500 focus:px-4 focus:py-2 focus:text-white">
           Skip to content
         </a>
 

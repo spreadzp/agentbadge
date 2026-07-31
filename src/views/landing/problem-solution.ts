@@ -65,9 +65,9 @@ export function ProblemSolutionSection() {
 
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
           ${raw(
-            cards
-              .map(
-                (card) => html`<div class="hover-lift fade-in-up rounded-xl border ${card.border} ${card.bg} p-6">
+    cards
+      .map(
+        (card) => html`<div class="hover-lift fade-in-up rounded-xl border ${card.border} ${card.bg} p-6">
                     <div class="mb-4 flex items-center gap-3">
                       <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
                         <svg class="h-5 w-5 ${card.color}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -75,16 +75,16 @@ export function ProblemSolutionSection() {
                         </svg>
                       </div>
                       <div>
-                        <div class="text-xs uppercase tracking-wide text-slate-500">Without AgentGate</div>
+                        <div class="text-xs uppercase tracking-wide text-slate-400">Without AgentGate</div>
                         <div class="text-sm font-medium text-slate-400 line-through">${card.problem}</div>
                       </div>
                     </div>
                     <div class="mb-2 text-lg font-bold ${card.color}">${card.solution}</div>
                     <p class="text-sm text-slate-400">${card.description}</p>
                   </div>`,
-              )
-              .join(""),
-          )}
+      )
+      .join(""),
+  )}
         </div>
       </div>
     </section>

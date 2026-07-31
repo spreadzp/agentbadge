@@ -23,8 +23,8 @@ export function PricingPreviewSection() {
       name: "Silver",
       price: "50",
       color: "text-slate-300",
-      border: "border-slate-500/40",
-      bg: "bg-slate-500/5",
+      border: "border-slate-400/40",
+      bg: "bg-slate-400/5",
       highlighted: false,
       features: ["3 capabilities", "A2A messaging", "Marketplace access"],
     },
@@ -62,9 +62,9 @@ export function PricingPreviewSection() {
 
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           ${raw(
-            tiers
-              .map(
-                (t) => html`<div class="fade-in-up hover-lift relative rounded-xl border-2 ${t.border} ${t.bg} p-6${t.highlighted ? " ring-2 ring-yellow-500/50" : ""}">
+    tiers
+      .map(
+        (t) => html`<div class="fade-in-up hover-lift relative rounded-xl border-2 ${t.border} ${t.bg} p-6${t.highlighted ? " ring-2 ring-yellow-500/50" : ""}">
                     ${t.highlighted ? html`<div class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-yellow-500 px-3 py-0.5 text-xs font-bold text-slate-900">Popular</div>` : ""}
                     <div class="text-center">
                       <h3 class="text-lg font-bold ${t.color}">${t.name}</h3>
@@ -79,9 +79,9 @@ export function PricingPreviewSection() {
                         </li>`).join(""))}
                     </ul>
                   </div>`,
-              )
-              .join(""),
-          )}
+      )
+      .join(""),
+  )}
         </div>
 
         <div class="fade-in-up mt-10 text-center">

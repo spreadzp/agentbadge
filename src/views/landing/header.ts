@@ -20,7 +20,7 @@ export function LandingHeader(): ReturnType<typeof html> {
           <a href="/about" class="text-sm text-slate-300 hover:text-emerald-400 transition-colors">About</a>
           <a href="/pricing" class="text-sm text-slate-300 hover:text-emerald-400 transition-colors">Pricing</a>
           <a href="/dashboard" class="text-sm text-slate-300 hover:text-emerald-400 transition-colors">Dashboard</a>
-          <a href="/agent-guide" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 transition-colors">
+          <a href="/agent-guide" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 transition-colors">
             Get Started
           </a>
         </div>
@@ -38,7 +38,7 @@ export function LandingHeader(): ReturnType<typeof html> {
           <a href="/about" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">About</a>
           <a href="/pricing" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">Pricing</a>
           <a href="/dashboard" class="nav-item-pop flex items-center gap-2 py-1 text-slate-300">Dashboard</a>
-          <a href="/agent-guide" class="mt-2 rounded-lg bg-emerald-600 px-4 py-2 text-center font-medium text-white">
+          <a href="/agent-guide" class="mt-2 rounded-lg bg-emerald-500 px-4 py-2 text-center font-medium text-white">
             Get Started
           </a>
         </div>

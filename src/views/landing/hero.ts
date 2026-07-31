@@ -43,7 +43,7 @@ export function HeroSection() {
           <div class="fade-in-up mt-10 flex flex-col justify-center gap-4 sm:flex-row">
             <a
               href="/agent-guide"
-              class="pulse-glow inline-flex items-center justify-center rounded-lg bg-emerald-600 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-500"
+              class="pulse-glow inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-500"
             >
               Get Started
               <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
