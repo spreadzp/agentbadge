@@ -258,9 +258,9 @@ wellKnownRoutes.get(
   "/robots.txt",
   describeRoute({
     tags: ["Discovery"],
-    summary: "robots.txt — crawler directives",
+    summary: "robots.txt — crawler directives with spam bot blocking",
     description:
-      "Returns robots.txt with allow rules for major crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended) and disallow for admin/internal paths.",
+      "Returns robots.txt with allow rules for useful crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, Googlebot, Bingbot, DuckDuckBot) and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
     responses: {
       200: {
         description: "robots.txt",
@@ -275,6 +275,7 @@ Allow: /
 Disallow: /admin
 Disallow: /ui/a2a/inbox/fragment
 
+# ── Allow useful LLM / AI crawlers ──
 User-agent: GPTBot
 Allow: /
 
@@ -286,6 +287,41 @@ Allow: /
 
 User-agent: Google-Extended
 Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# ── Block SEO-spam / link-analysis crawlers ──
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: SemrushBot-SA
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+# ── Block high-load Chinese crawler ──
+User-agent: Bytespider
+Disallow: /
 
 Sitemap: ${baseUrl}/sitemap.xml
 `;

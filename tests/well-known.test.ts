@@ -191,6 +191,40 @@ describe("Well-known routes", () => {
       expect(text).toContain("Sitemap:");
       expect(text).toMatch(/Sitemap:\s+https?:\/\/.+\/sitemap\.xml/);
     });
+
+    // ─── SLICE-21-4: Spam bot blocking + useful bot allowing ───
+
+    it("blocks SEO-spam crawlers with Disallow: /", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+
+      const spamBots = ["AhrefsBot", "SemrushBot", "SemrushBot-SA", "MJ12bot", "DotBot", "BLEXBot", "Bytespider"];
+      for (const bot of spamBots) {
+        expect(text).toContain(`User-agent: ${bot}`);
+        expect(text).toContain(`Disallow: /`);
+      }
+    });
+
+    it("allows additional useful crawlers with Allow: /", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+
+      const usefulBots = ["Applebot-Extended", "Googlebot", "Bingbot", "DuckDuckBot"];
+      for (const bot of usefulBots) {
+        expect(text).toContain(`User-agent: ${bot}`);
+        expect(text).toContain(`Allow: /`);
+      }
+    });
+
+    it("preserves existing AI crawler allows", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+
+      expect(text).toContain("GPTBot");
+      expect(text).toContain("ClaudeBot");
+      expect(text).toContain("PerplexityBot");
+      expect(text).toContain("Google-Extended");
+    });
   });
 
   // ─── sitemap.xml (SLICE-18-3) ─────────────────────────────────
