@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 
 describe("SLICE-23-7: Lighthouse CI regression test config", () => {
-  const configPath = resolve(process.cwd(), "lighthouserc.js");
+  const configPath = resolve(process.cwd(), "lighthouserc.cjs");
   let config: { ci: { collect: { url: string[] }; assert: { assertions: Record<string, [string, { minScore: number }]> } } };
 
   it("lighthouserc.js exists", () => {
