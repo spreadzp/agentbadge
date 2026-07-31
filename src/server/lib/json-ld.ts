@@ -57,7 +57,7 @@ export function organizationLd(): object {
     name: "AgentGate",
     url: BASE_URL,
     logo: `${BASE_URL}/icons/logo-32.png`,
-    sameAs: ["https://github.com/spreadzp/agentgate"],
+    sameAs: ["https://raw.githubusercontent.com/spreadzp/agentgate/refs/heads/main/AGENT-REFERENCE.md"],
   };
 }
 
