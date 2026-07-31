@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { compress } from "hono/compress";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { openAPIRouteHandler } from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
@@ -63,10 +62,9 @@ initSentry();
 
 const app = new Hono();
 
+app.use(requestLoggerMiddleware());
 app.use(corsMiddleware());
 app.use(securityHeaders());
-app.use(compress());
-app.use(requestLoggerMiddleware());
 app.use((c, next) => signatureVerificationMiddleware(c as any, next));
 app.use(rateLimitMiddleware());
 
