@@ -58,10 +58,11 @@ describe("Dashboard — GET /", () => {
     expect(html).toContain("htmx.org");
   });
 
-  it("includes Tailwind CDN script tag", async () => {
+  it("includes prebuilt Tailwind CSS link", async () => {
     const res = await app.request("/", { method: "GET" });
     const html = await res.text();
-    expect(html).toContain("tailwindcss");
+    expect(html).toContain('/css/tailwind.css');
+    expect(html).not.toContain('cdn.tailwindcss.com');
   });
 
   it("contains feed container with hx-get='/ui/feed' and hx-trigger='load, every 5s'", async () => {

@@ -141,9 +141,10 @@ describe("SLICE-19-1: LandingLayout", () => {
     expect(html).toContain("htmx.org");
   });
 
-  it("includes Tailwind CDN", () => {
+  it("includes prebuilt Tailwind CSS link", () => {
     const html = LandingLayout("<p>test</p>").toString();
-    expect(html).toContain("tailwindcss");
+    expect(html).toContain('/css/tailwind.css');
+    expect(html).not.toContain('cdn.tailwindcss.com');
   });
 
   it("includes CSS animation keyframes (fade-in-up, gradient-shift, pulse-glow)", () => {

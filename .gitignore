@@ -3,5 +3,6 @@ node_modules/
 dist/
 storage/
 graphify-out/
+public/css/
 MEDICAL-DATA-WORKFLOW.md
 docs/AGENT-MEDICAL-TASKS-GUIDE.md

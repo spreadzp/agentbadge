@@ -132,9 +132,13 @@ app.get("/health", (c) => {
   });
 });
 
-// Serve static files from public/ (favicon, icons, logo)
+// Serve static files from public/ (favicon, icons, logo, CSS)
 app.use("/favicon.ico", serveStatic({ root: "./public", path: "/favicon.ico" }));
 app.use("/icons/*", serveStatic({ root: "./public" }));
+app.use("/css/*", serveStatic({ root: "./public" }), (c, next) => {
+  c.header("Cache-Control", "public, max-age=31536000, immutable");
+  return next();
+});
 
 app.route("/", passportRoutes);
 app.route("/", verifyRoutes);

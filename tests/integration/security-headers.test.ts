@@ -67,10 +67,10 @@ describe("SLICE-21-6: Security Headers Middleware", () => {
 
   // ─── CSP specifics ────────────────────────────────────────
 
-  it("CSP allows Tailwind CDN", async () => {
+  it("CSP does not allow Tailwind CDN (prebuilt CSS used)", async () => {
     const res = await app.request("/");
     const csp = res.headers.get("Content-Security-Policy") ?? "";
-    expect(csp).toContain("https://cdn.tailwindcss.com");
+    expect(csp).not.toContain("cdn.tailwindcss.com");
   });
 
   it("CSP allows HTMX CDN", async () => {

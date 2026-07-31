@@ -61,7 +61,7 @@ export function LandingLayout(
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
         ${raw(jsonLdHtml)}
         <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-        <script src="https://cdn.tailwindcss.com" defer></script>
+        <link rel="stylesheet" href="/css/tailwind.css" />
         <style>
           @keyframes nav-pop {
             0%   { transform: scale(1); }

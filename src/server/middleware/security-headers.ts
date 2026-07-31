@@ -2,8 +2,8 @@ import type { MiddlewareHandler } from "hono";
 
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com/htmx.org",
-  "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com",
+  "script-src 'self' 'unsafe-inline' https://unpkg.com/htmx.org",
+  "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' https:",
   "connect-src 'self' https://*.hedera.com",
