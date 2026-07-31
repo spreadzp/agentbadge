@@ -35,7 +35,11 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <meta property="og:type" content="website" />
         <meta property="og:url" content="${canonicalUrl}" />
         <meta property="og:image" content="${ogImage}" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:site_name" content="AgentGate" />
+        <meta property="og:locale" content="en_US" />
+        <meta name="theme-color" content="#0f172a" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="${pageTitle}" />
         <meta name="twitter:description" content="${description}" />
@@ -44,8 +48,8 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
         ${raw(jsonLdHtml)}
-        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+        <script src="https://cdn.tailwindcss.com" defer></script>
         <style>
           @keyframes nav-pop {
             0%   { transform: scale(1); }
@@ -192,6 +196,15 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
           <main class="min-w-0 flex-1 px-4 py-8 md:px-8">${raw(children)}</main>
         </div>
         ${raw(Footer().toString())}
+
+        <noscript>
+          <div class="mx-auto max-w-2xl p-8 text-center">
+            <h1 class="text-2xl font-bold text-white">AgentGate — On-Chain Identity for AI Agents</h1>
+            <p class="mt-4 text-slate-400">This page uses HTMX for live data. JavaScript is disabled.</p>
+            <a href="/dashboard" class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-white">View Dashboard</a>
+          </div>
+        </noscript>
+
         <script>
           function showMore(btn, count) {
             var container = btn.previousElementSibling;

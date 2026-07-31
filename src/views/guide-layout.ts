@@ -29,7 +29,7 @@ export function GuideLayout(
         <link rel="canonical" href="${BASE_URL}" />
         <link rel="alternate" type="text/markdown" title="Markdown version" href="" />
         ${raw(jsonLdHtml)}
-        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.tailwindcss.com" defer></script>
       </head>
       <body class="min-h-full">
         <div class="mx-auto max-w-4xl px-4 py-8">

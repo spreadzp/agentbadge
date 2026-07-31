@@ -43,5 +43,8 @@ export function Footer(): ReturnType<typeof html> {
         </svg>
       </a>
     </div>
+    <div class="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+      © 2026 AgentGate. MIT License. Built on Hedera.
+    </div>
   </footer>`;
 }

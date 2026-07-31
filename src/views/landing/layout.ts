@@ -47,7 +47,11 @@ export function LandingLayout(
         <meta property="og:type" content="website" />
         <meta property="og:url" content="${canonicalUrl}" />
         <meta property="og:image" content="${ogImage}" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:site_name" content="AgentGate" />
+        <meta property="og:locale" content="en_US" />
+        <meta name="theme-color" content="#0f172a" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="${pageTitle}" />
         <meta name="twitter:description" content="${description}" />
@@ -56,8 +60,8 @@ export function LandingLayout(
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
         ${raw(jsonLdHtml)}
-        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+        <script src="https://cdn.tailwindcss.com" defer></script>
         <style>
           @keyframes nav-pop {
             0%   { transform: scale(1); }
@@ -128,9 +132,10 @@ export function LandingLayout(
         ${raw(Footer().toString())}
 
         <noscript>
-          <div style="padding: 2rem; text-align: center; background: #0f172a; color: #94a3b8;">
-            <p>AgentGate works best with JavaScript enabled for live updates.</p>
-            <p>You can still access the <a href="/dashboard" style="color: #34d399;">dashboard</a> without JavaScript.</p>
+          <div class="mx-auto max-w-2xl p-8 text-center">
+            <h1 class="text-2xl font-bold text-white">AgentGate — On-Chain Identity for AI Agents</h1>
+            <p class="mt-4 text-slate-400">This page uses HTMX for live data. JavaScript is disabled.</p>
+            <a href="/dashboard" class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-white">View Dashboard</a>
           </div>
         </noscript>
 

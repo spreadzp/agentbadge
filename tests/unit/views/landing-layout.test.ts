@@ -23,7 +23,7 @@ describe("SLICE-19-1: Footer (shared)", () => {
 
   it("contains social links (GitHub)", () => {
     const html = Footer().toString();
-    expect(html).toContain('github.com');
+    expect(html).toContain('githubusercontent.com');
   });
 
   it("contains HashScan external link", () => {
@@ -190,5 +190,89 @@ describe("SLICE-19-1: Layout regression after Footer extraction", () => {
     const html = Layout("<p>test</p>").toString();
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("</html>");
+  });
+});
+
+// ─── SLICE-21-8: Layout Enhancements ─────────────────────────
+describe("SLICE-21-8: Layout Enhancements", () => {
+  describe("LandingLayout", () => {
+    it("contains theme-color meta tag", () => {
+      const html = LandingLayout("<p>test</p>").toString();
+      expect(html).toContain('name="theme-color"');
+      expect(html).toContain('#0f172a');
+    });
+
+    it("contains og:locale meta tag", () => {
+      const html = LandingLayout("<p>test</p>").toString();
+      expect(html).toContain('og:locale');
+      expect(html).toContain('en_US');
+    });
+
+    it("contains og:image:width and og:image:height", () => {
+      const html = LandingLayout("<p>test</p>").toString();
+      expect(html).toContain('og:image:width');
+      expect(html).toContain('1200');
+      expect(html).toContain('og:image:height');
+      expect(html).toContain('630');
+    });
+
+    it("all script tags have defer attribute", () => {
+      const html = LandingLayout("<p>test</p>").toString();
+      const scriptTags = html.match(/<script\s+src="[^"]*"\s*(?:[^>]*)>/g) ?? [];
+      for (const tag of scriptTags) {
+        expect(tag).toContain("defer");
+      }
+    });
+
+    it("noscript contains product name and /dashboard link", () => {
+      const html = LandingLayout("<p>test</p>").toString();
+      expect(html).toContain("<noscript>");
+      expect(html).toContain("AgentGate — On-Chain Identity for AI Agents");
+      expect(html).toContain('href="/dashboard"');
+    });
+  });
+
+  describe("Layout (dashboard)", () => {
+    it("contains theme-color meta tag", () => {
+      const html = Layout("<p>test</p>").toString();
+      expect(html).toContain('name="theme-color"');
+      expect(html).toContain('#0f172a');
+    });
+
+    it("contains og:locale meta tag", () => {
+      const html = Layout("<p>test</p>").toString();
+      expect(html).toContain('og:locale');
+      expect(html).toContain('en_US');
+    });
+
+    it("contains og:image:width and og:image:height", () => {
+      const html = Layout("<p>test</p>").toString();
+      expect(html).toContain('og:image:width');
+      expect(html).toContain('og:image:height');
+    });
+
+    it("all script tags have defer attribute", () => {
+      const html = Layout("<p>test</p>").toString();
+      const scriptTags = html.match(/<script\s+src="[^"]*"\s*(?:[^>]*)>/g) ?? [];
+      for (const tag of scriptTags) {
+        expect(tag).toContain("defer");
+      }
+    });
+
+    it("noscript contains product name and /dashboard link", () => {
+      const html = Layout("<p>test</p>").toString();
+      expect(html).toContain("<noscript>");
+      expect(html).toContain("AgentGate — On-Chain Identity for AI Agents");
+      expect(html).toContain('href="/dashboard"');
+    });
+  });
+
+  describe("Footer copyright bar", () => {
+    it("contains copyright with AgentGate and MIT License", () => {
+      const html = Footer().toString();
+      expect(html).toContain("© 2026 AgentGate");
+      expect(html).toContain("MIT License");
+      expect(html).toContain("Built on Hedera");
+    });
   });
 });
