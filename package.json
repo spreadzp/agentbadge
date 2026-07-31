@@ -19,7 +19,8 @@
     "demo:full-flow": "bun scripts/full-flow-demo.ts",
     "demo:medical-marketplace": "bun scripts/demo-medical-marketplace.ts",
     "push": "git add -A && git commit -m \"$(date +%Y-%m-%d) update\" && git push origin main",
-    "deploy": "fly deploy"
+    "deploy": "fly deploy",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
     "@agentgate-hedera/hedera-core": "^0.1.7",
@@ -43,11 +44,13 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.14.0",
     "@resvg/resvg-js": "^2.6.2",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "bun-types": "^1.1.0",
     "eslint": "^9.0.0",
+    "lighthouse": "^12.0.0",
     "prettier": "^3.3.0",
     "tailwindcss": "3",
     "typescript": "^5.9.0",
