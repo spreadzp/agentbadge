@@ -155,6 +155,16 @@ describe("SLICE-19-1: LandingLayout", () => {
     expect(html).toContain("@keyframes");
   });
 
+  it("animations use only compositable properties (opacity, transform)", () => {
+    const html = LandingLayout("<p>test</p>").toString();
+    const keyframeBlocks = html.match(/@keyframes\s+\S+\s*\{[^}]*\}/g) ?? [];
+    for (const block of keyframeBlocks) {
+      expect(block).not.toContain("box-shadow");
+      expect(block).not.toContain("background-position");
+    }
+    expect(html).toContain("will-change");
+  });
+
   it("includes scroll-reveal animation", () => {
     const html = LandingLayout("<p>test</p>").toString();
     expect(html).toContain("scroll-reveal");

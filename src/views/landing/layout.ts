@@ -91,20 +91,25 @@ export function LandingLayout(
             to { opacity: 1; transform: translateY(0); }
           }
           @keyframes gradient-shift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
+            0%, 100% { transform: translateX(0%); }
+            50% { transform: translateX(-50%); }
           }
           @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0; transform: scale(1.08); }
           }
           .fade-in-up { animation: fade-in-up 0.6s ease-out; }
           .gradient-animated {
             background: linear-gradient(120deg, #10b981, #0ea5e9, #10b981);
             background-size: 200% 200%;
             animation: gradient-shift 8s ease infinite;
+            will-change: transform;
           }
-          .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+          .pulse-glow {
+            position: relative;
+            animation: pulse-glow 2s ease-in-out infinite;
+            will-change: opacity, transform;
+          }
           .scroll-reveal {
             animation: fade-in-up 0.6s ease-out both;
             animation-timeline: view();
