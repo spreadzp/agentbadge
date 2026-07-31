@@ -165,6 +165,20 @@ describe("SLICE-19-1: LandingLayout", () => {
     expect(html).toContain("will-change");
   });
 
+  it("includes preconnect and dns-prefetch for external origins", () => {
+    const html = LandingLayout("<p>test</p>").toString();
+    expect(html).toContain('rel="preconnect"');
+    expect(html).toContain('https://unpkg.com');
+    expect(html).toContain('rel="dns-prefetch"');
+  });
+
+  it("includes preload hint for prebuilt CSS", () => {
+    const html = LandingLayout("<p>test</p>").toString();
+    expect(html).toContain('rel="preload"');
+    expect(html).toContain('/css/tailwind.css');
+    expect(html).toContain('as="style"');
+  });
+
   it("includes scroll-reveal animation", () => {
     const html = LandingLayout("<p>test</p>").toString();
     expect(html).toContain("scroll-reveal");
