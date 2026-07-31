@@ -4,33 +4,48 @@ import {
   webSiteLd,
   organizationLd,
   howToLd,
+  breadcrumbListLd,
   landingJsonLd,
   renderJsonLd,
 } from "../../../src/server/lib/json-ld";
 import { BASE_URL } from "../../../src/server/lib/page-meta";
 
 describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
-  // ─── HowTo schema ────────────────────────────────────────
+  // ─── HowTo schema (SLICE-19-3, refactored in SLICE-21-1) ───
   describe("howToLd()", () => {
+    const landingHowTo = howToLd({
+      name: "How to Get an AI Agent Passport on AgentGate",
+      description: "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
+      path: "/",
+      totalTime: "PT30M",
+      estimatedCost: { currency: "HBAR", value: "50" },
+      steps: [
+        { name: "Step 1", text: "Do something" },
+        { name: "Step 2", text: "Do another thing" },
+        { name: "Step 3", text: "Do more" },
+        { name: "Step 4", text: "Finish" },
+      ],
+    });
+
     it("returns @type HowTo", () => {
-      const schema = howToLd() as Record<string, unknown>;
+      const schema = landingHowTo as Record<string, unknown>;
       expect(schema["@type"]).toBe("HowTo");
       expect(schema["@context"]).toBe("https://schema.org");
     });
 
     it("has name with AgentGate", () => {
-      const schema = howToLd() as Record<string, unknown>;
+      const schema = landingHowTo as Record<string, unknown>;
       expect(schema.name as string).toContain("AgentGate");
     });
 
     it("has exactly 4 steps", () => {
-      const schema = howToLd() as Record<string, unknown>;
+      const schema = landingHowTo as Record<string, unknown>;
       const steps = schema.step as unknown[];
       expect(steps).toHaveLength(4);
     });
 
     it("each step has @type HowToStep and text", () => {
-      const schema = howToLd() as Record<string, unknown>;
+      const schema = landingHowTo as Record<string, unknown>;
       const steps = schema.step as Record<string, unknown>[];
       for (const step of steps) {
         expect(step["@type"]).toBe("HowToStep");
@@ -40,8 +55,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
     });
 
     it("has totalTime or estimatedCost", () => {
-      const schema = howToLd() as Record<string, unknown>;
-      // HowTo should have totalTime or estimatedCost
+      const schema = landingHowTo as Record<string, unknown>;
       expect(schema.totalTime || schema.estimatedCost).toBeDefined();
     });
   });
@@ -105,6 +119,108 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
       const html = renderJsonLd([{ "@type": "Test", text: "<script>alert(1)</script>" }]);
       expect(html).toContain("\\u003c");
       expect(html).not.toContain("<script>alert");
+    });
+  });
+
+  // ─── SLICE-21-1: HowTo + BreadcrumbList ───────────────────
+  describe("SLICE-21-1: howToLd() parameterized", () => {
+    it("accepts opts and returns correct structure", () => {
+      const schema = howToLd({
+        name: "Test HowTo",
+        description: "Test description",
+        path: "/test",
+        totalTime: "PT10M",
+        steps: [
+          { name: "Step A", text: "Do A", url: "/a" },
+          { name: "Step B", text: "Do B" },
+        ],
+      }) as Record<string, unknown>;
+      expect(schema["@type"]).toBe("HowTo");
+      expect(schema.name).toBe("Test HowTo");
+      expect(schema.description).toBe("Test description");
+      expect(schema.url).toBe(`${BASE_URL}/test`);
+      expect(schema.inLanguage).toBe("en");
+      expect(schema.totalTime).toBe("PT10M");
+      const steps = schema.step as Record<string, unknown>[];
+      expect(steps).toHaveLength(2);
+      expect(steps[0].position).toBe(1);
+      expect(steps[0].name).toBe("Step A");
+      expect(steps[0].text).toBe("Do A");
+      expect(steps[0].url).toBe(`${BASE_URL}/a`);
+      expect(steps[1].position).toBe(2);
+      expect(steps[1].url).toBeUndefined();
+    });
+
+    it("includes estimatedCost when provided", () => {
+      const schema = howToLd({
+        name: "Test",
+        description: "Test",
+        path: "/test",
+        estimatedCost: { currency: "HBAR", value: "50" },
+        steps: [{ name: "Step", text: "Do" }],
+      }) as Record<string, unknown>;
+      const cost = schema.estimatedCost as Record<string, unknown>;
+      expect(cost["@type"]).toBe("MonetaryAmount");
+      expect(cost.currency).toBe("HBAR");
+      expect(cost.value).toBe("50");
+    });
+
+    it("omits totalTime and estimatedCost when not provided", () => {
+      const schema = howToLd({
+        name: "Test",
+        description: "Test",
+        path: "/test",
+        steps: [{ name: "Step", text: "Do" }],
+      }) as Record<string, unknown>;
+      expect(schema.totalTime).toBeUndefined();
+      expect(schema.estimatedCost).toBeUndefined();
+    });
+
+    it("preserves absolute URLs in step.url", () => {
+      const schema = howToLd({
+        name: "Test",
+        description: "Test",
+        path: "/test",
+        steps: [{ name: "Step", text: "Do", url: "https://example.com/page" }],
+      }) as Record<string, unknown>;
+      const steps = schema.step as Record<string, unknown>[];
+      expect(steps[0].url).toBe("https://example.com/page");
+    });
+  });
+
+  describe("SLICE-21-1: breadcrumbListLd()", () => {
+    it("returns BreadcrumbList with correct structure", () => {
+      const schema = breadcrumbListLd([
+        { name: "Home", path: "/" },
+        { name: "Agent Guide", path: "/agent-guide" },
+      ]) as Record<string, unknown>;
+      expect(schema["@type"]).toBe("BreadcrumbList");
+      expect(schema["@context"]).toBe("https://schema.org");
+      const items = schema.itemListElement as Record<string, unknown>[];
+      expect(items).toHaveLength(2);
+      expect(items[0].position).toBe(1);
+      expect(items[0].name).toBe("Home");
+      expect(items[0].item).toBe(`${BASE_URL}/`);
+      expect(items[1].position).toBe(2);
+      expect(items[1].name).toBe("Agent Guide");
+      expect(items[1].item).toBe(`${BASE_URL}/agent-guide`);
+    });
+
+    it("preserves absolute URLs in item", () => {
+      const schema = breadcrumbListLd([
+        { name: "External", path: "https://example.com" },
+      ]) as Record<string, unknown>;
+      const items = schema.itemListElement as Record<string, unknown>[];
+      expect(items[0].item).toBe("https://example.com");
+    });
+
+    it("handles single item", () => {
+      const schema = breadcrumbListLd([
+        { name: "Home", path: "/" },
+      ]) as Record<string, unknown>;
+      const items = schema.itemListElement as Record<string, unknown>[];
+      expect(items).toHaveLength(1);
+      expect(items[0].position).toBe(1);
     });
   });
 

@@ -9,6 +9,8 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
+import { GuideLayout } from "../../views/guide-layout";
 
 export const marketGuideRoutes = new Hono();
 
@@ -377,8 +379,36 @@ marketGuideRoutes.get(
   }),
   (c) => {
     const markdown = generateMarketGuide();
-    return new Response(markdown, {
-      headers: { "Content-Type": "text/markdown; charset=utf-8" },
-    });
+    const accept = c.req.header("Accept") ?? "";
+    const wantsMarkdown = accept.includes("text/markdown") || accept.includes("text/plain");
+
+    if (wantsMarkdown) {
+      return new Response(markdown, {
+        headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      });
+    }
+
+    const schemas = [
+      ...defaultCoreSchemas(),
+      howToLd({
+        name: "Use the AgentGate Marketplace",
+        description: "Post tasks, discover, claim, deliver, and complete with P2P HBAR payment on Hedera.",
+        path: "/market-guide",
+        totalTime: "PT10M",
+        steps: [
+          { name: "Browse tasks", text: "GET /market/tasks to list available tasks filtered by capability." },
+          { name: "Claim a task", text: "POST /market/tasks/:taskId/claim with your DID to start working." },
+          { name: "Deliver results", text: "POST /market/tasks/:taskId/deliver with result body or IPFS CID." },
+          { name: "Complete and pay", text: "POST /market/tasks/:taskId/complete to trigger P2P HBAR payment." },
+        ],
+      }),
+      breadcrumbListLd([
+        { name: "Home", path: "/" },
+        { name: "Marketplace Guide", path: "/market-guide" },
+      ]),
+    ];
+
+    const html = GuideLayout("Marketplace Guide", markdown, schemas);
+    return c.html(html);
   },
 );

@@ -82,60 +82,80 @@ export function defaultCoreSchemas(): object[] {
   return [softwareApplicationLd(), webSiteLd(), organizationLd()];
 }
 
-// ─── Landing Page Schemas (SLICE-19-3) ────────────────────────
+// ─── HowTo + BreadcrumbList Schemas (SLICE-21-1) ─────────────
 
-export function howToLd(): object {
-  return {
+export function howToLd(opts: {
+  name: string;
+  description: string;
+  path: string;
+  steps: { name: string; text: string; url?: string }[];
+  totalTime?: string;
+  estimatedCost?: { currency: string; value: string };
+}): object {
+  const schema: Record<string, unknown> = {
     "@context": SCHEMA_CONTEXT,
     "@type": "HowTo",
-    name: "How to Get an AI Agent Passport on AgentGate",
-    description:
-      "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
-    totalTime: "PT30M",
-    estimatedCost: {
+    name: opts.name,
+    description: opts.description,
+    url: `${BASE_URL}${opts.path}`,
+    inLanguage: "en",
+    step: opts.steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+      ...(s.url ? { url: s.url.startsWith("http") ? s.url : `${BASE_URL}${s.url}` } : {}),
+    })),
+  };
+  if (opts.totalTime) schema.totalTime = opts.totalTime;
+  if (opts.estimatedCost) {
+    schema.estimatedCost = {
       "@type": "MonetaryAmount",
-      currency: "HBAR",
-      value: "50",
-    },
-    step: [
-      {
-        "@type": "HowToStep",
-        position: 1,
-        name: "Request a Passport",
-        text: "Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). The x402 payment is processed automatically.",
-        url: `${BASE_URL}/agent-guide`,
-      },
-      {
-        "@type": "HowToStep",
-        position: 2,
-        name: "Receive NFT Passport",
-        text: "After payment confirmation, an HTS NFT is minted on Hedera with your agent's DID (did:hcs:tokenId:serial). The passport is verifiable on HashScan.",
-        url: `${BASE_URL}/dashboard`,
-      },
-      {
-        "@type": "HowToStep",
-        position: 3,
-        name: "Register in HCS Directory",
-        text: "Register your agent in the Hedera Consensus Service directory with capabilities, endpoint URL, and skills. Other agents can discover you on-chain.",
-        url: `${BASE_URL}/agent-guide`,
-      },
-      {
-        "@type": "HowToStep",
-        position: 4,
-        name: "Start Interacting with Other Agents",
-        text: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents. All interactions are signed and recorded on Hedera.",
-        url: `${BASE_URL}/market-guide`,
-      },
-    ],
+      currency: opts.estimatedCost.currency,
+      value: opts.estimatedCost.value,
+    };
+  }
+  return schema;
+}
+
+export function breadcrumbListLd(
+  items: { name: string; path: string }[],
+): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: it.name,
+      item: it.path.startsWith("http") ? it.path : `${BASE_URL}${it.path}`,
+    })),
   };
 }
+
+// ─── Landing Page Schemas (SLICE-19-3) ────────────────────────
+
+const LANDING_HOWTO = howToLd({
+  name: "How to Get an AI Agent Passport on AgentGate",
+  description:
+    "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
+  path: "/",
+  totalTime: "PT30M",
+  estimatedCost: { currency: "HBAR", value: "50" },
+  steps: [
+    { name: "Request a Passport", text: "Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). The x402 payment is processed automatically.", url: "/agent-guide" },
+    { name: "Receive NFT Passport", text: "After payment confirmation, an HTS NFT is minted on Hedera with your agent's DID (did:hcs:tokenId:serial). The passport is verifiable on HashScan.", url: "/dashboard" },
+    { name: "Register in HCS Directory", text: "Register your agent in the Hedera Consensus Service directory with capabilities, endpoint URL, and skills. Other agents can discover you on-chain.", url: "/agent-guide" },
+    { name: "Start Interacting with Other Agents", text: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents. All interactions are signed and recorded on Hedera.", url: "/market-guide" },
+  ],
+});
 
 export function landingJsonLd(): object[] {
   return [
     softwareApplicationLd(),
     webSiteLd(),
     organizationLd(),
-    howToLd(),
+    LANDING_HOWTO,
   ];
 }
 

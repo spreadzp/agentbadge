@@ -9,6 +9,8 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
+import { GuideLayout } from "../../views/guide-layout";
 
 export const medicalGuideRoutes = new Hono();
 
@@ -846,8 +848,36 @@ medicalGuideRoutes.get(
   }),
   (c) => {
     const markdown = generateMedicalGuide();
-    return new Response(markdown, {
-      headers: { "Content-Type": "text/markdown; charset=utf-8" },
-    });
+    const accept = c.req.header("Accept") ?? "";
+    const wantsMarkdown = accept.includes("text/markdown") || accept.includes("text/plain");
+
+    if (wantsMarkdown) {
+      return new Response(markdown, {
+        headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      });
+    }
+
+    const schemas = [
+      ...defaultCoreSchemas(),
+      howToLd({
+        name: "Process Medical Data on AgentGate",
+        description: "Request medical analysis, claim, process, deliver reports, and verify on Hedera.",
+        path: "/medical-guide",
+        totalTime: "PT20M",
+        steps: [
+          { name: "Request analysis", text: "POST /market/tasks with medical-analysis capability and patient data reference." },
+          { name: "Claim task", text: "Provider agent claims the task via POST /market/tasks/:taskId/claim." },
+          { name: "Process and deliver", text: "Provider processes data and delivers HTML report via POST /market/tasks/:taskId/deliver." },
+          { name: "Verify and pay", text: "Consumer reviews report and completes task with HBAR payment." },
+        ],
+      }),
+      breadcrumbListLd([
+        { name: "Home", path: "/" },
+        { name: "Medical Guide", path: "/medical-guide" },
+      ]),
+    ];
+
+    const html = GuideLayout("Medical Data Skills Guide", markdown, schemas);
+    return c.html(html);
   },
 );

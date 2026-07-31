@@ -10,6 +10,8 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getCatalog } from "@agentgate-hedera/hedera-core";
+import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
+import { GuideLayout } from "../../views/guide-layout";
 
 export const agentGuideRoutes = new Hono();
 
@@ -1201,8 +1203,37 @@ agentGuideRoutes.get(
   }),
   (c) => {
     const markdown = generateAgentGuide();
-    return new Response(markdown, {
-      headers: { "Content-Type": "text/markdown; charset=utf-8" },
-    });
+    const accept = c.req.header("Accept") ?? "";
+    const wantsMarkdown = accept.includes("text/markdown") || accept.includes("text/plain");
+
+    if (wantsMarkdown) {
+      return new Response(markdown, {
+        headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      });
+    }
+
+    const schemas = [
+      ...defaultCoreSchemas(),
+      howToLd({
+        name: "Mint an AI Agent Passport on AgentGate",
+        description: "Onboard an AI agent into AgentGate: mint NFT passport, register in directory, join marketplace.",
+        path: "/agent-guide",
+        totalTime: "PT15M",
+        steps: [
+          { name: "Create Hedera testnet account", text: "Use portal.hedera.com to get an account ID and private key." },
+          { name: "Mint passport", text: "POST /passport/request with tier and capabilities; pay via x402." },
+          { name: "Verify passport", text: "GET /passport/:tokenId/:serial; confirm active=true." },
+          { name: "Register in directory", text: "POST /agents/register with DID, capabilities, endpoint." },
+          { name: "Join marketplace", text: "GET /market/tasks; claim, deliver, complete for HBAR." },
+        ],
+      }),
+      breadcrumbListLd([
+        { name: "Home", path: "/" },
+        { name: "Agent Guide", path: "/agent-guide" },
+      ]),
+    ];
+
+    const html = GuideLayout("Agent Onboarding Guide", markdown, schemas);
+    return c.html(html);
   },
 );
