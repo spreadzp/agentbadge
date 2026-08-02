@@ -10,7 +10,7 @@ interface ErrorBody {
 
 export function errorResponse(
   c: Context,
-  status: 400 | 401 | 402 | 403 | 404 | 409 | 429 | 500,
+  status: 400 | 401 | 402 | 403 | 404 | 409 | 422 | 429 | 500,
   code: ErrorCode,
   error: string,
   opts?: { retryable?: boolean; hint?: string },

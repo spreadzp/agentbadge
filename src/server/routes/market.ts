@@ -13,11 +13,12 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage } from "@agentgate-hedera/hedera-core";
-import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
+import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, deleteScheduledTransaction } from "@agentgate-hedera/hedera-core";
+import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { taskLinks } from "../lib/hateoas";
+import { runVerification } from "../../verifiers";
 
 export const marketRoutes = new Hono();
 
@@ -253,9 +254,41 @@ marketRoutes.post(
 
       updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
 
-      logger.info("Marketplace task claimed", { txId, taskId, claimerDid });
+      // SLICE-24-8: Create escrow scheduled transfer (poster → claimer)
+      try {
+        const fromAccountId = await didToAccountId(task.posterDid);
+        const toAccountId = await didToAccountId(claimerDid);
+        if (!fromAccountId || !toAccountId) {
+          logger.error("Escrow creation failed: could not resolve DID to account ID", { taskId, posterDid: task.posterDid, claimerDid });
+          return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve DID to account ID for escrow creation");
+        }
 
-      return c.json({ taskId, txId, timestamp }, 200);
+        const { scheduleId, scheduleTxId } = await createScheduledTransfer(
+          fromAccountId,
+          toAccountId,
+          task.priceHbar,
+          { memo: `escrow:${task.taskId}:${claimerDid}` },
+        );
+
+        setEscrowStatus(taskId, "pending", { scheduleId, scheduleTxId });
+
+        const escrowMessage = {
+          type: "task_escrow_created" as const,
+          taskId,
+          scheduleId,
+          amountHbar: task.priceHbar,
+          timestamp,
+        };
+        await submitTaskMessage(escrowMessage);
+
+        logger.info("Marketplace task claimed with escrow", { txId, taskId, claimerDid, scheduleId });
+        return c.json({ taskId, txId, scheduleId, timestamp }, 200);
+      } catch (escrowErr) {
+        const escrowMsg = escrowErr instanceof Error ? escrowErr.message : "Escrow creation failed";
+        logger.error("Escrow creation failed, reverting task to posted", { error: escrowMsg, taskId });
+        returnTaskToMarket(taskId);
+        return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "HCS submission failed";
       logger.error("Marketplace task claim failed", { error: msg });
@@ -432,9 +465,40 @@ marketRoutes.post(
 
       updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
 
-      logger.info("Marketplace task claimed with key", { txId, taskId, claimerDid });
+      // SLICE-24-8: Create escrow scheduled transfer (poster → claimer)
+      try {
+        const posterAccountId = await didToAccountId(task.posterDid);
+        if (!posterAccountId) {
+          logger.error("Escrow creation failed: could not resolve poster DID", { taskId, posterDid: task.posterDid });
+          return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID for escrow creation");
+        }
 
-      return c.json({ taskId, txId, timestamp }, 200);
+        const { scheduleId, scheduleTxId } = await createScheduledTransfer(
+          posterAccountId,
+          fromAccountId,
+          task.priceHbar,
+          { memo: `escrow:${task.taskId}:${claimerDid}` },
+        );
+
+        setEscrowStatus(taskId, "pending", { scheduleId, scheduleTxId });
+
+        const escrowMessage = {
+          type: "task_escrow_created" as const,
+          taskId,
+          scheduleId,
+          amountHbar: task.priceHbar,
+          timestamp,
+        };
+        await submitTaskMessage(escrowMessage);
+
+        logger.info("Marketplace task claimed with key + escrow", { txId, taskId, claimerDid, scheduleId });
+        return c.json({ taskId, txId, scheduleId, timestamp }, 200);
+      } catch (escrowErr) {
+        const escrowMsg = escrowErr instanceof Error ? escrowErr.message : "Escrow creation failed";
+        logger.error("Escrow creation failed (claim-with-key), reverting task to posted", { error: escrowMsg, taskId });
+        returnTaskToMarket(taskId);
+        return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Signed claim failed";
       logger.error("Signed claim failed", { error: msg, taskId });
@@ -714,22 +778,69 @@ marketRoutes.post(
     }
 
     try {
-      const toAccountId = await didToAccountId(task.claimerDid);
-      if (!toAccountId) {
-        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+      // SLICE-24-9: Run verification BEFORE releasing payment
+      const verification = await runVerification(task, task.resultBody, task.resultIpfs);
+
+      if (!verification.passed) {
+        updateTaskVerificationAttempts(taskId, verification.attempts);
+
+        if (verification.shouldReturnToMarket) {
+          // 3 failed attempts: cancel escrow + return to market
+          if (task.scheduleId) {
+            try {
+              await deleteScheduledTransaction(task.scheduleId);
+              setEscrowStatus(taskId, "cancelled");
+            } catch (cancelErr) {
+              logger.error("Escrow cancellation failed during verification failure", { error: cancelErr instanceof Error ? cancelErr.message : "unknown", taskId });
+            }
+          }
+          returnTaskToMarket(taskId);
+          return errorResponse(c, 422, "VERIFICATION_FAILED", `Verification failed after ${verification.attempts} attempts, task returned to marketplace: ${verification.result.report}`);
+        }
+
+        // < 3 attempts: stay in delivered, agent can retry
+        return errorResponse(c, 422, "VERIFICATION_FAILED", `Verification failed (attempt ${verification.attempts}/3): ${verification.result.report}`);
       }
 
+      // Verification passed → release escrow or direct transfer
       let paymentTxId: string;
-      if (hasSignature) {
-        const sigB64Array = JSON.parse(signature!) as string[];
-        const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
-        paymentTxId = await transferHbarWithSignature(txBytes!, publicKey!, signatureBytes);
-      } else {
-        const fromAccountId = await didToAccountId(posterDid);
-        if (!fromAccountId) {
-          return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+
+      if (task.scheduleId) {
+        // Escrow path: sign scheduled tx to release HBAR
+        if (hasPrivateKey) {
+          const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey!);
+          paymentTxId = result.txId;
+        } else if (hasSignature) {
+          // Signature-based: use posterPrivateKey if available (fallback to direct for now)
+          const fromAccountId = await didToAccountId(posterDid);
+          if (!fromAccountId) {
+            return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+          }
+          // For signature-based, fall back to direct transfer (escrow signing requires private key)
+          const sigB64Array = JSON.parse(signature!) as string[];
+          const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+          paymentTxId = await transferHbarWithSignature(txBytes!, publicKey!, signatureBytes);
+        } else {
+          return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Payment method required for escrow release: posterPrivateKey");
         }
-        paymentTxId = await transferHbarWithKey(fromAccountId, posterPrivateKey!, toAccountId, task.priceHbar);
+        setEscrowStatus(taskId, "released");
+      } else {
+        // Backward compat: no escrow, direct transfer
+        const toAccountId = await didToAccountId(task.claimerDid);
+        if (!toAccountId) {
+          return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+        }
+        if (hasSignature) {
+          const sigB64Array = JSON.parse(signature!) as string[];
+          const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+          paymentTxId = await transferHbarWithSignature(txBytes!, publicKey!, signatureBytes);
+        } else {
+          const fromAccountId = await didToAccountId(posterDid);
+          if (!fromAccountId) {
+            return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+          }
+          paymentTxId = await transferHbarWithKey(fromAccountId, posterPrivateKey!, toAccountId, task.priceHbar);
+        }
       }
 
       const timestamp = Math.floor(Date.now() / 1000);
@@ -860,32 +971,55 @@ marketRoutes.post(
     }
 
     try {
-      const fromAccountId = await didToAccountId(posterDid);
-      if (!fromAccountId) {
-        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+      // SLICE-24-9: Run verification BEFORE releasing payment
+      const verification = await runVerification(task, task.resultBody, task.resultIpfs);
+
+      if (!verification.passed) {
+        updateTaskVerificationAttempts(taskId, verification.attempts);
+
+        if (verification.shouldReturnToMarket) {
+          if (task.scheduleId) {
+            try {
+              await deleteScheduledTransaction(task.scheduleId);
+              setEscrowStatus(taskId, "cancelled");
+            } catch (cancelErr) {
+              logger.error("Escrow cancellation failed during verification failure", { error: cancelErr instanceof Error ? cancelErr.message : "unknown", taskId });
+            }
+          }
+          returnTaskToMarket(taskId);
+          return errorResponse(c, 422, ErrorCodes.VERIFICATION_FAILED, `Verification failed after ${verification.attempts} attempts, task returned to marketplace: ${verification.result.report}`);
+        }
+
+        return errorResponse(c, 422, ErrorCodes.VERIFICATION_FAILED, `Verification failed (attempt ${verification.attempts}/3): ${verification.result.report}`);
       }
 
-      const toAccountId = await didToAccountId(task.claimerDid);
-      if (!toAccountId) {
-        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+      // Verification passed → release escrow or direct transfer
+      let paymentTxId: string;
+
+      if (task.scheduleId) {
+        // Escrow path: sign scheduled tx to release HBAR
+        const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey);
+        paymentTxId = result.txId;
+        setEscrowStatus(taskId, "released");
+      } else {
+        // Backward compat: no escrow, direct transfer
+        const fromAccountId = await didToAccountId(posterDid);
+        if (!fromAccountId) {
+          return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+        }
+
+        const toAccountId = await didToAccountId(task.claimerDid);
+        if (!toAccountId) {
+          return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
+        }
+
+        const { txBytes } = await prepareTransferTransaction(fromAccountId, toAccountId, task.priceHbar);
+        const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
+        const sigB64Array = JSON.parse(signature) as string[];
+        const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+        paymentTxId = await transferHbarWithSignature(txBytes, publicKey, signatureBytes);
       }
 
-      // 1. Prepare frozen transfer transaction
-      const { txBytes } = await prepareTransferTransaction(
-        fromAccountId,
-        toAccountId,
-        task.priceHbar,
-      );
-
-      // 2. Sign the frozen transaction bytes
-      const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
-
-      // 3. Submit signed transaction to Hedera
-      const sigB64Array = JSON.parse(signature) as string[];
-      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
-      const paymentTxId = await transferHbarWithSignature(txBytes, publicKey, signatureBytes);
-
-      // 4. Complete task with paymentTxId
       const timestamp = Math.floor(Date.now() / 1000);
       const message = {
         type: "task_completed" as const,
@@ -1040,6 +1174,203 @@ marketRoutes.post(
       const msg = err instanceof Error ? err.message : "Signed task posting failed";
       logger.error("Signed task posting failed", { error: msg });
       return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/cancel ───────────────────────────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/cancel",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Cancel a task and return escrow HBAR to poster",
+    description:
+      "Poster cancels a task in posted/claimed/delivered status. " +
+      "If a scheduled transaction (escrow) exists, it is deleted and HBAR returned. " +
+      "Task status set to cancelled. (SLICE-24-10)",
+    responses: {
+      200: { description: "Task cancelled successfully" },
+      400: { description: "Task cannot be cancelled from current status" },
+      403: { description: "Caller is not the poster" },
+      404: { description: "Task not found" },
+      500: { description: "Escrow cancellation or HCS submission failed" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { posterDid } = body as { posterDid?: string };
+
+    if (!posterDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterDid");
+    }
+
+    if (!isValidA2ADid(posterDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    const taskId = c.req.param("taskId");
+    const task = getTaskById(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (task.posterDid !== posterDid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can cancel this task");
+    }
+
+    if (!["posted", "claimed", "delivered"].includes(task.status)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Task cannot be cancelled from status: ${task.status}`);
+    }
+
+    try {
+      if (task.scheduleId) {
+        try {
+          await deleteScheduledTransaction(task.scheduleId);
+          setEscrowStatus(taskId, "cancelled");
+        } catch (cancelErr) {
+          logger.error("Escrow cancellation failed during task cancel", { error: cancelErr instanceof Error ? cancelErr.message : "unknown", taskId });
+        }
+      }
+
+      updateTaskStatus(taskId, "cancelled");
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_cancelled" as const,
+        taskId,
+        scheduleId: task.scheduleId,
+        timestamp,
+      };
+
+      const hcsTxId = await submitTaskMessage(message);
+
+      logger.info("Marketplace task cancelled", { hcsTxId, taskId });
+
+      return c.json({ taskId, cancelledAt: timestamp, hbarReturned: task.scheduleId ? task.priceHbar : 0 }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Cancel failed";
+      logger.error("Marketplace task cancel failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+    }
+  },
+);
+
+// ─── POST /market/tasks/:taskId/increase-reward ──────────────────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/increase-reward",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Increase task reward (delete old escrow + create new)",
+    description:
+      "Poster increases the reward for a task. Old scheduled transaction is deleted, " +
+      "new one created with the higher amount. Only allowed in posted/claimed status. (SLICE-24-10)",
+    responses: {
+      200: { description: "Reward increased successfully" },
+      400: { description: "Invalid new price or task status" },
+      403: { description: "Caller is not the poster" },
+      404: { description: "Task not found" },
+      500: { description: "Escrow recreation or HCS submission failed" },
+    },
+  }),
+  async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+    }
+
+    const { posterDid, newPriceHbar } = body as {
+      posterDid?: string;
+      newPriceHbar?: number;
+    };
+
+    if (!posterDid) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: posterDid");
+    }
+
+    if (!isValidA2ADid(posterDid)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    if (typeof newPriceHbar !== "number" || newPriceHbar <= 0) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing or invalid field: newPriceHbar");
+    }
+
+    const taskId = c.req.param("taskId");
+    const task = getTaskById(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (task.posterDid !== posterDid) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can increase reward");
+    }
+
+    if (!["posted", "claimed"].includes(task.status)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Reward can only be increased for tasks in posted/claimed status, current: ${task.status}`);
+    }
+
+    if (newPriceHbar <= task.priceHbar) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `newPriceHbar (${newPriceHbar}) must be greater than current price (${task.priceHbar})`);
+    }
+
+    try {
+      const fromAccountId = await didToAccountId(posterDid);
+      if (!fromAccountId) {
+        return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
+      }
+
+      if (task.scheduleId) {
+        try {
+          await deleteScheduledTransaction(task.scheduleId);
+        } catch (cancelErr) {
+          logger.error("Old escrow deletion failed during increase-reward", { error: cancelErr instanceof Error ? cancelErr.message : "unknown", taskId });
+        }
+      }
+
+      const { scheduleId: newScheduleId, scheduleTxId: newScheduleTxId } = await createScheduledTransfer(
+        fromAccountId,
+        task.claimerDid ?? "",
+        newPriceHbar,
+        { memo: `escrow:${taskId}:${newPriceHbar}` },
+      );
+
+      setEscrowStatus(taskId, "pending", {
+        priceHbar: newPriceHbar,
+        scheduleId: newScheduleId,
+        scheduleTxId: newScheduleTxId,
+      });
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const message = {
+        type: "task_reward_increased" as const,
+        taskId,
+        oldPriceHbar: task.priceHbar,
+        newPriceHbar,
+        newScheduleId,
+        timestamp,
+      };
+
+      const hcsTxId = await submitTaskMessage(message);
+
+      logger.info("Marketplace task reward increased", { hcsTxId, taskId, oldPrice: task.priceHbar, newPrice: newPriceHbar });
+
+      return c.json({ taskId, newScheduleId, newPriceHbar, hcsTxId }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Reward increase failed";
+      logger.error("Marketplace reward increase failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
     }
   },
 );

@@ -56,9 +56,19 @@ import { loadConfig } from "../config/env";
 import { initSentry, captureError } from "./lib/sentry";
 import { ErrorCodes } from "./lib/error-codes";
 import { errorResponse } from "./lib/error-response";
+import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
 
 // Initialize Sentry before anything else (no-op if SENTRY_DSN not set)
 initSentry();
+
+// Register verifiers (SLICE-24-4, SLICE-24-5)
+const verifierRegistry = VerifierRegistry.getInstance();
+verifierRegistry.register(new NoopVerifier());
+
+if (process.env.DATAHUB_ENABLED === "true") {
+  verifierRegistry.register(new DataHubVerifier());
+  logger.info("DataHub verifier registered", { url: process.env.DATAHUB_MCP_URL });
+}
 
 const app = new Hono();
 
