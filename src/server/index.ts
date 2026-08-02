@@ -23,6 +23,7 @@ import {
   registerGuideTools,
   registerSigningTools,
   registerDiscoveryTools,
+  registerEscrowTools,
   listTools,
 } from "@agentgate-hedera/mcp";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
@@ -199,6 +200,7 @@ registerMarketplaceTools();
 registerGuideTools();
 registerSigningTools();
 registerDiscoveryTools();
+registerEscrowTools();
 
 const port = Number(process.env.PORT ?? 4021);
 

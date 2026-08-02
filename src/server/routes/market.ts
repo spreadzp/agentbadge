@@ -1374,3 +1374,88 @@ marketRoutes.post(
     }
   },
 );
+
+// ─── GET /market/tasks/:taskId/escrow-status ─────────────────────
+
+marketRoutes.get(
+  "/market/tasks/:taskId/escrow-status",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Get escrow status for a task",
+    description:
+      "Returns escrow fields (scheduleId, escrowStatus, verificationAttempts, verifierType, priceHbar) for a task. (SLICE-24-11)",
+    responses: {
+      200: { description: "Escrow status returned successfully" },
+      404: { description: "Task not found" },
+    },
+  }),
+  (c) => {
+    const taskId = c.req.param("taskId");
+    const task = getTaskById(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    return c.json({
+      taskId,
+      scheduleId: (task as any).scheduleId ?? null,
+      escrowStatus: (task as any).escrowStatus ?? "none",
+      verificationAttempts: (task as any).verificationAttempts ?? 0,
+      verifierType: (task as any).verifierType ?? "noop",
+      priceHbar: task.priceHbar,
+    }, 200);
+  },
+);
+
+// ─── POST /market/tasks/:taskId/verify ───────────────────────────
+
+marketRoutes.post(
+  "/market/tasks/:taskId/verify",
+  describeRoute({
+    tags: ["Marketplace"],
+    summary: "Run verification on a task without completing it",
+    description:
+      "Triggers verification on a delivered task and returns the result. Does NOT complete the task or sign escrow. Useful for manual verification checks. (SLICE-24-11)",
+    responses: {
+      200: { description: "Verification result returned" },
+      400: { description: "Task not in delivered status" },
+      404: { description: "Task not found" },
+      500: { description: "Verification failed" },
+    },
+  }),
+  async (c) => {
+    const taskId = c.req.param("taskId");
+    const task = getTaskById(taskId);
+
+    if (!task) {
+      return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
+    }
+
+    if (!["delivered", "claimed"].includes(task.status)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Verification requires delivered or claimed status, current: ${task.status}`);
+    }
+
+    try {
+      const outcome = await runVerification(task as any);
+
+      if (outcome.attempts !== undefined) {
+        updateTaskVerificationAttempts(taskId, outcome.attempts);
+      }
+
+      logger.info("Marketplace task verification triggered", { taskId, passed: outcome.passed, attempts: outcome.attempts });
+
+      return c.json({
+        taskId,
+        passed: outcome.passed,
+        attempts: outcome.attempts,
+        shouldReturnToMarket: outcome.shouldReturnToMarket,
+        report: outcome.result?.report ?? null,
+      }, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Verification failed";
+      logger.error("Marketplace verification failed", { error: msg, taskId });
+      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+    }
+  },
+);

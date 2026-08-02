@@ -8,6 +8,7 @@ import {
   registerGuideTools,
   registerSigningTools,
   registerDiscoveryTools,
+  registerEscrowTools,
 } from "@agentgate-hedera/mcp";
 
 registerPassportTools();
@@ -18,6 +19,7 @@ registerMarketplaceTools();
 registerGuideTools();
 registerSigningTools();
 registerDiscoveryTools();
+registerEscrowTools();
 
 startStdio().catch((e) => {
   console.error("Failed to start MCP stdio server", e);
