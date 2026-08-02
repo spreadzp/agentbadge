@@ -191,10 +191,11 @@ uiRoutes.get("/ui/feed", async (c) => {
     const PAGE_SIZE = 4;
     const page = sorted.slice(offset, offset + PAGE_SIZE);
     const remaining = sorted.length - offset - PAGE_SIZE;
-    const fragment = html`${page.map((nft: NftInfo) => raw(PassportCard({ nft }).toString())).join("")}${remaining > 0
-      ? html`<button type="button" hx-get="/ui/feed?offset=${offset + PAGE_SIZE}" hx-target="this" hx-swap="outerHTML" class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">Show more (${remaining} remaining)</button>`
-      : ""}`.toString();
-    return c.html(fragment);
+    const cardsHtml = page.map((nft: NftInfo) => PassportCard({ nft }).toString()).join("");
+    const buttonHtml = remaining > 0
+      ? `<button type="button" hx-get="/ui/feed?offset=${offset + PAGE_SIZE}" hx-target="this" hx-swap="outerHTML" class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">Show more (${remaining} remaining)</button>`
+      : "";
+    return c.html(raw(cardsHtml + buttonHtml));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return c.html(
@@ -901,10 +902,11 @@ uiRoutes.get("/ui/audit", async (c) => {
       const sorted = [...events].reverse();
       const page = sorted.slice(offset, offset + PAGE_SIZE);
       const remaining = sorted.length - offset - PAGE_SIZE;
-      const fragment = html`${page.map((event) => raw(AuditRow({ event }).toString())).join("")}${remaining > 0
-        ? html`<button type="button" hx-get="/ui/audit?offset=${offset + PAGE_SIZE}" hx-target="this" hx-swap="outerHTML" class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">Show more (${remaining} remaining)</button>`
-        : ""}`.toString();
-      return c.html(fragment);
+      const rowsHtml = page.map((event) => AuditRow({ event }).toString()).join("");
+      const buttonHtml = remaining > 0
+        ? `<button type="button" hx-get="/ui/audit?offset=${offset + PAGE_SIZE}" hx-target="this" hx-swap="outerHTML" class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">Show more (${remaining} remaining)</button>`
+        : "";
+      return c.html(raw(rowsHtml + buttonHtml));
     }
 
     return c.html(wrapFragment(c, AuditFragment({ events }).toString(), "Audit Stream"));
