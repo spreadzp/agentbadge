@@ -101,7 +101,7 @@ describe("Passport Detail — GET /ui/passport/:tokenId/:serial", () => {
       issuedAt: 1700000000,
       endpoint: "https://agent.example.com",
       version: 1,
-      issuer: "AgentGate",
+      issuer: "AgentBadge",
     });
 
     const res = await app.request("/ui/passport/0.0.1234567/5", {
@@ -144,7 +144,7 @@ describe("Passport Detail — GET /ui/passport/:tokenId/:serial", () => {
       issuedAt: 1700000000,
       endpoint: "",
       version: 1,
-      issuer: "AgentGate",
+      issuer: "AgentBadge",
     });
 
     const res = await app.request("/ui/passport/0.0.1234567/3", {

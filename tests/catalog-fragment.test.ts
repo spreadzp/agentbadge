@@ -77,7 +77,7 @@ describe("Catalog Fragment — GET /ui/catalog", () => {
     const res = await app.request("/ui/catalog", { method: "GET" });
     const html = await res.text();
     expect(html).toContain("<html");
-    expect(html).toContain("AgentGate");
+    expect(html).toContain("AgentBadge");
     expect(html).toContain("Catalog");
   });
 });

@@ -2,7 +2,7 @@
  * SLICE-18-9: E2E Crawler-Simulation Test Suite
  *
  * Simulates what a lightweight AI crawler (no JS, no hints, first contact)
- * experiences when fetching pages from AgentGate. Proves that a bot can
+ * experiences when fetching pages from AgentBadge. Proves that a bot can
  * extract complete product understanding from server-rendered HTML alone.
  */
 import { describe, it, expect, beforeAll } from "vitest";
@@ -109,8 +109,8 @@ describe("SLICE-18-9: E2E Crawler-Simulation", () => {
       expect(res.status).toBe(200);
     });
 
-    it("contains product name 'AgentGate'", () => {
-      expect(html).toContain("AgentGate");
+    it("contains product name 'AgentBadge'", () => {
+      expect(html).toContain("AgentBadge");
     });
 
     it("has meta description extractable from HTML alone", () => {

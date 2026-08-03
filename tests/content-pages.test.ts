@@ -97,7 +97,7 @@ describe("UseCasesPage unit", () => {
   it("renders Article JSON-LD", () => {
     const schemas = [
       articleLd({
-        title: "How AgentGate Works in Practice",
+        title: "How AgentBadge Works in Practice",
         description: "test desc",
         path: "/use-cases",
         sections: USE_CASES.map((uc) => ({
@@ -109,7 +109,7 @@ describe("UseCasesPage unit", () => {
     const parsed = JSON.parse(JSON.stringify(schemas));
     const article = parsed.find((s: { "@type": string }) => s["@type"] === "Article");
     expect(article).toBeDefined();
-    expect(article.headline).toBe("How AgentGate Works in Practice");
+    expect(article.headline).toBe("How AgentBadge Works in Practice");
     expect(article.articleBody).toContain(USE_CASES[0].title);
   });
 
@@ -185,7 +185,7 @@ describe("Content pages integration", () => {
     const schemas = JSON.parse(match![1]);
     const article = schemas.find((s: { "@type": string }) => s["@type"] === "Article");
     expect(article).toBeDefined();
-    expect(article.headline).toContain("AgentGate");
+    expect(article.headline).toContain("AgentBadge");
   });
 
   it("GET /use-cases has unique title and meta description", async () => {
@@ -370,7 +370,7 @@ describe("Epic 20: Static content pages integration", () => {
     const res = await app.request("/about");
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("About AgentGate");
+    expect(html).toContain("About AgentBadge");
     expect(html).toContain("Mission");
     expect(html).not.toContain("Loading");
   });
@@ -384,7 +384,7 @@ describe("Epic 20: Static content pages integration", () => {
     const schemas = JSON.parse(match![1]);
     const article = schemas.find((s: { "@type": string }) => s["@type"] === "Article");
     expect(article).toBeDefined();
-    expect(article.headline).toContain("AgentGate");
+    expect(article.headline).toContain("AgentBadge");
   });
 
   it("GET /pricing returns 200 with tier prices", async () => {
@@ -462,7 +462,7 @@ describe("Epic 20: LLM Policy endpoint", () => {
     const res = await policyApp.request("/.well-known/llm-policy.json");
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.policy).toContain("AgentGate");
+    expect(json.policy).toContain("AgentBadge");
     expect(json.version).toBe("1.0");
   });
 

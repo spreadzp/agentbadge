@@ -31,7 +31,7 @@ describe("SLICE-19-7: How It Works section (4 steps)", () => {
     it("step titles match HowTo JSON-LD exactly", () => {
       const html = HowItWorksSection().toString();
       const schema = howToLd({
-        name: "How to Get an AI Agent Passport on AgentGate",
+        name: "How to Get an AI Agent Passport on AgentBadge",
         description: "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
         path: "/",
         totalTime: "PT30M",

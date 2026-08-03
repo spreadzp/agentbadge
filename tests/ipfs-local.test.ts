@@ -26,7 +26,7 @@ const sampleMetadata: PassportMetadata = {
   issuedAt: 1700000000,
   endpoint: "https://hermes.agent/api",
   version: 1,
-  issuer: "AgentGate",
+  issuer: "AgentBadge",
 };
 
 describe("ipfs/local", () => {

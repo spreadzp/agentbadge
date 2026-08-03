@@ -35,7 +35,7 @@ describe("SLICE-19-6: Problem→Solution section (4 cards)", () => {
       const html = ProblemSolutionSection().toString();
       // Should contain "problem" or "without" and "solution" or "with" patterns
       expect(html).toMatch(/without|problem/i);
-      expect(html).toMatch(/with|solution|AgentGate/i);
+      expect(html).toMatch(/with|solution|AgentBadge/i);
     });
 
     it("contains fade-in-up animation class", () => {

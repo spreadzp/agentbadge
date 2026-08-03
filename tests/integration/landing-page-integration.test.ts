@@ -20,7 +20,7 @@ describe("SLICE-19-13: Landing page integration — meta, JSON-LD, no-JS, full n
   describe("Meta tags", () => {
     it("has title tag with landing page title", () => {
       expect(landingHtml).toContain("<title>");
-      expect(landingHtml).toContain("AgentGate");
+      expect(landingHtml).toContain("AgentBadge");
     });
 
     it("has meta description", () => {

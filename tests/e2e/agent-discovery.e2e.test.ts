@@ -1,7 +1,7 @@
 /**
  * SLICE-17-11: E2E Agent Discovery Workflow Test
  *
- * Simulates an AI agent discovering and using AgentGate end-to-end.
+ * Simulates an AI agent discovering and using AgentBadge end-to-end.
  * Uses Hono's app.fetch() (no network server needed).
  * MOCK_HEDERA=true — no real Hedera calls.
  */
@@ -269,7 +269,7 @@ describe("E2E: Agent Discovery Workflow", () => {
       });
       expect(res.status).toBe(200);
       const text = await res.text();
-      expect(text).toContain("# AgentGate Passport Tiers");
+      expect(text).toContain("# AgentBadge Passport Tiers");
       expect(text).toContain("| Tier |");
     });
   });

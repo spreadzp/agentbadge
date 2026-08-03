@@ -149,7 +149,7 @@ describe("Stats Fragment — GET /ui/stats", () => {
         issuedAt: 1700000000,
         endpoint: "",
         version: 1,
-        issuer: "AgentGate",
+        issuer: "AgentBadge",
       })
       .mockResolvedValueOnce({
         name: "Agent2",
@@ -163,7 +163,7 @@ describe("Stats Fragment — GET /ui/stats", () => {
         issuedAt: 1700000003,
         endpoint: "",
         version: 1,
-        issuer: "AgentGate",
+        issuer: "AgentBadge",
       });
 
     const res = await app.request("/ui/stats", {

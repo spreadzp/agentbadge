@@ -29,7 +29,7 @@ const mockMetadata = (overrides: Record<string, unknown> = {}) => ({
   issuedAt: 1700000000,
   endpoint: "https://agent.example.com",
   version: 1,
-  issuer: "AgentGate",
+  issuer: "AgentBadge",
   ...overrides,
 });
 

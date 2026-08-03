@@ -97,8 +97,8 @@ describe("SLICE-19-14: E2E crawler-simulation", () => {
       html = await res.text();
     });
 
-    it("contains product name (AgentGate)", () => {
-      expect(html).toMatch(/AgentGate/i);
+    it("contains product name (AgentBadge)", () => {
+      expect(html).toMatch(/AgentBadge/i);
     });
 
     it("contains meta description", () => {

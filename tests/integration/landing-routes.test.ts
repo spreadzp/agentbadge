@@ -43,7 +43,7 @@ describe("SLICE-19-2: Routing — landing.ts + /dashboard", () => {
       const res = await app.request("/");
       const html = await res.text();
       expect(html).toContain("<title>");
-      expect(html).not.toContain("Dashboard — AgentGate");
+      expect(html).not.toContain("Dashboard — AgentBadge");
     });
 
     it("contains skip-to-content link", async () => {

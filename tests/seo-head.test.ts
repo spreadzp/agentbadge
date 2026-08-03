@@ -35,7 +35,7 @@ describe("SLICE-18-1: SEO Head Layer", () => {
       expect(html).toContain('<meta property="og:type" content="website"');
       expect(html).toContain('<meta property="og:url"');
       expect(html).toContain('<meta property="og:image"');
-      expect(html).toContain('<meta property="og:site_name" content="AgentGate"');
+      expect(html).toContain('<meta property="og:site_name" content="AgentBadge"');
     });
 
     it("renders Twitter card tags", () => {
@@ -99,7 +99,7 @@ describe("SLICE-18-4: JSON-LD Core Schemas", () => {
       const schema = softwareApplicationLd() as Record<string, unknown>;
       expect(schema["@context"]).toBe("https://schema.org");
       expect(schema["@type"]).toBe("SoftwareApplication");
-      expect(schema.name).toBe("AgentGate");
+      expect(schema.name).toBe("AgentBadge");
       expect(schema.url).toBe(BASE_URL);
       expect(schema.description).toBeDefined();
       expect(schema.offers).toBeDefined();
@@ -111,7 +111,7 @@ describe("SLICE-18-4: JSON-LD Core Schemas", () => {
       const schema = webSiteLd() as Record<string, unknown>;
       expect(schema["@context"]).toBe("https://schema.org");
       expect(schema["@type"]).toBe("WebSite");
-      expect(schema.name).toBe("AgentGate");
+      expect(schema.name).toBe("AgentBadge");
       expect(schema.url).toBe(BASE_URL);
       const action = schema.potentialAction as Record<string, unknown>;
       expect(action["@type"]).toBe("SearchAction");
@@ -123,7 +123,7 @@ describe("SLICE-18-4: JSON-LD Core Schemas", () => {
       const schema = organizationLd() as Record<string, unknown>;
       expect(schema["@context"]).toBe("https://schema.org");
       expect(schema["@type"]).toBe("Organization");
-      expect(schema.name).toBe("AgentGate");
+      expect(schema.name).toBe("AgentBadge");
       expect(schema.url).toBe(BASE_URL);
       expect(schema.logo).toContain("/icons/logo-32.png");
     });
@@ -199,7 +199,7 @@ describe("SLICE-18-5: JSON-LD Entity Schemas", () => {
       const schema = passportLd({ tokenId: "0.0.1", serial: 2, tier: "bronze" }) as Record<string, unknown>;
       const isPartOf = schema.isPartOf as Record<string, unknown>;
       expect(isPartOf["@type"]).toBe("SoftwareApplication");
-      expect(isPartOf.name).toBe("AgentGate");
+      expect(isPartOf.name).toBe("AgentBadge");
     });
 
     it("includes ownerDID as creator when provided", () => {

@@ -17,7 +17,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
   // ─── HowTo schema (SLICE-19-3, refactored in SLICE-21-1) ───
   describe("howToLd()", () => {
     const landingHowTo = howToLd({
-      name: "How to Get an AI Agent Passport on AgentGate",
+      name: "How to Get an AI Agent Passport on AgentBadge",
       description: "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
       path: "/",
       totalTime: "PT30M",
@@ -36,9 +36,9 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
       expect(schema["@context"]).toBe("https://schema.org");
     });
 
-    it("has name with AgentGate", () => {
+    it("has name with AgentBadge", () => {
       const schema = landingHowTo as Record<string, unknown>;
-      expect(schema.name as string).toContain("AgentGate");
+      expect(schema.name as string).toContain("AgentBadge");
     });
 
     it("has exactly 4 steps", () => {
@@ -233,7 +233,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
       const schema = softwareApplicationLd() as Record<string, unknown>;
       const offers = schema.offers as Record<string, unknown>;
       expect(offers["@type"]).toBe("OfferCatalog");
-      expect(offers.name).toBe("AgentGate Passport Tiers");
+      expect(offers.name).toBe("AgentBadge Passport Tiers");
       const items = offers.itemListElement as Record<string, unknown>[];
       expect(items).toHaveLength(4);
       for (const item of items) {
@@ -292,14 +292,14 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
   describe("SLICE-21-3: webPageLd()", () => {
     it("returns WebPage schema with required fields", () => {
       const schema = webPageLd({
-        title: "About AgentGate",
-        description: "Learn about the AgentGate platform.",
+        title: "About AgentBadge",
+        description: "Learn about the AgentBadge platform.",
         path: "/about",
       }) as Record<string, unknown>;
       expect(schema["@type"]).toBe("WebPage");
       expect(schema["@context"]).toBe("https://schema.org");
-      expect(schema.name).toBe("About AgentGate");
-      expect(schema.description).toBe("Learn about the AgentGate platform.");
+      expect(schema.name).toBe("About AgentBadge");
+      expect(schema.description).toBe("Learn about the AgentBadge platform.");
       expect(schema.url).toBe(`${BASE_URL}/about`);
       expect(schema.inLanguage).toBe("en");
     });
@@ -312,7 +312,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
       }) as Record<string, unknown>;
       const isPartOf = schema.isPartOf as Record<string, unknown>;
       expect(isPartOf["@type"]).toBe("WebSite");
-      expect(isPartOf.name).toBe("AgentGate");
+      expect(isPartOf.name).toBe("AgentBadge");
       expect(isPartOf.url).toBe(BASE_URL);
     });
 
@@ -362,7 +362,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
     it("softwareApplicationLd still returns valid schema", () => {
       const schema = softwareApplicationLd() as Record<string, unknown>;
       expect(schema["@type"]).toBe("SoftwareApplication");
-      expect(schema.name).toBe("AgentGate");
+      expect(schema.name).toBe("AgentBadge");
     });
 
     it("webSiteLd still returns valid schema", () => {
@@ -374,7 +374,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
     it("organizationLd still returns valid schema", () => {
       const schema = organizationLd() as Record<string, unknown>;
       expect(schema["@type"]).toBe("Organization");
-      expect(schema.name).toBe("AgentGate");
+      expect(schema.name).toBe("AgentBadge");
     });
   });
 });

@@ -47,7 +47,7 @@ describe("Layout — footer", () => {
 
   it("renders project description in footer", () => {
     const html = Layout("<p>test</p>").toString();
-    expect(html).toContain("AgentGate");
+    expect(html).toContain("AgentBadge");
     expect(html).toContain("Hedera");
   });
 
