@@ -1,6 +1,6 @@
-# AgentGate Scripts
+# AgentBadge Scripts
 
-Utility scripts for the AgentGate server.
+Utility scripts for the AgentBadge server.
 
 ## sign-transaction.ts
 
