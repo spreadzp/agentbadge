@@ -154,11 +154,12 @@ app.get("/health", (c) => {
   });
 });
 
-// Serve static files from public/ (favicon, icons, logo, CSS)
+// Serve static files from public/ (favicon, icons, logo, CSS, Google verification)
 app.use("/favicon.ico", (c, next) => {
   c.header("Cache-Control", "public, max-age=86400");
   return next();
 }, serveStatic({ root: "./public", path: "/favicon.ico" }));
+app.use("/google23c66f9606672661.html", serveStatic({ root: "./public", path: "/google23c66f9606672661.html" }));
 app.use("/icons/*", (c, next) => {
   c.header("Cache-Control", "public, max-age=31536000, immutable");
   return next();
