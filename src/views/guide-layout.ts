@@ -29,7 +29,20 @@ export function GuideLayout(
         <title>${title} — AgentGate</title>
         <meta name="description" content="${title} for AI agents on AgentGate — Hedera on-chain identity platform." />
         <link rel="canonical" href="${canonicalUrl}" />
-        <link rel="alternate" type="text/markdown" title="Markdown version" href="" />
+        <meta property="og:title" content="${title} — AgentGate" />
+        <meta property="og:description" content="${title} for AI agents on AgentGate — Hedera on-chain identity platform." />
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content="${canonicalUrl}" />
+        <meta property="og:image" content="${BASE_URL}/icons/og-image.png" />
+        <meta property="og:site_name" content="AgentGate" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${title} — AgentGate" />
+        <meta name="twitter:description" content="${title} for AI agents on AgentGate — Hedera on-chain identity platform." />
+        <meta name="twitter:image" content="${BASE_URL}/icons/og-image.png" />
+        <meta name="twitter:site" content="@agentgate" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
+        <link rel="security.txt" href="/.well-known/security.txt" />
         ${raw(jsonLdHtml)}
         <link rel="stylesheet" href="/css/tailwind.css" />
       </head>

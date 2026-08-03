@@ -44,9 +44,13 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <meta name="twitter:title" content="${pageTitle}" />
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
+        <meta name="twitter:site" content="@agentgate" />
+        <meta property="og:image:alt" content="AgentGate — On-Chain Identity for AI Agents on Hedera" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
+        <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://unpkg.com" crossorigin />
         <link rel="dns-prefetch" href="https://unpkg.com" />
         <link rel="preload" href="/css/tailwind.css" as="style" />

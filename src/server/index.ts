@@ -160,6 +160,14 @@ app.use("/favicon.ico", (c, next) => {
   return next();
 }, serveStatic({ root: "./public", path: "/favicon.ico" }));
 app.use("/google23c66f9606672661.html", serveStatic({ root: "./public", path: "/google23c66f9606672661.html" }));
+app.use("/manifest.json", (c) => {
+  c.header("Cache-Control", "public, max-age=86400");
+  return serveStatic({ root: "./public", path: "/manifest.json" })(c, () => Promise.resolve());
+});
+app.use("/.well-known/security.txt", (c) => {
+  c.header("Cache-Control", "public, max-age=86400");
+  return serveStatic({ root: "./public", path: "/.well-known/security.txt" })(c, () => Promise.resolve());
+});
 app.use("/icons/*", (c, next) => {
   c.header("Cache-Control", "public, max-age=31536000, immutable");
   return next();
