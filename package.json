@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/",
+    "seed-medical-tasks": "bun src/scripts/seed-medical-tasks.ts",
     "format": "prettier --write src/ tests/",
     "mcp": "bun src/mcp/entry.ts",
     "hermes": "bun scripts/hermes.ts",
