@@ -117,7 +117,7 @@ function loadLlmPolicy(): object {
     }
   }
   return {
-    policy: "AgentGate LLM Crawler Policy",
+    policy: "AgentBadge LLM Crawler Policy",
     version: "1.0",
     summary: "Default policy. See repository for the canonical version.",
   };
@@ -129,7 +129,7 @@ wellKnownRoutes.get(
     tags: ["Discovery"],
     summary: "LLM crawler policy",
     description:
-      "Returns a JSON document specifying how LLM providers and crawlers may use AgentGate content. Covers pre-training, fine-tuning, RAG indexing, summarization, quotation, and agentic actions.",
+      "Returns a JSON document specifying how LLM providers and crawlers may use AgentBadge content. Covers pre-training, fine-tuning, RAG indexing, summarization, quotation, and agentic actions.",
     responses: { 200: { description: "LLM policy JSON" } },
   }),
   (c) =>

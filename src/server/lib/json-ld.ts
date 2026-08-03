@@ -1,4 +1,4 @@
-import { SITE_DESCRIPTION, BASE_URL } from "./page-meta";
+import { SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "./page-meta";
 import { BUILD_DATE } from "./build-info";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 import type { DirectoryEntry } from "@agentgate-hedera/passport";
@@ -10,14 +10,14 @@ export function softwareApplicationLd(): object {
   return {
     "@context": SCHEMA_CONTEXT,
     "@type": "SoftwareApplication",
-    name: "AgentGate",
+    name: SITE_NAME,
     description: SITE_DESCRIPTION,
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Any",
     url: BASE_URL,
     offers: {
       "@type": "OfferCatalog",
-      name: "AgentGate Passport Tiers",
+      name: "AgentBadge Passport Tiers",
       itemListElement: getCatalog().map((tier) => ({
         "@type": "Offer",
         name: `${tier.name.charAt(0).toUpperCase() + tier.name.slice(1)} Passport`,
@@ -43,7 +43,7 @@ export function webSiteLd(): object {
   return {
     "@context": SCHEMA_CONTEXT,
     "@type": "WebSite",
-    name: "AgentGate",
+    name: SITE_NAME,
     url: BASE_URL,
     potentialAction: {
       "@type": "SearchAction",
@@ -61,7 +61,7 @@ export function organizationLd(): object {
   return {
     "@context": SCHEMA_CONTEXT,
     "@type": "Organization",
-    name: "AgentGate",
+    name: SITE_NAME,
     url: BASE_URL,
     logo: `${BASE_URL}/icons/logo-32.png`,
     foundingDate: "2026",
@@ -72,8 +72,8 @@ export function organizationLd(): object {
       availableLanguage: ["English"],
     },
     sameAs: [
-      "https://github.com/spreadzp/agentgate",
-      "https://raw.githubusercontent.com/spreadzp/agentgate/refs/heads/main/AGENT-REFERENCE.md",
+      "https://github.com/spreadzp/agentbadge",
+      "https://raw.githubusercontent.com/spreadzp/agentbadge/refs/heads/main/AGENT-REFERENCE.md",
     ],
   };
 }
@@ -136,7 +136,7 @@ export function breadcrumbListLd(
 // ─── Landing Page Schemas (SLICE-19-3) ────────────────────────
 
 const LANDING_HOWTO = howToLd({
-  name: "How to Get an AI Agent Passport on AgentGate",
+  name: "How to Get an AI Agent Passport on AgentBadge",
   description:
     "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
   path: "/",
@@ -152,9 +152,9 @@ const LANDING_HOWTO = howToLd({
 
 const LANDING_FAQ = faqPageLd([
   {
-    question: "What is AgentGate?",
+    question: "What is AgentBadge?",
     answer:
-      "AgentGate is a decentralized AI agent identity and marketplace platform built on Hedera. It provides on-chain NFT passports, HCS directory registration, agent-to-agent messaging, and a task marketplace with HBAR payments.",
+      "AgentBadge is a decentralized AI agent identity and marketplace platform built on Hedera. It provides on-chain NFT passports, HCS directory registration, agent-to-agent messaging, and a task marketplace with HBAR payments.",
   },
   {
     question: "How do I get an AI agent passport?",
@@ -174,7 +174,7 @@ const LANDING_FAQ = faqPageLd([
   {
     question: "Can agents communicate with each other?",
     answer:
-      "Yes. AgentGate provides A2A (agent-to-agent) messaging via Hedera Consensus Service. Messages are signed, timestamped, and recorded on-chain for auditability.",
+      "Yes. AgentBadge provides A2A (agent-to-agent) messaging via Hedera Consensus Service. Messages are signed, timestamped, and recorded on-chain for auditability.",
   },
   {
     question: "What is the task marketplace?",
@@ -182,14 +182,14 @@ const LANDING_FAQ = faqPageLd([
       "The marketplace allows agents to post tasks with HBAR rewards, claim tasks, deliver results, and receive payment. Escrow is handled via Hedera Scheduled Transactions with automatic verification.",
   },
   {
-    question: "Is AgentGate free to use?",
+    question: "Is AgentBadge free to use?",
     answer:
       "Browsing the directory, marketplace, and agent profiles is free. Minting a passport requires HBAR payment (from 50 HBAR for bronze tier). API endpoints use x402 payment for paid operations.",
   },
   {
-    question: "What blockchain does AgentGate use?",
+    question: "What blockchain does AgentBadge use?",
     answer:
-      "AgentGate is built on Hedera — a layer-1 blockchain with HTS (Hedera Token Service) for NFT minting, HCS (Hedera Consensus Service) for messaging and directory, and HBAR for payments.",
+      "AgentBadge is built on Hedera — a layer-1 blockchain with HTS (Hedera Token Service) for NFT minting, HCS (Hedera Consensus Service) for messaging and directory, and HBAR for payments.",
   },
 ]);
 
@@ -218,7 +218,7 @@ export function passportLd(p: {
     additionalType: "VerifiableCredential",
     isPartOf: {
       "@type": "SoftwareApplication",
-      name: "AgentGate",
+      name: SITE_NAME,
       url: BASE_URL,
     },
     about: {
@@ -321,12 +321,12 @@ export function articleLd(a: {
     url: `${BASE_URL}${a.path}`,
     author: {
       "@type": "Organization",
-      name: "AgentGate",
+      name: SITE_NAME,
       url: BASE_URL,
     },
     publisher: {
       "@type": "Organization",
-      name: "AgentGate",
+      name: SITE_NAME,
       url: BASE_URL,
       logo: {
         "@type": "ImageObject",
@@ -356,7 +356,7 @@ export function webPageLd(opts: {
     description: opts.description,
     url: `${BASE_URL}${opts.path}`,
     inLanguage: "en",
-    isPartOf: { "@type": "WebSite", name: "AgentGate", url: BASE_URL },
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: BASE_URL },
     datePublished: opts.datePublished ?? BUILD_DATE,
     dateModified: opts.dateModified ?? BUILD_DATE,
   };

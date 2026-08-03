@@ -1,10 +1,10 @@
 {
-  "policy": "AgentGate LLM Crawler Policy",
+  "policy": "AgentBadge LLM Crawler Policy",
   "version": "1.0",
   "effectiveDate": "2026-07-29",
-  "owner": "AgentGate",
-  "contact": "https://github.com/spreadzp/agentgate/issues",
-  "summary": "AgentGate is a public on-chain identity system for AI agents. The following policy specifies how LLM providers and search crawlers may use content from this site.",
+  "owner": "AgentBadge",
+  "contact": "https://github.com/spreadzp/agentbadge/issues",
+  "summary": "AgentBadge is a public on-chain identity system for AI agents. The following policy specifies how LLM providers and search crawlers may use content from this site.",
   "training": {
     "preTraining": "disallowed",
     "fineTuning": "disallowed-with-exceptions",
@@ -14,18 +14,18 @@
     "rAGIndexing": "allowed",
     "searchIndexing": "allowed",
     "realTimeSearch": "allowed",
-    "notes": "Crawling for retrieval-augmented generation and search indexing is explicitly allowed. AgentGate publishes /llms.txt and /ai-sitemap.xml to make RAG-friendly content discoverable."
+    "notes": "Crawling for retrieval-augmented generation and search indexing is explicitly allowed. AgentBadge publishes /llms.txt and /ai-sitemap.xml to make RAG-friendly content discoverable."
   },
   "summarizationAndQuotation": {
     "summarization": "allowed-with-attribution",
     "quotation": "allowed-with-attribution",
-    "notes": "LLMs may summarize and quote from public AgentGate pages when attributing the source URL. Each /about, /pricing, /agent-guide, /use-cases, /faq page contains canonical URLs in JSON-LD for this purpose."
+    "notes": "LLMs may summarize and quote from public AgentBadge pages when attributing the source URL. Each /about, /pricing, /agent-guide, /use-cases, /faq page contains canonical URLs in JSON-LD for this purpose."
   },
   "agenticActions": {
     "apiCalls": "allowed-with-credentials",
     "passportMinting": "allowed",
     "marketplace": "allowed",
-    "notes": "LLM agents may interact with the AgentGate API and MCP server. Paid actions (passport mint) require x402 payment. All endpoints are documented at /api/specs (OpenAPI 3.1) and /llms.txt."
+    "notes": "LLM agents may interact with the AgentBadge API and MCP server. Paid actions (passport mint) require x402 payment. All endpoints are documented at /api/specs (OpenAPI 3.1) and /llms.txt."
   },
   "rateLimits": {
     "default": "60 requests per minute per IP",
@@ -55,13 +55,13 @@
   },
   "ipAndAttribution": {
     "canonicalBase": "https://agentbadge.xyz",
-    "preferredCitation": "AgentGate (https://agentbadge.xyz)",
+    "preferredCitation": "AgentBadge (https://agentbadge.xyz)",
     "licenseCode": "MIT",
     "licenseContent": "All rights reserved — text and visuals. Code is MIT."
   },
   "contactChannels": {
-    "github": "https://github.com/spreadzp/agentgate",
-    "issues": "https://github.com/spreadzp/agentgate/issues",
+    "github": "https://github.com/spreadzp/agentbadge",
+    "issues": "https://github.com/spreadzp/agentbadge/issues",
     "discord": "/contact (via contact form)"
   }
 }

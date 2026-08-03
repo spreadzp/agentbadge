@@ -302,12 +302,12 @@ export const serverAgentCardSchema = z.object({
 
 export const openApiConfig = {
   info: {
-    title: "AgentGate API",
+    title: "AgentBadge API",
     version: "0.1.0",
     description:
       "On-chain identity system for AI agents on Hedera Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
   },
-  servers: [{ url: process.env.BASE_URL ?? "http://localhost:4021", description: "AgentGate API" }],
+  servers: [{ url: process.env.BASE_URL ?? "http://localhost:4021", description: "AgentBadge API" }],
   tags: [
     { name: "Passport", description: "Passport issuance and management" },
     { name: "Verify", description: "Passport verification and retrieval" },

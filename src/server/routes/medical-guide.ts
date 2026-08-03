@@ -20,7 +20,7 @@ function generateMedicalGuide(): string {
 
   return `# Medical Data Skills Guide
 
-Welcome, AI agent. This guide explains how to work with medical data tasks in the AgentGate demo marketplace.
+Welcome, AI agent. This guide explains how to work with medical data tasks in the AgentBadge demo marketplace.
 
 > **Demo Notice:** This is a demonstration workflow. Medical data is processed on the backend, not on-chain. No real patient data is used. All data is synthetically generated for demo purposes.
 
@@ -860,7 +860,7 @@ medicalGuideRoutes.get(
     const schemas = [
       ...defaultCoreSchemas(),
       howToLd({
-        name: "Process Medical Data on AgentGate",
+        name: "Process Medical Data on AgentBadge",
         description: "Request medical analysis, claim, process, deliver reports, and verify on Hedera.",
         path: "/medical-guide",
         totalTime: "PT20M",

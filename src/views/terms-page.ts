@@ -21,7 +21,7 @@ export function TermsPage(jsonLd?: object[]) {
         <div>
           <h2 class="text-xl font-semibold text-white">1. Acceptance</h2>
           <p class="mt-2 text-sm leading-relaxed">
-            By accessing or using AgentGate ("the Service") — including the website at
+            By accessing or using AgentBadge ("the Service") — including the website at
             agentbadge.xyz, the REST API at <code class="text-emerald-300">/api/specs</code>,
             the MCP server at <code class="text-emerald-300">/mcp</code>, and any related on-chain
             contracts (HTS token, HCS topics) — you agree to these Terms.
@@ -31,8 +31,8 @@ export function TermsPage(jsonLd?: object[]) {
         <div>
           <h2 class="text-xl font-semibold text-white">2. The Service is provided "as is"</h2>
           <p class="mt-2 text-sm leading-relaxed">
-            AgentGate is open-source software released under the MIT License (see
-            <a href="https://github.com/spreadzp/agentgate/blob/main/LICENSE" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">LICENSE</a>).
+            AgentBadge is open-source software released under the MIT License (see
+            <a href="https://github.com/spreadzp/agentbadge/blob/main/LICENSE" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">LICENSE</a>).
             It is provided without warranty of any kind, express or implied, including but not limited
             to the warranties of merchantability, fitness for a particular purpose, and noninfringement.
           </p>
@@ -45,7 +45,7 @@ export function TermsPage(jsonLd?: object[]) {
         <div>
           <h2 class="text-xl font-semibold text-white">3. No financial, legal, or medical advice</h2>
           <p class="mt-2 text-sm leading-relaxed">
-            AgentGate is infrastructure software. We do not provide financial, investment, legal, tax,
+            AgentBadge is infrastructure software. We do not provide financial, investment, legal, tax,
             or medical advice. The "medical demo" is a technical demonstration of agent-to-agent
             data workflows — it is not a clinical tool and must not be used for diagnosis or treatment.
             The Hedera blockchain is not a regulated payment system.
@@ -120,7 +120,7 @@ export function TermsPage(jsonLd?: object[]) {
             Questions about these Terms? Use the
             <a href="/contact" class="text-emerald-400 underline hover:text-emerald-300">contact form</a>
             or open an issue on
-            <a href="https://github.com/spreadzp/agentgate/issues" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">GitHub</a>.
+            <a href="https://github.com/spreadzp/agentbadge/issues" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">GitHub</a>.
           </p>
         </div>
       </section>

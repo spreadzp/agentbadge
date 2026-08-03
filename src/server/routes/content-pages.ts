@@ -13,7 +13,7 @@ export const contentPageRoutes = new Hono();
 contentPageRoutes.get(
   "/faq",
   describeRoute({
-    description: "FAQ page with 12 Q&A pairs about AgentGate, rendered server-side with FAQPage JSON-LD.",
+    description: "FAQ page with 12 Q&A pairs about AgentBadge, rendered server-side with FAQPage JSON-LD.",
     responses: {
       200: { description: "HTML FAQ page" },
     },
@@ -36,7 +36,7 @@ contentPageRoutes.get(
     const schemas = [
       ...defaultCoreSchemas(),
       articleLd({
-        title: "How AgentGate Works in Practice",
+        title: "How AgentBadge Works in Practice",
         description:
           "Real-world scenarios for on-chain AI agent identity on Hedera: verified hiring, x402 payments, medical workflows, reputation gating, and cross-agent discovery.",
         path: "/use-cases",
@@ -54,17 +54,17 @@ contentPageRoutes.get(
   "/about",
   describeRoute({
     tags: ["Content"],
-    summary: "About AgentGate",
-    description: "Mission, architecture, and open-source information about AgentGate.",
+    summary: "About AgentBadge",
+    description: "Mission, architecture, and open-source information about AgentBadge.",
     responses: { 200: { description: "HTML about page" } },
   }),
   (c) => {
     const schemas = [
       ...defaultCoreSchemas(),
       articleLd({
-        title: "About AgentGate — On-Chain Identity for AI Agents",
+        title: "About AgentBadge — On-Chain Identity for AI Agents",
         description:
-          "AgentGate gives AI agents a verifiable on-chain identity on Hedera. NFT passports (HTS), HCS directory, A2A messaging, marketplace, MCP server.",
+          "AgentBadge gives AI agents a verifiable on-chain identity on Hedera. NFT passports (HTS), HCS directory, A2A messaging, marketplace, MCP server.",
         path: "/about",
         sections: [
           {
@@ -77,7 +77,7 @@ contentPageRoutes.get(
           },
           {
             title: "Open Source",
-            body: "MIT license, github.com/spreadzp/agentgate. Built with Hono.js, HTMX, Tailwind, and the official Hedera SDK.",
+            body: "MIT license, github.com/spreadzp/agentbadge. Built with Hono.js, HTMX, Tailwind, and the official Hedera SDK.",
           },
         ],
       }),
@@ -92,14 +92,14 @@ contentPageRoutes.get(
     tags: ["Content"],
     summary: "Passport pricing in HBAR",
     description:
-      "Public pricing for AgentGate passport tiers: Bronze 10 HBAR, Silver 50 HBAR, Gold 200 HBAR, Platinum 500 HBAR. Includes upgrade deltas and comparison with alternatives.",
+      "Public pricing for AgentBadge passport tiers: Bronze 10 HBAR, Silver 50 HBAR, Gold 200 HBAR, Platinum 500 HBAR. Includes upgrade deltas and comparison with alternatives.",
     responses: { 200: { description: "HTML pricing page" } },
   }),
   (c) => {
     const schemas = [
       ...defaultCoreSchemas(),
       articleLd({
-        title: "AgentGate Pricing — Passport Tiers in HBAR",
+        title: "AgentBadge Pricing — Passport Tiers in HBAR",
         description:
           "Passport tier pricing on Hedera: Bronze 10 HBAR, Silver 50 HBAR, Gold 200 HBAR, Platinum 500 HBAR. Upgrade deltas, network fees, and comparison with self-hosted and centralized alternatives.",
         path: "/pricing",
@@ -128,7 +128,7 @@ contentPageRoutes.get(
   describeRoute({
     tags: ["Content"],
     summary: "Terms of Service",
-    description: "Legal terms governing the use of AgentGate. MIT-licensed, no warranty, testnet service.",
+    description: "Legal terms governing the use of AgentBadge. MIT-licensed, no warranty, testnet service.",
     responses: { 200: { description: "HTML terms page" } },
   }),
   (c) => c.html(TermsPage(defaultCoreSchemas())),
@@ -139,7 +139,7 @@ contentPageRoutes.get(
   describeRoute({
     tags: ["Content"],
     summary: "Privacy Policy",
-    description: "Privacy disclosure for AgentGate: on-chain data is public, no cookies, no third-party analytics, LLM crawler permissions specified.",
+    description: "Privacy disclosure for AgentBadge: on-chain data is public, no cookies, no third-party analytics, LLM crawler permissions specified.",
     responses: { 200: { description: "HTML privacy page" } },
   }),
   (c) => c.html(PrivacyPage(defaultCoreSchemas())),

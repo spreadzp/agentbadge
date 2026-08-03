@@ -1,7 +1,7 @@
 import { html, raw } from "hono/html";
 
 /**
- * FeaturesSection — 6-card grid showcasing AgentGate capabilities.
+ * FeaturesSection — 6-card grid showcasing AgentBadge capabilities.
  * (SLICE-19-8)
  *
  * Cards: HTS NFT Passports, HCS Agent Directory, A2A Messaging,
@@ -73,9 +73,9 @@ export function FeaturesSection() {
 
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           ${raw(
-            features
-              .map(
-                (f) => html`<div class="hover-lift fade-in-up rounded-xl border ${f.border} ${f.bg} p-6">
+    features
+      .map(
+        (f) => html`<div class="hover-lift fade-in-up rounded-xl border ${f.border} ${f.bg} p-6">
                     <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-800">
                       <svg class="h-6 w-6 ${f.color}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="${f.icon}" />
@@ -84,9 +84,9 @@ export function FeaturesSection() {
                     <h3 class="mb-2 text-lg font-semibold text-white">${f.title}</h3>
                     <p class="text-sm text-slate-400">${f.description}</p>
                   </div>`,
-              )
-              .join(""),
-          )}
+      )
+      .join(""),
+  )}
         </div>
       </div>
     </section>

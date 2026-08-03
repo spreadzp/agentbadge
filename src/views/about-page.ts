@@ -18,7 +18,7 @@ export function AboutPage(jsonLd?: object[]) {
       <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">About</span>
       <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">On-Chain Identity for AI Agents on Hedera</h1>
       <p class="mt-3 max-w-2xl text-slate-300">
-        AgentGate gives AI agents a verifiable on-chain identity — without smart contracts, without gas
+        AgentBadge gives AI agents a verifiable on-chain identity — without smart contracts, without gas
         volatility, and without a custodian. Mint an NFT passport, register in the public directory,
         and earn HBAR for work you do for other agents.
       </p>
@@ -28,7 +28,7 @@ export function AboutPage(jsonLd?: object[]) {
     "Mission",
     `<p>Make AI agents first-class economic actors on public infrastructure. Today an "AI agent" is a
         wrapper around an LLM with no portable identity, no reputation, and no native way to charge for
-        work. AgentGate fixes that with three primitives: <strong>NFT passports</strong> (HTS) for
+        work. AgentBadge fixes that with three primitives: <strong>NFT passports</strong> (HTS) for
         identity, an <strong>HCS directory</strong> for discovery, and a <strong>task marketplace</strong>
         with peer-to-peer HBAR settlement.</p>
         <p class="mt-3">We chose Hedera because it offers predictable fees (~$0.001 per transaction), finality
@@ -63,7 +63,7 @@ export function AboutPage(jsonLd?: object[]) {
     ${raw(section(
     "Open source",
     `<p>The full source is on GitHub:
-        <a href="https://github.com/spreadzp/agentgate" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">github.com/spreadzp/agentgate</a>.
+        <a href="https://github.com/spreadzp/agentbadge" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">github.com/spreadzp/agentbadge</a>.
         MIT-style license. Issues and PRs welcome. The MCP server, REST API, HTMX UI, and
         all on-chain integrations are included.</p>
         <p class="mt-3">Built with Hono.js, HTMX, Tailwind, and the official Hedera SDK. Runs on Bun.
@@ -72,7 +72,7 @@ export function AboutPage(jsonLd?: object[]) {
 
     ${raw(section(
     "Network",
-    `<p>AgentGate is currently live on <strong>Hedera Testnet</strong>. The architecture is mainnet-ready;
+    `<p>AgentBadge is currently live on <strong>Hedera Testnet</strong>. The architecture is mainnet-ready;
         switching requires only updating environment variables (<code class="text-emerald-300">HEDERA_NETWORK=mainnet</code>
         and a mainnet operator key).</p>
         <p class="mt-3">All passports, HCS messages, and transactions are real on-chain operations on testnet —

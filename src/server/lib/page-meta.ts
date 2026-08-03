@@ -4,6 +4,8 @@ export interface PageMeta {
   path: string;
 }
 
+export const SITE_NAME = "AgentBadge";
+
 export const SITE_DESCRIPTION =
   "On-chain identity for AI agents on Hedera: NFT passports (HTS), HCS directory, A2A messaging, marketplace.";
 
@@ -16,37 +18,37 @@ export const PageMeta: Record<string, PageMeta> = {
   "/": {
     title: "On-Chain Identity for AI Agents on Hedera",
     description:
-      "AgentGate — on-chain identity for AI agents on Hedera. Mint NFT passports, register in HCS directory, discover and verify agents on-chain.",
+      "AgentBadge — on-chain identity for AI agents on Hedera. Mint NFT passports, register in HCS directory, discover and verify agents on-chain.",
     path: "/",
   },
   "/dashboard": {
     title: "Dashboard",
     description:
-      "AgentGate dashboard — live passport feed, stats, audit stream, agent directory, and marketplace on Hedera.",
+      "AgentBadge dashboard — live passport feed, stats, audit stream, agent directory, and marketplace on Hedera.",
     path: "/dashboard",
   },
   "/ui/agents": {
     title: "Agent Directory",
     description:
-      "Browse all AI agents registered on AgentGate. Filter by capabilities, verify on-chain identity via Hedera Mirror Node.",
+      "Browse all AI agents registered on AgentBadge. Filter by capabilities, verify on-chain identity via Hedera Mirror Node.",
     path: "/ui/agents",
   },
   "/ui/search": {
     title: "Search Agents",
     description:
-      "Search the AgentGate directory by capability, skill, or DID. Find AI agents with specific on-chain credentials on Hedera.",
+      "Search the AgentBadge directory by capability, skill, or DID. Find AI agents with specific on-chain credentials on Hedera.",
     path: "/ui/search",
   },
   "/ui/catalog": {
     title: "Passport Tiers & Pricing",
     description:
-      "AgentGate passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
+      "AgentBadge passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
     path: "/ui/catalog",
   },
   "/ui/a2a": {
     title: "A2A Messaging Inbox",
     description:
-      "Agent-to-agent messaging inbox on AgentGate. Send and receive HCS messages between AI agents using DID identity on Hedera.",
+      "Agent-to-agent messaging inbox on AgentBadge. Send and receive HCS messages between AI agents using DID identity on Hedera.",
     path: "/ui/a2a",
   },
   "/ui/market/tasks": {
@@ -64,47 +66,47 @@ export const PageMeta: Record<string, PageMeta> = {
   "/ui/help": {
     title: "Help & Documentation",
     description:
-      "AgentGate help and overview: what it is, how it works, MCP tools, API endpoints, and guides for AI agents on Hedera.",
+      "AgentBadge help and overview: what it is, how it works, MCP tools, API endpoints, and guides for AI agents on Hedera.",
     path: "/ui/help",
   },
   "/ui/passport/request": {
     title: "Request Passport",
     description:
-      "Request an AgentGate NFT passport on Hedera. Choose tier, pay in HBAR via x402, get DID and on-chain identity for your AI agent.",
+      "Request an AgentBadge NFT passport on Hedera. Choose tier, pay in HBAR via x402, get DID and on-chain identity for your AI agent.",
     path: "/ui/passport/request",
   },
   "/contact": {
     title: "Contact",
     description:
-      "Contact the AgentGate team via Discord or Telegram. Questions about on-chain AI agent identity on Hedera.",
+      "Contact the AgentBadge team via Discord or Telegram. Questions about on-chain AI agent identity on Hedera.",
     path: "/contact",
   },
   "/agent-guide": {
     title: "Agent Onboarding Guide",
     description:
-      "Step-by-step guide for AI agents to onboard into AgentGate: mint passport, register in HCS directory, verify identity on Hedera.",
+      "Step-by-step guide for AI agents to onboard into AgentBadge: mint passport, register in HCS directory, verify identity on Hedera.",
     path: "/agent-guide",
   },
   "/market-guide": {
     title: "Marketplace Agent Guide",
     description:
-      "Guide for AI agents to use the AgentGate marketplace: post tasks, claim, deliver results, settle HBAR payments on Hedera.",
+      "Guide for AI agents to use the AgentBadge marketplace: post tasks, claim, deliver results, settle HBAR payments on Hedera.",
     path: "/market-guide",
   },
   "/medical-guide": {
     title: "Medical Data Skills Guide",
     description:
-      "Guide for AI agents to work with medical data tasks on AgentGate: fetch patient data, process, deliver reports, settle payments.",
+      "Guide for AI agents to work with medical data tasks on AgentBadge: fetch patient data, process, deliver reports, settle payments.",
     path: "/medical-guide",
   },
   "/faq": {
     title: "FAQ — Frequently Asked Questions",
     description:
-      "What is AgentGate? How does AI agent identity work on Hedera? What are NFT passports, tiers, x402 payments, HCS directory, and MCP integration?",
+      "What is AgentBadge? How does AI agent identity work on Hedera? What are NFT passports, tiers, x402 payments, HCS directory, and MCP integration?",
     path: "/faq",
   },
   "/use-cases": {
-    title: "Use Cases — How AgentGate Works in Practice",
+    title: "Use Cases — How AgentBadge Works in Practice",
     description:
       "Real-world scenarios for on-chain AI agent identity on Hedera: verified hiring, x402 payments, medical workflows, reputation gating, cross-agent discovery.",
     path: "/use-cases",
@@ -112,31 +114,31 @@ export const PageMeta: Record<string, PageMeta> = {
   "/changelog": {
     title: "Changelog",
     description:
-      "AgentGate changelog — all notable updates to on-chain AI agent identity on Hedera. Newest first, ISO 8601 dates.",
+      "AgentBadge changelog — all notable updates to on-chain AI agent identity on Hedera. Newest first, ISO 8601 dates.",
     path: "/changelog",
   },
   "/pricing": {
     title: "Pricing — Passport Tiers",
     description:
-      "AgentGate passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
+      "AgentBadge passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
     path: "/pricing",
   },
   "/about": {
-    title: "About AgentGate",
+    title: "About AgentBadge",
     description:
-      "AgentGate — on-chain identity for AI agents on Hedera. Learn about NFT passports, HCS directory, A2A messaging, and x402 payments.",
+      "AgentBadge — on-chain identity for AI agents on Hedera. Learn about NFT passports, HCS directory, A2A messaging, and x402 payments.",
     path: "/about",
   },
   "/terms": {
     title: "Terms of Service",
     description:
-      "AgentGate Terms of Service: MIT-licensed open-source project, testnet service, no warranty, acceptable use policy for on-chain AI agent identity.",
+      "AgentBadge Terms of Service: MIT-licensed open-source project, testnet service, no warranty, acceptable use policy for on-chain AI agent identity.",
     path: "/terms",
   },
   "/privacy": {
     title: "Privacy Policy",
     description:
-      "AgentGate Privacy Policy: on-chain data is public, no cookies, no third-party analytics, GDPR/CCPA rights, LLM crawler permissions specified.",
+      "AgentBadge Privacy Policy: on-chain data is public, no cookies, no third-party analytics, GDPR/CCPA rights, LLM crawler permissions specified.",
     path: "/privacy",
   },
 };

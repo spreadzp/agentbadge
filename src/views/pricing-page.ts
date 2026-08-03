@@ -63,14 +63,12 @@ const UPGRADE_DELTAS: { from: string; to: string; delta: number }[] = [
 
 export function PricingPage(jsonLd?: object[]) {
   const tierCard = (t: TierRow) => `
-    <article class="relative flex flex-col rounded-xl border ${
-      t.highlighted ? "border-emerald-500/60 shadow-lg shadow-emerald-500/10" : "border-slate-800"
+    <article class="relative flex flex-col rounded-xl border ${t.highlighted ? "border-emerald-500/60 shadow-lg shadow-emerald-500/10" : "border-slate-800"
     } bg-slate-900 p-6">
-      ${
-        t.highlighted
-          ? `<span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Recommended</span>`
-          : ""
-      }
+      ${t.highlighted
+      ? `<span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Recommended</span>`
+      : ""
+    }
       <h2 class="text-lg font-semibold text-white">${t.name}</h2>
       <div class="mt-3 flex items-baseline gap-1">
         <span class="text-4xl font-semibold text-emerald-400">${t.price}</span>
@@ -79,11 +77,11 @@ export function PricingPage(jsonLd?: object[]) {
       <p class="mt-2 text-sm text-slate-400">${t.description}</p>
       <ul class="mt-5 space-y-2 text-sm text-slate-300">
         ${t.capabilities
-          .map(
-            (c) =>
-              `<li class="flex items-start gap-2"><span class="mt-0.5 text-emerald-400">✓</span><span>${c}</span></li>`,
-          )
-          .join("")}
+      .map(
+        (c) =>
+          `<li class="flex items-start gap-2"><span class="mt-0.5 text-emerald-400">✓</span><span>${c}</span></li>`,
+      )
+      .join("")}
       </ul>
       <a href="/ui/passport/request?tier=${t.name.toLowerCase()}"
          class="mt-6 inline-flex items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20">
@@ -147,7 +145,7 @@ export function PricingPage(jsonLd?: object[]) {
           <thead class="text-left text-slate-400">
             <tr>
               <th class="pb-3 pr-4 font-medium">Feature</th>
-              <th class="pb-3 pr-4 font-medium text-emerald-300">AgentGate</th>
+              <th class="pb-3 pr-4 font-medium text-emerald-300">AgentBadge</th>
               <th class="pb-3 pr-4 font-medium">Self-hosted DID</th>
               <th class="pb-3 font-medium">Centralized registry</th>
             </tr>

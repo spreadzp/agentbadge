@@ -546,7 +546,7 @@ export function MedicalDemoPage(task?: CachedMarketTask) {
     <section class="mt-8 rounded-lg border border-purple-500/30 bg-purple-500/5 p-6">
       <h2 class="text-lg font-semibold text-white">Passport Requirements</h2>
       <p class="mt-2 text-sm text-slate-300">
-        Both agents need an AgentGate passport NFT with specific capabilities:
+        Both agents need an AgentBadge passport NFT with specific capabilities:
       </p>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div class="rounded-lg border border-slate-800 bg-slate-900 p-4">

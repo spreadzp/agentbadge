@@ -9,9 +9,9 @@ export interface QaPair {
 
 export const FAQ_ENTRIES: QaPair[] = [
   {
-    question: "What is AgentGate?",
+    question: "What is AgentBadge?",
     answer:
-      "AgentGate is an on-chain identity system for AI agents on Hedera Network. Agents mint NFT passports (HTS), register in an HCS directory for discovery, and verify each other on-chain through the Mirror Node — without smart contracts, without gas volatility, at $0.001 per transaction.",
+      "AgentBadge is an on-chain identity system for AI agents on Hedera Network. Agents mint NFT passports (HTS), register in an HCS directory for discovery, and verify each other on-chain through the Mirror Node — without smart contracts, without gas volatility, at $0.001 per transaction.",
   },
   {
     question: "What is an agent passport?",
@@ -31,7 +31,7 @@ export const FAQ_ENTRIES: QaPair[] = [
   {
     question: "What is x402 payment?",
     answer:
-      "x402 is an HTTP 402 payment protocol. When an agent requests a paid resource, the server responds with HTTP 402 and payment requirements. The agent pays in HBAR and retries the request with payment proof. AgentGate uses x402 for passport issuance fees. Agents can also use x402 on their own endpoints for peer-to-peer API call payments.",
+      "x402 is an HTTP 402 payment protocol. When an agent requests a paid resource, the server responds with HTTP 402 and payment requirements. The agent pays in HBAR and retries the request with payment proof. AgentBadge uses x402 for passport issuance fees. Agents can also use x402 on their own endpoints for peer-to-peer API call payments.",
   },
   {
     question: "What is the HCS directory?",
@@ -51,22 +51,22 @@ export const FAQ_ENTRIES: QaPair[] = [
   {
     question: "How do I integrate via MCP?",
     answer:
-      "AgentGate exposes a Model Context Protocol (MCP) server with 9 tools: request_passport, verify_passport, upgrade_tier, get_passport_info, register_agent, find_agents, get_audit_trail, get_catalog, and revoke_passport. MCP supports both stdio transport (for LLM clients like Claude Desktop, Cursor, Windsurf) and HTTP transport (for programmatic agents).",
+      "AgentBadge exposes a Model Context Protocol (MCP) server with 9 tools: request_passport, verify_passport, upgrade_tier, get_passport_info, register_agent, find_agents, get_audit_trail, get_catalog, and revoke_passport. MCP supports both stdio transport (for LLM clients like Claude Desktop, Cursor, Windsurf) and HTTP transport (for programmatic agents).",
   },
   {
     question: "What does it cost?",
     answer:
-      "Passport fees range from 10 HBAR (Bronze) to 500 HBAR (Platinum). Hedera transaction fees are approximately $0.001 per transaction. There are no smart contract deployment costs — AgentGate uses native Hedera services (HTS for NFTs, HCS for messaging). Mirror Node queries (reads) are free.",
+      "Passport fees range from 10 HBAR (Bronze) to 500 HBAR (Platinum). Hedera transaction fees are approximately $0.001 per transaction. There are no smart contract deployment costs — AgentBadge uses native Hedera services (HTS for NFTs, HCS for messaging). Mirror Node queries (reads) are free.",
   },
   {
     question: "Is this on testnet or mainnet?",
     answer:
-      "AgentGate currently runs on Hedera Testnet. All NFT passports, HCS topics, and transactions are real on-chain operations on testnet. The architecture is mainnet-ready — switching requires only updating environment variables for network endpoints and operator keys.",
+      "AgentBadge currently runs on Hedera Testnet. All NFT passports, HCS topics, and transactions are real on-chain operations on testnet. The architecture is mainnet-ready — switching requires only updating environment variables for network endpoints and operator keys.",
   },
   {
-    question: "What is AgentGate NOT?",
+    question: "What is AgentBadge NOT?",
     answer:
-      "AgentGate is not an escrow service, dispute resolution system, or guarantee of agent behavior. It provides identity, discovery, and verification infrastructure. If an agent behaves maliciously, the admin can revoke its passport (burn the NFT), but AgentGate does not mediate transactions or enforce outcomes. Reviews, escrow, and arbitration are future scope.",
+      "AgentBadge is not an escrow service, dispute resolution system, or guarantee of agent behavior. It provides identity, discovery, and verification infrastructure. If an agent behaves maliciously, the admin can revoke its passport (burn the NFT), but AgentBadge does not mediate transactions or enforce outcomes. Reviews, escrow, and arbitration are future scope.",
   },
 ];
 
@@ -86,7 +86,7 @@ export function FaqPage(jsonLd?: object[]) {
     <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">FAQ</span>
     <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">Frequently Asked Questions</h1>
     <p class="mt-3 max-w-2xl text-slate-300">
-      Everything about AgentGate: on-chain AI agent identity, NFT passports on Hedera, HCS directory,
+      Everything about AgentBadge: on-chain AI agent identity, NFT passports on Hedera, HCS directory,
       A2A messaging, x402 payments, and MCP integration.
     </p>
   </section>

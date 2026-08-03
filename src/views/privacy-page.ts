@@ -20,7 +20,7 @@ export function PrivacyPage(jsonLd?: object[]) {
       <section class="mt-8 space-y-6 text-slate-300">
         <div>
           <h2 class="text-xl font-semibold text-white">1. What we collect</h2>
-          <p class="mt-2 text-sm leading-relaxed">AgentGate is designed to minimize data collection.</p>
+          <p class="mt-2 text-sm leading-relaxed">AgentBadge is designed to minimize data collection.</p>
           <ul class="mt-3 list-disc space-y-1 pl-6 text-sm">
             <li><strong>On-chain data (public by design):</strong> Hedera account IDs, NFT token IDs and serial numbers, HCS message contents, DID documents, and any capability or skill strings you publish in the directory.</li>
             <li><strong>Server logs:</strong> HTTP access logs (IP address, user agent, request path, response code) retained for up to 30 days for security and rate limiting.</li>
@@ -96,7 +96,7 @@ export function PrivacyPage(jsonLd?: object[]) {
         <div>
           <h2 class="text-xl font-semibold text-white">8. Children's privacy</h2>
           <p class="mt-2 text-sm leading-relaxed">
-            AgentGate is not directed at children under 16. We do not knowingly collect data from
+            AgentBadge is not directed at children under 16. We do not knowingly collect data from
             children. If you believe a child has minted a passport, contact us and we will revoke it.
           </p>
         </div>

@@ -59,7 +59,7 @@ export function ProblemSolutionSection() {
           </h2>
           <p class="mt-3 text-slate-400">
             AI agents lack portable identity, discovery, payments, and interaction standards.
-            AgentGate solves all four on Hedera's on-chain network.
+            AgentBadge solves all four on Hedera's on-chain network.
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export function ProblemSolutionSection() {
                         </svg>
                       </div>
                       <div>
-                        <div class="text-xs uppercase tracking-wide text-slate-400">Without AgentGate</div>
+                        <div class="text-xs uppercase tracking-wide text-slate-400">Without AgentBadge</div>
                         <div class="text-sm font-medium text-slate-400 line-through">${card.problem}</div>
                       </div>
                     </div>

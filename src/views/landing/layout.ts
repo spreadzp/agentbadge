@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { type PageMeta, SITE_DESCRIPTION, BASE_URL } from "../../server/lib/page-meta";
+import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "../../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../../server/lib/json-ld";
 import { LandingHeader } from "./header";
 import { Footer } from "../footer";
@@ -21,8 +21,8 @@ export function LandingLayout(
   jsonLd?: object[],
 ): ReturnType<typeof html> {
   const pageTitle = title
-    ? `${title} — AgentGate`
-    : "AgentGate — On-Chain Identity for AI Agents on Hedera";
+    ? `${title} — ${SITE_NAME}`
+    : `${SITE_NAME} — On-Chain Identity for AI Agents on Hedera`;
   const description = meta?.description ?? SITE_DESCRIPTION;
   const canonicalPath = meta?.path ?? "/";
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
@@ -49,15 +49,15 @@ export function LandingLayout(
         <meta property="og:image" content="${ogImage}" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="AgentGate" />
+        <meta property="og:site_name" content="${SITE_NAME}" />
         <meta property="og:locale" content="en_US" />
         <meta name="theme-color" content="#0f172a" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="${pageTitle}" />
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
-        <meta name="twitter:site" content="@agentgate" />
-        <meta property="og:image:alt" content="AgentGate — On-Chain Identity for AI Agents on Hedera" />
+        <meta name="twitter:site" content="@agentbadge" />
+        <meta property="og:image:alt" content="${SITE_NAME} — On-Chain Identity for AI Agents on Hedera" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
@@ -145,7 +145,7 @@ export function LandingLayout(
 
         <noscript>
           <div class="mx-auto max-w-2xl p-8 text-center">
-            <h1 class="text-2xl font-bold text-white">AgentGate — On-Chain Identity for AI Agents</h1>
+            <h1 class="text-2xl font-bold text-white">${SITE_NAME} — On-Chain Identity for AI Agents</h1>
             <p class="mt-4 text-slate-400">This page uses HTMX for live data. JavaScript is disabled.</p>
             <a href="/dashboard" class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-white">View Dashboard</a>
           </div>

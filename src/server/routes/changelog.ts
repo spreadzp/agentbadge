@@ -110,7 +110,7 @@ changelogRoutes.get(
         <div class="mb-8">
           <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Changelog · Build ${GIT_COMMIT}</span>
           <h1 class="mt-4 text-3xl font-semibold text-white">Changelog</h1>
-          <p class="mt-2 text-slate-400">All notable changes to AgentGate, newest first. Dates in ISO 8601.</p>
+          <p class="mt-2 text-slate-400">All notable changes to AgentBadge, newest first. Dates in ISO 8601.</p>
         </div>
         <div class="space-y-6">
           ${entriesHtml}

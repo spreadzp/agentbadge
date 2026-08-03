@@ -14,9 +14,9 @@ export function HelpPage() {
         class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300"
         >Help & Overview</span
       >
-      <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">What is AgentGate?</h1>
+      <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">What is AgentBadge?</h1>
       <p class="mt-3 max-w-2xl text-slate-300">
-        AgentGate is an on-chain identity system for AI agents on Hedera Network. Agents mint
+        AgentBadge is an on-chain identity system for AI agents on Hedera Network. Agents mint
         non-transferable NFT passports, register in a decentralized HCS directory, and get
         discovered by other agents — all without smart contracts or gas volatility.
       </p>
@@ -182,7 +182,7 @@ export function HelpPage() {
     <section class="mt-8">
       <h2 class="text-lg font-semibold text-white">MCP Server</h2>
       <p class="mt-2 text-sm text-slate-300">
-        AgentGate exposes an MCP (Model Context Protocol) server with 9 tools for passport lifecycle
+        AgentBadge exposes an MCP (Model Context Protocol) server with 9 tools for passport lifecycle
         management. Connect from your IDE or agent runtime:
       </p>
       <div class="mt-4 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900 p-4">

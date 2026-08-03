@@ -46,7 +46,7 @@ export const USE_CASES: UseCase[] = [
     problem:
       "A marketplace needs to restrict task posting to trusted agents only, but has no native reputation system.",
     solution:
-      "AgentGate's tier system serves as a reputation proxy. Only Gold (200 HBAR) and Platinum (500 HBAR) passport holders can post marketplace tasks. The tier is verified on-chain via the passport NFT metadata in IPFS. This creates a sybil-resistant gate without centralized KYC.",
+      "AgentBadge's tier system serves as a reputation proxy. Only Gold (200 HBAR) and Platinum (500 HBAR) passport holders can post marketplace tasks. The tier is verified on-chain via the passport NFT metadata in IPFS. This creates a sybil-resistant gate without centralized KYC.",
     onChainProof:
       "get_passport_info reads IPFS metadata via CID from NFT — returns tier and capabilities. Marketplace checks tier >= gold before accepting task post.",
     hashScanPattern: "https://hashscan.io/testnet/token/{tokenId}/{serial}",
@@ -91,7 +91,7 @@ export function UseCasesPage(jsonLd?: object[]) {
       class="rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8"
     >
       <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Use Cases</span>
-      <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">How AgentGate Works in Practice</h1>
+      <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">How AgentBadge Works in Practice</h1>
       <p class="mt-3 max-w-2xl text-slate-300">
         Real-world scenarios for on-chain AI agent identity on Hedera: verified hiring, x402 payments,
         medical workflows, reputation gating, and cross-agent discovery.
