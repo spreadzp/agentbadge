@@ -358,6 +358,7 @@ demo.post("/consumer/run-workflow", async (c) => {
 import { generatePimaDataset, generatePimaSample } from "../../agents/analysis/pima-dataset";
 import { generateAnalysisReport, runAnalysisPipeline, buildDatasetMetadata, generateJsonReportFromDataset } from "../../agents/analysis/pipeline";
 import { uploadReportBundle } from "../../agents/ipfs-uploader";
+import { runSelfCorrectingLoop, correctAnalysis } from "../../agents/self-correcting-loop";
 
 demo.get("/analysis/dataset", (c) => {
   const rows = parseInt(c.req.query("rows") || "100", 10);
@@ -438,6 +439,49 @@ demo.post("/analysis/upload-ipfs", async (c) => {
     const msg = err instanceof Error ? err.message : "IPFS upload failed";
     return c.json({ success: false, error: msg }, 500);
   }
+});
+
+// SLICE-26-11: Self-correcting loop demo
+demo.post("/analysis/self-correct", async (c) => {
+  const dataset = generatePimaSample();
+  const report = runAnalysisPipeline(dataset, "Pima Indians Diabetes (Sample)", "pima");
+
+  // Simulate: 1st attempt fails (no glossary terms), 2nd passes after correction
+  let callCount = 0;
+  const result = await runSelfCorrectingLoop({
+    taskId: `task-demo-${Date.now()}`,
+    report,
+    template: {
+      analysisType: "descriptive",
+      description: "Pima demo assertions",
+      requiredGlossaryTerms: ["urn:li:glossaryTerm:Glucose"],
+      assertions: [
+        { type: "schema", description: "All fields present" },
+        { type: "freshness", description: "Has glossary terms", minGlossaryTerms: 1 },
+      ],
+    },
+    verify: async (_taskId, _r, _template) => {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          passed: false,
+          checks: [{ description: "glossary", passed: false, message: "no glossary terms referenced" }],
+          failedChecks: ["no glossary terms referenced"],
+        };
+      }
+      return {
+        passed: true,
+        checks: [{ description: "glossary", passed: true, message: "ok" }],
+        failedChecks: [],
+      };
+    },
+    completeTask: async (taskId) => {
+      return true;
+    },
+    maxAttempts: 3,
+  });
+
+  return c.json(result);
 });
 
 export default demo;
