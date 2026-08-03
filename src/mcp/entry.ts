@@ -9,8 +9,8 @@ import {
   registerSigningTools,
   registerDiscoveryTools,
   registerEscrowTools,
+  registerDatasetTools,
 } from "@agentgate-hedera/mcp";
-import { registerDatasetTools } from "./dataset.tools";
 
 registerPassportTools();
 registerAuditCatalogTools();

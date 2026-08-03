@@ -1,6 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { listTools } from "@agentgate-hedera/mcp";
-import { registerDatasetTools, downloadDatasetHandler, uploadResultHandler } from "../../src/mcp/dataset.tools";
+import { listTools, registerDatasetTools, downloadDatasetHandler, uploadResultHandler } from "@agentgate-hedera/mcp";
 
 describe("download_dataset", () => {
   beforeEach(() => {

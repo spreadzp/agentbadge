@@ -24,9 +24,9 @@ import {
   registerSigningTools,
   registerDiscoveryTools,
   registerEscrowTools,
+  registerDatasetTools,
   listTools,
 } from "@agentgate-hedera/mcp";
-import { registerDatasetTools } from "../mcp/dataset.tools";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
