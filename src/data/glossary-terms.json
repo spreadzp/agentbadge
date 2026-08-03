@@ -1,0 +1,114 @@
+[
+  {
+    "id": "hypertension",
+    "name": "Hypertension",
+    "description": "Abnormally high blood pressure, a common medical condition where the force of blood against artery walls is consistently too high.",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease", "pima_diabetes"]
+  },
+  {
+    "id": "bmi",
+    "name": "Body Mass Index (BMI)",
+    "description": "A measure of body fat based on height and weight, used to screen for weight categories that may lead to health problems.",
+    "category": "general",
+    "relatedDatasets": ["pima_diabetes", "heart_disease", "breast_cancer"]
+  },
+  {
+    "id": "glucose",
+    "name": "Glucose",
+    "description": "A simple sugar that serves as the primary energy source for the body. Elevated levels may indicate diabetes or prediabetes.",
+    "category": "endocrine",
+    "relatedDatasets": ["pima_diabetes"]
+  },
+  {
+    "id": "blood_pressure",
+    "name": "Blood Pressure",
+    "description": "The force of blood pushing against artery walls. Measured as systolic (during heartbeat) over diastolic (between beats).",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease"]
+  },
+  {
+    "id": "cholesterol",
+    "name": "Cholesterol",
+    "description": "A waxy substance found in blood. High levels of LDL cholesterol increase risk of heart disease and stroke.",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease"]
+  },
+  {
+    "id": "heart_rate",
+    "name": "Resting Heart Rate",
+    "description": "The number of heartbeats per minute while at rest. Normal range is 60-100 bpm; deviations may indicate cardiovascular issues.",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease"]
+  },
+  {
+    "id": "age",
+    "name": "Age",
+    "description": "Patient age in years. A significant risk factor for cardiovascular disease, diabetes, and cancer.",
+    "category": "demographic",
+    "relatedDatasets": ["heart_disease", "pima_diabetes", "breast_cancer"]
+  },
+  {
+    "id": "sex",
+    "name": "Sex",
+    "description": "Biological sex of the patient (male or female). Influences risk profiles for cardiovascular disease and breast cancer.",
+    "category": "demographic",
+    "relatedDatasets": ["heart_disease", "breast_cancer"]
+  },
+  {
+    "id": "chest_pain_type",
+    "name": "Chest Pain Type",
+    "description": "Classification of chest pain: typical angina, atypical angina, non-anginal pain, or asymptomatic. Key indicator for heart disease.",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease"]
+  },
+  {
+    "id": "st_depression",
+    "name": "ST Depression",
+    "description": "Exercise-induced ST-segment depression on ECG, measured in millimeters. A marker of myocardial ischemia and heart disease.",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease"]
+  },
+  {
+    "id": "major_vessels",
+    "name": "Major Vessels (Fluoroscopy)",
+    "description": "Number of major vessels (0-3) colored by fluoroscopy. Indicates extent of coronary artery disease.",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease"]
+  },
+  {
+    "id": "thalassemia",
+    "name": "Thalassemia",
+    "description": "An inherited blood disorder affecting hemoglobin production. Thalassemia status is a risk factor in heart disease datasets.",
+    "category": "cardiovascular",
+    "relatedDatasets": ["heart_disease"]
+  },
+  {
+    "id": "insulin",
+    "name": "Insulin",
+    "description": "A hormone that regulates blood glucose levels. Elevated insulin levels may indicate insulin resistance or type 2 diabetes.",
+    "category": "endocrine",
+    "relatedDatasets": ["pima_diabetes"]
+  },
+  {
+    "id": "skin_thickness",
+    "name": "Skin Thickness (Triceps)",
+    "description": "Triceps skinfold thickness in millimeters, used as an indicator of body fat and metabolic health.",
+    "category": "endocrine",
+    "relatedDatasets": ["pima_diabetes"]
+  },
+  {
+    "id": "pregnancy",
+    "name": "Pregnancy Count",
+    "description": "Number of times the patient has been pregnant. A risk factor for gestational diabetes in the Pima dataset.",
+    "category": "endocrine",
+    "relatedDatasets": ["pima_diabetes"]
+  },
+  {
+    "id": "diabetes_pedigree",
+    "name": "Diabetes Pedigree Function",
+    "description": "A function that scores the likelihood of diabetes based on family history. Higher values indicate greater genetic predisposition.",
+    "category": "endocrine",
+    "relatedDatasets": ["pima_diabetes"]
+  }
+]
