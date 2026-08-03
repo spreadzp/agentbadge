@@ -260,7 +260,7 @@ wellKnownRoutes.get(
     tags: ["Discovery"],
     summary: "robots.txt — crawler directives with spam bot blocking",
     description:
-      "Returns robots.txt with allow rules for useful crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, Googlebot, Bingbot, DuckDuckBot) and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
+      "Returns robots.txt with allow rules for useful crawlers (GPTBot, OAI-SearchBot, ClaudeBot, anthropic-ai, PerplexityBot, Google-Extended, Applebot-Extended, CCBot, cohere-ai, Googlebot, Bingbot, DuckDuckBot) and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
     responses: {
       200: {
         description: "robots.txt",
@@ -279,16 +279,31 @@ Disallow: /ui/a2a/inbox/fragment
 User-agent: GPTBot
 Allow: /
 
+User-agent: OAI-SearchBot
+Allow: /
+
 User-agent: ClaudeBot
 Allow: /
 
+User-agent: anthropic-ai
+Allow: /
+
 User-agent: PerplexityBot
+Allow: /
+
+User-agent: PerplexityBot-User
 Allow: /
 
 User-agent: Google-Extended
 Allow: /
 
 User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
 Allow: /
 
 User-agent: Googlebot
