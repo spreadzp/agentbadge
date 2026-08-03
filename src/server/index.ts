@@ -168,6 +168,31 @@ app.use("/.well-known/security.txt", (c) => {
   c.header("Cache-Control", "public, max-age=86400");
   return serveStatic({ root: "./public", path: "/.well-known/security.txt" })(c, () => Promise.resolve());
 });
+app.use("/6abf90e7f0354fb09ac01108f46a17e7.txt", serveStatic({ root: "./public", path: "/6abf90e7f0354fb09ac01108f46a17e7.txt" }));
+
+const INDEXNOW_KEY = "6abf90e7f0354fb09ac01108f46a17e7";
+const INDEXNOW_BASE = "https://agentbadge.xyz";
+
+app.post("/api/indexnow", async (c) => {
+  try {
+    const body = await c.req.json<{ urls?: string[] }>();
+    const urls = body.urls ?? [`${INDEXNOW_BASE}/`];
+    const payload = {
+      host: "agentbadge.xyz",
+      key: INDEXNOW_KEY,
+      keyLocation: `${INDEXNOW_BASE}/${INDEXNOW_KEY}.txt`,
+      urlList: urls,
+    };
+    const resp = await fetch("https://api.indexnow.org/IndexNow", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+    return c.json({ ok: resp.ok, status: resp.status, urls: urls.length });
+  } catch (e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
 app.use("/icons/*", (c, next) => {
   c.header("Cache-Control", "public, max-age=31536000, immutable");
   return next();
