@@ -21,7 +21,7 @@
 - /changelog: [ ] found / [ ] not found
 
 **Product comprehension correct?**:
-- [ ] Yes — correctly described AgentGate as on-chain identity for AI agents on Hedera
+- [ ] Yes — correctly described AgentBadge as on-chain identity for AI agents on Hedera
 - [ ] Partial — got some aspects right but missed key features
 - [ ] No — incorrect or vague description
 

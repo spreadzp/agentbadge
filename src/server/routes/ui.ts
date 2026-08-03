@@ -164,7 +164,7 @@ uiRoutes.get("/dashboard", async (c) => {
   const pageHtml = Dashboard(ssrData);
   return c.html(pageHtml);
 });
-// Dashboard page uses PageMeta["/dashboard"] title — "Dashboard — AgentGate"
+// Dashboard page uses PageMeta["/dashboard"] title — "Dashboard — AgentBadge"
 
 /**
  * GET /ui/feed — HTML fragment with recent passports.
@@ -937,7 +937,7 @@ uiRoutes.get("/ui/catalog", (c) => {
   }
 
   if (format === "markdown") {
-    const md = `# AgentGate Passport Tiers\n\n| Tier | Price (HBAR) | Capabilities |\n|------|-------------|--------------|\n${tiers.map((t) => `| ${t.name} | ${t.price} | ${t.capabilities.join(", ")} |`).join("\n")}`;
+    const md = `# AgentBadge Passport Tiers\n\n| Tier | Price (HBAR) | Capabilities |\n|------|-------------|--------------|\n${tiers.map((t) => `| ${t.name} | ${t.price} | ${t.capabilities.join(", ")} |`).join("\n")}`;
     return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8" } });
   }
 
@@ -963,7 +963,7 @@ uiRoutes.get("/ui/passport/request", (c) => {
 /**
  * GET /ui/help — help & overview page.
  *
- * Describes what AgentGate is, lists all site pages,
+ * Describes what AgentBadge is, lists all site pages,
  * links to the machine-readable Agent Guide for AI agents,
  * and shows MCP tools table and contact info.
  */

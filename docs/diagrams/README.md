@@ -1,4 +1,4 @@
-# AgentGate — System Diagrams
+# AgentBadge — System Diagrams
 
 Animated SVG diagrams built with [D2](https://d2lang.com/). Open `.svg` files in a browser to see animations.
 

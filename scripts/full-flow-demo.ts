@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Full-Flow Demo Script — tests ALL AgentGate platform capabilities from zero.
+ * Full-Flow Demo Script — tests ALL AgentBadge platform capabilities from zero.
  *
  * Steps:
  *  1.  Health check
@@ -131,7 +131,7 @@ async function main() {
   const wallet = new ethers.Wallet(creds.privateKey);
 
   console.log("\n  ═══════════════════════════════════════════");
-  console.log("  🤖 AgentGate Full-Flow Demo");
+  console.log("  🤖 AgentBadge Full-Flow Demo");
   console.log(`  Server:  ${SERVER_URL}`);
   console.log(`  Agent:   ${AGENT_NAME} (tier: ${TIER})`);
   console.log(`  Account: ${creds.accountId}`);
@@ -342,7 +342,7 @@ async function main() {
   console.log("  ═══════════════════════════════════════════\n");
 
   // Write certificate
-  const cert = `# AgentGate Full-Flow Demo Certificate
+  const cert = `# AgentBadge Full-Flow Demo Certificate
 
 Generated: ${new Date().toISOString()}
 

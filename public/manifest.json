@@ -1,6 +1,6 @@
 {
-  "name": "AgentGate — On-Chain Identity for AI Agents",
-  "short_name": "AgentGate",
+  "name": "AgentBadge — On-Chain Identity for AI Agents",
+  "short_name": "AgentBadge",
   "description": "On-chain identity for AI agents on Hedera: NFT passports, HCS directory, A2A messaging, marketplace.",
   "start_url": "/",
   "display": "standalone",
