@@ -353,4 +353,52 @@ demo.post("/consumer/run-workflow", async (c) => {
   }
 });
 
+// ─── SLICE-26-8: Pima Dataset Analysis Pipeline ──────────────────────────
+
+import { generatePimaDataset, generatePimaSample } from "../../agents/analysis/pima-dataset";
+import { generateAnalysisReport, runAnalysisPipeline, buildDatasetMetadata } from "../../agents/analysis/pipeline";
+
+demo.get("/analysis/dataset", (c) => {
+  const rows = parseInt(c.req.query("rows") || "100", 10);
+  const dataset = generatePimaDataset(Math.min(Math.max(rows, 10), 1000));
+  return c.json({
+    columns: dataset.columns,
+    types: dataset.types,
+    rowCount: dataset.rows.length,
+    rows: dataset.rows.slice(0, 20),
+    totalRows: dataset.rows.length,
+  });
+});
+
+demo.get("/analysis/sample", (c) => {
+  const dataset = generatePimaSample();
+  return c.json({
+    columns: dataset.columns,
+    types: dataset.types,
+    rowCount: dataset.rows.length,
+    rows: dataset.rows,
+  });
+});
+
+demo.post("/analysis/generate-report", (c) => {
+  const rows = parseInt(c.req.query("rows") || "100", 10);
+  const dataset = generatePimaDataset(Math.min(Math.max(rows, 10), 1000));
+  const html = generateAnalysisReport(dataset, "Pima Indians Diabetes", "pima");
+  return c.html(html);
+});
+
+demo.post("/analysis/sample-report", (c) => {
+  const dataset = generatePimaSample();
+  const html = generateAnalysisReport(dataset, "Pima Indians Diabetes (Sample)", "pima");
+  return c.html(html);
+});
+
+demo.get("/analysis/report-json", (c) => {
+  const rows = parseInt(c.req.query("rows") || "100", 10);
+  const dataset = generatePimaDataset(Math.min(Math.max(rows, 10), 1000));
+  const report = runAnalysisPipeline(dataset, "Pima Indians Diabetes", "pima");
+  const metadata = buildDatasetMetadata(dataset, "Pima Indians Diabetes");
+  return c.json({ report, metadata });
+});
+
 export default demo;

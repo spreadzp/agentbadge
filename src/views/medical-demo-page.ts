@@ -330,6 +330,49 @@ export function MedicalDemoPage(task?: CachedMarketTask) {
       </div>
     </section>
 
+    <!-- Pima Dataset Analysis (SLICE-26-8) -->
+    <section class="mt-8">
+      <h2 class="text-lg font-semibold text-white">Pima Indians Diabetes — Dataset Analysis</h2>
+      <p class="mt-1 text-sm text-slate-400">Generate a synthetic Pima dataset, run descriptive stats, correlation analysis, and risk factor scoring — then render a full HTML report with inline SVG charts.</p>
+
+      <div class="mt-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            hx-post="/api/demo/analysis/generate-report?rows=200"
+            hx-target="#pima-report"
+            hx-swap="innerHTML"
+            class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            Generate Analysis Report (200 rows)
+          </button>
+          <button
+            hx-post="/api/demo/analysis/sample-report"
+            hx-target="#pima-report"
+            hx-swap="innerHTML"
+            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Sample Report (15 rows)
+          </button>
+          <button
+            hx-get="/api/demo/analysis/report-json?rows=200"
+            hx-target="#pima-json"
+            hx-swap="innerHTML"
+            class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-600 transition-colors"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+            View JSON Analysis
+          </button>
+        </div>
+
+        <div id="pima-report" class="mt-4">
+          <p class="text-sm text-slate-500">Click "Generate Analysis Report" to run the full pipeline: descriptive stats → correlation matrix → risk factors → HTML report with SVG charts.</p>
+        </div>
+        <div id="pima-json" class="mt-4"></div>
+      </div>
+    </section>
+
     <!-- Data Formats -->
     <section class="mt-8">
       <h2 class="text-lg font-semibold text-white">Data Formats</h2>

@@ -23,9 +23,9 @@
     "lighthouse": "lhci autorun"
   },
   "dependencies": {
-    "@agentgate-hedera/hedera-core": "^0.1.7",
-    "@agentgate-hedera/mcp": "^0.1.4",
-    "@agentgate-hedera/passport": "^0.1.4",
+    "@agentgate-hedera/hedera-core": "^0.1.8",
+    "@agentgate-hedera/mcp": "^0.1.5",
+    "@agentgate-hedera/passport": "^0.1.5",
     "@hashgraph/sdk": "^2.55.0",
     "@hono/standard-validator": "^0.3.0",
     "@hono/swagger-ui": "^0.6.1",

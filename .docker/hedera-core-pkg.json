@@ -1,0 +1,44 @@
+{
+  "name": "@agentgate-hedera/hedera-core",
+  "version": "0.1.8",
+  "description": "Hedera blockchain operations for AgentGate",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "author": "AgentGate",
+  "license": "MIT",
+  "keywords": [
+    "hedera",
+    "blockchain",
+    "hts",
+    "hcs",
+    "agent"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && esbuild dist/index.js --bundle --minify --format=esm --outfile=dist/index.min.js --allow-overwrite --external:@hashgraph/sdk --external:long && mv dist/index.min.js dist/index.js",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.55.0",
+    "long": "^5.2.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
+    "bun-types": "^1.3.14",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.9.0",
+    "vitest": "^2.1.0"
+  }
+}
