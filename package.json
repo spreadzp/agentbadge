@@ -20,7 +20,9 @@
     "demo:medical-marketplace": "bun scripts/demo-medical-marketplace.ts",
     "push": "git add -A && git commit -m \"$(date +%Y-%m-%d) update\" && git push origin main",
     "deploy": "fly deploy",
-    "lighthouse": "lhci autorun"
+    "lighthouse": "lhci autorun",
+    "medical-agent": "bun src/agents/cli.ts",
+    "medical-agent:task": "bun src/agents/cli.ts --task-id"
   },
   "dependencies": {
     "@agentgate-hedera/hedera-core": "^0.1.8",
