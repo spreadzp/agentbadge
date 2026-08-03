@@ -364,12 +364,22 @@ export function MedicalDemoPage(task?: CachedMarketTask) {
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
             View JSON Analysis
           </button>
+          <button
+            hx-get="/api/demo/analysis/json-report-sample"
+            hx-target="#pima-json-report"
+            hx-swap="innerHTML"
+            class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Structured JSON Report (SLICE-26-9)
+          </button>
         </div>
 
         <div id="pima-report" class="mt-4">
           <p class="text-sm text-slate-500">Click "Generate Analysis Report" to run the full pipeline: descriptive stats → correlation matrix → risk factors → HTML report with SVG charts.</p>
         </div>
         <div id="pima-json" class="mt-4"></div>
+        <div id="pima-json-report" class="mt-4"></div>
       </div>
     </section>
 

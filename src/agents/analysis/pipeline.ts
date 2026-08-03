@@ -1,8 +1,9 @@
-import type { AnalysisReport, DatasetMetadata, MedicalAgentConfig, TypedDataset, ReportBundle } from "../types";
+import type { AnalysisReport, DatasetMetadata, MedicalAgentConfig, TypedDataset, ReportBundle, TaskInfo } from "../types";
 import { computeDescriptiveStats } from "./descriptive";
 import { correlationMatrix, significantCorrelations } from "./correlation";
 import { computeRiskFactors } from "./risk-factors";
 import { generateHtmlLayout } from "../report/html-layout";
+import { generateJsonReport } from "../report/json-report";
 
 export function runAnalysisPipeline(
   dataset: TypedDataset,
@@ -58,10 +59,12 @@ export function generateReportBundle(
   const report = runAnalysisPipeline(dataset, datasetName, datasetType);
   const metadata = buildDatasetMetadata(dataset, datasetName);
   const html = generateHtmlLayout(report, metadata, DEFAULT_CONFIG);
+  const task: TaskInfo = { taskId, analysisType: "descriptive" };
+  const json = generateJsonReport(report, metadata, DEFAULT_CONFIG, task);
 
   return {
     html,
-    json: report as unknown as Record<string, unknown>,
+    json: JSON.parse(json),
     metadata: {
       agentDid: DEFAULT_CONFIG.did,
       agentTier: DEFAULT_CONFIG.tier,
@@ -69,4 +72,16 @@ export function generateReportBundle(
       timestamp: new Date().toISOString(),
     },
   };
+}
+
+export function generateJsonReportFromDataset(
+  dataset: TypedDataset,
+  datasetName: string,
+  datasetType: string,
+  taskId: string,
+): string {
+  const report = runAnalysisPipeline(dataset, datasetName, datasetType);
+  const metadata = buildDatasetMetadata(dataset, datasetName);
+  const task: TaskInfo = { taskId, analysisType: "descriptive" };
+  return generateJsonReport(report, metadata, DEFAULT_CONFIG, task);
 }

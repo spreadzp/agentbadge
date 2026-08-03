@@ -356,7 +356,7 @@ demo.post("/consumer/run-workflow", async (c) => {
 // ─── SLICE-26-8: Pima Dataset Analysis Pipeline ──────────────────────────
 
 import { generatePimaDataset, generatePimaSample } from "../../agents/analysis/pima-dataset";
-import { generateAnalysisReport, runAnalysisPipeline, buildDatasetMetadata } from "../../agents/analysis/pipeline";
+import { generateAnalysisReport, runAnalysisPipeline, buildDatasetMetadata, generateJsonReportFromDataset } from "../../agents/analysis/pipeline";
 
 demo.get("/analysis/dataset", (c) => {
   const rows = parseInt(c.req.query("rows") || "100", 10);
@@ -399,6 +399,22 @@ demo.get("/analysis/report-json", (c) => {
   const report = runAnalysisPipeline(dataset, "Pima Indians Diabetes", "pima");
   const metadata = buildDatasetMetadata(dataset, "Pima Indians Diabetes");
   return c.json({ report, metadata });
+});
+
+// SLICE-26-9: Structured JSON Report (for DataHub verifier consumption)
+demo.get("/analysis/json-report", (c) => {
+  const rows = parseInt(c.req.query("rows") || "100", 10);
+  const taskId = c.req.query("taskId") || `task-demo-${Date.now()}`;
+  const dataset = generatePimaDataset(Math.min(Math.max(rows, 10), 1000));
+  const json = generateJsonReportFromDataset(dataset, "Pima Indians Diabetes", "pima", taskId);
+  return c.json(JSON.parse(json));
+});
+
+demo.get("/analysis/json-report-sample", (c) => {
+  const taskId = c.req.query("taskId") || `task-sample-${Date.now()}`;
+  const dataset = generatePimaSample();
+  const json = generateJsonReportFromDataset(dataset, "Pima Indians Diabetes (Sample)", "pima", taskId);
+  return c.json(JSON.parse(json));
 });
 
 export default demo;

@@ -120,3 +120,62 @@ export interface HeatmapData {
   columns: string[];
   matrix: number[][];
 }
+
+// SLICE-26-9: JSON Report types
+
+export interface TaskInfo {
+  taskId: string;
+  datasetUrn?: string;
+  analysisType: string;
+}
+
+export interface JsonReport {
+  taskId: string;
+  agentDid: string;
+  agentTier: string;
+  analysisDate: string;
+  datasetUrn: string;
+  analysisType: string;
+  datasetName: string;
+  rowCount: number;
+  descriptive: ColumnSummary[];
+  correlations: CorrelationResult[];
+  riskFactors: RiskFactorResult[];
+  glossaryTermsReferenced: string[];
+  summary: string;
+}
+
+export interface AssertionField {
+  path: string;
+  type: "STRING" | "NUMBER" | "BOOLEAN";
+}
+
+export interface AssertionConfig {
+  type: "schema" | "freshness";
+  compatibility?: "EXACT_MATCH" | "SUPERSET" | "SUBSET";
+  description: string;
+  fields?: AssertionField[];
+  minGlossaryTerms?: number;
+  minSignificantCorrelations?: number;
+  meanRange?: { column: string; min: number; max: number };
+  severityNotMinimal?: boolean;
+}
+
+export interface AssertionTemplate {
+  analysisType: string;
+  description: string;
+  requiredGlossaryTerms: string[];
+  assertions: AssertionConfig[];
+}
+
+export interface AssertionCheckResult {
+  description: string;
+  passed: boolean;
+  message: string;
+}
+
+export interface ValidationResult {
+  passed: boolean;
+  checks: AssertionCheckResult[];
+  failedChecks: string[];
+}
