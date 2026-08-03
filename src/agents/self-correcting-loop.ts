@@ -162,7 +162,17 @@ export async function runSelfCorrectingLoop(params: LoopParams): Promise<LoopRes
     const timestamp = new Date().toISOString();
 
     // Verify the report
-    const result = await verify(taskId, currentReport, template);
+    let result;
+    try {
+      result = await verify(taskId, currentReport, template);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      result = {
+        passed: false,
+        checks: [{ description: "verify", passed: false, message: msg }],
+        failedChecks: [`verify error: ${msg}`],
+      };
+    }
 
     if (result.passed) {
       // Success — complete the task
