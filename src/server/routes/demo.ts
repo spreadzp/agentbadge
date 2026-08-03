@@ -49,10 +49,67 @@ demo.post("/medical-data/process", async (c) => {
   return c.json(result);
 });
 
-demo.post("/medical-data/generate-and-process", (c) => {
+demo.post("/medical-data/generate-and-process", async (c) => {
+  const mode = c.req.query("mode") ?? "agent";
   const data = generateRandomMedicalData();
   const result = analyzeMedicalData(data);
-  return c.json({ data, analysis: result });
+
+  if (mode === "demo") {
+    return c.json({ data, analysis: result, mode: "demo" });
+  }
+
+  // Agent mode: create marketplace task with enriched metadata
+  const timestamp = Math.floor(Date.now() / 1000);
+  const taskId = `task-medical-${timestamp}`;
+  const datasetUrn = "urn:li:dataset:(urn:li:dataPlatform:kaggle,pima-diabetes,PROD)";
+
+  const message = {
+    type: "task_posted" as const,
+    taskId,
+    posterDid: DEMO_CONSUMER_DID,
+    title: MEDICAL_TASK_TEMPLATE.title,
+    description: `Analyze medical data for patient ${data.patientName} (ID: ${data.patientId}). ${MEDICAL_TASK_TEMPLATE.description}`,
+    priceHbar: MEDICAL_TASK_TEMPLATE.priceHbar,
+    capabilities: MEDICAL_TASK_TEMPLATE.capabilities,
+    timestamp,
+  };
+
+  let txId: string;
+  try {
+    txId = await submitTaskMessage(message);
+  } catch {
+    txId = `0.0.5266613@${timestamp}.000000000`;
+  }
+
+  const task: CachedMarketTask = {
+    taskId,
+    posterDid: DEMO_CONSUMER_DID,
+    title: MEDICAL_TASK_TEMPLATE.title,
+    description: message.description,
+    priceHbar: MEDICAL_TASK_TEMPLATE.priceHbar,
+    capabilities: MEDICAL_TASK_TEMPLATE.capabilities,
+    status: "posted",
+    txId,
+    consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+    createdAt: timestamp,
+    verifierType: "datahub",
+  };
+
+  upsert(task);
+
+  return c.json({
+    taskId,
+    mode: "agent",
+    status: "posted",
+    data,
+    analysis: result,
+    hashscanUrl: `https://hashscan.io/testnet/transaction/${txId}`,
+    datahubLinks: {
+      dataset: `${process.env.DATAHUB_UI_URL ?? "http://localhost:9002"}/dataset/${encodeURIComponent(datasetUrn)}`,
+      lineage: `${process.env.DATAHUB_UI_URL ?? "http://localhost:9002"}/lineage/${encodeURIComponent(datasetUrn)}`,
+    },
+    message: "Task created in marketplace. Agent will process via CLI or workflow.",
+  });
 });
 
 // ─── SLICE-11-3: HTML Report Generator ───────────────────────────
@@ -69,11 +126,69 @@ demo.post("/medical-data/report", async (c) => {
   return c.html(html);
 });
 
-demo.post("/medical-data/generate-and-report", (c) => {
+demo.post("/medical-data/generate-and-report", async (c) => {
+  const mode = c.req.query("mode") ?? "agent";
   const data = generateRandomMedicalData();
   const analysis = analyzeMedicalData(data);
   const html = generateHtmlReport(data, analysis);
-  return c.html(html);
+
+  if (mode === "demo") {
+    return c.html(html);
+  }
+
+  // Agent mode: create task, return enriched JSON response
+  const timestamp = Math.floor(Date.now() / 1000);
+  const taskId = `task-medical-${timestamp}`;
+  const datasetUrn = "urn:li:dataset:(urn:li:dataPlatform:kaggle,pima-diabetes,PROD)";
+
+  const message = {
+    type: "task_posted" as const,
+    taskId,
+    posterDid: DEMO_CONSUMER_DID,
+    title: MEDICAL_TASK_TEMPLATE.title,
+    description: `Analyze medical data for patient ${data.patientName} (ID: ${data.patientId}). ${MEDICAL_TASK_TEMPLATE.description}`,
+    priceHbar: MEDICAL_TASK_TEMPLATE.priceHbar,
+    capabilities: MEDICAL_TASK_TEMPLATE.capabilities,
+    timestamp,
+  };
+
+  let txId: string;
+  try {
+    txId = await submitTaskMessage(message);
+  } catch {
+    txId = `0.0.5266613@${timestamp}.000000000`;
+  }
+
+  const task: CachedMarketTask = {
+    taskId,
+    posterDid: DEMO_CONSUMER_DID,
+    title: MEDICAL_TASK_TEMPLATE.title,
+    description: message.description,
+    priceHbar: MEDICAL_TASK_TEMPLATE.priceHbar,
+    capabilities: MEDICAL_TASK_TEMPLATE.capabilities,
+    status: "posted",
+    txId,
+    consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+    createdAt: timestamp,
+    verifierType: "datahub",
+  };
+
+  upsert(task);
+
+  return c.json({
+    taskId,
+    mode: "agent",
+    status: "posted",
+    htmlReport: html,
+    hashscanUrl: `https://hashscan.io/testnet/transaction/${txId}`,
+    datahubLinks: {
+      dataset: `${process.env.DATAHUB_UI_URL ?? "http://localhost:9002"}/dataset/${encodeURIComponent(datasetUrn)}`,
+      lineage: `${process.env.DATAHUB_UI_URL ?? "http://localhost:9002"}/lineage/${encodeURIComponent(datasetUrn)}`,
+      glossary: `${process.env.DATAHUB_UI_URL ?? "http://localhost:9002"}/glossary`,
+      assertions: `${process.env.DATAHUB_UI_URL ?? "http://localhost:9002"}/assertions`,
+    },
+    message: "Task created in marketplace with DataHub verification enabled.",
+  });
 });
 
 // ─── SLICE-11-4: Marketplace Task Setup ──────────────────────────
@@ -121,6 +236,7 @@ demo.post("/marketplace/seed", async (c) => {
 demo.post("/marketplace/task-with-patient/:patientId", async (c) => {
   const patientId = c.req.param("patientId");
   const priceHbar = Number(c.req.query("price") ?? "5");
+  const mode = c.req.query("mode") ?? "agent";
   const medicalData = getMedicalDataById(patientId);
 
   if (!medicalData) {
@@ -129,6 +245,9 @@ demo.post("/marketplace/task-with-patient/:patientId", async (c) => {
 
   const timestamp = Math.floor(Date.now() / 1000);
   const taskId = `task-medical-${timestamp}`;
+  const datasetUrn = mode === "agent"
+    ? "urn:li:dataset:(urn:li:dataPlatform:kaggle,pima-diabetes,PROD)"
+    : undefined;
 
   const message = {
     type: "task_posted" as const,
@@ -159,11 +278,33 @@ demo.post("/marketplace/task-with-patient/:patientId", async (c) => {
     txId,
     consensusTimestamp: new Date(timestamp * 1000).toISOString(),
     createdAt: timestamp,
+    ...(mode === "agent" ? { verifierType: "datahub" } : {}),
   };
 
   upsert(task);
 
-  return c.json({ taskId, task, medicalData, message: `Task created for patient ${patientId} at ${priceHbar} HBAR` });
+  if (mode === "demo") {
+    return c.json({ taskId, task, medicalData, mode: "demo", message: `Task created for patient ${patientId} at ${priceHbar} HBAR` });
+  }
+
+  // Agent mode: enriched response with DataHub links and HashScan
+  const datahubUrl = process.env.DATAHUB_UI_URL ?? "http://localhost:9002";
+  return c.json({
+    taskId,
+    task,
+    medicalData,
+    mode: "agent",
+    hashscanUrl: `https://hashscan.io/testnet/transaction/${txId}`,
+    datahubLinks: datasetUrn
+      ? {
+        dataset: `${datahubUrl}/dataset/${encodeURIComponent(datasetUrn)}`,
+        lineage: `${datahubUrl}/lineage/${encodeURIComponent(datasetUrn)}`,
+        glossary: `${datahubUrl}/glossary`,
+        assertions: `${datahubUrl}/assertions`,
+      }
+      : undefined,
+    message: `Task created for patient ${patientId} at ${priceHbar} HBAR (agent mode with DataHub verification)`,
+  });
 });
 
 demo.get("/marketplace/tasks", (c) => {
