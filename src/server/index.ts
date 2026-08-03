@@ -73,6 +73,17 @@ if (process.env.DATAHUB_ENABLED === "true") {
 
 const app = new Hono();
 
+// 301 redirect: agent-passport-hedera.fly.dev → agentbadge.xyz (EPIC-22 SLICE-22-4)
+app.use(async (c, next) => {
+  const host = c.req.header("host") ?? "";
+  if (host.includes("agent-passport-hedera.fly.dev")) {
+    const url = new URL(c.req.url);
+    url.host = "agentbadge.xyz";
+    return c.redirect(url.toString(), 301);
+  }
+  await next();
+});
+
 app.use(requestLoggerMiddleware());
 app.use(corsMiddleware());
 app.use(securityHeaders());

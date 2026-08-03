@@ -61,7 +61,7 @@ function buildSvg(): string {
 
   <!-- Domain -->
   <text x="600" y="560" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#64748b">
-    agent-passport-hedera.fly.dev
+    agentbadge.xyz
   </text>
 </svg>`;
 }
