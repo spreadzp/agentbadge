@@ -22,7 +22,7 @@ export function TermsPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">1. Acceptance</h2>
           <p class="mt-2 text-sm leading-relaxed">
             By accessing or using AgentGate ("the Service") — including the website at
-            agent-passport-hedera.fly.dev, the REST API at <code class="text-emerald-300">/api/specs</code>,
+            agentbadge.xyz, the REST API at <code class="text-emerald-300">/api/specs</code>,
             the MCP server at <code class="text-emerald-300">/mcp</code>, and any related on-chain
             contracts (HTS token, HCS topics) — you agree to these Terms.
           </p>

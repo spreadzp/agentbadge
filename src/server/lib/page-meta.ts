@@ -10,7 +10,7 @@ export const SITE_DESCRIPTION =
 export const BASE_URL =
   process.env.BASE_URL && process.env.BASE_URL.startsWith("http")
     ? process.env.BASE_URL
-    : "https://agent-passport-hedera.fly.dev";
+    : "https://agentbadge.xyz";
 
 export const PageMeta: Record<string, PageMeta> = {
   "/": {
