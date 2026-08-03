@@ -357,6 +357,7 @@ demo.post("/consumer/run-workflow", async (c) => {
 
 import { generatePimaDataset, generatePimaSample } from "../../agents/analysis/pima-dataset";
 import { generateAnalysisReport, runAnalysisPipeline, buildDatasetMetadata, generateJsonReportFromDataset } from "../../agents/analysis/pipeline";
+import { uploadReportBundle } from "../../agents/ipfs-uploader";
 
 demo.get("/analysis/dataset", (c) => {
   const rows = parseInt(c.req.query("rows") || "100", 10);
@@ -415,6 +416,28 @@ demo.get("/analysis/json-report-sample", (c) => {
   const dataset = generatePimaSample();
   const json = generateJsonReportFromDataset(dataset, "Pima Indians Diabetes (Sample)", "pima", taskId);
   return c.json(JSON.parse(json));
+});
+
+// SLICE-26-10: IPFS Upload — upload report bundle to Pinata
+demo.post("/analysis/upload-ipfs", async (c) => {
+  try {
+    const taskId = c.req.query("taskId") || `task-ipfs-${Date.now()}`;
+    const dataset = generatePimaSample();
+    const html = generateAnalysisReport(dataset, "Pima Indians Diabetes (Sample)", "pima");
+    const json = generateJsonReportFromDataset(dataset, "Pima Indians Diabetes (Sample)", "pima", taskId);
+    const uri = await uploadReportBundle(html, json, {
+      taskId,
+      agentDid: "did:hcs:0.0.0:2",
+      agentTier: "gold",
+      analysisType: "descriptive",
+      datasetUrn: "urn:li:dataset:(urn:li:dataPlatform:kaggle,pima-diabetes,PROD)",
+      generatedAt: new Date().toISOString(),
+    });
+    return c.json({ success: true, ipfsUri: uri, taskId });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "IPFS upload failed";
+    return c.json({ success: false, error: msg }, 500);
+  }
 });
 
 export default demo;
