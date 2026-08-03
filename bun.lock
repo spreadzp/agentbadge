@@ -5,8 +5,8 @@
     "": {
       "name": "agentgate",
       "dependencies": {
-        "@agentgate-hedera/hedera-core": "^0.1.8",
-        "@agentgate-hedera/mcp": "^0.1.5",
+        "@agentgate-hedera/hedera-core": "^0.1.9",
+        "@agentgate-hedera/mcp": "^0.1.6",
         "@agentgate-hedera/passport": "^0.1.5",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/standard-validator": "^0.3.0",
@@ -44,9 +44,9 @@
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, ""],
 
-    "@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.8", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-0sHAc3GHlypcQ4IwZIIwvV6azZrfx9vjxsbo9nPAWyghKorFCclxKePq4G4/lv743xQCSzIyv4vHJSm38I9MHg=="],
+    "@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.9", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-LpIBnoE4J4DfPePsGVgWgfpcGq12UNK5rKLWRKElLsg8Qz4N/XXQJChOlExJ+J1ApF+IlEA7L6pOkx2A6jWbhQ=="],
 
-    "@agentgate-hedera/mcp": ["@agentgate-hedera/mcp@0.1.5", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@agentgate-hedera/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-8ub/KAd1JwaT9U+ffNE4vkVsI9G9C7S/L2snemtMwniRMMJVUN5h1qyTlurXhZukzL6yUM6EyhsXxVgDf3Q53g=="],
+    "@agentgate-hedera/mcp": ["@agentgate-hedera/mcp@0.1.6", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@agentgate-hedera/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-eX88WTrmcFqFzyxp51sXrgI/qvhSrSYd5bkcliSHqBp084EgyMSFzQNvkxgA67Iz0mS/oDsnvC7xdu9mhYdAnQ=="],
 
     "@agentgate-hedera/passport": ["@agentgate-hedera/passport@0.1.5", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@x402/hedera": "^2.19.0", "@x402/hono": "^2.19.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-idDgAWkkShs+AxfoHBvqjhHDbZpCORkRbcqSi5nlvPfsVDDZlb8+TSozziEbM2b4euOjq5pa+GWJk2lpL1AmPw=="],
 
