@@ -35,7 +35,7 @@ import { PassportRequestForm } from "../../views/passport-request-form";
 import { HelpPage } from "../../views/help-page";
 import { MedicalDemoPage } from "../../views/medical-demo-page";
 import { A2AInboxFragment } from "../../views/a2a-fragment";
-import { MarketplaceTaskBoardFragment, TaskDetailsFragment, TaskMessagesFragment } from "../../views/marketplace-fragment";
+import { MarketplaceTaskBoardFragment, TaskDetailsFragment, TaskMessagesFragment, EscrowPanel } from "../../views/marketplace-fragment";
 import { AgentProfilePage } from "../../views/agent-profile";
 import { Layout } from "../../views/layout";
 import { PageHeader } from "../../views/page-header";
@@ -1347,6 +1347,19 @@ uiRoutes.get("/ui/market/tasks/:id/fragment", (c) => {
   return c.html(html`<div class="htmx-poll-wrapper" hx-get="${pollUrl}" hx-trigger="every 10s" hx-swap="outerHTML">
     ${fragment}
   </div>`.toString());
+});
+
+/**
+ * GET /ui/market/tasks/:id/escrow-fragment — escrow panel fragment only (for HTMX polling).
+ */
+uiRoutes.get("/ui/market/tasks/:id/escrow-fragment", (c) => {
+  const taskId = c.req.param("id");
+  const task = marketGet(taskId);
+  if (!task) {
+    return c.html('<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-slate-400"><p>Task not found.</p></div>');
+  }
+  const viewerDid = c.req.query("did") ?? "";
+  return c.html(EscrowPanel(task, viewerDid || undefined).toString());
 });
 
 /**
