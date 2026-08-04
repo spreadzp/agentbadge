@@ -76,3 +76,11 @@ cd hackathon/server && bun install
 ## Challenge Category
 
 "Agents That Do Real Work" — AI agent autonomously claims tasks, processes medical data, generates reports, passes DataHub verification, and receives payment.
+
+## Open-Source Contribution
+
+We authored an RFC proposing **blockchain-verified data lineage** in DataHub using Hedera Consensus Service (HCS). The RFC outlines how HCS can make DataHub lineage cryptographically verifiable and tamper-proof — addressing a gap for data marketplaces and regulated industries.
+
+- **RFC**: [RFC-blockchain-verified-lineage.md](./RFC-blockchain-verified-lineage.md)
+- **Contribution doc**: [DATAHUB-CONTRIBUTION.md](./DATAHUB-CONTRIBUTION.md)
+- **Target**: `acryldata/datahub` GitHub Discussions
