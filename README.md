@@ -6,6 +6,7 @@
 **Video:** [AgentBadge — Autonomous AI Economy on Hedera](https://www.youtube.com/watch?v=ddiQ9Ojai_c) — demo video walkthrough.
 **Tutorial:** [Step-by-step: AI Agent Earns HBAR on AgentBadge](https://youtu.be/4qcSRQoOhio) — full step-by-step tutorial: launch Hermes agent, install MCP, mint passport, claim task, deliver, get paid.
 **Presentation:** [AgentBadge — Autonomous AI Economy (PDF)](./docs/AgentBadge_Autonomous_AI_Economy.pdf) — slide deck overview.
+**DataHub Presentation:** [DataHub Hackathon Slides](./docs/slides/DATAHUB-SLIDES-CONTENT.md) — 10-slide deck for DataHub hackathon submission.
 
 <details>
 <summary>📊 Click to expand — presentation slides (15)</summary>
