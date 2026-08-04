@@ -1,0 +1,86 @@
+{
+  "totalTerms": 16,
+  "domain": "Medical / Endocrinology",
+  "terms": [
+    {
+      "name": "Hyperglycemia",
+      "definition": "Abnormally elevated blood glucose levels (>180 mg/dL)",
+      "datahubUrn": "urn:li:glossaryTerm:Hyperglycemia"
+    },
+    {
+      "name": "Hypertension",
+      "definition": "Persistently elevated arterial blood pressure (>140/90 mmHg)",
+      "datahubUrn": "urn:li:glossaryTerm:Hypertension"
+    },
+    {
+      "name": "Obesity",
+      "definition": "BMI >= 30, associated with increased health risk",
+      "datahubUrn": "urn:li:glossaryTerm:Obesity"
+    },
+    {
+      "name": "Diabetes Mellitus",
+      "definition": "Metabolic disorder characterized by chronic hyperglycemia",
+      "datahubUrn": "urn:li:glossaryTerm:DiabetesMellitus"
+    },
+    {
+      "name": "Insulin Resistance",
+      "definition": "Reduced tissue response to insulin, precursor to Type 2 diabetes",
+      "datahubUrn": "urn:li:glossaryTerm:InsulinResistance"
+    },
+    {
+      "name": "Body Mass Index",
+      "definition": "Weight (kg) / Height (m)^2 — standard obesity metric",
+      "datahubUrn": "urn:li:glossaryTerm:BMI"
+    },
+    {
+      "name": "Glucose Tolerance",
+      "definition": "Ability to metabolize glucose, measured by OGTT",
+      "datahubUrn": "urn:li:glossaryTerm:GlucoseTolerance"
+    },
+    {
+      "name": "Metabolic Syndrome",
+      "definition": "Cluster of conditions (hypertension, hyperglycemia, obesity) increasing CVD risk",
+      "datahubUrn": "urn:li:glossaryTerm:MetabolicSyndrome"
+    },
+    {
+      "name": "Cardiovascular Risk",
+      "definition": "Probability of developing heart disease or stroke",
+      "datahubUrn": "urn:li:glossaryTerm:CardiovascularRisk"
+    },
+    {
+      "name": "Nephropathy",
+      "definition": "Kidney disease, common complication of diabetes",
+      "datahubUrn": "urn:li:glossaryTerm:Nephropathy"
+    },
+    {
+      "name": "Neuropathy",
+      "definition": "Nerve damage, common complication of diabetes",
+      "datahubUrn": "urn:li:glossaryTerm:Neuropathy"
+    },
+    {
+      "name": "Retinopathy",
+      "definition": "Damage to retina, common complication of diabetes",
+      "datahubUrn": "urn:li:glossaryTerm:Retinopathy"
+    },
+    {
+      "name": "Hyperlipidemia",
+      "definition": "Elevated lipids in blood, CVD risk factor",
+      "datahubUrn": "urn:li:glossaryTerm:Hyperlipidemia"
+    },
+    {
+      "name": "Hypoglycemia",
+      "definition": "Abnormally low blood glucose (<70 mg/dL)",
+      "datahubUrn": "urn:li:glossaryTerm:Hypoglycemia"
+    },
+    {
+      "name": "Ketoacidosis",
+      "definition": "Serious complication of diabetes, high ketones + acidosis",
+      "datahubUrn": "urn:li:glossaryTerm:Ketoacidosis"
+    },
+    {
+      "name": "Gestational Diabetes",
+      "definition": "Diabetes developing during pregnancy",
+      "datahubUrn": "urn:li:glossaryTerm:GestationalDiabetes"
+    }
+  ]
+}

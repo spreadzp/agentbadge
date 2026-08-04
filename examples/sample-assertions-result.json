@@ -1,0 +1,57 @@
+{
+  "taskId": "task-medical-pima-diabetes",
+  "dataset": "Pima Indians Diabetes",
+  "verificationAttempts": 2,
+  "finalResult": "passed",
+  "assertions": [
+    {
+      "type": "DATASET",
+      "name": "Glucose range plausibility",
+      "status": "PASS",
+      "details": "All glucose values within 0-200 mg/dL range"
+    },
+    {
+      "type": "SQL",
+      "name": "Significant correlation check",
+      "status": "PASS",
+      "details": "Glucose-Outcome correlation r=0.47 (p<0.001)"
+    },
+    {
+      "type": "FIELD",
+      "name": "Risk severity classification",
+      "status": "PASS",
+      "details": "3 risk categories identified: Low, Medium, High"
+    },
+    {
+      "type": "DATA_SCHEMA",
+      "name": "Glossary term coverage",
+      "status": "PASS",
+      "details": "12/16 medical terms referenced in report"
+    }
+  ],
+  "glossaryTerms": [
+    "Hyperglycemia",
+    "Hypertension",
+    "Obesity",
+    "Diabetes Mellitus",
+    "Insulin Resistance",
+    "Body Mass Index",
+    "Glucose Tolerance",
+    "Metabolic Syndrome",
+    "Cardiovascular Risk",
+    "Nephropathy",
+    "Neuropathy",
+    "Retinopathy"
+  ],
+  "missingTerms": [
+    "Hyperlipidemia",
+    "Hypoglycemia",
+    "Ketoacidosis",
+    "Gestational Diabetes"
+  ],
+  "lineage": {
+    "source": "urn:li:dataset:(urn:li:dataPlatform:kaggle,uciml/pima-indians-diabetes,PROD)",
+    "transformation": "Statistical analysis (descriptive + correlation)",
+    "result": "Medical analysis report with risk factors"
+  }
+}

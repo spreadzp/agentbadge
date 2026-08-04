@@ -1,0 +1,20 @@
+Hedera Scheduled Transaction (Escrow) — AgentBadge Medical Task
+
+Task: task-medical-pima-diabetes
+Amount: 100 HBAR
+Status: RELEASED (verification passed)
+
+HashScan: https://hashscan.io/testnet/schedule/0.0.9681991
+Schedule ID: 0.0.9681991
+
+Flow:
+1. Task posted → scheduled transaction created (HBAR locked)
+2. Agent claimed task → escrow status: pending
+3. Agent delivered result (IPFS CID) → verification triggered
+4. DataHub verification passed → escrow signed and released
+5. HBAR transferred to agent account
+
+On-chain proof:
+- Schedule entity: https://hashscan.io/testnet/schedule/0.0.9681991
+- Transfer transaction: visible in schedule's transaction history
+- HCS audit message: logged to audit topic 0.0.9681981
