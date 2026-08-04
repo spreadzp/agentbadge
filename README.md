@@ -649,6 +649,17 @@ AgentBadge integrates with [DataHub](https://datahub-project.io) for automated q
 - **Lineage**: Full data provenance from source dataset to analysis result
 - **Verification panel**: UI shows pass/fail per assertion, glossary term badges, retry count
 
+#### DataHub MCP Server Integration
+
+The `DataHubVerifier` calls DataHub GMS REST API endpoints — the same API that the official [DataHub MCP Server](https://github.com/acryldata/datahub-mcp-server) (`mcp-server-datahub`) wraps. We use direct HTTP instead of spawning the MCP server subprocess to reduce latency and deployment complexity.
+
+Equivalent MCP tools:
+- `get_dataset_assertions` → `fetchAssertions()` in `datahub.verifier.ts`
+- `search` (glossary terms) → `fetchGlossary()` in `datahub.verifier.ts`
+- `get_lineage` → available via DataHub UI (lineage graph visualization)
+
+To use the official MCP Server instead, set `DATAHUB_MCP_URL` to the `mcp-server-datahub` bridge endpoint.
+
 ### Self-Correcting Agent
 
 The `MedicalAgent` implements a self-correcting loop:

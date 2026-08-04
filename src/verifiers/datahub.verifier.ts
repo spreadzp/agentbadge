@@ -1,6 +1,23 @@
 import type { ITaskVerifier, VerificationResult } from "./verifier.interface";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 
+/**
+ * DataHub integration notes:
+ *
+ * This verifier calls DataHub GMS REST API endpoints (assertions + glossary).
+ * These are the same endpoints that the official DataHub MCP Server
+ * (mcp-server-datahub) wraps. We use direct HTTP instead of spawning the
+ * MCP server subprocess to reduce latency and deployment complexity.
+ *
+ * Equivalent MCP tools:
+ *   - get_dataset_assertions  →  fetchAssertions()
+ *   - search (glossary terms) →  fetchGlossary()
+ *   - get_lineage             →  (available via DataHub UI, not needed here)
+ *
+ * To use the official MCP Server instead, set DATAHUB_MCP_URL to the
+ * mcp-server-datahub stdio-to-HTTP bridge endpoint.
+ */
+
 interface AssertionsResponse {
   passed: boolean;
   failures: string[];

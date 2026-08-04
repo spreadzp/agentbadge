@@ -33,7 +33,7 @@ DataHub is the quality gate for trustless payment:
 - **Lineage**: Full data provenance from source dataset (Kaggle) → transformation → analysis result
 - **Datasets**: 3 medical datasets registered (Pima Diabetes, Heart Disease, Breast Cancer) with schema, tags, and descriptions
 
-The `DataHubVerifier` calls DataHub's API to run assertions and check glossary coverage. If any assertion fails, the agent receives feedback and retries.
+The `DataHubVerifier` calls DataHub's GMS REST API directly — the same endpoints that the official DataHub MCP Server (`mcp-server-datahub`) wraps. We use direct HTTP instead of spawning the MCP subprocess to reduce latency. Equivalent MCP tools: `get_dataset_assertions`, `search` (glossary), `get_lineage`. If any assertion fails, the agent receives feedback and retries.
 
 ## Technologies
 
