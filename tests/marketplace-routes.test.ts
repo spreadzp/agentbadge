@@ -12,6 +12,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
     prepareTransferTransaction: vi.fn(),
     transferHbarWithSignature: vi.fn(),
     didToAccountId: vi.fn(),
+    createScheduledTransfer: vi.fn(),
   };
 });
 
@@ -24,11 +25,13 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
   listTasks: vi.fn(),
   marketClear: vi.fn(),
   marketRebuildFromHcs: vi.fn(),
+  setEscrowStatus: vi.fn(),
+  returnTaskToMarket: vi.fn(),
 }));
 
-import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature } from "@agentgate-hedera/hedera-core";
+import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, createScheduledTransfer } from "@agentgate-hedera/hedera-core";
 import { didToAccountId } from "@agentgate-hedera/hedera-core";
-import { marketUpsert as upsert, marketGet as get, getTaskById, updateTaskStatus, listTasks } from "@agentgate-hedera/passport";
+import { marketUpsert as upsert, marketGet as get, getTaskById, updateTaskStatus, listTasks, setEscrowStatus, returnTaskToMarket } from "@agentgate-hedera/passport";
 import { marketRoutes } from "../src/server/routes/market";
 
 const mockedSubmit = vi.mocked(submitTaskMessage);
@@ -38,6 +41,9 @@ const mockedTransferHbarWithKey = vi.mocked(transferHbarWithKey);
 const mockedPrepareTransfer = vi.mocked(prepareTransferTransaction);
 const mockedTransferWithSignature = vi.mocked(transferHbarWithSignature);
 const mockedDidToAccountId = vi.mocked(didToAccountId);
+const mockedCreateScheduledTransfer = vi.mocked(createScheduledTransfer);
+const mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
+const mockedReturnTaskToMarket = vi.mocked(returnTaskToMarket);
 const mockedUpsert = vi.mocked(upsert);
 const mockedGet = vi.mocked(get);
 const mockedGetTaskById = vi.mocked(getTaskById);
@@ -295,6 +301,12 @@ describe("Marketplace REST API", () => {
       mockedGetTaskById.mockReturnValue(mockTask);
       mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000001");
       mockedUpdateTaskStatus.mockReturnValue(true);
+      mockedDidToAccountId.mockImplementation(async (did: string) => {
+        if (did === POSTER_DID) return "0.0.123";
+        if (did === CLAIMER_DID) return "0.0.456";
+        return null;
+      });
+      mockedCreateScheduledTransfer.mockResolvedValue({ scheduleId: "0.0.888@123", scheduleTxId: "0.0.999@456" });
 
       const res = await app.request("/market/tasks/task-001/claim", {
         method: "POST",
@@ -308,7 +320,7 @@ describe("Marketplace REST API", () => {
       expect(data.txId).toBe("0.0.111@1234567890.000000001");
       expect(data.timestamp).toBeTypeOf("number");
       expect(mockedVerify).toHaveBeenCalledWith(CLAIMER_DID);
-      expect(mockedSubmit).toHaveBeenCalledOnce();
+      expect(mockedSubmit).toHaveBeenCalledTimes(2);
       expect(mockedUpdateTaskStatus).toHaveBeenCalledWith("task-001", "claimed", { claimerDid: CLAIMER_DID, claimTxId: "0.0.111@1234567890.000000001" });
     });
 
@@ -998,6 +1010,12 @@ describe("Marketplace REST API", () => {
       // ─── Step 3: Agent B claims the task ───
       mockedGetTaskById.mockReturnValue(postedTask);
       mockedSubmit.mockResolvedValue("0.0.111@claim-tx");
+      mockedDidToAccountId.mockImplementation(async (did: string) => {
+        if (did === POSTER_DID) return "0.0.123";
+        if (did === CLAIMER_DID) return "0.0.456";
+        return null;
+      });
+      mockedCreateScheduledTransfer.mockResolvedValue({ scheduleId: "0.0.888@123", scheduleTxId: "0.0.999@456" });
 
       const claimRes = await app.request(`/market/tasks/${taskId}/claim`, {
         method: "POST",
@@ -1060,8 +1078,8 @@ describe("Marketplace REST API", () => {
         completedTxId: "0.0.111@complete-tx",
       });
 
-      // ─── Verify full lifecycle: 4 HCS messages submitted (post, claim, deliver, complete) ───
-      expect(mockedSubmit).toHaveBeenCalledTimes(4);
+      // ─── Verify full lifecycle: 5 HCS messages submitted (post, claim, escrow_created, deliver, complete) ───
+      expect(mockedSubmit).toHaveBeenCalledTimes(5);
       expect(mockedVerify).toHaveBeenCalled();
     });
   });

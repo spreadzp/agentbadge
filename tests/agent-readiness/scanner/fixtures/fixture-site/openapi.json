@@ -1,0 +1,9 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Fixture API", "version": "1.0.0" },
+  "paths": {
+    "/api": { "get": { "summary": "API root", "responses": { "200": { "description": "OK" } } } },
+    "/api/agents": { "get": { "summary": "List agents", "responses": { "200": { "description": "OK" } } } },
+    "/api/health": { "get": { "summary": "Health check", "responses": { "200": { "description": "OK" } } } }
+  }
+}

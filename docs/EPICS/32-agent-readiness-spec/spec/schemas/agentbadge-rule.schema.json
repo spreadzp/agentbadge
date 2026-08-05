@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "rule_id": {
+      "type": "string",
+      "pattern": "^AB-[A-Z0-9-]+$",
+      "description": "Stable rule identifier (e.g. 'AB-001', 'AB-007')"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver of this rule's check logic — see spec §3"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable rule name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "discovery",
+        "documentation",
+        "actionability",
+        "machine_readable",
+        "verification"
+      ],
+      "description": "Rule category: discovery, documentation, actionability, machine_readable, verification"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "Rule severity: high (triggers category floor), medium (normal), low (informational). Note: 'critical' is intentionally excluded from v0.1 — see spec §A.3"
+    },
+    "counted_in_score": {
+      "type": "boolean",
+      "description": "If false, this rule does not contribute to score calculation"
+    },
+    "applicability": {
+      "description": "Optional applicability condition — if absent, rule always applies",
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "description": "Machine-readable condition expression"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of when this rule applies"
+        }
+      },
+      "required": [
+        "condition",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "http_fetch",
+            "schema_validation",
+            "exact_match",
+            "cross_evidence"
+          ],
+          "description": "Check type: http_fetch (HTTP GET + parse), schema_validation (validate against JSON Schema), exact_match (string/structural equality), cross_evidence (compare two fetched sources on shared key)"
+        },
+        "sources": {
+          "description": "Array of source identifiers to fetch/compare (for http_fetch, cross_evidence)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "match_keys": {
+          "description": "Keys to match when type = exact_match or cross_evidence",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflict_when": {
+          "description": "Condition expression describing when sources conflict (for cross_evidence)",
+          "type": "string"
+        },
+        "target": {
+          "description": "Target path or URL for http_fetch / schema_validation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Check definition — how the rule is evaluated"
+    },
+    "fix": {
+      "type": "object",
+      "properties": {
+        "eligible": {
+          "type": "boolean",
+          "description": "Whether AgentBadge can generate a fix for this rule"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "deterministic",
+            "assisted",
+            "none"
+          ],
+          "description": "Fix type: deterministic (safe to auto-generate), assisted (requires human confirm/edit/reject), none (not fixable by AgentBadge)"
+        },
+        "note": {
+          "description": "Additional context about the fix approach",
+          "type": "string"
+        }
+      },
+      "required": [
+        "eligible",
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Fix definition — how a failing rule can be remediated"
+    }
+  },
+  "required": [
+    "rule_id",
+    "version",
+    "name",
+    "category",
+    "severity",
+    "counted_in_score",
+    "check",
+    "fix"
+  ],
+  "additionalProperties": false
+}

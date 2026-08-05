@@ -111,13 +111,14 @@ export class MedicalDataProviderAgent {
       claimerDid: this.config.providerDid,
       timestamp,
     };
+    let claimTxId: string | undefined;
     try {
-      await submitTaskMessage(message);
+      claimTxId = await submitTaskMessage(message);
     } catch {
       // HCS submit failed — continue with cache-only update for demo
     }
 
-    updateTaskStatus(taskId, "claimed", { claimerDid: this.config.providerDid });
+    updateTaskStatus(taskId, "claimed", { claimerDid: this.config.providerDid, claimTxId });
     const updated = getTask(taskId);
     return updated!;
   }
@@ -171,8 +172,9 @@ export class MedicalDataProviderAgent {
       resultBody: htmlReport.slice(0, 4000),
       timestamp,
     };
+    let deliverTxId: string | undefined;
     try {
-      await submitTaskMessage(message);
+      deliverTxId = await submitTaskMessage(message);
     } catch {
       // HCS submit failed — continue with cache-only update for demo
     }
@@ -180,7 +182,7 @@ export class MedicalDataProviderAgent {
     const resultBody = htmlReport;
     const resultIpfs = undefined;
 
-    updateTaskStatus(taskId, "delivered", { resultBody, resultIpfs });
+    updateTaskStatus(taskId, "delivered", { resultBody, resultIpfs, deliverTxId });
     const updated = getTask(taskId);
     return updated!;
   }

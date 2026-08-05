@@ -1,0 +1,369 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID — 26-char Crockford Base32, see spec §11"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0",
+      "description": "Literal version pin — only '0.1.0' accepted in v0.1"
+    },
+    "ruleset": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "const": "agent-readiness",
+          "description": "Ruleset name — always 'agent-readiness' in v0.1"
+        },
+        "version": {
+          "type": "string",
+          "const": "1.2.0",
+          "description": "Ruleset semver — always '1.2.0' in v0.1"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false,
+      "description": "Reference to the ruleset used for this scan"
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "description": "Unique identifier of the scanned agent (e.g. DID or hostname)"
+        },
+        "agent_version": {
+          "type": "string",
+          "description": "Version string of the scanned agent"
+        },
+        "endpoint_base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL of the agent's primary HTTP endpoint"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "ISO 8601 timestamp of when the scan was initiated"
+        }
+      },
+      "required": [
+        "agent_id",
+        "agent_version",
+        "endpoint_base_url",
+        "timestamp"
+      ],
+      "additionalProperties": false,
+      "description": "Scope of the scan — identifies what was scanned"
+    },
+    "scanned_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+      "description": "ISO 8601 timestamp of scan completion"
+    },
+    "previous_hash": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "SHA-256 hash of the previous report for this scope, or null if first scan"
+    },
+    "source_state": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Fetched URL"
+          },
+          "etag": {
+            "description": "ETag header from response, if present",
+            "type": "string"
+          },
+          "last_modified": {
+            "description": "Last-Modified header, if present",
+            "type": "string"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "description": "ISO 8601 timestamp of fetch"
+          },
+          "status_code": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599,
+            "description": "HTTP status code of the fetch"
+          }
+        },
+        "required": [
+          "url",
+          "fetched_at",
+          "status_code"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Array of fetched resources — enables reproducibility, see spec §10"
+    },
+    "score": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall readiness score (0-100), weighted sum of category scores"
+        },
+        "categories": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": [
+              "discovery",
+              "documentation",
+              "actionability",
+              "machine_readable",
+              "verification"
+            ],
+            "description": "Rule category: discovery, documentation, actionability, machine_readable, verification"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "required": [
+            "discovery",
+            "documentation",
+            "actionability",
+            "machine_readable",
+            "verification"
+          ],
+          "description": "Per-category scores (0-100), keyed by category enum"
+        },
+        "delta": {
+          "description": "Score change from previous report — omitted on first scan",
+          "type": "number",
+          "minimum": -100,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "total",
+        "categories"
+      ],
+      "additionalProperties": false,
+      "description": "Score block — see spec §6 for scoring model"
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "pattern": "^AB-[A-Z0-9-]+$",
+            "description": "Stable rule identifier (e.g. 'AB-001', 'AB-007')"
+          },
+          "rule_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Semver of this rule's own check logic — see spec §3"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "discovery",
+              "documentation",
+              "actionability",
+              "machine_readable",
+              "verification"
+            ],
+            "description": "Rule category: discovery, documentation, actionability, machine_readable, verification"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "INFERRED",
+              "CONFLICT",
+              "MISSING",
+              "NOT_APPLICABLE"
+            ],
+            "description": "Assertion status: VERIFIED (direct evidence), INFERRED (indirect, carries confidence), CONFLICT (sources disagree), MISSING (no evidence found), NOT_APPLICABLE (rule does not apply to this scope)"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "Rule severity: high (triggers category floor), medium (normal), low (informational). Note: 'critical' is intentionally excluded from v0.1 — see spec §A.3"
+          },
+          "counted_in_score": {
+            "type": "boolean",
+            "description": "If false, this assertion does not contribute to score calculation"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "UI-only, never a scoring input — see spec §6.1"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "description": "Evidence source identifier (e.g. 'openapi', 'agent_guide', 'http_fetch')"
+                },
+                "detail": {
+                  "type": "string",
+                  "description": "Human-readable description of the evidence"
+                }
+              },
+              "required": [
+                "source",
+                "detail"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Array of evidence objects justifying the assertion's status"
+          },
+          "conflict": {
+            "description": "Present only when status = CONFLICT — see spec §5, §12.2",
+            "type": "object",
+            "properties": {
+              "sides": {
+                "minItems": 2,
+                "maxItems": 2,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "description": "Evidence source of this conflicting side"
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "The conflicting value from this source"
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Exactly 2 entries describing the disagreeing sides"
+              }
+            },
+            "required": [
+              "sides"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "rule_id",
+          "rule_version",
+          "category",
+          "status",
+          "severity",
+          "counted_in_score",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Array of assertion objects — one per evaluated rule, see spec §12"
+    },
+    "integrity": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "sha256",
+          "description": "Hash algorithm for content hash — always sha256 in v0.1"
+        },
+        "canonicalization": {
+          "type": "string",
+          "const": "JCS-RFC8785",
+          "description": "JSON Canonicalization Scheme (RFC 8785) — required before hashing"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 of JCS-canonicalized report body (everything except the integrity block itself)"
+        },
+        "signature": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "const": "ed25519",
+              "description": "Signature algorithm — always ed25519 in v0.1"
+            },
+            "key_id": {
+              "type": "string",
+              "description": "Identifier of the public key used for verification — references placeholder key path from KEYS.md (SLICE-32-15)"
+            },
+            "value": {
+              "type": "string",
+              "description": "Base64-encoded Ed25519 signature over content_hash"
+            }
+          },
+          "required": [
+            "algorithm",
+            "key_id",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "algorithm",
+        "canonicalization",
+        "content_hash",
+        "signature"
+      ],
+      "additionalProperties": false,
+      "description": "Integrity block — content hash + Ed25519 signature, see spec §13"
+    }
+  },
+  "required": [
+    "report_id",
+    "schema_version",
+    "ruleset",
+    "scope",
+    "scanned_at",
+    "previous_hash",
+    "source_state",
+    "score",
+    "assertions",
+    "integrity"
+  ],
+  "additionalProperties": false
+}

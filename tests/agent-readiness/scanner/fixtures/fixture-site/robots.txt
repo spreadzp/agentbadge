@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /.well-known/agent-guide.json
+Allow: /openapi.json
+Disallow: /private/

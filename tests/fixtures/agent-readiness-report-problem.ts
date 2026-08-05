@@ -1,0 +1,221 @@
+import type { AgentReadinessReport } from "../../src/agent-readiness/report.schema";
+
+export const problemReport: AgentReadinessReport = {
+  report_id: "01J5KQM8X3V2N1Y0A6B7C8D9E0",
+  schema_version: "0.1.0",
+  ruleset: {
+    name: "agent-readiness",
+    version: "1.2.0",
+  },
+  scope: {
+    agent_id: "did:heder:agentbadge-problem-agent",
+    agent_version: "0.3.1",
+    endpoint_base_url: "https://problem.agentbadge.dev",
+    timestamp: "2026-08-05T09:00:00Z",
+  },
+  scanned_at: "2026-08-05T09:03:15Z",
+  previous_hash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  source_state: [
+    {
+      url: "https://problem.agentbadge.dev/.well-known/agent.json",
+      fetched_at: "2026-08-05T09:00:01Z",
+      status_code: 200,
+    },
+    {
+      url: "https://problem.agentbadge.dev/llms.txt",
+      fetched_at: "2026-08-05T09:00:02Z",
+      status_code: 404,
+    },
+    {
+      url: "https://problem.agentbadge.dev/openapi.json",
+      fetched_at: "2026-08-05T09:00:03Z",
+      status_code: 200,
+    },
+  ],
+  score: {
+    total: 45,
+    categories: {
+      discovery: 70,
+      documentation: 20,
+      actionability: 60,
+      machine_readable: 50,
+      verification: 10,
+    },
+    delta: -15,
+  },
+  assertions: [
+    {
+      rule_id: "AB-001",
+      rule_version: "1.0.0",
+      category: "discovery",
+      status: "VERIFIED",
+      severity: "high",
+      counted_in_score: true,
+      confidence: 1.0,
+      evidence: [
+        { source: "agent.json", detail: "agent.json found at /.well-known/agent.json with 200 OK" },
+      ],
+    },
+    {
+      rule_id: "AB-002",
+      rule_version: "1.0.0",
+      category: "discovery",
+      status: "VERIFIED",
+      severity: "high",
+      counted_in_score: true,
+      confidence: 1.0,
+      evidence: [
+        { source: "agent.json", detail: "agent_id field present" },
+      ],
+    },
+    {
+      rule_id: "AB-003",
+      rule_version: "1.0.0",
+      category: "discovery",
+      status: "MISSING",
+      severity: "medium",
+      counted_in_score: true,
+      confidence: 0,
+      evidence: [
+        { source: "http_fetch", detail: "endpoint_base_url in agent.json returned 503 Service Unavailable" },
+      ],
+    },
+    {
+      rule_id: "AB-004",
+      rule_version: "1.0.0",
+      category: "documentation",
+      status: "MISSING",
+      severity: "high",
+      counted_in_score: true,
+      confidence: 0,
+      evidence: [
+        { source: "http_fetch", detail: "GET /llms.txt returned 404 Not Found" },
+      ],
+    },
+    {
+      rule_id: "AB-005",
+      rule_version: "1.0.0",
+      category: "documentation",
+      status: "MISSING",
+      severity: "medium",
+      counted_in_score: true,
+      confidence: 0,
+      evidence: [
+        { source: "llms.txt", detail: "llms.txt not found — cannot evaluate content" },
+      ],
+    },
+    {
+      rule_id: "AB-006",
+      rule_version: "1.0.0",
+      category: "documentation",
+      status: "VERIFIED",
+      severity: "low",
+      counted_in_score: true,
+      confidence: 1.0,
+      evidence: [
+        { source: "agent.json", detail: "guides array present with 1 entry" },
+      ],
+    },
+    {
+      rule_id: "AB-007",
+      rule_version: "1.0.0",
+      category: "actionability",
+      status: "CONFLICT",
+      severity: "high",
+      counted_in_score: true,
+      confidence: 0.9,
+      evidence: [
+        { source: "openapi.json", detail: "OpenAPI spec found at /openapi.json with 200 OK" },
+        { source: "agent.json", detail: "agent.json declares endpoint_base_url as https://problem.agentbadge.dev but OpenAPI servers field lists https://api.problem.agentbadge.dev" },
+      ],
+      conflict: {
+        sides: [
+          { source: "agent.json", value: "https://problem.agentbadge.dev" },
+          { source: "openapi.json", value: "https://api.problem.agentbadge.dev" },
+        ],
+      },
+    },
+    {
+      rule_id: "AB-008",
+      rule_version: "1.0.0",
+      category: "actionability",
+      status: "VERIFIED",
+      severity: "high",
+      counted_in_score: true,
+      confidence: 1.0,
+      evidence: [
+        { source: "openapi.json", detail: "OpenAPI 3.0 compliant — 5 paths found" },
+      ],
+    },
+    {
+      rule_id: "AB-009",
+      rule_version: "1.0.0",
+      category: "machine_readable",
+      status: "MISSING",
+      severity: "high",
+      counted_in_score: true,
+      confidence: 0,
+      evidence: [
+        { source: "openapi.json", detail: "3 of 5 POST endpoints missing request body schemas" },
+      ],
+    },
+    {
+      rule_id: "AB-010",
+      rule_version: "1.0.0",
+      category: "machine_readable",
+      status: "INFERRED",
+      severity: "medium",
+      counted_in_score: true,
+      confidence: 0.5,
+      evidence: [
+        { source: "openapi.json", detail: "2 of 5 endpoints have response schemas" },
+      ],
+    },
+    {
+      rule_id: "AB-011",
+      rule_version: "1.0.0",
+      category: "machine_readable",
+      status: "MISSING",
+      severity: "low",
+      counted_in_score: true,
+      confidence: 0,
+      evidence: [
+        { source: "agent.json", detail: "skills array missing from agent.json" },
+      ],
+    },
+    {
+      rule_id: "AB-012",
+      rule_version: "1.0.0",
+      category: "verification",
+      status: "NOT_APPLICABLE",
+      severity: "low",
+      counted_in_score: false,
+      confidence: 0,
+      evidence: [
+        { source: "agent.json", detail: "No verification endpoint declared" },
+      ],
+    },
+    {
+      rule_id: "AB-013",
+      rule_version: "1.0.0",
+      category: "verification",
+      status: "MISSING",
+      severity: "medium",
+      counted_in_score: true,
+      confidence: 0,
+      evidence: [
+        { source: "openapi.json", detail: "No /health or /status endpoint found in OpenAPI spec" },
+      ],
+    },
+  ],
+  integrity: {
+    algorithm: "sha256",
+    canonicalization: "JCS-RFC8785",
+    content_hash: "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    signature: {
+      algorithm: "ed25519",
+      key_id: "agentbadge-v0.1-placeholder",
+      value: "base64-encoded-signature-placeholder",
+    },
+  },
+};

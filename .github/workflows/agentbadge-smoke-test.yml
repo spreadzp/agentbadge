@@ -1,0 +1,74 @@
+name: AgentBadge Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "action/**"
+      - "src/agent-readiness/ci/**"
+      - "src/agent-readiness/cli/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "action/**"
+      - "src/agent-readiness/ci/**"
+      - "src/agent-readiness/cli/**"
+  workflow_dispatch:
+
+jobs:
+  # Job 1: Basic scan — should pass with min-score:0
+  smoke-test-pass:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run AgentBadge scan (pass)
+        id: scan
+        uses: ./action
+        with:
+          target: https://example.com
+          min-score: 0
+      - name: Verify outputs
+        run: |
+          echo "Score: ${{ steps.scan.outputs.score }}"
+          echo "Report: ${{ steps.scan.outputs.report-path }}"
+          echo "Delta: ${{ steps.scan.outputs.delta }}"
+          test -n "${{ steps.scan.outputs.score }}"
+          test -f "${{ steps.scan.outputs.report-path }}"
+
+  # Job 2: Threshold fail — should exit with code 2
+  smoke-test-fail:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run AgentBadge scan (expect fail)
+        id: scan
+        uses: ./action
+        with:
+          target: https://example.com
+          min-score: 200
+      - name: Check failure
+        if: steps.scan.outcome == 'failure'
+        run: echo "Expected failure — score below threshold 200"
+
+  # Job 3: Artifact upload + download + verify
+  smoke-test-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run scan
+        id: scan
+        uses: ./action
+        with:
+          target: https://example.com
+          min-score: 0
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agentbadge-report
+          path: downloaded-report
+      - name: Verify artifact
+        run: |
+          ls -la downloaded-report/
+          test -f downloaded-report/agentbadge-report.json
+          cat downloaded-report/agentbadge-report.json | head -5

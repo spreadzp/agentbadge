@@ -64,7 +64,7 @@ function txToHashScanUrl(txId: string): string {
 }
 
 function hashScanLinks(txId?: string, color: string = "emerald"): ReturnType<typeof html> | string {
-  if (!txId) return "";
+  if (!txId) return html`<span class="text-xs text-slate-600 italic">pending</span>`;
   const url = txToHashScanUrl(txId);
   return html`<div class="flex items-center gap-1">
     <a
@@ -453,30 +453,29 @@ export function TaskDetailsFragment(
       <div class="flex flex-wrap items-center gap-4 pt-2">
         <div class="flex items-center gap-1.5">
           <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-          <span class="text-xs text-slate-500">Task TX:</span>
+          <span class="text-xs text-slate-500">Post TX:</span>
           ${hashScanLinks(task.txId, "emerald")}
         </div>
-        ${task.claimTxId
-      ? html`<div class="flex items-center gap-1.5">
-              <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12" transform="rotate(180 12 12)" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l3 3 3-3" /></svg>
-              <span class="text-xs text-slate-500">Claim TX:</span>
-              ${hashScanLinks(task.claimTxId, "amber")}
-            </div>`
-      : ""}
-        ${task.deliverTxId
-      ? html`<div class="flex items-center gap-1.5">
-              <svg class="h-4 w-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-              <span class="text-xs text-slate-500">Deliver TX:</span>
-              ${hashScanLinks(task.deliverTxId, "blue")}
-            </div>`
-      : ""}
-        ${task.paymentTxId
-      ? html`<div class="flex items-center gap-1.5">
-              <svg class="h-4 w-4 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span class="text-xs text-slate-500">Payment TX:</span>
-              ${hashScanLinks(task.paymentTxId, "violet")}
-            </div>`
-      : ""}
+        <div class="flex items-center gap-1.5">
+          <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12" transform="rotate(180 12 12)" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l3 3 3-3" /></svg>
+          <span class="text-xs text-slate-500">Claim TX:</span>
+          ${hashScanLinks(task.claimTxId, "amber")}
+        </div>
+        <div class="flex items-center gap-1.5">
+          <svg class="h-4 w-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+          <span class="text-xs text-slate-500">Deliver TX:</span>
+          ${hashScanLinks(task.deliverTxId, "blue")}
+        </div>
+        <div class="flex items-center gap-1.5">
+          <svg class="h-4 w-4 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span class="text-xs text-slate-500">Payment TX:</span>
+          ${hashScanLinks(task.paymentTxId, "violet")}
+        </div>
+        <div class="flex items-center gap-1.5">
+          <svg class="h-4 w-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+          <span class="text-xs text-slate-500">Completed TX:</span>
+          ${hashScanLinks(task.completedTxId, "teal")}
+        </div>
       </div>
       ${EscrowPanel(task, viewerDid)}
       ${VerificationPanel(task)}

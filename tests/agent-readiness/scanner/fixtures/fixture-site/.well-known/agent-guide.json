@@ -1,0 +1,11 @@
+{
+  "name": "Fixture Agent",
+  "version": "1.0.0",
+  "description": "Test fixture for scanner E2E",
+  "capabilities": ["api_call", "data_provide"],
+  "endpoints": {
+    "api": "/api",
+    "docs": "/openapi.json",
+    "mcp": "/.well-known/mcp.json"
+  }
+}

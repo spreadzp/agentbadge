@@ -1,0 +1,66 @@
+name: "AgentBadge Scan"
+description: "Scan a URL for AI agent readiness and produce a signed report with score, category breakdown, and CI summary"
+author: "AgentBadge"
+
+inputs:
+  target:
+    description: "Target URL to scan (e.g. https://example.com)"
+    required: true
+  min-score:
+    description: "Minimum score threshold (0-100). Exit code 2 if score is below this value."
+    required: false
+    default: "0"
+  ruleset:
+    description: "Ruleset to use for scanning (format: name@version)"
+    required: false
+    default: "agent-readiness@1.2.0"
+  report-dir:
+    description: "Directory to store the report file"
+    required: false
+    default: ".agentbadge"
+
+outputs:
+  score:
+    description: "Overall agent readiness score (0-100)"
+    value: ${{ steps.scan.outputs.score }}
+  report-path:
+    description: "Path to the generated report JSON file"
+    value: ${{ steps.scan.outputs.report-path }}
+  delta:
+    description: "Score delta from previous scan (if available)"
+    value: ${{ steps.scan.outputs.delta }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install AgentBadge
+      shell: bash
+      run: |
+        if [ -f "package.json" ] && grep -q "agentbadge" package.json; then
+          echo "AgentBadge already installed in project"
+        else
+          npm install -g @agentbadge/cli@latest || true
+        fi
+
+    - name: Run AgentBadge Scan
+      id: scan
+      shell: bash
+      env:
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_MIN_SCORE: ${{ inputs.min-score }}
+        INPUT_RULESET: ${{ inputs.ruleset }}
+        INPUT_REPORT_DIR: ${{ inputs.report-dir }}
+      run: ${{ github.action_path }}/entrypoint.sh
+
+    - name: Upload Report Artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: agentbadge-report
+        path: ${{ steps.scan.outputs.report-path }}
+        retention-days: 30
