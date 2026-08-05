@@ -17,6 +17,7 @@
     "test:report-integrity": "vitest --run tests/agent-readiness/integrity/",
     "test:cli": "vitest --run tests/agent-readiness/cli/",
     "test:badge": "vitest --run tests/agent-readiness/badge/",
+    "test:ci": "vitest --run tests/agent-readiness/ci/",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/",
