@@ -219,13 +219,14 @@ export class MedicalDataConsumerAgent {
       paymentTxId,
       timestamp,
     };
+    let completedTxId: string | undefined;
     try {
-      await submitTaskMessage(message);
+      completedTxId = await submitTaskMessage(message);
     } catch {
       // HCS submit failed — continue with cache-only update
     }
 
-    updateTaskStatus(taskId, "completed", { paymentTxId });
+    updateTaskStatus(taskId, "completed", { paymentTxId, completedTxId });
 
     return { taskId, status: "completed", paymentTxId };
   }
