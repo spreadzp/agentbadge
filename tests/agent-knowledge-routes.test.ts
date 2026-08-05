@@ -1,5 +1,5 @@
 /**
- * SLICE-42-1 + SLICE-42-2: Agent Knowledge Layer Routes + Base Content
+ * SLICE-42-1 + SLICE-42-2 + SLICE-42-3: Agent Knowledge Layer + Content + Migration
  *
  * Tests for the Agent Knowledge Layer that serves Markdown content
  * to AI agents and humans.
@@ -12,11 +12,18 @@
  *   GET /agent-guide/concepts/:name     → text/markdown (200 or 404)
  *   GET /agent-guide/capabilities/:name → text/markdown (200 or 404)
  *   GET /agent-guide/articles/:slug     → text/markdown (200 or 404)
+ *
+ * Migration (SLICE-42-3):
+ *   GET /marketplace-guide              → 200 (old agent-guide moved here)
+ *   llms.txt contains /agent-guide/context
+ *   llms.txt contains /marketplace-guide
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
 import { agentKnowledgeRoutes } from "../src/server/routes/agent-knowledge";
+import { agentGuideRoutes } from "../src/server/routes/agent-guide";
+import { getLlmsTxt } from "@agentgate-hedera/hedera-core";
 
 function makeKnowledgeTestApp(): Hono {
   const app = new Hono();
@@ -97,5 +104,30 @@ describe("Agent Knowledge Layer Routes", () => {
       const res = await app.request("/agent-guide/articles/nonexistent");
       expect(res.status).toBe(404);
     });
+  });
+});
+
+describe("SLICE-42-3: Migration — Hedera guide → /marketplace-guide", () => {
+  const migrationApp = new Hono();
+  migrationApp.route("/", agentGuideRoutes);
+
+  it("GET /marketplace-guide → 200 (old agent-guide content moved here)", async () => {
+    const res = await migrationApp.request("/marketplace-guide");
+    expect(res.status).toBe(200);
+  });
+
+  it("GET /agent-guide → 404 on old route (no longer served by agentGuideRoutes)", async () => {
+    const res = await migrationApp.request("/agent-guide");
+    expect(res.status).toBe(404);
+  });
+
+  it("llms.txt contains /agent-guide/context", () => {
+    const txt = getLlmsTxt();
+    expect(txt).toContain("/agent-guide/context");
+  });
+
+  it("llms.txt contains /marketplace-guide", () => {
+    const txt = getLlmsTxt();
+    expect(txt).toContain("/marketplace-guide");
   });
 });

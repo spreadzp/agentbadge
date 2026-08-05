@@ -55,7 +55,7 @@ function buildAgentCard() {
       docs: `${baseUrl}/docs`,
       mcp: `${baseUrl}/mcp`,
       llms_txt: `${baseUrl}/llms.txt`,
-      guides: `${baseUrl}/agent-guide`,
+      guides: `${baseUrl}/agent-guide/context`,
       did_resolver: `${baseUrl}/did`,
     },
     payment: {
@@ -171,10 +171,16 @@ function buildAiSitemap(): string {
       desc: "Marketplace task listings — browse available tasks",
     },
     {
-      loc: `${baseUrl}/agent-guide`,
+      loc: `${baseUrl}/agent-guide/context`,
       priority: "0.9",
       format: "markdown",
-      desc: "Agent onboarding guide: passport, directory, marketplace",
+      desc: "Agent Knowledge Layer — context, learning path, knowledge map",
+    },
+    {
+      loc: `${baseUrl}/marketplace-guide`,
+      priority: "0.8",
+      format: "markdown",
+      desc: "Hedera marketplace onboarding guide for AI agents",
     },
     {
       loc: `${baseUrl}/market-guide`,

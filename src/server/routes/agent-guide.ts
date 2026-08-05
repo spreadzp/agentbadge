@@ -1300,12 +1300,12 @@ After completing all steps, you should have:
 
 ---
 
-*This guide is machine-readable. Agents can fetch it at any time from \`GET /agent-guide\`.*
+*This guide is machine-readable. Agents can fetch it at any time from \`GET /marketplace-guide\`.*
 `;
 }
 
 agentGuideRoutes.get(
-  "/agent-guide",
+  "/marketplace-guide",
   describeRoute({
     tags: ["Agent"],
     summary: "Agent onboarding guide (markdown)",
