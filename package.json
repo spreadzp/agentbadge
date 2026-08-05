@@ -14,6 +14,8 @@
     "test:scanner": "vitest --run tests/agent-readiness/scanner/",
     "test:rule-engine": "vitest --run tests/agent-readiness/rule-engine/",
     "test:scoring": "vitest --run tests/agent-readiness/scoring/",
+    "test:report-integrity": "vitest --run tests/agent-readiness/integrity/",
+    "test:cli": "vitest --run tests/agent-readiness/cli/",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/",
