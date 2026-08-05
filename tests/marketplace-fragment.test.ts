@@ -170,6 +170,47 @@ describe("TaskDetailsFragment", () => {
     const html = TaskDetailsFragment(task).toString();
     expect(html).toContain("did:hcs:0.0.1234567:42");
   });
+
+  it("renders Transactions section with 5 TX rows", () => {
+    const task = makeTask();
+    const html = TaskDetailsFragment(task).toString();
+    expect(html).toContain("Post TX:");
+    expect(html).toContain("Claim TX:");
+    expect(html).toContain("Deliver TX:");
+    expect(html).toContain("Payment TX:");
+    expect(html).toContain("Completed TX:");
+  });
+
+  it("shows pending for empty txIds", () => {
+    const task = makeTask({ txId: "" });
+    const html = TaskDetailsFragment(task).toString();
+    expect(html).toContain("pending");
+  });
+
+  it("shows HashScan links for all txIds on completed task", () => {
+    const task = makeTask({
+      status: "completed",
+      claimerDid: "did:hcs:0.0.999:3",
+      claimTxId: "0.0.888-1700000001-000000001",
+      deliverTxId: "0.0.888-1700000002-000000001",
+      paymentTxId: "0.0.777-1700000003-000000001",
+      completedTxId: "0.0.888-1700000004-000000001",
+    });
+    const html = TaskDetailsFragment(task).toString();
+    expect(html).toContain("hashscan.io");
+    expect(html).toContain("0.0.888-1700000001");
+    expect(html).toContain("0.0.888-1700000002");
+    expect(html).toContain("0.0.777-1700000003");
+    expect(html).toContain("0.0.888-1700000004");
+  });
+
+  it("shows pending for missing claim/deliver/payment/completed txIds on posted task", () => {
+    const task = makeTask({ status: "posted", txId: "0.0.999-123-456" });
+    const html = TaskDetailsFragment(task).toString();
+    expect(html).toContain("Post TX:");
+    expect(html).toContain("hashscan.io");
+    expect(html).toContain("pending");
+  });
 });
 
 // ─── GET /ui/market/tasks ──────────────────────────────────────
