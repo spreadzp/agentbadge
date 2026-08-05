@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "nodes": [
+    { "id": "agent-readiness", "type": "concept", "label": "Agent Readiness" },
+    { "id": "scanner", "type": "capability", "label": "Passive Scanner" },
+    { "id": "scoring", "type": "concept", "label": "Scoring Engine" },
+    { "id": "badge", "type": "concept", "label": "Trust Badge" },
+    { "id": "ruleset", "type": "concept", "label": "Open Ruleset" }
+  ],
+  "edges": [
+    { "from": "agent-readiness", "to": "scanner", "label": "measured by" },
+    { "from": "scanner", "to": "scoring", "label": "feeds into" },
+    { "from": "scoring", "to": "badge", "label": "produces" },
+    { "from": "scoring", "to": "ruleset", "label": "uses" }
+  ]
+}
