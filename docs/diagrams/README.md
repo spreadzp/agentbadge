@@ -16,6 +16,8 @@ Animated SVG diagrams built with [D2](https://d2lang.com/). Open `.svg` files in
 | 8 | `08-marketplace-payment.svg` | Sequence: `prepare_payment` → offline `signTransactionBytes` → `complete_task` — signature-based P2P HBAR transfer, private key never leaves agent |
 | 9 | `09-medical-data-processing.svg` | Full flow: provider registers, consumer posts task, provider processes + delivers IPFS report, consumer pays |
 | 10 | `10-full-agent-journey.svg` | End-to-end: passport → register → discover → message → marketplace → payment |
+| 12 | `12-datahub-verification.svg` | DataHub verification: assertions API, glossary check, lineage, escrow release |
+| 13 | `13-self-correcting-agent.svg` | Self-correcting agent loop: claim → analyze → deliver → verify → correct (max 3) |
 
 ## Viewing
 

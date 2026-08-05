@@ -7,7 +7,7 @@ The server consumes three npm-published packages under the `@agentgate-hedera` s
 ```text
 @agentgate-hedera/hedera-core   ← Hedera SDK wrapper, Mirror Node, types
 @agentgate-hedera/passport       ← Passport service, caches (directory, A2A, marketplace)
-@agentgate-hedera/mcp            ← MCP tools (32 tools)
+@agentgate-hedera/mcp            ← MCP tools (38 tools)
 ```
 
 Dependency chain:

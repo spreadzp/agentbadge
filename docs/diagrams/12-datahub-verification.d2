@@ -1,0 +1,104 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── AgentBadge Server ──
+
+Medical Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+  "Claims task + analyzes data": {shape: text; style.font-size: 12}
+}
+
+AgentBadge Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "Hono HTTP (port 4021)": {shape: text; style.font-size: 12}
+  DataHubVerifier: {
+    shape: rectangle
+    style.fill: "#FFF3E0"
+    style.stroke: "#FF9800"
+  }
+  VerificationService: {
+    shape: rectangle
+    style.fill: "#FFF3E0"
+    style.stroke: "#FF9800"
+    "Max 3 attempts": {shape: text; style.font-size: 11}
+  }
+}
+
+# ── DataHub ──
+
+DataHub GMS: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  Assertions API: {
+    shape: rectangle
+    style.fill: "#FCE4EC"
+    style.stroke: "#E91E63"
+    "Schema validation": {shape: text; style.font-size: 11}
+    "Statistical checks": {shape: text; style.font-size: 11}
+    "Mean range validation": {shape: text; style.font-size: 11}
+  }
+  Glossary API: {
+    shape: rectangle
+    style.fill: "#FCE4EC"
+    style.stroke: "#E91E63"
+    "16 medical terms": {shape: text; style.font-size: 11}
+    "Hyperglycemia, Hypertension...": {shape: text; style.font-size: 10}
+  }
+  Lineage API: {
+    shape: rectangle
+    style.fill: "#FCE4EC"
+    style.stroke: "#E91E63"
+    "Source → Analysis → Result": {shape: text; style.font-size: 11}
+  }
+}
+
+DataHub UI: {
+  shape: rectangle
+  style.fill: "#E1F5FE"
+  style.stroke: "#0288D1"
+  "Lineage graph": {shape: text; style.font-size: 11}
+  "Assertion results": {shape: text; style.font-size: 11}
+  "Glossary terms": {shape: text; style.font-size: 11}
+}
+
+# ── IPFS ──
+
+IPFS: {
+  shape: cylinder
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+  "HTML + JSON Report": {shape: text; style.font-size: 11}
+}
+
+# ── Hedera ──
+
+Hedera Testnet: {
+  shape: rectangle
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  "HCS Audit (pass/fail)": {shape: text; style.font-size: 11}
+  "HBAR Escrow Release": {shape: text; style.font-size: 11}
+}
+
+# ── Flow ──
+
+Medical Agent -> AgentBadge Server: Deliver result (IPFS CID) {style.animated: true}
+AgentBadge Server -> IPFS: Fetch report content {style.animated: true}
+IPFS -> AgentBadge Server: HTML + JSON {style.animated: true; style.stroke-dash: 3}
+AgentBadge Server -> DataHub GMS: fetchAssertions(taskId) {style.animated: true}
+AgentBadge Server -> DataHub GMS: fetchGlossary(content) {style.animated: true}
+DataHub GMS -> AgentBadge Server: "{passed, failures[]}" {style.animated: true; style.stroke-dash: 3}
+DataHub GMS -> AgentBadge Server: "{missingTerms[]}" {style.animated: true; style.stroke-dash: 3}
+AgentBadge Server -> Hedera Testnet: Log verification result {style.animated: true}
+AgentBadge Server -> Hedera Testnet: Release escrow (if passed) {style.animated: true}
+DataHub GMS -> DataHub UI: Lineage visualization {style.animated: true; style.stroke-dash: 3}

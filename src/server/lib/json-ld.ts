@@ -33,7 +33,7 @@ export function softwareApplicationLd(): object {
       "HCS directory registration",
       "Agent-to-agent messaging (A2A)",
       "Task marketplace with HBAR payments",
-      "MCP server (32 tools)",
+      "MCP server (38 tools)",
     ],
     dateModified: BUILD_DATE,
   };

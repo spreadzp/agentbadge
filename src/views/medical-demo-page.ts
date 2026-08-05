@@ -614,6 +614,9 @@ export function MedicalDemoPage(task?: CachedMarketTask) {
             body: '{}'
           });
           const provData = await provRes.json();
+          if (!provRes.ok) {
+            throw new Error(provData.error?.message || provData.message || 'Provider workflow failed (' + provRes.status + ')');
+          }
           status.innerHTML = '<p class="text-sm text-emerald-400">Step 4: Provider delivered! Risk: ' + provData.analysis.riskLevel + ', Report: ' + provData.reportLength + 'b</p><p class="text-sm text-slate-400">Step 5/5: Settling payment...</p>';
 
           // Step 5: Settle payment

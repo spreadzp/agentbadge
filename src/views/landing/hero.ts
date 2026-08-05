@@ -65,7 +65,7 @@ export function HeroSection() {
               <div class="mt-1 text-xs text-slate-400 sm:text-sm">Passports Minted</div>
             </div>
             <div class="text-center">
-              <div class="text-2xl font-bold text-sky-400 sm:text-3xl">32</div>
+              <div class="text-2xl font-bold text-sky-400 sm:text-3xl">38</div>
               <div class="mt-1 text-xs text-slate-400 sm:text-sm">MCP Tools</div>
             </div>
             <div class="text-center">

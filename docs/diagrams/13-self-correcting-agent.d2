@@ -1,0 +1,93 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: down
+
+# ── States ──
+
+Claim: {
+  shape: rectangle
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Download: {
+  shape: rectangle
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Analyze: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+}
+
+Generate: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  "HTML + JSON Report": {shape: text; style.font-size: 11}
+}
+
+Upload: {
+  shape: rectangle
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+  "IPFS CID": {shape: text; style.font-size: 11}
+}
+
+Deliver: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+Verify: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "DataHub assertions": {shape: text; style.font-size: 11}
+  "Glossary term check": {shape: text; style.font-size: 11}
+}
+
+Correct: {
+  shape: rectangle
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+  "Add missing glossary terms": {shape: text; style.font-size: 10}
+  "Lower correlation threshold": {shape: text; style.font-size: 10}
+  "Flag data quality": {shape: text; style.font-size: 10}
+}
+
+Complete: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "Escrow releases HBAR": {shape: text; style.font-size: 11}
+}
+
+Abort: {
+  shape: rectangle
+  style.fill: "#FFEBEE"
+  style.stroke: "#F44336"
+  "Reputation penalty": {shape: text; style.font-size: 11}
+  "Task returns to market": {shape: text; style.font-size: 11}
+}
+
+# ── Flow ──
+
+Claim -> Download: "HFS dataset" {style.animated: true}
+Download -> Analyze: "Parse CSV" {style.animated: true}
+Analyze -> Generate: "Analysis report" {style.animated: true}
+Generate -> Upload: "Report bundle" {style.animated: true}
+Upload -> Deliver: "IPFS CID" {style.animated: true}
+Deliver -> Verify: "Attempt N (max 3)" {style.animated: true}
+
+Verify -> Complete: "PASSED" {style.animated: true; style.stroke: "#4CAF50"}
+Verify -> Correct: "FAILED (attempt < 3)" {style.animated: true; style.stroke: "#E91E63"}
+Correct -> Generate: "Regenerate report" {style.animated: true; style.stroke: "#E91E63"}
+Verify -> Abort: "FAILED (attempt 3)" {style.animated: true; style.stroke: "#F44336"}

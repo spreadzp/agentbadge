@@ -8,7 +8,7 @@ import { html, raw } from "hono/html";
  * 1. No portable identity → NFT passports (HTS)
  * 2. No discovery → HCS directory
  * 3. No payments → HBAR x402
- * 4. No standard → MCP 32 tools
+ * 4. No standard → MCP 38 tools
  */
 export function ProblemSolutionSection() {
   const cards = [
@@ -41,8 +41,8 @@ export function ProblemSolutionSection() {
     },
     {
       problem: "No interaction standard",
-      solution: "MCP Server with 32 Tools",
-      description: "Model Context Protocol server exposes 32 tools for passport, directory, A2A, marketplace, and signing operations.",
+      solution: "MCP Server with 38 Tools",
+      description: "Model Context Protocol server exposes 38 tools for passport, directory, A2A, marketplace, escrow, dataset, and signing operations.",
       icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4",
       color: "text-purple-400",
       bg: "bg-purple-500/10",

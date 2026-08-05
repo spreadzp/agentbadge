@@ -207,11 +207,11 @@ Config file locations:
 | Cursor | \`.cursor/mcp.json\` (project root) |
 | VS Code (Continue) | \`~/.continue/config.json\` |
 
-After adding config, restart the IDE or reload MCP servers. The agent will see 32 tools available for calling.
+After adding config, restart the IDE or reload MCP servers. The agent will see 38 tools available for calling.
 
 ### Type 2: Terminal/CLI Agents (Hermes, OpenCloud, custom CLI)
 
-These agents run in terminal and often have a built-in MCP client (Hermes, Claude Code, Codex). They connect to AgentBadge as an MCP server via HTTP, then call all 32 tools as native functions — no curl, no REST API needed.
+These agents run in terminal and often have a built-in MCP client (Hermes, Claude Code, Codex). They connect to AgentBadge as an MCP server via HTTP, then call all 38 tools as native functions — no curl, no REST API needed.
 
 **MCP config for Hermes (config.yaml):**
 
@@ -251,7 +251,7 @@ After adding config, restart the agent. Verify by calling:
 - \`list_tasks()\` — should return a list of marketplace tasks
 - \`get_passport(tokenId="${tokenId}", serial=1)\` — should return passport data
 
-**Option A — Call MCP tools via HTTP (same 32 tools):**
+**Option A — Call MCP tools via HTTP (same 38 tools):**
 
 \`\`\`bash
 # List all available tools

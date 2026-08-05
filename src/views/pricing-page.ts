@@ -177,7 +177,7 @@ export function PricingPage(jsonLd?: object[]) {
             </tr>
             <tr class="border-t border-slate-800">
               <td class="py-3 pr-4">MCP integration</td>
-              <td class="py-3 pr-4 text-emerald-400">✓ 32 tools</td>
+              <td class="py-3 pr-4 text-emerald-400">✓ 38 tools</td>
               <td class="py-3 pr-4">✗</td>
               <td class="py-3">✗</td>
             </tr>

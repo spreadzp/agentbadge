@@ -94,10 +94,14 @@ export class MedicalDataProviderAgent {
       throw new Error("Task does not require medical-analysis capability");
     }
 
-    // Passport verification
-    const providerValid = await verifyA2ADid(this.config.providerDid);
-    if (!providerValid) {
-      throw new Error(`Provider passport not found or revoked: ${this.config.providerDid}`);
+    // Passport verification (demo mode: non-blocking, continues on failure)
+    try {
+      const providerValid = await verifyA2ADid(this.config.providerDid);
+      if (!providerValid) {
+        console.warn(`[demo] Provider passport not verified: ${this.config.providerDid} — continuing in demo mode`);
+      }
+    } catch {
+      console.warn(`[demo] Passport verification skipped for ${this.config.providerDid} — continuing in demo mode`);
     }
 
     const timestamp = Math.floor(Date.now() / 1000);

@@ -27,8 +27,8 @@ describe("SLICE-19-6: Problem→Solution section (4 cards)", () => {
       expect(html).toMatch(/discovery|HCS directory/i);
       // Card 3: No payments → HBAR x402
       expect(html).toMatch(/payment|HBAR|x402/i);
-      // Card 4: No standard → MCP 32 tools
-      expect(html).toMatch(/standard|MCP|32 tool/i);
+      // Card 4: No standard → MCP 38 tools
+      expect(html).toMatch(/standard|MCP|38 tool/i);
     });
 
     it("each card has problem and solution text", () => {

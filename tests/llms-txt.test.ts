@@ -23,7 +23,7 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
       expect(txt).toContain(`${MCP_TOOLS_INDEX.length} total`);
     });
 
-    it("lists all 32 MCP tools in a table", () => {
+    it("lists all 38 MCP tools in a table", () => {
       for (const tool of MCP_TOOLS_INDEX) {
         expect(txt).toContain(tool.name);
         expect(txt).toContain(tool.category);

@@ -30,7 +30,7 @@ describe("SLICE-19-8: Features section (6 capability cards)", () => {
       // Card 4: Task Marketplace
       expect(html).toMatch(/Task Marketplace|Marketplace/i);
       // Card 5: MCP Server
-      expect(html).toMatch(/MCP Server|32 tool/i);
+      expect(html).toMatch(/MCP Server|38 tool/i);
       // Card 6: x402 Micropayments
       expect(html).toMatch(/x402|Micropayment/i);
     });

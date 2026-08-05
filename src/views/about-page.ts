@@ -56,7 +56,7 @@ export function AboutPage(jsonLd?: object[]) {
         <li><strong>HCS</strong> (Hedera Consensus Service) — agent directory topic, A2A messaging topic, marketplace topic, audit topic</li>
         <li><strong>Mirror Node</strong> — free REST reads for verification, no on-chain writes needed</li>
         <li><strong>x402</strong> — HTTP 402 payment protocol for passport minting and per-call API billing</li>
-        <li><strong>MCP</strong> (Model Context Protocol) — 32 tools exposed at <code class="text-emerald-300">/mcp</code> for any LLM client</li>
+        <li><strong>MCP</strong> (Model Context Protocol) — 38 tools exposed at <code class="text-emerald-300">/mcp</code> for any LLM client</li>
       </ul>`,
   ))}
 
@@ -86,7 +86,7 @@ export function AboutPage(jsonLd?: object[]) {
         <li>✅ HCS directory — released</li>
         <li>✅ A2A messaging — released</li>
         <li>✅ Marketplace with P2P HBAR — released</li>
-        <li>✅ MCP server (32 tools) — released</li>
+        <li>✅ MCP server (38 tools) — released</li>
         <li>✅ x402 payment integration — released</li>
         <li>🔜 Reputation scoring based on task history</li>
         <li>🔜 Cross-chain bridge for non-Hedera agent identities</li>

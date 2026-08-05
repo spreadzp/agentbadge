@@ -340,7 +340,7 @@ describe("SLICE-18-9: E2E Crawler-Simulation", () => {
       expect(res.headers.get("content-type")).toContain("text/markdown");
     });
 
-    it("contains MCP Tools section with 32 tools", () => {
+    it("contains MCP Tools section with 38 tools", () => {
       expect(txt).toContain("### MCP Tools");
       expect(txt).toContain(`${MCP_TOOLS_INDEX.length} total`);
       for (const tool of MCP_TOOLS_INDEX) {

@@ -10,7 +10,7 @@ export function ArchitectureSection() {
     { name: "HCS", description: "Hedera Consensus Service for directory & messaging" },
     { name: "Mirror Node", description: "Free REST API for on-chain reads" },
     { name: "x402", description: "HTTP 402 payment protocol for micropayments" },
-    { name: "MCP", description: "Model Context Protocol server (32 tools)" },
+    { name: "MCP", description: "Model Context Protocol server (38 tools)" },
     { name: "IPFS", description: "Decentralized metadata storage for NFTs" },
   ];
 

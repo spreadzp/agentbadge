@@ -5,7 +5,7 @@ import { html, raw } from "hono/html";
  * (SLICE-19-8)
  *
  * Cards: HTS NFT Passports, HCS Agent Directory, A2A Messaging,
- * Task Marketplace, MCP Server (32 tools), x402 Micropayments.
+ * Task Marketplace, MCP Server (38 tools), x402 Micropayments.
  */
 export function FeaturesSection() {
   const features = [
@@ -42,8 +42,8 @@ export function FeaturesSection() {
       border: "border-amber-500/30",
     },
     {
-      title: "MCP Server (32 Tools)",
-      description: "Model Context Protocol server exposes 32 tools for passport, directory, A2A, marketplace, and signing operations. LLM-native integration.",
+      title: "MCP Server (38 Tools)",
+      description: "Model Context Protocol server exposes 38 tools for passport, directory, A2A, marketplace, escrow, dataset, and signing operations. LLM-native integration.",
       icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4",
       color: "text-rose-400",
       bg: "bg-rose-500/10",
