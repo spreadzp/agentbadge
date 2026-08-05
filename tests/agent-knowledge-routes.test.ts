@@ -1,10 +1,11 @@
 /**
- * SLICE-42-1: Agent Knowledge Layer Routes — TDD Tests
+ * SLICE-42-1 + SLICE-42-2: Agent Knowledge Layer Routes + Base Content
  *
  * Tests for the Agent Knowledge Layer that serves Markdown content
  * to AI agents and humans.
  *
  * Routes tested:
+ *   GET /agent-guide/                   → text/markdown (index)
  *   GET /agent-guide/context            → text/markdown
  *   GET /agent-guide/learn              → text/markdown
  *   GET /agent-guide/knowledge-map.json → application/json
@@ -27,20 +28,33 @@ const app = makeKnowledgeTestApp();
 
 describe("Agent Knowledge Layer Routes", () => {
   describe("Base guides", () => {
-    it("GET /agent-guide/context → 200 + text/markdown", async () => {
+    it("GET /agent-guide/ (index) → 200 + text/markdown with links", async () => {
+      const res = await app.request("/agent-guide/");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/markdown");
+      const text = await res.text();
+      expect(text).toContain("context");
+      expect(text).toContain("learn");
+      expect(text).toContain("knowledge-map");
+    });
+
+    it("GET /agent-guide/context → 200 + text/markdown with key terms", async () => {
       const res = await app.request("/agent-guide/context");
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/markdown");
       const text = await res.text();
       expect(text).toContain("Agent Readiness");
+      expect(text).toContain("AgentBadge");
+      expect(text).toContain("scanner");
     });
 
-    it("GET /agent-guide/learn → 200 + text/markdown", async () => {
+    it("GET /agent-guide/learn → 200 + text/markdown with numbered steps", async () => {
       const res = await app.request("/agent-guide/learn");
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/markdown");
       const text = await res.text();
-      expect(text.length).toBeGreaterThan(100);
+      expect(text.length).toBeGreaterThan(200);
+      expect(text).toMatch(/\d+\./);
     });
   });
 

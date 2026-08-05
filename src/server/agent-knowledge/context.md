@@ -4,18 +4,82 @@
 
 AgentBadge is a platform that helps APIs become **Agent Ready** — discoverable, understandable, and usable by AI agents.
 
+We believe the next wave of API consumption will come from AI agents, not just humans. AgentBadge bridges the gap between API providers and AI agents by providing:
+
+1. **Passive scanning** — No code changes, no SDK to install
+2. **Transparent scoring** — Open ruleset, same rules for everyone
+3. **Evidence-based reports** — Every finding has HTTP evidence
+4. **Trust badge** — Display your score, not a certification
+
 ## Two Products
 
-1. **Agent Readiness** (primary) — Scanner, scoring, evidence, badge, CLI, GitHub Action. Helps API providers make their APIs accessible to AI agents.
-2. **Hedera Marketplace** (secondary, case study) — On-chain agent identity, marketplace, A2A messaging. A live implementation of agent-ready infrastructure.
+### Agent Readiness (Primary)
 
-## What Is Agent Readiness?
+Agent Readiness is the core product. It scans any API endpoint and scores it across multiple dimensions:
 
-Agent Readiness is the degree to which an API or service can be discovered, understood, and used by AI agents without human intervention. It's like SEO, but for AI agents instead of search engines.
+- **Discovery** — Can agents find your API? (`llms.txt`, sitemap, well-known endpoints)
+- **Documentation** — Can agents understand your API? (OpenAPI spec, structured docs)
+- **Authentication** — Can agents authenticate? (clear auth flow, API keys)
+- **Machine-readability** — Is your API response machine-parseable? (JSON, structured errors)
 
-## Key Principles
+The scanner is **passive and non-intrusive** — it sends HTTP requests to your public endpoints, just like an AI agent would. No code changes required, no SDK to install, no agent to deploy.
 
-- **Passive scanning** — No code changes required, no SDK to install
-- **Open ruleset** — Same rules for everyone, transparent scoring
-- **Evidence-based** — Every finding has evidence (HTTP response, header, body)
-- **Trust badge** — Display your score, not a certification
+### Hedera Marketplace (Secondary, Case Study)
+
+The Hedera Marketplace is a live implementation of agent-ready infrastructure on the Hedera blockchain. It demonstrates:
+
+- On-chain agent identity (Passport NFTs, DIDs)
+- P2P task marketplace (post, claim, deliver, complete)
+- A2A messaging via Hedera Consensus Service
+- Cryptographic agent signing
+
+The marketplace serves as a **case study** for what agent-ready infrastructure looks like in practice.
+
+## What Agent Readiness Means
+
+Agent Readiness is the degree to which an API or service can be discovered, understood, and used by AI agents **without human intervention**.
+
+It's like SEO, but for AI agents instead of search engines. Just as SEO made websites discoverable by search engines, Agent Readiness makes APIs discoverable by AI agents.
+
+### Why It Matters
+
+AI agents are becoming a major consumer of APIs. If your API isn't agent-ready:
+
+- Agents can't **find** your API (no `llms.txt`, no sitemap)
+- Agents can't **understand** your API (no OpenAPI, no structured docs)
+- Agents can't **authenticate** (unclear auth flow)
+- Agents can't **use** your API (unstructured responses, no error codes)
+
+AgentBadge scores your API on all these dimensions and gives you a clear report with evidence.
+
+## What the Scanner Does
+
+The scanner sends HTTP requests to your API endpoints, exactly like an AI agent would:
+
+1. **Fetches** your endpoints (GET requests)
+2. **Checks** for `llms.txt`, `robots.txt`, `sitemap.xml`, `/.well-known/agent-card.json`
+3. **Validates** OpenAPI spec if present
+4. **Tests** authentication clarity
+5. **Analyzes** response structure (JSON, error codes, HATEOAS links)
+6. **Scores** each dimension with evidence
+
+No code changes. No SDK. No agent deployment. Just point the scanner at your API URL.
+
+## What the Badge Means
+
+The AgentBadge trust badge displays your Agent Readiness score. It is:
+
+- **A trust signal**, not a certification — we don't guarantee your API works
+- **Transparent** — the ruleset is open, anyone can see how scoring works
+- **Evidence-based** — every finding links to the HTTP response that produced it
+- **Dynamic** — re-scan after changes to update your score
+
+## Open Ruleset Principle
+
+AgentBadge uses the **same rules for everyone**. The scoring ruleset is open and transparent:
+
+- No special treatment for specific frameworks or platforms
+- No subjective scoring — every rule is a binary check with evidence
+- No pay-to-play — free tier available, same rules as paid
+
+This ensures fairness and trust in the scoring system.

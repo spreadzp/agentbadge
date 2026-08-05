@@ -50,6 +50,10 @@ async function serveMarkdownFile(
   }
 }
 
+agentKnowledgeRoutes.get("/agent-guide/", (c) => {
+  return serveMarkdownFile(join(BASE_DIR, "index.md"));
+});
+
 agentKnowledgeRoutes.get("/agent-guide/context", (c) => {
   return serveMarkdownFile(join(BASE_DIR, "context.md"));
 });
