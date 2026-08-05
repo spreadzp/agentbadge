@@ -1,8 +1,10 @@
 /**
- * SLICE-42-1 + SLICE-42-2 + SLICE-42-3: Agent Knowledge Layer + Content + Migration
+ * SLICE-42-4: Local Test Infrastructure
  *
- * Tests for the Agent Knowledge Layer that serves Markdown content
- * to AI agents and humans.
+ * Comprehensive tests for all Agent Knowledge Layer routes,
+ * marketplace guide migration, and llms.txt content.
+ *
+ * Uses makeTestApp() from e2e/helpers.ts — same app setup as production.
  *
  * Routes tested:
  *   GET /agent-guide/                   → text/markdown (index)
@@ -12,26 +14,15 @@
  *   GET /agent-guide/concepts/:name     → text/markdown (200 or 404)
  *   GET /agent-guide/capabilities/:name → text/markdown (200 or 404)
  *   GET /agent-guide/articles/:slug     → text/markdown (200 or 404)
- *
- * Migration (SLICE-42-3):
- *   GET /marketplace-guide              → 200 (old agent-guide moved here)
- *   llms.txt contains /agent-guide/context
- *   llms.txt contains /marketplace-guide
+ *   GET /marketplace-guide              → text/markdown (migrated from /agent-guide)
+ *   GET /llms.txt                       → text/markdown (contains agent-guide + marketplace-guide)
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
-import { Hono } from "hono";
-import { agentKnowledgeRoutes } from "../src/server/routes/agent-knowledge";
-import { agentGuideRoutes } from "../src/server/routes/agent-guide";
-import { getLlmsTxt } from "@agentgate-hedera/hedera-core";
+import { describe, it, expect } from "vitest";
+import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 
-function makeKnowledgeTestApp(): Hono {
-  const app = new Hono();
-  app.route("/", agentKnowledgeRoutes);
-  return app;
-}
-
-const app = makeKnowledgeTestApp();
+setupMockEnv();
+const app = makeTestApp();
 
 describe("Agent Knowledge Layer Routes", () => {
   describe("Base guides", () => {
@@ -107,27 +98,27 @@ describe("Agent Knowledge Layer Routes", () => {
   });
 });
 
-describe("SLICE-42-3: Migration — Hedera guide → /marketplace-guide", () => {
-  const migrationApp = new Hono();
-  migrationApp.route("/", agentGuideRoutes);
-
+describe("Marketplace guide migration (SLICE-42-3)", () => {
   it("GET /marketplace-guide → 200 (old agent-guide content moved here)", async () => {
-    const res = await migrationApp.request("/marketplace-guide");
+    const res = await app.request("/marketplace-guide");
     expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("passport");
+  });
+});
+
+describe("llms.txt integration (SLICE-42-3)", () => {
+  it("GET /llms.txt → 200 + contains /agent-guide/context", async () => {
+    const res = await app.request("/llms.txt");
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("/agent-guide/context");
   });
 
-  it("GET /agent-guide → 404 on old route (no longer served by agentGuideRoutes)", async () => {
-    const res = await migrationApp.request("/agent-guide");
-    expect(res.status).toBe(404);
-  });
-
-  it("llms.txt contains /agent-guide/context", () => {
-    const txt = getLlmsTxt();
-    expect(txt).toContain("/agent-guide/context");
-  });
-
-  it("llms.txt contains /marketplace-guide", () => {
-    const txt = getLlmsTxt();
-    expect(txt).toContain("/marketplace-guide");
+  it("GET /llms.txt → 200 + contains /marketplace-guide", async () => {
+    const res = await app.request("/llms.txt");
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("/marketplace-guide");
   });
 });

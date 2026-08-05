@@ -14,6 +14,7 @@ import { landingRoutes } from "../../src/server/routes/landing";
 import { didRoutes } from "../../src/server/routes/did";
 import { mcpRoutes } from "../../src/server/routes/mcp";
 import { agentGuideRoutes } from "../../src/server/routes/agent-guide";
+import { agentKnowledgeRoutes } from "../../src/server/routes/agent-knowledge";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
@@ -37,6 +38,7 @@ export function makeTestApp(): Hono {
   app.route("/", didRoutes);
   app.route("/", mcpRoutes);
   app.route("/", agentGuideRoutes);
+  app.route("/", agentKnowledgeRoutes);
   return app;
 }
 
