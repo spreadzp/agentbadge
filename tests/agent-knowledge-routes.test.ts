@@ -75,6 +75,24 @@ describe("Agent Knowledge Layer Routes", () => {
       const res = await app.request("/agent-guide/concepts/agent-readiness");
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/markdown");
+      const text = await res.text();
+      expect(text).toContain("Agent Readiness");
+    });
+
+    it("GET /agent-guide/concepts/scoring → 200 + text/markdown", async () => {
+      const res = await app.request("/agent-guide/concepts/scoring");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/markdown");
+      const text = await res.text();
+      expect(text).toContain("scoring");
+    });
+
+    it("GET /agent-guide/concepts/badge → 200 + text/markdown", async () => {
+      const res = await app.request("/agent-guide/concepts/badge");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/markdown");
+      const text = await res.text();
+      expect(text).toContain("badge");
     });
 
     it("GET /agent-guide/concepts/nonexistent → 404", async () => {
@@ -84,6 +102,22 @@ describe("Agent Knowledge Layer Routes", () => {
   });
 
   describe("Capabilities", () => {
+    it("GET /agent-guide/capabilities/scanner → 200 + text/markdown", async () => {
+      const res = await app.request("/agent-guide/capabilities/scanner");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/markdown");
+      const text = await res.text();
+      expect(text).toContain("scanner");
+    });
+
+    it("GET /agent-guide/capabilities/cli → 200 + text/markdown", async () => {
+      const res = await app.request("/agent-guide/capabilities/cli");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/markdown");
+      const text = await res.text();
+      expect(text).toContain("CLI");
+    });
+
     it("GET /agent-guide/capabilities/nonexistent → 404", async () => {
       const res = await app.request("/agent-guide/capabilities/nonexistent");
       expect(res.status).toBe(404);
@@ -91,6 +125,15 @@ describe("Agent Knowledge Layer Routes", () => {
   });
 
   describe("Articles", () => {
+    it("GET /agent-guide/articles/what-is-agent-readiness → 200 + text/markdown", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/markdown");
+      const text = await res.text();
+      expect(text).toContain("Agent Readiness");
+      expect(text.length).toBeGreaterThan(500);
+    });
+
     it("GET /agent-guide/articles/nonexistent → 404", async () => {
       const res = await app.request("/agent-guide/articles/nonexistent");
       expect(res.status).toBe(404);
