@@ -26,7 +26,7 @@ export function DataHubLandingPage() {
 function DataHubHero() {
   return html`<section class="relative overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/20">
     <div class="absolute inset-0 pulse-glow bg-gradient-radial from-emerald-500/10 to-transparent"></div>
-    <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 md:py-28">
+    <div class="relative mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12 md:py-28">
       <div class="mx-auto max-w-3xl text-center">
         <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300 fade-in-up">
           DataHub Hackathon · MCP Integration
@@ -68,7 +68,7 @@ function DataHubHero() {
 
 function DataHubStats() {
   return html`<section class="border-b border-slate-800 bg-slate-900/50">
-    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+    <div class="mx-auto max-w-6xl px-6 py-12 sm:px-8 lg:px-12">
       <div class="grid grid-cols-2 gap-6 md:grid-cols-4">
         <div class="text-center">
           <div class="text-3xl font-bold text-emerald-400">15+</div>
@@ -92,7 +92,7 @@ function DataHubStats() {
 }
 
 function DataHubProblemSolution() {
-  return html`<section class="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+  return html`<section class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
     <div class="grid gap-12 md:grid-cols-2">
       <div>
         <h2 class="text-2xl font-bold text-white sm:text-3xl">The Problem</h2>
@@ -161,7 +161,7 @@ function DataHubFeatures() {
   ];
 
   return html`<section class="border-y border-slate-800 bg-slate-900/30">
-    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <div class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
       <div class="text-center">
         <h2 class="text-2xl font-bold text-white sm:text-3xl">DataHub MCP Tools</h2>
         <p class="mt-4 text-slate-400">Every tool an AI agent needs to discover, verify, and process medical data</p>
@@ -203,7 +203,7 @@ function DataHubHowItWorks() {
     },
   ];
 
-  return html`<section class="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+  return html`<section class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
     <div class="text-center">
       <h2 class="text-2xl font-bold text-white sm:text-3xl">How It Works</h2>
       <p class="mt-4 text-slate-400">From task to verified delivery in four steps</p>
@@ -223,7 +223,7 @@ function DataHubHowItWorks() {
 
 function DataHubArchitecture() {
   return html`<section class="border-y border-slate-800 bg-slate-900/30">
-    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <div class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
       <div class="text-center">
         <h2 class="text-2xl font-bold text-white sm:text-3xl">Architecture</h2>
         <p class="mt-4 text-slate-400">How DataHub, MCP, and Hedera fit together</p>
@@ -267,7 +267,7 @@ function DataHubArchitecture() {
 }
 
 function DataHubCtaFooter() {
-  return html`<section class="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+  return html`<section class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
     <div class="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 to-slate-950 p-12 text-center">
       <h2 class="text-3xl font-bold text-white sm:text-4xl">Ready to verify medical data with DataHub?</h2>
       <p class="mx-auto mt-4 max-w-2xl text-slate-300">

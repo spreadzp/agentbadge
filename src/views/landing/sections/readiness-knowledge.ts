@@ -17,6 +17,7 @@ export function ReadinessKnowledgeSection() {
   return html`
     <section id="agents" class="px-4 py-20 md:px-8 border-t border-white/5">
       <div class="mx-auto max-w-6xl">
+        <div class="rounded-xl border p-6 md:p-8" style="border-color: rgb(6, 95, 70);">
         <div class="grid gap-8 lg:grid-cols-2 lg:items-start">
           <!-- Left: description + bullets -->
           <div>
@@ -80,6 +81,7 @@ export function ReadinessKnowledgeSection() {
 
         <div class="mt-8 text-center text-slate-500 text-sm">
           Designed for humans to read and agents to navigate.
+        </div>
         </div>
       </div>
     </section>
