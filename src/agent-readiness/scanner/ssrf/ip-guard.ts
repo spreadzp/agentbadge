@@ -78,6 +78,9 @@ function isIPv6Blocked(ip: string): { blocked: boolean; range?: string } {
 }
 
 export function isPrivateIp(ip: string): boolean {
+  if (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true") {
+    return false;
+  }
   if (isIPv4(ip)) return isIPv4InBlockedRange(ip).blocked;
   if (isIPv6(ip)) return isIPv6Blocked(ip).blocked;
   return false;
@@ -88,6 +91,9 @@ export function isBlockedIp(ip: string): boolean {
 }
 
 export function assertSafeIp(ip: string): void {
+  if (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true") {
+    return;
+  }
   if (isIPv4(ip)) {
     const result = isIPv4InBlockedRange(ip);
     if (result.blocked) throw new SsrfBlockedError(ip, result.range);

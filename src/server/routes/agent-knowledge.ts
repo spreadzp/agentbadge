@@ -5,6 +5,9 @@
  * to AI agents and humans.
  *
  * Routes:
+ *   GET /agent-guide                    → text/markdown or application/json (content negotiation)
+ *   GET /agent-guide/                   → text/markdown or application/json (content negotiation)
+ *   GET /.well-known/agent-guide.json   → application/json (structured guide for scanners)
  *   GET /agent-guide/context            → text/markdown
  *   GET /agent-guide/learn              → text/markdown
  *   GET /agent-guide/knowledge-map.json → application/json
@@ -13,7 +16,7 @@
  *   GET /agent-guide/articles/:slug     → text/markdown (200 or 404)
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -50,9 +53,62 @@ async function serveMarkdownFile(
   }
 }
 
-agentKnowledgeRoutes.get("/agent-guide/", (c) => {
+agentKnowledgeRoutes.get("/agent-guide", (c) => {
+  const accept = c.req.header("Accept") ?? "";
+  if (accept.includes("application/json")) {
+    return serveAgentGuideJson(c);
+  }
   return serveMarkdownFile(join(BASE_DIR, "index.md"));
 });
+
+agentKnowledgeRoutes.get("/agent-guide/", (c) => {
+  const accept = c.req.header("Accept") ?? "";
+  if (accept.includes("application/json")) {
+    return serveAgentGuideJson(c);
+  }
+  return serveMarkdownFile(join(BASE_DIR, "index.md"));
+});
+
+agentKnowledgeRoutes.get("/.well-known/agent-guide.json", async (c) => {
+  return serveAgentGuideJson(c);
+});
+
+async function serveAgentGuideJson(c: Context): Promise<Response> {
+  try {
+    const indexContent = await readFile(join(BASE_DIR, "index.md"), "utf-8");
+    let knowledgeMap: Record<string, unknown> = {};
+    try {
+      const kmContent = await readFile(join(BASE_DIR, "knowledge-map.json"), "utf-8");
+      knowledgeMap = JSON.parse(kmContent);
+    } catch { /* optional */ }
+
+    const guide = {
+      schema: "agentbadge.agent-guide.v1",
+      name: "AgentBadge Agent Guide",
+      description: "Machine-readable guide for AI agents to understand and use AgentBadge",
+      base_url: process.env.BASE_URL ?? "http://localhost:4021",
+      endpoints: {
+        context: "/agent-guide/context",
+        learn: "/agent-guide/learn",
+        knowledge_map: "/agent-guide/knowledge-map.json",
+        marketplace_guide: "/marketplace-guide",
+        llms_txt: "/llms.txt",
+        openapi: "/api/specs",
+      },
+      concepts: ["agent-readiness", "scoring", "badge"],
+      capabilities: ["scanner", "cli"],
+      articles: ["what-is-agent-readiness"],
+      knowledge_map: knowledgeMap,
+      index_markdown: indexContent,
+    };
+    return c.json(guide, 200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    });
+  } catch {
+    return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "Agent guide not found");
+  }
+}
 
 agentKnowledgeRoutes.get("/agent-guide/context", (c) => {
   return serveMarkdownFile(join(BASE_DIR, "context.md"));

@@ -6,6 +6,7 @@ import { StatusDeterminator, type ApplicabilityPredicate } from "./status-determ
 import { ConfidenceComputer } from "./confidence";
 import { AssertionBuilder, type Assertion } from "./assertion-builder";
 import type { Evidence } from "./evidence.types";
+import { OpenApiParser } from "./openapi-parser";
 
 export interface RuleEngineResult {
   assertions: Assertion[];
@@ -157,12 +158,23 @@ class RuleEngineClass {
     }
 
     if (target.includes("openapi") && snapshots.openapi) {
-      evidence.push({
-        type: "openapi",
-        url: snapshots.openapi.url,
-        paths: [],
-        methods: [],
-      });
+      const body = snapshots.openapi.body;
+      if (body) {
+        const facts = OpenApiParser.parse(body);
+        evidence.push({
+          type: "openapi",
+          url: snapshots.openapi.url,
+          paths: facts.paths,
+          methods: facts.methods,
+        });
+      } else {
+        evidence.push({
+          type: "openapi",
+          url: snapshots.openapi.url,
+          paths: [],
+          methods: [],
+        });
+      }
     }
 
     if (target.includes("mcp") && snapshots.mcp) {

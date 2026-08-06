@@ -2,8 +2,8 @@ import type { AgentReadinessRule } from "../../../src/agent-readiness/rule.schem
 
 export const AB003: AgentReadinessRule = {
   rule_id: "AB-003",
-  version: "1.0.0",
-  name: "agent-guide.json discoverable",
+  version: "1.1.0",
+  name: "agent-guide discoverable (JSON, Markdown, or HTML)",
   category: "discovery",
   severity: "high",
   counted_in_score: true,
@@ -14,6 +14,6 @@ export const AB003: AgentReadinessRule = {
   fix: {
     eligible: true,
     type: "deterministic",
-    note: "Scaffold an empty/skeleton agent-guide.json with required fields present but unfilled (status: draft); does not invent capability data",
+    note: "Scaffold an agent-guide endpoint at /.well-known/agent-guide.json (JSON) or /agent-guide (Markdown/HTML) with required fields present but unfilled (status: draft); does not invent capability data",
   },
 };

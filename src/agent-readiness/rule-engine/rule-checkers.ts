@@ -71,7 +71,13 @@ export function checkAb001(state: SourceState): Evidence[] {
 export function checkAb002(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   if (!snaps.sitemap) return [];
-  return [sitemapEvidence(snaps.sitemap, 0, [])];
+  const bodyText = snaps.sitemap.body;
+  const urls: string[] = [];
+  if (bodyText) {
+    const matches = bodyText.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi);
+    for (const m of matches) urls.push(m[1].trim());
+  }
+  return [sitemapEvidence(snaps.sitemap, urls.length, urls.slice(0, 100))];
 }
 
 // ─── AB-003: agent-guide.json discoverable ─────────────────────────────────
@@ -85,6 +91,10 @@ export function checkAb003(state: SourceState): Evidence[] {
 export function checkAb004(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   if (!snaps.openapi) return [];
+  const body = snaps.openapi.body;
+  if (body) {
+    return [OpenApiParser.parseToEvidence(body, snaps.openapi.url)];
+  }
   return [openapiEvidence(snaps.openapi, [], [])];
 }
 
@@ -107,7 +117,11 @@ export function checkAb007(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   const evidence: Evidence[] = [];
   if (snaps.guide) evidence.push(httpEvidence(snaps.guide));
-  if (snaps.openapi) evidence.push(openapiEvidence(snaps.openapi, [], []));
+  if (snaps.openapi) {
+    const body = snaps.openapi.body;
+    if (body) evidence.push(OpenApiParser.parseToEvidence(body, snaps.openapi.url));
+    else evidence.push(openapiEvidence(snaps.openapi, [], []));
+  }
   return evidence;
 }
 
@@ -115,6 +129,8 @@ export function checkAb007(state: SourceState): Evidence[] {
 export function checkAb008(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   if (!snaps.openapi) return [];
+  const body = snaps.openapi.body;
+  if (body) return [OpenApiParser.parseToEvidence(body, snaps.openapi.url)];
   return [openapiEvidence(snaps.openapi, [], [])];
 }
 
@@ -130,7 +146,11 @@ export function checkAb010(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   const evidence: Evidence[] = [];
   if (snaps.guide) evidence.push(httpEvidence(snaps.guide));
-  if (snaps.openapi) evidence.push(openapiEvidence(snaps.openapi, [], []));
+  if (snaps.openapi) {
+    const body = snaps.openapi.body;
+    if (body) evidence.push(OpenApiParser.parseToEvidence(body, snaps.openapi.url));
+    else evidence.push(openapiEvidence(snaps.openapi, [], []));
+  }
   return evidence;
 }
 
@@ -138,6 +158,8 @@ export function checkAb010(state: SourceState): Evidence[] {
 export function checkAb011(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   if (!snaps.openapi) return [];
+  const body = snaps.openapi.body;
+  if (body) return [OpenApiParser.parseToEvidence(body, snaps.openapi.url)];
   return [openapiEvidence(snaps.openapi, [], [])];
 }
 
@@ -145,6 +167,8 @@ export function checkAb011(state: SourceState): Evidence[] {
 export function checkAb012(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   if (!snaps.openapi) return [];
+  const body = snaps.openapi.body;
+  if (body) return [OpenApiParser.parseToEvidence(body, snaps.openapi.url)];
   return [openapiEvidence(snaps.openapi, [], [])];
 }
 
@@ -153,6 +177,13 @@ export function checkAb013(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
   if (!snaps.guide) return [];
   return [httpEvidence(snaps.guide)];
+}
+
+// ─── AB-014: llms.txt present ───────────────────────────────────────────────
+export function checkAb014(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.llms) return [];
+  return [httpEvidence(snaps.llms)];
 }
 
 // Registry: rule_id → checker function
@@ -170,4 +201,5 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-011": checkAb011,
   "AB-012": checkAb012,
   "AB-013": checkAb013,
+  "AB-014": checkAb014,
 };

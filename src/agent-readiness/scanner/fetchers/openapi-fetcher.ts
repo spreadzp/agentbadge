@@ -15,6 +15,7 @@ export interface OpenApiFetchResult {
 const PROBE_PATHS: readonly { path: string; format: "json" | "yaml" }[] = [
   { path: "/openapi.json", format: "json" },
   { path: "/openapi.yaml", format: "yaml" },
+  { path: "/api/specs", format: "json" },
   { path: "/swagger.json", format: "json" },
   { path: "/swagger/v1/swagger.json", format: "json" },
 ];

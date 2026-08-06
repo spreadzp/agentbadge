@@ -1,5 +1,5 @@
 import { resolve4, resolve6 } from "node:dns/promises";
-import { assertSafeIp } from "./ip-guard";
+import { assertSafeIp, isPrivateIp } from "./ip-guard";
 import { SsrfBlockedError, SsrfErrorCodes } from "./ssrf-error";
 
 export interface PinnedResolve {
@@ -7,7 +7,17 @@ export interface PinnedResolve {
   hostname: string;
 }
 
+function isIpAddress(hostname: string): boolean {
+  return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) || hostname.includes(":");
+}
+
 export async function resolveAndPin(hostname: string): Promise<PinnedResolve> {
+  // If hostname is already an IP, skip DNS resolution
+  if (isIpAddress(hostname)) {
+    assertSafeIp(hostname);
+    return { ip: hostname, hostname };
+  }
+
   let v4s: string[] = [];
   let v6s: string[] = [];
 
