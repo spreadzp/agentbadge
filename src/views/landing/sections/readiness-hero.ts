@@ -17,21 +17,30 @@ export function ReadinessHeroSection() {
       <div class="mx-auto max-w-6xl grid gap-10 md:grid-cols-[1.05fr_0.95fr] md:gap-14 md:items-center">
         <!-- Left: copy -->
         <div>
-          <div class="text-xs font-mono uppercase tracking-widest text-emerald-400">
+          <div class="fade-in-up text-xs font-mono uppercase tracking-widest text-emerald-400">
             Agent Readiness Infrastructure
           </div>
-          <h1 class="mt-4 text-5xl md:text-7xl font-extrabold leading-none tracking-tight max-w-2xl">
+          <h1 class="fade-in-up mt-4 text-5xl md:text-7xl font-extrabold leading-none tracking-tight max-w-2xl" style="animation-delay: 0.1s">
             Can an AI agent actually <em class="not-italic text-emerald-400">use your API?</em>
           </h1>
-          <p class="mt-6 text-lg text-slate-400 max-w-xl">
+          <p class="fade-in-up mt-6 text-lg text-slate-400 max-w-xl" style="animation-delay: 0.2s">
             AgentBadge measures whether your API can be discovered, understood and used by AI agents —
             with deterministic checks, evidence and actionable fixes.
           </p>
-          <div class="mt-7 flex flex-wrap gap-3">
-            <a href="/agent-guide/articles/what-is-agent-readiness" class="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 font-bold text-slate-950 border border-emerald-400 hover:translate-y-[-1px] transition-transform">
-              Scan free →
+          <div class="fade-in-up mt-8 flex flex-wrap gap-4">
+            <a
+              href="/agent-guide/articles/what-is-agent-readiness"
+              class="pulse-glow inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400"
+            >
+              Scan free
+              <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
             </a>
-            <a href="#how" class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 font-bold text-slate-100 border border-slate-700 hover:translate-y-[-1px] transition-transform">
+            <a
+              href="#how"
+              class="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-8 py-4 text-base font-semibold text-slate-300 transition-colors hover:border-emerald-500 hover:text-emerald-400"
+            >
               See how it works
             </a>
           </div>
