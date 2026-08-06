@@ -3,6 +3,7 @@ import { html, raw } from "hono/html";
 import { LandingLayout } from "../../views/landing/layout";
 import { LandingPage } from "../../views/landing/landing-page";
 import { ReadinessLandingPage } from "../../views/landing/readiness-landing-page";
+import { DataHubLandingPage } from "../../views/landing/datahub-landing-page";
 import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
 import { defaultCoreSchemas, landingJsonLd } from "../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo, type Tier } from "@agentgate-hedera/hedera-core";
@@ -87,5 +88,20 @@ landingRoutes.get("/passport", async (c) => {
   return c.html(pageHtml);
 });
 
+/**
+ * GET /datahub — DataHub hackathon landing page.
+ *
+ * Showcases how AgentBadge integrates DataHub MCP Server for medical data
+ * verification with Hedera escrow. Linked from the dashboard sidebar.
+ */
+landingRoutes.get("/datahub", async (c) => {
+  const meta = PageMetaRegistry["/datahub"];
+  const jsonLd = landingJsonLd();
+
+  const content = DataHubLandingPage().toString();
+  const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
+  return c.html(pageHtml);
+});
+
 // Note: GET /dashboard is registered in ui.ts (the former GET / handler).
-// landingRoutes owns GET / and GET /passport to avoid route conflicts.
+// landingRoutes owns GET /, GET /passport, and GET /datahub to avoid route conflicts.

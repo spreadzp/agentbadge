@@ -27,6 +27,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge — on-chain identity for AI agents on Hedera. Mint NFT passports, register in HCS directory, discover and verify agents on-chain.",
     path: "/passport",
   },
+  "/datahub": {
+    title: "DataHub Integration — Medical Data Verification",
+    description:
+      "AgentBadge integrates DataHub MCP Server for medical data verification. AI agents discover datasets, verify quality via assertions, and settle payments through Hedera escrow.",
+    path: "/datahub",
+  },
   "/dashboard": {
     title: "Dashboard",
     description:
@@ -159,6 +165,7 @@ export interface SitemapEntry {
 export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/passport", changefreq: "weekly", priority: "0.8" },
+  { path: "/datahub", changefreq: "weekly", priority: "0.8" },
   { path: "/dashboard", changefreq: "daily", priority: "0.9" },
   { path: "/ui/agents", changefreq: "daily", priority: "0.8" },
   { path: "/ui/catalog", changefreq: "weekly", priority: "0.8" },
