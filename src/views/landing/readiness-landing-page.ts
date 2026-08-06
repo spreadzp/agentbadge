@@ -5,6 +5,9 @@ import { ReadinessEvidenceSection } from "./sections/readiness-evidence";
 import { ReadinessFixSection } from "./sections/readiness-fix";
 import { ReadinessWorkflowSection } from "./sections/readiness-workflow";
 import { ReadinessKnowledgeSection } from "./sections/readiness-knowledge";
+import { ReadinessPricingSection } from "./sections/readiness-pricing";
+import { ReadinessAudienceSection } from "./sections/readiness-audience";
+import { ReadinessThesisSection } from "./sections/readiness-thesis";
 
 /**
  * ReadinessLandingPage — assembler for the Agent Readiness landing page.
@@ -17,9 +20,9 @@ import { ReadinessKnowledgeSection } from "./sections/readiness-knowledge";
  * 4. Fix types (SLICE-43-4) ✅
  * 5. Developer workflow (SLICE-43-5) ✅
  * 6. Agent Knowledge Layer (SLICE-43-5) ✅
- * 7. Pricing (SLICE-43-6)
- * 8. Audience (SLICE-43-6)
- * 9. Thesis / CTA (SLICE-43-6)
+ * 7. Pricing (SLICE-43-6) ✅
+ * 8. Audience (SLICE-43-6) ✅
+ * 9. Thesis / CTA (SLICE-43-6) ✅
  */
 export function ReadinessLandingPage() {
   const sections = [
@@ -29,6 +32,9 @@ export function ReadinessLandingPage() {
     ReadinessFixSection().toString(),
     ReadinessWorkflowSection().toString(),
     ReadinessKnowledgeSection().toString(),
+    ReadinessPricingSection().toString(),
+    ReadinessAudienceSection().toString(),
+    ReadinessThesisSection().toString(),
   ];
 
   return html`<div id="agent-readiness-landing">${raw(sections.join(""))}</div>`;
