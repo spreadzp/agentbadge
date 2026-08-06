@@ -99,6 +99,7 @@ class RuleEngineClass {
     if (target.includes("agent-guide") && snapshots.guide) return true;
     if (target.includes("openapi") && snapshots.openapi) return true;
     if (target.includes("mcp") && snapshots.mcp) return true;
+    if (target.includes("llms") && snapshots.llms) return true;
 
     // Rules without specific resource dependency are always applicable
     if (rule.check.type === "cross_evidence") return true;
@@ -126,12 +127,20 @@ class RuleEngineClass {
     }
 
     if (target.includes("sitemap") && snapshots.sitemap) {
+      const sitemapUrls: string[] = [];
+      const bodyText = snapshots.sitemap.body;
+      if (bodyText) {
+        const locMatches = bodyText.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi);
+        for (const m of locMatches) {
+          sitemapUrls.push(m[1].trim());
+        }
+      }
       evidence.push({
         type: "sitemap",
         url: snapshots.sitemap.url,
         status: snapshots.sitemap.status,
-        url_count: 0,
-        urls: [],
+        url_count: sitemapUrls.length,
+        urls: sitemapUrls.slice(0, 100),
       });
     }
 
@@ -168,6 +177,18 @@ class RuleEngineClass {
       });
     }
 
+    if (target.includes("llms") && snapshots.llms) {
+      evidence.push({
+        type: "http",
+        url: snapshots.llms.url,
+        status: snapshots.llms.status,
+        headers: {},
+        content_hash: snapshots.llms.bodyHash,
+        content_type: snapshots.llms.contentType,
+        resolved_ip: snapshots.llms.resolvedIp,
+      });
+    }
+
     return evidence;
   }
 
@@ -183,6 +204,7 @@ class RuleEngineClass {
     if (target.includes("agent-guide") && snapshots.guide) return snapshots.guide.url;
     if (target.includes("openapi") && snapshots.openapi) return snapshots.openapi.url;
     if (target.includes("mcp") && snapshots.mcp) return snapshots.mcp.url;
+    if (target.includes("llms") && snapshots.llms) return snapshots.llms.url;
 
     return null;
   }

@@ -10,6 +10,7 @@ export interface ResponseSnapshot {
   fetchedAt: string;
   fetchTimeMs: number;
   redirectChain: string[];
+  body?: string | null;
 }
 
 export function createSnapshot(opts: {
@@ -33,5 +34,6 @@ export function createSnapshot(opts: {
     fetchedAt: new Date().toISOString(),
     fetchTimeMs: opts.fetchTimeMs ?? 0,
     redirectChain: opts.redirectChain ?? [],
+    body: typeof opts.body === "string" ? opts.body : (bodyData ? bodyData.toString("utf-8") : null),
   };
 }

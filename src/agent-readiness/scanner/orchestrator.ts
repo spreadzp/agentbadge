@@ -8,6 +8,7 @@ import { fetchSitemapXml } from "./fetchers/sitemap-fetcher";
 import { fetchAgentGuide } from "./fetchers/guide-fetcher";
 import { fetchOpenApi } from "./fetchers/openapi-fetcher";
 import { fetchMcpDescriptor } from "./fetchers/mcp-fetcher";
+import { fetchLlmsTxt } from "./fetchers/llms-txt-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -15,7 +16,7 @@ export interface ScanOptions {
   resources?: string[];
 }
 
-const DEFAULT_RESOURCES = ["robots", "sitemap", "guide", "openapi", "mcp"] as const;
+const DEFAULT_RESOURCES = ["robots", "sitemap", "guide", "openapi", "mcp", "llms"] as const;
 
 export async function scanDomain(
   url: string,
@@ -38,9 +39,9 @@ export async function scanDomain(
 
   const snapshots: Record<string, ResponseSnapshot | null> = {};
 
-  // Parallel: robots + sitemap
-  const parallelResources = resources.filter((r) => r === "robots" || r === "sitemap");
-  const sequentialResources = resources.filter((r) => r !== "robots" && r !== "sitemap");
+  // Parallel: robots + sitemap + llms
+  const parallelResources = resources.filter((r) => r === "robots" || r === "sitemap" || r === "llms");
+  const sequentialResources = resources.filter((r) => r !== "robots" && r !== "sitemap" && r !== "llms");
 
   await Promise.all(parallelResources.map(async (resource) => {
     const result = await fetchResource(resource, baseUrl, rateLimiter, cache);
@@ -110,6 +111,14 @@ async function fetchResource(
     }
     case "mcp": {
       const r = await fetchMcpDescriptor(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "llms": {
+      const r = await fetchLlmsTxt(baseUrl);
       snapshot = r.body !== null ? createSnapshot({
         url: r.url, status: r.status, body: r.body,
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,

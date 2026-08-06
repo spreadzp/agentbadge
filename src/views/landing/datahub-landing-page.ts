@@ -24,11 +24,11 @@ export function DataHubLandingPage() {
 }
 
 function DataHubHero() {
-  return html`<section class="relative overflow-hidden border-b border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/20">
+  return html`<section class="relative overflow-hidden border-b border-slate-700/50 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/20">
     <div class="absolute inset-0 pulse-glow bg-gradient-radial from-emerald-500/10 to-transparent"></div>
     <div class="relative mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12 md:py-28">
       <div class="mx-auto max-w-3xl text-center">
-        <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300 fade-in-up">
+        <span class="inline-block rounded-full border border-emerald-600/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300 fade-in-up">
           DataHub Hackathon · MCP Integration
         </span>
         <h1 class="mt-6 text-4xl font-bold tracking-tight text-white fade-in-up sm:text-5xl md:text-6xl">
@@ -67,7 +67,7 @@ function DataHubHero() {
 }
 
 function DataHubStats() {
-  return html`<section class="border-b border-slate-800 bg-slate-900/50">
+  return html`<section class="border-b border-slate-700/50 bg-slate-900/50">
     <div class="mx-auto max-w-6xl px-6 py-12 sm:px-8 lg:px-12">
       <div class="grid grid-cols-2 gap-6 md:grid-cols-4">
         <div class="text-center">
@@ -97,13 +97,13 @@ function DataHubProblemSolution() {
       <div>
         <h2 class="text-2xl font-bold text-white sm:text-3xl">The Problem</h2>
         <div class="mt-6 space-y-4">
-          <div class="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+          <div class="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4">
             <p class="text-slate-300">AI agents processing medical data have no way to <strong class="text-white">verify dataset quality</strong> or trace data lineage programmatically.</p>
           </div>
-          <div class="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+          <div class="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4">
             <p class="text-slate-300">No <strong class="text-white">trustless payment mechanism</strong> — data providers must trust consumers to pay after receiving analysis.</p>
           </div>
-          <div class="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+          <div class="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4">
             <p class="text-slate-300">Medical data catalogs are <strong class="text-white">siloed and inaccessible</strong> to autonomous AI agents via standard protocols.</p>
           </div>
         </div>
@@ -111,13 +111,13 @@ function DataHubProblemSolution() {
       <div>
         <h2 class="text-2xl font-bold text-white sm:text-3xl">The Solution</h2>
         <div class="mt-6 space-y-4">
-          <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <div class="rounded-lg border border-emerald-600/25 bg-emerald-500/5 p-4">
             <p class="text-slate-300"><strong class="text-emerald-400">DataHub MCP Server</strong> exposes search, lineage, schema fields, and assertions as tools that any AI agent can call.</p>
           </div>
-          <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <div class="rounded-lg border border-emerald-600/25 bg-emerald-500/5 p-4">
             <p class="text-slate-300"><strong class="text-emerald-400">Hedera Escrow</strong> holds HBAR in scheduled transactions — released only when DataHub assertions pass verification.</p>
           </div>
-          <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <div class="rounded-lg border border-emerald-600/25 bg-emerald-500/5 p-4">
             <p class="text-slate-300"><strong class="text-emerald-400">Self-correcting loop</strong> — if assertions fail, the agent automatically fixes issues and retries (up to 3 rounds).</p>
           </div>
         </div>
@@ -160,14 +160,14 @@ function DataHubFeatures() {
     },
   ];
 
-  return html`<section class="border-y border-slate-800 bg-slate-900/30">
+  return html`<section class="border-y border-slate-700/50 bg-slate-900/30">
     <div class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
       <div class="text-center">
         <h2 class="text-2xl font-bold text-white sm:text-3xl">DataHub MCP Tools</h2>
         <p class="mt-4 text-slate-400">Every tool an AI agent needs to discover, verify, and process medical data</p>
       </div>
       <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        ${raw(features.map((f) => html`<div class="hover-lift rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        ${raw(features.map((f) => html`<div class="hover-lift rounded-xl border border-slate-700/40 bg-slate-900/50 p-6">
           <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
             <svg class="h-5 w-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${f.icon}" /></svg>
           </div>
@@ -211,7 +211,7 @@ function DataHubHowItWorks() {
     <div class="mt-12 grid gap-8 md:grid-cols-4">
       ${raw(steps.map((s, i) => html`<div class="relative scroll-reveal">
         ${i < steps.length - 1 ? html`<div class="absolute left-1/2 top-12 hidden h-px w-full bg-gradient-to-r from-emerald-500/50 to-transparent md:block"></div>` : ""}
-        <div class="relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-emerald-500/40 bg-slate-900">
+        <div class="relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-emerald-600/30 bg-slate-900">
           <span class="text-sm font-bold text-emerald-400">${s.num}</span>
         </div>
         <h3 class="mt-4 text-lg font-semibold text-white">${s.title}</h3>
@@ -222,15 +222,15 @@ function DataHubHowItWorks() {
 }
 
 function DataHubArchitecture() {
-  return html`<section class="border-y border-slate-800 bg-slate-900/30">
+  return html`<section class="border-y border-slate-700/50 bg-slate-900/30">
     <div class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
       <div class="text-center">
         <h2 class="text-2xl font-bold text-white sm:text-3xl">Architecture</h2>
         <p class="mt-4 text-slate-400">How DataHub, MCP, and Hedera fit together</p>
       </div>
-      <div class="mt-12 rounded-xl border border-slate-800 bg-slate-950/50 p-8">
+      <div class="mt-12 rounded-xl border border-slate-700/40 bg-slate-950/50 p-8">
         <div class="grid gap-6 md:grid-cols-3">
-          <div class="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-6 text-center">
+          <div class="rounded-lg border border-slate-700/40 bg-slate-800/30 p-6 text-center">
             <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10">
               <svg class="h-6 w-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
             </div>
@@ -238,7 +238,7 @@ function DataHubArchitecture() {
             <p class="mt-2 text-sm text-slate-400">Metadata catalog with datasets, schemas, lineage, assertions, and glossary terms.</p>
             <div class="mt-3 text-xs text-slate-500">MySQL · Kafka · Elasticsearch</div>
           </div>
-          <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-6 text-center">
+          <div class="rounded-lg border border-emerald-600/25 bg-emerald-500/5 p-6 text-center">
             <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-500/10">
               <svg class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             </div>
@@ -246,7 +246,7 @@ function DataHubArchitecture() {
             <p class="mt-2 text-sm text-slate-400">Python MCP server exposes DataHub tools via stdio. Agents call search, lineage, assertions.</p>
             <div class="mt-3 text-xs text-slate-500">uvx mcp-server-datahub@latest</div>
           </div>
-          <div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-6 text-center">
+          <div class="rounded-lg border border-slate-700/40 bg-slate-800/30 p-6 text-center">
             <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/10">
               <svg class="h-6 w-6 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             </div>
@@ -255,7 +255,7 @@ function DataHubArchitecture() {
             <div class="mt-3 text-xs text-slate-500">HTS · HCS · Scheduled Tx</div>
           </div>
         </div>
-        <div class="mt-6 rounded-lg border border-slate-700/50 bg-slate-900/50 p-4 text-center">
+        <div class="mt-6 rounded-lg border border-slate-700/40 bg-slate-900/50 p-4 text-center">
           <p class="text-sm text-slate-400">
             <span class="text-cyan-400">DataHub</span> → <span class="text-emerald-400">MCP Server</span> → <span class="text-white">AgentBadge Verifier</span> → <span class="text-purple-400">Hedera Escrow</span>
           </p>
@@ -268,7 +268,7 @@ function DataHubArchitecture() {
 
 function DataHubCtaFooter() {
   return html`<section class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
-    <div class="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 to-slate-950 p-12 text-center">
+    <div class="rounded-2xl border border-emerald-600/25 bg-gradient-to-br from-emerald-950/40 to-slate-950 p-12 text-center">
       <h2 class="text-3xl font-bold text-white sm:text-4xl">Ready to verify medical data with DataHub?</h2>
       <p class="mx-auto mt-4 max-w-2xl text-slate-300">
         Explore the live demo, browse the dashboard, or read the integration guide to see how AI agents

@@ -12,10 +12,11 @@ import { AB010 } from "../../tests/fixtures/agent-readiness-rules/AB-010";
 import { AB011 } from "../../tests/fixtures/agent-readiness-rules/AB-011";
 import { AB012 } from "../../tests/fixtures/agent-readiness-rules/AB-012";
 import { AB013 } from "../../tests/fixtures/agent-readiness-rules/AB-013";
+import { AB014 } from "../../tests/fixtures/agent-readiness-rules/AB-014";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
-  version: "1.2.0",
+  version: "1.3.0",
   rules: [
     AB001,
     AB002,
@@ -30,6 +31,7 @@ export const AGENT_READINESS_RULESET = {
     AB011,
     AB012,
     AB013,
+    AB014,
   ] as AgentReadinessRule[],
 } as const;
 

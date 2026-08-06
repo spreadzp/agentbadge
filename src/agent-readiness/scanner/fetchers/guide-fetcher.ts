@@ -14,14 +14,23 @@ export interface GuideFetchResult {
 const PROBE_PATHS = [
   "/.well-known/agent-guide.json",
   "/agent-guide.json",
+  "/agent-guide/",
+  "/agent-guide",
 ] as const;
+
+const CONTENT_TYPES_BY_PATH: Record<string, string[]> = {
+  "/.well-known/agent-guide.json": ["application/json"],
+  "/agent-guide.json": ["application/json"],
+  "/agent-guide/": ["text/html", "text/markdown", "application/json"],
+  "/agent-guide": ["text/html", "text/markdown", "application/json"],
+};
 
 export async function fetchAgentGuide(baseUrl: string): Promise<GuideFetchResult> {
   for (const path of PROBE_PATHS) {
     const url = `${baseUrl}${path}`;
     try {
       const result = await safeFetch(url, {
-        allowedContentTypes: ["application/json"],
+        allowedContentTypes: CONTENT_TYPES_BY_PATH[path] ?? ["application/json"],
       });
       if (result.status === 200) {
         return {
