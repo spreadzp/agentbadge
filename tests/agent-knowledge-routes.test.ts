@@ -139,6 +139,77 @@ describe("Agent Knowledge Layer Routes", () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe("Article structured template (SLICE-42-6R)", () => {
+    it("article contains ## Summary section", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## Summary");
+    });
+
+    it("article contains ## Problem section", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## Problem");
+    });
+
+    it("article contains ## AgentBadge Relevance section", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## AgentBadge Relevance");
+    });
+
+    it("article contains ## Key Concepts section with concept links", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## Key Concepts");
+      expect(text).toContain("/agent-guide/concepts/agent-readiness");
+      expect(text).toContain("/agent-guide/concepts/scoring");
+      expect(text).toContain("/agent-guide/concepts/badge");
+    });
+
+    it("article contains ## Capabilities section with capability links", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## Capabilities");
+      expect(text).toContain("/agent-guide/capabilities/scanner");
+      expect(text).toContain("/agent-guide/capabilities/cli");
+    });
+
+    it("article contains ## CLI Commands section", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## CLI Commands");
+    });
+
+    it("article contains ## API Endpoints section", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## API Endpoints");
+    });
+
+    it("article contains ## Recommended Actions section", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## Recommended Actions");
+    });
+
+    it("article contains ## Knowledge Map section with node references", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## Knowledge Map");
+      expect(text).toContain("agent-readiness");
+      expect(text).toContain("scanner");
+      expect(text).toContain("scoring");
+    });
+
+    it("article contains ## Full Article section with original content", async () => {
+      const res = await app.request("/agent-guide/articles/what-is-agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("## Full Article");
+      expect(text).toContain("SEO for AI agents");
+    });
+  });
 });
 
 describe("Marketplace guide migration (SLICE-42-3)", () => {

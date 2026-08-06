@@ -23,6 +23,21 @@
 
 - [What Is Agent Readiness?](/agent-guide/articles/what-is-agent-readiness) — Pillar article defining the category
 
+### Article Structure
+
+Each article endpoint follows a structured template for machine readability:
+
+1. **Summary** — What this article is about
+2. **Problem** — What problem does this article address
+3. **AgentBadge Relevance** — How AgentBadge solves this problem
+4. **Key Concepts** — Links to relevant `/agent-guide/concepts/*`
+5. **Capabilities** — Links to relevant `/agent-guide/capabilities/*`
+6. **CLI Commands** — Relevant CLI commands
+7. **API Endpoints** — Relevant API endpoints
+8. **Recommended Actions** — What to do next
+9. **Knowledge Map** — Relevant nodes and edges from `knowledge-map.json`
+10. **Full Article** — The complete human-readable article text
+
 ## How to Use This Guide
 
 1. Read [Context](/agent-guide/context) to understand what AgentBadge does

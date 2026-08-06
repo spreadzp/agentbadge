@@ -1,8 +1,10 @@
 # What Is Agent Readiness?
 
-> **For AI agents:** See the [Agent Knowledge Layer](/agent-guide/) for machine-readable product capabilities, scanning instructions, and API access.
+## Summary
 
-## The Problem: AI Agents Can't Use Your API
+Agent Readiness is the degree to which an API or service can be discovered, understood, and used by AI agents without human intervention. This article explains the problem, how AgentBadge measures it, and how to improve your API's agent readiness score.
+
+## Problem
 
 Your API might be technically excellent — fast, reliable, well-documented for humans. But when an AI agent tries to use it, the agent hits a wall.
 
@@ -10,7 +12,82 @@ The agent doesn't know your API exists. It can't find your documentation. It doe
 
 This is the gap AgentBadge addresses.
 
-## What Is Agent Readiness?
+## AgentBadge Relevance
+
+AgentBadge measures Agent Readiness using a passive scanner — a tool that sends HTTP requests to your public endpoints, exactly like an AI agent would. The scanner is non-intrusive: no code changes, no SDK, no agent to deploy.
+
+Each check is a binary rule with evidence — no subjective scoring, no opinions. The same URL + same ruleset version always produces the same score. AgentBadge doesn't certify; it measures.
+
+## Key Concepts
+
+- [Agent Readiness](/agent-guide/concepts/agent-readiness) — Definition and why it matters for the agentic web
+- [Scoring Engine](/agent-guide/concepts/scoring) — How APIs are scored using binary rules with evidence
+- [Trust Badge](/agent-guide/concepts/badge) — What the badge means (trust signal, not certification)
+
+## Capabilities
+
+- [Passive Scanner](/agent-guide/capabilities/scanner) — Non-intrusive HTTP-based scanning of public endpoints
+- [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via npm/npx, free and private
+
+## CLI Commands
+
+```bash
+# Scan an API
+npx @agentbadge/cli scan https://api.example.com
+
+# Scan with verbose output
+npx @agentbadge/cli scan https://api.example.com --verbose
+
+# Output JSON report
+npx @agentbadge/cli scan https://api.example.com --format json > report.json
+```
+
+## API Endpoints
+
+- `GET /agent-guide/` — Agent Knowledge Layer index
+- `GET /agent-guide/context` — Product context and what AgentBadge does
+- `GET /agent-guide/learn` — Step-by-step learning path
+- `GET /agent-guide/knowledge-map.json` — Structured graph of concepts and capabilities
+- `GET /agent-guide/concepts/agent-readiness` — Agent Readiness concept
+- `GET /agent-guide/concepts/scoring` — Scoring engine concept
+- `GET /agent-guide/concepts/badge` — Trust badge concept
+- `GET /agent-guide/capabilities/scanner` — Passive scanner capability
+- `GET /agent-guide/capabilities/cli` — CLI tool capability
+
+## Recommended Actions
+
+1. [Read the context](/agent-guide/context) — Understand what AgentBadge does
+2. [Follow the learning path](/agent-guide/learn) — Step-by-step guide to make your API agent-ready
+3. [Check the knowledge map](/agent-guide/knowledge-map.json) — See how concepts connect
+4. Run a scan — Web UI, CLI (`npx @agentbadge/cli scan URL`), or GitHub Action
+5. Review your evidence — every finding links to the HTTP response that produced it
+6. Fix the gaps — add `llms.txt`, improve OpenAPI, structure your errors
+7. Display your badge — show your measured Agent Readiness score
+
+## Knowledge Map
+
+- **Nodes**: `agent-readiness` (concept), `scanner` (capability), `scoring` (concept), `badge` (concept), `cli` (capability), `ruleset` (concept)
+- **Edges**:
+  - `agent-readiness` → measured by → `scanner`
+  - `scanner` → feeds into → `scoring`
+  - `scoring` → produces → `badge`
+  - `scoring` → uses → `ruleset`
+  - `cli` → invokes → `scanner`
+  - `agent-readiness` → quantified by → `scoring`
+
+## Full Article
+
+> **For AI agents:** See the [Agent Knowledge Layer](/agent-guide/) for machine-readable product capabilities, scanning instructions, and API access.
+
+### The Problem: AI Agents Can't Use Your API
+
+Your API might be technically excellent — fast, reliable, well-documented for humans. But when an AI agent tries to use it, the agent hits a wall.
+
+The agent doesn't know your API exists. It can't find your documentation. It doesn't understand your authentication flow. It can't parse your error messages. And no amount of LLM intelligence can fix these problems — because they're not intelligence problems. They're **infrastructure problems**.
+
+This is the gap AgentBadge addresses.
+
+### What Is Agent Readiness?
 
 **Agent Readiness** is the degree to which an API or service can be discovered, understood, and used by AI agents **without human intervention**.
 
@@ -27,7 +104,7 @@ The analogy is precise:
 | Page speed affects ranking | Machine-readability affects agent usability |
 | Search ranking = visibility | Agent Readiness score = usability |
 
-## How It's Measured
+### How It's Measured
 
 AgentBadge measures Agent Readiness using a **passive scanner** — a tool that sends HTTP requests to your public endpoints, exactly like an AI agent would.
 
@@ -49,7 +126,7 @@ Each check is a **binary rule** with evidence — no subjective scoring, no opin
 
 Learn more: [Scoring Engine](/agent-guide/concepts/scoring) · [Passive Scanner](/agent-guide/capabilities/scanner)
 
-## What the Badge Means
+### What the Badge Means
 
 The AgentBadge trust badge displays your Agent Readiness score. It is:
 
@@ -62,15 +139,15 @@ The distinction between measurement and certification matters. We don't say "you
 
 Learn more: [Trust Badge](/agent-guide/concepts/badge)
 
-## How to Check Your API
+### How to Check Your API
 
 You can check your API's Agent Readiness in three ways:
 
-### Web UI
+#### Web UI
 
 Go to the AgentBadge dashboard and enter your API URL. Get a full report with scores, findings, and recommendations.
 
-### CLI
+#### CLI
 
 ```bash
 npx @agentbadge/cli scan https://api.example.com
@@ -78,7 +155,7 @@ npx @agentbadge/cli scan https://api.example.com
 
 The CLI is free, runs locally, and produces the same results as the web scanner.
 
-### GitHub Action
+#### GitHub Action
 
 ```yaml
 - uses: agentbadge/scan-action@v1
@@ -90,7 +167,7 @@ Integrate scanning into your CI/CD pipeline to catch regressions before deployme
 
 Learn more: [CLI Tool](/agent-guide/capabilities/cli)
 
-## Call to Action
+### Call to Action
 
 AI agents are becoming a major consumer of APIs. If your API isn't agent-ready, you're invisible to an entire category of users.
 
