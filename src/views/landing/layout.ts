@@ -22,7 +22,9 @@ export function LandingLayout(
 ): ReturnType<typeof html> {
   const pageTitle = title
     ? `${title} — ${SITE_NAME}`
-    : `${SITE_NAME} — On-Chain Identity for AI Agents on Hedera`;
+    : meta?.title
+      ? `${meta.title} — ${SITE_NAME}`
+      : `${SITE_NAME} — ${SITE_DESCRIPTION}`;
   const description = meta?.description ?? SITE_DESCRIPTION;
   const canonicalPath = meta?.path ?? "/";
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;

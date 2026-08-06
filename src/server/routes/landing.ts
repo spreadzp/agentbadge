@@ -10,22 +10,50 @@ import { listTasks as marketListTasks } from "@agentgate-hedera/passport";
 
 /**
  * Landing page routes.
- * (SLICE-19-2)
- *
- * GET /           — landing page (marketing)
- * GET /dashboard  — dashboard page (was previously GET / in ui.ts)
+ * SLICE-43-1: Old landing moved to /passport, new Agent Readiness landing at /.
  */
 export const landingRoutes = new Hono();
 
 /**
- * GET / — landing page.
+ * GET / — Agent Readiness landing page (new).
  *
- * Renders the landing page using LandingLayout.
- * The actual page content (sections) will be assembled by LandingPage()
- * in SLICE-19-11. For now, a placeholder is rendered.
+ * Placeholder for the new Agent Readiness product landing page.
+ * Full implementation in subsequent SLICE-43 slices.
  */
 landingRoutes.get("/", async (c) => {
   const meta = PageMetaRegistry["/"];
+  const jsonLd = landingJsonLd();
+
+  const content = html`<div id="agent-readiness-landing">
+    <section class="hero">
+      <h1>Agent Readiness for the Agentic Web</h1>
+      <p class="subtitle">Can AI agents discover, understand, and use your API?</p>
+      <p class="description">
+        AgentBadge measures your API's Agent Readiness with deterministic checks,
+        evidence-based scoring, and actionable fixes.
+      </p>
+      <div class="cta-group">
+        <a href="/agent-guide/articles/what-is-agent-readiness" class="btn btn-primary">Learn More</a>
+        <a href="/agent-guide/" class="btn btn-secondary">Agent Guide</a>
+      </div>
+    </section>
+    <section class="placeholder-notice">
+      <p><em>Landing page redesign in progress. <a href="/passport">View the original Hedera marketplace page →</a></em></p>
+    </section>
+  </div>`.toString();
+
+  const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
+  return c.html(pageHtml);
+});
+
+/**
+ * GET /passport — Original Hedera marketplace landing page (preserved).
+ *
+ * This is the original landing page, preserved for hackathon use and
+ * backward compatibility. New visitors see the Agent Readiness landing at /.
+ */
+landingRoutes.get("/passport", async (c) => {
+  const meta = PageMetaRegistry["/passport"];
   const jsonLd = landingJsonLd();
 
   // Fetch SSR stats data for LiveStatsSection
@@ -76,5 +104,4 @@ landingRoutes.get("/", async (c) => {
 });
 
 // Note: GET /dashboard is registered in ui.ts (the former GET / handler).
-// landingRoutes only owns GET / to avoid route conflicts.
-// /about, /pricing, /terms, /privacy are handled by contentPageRoutes.
+// landingRoutes owns GET / and GET /passport to avoid route conflicts.

@@ -7,7 +7,7 @@ export interface PageMeta {
 export const SITE_NAME = "AgentBadge";
 
 export const SITE_DESCRIPTION =
-  "On-chain identity for AI agents on Hedera: NFT passports (HTS), HCS directory, A2A messaging, marketplace.";
+  "AgentBadge — Agent Readiness for the agentic web. Measure whether your API can be discovered, understood, and used by AI agents.";
 
 export const BASE_URL =
   process.env.BASE_URL && process.env.BASE_URL.startsWith("http")
@@ -16,10 +16,16 @@ export const BASE_URL =
 
 export const PageMeta: Record<string, PageMeta> = {
   "/": {
+    title: "Agent Readiness for the Agentic Web",
+    description:
+      "AgentBadge measures whether your API can be discovered, understood, and used by AI agents — with deterministic checks, evidence, and actionable fixes.",
+    path: "/",
+  },
+  "/passport": {
     title: "On-Chain Identity for AI Agents on Hedera",
     description:
       "AgentBadge — on-chain identity for AI agents on Hedera. Mint NFT passports, register in HCS directory, discover and verify agents on-chain.",
-    path: "/",
+    path: "/passport",
   },
   "/dashboard": {
     title: "Dashboard",
@@ -152,6 +158,7 @@ export interface SitemapEntry {
 // TODO(18-7): add /faq and /use-cases when those pages exist
 export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
+  { path: "/passport", changefreq: "weekly", priority: "0.8" },
   { path: "/dashboard", changefreq: "daily", priority: "0.9" },
   { path: "/ui/agents", changefreq: "daily", priority: "0.8" },
   { path: "/ui/catalog", changefreq: "weekly", priority: "0.8" },
