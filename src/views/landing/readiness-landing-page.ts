@@ -1,5 +1,6 @@
 import { html, raw } from "hono/html";
 import { ReadinessHeroSection } from "./sections/readiness-hero";
+import { ReadinessHowSection } from "./sections/readiness-how";
 
 /**
  * ReadinessLandingPage — assembler for the Agent Readiness landing page.
@@ -7,7 +8,7 @@ import { ReadinessHeroSection } from "./sections/readiness-hero";
  *
  * Section order (planned across SLICE-43-2 through 43-6):
  * 1. Hero (SLICE-43-2) ✅
- * 2. Problem + 4 categories + pipeline (SLICE-43-3)
+ * 2. Problem + 4 categories + pipeline (SLICE-43-3) ✅
  * 3. Evidence-first (SLICE-43-4)
  * 4. Fix types (SLICE-43-4)
  * 5. Developer workflow (SLICE-43-5)
@@ -19,6 +20,7 @@ import { ReadinessHeroSection } from "./sections/readiness-hero";
 export function ReadinessLandingPage() {
   const sections = [
     ReadinessHeroSection().toString(),
+    ReadinessHowSection().toString(),
   ];
 
   return html`<div id="agent-readiness-landing">${raw(sections.join(""))}</div>`;
