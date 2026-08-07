@@ -1,0 +1,14 @@
+id: backend-infrastructure
+name: Backend Infrastructure
+problem: "Need backend systems, databases, or event-driven architecture"
+deliverables:
+  - Backend services
+  - Database schema
+  - API endpoints
+  - Documentation
+  - Tests
+engagement:
+  - fixed-scope
+  - contract
+  - part-time
+contact: /agent-guide/team/contact

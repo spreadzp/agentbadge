@@ -1,0 +1,12 @@
+id: smart-contract-development
+name: Smart Contract Development
+problem: "Need Solidity or Hedera smart contracts for tokenization, DeFi, or on-chain logic"
+deliverables:
+  - Smart contracts
+  - Deployment scripts
+  - Tests
+  - Documentation
+engagement:
+  - fixed-scope
+  - contract
+contact: /agent-guide/team/contact

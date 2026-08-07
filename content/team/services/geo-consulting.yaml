@@ -1,0 +1,13 @@
+id: geo-consulting
+name: GEO Consulting
+problem: "Need your content discoverable by AI search engines and AI agents"
+deliverables:
+  - GEO audit
+  - llms.txt setup
+  - AI sitemap
+  - Agent knowledge layer
+  - Content architecture recommendations
+engagement:
+  - fixed-scope
+  - contract
+contact: /agent-guide/team/contact

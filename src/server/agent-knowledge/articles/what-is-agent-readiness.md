@@ -1,3 +1,11 @@
+---
+related_capabilities:
+  - ai-agent-architecture
+  - geo-optimization
+related_services:
+  - ai-agent-consulting
+  - geo-consulting
+---
 # What Is Agent Readiness?
 
 ## Summary

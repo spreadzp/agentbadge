@@ -1,0 +1,13 @@
+id: api-development
+name: API Development
+problem: "Need a REST API or backend service for your product"
+deliverables:
+  - API server
+  - OpenAPI specification
+  - Documentation
+  - Tests
+engagement:
+  - fixed-scope
+  - contract
+  - part-time
+contact: /agent-guide/team/contact

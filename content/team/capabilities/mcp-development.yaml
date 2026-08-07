@@ -1,0 +1,31 @@
+id: mcp-development
+name: MCP Server Development
+category: ai
+description: >
+  Design and implementation of MCP servers
+  and integrations for AI agents.
+skills:
+  - mcp
+  - typescript
+  - api-design
+  - ai-agents
+services:
+  - mcp-server-development
+people:
+  - paul
+evidence:
+  - type: project
+    name: AgentBadge
+    url: https://github.com/agentbadge/agentbadge
+    description: MCP server with 38 tools for agent passport management, marketplace, and messaging
+  - type: project
+    name: Chain Messenger
+    description: MCP integration for cross-chain messaging
+related_articles:
+  - what-is-agent-readiness
+  - mcp-for-api-developers
+related_capabilities:
+  - ai-agent-architecture
+  - api-integration
+status: VERIFIED
+confidence: 0.95

@@ -1,19 +1,237 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nodes": [
-    { "id": "agent-readiness", "type": "concept", "label": "Agent Readiness", "article": 1 },
-    { "id": "scanner", "type": "capability", "label": "Passive Scanner", "article": 1 },
-    { "id": "scoring", "type": "concept", "label": "Scoring Engine", "article": 1 },
-    { "id": "badge", "type": "concept", "label": "Trust Badge", "article": 1 },
-    { "id": "ruleset", "type": "concept", "label": "Open Ruleset" },
-    { "id": "cli", "type": "capability", "label": "CLI Tool", "article": 1 }
+    {
+      "id": "agent-readiness",
+      "type": "concept",
+      "label": "Agent Readiness",
+      "article": 1
+    },
+    {
+      "id": "scanner",
+      "type": "capability",
+      "label": "Passive Scanner",
+      "article": 1
+    },
+    {
+      "id": "scoring",
+      "type": "concept",
+      "label": "Scoring Engine",
+      "article": 1
+    },
+    {
+      "id": "badge",
+      "type": "concept",
+      "label": "Trust Badge",
+      "article": 1
+    },
+    {
+      "id": "ruleset",
+      "type": "concept",
+      "label": "Open Ruleset"
+    },
+    {
+      "id": "cli",
+      "type": "capability",
+      "label": "CLI Tool",
+      "article": 1
+    },
+    {
+      "id": "team",
+      "type": "concept",
+      "label": "Engineering Team"
+    },
+    {
+      "id": "capabilities",
+      "type": "concept",
+      "label": "Capabilities Registry"
+    },
+    {
+      "id": "services",
+      "type": "concept",
+      "label": "Services Catalog"
+    },
+    {
+      "id": "people",
+      "type": "concept",
+      "label": "Team Members"
+    },
+    {
+      "id": "mcp-development",
+      "type": "capability",
+      "label": "MCP Server Development"
+    },
+    {
+      "id": "blockchain-development",
+      "type": "capability",
+      "label": "Blockchain Development"
+    },
+    {
+      "id": "ai-agent-architecture",
+      "type": "capability",
+      "label": "AI Agent Architecture"
+    },
+    {
+      "id": "backend-development",
+      "type": "capability",
+      "label": "Backend Development"
+    },
+    {
+      "id": "geo-optimization",
+      "type": "capability",
+      "label": "GEO Optimization"
+    },
+    {
+      "id": "paul",
+      "type": "person",
+      "label": "Paul"
+    },
+    {
+      "id": "contact",
+      "type": "concept",
+      "label": "Contact Channels"
+    }
   ],
   "edges": [
-    { "from": "agent-readiness", "to": "scanner", "label": "measured by" },
-    { "from": "scanner", "to": "scoring", "label": "feeds into" },
-    { "from": "scoring", "to": "badge", "label": "produces" },
-    { "from": "scoring", "to": "ruleset", "label": "uses" },
-    { "from": "cli", "to": "scanner", "label": "invokes" },
-    { "from": "agent-readiness", "to": "scoring", "label": "quantified by" }
+    {
+      "from": "agent-readiness",
+      "to": "scanner",
+      "label": "measured by"
+    },
+    {
+      "from": "scanner",
+      "to": "scoring",
+      "label": "feeds into"
+    },
+    {
+      "from": "scoring",
+      "to": "badge",
+      "label": "produces"
+    },
+    {
+      "from": "scoring",
+      "to": "ruleset",
+      "label": "uses"
+    },
+    {
+      "from": "cli",
+      "to": "scanner",
+      "label": "invokes"
+    },
+    {
+      "from": "agent-readiness",
+      "to": "scoring",
+      "label": "quantified by"
+    },
+    {
+      "from": "agent-readiness",
+      "to": "team",
+      "label": "implemented by"
+    },
+    {
+      "from": "team",
+      "to": "capabilities",
+      "label": "has"
+    },
+    {
+      "from": "team",
+      "to": "services",
+      "label": "offers"
+    },
+    {
+      "from": "team",
+      "to": "people",
+      "label": "consists of"
+    },
+    {
+      "from": "capabilities",
+      "to": "mcp-development",
+      "label": "includes"
+    },
+    {
+      "from": "capabilities",
+      "to": "blockchain-development",
+      "label": "includes"
+    },
+    {
+      "from": "capabilities",
+      "to": "ai-agent-architecture",
+      "label": "includes"
+    },
+    {
+      "from": "capabilities",
+      "to": "backend-development",
+      "label": "includes"
+    },
+    {
+      "from": "capabilities",
+      "to": "geo-optimization",
+      "label": "includes"
+    },
+    {
+      "from": "mcp-development",
+      "to": "services",
+      "label": "maps to"
+    },
+    {
+      "from": "blockchain-development",
+      "to": "services",
+      "label": "maps to"
+    },
+    {
+      "from": "ai-agent-architecture",
+      "to": "services",
+      "label": "maps to"
+    },
+    {
+      "from": "backend-development",
+      "to": "services",
+      "label": "maps to"
+    },
+    {
+      "from": "geo-optimization",
+      "to": "services",
+      "label": "maps to"
+    },
+    {
+      "from": "mcp-development",
+      "to": "paul",
+      "label": "provided by"
+    },
+    {
+      "from": "blockchain-development",
+      "to": "paul",
+      "label": "provided by"
+    },
+    {
+      "from": "ai-agent-architecture",
+      "to": "paul",
+      "label": "provided by"
+    },
+    {
+      "from": "backend-development",
+      "to": "paul",
+      "label": "provided by"
+    },
+    {
+      "from": "geo-optimization",
+      "to": "paul",
+      "label": "provided by"
+    },
+    {
+      "from": "paul",
+      "to": "contact",
+      "label": "reachable via"
+    },
+    {
+      "from": "agent-readiness",
+      "to": "ai-agent-architecture",
+      "label": "related to"
+    },
+    {
+      "from": "agent-readiness",
+      "to": "geo-optimization",
+      "label": "related to"
+    }
   ]
 }

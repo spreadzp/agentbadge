@@ -1,0 +1,14 @@
+id: mcp-server-development
+name: MCP Server Development
+problem: "Need an MCP server for your AI agent to access existing APIs"
+deliverables:
+  - MCP server
+  - Tool definitions
+  - Configuration
+  - Documentation
+  - Tests
+engagement:
+  - fixed-scope
+  - contract
+  - part-time
+contact: /agent-guide/team/contact

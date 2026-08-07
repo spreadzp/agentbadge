@@ -1,0 +1,13 @@
+id: ai-agent-consulting
+name: AI Agent Consulting
+problem: "Need architecture guidance for making your product agent-ready"
+deliverables:
+  - Architecture assessment
+  - Agent-readable API design
+  - Knowledge layer setup
+  - Implementation roadmap
+engagement:
+  - fixed-scope
+  - contract
+  - part-time
+contact: /agent-guide/team/contact

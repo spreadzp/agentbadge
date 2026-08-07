@@ -1,0 +1,25 @@
+id: geo-optimization
+name: GEO Optimization
+category: growth
+description: >
+  Generative Engine Optimization — making content
+  discoverable by AI search engines and AI agents.
+skills:
+  - geo
+  - seo
+  - api-design
+services:
+  - geo-consulting
+people:
+  - paul
+evidence:
+  - type: project
+    name: AgentBadge
+    description: Agent Knowledge Layer with llms.txt, AI sitemap, agent-guide, and machine-readable endpoints
+  - type: article
+    name: AI Search Optimization articles
+    description: Published articles on agent readability and GEO
+related_capabilities:
+  - ai-agent-architecture
+status: VERIFIED
+confidence: 0.85

@@ -68,6 +68,16 @@ export const FAQ_ENTRIES: QaPair[] = [
     answer:
       "AgentBadge is not an escrow service, dispute resolution system, or guarantee of agent behavior. It provides identity, discovery, and verification infrastructure. If an agent behaves maliciously, the admin can revoke its passport (burn the NFT), but AgentBadge does not mediate transactions or enforce outcomes. Reviews, escrow, and arbitration are future scope.",
   },
+  {
+    question: "Can the AgentBadge team build an MCP server for me?",
+    answer:
+      "Yes. The AgentBadge team offers MCP server development, AI agent architecture consulting, and Hedera blockchain integration services. Whether you need a custom MCP server for your API, agent-native infrastructure design, or Hedera HTS/HCS integration, the team can help on a contract or fixed-scope basis. See <a href=\"/agent-guide/team/services\" class=\"text-emerald-400 underline hover:text-emerald-300\">our services catalog</a> for details.",
+  },
+  {
+    question: "Does the team offer GEO optimization consulting?",
+    answer:
+      "Yes. Generative Engine Optimization (GEO) makes your service discoverable by AI agents through llms.txt, agent-card.json, ai-sitemap.xml, and structured OpenAPI specs. The AgentBadge team helps with full GEO implementation — from endpoint setup to content negotiation and machine-readable metadata. See <a href=\"/agent-guide/team/services\" class=\"text-emerald-400 underline hover:text-emerald-300\">our services catalog</a> to get started.",
+  },
 ];
 
 export function FaqPage(jsonLd?: object[]) {

@@ -1,0 +1,29 @@
+id: backend-development
+name: Backend Development
+category: backend
+description: >
+  Node.js, NestJS, PostgreSQL, Redis,
+  REST APIs, and event-driven systems.
+skills:
+  - nodejs
+  - nestjs
+  - typescript
+  - postgres
+  - api-design
+services:
+  - api-development
+  - backend-infrastructure
+people:
+  - paul
+evidence:
+  - type: project
+    name: AgentBadge
+    description: Hono + Bun server with REST API, OpenAPI spec, marketplace, escrow, and verification system
+  - type: project
+    name: Exchange Service
+    description: NestJS-based cryptocurrency exchange backend
+related_capabilities:
+  - api-integration
+  - full-stack-development
+status: VERIFIED
+confidence: 0.92

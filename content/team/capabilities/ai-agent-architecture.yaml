@@ -1,0 +1,29 @@
+id: ai-agent-architecture
+name: AI Agent Architecture
+category: ai
+description: >
+  Design and implementation of AI agent infrastructure,
+  agent APIs, machine-readable interfaces, and agent tooling.
+skills:
+  - ai-agents
+  - mcp
+  - api-design
+  - typescript
+services:
+  - ai-agent-consulting
+people:
+  - paul
+evidence:
+  - type: project
+    name: AgentBadge
+    description: Full agent-native architecture — agent card, llms.txt, AI sitemap, agent guide, knowledge layer
+  - type: project
+    name: AgentBadge MCP
+    description: 38 MCP tools for agent-to-agent and agent-to-human interactions
+related_articles:
+  - what-is-agent-readiness
+related_capabilities:
+  - mcp-development
+  - api-integration
+status: VERIFIED
+confidence: 0.93

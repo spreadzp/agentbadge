@@ -1,0 +1,12 @@
+id: blockchain-infrastructure
+name: Blockchain Infrastructure
+problem: "Need blockchain integration, wallet setup, or tokenization infrastructure"
+deliverables:
+  - Integration code
+  - Wallet setup
+  - Token configuration
+  - Documentation
+engagement:
+  - fixed-scope
+  - contract
+contact: /agent-guide/team/contact

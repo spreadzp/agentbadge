@@ -1,0 +1,36 @@
+id: blockchain-development
+name: Blockchain Development
+category: blockchain
+description: >
+  Smart contract development, EVM integrations,
+  wallets, tokenization, and DeFi integrations.
+skills:
+  - solidity
+  - evm
+  - hedera
+  - web3
+services:
+  - smart-contract-development
+  - blockchain-infrastructure
+people:
+  - paul
+evidence:
+  - type: project
+    name: AgentBadge
+    description: Hedera HTS NFT passports, HCS messaging, on-chain identity system
+  - type: project
+    name: Chain Messenger
+    description: Cross-chain messaging protocol
+  - type: project
+    name: LP Bot
+    description: Liquidity provider bot for DEX
+  - type: project
+    name: RWA-HUB
+    description: Real-world asset tokenization platform
+related_articles:
+  - what-is-agent-readiness
+related_capabilities:
+  - smart-contract-development
+  - backend-development
+status: VERIFIED
+confidence: 0.96

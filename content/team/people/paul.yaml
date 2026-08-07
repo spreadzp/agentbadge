@@ -1,0 +1,24 @@
+id: paul
+name: Paul
+roles:
+  - developer
+  - architect
+  - technical-consultant
+capabilities:
+  - mcp-development
+  - blockchain-development
+  - ai-agent-architecture
+  - backend-development
+  - geo-optimization
+engagement:
+  - contract
+  - part-time
+  - fixed-scope
+availability: available
+contact:
+  primary: telegram
+  channels:
+    - telegram
+    - discord
+    - email
+    - github

@@ -15,6 +15,10 @@ import { didRoutes } from "../../src/server/routes/did";
 import { mcpRoutes } from "../../src/server/routes/mcp";
 import { agentGuideRoutes } from "../../src/server/routes/agent-guide";
 import { agentKnowledgeRoutes } from "../../src/server/routes/agent-knowledge";
+import { teamRoutes } from "../../src/server/routes/agent-guide/team";
+import { metricsApp } from "../../src/server/routes/metrics";
+import { telemetryApp } from "../../src/server/routes/telemetry";
+import { contentPageRoutes } from "../../src/server/routes/content-pages";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
@@ -39,6 +43,10 @@ export function makeTestApp(): Hono {
   app.route("/", mcpRoutes);
   app.route("/", agentGuideRoutes);
   app.route("/", agentKnowledgeRoutes);
+  app.route("/", teamRoutes);
+  app.route("/", metricsApp);
+  app.route("/", telemetryApp);
+  app.route("/", contentPageRoutes);
   return app;
 }
 

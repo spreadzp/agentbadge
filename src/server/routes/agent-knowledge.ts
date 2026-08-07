@@ -22,6 +22,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { parseFrontmatter } from "../lib/frontmatter";
+import { getRegistry } from "../registry/loader";
+import { RelevantEngineeringCapability } from "../../components/RelevantEngineeringCapability";
 
 export const agentKnowledgeRoutes = new Hono();
 
@@ -139,7 +142,40 @@ agentKnowledgeRoutes.get("/agent-guide/capabilities/:name", (c) => {
   return serveMarkdownFile(join(BASE_DIR, "capabilities", `${name}.md`));
 });
 
-agentKnowledgeRoutes.get("/agent-guide/articles/:slug", (c) => {
+agentKnowledgeRoutes.get("/agent-guide/articles/:slug", async (c) => {
   const slug = c.req.param("slug");
-  return serveMarkdownFile(join(BASE_DIR, "articles", `${slug}.md`));
+  const filePath = join(BASE_DIR, "articles", `${slug}.md`);
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    const { frontmatter, body } = parseFrontmatter(raw);
+
+    let ctaHtml = "";
+    if (frontmatter.related_capabilities && frontmatter.related_capabilities.length > 0) {
+      try {
+        const registry = await getRegistry();
+        ctaHtml = RelevantEngineeringCapability(frontmatter, registry);
+      } catch {
+        // registry unavailable — skip CTA
+      }
+    }
+
+    const output = ctaHtml ? `${body}\n\n${ctaHtml}` : body;
+    return new Response(output, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=300",
+      },
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        error: "File not found",
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 });
