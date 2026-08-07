@@ -5,6 +5,7 @@
  * SLICE-17-9: GET /ai-sitemap.xml
  * SLICE-18-3: GET /robots.txt, GET /sitemap.xml
  * Epic 20: GET /.well-known/llm-policy.json
+ * SLICE-45-3: GET /ai.txt
  */
 
 import { Hono } from "hono";
@@ -95,6 +96,69 @@ wellKnownRoutes.get(
   (c) => {
     const card = buildAgentCard();
     return c.json(card, 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  },
+);
+
+// ─── MCP Server Descriptor (SLICE-44-6 / AB-006) ──────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/mcp.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "MCP server descriptor (machine-readable MCP discovery)",
+    description:
+      "Returns the MCP server descriptor JSON, enabling AI agents to discover and connect to the AgentBadge MCP server programmatically.",
+    responses: {
+      200: {
+        description: "MCP server descriptor JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                name: z.string(),
+                version: z.string(),
+                description: z.string(),
+                remotes: z.array(
+                  z.object({
+                    name: z.string(),
+                    transport: z.string(),
+                    url: z.string(),
+                  }),
+                ),
+                tools: z.array(
+                  z.object({
+                    name: z.string(),
+                    description: z.string(),
+                  }),
+                ),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+    const descriptor = {
+      name: "agentbadge",
+      version: openApiConfig.info.version,
+      description: "AgentBadge MCP server for agent readiness scanning",
+      remotes: [
+        {
+          name: "agentbadge",
+          transport: "http",
+          url: `${baseUrl}/mcp`,
+        },
+      ],
+      tools: [
+        { name: "scan", description: "Scan a URL for agent readiness" },
+        { name: "get_score", description: "Get the agent readiness score for a URL" },
+      ],
+    };
+    return c.json(descriptor, 200, {
       "Cache-Control": "public, max-age=3600",
     });
   },
@@ -410,6 +474,51 @@ wellKnownRoutes.get(
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
         "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);
+
+// ─── ai.txt (SLICE-45-3) ──────────────────────────────────────
+
+wellKnownRoutes.get(
+  "/ai.txt",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "ai.txt — AI agent usage policy",
+    description:
+      "Returns ai.txt with User-agent and Allow/Disallow directives for AI agents.",
+    responses: {
+      200: {
+        description: "ai.txt",
+        content: { "text/plain": {} },
+      },
+    },
+  }),
+  (c) => {
+    const body = `# ai.txt — AI Agent Usage Policy
+# https://agentbadge.xyz
+
+User-agent: *
+Allow: /
+Disallow: /api/admin/
+Disallow: /api/work-requests/
+
+# AI agents are welcome to:
+# - Read public documentation
+# - Access agent-guide endpoints
+# - Use the scanner CLI
+# - Submit work requests via API
+
+# AI agents must not:
+# - Attempt to access admin endpoints
+# - Submit spam or abusive requests
+# - Ignore rate limits
+`;
+    return new Response(body, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "public, max-age=86400",
       },
     });
   },
