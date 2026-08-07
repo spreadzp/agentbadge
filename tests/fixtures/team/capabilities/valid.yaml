@@ -1,0 +1,21 @@
+id: valid-cap
+name: Valid Capability
+category: valid-cat
+description: A valid test capability
+skills:
+  - valid-skill
+services:
+  - valid-service
+people:
+  - valid-person
+evidence:
+  - type: project
+    name: TestProject
+    url: https://example.com
+    description: A test project
+related_articles:
+  - test-article
+related_capabilities:
+  - other-cap
+status: VERIFIED
+confidence: 0.9

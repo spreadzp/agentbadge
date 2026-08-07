@@ -1,0 +1,14 @@
+id: valid-person
+name: Test Person
+roles:
+  - developer
+capabilities:
+  - valid-cap
+engagement:
+  - full-time
+availability: available
+contact:
+  primary: email
+  channels:
+    - email
+    - github

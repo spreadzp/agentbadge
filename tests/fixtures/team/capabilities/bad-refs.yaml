@@ -1,0 +1,12 @@
+id: bad-cat
+name: Bad Category
+description: References non-existent skill
+skills:
+  - non-existent-skill
+services:
+  - non-existent-service
+people:
+  - non-existent-person
+evidence: []
+status: VERIFIED
+confidence: 0.5

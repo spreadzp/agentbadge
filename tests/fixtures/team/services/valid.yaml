@@ -1,0 +1,8 @@
+id: valid-service
+name: Valid Service
+problem: A test problem
+deliverables:
+  - Test deliverable
+engagement:
+  - full-time
+contact: test@example.com
