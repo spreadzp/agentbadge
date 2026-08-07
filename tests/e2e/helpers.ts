@@ -22,6 +22,8 @@ import { contentPageRoutes } from "../../src/server/routes/content-pages";
 import { teamPageRoutes } from "../../src/server/routes/team-pages";
 import { workRequestRoutes } from "../../src/server/routes/api/work-requests";
 import { workRequestUiRoutes } from "../../src/server/routes/work-request-ui";
+import { demandRoutes } from "../../src/server/routes/api/demand";
+import { demandGuideRoutes } from "../../src/server/routes/agent-guide/demand";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
@@ -53,6 +55,8 @@ export function makeTestApp(): Hono {
   app.route("/", teamPageRoutes);
   app.route("/", workRequestRoutes);
   app.route("/", workRequestUiRoutes);
+  app.route("/", demandRoutes);
+  app.route("/", demandGuideRoutes);
   return app;
 }
 
