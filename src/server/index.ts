@@ -45,6 +45,7 @@ import { uiRoutes } from "./routes/ui";
 import { landingRoutes } from "./routes/landing";
 import { agentGuideRoutes } from "./routes/agent-guide";
 import { agentKnowledgeRoutes } from "./routes/agent-knowledge";
+import { teamRoutes } from "./routes/agent-guide/team";
 import { a2aRoutes } from "./routes/a2a";
 import { marketRoutes } from "./routes/market";
 import { searchRoutes } from "./routes/search";
@@ -52,8 +53,11 @@ import { marketGuideRoutes } from "./routes/market-guide";
 import { medicalGuideRoutes } from "./routes/medical-guide";
 import { contactRoutes } from "./routes/contact";
 import { contentPageRoutes } from "./routes/content-pages";
+import { teamPageRoutes } from "./routes/team-pages";
 import { changelogRoutes } from "./routes/changelog";
 import { wellKnownRoutes } from "./routes/well-known";
+import { metricsApp } from "./routes/metrics";
+import { telemetryApp } from "./routes/telemetry";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
 import { initSentry, captureError } from "./lib/sentry";
@@ -218,6 +222,7 @@ app.route("/", landingRoutes);
 app.route("/", uiRoutes);
 app.route("/", agentGuideRoutes);
 app.route("/", agentKnowledgeRoutes);
+app.route("/", teamRoutes);
 app.route("/", a2aRoutes);
 app.route("/", marketRoutes);
 app.route("/", searchRoutes);
@@ -225,15 +230,18 @@ app.route("/", marketGuideRoutes);
 app.route("/", medicalGuideRoutes);
 app.route("/", contactRoutes);
 app.route("/", contentPageRoutes);
+app.route("/", teamPageRoutes);
 app.route("/", changelogRoutes);
 app.route("/api/demo", demo);
+app.route("/", metricsApp);
+app.route("/", telemetryApp);
 
 // OpenAPI spec + Swagger UI
 app.get(
   "/api/specs",
   openAPIRouteHandler(app, {
     documentation: openApiConfig,
-    exclude: ["/docs", "/api/specs", "/ui", /^\/ui\//],
+    exclude: ["/docs", "/api/specs", "/ui", /^\/ui\//, "/metrics", "/api/telemetry"],
     excludeMethods: ["OPTIONS"],
   }),
 );

@@ -22,6 +22,9 @@ export function Footer(): ReturnType<typeof html> {
         <a href="/terms" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">Terms</a>
         <a href="/privacy" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">Privacy</a>
         <a href="/changelog" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">Changelog</a>
+        <a href="/team" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">Team</a>
+        <a href="/services" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">Services</a>
+        <a href="/work-with-us" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">Work With Us</a>
         <a href="/ui/medical-demo" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">Medical Demo</a>
         <a href="https://hashscan.io/testnet" target="_blank" rel="noopener" class="footer-pop inline-block min-h-6 py-1 hover:text-emerald-400">HashScan</a>
       </div>

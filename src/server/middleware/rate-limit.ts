@@ -68,6 +68,7 @@ export function rateLimitMiddleware(opts?: RateLimitOptions) {
 
     c.header("X-RateLimit-Limit", String(max));
     c.header("X-RateLimit-Remaining", String(remaining));
+    c.header("X-RateLimit-Reset", String(Math.floor(entry.resetAt / 1000)));
 
     if (entry.count > max) {
       c.header("Retry-After", String(Math.max(1, retryAfterSec)));

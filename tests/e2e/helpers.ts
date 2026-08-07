@@ -19,6 +19,7 @@ import { teamRoutes } from "../../src/server/routes/agent-guide/team";
 import { metricsApp } from "../../src/server/routes/metrics";
 import { telemetryApp } from "../../src/server/routes/telemetry";
 import { contentPageRoutes } from "../../src/server/routes/content-pages";
+import { teamPageRoutes } from "../../src/server/routes/team-pages";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
@@ -47,6 +48,7 @@ export function makeTestApp(): Hono {
   app.route("/", metricsApp);
   app.route("/", telemetryApp);
   app.route("/", contentPageRoutes);
+  app.route("/", teamPageRoutes);
   return app;
 }
 

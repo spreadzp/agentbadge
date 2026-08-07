@@ -300,6 +300,21 @@ export const serverAgentCardSchema = z.object({
 
 // ─── OpenAPI documentation config ─────────────────────────────────
 
+export const rateLimitHeaders: Record<string, { description: string; schema: { type: "integer"; example: number } }> = {
+  "X-RateLimit-Limit": {
+    description: "Maximum number of requests per window",
+    schema: { type: "integer", example: 60 },
+  },
+  "X-RateLimit-Remaining": {
+    description: "Remaining requests in the current window",
+    schema: { type: "integer", example: 59 },
+  },
+  "X-RateLimit-Reset": {
+    description: "Unix timestamp when the rate limit window resets",
+    schema: { type: "integer", example: 1700000000 },
+  },
+};
+
 export const openApiConfig = {
   info: {
     title: "AgentBadge API",
@@ -320,4 +335,13 @@ export const openApiConfig = {
     { name: "A2A Messaging", description: "Agent-to-agent messaging" },
     { name: "Marketplace", description: "Agent marketplace for task posting and discovery" },
   ],
+  "x-rate-limit": {
+    defaultLimit: 60,
+    windowSeconds: 60,
+    scope: "per-IP",
+    headers: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+  },
+  components: {
+    headers: rateLimitHeaders,
+  },
 };

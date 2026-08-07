@@ -10,6 +10,7 @@
 import type { Context, Next } from "hono";
 import { randomUUID } from "node:crypto";
 import { logger } from "@agentgate-hedera/passport";
+import { httpRequestTotal, httpDurationMs } from "../metrics/metrics";
 
 const SENSITIVE_HEADERS = ["authorization", "x-payment", "cookie", "x-api-key"];
 
@@ -58,5 +59,8 @@ export function requestLoggerMiddleware() {
     } else {
       logger.info("request", context);
     }
+
+    httpRequestTotal.labels(method, path, String(status)).inc();
+    httpDurationMs.labels(path).observe(durationMs);
   };
 }

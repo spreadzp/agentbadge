@@ -47,7 +47,7 @@ describe("SLICE-19-11: LandingPage assembler", () => {
       expect(html).not.toContain("hx-boost");
     });
 
-    it("contains all 9 sections in order", () => {
+    it("contains all 10 sections in order", () => {
       const html = LandingPage({ totalIssued: 0, activeCount: 0, totalUpgrades: 0, tasksCount: 0 }).toString();
       // Check section ids appear in correct order
       const heroIdx = html.indexOf('id="hero"');
@@ -58,6 +58,7 @@ describe("SLICE-19-11: LandingPage assembler", () => {
       const whoIdx = html.indexOf('id="for-who"');
       const archIdx = html.indexOf('id="architecture"');
       const pricingIdx = html.indexOf('id="pricing"');
+      const engIdx = html.indexOf('id="engineering-cta"');
       const ctaIdx = html.indexOf('id="cta-footer"');
 
       // All sections present
@@ -69,6 +70,7 @@ describe("SLICE-19-11: LandingPage assembler", () => {
       expect(whoIdx).toBeGreaterThan(-1);
       expect(archIdx).toBeGreaterThan(-1);
       expect(pricingIdx).toBeGreaterThan(-1);
+      expect(engIdx).toBeGreaterThan(-1);
       expect(ctaIdx).toBeGreaterThan(-1);
 
       // Correct order
@@ -79,7 +81,8 @@ describe("SLICE-19-11: LandingPage assembler", () => {
       expect(howIdx).toBeLessThan(whoIdx);
       expect(whoIdx).toBeLessThan(archIdx);
       expect(archIdx).toBeLessThan(pricingIdx);
-      expect(pricingIdx).toBeLessThan(ctaIdx);
+      expect(pricingIdx).toBeLessThan(engIdx);
+      expect(engIdx).toBeLessThan(ctaIdx);
     });
   });
 });

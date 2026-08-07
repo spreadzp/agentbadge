@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../server/lib/json-ld";
+import { getPlausibleScript } from "../server/lib/plausible";
 import { Footer } from "./footer";
 
 /**
@@ -55,6 +56,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="dns-prefetch" href="https://unpkg.com" />
         <link rel="preload" href="/css/tailwind.css" as="style" />
         ${raw(jsonLdHtml)}
+        ${raw(getPlausibleScript())}
         <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
         <link rel="stylesheet" href="/css/tailwind.css" />
         <style>

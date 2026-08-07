@@ -8,6 +8,7 @@ import { ForWhoSection } from "./for-who";
 import { ArchitectureSection } from "./architecture";
 import { PricingPreviewSection } from "./pricing-preview";
 import { CtaFooterSection } from "./cta-footer";
+import { EngineeringCtaSection } from "./engineering-cta";
 
 /**
  * LandingPage — assembler that composes all 9 sections in order.
@@ -42,6 +43,7 @@ export function LandingPage(props: {
     ForWhoSection().toString(),
     ArchitectureSection().toString(),
     PricingPreviewSection().toString(),
+    EngineeringCtaSection().toString(),
     CtaFooterSection().toString(),
   ];
 
