@@ -12,6 +12,7 @@ import { describeRoute } from "hono-openapi";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import { workRequestStore } from "../../services/work-request-store";
+import { notifyWorkRequest } from "../../services/work-request-notification";
 
 export const workRequestRoutes = new Hono();
 
@@ -192,6 +193,11 @@ workRequestRoutes.post(
       { title: request.title, summary: request.summary, requirements: request.requirements },
       preferred_contact,
     );
+
+    // Async notification — fire and forget, errors logged but don't block
+    notifyWorkRequest(record).catch((err) => {
+      console.warn("[work-request] Notification failed:", err);
+    });
 
     return c.json(
       {
