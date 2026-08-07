@@ -10,7 +10,7 @@ import { Footer } from "./footer";
  *
  * Style: slate-* palette + emerald accents, matching Facilitator project.
  */
-export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd?: object[]) {
+export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd?: object[], noIndex?: boolean) {
   const pageTitle = title
     ? `${title} — ${SITE_NAME}`
     : `${SITE_NAME} — On-chain Identity for AI Agents on Hedera`;
@@ -30,6 +30,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <title>${pageTitle}</title>
         <meta name="description" content="${description}" />
+        ${noIndex ? raw('<meta name="robots" content="noindex, nofollow" />') : ''}
         <link rel="canonical" href="${canonicalUrl}" />
         <meta property="og:title" content="${pageTitle}" />
         <meta property="og:description" content="${description}" />
