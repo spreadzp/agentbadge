@@ -16,6 +16,7 @@ import { runScoringEngine } from "../../scoring/scoring-engine";
 import { assembleReport, type AgentReadinessReport } from "../../integrity/report-serializer";
 import { AGENT_READINESS_RULESET } from "../../ruleset";
 import { formatPrettyOutput } from "../formatters/pretty-output";
+import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput } from "../output";
 
 const DEFAULT_OUTPUT_PATH = "agentbadge-report.json";
 
@@ -24,6 +25,10 @@ const SCAN_FLAGS = [
   { name: "output", shortName: "o", type: "string" as const, description: "Custom output path for report file", default: DEFAULT_OUTPUT_PATH },
   { name: "skip-sign", shortName: "", type: "boolean" as const, description: "Skip Ed25519 signing (dev mode)" },
   { name: "no-cache", shortName: "", type: "boolean" as const, description: "Force refetch all resources" },
+  { name: "ci", shortName: "", type: "boolean" as const, description: "CI mode: exit code 1 if any rule fails, suppress colors" },
+  { name: "fix", shortName: "", type: "boolean" as const, description: "Output deterministic fix suggestions for failing rules" },
+  { name: "diff", shortName: "", type: "string" as const, description: "Compare current scan against previous JSON snapshot" },
+  { name: "threshold", shortName: "", type: "string" as const, description: "Fail if score below N (default: 0)" },
 ];
 
 export function registerScanCommand(): void {
@@ -43,6 +48,9 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
   }
 
   const json = flags.json === true;
+  const ci = flags.ci === true;
+  const fix = flags.fix === true;
+  const threshold = typeof flags.threshold === "string" ? parseInt(flags.threshold, 10) : 0;
   const outputPath = typeof flags.output === "string" ? flags.output : DEFAULT_OUTPUT_PATH;
   const noCache = flags["no-cache"] === true;
 
@@ -93,20 +101,32 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       keyId: "default",
     });
 
+    if (fix) {
+      const fixOutput = formatFixOutput(ruleEngineResult.assertions as any);
+      return { exitCode: 0, stdout: fixOutput, stderr: "" };
+    }
+
     if (json) {
-      return {
-        exitCode: 0,
-        stdout: JSON.stringify(report, null, 2),
-        stderr: "",
-      };
+      const jsonOutput = formatJsonOutput(ruleEngineResult.assertions as any);
+      return { exitCode: 0, stdout: jsonOutput, stderr: "" };
     }
 
     // Write report file
     await writeFile(outputPath, JSON.stringify(report, null, 2), "utf-8");
 
+    // CI mode: exit 1 if any rule fails
+    let exitCode = 0;
+    if (ci && shouldFailCi(ruleEngineResult.assertions as any)) {
+      exitCode = 1;
+    }
+    // Threshold check
+    if (threshold > 0 && shouldFailThreshold((scoreResult.total as any).score ?? scoreResult.total as any, threshold)) {
+      exitCode = 1;
+    }
+
     const prettyOutput = formatPrettyOutput(report);
     return {
-      exitCode: 0,
+      exitCode,
       stdout: `${prettyOutput}\n\nReport written to ${outputPath}`,
       stderr: "",
       outputFile: outputPath,
