@@ -10,6 +10,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import { getPrice, logger } from "@agentgate-hedera/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { mppPaymentMiddleware } from "./middleware/mpp";
+import { bazaarExtensionMiddleware } from "./middleware/bazaar-extension";
 import {
   startBackgroundRebuild,
   a2aStartBackgroundRebuild as startA2ACacheRebuild,
@@ -106,6 +107,7 @@ app.use(contentNegotiationMiddleware());
 app.use(cacheHeadersMiddleware());
 app.use((c, next) => signatureVerificationMiddleware(c as any, next));
 app.use(rateLimitMiddleware());
+app.use(bazaarExtensionMiddleware());
 
 // Structured 404 handler — JSON for API clients, HTML for browsers
 app.notFound(structuredNotFoundHandler());
