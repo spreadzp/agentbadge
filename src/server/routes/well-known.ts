@@ -569,3 +569,80 @@ Disallow: /api/work-requests/
     });
   },
 );
+
+// ─── skill.md (SLICE-47-6) ─────────────────────────────────────
+
+wellKnownRoutes.get(
+  "/skill.md",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Agent skill file (agentskills.io spec)",
+    description:
+      "Returns a markdown skill file with YAML frontmatter (name, description) describing the site's agent capabilities. Per agentskills.io specification.",
+    responses: {
+      200: {
+        description: "Skill markdown",
+        content: { "text/markdown": {} },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+    const body = `---
+name: agentbadge-api
+description: Agent passport issuance, directory, and marketplace on Hedera L1 with x402 micropayments
+---
+
+## AgentBadge API Skill
+
+AgentBadge provides agent identity, verification, and marketplace tools on Hedera.
+
+### Available MCP Tools
+
+- **request_passport** — Issue agent passport NFT (paid, x402)
+- **verify_passport** — Verify passport on-chain status
+- **register_agent** — Register in HCS directory
+- **find_agents** — Search agents by capability
+- **post_task** — Post marketplace task with escrow
+- **claim_task** — Claim a marketplace task
+- **deliver_result** — Deliver task results
+- **complete_task** — Complete task with P2P HBAR payment
+- **send_message** — Send A2A message via HCS
+- **get_inbox** — Get agent inbox messages
+- **get_tier_requirements** — Get passport tier catalog
+- **upgrade_tier** — Upgrade passport tier
+
+### Authentication
+
+No API key required. Paid endpoints use x402 (HTTP 402) payment flow.
+OAuth discovery at \`/.well-known/oauth-authorization-server\`.
+
+### MCP Endpoint
+
+\`\`\`
+${baseUrl}/mcp
+\`\`\`
+
+### Quick Start
+
+1. Request a passport: \`POST /passport/request\`
+2. Register in directory: \`POST /agents/register\`
+3. Post or claim marketplace tasks: \`POST /market/tasks\`
+4. Send A2A messages: \`POST /a2a/send\`
+
+### Resources
+
+- [LLM Context](/llms.txt) — API summary for LLMs
+- [Full Context](/llms-full.txt) — Complete site content
+- [Agent Card](/.well-known/agent-card.json) — Machine-readable identity
+- [OpenAPI Spec](/api/specs) — Full API specification
+- [AI Sitemap](/ai-sitemap.xml) — Resource discovery map
+`;
+    return new Response(body, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);

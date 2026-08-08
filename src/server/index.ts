@@ -171,6 +171,11 @@ app.use("/favicon.ico", (c, next) => {
   c.header("Cache-Control", "public, max-age=86400");
   return next();
 }, serveStatic({ root: "./public", path: "/favicon.ico" }));
+app.use("/favicon.svg", (c, next) => {
+  c.header("Cache-Control", "public, max-age=86400");
+  c.header("Content-Type", "image/svg+xml");
+  return next();
+}, serveStatic({ root: "./public", path: "/favicon.svg" }));
 app.use("/google23c66f9606672661.html", serveStatic({ root: "./public", path: "/google23c66f9606672661.html" }));
 app.use("/manifest.json", (c) => {
   c.header("Cache-Control", "public, max-age=86400");
