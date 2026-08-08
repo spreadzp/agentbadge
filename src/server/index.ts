@@ -10,6 +10,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import { getPrice, logger } from "@agentgate-hedera/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { mppPaymentMiddleware } from "./middleware/mpp";
+import { l402PaymentMiddleware } from "./middleware/l402";
 import { bazaarExtensionMiddleware } from "./middleware/bazaar-extension";
 import {
   startBackgroundRebuild,
@@ -107,6 +108,22 @@ app.use(corsMiddleware());
 app.use(securityHeaders());
 app.use(contentNegotiationMiddleware());
 app.use(cacheHeadersMiddleware());
+// SLICE-49-19: L402 Lightning payment middleware (before signature verification)
+// Payment challenge must be returned before signature check — client pays first, then signs.
+// Test mode generates mock macaroons + test invoices and accepts any preimage.
+// In production, set L402_LND_URL and L402_LND_MACAROON for real Lightning invoices.
+const l402AmountSats = Number(process.env.L402_AMOUNT_SATS ?? "100");
+app.use(
+  "/passport/request",
+  l402PaymentMiddleware({
+    amountSats: l402AmountSats,
+    memo: "AgentBadge Passport NFT issuance",
+    rootKey: process.env.L402_ROOT_KEY,
+    lndUrl: process.env.L402_LND_URL,
+    lndMacaroon: process.env.L402_LND_MACAROON,
+    testMode: process.env.L402_TEST_MODE !== "false",
+  }),
+);
 app.use((c, next) => signatureVerificationMiddleware(c as any, next));
 app.use(rateLimitMiddleware());
 app.use(bazaarExtensionMiddleware());
