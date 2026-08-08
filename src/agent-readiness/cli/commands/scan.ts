@@ -16,7 +16,7 @@ import { runScoringEngine } from "../../scoring/scoring-engine";
 import { assembleReport, type AgentReadinessReport } from "../../integrity/report-serializer";
 import { AGENT_READINESS_RULESET } from "../../ruleset";
 import { formatPrettyOutput } from "../formatters/pretty-output";
-import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput } from "../output";
+import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput, formatMarkdownOutput } from "../output";
 
 const DEFAULT_OUTPUT_PATH = "agentbadge-report.json";
 
@@ -31,6 +31,12 @@ const SCAN_FLAGS = [
   { name: "threshold", shortName: "", type: "string" as const, description: "Fail if score below N (default: 0)" },
   { name: "watch", shortName: "w", type: "boolean" as const, description: "Re-run scan every N seconds (default: 30)" },
   { name: "watch-interval", shortName: "", type: "string" as const, description: "Watch interval in seconds (default: 30)" },
+  { name: "json-api", shortName: "", type: "boolean" as const, description: "Output full JSON API response (same format as competitor)" },
+  { name: "category", shortName: "", type: "string" as const, description: "Run only rules in specified category" },
+  { name: "format", shortName: "", type: "string" as const, description: "Output format: text|json|markdown (default: text)", default: "text" },
+  { name: "fix-hints", shortName: "", type: "boolean" as const, description: "Include fix suggestions in output" },
+  { name: "compact", shortName: "", type: "boolean" as const, description: "Compact M2M JSON output (no whitespace)" },
+  { name: "report-url", shortName: "", type: "string" as const, description: "Web report URL to include in output" },
 ];
 
 export function registerScanCommand(): void {
@@ -50,8 +56,14 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
   }
 
   const json = flags.json === true;
+  const jsonApi = flags["json-api"] === true;
   const ci = flags.ci === true;
   const fix = flags.fix === true;
+  const fixHints = flags["fix-hints"] === true;
+  const compact = flags.compact === true;
+  const category = typeof flags.category === "string" ? flags.category : undefined;
+  const format = typeof flags.format === "string" ? flags.format : "text";
+  const reportUrl = typeof flags["report-url"] === "string" ? flags["report-url"] : undefined;
   const threshold = typeof flags.threshold === "string" ? parseInt(flags.threshold, 10) : 0;
   const outputPath = typeof flags.output === "string" ? flags.output : DEFAULT_OUTPUT_PATH;
   const noCache = flags["no-cache"] === true;
@@ -62,6 +74,12 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
 
     // Step 2: Run rule engine (Epic 34)
     const ruleEngineResult = RuleEngine.run(sourceState);
+
+    // Filter assertions by category if requested
+    let assertions = ruleEngineResult.assertions as any[];
+    if (category) {
+      assertions = assertions.filter((a) => a.category === category);
+    }
 
     // Step 3: Run scoring engine (Epic 35)
     const manifest = {
@@ -114,13 +132,33 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     });
 
     if (fix) {
-      const fixOutput = formatFixOutput(ruleEngineResult.assertions as any);
+      const fixOutput = formatFixOutput(assertions);
       return { exitCode: 0, stdout: fixOutput, stderr: "" };
     }
 
-    if (json) {
-      const jsonOutput = formatJsonOutput(ruleEngineResult.assertions as any);
-      return { exitCode: 0, stdout: jsonOutput, stderr: "" };
+    if (jsonApi) {
+      const apiResponse = {
+        score: scoreResult.total,
+        categories: scoreResult.categories,
+        assertions,
+        ...(fixHints ? { fixHints: assertions.map((a) => a.fix ?? null) } : {}),
+        ...(reportUrl ? { reportUrl } : {}),
+      };
+      const space = compact ? 0 : 2;
+      return { exitCode: 0, stdout: JSON.stringify(apiResponse, null, space), stderr: "" };
+    }
+
+    if (json || format === "json") {
+      const payload = fixHints
+        ? assertions.map((r) => ({ ...r, fixHint: r.fix ?? null }))
+        : assertions;
+      const space = compact ? 0 : 2;
+      return { exitCode: 0, stdout: JSON.stringify({ results: payload }, null, space), stderr: "" };
+    }
+
+    if (format === "markdown") {
+      const md = formatMarkdownOutput(assertions, { score: (scoreResult.total as any).score ?? scoreResult.total as any, fixHints, reportUrl });
+      return { exitCode: 0, stdout: md, stderr: "" };
     }
 
     // Write report file
@@ -128,7 +166,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
 
     // CI mode: exit 1 if any rule fails
     let exitCode = 0;
-    if (ci && shouldFailCi(ruleEngineResult.assertions as any)) {
+    if (ci && shouldFailCi(assertions)) {
       exitCode = 1;
     }
     // Threshold check
@@ -137,9 +175,10 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     }
 
     const prettyOutput = formatPrettyOutput(report);
+    const reportLine = reportUrl ? `\nWeb report: ${reportUrl}` : "";
     return {
       exitCode,
-      stdout: `${prettyOutput}\n\nReport written to ${outputPath}`,
+      stdout: `${prettyOutput}${reportLine}\n\nReport written to ${outputPath}`,
       stderr: "",
       outputFile: outputPath,
     };

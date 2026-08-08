@@ -82,6 +82,37 @@ export function formatPretty(
   return `${header}\n${sections.join("\n\n")}`;
 }
 
+export function formatMarkdownOutput(
+  results: RuleResult[],
+  opts?: { score?: number; fixHints?: boolean; reportUrl?: string },
+): string {
+  const lines: string[] = [];
+  lines.push("# Agent Readiness Report");
+  if (opts?.score !== undefined) {
+    lines.push(`\n**Score:** ${opts.score}/100`);
+  }
+  if (opts?.reportUrl) {
+    lines.push(`\n**Web Report:** ${opts.reportUrl}`);
+  }
+  lines.push("\n## Results\n");
+  lines.push("| Rule | Status | Category | Name |");
+  lines.push("|------|--------|----------|------|");
+  for (const r of results) {
+    const icon = r.status === "pass" ? "PASS" : r.status === "fail" ? "FAIL" : r.status.toUpperCase();
+    lines.push(`| ${r.rule_id} | ${icon} | ${r.category ?? "-"} | ${r.name ?? r.rule_id} |`);
+  }
+  if (opts?.fixHints) {
+    const failing = results.filter((r) => r.status === "fail" && r.fix?.eligible);
+    if (failing.length > 0) {
+      lines.push("\n## Fix Suggestions\n");
+      for (const r of failing) {
+        lines.push(`- **${r.rule_id}**: ${r.fix?.note ?? "No specific fix note."}`);
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
 export function generateReportUrl(baseUrl: string, scanId: string): string {
   return `${baseUrl}/report?scan=${scanId}`;
 }
