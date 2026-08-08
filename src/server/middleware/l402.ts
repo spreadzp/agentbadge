@@ -208,9 +208,7 @@ export function l402PaymentMiddleware(config: L402Config): MiddlewareHandler {
     c.header("WWW-Authenticate", wwwAuthValue);
     c.header("Content-Type", "application/json");
 
-    const body = {
-      error: "Payment required",
-      code: "L402_PAYMENT_REQUIRED",
+    const challenge = {
       x402Version: 1,
       accepts: [
         {
@@ -233,6 +231,12 @@ export function l402PaymentMiddleware(config: L402Config): MiddlewareHandler {
       },
     };
 
-    return c.json(body, 402);
+    // SLICE-49-21: Payment-Required header (base64 JSON with bazaar extension)
+    const paymentRequiredHeader = Buffer.from(
+      JSON.stringify(challenge),
+    ).toString("base64");
+    c.header("Payment-Required", paymentRequiredHeader);
+
+    return c.json(challenge, 402);
   };
 }
