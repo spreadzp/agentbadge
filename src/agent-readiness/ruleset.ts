@@ -13,6 +13,21 @@ import { AB011 } from "../../tests/fixtures/agent-readiness-rules/AB-011";
 import { AB012 } from "../../tests/fixtures/agent-readiness-rules/AB-012";
 import { AB013 } from "../../tests/fixtures/agent-readiness-rules/AB-013";
 import { AB014 } from "../../tests/fixtures/agent-readiness-rules/AB-014";
+import { AB015 } from "./rules/AB015";
+import { AB016 } from "./rules/AB016";
+import { AB017 } from "./rules/AB017";
+import { AB018 } from "./rules/AB018";
+import { AB019 } from "./rules/AB019";
+import { AB020 } from "./rules/AB020";
+import { AB021 } from "./rules/AB021";
+import { AB022 } from "./rules/AB022";
+import { AB023 } from "./rules/AB023";
+import { AB024 } from "./rules/AB024";
+import { AB025 } from "./rules/AB025";
+import { AB026 } from "./rules/AB026";
+import { AB027 } from "./rules/AB027";
+import { AB028 } from "./rules/AB028";
+import { AB029 } from "./rules/AB029";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
@@ -32,6 +47,21 @@ export const AGENT_READINESS_RULESET = {
     AB012,
     AB013,
     AB014,
+    AB015,
+    AB016,
+    AB017,
+    AB018,
+    AB019,
+    AB020,
+    AB021,
+    AB022,
+    AB023,
+    AB024,
+    AB025,
+    AB026,
+    AB027,
+    AB028,
+    AB029,
   ] as AgentReadinessRule[],
 } as const;
 
