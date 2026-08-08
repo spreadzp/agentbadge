@@ -23,6 +23,17 @@ import { fetchInfrastructure } from "./fetchers/infrastructure-fetcher";
 import { fetchA2A } from "./fetchers/a2a-fetcher";
 import { fetchIdentity } from "./fetchers/identity-fetcher";
 import { fetchBotAuth } from "./fetchers/bot-auth-fetcher";
+import { fetchFavicon } from "./fetchers/favicon-fetcher";
+import { fetchPricing } from "./fetchers/pricing-fetcher";
+import { fetchLinkHeaders } from "./fetchers/link-headers-fetcher";
+import { fetchApiCatalog } from "./fetchers/api-catalog-fetcher";
+import { fetchOauthProtectedResource } from "./fetchers/oauth-protected-resource-fetcher";
+import { fetchAuthMd } from "./fetchers/auth-md-fetcher";
+import { fetchAgentSkills } from "./fetchers/agent-skills-fetcher";
+import { fetchContentSignals } from "./fetchers/content-signals-fetcher";
+import { fetchWebBotAuth } from "./fetchers/web-bot-auth-fetcher";
+import { fetchDnsAid } from "./fetchers/dns-aid-fetcher";
+import { fetchWebmcpRuntime } from "./fetchers/webmcp-runtime-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -51,6 +62,17 @@ export const DEFAULT_RESOURCES = [
   "a2a",
   "identity",
   "bot_auth",
+  "favicon",
+  "pricing",
+  "link_headers",
+  "api_catalog",
+  "oauth_protected_resource",
+  "auth_md",
+  "agent_skills",
+  "content_signals",
+  "web_bot_auth",
+  "dns_aid",
+  "webmcp_runtime",
 ] as const;
 
 export async function scanDomain(
@@ -76,10 +98,10 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime"].includes(r),
   );
   const sequentialResources = resources.filter((r) =>
-    !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth"].includes(r),
+    !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -168,7 +190,7 @@ async function fetchResource(
       const r = await fetchContentNegotiation(baseUrl);
       snapshot = r.body !== null ? createSnapshot({
         url: r.url, status: r.status, body: r.body,
-        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime, headers: r.headers,
       }) : null;
       break;
     }
@@ -273,6 +295,95 @@ async function fetchResource(
       snapshot = createSnapshot({
         url: `${baseUrl}/.well-known/http-message-signatures-directory`, status: 200, body: JSON.stringify(r),
         resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "favicon": {
+      const r = await fetchFavicon(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "pricing": {
+      const r = await fetchPricing(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "link_headers": {
+      const r = await fetchLinkHeaders(baseUrl);
+      snapshot = createSnapshot({
+        url: r.url, status: r.status, body: JSON.stringify(r),
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      });
+      break;
+    }
+    case "api_catalog": {
+      const r = await fetchApiCatalog(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "oauth_protected_resource": {
+      const r = await fetchOauthProtectedResource(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "auth_md": {
+      const r = await fetchAuthMd(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "agent_skills": {
+      const r = await fetchAgentSkills(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "content_signals": {
+      const r = await fetchContentSignals(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: JSON.stringify(r),
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "web_bot_auth": {
+      const r = await fetchWebBotAuth(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "dns_aid": {
+      const domain = new URL(baseUrl).hostname;
+      const r = await fetchDnsAid(domain);
+      snapshot = createSnapshot({
+        url: `_agent.${domain}`, status: r.found ? 200 : 404, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: r.fetchTime,
+      });
+      break;
+    }
+    case "webmcp_runtime": {
+      const r = await fetchWebmcpRuntime(baseUrl);
+      snapshot = createSnapshot({
+        url: r.url, status: r.status, body: JSON.stringify(r),
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
       });
       break;
     }

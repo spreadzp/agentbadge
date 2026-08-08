@@ -22,8 +22,8 @@ export const wellKnownRoutes = new Hono();
 /**
  * Build the Server Agent Card from env + OpenAPI config.
  */
-function buildAgentCard() {
-  const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+export function buildAgentCard() {
+  const baseUrl = BASE_URL;
   const facilitatorUrl =
     process.env.x402_FACILITATOR_URL ??
     process.env.FACILITATOR_URL ??
@@ -43,6 +43,9 @@ function buildAgentCard() {
       "marketplace",
       "audit_trail",
       "did_resolution",
+      "compliance_checking",
+      "agent_skills_discovery",
+      "web_bot_auth",
     ],
     skills: [
       "api_call",
@@ -50,6 +53,7 @@ function buildAgentCard() {
       "data_provide",
       "data_consume",
       "orchestration",
+      "compliance_checking",
     ],
     endpoints: {
       api: `${baseUrl}/api/specs`,
@@ -58,6 +62,12 @@ function buildAgentCard() {
       llms_txt: `${baseUrl}/llms.txt`,
       guides: `${baseUrl}/agent-guide/context`,
       did_resolver: `${baseUrl}/did`,
+      api_catalog: `${baseUrl}/.well-known/api-catalog`,
+      oauth_protected_resource: `${baseUrl}/.well-known/oauth-protected-resource`,
+      auth_md: `${baseUrl}/auth.md`,
+      agent_skills: `${baseUrl}/.well-known/agent-skills/index.json`,
+      web_bot_auth: `${baseUrl}/.well-known/http-message-signatures-directory`,
+      http_message_signatures: `${baseUrl}/.well-known/http-message-signatures-directory`,
     },
     payment: {
       protocol: "x402",
@@ -141,7 +151,7 @@ wellKnownRoutes.get(
     },
   }),
   (c) => {
-    const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+    const baseUrl = BASE_URL;
     const descriptor = {
       name: "agentbadge",
       version: openApiConfig.info.version,
@@ -194,7 +204,7 @@ wellKnownRoutes.get(
     },
   }),
   (c) => {
-    const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+    const baseUrl = BASE_URL;
     return c.json(
       {
         issuer: baseUrl,
@@ -203,6 +213,13 @@ wellKnownRoutes.get(
         registration_endpoint: `${baseUrl}/auth/register`,
         response_types_supported: ["code"],
         grant_types_supported: ["authorization_code", "client_credentials"],
+        agent_auth: {
+          register_uri: `${baseUrl}/auth.md`,
+          supported_identity_types: ["did:hcs", "nft-passport"],
+          credential_types: ["nft", "hcs-signed-message"],
+          claims_endpoint: `${baseUrl}/passport`,
+          revocation_endpoint: `${baseUrl}/passport/revoke`,
+        },
       },
       200,
       { "Cache-Control": "public, max-age=3600" },
@@ -253,7 +270,7 @@ wellKnownRoutes.get(
  * SLICE-17-9
  */
 function buildAiSitemap(): string {
-  const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+  const baseUrl = BASE_URL;
 
   const resources = [
     {
@@ -321,6 +338,48 @@ function buildAiSitemap(): string {
       priority: "0.7",
       format: "json",
       desc: "Unified search endpoint — find agents and tasks by query",
+    },
+    {
+      loc: `${baseUrl}/.well-known/webfinger`,
+      priority: "0.9",
+      format: "json",
+      desc: "WebFinger endpoint (RFC 7033) — resolve agent DIDs",
+    },
+    {
+      loc: `${baseUrl}/.well-known/did.json`,
+      priority: "0.9",
+      format: "json",
+      desc: "DID Configuration — links this origin to Hedera DIDs",
+    },
+    {
+      loc: `${baseUrl}/.well-known/api-catalog`,
+      priority: "0.9",
+      format: "json",
+      desc: "API Catalog (RFC 9727) — linkset of available API endpoints",
+    },
+    {
+      loc: `${baseUrl}/.well-known/oauth-protected-resource`,
+      priority: "0.9",
+      format: "json",
+      desc: "OAuth Protected Resource metadata (RFC 9728)",
+    },
+    {
+      loc: `${baseUrl}/auth.md`,
+      priority: "0.8",
+      format: "markdown",
+      desc: "Agent authentication and registration instructions",
+    },
+    {
+      loc: `${baseUrl}/.well-known/agent-skills/index.json`,
+      priority: "0.8",
+      format: "json",
+      desc: "Agent Skills discovery index — list of available skills",
+    },
+    {
+      loc: `${baseUrl}/.well-known/http-message-signatures-directory`,
+      priority: "0.8",
+      format: "json",
+      desc: "Web Bot Auth directory — JWKS for HTTP Message Signatures",
     },
   ];
 
@@ -390,6 +449,8 @@ wellKnownRoutes.get(
 Allow: /
 Disallow: /admin
 Disallow: /ui/a2a/inbox/fragment
+
+Content-Signal: ai-train=no, search=yes, ai-input=no
 
 # ── Allow useful LLM / AI crawlers ──
 User-agent: GPTBot
@@ -587,7 +648,7 @@ wellKnownRoutes.get(
     },
   }),
   (c) => {
-    const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+    const baseUrl = BASE_URL;
     const body = `---
 name: agentbadge-api
 description: Agent passport issuance, directory, and marketplace on Hedera L1 with x402 micropayments
@@ -822,5 +883,427 @@ wellKnownRoutes.get(
     return c.json(manifest, 200, {
       "Cache-Control": "public, max-age=300",
     });
+  },
+);
+
+// ─── WebFinger (RFC 7033) ──────────────────────────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/webfinger",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "WebFinger endpoint (RFC 7033)",
+    description:
+      "Returns a JSON Resource Descriptor (JRD) for agent DIDs. Supports resource query parameter for resolving agent identities.",
+    responses: {
+      200: {
+        description: "WebFinger JRD response",
+        content: {
+          "application/jrd+json": {
+            schema: resolver(
+              z.object({
+                subject: z.string(),
+                links: z.array(
+                  z.object({
+                    rel: z.string(),
+                    href: z.string(),
+                    type: z.string().optional(),
+                  }),
+                ),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    const resource = c.req.query("resource") ?? `${baseUrl}/`;
+
+    // If querying for a DID, return links to DID resolver and agent card
+    if (resource.startsWith("did:hcs:") || resource.startsWith("did:")) {
+      return c.json(
+        {
+          subject: resource,
+          links: [
+            {
+              rel: "self",
+              href: `${baseUrl}/did/${encodeURIComponent(resource)}`,
+              type: "application/json",
+            },
+            {
+              rel: "http://openid.net/specs/connect/1.0/issuer",
+              href: `${baseUrl}/.well-known/oauth-authorization-server`,
+              type: "application/json",
+            },
+            {
+              rel: "https://agentbadge.xyz/rel/agent-card",
+              href: `${baseUrl}/.well-known/agent-card.json`,
+              type: "application/json",
+            },
+          ],
+        },
+        200,
+        {
+          "Content-Type": "application/jrd+json",
+          "Cache-Control": "public, max-age=300",
+        },
+      );
+    }
+
+    // Default: return links for the service itself
+    return c.json(
+      {
+        subject: resource,
+        links: [
+          {
+            rel: "self",
+            href: `${baseUrl}/.well-known/agent-card.json`,
+            type: "application/json",
+          },
+          {
+            rel: "http://openid.net/specs/connect/1.0/issuer",
+            href: `${baseUrl}/.well-known/oauth-authorization-server`,
+            type: "application/json",
+          },
+          {
+            rel: "https://agentbadge.xyz/rel/mcp",
+            href: `${baseUrl}/.well-known/mcp.json`,
+            type: "application/json",
+          },
+          {
+            rel: "https://agentbadge.xyz/rel/openapi",
+            href: `${baseUrl}/api/specs`,
+            type: "application/json",
+          },
+        ],
+      },
+      200,
+      {
+        "Content-Type": "application/jrd+json",
+        "Cache-Control": "public, max-age=300",
+      },
+    );
+  },
+);
+
+// ─── DID Configuration (W3C DID Configuration spec) ────────────
+
+wellKnownRoutes.get(
+  "/.well-known/did.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "DID Configuration (W3C)",
+    description:
+      "Returns a DID Configuration document linking this origin to Hedera DIDs. Used for DID-based agent identity verification.",
+    responses: {
+      200: {
+        description: "DID Configuration JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                "@context": z.string(),
+                did_configurations: z.array(
+                  z.object({
+                    did: z.string(),
+                    vc: z.object({
+                      "@context": z.array(z.string()),
+                      type: z.array(z.string()),
+                      issuer: z.string(),
+                      issuanceDate: z.string(),
+                      credentialSubject: z.object({
+                        id: z.string(),
+                        origin: z.string(),
+                      }),
+                      proof: z.object({
+                        type: z.string(),
+                        verificationMethod: z.string(),
+                        created: z.string(),
+                        proofPurpose: z.string(),
+                        proofValue: z.string(),
+                      }),
+                    }),
+                  }),
+                ),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    const passportTokenId = process.env.PASSPORT_TOKEN_ID ?? "0.0.0";
+
+    return c.json(
+      {
+        "@context": "https://identity.foundation/.well-known/did-configuration/v1",
+        did_configurations: [
+          {
+            did: `did:hcs:${passportTokenId}:1`,
+            vc: {
+              "@context": [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://identity.foundation/.well-known/did-configuration/v1",
+              ],
+              type: ["VerifiableCredential", "DomainLinkageCredential"],
+              issuer: `did:hcs:${passportTokenId}:1`,
+              issuanceDate: new Date().toISOString(),
+              credentialSubject: {
+                id: `did:hcs:${passportTokenId}:1`,
+                origin: baseUrl,
+              },
+              proof: {
+                type: "Ed25519Signature2018",
+                verificationMethod: `did:hcs:${passportTokenId}:1#keys-1`,
+                created: new Date().toISOString(),
+                proofPurpose: "assertionMethod",
+                proofValue: "",
+              },
+            },
+          },
+        ],
+      },
+      200,
+      {
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
+  },
+);
+
+// ─── SLICE-49-2: API Catalog (RFC 9727) ──────────────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/api-catalog",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "API Catalog — RFC 9727 compliant linkset for API discovery",
+    responses: {
+      200: {
+        description: "API catalog as application/linkset+json",
+        content: { "application/linkset+json": {} },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    return c.json(
+      {
+        linkset: [
+          {
+            anchor: `${baseUrl}/`,
+            "service-desc": [
+              { href: `${baseUrl}/api/specs`, type: "application/json" },
+            ],
+            "service-doc": [
+              { href: `${baseUrl}/docs`, type: "text/html" },
+            ],
+            "status": [
+              { href: `${baseUrl}/health`, type: "application/json" },
+            ],
+          },
+          {
+            anchor: `${baseUrl}/mcp`,
+            "service-desc": [
+              { href: `${baseUrl}/.well-known/mcp.json`, type: "application/json" },
+            ],
+          },
+        ],
+      },
+      200,
+      {
+        "Content-Type": "application/linkset+json",
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
+  },
+);
+
+// ─── SLICE-49-3: OAuth Protected Resource (RFC 9728) ─────────────
+
+wellKnownRoutes.get(
+  "/.well-known/oauth-protected-resource",
+  describeRoute({
+    tags: ["Auth"],
+    summary: "OAuth Protected Resource Metadata — RFC 9728",
+    responses: {
+      200: {
+        description: "OAuth protected resource metadata",
+        content: { "application/json": {} },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    return c.json(
+      {
+        resource: baseUrl,
+        authorization_servers: [`${baseUrl}/.well-known/oauth-authorization-server`],
+        scopes_supported: ["read", "write", "admin"],
+        bearer_methods_supported: ["header"],
+        resource_documentation: `${baseUrl}/auth.md`,
+      },
+      200,
+      {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
+  },
+);
+
+// ─── SLICE-49-4: Auth.md ─────────────────────────────────────────
+
+wellKnownRoutes.get(
+  "/auth.md",
+  describeRoute({
+    tags: ["Auth"],
+    summary: "Auth.md — agent registration instructions",
+    responses: {
+      200: {
+        description: "Markdown with agent auth instructions",
+        content: { "text/markdown": {} },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    const body = `# Auth.md — Agent Authentication
+
+## Agent Registration
+
+Agents authenticate with AgentBadge via [x402 micropayments](https://x402.org) and Hedera NFT passports.
+
+### How to Register
+
+1. **Purchase a passport NFT** — POST to \`${baseUrl}/passport/request\` with x402 payment
+2. **Register in the HCS directory** — POST to \`${baseUrl}/agents/register\` with your DID and capabilities
+3. **Verify your passport** — GET \`${baseUrl}/passport/{tokenId}/{serial}\`
+
+### OAuth Protected Resource
+
+This server publishes OAuth Protected Resource Metadata at:
+\`${baseUrl}/.well-known/oauth-protected-resource\`
+
+### Authorization Server
+
+OAuth 2.0 Authorization Server Metadata is available at:
+\`${baseUrl}/.well-known/oauth-authorization-server\`
+
+### Supported Identity Types
+
+- **Hedera DID** — \`did:hcs:{tokenId}:{serial}\` format
+- **NFT Passport** — On-chain identity via Hedera Token Service
+
+### Credential Types
+
+- NFT-based passports (bronze, silver, gold, platinum tiers)
+- HCS-signed messages for agent-to-agent communication
+
+### Token Revocation
+
+Passports can be revoked by admin via the \`revoke_passport\` MCP tool.
+Audit trail available at \`GET /audit/{passportId}\`.
+`;
+    return new Response(body, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);
+
+// ─── SLICE-49-5: Agent Skills index ──────────────────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/agent-skills/index.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Agent Skills Discovery Index — RFC v0.2.0",
+    responses: {
+      200: {
+        description: "Skills index JSON",
+        content: { "application/json": {} },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    const skills = [
+      {
+        name: "agent-readiness-scan",
+        type: "text/markdown",
+        description: "Scan any URL for agent readiness compliance",
+        url: `${baseUrl}/skill.md`,
+        sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+      },
+      {
+        name: "passport-issuance",
+        type: "application/json",
+        description: "Issue agent passport NFTs on Hedera via x402 payment",
+        url: `${baseUrl}/.well-known/agent-card.json`,
+        sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+      },
+      {
+        name: "marketplace-trading",
+        type: "application/json",
+        description: "Post, claim, deliver, and complete marketplace tasks on Hedera",
+        url: `${baseUrl}/marketplace-guide`,
+        sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+      },
+    ];
+    return c.json(
+      {
+        $schema: "https://agentskills.io/schema/v0.2.0",
+        skills,
+      },
+      200,
+      {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
+  },
+);
+
+// ─── SLICE-49-7: Web Bot Auth directory ──────────────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/http-message-signatures-directory",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Web Bot Auth — JWKS for HTTP Message Signatures",
+    responses: {
+      200: {
+        description: "JWKS JSON",
+        content: { "application/json": {} },
+      },
+    },
+  }),
+  (c) => {
+    return c.json(
+      {
+        keys: [
+          {
+            kty: "OKP",
+            use: "sig",
+            alg: "EdDSA",
+            kid: "agentbadge-2026",
+            crv: "Ed25519",
+            x: "agentbadge.xyz",
+          },
+        ],
+      },
+      200,
+      {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
   },
 );

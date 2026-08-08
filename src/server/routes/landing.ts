@@ -30,6 +30,16 @@ landingRoutes.get("/", async (c) => {
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
   const response = await c.html(pageHtml);
   response.headers.set("Vary", "Accept");
+  response.headers.set(
+    "Link",
+    [
+      '</.well-known/api-catalog>; rel="api-catalog"',
+      '</.well-known/mcp.json>; rel="service-desc"',
+      '</openapi.json>; rel="service-desc"',
+      '</.well-known/oauth-authorization-server>; rel="oauth-server"',
+      '</sitemap.xml>; rel="sitemap"',
+    ].join(", "),
+  );
   return response;
 });
 

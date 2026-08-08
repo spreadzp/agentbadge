@@ -39,5 +39,70 @@ export function ReadinessLandingPage() {
     ReadinessThesisSection().toString(),
   ];
 
-  return html`<div id="agent-readiness-landing">${raw(sections.join(""))}</div>`;
+  const webmcpScript = `<script>
+if ('modelContext' in navigator) {
+  navigator.modelContext.provideContext([
+    {
+      name: 'agent-readiness-scan',
+      description: 'Scan any URL for agent readiness compliance',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL to scan' }
+        },
+        required: ['url']
+      },
+      execute: async (input) => {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        });
+        return res.json();
+      }
+    },
+    {
+      name: 'badge-generate',
+      description: 'Generate an agent readiness badge SVG',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL to generate badge for' },
+          format: { type: 'string', description: 'Badge format: svg or json' }
+        },
+        required: ['url']
+      },
+      execute: async (input) => {
+        const res = await fetch('/api/badge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        });
+        return res.text();
+      }
+    },
+    {
+      name: 'passport-issue',
+      description: 'Issue an agent passport NFT on Hedera',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          tier: { type: 'string', description: 'Passport tier: bronze, silver, gold, platinum' }
+        },
+        required: ['tier']
+      },
+      execute: async (input) => {
+        const res = await fetch('/passport/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        });
+        return res.json();
+      }
+    }
+  ]);
+}
+</script>`;
+
+  return html`<div id="agent-readiness-landing">${raw(sections.join(""))}${raw(webmcpScript)}</div>`;
 }

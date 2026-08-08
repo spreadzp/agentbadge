@@ -40,7 +40,7 @@ describe("agentReadinessRuleSchema — all 13 MVP rules", () => {
 
   it("AB-007 check.type is 'cross_evidence' with correct sources and match_keys", () => {
     expect(AB007.check.type).toBe("cross_evidence");
-    expect(AB007.check.sources).toEqual(["openapi.endpoints", "agent_guide.endpoints"]);
+    expect(AB007.check.sources).toEqual(["openapi", "guide"]);
     expect(AB007.check.match_keys).toEqual(["method", "path"]);
   });
 

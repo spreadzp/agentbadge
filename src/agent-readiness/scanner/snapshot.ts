@@ -11,6 +11,7 @@ export interface ResponseSnapshot {
   fetchTimeMs: number;
   redirectChain: string[];
   body?: string | null;
+  headers?: Record<string, string>;
 }
 
 export function createSnapshot(opts: {
@@ -21,6 +22,7 @@ export function createSnapshot(opts: {
   resolvedIp?: string | null;
   fetchTimeMs?: number;
   redirectChain?: string[];
+  headers?: Record<string, string>;
 }): ResponseSnapshot {
   const bodyData = opts.body === null ? null :
     typeof opts.body === "string" ? Buffer.from(opts.body) : Buffer.from(opts.body);
@@ -35,5 +37,6 @@ export function createSnapshot(opts: {
     fetchTimeMs: opts.fetchTimeMs ?? 0,
     redirectChain: opts.redirectChain ?? [],
     body: typeof opts.body === "string" ? opts.body : (bodyData ? bodyData.toString("utf-8") : null),
+    headers: opts.headers ?? {},
   };
 }

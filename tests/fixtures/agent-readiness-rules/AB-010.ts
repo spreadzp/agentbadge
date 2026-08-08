@@ -10,6 +10,7 @@ export const AB010: AgentReadinessRule = {
   check: {
     type: "http_fetch",
     target: "/pricing.json",
+    sources: ["pricing"],
   },
   fix: {
     eligible: true,

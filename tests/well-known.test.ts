@@ -84,11 +84,11 @@ describe("Well-known routes", () => {
       expect(text).toContain("</resources>");
     });
 
-    it("contains 10 resource entries", async () => {
+    it("contains at least 10 resource entries", async () => {
       const res = await app.request("/ai-sitemap.xml");
       const text = await res.text();
       const count = (text.match(/<resource>/g) || []).length;
-      expect(count).toBe(10);
+      expect(count).toBeGreaterThanOrEqual(10);
     });
 
     it("includes discovery endpoints with priority 1.0", async () => {

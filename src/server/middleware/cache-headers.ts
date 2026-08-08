@@ -14,6 +14,8 @@ const LONG_LIVED_PATHS = [
   "/.well-known/mcp.json",
   "/.well-known/oauth-authorization-server",
   "/.well-known/llm-policy.json",
+  "/.well-known/webfinger",
+  "/.well-known/did.json",
   "/ai-sitemap.xml",
   "/robots.txt",
   "/sitemap.xml",

@@ -9,6 +9,8 @@ export const AB011: AgentReadinessRule = {
   counted_in_score: true,
   check: {
     type: "http_fetch",
+    target: "/",
+    sources: ["content_negotiation"],
     match_keys: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "RateLimit-Limit", "RateLimit-Remaining"],
   },
   fix: {

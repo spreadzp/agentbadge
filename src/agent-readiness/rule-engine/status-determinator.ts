@@ -40,12 +40,19 @@ class StatusDeterminatorClass {
       };
     }
 
-    const hasConflict = input.evidence.some((e) => e.type === "cross");
-    if (hasConflict) {
+    const hasCross = input.evidence.some((e) => e.type === "cross");
+    if (hasCross) {
       const crossEv = input.evidence.find((e) => e.type === "cross") as Extract<Evidence, { type: "cross" }>;
+      if (crossEv.conflict_reason) {
+        return {
+          status: "CONFLICT",
+          reason: crossEv.conflict_reason,
+        };
+      }
+      // Cross evidence with no conflict = verified consistency
       return {
-        status: "CONFLICT",
-        reason: crossEv.conflict_reason,
+        status: "VERIFIED",
+        reason: `Cross-evidence confirms rule ${input.rule.rule_id}: sources are consistent`,
       };
     }
 
@@ -112,6 +119,16 @@ class StatusDeterminatorClass {
       }
       if (rule.check.type === "header_check" && e.type === "http") {
         if (e.status >= 200 && e.status < 400) return true;
+      }
+
+      // http_fetch with match_keys: check if any of the specified headers are present
+      if (rule.check.type === "http_fetch" && e.type === "http" && rule.check.match_keys && rule.check.match_keys.length > 0) {
+        const headers = e.headers ?? {};
+        const hasAnyKey = rule.check.match_keys.some((key: string) => {
+          const lowerKey = key.toLowerCase();
+          return key in headers || lowerKey in headers;
+        });
+        if (hasAnyKey && e.status >= 200 && e.status < 300) return true;
       }
     }
 

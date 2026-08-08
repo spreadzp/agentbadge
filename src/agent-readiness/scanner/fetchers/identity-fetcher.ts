@@ -6,6 +6,7 @@ export interface IdentityResult {
     did: boolean;
     appleAppLinks: boolean;
     androidAssetLinks: boolean;
+    oauthAuthorizationServer: boolean;
   };
 }
 
@@ -23,6 +24,7 @@ export async function fetchIdentity(
     { key: "did", path: "/.well-known/did.json" },
     { key: "appleAppLinks", path: "/.well-known/apple-app-site-association" },
     { key: "androidAssetLinks", path: "/.well-known/assetlinks.json" },
+    { key: "oauthAuthorizationServer", path: "/.well-known/oauth-authorization-server" },
   ] as const;
 
   const results = await Promise.all(
@@ -42,6 +44,7 @@ export async function fetchIdentity(
     did: false,
     appleAppLinks: false,
     androidAssetLinks: false,
+    oauthAuthorizationServer: false,
   };
 
   for (const r of results) {

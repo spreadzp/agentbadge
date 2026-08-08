@@ -8,6 +8,7 @@ export interface ContentNegotiationFetchResult {
   bodyHash: string | null;
   resolvedIp: string | null;
   fetchTime: number;
+  headers: Record<string, string>;
 }
 
 export async function fetchContentNegotiation(baseUrl: string): Promise<ContentNegotiationFetchResult> {
@@ -23,8 +24,9 @@ export async function fetchContentNegotiation(baseUrl: string): Promise<ContentN
       bodyHash: sha256(result.body),
       resolvedIp: result.resolvedIp,
       fetchTime: result.fetchTime,
+      headers: result.headers,
     };
   } catch {
-    return { url, status: 0, body: null, bodyHash: null, resolvedIp: null, fetchTime: 0 };
+    return { url, status: 0, body: null, bodyHash: null, resolvedIp: null, fetchTime: 0, headers: {} };
   }
 }

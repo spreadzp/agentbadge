@@ -13,7 +13,7 @@ export const AB007: AgentReadinessRule = {
   },
   check: {
     type: "cross_evidence",
-    sources: ["openapi.endpoints", "agent_guide.endpoints"],
+    sources: ["openapi", "guide"],
     match_keys: ["method", "path"],
     conflict_when: "sources disagree on method or path",
   },

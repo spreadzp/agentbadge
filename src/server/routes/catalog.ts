@@ -98,6 +98,15 @@ catalogRoutes.get(
 - /agent-guide/team/availability — Availability
 - /agent-guide/team/contact — Contact channels
 - /agent-guide/team/match — Matching criteria
+
+## Compliance & Agent Readiness Endpoints
+
+- /.well-known/api-catalog — API Catalog (RFC 9727) — linkset of available API endpoints
+- /.well-known/oauth-protected-resource — OAuth Protected Resource metadata (RFC 9728)
+- /auth.md — Agent authentication and registration instructions
+- /.well-known/agent-skills/index.json — Agent Skills discovery index
+- /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
+- check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
 `;
     const txt = baseTxt + teamSection;
     return new Response(txt, {

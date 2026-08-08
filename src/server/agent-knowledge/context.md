@@ -83,3 +83,59 @@ AgentBadge uses the **same rules for everyone**. The scoring ruleset is open and
 - No pay-to-play — free tier available, same rules as paid
 
 This ensures fairness and trust in the scoring system.
+
+## Compliance Checking
+
+AgentBadge provides a `check_compliance` MCP tool that lets AI agents scan any URL for isitagentready compliance. This tool runs the same agent readiness scanner that powers the AgentBadge platform.
+
+### Using the `check_compliance` MCP Tool
+
+Call the tool with a URL to scan:
+
+```json
+{
+  "tool": "check_compliance",
+  "arguments": {
+    "url": "https://example.com"
+  }
+}
+```
+
+### Response Structure
+
+The tool returns a JSON object with:
+
+- `score` — Overall compliance score (0-100)
+- `rules_checked` — Total number of rules evaluated
+- `rules_passed` — Number of rules that passed
+- `rules_failed` — Number of rules that failed
+- `categories` — Breakdown by category (discovery, documentation, authentication, etc.)
+- `findings` — Array of individual rule results with evidence
+
+### Interpreting Results
+
+- **80+** — Agent ready. The site passes most isitagentready checks.
+- **60-79** — Partially ready. Some compliance gaps remain.
+- **Below 60** — Not agent ready. Significant work needed.
+
+### Compliance Endpoints
+
+The following `/.well-known/` endpoints contribute to the compliance score:
+
+| Endpoint | Format | Purpose |
+|----------|--------|---------|
+| `/.well-known/agent-card.json` | JSON | Server identity manifest |
+| `/.well-known/api-catalog` | JSON | API Catalog (RFC 9727) |
+| `/.well-known/oauth-protected-resource` | JSON | OAuth Protected Resource (RFC 9728) |
+| `/.well-known/agent-skills/index.json` | JSON | Agent Skills discovery |
+| `/.well-known/http-message-signatures-directory` | JSON | Web Bot Auth (HTTP Message Signatures) |
+| `/auth.md` | Markdown | Agent authentication instructions |
+| `/llms.txt` | Text | LLM-friendly API specification |
+| `/ai-sitemap.xml` | XML | AI resource discovery map |
+
+### Learn More
+
+- **IsItAgentReady:** https://isitagentready.com
+- **Full scanner docs:** `/agent-guide/context`
+- **API specification:** `/api/specs`
+

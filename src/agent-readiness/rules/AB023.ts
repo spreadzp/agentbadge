@@ -10,7 +10,7 @@ export const AB023: AgentReadinessRule = {
   check: {
     type: "http_fetch",
     target: "/.well-known/oauth-authorization-server",
-    sources: ["mcp"],
+    sources: ["identity"],
   },
   fix: {
     eligible: true,
