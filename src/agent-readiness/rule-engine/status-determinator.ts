@@ -130,6 +130,11 @@ class StatusDeterminatorClass {
         });
         if (hasAnyKey && e.status >= 200 && e.status < 300) return true;
       }
+
+      // http_fetch without match_keys: check URL includes target and 2xx status
+      if (rule.check.type === "http_fetch" && e.type === "http" && (!rule.check.match_keys || rule.check.match_keys.length === 0)) {
+        if (target && e.url.includes(target) && e.status >= 200 && e.status < 300) return true;
+      }
     }
 
     return false;

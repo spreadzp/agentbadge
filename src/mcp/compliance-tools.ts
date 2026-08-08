@@ -103,7 +103,11 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
       (assertion) => ({
         id: assertion.rule_id ?? assertion.id ?? "unknown",
         name: assertion.rule_name ?? assertion.name ?? assertion.rule_id ?? "unknown",
-        status: assertion.status === "pass" ? "pass" : assertion.status === "skip" ? "skip" : "fail",
+        status: assertion.status === "VERIFIED" || assertion.status === "INFERRED"
+          ? "pass"
+          : assertion.status === "NOT_APPLICABLE"
+            ? "skip"
+            : "fail",
         hint: assertion.hint ?? assertion.fix_hint ?? undefined,
         category: assertion.category ?? undefined,
       }),
