@@ -31,6 +31,8 @@ import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
 import { contentNegotiationMiddleware } from "./middleware/content-negotiation";
+import { cacheHeadersMiddleware } from "./middleware/cache-headers";
+import { structuredNotFoundHandler } from "./middleware/structured-error-handler";
 import { securityHeaders } from "./middleware/security-headers";
 import { openApiConfig } from "./openapi";
 import { passportRoutes } from "./routes/passport";
@@ -99,8 +101,12 @@ app.use(requestLoggerMiddleware());
 app.use(corsMiddleware());
 app.use(securityHeaders());
 app.use(contentNegotiationMiddleware());
+app.use(cacheHeadersMiddleware());
 app.use((c, next) => signatureVerificationMiddleware(c as any, next));
 app.use(rateLimitMiddleware());
+
+// Structured 404 handler — JSON for API clients, HTML for browsers
+app.notFound(structuredNotFoundHandler());
 
 const isMockMode = process.env.MOCK_HEDERA === "true";
 if (!isMockMode) {
