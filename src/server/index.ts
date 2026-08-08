@@ -30,6 +30,7 @@ import {
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
+import { contentNegotiationMiddleware } from "./middleware/content-negotiation";
 import { securityHeaders } from "./middleware/security-headers";
 import { openApiConfig } from "./openapi";
 import { passportRoutes } from "./routes/passport";
@@ -97,6 +98,7 @@ app.use(async (c, next) => {
 app.use(requestLoggerMiddleware());
 app.use(corsMiddleware());
 app.use(securityHeaders());
+app.use(contentNegotiationMiddleware());
 app.use((c, next) => signatureVerificationMiddleware(c as any, next));
 app.use(rateLimitMiddleware());
 

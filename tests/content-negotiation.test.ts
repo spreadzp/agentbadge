@@ -1,49 +1,102 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { getAcceptedFormat } from "../src/server/lib/content-negotiation";
+import { contentNegotiationMiddleware } from "../src/server/middleware/content-negotiation";
 
-describe("SLICE-17-5: Content Negotiation", () => {
-  describe("getAcceptedFormat()", () => {
-    function makeApp() {
-      const app = new Hono();
-      app.get("/test", (c) => {
-        const fmt = getAcceptedFormat(c);
-        return c.json({ format: fmt });
-      });
-      return app;
-    }
+describe("Content negotiation", () => {
+  let app: Hono;
 
-    async function getFormat(accept?: string) {
-      const app = makeApp();
-      const headers: Record<string, string> = {};
-      if (accept !== undefined) headers["Accept"] = accept;
-      const res = await app.request("http://localhost/test", { headers });
-      const body = await res.json();
-      return body.format;
-    }
+  beforeAll(() => {
+    app = new Hono();
+    app.use("*", contentNegotiationMiddleware());
+    // Simulate the homepage HTML handler
+    app.get("/", (c) => c.html("<html><body>Homepage</body></html>"));
+    app.get("/other", (c) => c.html("<html>Other</html>"));
+  });
 
-    it("returns 'json' for Accept: application/json", async () => {
-      expect(await getFormat("application/json")).toBe("json");
+  it("returns markdown when Accept: text/markdown first", async () => {
+    const res = await app.request("/", {
+      headers: { Accept: "text/markdown, text/html, */*" },
     });
 
-    it("returns 'markdown' for Accept: text/markdown", async () => {
-      expect(await getFormat("text/markdown")).toBe("markdown");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/markdown");
+    expect((await res.text()).length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("returns JSON when Accept: application/json first", async () => {
+    const res = await app.request("/", {
+      headers: { Accept: "application/json, text/html, */*" },
     });
 
-    it("returns 'html' for missing Accept header", async () => {
-      expect(await getFormat(undefined)).toBe("html");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    const body = await res.json();
+    expect(body.error).toBeUndefined();
+    expect(body.name).toBeDefined();
+  });
+
+  it("returns text when Accept: text/plain", async () => {
+    const res = await app.request("/", {
+      headers: { Accept: "text/plain" },
     });
 
-    it("returns 'html' for Accept: text/html", async () => {
-      expect(await getFormat("text/html")).toBe("html");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/plain");
+    expect((await res.text()).length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("returns HTML when Accept: text/html first", async () => {
+    const res = await app.request("/", {
+      headers: { Accept: "text/html, text/markdown, */*" },
     });
 
-    it("returns 'html' for Accept: */*", async () => {
-      expect(await getFormat("*/*")).toBe("html");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+  });
+
+  it("respects q-values", async () => {
+    const res = await app.request("/", {
+      headers: { Accept: "text/markdown;q=0.5, text/html;q=1.0" },
     });
 
-    it("returns 'json' for Accept with multiple types including json", async () => {
-      expect(await getFormat("text/html, application/json")).toBe("json");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+  });
+
+  it("sets Vary: Accept header on negotiated responses", async () => {
+    const res = await app.request("/", {
+      headers: { Accept: "application/json" },
     });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("vary")).toContain("Accept");
+  });
+
+  it("agent UA gets non-HTML when Accept prefers markdown", async () => {
+    const res = await app.request("/", {
+      headers: {
+        Accept: "text/markdown, text/html, */*",
+        "User-Agent": "Claude-User/1.0",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).not.toContain("text/html");
+  });
+
+  it("returns HTML when no Accept header (default behavior)", async () => {
+    const res = await app.request("/");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+  });
+
+  it("does not negotiate for non-homepage paths", async () => {
+    const res = await app.request("/other", {
+      headers: { Accept: "text/markdown" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
   });
 });

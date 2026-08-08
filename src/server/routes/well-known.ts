@@ -164,6 +164,52 @@ wellKnownRoutes.get(
   },
 );
 
+// ─── OAuth Authorization Server Metadata (SLICE-47-3) ──────────
+
+wellKnownRoutes.get(
+  "/.well-known/oauth-authorization-server",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "OAuth authorization server metadata (MCP auth discovery)",
+    description:
+      "Returns OAuth 2.0 authorization server metadata per RFC 8414. Enables MCP clients to discover authentication requirements.",
+    responses: {
+      200: {
+        description: "OAuth metadata JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                issuer: z.string(),
+                authorization_endpoint: z.string(),
+                token_endpoint: z.string(),
+                registration_endpoint: z.string(),
+                response_types_supported: z.array(z.string()),
+                grant_types_supported: z.array(z.string()),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
+    return c.json(
+      {
+        issuer: baseUrl,
+        authorization_endpoint: `${baseUrl}/auth/authorize`,
+        token_endpoint: `${baseUrl}/auth/token`,
+        registration_endpoint: `${baseUrl}/auth/register`,
+        response_types_supported: ["code"],
+        grant_types_supported: ["authorization_code", "client_credentials"],
+      },
+      200,
+      { "Cache-Control": "public, max-age=3600" },
+    );
+  },
+);
+
 // ─── LLM Policy (Epic 20) ──────────────────────────────────────
 
 function loadLlmPolicy(): object {
