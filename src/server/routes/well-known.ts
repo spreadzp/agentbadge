@@ -646,3 +646,57 @@ ${baseUrl}/mcp
     });
   },
 );
+
+// ─── x402 payment discovery (SLICE-47-10) ──────────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/x402.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "x402 payment discovery",
+    description:
+      "Returns the site's x402 payment configuration: supported network, facilitator, payTo wallet, and list of paid services with pricing.",
+    responses: {
+      200: {
+        description: "x402 payment configuration",
+        content: { "application/json": {} },
+      },
+    },
+  }),
+  (c) => {
+    const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "https://facilitator-agentbadge.fly.dev";
+    const payTo = process.env.x402_TREASURY ?? process.env.HEDERA_OPERATOR_ID ?? "0.0.5266613";
+    const network = process.env.HEDERA_NETWORK ?? "testnet";
+    const networkId = network === "mainnet" ? "hedera:mainnet" : "hedera:testnet";
+
+    const config = {
+      x402Version: 1,
+      name: "AgentBadge",
+      network: networkId,
+      facilitator: facilitatorUrl,
+      payTo,
+      services: [
+        {
+          method: "POST",
+          path: "/passport/request",
+          description: "Agent Passport NFT issuance (x402 payment required)",
+          amount: {
+            asset: "HBAR",
+            unit: "tinybar",
+            tiers: {
+              bronze: "5000000",
+              silver: "25000000",
+              gold: "100000000",
+              platinum: "500000000",
+            },
+          },
+          mimeType: "application/json",
+        },
+      ],
+    };
+
+    return c.json(config, 200, {
+      "Cache-Control": "public, max-age=300",
+    });
+  },
+);
