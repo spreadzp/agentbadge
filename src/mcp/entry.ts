@@ -11,6 +11,7 @@ import {
   registerEscrowTools,
   registerDatasetTools,
 } from "@agentgate-hedera/mcp";
+import { registerComplianceTools } from "./compliance-tools";
 
 registerPassportTools();
 registerAuditCatalogTools();
@@ -22,6 +23,7 @@ registerSigningTools();
 registerDiscoveryTools();
 registerEscrowTools();
 registerDatasetTools();
+registerComplianceTools();
 
 startStdio().catch((e) => {
   console.error("Failed to start MCP stdio server", e);

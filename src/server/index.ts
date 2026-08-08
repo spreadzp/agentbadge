@@ -29,6 +29,7 @@ import {
   registerDatasetTools,
   listTools,
 } from "@agentgate-hedera/mcp";
+import { registerComplianceTools } from "../mcp/compliance-tools";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
@@ -302,6 +303,7 @@ registerSigningTools();
 registerDiscoveryTools();
 registerEscrowTools();
 registerDatasetTools();
+registerComplianceTools();
 
 const port = Number(process.env.PORT ?? 4021);
 
