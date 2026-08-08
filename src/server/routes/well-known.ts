@@ -691,8 +691,22 @@ wellKnownRoutes.get(
             },
           },
           mimeType: "application/json",
+          extensions: {
+            bazaar: {
+              discoverable: true,
+              category: "identity",
+              tags: ["hedera", "nft", "passport", "agent-identity"],
+            },
+          },
         },
       ],
+      extensions: {
+        bazaar: {
+          discoverable: true,
+          provider: "AgentBadge",
+          homepage: "https://agentbadge.xyz",
+        },
+      },
     };
 
     return c.json(config, 200, {
