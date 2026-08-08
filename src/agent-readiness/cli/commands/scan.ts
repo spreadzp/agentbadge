@@ -29,6 +29,8 @@ const SCAN_FLAGS = [
   { name: "fix", shortName: "", type: "boolean" as const, description: "Output deterministic fix suggestions for failing rules" },
   { name: "diff", shortName: "", type: "string" as const, description: "Compare current scan against previous JSON snapshot" },
   { name: "threshold", shortName: "", type: "string" as const, description: "Fail if score below N (default: 0)" },
+  { name: "watch", shortName: "w", type: "boolean" as const, description: "Re-run scan every N seconds (default: 30)" },
+  { name: "watch-interval", shortName: "", type: "string" as const, description: "Watch interval in seconds (default: 30)" },
 ];
 
 export function registerScanCommand(): void {
