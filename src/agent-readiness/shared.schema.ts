@@ -21,6 +21,7 @@ export const categoryEnum = z
     "webmcp",
     "identity",
     "bot_auth",
+    "infrastructure",
   ])
   .describe("Rule category: discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth");
 
