@@ -28,7 +28,9 @@ landingRoutes.get("/", async (c) => {
 
   const content = ReadinessLandingPage().toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
-  return c.html(pageHtml);
+  const response = await c.html(pageHtml);
+  response.headers.set("Vary", "Accept");
+  return response;
 });
 
 /**

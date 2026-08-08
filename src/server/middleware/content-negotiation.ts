@@ -152,11 +152,10 @@ export function contentNegotiationMiddleware() {
 
     const type = pickMediaType(accept, SUPPORTED_TYPES);
     if (!type || type === "text/html") {
+      // Route handler sets Vary: Accept directly
       await next();
       return;
     }
-
-    c.header("Vary", "Accept");
 
     if (type === "text/markdown") {
       return c.body(getHomepageMarkdown(), 200, {
