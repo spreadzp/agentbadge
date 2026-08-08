@@ -9,6 +9,14 @@ import { fetchAgentGuide } from "./fetchers/guide-fetcher";
 import { fetchOpenApi } from "./fetchers/openapi-fetcher";
 import { fetchMcpDescriptor } from "./fetchers/mcp-fetcher";
 import { fetchLlmsTxt } from "./fetchers/llms-txt-fetcher";
+import { fetchContentNegotiation } from "./fetchers/content-negotiation-fetcher";
+import { fetchX402Discovery } from "./fetchers/x402-fetcher";
+import { fetchOpenApiStandard } from "./fetchers/openapi-standard-fetcher";
+import { fetchSkillFile } from "./fetchers/skill-file-fetcher";
+import { fetchAgentsTxt } from "./fetchers/agents-txt-fetcher";
+import { fetchWebMcp } from "./fetchers/webmcp-fetcher";
+import { fetchLlmsFull } from "./fetchers/llms-full-fetcher";
+import { fetchRssFeed } from "./fetchers/rss-feed-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -16,7 +24,22 @@ export interface ScanOptions {
   resources?: string[];
 }
 
-const DEFAULT_RESOURCES = ["robots", "sitemap", "guide", "openapi", "mcp", "llms"] as const;
+export const DEFAULT_RESOURCES = [
+  "robots",
+  "sitemap",
+  "guide",
+  "openapi",
+  "mcp",
+  "llms",
+  "content_negotiation",
+  "x402",
+  "openapi_standard",
+  "skill",
+  "agents_txt",
+  "webmcp",
+  "llms_full",
+  "rss_feed",
+] as const;
 
 export async function scanDomain(
   url: string,
@@ -39,9 +62,13 @@ export async function scanDomain(
 
   const snapshots: Record<string, ResponseSnapshot | null> = {};
 
-  // Parallel: robots + sitemap + llms
-  const parallelResources = resources.filter((r) => r === "robots" || r === "sitemap" || r === "llms");
-  const sequentialResources = resources.filter((r) => r !== "robots" && r !== "sitemap" && r !== "llms");
+  // Parallel: robots + sitemap + llms + new fetchers
+  const parallelResources = resources.filter((r) =>
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed"].includes(r),
+  );
+  const sequentialResources = resources.filter((r) =>
+    !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed"].includes(r),
+  );
 
   await Promise.all(parallelResources.map(async (resource) => {
     const result = await fetchResource(resource, baseUrl, rateLimiter, cache);
@@ -119,6 +146,70 @@ async function fetchResource(
     }
     case "llms": {
       const r = await fetchLlmsTxt(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "content_negotiation": {
+      const r = await fetchContentNegotiation(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "x402": {
+      const r = await fetchX402Discovery(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "openapi_standard": {
+      const r = await fetchOpenApiStandard(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "skill": {
+      const r = await fetchSkillFile(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "agents_txt": {
+      const r = await fetchAgentsTxt(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "webmcp": {
+      const r = await fetchWebMcp(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "llms_full": {
+      const r = await fetchLlmsFull(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "rss_feed": {
+      const r = await fetchRssFeed(baseUrl);
       snapshot = r.body !== null ? createSnapshot({
         url: r.url, status: r.status, body: r.body,
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
