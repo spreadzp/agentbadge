@@ -50,6 +50,17 @@ passportRoutes.post(
     summary: "Issue agent passport NFT",
     description:
       "Mints an HTS NFT passport for the agent after x402 payment and wallet ownership verification.",
+    ...({
+      "x-payment-info": {
+        protocols: ["x402"],
+        price: {
+          asset: "HBAR",
+          amounts: { bronze: 5, silver: 25, gold: 100, platinum: 500 },
+        },
+        facilitator: process.env.x402_FACILITATOR_URL ?? "",
+        network: process.env.HEDERA_NETWORK ?? "testnet",
+      },
+    } as Record<string, unknown>),
     responses: {
       200: {
         description: "Passport issued successfully",

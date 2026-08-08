@@ -258,14 +258,15 @@ app.route("/", metricsApp);
 app.route("/", telemetryApp);
 
 // OpenAPI spec + Swagger UI
-app.get(
-  "/api/specs",
-  openAPIRouteHandler(app, {
-    documentation: openApiConfig,
-    exclude: ["/docs", "/api/specs", "/ui", /^\/ui\//, "/metrics", "/api/telemetry"],
-    excludeMethods: ["OPTIONS"],
-  }),
-);
+const openApiSpecHandler = openAPIRouteHandler(app, {
+  documentation: openApiConfig,
+  exclude: ["/docs", "/api/specs", "/openapi.json", "/swagger.json", "/ui", /^\/ui\//, "/metrics", "/api/telemetry"],
+  excludeMethods: ["OPTIONS"],
+});
+app.get("/api/specs", openApiSpecHandler);
+// Standard OpenAPI discovery paths (SLICE-47-9)
+app.get("/openapi.json", openApiSpecHandler);
+app.get("/swagger.json", openApiSpecHandler);
 app.get("/docs", swaggerUI({ url: "/api/specs" }));
 
 // Register MCP tools
