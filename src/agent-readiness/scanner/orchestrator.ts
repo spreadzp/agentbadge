@@ -17,6 +17,12 @@ import { fetchAgentsTxt } from "./fetchers/agents-txt-fetcher";
 import { fetchWebMcp } from "./fetchers/webmcp-fetcher";
 import { fetchLlmsFull } from "./fetchers/llms-full-fetcher";
 import { fetchRssFeed } from "./fetchers/rss-feed-fetcher";
+import { fetchMcpProbe } from "./fetchers/mcp-probe-fetcher";
+import { fetchHomepageMeta } from "./fetchers/homepage-meta-fetcher";
+import { fetchInfrastructure } from "./fetchers/infrastructure-fetcher";
+import { fetchA2A } from "./fetchers/a2a-fetcher";
+import { fetchIdentity } from "./fetchers/identity-fetcher";
+import { fetchBotAuth } from "./fetchers/bot-auth-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -39,6 +45,12 @@ export const DEFAULT_RESOURCES = [
   "webmcp",
   "llms_full",
   "rss_feed",
+  "mcp_probe",
+  "homepage_meta",
+  "infrastructure",
+  "a2a",
+  "identity",
+  "bot_auth",
 ] as const;
 
 export async function scanDomain(
@@ -64,10 +76,10 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth"].includes(r),
   );
   const sequentialResources = resources.filter((r) =>
-    !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed"].includes(r),
+    !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -214,6 +226,54 @@ async function fetchResource(
         url: r.url, status: r.status, body: r.body,
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
       }) : null;
+      break;
+    }
+    case "mcp_probe": {
+      const r = await fetchMcpProbe(baseUrl);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/mcp`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "homepage_meta": {
+      const r = await fetchHomepageMeta(baseUrl);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "infrastructure": {
+      const r = await fetchInfrastructure(baseUrl);
+      snapshot = createSnapshot({
+        url: baseUrl, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "a2a": {
+      const r = await fetchA2A(baseUrl);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/.well-known/agent-card.json`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "identity": {
+      const r = await fetchIdentity(baseUrl);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/.well-known/`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "bot_auth": {
+      const r = await fetchBotAuth(baseUrl);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/.well-known/http-message-signatures-directory`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
       break;
     }
   }
