@@ -62,6 +62,7 @@ export function LandingLayout(
         <meta name="twitter:site" content="@agentbadge" />
         <meta property="og:image:alt" content="${SITE_NAME} — On-Chain Identity for AI Agents on Hedera" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="alternate" type="application/rss+xml" title="AgentBadge RSS Feed" href="/feed" />
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
         <link rel="alternate" type="text/plain" title="Full LLM Context" href="/llms-full.txt" />
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />

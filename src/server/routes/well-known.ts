@@ -714,3 +714,113 @@ wellKnownRoutes.get(
     });
   },
 );
+
+// ─── agents.txt (SLICE-47-12) ─────────────────────────────────
+
+wellKnownRoutes.get(
+  "/agents.txt",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Agent access policy",
+    description: "Human-readable policy for AI agents accessing this site.",
+    responses: {
+      200: { description: "Agent policy text", content: { "text/plain": {} } },
+    },
+  }),
+  (c) => {
+    const policy = `# AgentBadge — Agent Access Policy
+
+AI agents are welcome to access this site.
+- Rate limit: 60 requests/minute per IP
+- Paid endpoints require x402 payment (see /.well-known/x402.json)
+- MCP endpoint: /mcp
+- LLM context: /llms.txt and /llms-full.txt
+- Agent card: /.well-known/agent-card.json
+- OpenAPI spec: /openapi.json
+- Sitemap: /ai-sitemap.xml
+- Respect robots.txt and crawl-delay directives
+`;
+    return new Response(policy, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);
+
+// ─── WebMCP manifest (SLICE-47-12) ────────────────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/webmcp.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "WebMCP manifest",
+    description: "Browser-accessible MCP tools manifest for Chrome WebMCP integration.",
+    responses: {
+      200: { description: "WebMCP manifest", content: { "application/json": {} } },
+    },
+  }),
+  (c) => {
+    const manifest = {
+      name: "AgentBadge",
+      version: "1.0.0",
+      description: "On-chain identity for AI agents on Hedera",
+      mcpEndpoint: "/mcp",
+      tools: [
+        {
+          name: "request_passport",
+          description: "Issue an agent passport NFT on Hedera",
+          inputSchema: {
+            type: "object",
+            properties: {
+              accountId: { type: "string" },
+              tier: { type: "string", enum: ["bronze", "silver", "gold", "platinum"] },
+              name: { type: "string" },
+              capabilities: { type: "array", items: { type: "string" } },
+            },
+            required: ["accountId", "tier", "name", "capabilities"],
+          },
+        },
+        {
+          name: "verify_passport",
+          description: "Verify an agent passport on-chain",
+          inputSchema: {
+            type: "object",
+            properties: {
+              tokenId: { type: "string" },
+              serial: { type: "number" },
+            },
+            required: ["tokenId", "serial"],
+          },
+        },
+        {
+          name: "search_agents",
+          description: "Search the agent directory",
+          inputSchema: {
+            type: "object",
+            properties: {
+              query: { type: "string" },
+              capability: { type: "string" },
+            },
+          },
+        },
+        {
+          name: "list_tasks",
+          description: "List available marketplace tasks",
+          inputSchema: {
+            type: "object",
+            properties: {
+              capability: { type: "string" },
+              limit: { type: "number" },
+            },
+          },
+        },
+      ],
+    };
+
+    return c.json(manifest, 200, {
+      "Cache-Control": "public, max-age=300",
+    });
+  },
+);
