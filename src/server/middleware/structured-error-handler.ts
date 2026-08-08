@@ -26,19 +26,7 @@ function handleNotFound(c: Context): Response {
   const accept = c.req.header("Accept") ?? "";
   const path = new URL(c.req.url).pathname;
 
-  if (accept.includes("application/json")) {
-    return c.json(
-      {
-        error: "not_found",
-        message: `Resource not found: ${path}`,
-        path,
-        status: 404,
-      },
-      404,
-      { "Content-Type": "application/json; charset=utf-8" },
-    );
-  }
-
+  // Check text/html first — browsers and explicit HTML requests should get HTML
   if (accept.includes("text/html") || !accept) {
     return c.html(
       `<!DOCTYPE html>
@@ -54,6 +42,19 @@ function handleNotFound(c: Context): Response {
 </body>
 </html>`,
       404,
+    );
+  }
+
+  if (accept.includes("application/json") || accept.includes("*/*")) {
+    return c.json(
+      {
+        error: "not_found",
+        message: `Resource not found: ${path}`,
+        path,
+        status: 404,
+      },
+      404,
+      { "Content-Type": "application/json; charset=utf-8" },
     );
   }
 
