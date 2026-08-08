@@ -11,6 +11,9 @@ export interface Assertion {
   timestamp: string;
   source_url: string | null;
   reason: string;
+  category: string;
+  name: string;
+  fix?: { eligible: boolean; type: string; note?: string };
 }
 
 class AssertionBuilderClass {
@@ -35,6 +38,9 @@ class AssertionBuilderClass {
       timestamp: new Date().toISOString(),
       source_url: input.sourceUrl ?? null,
       reason: input.reason,
+      category: input.rule.category,
+      name: input.rule.name,
+      fix: input.rule.fix,
     };
   }
 
@@ -59,6 +65,9 @@ class AssertionBuilderClass {
       timestamp: parsed.timestamp,
       source_url: parsed.source_url ?? null,
       reason: parsed.reason,
+      category: parsed.category ?? "",
+      name: parsed.name ?? "",
+      fix: parsed.fix,
     };
   }
 

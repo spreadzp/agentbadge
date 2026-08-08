@@ -34,6 +34,14 @@ SECRETS=(
   x402_TREASURY
   IPFS_API_KEY
   IPFS_API_SECRET
+  PLAUSIBLE_ENABLED
+  PLAUSIBLE_DOMAIN
+  TELEGRAM_BOT_TOKEN
+  TELEGRAM_CHAT_ID
+)
+
+# Optional secrets (set if present in .env, skip silently if missing)
+OPTIONAL_SECRETS=(
   SENTRY_DSN
 )
 
@@ -102,12 +110,26 @@ fi
 
 info "All ${#SECRETS[@]} required secrets found in .env."
 
+# Report optional secrets
+for key in "${OPTIONAL_SECRETS[@]}"; do
+  if [ -n "${!key:-}" ]; then
+    info "Optional: $key found"
+  else
+    warn "Optional: $key not set (skipped)"
+  fi
+done
+
 # ── Confirm before pushing ────────────────────────────────────────────
 
 echo ""
 echo "About to set these secrets on Fly.io:"
 for key in "${SECRETS[@]}"; do
-  echo "  - $key"
+  echo "  - $key (required)"
+done
+for key in "${OPTIONAL_SECRETS[@]}"; do
+  if [ -n "${!key:-}" ]; then
+    echo "  - $key (optional, present)"
+  fi
 done
 echo ""
 read -rp "Proceed? (yes/no): " confirm
@@ -118,6 +140,7 @@ read -rp "Proceed? (yes/no): " confirm
 info "Setting secrets on Fly.io..."
 echo ""
 
+# Required secrets
 for key in "${SECRETS[@]}"; do
   value="${!key}"
   # Use --stage to batch all secrets in one deployment
@@ -129,6 +152,24 @@ for key in "${SECRETS[@]}"; do
       info "  ✓ $key (immediate)"
     else
       error "  ✗ Failed to set $key"
+    fi
+  fi
+done
+
+# Optional secrets (only if present)
+for key in "${OPTIONAL_SECRETS[@]}"; do
+  if [ -z "${!key:-}" ]; then
+    warn "  ○ $key skipped (not set)"
+    continue
+  fi
+  value="${!key}"
+  if flyctl secrets set --stage "$key=$value" 2>/dev/null; then
+    info "  ✓ $key (optional)"
+  else
+    if flyctl secrets set "$key=$value" 2>/dev/null; then
+      info "  ✓ $key (optional, immediate)"
+    else
+      warn "  ✗ Failed to set $key (optional, skipped)"
     fi
   fi
 done

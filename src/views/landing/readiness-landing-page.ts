@@ -8,6 +8,7 @@ import { ReadinessKnowledgeSection } from "./sections/readiness-knowledge";
 import { ReadinessPricingSection } from "./sections/readiness-pricing";
 import { ReadinessAudienceSection } from "./sections/readiness-audience";
 import { ReadinessThesisSection } from "./sections/readiness-thesis";
+import { EngineeringCtaSection } from "./engineering-cta";
 
 /**
  * ReadinessLandingPage — assembler for the Agent Readiness landing page.
@@ -34,6 +35,7 @@ export function ReadinessLandingPage() {
     ReadinessKnowledgeSection().toString(),
     ReadinessPricingSection().toString(),
     ReadinessAudienceSection().toString(),
+    EngineeringCtaSection().toString(),
     ReadinessThesisSection().toString(),
   ];
 

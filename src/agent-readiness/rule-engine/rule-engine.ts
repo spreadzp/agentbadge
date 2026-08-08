@@ -88,24 +88,71 @@ class RuleEngineClass {
       return predicate(rule, sourceState);
     }
 
-    // Default: rule is applicable if its check target resource exists in snapshots
-    if (!rule.check.target) return true;
-
-    const snapshots = sourceState.snapshots as Record<string, ResponseSnapshot | null>;
-    const target = rule.check.target;
-
-    // Map common targets to snapshot keys
-    if (target.includes("robots") && snapshots.robots) return true;
-    if (target.includes("sitemap") && snapshots.sitemap) return true;
-    if (target.includes("agent-guide") && snapshots.guide) return true;
-    if (target.includes("openapi") && snapshots.openapi) return true;
-    if (target.includes("mcp") && snapshots.mcp) return true;
-    if (target.includes("llms") && snapshots.llms) return true;
-
     // Rules without specific resource dependency are always applicable
+    if (!rule.check.target && !rule.check.sources) return true;
     if (rule.check.type === "cross_evidence") return true;
 
-    return false;
+    const snapshots = sourceState.snapshots as Record<string, ResponseSnapshot | null>;
+
+    // Use rule.check.sources if available (preferred — explicit mapping)
+    if (rule.check.sources && rule.check.sources.length > 0) {
+      for (const src of rule.check.sources) {
+        if (snapshots[src]) return true;
+      }
+      return false;
+    }
+
+    // Fallback: map target substrings to snapshot keys (backward compat)
+    const target = rule.check.target ?? "";
+    return this.targetToSnapshotKey(target, snapshots) !== null;
+  }
+
+  /**
+   * Map a target path to a snapshot key by checking if any snapshot URL contains the target.
+   */
+  private targetToSnapshotKey(target: string, snapshots: Record<string, ResponseSnapshot | null>): string | null {
+    // Direct key match
+    if (snapshots[target]) return target;
+
+    // Substring matching for common targets
+    const targetMap: Record<string, string> = {
+      "robots": "robots",
+      "sitemap": "sitemap",
+      "agent-guide": "guide",
+      "openapi": "openapi",
+      "mcp": "mcp",
+      "llms-full": "llms_full",
+      "llms": "llms",
+      "skill": "skill",
+      "agents.txt": "agents_txt",
+      "webmcp": "webmcp",
+      "x402": "x402",
+      "content_negotiation": "content_negotiation",
+      "rss": "rss_feed",
+      "feed": "rss_feed",
+      "did.json": "identity",
+      "webfinger": "identity",
+      "oauth": "bot_auth",
+      "http-message-signatures": "bot_auth",
+      "infrastructure": "infrastructure",
+      "agent-card": "a2a",
+      "homepage": "homepage_meta",
+      "favicon": "content_negotiation",
+      "og-image": "content_negotiation",
+      "nonexistent": "content_negotiation",
+      "passport": "x402",
+    };
+
+    for (const [substr, key] of Object.entries(targetMap)) {
+      if (target.includes(substr) && snapshots[key]) return key;
+    }
+
+    // Check all snapshot URLs for target substring
+    for (const [key, snap] of Object.entries(snapshots)) {
+      if (snap && snap.url.includes(target)) return key;
+    }
+
+    return null;
   }
 
   /**
@@ -117,87 +164,81 @@ class RuleEngineClass {
 
     const target = rule.check.target ?? "";
 
-    if (target.includes("robots") && snapshots.robots) {
-      evidence.push({
-        type: "robots",
-        url: snapshots.robots.url,
-        status: snapshots.robots.status,
-        allows_all: true,
-        disallowed_paths: [],
-      });
+    // Determine which snapshot keys to collect evidence from
+    const sourceKeys: string[] = [];
+    if (rule.check.sources && rule.check.sources.length > 0) {
+      sourceKeys.push(...rule.check.sources);
+    } else {
+      const key = this.targetToSnapshotKey(target, snapshots);
+      if (key) sourceKeys.push(key);
     }
 
-    if (target.includes("sitemap") && snapshots.sitemap) {
-      const sitemapUrls: string[] = [];
-      const bodyText = snapshots.sitemap.body;
-      if (bodyText) {
-        const locMatches = bodyText.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi);
-        for (const m of locMatches) {
-          sitemapUrls.push(m[1].trim());
+    // Collect evidence from each source snapshot
+    for (const srcKey of sourceKeys) {
+      const snap = snapshots[srcKey];
+      if (!snap) continue;
+
+      // Special handling for known types
+      if (srcKey === "robots") {
+        evidence.push({
+          type: "robots",
+          url: snap.url,
+          status: snap.status,
+          allows_all: true,
+          disallowed_paths: [],
+        });
+        continue;
+      }
+
+      if (srcKey === "sitemap") {
+        const sitemapUrls: string[] = [];
+        const bodyText = snap.body;
+        if (bodyText) {
+          const locMatches = bodyText.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi);
+          for (const m of locMatches) {
+            sitemapUrls.push(m[1].trim());
+          }
         }
-      }
-      evidence.push({
-        type: "sitemap",
-        url: snapshots.sitemap.url,
-        status: snapshots.sitemap.status,
-        url_count: sitemapUrls.length,
-        urls: sitemapUrls.slice(0, 100),
-      });
-    }
-
-    if (target.includes("agent-guide") && snapshots.guide) {
-      evidence.push({
-        type: "http",
-        url: snapshots.guide.url,
-        status: snapshots.guide.status,
-        headers: {},
-        content_hash: snapshots.guide.bodyHash,
-        content_type: snapshots.guide.contentType,
-        resolved_ip: snapshots.guide.resolvedIp,
-      });
-    }
-
-    if (target.includes("openapi") && snapshots.openapi) {
-      const body = snapshots.openapi.body;
-      if (body) {
-        const facts = OpenApiParser.parse(body);
         evidence.push({
-          type: "openapi",
-          url: snapshots.openapi.url,
-          paths: facts.paths,
-          methods: facts.methods,
+          type: "sitemap",
+          url: snap.url,
+          status: snap.status,
+          url_count: sitemapUrls.length,
+          urls: sitemapUrls.slice(0, 100),
         });
-      } else {
-        evidence.push({
-          type: "openapi",
-          url: snapshots.openapi.url,
-          paths: [],
-          methods: [],
-        });
+        continue;
       }
-    }
 
-    if (target.includes("mcp") && snapshots.mcp) {
+      if (srcKey === "openapi") {
+        const body = snap.body;
+        if (body) {
+          const facts = OpenApiParser.parse(body);
+          evidence.push({
+            type: "openapi",
+            url: snap.url,
+            paths: facts.paths,
+            methods: facts.methods,
+          });
+        } else {
+          evidence.push({
+            type: "openapi",
+            url: snap.url,
+            paths: [],
+            methods: [],
+          });
+        }
+        continue;
+      }
+
+      // Generic HTTP evidence for all other snapshot types
       evidence.push({
         type: "http",
-        url: snapshots.mcp.url,
-        status: snapshots.mcp.status,
+        url: snap.url,
+        status: snap.status,
         headers: {},
-        content_hash: snapshots.mcp.bodyHash,
-        content_type: snapshots.mcp.contentType,
-        resolved_ip: snapshots.mcp.resolvedIp,
-      });
-    }
-
-    if (target.includes("llms") && snapshots.llms) {
-      evidence.push({
-        type: "http",
-        url: snapshots.llms.url,
-        status: snapshots.llms.status,
-        headers: {},
-        content_hash: snapshots.llms.bodyHash,
-        content_type: snapshots.llms.contentType,
-        resolved_ip: snapshots.llms.resolvedIp,
+        content_hash: snap.bodyHash,
+        content_type: snap.contentType,
+        resolved_ip: snap.resolvedIp,
       });
     }
 
@@ -209,16 +250,19 @@ class RuleEngineClass {
    */
   private getSourceUrl(rule: AgentReadinessRule, sourceState: SourceState): string | null {
     const snapshots = sourceState.snapshots as Record<string, ResponseSnapshot | null>;
+
+    // Use rule.check.sources if available
+    if (rule.check.sources && rule.check.sources.length > 0) {
+      for (const src of rule.check.sources) {
+        if (snapshots[src]) return snapshots[src]!.url;
+      }
+    }
+
+    // Fallback: target-to-snapshot-key mapping
     const target = rule.check.target ?? "";
-
-    if (target.includes("robots") && snapshots.robots) return snapshots.robots.url;
-    if (target.includes("sitemap") && snapshots.sitemap) return snapshots.sitemap.url;
-    if (target.includes("agent-guide") && snapshots.guide) return snapshots.guide.url;
-    if (target.includes("openapi") && snapshots.openapi) return snapshots.openapi.url;
-    if (target.includes("mcp") && snapshots.mcp) return snapshots.mcp.url;
-    if (target.includes("llms") && snapshots.llms) return snapshots.llms.url;
-
-    return null;
+    if (!target) return null;
+    const key = this.targetToSnapshotKey(target, snapshots);
+    return key ? snapshots[key]!.url : null;
   }
 
   /**

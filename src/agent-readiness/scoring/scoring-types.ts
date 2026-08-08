@@ -8,6 +8,16 @@ export interface CategoryWeights {
   actionability: number;
   machine_readable: number;
   verification: number;
+  content_negotiation: number;
+  payments: number;
+  bazaar: number;
+  openapi: number;
+  skills: number;
+  agents_txt: number;
+  webmcp: number;
+  identity: number;
+  bot_auth: number;
+  infrastructure: number;
 }
 
 export interface StatusContributions {
@@ -71,11 +81,21 @@ export interface ScoreResult {
 }
 
 export const DEFAULT_CATEGORY_WEIGHTS: CategoryWeights = {
-  discovery: 25,
-  documentation: 25,
-  actionability: 20,
-  machine_readable: 20,
-  verification: 10,
+  discovery: 15,
+  documentation: 15,
+  actionability: 10,
+  machine_readable: 10,
+  verification: 5,
+  content_negotiation: 5,
+  payments: 10,
+  bazaar: 5,
+  openapi: 10,
+  skills: 5,
+  agents_txt: 3,
+  webmcp: 3,
+  identity: 2,
+  bot_auth: 1,
+  infrastructure: 1,
 };
 
 export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {

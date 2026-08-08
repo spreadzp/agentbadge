@@ -101,6 +101,18 @@ class StatusDeterminatorClass {
       if (e.type === "manual_confirmation") {
         return true;
       }
+
+      // New check types: http_probe, content_parse, header_check
+      // All verify when HTTP evidence with 2xx status is found
+      if (rule.check.type === "http_probe" && e.type === "http") {
+        if (e.status >= 200 && e.status < 300) return true;
+      }
+      if (rule.check.type === "content_parse" && e.type === "http") {
+        if (e.status >= 200 && e.status < 300) return true;
+      }
+      if (rule.check.type === "header_check" && e.type === "http") {
+        if (e.status >= 200 && e.status < 400) return true;
+      }
     }
 
     return false;

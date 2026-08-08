@@ -33,7 +33,7 @@ export function computeDelta(
     const category = (current as any).category as string | undefined;
     if (!category) continue;
 
-    const weight = config.categoryWeights[category as any] ?? 0;
+    const weight = (config.categoryWeights as unknown as Record<string, number>)[category] ?? 0;
     const scoredCount = getScoredCount(currentAssertions, category);
     const perRuleWeight = scoredCount > 0 ? (100 * weight) / scoredCount : 0;
 
