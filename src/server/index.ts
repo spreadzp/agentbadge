@@ -9,6 +9,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 
 import { getPrice, logger } from "@agentgate-hedera/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
+import { mppPaymentMiddleware } from "./middleware/mpp";
 import {
   startBackgroundRebuild,
   a2aStartBackgroundRebuild as startA2ACacheRebuild,
@@ -157,6 +158,23 @@ if (facilitatorUrl && payTo) {
       },
       resourceServer,
     ),
+  );
+}
+
+const mppSecretKey = process.env.MPP_SECRET_KEY ?? "";
+const mppRecipient = process.env.MPP_RECIPIENT_ADDRESS ?? payTo;
+const mppAmount = process.env.MPP_AMOUNT ?? "0.01";
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? "";
+
+if (mppSecretKey || mppRecipient) {
+  app.use(
+    "/passport/request",
+    mppPaymentMiddleware({
+      secretKey: mppSecretKey,
+      recipientAddress: mppRecipient,
+      amount: mppAmount,
+      stripeSecretKey,
+    }),
   );
 }
 
