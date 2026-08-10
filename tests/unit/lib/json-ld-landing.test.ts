@@ -13,7 +13,7 @@ import {
 } from "../../../src/server/lib/json-ld";
 import { BASE_URL } from "../../../src/server/lib/page-meta";
 
-describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
+describe("SLICE-19-3: JSON-LD for landing (5 schemas)", () => {
   // ─── HowTo schema (SLICE-19-3, refactored in SLICE-21-1) ───
   describe("howToLd()", () => {
     const landingHowTo = howToLd({
@@ -65,9 +65,9 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
 
   // ─── landingJsonLd() assembler ───────────────────────────
   describe("landingJsonLd()", () => {
-    it("returns array with 4 schemas", () => {
+    it("returns array with 5 schemas", () => {
       const schemas = landingJsonLd();
-      expect(schemas).toHaveLength(4);
+      expect(schemas).toHaveLength(5);
     });
 
     it("includes SoftwareApplication", () => {
@@ -114,7 +114,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
         .replace('<script type="application/ld+json">', "")
         .replace("</script>", "");
       const parsed = JSON.parse(jsonStr);
-      expect(parsed).toHaveLength(4);
+      expect(parsed).toHaveLength(5);
     });
 
     it("escapes < characters in JSON (XSS prevention)", () => {
@@ -283,7 +283,7 @@ describe("SLICE-19-3: JSON-LD for landing (4 schemas)", () => {
     it("sameAs includes GitHub repository", () => {
       const schema = organizationLd() as Record<string, unknown>;
       const sameAs = schema.sameAs as string[];
-      expect(sameAs).toContain("https://github.com/spreadzp/agentgate");
+      expect(sameAs).toContain("https://github.com/spreadzp/agentbadge");
       expect(sameAs.length).toBeGreaterThanOrEqual(2);
     });
   });
