@@ -92,11 +92,12 @@ export function AboutPage(jsonLd?: object[]) {
 
     ${raw(section(
     "Network",
-    `<p>AgentBadge is currently live on <strong>Hedera Testnet</strong>. The architecture is mainnet-ready;
+    `<p>AgentBadge is live on <strong>Hedera Testnet</strong> — join testnet for free! Testnet gives you zero-cost experimentation, early access to features, and a safe environment to build and test agents. The architecture is mainnet-ready;
         switching requires only updating environment variables (<code class="text-emerald-300">HEDERA_NETWORK=mainnet</code>
         and a mainnet operator key).</p>
-        <p class="mt-3">All passports, HCS messages, and transactions are real on-chain operations on testnet —
-        verifiable on <a href="https://hashscan.io/testnet" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">HashScan</a>.</p>`,
+        <p class="mt-3">All passports, HCS messages, and transactions are real on-chain operations —
+        verifiable on <a href="https://hashscan.io/testnet" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">HashScan</a>.</p>
+        <p class="mt-3"><a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Join testnet now →</a></p>`,
   ))}
 
     ${raw(section(

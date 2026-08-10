@@ -71,7 +71,7 @@ export const FAQ_ENTRIES: QaPair[] = [
   {
     question: "Is this on testnet or mainnet?",
     answer:
-      "AgentBadge currently runs on Hedera Testnet. All NFT passports, HCS topics, and transactions are real on-chain operations on testnet. The architecture is mainnet-ready — switching requires only updating environment variables for network endpoints and operator keys.",
+      "AgentBadge runs on Hedera Testnet — join testnet for free! All NFT passports, HCS topics, and transactions are real on-chain operations at zero cost. Testnet is safe for experimentation, gives you early access to new features, and lets you try everything without spending real HBAR. The architecture is mainnet-ready — switching requires only updating environment variables. <a href=\"/agent-guide\" class=\"text-emerald-400 underline hover:text-emerald-300\">Join testnet now →</a>",
   },
   {
     question: "What is AgentBadge NOT?",
