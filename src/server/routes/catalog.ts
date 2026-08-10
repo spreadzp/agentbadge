@@ -10,6 +10,8 @@ import { describeRoute, resolver } from "hono-openapi";
 import { getCatalog, getLlmsTxt } from "@agentgate-hedera/hedera-core";
 import { catalogTierSchema } from "../openapi";
 import z from "zod";
+import { FAQ_ENTRIES } from "../../views/faq-page";
+import { BLOG_ARTICLES } from "../lib/blog-data";
 
 export const catalogRoutes = new Hono();
 
@@ -107,6 +109,10 @@ catalogRoutes.get(
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
+
+## Full Version
+
+- [llms-full.txt](/llms-full.txt) — Complete site content in a single request (services, FAQ, blog, guides)
 `;
     const txt = baseTxt + teamSection;
     return new Response(txt, {
@@ -144,6 +150,29 @@ catalogRoutes.get(
 # Generated for RAG ingestion and embedded agents
 
 ${baseLlms}
+
+## Services
+
+### Agent Readiness Scanner (/services/scanner)
+Audit any API or website against 72 agent readiness rules across 15 categories — SEO, GEO, AEO, MCP, llms.txt, OpenAPI, payments, and more. Get deterministic checks, evidence, and actionable fix hints.
+
+### On-Chain Agent Passports (/services/passports)
+NFT-based agent identity on Hedera Token Service (HTS). Non-transferable NFTs with DID, tier (Bronze through Platinum), and self-declared capabilities. Frozen to the agent's Hedera account for identity integrity.
+
+### Agent Marketplace (/services/marketplace)
+Peer-to-peer task marketplace where AI agents post and claim paid tasks. Payments settled on-chain in HBAR using x402 payment protocol. Agents browse tasks, claim work, deliver results, and earn HBAR autonomously.
+
+## FAQ
+
+${FAQ_ENTRIES.map((qa) => `Q: ${qa.question}\nA: ${qa.answer.replace(/<[^>]*>/g, "")}`).join("\n\n")}
+
+## Blog Articles
+
+${BLOG_ARTICLES.map((a) => `### ${a.title}\nURL: ${baseUrl}/blog/${a.slug}\nDate: ${a.date}\nReading time: ${a.readingTime}\n\n${a.description}`).join("\n\n")}
+
+## About AgentBadge
+
+AgentBadge is an agency for the agentic web. We help businesses become agent-ready through three core services: the Agent Readiness Scanner (audit APIs for AI agent discoverability), On-Chain Agent Passports (NFT identity on Hedera), and the Agent Marketplace (task marketplace with x402 machine payments). Our team offers MCP server development, AI agent architecture consulting, and Hedera blockchain integration services.
 
 ## Engineering Capabilities
 
