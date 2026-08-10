@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { html, raw } from "hono/html";
 import { LandingLayout } from "../../views/landing/layout";
 import { LandingPage } from "../../views/landing/landing-page";
-import { ReadinessLandingPage } from "../../views/landing/readiness-landing-page";
+import { AgencyHubPage } from "../../views/landing/agency-hub-page";
 import { DataHubLandingPage } from "../../views/landing/datahub-landing-page";
 import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
 import { defaultCoreSchemas, landingJsonLd } from "../lib/json-ld";
@@ -26,7 +26,7 @@ landingRoutes.get("/", async (c) => {
   const meta = PageMetaRegistry["/"];
   const jsonLd = landingJsonLd();
 
-  const content = ReadinessLandingPage().toString();
+  const content = AgencyHubPage().toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
   const response = await c.html(pageHtml);
   response.headers.set("Vary", "Accept");
