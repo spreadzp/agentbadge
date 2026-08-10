@@ -104,6 +104,7 @@ blogRoutes.get(
         headline: article.title,
         description: article.description,
         datePublished: article.date,
+        dateModified: article.date,
         author: {
           "@type": "Organization",
           name: article.author,

@@ -12,6 +12,7 @@ export function GuideLayout(
   markdown: string,
   jsonLd: object[],
   path: string = "",
+  lastUpdated: string = new Date().toISOString().split("T")[0],
 ): ReturnType<typeof html> {
   const jsonLdHtml = renderJsonLd(jsonLd);
   const canonicalUrl = path ? `${BASE_URL}${path}` : BASE_URL;
@@ -49,6 +50,7 @@ export function GuideLayout(
       <body class="min-h-full">
         <div class="mx-auto max-w-4xl px-4 py-8">
           <a href="/" class="text-sm text-emerald-400 hover:text-emerald-300">&larr; Back to ${SITE_NAME}</a>
+          <p class="mt-2 text-xs text-slate-500">Last updated: <time datetime="${lastUpdated}">${lastUpdated}</time></p>
           <pre class="mt-4 whitespace-pre-wrap font-mono text-sm text-slate-300 leading-relaxed">${raw(escapedMarkdown)}</pre>
         </div>
       </body>

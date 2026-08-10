@@ -312,6 +312,8 @@ export function articleLd(a: {
   description: string;
   path: string;
   sections?: { title: string; body: string }[];
+  datePublished?: string;
+  dateModified?: string;
 }): object {
   const schema: Record<string, unknown> = {
     "@context": SCHEMA_CONTEXT,
@@ -319,6 +321,8 @@ export function articleLd(a: {
     headline: a.title,
     description: a.description,
     url: `${BASE_URL}${a.path}`,
+    datePublished: a.datePublished ?? BUILD_DATE,
+    dateModified: a.dateModified ?? BUILD_DATE,
     author: {
       "@type": "Organization",
       name: SITE_NAME,

@@ -26,6 +26,9 @@ import { parseFrontmatter } from "../lib/frontmatter";
 import { getRegistry } from "../registry/loader";
 import { BASE_URL } from "../lib/page-meta";
 import { RelevantEngineeringCapability } from "../../components/RelevantEngineeringCapability";
+import { GuideLayout } from "../../views/guide-layout";
+import { defaultCoreSchemas, howToLd, breadcrumbListLd } from "../lib/json-ld";
+import { BUILD_DATE } from "../lib/build-info";
 
 export const agentKnowledgeRoutes = new Hono();
 
@@ -57,12 +60,35 @@ async function serveMarkdownFile(
   }
 }
 
-agentKnowledgeRoutes.get("/agent-guide", (c) => {
+agentKnowledgeRoutes.get("/agent-guide", async (c) => {
   const accept = c.req.header("Accept") ?? "";
   if (accept.includes("application/json")) {
     return serveAgentGuideJson(c);
   }
-  return serveMarkdownFile(join(BASE_DIR, "index.md"));
+  const md = await readFile(join(BASE_DIR, "index.md"), "utf-8");
+  const wantsHtml = accept.includes("text/html");
+  if (!wantsHtml) {
+    return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=300" } });
+  }
+  const schemas = [
+    ...defaultCoreSchemas(),
+    howToLd({
+      name: "AgentBadge Agent Guide",
+      description: "Machine-readable guide for AI agents to understand and use AgentBadge.",
+      path: "/agent-guide",
+      totalTime: "PT10M",
+      steps: [
+        { name: "Read the guide", text: "Fetch /agent-guide for the full knowledge index." },
+        { name: "Get context", text: "Read /agent-guide/context for background." },
+        { name: "Follow learning path", text: "Use /agent-guide/learn for step-by-step onboarding." },
+      ],
+    }),
+    breadcrumbListLd([
+      { name: "Home", path: "/" },
+      { name: "Agent Guide", path: "/agent-guide" },
+    ]),
+  ].map((s) => (s as any)["@type"] === "HowTo" ? { ...(s as any), dateModified: BUILD_DATE } : s);
+  return c.html(GuideLayout("Agent Guide", md, schemas, "/agent-guide", BUILD_DATE));
 });
 
 agentKnowledgeRoutes.get("/agent-guide/", (c) => {

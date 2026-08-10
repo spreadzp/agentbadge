@@ -1335,6 +1335,7 @@ agentGuideRoutes.get(
       });
     }
 
+    const guideDate = new Date().toISOString().split("T")[0];
     const schemas = [
       ...defaultCoreSchemas(),
       howToLd({
@@ -1354,7 +1355,7 @@ agentGuideRoutes.get(
         { name: "Home", path: "/" },
         { name: "Agent Guide", path: "/agent-guide" },
       ]),
-    ];
+    ].map((s) => (s as any)["@type"] === "HowTo" ? { ...(s as any), dateModified: guideDate } : s);
 
     const html = GuideLayout("Agent Onboarding Guide", markdown, schemas, "/agent-guide");
     return c.html(html);
