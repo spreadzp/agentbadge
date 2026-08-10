@@ -26,6 +26,7 @@ export function GuideLayout(
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <title>${title} — ${SITE_NAME}</title>
         <meta name="description" content="${title} for AI agents on ${SITE_NAME} — Hedera on-chain identity platform." />

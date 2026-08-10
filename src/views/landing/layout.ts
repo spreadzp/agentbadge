@@ -37,6 +37,7 @@ export function LandingLayout(
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="view-transition" content="same-origin" />
+        <meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
@@ -91,7 +92,8 @@ export function LandingLayout(
           .footer-pop {
             transition: transform 0.2s ease-out, color 0.25s ease-out;
             transform-origin: center;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
           }
           .footer-pop:hover {
             animation: nav-pop 0.3s ease-out forwards;

@@ -30,7 +30,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <title>${pageTitle}</title>
         <meta name="description" content="${description}" />
-        ${noIndex ? raw('<meta name="robots" content="noindex, nofollow" />') : ''}
+        ${noIndex ? raw('<meta name="robots" content="noindex, nofollow" />') : raw('<meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />')}
         <link rel="canonical" href="${canonicalUrl}" />
         <meta property="og:title" content="${pageTitle}" />
         <meta property="og:description" content="${description}" />
