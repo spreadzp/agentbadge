@@ -1,4 +1,5 @@
 import { RULE_DESCRIPTIONS } from "../../agent-readiness/rule-descriptions";
+import { BLOG_ARTICLES } from "./blog-data";
 
 export interface PageMeta {
   title: string;
@@ -156,10 +157,16 @@ export const PageMeta: Record<string, PageMeta> = {
     path: "/pricing",
   },
   "/about": {
-    title: "About AgentBadge",
+    title: "About AgentBadge — AgentBadge",
     description:
       "AgentBadge — on-chain identity for AI agents on Hedera. Learn about NFT passports, HCS directory, A2A messaging, and x402 payments.",
     path: "/about",
+  },
+  "/blog": {
+    title: "Blog — AgentBadge",
+    description:
+      "Deep dives into agent-ready infrastructure, MCP protocol, x402 payments, and the agentic web.",
+    path: "/blog",
   },
   "/terms": {
     title: "Terms of Service",
@@ -204,6 +211,12 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/changelog", changefreq: "weekly", priority: "0.6" },
   { path: "/pricing", changefreq: "weekly", priority: "0.8" },
   { path: "/about", changefreq: "monthly", priority: "0.7" },
+  { path: "/blog", changefreq: "weekly", priority: "0.8" },
+  ...BLOG_ARTICLES.map((a) => ({
+    path: `/blog/${a.slug}`,
+    changefreq: "monthly" as const,
+    priority: "0.7",
+  })),
   { path: "/terms", changefreq: "yearly", priority: "0.5" },
   { path: "/privacy", changefreq: "yearly", priority: "0.5" },
   { path: "/rules", changefreq: "monthly", priority: "0.8" },

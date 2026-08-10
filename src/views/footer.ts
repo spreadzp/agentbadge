@@ -60,6 +60,10 @@ export function Footer(): ReturnType<typeof html> {
             <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
             Medical Guide
           </a>
+          <a href="/blog" class="footer-pop inline-flex items-center gap-2 py-1 hover:text-emerald-400">
+            <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 0a2 2 0 012 2v8a2 2 0 01-2 2m0-12V6m0 12V8m0 0H5" /></svg>
+            Blog
+          </a>
         </div>
         <div class="flex flex-col gap-2">
           <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Product</span>
