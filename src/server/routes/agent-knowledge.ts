@@ -77,6 +77,10 @@ agentKnowledgeRoutes.get("/.well-known/agent-guide.json", async (c) => {
   return serveAgentGuideJson(c);
 });
 
+agentKnowledgeRoutes.get("/agent-guide.json", async (c) => {
+  return serveAgentGuideJson(c);
+});
+
 async function serveAgentGuideJson(c: Context): Promise<Response> {
   try {
     const indexContent = await readFile(join(BASE_DIR, "index.md"), "utf-8");
