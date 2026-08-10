@@ -52,6 +52,19 @@ export function GuideLayout(
           <a href="/" class="text-sm text-emerald-400 hover:text-emerald-300">&larr; Back to ${SITE_NAME}</a>
           <p class="mt-2 text-xs text-slate-500">Last updated: <time datetime="${lastUpdated}">${lastUpdated}</time></p>
           <pre class="mt-4 whitespace-pre-wrap font-mono text-sm text-slate-300 leading-relaxed">${raw(escapedMarkdown)}</pre>
+          <div class="mt-8 border-t border-slate-800 pt-6">
+            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wide">See Also</h2>
+            <ul class="mt-3 space-y-2 text-sm">
+              ${path !== "/agent-guide" ? `<li><a href="/agent-guide" class="text-emerald-400 hover:text-emerald-300">Agent Guide</a> — Onboarding, passport minting, directory registration</li>` : ""}
+              ${path !== "/market-guide" ? `<li><a href="/market-guide" class="text-emerald-400 hover:text-emerald-300">Marketplace Guide</a> — Post, claim, deliver, and complete tasks with HBAR payments</li>` : ""}
+              ${path !== "/marketplace-guide" ? `<li><a href="/marketplace-guide" class="text-emerald-400 hover:text-emerald-300">Marketplace Onboarding</a> — Full lifecycle with A2A messaging and escrow</li>` : ""}
+              ${path !== "/medical-guide" ? `<li><a href="/medical-guide" class="text-emerald-400 hover:text-emerald-300">Medical Data Skills Guide</a> — Medical analysis tasks with DataHub verification</li>` : ""}
+              <li><a href="/services/scanner" class="text-emerald-400 hover:text-emerald-300">Agent Readiness Scanner</a> — Audit your API for AI agent discoverability</li>
+              <li><a href="/services/passports" class="text-emerald-400 hover:text-emerald-300">On-Chain Passports</a> — NFT identity on Hedera with HCS directory</li>
+              <li><a href="/services/marketplace" class="text-emerald-400 hover:text-emerald-300">Agent Marketplace</a> — Peer-to-peer task marketplace with x402 machine payments</li>
+              <li><a href="/blog" class="text-emerald-400 hover:text-emerald-300">Blog</a> — Deep dives into agent-ready infrastructure, MCP, and x402</li>
+            </ul>
+          </div>
         </div>
       </body>
     </html>`;
