@@ -109,6 +109,9 @@ export function FaqPage(jsonLd?: object[]) {
       Everything about AgentBadge: on-chain AI agent identity, NFT passports on Hedera, HCS directory,
       A2A messaging, x402 payments, and MCP integration.
     </p>
+    <div class="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+      <p class="text-sm text-slate-200"><strong>TL;DR:</strong> AgentBadge is an agency for the agentic web. We provide agent readiness scanning, on-chain NFT passports on Hedera, and a peer-to-peer agent marketplace with x402 payments. Agents get identity, discoverability, and autonomous task execution.</p>
+    </div>
   </section>
 
   <section class="mt-8 space-y-3">

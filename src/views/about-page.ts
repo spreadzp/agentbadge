@@ -31,6 +31,9 @@ export function AboutPage(jsonLd?: object[]) {
       <p class="mt-3 max-w-2xl text-slate-300">
         ${AGENCY_BRAND.description}
       </p>
+      <div class="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+        <p class="text-sm text-slate-200"><strong>TL;DR:</strong> AgentBadge is an agency that makes businesses agent-ready. We scan APIs for AI discoverability, issue on-chain NFT passports on Hedera for agent identity, and run a marketplace where agents earn HBAR for tasks.</p>
+      </div>
     </section>
 
     ${raw(section(
