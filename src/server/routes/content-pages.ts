@@ -6,7 +6,10 @@ import { AboutPage } from "../../views/about-page";
 import { PricingPage } from "../../views/pricing-page";
 import { TermsPage } from "../../views/terms-page";
 import { PrivacyPage } from "../../views/privacy-page";
-import { faqPageLd, articleLd, defaultCoreSchemas } from "../lib/json-ld";
+import { Layout } from "../../views/layout";
+import { RulesCatalogPage } from "../../views/rules-catalog-page";
+import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
+import { faqPageLd, articleLd, defaultCoreSchemas, personLd } from "../lib/json-ld";
 
 export const contentPageRoutes = new Hono();
 
@@ -61,6 +64,12 @@ contentPageRoutes.get(
   (c) => {
     const schemas = [
       ...defaultCoreSchemas(),
+      personLd({
+        name: "AgentBadge Team",
+        role: "Agency for the Agentic Web",
+        description: "AgentBadge is an agency building infrastructure for AI agent commerce on Hedera.",
+        url: "https://github.com/spreadzp/agentbadge",
+      }),
       articleLd({
         title: "About AgentBadge — On-Chain Identity for AI Agents",
         description:
@@ -143,4 +152,39 @@ contentPageRoutes.get(
     responses: { 200: { description: "HTML privacy page" } },
   }),
   (c) => c.html(PrivacyPage(defaultCoreSchemas())),
+);
+
+contentPageRoutes.get(
+  "/rules",
+  describeRoute({
+    tags: ["Content"],
+    summary: "Rules Catalog",
+    description:
+      "All 72 agent readiness rules across 15 categories with plain-language descriptions, effort hints, and cost estimates.",
+    responses: { 200: { description: "HTML rules catalog page" } },
+  }),
+  (c) => {
+    return c.html(RulesCatalogPage());
+  },
+);
+
+contentPageRoutes.get(
+  "/rules/:id",
+  describeRoute({
+    tags: ["Content"],
+    summary: "Rule Detail",
+    description: "Detailed page for a single agent readiness rule with examples, effort, and cost.",
+    responses: {
+      200: { description: "HTML rule detail page" },
+      404: { description: "Rule not found" },
+    },
+  }),
+  (c) => {
+    const ruleId = c.req.param("id");
+    const rule = getRuleDescription(ruleId);
+    if (!rule) {
+      return c.html(Layout("Rule not found", "404 — Rule Not Found", { title: "404", description: "Rule not found", path: "/404" }, defaultCoreSchemas()), 404);
+    }
+    return c.html(RuleDetailPage(rule));
+  },
 );

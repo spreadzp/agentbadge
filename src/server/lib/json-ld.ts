@@ -374,3 +374,64 @@ export function renderJsonLd(schemas: object[]): string {
   const json = JSON.stringify(schemas).replace(/</g, "\\u003c");
   return `<script type="application/ld+json">${json}</script>`;
 }
+
+// ─── Agency Service + Person Schemas (SLICE-51-9) ────────────
+
+export function serviceLd(opts: {
+  name: string;
+  description: string;
+  path: string;
+  provider?: string;
+}): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "Service",
+    name: opts.name,
+    description: opts.description,
+    url: `${BASE_URL}${opts.path}`,
+    provider: {
+      "@type": "Organization",
+      name: opts.provider ?? SITE_NAME,
+      url: BASE_URL,
+    },
+    areaServed: "Worldwide",
+  };
+}
+
+export function servicesJsonLd(service: {
+  name: string;
+  description: string;
+  path: string;
+}): object[] {
+  return [
+    softwareApplicationLd(),
+    webSiteLd(),
+    organizationLd(),
+    serviceLd({
+      name: service.name,
+      description: service.description,
+      path: service.path,
+    }),
+  ];
+}
+
+export function personLd(opts: {
+  name: string;
+  role: string;
+  description?: string;
+  url?: string;
+}): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "Person",
+    name: opts.name,
+    jobTitle: opts.role,
+    ...(opts.description ? { description: opts.description } : {}),
+    ...(opts.url ? { url: opts.url } : {}),
+    worksFor: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: BASE_URL,
+    },
+  };
+}
