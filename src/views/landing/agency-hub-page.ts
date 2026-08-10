@@ -18,7 +18,9 @@ export function AgencyHubPage() {
       .replace(/HCS directory/g, '<abbr title="Hedera Consensus Service">HCS</abbr> directory')
       .replace(/HCS/g, '<abbr title="Hedera Consensus Service">HCS</abbr>')
       .replace(/\bDID\b/g, '<abbr title="Decentralized Identifier">DID</abbr>')
-      .replace(/\bHTS\b/g, '<abbr title="Hedera Token Service">HTS</abbr>');
+      .replace(/\bHTS\b/g, '<abbr title="Hedera Token Service">HTS</abbr>')
+      .replace(/\bAEO\b/g, '<abbr title="Answer Engine Optimization">AEO</abbr>')
+      .replace(/\bGEO\b/g, '<abbr title="Generative Engine Optimization">GEO</abbr>');
 
   const serviceCards = AGENCY_SERVICES.map(
     (s) => `

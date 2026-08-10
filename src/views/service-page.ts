@@ -7,11 +7,20 @@ import type { AgencyService } from "../server/lib/agency-config";
  *
  * Renders: hero, features, CTA, cross-links to other services.
  */
+const expandAbbr = (text: string) =>
+  text
+    .replace(/HCS directory/g, '<abbr title="Hedera Consensus Service">HCS</abbr> directory')
+    .replace(/HCS/g, '<abbr title="Hedera Consensus Service">HCS</abbr>')
+    .replace(/\bDID\b/g, '<abbr title="Decentralized Identifier">DID</abbr>')
+    .replace(/\bHTS\b/g, '<abbr title="Hedera Token Service">HTS</abbr>')
+    .replace(/\bAEO\b/g, '<abbr title="Answer Engine Optimization">AEO</abbr>')
+    .replace(/\bGEO\b/g, '<abbr title="Generative Engine Optimization">GEO</abbr>');
+
 export function ServicePageView(service: AgencyService, otherServices: AgencyService[]) {
   const featuresList = service.features
     .map(
       (f) =>
-        `<li class="flex items-start gap-3 text-slate-300"><span class="text-emerald-400 mt-1">✓</span> ${f}</li>`,
+        `<li class="flex items-start gap-3 text-slate-300"><span class="text-emerald-400 mt-1">✓</span> ${expandAbbr(f)}</li>`,
     )
     .join("");
 
@@ -22,7 +31,7 @@ export function ServicePageView(service: AgencyService, otherServices: AgencySer
         `<a href="${s.url}" class="block rounded-lg border border-slate-700 bg-slate-900/50 p-4 transition-all hover:border-emerald-500">
           <div class="text-2xl mb-1">${s.icon}</div>
           <div class="text-sm font-semibold text-white">${s.name}</div>
-          <div class="text-xs text-slate-400 mt-1">${s.tagline}</div>
+          <div class="text-xs text-slate-400 mt-1">${expandAbbr(s.tagline)}</div>
         </a>`,
     )
     .join("");
@@ -76,10 +85,10 @@ function ServiceHero(service: AgencyService) {
           ${service.name}
         </h1>
         <p class="fade-in-up mt-4 text-xl text-emerald-400 font-semibold" style="animation-delay: 0.15s">
-          ${service.tagline}
+          ${raw(expandAbbr(service.tagline))}
         </p>
         <p class="fade-in-up mt-6 text-lg text-slate-400 max-w-2xl" style="animation-delay: 0.2s">
-          ${service.description}
+          ${raw(expandAbbr(service.description))}
         </p>
         <div class="fade-in-up mt-8 flex flex-wrap gap-4" style="animation-delay: 0.3s">
           <a href="${ctaHref}" class="pulse-glow inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400">
@@ -105,7 +114,7 @@ function ServiceCta(service: AgencyService) {
     <section class="px-4 py-16 md:px-8">
       <div class="mx-auto max-w-3xl text-center rounded-xl border border-slate-700 bg-slate-900/50 p-10">
         <h2 class="text-2xl font-bold text-white">Ready to get started?</h2>
-        <p class="mt-4 text-slate-400">${service.tagline}</p>
+        <p class="mt-4 text-slate-400">${raw(expandAbbr(service.tagline))}</p>
         <div class="mt-6">
           <a href="${ctaHref}" class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400">
             ${ctaLabel}
