@@ -28,6 +28,15 @@ export function ServicePageView(service: AgencyService, otherServices: AgencySer
     .join("");
 
   return html`<div class="service-page">
+    ${raw(`<nav class="px-4 py-3 text-sm text-slate-400 md:px-8" aria-label="Breadcrumb">
+      <ol class="flex items-center gap-2">
+        <li><a href="/" class="hover:text-emerald-400">Home</a></li>
+        <li class="text-slate-600">/</li>
+        <li><a href="/services" class="hover:text-emerald-400">Services</a></li>
+        <li class="text-slate-600">/</li>
+        <li class="text-slate-300">${service.name}</li>
+      </ol>
+    </nav>`)}
     ${raw(ServiceHero(service).toString())}
     ${raw(`<section class="px-4 py-16 md:px-8">
       <div class="mx-auto max-w-4xl">
