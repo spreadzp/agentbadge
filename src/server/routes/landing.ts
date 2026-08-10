@@ -16,6 +16,10 @@ import { listTasks as marketListTasks } from "@agentgate-hedera/passport";
  */
 export const landingRoutes = new Hono();
 
+// SLICE-51-11: Redirects from old paths → new /services/* paths
+landingRoutes.get("/scanner", (c) => c.redirect("/services/scanner", 301));
+landingRoutes.get("/marketplace", (c) => c.redirect("/services/marketplace", 301));
+
 /**
  * GET / — Agent Readiness landing page.
  *
