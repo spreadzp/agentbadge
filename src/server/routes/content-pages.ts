@@ -10,6 +10,7 @@ import { Layout } from "../../views/layout";
 import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
 import { faqPageLd, articleLd, defaultCoreSchemas, personLd } from "../lib/json-ld";
+import { TEAM_MEMBERS } from "../lib/team-data";
 
 export const contentPageRoutes = new Hono();
 
@@ -64,12 +65,14 @@ contentPageRoutes.get(
   (c) => {
     const schemas = [
       ...defaultCoreSchemas(),
-      personLd({
-        name: "AgentBadge Team",
-        role: "Agency for the Agentic Web",
-        description: "AgentBadge is an agency building infrastructure for AI agent commerce on Hedera.",
-        url: "https://github.com/spreadzp/agentbadge",
-      }),
+      ...TEAM_MEMBERS.map((m) =>
+        personLd({
+          name: m.name,
+          role: m.role,
+          description: m.bio,
+          url: m.url,
+        })
+      ),
       articleLd({
         title: "About AgentBadge — On-Chain Identity for AI Agents",
         description:

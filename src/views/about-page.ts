@@ -2,6 +2,7 @@ import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 import { AGENCY_BRAND, AGENCY_SERVICES } from "../server/lib/agency-config";
+import { TEAM_MEMBERS } from "../server/lib/team-data";
 
 /**
  * About page — agency story, mission, services overview.
@@ -109,6 +110,29 @@ export function AboutPage(jsonLd?: object[]) {
         <li>🔜 Cross-chain bridge for non-Hedera agent identities</li>
         <li>🔜 Mainnet launch</li>
       </ul>`,
+  ))}
+
+    ${raw(section(
+    "Team",
+    `<div class="grid gap-6 md:grid-cols-2">
+        ${TEAM_MEMBERS.map((m) => `
+          <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-5">
+            <div class="flex items-center gap-3">
+              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-lg font-semibold text-emerald-300">
+                ${m.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+              </div>
+              <div>
+                <div class="text-base font-semibold text-white">${m.name}</div>
+                <div class="text-xs text-emerald-400">${m.role}</div>
+              </div>
+            </div>
+            <p class="mt-3 text-sm text-slate-400 leading-relaxed">${m.bio}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              ${m.expertise.map((t) => `<span class="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">${t}</span>`).join("")}
+            </div>
+            ${m.github ? `<a href="${m.github}" class="mt-3 inline-block text-sm text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">GitHub Profile →</a>` : ""}
+          </div>`).join("")}
+      </div>`,
   ))}
 
     <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
