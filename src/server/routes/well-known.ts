@@ -532,10 +532,12 @@ Sitemap: ${baseUrl}/sitemap.xml
 const STATIC_LASTMOD: Record<string, string> = {
   "/agent-guide": "2026-07-25",
   "/market-guide": "2026-07-25",
+  "/marketplace-guide": "2026-07-25",
   "/medical-guide": "2026-07-25",
   "/faq": "2026-07-29",
   "/use-cases": "2026-07-29",
   "/contact": "2026-07-24",
+  "/team": BUILD_DATE,
   "/changelog": BUILD_DATE,
 };
 
@@ -581,10 +583,24 @@ wellKnownRoutes.get(
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
         "Cache-Control": "public, max-age=3600",
+        "Content-Length": new TextEncoder().encode(xml).byteLength.toString(),
       },
     });
   },
 );
+
+// HEAD handler — Google sends HEAD before GET; Bun strips body for HEAD
+// and recalculates Content-Length to 0, which makes GSC think sitemap is empty.
+wellKnownRoutes.on("HEAD", "/sitemap.xml", (c) => {
+  const xml = buildSitemap();
+  return new Response(null, {
+    headers: {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+      "Content-Length": new TextEncoder().encode(xml).byteLength.toString(),
+    },
+  });
+});
 
 // ─── ai.txt (SLICE-45-3) ──────────────────────────────────────
 
