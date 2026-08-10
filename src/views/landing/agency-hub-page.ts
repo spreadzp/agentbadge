@@ -13,15 +13,22 @@ import { AGENCY_SERVICES, AGENCY_BRAND } from "../../server/lib/agency-config";
  * 5. CTA footer
  */
 export function AgencyHubPage() {
+  const expandAbbr = (text: string) =>
+    text
+      .replace(/HCS directory/g, '<abbr title="Hedera Consensus Service">HCS</abbr> directory')
+      .replace(/HCS/g, '<abbr title="Hedera Consensus Service">HCS</abbr>')
+      .replace(/\bDID\b/g, '<abbr title="Decentralized Identifier">DID</abbr>')
+      .replace(/\bHTS\b/g, '<abbr title="Hedera Token Service">HTS</abbr>');
+
   const serviceCards = AGENCY_SERVICES.map(
     (s) => `
     <a href="${s.url}" class="group block rounded-xl border border-slate-700 bg-slate-900/50 p-6 transition-all hover:border-emerald-500 hover:bg-slate-900">
       <div class="text-3xl mb-3">${s.icon}</div>
       <h3 class="text-xl font-bold text-white group-hover:text-emerald-400">${s.name}</h3>
-      <p class="mt-1 text-sm text-slate-400">${s.tagline}</p>
-      <p class="mt-3 text-sm text-slate-500 line-clamp-3">${s.description}</p>
+      <p class="mt-1 text-sm text-slate-400">${expandAbbr(s.tagline)}</p>
+      <p class="mt-3 text-sm text-slate-500 line-clamp-3">${expandAbbr(s.description)}</p>
       <ul class="mt-4 space-y-1">
-        ${s.features.slice(0, 3).map((f) => `<li class="text-xs text-slate-400 flex items-start gap-2"><span class="text-emerald-400 mt-0.5">▸</span> ${f}</li>`).join("")}
+        ${s.features.slice(0, 3).map((f) => `<li class="text-xs text-slate-400 flex items-start gap-2"><span class="text-emerald-400 mt-0.5">▸</span> ${expandAbbr(f)}</li>`).join("")}
       </ul>
       <div class="mt-4 text-sm font-semibold text-emerald-400 group-hover:text-emerald-300">
         Learn more →

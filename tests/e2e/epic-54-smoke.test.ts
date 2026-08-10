@@ -52,11 +52,12 @@ describe("EPIC-54 Smoke Test — Voice Search, Domain & Testnet Polish", () => {
       expect(html).toContain("Model Context Protocol");
     });
 
-    it("homepage expands HTS, HCS", async () => {
+    it("homepage expands HTS, HCS, DID", async () => {
       const res = await fetch(`${BASE}/`);
       const html = await res.text();
       expect(html).toContain("Hedera Token Service");
       expect(html).toContain("Hedera Consensus Service");
+      expect(html).toContain("Decentralized Identifier");
     });
 
     it("agent-guide expands HTS, HCS, MCP", async () => {

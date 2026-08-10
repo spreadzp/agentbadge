@@ -21,11 +21,12 @@ describe("Acronym expansion at first mention (SLICE-54-2)", () => {
     expect(html).toContain("Model Context Protocol");
   });
 
-  it("homepage expands HTS, HCS at first mention", async () => {
+  it("homepage expands HTS, HCS, DID at first mention via abbr", async () => {
     const res = await fetch(`${BASE}/`);
     const html = await res.text();
     expect(html).toContain("Hedera Token Service");
     expect(html).toContain("Hedera Consensus Service");
+    expect(html).toContain("Decentralized Identifier");
   });
 
   it("scanner service page expands AEO, GEO at first mention", async () => {

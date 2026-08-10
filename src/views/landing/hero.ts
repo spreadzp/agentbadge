@@ -22,9 +22,9 @@ export function HeroSection() {
         <div class="mx-auto max-w-4xl text-center">
           <!-- Trust badges -->
           <div class="fade-in-up mb-6 flex flex-wrap justify-center gap-2">
-            <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">HTS NFT Passports</span>
-            <span class="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">HCS Directory</span>
-            <span class="rounded-full border border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">DID Identity</span>
+            <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300"><abbr title="Hedera Token Service">HTS</abbr> NFT Passports</span>
+            <span class="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300"><abbr title="Hedera Consensus Service">HCS</abbr> Directory</span>
+            <span class="rounded-full border border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300"><abbr title="Decentralized Identifier">DID</abbr> Identity</span>
             <span class="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">x402 Payments</span>
           </div>
 
@@ -35,7 +35,7 @@ export function HeroSection() {
 
           <!-- UVP subheading -->
           <p class="fade-in-up mt-6 text-lg text-slate-300 md:text-xl">
-            Mint NFT passports on Hedera, register in the HCS directory, and enable
+            Mint NFT passports on Hedera, register in the <abbr title="Hedera Consensus Service">HCS</abbr> directory, and enable
             trustless agent-to-agent interactions with verifiable on-chain identity.
           </p>
 
