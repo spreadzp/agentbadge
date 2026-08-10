@@ -2,6 +2,12 @@
 
 > Machine-readable table of contents for AI agents.
 
+AgentBadge is an agency for the agentic web. We help businesses become agent-ready through three services:
+
+- **Agent Readiness Scanner** (/services/scanner) — Audit any API for AI agent discoverability with 72 checks across 15 categories
+- **On-Chain Agent Passports** (/services/passports) — NFT identity on Hedera with HCS directory registration
+- **Agent Marketplace** (/services/marketplace) — Peer-to-peer task marketplace with x402 machine payments in HBAR
+
 ## Base Guides
 
 - [Context](/agent-guide/context) — What AgentBadge is, what Agent Readiness means
