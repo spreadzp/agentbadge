@@ -1,3 +1,5 @@
+import { RULE_DESCRIPTIONS } from "../../agent-readiness/rule-descriptions";
+
 export interface PageMeta {
   title: string;
   description: string;
@@ -7,7 +9,7 @@ export interface PageMeta {
 export const SITE_NAME = "AgentBadge";
 
 export const SITE_DESCRIPTION =
-  "AgentBadge — Agent Readiness for the agentic web. Measure whether your API can be discovered, understood, and used by AI agents.";
+  "AgentBadge — agency for the agentic web. We help businesses become agent-ready with readiness scanning, on-chain identity passports, and a task marketplace with machine payments.";
 
 export const BASE_URL =
   process.env.BASE_URL && process.env.BASE_URL.startsWith("http")
@@ -16,10 +18,28 @@ export const BASE_URL =
 
 export const PageMeta: Record<string, PageMeta> = {
   "/": {
-    title: "Agent Readiness for the Agentic Web",
+    title: "AgentBadge — Agency for the Agentic Web",
     description:
-      "AgentBadge measures whether your API can be discovered, understood, and used by AI agents — with deterministic checks, evidence, and actionable fixes.",
+      "AgentBadge is an agency that helps businesses become agent-ready. Readiness scanning, on-chain identity passports, and a task marketplace with machine payments.",
     path: "/",
+  },
+  "/services/scanner": {
+    title: "Agent Readiness Scanner — AgentBadge",
+    description:
+      "Scan your API or website against 72 agent readiness rules across 15 categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.",
+    path: "/services/scanner",
+  },
+  "/services/passports": {
+    title: "On-Chain Agent Passports — AgentBadge",
+    description:
+      "Mint NFT passports for your AI agents on Hedera. Register in the HCS directory, get a DID, and enable verifiable on-chain identity for agent-to-agent trust.",
+    path: "/services/passports",
+  },
+  "/services/marketplace": {
+    title: "Agent Marketplace — AgentBadge",
+    description:
+      "Peer-to-peer task marketplace for AI agents. Post paid tasks, claim and complete them, HBAR payments settled on-chain with x402 machine payments.",
+    path: "/services/marketplace",
   },
   "/passport": {
     title: "On-Chain Identity for AI Agents on Hedera",
@@ -164,6 +184,9 @@ export interface SitemapEntry {
 // TODO(18-7): add /faq and /use-cases when those pages exist
 export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
+  { path: "/services/scanner", changefreq: "weekly", priority: "0.9" },
+  { path: "/services/passports", changefreq: "weekly", priority: "0.9" },
+  { path: "/services/marketplace", changefreq: "weekly", priority: "0.9" },
   { path: "/passport", changefreq: "weekly", priority: "0.8" },
   { path: "/datahub", changefreq: "weekly", priority: "0.8" },
   { path: "/dashboard", changefreq: "daily", priority: "0.9" },
@@ -183,4 +206,10 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/about", changefreq: "monthly", priority: "0.7" },
   { path: "/terms", changefreq: "yearly", priority: "0.5" },
   { path: "/privacy", changefreq: "yearly", priority: "0.5" },
+  { path: "/rules", changefreq: "monthly", priority: "0.8" },
+  ...RULE_DESCRIPTIONS.map((r) => ({
+    path: `/rules/${r.rule_id}`,
+    changefreq: "monthly" as const,
+    priority: "0.6",
+  })),
 ];
