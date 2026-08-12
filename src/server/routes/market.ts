@@ -712,8 +712,8 @@ marketRoutes.post(
     summary: "Complete a task with P2P HBAR payment",
     description:
       "Poster completes a delivered task by transferring HBAR to the claimer. " +
-      "Accepts either signature-based payment (txBytes + publicKey + signature from prepare-payment) " +
-      "or legacy private key payment (posterPrivateKey). Operator fallback is removed. (SLICE-12-3)",
+      "When escrow is active (scheduleId exists), posterPrivateKey is required to release the scheduled transfer — " +
+      "signature-based direct transfer is forbidden. Without escrow, accepts (txBytes + publicKey + signature) or posterPrivateKey. (SLICE-12-3)",
     responses: {
       200: { description: "Task completed successfully" },
       400: { description: "Task not in delivered status, missing claimer, or missing payment fields" },
@@ -777,6 +777,17 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Payment method required: provide (txBytes + publicKey + signature) or posterPrivateKey");
     }
 
+    // Escrow active: posterPrivateKey is mandatory — no fallback to direct transfer
+    if (task.scheduleId && !hasPrivateKey) {
+      return errorResponse(
+        c,
+        400,
+        ErrorCodes.ESCROW_SIGNATURE_REQUIRED,
+        "Escrow is active (scheduleId exists). posterPrivateKey is required to release the scheduled HBAR transfer. " +
+        "Use complete_task_with_key MCP tool, or cancel the escrow first to switch to direct payment.",
+      );
+    }
+
     try {
       // SLICE-24-9: Run verification BEFORE releasing payment
       const verification = await runVerification(task, task.resultBody, task.resultIpfs);
@@ -807,22 +818,9 @@ marketRoutes.post(
 
       if (task.scheduleId) {
         // Escrow path: sign scheduled tx to release HBAR
-        if (hasPrivateKey) {
-          const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey!);
-          paymentTxId = result.txId;
-        } else if (hasSignature) {
-          // Signature-based: use posterPrivateKey if available (fallback to direct for now)
-          const fromAccountId = await didToAccountId(posterDid);
-          if (!fromAccountId) {
-            return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
-          }
-          // For signature-based, fall back to direct transfer (escrow signing requires private key)
-          const sigB64Array = JSON.parse(signature!) as string[];
-          const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
-          paymentTxId = await transferHbarWithSignature(txBytes!, publicKey!, signatureBytes);
-        } else {
-          return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Payment method required for escrow release: posterPrivateKey");
-        }
+        // posterPrivateKey is guaranteed to be present (checked before verification)
+        const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey!);
+        paymentTxId = result.txId;
         setEscrowStatus(taskId, "released");
       } else {
         // Backward compat: no escrow, direct transfer
