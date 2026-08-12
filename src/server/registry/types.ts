@@ -17,7 +17,7 @@ export interface Evidence {
   description?: string;
 }
 
-export type CapabilityStatus = "REQUESTED" | "VERIFIED" | "DEPRECATED" | "ARCHIVED";
+export type CapabilityStatus = "REQUESTED" | "DECLARED" | "VERIFIED" | "DEPRECATED" | "ARCHIVED";
 
 export interface Capability {
   id: string;
