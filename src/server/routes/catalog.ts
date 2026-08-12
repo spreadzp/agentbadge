@@ -93,13 +93,29 @@ catalogRoutes.get(
     const teamSection = `
 ## Engineering Capabilities
 
+We offer consulting and development services for the agentic web:
+
+- **GEO Consulting** — SEO, GEO, AEO, llms.txt, AI sitemap, structured data, JSON-LD. Make your content discoverable by AI search engines and AI agents.
+- **AI Agent Consulting** — Agent architecture, agent-ready APIs, MCP, agent cards, knowledge layers, agent economy, A2A, x402 machine payments, agent commerce. Make your product agent-ready.
+- **Backend Infrastructure** — Node.js, NestJS, Laravel, PostgreSQL, Redis, REST APIs, GraphQL, event-driven systems, microservices, Docker.
+- **API Development** — REST API design, OpenAPI specs, GraphQL, Hono, Express, TypeScript, API documentation.
+- **Blockchain Infrastructure** — Hedera, Ethereum, wallets, tokenization, Web3, HTS, HCS, EVM, crypto payments, micropayments, x402, agent economy, DeFi, NFT.
+- **Smart Contract Development** — Solidity, Hedera smart contracts, tokenization, DeFi, NFT, on-chain logic.
+- **MCP Server Development** — Model Context Protocol servers, agent tools, Claude/Cursor/Windsurf integrations.
+- **Web Development & Design** — React, Angular, Vue.js, WordPress, Laravel, Next.js, Nuxt.js, Svelte, HTML, HTMX, CSS, Tailwind, JavaScript, TypeScript, PHP, UI/UX design, responsive design, accessibility. Websites, landing pages, web apps.
+
+## Capability Endpoints
+
+- /agency.json — Agency capability registry (JSON) — services, capabilities, people, evidence, keywords
 - /agent-guide/team — Team overview
 - /agent-guide/team/capabilities — Capabilities (Markdown)
 - /agent-guide/team/capabilities.json — Capabilities (JSON)
-- /agent-guide/team/services — Services catalog
+- /agent-guide/team/services — Services catalog (Markdown) — full service details with problem descriptions and deliverables
 - /agent-guide/team/availability — Availability
 - /agent-guide/team/contact — Contact channels
-- /agent-guide/team/match — Matching criteria
+- /agent-guide/team/match — Matching criteria — match your task keywords to our capabilities
+- /services — Human-readable services catalog
+- /agents.txt — Agent access policy
 
 ## Compliance & Agent Readiness Endpoints
 
@@ -109,6 +125,20 @@ catalogRoutes.get(
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
+
+## Demand & Work Requests
+
+- POST /api/work-requests — Submit a work request (202 + request_id + status_url)
+- GET /api/work-requests/:id — Check work request status
+- GET /work-requests/:id — Human review UI (Accept / Ask / Decline)
+- POST /api/demand/request — Register demand for a capability (202 + demand_id)
+- /agent-guide/demand — Demand Registry API docs (Markdown)
+- /agent-guide/demand/schema.json — Demand request JSON schema
+
+## External Documentation
+
+- **GitBook Docs**: https://agentbadge.gitbook.io/agentbadge-docs — Full project documentation, guides, API reference, architecture
+- **GitBook MCP**: https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp — Read-only MCP server for programmatic doc access (add to MCP client config)
 
 ## Full Version
 
@@ -174,6 +204,58 @@ ${BLOG_ARTICLES.map((a) => `### ${a.title}\nURL: ${baseUrl}/blog/${a.slug}\nDate
 
 AgentBadge is an agency for the agentic web. We help businesses become agent-ready through three core services: the Agent Readiness Scanner (audit APIs for AI agent discoverability), On-Chain Agent Passports (NFT identity on Hedera), and the Agent Marketplace (task marketplace with x402 machine payments). Our team offers MCP server development, AI agent architecture consulting, and Hedera blockchain integration services.
 
+## Engineering Services
+
+We offer consulting and development services. Each service has a problem statement, deliverables, and engagement model. Submit a work request via POST /api/work-requests to engage.
+
+### GEO Consulting
+- Problem: Need your content discoverable by AI search engines and AI agents
+- Keywords: seo, geo, generative engine optimization, search engine optimization, llms.txt, ai sitemap, structured data, json-ld, agent-readable, discoverable, aeo, answer engine optimization
+- Deliverables: GEO audit; llms.txt setup; AI sitemap; Agent knowledge layer; Content architecture recommendations
+- Engagement: fixed-scope, contract
+
+### AI Agent Consulting
+- Problem: Need architecture guidance for making your product agent-ready
+- Keywords: ai agent, agent architecture, agent-ready, agent-readable, mcp, model context protocol, agent api, agentic web, llms.txt, agent card, agent economy, agent-to-agent, a2a, agent commerce, autonomous agents, agent payments, x402, machine payments, agent marketplace
+- Deliverables: Architecture assessment; Agent-readable API design; Knowledge layer setup; Implementation roadmap
+- Engagement: fixed-scope, contract, part-time
+
+### Backend Infrastructure
+- Problem: Need backend systems, databases, or event-driven architecture
+- Keywords: backend, node.js, nestjs, postgresql, redis, rest api, event-driven, microservices, database, server, react, vue.js, html, css, laravel, php, mysql, mongodb, docker, graphql
+- Deliverables: Backend services; Database schema; API endpoints; Documentation; Tests
+- Engagement: fixed-scope, contract, part-time
+
+### API Development
+- Problem: Need a REST API or backend service for your product
+- Keywords: api, rest api, openapi, backend, endpoints, web service, api design, api documentation, hono, express, react, angular, htmx, graphql, typescript, javascript
+- Deliverables: API server; OpenAPI specification; Documentation; Tests
+- Engagement: fixed-scope, contract, part-time
+
+### Blockchain Infrastructure
+- Problem: Need blockchain integration, wallet setup, or tokenization infrastructure
+- Keywords: blockchain, hedera, ethereum, wallet, tokenization, web3, smart contracts, defi, hts, hcs, evm, crypto payments, micropayments, payment systems, x402, machine payments, agent economy, agent commerce, nft, fungible token, on-chain payments, decentralized finance
+- Deliverables: Integration code; Wallet setup; Token configuration; Documentation
+- Engagement: fixed-scope, contract
+
+### Smart Contract Development
+- Problem: Need Solidity or Hedera smart contracts for tokenization, DeFi, or on-chain logic
+- Keywords: smart contracts, solidity, hedera, tokenization, defi, on-chain, evm, hts, nft, fungible token
+- Deliverables: Smart contracts; Deployment scripts; Tests; Documentation
+- Engagement: fixed-scope, contract
+
+### MCP Server Development
+- Problem: Need an MCP server for your AI agent to access existing APIs
+- Keywords: mcp, model context protocol, mcp server, ai agent, agent tools, tool integration, agent-to-api, claude, cursor, windsurf
+- Deliverables: MCP server; Tool definitions; Configuration; Documentation; Tests
+- Engagement: fixed-scope, contract, part-time
+
+### Web Development & Design
+- Problem: Need a website built, redesigned, or fixed — frontend, UI, UX, or design work
+- Keywords: react, angular, vue.js, wordpress, html, htmx, css, tailwind, design, ui, ux, frontend, website, landing page, web design, responsive, accessibility, figma, laravel, next.js, nuxt.js, svelte, sveltekit, javascript, typescript, php, bootstrap, sass, scss
+- Deliverables: Website or web app; Responsive design; UI/UX improvements; Design system; Documentation
+- Engagement: fixed-scope, contract, part-time
+
 ## Engineering Capabilities
 
 - /agent-guide/team — Team overview
@@ -183,6 +265,15 @@ AgentBadge is an agency for the agentic web. We help businesses become agent-rea
 - /agent-guide/team/availability — Availability
 - /agent-guide/team/contact — Contact channels
 - /agent-guide/team/match — Matching criteria
+
+## Demand & Work Requests
+
+- POST /api/work-requests — Submit a work request (202 + request_id + status_url)
+- GET /api/work-requests/:id — Check work request status
+- GET /work-requests/:id — Human review UI (Accept / Ask / Decline)
+- POST /api/demand/request — Register demand for a capability (202 + demand_id)
+- /agent-guide/demand — Demand Registry API docs (Markdown)
+- /agent-guide/demand/schema.json — Demand request JSON schema
 
 ## API Endpoints
 
@@ -225,6 +316,11 @@ AgentBadge is an agency for the agentic web. We help businesses become agent-rea
 - POST /passport/request — Issue a new passport NFT
 - GET /passport/:tokenId/:serial — Get passport metadata
 - GET /verify/:tokenId/:serial — Verify passport on-chain
+
+## External Documentation
+
+- **GitBook Docs**: https://agentbadge.gitbook.io/agentbadge-docs — Full project documentation, guides, API reference, architecture
+- **GitBook MCP**: https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp — Read-only MCP server for programmatic doc access
 
 ## Guides
 

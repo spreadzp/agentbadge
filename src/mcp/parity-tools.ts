@@ -169,11 +169,21 @@ async function createWorkRequestHandler(args: Record<string, unknown>): Promise<
   return postEndpoint("/api/work-requests", args, "Create a work request");
 }
 
-// ─── Agent by DID ─────────────────────────────────────────────────
+// ─── Agent by DID ───────────────────────────────────────────────
 
 async function getAgentByDidHandler(args: Record<string, unknown>): Promise<ToolResult> {
   const did = args.did as string;
-  return getEndpoint(`/agents/${encodeURIComponent(did)}`, "Get agent by DID");
+  return getEndpoint(`/agents/${encodeURIComponent(did)}`, "Agent details by DID");
+}
+
+// ─── Agency services & contact (SLICE-56-9) ──────────────────────
+
+async function getServicesInfoHandler(): Promise<ToolResult> {
+  return getEndpoint("/agency.json", "Canonical agency profile with services, capabilities, and contacts");
+}
+
+async function contactUsHandler(): Promise<ToolResult> {
+  return getEndpoint("/agent-guide/team/contact", "Contact information and routing for agency inquiries");
 }
 
 // ─── Registration ─────────────────────────────────────────────────
@@ -368,5 +378,20 @@ export function registerParityTools(): void {
       did: z.string().describe("Agent DID (e.g. did:hcs:0.0.12345:1)"),
     },
     getAgentByDidHandler,
+  );
+
+  // Agency services & contact (SLICE-56-9)
+  registerTool(
+    "get_services_info",
+    "Fetch the canonical agency profile (/agency.json) — machine-readable JSON with schema_version, registry_version, services, capabilities, people, and endpoints. Use this to programmatically reason about services and capabilities.",
+    {},
+    getServicesInfoHandler,
+  );
+
+  registerTool(
+    "contact_us",
+    "Fetch contact information and routing (/agent-guide/team/contact) — provides contact details and inquiry routing for the agency.",
+    {},
+    contactUsHandler,
   );
 }

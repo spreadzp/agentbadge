@@ -5,6 +5,7 @@ COPY package.json bun.lock ./
 RUN bun install --production --frozen-lockfile
 
 COPY src ./src
+COPY tests ./tests
 COPY content ./content
 COPY public ./public
 COPY tailwind.config.js ./

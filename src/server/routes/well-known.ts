@@ -35,6 +35,7 @@ export function buildAgentCard() {
     description: openApiConfig.info.description,
     url: baseUrl,
     version: openApiConfig.info.version,
+    documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
     capabilities: [
       "passport_issuance",
       "passport_verification",
@@ -46,6 +47,9 @@ export function buildAgentCard() {
       "compliance_checking",
       "agent_skills_discovery",
       "web_bot_auth",
+      "agency_services",
+      "work_requests",
+      "demand_registry",
     ],
     skills: [
       "api_call",
@@ -54,12 +58,17 @@ export function buildAgentCard() {
       "data_consume",
       "orchestration",
       "compliance_checking",
+      "agency_discovery",
+      "capability_matching",
+      "work_request_submission",
     ],
     endpoints: {
       api: `${baseUrl}/api/specs`,
-      docs: `${baseUrl}/docs`,
+      docs: "https://agentbadge.gitbook.io/agentbadge-docs",
       mcp: `${baseUrl}/mcp`,
+      gitbook_mcp: "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
       llms_txt: `${baseUrl}/llms.txt`,
+      llms_full_txt: `${baseUrl}/llms-full.txt`,
       guides: `${baseUrl}/agent-guide/context`,
       did_resolver: `${baseUrl}/did`,
       api_catalog: `${baseUrl}/.well-known/api-catalog`,
@@ -68,6 +77,17 @@ export function buildAgentCard() {
       agent_skills: `${baseUrl}/.well-known/agent-skills/index.json`,
       web_bot_auth: `${baseUrl}/.well-known/http-message-signatures-directory`,
       http_message_signatures: `${baseUrl}/.well-known/http-message-signatures-directory`,
+      agency_json: `${baseUrl}/agency.json`,
+      services: `${baseUrl}/services`,
+      team_capabilities: `${baseUrl}/agent-guide/team/capabilities`,
+      team_capabilities_json: `${baseUrl}/agent-guide/team/capabilities.json`,
+      team_services: `${baseUrl}/agent-guide/team/services`,
+      team_availability: `${baseUrl}/agent-guide/team/availability`,
+      team_contact: `${baseUrl}/agent-guide/team/contact`,
+      team_match: `${baseUrl}/agent-guide/team/match`,
+      work_requests: `${baseUrl}/api/work-requests`,
+      demand_request: `${baseUrl}/api/demand/request`,
+      agents_txt: `${baseUrl}/agents.txt`,
     },
     payment: {
       protocol: "x402",
@@ -269,7 +289,7 @@ wellKnownRoutes.get(
  * Build the AI sitemap XML string.
  * SLICE-17-9
  */
-function buildAiSitemap(): string {
+export function buildAiSitemap(): string {
   const baseUrl = BASE_URL;
 
   const resources = [
@@ -381,6 +401,84 @@ function buildAiSitemap(): string {
       format: "json",
       desc: "Web Bot Auth directory — JWKS for HTTP Message Signatures",
     },
+    {
+      loc: `${baseUrl}/agency.json`,
+      priority: "1.0",
+      format: "json",
+      desc: "Agency capability registry — services, capabilities, people, evidence (EPIC-56)",
+    },
+    {
+      loc: `${baseUrl}/services`,
+      priority: "0.8",
+      format: "html",
+      desc: "Human-readable services catalog",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/team/capabilities`,
+      priority: "0.9",
+      format: "markdown",
+      desc: "Team capabilities with evidence and confidence scores",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/team/capabilities.json`,
+      priority: "0.9",
+      format: "json",
+      desc: "Team capabilities in JSON format",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/team/services`,
+      priority: "0.9",
+      format: "markdown",
+      desc: "Engineering services catalog with deliverables and engagement types",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/team/availability`,
+      priority: "0.8",
+      format: "markdown",
+      desc: "Team availability and engagement types",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/team/contact`,
+      priority: "0.8",
+      format: "markdown",
+      desc: "Contact channels for work requests",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/team/match`,
+      priority: "0.8",
+      format: "markdown",
+      desc: "Matching criteria for agent requests to team capabilities",
+    },
+    {
+      loc: `${baseUrl}/api/work-requests`,
+      priority: "0.9",
+      format: "json",
+      desc: "Submit a work request — POST returns 202 with request_id and status_url",
+    },
+    {
+      loc: `${baseUrl}/api/demand/request`,
+      priority: "0.8",
+      format: "json",
+      desc: "Register demand for a capability — POST returns 202 with demand_id",
+    },
+    {
+      loc: `${baseUrl}/agents.txt`,
+      priority: "0.8",
+      format: "text",
+      desc: "Agent access policy — rate limits, payment requirements, discovery endpoints",
+    },
+    {
+      loc: "https://agentbadge.gitbook.io/agentbadge-docs",
+      priority: "0.9",
+      format: "html",
+      desc: "GitBook documentation — full project docs, guides, API reference, architecture",
+    },
+    {
+      loc: "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
+      priority: "0.8",
+      format: "mcp",
+      desc: "GitBook MCP server — read-only programmatic access to documentation via Model Context Protocol",
+    },
   ];
 
   const entries = resources
@@ -448,6 +546,10 @@ wellKnownRoutes.get(
     const body = `User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /ui/
+Disallow: /a2a/
+Disallow: /agents
+Disallow: /market/tasks/
 Disallow: /ui/a2a/inbox/fragment
 
 Content-Signal: ai-train=no, search=yes, ai-input=no
@@ -516,6 +618,7 @@ User-agent: Bytespider
 Disallow: /
 
 Sitemap: ${baseUrl}/sitemap.xml
+Sitemap: https://agentbadge.gitbook.io/agentbadge-docs/sitemap.xml
 `;
     return new Response(body, {
       headers: {
@@ -537,7 +640,7 @@ const STATIC_LASTMOD: Record<string, string> = {
   "/faq": "2026-07-29",
   "/use-cases": "2026-07-29",
   "/contact": "2026-07-24",
-  "/team": BUILD_DATE,
+  "/work-with-us": BUILD_DATE,
   "/changelog": BUILD_DATE,
 };
 
@@ -545,7 +648,7 @@ function pageLastmod(path: string): string {
   return STATIC_LASTMOD[path] ?? BUILD_DATE;
 }
 
-function buildSitemap(): string {
+export function buildSitemap(): string {
   const baseUrl = BASE_URL;
 
   const urls = PUBLIC_PAGES.map(
@@ -557,9 +660,16 @@ function buildSitemap(): string {
   </url>`,
   ).join("\n");
 
+  const gitbookUrl = `  <url>
+    <loc>https://agentbadge.gitbook.io/agentbadge-docs</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
+${gitbookUrl}
 </urlset>`;
 }
 
@@ -816,6 +926,34 @@ AI agents are welcome to access this site.
 - OpenAPI spec: /openapi.json
 - Sitemap: /ai-sitemap.xml
 - Respect robots.txt and crawl-delay directives
+
+## Agency Profile
+
+AgentBadge is an agency for the agentic web. We help businesses become agent-ready
+through audit, identity, and marketplace services on Hedera.
+
+- Team overview: /agent-guide/team
+- Capabilities: /agent-guide/team/capabilities
+- Capabilities (JSON): /agent-guide/team/capabilities.json
+- Services: /agent-guide/team/services
+- Availability: /agent-guide/team/availability
+- Matching criteria: /agent-guide/team/match
+
+## Capabilities
+
+- Agent Readiness Scanner — audit APIs/websites against 72+ agent readiness rules
+- On-Chain Agent Passports — NFT-based agent identity on Hedera Token Service
+- Agent Marketplace — peer-to-peer task marketplace with x402 HBAR payments
+- MCP Server Development — custom MCP server implementation
+- Hedera Blockchain Integration — smart contract and dApp development
+- AI Agent Architecture — consulting and system design
+
+## Contacts
+
+- Contact form: /contact
+- Work requests: POST /api/work-requests
+- Demand registry: POST /api/demand/request
+- Security contact: /.well-known/security.txt
 `;
     return new Response(policy, {
       headers: {

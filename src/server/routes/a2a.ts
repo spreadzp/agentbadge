@@ -28,6 +28,11 @@ import { errorResponse } from "../lib/error-response";
 
 export const a2aRoutes = new Hono();
 
+a2aRoutes.use("/a2a/*", async (c, next) => {
+  await next();
+  c.header("X-Robots-Tag", "noindex, nofollow");
+});
+
 const MAX_BODY_BYTES = 4096;
 
 // ─── POST /a2a/send ──────────────────────────────────────────────

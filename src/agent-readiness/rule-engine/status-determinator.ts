@@ -110,15 +110,17 @@ class StatusDeterminatorClass {
       }
 
       // New check types: http_probe, content_parse, header_check
-      // All verify when HTTP evidence with 2xx status is found
+      // http_probe: 2xx or 402 (payment required is a valid probe response)
       if (rule.check.type === "http_probe" && e.type === "http") {
-        if (e.status >= 200 && e.status < 300) return true;
+        if ((e.status >= 200 && e.status < 300) || e.status === 402) return true;
       }
+      // content_parse: 2xx or 402 (L402 challenge body is parseable)
       if (rule.check.type === "content_parse" && e.type === "http") {
-        if (e.status >= 200 && e.status < 300) return true;
+        if ((e.status >= 200 && e.status < 300) || e.status === 402) return true;
       }
+      // header_check: 2xx, 4xx (except 404), or 402 (payment headers)
       if (rule.check.type === "header_check" && e.type === "http") {
-        if (e.status >= 200 && e.status < 400) return true;
+        if (e.status >= 200 && e.status < 500 && e.status !== 404) return true;
       }
 
       // http_fetch with match_keys: check if any of the specified headers are present

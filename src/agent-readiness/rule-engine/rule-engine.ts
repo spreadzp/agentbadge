@@ -144,7 +144,8 @@ class RuleEngineClass {
       "nonexistent": "content_negotiation",
       "pricing": "pricing",
       "pricing.json": "pricing",
-      "passport": "x402",
+      "passport": "l402",
+      "passport/request": "l402",
     };
 
     for (const [substr, key] of Object.entries(targetMap)) {

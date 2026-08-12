@@ -44,7 +44,10 @@ export function GuideLayout(
         <meta name="twitter:site" content="@agentbadge" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
+        <link rel="alternate" type="text/markdown" title="Full Documentation" href="https://agentbadge.gitbook.io/agentbadge-docs" />
         <link rel="security.txt" href="/.well-known/security.txt" />
+        <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
+        <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
         ${raw(jsonLdHtml)}
         <link rel="stylesheet" href="/css/tailwind.css" />
       </head>
@@ -64,6 +67,7 @@ export function GuideLayout(
               <li><a href="/services/passports" class="text-emerald-400 hover:text-emerald-300">On-Chain Passports</a> — NFT identity on Hedera with HCS directory</li>
               <li><a href="/services/marketplace" class="text-emerald-400 hover:text-emerald-300">Agent Marketplace</a> — Peer-to-peer task marketplace with x402 machine payments</li>
               <li><a href="/blog" class="text-emerald-400 hover:text-emerald-300">Blog</a> — Deep dives into agent-ready infrastructure, MCP, and x402</li>
+              <li><a href="https://agentbadge.gitbook.io/agentbadge-docs" target="_blank" rel="noopener" class="text-emerald-400 hover:text-emerald-300">Full Documentation ↗</a> — Complete API reference, guides, and changelog on GitBook</li>
             </ul>
           </div>
         </div>

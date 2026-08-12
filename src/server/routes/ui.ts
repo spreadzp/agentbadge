@@ -57,7 +57,7 @@ function isHtmxRequest(c: Context): boolean {
 
 /** Wrap fragment in Layout if direct browser access, return raw if HTMX. */
 function wrapFragment(c: Context, fragment: string, title?: string, meta?: PageMeta, jsonLd?: object[]): string {
-  return isHtmxRequest(c) ? fragment : Layout(fragment, title, meta, jsonLd).toString();
+  return isHtmxRequest(c) ? fragment : Layout(fragment, title, meta, jsonLd, true).toString();
 }
 
 export const uiRoutes = new Hono();
@@ -423,7 +423,7 @@ uiRoutes.get("/ui/agents/:param1/:param2?", async (c) => {
   try {
     const tokenId = process.env.PASSPORT_TOKEN_ID;
     if (!tokenId) {
-      return c.html(Layout(html`<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-amber-400">PASSPORT_TOKEN_ID not configured.</div>`.toString(), "Agent Profile").toString());
+      return c.html(Layout(html`<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-amber-400">PASSPORT_TOKEN_ID not configured.</div>`.toString(), "Agent Profile", undefined, undefined, true).toString());
     }
 
     const param1 = c.req.param("param1");
@@ -467,7 +467,7 @@ uiRoutes.get("/ui/agents/:param1/:param2?", async (c) => {
         <p class="text-slate-400">No agent found${lookupAccountId ? ` for account ${lookupAccountId}` : ""}.</p>
         <a href="/ui/agents" class="mt-4 inline-block text-emerald-400 hover:underline">← Back to Directory</a>
       </section>`;
-      return c.html(Layout(notFound.toString(), "Agent Not Found").toString(), 404);
+      return c.html(Layout(notFound.toString(), "Agent Not Found", undefined, undefined, true).toString(), 404);
     }
 
     const did = `did:hcs:${matchingNft.token_id}:${matchingNft.serial_number}`;
@@ -544,10 +544,10 @@ uiRoutes.get("/ui/agents/:param1/:param2?", async (c) => {
       profilePageLd(agent),
       passportLd({ tokenId: agent.tokenId, serial: agent.serial, tier: agent.tier, ownerDID: agent.did }),
     ];
-    return c.html(Layout(pageContent.toString(), "Agent Profile", undefined, entitySchemas).toString());
+    return c.html(Layout(pageContent.toString(), "Agent Profile", undefined, entitySchemas, true).toString());
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return c.html(Layout(html`<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-red-400">Agent profile error: ${message}</div>`.toString(), "Agent Profile").toString(), 500);
+    return c.html(Layout(html`<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-red-400">Agent profile error: ${message}</div>`.toString(), "Agent Profile", undefined, undefined, true).toString(), 500);
   }
 });
 
@@ -1058,7 +1058,7 @@ uiRoutes.get("/ui/a2a", (c) => {
         </section>`
       : ""}
   `;
-  return c.html(Layout(page.toString(), PageTitles["/ui/a2a"], PageMetaRegistry["/ui/a2a"]).toString());
+  return c.html(Layout(page.toString(), PageTitles["/ui/a2a"], PageMetaRegistry["/ui/a2a"], undefined, true).toString());
 });
 
 /**
@@ -1078,7 +1078,7 @@ uiRoutes.get("/ui/a2a/inbox", (c) => {
         <p class="mt-3 text-slate-400">No DID provided. Go to <a href="/ui/agents" class="text-emerald-400 hover:underline">Agents</a> to select an agent.</p>
       </section>
     `;
-    return c.html(Layout(page.toString(), PageTitles["/ui/a2a"]).toString());
+    return c.html(Layout(page.toString(), PageTitles["/ui/a2a"], undefined, undefined, true).toString());
   }
 
   const messages = getA2AMessagesByTo(did);
@@ -1112,7 +1112,7 @@ uiRoutes.get("/ui/a2a/inbox", (c) => {
       </div>
     </section>
   `;
-  return c.html(Layout(page.toString(), PageTitles["/ui/a2a"]).toString());
+  return c.html(Layout(page.toString(), PageTitles["/ui/a2a"], undefined, undefined, true).toString());
 });
 
 /**
@@ -1143,7 +1143,7 @@ uiRoutes.get("/ui/a2a/outbox", (c) => {
         <p class="mt-3 text-slate-400">No DID provided. Go to <a href="/ui/agents" class="text-emerald-400 hover:underline">Agents</a> to select an agent.</p>
       </section>
     `;
-    return c.html(Layout(page.toString(), "A2A Outbox").toString());
+    return c.html(Layout(page.toString(), "A2A Outbox", undefined, undefined, true).toString());
   }
 
   const messages = getA2AMessagesByFrom(did);
@@ -1177,7 +1177,7 @@ uiRoutes.get("/ui/a2a/outbox", (c) => {
       </div>
     </section>
   `;
-  return c.html(Layout(page.toString(), "A2A Outbox").toString());
+  return c.html(Layout(page.toString(), "A2A Outbox", undefined, undefined, true).toString());
 });
 
 /**

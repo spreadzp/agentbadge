@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getRegistry } from "../registry/loader";
-import { TeamPage } from "../../views/team-page";
 import { ServicesPage } from "../../views/services-page";
 import { WorkWithUsPage } from "../../views/work-with-us-page";
 import { articleLd, defaultCoreSchemas } from "../lib/json-ld";
@@ -12,37 +11,13 @@ teamPageRoutes.get(
   "/team",
   describeRoute({
     tags: ["Team"],
-    summary: "Team page — who we are, capabilities, services, people",
+    summary: "301 redirect to /about",
     description:
-      "Human-facing page about the AgentBadge engineering team. Renders from registry data.",
-    responses: { 200: { description: "HTML team page" } },
+      "Redirects /team to /about with 301 Moved Permanently. SLICE-55-1: fix duplicate canonical in GSC.",
+    responses: { 301: { description: "Redirect to /about" } },
   }),
-  async (c) => {
-    try {
-      const registry = await getRegistry();
-      const html = TeamPage(registry);
-      const schemas = [
-        ...defaultCoreSchemas(),
-        articleLd({
-          title: "AgentBadge Engineering Team",
-          description:
-            "MCP development, blockchain integration, AI agent architecture, and GEO optimization. Available for contract work.",
-          path: "/team",
-          sections: [
-            {
-              title: "Capabilities",
-              body: registry.capabilities.map((cap) => `${cap.name}: ${cap.description ?? ""}`).join("; "),
-            },
-          ],
-        }),
-      ];
-      return c.html(html);
-    } catch {
-      return c.html(
-        '<section class="p-8 text-center text-slate-300">Team data temporarily unavailable. Please try again later.</section>',
-        500,
-      );
-    }
+  (c) => {
+    return c.redirect("/about", 301);
   },
 );
 

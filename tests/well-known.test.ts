@@ -303,5 +303,14 @@ describe("Well-known routes", () => {
       expect(homeBlock).toBeDefined();
       expect(homeBlock).toContain("<priority>1.0</priority>");
     });
+
+    it("HEAD returns non-zero Content-Length (GSC fix)", async () => {
+      const res = await app.request("/sitemap.xml", { method: "HEAD" });
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toContain("application/xml");
+      const cl = res.headers.get("Content-Length");
+      expect(cl).not.toBeNull();
+      expect(Number(cl)).toBeGreaterThan(0);
+    });
   });
 });

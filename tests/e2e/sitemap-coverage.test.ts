@@ -47,10 +47,11 @@ describe("Sitemap Coverage + Lastmod (SLICE-53-4)", () => {
     expect(text).toContain("/pricing");
   });
 
-  it("sitemap includes team page", async () => {
+  it("sitemap includes about page (was /team, now redirected)", async () => {
     const res = await fetch(`${BASE}/sitemap.xml`);
     const text = await res.text();
-    expect(text).toContain("/team");
+    expect(text).toContain("/about");
+    expect(text).not.toContain("/team</loc>");
   });
 
   it("sitemap has lastmod entries", async () => {

@@ -640,5 +640,5 @@ export function MedicalDemoPage(task?: CachedMarketTask) {
       }
     </script>`;
 
-  return Layout(content.toString(), "Medical Data Demo", PageMeta["/ui/medical-demo"]);
+  return Layout(content.toString(), "Medical Data Demo", PageMeta["/ui/medical-demo"], undefined, true);
 }

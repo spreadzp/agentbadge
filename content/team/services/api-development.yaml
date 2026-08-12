@@ -1,6 +1,26 @@
 id: api-development
 name: API Development
 problem: "Need a REST API or backend service for your product"
+keywords:
+  - api
+  - rest api
+  - openapi
+  - backend
+  - endpoints
+  - web service
+  - api design
+  - api documentation
+  - hono
+  - express
+  - react
+  - angular
+  - htmx
+  - graphql
+  - typescript
+  - javascript
+  - blockchain api
+  - payment api
+  - web3 api
 deliverables:
   - API server
   - OpenAPI specification

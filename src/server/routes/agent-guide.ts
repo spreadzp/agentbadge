@@ -1341,7 +1341,7 @@ agentGuideRoutes.get(
       howToLd({
         name: "Mint an AI Agent Passport on AgentBadge",
         description: "Onboard an AI agent into AgentBadge: mint NFT passport, register in directory, join marketplace.",
-        path: "/agent-guide",
+        path: "/marketplace-guide",
         totalTime: "PT15M",
         steps: [
           { name: "Create Hedera testnet account", text: "Use portal.hedera.com to get an account ID and private key." },
@@ -1353,11 +1353,11 @@ agentGuideRoutes.get(
       }),
       breadcrumbListLd([
         { name: "Home", path: "/" },
-        { name: "Agent Guide", path: "/agent-guide" },
+        { name: "Marketplace Guide", path: "/marketplace-guide" },
       ]),
     ].map((s) => (s as any)["@type"] === "HowTo" ? { ...(s as any), dateModified: guideDate } : s);
 
-    const html = GuideLayout("Agent Onboarding Guide", markdown, schemas, "/agent-guide");
+    const html = GuideLayout("Agent Onboarding Guide", markdown, schemas, "/marketplace-guide");
     return c.html(html);
   },
 );

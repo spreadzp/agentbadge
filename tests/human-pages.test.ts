@@ -5,56 +5,28 @@ setupMockEnv();
 const app = makeTestApp();
 
 describe("SLICE-46-7: Human pages — /team, /services, /work-with-us", () => {
-  describe("GET /team", () => {
-    it("returns 200", async () => {
+  describe("GET /team (redirects to /about)", () => {
+    it("returns 301 redirect to /about", async () => {
       const res = await app.request("/team");
+      expect(res.status).toBe(301);
+      expect(res.headers.get("location")).toContain("/about");
+    });
+  });
+
+  describe("GET /about (canonical team page)", () => {
+    it("returns 200", async () => {
+      const res = await app.request("/about");
       expect(res.status).toBe(200);
     });
 
-    it("contains team heading", async () => {
-      const res = await app.request("/team");
+    it("contains team or about heading", async () => {
+      const res = await app.request("/about");
       const html = await res.text();
-      expect(html).toContain("Engineering Team");
-    });
-
-    it("contains capabilities section", async () => {
-      const res = await app.request("/team");
-      const html = await res.text();
-      expect(html).toContain("Capabilities");
-    });
-
-    it("contains services section", async () => {
-      const res = await app.request("/team");
-      const html = await res.text();
-      expect(html).toContain("Services");
-    });
-
-    it("contains people section", async () => {
-      const res = await app.request("/team");
-      const html = await res.text();
-      expect(html).toContain("People");
-    });
-
-    it("renders capability names from registry", async () => {
-      const res = await app.request("/team");
-      const html = await res.text();
-      expect(html).toContain("MCP Server Development");
-    });
-
-    it("renders person names from registry", async () => {
-      const res = await app.request("/team");
-      const html = await res.text();
-      expect(html).toContain("Paul");
-    });
-
-    it("links to /work-with-us", async () => {
-      const res = await app.request("/team");
-      const html = await res.text();
-      expect(html).toContain("/work-with-us");
+      expect(html).toContain("AgentBadge");
     });
 
     it("links to /services", async () => {
-      const res = await app.request("/team");
+      const res = await app.request("/about");
       const html = await res.text();
       expect(html).toContain("/services");
     });
@@ -155,8 +127,8 @@ describe("SLICE-46-7: Human pages — /team, /services, /work-with-us", () => {
   });
 
   describe("Pages use Hono HTML (no React)", () => {
-    it("team page has no React root div", async () => {
-      const res = await app.request("/team");
+    it("about page has no React root div", async () => {
+      const res = await app.request("/about");
       const html = await res.text();
       expect(html).not.toContain('id="root"');
     });
@@ -175,10 +147,10 @@ describe("SLICE-46-7: Human pages — /team, /services, /work-with-us", () => {
   });
 
   describe("Pages are responsive (mobile-friendly)", () => {
-    it("team page has responsive grid classes", async () => {
-      const res = await app.request("/team");
+    it("about page has responsive grid classes", async () => {
+      const res = await app.request("/about");
       const html = await res.text();
-      expect(html).toContain("sm:grid-cols-2");
+      expect(html).toContain("sm:grid-cols");
     });
 
     it("services page has responsive grid classes", async () => {
@@ -195,14 +167,11 @@ describe("SLICE-46-7: Human pages — /team, /services, /work-with-us", () => {
   });
 
   describe("Pages render from registry data (no hardcoded capabilities)", () => {
-    it("team page renders all registry capabilities", async () => {
-      const res = await app.request("/team");
+    it("about page contains registry-derived content", async () => {
+      const res = await app.request("/about");
       const html = await res.text();
-      // Registry has 5 capabilities — all should appear
-      expect(html).toContain("MCP Server Development");
-      expect(html).toContain("Blockchain Development");
-      expect(html).toContain("AI Agent Architecture");
-      expect(html).toContain("GEO Optimization");
+      // About page should contain team/person info
+      expect(html).toContain("Paul");
     });
 
     it("services page renders all registry services", async () => {

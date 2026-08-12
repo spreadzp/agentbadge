@@ -5,16 +5,18 @@ export interface TeamMember {
   expertise: string[];
   github?: string;
   url?: string;
+  linkedin?: string;
 }
 
 export const TEAM_MEMBERS: TeamMember[] = [
   {
-    name: "Oleksandr Khotemskyi",
+    name: "Paul Spread",
     role: "Founder & Lead Engineer",
     bio: "Full-stack engineer specializing in blockchain infrastructure and AI agent systems. Built AgentBadge from the ground up on Hedera with HTS, HCS, and x402 payments. Previously worked on payment systems and exchange platforms.",
     expertise: ["Hedera", "TypeScript", "AI Agents", "x402", "MCP"],
     github: "https://github.com/spreadzp",
     url: "https://github.com/spreadzp",
+    linkedin: "https://www.linkedin.com/in/spreadzp",
   },
   {
     name: "AgentBadge Team",

@@ -126,6 +126,7 @@ describe("SLICE-46-14: Integration — Work Request Lifecycle", () => {
     expect(record.created_at).toBe(record.updated_at);
 
     // Update status
+    await new Promise((r) => setTimeout(r, 10));
     await app.request(`/work-requests/${request_id}/accept`, { method: "POST" });
 
     const pollRes = await app.request(`/api/work-requests/${request_id}`);

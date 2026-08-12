@@ -38,6 +38,7 @@ export interface Service {
   id: string;
   name: string;
   problem: string;
+  keywords?: string[];
   deliverables: string[];
   engagement: string[];
   contact: string;

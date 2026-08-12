@@ -294,5 +294,5 @@ export function HelpPage() {
       </div>
     </section>`;
 
-  return Layout(content.toString(), "Help & Documentation", PageMeta["/ui/help"]);
+  return Layout(content.toString(), "Help & Documentation", PageMeta["/ui/help"], undefined, true);
 }

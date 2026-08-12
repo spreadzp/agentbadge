@@ -11,6 +11,8 @@ import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
 import { faqPageLd, articleLd, defaultCoreSchemas, personLd } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
+import { getRegistry } from "../registry/loader";
+import type { RegistryIndex } from "../registry/types";
 
 export const contentPageRoutes = new Hono();
 
@@ -62,7 +64,13 @@ contentPageRoutes.get(
     description: "Mission, architecture, and open-source information about AgentBadge.",
     responses: { 200: { description: "HTML about page" } },
   }),
-  (c) => {
+  async (c) => {
+    let registry: RegistryIndex | undefined;
+    try {
+      registry = await getRegistry();
+    } catch {
+      // Registry load failed — page still renders with static data
+    }
     const schemas = [
       ...defaultCoreSchemas(),
       ...TEAM_MEMBERS.map((m) =>
@@ -71,6 +79,7 @@ contentPageRoutes.get(
           role: m.role,
           description: m.bio,
           url: m.url,
+          linkedin: m.linkedin,
         })
       ),
       articleLd({
@@ -94,7 +103,7 @@ contentPageRoutes.get(
         ],
       }),
     ];
-    return c.html(AboutPage(schemas));
+    return c.html(AboutPage(schemas, registry));
   },
 );
 

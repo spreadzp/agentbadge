@@ -25,6 +25,7 @@ import { workRequestUiRoutes } from "../../src/server/routes/work-request-ui";
 import { demandRoutes } from "../../src/server/routes/api/demand";
 import { demandGuideRoutes } from "../../src/server/routes/agent-guide/demand";
 import { agencyJsonRoutes } from "../../src/server/routes/agency-json";
+import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
@@ -59,6 +60,7 @@ export function makeTestApp(): Hono {
   app.route("/", demandRoutes);
   app.route("/", demandGuideRoutes);
   app.route("/", agencyJsonRoutes);
+  app.route("/", wellKnownRoutes);
   return app;
 }
 

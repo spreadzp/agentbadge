@@ -1,6 +1,17 @@
 id: mcp-server-development
 name: MCP Server Development
 problem: "Need an MCP server for your AI agent to access existing APIs"
+keywords:
+  - mcp
+  - model context protocol
+  - mcp server
+  - ai agent
+  - agent tools
+  - tool integration
+  - agent-to-api
+  - claude
+  - cursor
+  - windsurf
 deliverables:
   - MCP server
   - Tool definitions

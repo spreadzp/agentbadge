@@ -3,12 +3,14 @@ import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 import { AGENCY_BRAND, AGENCY_SERVICES } from "../server/lib/agency-config";
 import { TEAM_MEMBERS } from "../server/lib/team-data";
+import type { RegistryIndex } from "../server/registry/types";
 
 /**
  * About page — agency story, mission, services overview.
  * SLICE-51-6: Rewritten from product pitch to agency narrative.
+ * SLICE-56-3: Added registry-driven capabilities, availability, contact sections.
  */
-export function AboutPage(jsonLd?: object[]) {
+export function AboutPage(jsonLd?: object[], registry?: RegistryIndex) {
   const section = (label: string, body: string) => `
     <section class="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
       <span class="text-xs font-medium uppercase tracking-wider text-emerald-400">${label}</span>
@@ -138,6 +140,47 @@ export function AboutPage(jsonLd?: object[]) {
           </div>`).join("")}
       </div>`,
   ))}
+
+    ${registry ? raw(section(
+    "Capabilities",
+    `<div class="grid gap-3 sm:grid-cols-2">
+        ${registry.capabilities
+      .filter((cap) => cap.status === "VERIFIED" || cap.status === "DECLARED")
+      .map((cap) => `<div class="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-white">${cap.name}</span>
+              <span class="text-xs rounded-full px-2 py-0.5 ${cap.status === "VERIFIED" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-400"}">${cap.status}</span>
+            </div>
+            ${cap.description ? `<p class="mt-1 text-xs text-slate-400">${cap.description}</p>` : ""}
+            ${cap.evidence.length > 0 ? `<div class="mt-2 flex flex-wrap gap-1">${cap.evidence.map((e) => `<span class="text-xs rounded bg-slate-800 px-1.5 py-0.5 text-slate-400">${e.name}</span>`).join("")}</div>` : ""}
+          </div>`).join("")}
+      </div>
+      <p class="mt-4 text-sm text-slate-400">
+        <a href="/services" class="text-emerald-400 underline hover:text-emerald-300">See how these capabilities map to services →</a>
+      </p>`,
+  )) : ""}
+
+    ${registry ? raw(section(
+    "Availability",
+    `<div class="space-y-2">
+        ${registry.people
+      .map((p) => `<div class="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3">
+            <span class="text-sm text-slate-300">${p.name}</span>
+            <span class="text-xs ${p.availability === "available" ? "text-emerald-400" : "text-amber-400"}">${p.availability}</span>
+          </div>`).join("")}
+      </div>`,
+  )) : ""}
+
+    ${registry ? raw(section(
+    "Contact",
+    `<div class="flex flex-wrap gap-2">
+        ${(registry.people[0]?.contact.channels ?? ["telegram", "email"])
+      .map((ch) => `<span class="text-xs rounded-full bg-slate-700 px-3 py-1 text-slate-300 capitalize">${ch}</span>`).join("")}
+      </div>
+      <p class="mt-4 text-sm text-slate-400">
+        <a href="/work-with-us" class="text-emerald-400 underline hover:text-emerald-300">See engagement options →</a>
+      </p>`,
+  )) : ""}
 
     <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
       <p class="text-slate-300">Ready to become agent-ready?</p>

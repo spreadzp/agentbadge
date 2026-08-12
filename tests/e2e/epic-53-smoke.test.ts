@@ -53,12 +53,13 @@ describe("EPIC-53 E2E Smoke (SLICE-53-7)", () => {
     expect(text).toContain("/blog");
   });
 
-  // Sitemap: includes marketplace-guide and team
-  it("sitemap includes marketplace-guide and team", async () => {
+  // Sitemap: includes marketplace-guide and about (was /team, now redirected)
+  it("sitemap includes marketplace-guide and about", async () => {
     const res = await fetch(`${BASE}/sitemap.xml`);
     const text = await res.text();
     expect(text).toContain("/marketplace-guide");
-    expect(text).toContain("/team");
+    expect(text).toContain("/about");
+    expect(text).not.toContain("/team</loc>");
   });
 
   // llms-full.txt

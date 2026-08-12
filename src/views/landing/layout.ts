@@ -71,6 +71,8 @@ export function LandingLayout(
         <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://unpkg.com" crossorigin />
         <link rel="dns-prefetch" href="https://unpkg.com" />
+        <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
+        <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
         <link rel="preload" href="/css/tailwind.css" as="style" />
         ${raw(jsonLdHtml)}
         <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>

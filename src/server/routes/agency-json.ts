@@ -21,6 +21,7 @@ agencyJsonRoutes.get("/agency.json", async (c) => {
       id: svc.id,
       name: svc.name,
       problem: svc.problem,
+      keywords: svc.keywords ?? [],
       deliverables: svc.deliverables,
       engagement: svc.engagement,
       contact: svc.contact,
@@ -60,6 +61,10 @@ agencyJsonRoutes.get("/agency.json", async (c) => {
       tagline: AGENCY_BRAND.tagline,
       description: AGENCY_BRAND.description,
       base_url: BASE_URL,
+      documentation: {
+        gitbook: "https://agentbadge.gitbook.io/agentbadge-docs",
+        gitbook_mcp: "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
+      },
       endpoints: {
         agent_guide: `${BASE_URL}/agent-guide`,
         agent_guide_team: `${BASE_URL}/agent-guide/team`,

@@ -38,6 +38,10 @@ SECRETS=(
   PLAUSIBLE_DOMAIN
   TELEGRAM_BOT_TOKEN
   TELEGRAM_CHAT_ID
+  L402_ROOT_KEY
+  L402_TEST_MODE
+  L402_AMOUNT_SATS
+  L402_NODE_PUBKEY
 )
 
 # Optional secrets (set if present in .env, skip silently if missing)

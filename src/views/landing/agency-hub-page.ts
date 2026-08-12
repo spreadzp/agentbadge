@@ -53,6 +53,7 @@ export function AgencyHubPage() {
     </section>`)}
     ${raw(CrossSellSection().toString())}
     ${raw(ScannerPreviewSection().toString())}
+    ${raw(NeedMoreSection().toString())}
     ${raw(AgencyCtaSection().toString())}
   </div>`;
 }
@@ -172,6 +173,40 @@ function AgencyCtaSection() {
           <a href="/agent-guide" class="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-8 py-4 text-base font-semibold text-slate-300 transition-colors hover:border-emerald-500 hover:text-emerald-400">
             Read the guide
           </a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function NeedMoreSection() {
+  return html`
+    <section class="px-4 py-16 md:px-8 bg-slate-900/30">
+      <div class="mx-auto max-w-4xl">
+        <h2 class="text-2xl font-bold text-white text-center">Need more than a score?</h2>
+        <p class="mt-3 text-slate-400 text-center max-w-2xl mx-auto">
+          Our engineering team builds agent-native infrastructure on Hedera — from MCP servers to full AI agent
+          architectures. We help you go from scan to production.
+        </p>
+        <div class="mt-8 grid gap-6 md:grid-cols-3">
+          <div class="text-center">
+            <div class="text-4xl mb-3">🔧</div>
+            <h3 class="text-lg font-semibold text-white">Engineering Services</h3>
+            <p class="mt-2 text-sm text-slate-400">MCP development, blockchain integration, AI agent architecture.</p>
+            <a href="/services" class="mt-3 inline-block text-sm text-emerald-400 hover:text-emerald-300">Browse services →</a>
+          </div>
+          <div class="text-center">
+            <div class="text-4xl mb-3">🤝</div>
+            <h3 class="text-lg font-semibold text-white">Work With Us</h3>
+            <p class="mt-2 text-sm text-slate-400">Contract, part-time, or fixed-scope. Weekly demos, milestone-based delivery.</p>
+            <a href="/work-with-us" class="mt-3 inline-block text-sm text-emerald-400 hover:text-emerald-300">See engagement options →</a>
+          </div>
+          <div class="text-center">
+            <div class="text-4xl mb-3">👥</div>
+            <h3 class="text-lg font-semibold text-white">Our Team</h3>
+            <p class="mt-2 text-sm text-slate-400">Experienced engineers with proven on-chain delivery.</p>
+            <a href="/about" class="mt-3 inline-block text-sm text-emerald-400 hover:text-emerald-300">Meet the team →</a>
+          </div>
         </div>
       </div>
     </section>

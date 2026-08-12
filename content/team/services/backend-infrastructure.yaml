@@ -1,6 +1,27 @@
 id: backend-infrastructure
 name: Backend Infrastructure
 problem: "Need backend systems, databases, or event-driven architecture"
+keywords:
+  - backend
+  - node.js
+  - nestjs
+  - postgresql
+  - redis
+  - rest api
+  - event-driven
+  - microservices
+  - database
+  - server
+  - react
+  - vue.js
+  - html
+  - css
+  - laravel
+  - php
+  - mysql
+  - mongodb
+  - docker
+  - graphql
 deliverables:
   - Backend services
   - Database schema

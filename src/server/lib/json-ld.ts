@@ -35,6 +35,12 @@ export function softwareApplicationLd(): object {
       "Task marketplace with HBAR payments",
       "MCP server (38 tools)",
     ],
+    documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
+    about: {
+      "@type": "Thing",
+      name: "AI Agent Identity and Marketplace on Hedera",
+      url: "https://agentbadge.gitbook.io/agentbadge-docs",
+    },
     dateModified: BUILD_DATE,
   };
 }
@@ -45,6 +51,7 @@ export function webSiteLd(): object {
     "@type": "WebSite",
     name: SITE_NAME,
     url: BASE_URL,
+    documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
     potentialAction: {
       "@type": "SearchAction",
       target: {
@@ -74,6 +81,8 @@ export function organizationLd(): object {
     sameAs: [
       "https://github.com/spreadzp/agentbadge",
       "https://raw.githubusercontent.com/spreadzp/agentbadge/refs/heads/main/AGENT-REFERENCE.md",
+      "https://www.linkedin.com/company/agentbadge",
+      "https://agentbadge.gitbook.io/agentbadge-docs",
     ],
   };
 }
@@ -424,7 +433,12 @@ export function personLd(opts: {
   role: string;
   description?: string;
   url?: string;
+  linkedin?: string;
 }): object {
+  const sameAs: string[] = [];
+  if (opts.linkedin) sameAs.push(opts.linkedin);
+  if (opts.url) sameAs.push(opts.url);
+
   return {
     "@context": SCHEMA_CONTEXT,
     "@type": "Person",
@@ -432,6 +446,7 @@ export function personLd(opts: {
     jobTitle: opts.role,
     ...(opts.description ? { description: opts.description } : {}),
     ...(opts.url ? { url: opts.url } : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
     worksFor: {
       "@type": "Organization",
       name: SITE_NAME,

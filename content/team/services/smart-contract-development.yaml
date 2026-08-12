@@ -1,6 +1,23 @@
 id: smart-contract-development
 name: Smart Contract Development
 problem: "Need Solidity or Hedera smart contracts for tokenization, DeFi, or on-chain logic"
+keywords:
+  - smart contracts
+  - solidity
+  - hedera
+  - solana
+  - base
+  - bitcoin
+  - bitcoin scripts
+  - tokenization
+  - defi
+  - on-chain
+  - evm
+  - hts
+  - nft
+  - fungible token
+  - multi-chain contracts
+  - cross-chain logic
 deliverables:
   - Smart contracts
   - Deployment scripts

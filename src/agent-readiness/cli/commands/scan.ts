@@ -33,6 +33,7 @@ const SCAN_FLAGS = [
   { name: "watch-interval", shortName: "", type: "string" as const, description: "Watch interval in seconds (default: 30)" },
   { name: "json-api", shortName: "", type: "boolean" as const, description: "Output full JSON API response (same format as competitor)" },
   { name: "category", shortName: "", type: "string" as const, description: "Run only rules in specified category" },
+  { name: "rule", shortName: "", type: "string" as const, description: "Run only a single rule by ID (e.g. AB-001)" },
   { name: "format", shortName: "", type: "string" as const, description: "Output format: text|json|markdown (default: text)", default: "text" },
   { name: "fix-hints", shortName: "", type: "boolean" as const, description: "Include fix suggestions in output" },
   { name: "compact", shortName: "", type: "boolean" as const, description: "Compact M2M JSON output (no whitespace)" },
@@ -62,6 +63,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
   const fixHints = flags["fix-hints"] === true;
   const compact = flags.compact === true;
   const category = typeof flags.category === "string" ? flags.category : undefined;
+  const ruleId = typeof flags.rule === "string" ? flags.rule : undefined;
   const format = typeof flags.format === "string" ? flags.format : "text";
   const reportUrl = typeof flags["report-url"] === "string" ? flags["report-url"] : undefined;
   const threshold = typeof flags.threshold === "string" ? parseInt(flags.threshold, 10) : 0;
@@ -75,10 +77,13 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     // Step 2: Run rule engine (Epic 34)
     const ruleEngineResult = RuleEngine.run(sourceState);
 
-    // Filter assertions by category if requested
+    // Filter assertions by category or rule_id if requested
     let assertions = ruleEngineResult.assertions as any[];
     if (category) {
       assertions = assertions.filter((a) => a.category === category);
+    }
+    if (ruleId) {
+      assertions = assertions.filter((a) => a.rule_id === ruleId);
     }
 
     // Step 3: Run scoring engine (Epic 35)

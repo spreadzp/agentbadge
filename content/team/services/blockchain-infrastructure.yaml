@@ -1,6 +1,41 @@
 id: blockchain-infrastructure
 name: Blockchain Infrastructure
 problem: "Need blockchain integration, wallet setup, or tokenization infrastructure"
+keywords:
+  - blockchain
+  - hedera
+  - ethereum
+  - solana
+  - base
+  - bitcoin
+  - lightning network
+  - wallet
+  - tokenization
+  - web3
+  - smart contracts
+  - defi
+  - hts
+  - hcs
+  - evm
+  - crypto payments
+  - micropayments
+  - payment systems
+  - payment infrastructure
+  - payment processing
+  - x402
+  - machine payments
+  - agent economy
+  - agent commerce
+  - agent payments
+  - agent harness
+  - agent orchestration
+  - agent infrastructure
+  - nft
+  - fungible token
+  - on-chain payments
+  - decentralized finance
+  - multi-chain
+  - cross-chain
 deliverables:
   - Integration code
   - Wallet setup

@@ -18,7 +18,6 @@ module.exports = {
         "http://localhost:4021/",
         "http://localhost:4021/agent-guide",
         "http://localhost:4021/faq",
-        "http://localhost:4021/llms.txt",
       ],
       numberOfRuns: 3,
       settings: {

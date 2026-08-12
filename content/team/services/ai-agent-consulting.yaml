@@ -1,6 +1,33 @@
 id: ai-agent-consulting
 name: AI Agent Consulting
 problem: "Need architecture guidance for making your product agent-ready"
+keywords:
+  - ai agent
+  - agent architecture
+  - agent-ready
+  - agent-readable
+  - mcp
+  - model context protocol
+  - agent api
+  - agentic web
+  - llms.txt
+  - agent card
+  - agent economy
+  - agent-to-agent
+  - a2a
+  - agent commerce
+  - autonomous agents
+  - agent payments
+  - x402
+  - machine payments
+  - agent marketplace
+  - agent harness
+  - agent orchestration
+  - agent infrastructure
+  - agent framework
+  - agent tooling
+  - agent deployment
+  - agent observability
 deliverables:
   - Architecture assessment
   - Agent-readable API design

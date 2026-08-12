@@ -11,6 +11,7 @@ import { fetchMcpDescriptor } from "./fetchers/mcp-fetcher";
 import { fetchLlmsTxt } from "./fetchers/llms-txt-fetcher";
 import { fetchContentNegotiation } from "./fetchers/content-negotiation-fetcher";
 import { fetchX402Discovery } from "./fetchers/x402-fetcher";
+import { fetchL402Challenge } from "./fetchers/l402-fetcher";
 import { fetchOpenApiStandard } from "./fetchers/openapi-standard-fetcher";
 import { fetchSkillFile } from "./fetchers/skill-file-fetcher";
 import { fetchAgentsTxt } from "./fetchers/agents-txt-fetcher";
@@ -73,6 +74,7 @@ export const DEFAULT_RESOURCES = [
   "web_bot_auth",
   "dns_aid",
   "webmcp_runtime",
+  "l402",
 ] as const;
 
 export async function scanDomain(
@@ -98,10 +100,11 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402"].includes(r),
   );
-  const sequentialResources = resources.filter((r) =>
-    !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime"].includes(r),
+  const sequentialResources = resources.filter(
+    (r) =>
+      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -384,6 +387,14 @@ async function fetchResource(
       snapshot = createSnapshot({
         url: r.url, status: r.status, body: JSON.stringify(r),
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      });
+      break;
+    }
+    case "l402": {
+      const r = await fetchL402Challenge(baseUrl);
+      snapshot = createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime, headers: r.headers,
       });
       break;
     }

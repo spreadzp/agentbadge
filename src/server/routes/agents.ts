@@ -92,6 +92,11 @@ export function validateEndpointUrl(endpoint: string): { valid: boolean; error?:
 
 export const agentRoutes = new Hono();
 
+agentRoutes.use("/agents/*", async (c, next) => {
+  await next();
+  c.header("X-Robots-Tag", "noindex, nofollow");
+});
+
 /**
  * Fetch the agent's .well-known/agent-card.json manifest.
  * Returns null on network error or timeout.
