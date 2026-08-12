@@ -135,11 +135,42 @@ export function generateServicesMarkdown(registry: RegistryIndex): string {
 
   lines.push("# AgentBadge Engineering Services");
   lines.push("");
+  lines.push("> Two-column layout: **For Agents** (machine-facing summary) | **For Operators** (human-facing details).");
+  lines.push("");
 
   for (const svc of registry.services) {
     lines.push(`## ${svc.name}`);
     lines.push("");
+
+    const relatedCaps = registry.capabilities.filter((c) =>
+      c.services.includes(svc.id),
+    );
+    const relatedCapsStr = relatedCaps.length > 0
+      ? relatedCaps.map((c) => c.name).join(", ")
+      : "—";
+
+    const deliverablesStr = svc.deliverables.join("; ");
+    const engagementStr = svc.engagement.join(", ");
+
+    lines.push("| For Agents | For Operators |");
+    lines.push("| --- | --- |");
+    lines.push(`| ${svc.problem} | **Deliverables:** ${deliverablesStr} |`);
+    lines.push(`| **Engagement:** ${engagementStr} | **Contact:** ${svc.contact} |`);
+    lines.push(`| **Related capabilities:** ${relatedCapsStr} | **Engagement types:** ${engagementStr} |`);
+    lines.push("");
+
+    lines.push("### For Agents");
+    lines.push("");
     lines.push(`**Problem:** ${svc.problem}`);
+    lines.push("");
+    lines.push(`**Engagement:** ${engagementStr}`);
+    lines.push("");
+    if (relatedCaps.length > 0) {
+      lines.push(`**Related capabilities:** ${relatedCapsStr}`);
+      lines.push("");
+    }
+
+    lines.push("### For Operators");
     lines.push("");
     lines.push("**Deliverables:**");
     lines.push("");
@@ -147,18 +178,10 @@ export function generateServicesMarkdown(registry: RegistryIndex): string {
       lines.push(`- ${d}`);
     }
     lines.push("");
-    lines.push(`**Engagement:** ${svc.engagement.join(", ")}`);
+    lines.push(`**Engagement:** ${engagementStr}`);
     lines.push("");
     lines.push(`**Contact:** ${svc.contact}`);
     lines.push("");
-
-    const relatedCaps = registry.capabilities.filter((c) =>
-      c.services.includes(svc.id),
-    );
-    if (relatedCaps.length > 0) {
-      lines.push(`**Related capabilities:** ${relatedCaps.map((c) => c.name).join(", ")}`);
-      lines.push("");
-    }
   }
 
   return lines.join("\n");
