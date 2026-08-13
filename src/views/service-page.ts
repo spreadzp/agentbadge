@@ -148,9 +148,28 @@ function ServiceHero(service: AgencyService) {
                     if (line.startsWith('data: ')) {
                       var data = JSON.parse(line.slice(6));
                       if (data.phase === 'fetching') {
-                        result.innerHTML = '<div class="text-slate-400 text-sm">Fetching resources... (' + data.completed + '/' + data.total + ')</div>';
+                        var pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+                        result.innerHTML = '<div class="space-y-2">'
+                          + '<div class="flex items-center justify-between text-sm">'
+                          + '<span class="text-slate-300">Fetching resources</span>'
+                          + '<span class="text-slate-500">' + pct + '%</span>'
+                          + '</div>'
+                          + '<div class="h-2 w-full rounded-full bg-slate-800">'
+                          + '<div class="h-2 rounded-full bg-indigo-500 transition-all duration-300" style="width:' + pct + '%"></div>'
+                          + '</div>'
+                          + '<div class="text-xs text-slate-500">Fetching: ' + data.resource + '</div>'
+                          + '</div>';
                       } else if (data.phase === 'evaluating') {
-                        result.innerHTML = '<div class="text-slate-400 text-sm">Evaluating rules... (' + data.completed + '/' + data.total + ')</div>';
+                        var pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+                        result.innerHTML = '<div class="space-y-2">'
+                          + '<div class="flex items-center justify-between text-sm">'
+                          + '<span class="text-slate-300">Evaluating rules</span>'
+                          + '<span class="text-slate-500">' + pct + '%</span>'
+                          + '</div>'
+                          + '<div class="h-2 w-full rounded-full bg-slate-800">'
+                          + '<div class="h-2 rounded-full bg-emerald-500 transition-all duration-300" style="width:' + pct + '%"></div>'
+                          + '</div>'
+                          + '</div>';
                       } else if (data.score !== undefined) {
                         renderReport(result, data);
                       }
