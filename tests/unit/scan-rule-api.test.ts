@@ -134,6 +134,18 @@ describe("SLICE-58-1: Human-readable scan-rule API", () => {
     expect(data.evidence).toBeUndefined();
   });
 
+  it("includes checks_performed count instead of raw evidence", async () => {
+    const { data } = await scanRule("https://example.com", "AB-001");
+    expect(typeof data.checks_performed).toBe("number");
+    expect(data.checks_performed).toBeGreaterThanOrEqual(0);
+  });
+
+  it("checks_performed is 0 for MISSING with no evidence", async () => {
+    const { data } = await scanRule("https://example.com", "AB-007");
+    expect(data.status).toBe("MISSING");
+    expect(data.checks_performed).toBe(0);
+  });
+
   it("still includes rule_id, rule_name, category, status, hint, scanned_url", async () => {
     const { data } = await scanRule("https://example.com", "AB-001");
     expect(data.rule_id).toBe("AB-001");

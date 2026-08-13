@@ -162,6 +162,7 @@ scanRuleRoutes.post(
         hint,
         summary: buildRuleSummary(assertion as any),
         completeness_pct: computeCompleteness(assertion as any),
+        checks_performed: assertion.evidence ? assertion.evidence.length : 0,
         scanned_url: url,
       });
     } catch (err) {
