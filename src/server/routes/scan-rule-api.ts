@@ -32,7 +32,7 @@ function buildRuleSummary(assertion: AssertionLike): string {
 function computeCompleteness(assertion: AssertionLike): number {
   if (assertion.status === "VERIFIED") return 100;
   if (assertion.status === "INFERRED") return 50;
-  if (assertion.status === "NOT_APPLICABLE") return 100;
+  if (assertion.status === "NOT_APPLICABLE" || assertion.status === "SKIPPED") return 100;
   if (assertion.status === "CONFLICT") return 25;
   return 0;
 }

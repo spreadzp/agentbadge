@@ -372,6 +372,7 @@ try {
     port,
     hostname: "0.0.0.0",
     fetch: app.fetch,
+    idleTimeout: 0,
   });
   console.error(`[SERVER] Listening on http://${server.hostname}:${server.port}`);
 } catch (e) {

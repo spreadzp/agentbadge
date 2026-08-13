@@ -75,6 +75,26 @@ describe("SLICE-58-5: Total scan SSE endpoint", () => {
     expect(text).toContain('"total"');
   });
 
+  it("rejects private/localhost URLs with 403", async () => {
+    const res = await app.request("/api/total-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "http://localhost:4021" }),
+    });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toContain("Private URLs");
+  });
+
+  it("rejects 192.168.x.x URLs with 403", async () => {
+    const res = await app.request("/api/total-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "http://192.168.1.1" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
   it("progress events include evaluating phase", async () => {
     const res = await app.request("/api/total-scan", {
       method: "POST",

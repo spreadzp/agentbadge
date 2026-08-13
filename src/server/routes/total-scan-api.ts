@@ -7,31 +7,6 @@ import { formatScanReport } from "../../agent-readiness/report-formatter";
 
 export const totalScanRoutes = new Hono();
 
-type AssertionLike = {
-  rule_id: string;
-  status: string;
-  evidence?: unknown[];
-  category?: string;
-  name?: string;
-};
-
-function buildRuleSummary(status: string): string {
-  switch (status) {
-    case "VERIFIED":
-      return "This rule is fully implemented.";
-    case "INFERRED":
-      return "This rule is partially implemented.";
-    case "CONFLICT":
-      return "Conflicting evidence found.";
-    case "MISSING":
-      return "This rule is not implemented.";
-    case "NOT_APPLICABLE":
-      return "This rule does not apply to your site.";
-    default:
-      return "Unknown status.";
-  }
-}
-
 totalScanRoutes.post(
   "/total-scan",
   describeRoute({
@@ -67,6 +42,13 @@ totalScanRoutes.post(
       return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
     }
 
+    // SSRF protection: block private/internal IP ranges
+    const hostname = new URL(normalizedUrl).hostname;
+    const privateRanges = ["localhost", "127.", "192.168.", "10.", "172.16.", "::1", "0.0.0.0"];
+    if (privateRanges.some((r) => hostname === r || hostname.startsWith(r))) {
+      return c.json({ error: "Private URLs are not allowed" }, 403);
+    }
+
     c.header("Content-Type", "text/event-stream");
     c.header("Cache-Control", "no-cache");
     c.header("Connection", "keep-alive");
@@ -80,7 +62,7 @@ totalScanRoutes.post(
       });
 
       // Phase 2: Run rules
-      await stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "evaluating", completed: 0, total: 72 })}\n\n`);
+      await stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "evaluating", completed: 0, total: 0 })}\n\n`);
 
       const result = RuleEngine.run(sourceState);
 
