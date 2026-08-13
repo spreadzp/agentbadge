@@ -3,6 +3,7 @@ import { streamText } from "hono/streaming";
 import { describeRoute } from "hono-openapi";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
+import { formatScanReport } from "../../agent-readiness/report-formatter";
 
 export const totalScanRoutes = new Hono();
 
@@ -78,27 +79,7 @@ totalScanRoutes.post(
       await stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "evaluating", completed: 0, total: 72 })}\n\n`);
 
       const result = RuleEngine.run(sourceState);
-      const assertions = result.assertions as AssertionLike[];
-
-      const totalRules = assertions.length;
-      const verified = assertions.filter((a) => a.status === "VERIFIED" || a.status === "INFERRED").length;
-      const missing = assertions.filter((a) => a.status === "MISSING").length;
-      const notApplicable = assertions.filter((a) => a.status === "NOT_APPLICABLE").length;
-      const score = totalRules > 0 ? Math.round((verified / totalRules) * 100) : 0;
-
-      const report = {
-        url: normalizedUrl,
-        score,
-        total_rules: totalRules,
-        verified,
-        missing,
-        not_applicable: notApplicable,
-        rules: assertions.map((a) => ({
-          rule_id: a.rule_id,
-          status: a.status,
-          summary: buildRuleSummary(a.status),
-        })),
-      };
+      const report = formatScanReport(normalizedUrl, result);
 
       await stream.write(`event: result\ndata: ${JSON.stringify(report)}\n\n`);
       await stream.write(`event: done\ndata: ${JSON.stringify({ completed: true })}\n\n`);

@@ -70,8 +70,9 @@ describe("SLICE-58-5: Total scan SSE endpoint", () => {
     const result = JSON.parse(resultMatch![1]);
     expect(result.score).toBeDefined();
     expect(result.total_rules).toBe(3);
-    expect(result.rules).toBeDefined();
-    expect(result.rules.length).toBe(3);
+    expect(result.grade).toBeDefined();
+    expect(result.categories).toBeDefined();
+    expect(result.summary).toBeDefined();
   });
 
   it("done event contains completed: true", async () => {
