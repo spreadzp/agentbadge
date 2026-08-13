@@ -91,12 +91,12 @@ function ServiceHero(service: AgencyService) {
           ${raw(expandAbbr(service.description))}
         </p>
         <div class="fade-in-up mt-8 flex flex-wrap gap-4" style="animation-delay: 0.3s">
-          <a href="${ctaHref}" class="pulse-glow inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400">
+          <button id="scanner-cta-btn" type="button" class="snake-border inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400">
             ${ctaLabel}
             <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-          </a>
+          </button>
           <a href="/" class="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-8 py-4 text-base font-semibold text-slate-300 transition-colors hover:border-emerald-500 hover:text-emerald-400">
             Back to AgentBadge
           </a>

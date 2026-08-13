@@ -126,6 +126,41 @@ export function LandingLayout(
             animation: pulse-glow 2s ease-in-out infinite;
             will-change: opacity, transform;
           }
+          @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+          }
+          @keyframes snake-crawl {
+            0%   { --angle: 0deg; }
+            100% { --angle: 360deg; }
+          }
+          .snake-border {
+            position: relative;
+            isolation: isolate;
+          }
+          .snake-border::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            padding: 2px;
+            background: conic-gradient(
+              from var(--angle),
+              transparent 0%,
+              transparent 65%,
+              #34d399 80%,
+              #6ee7b7 90%,
+              transparent 100%
+            );
+            -webkit-mask:
+              linear-gradient(#fff 0 0) content-box,
+              linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: snake-crawl 3s linear infinite;
+            z-index: -1;
+          }
           .scroll-reveal {
             animation: fade-in-up 0.6s ease-out both;
             animation-timeline: view();
