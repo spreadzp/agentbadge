@@ -72,13 +72,21 @@ totalScanRoutes.post(
     c.header("Connection", "keep-alive");
 
     return streamText(c, async (stream) => {
-      await stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "fetching", completed: 0, total: 25 })}\n\n`);
+      // Phase 1: Fetch resources with per-resource progress
+      const sourceState = await scanDomain(normalizedUrl, {
+        onProgress: (resource, completed, total) => {
+          stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "fetching", resource, completed, total })}\n\n`);
+        },
+      });
 
-      const sourceState = await scanDomain(normalizedUrl);
-
+      // Phase 2: Run rules
       await stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "evaluating", completed: 0, total: 72 })}\n\n`);
 
       const result = RuleEngine.run(sourceState);
+
+      await stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "evaluating", completed: result.assertions.length, total: result.totalRules })}\n\n`);
+
+      // Phase 3: Format and send report
       const report = formatScanReport(normalizedUrl, result);
 
       await stream.write(`event: result\ndata: ${JSON.stringify(report)}\n\n`);

@@ -3,7 +3,12 @@ import { Hono } from "hono";
 
 // Mock scanner + rule engine
 vi.mock("../../src/agent-readiness/scanner/orchestrator", () => ({
-  scanDomain: vi.fn().mockResolvedValue({ snapshots: {} }),
+  scanDomain: vi.fn().mockImplementation(async (url: string, opts?: any) => {
+    // Simulate progress callbacks for a few resources
+    const resources = ["robots", "sitemap", "openapi"];
+    resources.forEach((r, i) => opts?.onProgress?.(r, i + 1, resources.length));
+    return { snapshots: {} };
+  }),
 }));
 
 vi.mock("../../src/agent-readiness/rule-engine/rule-engine", () => ({
@@ -55,6 +60,29 @@ describe("SLICE-58-5: Total scan SSE endpoint", () => {
     expect(text).toContain("event: progress");
     expect(text).toContain("event: result");
     expect(text).toContain("event: done");
+  });
+
+  it("progress events include fetching phase with resource names", async () => {
+    const res = await app.request("/api/total-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com" }),
+    });
+    const text = await res.text();
+    expect(text).toContain('"phase":"fetching"');
+    expect(text).toContain('"resource"');
+    expect(text).toContain('"completed"');
+    expect(text).toContain('"total"');
+  });
+
+  it("progress events include evaluating phase", async () => {
+    const res = await app.request("/api/total-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com" }),
+    });
+    const text = await res.text();
+    expect(text).toContain('"phase":"evaluating"');
   });
 
   it("result event contains score and rules", async () => {

@@ -40,6 +40,7 @@ export interface ScanOptions {
   noCache?: boolean;
   timeout?: number;
   resources?: string[];
+  onProgress?: (resource: string, completed: number, total: number) => void;
 }
 
 export const DEFAULT_RESOURCES = [
@@ -97,6 +98,8 @@ export async function scanDomain(
   const resources = opts?.resources ?? [...DEFAULT_RESOURCES];
 
   const snapshots: Record<string, ResponseSnapshot | null> = {};
+  let completed = 0;
+  const total = resources.length;
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
@@ -110,12 +113,16 @@ export async function scanDomain(
   await Promise.all(parallelResources.map(async (resource) => {
     const result = await fetchResource(resource, baseUrl, rateLimiter, cache);
     snapshots[resource] = result;
+    completed++;
+    opts?.onProgress?.(resource, completed, total);
   }));
 
   // Sequential: guide, openapi, mcp
   for (const resource of sequentialResources) {
     const result = await fetchResource(resource, baseUrl, rateLimiter, cache);
     snapshots[resource] = result;
+    completed++;
+    opts?.onProgress?.(resource, completed, total);
   }
 
   return assembleSourceState(domain, snapshots);
