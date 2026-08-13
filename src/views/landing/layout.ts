@@ -161,6 +161,19 @@ export function LandingLayout(
             animation: snake-crawl 3s linear infinite;
             z-index: -1;
           }
+          .snake-scanning::before {
+            background: conic-gradient(
+              from var(--angle),
+              transparent 0%,
+              transparent 50%,
+              #34d399 60%,
+              #fbbf24 70%,
+              #f87171 80%,
+              #fbbf24 90%,
+              transparent 100%
+            );
+            animation: snake-crawl 1.5s linear infinite;
+          }
           .scroll-reveal {
             animation: fade-in-up 0.6s ease-out both;
             animation-timeline: view();

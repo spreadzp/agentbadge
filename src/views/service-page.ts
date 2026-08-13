@@ -75,7 +75,7 @@ function ServiceHero(service: AgencyService) {
   const ctaLabel = getCtaLabel(service.id);
   const isScanner = service.id === "scanner";
 
-  const scannerCta = html`<button id="scanner-cta-btn" type="button" class="snake-border inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400" onclick="document.getElementById('scan-form-wrapper').classList.remove('hidden'); document.getElementById('scanner-cta-btn').classList.add('hidden'); document.getElementById('total-scan-url').focus();">
+  const scannerCta = html`<button id="scanner-cta-btn" type="button" class="snake-border inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-8 py-4 text-base font-semibold text-slate-300 transition-colors hover:border-emerald-500 hover:text-emerald-400" onclick="document.getElementById('scan-form-wrapper').classList.remove('hidden'); document.getElementById('scanner-cta-btn').classList.add('hidden'); document.getElementById('total-scan-url').focus();">
             ${ctaLabel}
             <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -93,7 +93,7 @@ function ServiceHero(service: AgencyService) {
               <button
                 id="total-scan-submit"
                 type="submit"
-                class="snake-border inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-400"
+                class="snake-border inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-6 py-3 text-sm font-semibold text-slate-300 transition-colors hover:border-emerald-500 hover:text-emerald-400"
               >
                 Start Full Scan
               </button>
@@ -121,6 +121,7 @@ function ServiceHero(service: AgencyService) {
 
               submitBtn.disabled = true;
               submitBtn.textContent = 'Scanning...';
+              submitBtn.classList.add('snake-scanning');
               result.classList.remove('hidden');
               result.innerHTML = '<div class="text-slate-400 text-sm">Starting scan for ' + url + '...</div>';
 
@@ -181,6 +182,7 @@ function ServiceHero(service: AgencyService) {
               } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Start Full Scan';
+                submitBtn.classList.remove('snake-scanning');
               }
             });
 
@@ -260,7 +262,7 @@ function ServiceHero(service: AgencyService) {
         <p class="fade-in-up mt-6 text-lg text-slate-400 max-w-2xl" style="animation-delay: 0.2s">
           ${raw(expandAbbr(service.description))}
         </p>
-        <div class="fade-in-up mt-8 flex flex-wrap gap-4" style="animation-delay: 0.3s">
+        <div class="fade-in-up mt-8 flex flex-wrap items-start gap-4" style="animation-delay: 0.3s">
           ${isScanner ? raw(scannerCta.toString()) : raw(defaultCta.toString())}
           <a href="/" class="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-8 py-4 text-base font-semibold text-slate-300 transition-colors hover:border-emerald-500 hover:text-emerald-400">
             Back to AgentBadge
@@ -274,6 +276,18 @@ function ServiceHero(service: AgencyService) {
 function ServiceCta(service: AgencyService) {
   const ctaHref = getCtaHref(service.id);
   const ctaLabel = getCtaLabel(service.id);
+  const isScanner = service.id === "scanner";
+
+  const scannerCtaBtn = html`<button type="button" class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400" onclick="document.getElementById('scanner-cta-btn').scrollIntoView({behavior:'smooth'}); document.getElementById('scanner-cta-btn').click();">
+            ${ctaLabel}
+            <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>`;
+
+  const defaultCtaBtn = html`<a href="${ctaHref}" class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400">
+            ${ctaLabel}
+          </a>`;
 
   return html`
     <section class="px-4 py-16 md:px-8">
@@ -281,9 +295,7 @@ function ServiceCta(service: AgencyService) {
         <h2 class="text-2xl font-bold text-white">Ready to get started?</h2>
         <p class="mt-4 text-slate-400">${raw(expandAbbr(service.tagline))}</p>
         <div class="mt-6">
-          <a href="${ctaHref}" class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400">
-            ${ctaLabel}
-          </a>
+          ${isScanner ? raw(scannerCtaBtn.toString()) : raw(defaultCtaBtn.toString())}
         </div>
       </div>
     </section>
