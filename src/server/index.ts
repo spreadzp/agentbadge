@@ -65,6 +65,7 @@ import { contentPageRoutes } from "./routes/content-pages";
 import { blogRoutes } from "./routes/blog";
 import { rulesApiRoutes } from "./routes/rules-api";
 import { scanRuleRoutes } from "./routes/scan-rule-api";
+import { totalScanRoutes } from "./routes/total-scan-api";
 import { teamPageRoutes } from "./routes/team-pages";
 import { workRequestRoutes } from "./routes/api/work-requests";
 import { workRequestUiRoutes } from "./routes/work-request-ui";
@@ -297,6 +298,7 @@ app.route("/", contentPageRoutes);
 app.route("/", blogRoutes);
 app.route("/api", rulesApiRoutes);
 app.route("/api", scanRuleRoutes);
+app.route("/api", totalScanRoutes);
 app.route("/", teamPageRoutes);
 app.route("/", workRequestRoutes);
 app.route("/", workRequestUiRoutes);
@@ -370,6 +372,7 @@ try {
     port,
     hostname: "0.0.0.0",
     fetch: app.fetch,
+    idleTimeout: 0,
   });
   console.error(`[SERVER] Listening on http://${server.hostname}:${server.port}`);
 } catch (e) {
