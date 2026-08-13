@@ -5,6 +5,38 @@ import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { AGENT_READINESS_RULESET } from "../../agent-readiness/ruleset";
 import type { AgentReadinessRule } from "../../agent-readiness/rule.schema";
 
+type AssertionLike = {
+  status: string;
+  reason?: string;
+  name?: string;
+  fix?: { eligible: boolean; type: string; note?: string } | null;
+};
+
+function buildRuleSummary(assertion: AssertionLike): string {
+  switch (assertion.status) {
+    case "VERIFIED":
+      return "This rule is fully implemented on your site.";
+    case "INFERRED":
+      return "This rule is partially implemented — some evidence was found but not fully verified.";
+    case "CONFLICT":
+      return "Conflicting evidence was found — sources disagree on this rule.";
+    case "MISSING":
+      return "This rule is not implemented. " + (assertion.fix?.note ?? "See the fix guide above.");
+    case "NOT_APPLICABLE":
+      return "This rule does not apply to your site based on the detected resources.";
+    default:
+      return "Unknown status.";
+  }
+}
+
+function computeCompleteness(assertion: AssertionLike): number {
+  if (assertion.status === "VERIFIED") return 100;
+  if (assertion.status === "INFERRED") return 50;
+  if (assertion.status === "NOT_APPLICABLE") return 100;
+  if (assertion.status === "CONFLICT") return 25;
+  return 0;
+}
+
 export const scanRuleRoutes = new Hono();
 
 /**
@@ -120,13 +152,16 @@ scanRuleRoutes.post(
         return c.json({ error: `Rule ${rule_id} not found in scan results` }, 404);
       }
 
+      const hint = (assertion as any).hint ?? (assertion as any).fix_hint ?? assertion.fix?.note ?? null;
+
       return c.json({
         rule_id: assertion.rule_id,
         rule_name: assertion.rule_name ?? assertion.name,
         category: assertion.category,
         status: assertion.status,
-        hint: assertion.hint ?? assertion.fix_hint ?? null,
-        evidence: assertion.evidence ?? null,
+        hint,
+        summary: buildRuleSummary(assertion as any),
+        completeness_pct: computeCompleteness(assertion as any),
         scanned_url: url,
       });
     } catch (err) {

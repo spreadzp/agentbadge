@@ -194,11 +194,26 @@ export function RuleDetailPage(rule: RuleDescription) {
                         : 'border-rose-500/30 bg-rose-500/10 text-rose-300';
                     result.className = 'mt-4 rounded-lg border p-4 text-sm ' + statusColor;
                     var icon = data.status === 'VERIFIED' || data.status === 'INFERRED' ? '\\u2713' : data.status === 'NOT_APPLICABLE' ? '\\u25CB' : '\\u2717';
-                    var html = '<div class="flex items-center gap-2 mb-2"><span class="text-lg">' + icon + '</span><span class="font-mono uppercase tracking-wider">' + data.status + '</span></div>';
-                    html += '<div class="text-slate-300"><strong>' + (data.rule_name || ruleId) + '</strong></div>';
-                    html += '<div class="text-slate-500 mt-1">Scanned: ' + data.scanned_url + '</div>';
-                    if (data.hint) { html += '<div class="mt-3 text-slate-400"><strong>Hint:</strong> ' + data.hint + '</div>'; }
-                    if (data.evidence) { html += '<div class="mt-2 text-slate-400"><strong>Evidence:</strong> ' + JSON.stringify(data.evidence) + '</div>'; }
+
+                    var html = '<div class="flex items-center gap-3 mb-3">';
+                    html += '<span class="text-2xl">' + icon + '</span>';
+                    html += '<div>';
+                    html += '<div class="font-mono uppercase tracking-wider text-sm font-semibold">' + data.status + '</div>';
+                    if (typeof data.completeness_pct === 'number') {
+                      html += '<div class="text-xs text-slate-400 mt-0.5">' + data.completeness_pct + '% complete</div>';
+                    }
+                    html += '</div></div>';
+
+                    html += '<div class="text-slate-300 font-medium mb-1">' + (data.rule_name || ruleId) + '</div>';
+                    html += '<div class="text-slate-500 text-xs mb-3">Scanned: ' + data.scanned_url + '</div>';
+
+                    if (data.summary) {
+                      html += '<div class="text-slate-300 mb-2">' + data.summary + '</div>';
+                    }
+                    if (data.hint) {
+                      html += '<div class="mt-2 text-slate-400 text-xs"><strong>Fix:</strong> ' + data.hint + '</div>';
+                    }
+
                     result.innerHTML = html;
                   } else {
                     result.className = 'mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300';
