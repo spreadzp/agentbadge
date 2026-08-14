@@ -99,6 +99,15 @@ describe("Agent Knowledge Layer Routes", () => {
       const res = await app.request("/agent-guide/concepts/nonexistent");
       expect(res.status).toBe(404);
     });
+
+    it("GET /agent-guide/concepts/ruleset → 200 (SLICE-59-3)", async () => {
+      const res = await app.request("/agent-guide/concepts/ruleset");
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toContain("Open Ruleset");
+      expect(text).toContain("/agent-guide/concepts/agent-readiness");
+      expect(text).toContain("/agent-guide/concepts/scoring");
+    });
   });
 
   describe("Concept capabilities block (SLICE-59-2)", () => {
