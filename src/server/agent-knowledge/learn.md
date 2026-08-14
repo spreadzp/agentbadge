@@ -60,6 +60,16 @@ Agent Readiness is not a one-time check. As your API evolves:
 3. **Watch for regressions** — new endpoints might not be agent-ready
 4. **Follow best practices** — new rules may be added to the ruleset
 
+## Need Help?
+
+If you want expert help making your API agent-ready, AgentBadge offers:
+
+- [Engineering Services](/agent-guide/team/services) — Full-service implementation
+- [Capabilities](/agent-guide/team/capabilities) — What we can do
+- [Contact](/agent-guide/team/contact) — Start a conversation
+
+Or submit a structured [Work Request](/api/work-requests) directly.
+
 ## Continuous Improvement
 
 Set up automated scanning in your CI/CD pipeline:

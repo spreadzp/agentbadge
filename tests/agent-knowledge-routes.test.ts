@@ -62,6 +62,16 @@ describe("Agent Knowledge Layer Routes", () => {
       expect(text.length).toBeGreaterThan(200);
       expect(text).toMatch(/\d+\./);
     });
+
+    it("learn page has Need Help section (SLICE-59-6)", async () => {
+      const res = await app.request("/agent-guide/learn");
+      const text = await res.text();
+      expect(text).toContain("Need Help");
+      expect(text).toContain("/agent-guide/team/services");
+      expect(text).toContain("/agent-guide/team/capabilities");
+      expect(text).toContain("/agent-guide/team/contact");
+      expect(text).toContain("/api/work-requests");
+    });
   });
 
   describe("Knowledge map", () => {
