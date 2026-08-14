@@ -36,6 +36,23 @@ describe("Agent Knowledge Layer Routes", () => {
       expect(text).toContain("knowledge-map");
     });
 
+    it("index auto-discovers all articles from articles/ directory (SLICE-59-9)", async () => {
+      const res = await app.request("/agent-guide/");
+      const text = await res.text();
+      expect(text).toContain("/agent-guide/articles/what-is-agent-readiness");
+      expect(text).toContain("/agent-guide/articles/ai-agent-architecture-patterns");
+      expect(text).toContain("/agent-guide/articles/building-mcp-servers");
+      expect(text).toContain("/agent-guide/articles/geo-optimization-for-ai-discovery");
+      expect(text).toContain("/agent-guide/articles/hedera-blockchain-for-agents");
+    });
+
+    it("GET /agent-guide (no slash) also auto-discovers articles (SLICE-59-9)", async () => {
+      const res = await app.request("/agent-guide");
+      const text = await res.text();
+      expect(text).toContain("/agent-guide/articles/what-is-agent-readiness");
+      expect(text).toContain("/agent-guide/articles/building-mcp-servers");
+    });
+
     it("GET /agent-guide/context → 200 + text/markdown with key terms", async () => {
       const res = await app.request("/agent-guide/context");
       expect(res.status).toBe(200);

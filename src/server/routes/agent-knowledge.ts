@@ -17,7 +17,7 @@
  */
 
 import { Hono, type Context } from "hono";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ErrorCodes } from "../lib/error-codes";
@@ -60,12 +60,42 @@ async function serveMarkdownFile(
   }
 }
 
+async function discoverArticles(): Promise<{ slug: string; title: string }[]> {
+  const articlesDir = join(BASE_DIR, "articles");
+  const files = await readdir(articlesDir).catch(() => []);
+  const articles: { slug: string; title: string }[] = [];
+  for (const file of files) {
+    if (!file.endsWith(".md")) continue;
+    const slug = file.replace(".md", "");
+    try {
+      const content = await readFile(join(articlesDir, file), "utf-8");
+      const { frontmatter } = parseFrontmatter(content);
+      articles.push({ slug, title: (frontmatter.title as string) ?? slug });
+    } catch {
+      articles.push({ slug, title: slug });
+    }
+  }
+  return articles;
+}
+
+async function serveIndexMarkdown(): Promise<string> {
+  let md = await readFile(join(BASE_DIR, "index.md"), "utf-8");
+  const articles = await discoverArticles();
+  if (articles.length > 0) {
+    const articlesSection = `\n## Articles\n\n${articles
+      .map((a) => `- [${a.title}](/agent-guide/articles/${a.slug})`)
+      .join("\n")}\n`;
+    md = md.replace(/## Articles[\s\S]*?(?=## |$)/, articlesSection);
+  }
+  return md;
+}
+
 agentKnowledgeRoutes.get("/agent-guide", async (c) => {
   const accept = c.req.header("Accept") ?? "";
   if (accept.includes("application/json")) {
     return serveAgentGuideJson(c);
   }
-  const md = await readFile(join(BASE_DIR, "index.md"), "utf-8");
+  const md = await serveIndexMarkdown();
   const wantsHtml = accept.includes("text/html");
   if (!wantsHtml) {
     return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=300" } });
@@ -91,12 +121,18 @@ agentKnowledgeRoutes.get("/agent-guide", async (c) => {
   return c.html(GuideLayout("Agent Guide", md, schemas, "/agent-guide", BUILD_DATE));
 });
 
-agentKnowledgeRoutes.get("/agent-guide/", (c) => {
+agentKnowledgeRoutes.get("/agent-guide/", async (c) => {
   const accept = c.req.header("Accept") ?? "";
   if (accept.includes("application/json")) {
     return serveAgentGuideJson(c);
   }
-  return serveMarkdownFile(join(BASE_DIR, "index.md"));
+  const md = await serveIndexMarkdown();
+  return new Response(md, {
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    },
+  });
 });
 
 agentKnowledgeRoutes.get("/.well-known/agent-guide.json", async (c) => {
