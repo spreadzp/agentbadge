@@ -5,6 +5,8 @@ export interface PageMeta {
   title: string;
   description: string;
   path: string;
+  ogImage?: string;
+  markdownUrl?: string;
 }
 
 export const SITE_NAME = "AgentBadge";

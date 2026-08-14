@@ -72,3 +72,38 @@ describe("Blog infrastructure (SLICE-52-1)", () => {
     expect(xml).toContain("/blog/what-is-agent-readiness");
   });
 });
+
+describe("Blog agent-readiness (SLICE-60-1)", () => {
+  it("GET /blog/:slug renders For AI Agents block", async () => {
+    const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
+    const html = await res.text();
+    expect(html).toContain("For AI Agents");
+    expect(html).toContain('aria-label="For AI Agents"');
+  });
+
+  it("For AI Agents block has gateway links", async () => {
+    const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
+    const html = await res.text();
+    expect(html).toContain('href="/agent-guide/"');
+    expect(html).toContain('href="/llms.txt"');
+    expect(html).toContain('href="/agent-guide/team/services"');
+  });
+
+  it("Article with agentGuideSlug links to companion guide", async () => {
+    const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
+    const html = await res.text();
+    expect(html).toContain('href="/agent-guide/articles/what-is-agent-readiness"');
+  });
+
+  it("Article without externalLinks does not render Also published on", async () => {
+    const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
+    const html = await res.text();
+    expect(html).not.toContain("Also published on");
+  });
+
+  it("JSON-LD includes dateModified", async () => {
+    const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
+    const html = await res.text();
+    expect(html).toContain('"dateModified"');
+  });
+});

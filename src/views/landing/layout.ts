@@ -28,7 +28,7 @@ export function LandingLayout(
   const description = meta?.description ?? SITE_DESCRIPTION;
   const canonicalPath = meta?.path ?? "/";
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
-  const ogImage = `${BASE_URL}/icons/og-image.png`;
+  const ogImage = meta?.ogImage ?? `${BASE_URL}/icons/og-image.png`;
   const jsonLdHtml = renderJsonLd(jsonLd ?? defaultCoreSchemas());
 
   return html`<!DOCTYPE html>
@@ -67,16 +67,17 @@ export function LandingLayout(
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
         <link rel="alternate" type="text/plain" title="Full LLM Context" href="/llms-full.txt" />
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
+        ${meta?.markdownUrl ? html`<link rel="alternate" type="text/markdown" title="Article as Markdown" href="${meta.markdownUrl}" />` : ""}
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
         <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://unpkg.com" crossorigin />
         <link rel="dns-prefetch" href="https://unpkg.com" />
         <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
-        <link rel="preload" href="/css/tailwind.css" as="style" />
+        <link rel="preload" href="/css/tailwind.css?v=2" as="style" />
         ${raw(jsonLdHtml)}
         <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-        <link rel="stylesheet" href="/css/tailwind.css" />
+        <link rel="stylesheet" href="/css/tailwind.css?v=2" />
         <style>
           @keyframes nav-pop {
             0%   { transform: scale(1); }

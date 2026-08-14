@@ -1,5 +1,7 @@
+const typography = require("@tailwindcss/typography");
+
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: ["./src/views/**/*.ts", "./src/server/routes/**/*.ts"],
   safelist: [
     // Classes used in dynamic JS innerHTML (progress bars, report rendering)
@@ -11,5 +13,5 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [typography],
 };

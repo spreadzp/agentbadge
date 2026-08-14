@@ -1,3 +1,17 @@
+export interface BlogExternalLink {
+  platform:
+  | "devto"
+  | "medium"
+  | "linkedin"
+  | "hackernews"
+  | "hackernoon"
+  | "reddit"
+  | "github"
+  | "hashnode"
+  | "twitter";
+  url: string;
+}
+
 export interface BlogArticle {
   slug: string;
   title: string;
@@ -5,9 +19,15 @@ export interface BlogArticle {
   author: string;
   authorRole: string;
   date: string;
+  dateModified?: string;
   tags: string[];
   readingTime: string;
   content: string;
+  markdown?: string;
+  agentGuideSlug?: string;
+  heroImage?: string;
+  ogImage?: string;
+  externalLinks?: BlogExternalLink[];
 }
 
 export const BLOG_ARTICLES: BlogArticle[] = [
@@ -19,6 +39,9 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     author: "AgentBadge Team",
     authorRole: "Agency for the Agentic Web",
     date: "2026-08-10",
+    agentGuideSlug: "what-is-agent-readiness",
+    heroImage: "/images/blog/what-is-agent-readiness-hero.png",
+    ogImage: "/images/blog/what-is-agent-readiness-og.png",
     tags: ["agent-readiness", "seo", "geo", "aeo"],
     readingTime: "10 min",
     content: `<p><strong>Agent readiness</strong> is the measure of how easily an AI agent — whether an LLM, a crawler, or an autonomous system — can discover, understand, and interact with your API or website. It is the SEO equivalent for the agentic web: if your API is not agent-ready, AI agents simply cannot use it.</p>

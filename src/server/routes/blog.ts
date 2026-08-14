@@ -95,6 +95,8 @@ blogRoutes.get(
       title: `${article.title} — AgentBadge Blog`,
       description: article.description,
       path: `/blog/${article.slug}`,
+      ...(article.ogImage ? { ogImage: `${BASE_URL}${article.ogImage}` } : {}),
+      ...(article.markdown ? { markdownUrl: `/blog/${article.slug}.md` } : {}),
     };
     const schemas = [
       ...defaultCoreSchemas(),
@@ -104,7 +106,7 @@ blogRoutes.get(
         headline: article.title,
         description: article.description,
         datePublished: article.date,
-        dateModified: article.date,
+        dateModified: article.dateModified ?? article.date,
         author: {
           "@type": "Organization",
           name: article.author,
