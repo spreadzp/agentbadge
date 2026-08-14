@@ -86,6 +86,34 @@ describe("Agent Knowledge Layer Routes", () => {
       expect(Array.isArray(json.edges)).toBe(true);
       expect(json.nodes.length).toBeGreaterThanOrEqual(5);
     });
+
+    it("knowledge map nodes have articles array (SLICE-59-8)", async () => {
+      const res = await app.request("/agent-guide/knowledge-map.json");
+      const json = await res.json();
+      const nodeWithArticles = json.nodes.find((n: { id: string }) => n.id === "agent-readiness");
+      expect(Array.isArray(nodeWithArticles.articles)).toBe(true);
+      expect(nodeWithArticles.articles).toContain(1);
+    });
+
+    it("knowledge map has new concept nodes (SLICE-59-8)", async () => {
+      const res = await app.request("/agent-guide/knowledge-map.json");
+      const json = await res.json();
+      const ids = json.nodes.map((n: { id: string }) => n.id);
+      expect(ids).toContain("monitoring");
+      expect(ids).toContain("ttl");
+      expect(ids).toContain("due-diligence");
+      expect(ids).toContain("distribution-channel");
+      expect(ids).toContain("agent-readable-web");
+      expect(ids).toContain("evidence");
+      expect(ids).toContain("reproducibility");
+      expect(ids).toContain("open-source");
+    });
+
+    it("knowledge map version bumped to 1.2.0 (SLICE-59-8)", async () => {
+      const res = await app.request("/agent-guide/knowledge-map.json");
+      const json = await res.json();
+      expect(json.version).toBe("1.2.0");
+    });
   });
 
   describe("Agent Guide JSON manifest (SLICE-59-7)", () => {
