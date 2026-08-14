@@ -56,3 +56,5 @@ You can also run scans in CI/CD:
 - [Scoring Engine](/agent-guide/concepts/scoring) — How scores are calculated
 - [Trust Badge](/agent-guide/concepts/badge) — Display your score
 - [Learning Path](/agent-guide/learn) — Full step-by-step guide
+- [Engineering Services](/agent-guide/team/services) — We can help integrate agent-readiness into your workflow
+- [Contact Us](/agent-guide/team/contact) — Start a conversation

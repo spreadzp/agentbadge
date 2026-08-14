@@ -153,6 +153,20 @@ describe("Agent Knowledge Layer Routes", () => {
       expect(text).toContain("CLI");
     });
 
+    it("capability scanner links to team services and contact (SLICE-59-4)", async () => {
+      const res = await app.request("/agent-guide/capabilities/scanner");
+      const text = await res.text();
+      expect(text).toContain("/agent-guide/team/services");
+      expect(text).toContain("/agent-guide/team/contact");
+    });
+
+    it("capability cli links to team services and contact (SLICE-59-4)", async () => {
+      const res = await app.request("/agent-guide/capabilities/cli");
+      const text = await res.text();
+      expect(text).toContain("/agent-guide/team/services");
+      expect(text).toContain("/agent-guide/team/contact");
+    });
+
     it("GET /agent-guide/capabilities/nonexistent → 404", async () => {
       const res = await app.request("/agent-guide/capabilities/nonexistent");
       expect(res.status).toBe(404);

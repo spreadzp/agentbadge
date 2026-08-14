@@ -51,3 +51,5 @@ Each scan produces:
 - [Scoring Engine](/agent-guide/concepts/scoring) — How scan results are scored
 - [CLI Tool](/agent-guide/capabilities/cli) — How to run the scanner locally
 - [Agent Readiness](/agent-guide/concepts/agent-readiness) — What the scanner measures
+- [Engineering Services](/agent-guide/team/services) — We can help implement agent-readiness fixes
+- [Contact Us](/agent-guide/team/contact) — Start a conversation
