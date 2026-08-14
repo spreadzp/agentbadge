@@ -3,9 +3,9 @@ import { describeRoute } from "hono-openapi";
 import { LandingLayout } from "../../views/landing/layout";
 import { BlogListPage } from "../../views/blog-list";
 import { BlogArticlePage } from "../../views/blog-article";
-import { BLOG_ARTICLES } from "../lib/blog-data";
+import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles } from "../lib/blog-data";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
-import { defaultCoreSchemas, articleLd } from "../lib/json-ld";
+import { defaultCoreSchemas, articleLd, blogLd, itemListLd } from "../lib/json-ld";
 import { BASE_URL } from "../lib/page-meta";
 
 export const blogRoutes = new Hono();
@@ -24,17 +24,37 @@ blogRoutes.get(
       description: "Deep dives into agent-ready infrastructure, MCP protocol, x402 payments.",
       path: "/blog",
     };
+    const pageParam = c.req.query("page");
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    const { items, meta: paginationMeta } = paginateArticles(BLOG_ARTICLES, page);
+
     const schemas = [
       ...defaultCoreSchemas(),
-      articleLd({
-        title: "AgentBadge Blog — Insights on Agent Readiness",
-        description: "Deep dives into agent-ready infrastructure, MCP protocol, x402 payments, and the agentic web.",
+      blogLd({
+        description: meta.description,
         path: "/blog",
-        sections: [],
+        articles: items,
       }),
+      itemListLd(items),
     ];
-    const content = BlogListPage().toString();
-    const pageHtml = LandingLayout(content, undefined, meta, schemas);
+    const content = BlogListPage(items, paginationMeta).toString();
+    const canonicalPath = paginationMeta.currentPage > 1
+      ? `/blog?page=${paginationMeta.currentPage}`
+      : "/blog";
+    const prevRel = paginationMeta.hasPrev
+      ? `${BASE_URL}${paginationMeta.currentPage === 2 ? "/blog" : `/blog?page=${paginationMeta.currentPage - 1}`}`
+      : undefined;
+    const nextRel = paginationMeta.hasNext
+      ? `${BASE_URL}/blog?page=${paginationMeta.currentPage + 1}`
+      : undefined;
+    const pageHtml = LandingLayout(content, undefined, {
+      ...meta,
+      path: canonicalPath,
+      rssUrl: "/blog/rss.xml",
+      markdownUrl: "/blog/index.md",
+      prevRel,
+      nextRel,
+    }, schemas);
     return c.html(pageHtml);
   },
 );
@@ -73,6 +93,39 @@ ${items}
 
     c.header("Content-Type", "application/rss+xml; charset=UTF-8");
     return c.body(xml);
+  },
+);
+
+blogRoutes.get(
+  "/blog/index.md",
+  describeRoute({
+    tags: ["Blog"],
+    summary: "Blog index as Markdown",
+    description: "Machine-readable Markdown index of all blog articles with HTML and MD URLs.",
+    responses: { 200: { description: "Markdown blog index" } },
+  }),
+  (c) => {
+    c.header("Content-Type", "text/markdown; charset=UTF-8");
+    return c.body(generateBlogIndexMarkdown());
+  },
+);
+
+blogRoutes.get(
+  "/blog/:slug{[^.]+\\.md$}",
+  describeRoute({
+    tags: ["Blog"],
+    summary: "Blog article as Markdown",
+    description: "Machine-readable Markdown representation of a blog article.",
+    responses: { 200: { description: "Markdown article" }, 404: { description: "Not found" } },
+  }),
+  (c) => {
+    const slug = c.req.param("slug").replace(/\.md$/, "");
+    const article = BLOG_ARTICLES.find((a) => a.slug === slug);
+    if (!article || !article.markdown) {
+      return c.text("Article not found", 404);
+    }
+    c.header("Content-Type", "text/markdown; charset=UTF-8");
+    return c.body(article.markdown);
   },
 );
 

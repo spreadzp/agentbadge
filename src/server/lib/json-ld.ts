@@ -3,6 +3,7 @@ import { BUILD_DATE } from "./build-info";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 import type { DirectoryEntry } from "@agentgate-hedera/passport";
 import { getCatalog } from "@agentgate-hedera/hedera-core";
+import type { BlogArticle } from "./blog-data";
 
 const SCHEMA_CONTEXT = "https://schema.org";
 
@@ -452,5 +453,49 @@ export function personLd(opts: {
       name: SITE_NAME,
       url: BASE_URL,
     },
+  };
+}
+
+// ─── Blog Schema (SLICE-60-4) ───────────────────────────────
+
+export function blogLd(opts: {
+  description: string;
+  path: string;
+  articles: BlogArticle[];
+}): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "Blog",
+    name: "AgentBadge Blog",
+    description: opts.description,
+    url: `${BASE_URL}${opts.path}`,
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: BASE_URL,
+    },
+    blogPost: opts.articles.map((a) => ({
+      "@type": "BlogPosting",
+      headline: a.title,
+      url: `${BASE_URL}/blog/${a.slug}`,
+      datePublished: a.date,
+      author: {
+        "@type": "Organization",
+        name: a.author,
+      },
+    })),
+  };
+}
+
+export function itemListLd(articles: BlogArticle[]): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "ItemList",
+    itemListElement: articles.map((a, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${BASE_URL}/blog/${a.slug}`,
+      name: a.title,
+    })),
   };
 }

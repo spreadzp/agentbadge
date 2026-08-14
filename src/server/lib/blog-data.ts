@@ -33,171 +33,980 @@ export interface BlogArticle {
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
     slug: "what-is-agent-readiness",
-    title: "What is Agent Readiness?",
+    title: "What Is Agent Readiness?",
     description:
-      "Agent readiness measures how easily an AI agent can discover, understand, and use your API or website. Learn the 72 checks that determine your AgentGrade score.",
+      "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent — without a human intervening. SEO for the agentic web.",
     author: "AgentBadge Team",
     authorRole: "Agency for the Agentic Web",
-    date: "2026-08-10",
+    date: "2026-08-14",
+    dateModified: "2026-08-14",
     agentGuideSlug: "what-is-agent-readiness",
     heroImage: "/images/blog/what-is-agent-readiness-hero.png",
     ogImage: "/images/blog/what-is-agent-readiness-og.png",
-    tags: ["agent-readiness", "seo", "geo", "aeo"],
-    readingTime: "10 min",
-    content: `<p><strong>Agent readiness</strong> is the measure of how easily an AI agent — whether an LLM, a crawler, or an autonomous system — can discover, understand, and interact with your API or website. It is the SEO equivalent for the agentic web: if your API is not agent-ready, AI agents simply cannot use it.</p>
+    tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
+    readingTime: "15 min",
+    content: `<h2>Why a good API can be invisible to AI agents</h2>
 
-<p>In 2026, AI agents are becoming primary consumers of the web. They search for APIs, read documentation, authenticate, make requests, and even pay for services — all without human intervention. But most APIs today are built for human developers, not machines. Agent readiness bridges that gap.</p>
+<p>Imagine this scenario.</p>
 
-<h2>Short Answer: What Does "Agent Ready" Mean?</h2>
-<p>An API or website is <em>agent ready</em> when an AI agent can:</p>
-<ol>
-  <li><strong>Discover</strong> it — find the API endpoint, read its capabilities</li>
-  <li><strong>Understand</strong> it — parse the schema, know what parameters are required</li>
-  <li><strong>Authenticate</strong> — follow the auth flow without human help</li>
-  <li><strong>Call</strong> it — make valid requests and parse responses</li>
-  <li><strong>Handle errors</strong> — understand what went wrong and how to fix it</li>
-  <li><strong>Pay</strong> — if the API requires payment, complete the transaction autonomously</li>
-</ol>
-<p>If any of these steps fails, the agent cannot use your API. That's what agent readiness measures.</p>
+<p>You've built an excellent API. It's fast, stable, well documented, with clean authentication and a sane architecture.</p>
 
-<h2>Why Agent Readiness Matters Now</h2>
-<p>The web is splitting into two audiences: humans and agents. Humans use browsers, read rendered HTML, and click links. Agents use HTTP clients, parse JSON, and follow machine-readable manifests. If your API only serves humans, you're invisible to the fastest-growing segment of internet traffic.</p>
+<p>A human developer opens your docs — and an hour later they've integrated your service.</p>
 
-<p>Consider these trends:</p>
+<p>Now an AI agent tries to use the same API.</p>
+
+<p>It searches for the service. It doesn't find it.</p>
+
+<p>It tries to understand the documentation. It can't locate the OpenAPI spec.</p>
+
+<p>It finds an endpoint, but can't figure out which authentication it needs.</p>
+
+<p>It gets an error — and the error explains nothing about what went wrong.</p>
+
+<p>Eventually the agent does what any inexperienced integrator would do: it gives up, or asks a human to step in.</p>
+
+<p><strong>The problem may not be your API. The problem is that your API isn't prepared for machine consumption.</strong></p>
+
+<p>That problem is what we call <strong>Agent Readiness</strong>.</p>
+
+<img src="/images/blog/what-is-agent-readiness-hero.png" alt="Hero — a human developer walks into API Docs while an AI agent faces a featureless wall" />
+
+<hr />
+
+<h2>Agent Readiness is not "how smart your AI is"</h2>
+
+<p>Agent Readiness is the degree to which an API or service can be:</p>
+
 <ul>
-  <li>LLMs like GPT-4, Claude, and Gemini can browse the web and call APIs — but only if those APIs are discoverable and machine-readable</li>
-  <li>Autonomous agents like AutoGPT and Devin need structured endpoints to function</li>
-  <li>Search engines are increasingly using AI to understand and recommend APIs</li>
-  <li>The <a href="https://modelcontextprotocol.io">Model Context Protocol (MCP)</a> is standardizing how agents interact with tools</li>
+  <li><strong>found</strong> by an AI agent;</li>
+  <li><strong>understood</strong> without human help;</li>
+  <li><strong>called</strong> correctly;</li>
+  <li><strong>authenticated</strong> against properly;</li>
+  <li><strong>recovered</strong> when errors occur.</li>
 </ul>
 
-<p>Agent readiness is not a future concern. It's a present-day competitive advantage. APIs that are agent-ready get recommended by LLMs, indexed by AI search engines, and used by autonomous systems. APIs that aren't, don't.</p>
+<p>Put simply:</p>
 
-<h2>The 15 Categories of Agent Readiness</h2>
-<p>AgentBadge's scanner evaluates your API across <strong>15 categories</strong> and <strong>72 individual checks</strong>. Here's what each category covers:</p>
+<blockquote><strong>Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent — without a human intervening.</strong></blockquote>
+
+<p>Here's a useful analogy with the internet we already know.</p>
+
+<p><strong>SEO made websites visible to search engines.</strong></p>
+
+<p><strong>Agent Readiness makes APIs visible and understandable to AI agents.</strong></p>
+
+<hr />
+
+<h2>From SEO to Agent Readiness</h2>
+
+<p>For decades, companies optimized websites for search engines.</p>
+
+<p>We got:</p>
+
+<ul>
+  <li><code>robots.txt</code>;</li>
+  <li>sitemaps;</li>
+  <li>structured data;</li>
+  <li>meta tags;</li>
+  <li>canonical URLs;</li>
+  <li>performance optimization;</li>
+  <li>search ranking.</li>
+</ul>
+
+<p>All of these mechanisms solved one big problem:</p>
+
+<blockquote><strong>How do you make a resource understandable to a machine that must find and process it?</strong></blockquote>
+
+<p>AI agents create a similar problem — but at a different level.</p>
+
+<p>A search engine only needs to understand:</p>
+
+<blockquote>"This page is about payments."</blockquote>
+
+<p>An agent needs to understand much more:</p>
+
+<blockquote>"This service can create payments. The endpoint is here. An API key is required. The request should look like this. The response has this structure. And if a 402 error comes back — here's the next step."</blockquote>
+
+<p>That's no longer just <strong>discoverability</strong>.</p>
+
+<p>That's <strong>machine usability</strong>.</p>
+
+<h3>The analogy, side by side</h3>
+
+<table><thead><tr><th>Web / SEO</th><th>Agentic Web</th></tr></thead><tbody><tr><td>Search engine finds a website</td><td>AI agent finds an API</td></tr><tr><td><code>robots.txt</code></td><td>machine-readable instructions</td></tr><tr><td>Sitemap</td><td>capability discovery</td></tr><tr><td>Meta description</td><td>structured API description</td></tr><tr><td>Open Graph / structured data</td><td>OpenAPI / agent metadata</td></tr><tr><td>Search ranking</td><td>Agent Readiness score</td></tr><tr><td>Web crawler</td><td>AI agent</td></tr><tr><td>Website visitor</td><td>API-consuming agent</td></tr></tbody></table>
+
+<p>But there's one fundamental difference.</p>
+
+<p><strong>A search engine needs to understand a page.</strong></p>
+
+<p><strong>An agent needs to take an action.</strong></p>
+
+<p>And that's why the requirements for APIs are quietly changing.</p>
+
+<img src="/images/blog/what-is-agent-readiness-2.png" alt="Web vs Agentic Web — two parallel flows: robots.txt/sitemap/search vs machine-readable docs/capabilities/action" />
+
+<hr />
+
+<h2>Why documentation written for humans isn't enough</h2>
+
+<p>Most API documentation was written assuming a human on the other side.</p>
+
+<p>A human can:</p>
+
+<ol>
+  <li>open the docs;</li>
+  <li>read the description;</li>
+  <li>look at an example;</li>
+  <li>infer the context;</li>
+  <li>guess which endpoint is needed;</li>
+  <li>figure out authentication from a screenshot;</li>
+  <li>try a request;</li>
+  <li>interpret an error message.</li>
+</ol>
+
+<p>A human has context.</p>
+
+<p>An AI agent has to <strong>reconstruct that context from machine-readable signals alone</strong>.</p>
+
+<p>For example, an agent may need to answer:</p>
+
+<pre><code>What does this API do?
+
+Where are its endpoints?
+
+Which endpoint should I call?
+
+What parameters are required?
+
+How do I authenticate?
+
+What does a successful response look like?
+
+What happens when the request fails?
+
+Can I safely retry?
+
+How much does this operation cost?</code></pre>
+
+<p>If the answers are scattered across prose, hidden behind JavaScript-rendered pages, described only in natural language, or missing entirely — the agent has to guess.</p>
+
+<p>And guessing is a terrible foundation for automated interaction.</p>
+
+<hr />
+
+<h2>Agent Readiness has several layers</h2>
+
+<p>It's tempting to reduce the problem to a single file — "just add an <code>agent-guide.json</code> and you're done."</p>
+
+<p>A genuinely agent-ready system passes through several layers.</p>
 
 <h3>1. Discovery</h3>
-<p>Can agents find your API? This checks for:</p>
+
+<p><strong>Can an agent find your API at all?</strong></p>
+
+<p>For example:</p>
+
 <ul>
-  <li><code>/.well-known/</code> endpoints (RFC 8615)</li>
-  <li><code>/openapi.json</code> or <code>/openapi.yaml</code> — OpenAPI specification</li>
-  <li><code>/llms.txt</code> — LLM-readable summary</li>
-  <li><code>/ai-sitemap.xml</code> — machine-readable sitemap</li>
-  <li><code>Link</code> headers (RFC 8288) for resource discovery</li>
+  <li>is there a clear public URL;</li>
+  <li>is there a machine-readable description;</li>
+  <li>are discovery files available (<code>llms.txt</code>, agent manifests, API catalogs);</li>
+  <li>is it obvious where the documentation lives.</li>
 </ul>
 
-<h3>2. Authentication</h3>
-<p>Is authentication documented and machine-readable?</p>
+<p>If the API can't be found, the remaining layers don't matter.</p>
+
+<h3>2. Understanding</h3>
+
+<p>The agent found the API.</p>
+
+<p>Now it must understand:</p>
+
+<blockquote>"What can I actually do here?"</blockquote>
+
+<p>That requires structured descriptions of capabilities, endpoints, parameters, and responses.</p>
+
+<p>OpenAPI is one of the most important sources of this information.</p>
+
+<p>But the mere existence of an OpenAPI file doesn't guarantee an agent can use the API correctly. The spec may be:</p>
+
 <ul>
-  <li>OAuth 2.0 discovery endpoints (RFC 8414, RFC 9728)</li>
-  <li>API key documentation in OpenAPI security schemes</li>
-  <li>Bearer token patterns</li>
-  <li>Auth flow that an agent can follow without human intervention</li>
+  <li>outdated;</li>
+  <li>incomplete;</li>
+  <li>contradictory;</li>
+  <li>poorly described;</li>
+  <li>out of sync with real API behavior.</li>
 </ul>
 
-<h3>3. Structured Data</h3>
-<p>Does your API return structured, machine-readable data?</p>
+<p><strong>Having documentation and having quality machine-readable documentation are different things.</strong></p>
+
+<h3>3. Authentication</h3>
+
+<p>Next question:</p>
+
+<blockquote>"How do I get access?"</blockquote>
+
+<p>For a human, you can write:</p>
+
+<blockquote>Create an API key in your dashboard.</blockquote>
+
+<p>An agent needs something like:</p>
+
+<pre><code>Authentication type: API key
+
+Location: Authorization header
+
+Header: X-API-Key
+
+Required: yes</code></pre>
+
+<p>The less an agent has to guess, the higher the chance of a successful interaction.</p>
+
+<h3>4. Machine-readable responses</h3>
+
+<p>The agent must understand responses.</p>
+
+<p>For example:</p>
+
+<pre><code>{
+  "id": "pay_123",
+  "status": "completed",
+  "amount": 49.00
+}</code></pre>
+
+<p>is dramatically easier to process automatically than an HTML page saying:</p>
+
+<blockquote>Your payment has been successfully processed.</blockquote>
+
+<p>The same applies to errors.</p>
+
+<p>A good error shouldn't just be readable by a human.</p>
+
+<p>It should be <strong>operationally useful to an agent</strong>:</p>
+
+<pre><code>{
+  "error": "insufficient_balance",
+  "message": "Insufficient account balance",
+  "retryable": false
+}</code></pre>
+
+<p>Now the agent can make a decision.</p>
+
+<img src="/images/blog/what-is-agent-readiness-3.png" alt="Four layers of Agent Readiness — Discovery, Understanding, Authentication, Machine-readable responses" />
+
+<hr />
+
+<h2>The most important distinction: an API can be good — and still agent-hostile</h2>
+
+<p>This difference matters.</p>
+
+<p><strong>An agent-hostile API is not necessarily a bad API.</strong></p>
+
+<p>It was simply designed for a different consumer.</p>
+
+<p>Imagine a restaurant.</p>
+
+<p>For a human:</p>
+
+<blockquote>"Ask the waiter about the special menu."</blockquote>
+
+<p>For an agent:</p>
+
+<pre><code>{
+  "action": "order",
+  "menu": "special",
+  "quantity": 1
+}</code></pre>
+
+<p>Both interfaces lead to the same result.</p>
+
+<p>But the second one is far easier to automate.</p>
+
+<p>AI agents are creating a new class of API consumer.</p>
+
+<p>And that forces developers to answer a new question:</p>
+
+<blockquote><strong>"If 10,000 AI agents wanted to use my API tomorrow, could they do it without a human's help?"</strong></blockquote>
+
+<hr />
+
+<h2>How AgentBadge measures Agent Readiness</h2>
+
+<p>This is where AgentBadge comes in.</p>
+
+<p>AgentBadge doesn't try to say:</p>
+
+<blockquote>"This API is good."</blockquote>
+
+<p>And it definitely doesn't say:</p>
+
+<blockquote>"This API is certified."</blockquote>
+
+<p>We follow a different principle:</p>
+
+<blockquote><strong>Don't certify. Measure.</strong></blockquote>
+
+<p>AgentBadge checks observable properties of an API and shows:</p>
+
 <ul>
-  <li>JSON-LD structured data on web pages</li>
-  <li>schema.org types (Organization, Service, Product, FAQPage)</li>
-  <li>Structured error responses with error codes and messages</li>
-  <li>Content-Type negotiation (JSON, not just HTML)</li>
+  <li>what was found;</li>
+  <li>what's missing;</li>
+  <li>which rule fired;</li>
+  <li>what evidence was collected;</li>
+  <li>why the score changed.</li>
 </ul>
 
-<h3>4. Capability Description</h3>
-<p>Can agents understand what your API does?</p>
+<h3>Evidence first</h3>
+
+<p>Suppose a system shows you:</p>
+
+<blockquote><strong>Agent Readiness: 76/100</strong></blockquote>
+
+<p>The number itself is almost useless.</p>
+
+<p>Every developer's next question is:</p>
+
+<blockquote><strong>Why 76?</strong></blockquote>
+
+<p>That's why AgentBadge is built around an <strong>evidence-first</strong> approach.</p>
+
+<p>Instead of:</p>
+
+<pre><code>Documentation: 62</code></pre>
+
+<p>you get:</p>
+
+<pre><code>AB-004 OpenAPI specification
+
+Status: VERIFIED
+
+Evidence:
+GET https://example.com/openapi.json
+
+HTTP: 200
+Content-Type: application/json
+
+Confidence: 1.0</code></pre>
+
+<p>Now the result is verifiable.</p>
+
+<p>That's a fundamental difference.</p>
+
+<p><strong>AgentBadge doesn't ask you to trust the number.</strong></p>
+
+<p><strong>It shows you where the number came from.</strong></p>
+
+<img src="/images/blog/what-is-agent-readiness-4.png" alt="Evidence card — rule AB-004 VERIFIED, HTTP 200, confidence 1.0" />
+
+<hr />
+
+<h2>Deterministic before intelligent</h2>
+
+<p>Another foundational principle of AgentBadge.</p>
+
+<p>We don't want to start with:</p>
+
+<blockquote>"Let an LLM look at the API and decide how agent-ready it is."</blockquote>
+
+<p>The problem is obvious.</p>
+
+<p>Different models will score the same API differently.</p>
+
+<p>So the base checks must be <strong>deterministic</strong>:</p>
+
+<pre><code>Does /openapi.json exist?
+        ↓
+HTTP 200?
+        ↓
+Valid OpenAPI?
+        ↓
+Authentication described?
+        ↓
+Structured error schema present?</code></pre>
+
+<p>This can be verified programmatically.</p>
+
+<p>AI can be layered on top of that.</p>
+
+<p>But here, AI must be a <strong>copilot, not a judge</strong>.</p>
+
+<hr />
+
+<h2>What AI should actually do</h2>
+
+<p>AI is excellent at tasks that require interpretation.</p>
+
+<p>For example:</p>
+
+<blockquote>"We found a description of this endpoint. Help the developer understand what to add to the machine-readable documentation."</blockquote>
+
+<p>Or:</p>
+
+<blockquote>"We found a capability that looks like a payment operation. Draft a description — but ask the API owner to confirm it."</blockquote>
+
+<p>This is fundamentally different from:</p>
+
+<blockquote>"AI decided your API has capability X, so we recorded it in the official guide."</blockquote>
+
+<p>The second option is dangerous — especially if the result silently lands in a file that other agents will rely on.</p>
+
+<p>That's why we separate fixes into two types.</p>
+
+<h3>Deterministic Fix</h3>
+
+<p>Can be applied automatically.</p>
+
+<pre><code>missing robots.txt
+missing sitemap
+missing badge configuration</code></pre>
+
+<h3>Assisted Fix</h3>
+
+<p>Requires human confirmation.</p>
+
+<pre><code>Agent inferred:
+
+POST /refund
+
+Capability:
+Refund a completed payment
+
+Confidence:
+0.71</code></pre>
+
+<p>Here the system must show:</p>
+
+<p><strong>Confirm / Edit / Reject</strong></p>
+
+<p>— not silently write a guess into production documentation.</p>
+
+<hr />
+
+<h2>One score — but with a transparent structure</h2>
+
+<p>AgentBadge uses a single score, because humans need a simple answer:</p>
+
+<blockquote>"How ready is my API?"</blockquote>
+
+<p>But one score must never hide the details.</p>
+
+<p>Categories and evidence sit right next to it:</p>
+
+<pre><code>Agent Readiness
+────────────────────────
+76 / 100
+
+Discovery          18 / 20
+Documentation      20 / 25
+Authentication     16 / 25
+Machine-readable   22 / 30</code></pre>
+
+<p>And the score must be <strong>monotonic and explainable</strong>.</p>
+
+<p>If you fixed a problem:</p>
+
+<pre><code>76 → 84
++8  Guide added</code></pre>
+
+<p>If a new problem appeared at the same time:</p>
+
+<pre><code>84 → 72
++8  Guide added
+-12 New conflict detected</code></pre>
+
+<p>A user should never have to ask:</p>
+
+<blockquote>"I fixed something — why did it get worse?"</blockquote>
+
+<p>The system must explain the <strong>delta</strong>.</p>
+
+<img src="/images/blog/what-is-agent-readiness-5.png" alt="Score delta — 76/100 ring, category bars, delta card '76 → 84, +8 Guide added'" />
+
+<hr />
+
+<h2>Agent Readiness is a process, not a certificate</h2>
+
+<p>Your API changes.</p>
+
+<p>New endpoints appear.</p>
+
+<p>Old ones disappear.</p>
+
+<p>Authentication changes.</p>
+
+<p>OpenAPI changes.</p>
+
+<p>Documentation changes.</p>
+
+<p>So today's score doesn't guarantee the same score a month from now.</p>
+
+<p>That's what fundamentally separates AgentBadge from a certificate.</p>
+
+<p>We don't say:</p>
+
+<blockquote>"Your API is certified as Agent Ready."</blockquote>
+
+<p>We say:</p>
+
+<blockquote>"Here's what we measured right now."</blockquote>
+
+<p>Which leads to a natural cycle:</p>
+
+<h3>Measure → Prove → Improve</h3>
+
+<p><strong>Measure</strong> — scan your API.</p>
+
+<p>↓</p>
+
+<p><strong>Prove</strong> — inspect the evidence behind every claim.</p>
+
+<p>↓</p>
+
+<p><strong>Improve</strong> — fix the problems.</p>
+
+<p>↓</p>
+
+<p><strong>Measure again</strong> — verify the result.</p>
+
+<p>This isn't a one-time audit.</p>
+
+<p>It's an improvement loop.</p>
+
+<img src="/images/blog/what-is-agent-readiness-6.png" alt="Measure → Prove → Improve cycle with Measure again return arrow" />
+
+<hr />
+
+<h2>Why this can become a new infrastructure layer</h2>
+
+<p>Today, APIs are usually optimized for a few consumer types:</p>
+
+<pre><code>Human developer
+       ↓
+Documentation
+       ↓
+SDK
+       ↓
+API</code></pre>
+
+<p>With AI agents, an additional layer appears:</p>
+
+<pre><code>AI Agent
+    ↓
+Discovery
+    ↓
+Machine-readable knowledge
+    ↓
+Capabilities
+    ↓
+Authentication
+    ↓
+API</code></pre>
+
+<p>And with it comes a new infrastructure question:</p>
+
+<blockquote><strong>How do you measure how well an API travels this path?</strong></blockquote>
+
+<p>It's roughly the same class of question that tools like Lighthouse and SSL Labs answered in their time.</p>
+
+<p>Not because Lighthouse defines what a "good website" is.</p>
+
+<p>But because it shows you:</p>
+
+<blockquote><strong>What exactly can be measured — and improved.</strong></blockquote>
+
+<hr />
+
+<h2>Where AgentBadge fits</h2>
+
+<p>AgentBadge is built around a simple loop:</p>
+
+<pre><code>             ┌─────────────┐
+             │    SCAN     │
+             └──────┬──────┘
+                    ↓
+             ┌─────────────┐
+             │   EVIDENCE  │
+             └──────┬──────┘
+                    ↓
+             ┌─────────────┐
+             │    SCORE    │
+             └──────┬──────┘
+                    ↓
+             ┌─────────────┐
+             │     FIX     │
+             └──────┬──────┘
+                    ↓
+                RE-SCAN</code></pre>
+
+<p>The point isn't another pretty dashboard.</p>
+
+<p>It isn't even the badge itself.</p>
+
+<p><strong>The value appears when a developer can walk the full path from problem to fix.</strong></p>
+
+<hr />
+
+<h2>How to start right now</h2>
+
+<p>You don't need to rebuild your API.</p>
+
+<p>You don't need to install a special AI agent.</p>
+
+<p>You don't need to change your backend.</p>
+
+<p>The first step is simple:</p>
+
+<p><strong>1. Run a scan.</strong> Enter your API's URL into AgentBadge — or use the CLI:</p>
+
+<pre><code>npx @agentbadge/cli scan https://api.example.com</code></pre>
+
+<p><strong>2. Look at the evidence.</strong> Not just the overall score — the concrete reasons behind it.</p>
+
+<p><strong>3. Fix the most obvious problems.</strong> For example:</p>
+
 <ul>
-  <li>Clear API summary in OpenAPI</li>
-  <li>Endpoint descriptions with examples</li>
-  <li>Parameter documentation with types and constraints</li>
-  <li>Response schema with field descriptions</li>
+  <li>a missing machine-readable document;</li>
+  <li>an incomplete OpenAPI spec;</li>
+  <li>undocumented authentication;</li>
+  <li>unstructured errors.</li>
 </ul>
 
-<h3>5. Payment Integration</h3>
-<p>If your API requires payment, can agents pay autonomously?</p>
-<ul>
-  <li><a href="/services/marketplace">x402 protocol</a> support for machine-to-machine payments</li>
-  <li>Payment headers in HTTP responses</li>
-  <li>Price discovery (how much does a call cost?)</li>
-  <li>Escrow and settlement on-chain (HBAR)</li>
-</ul>
+<p><strong>4. Scan again.</strong> See whether the score changed.</p>
 
-<h3>6–15. Additional Categories</h3>
-<p>The remaining categories cover:</p>
-<ul>
-  <li><strong>Content Negotiation</strong> — serving JSON, not just HTML</li>
-  <li><strong>MCP Support</strong> — Model Context Protocol tool definitions</li>
-  <li><strong>Agent Identity</strong> — agent passports, DIDs, HCS directory</li>
-  <li><strong>Rate Limiting</strong> — documented and agent-friendly</li>
-  <li><strong>Documentation</strong> — llms.txt, ai-plugin.json, skill files</li>
-  <li><strong>Infrastructure</strong> — HTTPS, CORS, security headers</li>
-  <li><strong>A2A Messaging</strong> — agent-to-agent communication</li>
-  <li><strong>WebMCP</strong> — browser-side MCP tools</li>
-  <li><strong>Bot Access</strong> — robots.txt allowing AI crawlers</li>
-  <li><strong>Error Handling</strong> — deterministic, structured errors</li>
-</ul>
+<p><strong>5. Add the AgentBadge badge to your README.</strong> Show your API's current measured readiness — and make it part of your public developer workflow.</p>
 
-<h2>How Agent Readiness Is Scored</h2>
-<p>Each of the 72 checks produces one of three results:</p>
-<ul>
-  <li><strong>✓ Pass</strong> — The check succeeded. Your API meets this requirement.</li>
-  <li><strong>✗ Fail</strong> — The check failed. This needs to be fixed.</li>
-  <li><strong>◐ Partial</strong> — The check partially succeeded. Some work needed.</li>
-</ul>
+<hr />
 
-<p>Your <strong>AgentGrade</strong> is a weighted score from 0 to 100. Critical checks (discovery, authentication) carry more weight than nice-to-have checks. A score of:</p>
-<ul>
-  <li><strong>90–100</strong> — Excellent. Your API is fully agent-ready.</li>
-  <li><strong>76–89</strong> — Good. Your API is agent-ready with minor gaps.</li>
-  <li><strong>50–75</strong> — Fair. Significant work needed for agent readiness.</li>
-  <li><strong>Below 50</strong> — Poor. Your API is not agent-ready.</li>
-</ul>
+<h2>What comes next</h2>
 
-<h2>How to Check Your Agent Readiness</h2>
-<p>You can scan any API or website in seconds using the <a href="/services/scanner">AgentBadge Scanner</a>. The scanner:</p>
+<p>The first level is <strong>measurement</strong>.</p>
+
+<p>The next is <strong>continuous control</strong>.</p>
+
+<p>If your API scores 91 today, but a developer removes the OpenAPI endpoint two weeks from now, the old result no longer reflects reality.</p>
+
+<p>So monitoring becomes the logical next step:</p>
+
+<pre><code>91
+ ↓
+API changed
+ ↓
+82
+ ↓
+Regression alert
+ ↓
+Developer fixes issue
+ ↓
+89</code></pre>
+
+<p>That's how AgentBadge gradually turns from a scanner into a workflow:</p>
+
+<blockquote><strong>Measure → Prove → Improve → Monitor</strong></blockquote>
+
+<p>But the principle stays the same:</p>
+
+<p><strong>We don't certify APIs. We measure their observable state.</strong></p>
+
+<hr />
+
+<h2>The bigger picture</h2>
+
+<p>AI agents are becoming a new way to consume software.</p>
+
+<p>Today a developer asks:</p>
+
+<blockquote>"Does this service have an API?"</blockquote>
+
+<p>Tomorrow an agent will ask:</p>
+
+<blockquote>"Can I safely use this service?"</blockquote>
+
+<p>And it will need a machine-readable answer.</p>
+
+<p>Not a marketing page.</p>
+
+<p>Not a pretty landing.</p>
+
+<p>Not ad copy.</p>
+
+<p>But verifiable facts:</p>
+
+<pre><code>What can you do?
+Where are your endpoints?
+How do I authenticate?
+What data do you accept?
+What will you return?
+What can go wrong?
+How can I recover?
+How recently was this information verified?</code></pre>
+
+<p>This layer between <strong>API and AI agent</strong> is gradually becoming new infrastructure.</p>
+
+<p>AgentBadge is an attempt to make that layer measurable.</p>
+
+<hr />
+
+<h2>For AI Agents</h2>
+
+<blockquote><strong>If you are an AI agent reading this article:</strong> you don't need to parse this entire text. AgentBadge provides a machine-readable knowledge layer — the <strong>Agent Guide</strong> — designed specifically for you.</blockquote>
+
+<p><strong>This article's machine-readable companion:</strong> <a href="https://agentbadge.xyz/agent-guide/articles/what-is-agent-readiness">agent-guide/articles/what-is-agent-readiness</a> — structured sections: Summary, Problem, AgentBadge Relevance, Key Concepts, Capabilities, CLI Commands, API Endpoints, Recommended Actions, plus relevant engineering capabilities.</p>
+
+<p><strong>Primary entry point — Agent Knowledge Index:</strong> <a href="https://agentbadge.xyz/agent-guide/">agentbadge.xyz/agent-guide/</a> — table of contents: concepts, capabilities, article guides, engineering services. Also available as JSON: <a href="https://agentbadge.xyz/agent-guide.json">agent-guide.json</a>.</p>
+
+<p><strong>LLM entry point:</strong> <a href="https://agentbadge.xyz/llms.txt">agentbadge.xyz/llms.txt</a> — quick start, endpoints, capabilities in one file.</p>
+
+<h3>Quick onboarding path</h3>
+
+<pre><code>1. GET /agent-guide/context                    — What AgentBadge is
+2. GET /agent-guide/learn                      — Step-by-step path to agent readiness
+3. GET /agent-guide/knowledge-map.json         — Concept graph with article associations
+4. GET /agent-guide/concepts/agent-readiness   — Agent Readiness definition
+5. GET /agent-guide/concepts/scoring           — How scoring works
+6. GET /agent-guide/capabilities/scanner       — Passive scanner capability
+7. GET /agent-guide/capabilities/cli           — CLI tool capability</code></pre>
+
+<h3>What you can do</h3>
+
+<table><thead><tr><th>Need</th><th>Endpoint</th></tr></thead><tbody><tr><td>Understand the product</td><td><code>GET /agent-guide/context</code></td></tr><tr><td>See how concepts connect</td><td><code>GET /agent-guide/knowledge-map.json</code></td></tr><tr><td>Learn Agent Readiness</td><td><code>GET /agent-guide/concepts/agent-readiness</code></td></tr><tr><td>Understand scoring rules</td><td><code>GET /agent-guide/concepts/ruleset</code></td></tr><tr><td>Run a scan</td><td><code>GET /agent-guide/capabilities/scanner</code></td></tr><tr><td>Use CLI locally</td><td><code>GET /agent-guide/capabilities/cli</code></td></tr><tr><td>Full guide to this article</td><td><code>GET /agent-guide/articles/what-is-agent-readiness</code></td></tr><tr><td>Engineering services (hire the team)</td><td><code>GET /agent-guide/team/services</code></td></tr><tr><td>LLM entry point</td><td><code>GET /llms.txt</code></td></tr></tbody></table>
+
+<h3>CLI</h3>
+
+<pre><code>npx @agentbadge/cli scan https://api.example.com
+npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json</code></pre>
+
+<p><em>The machine-readable knowledge layer is part of the product itself — not a replacement for this article.</em></p>
+
+<hr />
+
+<h2>Try your own API</h2>
+
+<p>If your API needs to work not only with humans but with AI agents, the first question is simple:</p>
+
+<blockquote><strong>Can an agent actually use my API without me?</strong></blockquote>
+
+<p>Run a scan.</p>
+
+<p>Get the evidence.</p>
+
+<p>Fix the problems.</p>
+
+<p>Verify the result.</p>
+
+<p><strong>Measure → Prove → Improve.</strong></p>
+
+<hr />
+
+<h3>AgentBadge</h3>
+
+<p><strong>Don't certify. Measure.</strong></p>
+
+<p><em>Agent Readiness for the agentic web.</em></p>
+
+<hr />
+
+<p><strong>Related:</strong> <a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — SEO made websites discoverable. Agent Readiness makes APIs usable by AI agents. See the 10 differences.</p>`,
+  },
+  {
+    slug: "api-has-seo-agent-readiness",
+    title: "Your API Has SEO. Does It Have Agent Readiness?",
+    description:
+      "SEO optimized websites for search engines. Agent Readiness optimizes APIs for AI agents. Why a good SEO score doesn't mean your API is agent-ready — and 10 things to check.",
+    author: "AgentBadge Team",
+    authorRole: "Agency for the Agentic Web",
+    date: "2026-08-14",
+    dateModified: "2026-08-14",
+    agentGuideSlug: "seo-vs-agent-readiness",
+    heroImage: "/images/blog/api-has-seo-agent-readiness-hero.png",
+    ogImage: "/images/blog/api-has-seo-agent-readiness-og.png",
+    tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
+    readingTime: "12 min",
+    content: `<h2>20 Years of SEO → A New Era</h2>
+
+<p>We've spent 20 years making websites discoverable by search engines. <code>robots.txt</code>, sitemaps, structured data, meta tags, canonical URLs — all of SEO exists to help a search engine find and understand a page.</p>
+
+<p>Now there's a new consumer of information: the AI agent. It doesn't just need to find a page. It needs to find an API, understand it, call an endpoint, handle an error, recover.</p>
+
+<p><strong>Web page → Search engine → SEO. API → AI agent → Agent Readiness.</strong></p>
+
+<p>This isn't an evolution of SEO. It's a new layer.</p>
+
+<img src="/images/blog/api-has-seo-agent-readiness-hero.png" alt="Hero — SEO on the left with green checkmarks, Agent Readiness on the right with red X marks on missing OpenAPI, auth, and structured errors" />
+
+<hr />
+
+<h2>SEO ≠ Discoverability</h2>
+
+<p>Your API might have excellent SEO on its landing page, proper meta tags, a sitemap, and good Google indexing — and still be <strong>invisible</strong> to an AI agent.</p>
+
+<p>Why? Because SEO optimizes for a search engine that needs to <strong>understand a page</strong>. An agent needs to <strong>take an action</strong>. These are different tasks.</p>
+
+<p>A search engine reads. An agent acts.</p>
+
+<p>When a user asks an agent: <em>"Find a service that does X and use its API"</em>, the agent needs to:</p>
+
 <ol>
-  <li>Fetches your API endpoint and well-known files</li>
-  <li>Runs all 72 checks across 15 categories</li>
-  <li>Produces a detailed report with evidence and fix hints</li>
-  <li>Calculates your AgentGrade score</li>
+  <li>Discover the API</li>
+  <li>Understand its capabilities</li>
+  <li>Figure out authentication</li>
+  <li>Understand endpoint parameters and request format</li>
+  <li>Understand rate limits and pricing</li>
+  <li>Handle errors</li>
+  <li>Complete the task</li>
 </ol>
 
-<p>You can also use the CLI:</p>
-<pre><code>$ agentbadge scan https://api.example.com
-✓ discovery /openapi.json
-✓ OpenAPI schema detected
-✓ authentication documented
-✗ structured error schema missing
-◐ capability description inferred
+<p>SEO helps with step 1 — finding the page. Steps 2–7 require entirely different infrastructure.</p>
 
-AGENT READINESS 76 / 100
-+8 after fix</code></pre>
+<img src="/images/blog/api-has-seo-agent-readiness-2.png" alt="Two parallel pipelines — Web Discovery (SEO, green checkmarks) vs API Discovery (Agent Readiness, question marks and gaps)" />
 
-<h2>From Agent Readiness to Agent Identity</h2>
-<p>Once your API is agent-ready, the next step is giving your AI agents verifiable identity. <a href="/services/passports">Agent Passports</a> are NFT-based identity credentials on the Hedera network. They allow agents to:</p>
+<hr />
+
+<h2>Human-Readable vs Machine-Readable</h2>
+
+<p>The key difference between SEO and Agent Readiness is the format of information.</p>
+
+<p><strong>Human-readable (good for developers):</strong></p>
+
+<p><em>"To refund an order, contact our support team at support@example.com or visit the refunds page in your dashboard."</em></p>
+
+<p><strong>Machine-readable (good for agents):</strong></p>
+
+<p><code>POST /refund</code> with <code>order_id</code> and <code>reason</code> → returns <code>refund_id</code>, <code>status</code>, <code>amount</code>.</p>
+
+<p>A human can guess. An agent can't. An agent needs structure.</p>
+
+<p>A more powerful model can't fix missing information that the API simply didn't provide.</p>
+
+<img src="/images/blog/api-has-seo-agent-readiness-3.png" alt="Side-by-side comparison — human reading prose documentation vs AI agent parsing structured JSON schema" />
+
+<hr />
+
+<h2>The Four Dimensions of Agent Readiness</h2>
+
+<p>Agent Readiness is not a single metric. It's four independent dimensions:</p>
+
+<table>
+  <thead>
+    <tr><th>Dimension</th><th>Question</th><th>What We Check</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Discovery</strong></td><td>Can an agent find the API?</td><td>llms.txt, well-known endpoints, OpenAPI URL, ai-sitemap</td></tr>
+    <tr><td><strong>Documentation</strong></td><td>Can an agent understand capabilities?</td><td>OpenAPI spec, machine-readable descriptions</td></tr>
+    <tr><td><strong>Authentication</strong></td><td>Can an agent understand auth flow?</td><td>OAuth discovery, token endpoint, scopes</td></tr>
+    <tr><td><strong>Machine-readability</strong></td><td>Can an agent process responses?</td><td>Structured errors, rate limit headers, content negotiation</td></tr>
+  </tbody>
+</table>
+
+<p>Each dimension is independent. An API can be excellent in Documentation but fail in Discovery.</p>
+
+<p><strong>SEO analogy:</strong></p>
+
 <ul>
-  <li>Prove who they are with a DID (<code>did:hcs</code>)</li>
-  <li>Register in the public HCS directory for agent-to-agent discovery</li>
-  <li>Build trust through tiered capabilities (Bronze → Platinum)</li>
-  <li>Participate in the <a href="/services/marketplace">task marketplace</a> with x402 machine payments</li>
+  <li>Discovery ≈ robots.txt + sitemap (can the search engine find the page?)</li>
+  <li>Documentation ≈ structured data + meta tags (can the search engine understand the content?)</li>
+  <li>Authentication ≈ no direct SEO equivalent (a new problem)</li>
+  <li>Machine-readability ≈ semantic HTML + accessibility (can a parser extract the data?)</li>
 </ul>
 
-<h2>The Agent-Ready Stack</h2>
-<p>Agent readiness is the foundation. On top of it, you build:</p>
+<img src="/images/blog/api-has-seo-agent-readiness-4.png" alt="Four-layer stack diagram — Discovery, Documentation, Authentication, Machine-readability" />
+
+<hr />
+
+<h2>Self-Test: 7 Questions for Your API</h2>
+
+<p>If a new AI agent encountered your API today, could it independently answer:</p>
+
 <ol>
-  <li><strong>Discovery</strong> → Agents find your API</li>
-  <li><strong>Identity</strong> → Agents prove who they are (passports)</li>
-  <li><strong>Commerce</strong> → Agents pay and get paid (marketplace)</li>
+  <li><strong>Where is the OpenAPI spec?</strong> (is there a machine-readable description of all endpoints?)</li>
+  <li><strong>What authorization is needed?</strong> (OAuth flow, token endpoint, scopes — in machine-readable format)</li>
+  <li><strong>What capabilities does the API offer?</strong> (what the API can do — not prose, but structured)</li>
+  <li><strong>What errors can occur?</strong> (structured error responses, not "500 Internal Server Error")</li>
+  <li><strong>What are the rate limits?</strong> (in headers, not in prose)</li>
+  <li><strong>How much does it cost?</strong> (machine-readable pricing, not "contact sales")</li>
+  <li><strong>Can an agent complete a task?</strong> (end-to-end flow without human intervention)</li>
 </ol>
 
-<p>This is the stack that AgentBadge provides. Start with a <a href="/services/scanner">free scan</a>, get your AgentGrade, fix the gaps, and join the agentic web.</p>
+<p>If 3+ answers are "not sure" — you have an Agent Readiness gap.</p>
 
-<h2>Further Reading</h2>
+<img src="/images/blog/api-has-seo-agent-readiness-5.png" alt="Agent Readiness Self-Test checklist card with 7 questions, some checked green, some unchecked red" />
+
+<hr />
+
+<h2>AgentBadge: Measure, Don't Certify</h2>
+
+<p>AgentBadge doesn't certify APIs. AgentBadge <strong>measures</strong> — how accessible an API is to agents.</p>
+
+<blockquote><strong>We don't certify your API. We measure how accessible it is to agents.</strong></blockquote>
+
+<p>The process: <strong>Measure → Evidence → Fix → Monitor</strong></p>
+
 <ul>
-  <li><a href="/agent-guide">Agent Guide</a> — complete documentation for agent-ready infrastructure</li>
-  <li><a href="/faq">FAQ</a> — common questions about agent readiness and AgentBadge</li>
-  <li><a href="/pricing">Pricing</a> — passport tiers and capabilities</li>
-</ul>`,
+  <li><strong>Measure:</strong> 72 deterministic checks (not "AI opinion", but observable facts)</li>
+  <li><strong>Evidence:</strong> each check has proof — HTTP response, header, body fragment</li>
+  <li><strong>Fix:</strong> specific recommendations on what to change</li>
+  <li><strong>Monitor:</strong> regular rescans, delta tracking</li>
+</ul>
+
+<p><strong>Why not "AI scoring":</strong> LLMs can hallucinate. Deterministic checks can't. If we say "OpenAPI spec not found" — that's a fact, not an opinion.</p>
+
+<img src="/images/blog/api-has-seo-agent-readiness-6.png" alt="Circular flow diagram — Measure → Evidence → Fix → Monitor → back to Measure, with AgentBadge in the center" />
+
+<hr />
+
+<h2>What Happens When an AI Agent Visits Your API?</h2>
+
+<p>AI agents are becoming a major consumer of APIs. If your API isn't agent-ready, you're invisible to an entire category of users.</p>
+
+<p><strong>Discover → Understand → Act.</strong></p>
+
+<p>Then run a free Agent Readiness scan.</p>
+
+<h3>What you can do</h3>
+
+<ul>
+  <li><a href="/services/scanner">Run a free scan</a> — get your Agent Readiness score</li>
+  <li><a href="/blog/what-is-agent-readiness">Read Article 1: What Is Agent Readiness?</a> — the foundation</li>
+  <li><a href="/agent-guide/">Explore the Agent Knowledge Layer</a> — machine-readable guide for AI agents</li>
+</ul>
+
+<h3>CLI</h3>
+
+<p><code>npx @agentbadge/cli scan https://api.example.com</code></p>
+
+<p>The CLI is free, runs locally, and produces the same results as the web scanner.</p>
+
+<hr />
+
+<h2>For AI Agents</h2>
+
+<blockquote><strong>If you are an AI agent reading this article:</strong> you don't need to parse this entire text. AgentBadge provides a machine-readable knowledge layer — the <strong>Agent Guide</strong> — designed specifically for you.</blockquote>
+
+<p><strong>This article's machine-readable companion:</strong> <a href="https://agentbadge.xyz/agent-guide/articles/seo-vs-agent-readiness">agent-guide/articles/seo-vs-agent-readiness</a> — structured sections: Summary, Problem, AgentBadge Relevance, Key Concepts, Capabilities, CLI Commands, API Endpoints, Recommended Actions.</p>
+
+<p><strong>Primary entry point — Agent Knowledge Index:</strong> <a href="https://agentbadge.xyz/agent-guide/">agentbadge.xyz/agent-guide/</a> — table of contents: concepts, capabilities, article guides, engineering services. Also available as JSON: <a href="https://agentbadge.xyz/agent-guide.json">agent-guide.json</a>.</p>
+
+<hr />
+
+<h3>AgentBadge</h3>
+
+<p><strong>Don't certify. Measure.</strong></p>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/your-api-has-seo-does-it-have-agent-readiness-2m14",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-aiagents-share-7494123829779378176-Wf8K/",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/your-api-has-seo-does-it-have-agent-readiness-5a5544b89746",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2088359386578120849",
+      },
+    ],
   },
   {
     slug: "mcp-vs-api",
@@ -579,3 +1388,170 @@ Content-Type: application/json
 </ul>`,
   },
 ];
+
+// --- Markdown generation (SLICE-60-2) ---
+
+const BASE_URL_FOR_MD =
+  process.env.BASE_URL && process.env.BASE_URL.startsWith("http")
+    ? process.env.BASE_URL
+    : "https://agentbadge.xyz";
+
+function htmlToMarkdown(html: string): string {
+  let md = html;
+
+  // Pre/code blocks — extract and preserve
+  const codeBlocks: string[] = [];
+  md = md.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (_m, code) => {
+    const decoded = code
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    codeBlocks.push(decoded);
+    return `\x00CODEBLOCK${codeBlocks.length - 1}\x00`;
+  });
+
+  // Headings
+  md = md.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/g, (_m, level, content) => {
+    const hashes = "#".repeat(Number(level));
+    return `\n\n${hashes} ${stripTags(content).trim()}\n\n`;
+  });
+
+  // Links — resolve relative URLs to absolute
+  md = md.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g, (_m, href, text) => {
+    const cleanText = stripTags(text).trim();
+    const absHref = href.startsWith("/") ? `${BASE_URL_FOR_MD}${href}` : href;
+    return `[${cleanText}](${absHref})`;
+  });
+
+  // Bold and italic
+  md = md.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/g, "**$1**");
+  md = md.replace(/<em[^>]*>([\s\S]*?)<\/em>/g, "*$1*");
+
+  // Images
+  md = md.replace(/<img\s+[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/g, "![$2]($1)");
+
+  // Lists
+  md = md.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/g, (_m, list) => {
+    return list
+      .replace(/<li[^>]*>([\s\S]*?)<\/li>/g, "- $1\n")
+      .replace(/\n$/, "");
+  });
+  md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/g, (_m, list) => {
+    let i = 1;
+    return list
+      .replace(/<li[^>]*>([\s\S]*?)<\/li>/g, (_m: string, content: string) => `${i++}. ${content}\n`)
+      .replace(/\n$/, "");
+  });
+
+  // Tables — convert to markdown tables
+  md = md.replace(/<table[^>]*>([\s\S]*?)<\/table>/g, (_m, table) => {
+    const rows: string[][] = [];
+    const rowMatches = table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g);
+    for (const rowMatch of rowMatches) {
+      const cells: string[] = [];
+      const cellMatches = rowMatch[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g);
+      for (const cellMatch of cellMatches) {
+        cells.push(stripTags(cellMatch[1]).trim());
+      }
+      if (cells.length) rows.push(cells);
+    }
+    if (rows.length === 0) return "";
+    const header = rows[0];
+    const separator = header.map(() => "---");
+    const lines = [
+      `| ${header.join(" | ")} |`,
+      `| ${separator.join(" | ")} |`,
+      ...rows.slice(1).map((r) => `| ${r.join(" | ")} |`),
+    ];
+    return `\n\n${lines.join("\n")}\n\n`;
+  });
+
+  // Paragraphs and line breaks
+  md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/g, "\n\n$1\n\n");
+  md = md.replace(/<br\s*\/?>/g, "\n");
+
+  // Strip remaining tags
+  md = stripTags(md);
+
+  // Decode HTML entities
+  md = md
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+
+  // Restore code blocks
+  md = md.replace(/\x00CODEBLOCK(\d+)\x00/g, (_m, idx) => {
+    return `\n\`\`\`\n${codeBlocks[Number(idx)]}\n\`\`\`\n`;
+  });
+
+  // Clean up extra whitespace
+  md = md.replace(/\n{3,}/g, "\n\n").trim();
+
+  return md;
+}
+
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, "");
+}
+
+function generateArticleMarkdown(article: BlogArticle): string {
+  const header = `# ${article.title}\n\n> Published: ${article.date} | Author: ${article.author} | Canonical: ${BASE_URL_FOR_MD}/blog/${article.slug}\n`;
+
+  const body = htmlToMarkdown(article.content);
+
+  const aiAgentsSection = `\n---\n\n## For AI Agents\n\n- Companion guide: ${BASE_URL_FOR_MD}/agent-guide/articles/${article.agentGuideSlug ?? article.slug}\n- Knowledge Index: ${BASE_URL_FOR_MD}/agent-guide/\n- LLM entry point: ${BASE_URL_FOR_MD}/llms.txt\n- Engineering services: ${BASE_URL_FOR_MD}/agent-guide/team/services\n`;
+
+  return `${header}\n${body}\n${aiAgentsSection}`;
+}
+
+// Populate markdown field for all articles
+for (const article of BLOG_ARTICLES) {
+  if (!article.markdown) {
+    article.markdown = generateArticleMarkdown(article);
+  }
+}
+
+export const ARTICLES_PER_PAGE = 9;
+
+export interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalArticles: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export function paginateArticles(
+  articles: BlogArticle[],
+  page: number | undefined,
+): { items: BlogArticle[]; meta: PaginationMeta } {
+  const totalArticles = articles.length;
+  const totalPages = Math.max(1, Math.ceil(totalArticles / ARTICLES_PER_PAGE));
+  const rawPage = typeof page === "number" && !Number.isNaN(page) ? page : 1;
+  const currentPage = Math.min(Math.max(1, rawPage), totalPages);
+  const start = (currentPage - 1) * ARTICLES_PER_PAGE;
+  const items = articles.slice(start, start + ARTICLES_PER_PAGE);
+  return {
+    items,
+    meta: {
+      currentPage,
+      totalPages,
+      totalArticles,
+      hasNext: currentPage < totalPages,
+      hasPrev: currentPage > 1,
+    },
+  };
+}
+
+export function generateBlogIndexMarkdown(): string {
+  const lines = BLOG_ARTICLES.map(
+    (a) => `- [${a.title}](${BASE_URL_FOR_MD}/blog/${a.slug}) — ${a.description}\n  - HTML: ${BASE_URL_FOR_MD}/blog/${a.slug}\n  - Markdown: ${BASE_URL_FOR_MD}/blog/${a.slug}.md\n  - Published: ${a.date}`,
+  ).join("\n\n");
+
+  return `# AgentBadge Blog — Article Index\n\n> Canonical: ${BASE_URL_FOR_MD}/blog\n\n${lines}\n`;
+}

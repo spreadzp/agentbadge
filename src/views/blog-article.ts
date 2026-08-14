@@ -87,10 +87,8 @@ export function BlogArticlePage(article: BlogArticle) {
           </div>
         </div>
       </header>
-      ${article.heroImage ? html`<div class="px-4 pb-8 md:px-8">
-        <div class="mx-auto max-w-5xl">
-          <img src="${article.heroImage}" alt="${article.title}" class="w-full rounded-xl border border-slate-700" loading="eager" fetchpriority="high" />
-        </div>
+      ${article.heroImage ? html`<div class="w-full pb-8">
+        <img src="${article.heroImage}" alt="${article.title}" class="w-full" loading="eager" fetchpriority="high" />
       </div>` : ""}
       <div class="px-4 pb-16 md:px-8">
         <div class="mx-auto max-w-3xl rounded-xl border border-slate-700/50 bg-slate-900/30 p-6 md:p-8 shadow-2xl">

@@ -8,7 +8,7 @@ COPY src ./src
 COPY tests ./tests
 COPY content ./content
 COPY public ./public
-COPY tailwind.config.js ./
+COPY tailwind.config.cjs ./
 RUN bun install tailwindcss@3 && bun run build:css && bun remove tailwindcss
 
 EXPOSE 4021

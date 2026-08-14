@@ -68,6 +68,9 @@ export function LandingLayout(
         <link rel="alternate" type="text/plain" title="Full LLM Context" href="/llms-full.txt" />
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
         ${meta?.markdownUrl ? html`<link rel="alternate" type="text/markdown" title="Article as Markdown" href="${meta.markdownUrl}" />` : ""}
+        ${meta?.rssUrl ? html`<link rel="alternate" type="application/rss+xml" title="Blog RSS Feed" href="${meta.rssUrl}" />` : ""}
+        ${meta?.prevRel ? html`<link rel="prev" href="${meta.prevRel}" />` : ""}
+        ${meta?.nextRel ? html`<link rel="next" href="${meta.nextRel}" />` : ""}
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
         <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://unpkg.com" crossorigin />

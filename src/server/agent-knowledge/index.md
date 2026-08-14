@@ -40,6 +40,7 @@ AgentBadge is not just a tool — we are an agency for the agentic web. Our team
 ## Articles
 
 - [What Is Agent Readiness?](/agent-guide/articles/what-is-agent-readiness) — Pillar article defining the category
+- [Your API Has SEO. Does It Have Agent Readiness?](/agent-guide/articles/seo-vs-agent-readiness) — Why SEO ≠ agent discoverability, four dimensions, self-test
 
 ### Article Structure
 

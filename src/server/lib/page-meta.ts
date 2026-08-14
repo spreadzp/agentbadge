@@ -7,6 +7,9 @@ export interface PageMeta {
   path: string;
   ogImage?: string;
   markdownUrl?: string;
+  rssUrl?: string;
+  prevRel?: string;
+  nextRel?: string;
 }
 
 export const SITE_NAME = "AgentBadge";

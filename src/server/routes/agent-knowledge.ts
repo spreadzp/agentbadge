@@ -238,7 +238,7 @@ async function serveAgentGuideJson(c: Context): Promise<Response> {
         "GET /agent-guide/team/contact",
         "POST /api/work-requests",
       ],
-      articles: ["what-is-agent-readiness"],
+      articles: ["what-is-agent-readiness", "seo-vs-agent-readiness"],
       knowledge_map: knowledgeMap,
       index_markdown: indexContent,
     };
