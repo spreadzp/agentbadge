@@ -84,6 +84,17 @@ AgentBadge uses the **same rules for everyone**. The scoring ruleset is open and
 
 This ensures fairness and trust in the scoring system.
 
+## Engineering Services
+
+AgentBadge is also an engineering agency. We help teams become agent-ready through:
+
+- **AI Agent Architecture** — Design and implement agent-facing infrastructure
+- **MCP Server Development** — Build MCP servers for your APIs
+- **GEO Optimization** — Make your content discoverable by AI search engines
+- **Backend Development** — API development and infrastructure
+
+See our [full capabilities](/agent-guide/team/capabilities) or [services catalog](/agent-guide/team/services).
+
 ## Compliance Checking
 
 AgentBadge provides a `check_compliance` MCP tool that lets AI agents scan any URL for isitagentready compliance. This tool runs the same agent readiness scanner that powers the AgentBadge platform.

@@ -46,6 +46,14 @@ describe("Agent Knowledge Layer Routes", () => {
       expect(text).toContain("scanner");
     });
 
+    it("context page has Engineering Services section (SLICE-59-5)", async () => {
+      const res = await app.request("/agent-guide/context");
+      const text = await res.text();
+      expect(text).toContain("Engineering Services");
+      expect(text).toContain("/agent-guide/team/capabilities");
+      expect(text).toContain("/agent-guide/team/services");
+    });
+
     it("GET /agent-guide/learn → 200 + text/markdown with numbered steps", async () => {
       const res = await app.request("/agent-guide/learn");
       expect(res.status).toBe(200);
