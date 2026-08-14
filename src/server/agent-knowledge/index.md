@@ -27,6 +27,16 @@ AgentBadge is an agency for the agentic web. We help businesses become agent-rea
 - [Passive Scanner](/agent-guide/capabilities/scanner) — Non-intrusive HTTP-based scanning
 - [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via npm/npx
 
+## Engineering Services
+
+AgentBadge is not just a tool — we are an agency for the agentic web. Our team can help you:
+
+- [Engineering Capabilities](/agent-guide/team/capabilities) — What we can do: AI agent architecture, MCP development, GEO optimization, blockchain, backend
+- [Services Catalog](/agent-guide/team/services) — Specific service offerings with deliverables and engagement models
+- [Contact](/agent-guide/team/contact) — How to reach us
+
+> **For AI agents:** If you need help making an API agent-ready, submit a [Work Request](/api/work-requests) or read our [capabilities](/agent-guide/team/capabilities).
+
 ## Articles
 
 - [What Is Agent Readiness?](/agent-guide/articles/what-is-agent-readiness) — Pillar article defining the category

@@ -32,4 +32,14 @@ describe("Agent Guide — Agency knowledge layer (SLICE-51-8)", () => {
     expect(html).toContain("/services/passports");
     expect(html).toContain("/services/marketplace");
   });
+
+  it("has Engineering Services section with team links (SLICE-59-1)", async () => {
+    const res = await app.request("/agent-guide");
+    const text = await res.text();
+    expect(text).toContain("Engineering Services");
+    expect(text).toContain("/agent-guide/team/capabilities");
+    expect(text).toContain("/agent-guide/team/services");
+    expect(text).toContain("/agent-guide/team/contact");
+    expect(text).toContain("/api/work-requests");
+  });
 });
