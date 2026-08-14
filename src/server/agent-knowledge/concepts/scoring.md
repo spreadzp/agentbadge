@@ -1,3 +1,11 @@
+---
+related_capabilities:
+  - backend-development
+  - ai-agent-architecture
+related_services:
+  - api-development
+---
+
 # Scoring Engine
 
 ## What Is the Scoring Engine?

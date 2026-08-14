@@ -101,6 +101,32 @@ describe("Agent Knowledge Layer Routes", () => {
     });
   });
 
+  describe("Concept capabilities block (SLICE-59-2)", () => {
+    it("concept agent-readiness shows Relevant Engineering Capabilities", async () => {
+      const res = await app.request("/agent-guide/concepts/agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("Relevant Engineering Capabilities");
+    });
+
+    it("concept agent-readiness links to team/capabilities", async () => {
+      const res = await app.request("/agent-guide/concepts/agent-readiness");
+      const text = await res.text();
+      expect(text).toContain("/agent-guide/team/capabilities");
+    });
+
+    it("concept scoring shows Relevant Engineering Capabilities", async () => {
+      const res = await app.request("/agent-guide/concepts/scoring");
+      const text = await res.text();
+      expect(text).toContain("Relevant Engineering Capabilities");
+    });
+
+    it("concept badge shows Relevant Engineering Capabilities", async () => {
+      const res = await app.request("/agent-guide/concepts/badge");
+      const text = await res.text();
+      expect(text).toContain("Relevant Engineering Capabilities");
+    });
+  });
+
   describe("Capabilities", () => {
     it("GET /agent-guide/capabilities/scanner → 200 + text/markdown", async () => {
       const res = await app.request("/agent-guide/capabilities/scanner");

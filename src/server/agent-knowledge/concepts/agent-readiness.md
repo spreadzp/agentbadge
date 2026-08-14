@@ -1,3 +1,12 @@
+---
+related_capabilities:
+  - ai-agent-architecture
+  - geo-optimization
+related_services:
+  - ai-agent-consulting
+  - geo-consulting
+---
+
 # Agent Readiness
 
 Agent Readiness is the degree to which an API or service can be discovered, understood, and used by AI agents without human intervention.

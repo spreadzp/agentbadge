@@ -1,3 +1,9 @@
+---
+related_capabilities:
+  - ai-agent-architecture
+  - backend-development
+---
+
 # Trust Badge
 
 ## What Is the Trust Badge?

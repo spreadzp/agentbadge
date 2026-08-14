@@ -217,9 +217,42 @@ agentKnowledgeRoutes.get("/agent-guide/knowledge-map.json", async (c) => {
   }
 });
 
-agentKnowledgeRoutes.get("/agent-guide/concepts/:name", (c) => {
+agentKnowledgeRoutes.get("/agent-guide/concepts/:name", async (c) => {
   const name = c.req.param("name");
-  return serveMarkdownFile(join(BASE_DIR, "concepts", `${name}.md`));
+  const filePath = join(BASE_DIR, "concepts", `${name}.md`);
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    const { frontmatter, body } = parseFrontmatter(raw);
+
+    let ctaHtml = "";
+    if (frontmatter.related_capabilities && frontmatter.related_capabilities.length > 0) {
+      try {
+        const registry = await getRegistry();
+        ctaHtml = RelevantEngineeringCapability(frontmatter, registry);
+      } catch {
+        // registry unavailable — skip CTA
+      }
+    }
+
+    const output = ctaHtml ? `${body}\n\n${ctaHtml}` : body;
+    return new Response(output, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=300",
+      },
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        error: "File not found",
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 });
 
 agentKnowledgeRoutes.get("/agent-guide/capabilities/:name", (c) => {
