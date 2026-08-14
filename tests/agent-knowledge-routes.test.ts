@@ -88,6 +88,57 @@ describe("Agent Knowledge Layer Routes", () => {
     });
   });
 
+  describe("Agent Guide JSON manifest (SLICE-59-7)", () => {
+    it("GET /agent-guide.json → 200 + application/json", async () => {
+      const res = await app.request("/agent-guide.json");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("application/json");
+      const json = await res.json();
+      expect(json.schema).toBeDefined();
+    });
+
+    it("manifest includes team endpoints in endpoints object", async () => {
+      const res = await app.request("/agent-guide.json");
+      const json = await res.json();
+      expect(json.endpoints.team_capabilities).toBe("/agent-guide/team/capabilities");
+      expect(json.endpoints.team_services).toBe("/agent-guide/team/services");
+      expect(json.endpoints.team_contact).toBe("/agent-guide/team/contact");
+      expect(json.endpoints.work_requests).toBe("/api/work-requests");
+    });
+
+    it("manifest includes engineering_capabilities array with 5 entries", async () => {
+      const res = await app.request("/agent-guide.json");
+      const json = await res.json();
+      expect(Array.isArray(json.engineering_capabilities)).toBe(true);
+      expect(json.engineering_capabilities).toHaveLength(5);
+      expect(json.engineering_capabilities).toContain("ai-agent-architecture");
+      expect(json.engineering_capabilities).toContain("mcp-development");
+      expect(json.engineering_capabilities).toContain("geo-optimization");
+      expect(json.engineering_capabilities).toContain("blockchain-development");
+      expect(json.engineering_capabilities).toContain("backend-development");
+    });
+
+    it("manifest includes team_endpoints array with 4 entries", async () => {
+      const res = await app.request("/agent-guide.json");
+      const json = await res.json();
+      expect(Array.isArray(json.team_endpoints)).toBe(true);
+      expect(json.team_endpoints).toHaveLength(4);
+    });
+
+    it("manifest concepts array includes ruleset", async () => {
+      const res = await app.request("/agent-guide.json");
+      const json = await res.json();
+      expect(json.concepts).toContain("ruleset");
+    });
+
+    it("GET /.well-known/agent-guide.json returns same manifest", async () => {
+      const res = await app.request("/.well-known/agent-guide.json");
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.endpoints.team_services).toBe("/agent-guide/team/services");
+    });
+  });
+
   describe("Concepts", () => {
     it("GET /agent-guide/concepts/agent-readiness → 200 + text/markdown", async () => {
       const res = await app.request("/agent-guide/concepts/agent-readiness");
