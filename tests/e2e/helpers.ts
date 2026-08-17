@@ -26,6 +26,7 @@ import { demandRoutes } from "../../src/server/routes/api/demand";
 import { demandGuideRoutes } from "../../src/server/routes/agent-guide/demand";
 import { agencyJsonRoutes } from "../../src/server/routes/agency-json";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
+import { paymentRoutes } from "../../src/server/routes/payment";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
