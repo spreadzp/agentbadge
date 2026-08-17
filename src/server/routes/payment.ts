@@ -15,6 +15,8 @@ import { listFiatProducts, getFiatProduct } from "../lib/pricing";
 import { fulfillOrder } from "../lib/order-fulfillment";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { renderPaymentSuccess, renderPaymentError } from "../../views/payment-success";
+import { renderPaymentCanceled } from "../../views/payment-canceled";
 
 export const paymentRoutes = new Hono();
 
@@ -123,4 +125,28 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
     }
 
     return c.json({ received: true });
+});
+
+paymentRoutes.get("/payment/success", async (c) => {
+    const sessionId = c.req.query("session_id");
+    if (!sessionId) {
+        return c.html(renderPaymentError("Missing Session ID", "No session_id parameter was provided."));
+    }
+
+    if (!isStripeConfigured()) {
+        return c.html(renderPaymentSuccess({ id: sessionId, status: "open" }, true));
+    }
+
+    try {
+        const stripe = getStripeClient();
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        return c.html(renderPaymentSuccess(session, false));
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return c.html(renderPaymentError("Could not retrieve session", `Session ID: ${sessionId}. ${message}`));
+    }
+});
+
+paymentRoutes.get("/payment/canceled", (c) => {
+    return c.html(renderPaymentCanceled());
 });
