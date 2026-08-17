@@ -117,7 +117,13 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
     switch (event.type) {
         case "checkout.session.completed": {
             const session = event.data.object as Stripe.Checkout.Session;
-            await fulfillOrder(session);
+            try {
+                await fulfillOrder(session);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Unknown error";
+                console.error(`[webhook] Fulfillment failed for session ${session.id}:`, message);
+                return c.json({ error: "Fulfillment failed" }, 500);
+            }
             break;
         }
         default:
