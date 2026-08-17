@@ -9,6 +9,7 @@
 import type Stripe from "stripe";
 import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
 import { issuePassport } from "@agentgate-hedera/passport";
+import { sendDiscordMessage } from "../services/contact.service";
 
 const processedSessions = new Set<string>();
 
@@ -43,6 +44,8 @@ export async function fulfillOrder(session: Stripe.Checkout.Session): Promise<vo
   }
 
   processedSessions.add(session.id);
+
+  await notifyPaymentDiscord(session, productId);
 }
 
 async function fulfillDirectoryListing(session: Stripe.Checkout.Session): Promise<void> {
@@ -89,4 +92,24 @@ async function fulfillPassportMint(session: Stripe.Checkout.Session): Promise<vo
   console.log(
     `[fulfillPassportMint] Passport minted: tokenId=${result.tokenId}, serial=${result.serialNumber}, session=${session.id}`,
   );
+}
+
+async function notifyPaymentDiscord(session: Stripe.Checkout.Session, productId: string): Promise<void> {
+  const email = session.customer_details?.email ?? session.customer_email ?? "unknown";
+  const amount = session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "unknown";
+  const message = [
+    `💳 New Payment Received`,
+    `Product: ${productId}`,
+    `Amount: ${amount}`,
+    `Email: ${email}`,
+    `Session: ${session.id}`,
+  ].join("\n");
+
+  try {
+    await sendDiscordMessage({ message });
+    console.log(`[fulfillOrder] Discord notification sent for session ${session.id}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[fulfillOrder] Discord notification failed: ${msg}`);
+  }
 }

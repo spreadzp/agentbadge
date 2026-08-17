@@ -29,6 +29,15 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => {
   };
 });
 
+// Mock Discord notification to avoid real HTTP calls
+vi.mock("../../src/server/services/contact.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/server/services/contact.service")>();
+  return {
+    ...actual,
+    sendDiscordMessage: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 // Mock Stripe client to avoid real API calls
 vi.mock("../../src/server/lib/stripe-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/server/lib/stripe-client")>();
@@ -52,9 +61,11 @@ vi.mock("../../src/server/lib/stripe-client", async (importOriginal) => {
 });
 
 import { issuePassport } from "@agentgate-hedera/passport";
+import { sendDiscordMessage } from "../../src/server/services/contact.service";
 import { resetProcessedSessions } from "../../src/server/lib/order-fulfillment";
 
 const mockedIssuePassport = vi.mocked(issuePassport);
+const mockedSendDiscord = vi.mocked(sendDiscordMessage);
 
 const stripe = new Stripe("sk_test_fake_key_for_testing", {
   apiVersion: "2025-06-30.basil" as Stripe.LatestApiVersion,
@@ -155,6 +166,12 @@ describe("Stripe checkout E2E flow", () => {
     const call = mockedIssuePassport.mock.calls[0];
     expect(call[0]).toBe("0.0.12345"); // accountId
     expect(call[2]).toBe("bronze"); // tier
+
+    // Step 4: Verify Discord notification was sent
+    expect(mockedSendDiscord).toHaveBeenCalledTimes(1);
+    const discordCall = mockedSendDiscord.mock.calls[0];
+    expect(discordCall[0].message).toContain("passport-bronze");
+    expect(discordCall[0].message).toContain("test@example.com");
   });
 
   it("rejects webhook with invalid signature", async () => {
@@ -232,6 +249,8 @@ describe("Stripe checkout E2E flow", () => {
 
     // issuePassport should only be called once despite duplicate webhook
     expect(mockedIssuePassport).toHaveBeenCalledTimes(1);
+    // Discord should also only be called once (idempotency)
+    expect(mockedSendDiscord).toHaveBeenCalledTimes(1);
   });
 
   it("returns 400 for checkout with unknown product", async () => {
@@ -280,5 +299,47 @@ describe("Stripe checkout E2E flow", () => {
     const body = await res.json();
     expect(body.received).toBe(true);
     expect(mockedIssuePassport).not.toHaveBeenCalled();
+  });
+
+  it("sends Discord notification with payment details for directory listing", async () => {
+    const sessionObject = {
+      id: "cs_test_discord_dir_001",
+      object: "checkout.session",
+      status: "complete",
+      amount_total: 5000, // $50.00
+      metadata: {
+        productId: "directory-listing",
+        listingId: "listing-123",
+      },
+      customer_email: "buyer@example.com",
+    };
+
+    const payload = JSON.stringify({
+      id: "evt_test_discord_dir_001",
+      object: "event",
+      type: "checkout.session.completed",
+      data: { object: sessionObject },
+    });
+
+    const header = stripe.webhooks.generateTestHeaderString({
+      payload,
+      secret: WEBHOOK_SECRET,
+    });
+
+    const res = await app.request("/api/stripe/webhook", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "stripe-signature": header,
+      },
+      body: payload,
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockedSendDiscord).toHaveBeenCalledTimes(1);
+    const msg = mockedSendDiscord.mock.calls[0][0].message;
+    expect(msg).toContain("directory-listing");
+    expect(msg).toContain("$50.00");
+    expect(msg).toContain("buyer@example.com");
   });
 });
