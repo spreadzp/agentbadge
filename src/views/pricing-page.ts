@@ -9,6 +9,8 @@ import { PageMeta } from "../server/lib/page-meta";
 interface TierRow {
   name: string;
   price: number; // HBAR
+  priceUsd: number; // USD for Stripe
+  productId: string; // Stripe product ID
   description: string;
   capabilities: string[];
   highlighted?: boolean;
@@ -19,6 +21,8 @@ const TIERS: TierRow[] = [
   {
     name: "Bronze",
     price: 10,
+    priceUsd: 9.99,
+    productId: "passport-bronze",
     description: "Starter identity. Get on-chain and discoverable.",
     capabilities: ["api_call", "payment"],
     cta: "Mint Bronze",
@@ -26,6 +30,8 @@ const TIERS: TierRow[] = [
   {
     name: "Silver",
     price: 50,
+    priceUsd: 49.99,
+    productId: "passport-silver",
     description: "Publish data and join paid tasks.",
     capabilities: ["api_call", "payment", "data_provide"],
     highlighted: true,
@@ -34,6 +40,8 @@ const TIERS: TierRow[] = [
   {
     name: "Gold",
     price: 200,
+    priceUsd: 199.99,
+    productId: "passport-gold",
     description: "Verified reputation. Post marketplace tasks and gate access.",
     capabilities: ["api_call", "payment", "data_provide", "verified", "marketplace"],
     cta: "Mint Gold",
@@ -41,6 +49,8 @@ const TIERS: TierRow[] = [
   {
     name: "Platinum",
     price: 500,
+    priceUsd: 499.99,
+    productId: "passport-platinum",
     description: "Governance + multi-agent orchestration rights.",
     capabilities: [
       "api_call",
@@ -70,9 +80,15 @@ export function PricingPage(jsonLd?: object[]) {
       : ""
     }
       <h2 class="text-lg font-semibold text-white">${t.name}</h2>
-      <div class="mt-3 flex items-baseline gap-1">
-        <span class="text-4xl font-semibold text-emerald-400">${t.price}</span>
-        <span class="text-sm text-slate-400">HBAR</span>
+      <div class="mt-3 flex items-baseline gap-3">
+        <div class="flex items-baseline gap-1">
+          <span class="text-4xl font-semibold text-emerald-400">${t.price}</span>
+          <span class="text-sm text-slate-400">HBAR</span>
+        </div>
+        <div class="flex items-baseline gap-1">
+          <span class="text-2xl font-semibold text-sky-400">$${t.priceUsd}</span>
+          <span class="text-xs text-slate-500">USD</span>
+        </div>
       </div>
       <p class="mt-2 text-sm text-slate-400">${t.description}</p>
       <ul class="mt-5 space-y-2 text-sm text-slate-300">
@@ -83,10 +99,17 @@ export function PricingPage(jsonLd?: object[]) {
       )
       .join("")}
       </ul>
-      <a href="/ui/passport/request?tier=${t.name.toLowerCase()}"
-         class="mt-6 inline-flex items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20">
-        ${t.cta ?? `Mint ${t.name}`}
-      </a>
+      <div class="mt-6 flex flex-col gap-2">
+        <a href="/ui/passport/request?tier=${t.name.toLowerCase()}"
+           class="inline-flex items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20">
+          ${t.cta ?? `Mint ${t.name}`} (HBAR)
+        </a>
+        <button type="button" data-product-id="${t.productId}"
+                class="stripe-pay-btn inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 transition-colors">
+          Pay with Card
+        </button>
+        <p class="text-center text-xs text-slate-500">Powered by Stripe</p>
+      </div>
     </article>`;
 
   const upgradeRows = UPGRADE_DELTAS.map(
@@ -191,6 +214,8 @@ export function PricingPage(jsonLd?: object[]) {
         </table>
       </div>
     </section>
+
+    <script src="/js/payment.js" defer></script>
 
     <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
       <p class="text-slate-300">Questions about pricing?</p>
