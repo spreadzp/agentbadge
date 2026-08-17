@@ -61,6 +61,7 @@ export function makeTestApp(): Hono {
   app.route("/", demandGuideRoutes);
   app.route("/", agencyJsonRoutes);
   app.route("/", wellKnownRoutes);
+  app.route("/", paymentRoutes);
   return app;
 }
 

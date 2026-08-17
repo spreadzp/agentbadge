@@ -77,6 +77,7 @@ import { wellKnownRoutes } from "./routes/well-known";
 import { feedRoutes } from "./routes/feed";
 import { metricsApp } from "./routes/metrics";
 import { telemetryApp } from "./routes/telemetry";
+import { paymentRoutes } from "./routes/payment";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
 import { initSentry, captureError } from "./lib/sentry";
@@ -369,6 +370,7 @@ app.route("/", agencyJsonRoutes);
 app.route("/api/demo", demo);
 app.route("/", metricsApp);
 app.route("/", telemetryApp);
+app.route("/", paymentRoutes);
 
 // OpenAPI spec + Swagger UI
 const openApiSpecHandler = openAPIRouteHandler(app, {
