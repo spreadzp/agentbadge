@@ -8,9 +8,11 @@
  */
 
 import { Hono } from "hono";
+import type Stripe from "stripe";
 
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { listFiatProducts, getFiatProduct } from "../lib/pricing";
+import { fulfillOrder } from "../lib/order-fulfillment";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 
@@ -82,4 +84,43 @@ paymentRoutes.post("/api/payment/checkout", async (c) => {
         const message = err instanceof Error ? err.message : "Unknown Stripe error";
         return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Stripe checkout failed: ${message}`);
     }
+});
+
+paymentRoutes.post("/api/stripe/webhook", async (c) => {
+    if (!isStripeConfigured()) {
+        return c.json({ error: "Stripe is not configured" }, 500);
+    }
+
+    const signature = c.req.header("stripe-signature");
+    if (!signature) {
+        return c.json({ error: "Missing stripe-signature header" }, 400);
+    }
+
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+        return c.json({ error: "STRIPE_WEBHOOK_SECRET is not set" }, 500);
+    }
+
+    const rawBody = await c.req.text();
+    const stripe = getStripeClient();
+
+    let event: Stripe.Event;
+    try {
+        event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return c.json({ error: `Webhook signature verification failed: ${message}` }, 400);
+    }
+
+    switch (event.type) {
+        case "checkout.session.completed": {
+            const session = event.data.object as Stripe.Checkout.Session;
+            await fulfillOrder(session);
+            break;
+        }
+        default:
+            break;
+    }
+
+    return c.json({ received: true });
 });
