@@ -662,6 +662,7 @@ export function buildSitemap(): string {
 
   const gitbookUrl = `  <url>
     <loc>https://agentbadge.gitbook.io/agentbadge-docs</loc>
+    <lastmod>${BUILD_DATE}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`;

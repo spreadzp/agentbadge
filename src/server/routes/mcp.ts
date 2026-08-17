@@ -31,11 +31,7 @@ mcpRoutes.all("/mcp", async (c) => {
   const id = body.id;
 
   if (method === "tools/list") {
-    const tools = listTools().map((t) => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: { type: "object" as const, properties: {} as Record<string, unknown> },
-    }));
+    const tools = listTools();
     return c.json({
       jsonrpc: "2.0",
       id,
