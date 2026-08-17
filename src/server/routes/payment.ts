@@ -9,4 +9,10 @@
 
 import { Hono } from "hono";
 
+import { listFiatProducts } from "../lib/pricing";
+
 export const paymentRoutes = new Hono();
+
+paymentRoutes.get("/api/payment/products", (c) => {
+    return c.json({ products: listFiatProducts() });
+});
