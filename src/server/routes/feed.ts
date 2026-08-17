@@ -56,22 +56,23 @@ feedRoutes.get(
     <lastBuildDate>${now}</lastBuildDate>
     <generator>AgentBadge</generator>
 ${items
-  .map(
-    (item) => `    <item>
+        .map(
+          (item) => `    <item>
       <title>${item.title}</title>
       <link>${item.link}</link>
       <description>${item.description}</description>
       <pubDate>${item.pubDate}</pubDate>
       <guid>${item.link}</guid>
     </item>`,
-  )
-  .join("\n")}
+        )
+        .join("\n")}
   </channel>
 </rss>`;
 
     return new Response(xml, {
       headers: {
         "Content-Type": "application/rss+xml; charset=utf-8",
+        "Content-Length": new TextEncoder().encode(xml).length.toString(),
         "Cache-Control": "public, max-age=3600",
       },
     });

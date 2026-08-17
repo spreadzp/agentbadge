@@ -127,12 +127,29 @@ agentKnowledgeRoutes.get("/agent-guide/", async (c) => {
     return serveAgentGuideJson(c);
   }
   const md = await serveIndexMarkdown();
-  return new Response(md, {
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
-    },
-  });
+  const wantsHtml = accept.includes("text/html");
+  if (!wantsHtml) {
+    return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=300" } });
+  }
+  const schemas = [
+    ...defaultCoreSchemas(),
+    howToLd({
+      name: "AgentBadge Agent Guide",
+      description: "Machine-readable guide for AI agents to understand and use AgentBadge.",
+      path: "/agent-guide",
+      totalTime: "PT10M",
+      steps: [
+        { name: "Read the guide", text: "Fetch /agent-guide for the full knowledge index." },
+        { name: "Get context", text: "Read /agent-guide/context for background." },
+        { name: "Follow learning path", text: "Use /agent-guide/learn for step-by-step onboarding." },
+      ],
+    }),
+    breadcrumbListLd([
+      { name: "Home", path: "/" },
+      { name: "Agent Guide", path: "/agent-guide" },
+    ]),
+  ].map((s) => (s as any)["@type"] === "HowTo" ? { ...(s as any), dateModified: BUILD_DATE } : s);
+  return c.html(GuideLayout("Agent Guide", md, schemas, "/agent-guide", BUILD_DATE));
 });
 
 agentKnowledgeRoutes.get("/.well-known/agent-guide.json", async (c) => {
