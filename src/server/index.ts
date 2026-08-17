@@ -78,6 +78,7 @@ import { feedRoutes } from "./routes/feed";
 import { metricsApp } from "./routes/metrics";
 import { telemetryApp } from "./routes/telemetry";
 import { paymentRoutes } from "./routes/payment";
+import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
 import { initSentry, captureError } from "./lib/sentry";
@@ -270,6 +271,9 @@ app.get("/health", (c) => {
     mcp: {
       toolsCount: tools.length,
       tools: tools.map((t) => t.name),
+    },
+    payments: {
+      stripe: isStripeConfigured() ? "configured" : "not_configured",
     },
     timestamp: Date.now(),
   });

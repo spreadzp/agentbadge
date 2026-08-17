@@ -15,6 +15,7 @@ import { listFiatProducts, getFiatProduct } from "../lib/pricing";
 import { fulfillOrder } from "../lib/order-fulfillment";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { captureError } from "../lib/sentry";
 import { renderPaymentSuccess, renderPaymentError } from "../../views/payment-success";
 import { renderPaymentCanceled } from "../../views/payment-canceled";
 
@@ -122,6 +123,7 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
             } catch (err) {
                 const message = err instanceof Error ? err.message : "Unknown error";
                 console.error(`[webhook] Fulfillment failed for session ${session.id}:`, message);
+                captureError(err, { sessionId: session.id, eventType: event.type });
                 return c.json({ error: "Fulfillment failed" }, 500);
             }
             break;
