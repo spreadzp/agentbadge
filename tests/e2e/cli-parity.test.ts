@@ -23,8 +23,8 @@ const SCAN_FLAGS: CommandFlag[] = [
 ];
 
 describe("SLICE-48-28: CLI parity integration tests", () => {
-  it("ruleset has 80 rules (parity with agentgrade-cli)", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(80);
+  it("ruleset has 82 rules (parity with agentgrade-cli)", () => {
+    expect(AGENT_READINESS_RULESET.rules).toHaveLength(82);
   });
 
   it("all rule IDs are unique", () => {

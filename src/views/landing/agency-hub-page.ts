@@ -83,7 +83,7 @@ function AgencyHeroSection() {
           </a>
         </div>
         <div class="mt-3 text-xs text-slate-500 font-mono">
-          No signup · 80 checks · results in seconds
+          No signup · 82 checks · results in seconds
         </div>
       </div>
     </section>
@@ -99,7 +99,7 @@ function CrossSellSection() {
           <div class="text-center">
             <div class="text-4xl mb-3">🔍</div>
             <h3 class="text-lg font-semibold text-white">1. Scan</h3>
-            <p class="mt-2 text-sm text-slate-400">Audit your API with 80 agent readiness checks. Find gaps, get evidence, fix issues.</p>
+            <p class="mt-2 text-sm text-slate-400">Audit your API with 82 agent readiness checks. Find gaps, get evidence, fix issues.</p>
             <a href="/services/scanner" class="mt-3 inline-block text-sm text-emerald-400 hover:text-emerald-300">Start scanning →</a>
           </div>
           <div class="text-center">
@@ -125,7 +125,7 @@ function ScannerPreviewSection() {
     <section id="scanner-preview" class="px-4 py-16 md:px-8">
       <div class="mx-auto max-w-4xl">
         <h2 class="text-2xl font-bold text-white text-center">Try the Scanner</h2>
-        <p class="mt-3 text-slate-400 text-center">Scan any URL for agent readiness — 80 checks across 15 categories.</p>
+        <p class="mt-3 text-slate-400 text-center">Scan any URL for agent readiness — 82 checks across 15 categories.</p>
         <div class="mt-8 rounded-xl border border-slate-700 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl overflow-hidden">
           <div class="h-9 border-b border-slate-700 flex items-center px-4 gap-2">
             <span class="w-2 h-2 rounded-full bg-red-400"></span>

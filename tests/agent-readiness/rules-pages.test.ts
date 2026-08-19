@@ -13,7 +13,7 @@ describe("Rules Catalog Page (SLICE-50-2)", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("What We Check");
-    expect(html).toContain("80 rules");
+    expect(html).toContain("82 rules");
     expect(html).toContain("15 categories");
   });
 
@@ -130,9 +130,9 @@ describe("Rules JSON API (SLICE-50-4)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
     const data = await res.json();
-    expect(data.total).toBe(80);
+    expect(data.total).toBe(82);
     expect(data.categories.length).toBe(15);
-    expect(data.rules.length).toBe(80);
+    expect(data.rules.length).toBe(82);
   });
 
   it("GET /api/rules/AB-001 returns 200 with rule", async () => {

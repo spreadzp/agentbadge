@@ -73,11 +73,11 @@ describe("SLICE-69-2: A2A Agent Card & MCP Gap Rules", () => {
     expect(ids).toContain("AB-086");
   });
 
-  it("ruleset has 80 total rules", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(80);
+  it("ruleset has 82 total rules", () => {
+    expect(AGENT_READINESS_RULESET.rules).toHaveLength(82);
   });
 
-  it("ruleset version is 1.6.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("1.6.0");
+  it("ruleset version is 1.7.0", () => {
+    expect(AGENT_READINESS_RULESET.version).toBe("1.7.0");
   });
 });

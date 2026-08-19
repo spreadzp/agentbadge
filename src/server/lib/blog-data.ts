@@ -808,7 +808,9 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 
 <hr />
 
-<p><strong>Related:</strong> <a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — SEO made websites discoverable. Agent Readiness makes APIs usable by AI agents. See the 10 differences.</p>`,
+<p><strong>Related:</strong> <a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — SEO made websites discoverable. Agent Readiness makes APIs usable by AI agents. See the 10 differences.</p>
+
+<p><strong>Related:</strong> <a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — the evolution from website optimization to content optimization to API optimization for the agentic web.</p>`,
   },
   {
     slug: "api-has-seo-agent-readiness",
@@ -992,7 +994,9 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 
 <h3>AgentBadge</h3>
 
-<p><strong>Don't certify. Measure.</strong></p>`,
+<p><strong>Don't certify. Measure.</strong></p>
+
+<p><strong>Related:</strong> <a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — the evolution from website optimization to content optimization to API optimization for the agentic web.</p>`,
     externalLinks: [
       {
         platform: "devto",
@@ -1319,6 +1323,7 @@ llms.txt   Docs       Verification
 <ul>
   <li><a href="/blog/what-is-agent-readiness">What Is Agent Readiness?</a> — the foundational concept behind Agent Readiness and why good APIs can be invisible to AI agents.</li>
   <li><a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — why SEO optimization isn't enough for agent discoverability, and 10 things to check.</li>
+  <li><a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — the evolution from website optimization to content optimization to API optimization for the agentic web.</li>
 </ul>
 
 <hr />

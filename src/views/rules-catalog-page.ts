@@ -89,7 +89,7 @@ export function RulesCatalogPage(jsonLd?: object[]) {
   const meta: PageMeta = {
     title: "Rules Catalog",
     description:
-      "All 80 agent readiness rules across 15 categories. Understand what AgentBadge checks and why each rule matters for AI agent compatibility.",
+      "All 82 agent readiness rules across 15 categories. Understand what AgentBadge checks and why each rule matters for AI agent compatibility.",
     path: "/rules",
   };
 

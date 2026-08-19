@@ -19,13 +19,13 @@ const MVP_RULE_IDS = [
 ];
 
 describe("AGENT_READINESS_RULESET manifest", () => {
-  it("has name 'agent-readiness' and version '1.6.0'", () => {
+  it("has name 'agent-readiness' and version '1.7.0'", () => {
     expect(AGENT_READINESS_RULESET.name).toBe("agent-readiness");
-    expect(AGENT_READINESS_RULESET.version).toBe("1.6.0");
+    expect(AGENT_READINESS_RULESET.version).toBe("1.7.0");
   });
 
-  it("has exactly 80 rules", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(80);
+  it("has exactly 82 rules", () => {
+    expect(AGENT_READINESS_RULESET.rules).toHaveLength(82);
   });
 
   it("first 13 rule IDs match MVP-RULES.md 1:1", () => {
@@ -33,7 +33,7 @@ describe("AGENT_READINESS_RULESET manifest", () => {
     expect(fixtureIds).toEqual(MVP_RULE_IDS);
   });
 
-  it("all 80 rules pass agentReadinessRuleSchema.safeParse()", () => {
+  it("all 82 rules pass agentReadinessRuleSchema.safeParse()", () => {
     for (const rule of AGENT_READINESS_RULESET.rules) {
       const result = agentReadinessRuleSchema.safeParse(rule);
       expect(result.success, `${rule.rule_id} should parse`).toBe(true);

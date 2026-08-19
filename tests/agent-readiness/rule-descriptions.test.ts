@@ -8,8 +8,8 @@ import { categoryEnum } from "../../src/agent-readiness/shared.schema";
 import { AGENT_READINESS_RULESET } from "../../src/agent-readiness/ruleset";
 
 describe("Rule Descriptions", () => {
-  it("has descriptions for all 80 rules", () => {
-    expect(RULE_DESCRIPTIONS.length).toBe(80);
+  it("has descriptions for all 82 rules", () => {
+    expect(RULE_DESCRIPTIONS).toHaveLength(82);
   });
 
   it("every rule has required fields", () => {
