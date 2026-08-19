@@ -23,8 +23,8 @@ const SCAN_FLAGS: CommandFlag[] = [
 ];
 
 describe("SLICE-48-28: CLI parity integration tests", () => {
-  it("ruleset has 60 rules (parity with agentgrade-cli)", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(60);
+  it("ruleset has 76 rules (parity with agentgrade-cli)", () => {
+    expect(AGENT_READINESS_RULESET.rules).toHaveLength(76);
   });
 
   it("all rule IDs are unique", () => {
@@ -38,8 +38,8 @@ describe("SLICE-48-28: CLI parity integration tests", () => {
     }
   });
 
-  it("DEFAULT_RESOURCES has 20 resources", () => {
-    expect(DEFAULT_RESOURCES).toHaveLength(20);
+  it("DEFAULT_RESOURCES has 32 resources", () => {
+    expect(DEFAULT_RESOURCES).toHaveLength(32);
   });
 
   it("all new fetcher resources are in DEFAULT_RESOURCES", () => {

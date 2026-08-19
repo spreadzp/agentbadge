@@ -13,8 +13,8 @@ describe("SLICE-48-20: Orchestrator integration", () => {
     expect(resources).toContain("bot_auth");
   });
 
-  it("ruleset has 60 rules total", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(60);
+  it("ruleset has 76 rules total", () => {
+    expect(AGENT_READINESS_RULESET.rules).toHaveLength(76);
   });
 
   it("ruleset has AB-015 through AB-060", () => {
