@@ -335,6 +335,10 @@ app.use("/images/*", (c, next) => {
   c.header("Cache-Control", "public, max-age=31536000, immutable");
   return next();
 }, serveStatic({ root: "./public" }));
+app.use("/js/*", (c, next) => {
+  c.header("Cache-Control", "public, max-age=31536000, immutable");
+  return next();
+}, serveStatic({ root: "./public" }));
 
 app.route("/", passportRoutes);
 app.route("/", verifyRoutes);
