@@ -5,7 +5,7 @@ export const problemReport: AgentReadinessReport = {
   schema_version: "0.1.0",
   ruleset: {
     name: "agent-readiness",
-    version: "1.5.0",
+    version: "1.6.0",
   },
   scope: {
     agent_id: "did:heder:agentbadge-problem-agent",

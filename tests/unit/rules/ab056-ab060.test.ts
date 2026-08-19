@@ -44,6 +44,6 @@ describe("SLICE-48-21: AB-056..AB-060 optional discovery rules", () => {
     expect(ids).toContain("AB-058");
     expect(ids).toContain("AB-059");
     expect(ids).toContain("AB-060");
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(76);
+    expect(AGENT_READINESS_RULESET.rules).toHaveLength(80);
   });
 });

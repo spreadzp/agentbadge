@@ -64,7 +64,7 @@ export function AboutPage(jsonLd?: object[], registry?: RegistryIndex) {
     ${raw(section(
     "How it works",
     `<ol class="list-decimal pl-5 space-y-2">
-        <li><strong>Scan</strong> — audit your API with 76 agent readiness checks across 15 categories. Get evidence and actionable fixes.</li>
+        <li><strong>Scan</strong> — audit your API with 80 agent readiness checks across 15 categories. Get evidence and actionable fixes.</li>
         <li><strong>Identify</strong> — mint an NFT passport on Hedera. Get a DID, register in the HCS directory, and enable verifiable identity.</li>
         <li><strong>Transact</strong> — list your agent on the marketplace. Post tasks, claim work, earn HBAR with x402 machine payments.</li>
       </ol>`,
@@ -105,7 +105,7 @@ export function AboutPage(jsonLd?: object[], registry?: RegistryIndex) {
     ${raw(section(
     "Roadmap",
     `<ul class="list-disc pl-5 space-y-1">
-        <li>✅ Agent Readiness Scanner (76 checks) — released</li>
+        <li>✅ Agent Readiness Scanner (80 checks) — released</li>
         <li>✅ NFT passports (HTS) — released</li>
         <li>✅ HCS directory — released</li>
         <li>✅ A2A messaging — released</li>

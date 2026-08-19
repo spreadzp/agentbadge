@@ -8,7 +8,11 @@ export interface BlogExternalLink {
   | "reddit"
   | "github"
   | "hashnode"
-  | "twitter";
+  | "twitter"
+  | "qiita"
+  | "zenn"
+  | "velog"
+  | "hsoub";
   url: string;
 }
 
@@ -1715,6 +1719,40 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 <p><strong>Don't certify. Measure.</strong></p>
 
 <p><em>Agent Readiness for the agentic web.</em>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/from-seo-to-geo-to-agent-readiness-31mj",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/from-seo-to-geo-to-agent-readiness-f8be3c729f59",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_today-companies-optimize-sites-for-google-share-7495916643164786688-5TAi/",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2090150439735976160",
+      },
+      {
+        platform: "qiita",
+        url: "https://qiita.com/buidl25/items/c46655b0307b384598d4",
+      },
+      {
+        platform: "zenn",
+        url: "https://zenn.dev/buidl25/articles/from-seo-to-geo-to-agent-readiness",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/from-seo-to-geo-to-agent-readiness",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185163-من-seo-إلى-geo-إلى-جاهزية-الوكلاء",
+      },
+    ],
   },
   {
     slug: "mcp-vs-api",
