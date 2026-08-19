@@ -58,6 +58,7 @@ paymentRoutes.post("/api/payment/checkout", async (c) => {
 
     try {
         const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
             line_items: [
                 {
                     price_data: {
@@ -109,7 +110,7 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
 
     let event: Stripe.Event;
     try {
-        event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+        event = await stripe.webhooks.constructEventAsync(rawBody, signature, webhookSecret);
     } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         return c.json({ error: `Webhook signature verification failed: ${message}` }, 400);

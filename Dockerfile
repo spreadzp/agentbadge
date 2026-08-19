@@ -2,10 +2,12 @@
 FROM oven/bun:1.2-slim AS css-builder
 WORKDIR /build
 COPY package.json bun.lock ./
-RUN bun install tailwindcss@3
+RUN bun install tailwindcss@3 @tailwindcss/typography
 COPY tailwind.config.cjs ./
-RUN mkdir -p src
+RUN mkdir -p src/views src/server/routes
 COPY src/input.css ./src/
+COPY src/views ./src/views
+COPY src/server/routes ./src/server/routes
 COPY public ./public
 RUN bun run build:css
 
