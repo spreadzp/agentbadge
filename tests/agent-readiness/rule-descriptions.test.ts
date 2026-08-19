@@ -5,10 +5,11 @@ import {
   type RuleDescription,
 } from "../../src/agent-readiness/rule-descriptions";
 import { categoryEnum } from "../../src/agent-readiness/shared.schema";
+import { AGENT_READINESS_RULESET } from "../../src/agent-readiness/ruleset";
 
 describe("Rule Descriptions", () => {
-  it("has descriptions for all 72 rules", () => {
-    expect(RULE_DESCRIPTIONS.length).toBe(72);
+  it("has descriptions for all 76 rules", () => {
+    expect(RULE_DESCRIPTIONS.length).toBe(76);
   });
 
   it("every rule has required fields", () => {
@@ -45,11 +46,10 @@ describe("Rule Descriptions", () => {
     expect(cats.size).toBe(15);
   });
 
-  it("rule IDs cover AB-001 through AB-072", () => {
-    const ids = new Set(RULE_DESCRIPTIONS.map((r) => r.rule_id));
-    for (let i = 1; i <= 72; i++) {
-      const id = `AB-${String(i).padStart(3, "0")}`;
-      expect(ids.has(id)).toBe(true);
+  it("every ruleset rule has a description", () => {
+    const descIds = new Set(RULE_DESCRIPTIONS.map((r) => r.rule_id));
+    for (const rule of AGENT_READINESS_RULESET.rules) {
+      expect(descIds.has(rule.rule_id), `${rule.rule_id} should have a description`).toBe(true);
     }
   });
 

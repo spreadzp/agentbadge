@@ -16,7 +16,10 @@
         var productId = btn.getAttribute("data-product-id");
         if (!productId) return;
 
-        // Collect metadata from data attributes
+        // Scope lookups to the tier card (parent <article>)
+        var card = btn.closest("article");
+
+        // Collect metadata from data attributes on the button
         var metadata = {};
         for (var i = 0; i < btn.attributes.length; i++) {
           var attr = btn.attributes[i];
@@ -26,8 +29,24 @@
           }
         }
 
-        // Collect email if available
-        var emailInput = document.querySelector("[data-stripe-email]");
+        // Collect accountId and agentName from inputs in the same card
+        var accountIdInput = card ? card.querySelector("[data-stripe-account-id]") : null;
+        var accountId = accountIdInput ? accountIdInput.value.trim() : "";
+        var agentNameInput = card ? card.querySelector("[data-stripe-agent-name]") : null;
+        var agentName = agentNameInput ? agentNameInput.value.trim() : "";
+
+        // For passport products, accountId is required for NFT minting
+        if (productId.indexOf("passport-") === 0 && !accountId) {
+          alert("Please enter your Hedera Account ID (e.g. 0.0.1234) to mint the passport NFT.");
+          accountIdInput && accountIdInput.focus();
+          return;
+        }
+
+        if (accountId) metadata.accountId = accountId;
+        if (agentName) metadata.name = agentName;
+
+        // Collect email if available (global or card-scoped)
+        var emailInput = (card ? card.querySelector("[data-stripe-email]") : null) || document.querySelector("[data-stripe-email]");
         var email = emailInput ? emailInput.value.trim() : undefined;
 
         btn.disabled = true;

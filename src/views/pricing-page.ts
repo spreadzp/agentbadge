@@ -104,6 +104,12 @@ export function PricingPage(jsonLd?: object[]) {
            class="inline-flex items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20">
           ${t.cta ?? `Mint ${t.name}`} (HBAR)
         </a>
+        <div class="flex flex-col gap-1">
+          <input type="text" data-stripe-account-id placeholder="Hedera Account ID (0.0.xxxx)"
+                 class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none" />
+          <input type="text" data-stripe-agent-name placeholder="Agent name (optional)"
+                 class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none" />
+        </div>
         <button type="button" data-product-id="${t.productId}"
                 class="stripe-pay-btn inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 transition-colors">
           Pay with Card

@@ -16,7 +16,7 @@ export const FAQ_ENTRIES: QaPair[] = [
   {
     question: "What is the Agent Readiness Scanner?",
     answer:
-      "The scanner audits any API or website against 72 agent readiness rules across 15 categories — SEO, GEO, AEO, MCP, llms.txt, OpenAPI, payments, and more. You get deterministic checks, evidence, and actionable fix hints. <a href=\"/services/scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Try the scanner →</a>",
+      "The scanner audits any API or website against 76 agent readiness rules across 15 categories — SEO, GEO, AEO, MCP, llms.txt, OpenAPI, payments, and more. You get deterministic checks, evidence, and actionable fix hints. <a href=\"/services/scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Try the scanner →</a>",
   },
   {
     question: "What is the Agent Marketplace?",
