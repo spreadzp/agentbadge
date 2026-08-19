@@ -255,7 +255,16 @@ async function serveAgentGuideJson(c: Context): Promise<Response> {
         "GET /agent-guide/team/contact",
         "POST /api/work-requests",
       ],
-      articles: ["what-is-agent-readiness", "seo-vs-agent-readiness"],
+      articles: [
+        "what-is-agent-readiness",
+        "seo-vs-agent-readiness",
+        "web-becoming-agentic-api-discovery",
+        "seo-geo-agent-readiness",
+        "building-mcp-servers",
+        "hedera-blockchain-for-agents",
+        "ai-agent-architecture-patterns",
+        "geo-optimization-for-ai-discovery",
+      ],
       knowledge_map: knowledgeMap,
       index_markdown: indexContent,
     };
