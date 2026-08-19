@@ -16,6 +16,7 @@ import { resolve } from "node:path";
 import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
+import { BLOG_ARTICLES } from "../lib/blog-data";
 
 export const wellKnownRoutes = new Hono();
 
@@ -479,6 +480,33 @@ export function buildAiSitemap(): string {
       format: "mcp",
       desc: "GitBook MCP server — read-only programmatic access to documentation via Model Context Protocol",
     },
+    // Blog index (machine-readable)
+    {
+      loc: `${baseUrl}/blog/index.md`,
+      priority: "0.8",
+      format: "markdown",
+      desc: "Blog index in Markdown — machine-readable list of all published articles with URLs",
+    },
+    {
+      loc: `${baseUrl}/blog/rss.xml`,
+      priority: "0.7",
+      format: "xml",
+      desc: "RSS 2.0 feed for blog articles",
+    },
+    // Blog articles — dynamically generated from BLOG_ARTICLES
+    ...BLOG_ARTICLES.map((a) => ({
+      loc: `${baseUrl}/blog/${a.slug}`,
+      priority: "0.7",
+      format: "html",
+      desc: `Blog article — ${a.title}`,
+    })),
+    // Blog articles in Markdown (for AI agents that prefer markdown)
+    ...BLOG_ARTICLES.filter((a) => a.markdown).map((a) => ({
+      loc: `${baseUrl}/blog/${a.slug}.md`,
+      priority: "0.8",
+      format: "markdown",
+      desc: `Blog article (Markdown) — ${a.title}`,
+    })),
   ];
 
   const entries = resources
