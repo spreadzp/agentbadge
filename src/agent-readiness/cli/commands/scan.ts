@@ -20,6 +20,7 @@ import { formatHtmlOutput } from "../formatters/html-output";
 import { renderBadgeSvg } from "./badge";
 import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput, formatMarkdownOutput } from "../output";
 import { computeGrade } from "../../scoring/grade-computer";
+import { formatJsonApiOutput } from "../formatters/json-api-output";
 
 const DEFAULT_OUTPUT_PATH = "agentbadge-report.json";
 
@@ -145,15 +146,19 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     }
 
     if (jsonApi) {
-      const apiResponse = {
-        score: { ...scoreResult.total, grade: scoreResult.total.grade ?? computeGrade(scoreResult.total.score) },
-        categories: scoreResult.categories,
+      const scoreVal = (scoreResult.total as any).score ?? 0;
+      const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
+      const categoryScores = Object.values(scoreResult.categories) as any[];
+      const apiJson = formatJsonApiOutput({
+        url,
+        score: scoreVal,
+        grade,
         assertions,
-        ...(fixHints ? { fixHints: assertions.map((a) => a.fix ?? null) } : {}),
-        ...(reportUrl ? { reportUrl } : {}),
-      };
-      const space = compact ? 0 : 2;
-      return { exitCode: 0, stdout: JSON.stringify(apiResponse, null, space), stderr: "" };
+        categoryScores,
+        compact,
+        reportUrl,
+      });
+      return { exitCode: 0, stdout: apiJson, stderr: "" };
     }
 
     if (json || format === "json") {
