@@ -19,6 +19,19 @@ export const errorSchema = z.object({
   hint: z.string().optional().describe("Suggested action for the caller"),
 });
 
+// ─── Payment schemas (SLICE-67-3) ───────────────────────────────
+
+export const checkoutRequestSchema = z.object({
+  productId: z.string().describe("Product identifier (e.g. passport-bronze, directory-listing)"),
+  email: z.string().email().optional().describe("Customer email for Stripe Checkout"),
+  metadata: z.record(z.string(), z.string()).optional().describe("Additional metadata (accountId, name, etc.)"),
+});
+
+export const checkoutResponseSchema = z.object({
+  url: z.string().url().describe("Stripe Checkout URL to redirect the customer to"),
+  sessionId: z.string().describe("Stripe Checkout Session ID"),
+});
+
 // ─── HATEOAS link schemas (SLICE-17-7) ──────────────────────────
 
 export const linkSchema = z.object({

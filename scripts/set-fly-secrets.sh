@@ -42,6 +42,10 @@ SECRETS=(
   L402_TEST_MODE
   L402_AMOUNT_SATS
   L402_NODE_PUBKEY
+  STRIPE_SECRET_KEY
+  STRIPE_WEBHOOK_SECRET
+  STRIPE_PUBLISHABLE_KEY
+  PUBLIC_BASE_URL
 )
 
 # Optional secrets (set if present in .env, skip silently if missing)

@@ -8,6 +8,8 @@
  */
 
 import { Hono } from "hono";
+import { describeRoute, resolver } from "hono-openapi";
+import { z } from "zod";
 import type Stripe from "stripe";
 
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
@@ -16,14 +18,46 @@ import { fulfillOrder } from "../lib/order-fulfillment";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { captureError } from "../lib/sentry";
+import { checkoutResponseSchema, errorSchema } from "../openapi";
 import { renderPaymentSuccess, renderPaymentError } from "../../views/payment-success";
 import { renderPaymentCanceled } from "../../views/payment-canceled";
 
+const fiatProductListSchema = z.object({
+    products: z.array(
+        z.object({
+            productId: z.string(),
+            name: z.string(),
+            description: z.string(),
+            amountUsd: z.number(),
+            amountCents: z.number(),
+            metadata: z.record(z.string(), z.string()),
+        }),
+    ),
+});
+
 export const paymentRoutes = new Hono();
 
-paymentRoutes.get("/api/payment/products", (c) => {
-    return c.json({ products: listFiatProducts() });
-});
+paymentRoutes.get(
+    "/api/payment/products",
+    describeRoute({
+        tags: ["Payment"],
+        summary: "List available fiat products",
+        description: "Returns all products available for Stripe Checkout purchase.",
+        responses: {
+            200: {
+                description: "List of fiat products",
+                content: {
+                    "application/json": {
+                        schema: resolver(fiatProductListSchema),
+                    },
+                },
+            },
+        },
+    }),
+    (c) => {
+        return c.json({ products: listFiatProducts() });
+    },
+);
 
 interface CheckoutRequest {
     productId: string;
@@ -31,64 +65,92 @@ interface CheckoutRequest {
     metadata?: Record<string, string>;
 }
 
-paymentRoutes.post("/api/payment/checkout", async (c) => {
-    if (!isStripeConfigured()) {
-        return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, "Stripe is not configured");
-    }
-
-    let body: CheckoutRequest;
-    try {
-        body = await c.req.json();
-    } catch {
-        return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
-    }
-
-    const { productId, email, metadata } = body;
-    if (!productId) {
-        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing productId");
-    }
-
-    const product = getFiatProduct(productId);
-    if (!product) {
-        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, `Unknown product: ${productId}`);
-    }
-
-    const stripe = getStripeClient();
-    const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:4021";
-
-    try {
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ["card"],
-            line_items: [
-                {
-                    price_data: {
-                        currency: "usd",
-                        product_data: {
-                            name: product.name,
-                            description: product.description,
-                        },
-                        unit_amount: product.amountCents,
-                    },
-                    quantity: 1,
+paymentRoutes.post(
+    "/api/payment/checkout",
+    describeRoute({
+        tags: ["Payment"],
+        summary: "Create a Stripe Checkout Session",
+        description:
+            "Creates a Stripe Checkout Session for one-time fiat payment and returns the redirect URL. For passport products, include accountId in metadata for NFT minting.",
+        responses: {
+            200: {
+                description: "Checkout session created",
+                content: {
+                    "application/json": { schema: resolver(checkoutResponseSchema) },
                 },
-            ],
-            mode: "payment",
-            customer_email: email,
-            success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${baseUrl}/payment/canceled`,
-            metadata: {
-                ...product.metadata,
-                ...metadata,
-                productId,
             },
-        });
+            400: {
+                description: "Invalid product ID or missing fields",
+                content: {
+                    "application/json": { schema: resolver(errorSchema) },
+                },
+            },
+            500: {
+                description: "Stripe API error or Stripe not configured",
+                content: {
+                    "application/json": { schema: resolver(errorSchema) },
+                },
+            },
+        },
+    }),
+    async (c) => {
+        if (!isStripeConfigured()) {
+            return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, "Stripe is not configured");
+        }
 
-        return c.json({ url: session.url, sessionId: session.id });
-    } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown Stripe error";
-        return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Stripe checkout failed: ${message}`);
-    }
-});
+        let body: CheckoutRequest;
+        try {
+            body = await c.req.json();
+        } catch {
+            return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+        }
+
+        const { productId, email, metadata } = body;
+        if (!productId) {
+            return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing productId");
+        }
+
+        const product = getFiatProduct(productId);
+        if (!product) {
+            return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, `Unknown product: ${productId}`);
+        }
+
+        const stripe = getStripeClient();
+        const baseUrl = process.env.PUBLIC_BASE_URL ?? "http://localhost:4021";
+
+        try {
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ["card"],
+                line_items: [
+                    {
+                        price_data: {
+                            currency: "usd",
+                            product_data: {
+                                name: product.name,
+                                description: product.description,
+                            },
+                            unit_amount: product.amountCents,
+                        },
+                        quantity: 1,
+                    },
+                ],
+                mode: "payment",
+                customer_email: email,
+                success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${baseUrl}/payment/canceled`,
+                metadata: {
+                    ...product.metadata,
+                    ...metadata,
+                    productId,
+                },
+            });
+
+            return c.json({ url: session.url, sessionId: session.id });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Unknown Stripe error";
+            return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Stripe checkout failed: ${message}`);
+        }
+    });
 
 paymentRoutes.post("/api/stripe/webhook", async (c) => {
     if (!isStripeConfigured()) {
