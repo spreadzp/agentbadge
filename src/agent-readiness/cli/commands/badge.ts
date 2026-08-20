@@ -53,7 +53,7 @@ async function badgeHandler(args: ParsedArgs, flags: ParsedFlags) {
   }
 }
 
-function renderBadgeSvg(label: string, score: number): string {
+export function renderBadgeSvg(label: string, score: number): string {
   const color = score >= 90 ? "#4c1" : score >= 70 ? "#dfb317" : "#e05d44";
   const scoreText = `${score}/100`;
   const labelWidth = Math.max(label.length * 7 + 10, 90);
