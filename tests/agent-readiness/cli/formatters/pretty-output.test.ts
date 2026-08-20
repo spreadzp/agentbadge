@@ -76,4 +76,22 @@ describe("formatPrettyOutput", () => {
     expect(out).toContain("Delta");
     expect(out).toContain("+5");
   });
+
+  it("renders letter grade alongside numeric score", () => {
+    const out = formatPrettyOutput(makeReport({ score: { overall: 92, categories: {} } as any }));
+    expect(out).toContain("A");
+  });
+
+  it("renders grade C+ for score 75-79", () => {
+    const out = formatPrettyOutput(makeReport());
+    expect(out).toContain("C+");
+  });
+
+  it("renders category breakdown with percentage", () => {
+    const out = formatPrettyOutput(makeReport());
+    expect(out).toContain("Category Breakdown");
+    expect(out).toMatch(/discovery.*80/);
+    expect(out).toMatch(/documentation.*70/);
+    expect(out).toContain("%");
+  });
 });

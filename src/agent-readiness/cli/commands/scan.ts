@@ -16,7 +16,10 @@ import { runScoringEngine } from "../../scoring/scoring-engine";
 import { assembleReport, type AgentReadinessReport } from "../../integrity/report-serializer";
 import { AGENT_READINESS_RULESET } from "../../ruleset";
 import { formatPrettyOutput } from "../formatters/pretty-output";
+import { formatHtmlOutput } from "../formatters/html-output";
+import { renderBadgeSvg } from "./badge";
 import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput, formatMarkdownOutput } from "../output";
+import { computeGrade } from "../../scoring/grade-computer";
 
 const DEFAULT_OUTPUT_PATH = "agentbadge-report.json";
 
@@ -34,7 +37,7 @@ const SCAN_FLAGS = [
   { name: "json-api", shortName: "", type: "boolean" as const, description: "Output full JSON API response (same format as competitor)" },
   { name: "category", shortName: "", type: "string" as const, description: "Run only rules in specified category" },
   { name: "rule", shortName: "", type: "string" as const, description: "Run only a single rule by ID (e.g. AB-001)" },
-  { name: "format", shortName: "", type: "string" as const, description: "Output format: text|json|markdown (default: text)", default: "text" },
+  { name: "format", shortName: "", type: "string" as const, description: "Output format: text|json|markdown|html|badge (default: text)", default: "text" },
   { name: "fix-hints", shortName: "", type: "boolean" as const, description: "Include fix suggestions in output" },
   { name: "compact", shortName: "", type: "boolean" as const, description: "Compact M2M JSON output (no whitespace)" },
   { name: "report-url", shortName: "", type: "string" as const, description: "Web report URL to include in output" },
@@ -143,7 +146,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
 
     if (jsonApi) {
       const apiResponse = {
-        score: scoreResult.total,
+        score: { ...scoreResult.total, grade: scoreResult.total.grade ?? computeGrade(scoreResult.total.score) },
         categories: scoreResult.categories,
         assertions,
         ...(fixHints ? { fixHints: assertions.map((a) => a.fix ?? null) } : {}),
@@ -162,8 +165,31 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     }
 
     if (format === "markdown") {
-      const md = formatMarkdownOutput(assertions, { score: (scoreResult.total as any).score ?? scoreResult.total as any, fixHints, reportUrl });
+      const scoreVal = (scoreResult.total as any).score ?? scoreResult.total as any;
+      const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
+      const md = formatMarkdownOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl });
       return { exitCode: 0, stdout: md, stderr: "" };
+    }
+
+    if (format === "html") {
+      const scoreVal = (scoreResult.total as any).score ?? scoreResult.total as any;
+      const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
+      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl });
+      if (outputPath !== DEFAULT_OUTPUT_PATH) {
+        await writeFile(outputPath, html, "utf-8");
+        return { exitCode: 0, stdout: `HTML report written to ${outputPath}`, stderr: "", outputFile: outputPath };
+      }
+      return { exitCode: 0, stdout: html, stderr: "" };
+    }
+
+    if (format === "badge") {
+      const scoreNum = (scoreResult.total as any).score ?? scoreResult.total as any;
+      const svg = renderBadgeSvg("agent readiness", scoreNum);
+      if (outputPath !== DEFAULT_OUTPUT_PATH) {
+        await writeFile(outputPath, svg, "utf-8");
+        return { exitCode: 0, stdout: `Badge written to ${outputPath} (score: ${scoreNum}/100)`, stderr: "", outputFile: outputPath };
+      }
+      return { exitCode: 0, stdout: svg, stderr: "" };
     }
 
     // Write report file

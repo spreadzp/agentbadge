@@ -1,6 +1,7 @@
 import type { CategoryScore, TotalScore } from "./scoring-types";
 import type { FloorCheckResult } from "./floor-enforcer";
 import { roundTo2 } from "./category-scorer";
+import { computeGrade } from "./grade-computer";
 
 export function computeTotalScore(
   categoryScores: CategoryScore[],
@@ -18,6 +19,7 @@ export function computeTotalScore(
     return {
       rawScore: roundedRaw,
       score: capped,
+      grade: computeGrade(capped),
       floorTriggered: roundedRaw > floorCheck.capValue,
       floorReason: roundedRaw > floorCheck.capValue
         ? `Floor cap applied: ${floorCheck.triggeringRules.join(", ")}`
@@ -28,6 +30,7 @@ export function computeTotalScore(
   return {
     rawScore: roundedRaw,
     score: roundedRaw,
+    grade: computeGrade(roundedRaw),
     floorTriggered: false,
     floorReason: null,
   };

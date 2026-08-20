@@ -25,6 +25,7 @@ export interface AgentReadinessReport {
   source_state?: string;
   score: {
     overall: number;
+    grade: string;
     categories: Record<string, number>;
     delta?: number;
   };
@@ -41,7 +42,7 @@ export interface ReportAssemblyInput {
   sourceState?: unknown;
   assertions: unknown[];
   scoreResult: {
-    total: { score: number };
+    total: { score: number; grade?: string };
     categories: Record<string, { score: number }>;
     delta?: { totalDelta: number } | null;
   };
@@ -55,6 +56,7 @@ export function assembleReport(input: ReportAssemblyInput): AgentReadinessReport
 
   const score: Record<string, unknown> = {
     overall: input.scoreResult.total.score,
+    grade: input.scoreResult.total.grade ?? "",
     categories: Object.fromEntries(
       Object.entries(input.scoreResult.categories).map(([k, v]) => [k, v.score]),
     ),

@@ -3,6 +3,7 @@
  */
 
 import type { AgentReadinessReport } from "../../integrity/report-serializer";
+import { computeGrade } from "../../scoring/grade-computer";
 
 export function formatPrettyOutput(report: AgentReadinessReport): string {
   const lines: string[] = [];
@@ -22,9 +23,9 @@ export function formatPrettyOutput(report: AgentReadinessReport): string {
   lines.push("  Overall Score");
   lines.push("─".repeat(60));
   const score = report.score.overall;
-  const scoreColor = score >= 90 ? "green" : score >= 70 ? "yellow" : "red";
+  const grade = computeGrade(score);
   const bar = renderBar(score);
-  lines.push(`  ${bar}  ${score}/100`);
+  lines.push(`  ${bar}  ${score}/100  (${grade})`);
   if (report.score.delta !== undefined) {
     const delta = report.score.delta;
     const sign = delta >= 0 ? "+" : "";
@@ -40,7 +41,8 @@ export function formatPrettyOutput(report: AgentReadinessReport): string {
   for (const [cat, val] of categories) {
     const catScore = val as number;
     const catBar = renderBar(catScore, 20);
-    lines.push(`  ${cat.padEnd(20)} ${catBar} ${catScore}/100`);
+    const pct = Math.round(catScore);
+    lines.push(`  ${cat.padEnd(20)} ${catBar} ${catScore}/100  ${pct}%`);
   }
   lines.push("");
 

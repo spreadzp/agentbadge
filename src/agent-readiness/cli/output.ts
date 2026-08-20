@@ -84,12 +84,13 @@ export function formatPretty(
 
 export function formatMarkdownOutput(
   results: RuleResult[],
-  opts?: { score?: number; fixHints?: boolean; reportUrl?: string },
+  opts?: { score?: number; grade?: string; fixHints?: boolean; reportUrl?: string },
 ): string {
   const lines: string[] = [];
   lines.push("# Agent Readiness Report");
   if (opts?.score !== undefined) {
-    lines.push(`\n**Score:** ${opts.score}/100`);
+    const gradeStr = opts.grade ? ` (${opts.grade})` : "";
+    lines.push(`\n**Score:** ${opts.score}/100${gradeStr}`);
   }
   if (opts?.reportUrl) {
     lines.push(`\n**Web Report:** ${opts.reportUrl}`);

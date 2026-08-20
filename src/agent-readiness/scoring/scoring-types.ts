@@ -49,6 +49,7 @@ export interface CategoryScore {
 export interface TotalScore {
   rawScore: number;
   score: number;
+  grade: string;
   floorTriggered: boolean;
   floorReason: string | null;
 }
