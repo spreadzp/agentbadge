@@ -105,8 +105,48 @@ export function PricingPage(jsonLd?: object[]) {
           ${t.cta ?? `Mint ${t.name}`} (HBAR)
         </a>
         <div class="flex flex-col gap-1">
-          <input type="text" data-stripe-account-id placeholder="Hedera Account ID (0.0.xxxx)"
-                 class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none" />
+          <div class="flex gap-1">
+            <div class="relative shrink-0" data-network-dropdown>
+              <button type="button" data-network-button
+                      class="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-sm text-slate-300 hover:border-sky-500 focus:outline-none">
+                <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0">
+                  <path d="M12 3C10.22 3 8.4799 3.52784 6.99986 4.51677C5.51983 5.5057 4.36628 6.91131 3.68509 8.55584C3.0039 10.2004 2.82567 12.01 3.17293 13.7558C3.5202 15.5016 4.37737 17.1053 5.63604 18.364C6.89471 19.6226 8.49835 20.4798 10.2442 20.8271C11.99 21.1743 13.7996 20.996 15.4442 20.3148C17.0887 19.6337 18.4943 18.4802 19.4832 17.0001C20.4721 15.5201 21 13.7799 21 12C21 9.61305 20.0518 7.32387 18.364 5.63604C16.6761 3.9482 14.3869 3 12 3Z" fill="currentColor"/>
+                  <path d="M15.6588 15.8928H14.5158V13.4628H9.4848V15.8928H8.3418V8.01329H9.4848V10.3848H14.5158V8.01329H15.6588V15.8928ZM9.5388 12.5538H14.5698V11.2983H9.5388V12.5538Z" fill="#1e293b"/>
+                </svg>
+                <span data-network-label>Hedera</span>
+                <svg viewBox="0 0 24 24" class="h-3 w-3 text-slate-500" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="absolute left-0 top-full z-20 mt-1 hidden w-44 rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl" data-network-options>
+                <button type="button" data-network="hedera"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0">
+                    <path d="M12 3C10.22 3 8.4799 3.52784 6.99986 4.51677C5.51983 5.5057 4.36628 6.91131 3.68509 8.55584C3.0039 10.2004 2.82567 12.01 3.17293 13.7558C3.5202 15.5016 4.37737 17.1053 5.63604 18.364C6.89471 19.6226 8.49835 20.4798 10.2442 20.8271C11.99 21.1743 13.7996 20.996 15.4442 20.3148C17.0887 19.6337 18.4943 18.4802 19.4832 17.0001C20.4721 15.5201 21 13.7799 21 12C21 9.61305 20.0518 7.32387 18.364 5.63604C16.6761 3.9482 14.3869 3 12 3Z" fill="currentColor"/>
+                    <path d="M15.6588 15.8928H14.5158V13.4628H9.4848V15.8928H8.3418V8.01329H9.4848V10.3848H14.5158V8.01329H15.6588V15.8928ZM9.5388 12.5538H14.5698V11.2983H9.5388V12.5538Z" fill="#0f172a"/>
+                  </svg>
+                  Hedera
+                </button>
+                <button type="button" data-network="ethereum" disabled
+                        class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-sm text-slate-500">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="currentColor">
+                    <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+                  </svg>
+                  Ethereum (soon)
+                </button>
+                <button type="button" data-network="solana" disabled
+                        class="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2 text-sm text-slate-500">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="currentColor">
+                    <path d="M18.751 10.2A0.659 0.659 0 0 0 18.288 10.009H2.328a0.326 0.326 0 0 0-0.231 0.558l3.152 3.153a0.654 0.654 0 0 0 0.463 0.191h15.96a0.326 0.326 0 0 0 0.231-0.558zM2.328 8.065h15.96A0.654 0.654 0 0 0 18.751 7.874L21.9 4.721A0.326 0.326 0 0 0 21.669 4.163H5.712A0.677 0.677 0 0 0 5.249 4.354L2.1 7.507a0.326 0.326 0 0 0 0.228 0.558zm19.344 7.87H5.712A0.654 0.654 0 0 0 5.249 16.126L2.1 19.279a0.326 0.326 0 0 0 0.231 0.558h15.96a0.659 0.659 0 0 0 0.463-0.191L21.9 16.493a0.326 0.326 0 0 0-0.228-0.558z"/>
+                  </svg>
+                  Solana (soon)
+                </button>
+              </div>
+              <input type="hidden" data-stripe-network value="hedera" />
+            </div>
+            <input type="text" data-stripe-account-id placeholder="0.0.1234"
+                   pattern="^\d+\.\d+\.\d+$"
+                   title="Hedera Account ID format: shard.realm.num (e.g. 0.0.1234)"
+                   class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none invalid:border-red-500 invalid:text-red-300" />
+          </div>
           <input type="text" data-stripe-agent-name placeholder="Agent name (optional)"
                  class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none" />
         </div>
@@ -221,7 +261,8 @@ export function PricingPage(jsonLd?: object[]) {
       </div>
     </section>
 
-    <script src="/js/payment.js" defer></script>
+    <script src="/js/toast.js?v=1" defer></script>
+    <script src="/js/payment.js?v=4" defer></script>
 
     <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
       <p class="text-slate-300">Questions about pricing?</p>
