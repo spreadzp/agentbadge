@@ -9,11 +9,13 @@ import { registerScanCommand } from "./commands/scan";
 import { registerVerifyCommand } from "./commands/verify-report";
 import { registerFixCommand } from "./commands/fix";
 import { registerBadgeCommand } from "./commands/badge";
+import { registerGuideCommand } from "./commands/guide";
 
 registerScanCommand();
 registerVerifyCommand();
 registerFixCommand();
 registerBadgeCommand();
+registerGuideCommand();
 
 async function main() {
   const argv = process.argv.slice(2);
