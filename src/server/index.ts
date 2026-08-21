@@ -409,6 +409,13 @@ const marketNs = createNamespace("market");
 registerMarketplaceTools(marketNs);
 registerDatasetTools(marketNs);
 
+// Register MCP tools — discovery namespace
+const discoveryNs = createNamespace("discovery");
+registerDiscoveryTools(discoveryNs);
+registerDirectoryTools(discoveryNs);
+registerGuideTools(discoveryNs);
+registerA2ATools(discoveryNs);
+
 // Register MCP tools — global (backward compat, includes all tools)
 registerPassportTools();
 registerAuditCatalogTools();
