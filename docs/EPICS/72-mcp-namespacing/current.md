@@ -2,7 +2,7 @@
 
 ## Active Task
 
-SLICE-72-2 COMPLETE. Ready for SLICE-72-3 (Namespace HTTP routes).
+SLICE-72-3 COMPLETE. Ready for SLICE-72-4 (Wire passport-mcp tools).
 
 ## What's Done
 
@@ -22,11 +22,17 @@ SLICE-72-2 COMPLETE. Ready for SLICE-72-3 (Namespace HTTP routes).
   - Backward-compatible global functions delegate to default `"all"` namespace
   - 11/11 new tests pass, 0 new regressions (2 pre-existing failures on main)
   - Package built and deployed to node_modules
+- [x] SLICE-72-3: Namespace HTTP routes complete
+  - `createNamespaceRoutes()` factory in `src/server/routes/mcp-namespace.ts`
+  - 4 namespace endpoints mounted: `/mcp/passport`, `/mcp/market`, `/mcp/discovery`, `/mcp/audit`
+  - Supports JSON-RPC (tools/list, tools/call), REST (GET /tools, POST /tools/:name), SSE
+  - 9/9 new tests pass, 0 new regressions
+  - Nonexistent namespace returns 503
 
 ## What's Next
 
-- SLICE-72-3: Create parameterized namespace route factory
 - SLICE-72-4: Wire passport-mcp tools to `createNamespace("passport")`
+- SLICE-72-5: Wire market-mcp tools
 
 ## Active Decisions
 
@@ -50,6 +56,6 @@ SLICE-72-2 COMPLETE. Ready for SLICE-72-3 (Namespace HTTP routes).
 
 ## Next Checkpoint
 
-- SLICE-72-3: Namespace HTTP routes
-- Create `/mcp/:namespace` route factory in `src/server/routes/`
-- Each namespace endpoint serves only its namespace's tools
+- SLICE-72-4: Wire passport-mcp tools
+- Update `registerPassportTools()` to accept optional `NamespaceRegistry` param
+- Register passport tools into `createNamespace("passport")` instead of default

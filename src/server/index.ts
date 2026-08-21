@@ -42,6 +42,7 @@ import { securityHeaders } from "./middleware/security-headers";
 import { openApiConfig } from "./openapi";
 import { passportRoutes } from "./routes/passport";
 import { mcpRoutes } from "./routes/mcp";
+import { createNamespaceRoutes } from "./routes/mcp-namespace";
 import { agentRoutes } from "./routes/agents";
 import { verifyRoutes } from "./routes/verify";
 import { didRoutes } from "./routes/did";
@@ -132,7 +133,7 @@ app.use(
     testMode: process.env.L402_TEST_MODE !== "false",
   }),
 );
-app.use((c, next) => signatureVerificationMiddleware(c as any, next));
+app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));
 app.use(rateLimitMiddleware());
 app.use(bazaarExtensionMiddleware());
 
@@ -351,6 +352,11 @@ app.route("/", catalogRoutes);
 app.route("/", wellKnownRoutes);
 app.route("/", feedRoutes);
 app.route("/", mcpRoutes);
+// Namespace MCP routes — each serves only its namespace's tools
+app.route("/mcp/passport", createNamespaceRoutes("passport"));
+app.route("/mcp/market", createNamespaceRoutes("market"));
+app.route("/mcp/discovery", createNamespaceRoutes("discovery"));
+app.route("/mcp/audit", createNamespaceRoutes("audit"));
 app.route("/", landingRoutes);
 app.route("/", servicesRoutes);
 app.route("/", uiRoutes);
