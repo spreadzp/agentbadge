@@ -404,6 +404,11 @@ registerPassportTools(passportNs);
 registerSigningTools(passportNs);
 registerEscrowTools(passportNs);
 
+// Register MCP tools — market namespace
+const marketNs = createNamespace("market");
+registerMarketplaceTools(marketNs);
+registerDatasetTools(marketNs);
+
 // Register MCP tools — global (backward compat, includes all tools)
 registerPassportTools();
 registerAuditCatalogTools();
