@@ -29,6 +29,7 @@ import {
   registerEscrowTools,
   registerDatasetTools,
   listTools,
+  createNamespace,
 } from "@agentgate-hedera/mcp";
 import { registerComplianceTools } from "../mcp/compliance-tools";
 import { registerParityTools } from "../mcp/parity-tools";
@@ -42,6 +43,7 @@ import { securityHeaders } from "./middleware/security-headers";
 import { openApiConfig } from "./openapi";
 import { passportRoutes } from "./routes/passport";
 import { mcpRoutes } from "./routes/mcp";
+import { createNamespaceRoutes } from "./routes/mcp-namespace";
 import { agentRoutes } from "./routes/agents";
 import { verifyRoutes } from "./routes/verify";
 import { didRoutes } from "./routes/did";
@@ -351,6 +353,10 @@ app.route("/", catalogRoutes);
 app.route("/", wellKnownRoutes);
 app.route("/", feedRoutes);
 app.route("/", mcpRoutes);
+app.route("/mcp/passport", createNamespaceRoutes("passport"));
+app.route("/mcp/market", createNamespaceRoutes("market"));
+app.route("/mcp/discovery", createNamespaceRoutes("discovery"));
+app.route("/mcp/audit", createNamespaceRoutes("audit"));
 app.route("/", landingRoutes);
 app.route("/", servicesRoutes);
 app.route("/", uiRoutes);
@@ -392,7 +398,13 @@ app.get("/openapi.json", openApiSpecHandler);
 app.get("/swagger.json", openApiSpecHandler);
 app.get("/docs", swaggerUI({ url: "/api/specs" }));
 
-// Register MCP tools
+// Register MCP tools — passport namespace
+const passportNs = createNamespace("passport");
+registerPassportTools(passportNs);
+registerSigningTools(passportNs);
+registerEscrowTools(passportNs);
+
+// Register MCP tools — global (backward compat, includes all tools)
 registerPassportTools();
 registerAuditCatalogTools();
 registerDirectoryTools();
