@@ -29,6 +29,7 @@ import {
   registerEscrowTools,
   registerDatasetTools,
   listTools,
+  createNamespace,
 } from "@agentgate-hedera/mcp";
 import { registerComplianceTools } from "../mcp/compliance-tools";
 import { registerParityTools } from "../mcp/parity-tools";
@@ -398,7 +399,13 @@ app.get("/openapi.json", openApiSpecHandler);
 app.get("/swagger.json", openApiSpecHandler);
 app.get("/docs", swaggerUI({ url: "/api/specs" }));
 
-// Register MCP tools
+// Register MCP tools — passport namespace
+const passportNs = createNamespace("passport");
+registerPassportTools(passportNs);
+registerSigningTools(passportNs);
+registerEscrowTools(passportNs);
+
+// Register MCP tools — default "all" namespace (backward compat)
 registerPassportTools();
 registerAuditCatalogTools();
 registerDirectoryTools();
