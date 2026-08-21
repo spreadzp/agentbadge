@@ -28,6 +28,7 @@ import {
   registerDiscoveryTools,
   registerEscrowTools,
   registerDatasetTools,
+  registerAllTools,
   listTools,
   createNamespace,
 } from "@agentgate-hedera/mcp";
@@ -422,19 +423,11 @@ registerAuditCatalogTools(auditNs);
 registerComplianceTools(auditNs);
 registerParityTools(auditNs);
 
-// Register MCP tools — global (backward compat, includes all tools)
-registerPassportTools();
-registerAuditCatalogTools();
-registerDirectoryTools();
-registerA2ATools();
-registerMarketplaceTools();
-registerGuideTools();
-registerSigningTools();
-registerDiscoveryTools();
-registerEscrowTools();
-registerDatasetTools();
-registerComplianceTools();
-registerParityTools();
+// Register MCP tools — global "all" namespace (backward compat for /mcp endpoint)
+const allNs = createNamespace("all");
+registerAllTools(allNs);
+registerComplianceTools(allNs);
+registerParityTools(allNs);
 
 const port = Number(process.env.PORT ?? 4021);
 
