@@ -28,6 +28,7 @@ import {
   registerDiscoveryTools,
   registerEscrowTools,
   registerDatasetTools,
+  registerAllTools,
   listTools,
   createNamespace,
 } from "@agentgate-hedera/mcp";
@@ -424,16 +425,7 @@ registerComplianceTools(auditNs);
 registerParityTools(auditNs);
 
 // Register MCP tools — default "all" namespace (backward compat)
-registerPassportTools();
-registerAuditCatalogTools();
-registerDirectoryTools();
-registerA2ATools();
-registerMarketplaceTools();
-registerGuideTools();
-registerSigningTools();
-registerDiscoveryTools();
-registerEscrowTools();
-registerDatasetTools();
+registerAllTools();
 registerComplianceTools();
 registerParityTools();
 
