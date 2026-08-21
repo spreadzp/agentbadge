@@ -9,7 +9,7 @@
  */
 
 import { z } from "zod";
-import { registerTool, type ToolResult, type NamespaceRegistry, getNamespace } from "@agentgate-hedera/mcp";
+import { type ToolResult, type NamespaceRegistry, getNamespace } from "@agentgate-hedera/mcp";
 
 function getRegistry(ns?: NamespaceRegistry) {
   return ns ?? getNamespace("all")!;

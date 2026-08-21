@@ -17,7 +17,34 @@ import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
 import { BLOG_ARTICLES } from "../lib/blog-data";
-import { getNamespace, listAllNamespaces } from "@agentgate-hedera/mcp";
+import { getNamespace } from "@agentgate-hedera/mcp";
+
+const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
+
+const NAMESPACE_DESCRIPTIONS: Record<string, string> = {
+  passport: "Agent identity, signing, and escrow tools",
+  market: "Marketplace and dataset tools",
+  discovery: "Agent directory, guide, A2A messaging, and discovery tools",
+  audit: "Audit catalog, compliance checking, and OpenAPI parity tools",
+};
+
+function buildNamespaceDescriptor(nsName: string) {
+  const ns = getNamespace(nsName);
+  const tools = ns ? ns.listTools().map((t) => ({ name: t.name, description: t.description })) : [];
+  return {
+    name: `${nsName}-mcp`,
+    version: openApiConfig.info.version,
+    description: NAMESPACE_DESCRIPTIONS[nsName] ?? `${nsName} MCP namespace`,
+    remotes: [
+      {
+        name: nsName,
+        transport: "http",
+        url: `${BASE_URL}/mcp/${nsName}`,
+      },
+    ],
+    tools,
+  };
+}
 
 export const wellKnownRoutes = new Hono();
 
@@ -174,23 +201,23 @@ wellKnownRoutes.get(
   }),
   (c) => {
     const baseUrl = BASE_URL;
-    const nsNames = listAllNamespaces().filter((n) => n !== "all");
-    const remotes = nsNames.map((name) => ({
-      name,
-      transport: "http",
-      url: `${baseUrl}/mcp/${name}`,
-    }));
-    remotes.push({
-      name: "all",
-      transport: "http",
-      url: `${baseUrl}/mcp`,
-    });
     const descriptor = {
       name: "agentbadge",
       version: openApiConfig.info.version,
       description: "AgentBadge MCP server — namespaced endpoints for agent readiness",
-      remotes,
-      namespaces: nsNames,
+      remotes: [
+        ...MCP_NAMESPACES.map((ns) => ({
+          name: ns,
+          transport: "http",
+          url: `${baseUrl}/mcp/${ns}`,
+        })),
+        {
+          name: "all",
+          transport: "http",
+          url: `${baseUrl}/mcp`,
+        },
+      ],
+      namespaces: [...MCP_NAMESPACES],
     };
     return c.json(descriptor, 200, {
       "Cache-Control": "public, max-age=3600",
@@ -198,75 +225,16 @@ wellKnownRoutes.get(
   },
 );
 
-// ─── Per-namespace MCP descriptors (SLICE-72-8) ──────────────────
+// ─── Per-namespace MCP descriptors (SLICE-72-8) ─────────────────
 
-const nsDescriptorSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  description: z.string(),
-  remotes: z.array(
-    z.object({
-      name: z.string(),
-      transport: z.string(),
-      url: z.string(),
-    }),
-  ),
-  tools: z.array(
-    z.object({
-      name: z.string(),
-      description: z.string(),
-    }),
-  ),
+MCP_NAMESPACES.forEach((nsName) => {
+  wellKnownRoutes.get(`/.well-known/${nsName}-mcp.json`, (c) => {
+    const descriptor = buildNamespaceDescriptor(nsName);
+    return c.json(descriptor, 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  });
 });
-
-const nsDescriptions: Record<string, string> = {
-  passport: "Agent identity, signing, and escrow tools",
-  market: "Marketplace and dataset tools",
-  discovery: "Discovery, directory, guide, and A2A tools",
-  audit: "Audit catalog, compliance, and parity tools",
-};
-
-for (const nsName of ["passport", "market", "discovery", "audit"]) {
-  wellKnownRoutes.get(
-    `/.well-known/${nsName}-mcp.json`,
-    describeRoute({
-      tags: ["Discovery"],
-      summary: `${nsName} namespace MCP descriptor`,
-      description: `Machine-readable MCP descriptor for the ${nsName} namespace.`,
-      responses: {
-        200: {
-          description: `${nsName} namespace descriptor JSON`,
-          content: {
-            "application/json": { schema: resolver(nsDescriptorSchema) },
-          },
-        },
-      },
-    }),
-    (c) => {
-      const baseUrl = BASE_URL;
-      const ns = getNamespace(nsName);
-      const tools = ns
-        ? ns.listTools().map((t) => ({ name: t.name, description: t.description }))
-        : [];
-      const descriptor = {
-        name: `${nsName}-mcp`,
-        version: openApiConfig.info.version,
-        description: nsDescriptions[nsName] ?? `${nsName} MCP namespace`,
-        remotes: [
-          {
-            name: nsName,
-            transport: "http",
-            url: `${baseUrl}/mcp/${nsName}`,
-          },
-        ],
-        tools,
-      };
-      return c.json(descriptor, 200, {
-        "Cache-Control": "public, max-age=3600",
-      });
-    },
-  );
-}
 
 // ─── OAuth Authorization Server Metadata (SLICE-47-3) ──────────
 
@@ -581,11 +549,11 @@ export function buildAiSitemap(): string {
       desc: `Blog article (Markdown) — ${a.title}`,
     })),
     // Per-namespace MCP descriptors (SLICE-72-8)
-    ...["passport", "market", "discovery", "audit"].map((ns) => ({
+    ...MCP_NAMESPACES.map((ns) => ({
       loc: `${baseUrl}/.well-known/${ns}-mcp.json`,
       priority: "0.9",
       format: "json",
-      desc: `${ns} namespace MCP descriptor — tools and transport URL`,
+      desc: `MCP descriptor for ${ns} namespace — tools and transport URL`,
     })),
   ];
 
@@ -1086,17 +1054,16 @@ wellKnownRoutes.get(
     },
   }),
   (c) => {
-    const baseUrl = BASE_URL;
-    const nsNames = listAllNamespaces().filter((n) => n !== "all");
     const manifest = {
       name: "AgentBadge",
       version: "1.0.0",
-      description: "On-chain identity for AI agents on Hedera",
+      description: "On-chain identity for AI agents on Hedera — namespaced MCP endpoints",
       mcpEndpoint: "/mcp",
-      namespaces: nsNames.map((name) => ({
-        name,
-        url: `${baseUrl}/mcp/${name}`,
-        descriptor: `${baseUrl}/.well-known/${name}-mcp.json`,
+      namespaces: [...MCP_NAMESPACES],
+      namespaceEndpoints: MCP_NAMESPACES.map((ns) => ({
+        name: ns,
+        url: `/mcp/${ns}`,
+        descriptor: `/.well-known/${ns}-mcp.json`,
       })),
     };
 

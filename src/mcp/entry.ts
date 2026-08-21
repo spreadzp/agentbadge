@@ -1,7 +1,7 @@
 import {
   startStdio,
   createNamespace,
-  registerAllTools,
+  getNamespace,
   registerPassportTools,
   registerSigningTools,
   registerEscrowTools,
@@ -17,26 +17,30 @@ import {
 import { registerComplianceTools } from "./compliance-tools";
 import { registerParityTools } from "./parity-tools";
 
-const namespace = process.env.MCP_NAMESPACE ?? process.argv[2] ?? "all";
-
-function registerNamespaceTools(ns: NamespaceRegistry): void {
-  registerAllTools(ns);
+function registerServerAllTools(ns?: NamespaceRegistry): void {
+  registerPassportTools(ns);
+  registerSigningTools(ns);
+  registerEscrowTools(ns);
+  registerMarketplaceTools(ns);
+  registerDatasetTools(ns);
+  registerDiscoveryTools(ns);
+  registerDirectoryTools(ns);
+  registerGuideTools(ns);
+  registerA2ATools(ns);
+  registerAuditCatalogTools(ns);
   registerComplianceTools(ns);
   registerParityTools(ns);
 }
 
+const namespace = process.env.MCP_NAMESPACE ?? process.argv[2] ?? "all";
+
+let ns: NamespaceRegistry;
+
 if (namespace === "all") {
-  registerAllTools();
-  registerComplianceTools();
-  registerParityTools();
-  const allNs = createNamespace("all");
-  registerNamespaceTools(allNs);
-  allNs.startStdio().catch((e) => {
-    console.error("Failed to start MCP stdio server", e);
-    process.exit(1);
-  });
+  registerServerAllTools();
+  ns = getNamespace("all")!;
 } else {
-  const ns = createNamespace(namespace);
+  ns = createNamespace(namespace);
   switch (namespace) {
     case "passport":
       registerPassportTools(ns);
@@ -62,8 +66,9 @@ if (namespace === "all") {
       console.error(`Unknown namespace: ${namespace}`);
       process.exit(1);
   }
-  ns.startStdio().catch((e) => {
-    console.error("Failed to start MCP stdio server", e);
-    process.exit(1);
-  });
 }
+
+ns.startStdio().catch((e) => {
+  console.error("Failed to start MCP stdio server", e);
+  process.exit(1);
+});

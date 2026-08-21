@@ -135,7 +135,7 @@ app.use(
     testMode: process.env.L402_TEST_MODE !== "false",
   }),
 );
-app.use((c, next) => signatureVerificationMiddleware(c as any, next));
+app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));
 app.use(rateLimitMiddleware());
 app.use(bazaarExtensionMiddleware());
 
@@ -354,6 +354,7 @@ app.route("/", catalogRoutes);
 app.route("/", wellKnownRoutes);
 app.route("/", feedRoutes);
 app.route("/", mcpRoutes);
+// Namespace MCP routes — each serves only its namespace's tools
 app.route("/mcp/passport", createNamespaceRoutes("passport"));
 app.route("/mcp/market", createNamespaceRoutes("market"));
 app.route("/mcp/discovery", createNamespaceRoutes("discovery"));
@@ -423,11 +424,10 @@ registerAuditCatalogTools(auditNs);
 registerComplianceTools(auditNs);
 registerParityTools(auditNs);
 
-// Register MCP tools — global "all" namespace (backward compat for /mcp endpoint)
-const allNs = createNamespace("all");
-registerAllTools(allNs);
-registerComplianceTools(allNs);
-registerParityTools(allNs);
+// Register MCP tools — default "all" namespace (backward compat)
+registerAllTools();
+registerComplianceTools();
+registerParityTools();
 
 const port = Number(process.env.PORT ?? 4021);
 
