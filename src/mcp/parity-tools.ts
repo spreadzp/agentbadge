@@ -9,7 +9,11 @@
  */
 
 import { z } from "zod";
-import { registerTool, type ToolResult } from "@agentgate-hedera/mcp";
+import { registerTool, type ToolResult, type NamespaceRegistry, getNamespace } from "@agentgate-hedera/mcp";
+
+function getRegistry(ns?: NamespaceRegistry) {
+  return ns ?? getNamespace("all")!;
+}
 
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 4021}`;
 
@@ -188,23 +192,24 @@ async function contactUsHandler(): Promise<ToolResult> {
 
 // ─── Registration ─────────────────────────────────────────────────
 
-export function registerParityTools(): void {
+export function registerParityTools(ns?: NamespaceRegistry): void {
+  const r = getRegistry(ns);
   // Well-known endpoints
-  registerTool(
+  r.registerTool(
     "get_oauth_authorization_server",
     "Fetch OAuth authorization server metadata (/.well-known/oauth-authorization-server) — RFC 8414. Contains issuer, authorization_endpoint, token_endpoint, scopes_supported, etc.",
     {},
     getOauthAuthorizationServerHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_oauth_protected_resource",
     "Fetch OAuth protected resource metadata (/.well-known/oauth-protected-resource) — RFC 9728. Contains resource, authorization_servers, scopes_supported, etc.",
     {},
     getOauthProtectedResourceHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_webfinger",
     "Fetch WebFinger resource discovery (/.well-known/webfinger) — RFC 7033. Returns resource links for a given URI.",
     {
@@ -213,7 +218,7 @@ export function registerParityTools(): void {
     getWebfingerHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_http_message_signatures_directory",
     "Fetch the HTTP Message Signatures directory (/.well-known/http-message-signatures-directory) — lists agents supporting HTTP Message Signatures (RFC 9421).",
     {},
@@ -221,7 +226,7 @@ export function registerParityTools(): void {
   );
 
   // DID resolution
-  registerTool(
+  r.registerTool(
     "resolve_did",
     "Resolve a DID (did:hcs:tokenId:serial) to its DID document. Returns the on-chain DID document with verification methods and service endpoints.",
     {
@@ -231,7 +236,7 @@ export function registerParityTools(): void {
   );
 
   // Admin
-  registerTool(
+  r.registerTool(
     "rebuild_cache",
     "Rebuild the HCS directory cache from on-chain messages. Admin operation — triggers a full rescan of the directory topic.",
     {},
@@ -239,77 +244,77 @@ export function registerParityTools(): void {
   );
 
   // Content pages
-  registerTool(
+  r.registerTool(
     "get_feed",
     "Fetch the activity feed (/feed) — recent agent registrations, task postings, and completions.",
     {},
     getFeedHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_changelog",
     "Fetch the changelog (/changelog) — list of recent product changes and updates.",
     {},
     getChangelogHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_faq",
     "Fetch the FAQ page (/faq) — 12 Q&A pairs about AgentBadge, with FAQPage JSON-LD structured data.",
     {},
     getFaqHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_about",
     "Fetch the About page (/about) — information about AgentBadge project and team.",
     {},
     getAboutHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_pricing",
     "Fetch the Pricing page (/pricing) — passport tier pricing and features comparison.",
     {},
     getPricingHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_privacy",
     "Fetch the Privacy policy (/privacy) — data handling and privacy commitments.",
     {},
     getPrivacyHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_terms",
     "Fetch the Terms of service (/terms) — legal terms for using AgentBadge.",
     {},
     getTermsHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_services",
     "Fetch the Services page (/services) — available agent services and capabilities.",
     {},
     getServicesHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_team",
     "Fetch the Team page (/team) — team members and roles.",
     {},
     getTeamHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_use_cases",
     "Fetch the Use cases page (/use-cases) — 5 real-world scenarios for AgentBadge.",
     {},
     getUseCasesHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_work_with_us",
     "Fetch the Work with us page (/work-with-us) — partnership and collaboration information.",
     {},
@@ -317,21 +322,21 @@ export function registerParityTools(): void {
   );
 
   // Guides
-  registerTool(
+  r.registerTool(
     "get_market_guide",
     "Fetch the Market guide (/market-guide) — interactive guide for using the marketplace.",
     {},
     getMarketGuideHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_marketplace_guide",
     "Fetch the Marketplace guide (/marketplace-guide) — guide for posting and claiming tasks.",
     {},
     getMarketplaceGuideHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_medical_guide",
     "Fetch the Medical guide (/medical-guide) — demo guide for medical AI agent use case.",
     {},
@@ -339,7 +344,7 @@ export function registerParityTools(): void {
   );
 
   // Work requests
-  registerTool(
+  r.registerTool(
     "list_work_requests",
     "List work requests (/api/work-requests) — paginated list of submitted work requests.",
     {
@@ -349,7 +354,7 @@ export function registerParityTools(): void {
     listWorkRequestsHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "get_work_request",
     "Get a work request by ID (/api/work-requests/{id}) — returns the full work request details.",
     {
@@ -358,7 +363,7 @@ export function registerParityTools(): void {
     getWorkRequestHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "create_work_request",
     "Create a work request (/api/work-requests) — submit a new work request for agent processing.",
     {
@@ -371,7 +376,7 @@ export function registerParityTools(): void {
   );
 
   // Agent by DID
-  registerTool(
+  r.registerTool(
     "get_agent_by_did",
     "Get agent details by DID (/agents/{did}) — returns the agent's directory entry with capabilities, tier, and endpoint.",
     {
@@ -381,14 +386,14 @@ export function registerParityTools(): void {
   );
 
   // Agency services & contact (SLICE-56-9)
-  registerTool(
+  r.registerTool(
     "get_services_info",
     "Fetch the canonical agency profile (/agency.json) — machine-readable JSON with schema_version, registry_version, services, capabilities, people, and endpoints. Use this to programmatically reason about services and capabilities.",
     {},
     getServicesInfoHandler,
   );
 
-  registerTool(
+  r.registerTool(
     "contact_us",
     "Fetch contact information and routing (/agent-guide/team/contact) — provides contact details and inquiry routing for the agency.",
     {},
