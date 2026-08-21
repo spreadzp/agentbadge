@@ -17,6 +17,34 @@ import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
 import { BLOG_ARTICLES } from "../lib/blog-data";
+import { getNamespace } from "@agentgate-hedera/mcp";
+
+const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
+
+const NAMESPACE_DESCRIPTIONS: Record<string, string> = {
+  passport: "Agent identity, signing, and escrow tools",
+  market: "Marketplace and dataset tools",
+  discovery: "Agent directory, guide, A2A messaging, and discovery tools",
+  audit: "Audit catalog, compliance checking, and OpenAPI parity tools",
+};
+
+function buildNamespaceDescriptor(nsName: string) {
+  const ns = getNamespace(nsName);
+  const tools = ns ? ns.listTools().map((t) => ({ name: t.name, description: t.description })) : [];
+  return {
+    name: `${nsName}-mcp`,
+    version: openApiConfig.info.version,
+    description: NAMESPACE_DESCRIPTIONS[nsName] ?? `${nsName} MCP namespace`,
+    remotes: [
+      {
+        name: nsName,
+        transport: "http",
+        url: `${BASE_URL}/mcp/${nsName}`,
+      },
+    ],
+    tools,
+  };
+}
 
 export const wellKnownRoutes = new Hono();
 
@@ -176,24 +204,37 @@ wellKnownRoutes.get(
     const descriptor = {
       name: "agentbadge",
       version: openApiConfig.info.version,
-      description: "AgentBadge MCP server for agent readiness scanning",
+      description: "AgentBadge MCP server — namespaced endpoints for agent readiness",
       remotes: [
+        ...MCP_NAMESPACES.map((ns) => ({
+          name: ns,
+          transport: "http",
+          url: `${baseUrl}/mcp/${ns}`,
+        })),
         {
-          name: "agentbadge",
+          name: "all",
           transport: "http",
           url: `${baseUrl}/mcp`,
         },
       ],
-      tools: [
-        { name: "scan", description: "Scan a URL for agent readiness" },
-        { name: "get_score", description: "Get the agent readiness score for a URL" },
-      ],
+      namespaces: [...MCP_NAMESPACES],
     };
     return c.json(descriptor, 200, {
       "Cache-Control": "public, max-age=3600",
     });
   },
 );
+
+// ─── Per-namespace MCP descriptors (SLICE-72-8) ─────────────────
+
+MCP_NAMESPACES.forEach((nsName) => {
+  wellKnownRoutes.get(`/.well-known/${nsName}-mcp.json`, (c) => {
+    const descriptor = buildNamespaceDescriptor(nsName);
+    return c.json(descriptor, 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  });
+});
 
 // ─── OAuth Authorization Server Metadata (SLICE-47-3) ──────────
 
@@ -506,6 +547,13 @@ export function buildAiSitemap(): string {
       priority: "0.8",
       format: "markdown",
       desc: `Blog article (Markdown) — ${a.title}`,
+    })),
+    // Per-namespace MCP descriptors (SLICE-72-8)
+    ...MCP_NAMESPACES.map((ns) => ({
+      loc: `${baseUrl}/.well-known/${ns}-mcp.json`,
+      priority: "0.9",
+      format: "json",
+      desc: `MCP descriptor for ${ns} namespace — tools and transport URL`,
     })),
   ];
 
@@ -1009,58 +1057,14 @@ wellKnownRoutes.get(
     const manifest = {
       name: "AgentBadge",
       version: "1.0.0",
-      description: "On-chain identity for AI agents on Hedera",
+      description: "On-chain identity for AI agents on Hedera — namespaced MCP endpoints",
       mcpEndpoint: "/mcp",
-      tools: [
-        {
-          name: "request_passport",
-          description: "Issue an agent passport NFT on Hedera",
-          inputSchema: {
-            type: "object",
-            properties: {
-              accountId: { type: "string" },
-              tier: { type: "string", enum: ["bronze", "silver", "gold", "platinum"] },
-              name: { type: "string" },
-              capabilities: { type: "array", items: { type: "string" } },
-            },
-            required: ["accountId", "tier", "name", "capabilities"],
-          },
-        },
-        {
-          name: "verify_passport",
-          description: "Verify an agent passport on-chain",
-          inputSchema: {
-            type: "object",
-            properties: {
-              tokenId: { type: "string" },
-              serial: { type: "number" },
-            },
-            required: ["tokenId", "serial"],
-          },
-        },
-        {
-          name: "search_agents",
-          description: "Search the agent directory",
-          inputSchema: {
-            type: "object",
-            properties: {
-              query: { type: "string" },
-              capability: { type: "string" },
-            },
-          },
-        },
-        {
-          name: "list_tasks",
-          description: "List available marketplace tasks",
-          inputSchema: {
-            type: "object",
-            properties: {
-              capability: { type: "string" },
-              limit: { type: "number" },
-            },
-          },
-        },
-      ],
+      namespaces: [...MCP_NAMESPACES],
+      namespaceEndpoints: MCP_NAMESPACES.map((ns) => ({
+        name: ns,
+        url: `/mcp/${ns}`,
+        descriptor: `/.well-known/${ns}-mcp.json`,
+      })),
     };
 
     return c.json(manifest, 200, {
