@@ -417,6 +417,12 @@ registerDirectoryTools(discoveryNs);
 registerGuideTools(discoveryNs);
 registerA2ATools(discoveryNs);
 
+// Register MCP tools — audit namespace
+const auditNs = createNamespace("audit");
+registerAuditCatalogTools(auditNs);
+registerComplianceTools(auditNs);
+registerParityTools(auditNs);
+
 // Register MCP tools — default "all" namespace (backward compat)
 registerPassportTools();
 registerAuditCatalogTools();

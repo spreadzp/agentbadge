@@ -7,7 +7,11 @@
  */
 
 import { z } from "zod";
-import { registerTool, type ToolResult, type ToolHandler } from "@agentgate-hedera/mcp";
+import { type ToolResult, type ToolHandler, type NamespaceRegistry, getNamespace } from "@agentgate-hedera/mcp";
+
+function getRegistry(ns?: NamespaceRegistry) {
+  return ns ?? getNamespace("all")!;
+}
 import { scanDomain } from "../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../agent-readiness/rule-engine/rule-engine";
 import { runScoringEngine } from "../agent-readiness/scoring/scoring-engine";
@@ -138,8 +142,9 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
   }
 };
 
-export function registerComplianceTools(): void {
-  registerTool(
+export function registerComplianceTools(ns?: NamespaceRegistry): void {
+  const r = getRegistry(ns);
+  r.registerTool(
     "check_compliance",
     "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), individual check results (id, name, status, hint), and summary (totalChecks, passed, failed, skipped). Use this to verify agent-readiness of any website.",
     {
