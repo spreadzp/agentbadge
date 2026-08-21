@@ -39,17 +39,17 @@
 
 | Metric | Control (raw) | Harness (token reduction) |
 |---|---|---|
-| Tokens (estimated) | TBD | TBD |
-| Tool calls | TBD | TBD |
-| Wall-clock time | TBD | TBD |
-| Tests pass | TBD | TBD |
-| Files modified | TBD | TBD |
-| Acceptance criteria | TBD / N | TBD / N |
-| Commits | TBD | TBD |
-| Errors | TBD | TBD |
-| Retries | TBD | TBD |
+| Tokens (estimated) | ~18k | TBD |
+| Tool calls | 25 | TBD |
+| Wall-clock time | ~25 min | TBD |
+| Tests pass | 11/11 new (2 pre-existing failures on main) | TBD |
+| Files modified | 3 (server.ts, index.ts, namespace-registry.test.ts) | TBD |
+| Acceptance criteria | 6/6 ✅ | TBD / N |
+| Commits | 1 | TBD |
+| Errors | 2 (vitest cache stale, esbuild bundle copy issue) | TBD |
+| Retries | 2 | TBD |
 | RTK savings | N/A | TBD |
-| Notes | | |
+| Notes | NamespaceRegistry class + createNamespace/getNamespace/listAllNamespaces. Backward compat via default "all" namespace. Proxy-based mcpServer export for vi.spyOn compat. Package rebuilt & dist copied to node_modules. | |
 
 ### SLICE-72-3: Namespace HTTP routes
 
