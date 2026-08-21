@@ -17,6 +17,7 @@ import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
 import { BLOG_ARTICLES } from "../lib/blog-data";
+import { getNamespace, listAllNamespaces } from "@agentgate-hedera/mcp";
 
 export const wellKnownRoutes = new Hono();
 
@@ -173,27 +174,99 @@ wellKnownRoutes.get(
   }),
   (c) => {
     const baseUrl = BASE_URL;
+    const nsNames = listAllNamespaces().filter((n) => n !== "all");
+    const remotes = nsNames.map((name) => ({
+      name,
+      transport: "http",
+      url: `${baseUrl}/mcp/${name}`,
+    }));
+    remotes.push({
+      name: "all",
+      transport: "http",
+      url: `${baseUrl}/mcp`,
+    });
     const descriptor = {
       name: "agentbadge",
       version: openApiConfig.info.version,
-      description: "AgentBadge MCP server for agent readiness scanning",
-      remotes: [
-        {
-          name: "agentbadge",
-          transport: "http",
-          url: `${baseUrl}/mcp`,
-        },
-      ],
-      tools: [
-        { name: "scan", description: "Scan a URL for agent readiness" },
-        { name: "get_score", description: "Get the agent readiness score for a URL" },
-      ],
+      description: "AgentBadge MCP server — namespaced endpoints for agent readiness",
+      remotes,
+      namespaces: nsNames,
     };
     return c.json(descriptor, 200, {
       "Cache-Control": "public, max-age=3600",
     });
   },
 );
+
+// ─── Per-namespace MCP descriptors (SLICE-72-8) ──────────────────
+
+const nsDescriptorSchema = z.object({
+  name: z.string(),
+  version: z.string(),
+  description: z.string(),
+  remotes: z.array(
+    z.object({
+      name: z.string(),
+      transport: z.string(),
+      url: z.string(),
+    }),
+  ),
+  tools: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+    }),
+  ),
+});
+
+const nsDescriptions: Record<string, string> = {
+  passport: "Agent identity, signing, and escrow tools",
+  market: "Marketplace and dataset tools",
+  discovery: "Discovery, directory, guide, and A2A tools",
+  audit: "Audit catalog, compliance, and parity tools",
+};
+
+for (const nsName of ["passport", "market", "discovery", "audit"]) {
+  wellKnownRoutes.get(
+    `/.well-known/${nsName}-mcp.json`,
+    describeRoute({
+      tags: ["Discovery"],
+      summary: `${nsName} namespace MCP descriptor`,
+      description: `Machine-readable MCP descriptor for the ${nsName} namespace.`,
+      responses: {
+        200: {
+          description: `${nsName} namespace descriptor JSON`,
+          content: {
+            "application/json": { schema: resolver(nsDescriptorSchema) },
+          },
+        },
+      },
+    }),
+    (c) => {
+      const baseUrl = BASE_URL;
+      const ns = getNamespace(nsName);
+      const tools = ns
+        ? ns.listTools().map((t) => ({ name: t.name, description: t.description }))
+        : [];
+      const descriptor = {
+        name: `${nsName}-mcp`,
+        version: openApiConfig.info.version,
+        description: nsDescriptions[nsName] ?? `${nsName} MCP namespace`,
+        remotes: [
+          {
+            name: nsName,
+            transport: "http",
+            url: `${baseUrl}/mcp/${nsName}`,
+          },
+        ],
+        tools,
+      };
+      return c.json(descriptor, 200, {
+        "Cache-Control": "public, max-age=3600",
+      });
+    },
+  );
+}
 
 // ─── OAuth Authorization Server Metadata (SLICE-47-3) ──────────
 
@@ -506,6 +579,13 @@ export function buildAiSitemap(): string {
       priority: "0.8",
       format: "markdown",
       desc: `Blog article (Markdown) — ${a.title}`,
+    })),
+    // Per-namespace MCP descriptors (SLICE-72-8)
+    ...["passport", "market", "discovery", "audit"].map((ns) => ({
+      loc: `${baseUrl}/.well-known/${ns}-mcp.json`,
+      priority: "0.9",
+      format: "json",
+      desc: `${ns} namespace MCP descriptor — tools and transport URL`,
     })),
   ];
 
@@ -1006,61 +1086,18 @@ wellKnownRoutes.get(
     },
   }),
   (c) => {
+    const baseUrl = BASE_URL;
+    const nsNames = listAllNamespaces().filter((n) => n !== "all");
     const manifest = {
       name: "AgentBadge",
       version: "1.0.0",
       description: "On-chain identity for AI agents on Hedera",
       mcpEndpoint: "/mcp",
-      tools: [
-        {
-          name: "request_passport",
-          description: "Issue an agent passport NFT on Hedera",
-          inputSchema: {
-            type: "object",
-            properties: {
-              accountId: { type: "string" },
-              tier: { type: "string", enum: ["bronze", "silver", "gold", "platinum"] },
-              name: { type: "string" },
-              capabilities: { type: "array", items: { type: "string" } },
-            },
-            required: ["accountId", "tier", "name", "capabilities"],
-          },
-        },
-        {
-          name: "verify_passport",
-          description: "Verify an agent passport on-chain",
-          inputSchema: {
-            type: "object",
-            properties: {
-              tokenId: { type: "string" },
-              serial: { type: "number" },
-            },
-            required: ["tokenId", "serial"],
-          },
-        },
-        {
-          name: "search_agents",
-          description: "Search the agent directory",
-          inputSchema: {
-            type: "object",
-            properties: {
-              query: { type: "string" },
-              capability: { type: "string" },
-            },
-          },
-        },
-        {
-          name: "list_tasks",
-          description: "List available marketplace tasks",
-          inputSchema: {
-            type: "object",
-            properties: {
-              capability: { type: "string" },
-              limit: { type: "number" },
-            },
-          },
-        },
-      ],
+      namespaces: nsNames.map((name) => ({
+        name,
+        url: `${baseUrl}/mcp/${name}`,
+        descriptor: `${baseUrl}/.well-known/${name}-mcp.json`,
+      })),
     };
 
     return c.json(manifest, 200, {
