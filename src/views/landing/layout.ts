@@ -48,7 +48,7 @@ export function LandingLayout(
         <link rel="canonical" href="${canonicalUrl}" />
         <meta property="og:title" content="${pageTitle}" />
         <meta property="og:description" content="${description}" />
-        <meta property="og:type" content="website" />
+        <meta property="og:type" content="${meta?.ogType ?? "website"}" />
         <meta property="og:url" content="${canonicalUrl}" />
         <meta property="og:image" content="${ogImage}" />
         <meta property="og:image:width" content="1200" />
@@ -61,7 +61,10 @@ export function LandingLayout(
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
         <meta name="twitter:site" content="@agentbadge" />
-        <meta property="og:image:alt" content="${SITE_NAME} — On-Chain Identity for AI Agents on Hedera" />
+        <meta property="og:image:alt" content="${meta?.ogImageAlt ?? `${SITE_NAME} — On-Chain Identity for AI Agents on Hedera`}" />
+        ${meta?.ogType === "article" && meta.articleAuthor ? html`<meta property="article:author" content="${meta.articleAuthor}" />` : ""}
+        ${meta?.ogType === "article" && meta.articlePublishedTime ? html`<meta property="article:published_time" content="${meta.articlePublishedTime}" />` : ""}
+        ${meta?.ogType === "article" && meta.articleModifiedTime ? html`<meta property="article:modified_time" content="${meta.articleModifiedTime}" />` : ""}
         <link rel="manifest" href="/manifest.json" />
         <link rel="alternate" type="application/rss+xml" title="AgentBadge RSS Feed" href="/feed" />
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />

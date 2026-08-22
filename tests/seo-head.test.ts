@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Layout } from "../src/views/layout";
+import { LandingLayout } from "../src/views/landing/layout";
 import { PageMeta, BASE_URL, SITE_DESCRIPTION } from "../src/server/lib/page-meta";
 import {
   softwareApplicationLd,
@@ -378,6 +379,77 @@ describe("SLICE-18-5: JSON-LD Entity Schemas", () => {
       expect(html).toContain("Organization");
       expect(html).toContain("ProfilePage");
       expect(html).toContain("did:hcs:0.0.123:1");
+    });
+  });
+});
+
+describe("SLICE-73-1: Blog og:type=article + article: meta tags", () => {
+  describe("LandingLayout with article meta", () => {
+    const articleMeta = {
+      title: "What Is Agent Readiness?",
+      description: "Agent Readiness is the ability of your API to be discovered by AI agents.",
+      path: "/blog/what-is-agent-readiness",
+      ogType: "article" as const,
+      articleAuthor: "AgentBadge Team",
+      articlePublishedTime: "2026-08-14",
+      articleModifiedTime: "2026-08-14",
+    };
+
+    it("renders og:type=article when meta.ogType is article", () => {
+      const html = LandingLayout("<p>test</p>", undefined, articleMeta).toString();
+      expect(html).toContain('<meta property="og:type" content="article"');
+    });
+
+    it("renders article:author meta tag when ogType is article", () => {
+      const html = LandingLayout("<p>test</p>", undefined, articleMeta).toString();
+      expect(html).toContain('<meta property="article:author" content="AgentBadge Team"');
+    });
+
+    it("renders article:published_time meta tag when ogType is article", () => {
+      const html = LandingLayout("<p>test</p>", undefined, articleMeta).toString();
+      expect(html).toContain('<meta property="article:published_time" content="2026-08-14"');
+    });
+
+    it("renders article:modified_time meta tag when ogType is article", () => {
+      const html = LandingLayout("<p>test</p>", undefined, articleMeta).toString();
+      expect(html).toContain('<meta property="article:modified_time" content="2026-08-14"');
+    });
+
+    it("does not render article: meta tags when ogType is not article", () => {
+      const html = LandingLayout("<p>test</p>", undefined, {
+        ...articleMeta,
+        ogType: "website" as const,
+      }).toString();
+      expect(html).not.toContain("article:author");
+      expect(html).not.toContain("article:published_time");
+      expect(html).not.toContain("article:modified_time");
+    });
+  });
+
+  describe("LandingLayout default og:type", () => {
+    it("defaults to og:type=website when no ogType provided", () => {
+      const html = LandingLayout("<p>test</p>", undefined, PageMeta["/"]).toString();
+      expect(html).toContain('<meta property="og:type" content="website"');
+    });
+
+    it("defaults to og:type=website when meta is undefined", () => {
+      const html = LandingLayout("<p>test</p>", "Test Page").toString();
+      expect(html).toContain('<meta property="og:type" content="website"');
+    });
+  });
+
+  describe("LandingLayout og:image:alt from meta", () => {
+    it("uses meta.ogImageAlt when provided", () => {
+      const html = LandingLayout("<p>test</p>", undefined, {
+        ...PageMeta["/"],
+        ogImageAlt: "Agency for the Agentic Web",
+      }).toString();
+      expect(html).toContain('og:image:alt" content="Agency for the Agentic Web"');
+    });
+
+    it("falls back to default og:image:alt when not provided", () => {
+      const html = LandingLayout("<p>test</p>", undefined, PageMeta["/"]).toString();
+      expect(html).toContain("og:image:alt");
     });
   });
 });

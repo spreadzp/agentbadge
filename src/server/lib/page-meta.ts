@@ -6,6 +6,11 @@ export interface PageMeta {
   description: string;
   path: string;
   ogImage?: string;
+  ogType?: string;
+  articleAuthor?: string;
+  articlePublishedTime?: string;
+  articleModifiedTime?: string;
+  ogImageAlt?: string;
   markdownUrl?: string;
   rssUrl?: string;
   prevRel?: string;

@@ -5,7 +5,7 @@ import { BlogListPage } from "../../views/blog-list";
 import { BlogArticlePage } from "../../views/blog-article";
 import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles } from "../lib/blog-data";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
-import { defaultCoreSchemas, articleLd, blogLd, itemListLd } from "../lib/json-ld";
+import { defaultCoreSchemas, blogLd, itemListLd } from "../lib/json-ld";
 import { BASE_URL } from "../lib/page-meta";
 
 export const blogRoutes = new Hono();
@@ -148,6 +148,10 @@ blogRoutes.get(
       title: `${article.title} — AgentBadge Blog`,
       description: article.description,
       path: `/blog/${article.slug}`,
+      ogType: "article",
+      articleAuthor: article.author,
+      articlePublishedTime: article.date,
+      articleModifiedTime: article.dateModified ?? article.date,
       ...(article.ogImage ? { ogImage: `${BASE_URL}${article.ogImage}` } : {}),
       ...(article.markdown ? { markdownUrl: `/blog/${article.slug}.md` } : {}),
     };
