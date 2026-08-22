@@ -354,6 +354,29 @@ app.route("/", catalogRoutes);
 app.route("/", wellKnownRoutes);
 app.route("/", feedRoutes);
 app.route("/", mcpRoutes);
+
+// Register MCP namespace tools BEFORE mounting namespace routes
+// (createNamespaceRoutes calls getNamespace at mount time)
+const passportNs = createNamespace("passport");
+registerPassportTools(passportNs);
+registerSigningTools(passportNs);
+registerEscrowTools(passportNs);
+
+const marketNs = createNamespace("market");
+registerMarketplaceTools(marketNs);
+registerDatasetTools(marketNs);
+
+const discoveryNs = createNamespace("discovery");
+registerDiscoveryTools(discoveryNs);
+registerDirectoryTools(discoveryNs);
+registerGuideTools(discoveryNs);
+registerA2ATools(discoveryNs);
+
+const auditNs = createNamespace("audit");
+registerAuditCatalogTools(auditNs);
+registerComplianceTools(auditNs);
+registerParityTools(auditNs);
+
 // Namespace MCP routes — each serves only its namespace's tools
 app.route("/mcp/passport", createNamespaceRoutes("passport"));
 app.route("/mcp/market", createNamespaceRoutes("market"));
@@ -399,30 +422,6 @@ app.get("/api/specs", openApiSpecHandler);
 app.get("/openapi.json", openApiSpecHandler);
 app.get("/swagger.json", openApiSpecHandler);
 app.get("/docs", swaggerUI({ url: "/api/specs" }));
-
-// Register MCP tools — passport namespace
-const passportNs = createNamespace("passport");
-registerPassportTools(passportNs);
-registerSigningTools(passportNs);
-registerEscrowTools(passportNs);
-
-// Register MCP tools — market namespace
-const marketNs = createNamespace("market");
-registerMarketplaceTools(marketNs);
-registerDatasetTools(marketNs);
-
-// Register MCP tools — discovery namespace
-const discoveryNs = createNamespace("discovery");
-registerDiscoveryTools(discoveryNs);
-registerDirectoryTools(discoveryNs);
-registerGuideTools(discoveryNs);
-registerA2ATools(discoveryNs);
-
-// Register MCP tools — audit namespace
-const auditNs = createNamespace("audit");
-registerAuditCatalogTools(auditNs);
-registerComplianceTools(auditNs);
-registerParityTools(auditNs);
 
 // Register MCP tools — default "all" namespace (backward compat)
 registerAllTools();
