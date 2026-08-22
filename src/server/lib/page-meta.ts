@@ -169,7 +169,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/about": {
     title: "About AgentBadge — AgentBadge",
     description:
-      "AgentBadge — on-chain identity for AI agents on Hedera. Learn about NFT passports, HCS directory, A2A messaging, and x402 payments.",
+      "AgentBadge — agency for the agentic web. Learn about our mission to make businesses agent-ready with scanning, passports, and marketplace.",
     path: "/about",
   },
   "/blog": {

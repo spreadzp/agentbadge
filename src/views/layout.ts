@@ -13,7 +13,7 @@ import { Footer } from "./footer";
 export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd?: object[], noIndex?: boolean) {
   const pageTitle = title
     ? `${title} — ${SITE_NAME}`
-    : `${SITE_NAME} — On-chain Identity for AI Agents on Hedera`;
+    : `${SITE_NAME} — Agency for the Agentic Web`;
   const description = meta?.description ?? SITE_DESCRIPTION;
   const canonicalPath = noIndex ? "/" : (meta?.path ?? "/");
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
@@ -47,7 +47,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
         <meta name="twitter:site" content="@agentbadge" />
-        <meta property="og:image:alt" content="${SITE_NAME} — On-Chain Identity for AI Agents on Hedera" />
+        <meta property="og:image:alt" content="${SITE_NAME} — Agency for the Agentic Web" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
         <link rel="alternate" type="text/markdown" title="Full Documentation" href="https://agentbadge.gitbook.io/agentbadge-docs" />
@@ -267,7 +267,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
 
         <noscript>
           <div class="mx-auto max-w-2xl p-8 text-center">
-            <h1 class="text-2xl font-bold text-white">${SITE_NAME} — On-Chain Identity for AI Agents</h1>
+            <h1 class="text-2xl font-bold text-white">${SITE_NAME} — Agency for the Agentic Web</h1>
             <p class="mt-4 text-slate-400">This page uses HTMX for live data. JavaScript is disabled.</p>
             <a href="/dashboard" class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-white">View Dashboard</a>
           </div>

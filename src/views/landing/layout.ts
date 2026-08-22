@@ -61,7 +61,7 @@ export function LandingLayout(
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
         <meta name="twitter:site" content="@agentbadge" />
-        <meta property="og:image:alt" content="${meta?.ogImageAlt ?? `${SITE_NAME} — On-Chain Identity for AI Agents on Hedera`}" />
+        <meta property="og:image:alt" content="${meta?.ogImageAlt ?? `${SITE_NAME} — Agency for the Agentic Web`}" />
         ${meta?.ogType === "article" && meta.articleAuthor ? html`<meta property="article:author" content="${meta.articleAuthor}" />` : ""}
         ${meta?.ogType === "article" && meta.articlePublishedTime ? html`<meta property="article:published_time" content="${meta.articlePublishedTime}" />` : ""}
         ${meta?.ogType === "article" && meta.articleModifiedTime ? html`<meta property="article:modified_time" content="${meta.articleModifiedTime}" />` : ""}
@@ -209,7 +209,7 @@ export function LandingLayout(
 
         <noscript>
           <div class="mx-auto max-w-2xl p-8 text-center">
-            <h1 class="text-2xl font-bold text-white">${SITE_NAME} — On-Chain Identity for AI Agents</h1>
+            <h1 class="text-2xl font-bold text-white">${SITE_NAME} — Agency for the Agentic Web</h1>
             <p class="mt-4 text-slate-400">This page uses HTMX for live data. JavaScript is disabled.</p>
             <a href="/dashboard" class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-white">View Dashboard</a>
           </div>

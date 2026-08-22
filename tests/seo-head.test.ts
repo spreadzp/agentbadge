@@ -453,3 +453,48 @@ describe("SLICE-73-1: Blog og:type=article + article: meta tags", () => {
     });
   });
 });
+
+describe("SLICE-73-4: Brand mismatch fixes", () => {
+  describe("og:image:alt branding", () => {
+    it("LandingLayout default og:image:alt says 'Agency for the Agentic Web' not 'On-Chain Identity'", () => {
+      const html = LandingLayout("<p>test</p>", undefined, PageMeta["/"]).toString();
+      expect(html).toContain("Agency for the Agentic Web");
+      expect(html).not.toContain("On-Chain Identity for AI Agents on Hedera");
+    });
+
+    it("Layout default og:image:alt says 'Agency for the Agentic Web' not 'On-Chain Identity'", () => {
+      const html = Layout("<p>test</p>").toString();
+      expect(html).toContain("Agency for the Agentic Web");
+      expect(html).not.toContain("On-Chain Identity for AI Agents on Hedera");
+    });
+  });
+
+  describe("Layout default title branding", () => {
+    it("Layout() default title says 'Agency for the Agentic Web' not 'On-chain Identity'", () => {
+      const html = Layout("<p>test</p>").toString();
+      expect(html).toContain("Agency for the Agentic Web");
+      expect(html).not.toContain("On-chain Identity for AI Agents on Hedera");
+    });
+  });
+
+  describe("About page meta description branding", () => {
+    it("About page description says 'agency for the agentic web' not 'on-chain identity'", () => {
+      expect(PageMeta["/about"].description).toContain("agency for the agentic web");
+      expect(PageMeta["/about"].description).not.toContain("on-chain identity for AI agents");
+    });
+  });
+
+  describe("Noscript fallback text branding", () => {
+    it("LandingLayout noscript says 'Agency for the Agentic Web' not 'On-Chain Identity'", () => {
+      const html = LandingLayout("<p>test</p>", undefined, PageMeta["/"]).toString();
+      expect(html).toContain("Agency for the Agentic Web");
+      expect(html).not.toContain("On-Chain Identity for AI Agents");
+    });
+
+    it("Layout noscript says 'Agency for the Agentic Web' not 'On-Chain Identity'", () => {
+      const html = Layout("<p>test</p>").toString();
+      expect(html).toContain("Agency for the Agentic Web");
+      expect(html).not.toContain("On-Chain Identity for AI Agents");
+    });
+  });
+});
