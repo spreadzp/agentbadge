@@ -186,6 +186,76 @@ export function checkAb014(state: SourceState): Evidence[] {
   return [httpEvidence(snaps.llms)];
 }
 
+// ─── AB-104: Blog article OpenGraph type ─────────────────────────────────────
+export function checkAb104(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.og_meta) return [];
+  const body = snaps.og_meta.body;
+  if (!body) return [htmlEvidence(snaps.og_meta, "")];
+  try {
+    const parsed = JSON.parse(body);
+    return [htmlEvidence(snaps.og_meta, parsed.data?.ogType ?? "")];
+  } catch {
+    return [htmlEvidence(snaps.og_meta, "")];
+  }
+}
+
+// ─── AB-105: Article author and date meta tags ────────────────────────────────
+export function checkAb105(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.og_meta) return [];
+  const body = snaps.og_meta.body;
+  if (!body) return [htmlEvidence(snaps.og_meta, "")];
+  try {
+    const parsed = JSON.parse(body);
+    return [htmlEvidence(snaps.og_meta, parsed.data?.articleAuthor ?? "")];
+  } catch {
+    return [htmlEvidence(snaps.og_meta, "")];
+  }
+}
+
+// ─── AB-106: AEO short-answer summary block ───────────────────────────────────
+export function checkAb106(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.aeo_content) return [];
+  const body = snaps.aeo_content.body;
+  if (!body) return [htmlEvidence(snaps.aeo_content, "")];
+  try {
+    const parsed = JSON.parse(body);
+    return [htmlEvidence(snaps.aeo_content, parsed.data?.hasShortAnswer ? "short-answer" : "")];
+  } catch {
+    return [htmlEvidence(snaps.aeo_content, "")];
+  }
+}
+
+// ─── AB-107: Semantic definition lists in guide content ───────────────────────
+export function checkAb107(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.semantic_html) return [];
+  const body = snaps.semantic_html.body;
+  if (!body) return [htmlEvidence(snaps.semantic_html, "")];
+  try {
+    const parsed = JSON.parse(body);
+    return [htmlEvidence(snaps.semantic_html, parsed.data?.hasDefinitionList ? "definition-list" : "")];
+  } catch {
+    return [htmlEvidence(snaps.semantic_html, "")];
+  }
+}
+
+// ─── AB-108: OG image alt text brand consistency ──────────────────────────────
+export function checkAb108(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.og_meta) return [];
+  const body = snaps.og_meta.body;
+  if (!body) return [htmlEvidence(snaps.og_meta, "")];
+  try {
+    const parsed = JSON.parse(body);
+    return [htmlEvidence(snaps.og_meta, parsed.data?.ogImageAlt ?? "")];
+  } catch {
+    return [htmlEvidence(snaps.og_meta, "")];
+  }
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -202,4 +272,9 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-012": checkAb012,
   "AB-013": checkAb013,
   "AB-014": checkAb014,
+  "AB-104": checkAb104,
+  "AB-105": checkAb105,
+  "AB-106": checkAb106,
+  "AB-107": checkAb107,
+  "AB-108": checkAb108,
 };
