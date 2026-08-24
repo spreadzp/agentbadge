@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "../../server/lib/page-meta";
+import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle } from "../../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../../server/lib/json-ld";
 import { LandingHeader } from "./header";
 import { Footer } from "../footer";
@@ -20,11 +20,11 @@ export function LandingLayout(
   meta?: PageMeta,
   jsonLd?: object[],
 ): ReturnType<typeof html> {
-  const pageTitle = title
-    ? `${title} — ${SITE_NAME}`
+  const composedTitle = title
+    ? pageTitle(title)
     : meta?.title
-      ? `${meta.title} — ${SITE_NAME}`
-      : `${SITE_NAME} — ${SITE_DESCRIPTION}`;
+      ? pageTitle(meta.title)
+      : pageTitle("");
   const description = meta?.description ?? SITE_DESCRIPTION;
   const canonicalPath = meta?.path ?? "/";
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
@@ -43,10 +43,10 @@ export function LandingLayout(
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-        <title>${pageTitle}</title>
+        <title>${composedTitle}</title>
         <meta name="description" content="${description}" />
         <link rel="canonical" href="${canonicalUrl}" />
-        <meta property="og:title" content="${pageTitle}" />
+        <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="${meta?.ogType ?? "website"}" />
         <meta property="og:url" content="${canonicalUrl}" />
@@ -57,7 +57,7 @@ export function LandingLayout(
         <meta property="og:locale" content="en_US" />
         <meta name="theme-color" content="#0f172a" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="${pageTitle}" />
+        <meta name="twitter:title" content="${composedTitle}" />
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
         <meta name="twitter:site" content="@agentbadge" />

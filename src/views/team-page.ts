@@ -79,8 +79,8 @@ export function TeamPage(registry: RegistryIndex) {
     </section>
   `;
 
-  return Layout(content.toString(), "Team — AgentBadge", {
-    title: "Team — AgentBadge",
+  return Layout(content.toString(), "Team", {
+    title: "Team",
     description:
       "AgentBadge engineering team — MCP development, blockchain integration, AI agent architecture, and GEO optimization. Available for contract work.",
     path: "/team",

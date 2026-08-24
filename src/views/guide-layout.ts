@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { SITE_NAME, BASE_URL } from "../server/lib/page-meta";
+import { SITE_NAME, BASE_URL, pageTitle } from "../server/lib/page-meta";
 import { renderJsonLd } from "../server/lib/json-ld";
 
 /**
@@ -51,6 +51,7 @@ export function GuideLayout(
 
   const allJsonLd = definitionsLd ? [...jsonLd, definitionsLd] : jsonLd;
   const allJsonLdHtml = renderJsonLd(allJsonLd);
+  const composedTitle = pageTitle(title);
 
   return html`<!DOCTYPE html>
     <html lang="en" class="h-full bg-slate-950 text-slate-100">
@@ -59,17 +60,17 @@ export function GuideLayout(
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-        <title>${title} — ${SITE_NAME}</title>
+        <title>${composedTitle}</title>
         <meta name="description" content="${title} for AI agents on ${SITE_NAME} — Hedera on-chain identity platform." />
         <link rel="canonical" href="${canonicalUrl}" />
-        <meta property="og:title" content="${title} — ${SITE_NAME}" />
+        <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${title} for AI agents on ${SITE_NAME} — Hedera on-chain identity platform." />
         <meta property="og:type" content="article" />
         <meta property="og:url" content="${canonicalUrl}" />
         <meta property="og:image" content="${BASE_URL}/icons/og-image.png" />
         <meta property="og:site_name" content="${SITE_NAME}" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="${title} — ${SITE_NAME}" />
+        <meta name="twitter:title" content="${composedTitle}" />
         <meta name="twitter:description" content="${title} for AI agents on ${SITE_NAME} — Hedera on-chain identity platform." />
         <meta name="twitter:image" content="${BASE_URL}/icons/og-image.png" />
         <meta name="twitter:site" content="@agentbadge" />

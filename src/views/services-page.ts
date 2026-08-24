@@ -68,8 +68,8 @@ export function ServicesPage(registry: RegistryIndex) {
     </section>
   `;
 
-  return Layout(content.toString(), "Services — AgentBadge", {
-    title: "Services — AgentBadge",
+  return Layout(content.toString(), "Services", {
+    title: "Services",
     description:
       "AgentBadge engineering services — MCP server development, blockchain integration, AI agent architecture, GEO optimization. Contract, part-time, and fixed-scope.",
     path: "/services",

@@ -19,6 +19,27 @@ export interface PageMeta {
 
 export const SITE_NAME = "AgentBadge";
 
+/**
+ * Centralized title composer — produces `${unique} | AgentBadge`.
+ * Deduplicates brand if unique part already contains it.
+ * Caps unique part at 60 chars to keep total ≤ 72.
+ */
+export function pageTitle(unique: string): string {
+  if (!unique || unique.trim().length === 0) {
+    return `${SITE_NAME} — Agency for the Agentic Web`;
+  }
+  // Strip existing brand suffixes and inline brand from the unique part
+  const cleaned = unique
+    .replace(/\s*[—|-]\s*AgentBadge\s*$/i, "")
+    .replace(/\s*AgentBadge\s*$/i, "")
+    .replace(/\s*—\s*AgentBadge\s*/gi, " ")
+    .replace(/\s*AgentBadge\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const truncated = cleaned.length > 57 ? cleaned.slice(0, 54) + "..." : cleaned;
+  return `${truncated} | ${SITE_NAME}`;
+}
+
 export const SITE_DESCRIPTION =
   "AgentBadge — agency for the agentic web. We help businesses become agent-ready with readiness scanning, on-chain identity passports, and a task marketplace with machine payments.";
 
@@ -29,25 +50,25 @@ export const BASE_URL =
 
 export const PageMeta: Record<string, PageMeta> = {
   "/": {
-    title: "AgentBadge — Agency for the Agentic Web",
+    title: "Agency for the Agentic Web",
     description:
       "AgentBadge is an agency that helps businesses become agent-ready. Readiness scanning, on-chain identity passports, and a task marketplace with machine payments.",
     path: "/",
   },
   "/services/scanner": {
-    title: "Agent Readiness Scanner — AgentBadge",
+    title: "Agent Readiness Scanner",
     description:
       "Scan your API or website against 72 agent readiness rules across 15 categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.",
     path: "/services/scanner",
   },
   "/services/passports": {
-    title: "On-Chain Agent Passports — AgentBadge",
+    title: "On-Chain Agent Passports",
     description:
       "Mint NFT passports for your AI agents on Hedera. Register in the HCS directory, get a DID, and enable verifiable on-chain identity for agent-to-agent trust.",
     path: "/services/passports",
   },
   "/services/marketplace": {
-    title: "Agent Marketplace — AgentBadge",
+    title: "Agent Marketplace",
     description:
       "Peer-to-peer task marketplace for AI agents. Post paid tasks, claim and complete them, HBAR payments settled on-chain with x402 machine payments.",
     path: "/services/marketplace",
@@ -149,7 +170,7 @@ export const PageMeta: Record<string, PageMeta> = {
     path: "/faq",
   },
   "/use-cases": {
-    title: "Use Cases — How AgentBadge Works in Practice",
+    title: "Use Cases — How It Works in Practice",
     description:
       "Real-world scenarios for on-chain AI agent identity on Hedera: verified hiring, x402 payments, medical workflows, reputation gating, cross-agent discovery.",
     path: "/use-cases",
@@ -167,13 +188,13 @@ export const PageMeta: Record<string, PageMeta> = {
     path: "/pricing",
   },
   "/about": {
-    title: "About AgentBadge — AgentBadge",
+    title: "About",
     description:
       "AgentBadge — agency for the agentic web. Learn about our mission to make businesses agent-ready with scanning, passports, and marketplace.",
     path: "/about",
   },
   "/blog": {
-    title: "Blog — AgentBadge",
+    title: "Blog",
     description:
       "Deep dives into agent-ready infrastructure, MCP protocol, x402 payments, and the agentic web.",
     path: "/blog",
@@ -214,7 +235,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/medical-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/faq", changefreq: "monthly", priority: "0.7" },
   { path: "/use-cases", changefreq: "monthly", priority: "0.7" },
-  { path: "/changelog", changefreq: "weekly", priority: "0.6" },
+  { path: "/changelog", changefreq: "weekly", priority: "0.8" },
   { path: "/pricing", changefreq: "weekly", priority: "0.8" },
   { path: "/about", changefreq: "monthly", priority: "0.7" },
   { path: "/work-with-us", changefreq: "monthly", priority: "0.6" },

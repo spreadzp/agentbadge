@@ -6,19 +6,19 @@ describe("SLICE-17-8: Per-page <title> tags", () => {
   describe("Layout() with title parameter", () => {
     it("uses custom title when provided", () => {
       const html = Layout("<p>test</p>", "Agent Directory").toString();
-      expect(html).toContain("<title>Agent Directory — AgentBadge</title>");
+      expect(html).toContain("<title>Agent Directory | AgentBadge</title>");
     });
 
     it("uses default title when no title provided", () => {
       const html = Layout("<p>test</p>").toString();
       expect(html).toContain(
-        "<title>AgentBadge — On-chain Identity for AI Agents on Hedera</title>",
+        "<title>AgentBadge — Agency for the Agentic Web</title>",
       );
     });
 
-    it("formats title as 'Page Name — AgentBadge'", () => {
+    it("formats title as 'Page Name | AgentBadge'", () => {
       const html = Layout("<p>test</p>", "Search Agents").toString();
-      expect(html).toContain("<title>Search Agents — AgentBadge</title>");
+      expect(html).toContain("<title>Search Agents | AgentBadge</title>");
     });
 
     it("default title is backward compatible", () => {
@@ -48,15 +48,15 @@ describe("SLICE-17-8: Per-page <title> tags", () => {
 
   describe("Unique titles per route", () => {
     const routes: { path: string; expectedTitle: string }[] = [
-      { path: "/", expectedTitle: "AgentBadge — On-chain Identity for AI Agents on Hedera" },
-      { path: "/ui/agents", expectedTitle: "Agent Directory — AgentBadge" },
-      { path: "/ui/search", expectedTitle: "Search Agents — AgentBadge" },
-      { path: "/ui/catalog", expectedTitle: "Passport Tiers & Pricing — AgentBadge" },
-      { path: "/ui/a2a", expectedTitle: "A2A Messaging Inbox — AgentBadge" },
-      { path: "/ui/market/tasks", expectedTitle: "Agent Marketplace — AgentBadge" },
-      { path: "/ui/medical-demo", expectedTitle: "Medical Data Demo — AgentBadge" },
-      { path: "/ui/help", expectedTitle: "Help & Documentation — AgentBadge" },
-      { path: "/ui/passport/request", expectedTitle: "Request Passport — AgentBadge" },
+      { path: "/", expectedTitle: "AgentBadge — Agency for the Agentic Web" },
+      { path: "/ui/agents", expectedTitle: "Agent Directory | AgentBadge" },
+      { path: "/ui/search", expectedTitle: "Search Agents | AgentBadge" },
+      { path: "/ui/catalog", expectedTitle: "Passport Tiers & Pricing | AgentBadge" },
+      { path: "/ui/a2a", expectedTitle: "A2A Messaging Inbox | AgentBadge" },
+      { path: "/ui/market/tasks", expectedTitle: "Agent Marketplace | AgentBadge" },
+      { path: "/ui/medical-demo", expectedTitle: "Medical Data Demo | AgentBadge" },
+      { path: "/ui/help", expectedTitle: "Help & Documentation | AgentBadge" },
+      { path: "/ui/passport/request", expectedTitle: "Request Passport | AgentBadge" },
     ];
 
     const seenTitles = new Set<string>();

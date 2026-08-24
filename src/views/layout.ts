@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "../server/lib/page-meta";
+import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle } from "../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../server/lib/json-ld";
 import { getPlausibleScript } from "../server/lib/plausible";
 import { Footer } from "./footer";
@@ -11,9 +11,11 @@ import { Footer } from "./footer";
  * Style: slate-* palette + emerald accents, matching Facilitator project.
  */
 export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd?: object[], noIndex?: boolean) {
-  const pageTitle = title
-    ? `${title} — ${SITE_NAME}`
-    : `${SITE_NAME} — Agency for the Agentic Web`;
+  const composedTitle = title
+    ? pageTitle(title)
+    : meta?.title
+      ? pageTitle(meta.title)
+      : pageTitle("");
   const description = meta?.description ?? SITE_DESCRIPTION;
   const canonicalPath = noIndex ? "/" : (meta?.path ?? "/");
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
@@ -28,11 +30,11 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-        <title>${pageTitle}</title>
+        <title>${composedTitle}</title>
         <meta name="description" content="${description}" />
         ${noIndex ? raw('<meta name="robots" content="noindex, nofollow" />') : raw('<meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />')}
         <link rel="canonical" href="${canonicalUrl}" />
-        <meta property="og:title" content="${pageTitle}" />
+        <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="${canonicalUrl}" />
@@ -43,7 +45,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <meta property="og:locale" content="en_US" />
         <meta name="theme-color" content="#0f172a" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="${pageTitle}" />
+        <meta name="twitter:title" content="${composedTitle}" />
         <meta name="twitter:description" content="${description}" />
         <meta name="twitter:image" content="${ogImage}" />
         <meta name="twitter:site" content="@agentbadge" />

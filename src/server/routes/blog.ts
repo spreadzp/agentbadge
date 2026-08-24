@@ -20,7 +20,7 @@ blogRoutes.get(
   }),
   (c) => {
     const meta = PageMetaRegistry["/blog"] ?? {
-      title: "Blog — AgentBadge",
+      title: "Blog",
       description: "Deep dives into agent-ready infrastructure, MCP protocol, x402 payments.",
       path: "/blog",
     };
@@ -145,7 +145,7 @@ blogRoutes.get(
     }
 
     const meta = {
-      title: `${article.title} — AgentBadge Blog`,
+      title: article.title,
       description: article.description,
       path: `/blog/${article.slug}`,
       ogType: "article",

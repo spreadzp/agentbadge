@@ -94,8 +94,8 @@ export function WorkWithUsPage(registry: RegistryIndex) {
     </section>
   `;
 
-  return Layout(content.toString(), "Work With Us — AgentBadge", {
-    title: "Work With Us — AgentBadge",
+  return Layout(content.toString(), "Work With Us", {
+    title: "Work With Us",
     description:
       "Engage with the AgentBadge engineering team — contract, part-time, or fixed-scope. MCP development, blockchain integration, AI agent architecture, GEO optimization.",
     path: "/work-with-us",
