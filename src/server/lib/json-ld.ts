@@ -426,6 +426,11 @@ export function servicesJsonLd(service: {
       description: service.description,
       path: service.path,
     }),
+    breadcrumbListLd([
+      { name: "Home", path: "/" },
+      { name: "Services", path: "/services" },
+      { name: service.name, path: service.path },
+    ]),
   ];
 }
 

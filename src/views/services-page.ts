@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import type { RegistryIndex } from "../server/registry/types";
+import { breadcrumbListLd } from "../server/lib/json-ld";
 
 export function ServicesPage(registry: RegistryIndex) {
   const serviceCards = registry.services
@@ -31,7 +32,20 @@ export function ServicesPage(registry: RegistryIndex) {
     )
     .join("");
 
+  const breadcrumbJsonLd = JSON.stringify(breadcrumbListLd([
+    { name: "Home", path: "/" },
+    { name: "Services", path: "/services" },
+  ]));
+
   const content = html`
+    <nav class="px-4 py-3 text-sm text-slate-400 md:px-8" aria-label="Breadcrumb">
+      <ol class="flex items-center gap-2">
+        <li><a href="/" class="hover:text-emerald-400">Home</a></li>
+        <li class="text-slate-600">/</li>
+        <li class="text-slate-300">Services</li>
+      </ol>
+    </nav>
+    <script type="application/ld+json">${raw(breadcrumbJsonLd)}</script>
     <section class="rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8">
       <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Services</span>
       <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">Services Catalog</h1>

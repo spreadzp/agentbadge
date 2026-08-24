@@ -55,6 +55,10 @@ export function ServicePageView(service: AgencyService, otherServices: AgencySer
         </ul>
       </div>
     </section>`)}
+    ${raw(HowItWorksSection(service).toString())}
+    ${raw(UseCasesSection(service).toString())}
+    ${raw(FaqSection(service).toString())}
+    ${raw(PricingSection(service).toString())}
     ${raw(ServiceCta(service).toString())}
     ${raw(`<section class="px-4 py-16 md:px-8 bg-slate-900/30">
       <div class="mx-auto max-w-5xl">
@@ -300,6 +304,89 @@ function ServiceCta(service: AgencyService) {
       </div>
     </section>
   `;
+}
+
+function HowItWorksSection(service: AgencyService) {
+  if (!service.howItWorks?.length) return html``;
+  const steps = service.howItWorks
+    .map(
+      (s, i) =>
+        `<div class="mt-6">
+          <h3 class="text-lg font-semibold text-emerald-400">${i + 1}. ${expandAbbr(s.step)}</h3>
+          <p class="mt-2 text-sm text-slate-300">${expandAbbr(s.description)}</p>
+        </div>`,
+    )
+    .join("");
+  return html`<section class="px-4 py-16 md:px-8 bg-slate-900/30">
+    <div class="mx-auto max-w-4xl">
+      <h2 class="text-2xl font-bold text-white">How it works</h2>
+      ${raw(steps)}
+    </div>
+  </section>`;
+}
+
+function UseCasesSection(service: AgencyService) {
+  if (!service.useCases?.length) return html``;
+  const cards = service.useCases
+    .map(
+      (uc) =>
+        `<div class="rounded-lg border border-slate-700 bg-slate-900/50 p-6">
+          <h3 class="text-lg font-semibold text-emerald-400">${expandAbbr(uc.title)}</h3>
+          <p class="mt-2 text-sm text-slate-300">${expandAbbr(uc.description)}</p>
+        </div>`,
+    )
+    .join("");
+  return html`<section class="px-4 py-16 md:px-8">
+    <div class="mx-auto max-w-4xl">
+      <h2 class="text-2xl font-bold text-white">Use cases</h2>
+      <div class="mt-6 grid gap-4 md:grid-cols-3">
+        ${raw(cards)}
+      </div>
+    </div>
+  </section>`;
+}
+
+function FaqSection(service: AgencyService) {
+  if (!service.faq?.length) return html``;
+  const items = service.faq
+    .map(
+      (f) =>
+        `<div class="mt-6">
+          <h3 class="text-lg font-semibold text-slate-200">${expandAbbr(f.question)}</h3>
+          <p class="mt-2 text-sm text-slate-400">${expandAbbr(f.answer)}</p>
+        </div>`,
+    )
+    .join("");
+  return html`<section class="px-4 py-16 md:px-8 bg-slate-900/30">
+    <div class="mx-auto max-w-4xl">
+      <h2 class="text-2xl font-bold text-white">FAQ</h2>
+      ${raw(items)}
+    </div>
+  </section>`;
+}
+
+function PricingSection(service: AgencyService) {
+  if (!service.pricing?.length) return html``;
+  const tiers = service.pricing
+    .map(
+      (p) =>
+        `<div class="rounded-lg border border-slate-700 bg-slate-900/50 p-6">
+          <h3 class="text-lg font-semibold text-emerald-400">${p.tier}</h3>
+          <div class="mt-2 text-3xl font-bold text-white">${p.price}</div>
+          <ul class="mt-4 space-y-2">
+            ${p.features.map((f) => `<li class="text-sm text-slate-300 flex items-start gap-2"><span class="text-emerald-400">✓</span> ${f}</li>`).join("")}
+          </ul>
+        </div>`,
+    )
+    .join("");
+  return html`<section class="px-4 py-16 md:px-8">
+    <div class="mx-auto max-w-4xl">
+      <h2 class="text-2xl font-bold text-white">Pricing</h2>
+      <div class="mt-6 grid gap-4 md:grid-cols-3">
+        ${raw(tiers)}
+      </div>
+    </div>
+  </section>`;
 }
 
 function getCtaHref(id: string): string {

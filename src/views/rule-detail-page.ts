@@ -6,7 +6,7 @@ import {
   CATEGORY_DESCRIPTIONS,
   type RuleDescription,
 } from "../agent-readiness/rule-descriptions";
-import { articleLd, defaultCoreSchemas } from "../server/lib/json-ld";
+import { articleLd, breadcrumbListLd, defaultCoreSchemas } from "../server/lib/json-ld";
 
 const EFFORT_STYLES: Record<string, string> = {
   quick: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
@@ -52,6 +52,11 @@ export function RuleDetailPage(rule: RuleDescription) {
         { title: "What's right", body: rule.right_example },
       ],
     }),
+    breadcrumbListLd([
+      { name: "Home", path: "/" },
+      { name: "Rules", path: "/rules" },
+      { name: rule.rule_id, path: `/rules/${rule.rule_id}` },
+    ]),
   ];
 
   const relatedHtml = relatedRules
@@ -71,7 +76,7 @@ export function RuleDetailPage(rule: RuleDescription) {
   const content = html`<div class="min-h-screen">
     <div class="mx-auto max-w-3xl px-4 py-16 md:py-20">
       <!-- Breadcrumbs -->
-      <nav class="flex items-center gap-2 text-sm text-slate-500 mb-8">
+      <nav class="flex items-center gap-2 text-sm text-slate-500 mb-8" aria-label="Breadcrumb">
         <a href="/rules" class="hover:text-slate-300 transition-colors">Rules</a>
         <span>/</span>
         <a href="/rules#${rule.category}" class="hover:text-slate-300 transition-colors">${catDesc.title}</a>
