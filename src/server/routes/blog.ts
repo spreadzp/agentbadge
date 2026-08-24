@@ -161,7 +161,7 @@ blogRoutes.get(
         "@context": "https://schema.org",
         "@type": "Article",
         headline: article.title,
-        description: article.description,
+        description: article.shortAnswer ?? article.description,
         datePublished: article.date,
         dateModified: article.dateModified ?? article.date,
         author: {

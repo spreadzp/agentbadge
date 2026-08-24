@@ -4,6 +4,8 @@ import { RelevantEngineeringCapability } from "../src/components/RelevantEnginee
 import { getRegistry } from "../src/server/registry/loader";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 import type { RegistryIndex } from "../src/server/registry/types";
+import { BLOG_ARTICLES } from "../src/server/lib/blog-data";
+import { BlogArticlePage } from "../src/views/blog-article";
 
 setupMockEnv();
 const app = makeTestApp();
@@ -178,6 +180,62 @@ title: Some Article
     it("returns 404 for nonexistent article", async () => {
       const res = await app.request("/agent-guide/articles/nonexistent");
       expect(res.status).toBe(404);
+    });
+  });
+});
+
+describe("SLICE-73-2: AEO short-answer summaries", () => {
+  describe("BlogArticle.shortAnswer field", () => {
+    it("all articles have shortAnswer field", () => {
+      for (const article of BLOG_ARTICLES) {
+        expect(article.shortAnswer, `Article "${article.slug}" missing shortAnswer`).toBeDefined();
+        expect(article.shortAnswer!.length).toBeGreaterThan(20);
+        expect(article.shortAnswer!.length).toBeLessThan(300);
+      }
+    });
+  });
+
+  describe("BlogArticlePage AEO summary block", () => {
+    it("renders [data-aeo-summary] section", () => {
+      const article = BLOG_ARTICLES[0];
+      const html = BlogArticlePage(article).toString();
+      expect(html).toContain('data-aeo-summary');
+    });
+
+    it("summary block has aria-label='Summary'", () => {
+      const article = BLOG_ARTICLES[0];
+      const html = BlogArticlePage(article).toString();
+      expect(html).toContain('aria-label="Summary"');
+    });
+
+    it("summary text appears before first content heading", () => {
+      const article = BLOG_ARTICLES[0];
+      const html = BlogArticlePage(article).toString();
+      const summaryPos = html.indexOf('data-aeo-summary');
+      const contentPos = html.indexOf(article.content.slice(0, 50));
+      expect(summaryPos).toBeGreaterThan(-1);
+      expect(contentPos).toBeGreaterThan(-1);
+      expect(summaryPos).toBeLessThan(contentPos);
+    });
+
+    it("summary block is visually distinct (emerald accent)", () => {
+      const article = BLOG_ARTICLES[0];
+      const html = BlogArticlePage(article).toString();
+      expect(html).toContain('emerald');
+    });
+
+    it("does not render summary block when shortAnswer is absent", () => {
+      const article = { ...BLOG_ARTICLES[0], shortAnswer: undefined };
+      const html = BlogArticlePage(article).toString();
+      expect(html).not.toContain('data-aeo-summary');
+    });
+  });
+
+  describe("Blog route serves AEO summary", () => {
+    it("/blog/what-is-agent-readiness returns [data-aeo-summary] in HTML", async () => {
+      const res = await app.request("/blog/what-is-agent-readiness");
+      const html = await res.text();
+      expect(html).toContain('data-aeo-summary');
     });
   });
 });

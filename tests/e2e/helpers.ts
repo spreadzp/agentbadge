@@ -11,6 +11,7 @@ import { a2aRoutes } from "../../src/server/routes/a2a";
 import { marketRoutes } from "../../src/server/routes/market";
 import { uiRoutes } from "../../src/server/routes/ui";
 import { landingRoutes } from "../../src/server/routes/landing";
+import { blogRoutes } from "../../src/server/routes/blog";
 import { didRoutes } from "../../src/server/routes/did";
 import { mcpRoutes } from "../../src/server/routes/mcp";
 import { agentGuideRoutes } from "../../src/server/routes/agent-guide";
@@ -36,7 +37,7 @@ import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
 export function makeTestApp(): Hono {
   const app = new Hono();
   app.use(corsMiddleware());
-  app.use((c, next) => signatureVerificationMiddleware(c as any, next));
+  app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));
   app.use(rateLimitMiddleware());
   app.route("/", passportRoutes);
   app.route("/", verifyRoutes);
@@ -48,6 +49,7 @@ export function makeTestApp(): Hono {
   app.route("/", a2aRoutes);
   app.route("/", marketRoutes);
   app.route("/", landingRoutes);
+  app.route("/", blogRoutes);
   app.route("/", uiRoutes);
   app.route("/", didRoutes);
   app.route("/", mcpRoutes);

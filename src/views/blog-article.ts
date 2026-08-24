@@ -92,6 +92,9 @@ export function BlogArticlePage(article: BlogArticle) {
       </div>` : ""}
       <div class="px-4 pb-16 md:px-8">
         <div class="mx-auto max-w-3xl rounded-xl border border-slate-700/50 bg-slate-900/30 p-6 md:p-8 shadow-2xl">
+          ${article.shortAnswer ? html`<section class="aeo-summary mb-6 rounded-lg border-l-4 border-emerald-500 bg-emerald-950/20 p-4" aria-label="Summary" data-aeo-summary>
+            <p class="text-sm text-slate-300">${article.shortAnswer}</p>
+          </section>` : ""}
           <div class="prose prose-invert prose-emerald max-w-none
             prose-headings:text-white prose-h2:text-2xl prose-h2:font-bold prose-h2:mt-8 prose-h2:mb-4
             prose-p:text-slate-300 prose-li:text-slate-300 prose-a:text-emerald-400

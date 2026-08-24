@@ -31,6 +31,7 @@ export interface BlogArticle {
   agentGuideSlug?: string;
   heroImage?: string;
   ogImage?: string;
+  shortAnswer?: string;
   externalLinks?: BlogExternalLink[];
 }
 
@@ -47,6 +48,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     agentGuideSlug: "what-is-agent-readiness",
     heroImage: "/images/blog/what-is-agent-readiness-hero.png",
     ogImage: "/images/blog/what-is-agent-readiness-og.png",
+    shortAnswer: "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces — OpenAPI, MCP, llms.txt, and structured discovery layers that let agents navigate your service autonomously.",
     tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
     readingTime: "15 min",
     content: `<h2>Why a good API can be invisible to AI agents</h2>
@@ -824,6 +826,7 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
     agentGuideSlug: "seo-vs-agent-readiness",
     heroImage: "/images/blog/api-has-seo-agent-readiness-hero.png",
     ogImage: "/images/blog/api-has-seo-agent-readiness-og.png",
+    shortAnswer: "SEO optimizes websites for search engines. Agent Readiness optimizes APIs for AI agents. A good SEO score doesn't mean your API is agent-ready — you need machine-readable discovery, OpenAPI specs, MCP tools, and structured metadata that agents can parse and act on.",
     tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
     readingTime: "12 min",
     content: `<h2>20 Years of SEO → A New Era</h2>
@@ -1028,6 +1031,7 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
     agentGuideSlug: "web-becoming-agentic-api-discovery",
     heroImage: "/images/blog/web-becoming-agentic-api-discovery-hero.png",
     ogImage: "/images/blog/web-becoming-agentic-api-discovery-hero.png",
+    shortAnswer: "As AI agents replace humans as API consumers, discovery shifts from search engines to machine-readable layers like llms.txt, MCP, and A2A protocols. These are not competitors to search — they are a new discovery stack built for software, not humans.",
     tags: ["agent-readiness", "api-discovery", "agentic-web", "llms-txt", "mcp"],
     readingTime: "14 min",
     content: `<h2>Search engines solved discovery for humans. Agentic systems need a machine-readable discovery layer for software.</h2>
@@ -1403,6 +1407,7 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
     agentGuideSlug: "seo-geo-agent-readiness",
     heroImage: "/images/blog/from-seo-to-geo-to-agent-readiness-hero.png",
     ogImage: "/images/blog/from-seo-to-geo-to-agent-readiness-og.png",
+    shortAnswer: "Optimization targets are shifting: SEO optimizes websites for search engines, GEO optimizes content for generative AI, and Agent Readiness optimizes APIs for autonomous agents. Each layer builds on the previous — and the agentic web requires all three.",
     tags: ["agent-readiness", "seo", "geo", "agentic-web", "api"],
     readingTime: "12 min",
     content: `<h2>Three eras of optimization</h2>
@@ -1767,6 +1772,7 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
     author: "AgentBadge Team",
     authorRole: "Agency for the Agentic Web",
     date: "2026-08-10",
+    shortAnswer: "MCP (Model Context Protocol) is not a replacement for REST APIs — it's a layer on top that makes APIs agent-native. In 2026, the question isn't MCP vs REST, but how to make both work together so AI agents can discover, understand, and use your service.",
     tags: ["mcp", "api", "agent-tools", "model-context-protocol"],
     readingTime: "9 min",
     content: `<p><strong>Model Context Protocol (MCP)</strong> is a new standard that defines how AI agents interact with external tools and services. It's not a replacement for REST APIs — it's a layer on top of them that makes APIs agent-native. But in 2026, the question isn't whether to use MCP or REST. It's how to make both work together for the agentic web.</p>
@@ -1950,6 +1956,7 @@ server.run({ transportType: "stdio" });</code></pre>
     author: "AgentBadge Team",
     authorRole: "Agency for the Agentic Web",
     date: "2026-08-10",
+    shortAnswer: "x402 enables AI agents to pay for API calls autonomously using HTTP 402 Payment Required. Agents receive a payment challenge, complete it with HBAR on Hedera, and retry the request — all without human intervention. It's machine-to-machine commerce for the agentic web.",
     tags: ["x402", "payments", "hbar", "hedera", "machine-to-machine"],
     readingTime: "9 min",
     content: `<p><strong>x402</strong> is a payment protocol that enables machine-to-machine payments over HTTP. It uses the <code>402 Payment Required</code> HTTP status code — which has been part of the HTTP specification since 1991 but was never used — to signal that an API request requires payment. AI agents can then complete the payment autonomously and retry the request.</p>
@@ -2150,6 +2157,7 @@ Content-Type: application/json
     agentGuideSlug: "what-ai-agent-needs-to-understand-api",
     heroImage: "/images/blog/what-ai-agent-needs-understand-api/1s.webp",
     ogImage: "/images/blog/what-ai-agent-needs-understand-api/og.webp",
+    shortAnswer: "An AI agent needs 8 layers of context to use an API reliably: discovery, capabilities, inputs, authentication, semantics, output, errors, and safety. OpenAPI alone covers 2-3 layers — the rest require MCP, llms.txt, examples, and structured metadata that agents can parse and act on.",
     tags: ["agent-readiness", "api", "openapi", "ai-agents", "machine-readability"],
     readingTime: "12 min",
     content: `<h2>Beyond OpenAPI: the missing context agents need to act reliably</h2>
