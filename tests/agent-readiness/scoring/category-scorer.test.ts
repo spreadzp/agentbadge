@@ -80,7 +80,7 @@ describe("SLICE-35-3: Category Scorer", () => {
 
   it("weight comes from config", () => {
     const result = scoreCategory("verification", [], DEFAULT_SCORING_CONFIG);
-    expect(result.weight).toBe(10);
+    expect(result.weight).toBe(5);
   });
 
   it("score is rounded to 2 decimal places", () => {

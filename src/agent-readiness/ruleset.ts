@@ -105,7 +105,7 @@ import { AB103 } from "./rules/AB103";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
-  version: "1.7.0",
+  version: "2.0.0",
   rules: [
     AB001,
     AB002,

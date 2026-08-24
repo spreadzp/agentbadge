@@ -17,6 +17,7 @@ import {
 } from "@agentgate-hedera/mcp";
 import { Hono } from "hono";
 import { mcpRoutes } from "../src/server/routes/mcp";
+import { makeTestApp } from "./e2e/helpers";
 
 const dummyHandler = vi.fn(async (args: Record<string, unknown>): Promise<ToolResult> => ({
   content: [{ type: "text", text: JSON.stringify(args) }],
@@ -156,5 +157,88 @@ describe("MCP JSON-RPC /mcp endpoint", () => {
     // In test env without real session, transport may return 400/406.
     // Key: our code doesn't crash (no 500).
     expect(res.status).toBeLessThan(500);
+  });
+});
+
+// ─── SLICE-72-10: Namespace JSON-RPC tests ──────────────────────────────────
+
+describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
+  let app: Hono;
+
+  beforeEach(() => {
+    app = makeTestApp();
+  });
+
+  it("POST /mcp/passport — tools/list returns only passport namespace tools", async () => {
+    const res = await app.request("/mcp/passport", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.result.tools).toBeInstanceOf(Array);
+    expect(data.result.tools.length).toBe(16);
+  });
+
+  it("POST /mcp/market — tools/list returns only market namespace tools", async () => {
+    const res = await app.request("/mcp/market", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.result.tools.length).toBe(8);
+  });
+
+  it("POST /mcp/discovery — tools/list returns only discovery namespace tools", async () => {
+    const res = await app.request("/mcp/discovery", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.result.tools.length).toBe(12);
+  });
+
+  it("POST /mcp/audit — tools/list returns only audit namespace tools", async () => {
+    const res = await app.request("/mcp/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 4, method: "tools/list" }),
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.result.tools.length).toBe(29);
+  });
+
+  it("POST /mcp (aggregator) — tools/list returns all tools", async () => {
+    const res = await app.request("/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 5, method: "tools/list" }),
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.result.tools.length).toBeGreaterThanOrEqual(65);
+  });
+
+  it("POST /mcp/passport — tools/call rejects non-passport tool", async () => {
+    const res = await app.request("/mcp/passport", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 6,
+        method: "tools/call",
+        params: { name: "post_task", arguments: {} },
+      }),
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.error).toBeDefined();
+    expect(data.error.code).toBe(-32601);
   });
 });

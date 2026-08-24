@@ -30,11 +30,28 @@ import { demandGuideRoutes } from "../../src/server/routes/agent-guide/demand";
 import { agencyJsonRoutes } from "../../src/server/routes/agency-json";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { paymentRoutes } from "../../src/server/routes/payment";
-import { isStripeConfigured } from "../../src/server/lib/stripe-client";
-import { listTools } from "@agentgate-hedera/mcp";
+import {
+  registerPassportTools,
+  registerSigningTools,
+  registerEscrowTools,
+  registerAuditCatalogTools,
+  registerDirectoryTools,
+  registerA2ATools,
+  registerMarketplaceTools,
+  registerDatasetTools,
+  registerDiscoveryTools,
+  registerGuideTools,
+  registerAllTools,
+  listTools,
+  createNamespace,
+} from "@agentgate-hedera/mcp";
+import { registerComplianceTools } from "../../src/mcp/compliance-tools";
+import { registerParityTools } from "../../src/mcp/parity-tools";
+import { createNamespaceRoutes } from "../../src/server/routes/mcp-namespace";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
+import { isStripeConfigured } from "../../src/server/lib/stripe-client";
 
 export function makeTestApp(): Hono {
   const app = new Hono();
@@ -56,7 +73,37 @@ export function makeTestApp(): Hono {
   app.route("/", medicalGuideRoutes);
   app.route("/", uiRoutes);
   app.route("/", didRoutes);
+  // Register MCP namespace tools BEFORE mounting namespace routes
+  const passportNs = createNamespace("passport");
+  registerPassportTools(passportNs);
+  registerSigningTools(passportNs);
+  registerEscrowTools(passportNs);
+
+  const marketNs = createNamespace("market");
+  registerMarketplaceTools(marketNs);
+  registerDatasetTools(marketNs);
+
+  const discoveryNs = createNamespace("discovery");
+  registerDiscoveryTools(discoveryNs);
+  registerDirectoryTools(discoveryNs);
+  registerGuideTools(discoveryNs);
+  registerA2ATools(discoveryNs);
+
+  const auditNs = createNamespace("audit");
+  registerAuditCatalogTools(auditNs);
+  registerComplianceTools(auditNs);
+  registerParityTools(auditNs);
+
   app.route("/", mcpRoutes);
+  app.route("/mcp/passport", createNamespaceRoutes("passport"));
+  app.route("/mcp/market", createNamespaceRoutes("market"));
+  app.route("/mcp/discovery", createNamespaceRoutes("discovery"));
+  app.route("/mcp/audit", createNamespaceRoutes("audit"));
+
+  // Register all tools on default "all" namespace (aggregator)
+  registerAllTools();
+  registerComplianceTools();
+  registerParityTools();
   app.route("/", agentGuideRoutes);
   app.route("/", agentKnowledgeRoutes);
   app.route("/", teamRoutes);

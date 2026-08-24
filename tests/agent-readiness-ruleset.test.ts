@@ -19,13 +19,13 @@ const MVP_RULE_IDS = [
 ];
 
 describe("AGENT_READINESS_RULESET manifest", () => {
-  it("has name 'agent-readiness' and version '1.7.0'", () => {
+  it("has name 'agent-readiness' and version '2.0.0'", () => {
     expect(AGENT_READINESS_RULESET.name).toBe("agent-readiness");
-    expect(AGENT_READINESS_RULESET.version).toBe("1.7.0");
+    expect(AGENT_READINESS_RULESET.version).toBe("2.0.0");
   });
 
-  it("has exactly 82 rules", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(82);
+  it("has at least 100 rules", () => {
+    expect(AGENT_READINESS_RULESET.rules.length).toBeGreaterThanOrEqual(100);
   });
 
   it("first 13 rule IDs match MVP-RULES.md 1:1", () => {

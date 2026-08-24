@@ -291,6 +291,7 @@ export const serverAgentCardSchema = z.object({
   endpoints: z.object({
     api: z.string(),
     docs: z.string(),
+    documentation: z.string(),
     mcp: z.string(),
     llms_txt: z.string(),
     guides: z.string(),
@@ -331,7 +332,7 @@ export const rateLimitHeaders: Record<string, { description: string; schema: { t
 export const openApiConfig = {
   info: {
     title: "AgentBadge API",
-    version: "0.1.0",
+    version: "1.0.0",
     description:
       "On-chain identity system for AI agents on Hedera Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
   },

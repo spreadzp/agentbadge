@@ -172,7 +172,7 @@ contentPageRoutes.get(
     tags: ["Content"],
     summary: "Rules Catalog",
     description:
-      "All 72 agent readiness rules across 15 categories with plain-language descriptions, effort hints, and cost estimates.",
+      "All agent readiness rules across categories with plain-language descriptions, effort hints, and cost estimates.",
     responses: { 200: { description: "HTML rules catalog page" } },
   }),
   (c) => {

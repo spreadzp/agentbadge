@@ -28,6 +28,8 @@ const CATEGORY_WEIGHTS: Record<string, number> = {
   identity: 5,
   bot_auth: 5,
   infrastructure: 5,
+  seo_aeo: 5,
+  accessibility: 4,
 };
 
 export function generateImprovementGuide(scanResult: ScanResultForGuide): string {

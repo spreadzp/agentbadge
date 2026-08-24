@@ -8,10 +8,10 @@ beforeEach(() => {
 });
 
 describe("RuleLoader", () => {
-  it("loads all 13 rules from manifest", () => {
+  it("loads all rules from manifest", () => {
     const result = RuleLoader.loadFromManifest();
 
-    expect(result.rules).toHaveLength(13);
+    expect(result.rules.length).toBeGreaterThanOrEqual(13);
     expect(result.manifestVersion).toBe(AGENT_READINESS_RULESET.version);
     expect(result.loadedAt).toBeTruthy();
   });
@@ -86,9 +86,9 @@ describe("RuleLoader", () => {
     expect(() => RuleLoader.validateRule({})).toThrow();
   });
 
-  it("getRuleIds returns all 13 IDs", () => {
+  it("getRuleIds returns all rule IDs", () => {
     const ids = RuleLoader.getRuleIds();
-    expect(ids).toHaveLength(13);
+    expect(ids.length).toBeGreaterThanOrEqual(13);
     expect(ids).toContain("AB-001");
     expect(ids).toContain("AB-013");
   });

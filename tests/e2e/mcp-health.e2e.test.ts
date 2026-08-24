@@ -16,12 +16,20 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { setupMockEnv, makeTestApp } from "./helpers";
 import {
   registerPassportTools,
+  registerSigningTools,
+  registerEscrowTools,
   registerAuditCatalogTools,
   registerDirectoryTools,
   registerA2ATools,
   registerMarketplaceTools,
+  registerDatasetTools,
+  registerDiscoveryTools,
+  registerGuideTools,
+  registerAllTools,
   listTools,
 } from "@agentgate-hedera/mcp";
+import { registerComplianceTools } from "../../src/mcp/compliance-tools";
+import { registerParityTools } from "../../src/mcp/parity-tools";
 
 const BASE_URL = "http://localhost:4021";
 const MCP_HEADERS = {
@@ -39,15 +47,23 @@ describe("MCP Health — in-process (Hono app)", () => {
     registerDirectoryTools();
     registerA2ATools();
     registerMarketplaceTools();
+    registerSigningTools();
+    registerEscrowTools();
+    registerDatasetTools();
+    registerDiscoveryTools();
+    registerGuideTools();
+    registerAllTools();
+    registerComplianceTools();
+    registerParityTools();
   });
 
-  it("listTools() returns 21 tools", () => {
+  it("listTools() returns 65 tools", () => {
     const tools = listTools();
     console.log(`[MCP Health] listTools() returned ${tools.length} tools:`, tools.map((t) => t.name));
-    expect(tools.length).toBe(21);
+    expect(tools.length).toBe(65);
   });
 
-  it("all 21 tool names are unique", () => {
+  it("all 65 tool names are unique", () => {
     const tools = listTools();
     const names = tools.map((t) => t.name);
     const unique = new Set(names);
@@ -87,7 +103,7 @@ describe("MCP Health — in-process (Hono app)", () => {
   // NOTE: /health route is registered in index.ts, not in makeTestApp().
   // Tested via live server section below.
 
-  it("GET /mcp/tools returns 21 tools via REST", async () => {
+  it("GET /mcp/tools returns 65 tools via REST", async () => {
     const app = makeTestApp();
     const res = await app.request("/mcp/tools");
     expect(res.status).toBe(200);
@@ -95,7 +111,7 @@ describe("MCP Health — in-process (Hono app)", () => {
     expect(data.tools).toBeDefined();
     expect(Array.isArray(data.tools)).toBe(true);
     console.log(`[MCP Health] /mcp/tools returned ${data.tools.length} tools`);
-    expect(data.tools.length).toBe(21);
+    expect(data.tools.length).toBe(65);
   });
 
   it("POST /mcp/tools/get_tier_requirements returns tier catalog", async () => {
@@ -112,6 +128,82 @@ describe("MCP Health — in-process (Hono app)", () => {
     expect(parsed.tiers).toBeDefined();
     expect(Object.keys(parsed.tiers)).toHaveLength(4);
     console.log(`[MCP Health] get_tier_requirements returned ${Object.keys(parsed.tiers).length} tiers`);
+  });
+});
+
+// ─── SLICE-72-10: Namespace in-process tests ─────────────────────────────────
+
+describe("SLICE-72-10: MCP namespace in-process (Hono app)", () => {
+  it("GET /mcp/passport returns 406 without Accept: text/event-stream", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/mcp/passport");
+    expect(res.status).toBe(406);
+  });
+
+  it("GET /mcp/passport returns SSE with Accept: text/event-stream", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/mcp/passport", {
+      headers: { Accept: "text/event-stream" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/event-stream");
+  });
+
+  it("GET /mcp/market returns SSE", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/mcp/market", {
+      headers: { Accept: "text/event-stream" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/event-stream");
+  });
+
+  it("GET /mcp/discovery returns SSE", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/mcp/discovery", {
+      headers: { Accept: "text/event-stream" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/event-stream");
+  });
+
+  it("GET /mcp/audit returns SSE", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/mcp/audit", {
+      headers: { Accept: "text/event-stream" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/event-stream");
+  });
+
+  it("GET /mcp/passport/tools returns 16 tools via REST", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/mcp/passport/tools");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.tools).toBeDefined();
+    expect(data.tools.length).toBe(16);
+  });
+
+  it("GET /mcp/audit/tools returns 29 tools via REST", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/mcp/audit/tools");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.tools.length).toBe(29);
+  });
+
+  it("GET /.well-known/mcp.json lists all namespace endpoints", async () => {
+    const app = makeTestApp();
+    const res = await app.request("/.well-known/mcp.json");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.remotes).toBeDefined();
+    const remoteUrls = data.remotes.map((r: { url: string }) => r.url);
+    expect(remoteUrls.some((u: string) => u.endsWith("/mcp/passport"))).toBe(true);
+    expect(remoteUrls.some((u: string) => u.endsWith("/mcp/market"))).toBe(true);
+    expect(remoteUrls.some((u: string) => u.endsWith("/mcp/discovery"))).toBe(true);
+    expect(remoteUrls.some((u: string) => u.endsWith("/mcp/audit"))).toBe(true);
   });
 });
 
@@ -147,7 +239,7 @@ describe("MCP Health — live server (localhost:4021)", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.tools).toBeDefined();
-    expect(data.tools.length).toBeGreaterThanOrEqual(21);
+    expect(data.tools.length).toBeGreaterThanOrEqual(65);
     console.log(
       `[MCP Health] Live /mcp/tools: ${data.tools.length} tools —`,
       data.tools.map((t: { name: string }) => t.name).join(", "),
@@ -186,7 +278,7 @@ describe("MCP Health — live server (localhost:4021)", () => {
     expect(json.id).toBe(1);
     expect(json.result).toBeDefined();
     expect(json.result.protocolVersion).toBe("2024-11-05");
-    expect(json.result.serverInfo.name).toBe("agent-passport");
+    expect(json.result.serverInfo.name).toBe("all");
     console.log(`[MCP Health] MCP initialize OK — server: ${json.result.serverInfo.name} v${json.result.serverInfo.version}`);
 
     // Session ID should be in response headers

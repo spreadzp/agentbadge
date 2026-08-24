@@ -19,7 +19,7 @@ export const agentReadinessReportSchema = z.object({
   ruleset: z
     .object({
       name: z.literal("agent-readiness").describe("Ruleset name — always 'agent-readiness' in v0.1"),
-      version: z.literal("1.7.0").describe("Ruleset semver — always '1.7.0' in v0.1"),
+      version: z.literal("2.0.0").describe("Ruleset semver — always '2.0.0' in v0.1"),
     })
     .describe("Reference to the ruleset used for this scan"),
 

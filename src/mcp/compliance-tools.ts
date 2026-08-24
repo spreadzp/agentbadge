@@ -95,6 +95,8 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
         identity: 5,
         bot_auth: 5,
         infrastructure: 5,
+        seo_aeo: 5,
+        accessibility: 4,
       },
     };
 

@@ -71,12 +71,12 @@ describe("SLICE-69-1: AB-073..AB-078 infrastructure & OpenAPI gap rules", () => 
     expect(ids).toContain("AB-078");
   });
 
-  it("ruleset has 82 rules total", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(82);
+  it("ruleset has at least 100 rules total", () => {
+    expect(AGENT_READINESS_RULESET.rules.length).toBeGreaterThanOrEqual(100);
   });
 
-  it("ruleset version is 1.7.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("1.7.0");
+  it("ruleset version is 2.0.0", () => {
+    expect(AGENT_READINESS_RULESET.version).toBe("2.0.0");
   });
 
   it("no duplicate rule IDs in ruleset", () => {

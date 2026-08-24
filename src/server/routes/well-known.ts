@@ -94,6 +94,7 @@ export function buildAgentCard() {
     endpoints: {
       api: `${baseUrl}/api/specs`,
       docs: "https://agentbadge.gitbook.io/agentbadge-docs",
+      documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
       mcp: `${baseUrl}/mcp`,
       gitbook_mcp: "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
       llms_txt: `${baseUrl}/llms.txt`,
@@ -256,6 +257,7 @@ wellKnownRoutes.get(
                 authorization_endpoint: z.string(),
                 token_endpoint: z.string(),
                 registration_endpoint: z.string(),
+                jwks_uri: z.string(),
                 response_types_supported: z.array(z.string()),
                 grant_types_supported: z.array(z.string()),
               }),
@@ -273,6 +275,7 @@ wellKnownRoutes.get(
         authorization_endpoint: `${baseUrl}/auth/authorize`,
         token_endpoint: `${baseUrl}/auth/token`,
         registration_endpoint: `${baseUrl}/auth/register`,
+        jwks_uri: `${baseUrl}/.well-known/jwks.json`,
         response_types_supported: ["code"],
         grant_types_supported: ["authorization_code", "client_credentials"],
         agent_auth: {
@@ -334,7 +337,7 @@ wellKnownRoutes.get(
 export function buildAiSitemap(): string {
   const baseUrl = BASE_URL;
 
-  const resources = [
+  const resources: Array<{ loc: string; priority: string; format: string; desc: string; type?: string; lastmod?: string }> = [
     {
       loc: `${baseUrl}/.well-known/agent-card.json`,
       priority: "1.0",
@@ -521,6 +524,14 @@ export function buildAiSitemap(): string {
       format: "mcp",
       desc: "GitBook MCP server — read-only programmatic access to documentation via Model Context Protocol",
     },
+    // Blog index page (HTML)
+    {
+      loc: `${baseUrl}/blog`,
+      priority: "0.8",
+      format: "html",
+      type: "html",
+      desc: "Blog index page — list of all published articles",
+    },
     // Blog index (machine-readable)
     {
       loc: `${baseUrl}/blog/index.md`,
@@ -539,6 +550,8 @@ export function buildAiSitemap(): string {
       loc: `${baseUrl}/blog/${a.slug}`,
       priority: "0.7",
       format: "html",
+      type: "markdown",
+      lastmod: a.dateModified ?? a.date,
       desc: `Blog article — ${a.title}`,
     })),
     // Blog articles in Markdown (for AI agents that prefer markdown)
@@ -546,6 +559,8 @@ export function buildAiSitemap(): string {
       loc: `${baseUrl}/blog/${a.slug}.md`,
       priority: "0.8",
       format: "markdown",
+      type: "markdown",
+      lastmod: a.dateModified ?? a.date,
       desc: `Blog article (Markdown) — ${a.title}`,
     })),
     // Per-namespace MCP descriptors (SLICE-72-8)
@@ -559,12 +574,16 @@ export function buildAiSitemap(): string {
 
   const entries = resources
     .map(
-      (r) => `  <resource>
+      (r) => {
+        const typeTag = r.type ? `\n    <type>${r.type}</type>` : "";
+        const lastmodTag = r.lastmod ? `\n    <lastmod>${r.lastmod}</lastmod>` : "";
+        return `  <resource>
     <loc>${r.loc}</loc>
     <priority>${r.priority}</priority>
-    <format>${r.format}</format>
+    <format>${r.format}</format>${typeTag}${lastmodTag}
     <desc>${r.desc}</desc>
-  </resource>`,
+  </resource>`;
+      },
     )
     .join("\n");
 
@@ -627,6 +646,7 @@ Disallow: /a2a/
 Disallow: /agents
 Disallow: /market/tasks/
 Disallow: /ui/a2a/inbox/fragment
+Crawl-delay: 10
 
 Content-Signal: ai-train=no, search=yes, ai-input=no
 
@@ -1259,6 +1279,20 @@ wellKnownRoutes.get(
         "Cache-Control": "public, max-age=3600",
       },
     );
+  },
+);
+
+// ─── /docs redirect (SLICE-74-1) ───────────────────────────────
+
+wellKnownRoutes.get(
+  "/docs",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Redirect to documentation",
+    description: "302 redirect to the AgentBadge documentation on GitBook.",
+  }),
+  (c) => {
+    return c.redirect("https://agentbadge.gitbook.io/agentbadge-docs", 302);
   },
 );
 

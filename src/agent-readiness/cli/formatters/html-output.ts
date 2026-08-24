@@ -20,6 +20,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   identity: "Identity",
   bot_auth: "Bot Auth",
   infrastructure: "Infrastructure",
+  seo_aeo: "SEO / AEO",
+  accessibility: "Accessibility",
 };
 
 function gradeLetter(score: number): string {
@@ -105,12 +107,12 @@ export function formatHtmlOutput(
         <h2>Fix Suggestions</h2>
         <ul>
           ${results
-            .filter((r) => r.status === "fail" && r.fix?.eligible)
-            .map(
-              (r) =>
-                `<li><strong>${escapeHtml(r.rule_id)}</strong>: ${escapeHtml(r.fix?.note ?? "No specific fix note.")}</li>`,
-            )
-            .join("\n")}
+        .filter((r) => r.status === "fail" && r.fix?.eligible)
+        .map(
+          (r) =>
+            `<li><strong>${escapeHtml(r.rule_id)}</strong>: ${escapeHtml(r.fix?.note ?? "No specific fix note.")}</li>`,
+        )
+        .join("\n")}
         </ul>
       </section>`
       : "";

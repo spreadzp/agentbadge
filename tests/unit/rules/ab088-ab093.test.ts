@@ -44,11 +44,11 @@ describe("SLICE-69-3: Payments Gap Rules (MPP, SPT)", () => {
     expect(ids).toContain("AB-093");
   });
 
-  it("ruleset has 82 total rules", () => {
-    expect(AGENT_READINESS_RULESET.rules).toHaveLength(82);
+  it("ruleset has at least 100 total rules", () => {
+    expect(AGENT_READINESS_RULESET.rules.length).toBeGreaterThanOrEqual(100);
   });
 
-  it("ruleset version is 1.7.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("1.7.0");
+  it("ruleset version is 2.0.0", () => {
+    expect(AGENT_READINESS_RULESET.version).toBe("2.0.0");
   });
 });

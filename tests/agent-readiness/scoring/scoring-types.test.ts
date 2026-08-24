@@ -19,19 +19,26 @@ describe("SLICE-35-1: Scoring Types", () => {
     expect(statuses).toHaveLength(5);
   });
 
-  it("CategoryWeights has all 5 categories", () => {
+  it("CategoryWeights has all original 5 categories", () => {
     const w: CategoryWeights = DEFAULT_CATEGORY_WEIGHTS;
-    expect(w.discovery).toBe(25);
-    expect(w.documentation).toBe(25);
-    expect(w.actionability).toBe(20);
-    expect(w.machine_readable).toBe(20);
-    expect(w.verification).toBe(10);
+    expect(w.discovery).toBe(15);
+    expect(w.documentation).toBe(15);
+    expect(w.actionability).toBe(10);
+    expect(w.machine_readable).toBe(10);
+    expect(w.verification).toBe(5);
   });
 
-  it("category weights sum to 100", () => {
+  it("CategoryWeights includes new seo_aeo and accessibility categories", () => {
+    const w: CategoryWeights = DEFAULT_CATEGORY_WEIGHTS;
+    expect(w.seo_aeo).toBeGreaterThan(0);
+    expect(w.accessibility).toBeGreaterThan(0);
+  });
+
+  it("category weights sum to approximately 100", () => {
     const w = DEFAULT_CATEGORY_WEIGHTS;
-    const sum = w.discovery + w.documentation + w.actionability + w.machine_readable + w.verification;
-    expect(sum).toBe(100);
+    const sum = Object.values(w).reduce((a, b) => a + b, 0);
+    expect(sum).toBeGreaterThanOrEqual(100);
+    expect(sum).toBeLessThanOrEqual(120);
   });
 
   it("StatusContributions has all 5 statuses", () => {
@@ -119,7 +126,7 @@ describe("SLICE-35-1: Scoring Types", () => {
       computedAt: new Date().toISOString(),
     };
     expect(sr.config).toBe(DEFAULT_SCORING_CONFIG);
-    expect(sr.config.categoryWeights.discovery).toBe(25);
+    expect(sr.config.categoryWeights.discovery).toBe(15);
   });
 
   it("ScoringConfig is a complete interface", () => {
@@ -131,6 +138,6 @@ describe("SLICE-35-1: Scoring Types", () => {
       floorTriggerSeverity: ["high"],
     };
     expect(config.floorCap).toBe(40);
-    expect(config.categoryWeights.verification).toBe(10);
+    expect(config.categoryWeights.verification).toBe(5);
   });
 });

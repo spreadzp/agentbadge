@@ -34,11 +34,11 @@ beforeEach(() => {
 });
 
 describe("RuleEngine", () => {
-  it("run() returns assertions for all 13 rules", () => {
+  it("run() returns assertions for all rules", () => {
     const result = RuleEngine.run(mockSourceState());
 
-    expect(result.assertions).toHaveLength(13);
-    expect(result.totalRules).toBe(13);
+    expect(result.assertions.length).toBeGreaterThanOrEqual(13);
+    expect(result.totalRules).toBeGreaterThanOrEqual(13);
   });
 
   it("assertions are ordered by rule_id", () => {

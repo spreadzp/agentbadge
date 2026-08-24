@@ -31,6 +31,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   identity: "Identity",
   bot_auth: "Bot Auth",
   infrastructure: "Infrastructure",
+  seo_aeo: "SEO / AEO",
+  accessibility: "Accessibility",
 };
 
 function isPassed(status: string): boolean {

@@ -110,6 +110,8 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         identity: 5,
         bot_auth: 5,
         infrastructure: 5,
+        seo_aeo: 5,
+        accessibility: 4,
       },
     };
     const scoreResult = runScoringEngine({

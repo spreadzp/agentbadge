@@ -18,6 +18,8 @@ export interface CategoryWeights {
   identity: number;
   bot_auth: number;
   infrastructure: number;
+  seo_aeo: number;
+  accessibility: number;
 }
 
 export interface StatusContributions {
@@ -97,6 +99,8 @@ export const DEFAULT_CATEGORY_WEIGHTS: CategoryWeights = {
   identity: 2,
   bot_auth: 1,
   infrastructure: 1,
+  seo_aeo: 5,
+  accessibility: 4,
 };
 
 export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {

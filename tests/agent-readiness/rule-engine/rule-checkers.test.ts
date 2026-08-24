@@ -178,9 +178,9 @@ describe("Rule Checkers AB-001..AB-013", () => {
   });
 
   // Registry completeness
-  it("RULE_CHECKERS has all 13 checkers", () => {
+  it("RULE_CHECKERS has at least 13 checkers", () => {
     const ids = Object.keys(RULE_CHECKERS);
-    expect(ids).toHaveLength(13);
+    expect(ids.length).toBeGreaterThanOrEqual(13);
     expect(ids).toContain("AB-001");
     expect(ids).toContain("AB-013");
   });

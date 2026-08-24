@@ -11,7 +11,7 @@ rulesApiRoutes.get(
   describeRoute({
     tags: ["API"],
     summary: "List all rule descriptions",
-    description: "All 82 agent readiness rules with full metadata, categories, and fix hints.",
+    description: `All ${RULE_DESCRIPTIONS.length} agent readiness rules with full metadata, categories, and fix hints.`,
     responses: {
       200: { description: "JSON with total, categories, and rules array" },
     },

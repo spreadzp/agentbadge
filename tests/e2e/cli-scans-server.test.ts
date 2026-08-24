@@ -30,11 +30,11 @@ describe("E2E: CLI scan structure verification", () => {
     const output = formatJsonOutput(mockResults as any);
     const parsed = JSON.parse(output);
     expect(parsed.results).toBeInstanceOf(Array);
-    expect(parsed.results.length).toBe(82);
+    expect(parsed.results.length).toBe(AGENT_READINESS_RULESET.rules.length);
   });
 
-  it("CLI reports 82 rules", () => {
-    expect(AGENT_READINESS_RULESET.rules.length).toBe(82);
+  it("CLI reports all registered rules", () => {
+    expect(AGENT_READINESS_RULESET.rules.length).toBeGreaterThanOrEqual(100);
   });
 
   it("no rule has status 'fail' in a perfect scan", () => {
@@ -109,6 +109,8 @@ describe("E2E: CLI scan structure verification", () => {
     expect(output).toContain("Content Negotiation");
     expect(output).toContain("Payments");
     expect(output).toContain("OpenAPI");
+    expect(output).toContain("SEO / AEO");
+    expect(output).toContain("Accessibility");
   });
 
   it("report URL is generated correctly", () => {
