@@ -220,7 +220,7 @@ export function LandingLayout(
 
         <noscript>
           <div class="mx-auto max-w-2xl p-8 text-center">
-            <h1 class="text-2xl font-bold text-white">${SITE_NAME} — Agency for the Agentic Web</h1>
+            <p class="text-2xl font-bold text-white">${SITE_NAME} — Agency for the Agentic Web</p>
             <p class="mt-4 text-slate-400">This page uses HTMX for live data. JavaScript is disabled.</p>
             <a href="/dashboard" class="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-white">View Dashboard</a>
           </div>
