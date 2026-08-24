@@ -13,6 +13,18 @@ const CSP_DIRECTIVES = [
   "form-action 'self'",
 ].join("; ");
 
+const PERMISSIONS_POLICY = [
+  "camera=()",
+  "microphone=()",
+  "geolocation=()",
+  "interest-cohort=()",
+  "payment=(self)",
+  "usb=()",
+  "magnetometer=()",
+  "gyroscope=()",
+  "accelerometer=()",
+].join(", ");
+
 export function securityHeaders(): MiddlewareHandler {
   return async (c, next) => {
     await next();
@@ -21,5 +33,11 @@ export function securityHeaders(): MiddlewareHandler {
     c.header("X-Frame-Options", "DENY");
     c.header("X-Content-Type-Options", "nosniff");
     c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    c.header("Permissions-Policy", PERMISSIONS_POLICY);
+    c.header("Cross-Origin-Opener-Policy", "same-origin");
+    c.header("Cross-Origin-Embedder-Policy", "credentialless");
+    c.header("Cross-Origin-Resource-Policy", "same-origin");
+    c.header("X-DNS-Prefetch-Control", "off");
+    c.header("X-Permitted-Cross-Domain-Policies", "none");
   };
 }

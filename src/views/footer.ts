@@ -9,7 +9,7 @@ export function Footer(): ReturnType<typeof html> {
     <div class="mx-auto max-w-5xl px-4 py-8">
       <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex items-center gap-2 text-sm text-slate-400">
-          <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" class="h-5 w-5 rounded" /></picture>
+          <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-5 w-5 rounded" /></picture>
           <span>AgentBadge · Agency for the agentic web — agent-ready infrastructure on Hedera</span>
         </div>
         <div class="flex items-center gap-4">

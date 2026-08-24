@@ -44,7 +44,7 @@ export function AgentProfilePage({ agent }: { agent: AgentWithActive }) {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           ${imageUrl
-      ? html`<img src="${imageUrl}" alt="${agent.name}" class="h-12 w-12 rounded-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />`
+      ? html`<img src="${imageUrl}" alt="${agent.name}" loading="lazy" decoding="async" class="h-12 w-12 rounded-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />`
       : null
     }
           <div class="${imageUrl ? 'hidden' : 'flex'} h-12 w-12 rounded-full bg-gradient-to-br ${gradient} items-center justify-center text-xl font-bold text-white">

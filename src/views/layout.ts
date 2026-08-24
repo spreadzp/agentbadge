@@ -87,15 +87,43 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
             animation: nav-pop 0.3s ease-out forwards;
             color: #34d399;
           }
+          :focus-visible {
+            outline: 2px solid #10b981;
+            outline-offset: 2px;
+          }
+          .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            z-index: 100;
+            padding: 8px 16px;
+            background: #10b981;
+            color: #fff;
+            border-radius: 0 0 8px 0;
+            font-size: 14px;
+            transition: top 0.2s;
+          }
+          .skip-link:focus {
+            top: 0;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+              animation-duration: 0.01ms !important;
+              animation-iteration-count: 1 !important;
+              transition-duration: 0.01ms !important;
+            }
+          }
         </style>
       </head>
       <body class="min-h-full">
+        <!-- Skip to content (accessibility) -->
+        <a href="#main" class="skip-link">Skip to content</a>
         <!-- Header: full width, always visible -->
         <header class="border-b border-slate-800 bg-slate-900">
           <nav class="px-4 py-3">
             <div class="relative flex items-center justify-between">
               <a href="/" class="flex items-center gap-2 font-semibold text-white">
-                <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" class="h-7 w-7 rounded" /></picture>
+                <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-7 w-7 rounded" /></picture>
                 ${SITE_NAME}
               </a>
 
@@ -261,7 +289,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
           </aside>
 
           <!-- Main content: flex-1 auto-adjusts when sidebar collapses -->
-          <main class="min-w-0 flex-1 px-4 py-8 md:px-8">${raw(children)}</main>
+          <main id="main" class="min-w-0 flex-1 px-4 py-8 md:px-8">${raw(children)}</main>
         </div>
         ${raw(Footer().toString())}
 

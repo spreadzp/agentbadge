@@ -193,6 +193,17 @@ export function LandingLayout(
             transform: translateY(-4px);
             box-shadow: 0 12px 24px rgba(0,0,0,0.15);
           }
+          :focus-visible {
+            outline: 2px solid #10b981;
+            outline-offset: 2px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+              animation-duration: 0.01ms !important;
+              animation-iteration-count: 1 !important;
+              transition-duration: 0.01ms !important;
+            }
+          }
         </style>
       </head>
       <body class="min-h-full">

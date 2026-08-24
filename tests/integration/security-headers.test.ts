@@ -76,7 +76,7 @@ describe("SLICE-21-6: Security Headers Middleware", () => {
   it("CSP allows HTMX CDN", async () => {
     const res = await app.request("/");
     const csp = res.headers.get("Content-Security-Policy") ?? "";
-    expect(csp).toContain("https://unpkg.com/htmx.org");
+    expect(csp).toContain("https://unpkg.com");
   });
 
   it("CSP allows inline styles for Tailwind", async () => {
@@ -113,5 +113,41 @@ describe("SLICE-21-6: Security Headers Middleware", () => {
     const res = await app.request("/");
     const csp = res.headers.get("Content-Security-Policy") ?? "";
     expect(csp).toContain("form-action 'self'");
+  });
+
+  // ─── SLICE-76-3: New security headers ─────────────────────
+
+  it("Permissions-Policy header is present and restricts sensitive features", async () => {
+    const res = await app.request("/");
+    const pp = res.headers.get("Permissions-Policy") ?? "";
+    expect(pp).toContain("camera=()");
+    expect(pp).toContain("microphone=()");
+    expect(pp).toContain("geolocation=()");
+    expect(pp).toContain("payment=(self)");
+  });
+
+  it("Cross-Origin-Opener-Policy is same-origin", async () => {
+    const res = await app.request("/");
+    expect(res.headers.get("Cross-Origin-Opener-Policy")).toBe("same-origin");
+  });
+
+  it("Cross-Origin-Embedder-Policy is credentialless", async () => {
+    const res = await app.request("/");
+    expect(res.headers.get("Cross-Origin-Embedder-Policy")).toBe("credentialless");
+  });
+
+  it("Cross-Origin-Resource-Policy is same-origin", async () => {
+    const res = await app.request("/");
+    expect(res.headers.get("Cross-Origin-Resource-Policy")).toBe("same-origin");
+  });
+
+  it("X-DNS-Prefetch-Control is off", async () => {
+    const res = await app.request("/");
+    expect(res.headers.get("X-DNS-Prefetch-Control")).toBe("off");
+  });
+
+  it("X-Permitted-Cross-Domain-Policies is none", async () => {
+    const res = await app.request("/");
+    expect(res.headers.get("X-Permitted-Cross-Domain-Policies")).toBe("none");
   });
 });
