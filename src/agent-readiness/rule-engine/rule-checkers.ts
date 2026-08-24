@@ -391,6 +391,34 @@ export function checkAb116(state: SourceState): Evidence[] {
   return [httpEvidence(snaps.mcp)];
 }
 
+// ─── AB-117: Image alt text coverage ───────────────────────────────────────────
+export function checkAb117(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.accessibility) return [];
+  return [httpEvidence(snaps.accessibility)];
+}
+
+// ─── AB-118: Lazy loading on below-fold images ─────────────────────────────────
+export function checkAb118(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.accessibility) return [];
+  return [httpEvidence(snaps.accessibility)];
+}
+
+// ─── AB-098: Content-Security-Policy header ────────────────────────────────────
+export function checkAb098(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.infrastructure) return [];
+  return [httpEvidence(snaps.infrastructure)];
+}
+
+// ─── AB-099: Referrer-Policy header ────────────────────────────────────────────
+export function checkAb099(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.infrastructure) return [];
+  return [httpEvidence(snaps.infrastructure)];
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -420,4 +448,8 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-114": checkAb114,
   "AB-115": checkAb115,
   "AB-116": checkAb116,
+  "AB-117": checkAb117,
+  "AB-118": checkAb118,
+  "AB-098": checkAb098,
+  "AB-099": checkAb099,
 };

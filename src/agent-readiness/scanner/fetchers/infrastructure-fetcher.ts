@@ -5,6 +5,8 @@ export interface InfrastructureResult {
     cacheHeaders: boolean;
     structuredErrors: boolean;
     rateLimitHeaders: boolean;
+    contentSecurityPolicy: boolean;
+    referrerPolicy: boolean;
   };
 }
 
@@ -65,8 +67,26 @@ export async function fetchInfrastructure(
     // keep false
   }
 
+  // 5. Content-Security-Policy header check
+  let contentSecurityPolicy = false;
+  try {
+    const resp = await _fetch(baseUrl);
+    contentSecurityPolicy = !!resp.headers.get("content-security-policy");
+  } catch {
+    // keep false
+  }
+
+  // 6. Referrer-Policy header check
+  let referrerPolicy = false;
+  try {
+    const resp = await _fetch(baseUrl);
+    referrerPolicy = !!resp.headers.get("referrer-policy");
+  } catch {
+    // keep false
+  }
+
   return {
     source: "infrastructure",
-    data: { httpsRedirect, cacheHeaders, structuredErrors, rateLimitHeaders },
+    data: { httpsRedirect, cacheHeaders, structuredErrors, rateLimitHeaders, contentSecurityPolicy, referrerPolicy },
   };
 }
