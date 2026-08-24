@@ -419,6 +419,61 @@ export function checkAb099(state: SourceState): Evidence[] {
   return [httpEvidence(snaps.infrastructure)];
 }
 
+// ─── AB-100: Service page content depth ───────────────────────────────────────
+export function checkAb100(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.content_depth) return [];
+  return [httpEvidence(snaps.content_depth)];
+}
+
+// ─── AB-101: Breadcrumb navigation on service pages ────────────────────────────
+export function checkAb101(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.semantic_html) return [];
+  return [httpEvidence(snaps.semantic_html)];
+}
+
+// ─── AB-102: MCP tools and REST endpoints parity ──────────────────────────────
+export function checkAb102(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  const evidence: Evidence[] = [];
+  let mcpToolCount = 0;
+  let openapiEndpointCount = 0;
+
+  if (snaps.mcp_probe) {
+    try {
+      const parsed = JSON.parse(snaps.mcp_probe.body ?? "{}");
+      mcpToolCount = parsed?.data?.toolsList?.tools?.length ?? 0;
+      evidence.push(httpEvidence(snaps.mcp_probe));
+    } catch {
+      evidence.push(httpEvidence(snaps.mcp_probe));
+    }
+  }
+
+  if (snaps.openapi) {
+    try {
+      const parsed = JSON.parse(snaps.openapi.body ?? "{}");
+      openapiEndpointCount = Object.keys(parsed?.paths ?? {}).length;
+      evidence.push(httpEvidence(snaps.openapi));
+    } catch {
+      evidence.push(httpEvidence(snaps.openapi));
+    }
+  }
+
+  if (evidence.length === 0) return [];
+  const conflictReason = mcpToolCount < openapiEndpointCount * 0.5
+    ? `mcp_tool_count (${mcpToolCount}) < openapi_endpoint_count (${openapiEndpointCount}) * 0.5`
+    : "no conflict";
+  return [crossEvidence(evidence, ["tool_count", "endpoint_count"], conflictReason)];
+}
+
+// ─── AB-103: check_compliance MCP tool available ───────────────────────────────
+export function checkAb103(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.mcp_probe) return [];
+  return [httpEvidence(snaps.mcp_probe)];
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -452,4 +507,8 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-118": checkAb118,
   "AB-098": checkAb098,
   "AB-099": checkAb099,
+  "AB-100": checkAb100,
+  "AB-101": checkAb101,
+  "AB-102": checkAb102,
+  "AB-103": checkAb103,
 };
