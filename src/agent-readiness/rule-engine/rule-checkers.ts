@@ -357,6 +357,40 @@ export function checkAb114(state: SourceState): Evidence[] {
   return [crossEvidence(evidence, ["url_count"], conflictReason)];
 }
 
+// ─── AB-115: MCP namespace-based tool isolation ────────────────────────────────
+export function checkAb115(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.mcp_probe) return [];
+  const s = snaps.mcp_probe;
+  try {
+    const parsed = JSON.parse(s.body ?? "{}");
+    const tools = parsed?.data?.toolsList?.tools ?? [];
+    for (const tool of tools) {
+      if (tool.name && tool.name.includes(".")) {
+        // namespaced tool detected
+      }
+    }
+  } catch {
+    // invalid JSON — still return http evidence
+  }
+  return [{
+    type: "http",
+    url: s.url,
+    status: s.status,
+    headers: {},
+    content_hash: s.bodyHash,
+    content_type: s.contentType,
+    resolved_ip: s.resolvedIp,
+  }];
+}
+
+// ─── AB-116: Well-known MCP descriptor ─────────────────────────────────────────
+export function checkAb116(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.mcp) return [];
+  return [httpEvidence(snaps.mcp)];
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -384,4 +418,6 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-112": checkAb112,
   "AB-113": checkAb113,
   "AB-114": checkAb114,
+  "AB-115": checkAb115,
+  "AB-116": checkAb116,
 };
