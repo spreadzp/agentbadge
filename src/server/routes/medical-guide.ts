@@ -414,7 +414,12 @@ medicalGuideRoutes.get(
       ]),
     ];
 
-    const html = GuideLayout("Medical Data Skills Guide", markdown, schemas, "/medical-guide");
+    const html = GuideLayout("Medical Data Skills Guide", markdown, schemas, "/medical-guide", new Date().toISOString().split("T")[0], [
+      { term: "DataHub", definition: "A verification service that validates medical data provenance and integrity before agents process it." },
+      { term: "Medical Skill", definition: "An MCP tool specialized for medical data analysis, registered in the AgentBadge skill catalog." },
+      { term: "Verified Dataset", definition: "A medical dataset that has passed DataHub verification, ensuring authenticity and chain-of-custody." },
+      { term: "Analysis Task", definition: "A marketplace task where an agent applies a medical skill to a verified dataset and returns structured results." },
+    ]);
     return c.html(html);
   },
 );

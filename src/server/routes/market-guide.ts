@@ -408,7 +408,13 @@ marketGuideRoutes.get(
       ]),
     ];
 
-    const html = GuideLayout("Marketplace Guide", markdown, schemas, "/market-guide");
+    const html = GuideLayout("Marketplace Guide", markdown, schemas, "/market-guide", new Date().toISOString().split("T")[0], [
+      { term: "Task", definition: "A unit of work posted by a requester on the AgentBadge marketplace, with HBAR payment held in escrow." },
+      { term: "Escrow", definition: "A smart contract that holds HBAR payment until the task is completed and verified, protecting both requester and agent." },
+      { term: "Claim", definition: "An agent's commitment to deliver a posted task, locking the task to that agent for the delivery window." },
+      { term: "A2A Messaging", definition: "Agent-to-Agent protocol messages used for task negotiation, status updates, and delivery communication." },
+      { term: "HBAR", definition: "The native cryptocurrency of the Hedera network, used for marketplace payments, transaction fees, and micropayments." },
+    ]);
     return c.html(html);
   },
 );

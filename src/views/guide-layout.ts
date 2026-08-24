@@ -13,13 +13,44 @@ export function GuideLayout(
   jsonLd: object[],
   path: string = "",
   lastUpdated: string = new Date().toISOString().split("T")[0],
+  definitions: { term: string; definition: string }[] = [],
 ): ReturnType<typeof html> {
-  const jsonLdHtml = renderJsonLd(jsonLd);
   const canonicalUrl = path ? `${BASE_URL}${path}` : BASE_URL;
   const escapedMarkdown = markdown
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+
+  const definitionsHtml = definitions.length > 0
+    ? html`<section class="mt-8 rounded-lg bg-slate-800/50 border border-slate-700 p-6" aria-label="Key Terms">
+        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Key Terms</h2>
+        <dl class="space-y-3">
+          ${definitions.map((d) => html`<div>
+            <dt class="text-emerald-400 font-semibold text-sm">${d.term}</dt>
+            <dd class="text-slate-300 text-sm mt-1">${d.definition}</dd>
+          </div>`)}
+        </dl>
+      </section>`
+    : "";
+
+  const definitionsLd = definitions.length > 0
+    ? {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "Key Terms",
+      itemListElement: definitions.map((d) => ({
+        "@type": "ListItem",
+        item: {
+          "@type": "DefinedTerm",
+          name: d.term,
+          description: d.definition,
+        },
+      })),
+    }
+    : null;
+
+  const allJsonLd = definitionsLd ? [...jsonLd, definitionsLd] : jsonLd;
+  const allJsonLdHtml = renderJsonLd(allJsonLd);
 
   return html`<!DOCTYPE html>
     <html lang="en" class="h-full bg-slate-950 text-slate-100">
@@ -48,7 +79,7 @@ export function GuideLayout(
         <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
-        ${raw(jsonLdHtml)}
+        ${raw(allJsonLdHtml)}
         <link rel="stylesheet" href="/css/tailwind.css?v=2" />
       </head>
       <body class="min-h-full">
@@ -56,6 +87,7 @@ export function GuideLayout(
           <a href="/" class="text-sm text-emerald-400 hover:text-emerald-300">&larr; Back to ${SITE_NAME}</a>
           <p class="mt-2 text-xs text-slate-500">Last updated: <time datetime="${lastUpdated}">${lastUpdated}</time></p>
           <pre class="mt-4 whitespace-pre-wrap font-mono text-sm text-slate-300 leading-relaxed">${raw(escapedMarkdown)}</pre>
+          ${definitionsHtml}
           <div class="mt-8 border-t border-slate-800 pt-6">
             <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wide">See Also</h2>
             <ul class="mt-3 space-y-2 text-sm">

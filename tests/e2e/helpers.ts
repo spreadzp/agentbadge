@@ -12,6 +12,8 @@ import { marketRoutes } from "../../src/server/routes/market";
 import { uiRoutes } from "../../src/server/routes/ui";
 import { landingRoutes } from "../../src/server/routes/landing";
 import { blogRoutes } from "../../src/server/routes/blog";
+import { marketGuideRoutes } from "../../src/server/routes/market-guide";
+import { medicalGuideRoutes } from "../../src/server/routes/medical-guide";
 import { didRoutes } from "../../src/server/routes/did";
 import { mcpRoutes } from "../../src/server/routes/mcp";
 import { agentGuideRoutes } from "../../src/server/routes/agent-guide";
@@ -50,6 +52,8 @@ export function makeTestApp(): Hono {
   app.route("/", marketRoutes);
   app.route("/", landingRoutes);
   app.route("/", blogRoutes);
+  app.route("/", marketGuideRoutes);
+  app.route("/", medicalGuideRoutes);
   app.route("/", uiRoutes);
   app.route("/", didRoutes);
   app.route("/", mcpRoutes);
