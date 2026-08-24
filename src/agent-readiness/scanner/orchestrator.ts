@@ -35,6 +35,11 @@ import { fetchContentSignals } from "./fetchers/content-signals-fetcher";
 import { fetchWebBotAuth } from "./fetchers/web-bot-auth-fetcher";
 import { fetchDnsAid } from "./fetchers/dns-aid-fetcher";
 import { fetchWebmcpRuntime } from "./fetchers/webmcp-runtime-fetcher";
+import { fetchOgMeta } from "./fetchers/og-meta-fetcher";
+import { fetchAeoContent } from "./fetchers/aeo-content-fetcher";
+import { fetchSemanticHtml } from "./fetchers/semantic-html-fetcher";
+import { fetchAccessibility } from "./fetchers/accessibility-fetcher";
+import { fetchContentDepth } from "./fetchers/content-depth-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -76,6 +81,11 @@ export const DEFAULT_RESOURCES = [
   "dns_aid",
   "webmcp_runtime",
   "l402",
+  "og_meta",
+  "aeo_content",
+  "semantic_html",
+  "accessibility",
+  "content_depth",
 ] as const;
 
 export async function scanDomain(
@@ -103,11 +113,11 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth"].includes(r),
   );
   const sequentialResources = resources.filter(
     (r) =>
-      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402"].includes(r),
+      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -402,6 +412,46 @@ async function fetchResource(
       snapshot = createSnapshot({
         url: r.url, status: r.status, body: r.body,
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime, headers: r.headers,
+      });
+      break;
+    }
+    case "og_meta": {
+      const r = await fetchOgMeta(`${baseUrl}/`);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "aeo_content": {
+      const r = await fetchAeoContent(`${baseUrl}/`);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "semantic_html": {
+      const r = await fetchSemanticHtml(`${baseUrl}/`);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "accessibility": {
+      const r = await fetchAccessibility(`${baseUrl}/`);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "content_depth": {
+      const r = await fetchContentDepth(`${baseUrl}/`);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/`, status: 200, body: JSON.stringify(r),
+        resolvedIp: null, fetchTimeMs: 0,
       });
       break;
     }

@@ -22,8 +22,10 @@ export const categoryEnum = z
     "identity",
     "bot_auth",
     "infrastructure",
+    "seo_aeo",
+    "accessibility",
   ])
-  .describe("Rule category: discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth");
+  .describe("Rule category: discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth, infrastructure, seo_aeo, accessibility");
 
 export const statusEnum = z
   .enum(["VERIFIED", "INFERRED", "CONFLICT", "MISSING", "NOT_APPLICABLE"])
