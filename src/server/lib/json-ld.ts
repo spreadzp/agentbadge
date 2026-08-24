@@ -4,6 +4,7 @@ import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 import type { DirectoryEntry } from "@agentgate-hedera/passport";
 import { getCatalog } from "@agentgate-hedera/hedera-core";
 import type { BlogArticle } from "./blog-data";
+import { listTools } from "@agentgate-hedera/mcp";
 
 const SCHEMA_CONTEXT = "https://schema.org";
 
@@ -34,7 +35,7 @@ export function softwareApplicationLd(): object {
       "HCS directory registration",
       "Agent-to-agent messaging (A2A)",
       "Task marketplace with HBAR payments",
-      "MCP server (38 tools)",
+      `MCP server (${listTools().length} tools)`,
     ],
     documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
     about: {
@@ -71,7 +72,7 @@ export function organizationLd(): object {
     "@type": "Organization",
     name: SITE_NAME,
     url: BASE_URL,
-    logo: `${BASE_URL}/icons/logo-32.png`,
+    logo: `${BASE_URL}/icons/logo-512.png`,
     foundingDate: "2026",
     contactPoint: {
       "@type": "ContactPoint",

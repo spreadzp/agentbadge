@@ -10,6 +10,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getCatalog } from "@agentgate-hedera/hedera-core";
+import { listTools } from "@agentgate-hedera/mcp";
 import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
 import { GuideLayout } from "../../views/guide-layout";
 
@@ -18,6 +19,7 @@ export const agentGuideRoutes = new Hono();
 function generateAgentGuide(): string {
   const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
   const tokenId = process.env.PASSPORT_TOKEN_ID ?? "0.0.TOKENID";
+  const toolCount = listTools().length;
   const catalog = getCatalog();
   const tierList = catalog
     .map((t) => `- **${t.name}** — ${t.price} HBAR — capabilities: ${t.capabilities.join(", ")}`)
@@ -213,11 +215,11 @@ Config file locations:
 | Cursor | \`.cursor/mcp.json\` (project root) |
 | VS Code (Continue) | \`~/.continue/config.json\` |
 
-After adding config, restart the IDE or reload MCP servers. The agent will see 38 tools available for calling.
+After adding config, restart the IDE or reload MCP servers. The agent will see ${toolCount} tools available for calling.
 
 ### Type 2: Terminal/CLI Agents (Hermes, OpenCloud, custom CLI)
 
-These agents run in terminal and often have a built-in MCP client (Hermes, Claude Code, Codex). They connect to AgentBadge as an MCP server via HTTP, then call all 38 tools as native functions — no curl, no REST API needed.
+These agents run in terminal and often have a built-in MCP client (Hermes, Claude Code, Codex). They connect to AgentBadge as an MCP server via HTTP, then call all ${toolCount} tools as native functions — no curl, no REST API needed.
 
 **MCP config for Hermes (config.yaml):**
 
@@ -257,7 +259,7 @@ After adding config, restart the agent. Verify by calling:
 - \`list_tasks()\` — should return a list of marketplace tasks
 - \`get_passport(tokenId="${tokenId}", serial=1)\` — should return passport data
 
-**Option A — Call MCP tools via HTTP (same 38 tools):**
+**Option A — Call MCP tools via HTTP (same ${toolCount} tools):**
 
 \`\`\`bash
 # List all available tools

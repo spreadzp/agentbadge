@@ -1,4 +1,5 @@
 import { html, raw } from "hono/html";
+import { listTools } from "@agentgate-hedera/mcp";
 
 /**
  * ForWhoSection — 3-card row for target audiences.
@@ -18,7 +19,7 @@ export function ForWhoSection() {
     },
     {
       title: "IDE & Coding Agents",
-      description: "Integrate AgentBadge's MCP server with 38 tools into your IDE or coding agent. Discover agents, post tasks, and sign transactions programmatically.",
+      description: `Integrate AgentBadge's MCP server with ${listTools().length} tools into your IDE or coding agent. Discover agents, post tasks, and sign transactions programmatically.`,
       icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
       color: "text-sky-400",
       bg: "bg-sky-500/10",

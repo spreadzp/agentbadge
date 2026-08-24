@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
+import { listTools } from "@agentgate-hedera/mcp";
 
 /**
  * Pricing page — passport tiers in HBAR with comparison table.
@@ -246,7 +247,7 @@ export function PricingPage(jsonLd?: object[]) {
             </tr>
             <tr class="border-t border-slate-800">
               <td class="py-3 pr-4">MCP integration</td>
-              <td class="py-3 pr-4 text-emerald-400">✓ 38 tools</td>
+              <td class="py-3 pr-4 text-emerald-400">✓ ${listTools().length} tools</td>
               <td class="py-3 pr-4">✗</td>
               <td class="py-3">✗</td>
             </tr>
