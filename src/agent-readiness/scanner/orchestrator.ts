@@ -40,6 +40,10 @@ import { fetchAeoContent } from "./fetchers/aeo-content-fetcher";
 import { fetchSemanticHtml } from "./fetchers/semantic-html-fetcher";
 import { fetchAccessibility } from "./fetchers/accessibility-fetcher";
 import { fetchContentDepth } from "./fetchers/content-depth-fetcher";
+import { fetchAgentCard } from "./fetchers/agent-card-fetcher";
+import { fetchAiSitemap } from "./fetchers/ai-sitemap-fetcher";
+import { fetchOauthAuthorizationServer } from "./fetchers/oauth-authorization-server-fetcher";
+import { fetchLlmPolicy } from "./fetchers/llm-policy-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -86,6 +90,10 @@ export const DEFAULT_RESOURCES = [
   "semantic_html",
   "accessibility",
   "content_depth",
+  "agent_card",
+  "ai_sitemap",
+  "oauth_authorization_server",
+  "llm_policy",
 ] as const;
 
 export async function scanDomain(
@@ -113,11 +121,11 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy"].includes(r),
   );
   const sequentialResources = resources.filter(
     (r) =>
-      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth"].includes(r),
+      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -453,6 +461,38 @@ async function fetchResource(
         url: `${baseUrl}/`, status: 200, body: JSON.stringify(r),
         resolvedIp: null, fetchTimeMs: 0,
       });
+      break;
+    }
+    case "agent_card": {
+      const r = await fetchAgentCard(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "ai_sitemap": {
+      const r = await fetchAiSitemap(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "oauth_authorization_server": {
+      const r = await fetchOauthAuthorizationServer(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "llm_policy": {
+      const r = await fetchLlmPolicy(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
       break;
     }
   }

@@ -60,6 +60,24 @@ function htmlEvidence(s: ResponseSnapshot, title: string): Evidence {
   };
 }
 
+function jsonSchemaEvidence(s: ResponseSnapshot, schemaKeys: string[], valid: boolean): Evidence {
+  return {
+    type: "json_schema",
+    url: s.url,
+    schema_keys: schemaKeys,
+    valid,
+  };
+}
+
+function crossEvidence(sources: Evidence[], matchKeys: string[], conflictReason: string): Evidence {
+  return {
+    type: "cross",
+    sources,
+    match_keys: matchKeys,
+    conflict_reason: conflictReason,
+  };
+}
+
 // ─── AB-001: robots.txt exists ─────────────────────────────────────────────
 export function checkAb001(state: SourceState): Evidence[] {
   const snaps = getSnapshots(state);
@@ -256,6 +274,89 @@ export function checkAb108(state: SourceState): Evidence[] {
   }
 }
 
+// ─── AB-109: Agent Card version 1.0.0+ ────────────────────────────────────────
+export function checkAb109(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.agent_card) return [];
+  const body = snaps.agent_card.body;
+  if (!body) return [jsonSchemaEvidence(snaps.agent_card, [], false)];
+  try {
+    const parsed = JSON.parse(body);
+    const version = parsed.version ?? "";
+    const valid = /^\d+\.\d+\.\d+$/.test(version) &&
+      [...version.split(".").map(Number)][0] >= 1;
+    return [jsonSchemaEvidence(snaps.agent_card, Object.keys(parsed), valid)];
+  } catch {
+    return [jsonSchemaEvidence(snaps.agent_card, [], false)];
+  }
+}
+
+// ─── AB-110: Blog articles in AI sitemap ───────────────────────────────────────
+export function checkAb110(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.ai_sitemap) return [];
+  const body = snaps.ai_sitemap.body;
+  if (!body) return [sitemapEvidence(snaps.ai_sitemap, 0, [])];
+  const urls: string[] = [];
+  const matches = body.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi);
+  for (const m of matches) urls.push(m[1].trim());
+  const blogUrls = urls.filter((u) => /\/blog\//i.test(u));
+  return [sitemapEvidence(snaps.ai_sitemap, blogUrls.length, blogUrls.slice(0, 50))];
+}
+
+// ─── AB-111: Crawl-delay directive in robots.txt ───────────────────────────────
+export function checkAb111(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.robots) return [];
+  const body = snaps.robots.body;
+  if (!body) return [robotsEvidence(snaps.robots, true, [])];
+  const hasCrawlDelay = /^crawl-delay\s*:/im.test(body);
+  return [robotsEvidence(snaps.robots, hasCrawlDelay, [])];
+}
+
+// ─── AB-112: OAuth Authorization Server metadata (RFC 9728) ────────────────────
+export function checkAb112(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.oauth_authorization_server) return [];
+  return [httpEvidence(snaps.oauth_authorization_server)];
+}
+
+// ─── AB-113: LLM policy file ───────────────────────────────────────────────────
+export function checkAb113(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.llm_policy) return [];
+  return [httpEvidence(snaps.llm_policy)];
+}
+
+// ─── AB-114: AI sitemap content type coverage ──────────────────────────────────
+export function checkAb114(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  const evidence: Evidence[] = [];
+  let aiCount = 0;
+  let sitemapCount = 0;
+  if (snaps.ai_sitemap) {
+    const body = snaps.ai_sitemap.body;
+    if (body) {
+      const matches = body.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi);
+      aiCount = [...matches].length;
+    }
+    evidence.push(sitemapEvidence(snaps.ai_sitemap, aiCount, []));
+  }
+  if (snaps.sitemap) {
+    const body = snaps.sitemap.body;
+    if (body) {
+      const matches = body.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi);
+      sitemapCount = [...matches].length;
+    }
+    evidence.push(sitemapEvidence(snaps.sitemap, sitemapCount, []));
+  }
+  if (evidence.length === 0) return [];
+  const conflictReason = aiCount < sitemapCount * 0.5
+    ? `ai_sitemap_url_count (${aiCount}) < sitemap_url_count (${sitemapCount}) * 0.5`
+    : "no conflict";
+  return [crossEvidence(evidence, ["url_count"], conflictReason)];
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -277,4 +378,10 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-106": checkAb106,
   "AB-107": checkAb107,
   "AB-108": checkAb108,
+  "AB-109": checkAb109,
+  "AB-110": checkAb110,
+  "AB-111": checkAb111,
+  "AB-112": checkAb112,
+  "AB-113": checkAb113,
+  "AB-114": checkAb114,
 };
