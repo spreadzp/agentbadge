@@ -117,6 +117,7 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json
 - `GET /agent-guide/articles/web-becoming-agentic-api-discovery` — Article 3: agentic web discovery
 - `GET /agent-guide/articles/seo-geo-agent-readiness` — Article 4: SEO → GEO → Agent Readiness
 - `GET /agent-guide/articles/why-ai-agents-fail-apis` — Article 5: 7 failure modes
+- `GET /agent-guide/articles/why-openapi-isnt-enough` — Article 7: why OpenAPI isn't enough
 - `GET /llms.txt` — LLM entry point
 - `GET /ai-sitemap.xml` — Machine-readable resource map
 
