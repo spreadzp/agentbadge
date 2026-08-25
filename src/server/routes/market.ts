@@ -21,6 +21,7 @@ import { taskLinks } from "../lib/hateoas";
 import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 import { keyEndpointGate } from "../middleware/key-endpoint-gate";
+import { toPublicError } from "../lib/error-map";
 
 export const marketRoutes = new Hono();
 
@@ -133,9 +134,9 @@ marketRoutes.post(
 
       return c.json({ txId, taskId, timestamp, _links: taskLinks(taskId, posterDid, "posted") }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "HCS submission failed";
-      logger.error("Marketplace task submission failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace task submission failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -179,8 +180,9 @@ marketRoutes.get(
         200,
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Cache error";
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Cache error", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -305,9 +307,9 @@ marketRoutes.post(
         return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "HCS submission failed";
-      logger.error("Marketplace task claim failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace task claim failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -393,9 +395,9 @@ marketRoutes.post(
 
       return c.json({ taskId, txId, timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "HCS submission failed";
-      logger.error("Marketplace task delivery failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace task delivery failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -514,9 +516,9 @@ marketRoutes.post(
         return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Signed claim failed";
-      logger.error("Signed claim failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Signed claim failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -617,9 +619,9 @@ marketRoutes.post(
 
       return c.json({ taskId, txId, timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Signed delivery failed";
-      logger.error("Signed delivery failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Signed delivery failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -709,9 +711,9 @@ marketRoutes.post(
         200,
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Transaction preparation failed";
-      logger.error("Payment preparation failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Payment preparation failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -895,9 +897,9 @@ marketRoutes.post(
 
       return c.json({ taskId, paymentTxId, completedAt: timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Payment or HCS submission failed";
-      logger.error("Marketplace task completion failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace task completion failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1072,9 +1074,9 @@ marketRoutes.post(
 
       return c.json({ taskId, paymentTxId, completedAt: timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Convenience completion failed";
-      logger.error("Complete-with-key failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Complete-with-key failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1206,9 +1208,9 @@ marketRoutes.post(
 
       return c.json({ txId, taskId, timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Signed task posting failed";
-      logger.error("Signed task posting failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Signed task posting failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1296,9 +1298,9 @@ marketRoutes.post(
 
       return c.json({ taskId, cancelledAt: timestamp, hbarReturned: task.scheduleId ? task.priceHbar : 0 }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Cancel failed";
-      logger.error("Marketplace task cancel failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace task cancel failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1413,9 +1415,9 @@ marketRoutes.post(
 
       return c.json({ taskId, newScheduleId, newPriceHbar, hcsTxId }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Reward increase failed";
-      logger.error("Marketplace reward increase failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace reward increase failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1498,9 +1500,9 @@ marketRoutes.post(
         report: outcome.result?.report ?? null,
       }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Verification failed";
-      logger.error("Marketplace verification failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace verification failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );

@@ -143,6 +143,28 @@ function verifyL402Auth(
   }
 }
 
+export type L402Mode = "disabled" | "test" | "production";
+
+/**
+ * SLICE-83-4: Resolve L402 mode from config + env.
+ *
+ * - "disabled" when no LND vars and no explicit testMode (default-deny, no gate)
+ * - "test" when L402_TEST_MODE=true or config.testMode=true
+ * - "production" when LND URL + macaroon are configured
+ */
+export function resolveL402Mode(config: L402Config): L402Mode {
+  if (config.testMode === true) return "test";
+  if (process.env.L402_TEST_MODE === "true") return "test";
+
+  const hasLndConfig =
+    !!config.lndUrl ||
+    (!!process.env.L402_LND_URL && !!process.env.L402_LND_MACAROON);
+
+  if (hasLndConfig) return "production";
+
+  return "disabled";
+}
+
 /**
  * L402 Lightning payment middleware.
  *
@@ -150,17 +172,29 @@ function verifyL402Auth(
  * is present, returns 402 with WWW-Authenticate: L402 challenge containing
  * a macaroon and Lightning invoice.
  *
+ * SLICE-83-4: When mode is "disabled" (no LND config, no test flag),
+ * the middleware passes through without gating — default-deny posture.
+ *
  * If a valid L402 Authorization header is present, passes through to the
  * next handler (payment verified).
  */
 export function l402PaymentMiddleware(config: L402Config): MiddlewareHandler {
+  const mode = resolveL402Mode(config);
+
+  if (mode === "disabled") {
+    console.warn(
+      "[L402] Middleware is DISABLED — no LND config and L402_TEST_MODE is not 'true'. Endpoint is not gated.",
+    );
+    return async (_c, next) => {
+      await next();
+    };
+  }
+
   const rootKey =
     config.rootKey ??
     process.env.L402_ROOT_KEY ??
     randomBytes(32).toString("hex");
-  const testMode =
-    config.testMode ??
-    (process.env.L402_TEST_MODE === "true" || !config.lndUrl);
+  const testMode = mode === "test";
 
   // Store issued macaroons for verification (in production, use a proper store)
   const issuedMacaroons = new Map<string, string>();

@@ -150,7 +150,6 @@ app.use(
     rootKey: process.env.L402_ROOT_KEY,
     lndUrl: process.env.L402_LND_URL,
     lndMacaroon: process.env.L402_LND_MACAROON,
-    testMode: process.env.L402_TEST_MODE !== "false",
   }),
 );
 app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));

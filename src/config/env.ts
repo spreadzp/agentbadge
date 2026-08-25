@@ -65,6 +65,18 @@ function booleanFlag(name: string): boolean {
   return process.env[name] === "true";
 }
 
+let cachedConfig: AppConfig | null = null;
+
+export function getConfig(): AppConfig {
+  if (cachedConfig) return cachedConfig;
+  cachedConfig = loadConfig();
+  return cachedConfig;
+}
+
+export function resetConfigCache(): void {
+  cachedConfig = null;
+}
+
 export function loadConfig(): AppConfig {
   const errors: string[] = [];
 
