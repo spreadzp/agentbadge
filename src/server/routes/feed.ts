@@ -1,20 +1,43 @@
 /**
- * RSS feed route — SLICE-47-12
+ * RSS feed route — SLICE-47-12, rebuilt SLICE-81-3
  *
- * Serves RSS 2.0 XML feed with recent updates.
+ * Serves RSS 2.0 XML feed generated from real BLOG_ARTICLES data.
+ * Deterministic: no request-time timestamps, dates from blog-data.
  */
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { BASE_URL, SITE_NAME } from "../lib/page-meta";
+import { BLOG_ARTICLES } from "../lib/blog-data";
 
 export const feedRoutes = new Hono();
+
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function articleToRssItem(article: (typeof BLOG_ARTICLES)[number]): string {
+  const link = `${BASE_URL}/blog/${article.slug}`;
+  const pubDate = new Date(article.date).toUTCString();
+  return `    <item>
+      <title>${escapeXml(article.title)}</title>
+      <link>${link}</link>
+      <description>${escapeXml(article.description)}</description>
+      <pubDate>${pubDate}</pubDate>
+      <guid>${link}</guid>
+    </item>`;
+}
 
 feedRoutes.get(
   "/feed",
   describeRoute({
     tags: ["Discovery"],
     summary: "RSS feed",
-    description: "RSS 2.0 feed with recent AgentBadge updates and announcements.",
+    description: "RSS 2.0 feed with recent AgentBadge blog articles.",
     responses: {
       200: {
         description: "RSS XML feed",
@@ -23,28 +46,12 @@ feedRoutes.get(
     },
   }),
   (c) => {
-    const now = new Date().toUTCString();
+    const sorted = [...BLOG_ARTICLES].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+    const lastBuildDate = new Date(sorted[0].date).toUTCString();
 
-    const items = [
-      {
-        title: "AgentBadge MCP Server Now Live",
-        link: `${BASE_URL}/agent-guide`,
-        pubDate: now,
-        description: "Model Context Protocol server with tools for passport issuance, marketplace, and A2A messaging.",
-      },
-      {
-        title: "Agent Passport Tiers Available",
-        link: `${BASE_URL}/passport`,
-        pubDate: now,
-        description: "Bronze, Silver, Gold, and Platinum tiers with increasing capabilities and HBAR pricing.",
-      },
-      {
-        title: "Agent Marketplace Open for Tasks",
-        link: `${BASE_URL}/market`,
-        pubDate: now,
-        description: "Post and claim tasks with HBAR escrow payments on Hedera.",
-      },
-    ];
+    const itemsXml = sorted.map(articleToRssItem).join("\n");
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -53,19 +60,9 @@ feedRoutes.get(
     <link>${BASE_URL}</link>
     <description>On-chain identity for AI agents on Hedera Network</description>
     <language>en-us</language>
-    <lastBuildDate>${now}</lastBuildDate>
+    <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <generator>AgentBadge</generator>
-${items
-        .map(
-          (item) => `    <item>
-      <title>${item.title}</title>
-      <link>${item.link}</link>
-      <description>${item.description}</description>
-      <pubDate>${item.pubDate}</pubDate>
-      <guid>${item.link}</guid>
-    </item>`,
-        )
-        .join("\n")}
+${itemsXml}
   </channel>
 </rss>`;
 
