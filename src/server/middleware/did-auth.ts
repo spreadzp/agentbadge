@@ -15,7 +15,7 @@
  * bound to the claimed DID.
  */
 
-import type { MiddlewareHandler } from "hono";
+import type { MiddlewareHandler, Context } from "hono";
 import { createHash, randomBytes } from "node:crypto";
 import { didToAccountId } from "@agentgate-hedera/hedera-core";
 import { ErrorCodes } from "../lib/error-codes";
@@ -83,6 +83,20 @@ export type VerifySignatureFn = (
   accountId: string,
 ) => Promise<boolean>;
 
+// ─── Test Overrides ──────────────────────────────────────────────
+
+let _overrideVerifier: VerifySignatureFn | null = null;
+let _overrideNonceStore: NonceStore | null = null;
+const _defaultNonceStore = new NonceStore();
+
+export function configureDidAuthForTesting(config: {
+  verifier?: VerifySignatureFn | null;
+  nonceStore?: NonceStore | null;
+}) {
+  _overrideVerifier = config.verifier ?? null;
+  _overrideNonceStore = config.nonceStore ?? null;
+}
+
 // ─── Middleware ──────────────────────────────────────────────────
 
 export interface RequireDidSignatureOptions {
@@ -97,9 +111,7 @@ const ACTOR_FIELDS = ["posterDid", "claimerDid", "from"] as const;
 export function requireDidSignature(
   opts: RequireDidSignatureOptions = {},
 ): MiddlewareHandler {
-  const nonceStore = opts.nonceStore ?? new NonceStore();
   const maxSkew = opts.maxSkewSeconds ?? 300;
-  const verifySig = opts.verifySignature ?? defaultVerifySignature;
 
   return async (c, next) => {
     // Skip non-mutation methods
@@ -107,6 +119,16 @@ export function requireDidSignature(
       await next();
       return;
     }
+
+    // Skip -with-key convenience endpoints (reserved for EPIC-83)
+    if (c.req.path.includes("-with-key")) {
+      await next();
+      return;
+    }
+
+    // Resolve nonce store and verifier per-request (allows test overrides)
+    const nonceStore = opts.nonceStore ?? _overrideNonceStore ?? _defaultNonceStore;
+    const verifySig = opts.verifySignature ?? _overrideVerifier ?? defaultVerifySignature;
 
     const sig = c.req.header("X-AgentBadge-Signature");
     const tsStr = c.req.header("X-AgentBadge-Timestamp");
@@ -202,6 +224,19 @@ export function requireDidSignature(
   };
 }
 
+// ─── Actor Assertion Helper ──────────────────────────────────────
+
+export function assertSameActor(c: Context, actorDid: string | undefined): Response | null {
+  const verifiedDid = c.get("verifiedDid") as string | undefined;
+  if (!verifiedDid) {
+    return errorResponse(c, 401, ErrorCodes.MISSING_FIELDS, "No verified DID found in context");
+  }
+  if (actorDid !== verifiedDid) {
+    return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, `Actor DID does not match verified DID`);
+  }
+  return null;
+}
+
 // ─── Challenge Endpoint ──────────────────────────────────────────
 
 export interface ChallengeHandlerOptions {
@@ -256,20 +291,70 @@ export function challengeHandler(opts: ChallengeHandlerOptions = {}): Middleware
  * the signature. Supports both ECDSA (via ethers) and ED25519 (via Hedera SDK).
  *
  * In production, this makes a Mirror Node API call to:
- *   GET https://testnet.mirrornode.hedera.com/api/v1/accounts/{accountId}
+ *   GET {mirrorBase}/api/v1/accounts/{accountId}
+ *
+ * The signature is expected to be a hex-encoded Ed25519 or ECDSA signature
+ * over the raw challenge bytes (NOT EIP-191 prefixed).
  */
 async function defaultVerifySignature(
-  _challenge: string,
-  _signature: string,
-  _accountId: string,
+  challenge: string,
+  signature: string,
+  accountId: string,
 ): Promise<boolean> {
-  // TODO: implement Mirror Node key fetch + verification
-  // For now, this is a stub that will be replaced with real verification.
-  // SLICE-82-1 Green Phase focuses on the middleware plumbing;
-  // the actual key verification will use the same patterns as
-  // verifyWalletOwnership from passport package.
-  void _challenge;
-  void _signature;
-  void _accountId;
-  throw new Error("defaultVerifySignature not yet implemented — provide verifySignature option");
+  const mirrorBase = process.env.HEDERA_NETWORK === "mainnet"
+    ? "https://mainnet.mirrornode.hedera.com"
+    : "https://testnet.mirrornode.hedera.com";
+
+  try {
+    const resp = await fetch(`${mirrorBase}/api/v1/accounts/${accountId}`);
+    if (!resp.ok) return false;
+
+    const data = await resp.json() as {
+      keys?: Array<{ _type: string; key: string }>;
+      key?: { _type: string; key: string };
+    };
+
+    // Mirror Node returns either a single key or an array of keys
+    const keys = data.keys ?? (data.key ? [data.key] : []);
+    if (keys.length === 0) return false;
+
+    const challengeBytes = new TextEncoder().encode(challenge);
+    const sigHex = signature.startsWith("0x") ? signature.slice(2) : signature;
+    const sigBytes = Buffer.from(sigHex, "hex");
+
+    for (const keyInfo of keys) {
+      const keyType = keyInfo._type;
+      const pubKeyHex = keyInfo.key;
+
+      try {
+        if (keyType === "ED25519") {
+          // Use @hashgraph/sdk for ED25519 verification
+          const { PublicKey } = await import("@hashgraph/sdk");
+          const pubKey = PublicKey.fromString(`302a300506032b6570032100${pubKeyHex}`);
+          const verified = pubKey.verify(sigBytes, challengeBytes);
+          if (verified) return true;
+        } else if (keyType === "ECDSA_secp256k1") {
+          // Use ethers for ECDSA verification (EIP-191 personal Sign)
+          const { ethers } = await import("ethers");
+          // ethers expects 0x-prefixed signature and recovers address
+          const sig = `0x${sigHex}`;
+          const recovered = ethers.verifyMessage(
+            new TextEncoder().encode(challenge),
+            ethers.Signature.from(sig),
+          );
+          // Recover the address from the public key
+          const pubKey = `0x${pubKeyHex}`;
+          const expectedAddr = ethers.computeAddress(pubKey);
+          if (recovered.toLowerCase() === expectedAddr.toLowerCase()) return true;
+        }
+      } catch {
+        // Key type mismatch or verification error — try next key
+        continue;
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
 }

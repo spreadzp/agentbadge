@@ -20,13 +20,17 @@ import {
   prepareA2ATopicMessage,
   signTransactionBytes,
   submitSignedTopicMessage,
-  didToAccountId,
 } from "@agentgate-hedera/hedera-core";
 import { a2aUpsert as upsert, getMessagesByTo, getConversation, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 
 export const a2aRoutes = new Hono();
+
+// Apply DID signature verification to mutation POST routes (except -with-key endpoints, EPIC-83)
+// Middleware self-skips GET/HEAD and -with-key paths
+a2aRoutes.use("/a2a/*", requireDidSignature());
 
 a2aRoutes.use("/a2a/*", async (c, next) => {
   await next();
@@ -47,7 +51,8 @@ a2aRoutes.post(
     responses: {
       200: { description: "Message sent successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Sender or recipient passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match sender, or sender/recipient passport not found or revoked" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -74,6 +79,10 @@ a2aRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid DID format");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, from);
+    if (actorMismatch) return actorMismatch;
+
     const fullMessage = JSON.stringify({
       type: "a2a_message",
       from,
@@ -90,11 +99,6 @@ a2aRoutes.post(
         ErrorCodes.INVALID_JSON,
         `Message body exceeds ${MAX_BODY_BYTES} bytes after JSON encoding`,
       );
-    }
-
-    const senderValid = await verifyA2ADid(from);
-    if (!senderValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Sender passport not found or revoked");
     }
 
     const recipientValid = await verifyA2ADid(to);
@@ -242,7 +246,8 @@ a2aRoutes.post(
     responses: {
       200: { description: "Message sent successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Sender or recipient passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match sender, or sender/recipient passport not found or revoked" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -274,10 +279,9 @@ a2aRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid DID format");
     }
 
-    const senderValid = await verifyA2ADid(from);
-    if (!senderValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Sender passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, from);
+    if (actorMismatch) return actorMismatch;
 
     const recipientValid = await verifyA2ADid(to);
     if (!recipientValid) {

@@ -19,8 +19,13 @@ import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { taskLinks } from "../lib/hateoas";
 import { runVerification } from "../../verifiers";
+import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 
 export const marketRoutes = new Hono();
+
+// Apply DID signature verification to all mutation POST routes (except -with-key endpoints, EPIC-83)
+// Middleware self-skips GET/HEAD and -with-key paths
+marketRoutes.use("/market/*", requireDidSignature());
 
 // ─── POST /market/tasks ──────────────────────────────────────────
 
@@ -34,7 +39,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task posted successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Poster passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or passport not found" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -71,10 +77,9 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a positive number");
     }
 
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
 
     try {
       const timestamp = Math.floor(Date.now() / 1000);
@@ -206,7 +211,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task claimed successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Claimer passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match claimerDid or passport not found" },
       404: { description: "Task not found" },
       409: { description: "Task is not in 'posted' status" },
       500: { description: "HCS submission failure" },
@@ -228,10 +234,9 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid claimerDid format");
     }
 
-    const claimerValid = await verifyA2ADid(claimerDid);
-    if (!claimerValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, claimerDid);
+    if (actorMismatch) return actorMismatch;
 
     const task = getTaskById(taskId);
     if (!task) {
@@ -308,7 +313,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task delivered successfully" },
       400: { description: "Invalid request body, missing results, or resultBody too large" },
-      403: { description: "Only the claimer can deliver" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match claimerDid or only claimer can deliver" },
       404: { description: "Task not found" },
       409: { description: "Task is not in 'claimed' status" },
       500: { description: "HCS submission failure" },
@@ -342,10 +348,9 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `resultBody too large (${Buffer.byteLength(resultBody, "utf8")} bytes, max 4096). Use IPFS for larger results.`);
     }
 
-    const claimerValid = await verifyA2ADid(claimerDid);
-    if (!claimerValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, claimerDid);
+    if (actorMismatch) return actorMismatch;
 
     const task = getTaskById(taskId);
     if (!task) {
@@ -625,7 +630,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Transaction prepared successfully" },
       400: { description: "Task not in delivered status or missing claimer" },
-      403: { description: "Caller is not the poster or passport revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Transaction preparation failure" },
     },
@@ -648,6 +654,10 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
+
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
 
@@ -657,11 +667,6 @@ marketRoutes.post(
 
     if (task.posterDid !== posterDid) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can prepare payment");
-    }
-
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
     }
 
     if (task.status !== "delivered") {
@@ -717,7 +722,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task completed successfully" },
       400: { description: "Task not in delivered status, missing claimer, or missing payment fields" },
-      403: { description: "Caller is not the poster or passport revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Payment or HCS submission failure" },
     },
@@ -746,6 +752,10 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
+
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
 
@@ -755,11 +765,6 @@ marketRoutes.post(
 
     if (task.posterDid !== posterDid) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can complete this task");
-    }
-
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
     }
 
     if (task.status !== "delivered") {
@@ -877,6 +882,7 @@ marketRoutes.post(
     responses: {
       200: { description: "Signature and public key returned" },
       400: { description: "Missing or invalid txBytes / privateKey" },
+      401: { description: "Missing or invalid DID signature headers" },
     },
   }),
   async (c) => {
@@ -1055,7 +1061,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task posted with agent-signed HCS transaction" },
       400: { description: "Missing required fields or invalid input" },
-      403: { description: "Poster passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or poster passport not found" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -1108,10 +1115,9 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a positive number");
     }
 
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
 
     try {
       const fromAccountId = await didToAccountId(posterDid);
@@ -1190,7 +1196,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task cancelled successfully" },
       400: { description: "Task cannot be cancelled from current status" },
-      403: { description: "Caller is not the poster" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Escrow cancellation or HCS submission failed" },
     },
@@ -1212,6 +1219,10 @@ marketRoutes.post(
     if (!isValidA2ADid(posterDid)) {
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
     }
+
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
 
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
@@ -1274,7 +1285,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Reward increased successfully" },
       400: { description: "Invalid new price or task status" },
-      403: { description: "Caller is not the poster" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Escrow recreation or HCS submission failed" },
     },
@@ -1303,6 +1315,10 @@ marketRoutes.post(
     if (typeof newPriceHbar !== "number" || newPriceHbar <= 0) {
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing or invalid field: newPriceHbar");
     }
+
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
 
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
