@@ -162,7 +162,7 @@ uiRoutes.get("/dashboard", async (c) => {
   }
 
   const pageHtml = Dashboard(ssrData);
-  return c.html(pageHtml);
+  return c.html(pageHtml, 200, { "X-Robots-Tag": "noindex" });
 });
 // Dashboard page uses PageMeta["/dashboard"] title — "Dashboard — AgentBadge"
 

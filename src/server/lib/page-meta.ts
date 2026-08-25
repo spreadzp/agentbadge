@@ -227,7 +227,6 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/services/marketplace", changefreq: "weekly", priority: "0.9" },
   { path: "/passport", changefreq: "weekly", priority: "0.8" },
   { path: "/datahub", changefreq: "weekly", priority: "0.8" },
-  { path: "/dashboard", changefreq: "daily", priority: "0.9" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/agent-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/market-guide", changefreq: "weekly", priority: "0.8" },
