@@ -64,6 +64,7 @@ export async function seedMedicalTasks(
   marketplaceUrl: string,
   priceHbar: number,
 ): Promise<SeedResult[]> {
+  const { signedFetch } = await import("../../scripts/lib/did-sign");
   const results: SeedResult[] = [];
 
   for (const dataset of DATASETS) {
@@ -79,10 +80,12 @@ export async function seedMedicalTasks(
       capabilities: ["medical-analysis"],
     };
 
-    const res = await fetch(`${marketplaceUrl}/market/tasks`, {
+    const bodyStr = JSON.stringify(body);
+    const res = await signedFetch(`${marketplaceUrl}/market/tasks`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: bodyStr,
+      did: posterDid,
+      privateKey: posterPrivateKey,
     });
 
     if (!res.ok) {

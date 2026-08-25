@@ -108,6 +108,14 @@ export interface RequireDidSignatureOptions {
 /** Known actor field names in mutation bodies */
 const ACTOR_FIELDS = ["posterDid", "claimerDid", "from"] as const;
 
+export type DidAuthMode = "off" | "warn" | "enforce";
+
+export function getDidAuthMode(): DidAuthMode {
+  const mode = process.env.DID_AUTH_MODE ?? "enforce";
+  if (mode === "off" || mode === "warn" || mode === "enforce") return mode;
+  return "enforce";
+}
+
 export function requireDidSignature(
   opts: RequireDidSignatureOptions = {},
 ): MiddlewareHandler {
@@ -126,6 +134,14 @@ export function requireDidSignature(
       return;
     }
 
+    const mode = getDidAuthMode();
+
+    // Mode: off — passthrough, no verification
+    if (mode === "off") {
+      await next();
+      return;
+    }
+
     // Resolve nonce store and verifier per-request (allows test overrides)
     const nonceStore = opts.nonceStore ?? _overrideNonceStore ?? _defaultNonceStore;
     const verifySig = opts.verifySignature ?? _overrideVerifier ?? defaultVerifySignature;
@@ -134,6 +150,16 @@ export function requireDidSignature(
     const tsStr = c.req.header("X-AgentBadge-Timestamp");
     const nonce = c.req.header("X-AgentBadge-Nonce");
     const did = c.req.header("X-AgentBadge-Did");
+
+    // Mode: warn — allow unsigned through with warning header
+    if (mode === "warn" && (!sig || !tsStr || !nonce || !did)) {
+      const warnDate = new Date();
+      warnDate.setDate(warnDate.getDate() + 14);
+      c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
+      console.warn(`[DID-AUTH-WARN] unsigned mutation: ${c.req.method} ${c.req.path}`);
+      await next();
+      return;
+    }
 
     if (!sig || !tsStr || !nonce || !did) {
       return errorResponse(
@@ -149,11 +175,27 @@ export function requireDidSignature(
     }
     const now = Math.floor(Date.now() / 1000);
     if (Math.abs(now - ts) > maxSkew) {
+      if (mode === "warn") {
+        const warnDate = new Date();
+        warnDate.setDate(warnDate.getDate() + 14);
+        c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
+        console.warn(`[DID-AUTH-WARN] timestamp skew: ${c.req.method} ${c.req.path}`);
+        await next();
+        return;
+      }
       return errorResponse(c, 401, ErrorCodes.INVALID_INPUT, "Timestamp outside allowed skew window");
     }
 
     // Nonce single-use
     if (!nonceStore.consume(nonce)) {
+      if (mode === "warn") {
+        const warnDate = new Date();
+        warnDate.setDate(warnDate.getDate() + 14);
+        c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
+        console.warn(`[DID-AUTH-WARN] invalid nonce: ${c.req.method} ${c.req.path}`);
+        await next();
+        return;
+      }
       return errorResponse(c, 401, ErrorCodes.INVALID_INPUT, "Nonce already used or invalid");
     }
 
@@ -178,12 +220,44 @@ export function requireDidSignature(
     // Resolve DID → accountId
     const accountId = await didToAccountId(did);
     if (!accountId) {
+      if (mode === "warn") {
+        const warnDate = new Date();
+        warnDate.setDate(warnDate.getDate() + 14);
+        c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
+        console.warn(`[DID-AUTH-WARN] DID not resolved: ${c.req.method} ${c.req.path} did=${did}`);
+        // Re-inject body for downstream handlers
+        (c.req as unknown as { rawBody: string }).rawBody = rawBody;
+        c.req.json = (async () => (rawBody ? JSON.parse(rawBody) : {})) as typeof c.req.json;
+        c.req.text = (async () => rawBody) as typeof c.req.text;
+        c.req.arrayBuffer = (async () => {
+          const enc = new TextEncoder();
+          return enc.encode(rawBody).buffer as ArrayBuffer;
+        }) as typeof c.req.arrayBuffer;
+        await next();
+        return;
+      }
       return errorResponse(c, 401, ErrorCodes.PASSPORT_NOT_FOUND, "DID does not resolve to an account");
     }
 
     // Verify signature
     const valid = await verifySig(challenge, sig, accountId);
     if (!valid) {
+      if (mode === "warn") {
+        const warnDate = new Date();
+        warnDate.setDate(warnDate.getDate() + 14);
+        c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
+        console.warn(`[DID-AUTH-WARN] signature invalid: ${c.req.method} ${c.req.path} did=${did}`);
+        // Re-inject body for downstream handlers
+        (c.req as unknown as { rawBody: string }).rawBody = rawBody;
+        c.req.json = (async () => (rawBody ? JSON.parse(rawBody) : {})) as typeof c.req.json;
+        c.req.text = (async () => rawBody) as typeof c.req.text;
+        c.req.arrayBuffer = (async () => {
+          const enc = new TextEncoder();
+          return enc.encode(rawBody).buffer as ArrayBuffer;
+        }) as typeof c.req.arrayBuffer;
+        await next();
+        return;
+      }
       return errorResponse(c, 401, ErrorCodes.INVALID_INPUT, "Signature verification failed");
     }
 

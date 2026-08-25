@@ -40,6 +40,8 @@ const UPGRADE_TIER: "bronze" | "silver" | "gold" | "platinum" =
   TIER === "bronze" ? "silver" : TIER === "silver" ? "gold" : "platinum";
 const ADMIN_KEY = process.env.ADMIN_API_KEY ?? "test-admin-key";
 
+let creds!: { accountId: string; privateKey: string; evmAddress: string };
+
 // ─── Load agent credentials ───────────────────────────
 
 function loadAgentCredentials(): { accountId: string; privateKey: string; evmAddress: string } {
@@ -116,9 +118,23 @@ async function httpPost(
   body: Record<string, unknown>,
   headers?: Record<string, string>,
 ): Promise<Record<string, unknown>> {
+  // Sign mutation requests to /market/* and /a2a/* with DID auth
+  const isMutation = path.startsWith("/market/") || path.startsWith("/a2a/");
+  let authHeaders: Record<string, string> = {};
+  if (isMutation && !path.includes("-with-key")) {
+    const { signDidAuth } = await import("./lib/did-sign");
+    const bodyStr = JSON.stringify(body);
+    authHeaders = signDidAuth({
+      did: body.did as string ?? body.posterDid as string ?? body.from as string ?? "",
+      method: "POST",
+      path,
+      body: bodyStr,
+      privateKey: creds.privateKey,
+    });
+  }
   const res = await fetch(`${SERVER_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json", ...authHeaders, ...headers },
     body: JSON.stringify(body),
   });
   return (await res.json()) as Record<string, unknown>;
@@ -127,7 +143,7 @@ async function httpPost(
 // ─── Main ──────────────────────────────────────────────
 
 async function main() {
-  const creds = loadAgentCredentials();
+  creds = loadAgentCredentials();
   const wallet = new ethers.Wallet(creds.privateKey);
 
   console.log("\n  ═══════════════════════════════════════════");
