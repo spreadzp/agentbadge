@@ -37,7 +37,7 @@
     "medical-agent:task": "bun src/agents/cli.ts --task-id"
   },
   "dependencies": {
-    "@agentgate-hedera/hedera-core": "^0.1.10",
+    "@agentgate-hedera/hedera-core": "^0.1.11",
     "@agentgate-hedera/mcp": "^0.1.9",
     "@agentgate-hedera/passport": "^0.1.7",
     "@hashgraph/sdk": "^2.55.0",
