@@ -11,6 +11,7 @@
 
 import * as Sentry from "@sentry/node";
 import { logger } from "@agentgate-hedera/passport";
+import { redactSecrets } from "./redact";
 
 let enabled = false;
 
@@ -32,6 +33,18 @@ export function initSentry(): boolean {
     environment,
     tracesSampleRate: 0.1,
     profilesSampleRate: 0.1,
+    beforeSend(event) {
+      if (event.request?.data) {
+        event.request.data = redactSecrets(event.request.data as Record<string, unknown>);
+      }
+      if (event.contexts) {
+        event.contexts = redactSecrets(event.contexts as Record<string, unknown>) as typeof event.contexts;
+      }
+      if (event.extra) {
+        event.extra = redactSecrets(event.extra as Record<string, unknown>);
+      }
+      return event;
+    },
   });
 
   enabled = true;

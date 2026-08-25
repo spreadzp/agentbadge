@@ -25,8 +25,12 @@ import { a2aUpsert as upsert, getMessagesByTo, getConversation, validatePaginati
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
+import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 
 export const a2aRoutes = new Hono();
+
+// EPIC-83 SLICE-83-2: Gate key-accepting endpoints (410 Gone unless ALLOW_KEY_ENDPOINTS=true)
+a2aRoutes.use("/a2a/*", keyEndpointGate());
 
 // Apply DID signature verification to mutation POST routes (except -with-key endpoints, EPIC-83)
 // Middleware self-skips GET/HEAD and -with-key paths

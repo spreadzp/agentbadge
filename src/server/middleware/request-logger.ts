@@ -11,6 +11,7 @@ import type { Context, Next } from "hono";
 import { randomUUID } from "node:crypto";
 import { logger } from "@agentgate-hedera/passport";
 import { httpRequestTotal, httpDurationMs } from "../metrics/metrics";
+import { redactSecrets } from "../lib/redact";
 
 const SENSITIVE_HEADERS = ["authorization", "x-payment", "cookie", "x-api-key"];
 
@@ -45,14 +46,14 @@ export function requestLoggerMiddleware() {
       headers[key] = value;
     });
 
-    const context = {
+    const context = redactSecrets({
       requestId,
       method,
       path,
       status,
       durationMs,
       headers: redactHeaders(headers),
-    };
+    });
 
     if (status >= 400) {
       logger.warn("request", context);

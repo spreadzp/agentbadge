@@ -20,6 +20,7 @@ import { errorResponse } from "../lib/error-response";
 import { taskLinks } from "../lib/hateoas";
 import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
+import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 
 export const marketRoutes = new Hono();
 
@@ -28,6 +29,9 @@ function parseSignatureB64(signatureB64: string): Uint8Array[] {
   const sigB64Array = JSON.parse(signatureB64) as string[];
   return sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
 }
+
+// EPIC-83 SLICE-83-2: Gate key-accepting endpoints (410 Gone unless ALLOW_KEY_ENDPOINTS=true)
+marketRoutes.use("/market/*", keyEndpointGate());
 
 // Apply DID signature verification to all mutation POST routes (except -with-key endpoints, EPIC-83)
 // Middleware self-skips GET/HEAD and -with-key paths
