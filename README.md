@@ -1244,6 +1244,13 @@ EPICs 87–91 are planned for Whitechain Builders Program grant implementation �
 
 Full EPIC documents: [`docs/EPICS/`](../../docs/EPICS/)
 
+## Contact
+
+- **Support:** [support@agentbadge.xyz](mailto:support@agentbadge.xyz)
+- **General:** [hello@agentbadge.xyz](mailto:hello@agentbadge.xyz)
+- **Security:** See [security.txt](https://agentbadge.xyz/.well-known/security.txt)
+- **Feedback form:** [agentbadge.xyz/contact](https://agentbadge.xyz/contact) — Discord, Telegram, or Email
+
 ## License
 
 Apache 2.0 — See [LICENSE](./LICENSE) for full text.

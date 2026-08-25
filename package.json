@@ -2,6 +2,10 @@
   "name": "agentgate",
   "version": "0.1.0",
   "license": "Apache-2.0",
+  "author": "AgentBadge <support@agentbadge.xyz>",
+  "bugs": {
+    "email": "support@agentbadge.xyz"
+  },
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/server/index.ts",

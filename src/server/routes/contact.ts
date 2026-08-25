@@ -3,6 +3,7 @@ import { contactPage, contactSuccessFragment, contactErrorFragment } from "../..
 import {
   sendDiscordMessage,
   sendTelegramMessage,
+  sendEmailMessage,
 } from "../services/contact.service";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
@@ -84,8 +85,8 @@ contactRoutes.post("/contact", async (c) => {
     fileContent = parsed.fileContent;
   }
 
-  if (!channel || !["discord", "telegram"].includes(channel)) {
-    const msg = "Channel must be 'discord' or 'telegram'";
+  if (!channel || !["discord", "telegram", "email"].includes(channel)) {
+    const msg = "Channel must be 'discord', 'telegram', or 'email'";
     return htmx
       ? c.html(contactErrorFragment(msg), 400)
       : errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, msg);
@@ -126,8 +127,10 @@ contactRoutes.post("/contact", async (c) => {
   try {
     if (channel === "discord") {
       await sendDiscordMessage({ message, contactInfo, fileName, fileContent });
-    } else {
+    } else if (channel === "telegram") {
       await sendTelegramMessage({ message, contactInfo });
+    } else {
+      await sendEmailMessage({ message, contactInfo });
     }
     return htmx
       ? c.html(contactSuccessFragment(channel), 200)

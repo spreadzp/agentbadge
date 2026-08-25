@@ -142,7 +142,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/contact": {
     title: "Contact",
     description:
-      "Contact the AgentBadge team via Discord or Telegram. Questions about on-chain AI agent identity on Hedera.",
+      "Contact the AgentBadge team via Discord, Telegram, or Email. Questions about on-chain AI agent identity on Hedera.",
     path: "/contact",
   },
   "/agent-guide": {
