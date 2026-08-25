@@ -59,6 +59,7 @@ import { agentGuideRoutes } from "./routes/agent-guide";
 import { agentKnowledgeRoutes } from "./routes/agent-knowledge";
 import { teamRoutes } from "./routes/agent-guide/team";
 import { a2aRoutes } from "./routes/a2a";
+import { linkedinRoutes } from "./routes/linkedin";
 import { marketRoutes } from "./routes/market";
 import { searchRoutes } from "./routes/search";
 import { marketGuideRoutes } from "./routes/market-guide";
@@ -227,61 +228,7 @@ if (mppSecretKey || mppRecipient) {
   );
 }
 
-// LinkedIn OAuth callback — exchange auth code for access token
-app.get("/linkedin/callback", async (c) => {
-  const authCode = c.req.query("code");
-  const error = c.req.query("error");
-
-  if (error) {
-    return c.json({ ok: false, error: `LinkedIn OAuth error: ${error}` }, 400);
-  }
-
-  if (!authCode) {
-    return c.json({ ok: false, error: "Missing 'code' query parameter" }, 400);
-  }
-
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
-  const redirectUri = process.env.LINKEDIN_REDIRECT_URI ?? `http://localhost:${port}/linkedin/callback`;
-
-  if (!clientId || !clientSecret) {
-    return c.json({ ok: false, error: "LINKEDIN_CLIENT_ID or LINKEDIN_CLIENT_SECRET not set in .env" }, 500);
-  }
-
-  try {
-    const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code: authCode,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-      }),
-    });
-
-    const tokenData = await tokenRes.json() as Record<string, unknown>;
-
-    if (!tokenRes.ok) {
-      console.error("[LinkedIn OAuth] Token exchange failed:", tokenData);
-      return c.json({ ok: false, error: "Token exchange failed", details: tokenData }, 502);
-    }
-
-    const accessToken = tokenData.access_token as string;
-    console.log("[LinkedIn OAuth] Access token obtained:", accessToken);
-
-    return c.json({
-      ok: true,
-      access_token: accessToken,
-      expires_in: tokenData.expires_in,
-      message: "Authorization successful! You can close this tab.",
-    });
-  } catch (e) {
-    console.error("[LinkedIn OAuth] Error:", e);
-    return c.json({ ok: false, error: String(e) }, 500);
-  }
-});
+app.route("/", linkedinRoutes);
 
 app.get("/health", (c) => {
   const tools = listTools();
