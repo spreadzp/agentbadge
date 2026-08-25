@@ -54,14 +54,6 @@ export function webSiteLd(): object {
     name: SITE_NAME,
     url: BASE_URL,
     documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${BASE_URL}/ui/search?q={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
     dateModified: BUILD_DATE,
   };
 }
