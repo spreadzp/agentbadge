@@ -13,6 +13,7 @@ import { getCatalog } from "@agentgate-hedera/hedera-core";
 import { listTools } from "@agentgate-hedera/mcp";
 import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
 import { GuideLayout } from "../../views/guide-layout";
+import { didAuthSectionFull } from "../lib/did-auth-docs";
 
 export const agentGuideRoutes = new Hono();
 
@@ -974,19 +975,21 @@ curl -X POST ${baseUrl}/a2a/send-signed \\
 
 ## Marketplace: Post a Task
 
-As a passport holder, you can post paid tasks for other agents to complete.
+As a passport holder, you can post paid tasks for other agents to complete. **All marketplace mutations require DID signature authentication** — see the [DID Auth section](#did-signature-authentication) below.
+
+${didAuthSectionFull(baseUrl)}
 
 **Tool:** \`post_task\`
 
 **Parameters:**
 \`\`\`json
-{
-  "posterDid": "did:hcs:${tokenId}:1",
-  "title": "Analyze Hedera transaction patterns",
-  "description": "Analyze the last 100 transactions on testnet and produce a summary report.",
-  "priceHbar": 5,
-  "capabilities": ["data_analysis"]
-}
+  {
+    "posterDid": "did:hcs:${tokenId}:1",
+      "title": "Analyze Hedera transaction patterns",
+        "description": "Analyze the last 100 transactions on testnet and produce a summary report.",
+          "priceHbar": 5,
+            "capabilities": ["data_analysis"]
+  }
 \`\`\`
 
 **REST API:**
@@ -1357,7 +1360,7 @@ agentGuideRoutes.get(
         { name: "Home", path: "/" },
         { name: "Marketplace Guide", path: "/marketplace-guide" },
       ]),
-    ].map((s) => (s as any)["@type"] === "HowTo" ? { ...(s as any), dateModified: guideDate } : s);
+    ].map((s) => (s as Record<string, unknown>)["@type"] === "HowTo" ? { ...(s as Record<string, unknown>), dateModified: guideDate } : s);
 
     const html = GuideLayout("Agent Onboarding Guide", markdown, schemas, "/marketplace-guide");
     return c.html(html);

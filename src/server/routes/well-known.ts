@@ -18,6 +18,7 @@ import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
 import { BLOG_ARTICLES } from "../lib/blog-data";
 import { getNamespace } from "@agentgate-hedera/mcp";
+import { didAuthSectionCompact, agentCardAuthBlock } from "../lib/did-auth-docs";
 
 const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
 
@@ -119,6 +120,7 @@ export function buildAgentCard() {
       demand_request: `${baseUrl}/api/demand/request`,
       agents_txt: `${baseUrl}/agents.txt`,
     },
+    auth: agentCardAuthBlock(baseUrl),
     payment: {
       protocol: "x402",
       scheme: "exact",
@@ -153,7 +155,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const card = buildAgentCard();
     return c.json(card, 200, {
       "Cache-Control": "public, max-age=3600",
@@ -200,7 +202,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const descriptor = {
       name: "agentbadge",
@@ -267,7 +269,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     return c.json(
       {
@@ -609,7 +611,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const xml = buildAiSitemap();
     return new Response(xml, {
       headers: {
@@ -636,7 +638,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const body = `User-agent: *
 Allow: /
@@ -776,7 +778,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const xml = buildSitemap();
     return new Response(xml, {
       headers: {
@@ -790,7 +792,7 @@ wellKnownRoutes.get(
 
 // HEAD handler — Google sends HEAD before GET; Bun strips body for HEAD
 // and recalculates Content-Length to 0, which makes GSC think sitemap is empty.
-wellKnownRoutes.on("HEAD", "/sitemap.xml", (c) => {
+wellKnownRoutes.on("HEAD", "/sitemap.xml", () => {
   const xml = buildSitemap();
   return new Response(null, {
     headers: {
@@ -817,7 +819,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const body = `# ai.txt — AI Agent Usage Policy
 # https://agentbadge.xyz
 
@@ -862,7 +864,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const body = `---
 name: agentbadge-api
@@ -939,7 +941,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "https://facilitator-agentbadge.fly.dev";
     const payTo = process.env.x402_TREASURY ?? process.env.HEDERA_OPERATOR_ID ?? "0.0.5266613";
     const network = process.env.HEDERA_NETWORK ?? "testnet";
@@ -1003,7 +1005,7 @@ wellKnownRoutes.get(
       200: { description: "Agent policy text", content: { "text/plain": {} } },
     },
   }),
-  (c) => {
+  () => {
     const policy = `# AgentBadge — Agent Access Policy
 
 AI agents are welcome to access this site.
@@ -1015,6 +1017,14 @@ AI agents are welcome to access this site.
 - OpenAPI spec: /openapi.json
 - Sitemap: /ai-sitemap.xml
 - Respect robots.txt and crawl-delay directives
+
+## Authentication
+
+Read endpoints are free — no authentication required.
+
+Mutation endpoints (POST /market/*, POST /a2a/*) require a DID signature. Use the challenge endpoint at GET /auth/challenge to get a canonical challenge string, sign it with your Hedera account key, and send the signature in the X-AgentBadge-Signature header. See llms.txt for full details.
+
+${didAuthSectionCompact()}
 
 ## Agency Profile
 
@@ -1065,7 +1075,7 @@ wellKnownRoutes.get(
       200: { description: "WebMCP manifest", content: { "application/json": {} } },
     },
   }),
-  (c) => {
+  () => {
     const manifest = {
       name: "AgentBadge",
       version: "1.0.0",
@@ -1116,7 +1126,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const resource = c.req.query("resource") ?? `${baseUrl}/`;
 
@@ -1233,7 +1243,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const passportTokenId = process.env.PASSPORT_TOKEN_ID ?? "0.0.0";
 
@@ -1283,7 +1293,7 @@ wellKnownRoutes.get(
     summary: "Redirect to documentation",
     description: "302 redirect to the AgentBadge documentation on GitBook.",
   }),
-  (c) => {
+  () => {
     return c.redirect("https://agentbadge.gitbook.io/agentbadge-docs", 302);
   },
 );
@@ -1302,7 +1312,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     return c.json(
       {
@@ -1350,7 +1360,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     return c.json(
       {
@@ -1383,7 +1393,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const body = `# Auth.md — Agent Authentication
 
@@ -1445,7 +1455,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const skills = [
       {
@@ -1498,7 +1508,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     return c.json(
       {
         keys: [
