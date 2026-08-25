@@ -171,6 +171,17 @@ export interface CachedMarketTask {
     verificationAttempts?: number;
     verificationReport?: string;
 }
+export interface HFSUploadResult {
+    fileId: string;
+    txId: string;
+}
+export interface GlossaryTermConfig {
+    id: string;
+    name: string;
+    description: string;
+    category: "cardiovascular" | "endocrine" | "general" | "demographic";
+    relatedDatasets: string[];
+}
 export interface CreatePassportTokenParams {
     tokenName: string;
     tokenSymbol: string;

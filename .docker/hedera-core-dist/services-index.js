@@ -69,8 +69,17 @@ export async function createScheduledTransfer(fromAccountId, toAccountId, amount
 export async function signScheduledTransaction(scheduleId, signerPrivateKey) {
     return hedera().signScheduledTransaction(scheduleId, signerPrivateKey);
 }
+export async function signScheduledTransactionWithSignature(scheduleId, txBytesBase64, publicKeyStr, signatureBytes) {
+    return hedera().signScheduledTransactionWithSignature(scheduleId, txBytesBase64, publicKeyStr, signatureBytes);
+}
 export async function deleteScheduledTransaction(scheduleId) {
     return hedera().deleteScheduledTransaction(scheduleId);
+}
+export async function uploadFileToHFS(contents, fileMemo) {
+    return hedera().uploadFileToHFS(contents, fileMemo);
+}
+export async function downloadFileFromHFS(fileId) {
+    return hedera().downloadFileFromHFS(fileId);
 }
 export async function getScheduleInfo(scheduleId) {
     return mirror().getScheduleInfo(scheduleId);

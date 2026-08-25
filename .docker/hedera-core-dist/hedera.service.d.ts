@@ -1,5 +1,7 @@
-import type { A2AMessage, AuditMessage, DirectoryMessage, MintResult, TaskMessage } from "./types";
+import { PrivateKey } from "@hashgraph/sdk";
+import type { A2AMessage, AuditMessage, DirectoryMessage, HFSUploadResult, MintResult, TaskMessage } from "./types";
 export type { DirectoryMessage };
+export declare function normalizePrivateKey(keyStr: string): PrivateKey;
 export declare function mintPassportNFT(tokenId: string, ipfsUri: string): Promise<MintResult>;
 export declare function burnPassportNFT(tokenId: string, serial: number): Promise<void>;
 export declare function transferNFTToAgent(tokenId: string, serial: number, fromAccountId: string, toAccountId: string): Promise<void>;
@@ -38,7 +40,13 @@ export declare function signScheduledTransaction(scheduleId: string, signerPriva
     txId: string;
     executed: boolean;
 }>;
+export declare function signScheduledTransactionWithSignature(scheduleId: string, txBytesBase64: string, publicKeyStr: string, signatureBytes: Uint8Array | Uint8Array[]): Promise<{
+    txId: string;
+    executed: boolean;
+}>;
 export declare function deleteScheduledTransaction(scheduleId: string): Promise<{
     scheduleId: string;
     deleted: boolean;
 }>;
+export declare function uploadFileToHFS(contents: Buffer, fileMemo?: string): Promise<HFSUploadResult>;
+export declare function downloadFileFromHFS(fileId: string): Promise<Buffer>;

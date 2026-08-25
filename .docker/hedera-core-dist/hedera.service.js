@@ -1,5 +1,32 @@
-import { Client, PrivateKey, PublicKey, AccountId, TokenId, TopicId, Transaction, TokenMintTransaction, TokenBurnTransaction, TokenWipeTransaction, TransferTransaction, TopicMessageSubmitTransaction, TransactionId, TokenUpdateNftsTransaction, TokenGrantKycTransaction, ScheduleCreateTransaction, ScheduleSignTransaction, ScheduleDeleteTransaction, ScheduleId, Status, Timestamp, Hbar, } from "@hashgraph/sdk";
+import { Client, PrivateKey, PublicKey, AccountId, TokenId, TopicId, Transaction, TokenMintTransaction, TokenBurnTransaction, TokenWipeTransaction, TransferTransaction, TopicMessageSubmitTransaction, TransactionId, TokenUpdateNftsTransaction, TokenGrantKycTransaction, ScheduleCreateTransaction, ScheduleSignTransaction, ScheduleDeleteTransaction, ScheduleId, Status, Timestamp, Hbar, FileCreateTransaction, FileAppendTransaction, FileId, } from "@hashgraph/sdk";
 import Long from "long";
+export function normalizePrivateKey(keyStr) {
+    const trimmed = keyStr.trim();
+    if (trimmed.startsWith("0x") || trimmed.startsWith("0X")) {
+        const hex = trimmed.slice(2);
+        if (hex.length === 64) {
+            try {
+                return PrivateKey.fromStringECDSA(trimmed);
+            }
+            catch {
+                return PrivateKey.fromStringED25519(trimmed);
+            }
+        }
+        return PrivateKey.fromStringED25519(trimmed);
+    }
+    if (trimmed.startsWith("30")) {
+        return PrivateKey.fromStringDer(trimmed);
+    }
+    if (/^[0-9a-fA-F]{64}$/.test(trimmed)) {
+        try {
+            return PrivateKey.fromStringECDSA(trimmed);
+        }
+        catch {
+            return PrivateKey.fromStringED25519(trimmed);
+        }
+    }
+    return PrivateKey.fromString(trimmed);
+}
 let clientInstance = null;
 function getClient() {
     if (clientInstance)
@@ -202,7 +229,7 @@ export async function transferHbar(fromAccountId, toAccountId, amountHbar) {
 export async function transferHbarWithKey(fromAccountId, fromPrivateKey, toAccountId, amountHbar) {
     const network = process.env.HEDERA_NETWORK ?? "testnet";
     const aid = AccountId.fromString(fromAccountId);
-    const pk = PrivateKey.fromStringDer(fromPrivateKey);
+    const pk = normalizePrivateKey(fromPrivateKey);
     const client = network === "mainnet" ? Client.forMainnet() : Client.forTestnet();
     client.setOperator(aid, pk);
     try {
@@ -269,21 +296,39 @@ export async function signScheduledTransaction(scheduleId, signerPrivateKey) {
     if (!scheduleId || !scheduleId.trim()) {
         throw new Error("scheduleId must be a non-empty string");
     }
-    const network = process.env.HEDERA_NETWORK ?? "testnet";
-    const pk = PrivateKey.fromStringDer(signerPrivateKey);
-    const signerAccountId = AccountId.fromString(process.env.HEDERA_OPERATOR_ID ?? "0.0.2");
-    const client = network === "mainnet" ? Client.forMainnet() : Client.forTestnet();
-    client.setOperator(signerAccountId, pk);
-    try {
-        const tx = new ScheduleSignTransaction().setScheduleId(ScheduleId.fromString(scheduleId));
-        const result = await tx.execute(client);
-        const receipt = await result.getReceipt(client);
-        const executed = receipt.status === Status.Success;
-        return { txId: result.transactionId.toString(), executed };
+    const client = getClient();
+    const pk = normalizePrivateKey(signerPrivateKey);
+    const tx = await new ScheduleSignTransaction()
+        .setScheduleId(ScheduleId.fromString(scheduleId))
+        .freezeWith(client)
+        .sign(pk);
+    const result = await tx.execute(client);
+    const receipt = await result.getReceipt(client);
+    const executed = receipt.status === Status.Success;
+    if (!executed) {
+        throw new Error(`ScheduleSign failed: receipt status ${receipt.status.toString()}`);
     }
-    finally {
-        client.close();
+    const paymentTxId = receipt.scheduledTransactionId?.toString() ?? result.transactionId.toString();
+    return { txId: paymentTxId, executed };
+}
+export async function signScheduledTransactionWithSignature(scheduleId, txBytesBase64, publicKeyStr, signatureBytes) {
+    if (!scheduleId || !scheduleId.trim()) {
+        throw new Error("scheduleId must be a non-empty string");
     }
+    const client = getClient();
+    const txBytes = Buffer.from(txBytesBase64, "base64");
+    const tx = Transaction.fromBytes(txBytes);
+    const publicKey = PublicKey.fromString(publicKeyStr);
+    const sigArray = Array.isArray(signatureBytes) ? signatureBytes : [signatureBytes];
+    tx.addSignature(publicKey, sigArray);
+    const result = await tx.execute(client);
+    const receipt = await result.getReceipt(client);
+    const executed = receipt.status === Status.Success;
+    if (!executed) {
+        throw new Error(`ScheduleSign failed: receipt status ${receipt.status.toString()}`);
+    }
+    const paymentTxId = receipt.scheduledTransactionId?.toString() ?? result.transactionId.toString();
+    return { txId: paymentTxId, executed };
 }
 export async function deleteScheduledTransaction(scheduleId) {
     if (!scheduleId || !scheduleId.trim()) {
@@ -295,4 +340,76 @@ export async function deleteScheduledTransaction(scheduleId) {
     const receipt = await result.getReceipt(client);
     const deleted = receipt.status === Status.Success;
     return { scheduleId, deleted };
+}
+const HFS_MAX_SIZE_BYTES = 1024 * 1024;
+const HFS_CHUNK_SIZE = 4095;
+export async function uploadFileToHFS(contents, fileMemo) {
+    if (contents.length > HFS_MAX_SIZE_BYTES) {
+        throw new Error(`File too large: ${contents.length} bytes exceeds max size of ${HFS_MAX_SIZE_BYTES} bytes (1024 KB)`);
+    }
+    const client = getClient();
+    const fileKey = getSupplyKey();
+    const firstChunk = contents.subarray(0, HFS_CHUNK_SIZE);
+    const remaining = contents.subarray(HFS_CHUNK_SIZE);
+    const createTx = await new FileCreateTransaction()
+        .setKeys([fileKey.publicKey])
+        .setContents(firstChunk)
+        .setMaxTransactionFee(new Hbar(5));
+    if (fileMemo) {
+        createTx.setFileMemo(fileMemo);
+    }
+    createTx.freezeWith(client);
+    const signedCreate = await createTx.sign(fileKey);
+    const createResult = await signedCreate.execute(client);
+    const createReceipt = await createResult.getReceipt(client);
+    if (!createReceipt.fileId) {
+        throw new Error("Failed to create file: no fileId in receipt");
+    }
+    const fileId = createReceipt.fileId.toString();
+    const txId = createResult.transactionId.toString();
+    if (remaining.length > 0) {
+        for (let offset = 0; offset < remaining.length; offset += HFS_CHUNK_SIZE) {
+            const chunk = remaining.subarray(offset, offset + HFS_CHUNK_SIZE);
+            const appendTx = await new FileAppendTransaction()
+                .setFileId(FileId.fromString(fileId))
+                .setContents(chunk)
+                .setMaxTransactionFee(new Hbar(5))
+                .freezeWith(client)
+                .sign(fileKey);
+            await (await appendTx.execute(client)).getReceipt(client);
+        }
+    }
+    return { fileId, txId };
+}
+export async function downloadFileFromHFS(fileId) {
+    const network = process.env.HEDERA_NETWORK ?? "testnet";
+    const mirrorBases = {
+        testnet: "https://testnet.mirrornode.hedera.com/api/v1",
+        mainnet: "https://mainnet.mirrornode.hedera.com/api/v1",
+        previewnet: "https://previewnet.mirrornode.hedera.com/api/v1",
+    };
+    const base = mirrorBases[network] ?? mirrorBases.testnet;
+    const url = `${base}/files/${fileId}/content`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) {
+            if (res.status === 404) {
+                throw new Error(`File not found: ${fileId} (404)`);
+            }
+            throw new Error(`Mirror Node error ${res.status}: ${url}`);
+        }
+        const arrayBuffer = await res.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+    }
+    catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+            throw new Error(`Mirror Node timeout after 10000ms: ${url}`);
+        }
+        throw err;
+    }
+    finally {
+        clearTimeout(timer);
+    }
 }

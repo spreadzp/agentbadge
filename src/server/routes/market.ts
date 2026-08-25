@@ -13,7 +13,7 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, deleteScheduledTransaction } from "@agentgate-hedera/hedera-core";
+import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentgate-hedera/hedera-core";
 import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
@@ -22,6 +22,12 @@ import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 
 export const marketRoutes = new Hono();
+
+// Parse base64-encoded signature array string into Uint8Array[]
+function parseSignatureB64(signatureB64: string): Uint8Array[] {
+  const sigB64Array = JSON.parse(signatureB64) as string[];
+  return sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+}
 
 // Apply DID signature verification to all mutation POST routes (except -with-key endpoints, EPIC-83)
 // Middleware self-skips GET/HEAD and -with-key paths
@@ -464,8 +470,7 @@ marketRoutes.post(
 
       const { txBytes } = await prepareTopicMessageTransaction(fromAccountId, message);
       const { signature, publicKey } = signTransactionBytes(txBytes, claimerPrivateKey);
-      const sigB64Array = JSON.parse(signature) as string[];
-      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const signatureBytes = parseSignatureB64(signature);
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
@@ -599,8 +604,7 @@ marketRoutes.post(
 
       const { txBytes } = await prepareTopicMessageTransaction(fromAccountId, message);
       const { signature, publicKey } = signTransactionBytes(txBytes, claimerPrivateKey);
-      const sigB64Array = JSON.parse(signature) as string[];
-      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const signatureBytes = parseSignatureB64(signature);
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       updateTaskStatus(taskId, "delivered", { resultIpfs, resultBody, deliverTxId: txId });
@@ -782,15 +786,34 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Payment method required: provide (txBytes + publicKey + signature) or posterPrivateKey");
     }
 
-    // Escrow active: posterPrivateKey is mandatory — no fallback to direct transfer
-    if (task.scheduleId && !hasPrivateKey) {
+    // Escrow active: accept signature-based release (EPIC-83 SLICE-83-1) or posterPrivateKey
+    const hasEscrowSignature = task.scheduleId && txBytes && publicKey && signature;
+    if (task.scheduleId && !hasPrivateKey && !hasEscrowSignature) {
       return errorResponse(
         c,
         400,
         ErrorCodes.ESCROW_SIGNATURE_REQUIRED,
-        "Escrow is active (scheduleId exists). posterPrivateKey is required to release the scheduled HBAR transfer. " +
-        "Use complete_task_with_key MCP tool, or cancel the escrow first to switch to direct payment.",
+        "Escrow is active (scheduleId exists). Provide (scheduleId + txBytes + publicKey + signature) for keyless release, " +
+        "or posterPrivateKey. Use complete_task_with_key MCP tool for convenience.",
       );
+    }
+
+    // Validate signature fields completeness for escrow signature path
+    if (task.scheduleId && !hasPrivateKey) {
+      if (!txBytes || !publicKey || !signature) {
+        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Escrow signature release requires all of: txBytes, publicKey, signature");
+      }
+    }
+
+    // EPIC-83 SLICE-83-1: Verify signer is authorized for this escrow
+    if (task.scheduleId && hasEscrowSignature) {
+      const scheduleInfo = await getScheduleInfo(task.scheduleId);
+      if (scheduleInfo && scheduleInfo.signers.length > 0) {
+        const isKnownSigner = scheduleInfo.signers.some((s) => s === publicKey);
+        if (!isKnownSigner) {
+          return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER, "Provided public key is not an authorized signer for this scheduled transaction");
+        }
+      }
     }
 
     try {
@@ -822,10 +845,17 @@ marketRoutes.post(
       let paymentTxId: string;
 
       if (task.scheduleId) {
-        // Escrow path: sign scheduled tx to release HBAR
-        // posterPrivateKey is guaranteed to be present (checked before verification)
-        const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey!);
-        paymentTxId = result.txId;
+        // Escrow path: release scheduled HBAR transfer
+        // EPIC-83 SLICE-83-1: prefer signature-based release (no private key on server)
+        if (hasEscrowSignature) {
+          const signatureBytes = parseSignatureB64(signature!);
+          const result = await signScheduledTransactionWithSignature(task.scheduleId, txBytes!, publicKey!, signatureBytes);
+          paymentTxId = result.txId;
+        } else {
+          // Legacy: posterPrivateKey path (will be deprecated in SLICE-83-2)
+          const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey!);
+          paymentTxId = result.txId;
+        }
         setEscrowStatus(taskId, "released");
       } else {
         // Backward compat: no escrow, direct transfer
@@ -834,8 +864,7 @@ marketRoutes.post(
           return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
         }
         if (hasSignature) {
-          const sigB64Array = JSON.parse(signature!) as string[];
-          const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+          const signatureBytes = parseSignatureB64(signature!);
           paymentTxId = await transferHbarWithSignature(txBytes!, publicKey!, signatureBytes);
         } else {
           const fromAccountId = await didToAccountId(posterDid);
@@ -1019,8 +1048,7 @@ marketRoutes.post(
 
         const { txBytes } = await prepareTransferTransaction(fromAccountId, toAccountId, task.priceHbar);
         const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
-        const sigB64Array = JSON.parse(signature) as string[];
-        const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+        const signatureBytes = parseSignatureB64(signature);
         paymentTxId = await transferHbarWithSignature(txBytes, publicKey, signatureBytes);
       }
 
@@ -1150,10 +1178,9 @@ marketRoutes.post(
 
       // 2. Sign the frozen transaction bytes with agent's private key
       const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
+      const signatureBytes = parseSignatureB64(signature);
 
       // 3. Submit signed transaction to HCS
-      const sigB64Array = JSON.parse(signature) as string[];
-      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       const cached = {
