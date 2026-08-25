@@ -1,0 +1,8 @@
+root: ./content/
+
+structure:
+  readme: README.md
+  summary: SUMMARY.md
+
+redirects:
+  old-path/page: new-folder/page.md
