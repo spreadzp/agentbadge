@@ -52,6 +52,7 @@ import { didRoutes } from "./routes/did";
 import { adminRoutes } from "./routes/admin";
 import { upgradeRoutes } from "./routes/upgrade";
 import { auditRoutes } from "./routes/audit";
+import { eventsRoutes } from "./routes/events";
 import { catalogRoutes } from "./routes/catalog";
 import { uiRoutes } from "./routes/ui";
 import { landingRoutes } from "./routes/landing";
@@ -230,7 +231,16 @@ if (mppSecretKey || mppRecipient) {
 }
 
 // SLICE-90-9: x402 Base Sepolia payment middleware (active when CHAIN_MODE=base)
+// SLICE-90-11: Start event indexer when CHAIN_MODE=base
 const chainMode = process.env.CHAIN_MODE ?? "hedera";
+
+if (chainMode === "base") {
+  import("./lib/base-event-indexer").then(({ startBaseEventIndexer }) => {
+    startBaseEventIndexer();
+  }).catch((e) => {
+    console.warn("[Server] Failed to start base event indexer:", e);
+  });
+}
 const baseX402FacilitatorUrl = process.env.X402_FACILITATOR_URL ?? "";
 const baseUsdcAddress = process.env.BASE_USDC_ADDRESS ?? "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 const baseTreasury = process.env.BASE_TREASURY ?? "";
@@ -362,6 +372,7 @@ app.route("/", agentRoutes);
 app.route("/", adminRoutes);
 app.route("/", upgradeRoutes);
 app.route("/", auditRoutes);
+app.route("/", eventsRoutes);
 app.route("/", catalogRoutes);
 app.route("/", wellKnownRoutes);
 app.route("/", feedRoutes);
