@@ -5,7 +5,7 @@
  * Reference: deployment-strategy.md §Phase 2
  */
 
-export type ChainMode = "hedera" | "evm";
+export type ChainMode = "hedera" | "evm" | "base";
 
 export interface EvmConfig {
   rpcUrl: string;
@@ -16,6 +16,25 @@ export interface EvmConfig {
   eventLog: string;
   usdcAddress: string;
   explorerUrl: string;
+}
+
+export interface BaseConfig {
+  rpcUrl: string;
+  chainId: number;
+  operatorKey: string;
+  passportNft: string;
+  taskEscrow: string;
+  usdcAddress: string;
+  explorerUrl: string;
+}
+
+export interface UiConfig {
+  chainDisplayName: string;
+  currencySymbol: string;
+  currencyDecimals: number;
+  explorerName: string;
+  accountLabel: string;
+  accountPlaceholder: string;
 }
 
 export interface AppConfig {
@@ -36,6 +55,8 @@ export interface AppConfig {
   mockX402: boolean;
   mockIpfs: boolean;
   evm?: EvmConfig;
+  base?: BaseConfig;
+  ui: UiConfig;
 }
 
 const ACCOUNT_ID_RE = /^0\.0\.\d+$/;
@@ -105,9 +126,11 @@ export function resetConfigCache(): void {
 export function loadConfig(): AppConfig {
   const errors: string[] = [];
 
-  const chainMode = (process.env.CHAIN_MODE === "evm" ? "evm" : "hedera") as ChainMode;
+  const rawChainMode = process.env.CHAIN_MODE ?? "hedera";
+  const chainMode = (["hedera", "evm", "base"].includes(rawChainMode) ? rawChainMode : "hedera") as ChainMode;
 
   let evm: EvmConfig | undefined;
+  let base: BaseConfig | undefined;
 
   if (chainMode === "evm") {
     const evmRpcUrl = requiredUrl("EVM_RPC_URL", errors);
@@ -132,6 +155,30 @@ export function loadConfig(): AppConfig {
       escrow: evmEscrow!,
       usdcAddress: evmUsdc!,
       explorerUrl: evmExplorerUrl!,
+    };
+  }
+
+  if (chainMode === "base") {
+    const baseRpcUrl = requiredUrl("BASE_RPC_URL", errors);
+    const baseChainId = Number(process.env.BASE_CHAIN_ID ?? 84532);
+    const baseOperatorKey = requiredString("BASE_OPERATOR_KEY", errors);
+    const basePassportNft = requiredAddress("BASE_PASSPORT_NFT", errors);
+    const baseTaskEscrow = requiredAddress("BASE_TASK_ESCROW", errors);
+    const baseUsdc = requiredAddress("BASE_USDC_ADDRESS", errors);
+    const baseExplorerUrl = process.env.BASE_EXPLORER_URL ?? "https://sepolia.basescan.org";
+
+    if (errors.length > 0) {
+      throw new Error(`Configuration errors:\n  - ${errors.join("\n  - ")}`);
+    }
+
+    base = {
+      rpcUrl: baseRpcUrl!,
+      chainId: baseChainId,
+      operatorKey: baseOperatorKey!,
+      passportNft: basePassportNft!,
+      taskEscrow: baseTaskEscrow!,
+      usdcAddress: baseUsdc!,
+      explorerUrl: baseExplorerUrl,
     };
   }
 
@@ -185,5 +232,46 @@ export function loadConfig(): AppConfig {
     mockX402: booleanFlag("MOCK_X402"),
     mockIpfs: booleanFlag("MOCK_IPFS"),
     evm,
+    base,
+    ui: loadUiConfig(chainMode),
+  };
+}
+
+function loadUiConfig(chainMode: ChainMode): UiConfig {
+  const defaults: Record<ChainMode, UiConfig> = {
+    hedera: {
+      chainDisplayName: "Hedera Testnet",
+      currencySymbol: "HBAR",
+      currencyDecimals: 8,
+      explorerName: "HashScan",
+      accountLabel: "Hedera Account ID",
+      accountPlaceholder: "0.0.xxxx",
+    },
+    evm: {
+      chainDisplayName: "EVM Testnet",
+      currencySymbol: "USDC",
+      currencyDecimals: 6,
+      explorerName: "Explorer",
+      accountLabel: "Wallet Address",
+      accountPlaceholder: "0x...",
+    },
+    base: {
+      chainDisplayName: "Base Sepolia",
+      currencySymbol: "USDC",
+      currencyDecimals: 6,
+      explorerName: "Basescan",
+      accountLabel: "Wallet Address",
+      accountPlaceholder: "0x...",
+    },
+  };
+
+  const d = defaults[chainMode];
+  return {
+    chainDisplayName: process.env.CHAIN_DISPLAY_NAME ?? d.chainDisplayName,
+    currencySymbol: process.env.CURRENCY_SYMBOL ?? d.currencySymbol,
+    currencyDecimals: Number(process.env.CURRENCY_DECIMALS ?? d.currencyDecimals),
+    explorerName: process.env.EXPLORER_NAME ?? d.explorerName,
+    accountLabel: process.env.ACCOUNT_LABEL ?? d.accountLabel,
+    accountPlaceholder: process.env.ACCOUNT_PLACEHOLDER ?? d.accountPlaceholder,
   };
 }

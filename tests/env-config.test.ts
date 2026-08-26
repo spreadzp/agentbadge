@@ -202,4 +202,162 @@ describe("loadConfig", () => {
     expect(config.chainMode).toBe("evm");
     expect(config.hederaOperatorId).toBe("");
   });
+
+  // ── SLICE-90-4: Base Sepolia config ─────────────────────────────────
+
+  it("loads Base config when CHAIN_MODE=base with all required vars", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    process.env.BASE_CHAIN_ID = "84532";
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    const config = loadConfig();
+
+    expect(config.chainMode).toBe("base");
+    expect(config.base).toBeDefined();
+    expect(config.base!.rpcUrl).toBe("https://sepolia.base.org");
+    expect(config.base!.chainId).toBe(84532);
+    expect(config.base!.operatorKey).toBe("0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789");
+    expect(config.base!.passportNft).toBe("0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5");
+    expect(config.base!.taskEscrow).toBe("0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4");
+    expect(config.base!.usdcAddress).toBe("0x036CbD53842c5426634e7929541eC2318f3dCF7e");
+    expect(config.base!.explorerUrl).toBe("https://sepolia.basescan.org");
+  });
+
+  it("throws when CHAIN_MODE=base but BASE_RPC_URL is missing", () => {
+    process.env.CHAIN_MODE = "base";
+    delete process.env.BASE_RPC_URL;
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    expect(() => loadConfig()).toThrow(/BASE_RPC_URL/);
+  });
+
+  it("throws when CHAIN_MODE=base but BASE_OPERATOR_KEY is missing", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    delete process.env.BASE_OPERATOR_KEY;
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    expect(() => loadConfig()).toThrow(/BASE_OPERATOR_KEY/);
+  });
+
+  it("does not require Hedera vars in base mode", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    process.env.BASE_CHAIN_ID = "84532";
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+    delete process.env.HEDERA_OPERATOR_ID;
+    delete process.env.HEDERA_OPERATOR_KEY;
+    delete process.env.PASSPORT_TOKEN_ID;
+
+    const config = loadConfig();
+    expect(config.chainMode).toBe("base");
+    expect(config.hederaOperatorId).toBe("");
+  });
+
+  it("uses default BASE_CHAIN_ID=84532 when not specified", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    delete process.env.BASE_CHAIN_ID;
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    const config = loadConfig();
+    expect(config.base!.chainId).toBe(84532);
+  });
+
+  it("uses default BASE_EXPLORER_URL when not specified", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+    delete process.env.BASE_EXPLORER_URL;
+
+    const config = loadConfig();
+    expect(config.base!.explorerUrl).toBe("https://sepolia.basescan.org");
+  });
+
+  it("rejects invalid BASE_PASSPORT_NFT address format", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "not-an-address";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    expect(() => loadConfig()).toThrow(/BASE_PASSPORT_NFT/);
+  });
+
+  it("provides UI config defaults for base mode", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    const config = loadConfig();
+    expect(config.ui).toBeDefined();
+    expect(config.ui!.chainDisplayName).toBe("Base Sepolia");
+    expect(config.ui!.currencySymbol).toBe("USDC");
+    expect(config.ui!.currencyDecimals).toBe(6);
+    expect(config.ui!.explorerName).toBe("Basescan");
+    expect(config.ui!.accountLabel).toBe("Wallet Address");
+    expect(config.ui!.accountPlaceholder).toBe("0x...");
+  });
+
+  it("provides UI config defaults for hedera mode", () => {
+    process.env.HEDERA_OPERATOR_ID = "0.0.5266613";
+    process.env.HEDERA_OPERATOR_KEY = "302e020100300506032b657004220420abcdef";
+    process.env.HEDERA_NETWORK = "testnet";
+    process.env.PASSPORT_TOKEN_ID = "0.0.1234567";
+    process.env.AUDIT_TOPIC_ID = "0.0.7654321";
+    process.env.DIRECTORY_TOPIC_ID = "0.0.8765432";
+    process.env.x402_FACILITATOR_URL = "https://api.testnet.blocky402.com";
+    process.env.x402_FEE_PAYER = "0.0.7162784";
+    process.env.x402_TREASURY = "0.0.8011510";
+    process.env.IPFS_API_KEY = "test-key";
+    process.env.IPFS_API_SECRET = "test-secret";
+
+    const config = loadConfig();
+    expect(config.ui).toBeDefined();
+    expect(config.ui!.chainDisplayName).toBe("Hedera Testnet");
+    expect(config.ui!.currencySymbol).toBe("HBAR");
+    expect(config.ui!.currencyDecimals).toBe(8);
+    expect(config.ui!.explorerName).toBe("HashScan");
+    expect(config.ui!.accountLabel).toBe("Hedera Account ID");
+    expect(config.ui!.accountPlaceholder).toBe("0.0.xxxx");
+  });
+
+  it("allows overriding UI config vars via env", () => {
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_RPC_URL = "https://sepolia.base.org";
+    process.env.BASE_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.BASE_PASSPORT_NFT = "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5";
+    process.env.BASE_TASK_ESCROW = "0x10812a4fc9ac31281e4a3e6e1d60bb571c2a4ca4";
+    process.env.BASE_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+    process.env.CHAIN_DISPLAY_NAME = "Custom Chain";
+    process.env.CURRENCY_SYMBOL = "TEST";
+    process.env.CURRENCY_DECIMALS = "3";
+
+    const config = loadConfig();
+    expect(config.ui!.chainDisplayName).toBe("Custom Chain");
+    expect(config.ui!.currencySymbol).toBe("TEST");
+    expect(config.ui!.currencyDecimals).toBe(3);
+  });
 });
