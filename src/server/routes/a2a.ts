@@ -120,9 +120,9 @@ a2aRoutes.post(
         contentType: contentType || "text/plain",
         timestamp,
       };
-      const txId = await submitA2AMessage(message);
+      const { txId, consensusTimestamp: receiptTs } = await submitA2AMessage(message);
 
-      const consensusTimestamp = `${timestamp}.${String(Date.now() % 1_000_000_000).padStart(9, "0")}`;
+      const consensusTimestamp = receiptTs ?? `pending-consensus:${txId}`;
       upsert({ ...message, txId, consensusTimestamp });
 
       logger.info("A2A message sent", { txId, from, to });
@@ -224,7 +224,7 @@ a2aRoutes.post(
       const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
-      const consensusTimestamp = `${timestamp}.${String(Date.now() % 1_000_000_000).padStart(9, "0")}`;
+      const consensusTimestamp = `pending-consensus:${txId}`;
       upsert({ ...message, txId, consensusTimestamp });
 
       logger.info("A2A message sent with key", { txId, from, to });
@@ -298,7 +298,7 @@ a2aRoutes.post(
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       const timestamp = Math.floor(Date.now() / 1000);
-      const consensusTimestamp = `${timestamp}.${String(Date.now() % 1_000_000_000).padStart(9, "0")}`;
+      const consensusTimestamp = `pending-consensus:${txId}`;
       const message = {
         type: "a2a_message" as const,
         from,

@@ -13,8 +13,10 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentgate-hedera/hedera-core";
-import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
+import { submitTaskMessage, verifyA2ADid, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentgate-hedera/hedera-core";
+// SLICE-84-3: ULID for task IDs
+import { generateReportId as generateUlid } from "../../agent-readiness/integrity/ulid";
+import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, logger, reserveTask, transitionTask } from "@agentgate-hedera/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { taskLinks } from "../lib/hateoas";
@@ -113,7 +115,7 @@ marketRoutes.post(
         return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Task payload exceeds 4KB limit");
       }
 
-      const txId = await submitTaskMessage(message);
+      const { txId, consensusTimestamp } = await submitTaskMessage(message);
 
       const cached = {
         taskId,
@@ -125,7 +127,7 @@ marketRoutes.post(
         deadline,
         status: "posted" as const,
         txId,
-        consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+        consensusTimestamp: consensusTimestamp ?? `pending-consensus:${txId}`,
         createdAt: timestamp,
       };
       upsert(cached);
@@ -255,8 +257,10 @@ marketRoutes.post(
       return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
     }
 
-    if (task.status !== "posted") {
-      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot claim`);
+    // SLICE-84-1: Atomic reservation before async HCS I/O
+    const reservation = reserveTask(taskId, ["posted"], "claiming");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${reservation.currentStatus}, cannot claim`);
     }
 
     try {
@@ -267,9 +271,14 @@ marketRoutes.post(
         claimerDid,
         timestamp,
       };
-      const txId = await submitTaskMessage(message);
+      const { txId } = await submitTaskMessage(message);
 
-      updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["claiming"], "claimed", { claimerDid, claimTxId: txId });
+      if (!committed.ok) {
+        logger.error("Claim commit failed — task state changed during HCS I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, "Task state changed during claim");
+      }
 
       // SLICE-24-8: Create escrow scheduled transfer (poster → claimer)
       try {
@@ -277,6 +286,13 @@ marketRoutes.post(
         const toAccountId = await didToAccountId(claimerDid);
         if (!fromAccountId || !toAccountId) {
           logger.error("Escrow creation failed: could not resolve DID to account ID", { taskId, posterDid: task.posterDid, claimerDid });
+          // SLICE-84-2: Emit failure event instead of silent revert
+          try {
+            await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: "Could not resolve DID to account ID", timestamp });
+          } catch (hcsErr) {
+            logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+          }
+          returnTaskToMarket(taskId);
           return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve DID to account ID for escrow creation");
         }
 
@@ -287,6 +303,7 @@ marketRoutes.post(
           { memo: `escrow:${task.taskId}:${claimerDid}` },
         );
 
+        // SLICE-84-2: WAL — persist scheduleId BEFORE HCS message
         setEscrowStatus(taskId, "pending", { scheduleId, scheduleTxId });
 
         const escrowMessage = {
@@ -303,10 +320,18 @@ marketRoutes.post(
       } catch (escrowErr) {
         const escrowMsg = escrowErr instanceof Error ? escrowErr.message : "Escrow creation failed";
         logger.error("Escrow creation failed, reverting task to posted", { error: escrowMsg, taskId });
+        // SLICE-84-2: Emit task_escrow_failed HCS event instead of silent revert
+        try {
+          await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: escrowMsg, timestamp });
+        } catch (hcsErr) {
+          logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+        }
         returnTaskToMarket(taskId);
         return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
       }
     } catch (err) {
+      // SLICE-84-1: Rollback reservation on HCS failure
+      transitionTask(taskId, ["claiming"], "posted", { claimerDid: undefined });
       const pub = toPublicError(err);
       logger.error("Marketplace task claim failed", { error: err instanceof Error ? err.message : String(err) });
       return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
@@ -314,7 +339,7 @@ marketRoutes.post(
   },
 );
 
-// ─── POST /market/tasks/:taskId/deliver ───────────────────────────
+// ─── POST /market/tasks/:taskId/deliver──────────────────────────
 
 marketRoutes.post(
   "/market/tasks/:taskId/deliver",
@@ -369,12 +394,14 @@ marketRoutes.post(
       return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
     }
 
-    if (task.status !== "claimed") {
-      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot deliver`);
-    }
-
     if (task.claimerDid !== claimerDid) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only claimer can deliver");
+    }
+
+    // SLICE-84-1: Atomic reservation before async HCS I/O
+    const reservation = reserveTask(taskId, ["claimed"], "delivering");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${reservation.currentStatus}, cannot deliver`);
     }
 
     try {
@@ -387,14 +414,21 @@ marketRoutes.post(
         resultBody,
         timestamp,
       };
-      const txId = await submitTaskMessage(message);
+      const { txId } = await submitTaskMessage(message);
 
-      updateTaskStatus(taskId, "delivered", { resultIpfs, resultBody, deliverTxId: txId });
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["delivering"], "delivered", { resultIpfs, resultBody, deliverTxId: txId });
+      if (!committed.ok) {
+        logger.error("Deliver commit failed — task state changed during HCS I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, "Task state changed during delivery");
+      }
 
       logger.info("Marketplace task delivered", { txId, taskId, claimerDid });
 
       return c.json({ taskId, txId, timestamp }, 200);
     } catch (err) {
+      // SLICE-84-1: Rollback reservation on failure
+      transitionTask(taskId, ["delivering"], "claimed");
       const pub = toPublicError(err);
       logger.error("Marketplace task delivery failed", { error: err instanceof Error ? err.message : String(err) });
       return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
@@ -486,6 +520,13 @@ marketRoutes.post(
         const posterAccountId = await didToAccountId(task.posterDid);
         if (!posterAccountId) {
           logger.error("Escrow creation failed: could not resolve poster DID", { taskId, posterDid: task.posterDid });
+          // SLICE-84-2: Emit failure event instead of silent revert
+          try {
+            await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: "Could not resolve poster DID to account ID", timestamp });
+          } catch (hcsErr) {
+            logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+          }
+          returnTaskToMarket(taskId);
           return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID for escrow creation");
         }
 
@@ -496,6 +537,7 @@ marketRoutes.post(
           { memo: `escrow:${task.taskId}:${claimerDid}` },
         );
 
+        // SLICE-84-2: WAL — persist scheduleId BEFORE HCS message
         setEscrowStatus(taskId, "pending", { scheduleId, scheduleTxId });
 
         const escrowMessage = {
@@ -512,6 +554,12 @@ marketRoutes.post(
       } catch (escrowErr) {
         const escrowMsg = escrowErr instanceof Error ? escrowErr.message : "Escrow creation failed";
         logger.error("Escrow creation failed (claim-with-key), reverting task to posted", { error: escrowMsg, taskId });
+        // SLICE-84-2: Emit task_escrow_failed HCS event instead of silent revert
+        try {
+          await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: escrowMsg, timestamp });
+        } catch (hcsErr) {
+          logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+        }
         returnTaskToMarket(taskId);
         return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
       }
@@ -822,6 +870,12 @@ marketRoutes.post(
       }
     }
 
+    // SLICE-84-1: Atomic reservation before async verification+payment+HCS I/O
+    const reservation = reserveTask(taskId, ["delivered"], "completing");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${reservation.currentStatus}, cannot complete`);
+    }
+
     try {
       // SLICE-24-9: Run verification BEFORE releasing payment
       const verification = await runVerification(task, task.resultBody, task.resultIpfs);
@@ -889,14 +943,21 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
 
-      updateTaskStatus(taskId, "completed", { paymentTxId, completedTxId: hcsTxId });
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["completing"], "completed", { paymentTxId, completedTxId: hcsTxId });
+      if (!committed.ok) {
+        logger.error("Complete commit failed — task state changed during I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, "Task state changed during completion");
+      }
 
       logger.info("Marketplace task completed", { hcsTxId, taskId, paymentTxId });
 
       return c.json({ taskId, paymentTxId, completedAt: timestamp }, 200);
     } catch (err) {
+      // SLICE-84-1: Rollback reservation on failure
+      transitionTask(taskId, ["completing"], "delivered");
       const pub = toPublicError(err);
       logger.error("Marketplace task completion failed", { error: err instanceof Error ? err.message : String(err), taskId });
       return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
@@ -1066,7 +1127,7 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
 
       updateTaskStatus(taskId, "completed", { paymentTxId, completedTxId: hcsTxId });
 
@@ -1160,7 +1221,7 @@ marketRoutes.post(
       }
 
       const timestamp = Math.floor(Date.now() / 1000);
-      const taskId = `task-${timestamp}-${Math.random().toString(36).slice(2, 8)}`;
+      const taskId = `task-${generateUlid()}`;
 
       const message = {
         type: "task_posted" as const,
@@ -1199,7 +1260,7 @@ marketRoutes.post(
         deadline,
         status: "posted" as const,
         txId,
-        consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+        consensusTimestamp: `pending-consensus:${txId}`,
         createdAt: timestamp,
       };
       upsert(cached);
@@ -1272,6 +1333,12 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Task cannot be cancelled from status: ${task.status}`);
     }
 
+    // SLICE-84-1: Atomic reservation before async escrow+HCS I/O
+    const reservation = reserveTask(taskId, ["posted", "claimed", "delivered"], "cancelling");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.INVALID_JSON, `Task is ${reservation.currentStatus}, cannot cancel`);
+    }
+
     try {
       if (task.scheduleId) {
         try {
@@ -1282,7 +1349,12 @@ marketRoutes.post(
         }
       }
 
-      updateTaskStatus(taskId, "cancelled");
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["cancelling"], "cancelled");
+      if (!committed.ok) {
+        logger.error("Cancel commit failed — task state changed during I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.INVALID_JSON, "Task state changed during cancel");
+      }
 
       const timestamp = Math.floor(Date.now() / 1000);
       const message = {
@@ -1292,12 +1364,14 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
 
       logger.info("Marketplace task cancelled", { hcsTxId, taskId });
 
       return c.json({ taskId, cancelledAt: timestamp, hbarReturned: task.scheduleId ? task.priceHbar : 0 }, 200);
     } catch (err) {
+      // SLICE-84-1: Rollback to original status on failure
+      transitionTask(taskId, ["cancelling"], task.status);
       const pub = toPublicError(err);
       logger.error("Marketplace task cancel failed", { error: err instanceof Error ? err.message : String(err), taskId });
       return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
@@ -1372,9 +1446,18 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `newPriceHbar (${newPriceHbar}) must be greater than current price (${task.priceHbar})`);
     }
 
+    // SLICE-84-1: Atomic reservation before async escrow+HCS I/O
+    const originalStatus = task.status;
+    const reservation = reserveTask(taskId, ["posted", "claimed"], "updating_reward");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.INVALID_JSON, `Task is ${reservation.currentStatus}, cannot increase reward`);
+    }
+
     try {
       const fromAccountId = await didToAccountId(posterDid);
       if (!fromAccountId) {
+        // SLICE-84-1: Rollback on early return
+        transitionTask(taskId, ["updating_reward"], originalStatus);
         return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
       }
 
@@ -1409,12 +1492,21 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
+
+      // SLICE-84-1: Commit back to original status with updated price
+      const committed = transitionTask(taskId, ["updating_reward"], originalStatus, { priceHbar: newPriceHbar });
+      if (!committed.ok) {
+        logger.error("Increase-reward commit failed — task state changed during I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.INVALID_JSON, "Task state changed during reward increase");
+      }
 
       logger.info("Marketplace task reward increased", { hcsTxId, taskId, oldPrice: task.priceHbar, newPrice: newPriceHbar });
 
       return c.json({ taskId, newScheduleId, newPriceHbar, hcsTxId }, 200);
     } catch (err) {
+      // SLICE-84-1: Rollback to original status on failure
+      transitionTask(taskId, ["updating_reward"], originalStatus);
       const pub = toPublicError(err);
       logger.error("Marketplace reward increase failed", { error: err instanceof Error ? err.message : String(err), taskId });
       return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
@@ -1446,11 +1538,14 @@ marketRoutes.get(
 
     return c.json({
       taskId,
-      scheduleId: (task as any).scheduleId ?? null,
-      escrowStatus: (task as any).escrowStatus ?? "none",
-      verificationAttempts: (task as any).verificationAttempts ?? 0,
-      verifierType: (task as any).verifierType ?? "noop",
+      scheduleId: task.scheduleId ?? null,
+      escrowStatus: task.escrowStatus ?? "none",
+      verificationAttempts: task.verificationAttempts ?? 0,
+      verifierType: task.verifierType ?? "noop",
       priceHbar: task.priceHbar,
+      // SLICE-84-2: Extended fields for reconciler observability
+      transitionalSince: task.transitionalSince ?? null,
+      lastError: task.lastError ?? null,
     }, 200);
   },
 );
@@ -1484,7 +1579,7 @@ marketRoutes.post(
     }
 
     try {
-      const outcome = await runVerification(task as any);
+      const outcome = await runVerification(task);
 
       if (outcome.attempts !== undefined) {
         updateTaskVerificationAttempts(taskId, outcome.attempts);
