@@ -45,6 +45,7 @@ import { fetchAiSitemap } from "./fetchers/ai-sitemap-fetcher";
 import { fetchOauthAuthorizationServer } from "./fetchers/oauth-authorization-server-fetcher";
 import { fetchLlmPolicy } from "./fetchers/llm-policy-fetcher";
 import { fetchAuthProbe, type AuthProbeCredentials } from "./fetchers/auth-probe-fetcher";
+import { fetchEndpointProbe } from "./fetchers/endpoint-probe-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -54,6 +55,8 @@ export interface ScanOptions {
   authTest?: boolean;
   clientId?: string;
   clientSecret?: string;
+  probe?: boolean;
+  probeEndpoints?: number;
 }
 
 interface AuthProbeContext {
@@ -130,6 +133,11 @@ export async function scanDomain(
     resources = [...resources, "auth_probe"];
   }
 
+  // Conditionally add endpoint_probe when probe is enabled
+  if (opts?.probe === true && !resources.includes("endpoint_probe")) {
+    resources = [...resources, "endpoint_probe"];
+  }
+
   const snapshots: Record<string, ResponseSnapshot | null> = {};
   let completed = 0;
   const total = resources.length;
@@ -158,9 +166,16 @@ export async function scanDomain(
     }
     : undefined;
 
-  // Sequential: guide, openapi, mcp, auth_probe (needs oauth snapshot)
+  // Sequential: guide, openapi, mcp, auth_probe (needs oauth snapshot), endpoint_probe (needs openapi)
   for (const resource of sequentialResources) {
-    const result = await fetchResource(resource, baseUrl, rateLimiter, cache, authContext);
+    // Build endpoint probe context once openapi snapshot is available
+    const epCtx: EndpointProbeContext | undefined = opts?.probe === true && resource === "endpoint_probe"
+      ? {
+        openapiSnapshot: snapshots["openapi"] ?? null,
+        maxEndpoints: opts?.probeEndpoints ?? 3,
+      }
+      : undefined;
+    const result = await fetchResource(resource, baseUrl, rateLimiter, cache, authContext, epCtx);
     snapshots[resource] = result;
     completed++;
     opts?.onProgress?.(resource, completed, total);
@@ -169,12 +184,18 @@ export async function scanDomain(
   return assembleSourceState(domain, snapshots);
 }
 
+interface EndpointProbeContext {
+  openapiSnapshot: ResponseSnapshot | null;
+  maxEndpoints: number;
+}
+
 async function fetchResource(
   resource: string,
   baseUrl: string,
   rateLimiter: ScannerRateLimiter,
   cache: SnapshotCache | null,
   authContext?: AuthProbeContext,
+  endpointProbeContext?: EndpointProbeContext,
 ): Promise<ResponseSnapshot | null> {
   const cacheKey = `${baseUrl}/${resource}`;
   if (cache?.has(cacheKey)) {
@@ -527,6 +548,25 @@ async function fetchResource(
       const result = await fetchAuthProbe(baseUrl, authContext.oauthSnapshot, authContext.credentials);
       snapshot = createSnapshot({
         url: `${baseUrl}/auth-probe`,
+        status: 200,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "endpoint_probe": {
+      if (!endpointProbeContext) {
+        snapshot = null;
+        break;
+      }
+      const result = await fetchEndpointProbe(
+        baseUrl,
+        endpointProbeContext.openapiSnapshot,
+        { maxEndpoints: endpointProbeContext.maxEndpoints },
+      );
+      snapshot = createSnapshot({
+        url: `${baseUrl}/endpoint-probe`,
         status: 200,
         body: JSON.stringify(result),
         resolvedIp: null,

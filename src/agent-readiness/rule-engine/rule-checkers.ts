@@ -505,6 +505,37 @@ export function checkAb121(state: SourceState): Evidence[] {
   return [httpEvidence({ ...snaps.auth_probe, status: 0 })];
 }
 
+// ─── AB-122: At least one endpoint callable ───────────────────────────────────
+export function checkAb122(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.endpoint_probe) return [];
+  const probe = JSON.parse(snaps.endpoint_probe.body ?? "{}");
+  const endpoints = probe.endpoints ?? [];
+  const anyOk = endpoints.some((e: any) => e.responseStatus === 200);
+  return [httpEvidence({ ...snaps.endpoint_probe, status: anyOk ? 200 : 0 })];
+}
+
+// ─── AB-123: Response matches OpenAPI schema ──────────────────────────────────
+export function checkAb123(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.endpoint_probe) return [];
+  const probe = JSON.parse(snaps.endpoint_probe.body ?? "{}");
+  const endpoints = probe.endpoints ?? [];
+  if (endpoints.length === 0) return [httpEvidence({ ...snaps.endpoint_probe, status: 0 })];
+  const allMatch = endpoints.every((e: any) => e.matchesOpenApi === true);
+  return [httpEvidence({ ...snaps.endpoint_probe, status: allMatch ? 200 : 0 })];
+}
+
+// ─── AB-124: Response content-type present ────────────────────────────────────
+export function checkAb124(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.endpoint_probe) return [];
+  const probe = JSON.parse(snaps.endpoint_probe.body ?? "{}");
+  const endpoints = probe.endpoints ?? [];
+  const anyContentType = endpoints.some((e: any) => e.contentType != null);
+  return [httpEvidence({ ...snaps.endpoint_probe, status: anyContentType ? 200 : 0 })];
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -545,4 +576,7 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-119": checkAb119,
   "AB-120": checkAb120,
   "AB-121": checkAb121,
+  "AB-122": checkAb122,
+  "AB-123": checkAb123,
+  "AB-124": checkAb124,
 };

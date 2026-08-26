@@ -47,6 +47,8 @@ const SCAN_FLAGS = [
   { name: "auth-test", shortName: "", type: "boolean" as const, description: "Enable OAuth client_credentials auth probe during scan" },
   { name: "client-id", shortName: "", type: "string" as const, description: "OAuth client_id for auth probe (or CLIENT_ID env var)" },
   { name: "client-secret", shortName: "", type: "string" as const, description: "OAuth client_secret for auth probe (or CLIENT_SECRET env var)" },
+  { name: "probe", shortName: "", type: "boolean" as const, description: "Enable endpoint probing during scan" },
+  { name: "probe-endpoints", shortName: "", type: "string" as const, description: "Max endpoints to probe (default: 3)", default: "3" },
 ];
 
 export function registerScanCommand(): void {
@@ -82,10 +84,12 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
   const authTest = flags["auth-test"] === true;
   const clientId = typeof flags["client-id"] === "string" ? flags["client-id"] : process.env.CLIENT_ID;
   const clientSecret = typeof flags["client-secret"] === "string" ? flags["client-secret"] : process.env.CLIENT_SECRET;
+  const probe = flags.probe === true;
+  const probeEndpoints = typeof flags["probe-endpoints"] === "string" ? parseInt(flags["probe-endpoints"], 10) : 3;
 
   try {
     // Step 1: Scan domain (Epic 33)
-    const sourceState = await scanDomain(url, { noCache, authTest, clientId, clientSecret });
+    const sourceState = await scanDomain(url, { noCache, authTest, clientId, clientSecret, probe, probeEndpoints });
 
     // Step 2: Run rule engine (Epic 34)
     const ruleEngineResult = RuleEngine.run(sourceState);
