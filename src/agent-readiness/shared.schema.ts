@@ -24,8 +24,9 @@ export const categoryEnum = z
     "infrastructure",
     "seo_aeo",
     "accessibility",
+    "active_probing",
   ])
-  .describe("Rule category: discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth, infrastructure, seo_aeo, accessibility");
+  .describe("Rule category: discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth, infrastructure, seo_aeo, accessibility, active_probing");
 
 export const statusEnum = z
   .enum(["VERIFIED", "INFERRED", "CONFLICT", "MISSING", "NOT_APPLICABLE"])
@@ -59,3 +60,20 @@ export type Status = z.infer<typeof statusEnum>;
 export type Severity = z.infer<typeof severityEnum>;
 export type CheckType = z.infer<typeof checkTypeEnum>;
 export type FixType = z.infer<typeof fixTypeEnum>;
+
+// ─── Funnel schemas (EPIC-87) ─────────────────────────────────────────────────
+
+export const funnelStageSchema = z.object({
+  name: z.string(),
+  categories: z.array(z.string()),
+  score: z.number(),
+  passRate: z.number(),
+});
+
+export const funnelResultSchema = z.object({
+  stages: z.array(funnelStageSchema),
+  dropOff: z.array(z.number()),
+});
+
+export type FunnelStage = z.infer<typeof funnelStageSchema>;
+export type FunnelResult = z.infer<typeof funnelResultSchema>;
