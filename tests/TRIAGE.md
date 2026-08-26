@@ -87,5 +87,26 @@ Assertion failures where test expectations don't match current behavior. Major c
 - [x] Class (a): bun:test → vitest (21 files converted)
 - [x] Class (b): stale mock typing (resolved after bun:test fix)
 - [x] src TS errors fixed: 0 src errors (was 25)
-- [ ] Class (c): behavior drift triage (87 suites still failing)
+- [x] Test mock fixes: submitTaskMessage mocks return HcsMessageReceipt shape (10 files)
+- [x] Committed: `6cf4b2c` — unify runners, fix src TS errors, triage all failing suites
+- [x] vitest.setup.ts: DID_AUTH_MODE=off, ALLOW_KEY_ENDPOINTS=true
+- [x] assertSameActor: skip ownership check when DID_AUTH_MODE=off
+- [x] Bulk fix: all submit mocks (submitTaskMessage, submitSignedTopicMessage, submitA2AMessage) return { txId, consensusTimestamp }
+- [ ] Class (c): behavior drift triage (full re-run pending)
 - [ ] Class (d): obsolete suite exclusion (1 suite: agent-discovery.e2e)
+
+## Failure Pattern Analysis (from 8-suite sample)
+
+| Pattern | Count | Root Cause |
+|---------|-------|------------|
+| 409 Conflict (expected 200/500/403) | 16 | Task state machine (reserveTask/transitionTask) rejects transitions — tests don't set up correct initial state |
+| 200→403 (expected 403, got 200) | 6 | Tests expect auth enforcement but DID_AUTH_MODE=off bypasses it — need per-test override |
+| 200→401 (expected 401, got 200) | 3 | Same as above — auth tests need DID_AUTH_MODE=enforce locally |
+| Object shape mismatch | 1 | Test expects string txId but route returns { txId, consensusTimestamp } |
+
+## Latest Test Run (post env+mock fixes)
+
+- Test Files: 75 failed | 338 passed (413 total)
+- Tests: 277 failed | 4716 passed | 5 skipped (4998 total)
+- Duration: 603s
+- Improvement: -20 suites, -336 failed tests vs previous run

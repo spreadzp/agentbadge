@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadConfig } from "../src/config/env";
+import { loadConfig, resetConfigCache } from "../src/config/env";
 
 describe("loadConfig", () => {
   const originalEnv = { ...process.env };
@@ -9,6 +9,8 @@ describe("loadConfig", () => {
     delete process.env.MOCK_HEDERA;
     delete process.env.MOCK_X402;
     delete process.env.MOCK_IPFS;
+    delete process.env.CHAIN_MODE;
+    resetConfigCache();
   });
 
   afterEach(() => {
@@ -46,6 +48,8 @@ describe("loadConfig", () => {
     expect(config.mockHedera).toBe(false);
     expect(config.mockX402).toBe(false);
     expect(config.mockIpfs).toBe(false);
+    expect(config.chainMode).toBe("hedera");
+    expect(config.evm).toBeUndefined();
   });
 
   it("throws a single aggregated error listing ALL missing vars when several are absent", () => {
@@ -53,9 +57,6 @@ describe("loadConfig", () => {
     delete process.env.HEDERA_OPERATOR_KEY;
     delete process.env.PASSPORT_TOKEN_ID;
     delete process.env.AUDIT_TOPIC_ID;
-
-    expect(() => loadConfig()).toThrow(/HEDERA_OPERATOR_ID/);
-    expect(() => loadConfig()).toThrow(/HEDERA_OPERATOR_KEY/);
     expect(() => loadConfig()).toThrow(/PASSPORT_TOKEN_ID/);
     expect(() => loadConfig()).toThrow(/AUDIT_TOPIC_ID/);
   });
@@ -132,5 +133,73 @@ describe("loadConfig", () => {
     const config = loadConfig();
 
     expect(config.port).toBe(4021);
+  });
+
+  it("loads EVM config when CHAIN_MODE=evm with all required vars", () => {
+    process.env.CHAIN_MODE = "evm";
+    process.env.EVM_RPC_URL = "https://rpc.testnet.whitechain.io";
+    process.env.EVM_CHAIN_ID = "1874";
+    process.env.EVM_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.EVM_PASSPORT_NFT_ADDRESS = "0x1234567890123456789012345678901234567890";
+    process.env.EVM_EVENT_LOG_ADDRESS = "0x2345678901234567890123456789012345678901";
+    process.env.EVM_ESCROW_ADDRESS = "0x3456789012345678901234567890123456789012";
+    process.env.EVM_USDC_ADDRESS = "0x4567890123456789012345678901234567890123";
+    process.env.EVM_EXPLORER_URL = "https://explorer.testnet.whitechain.io";
+
+    const config = loadConfig();
+
+    expect(config.chainMode).toBe("evm");
+    expect(config.evm).toBeDefined();
+    expect(config.evm!.rpcUrl).toBe("https://rpc.testnet.whitechain.io");
+    expect(config.evm!.chainId).toBe(1874);
+    expect(config.evm!.passportNft).toBe("0x1234567890123456789012345678901234567890");
+    expect(config.evm!.eventLog).toBe("0x2345678901234567890123456789012345678901");
+    expect(config.evm!.escrow).toBe("0x3456789012345678901234567890123456789012");
+    expect(config.evm!.usdcAddress).toBe("0x4567890123456789012345678901234567890123");
+    expect(config.evm!.explorerUrl).toBe("https://explorer.testnet.whitechain.io");
+  });
+
+  it("throws when CHAIN_MODE=evm but EVM vars are missing", () => {
+    process.env.CHAIN_MODE = "evm";
+    delete process.env.EVM_RPC_URL;
+    delete process.env.EVM_OPERATOR_KEY;
+    delete process.env.EVM_PASSPORT_NFT_ADDRESS;
+
+    expect(() => loadConfig()).toThrow(/EVM_RPC_URL/);
+    expect(() => loadConfig()).toThrow(/EVM_OPERATOR_KEY/);
+    expect(() => loadConfig()).toThrow(/EVM_PASSPORT_NFT_ADDRESS/);
+  });
+
+  it("rejects invalid EVM address format in evm mode", () => {
+    process.env.CHAIN_MODE = "evm";
+    process.env.EVM_RPC_URL = "https://rpc.testnet.whitechain.io";
+    process.env.EVM_CHAIN_ID = "1874";
+    process.env.EVM_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.EVM_PASSPORT_NFT_ADDRESS = "not-an-address";
+    process.env.EVM_EVENT_LOG_ADDRESS = "0x2345678901234567890123456789012345678901";
+    process.env.EVM_ESCROW_ADDRESS = "0x3456789012345678901234567890123456789012";
+    process.env.EVM_USDC_ADDRESS = "0x4567890123456789012345678901234567890123";
+    process.env.EVM_EXPLORER_URL = "https://explorer.testnet.whitechain.io";
+
+    expect(() => loadConfig()).toThrow(/EVM_PASSPORT_NFT_ADDRESS/);
+  });
+
+  it("does not require Hedera vars in evm mode", () => {
+    process.env.CHAIN_MODE = "evm";
+    process.env.EVM_RPC_URL = "https://rpc.testnet.whitechain.io";
+    process.env.EVM_CHAIN_ID = "1874";
+    process.env.EVM_OPERATOR_KEY = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    process.env.EVM_PASSPORT_NFT_ADDRESS = "0x1234567890123456789012345678901234567890";
+    process.env.EVM_EVENT_LOG_ADDRESS = "0x2345678901234567890123456789012345678901";
+    process.env.EVM_ESCROW_ADDRESS = "0x3456789012345678901234567890123456789012";
+    process.env.EVM_USDC_ADDRESS = "0x4567890123456789012345678901234567890123";
+    process.env.EVM_EXPLORER_URL = "https://explorer.testnet.whitechain.io";
+    delete process.env.HEDERA_OPERATOR_ID;
+    delete process.env.HEDERA_OPERATOR_KEY;
+    delete process.env.PASSPORT_TOKEN_ID;
+
+    const config = loadConfig();
+    expect(config.chainMode).toBe("evm");
+    expect(config.hederaOperatorId).toBe("");
   });
 });

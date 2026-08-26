@@ -84,7 +84,7 @@ describe("Marketplace REST API", () => {
   describe("POST /market/tasks", () => {
     it("returns 200 with txId and taskId on valid input", async () => {
       mockedVerify.mockResolvedValue(true);
-      mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000001");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
 
       const res = await app.request("/market/tasks", {
         method: "POST",
@@ -299,7 +299,7 @@ describe("Marketplace REST API", () => {
     it("returns 200 with taskId and txId on valid claim", async () => {
       mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockTask);
-      mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000001");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
       mockedUpdateTaskStatus.mockReturnValue(true);
       mockedDidToAccountId.mockImplementation(async (did: string) => {
         if (did === POSTER_DID) return "0.0.123";
@@ -413,7 +413,7 @@ describe("Marketplace REST API", () => {
     it("returns 200 with taskId and txId on valid delivery", async () => {
       mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockClaimedTask);
-      mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000002");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000002", consensusTimestamp: null });
       mockedUpdateTaskStatus.mockReturnValue(true);
 
       const res = await app.request("/market/tasks/task-001/deliver", {
@@ -716,7 +716,7 @@ describe("Marketplace REST API", () => {
         txBytes: "base64-tx-bytes",
         txId: "0.0.123@1234567890.000000001",
       });
-      mockedSubmit.mockResolvedValue("0.0.888@1234567890.000000001");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.888@1234567890.000000001", consensusTimestamp: null });
       mockedUpdateTaskStatus.mockReturnValue(true);
     });
 
@@ -966,7 +966,7 @@ describe("Marketplace REST API", () => {
     it("Agent A posts 'What is 2+2?' → Agent B finds, claims, delivers '4' → Agent A completes + pays", async () => {
       // ─── Step 1: Agent A posts a paid task ───
       mockedVerify.mockResolvedValue(true);
-      mockedSubmit.mockResolvedValue("0.0.111@post-tx");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@post-tx", consensusTimestamp: null });
 
       const postRes = await app.request("/market/tasks", {
         method: "POST",
@@ -1009,7 +1009,7 @@ describe("Marketplace REST API", () => {
 
       // ─── Step 3: Agent B claims the task ───
       mockedGetTaskById.mockReturnValue(postedTask);
-      mockedSubmit.mockResolvedValue("0.0.111@claim-tx");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@claim-tx", consensusTimestamp: null });
       mockedDidToAccountId.mockImplementation(async (did: string) => {
         if (did === POSTER_DID) return "0.0.123";
         if (did === CLAIMER_DID) return "0.0.456";
@@ -1031,7 +1031,7 @@ describe("Marketplace REST API", () => {
       // ─── Step 4: Agent B delivers the result ───
       const claimedTask = { ...postedTask, status: "claimed" as const, claimerDid: CLAIMER_DID };
       mockedGetTaskById.mockReturnValue(claimedTask);
-      mockedSubmit.mockResolvedValue("0.0.111@deliver-tx");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@deliver-tx", consensusTimestamp: null });
 
       const deliverRes = await app.request(`/market/tasks/${taskId}/deliver`, {
         method: "POST",
@@ -1060,7 +1060,7 @@ describe("Marketplace REST API", () => {
       mockedGetTaskById.mockReturnValue(deliveredTask);
       mockedDidToAccountId.mockResolvedValue("0.0.123");
       mockedTransferHbarWithKey.mockResolvedValue("0.0.111@payment-tx");
-      mockedSubmit.mockResolvedValue("0.0.111@complete-tx");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@complete-tx", consensusTimestamp: null });
 
       const completeRes = await app.request(`/market/tasks/${taskId}/complete`, {
         method: "POST",

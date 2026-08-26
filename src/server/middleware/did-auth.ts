@@ -303,6 +303,8 @@ export function requireDidSignature(
 export function assertSameActor(c: Context, actorDid: string | undefined): Response | null {
   const verifiedDid = c.get("verifiedDid") as string | undefined;
   if (!verifiedDid) {
+    // When auth is off, verifiedDid is never set — skip ownership check
+    if (getDidAuthMode() === "off") return null;
     return errorResponse(c, 401, ErrorCodes.MISSING_FIELDS, "No verified DID found in context");
   }
   if (actorDid !== verifiedDid) {

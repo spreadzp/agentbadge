@@ -98,7 +98,7 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
 
     // Default mocks
     mockedVerify.mockResolvedValue(true);
-    mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000001");
+    mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
     mockedDidToAccountId.mockResolvedValue("0.0.123");
     mockedCreateScheduledTransfer.mockResolvedValue({
       scheduleId: "0.0.555",

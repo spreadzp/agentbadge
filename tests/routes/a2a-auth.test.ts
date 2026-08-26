@@ -68,7 +68,7 @@ describe("A2A DID auth enforcement (SLICE-82-2)", () => {
     vi.mocked(mockVerifier).mockResolvedValue(true);
 
     mockedVerify.mockResolvedValue(true);
-    mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000001");
+    mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
     mockedDidToAccountId.mockResolvedValue("0.0.123");
   });
 
