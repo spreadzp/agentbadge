@@ -4,8 +4,14 @@
 
 import type { AgentReadinessReport } from "../../integrity/report-serializer";
 import { computeGrade } from "../../scoring/grade-computer";
+import { computeFunnel } from "../../scoring/funnel-computer";
+import { renderFunnelAscii } from "./funnel-output";
 
-export function formatPrettyOutput(report: AgentReadinessReport): string {
+export interface PrettyOutputOptions {
+  showFunnel?: boolean;
+}
+
+export function formatPrettyOutput(report: AgentReadinessReport, opts?: PrettyOutputOptions): string {
   const lines: string[] = [];
 
   lines.push("═".repeat(60));
@@ -45,6 +51,20 @@ export function formatPrettyOutput(report: AgentReadinessReport): string {
     lines.push(`  ${cat.padEnd(20)} ${catBar} ${catScore}/100  ${pct}%`);
   }
   lines.push("");
+
+  // Funnel section
+  if (opts?.showFunnel) {
+    const categoryScores: Record<string, number> = {};
+    for (const [cat, val] of Object.entries(report.score.categories)) {
+      categoryScores[cat] = typeof val === "number" ? val : (val as { score: number }).score ?? 0;
+    }
+    const funnel = computeFunnel(categoryScores);
+    lines.push("─".repeat(60));
+    lines.push("  Readiness Funnel");
+    lines.push("─".repeat(60));
+    lines.push(renderFunnelAscii(funnel));
+    lines.push("");
+  }
 
   // Top issues
   const assertions = (report.assertions as Array<{

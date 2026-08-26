@@ -13,6 +13,7 @@ export interface JsonApiInput {
   categoryScores: CategoryScore[];
   compact?: boolean;
   reportUrl?: string;
+  funnel?: import("../../scoring/funnel-computer").FunnelResult;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -98,6 +99,10 @@ export function formatJsonApiOutput(input: JsonApiInput): string {
 
   if (input.reportUrl) {
     output.reportUrl = input.reportUrl;
+  }
+
+  if (input.funnel) {
+    output.funnel = input.funnel;
   }
 
   const space = input.compact ? 0 : 2;

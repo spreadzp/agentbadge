@@ -21,6 +21,7 @@ import { renderBadgeSvg } from "./badge";
 import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput, formatMarkdownOutput } from "../output";
 import { computeGrade } from "../../scoring/grade-computer";
 import { formatJsonApiOutput } from "../formatters/json-api-output";
+import { computeFunnel } from "../../scoring/funnel-computer";
 
 const DEFAULT_OUTPUT_PATH = "agentbadge-report.json";
 
@@ -42,6 +43,7 @@ const SCAN_FLAGS = [
   { name: "fix-hints", shortName: "", type: "boolean" as const, description: "Include fix suggestions in output" },
   { name: "compact", shortName: "", type: "boolean" as const, description: "Compact M2M JSON output (no whitespace)" },
   { name: "report-url", shortName: "", type: "string" as const, description: "Web report URL to include in output" },
+  { name: "funnel", shortName: "", type: "boolean" as const, description: "Show readiness funnel in output" },
 ];
 
 export function registerScanCommand(): void {
@@ -73,6 +75,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
   const threshold = typeof flags.threshold === "string" ? parseInt(flags.threshold, 10) : 0;
   const outputPath = typeof flags.output === "string" ? flags.output : DEFAULT_OUTPUT_PATH;
   const noCache = flags["no-cache"] === true;
+  const showFunnel = flags.funnel === true;
 
   try {
     // Step 1: Scan domain (Epic 33)
@@ -151,6 +154,11 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       const scoreVal = (scoreResult.total as any).score ?? 0;
       const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
       const categoryScores = Object.values(scoreResult.categories) as any[];
+      const funnelData = showFunnel
+        ? computeFunnel(Object.fromEntries(
+          Object.entries(scoreResult.categories).map(([k, v]) => [k, (v as any).score ?? 0]),
+        ))
+        : undefined;
       const apiJson = formatJsonApiOutput({
         url,
         score: scoreVal,
@@ -159,6 +167,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         categoryScores,
         compact,
         reportUrl,
+        funnel: funnelData,
       });
       return { exitCode: 0, stdout: apiJson, stderr: "" };
     }
@@ -181,7 +190,12 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     if (format === "html") {
       const scoreVal = (scoreResult.total as any).score ?? scoreResult.total as any;
       const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
-      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl });
+      const funnelData = showFunnel
+        ? computeFunnel(Object.fromEntries(
+          Object.entries(scoreResult.categories).map(([k, v]) => [k, (v as any).score ?? 0]),
+        ))
+        : undefined;
+      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData });
       if (outputPath !== DEFAULT_OUTPUT_PATH) {
         await writeFile(outputPath, html, "utf-8");
         return { exitCode: 0, stdout: `HTML report written to ${outputPath}`, stderr: "", outputFile: outputPath };
@@ -212,7 +226,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       exitCode = 1;
     }
 
-    const prettyOutput = formatPrettyOutput(report);
+    const prettyOutput = formatPrettyOutput(report, { showFunnel });
     const reportLine = reportUrl ? `\nWeb report: ${reportUrl}` : "";
     return {
       exitCode,
