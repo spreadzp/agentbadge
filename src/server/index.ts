@@ -9,6 +9,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 
 import { getPrice, logger } from "@agentgate-hedera/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
+import { adminAuth } from "./middleware/adminAuth";
 import { mppPaymentMiddleware } from "./middleware/mpp";
 import { l402PaymentMiddleware } from "./middleware/l402";
 import { bazaarExtensionMiddleware } from "./middleware/bazaar-extension";
@@ -268,11 +269,29 @@ app.use("/6abf90e7f0354fb09ac01108f46a17e7.txt", serveStatic({ root: "./public",
 
 const INDEXNOW_KEY = "6abf90e7f0354fb09ac01108f46a17e7";
 const INDEXNOW_BASE = "https://agentbadge.xyz";
+const INDEXNOW_ALLOWED_HOSTS = (process.env.INDEXNOW_ALLOWED_HOSTS ?? "agentbadge.xyz").split(",");
+const INDEXNOW_MAX_URLS = 10;
 
-app.post("/api/indexnow", async (c) => {
+app.post("/api/indexnow", adminAuth, async (c) => {
   try {
     const body = await c.req.json<{ urls?: string[] }>();
     const urls = body.urls ?? [`${INDEXNOW_BASE}/`];
+
+    if (urls.length > INDEXNOW_MAX_URLS) {
+      return c.json({ error: `Too many URLs (max ${INDEXNOW_MAX_URLS})` }, 400);
+    }
+
+    for (const u of urls) {
+      try {
+        const parsed = new URL(u);
+        if (!INDEXNOW_ALLOWED_HOSTS.includes(parsed.hostname)) {
+          return c.json({ error: `URL not allowed: ${u}` }, 403);
+        }
+      } catch {
+        return c.json({ error: `Invalid URL: ${u}` }, 400);
+      }
+    }
+
     const payload = {
       host: "agentbadge.xyz",
       key: INDEXNOW_KEY,
@@ -284,6 +303,9 @@ app.post("/api/indexnow", async (c) => {
       headers: { "Content-Type": "application/json; charset=utf-8" },
       body: JSON.stringify(payload),
     });
+
+    console.log(`[indexnow] Submitted ${urls.length} URL(s)`);
+
     return c.json({ ok: resp.ok, status: resp.status, urls: urls.length });
   } catch (e) {
     return c.json({ ok: false, error: String(e) }, 500);
