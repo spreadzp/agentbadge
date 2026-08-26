@@ -7,22 +7,18 @@ import {
 } from "../services/contact.service";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { createRateLimiter } from "../middleware/rate-limit";
 
 export const contactRoutes = new Hono();
 
-const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 60_000;
+const contactLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 1,
+  routes: ["/contact"],
+});
 
 export function resetRateLimit(): void {
-  rateLimitMap.clear();
-}
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const last = rateLimitMap.get(ip);
-  if (last && now - last < RATE_LIMIT_MS) return false;
-  rateLimitMap.set(ip, now);
-  return true;
+  // No-op — unified limiter handles its own store
 }
 
 function isHtmxRequest(c: import("hono").Context): boolean {
@@ -116,8 +112,8 @@ contactRoutes.post("/contact", async (c) => {
       : errorResponse(c, 400, ErrorCodes.INVALID_JSON, msg);
   }
 
-  const ip = c.req.header("x-forwarded-for") ?? "unknown";
-  if (!checkRateLimit(ip)) {
+  const rateLimitResult = await contactLimiter(c, async () => { });
+  if (rateLimitResult instanceof Response) {
     const msg = "Rate limit exceeded. Try again in a minute.";
     return htmx
       ? c.html(contactErrorFragment(msg), 429)
