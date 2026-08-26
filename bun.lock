@@ -7,7 +7,7 @@
       "dependencies": {
         "@agentgate-hedera/hedera-core": "^0.1.11",
         "@agentgate-hedera/mcp": "^0.1.9",
-        "@agentgate-hedera/passport": "^0.1.7",
+        "@agentgate-hedera/passport": "^0.1.8",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/standard-validator": "^0.3.0",
         "@hono/swagger-ui": "^0.6.1",
@@ -52,7 +52,7 @@
 
     "@agentgate-hedera/mcp": ["@agentgate-hedera/mcp@0.1.9", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@agentgate-hedera/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GN4zZqneU+6RCTYWvTZEDad2XN7+4GDNdmgn1mguKl9J8o5JxCpC16s1D+3KIuNHNTvBwXQd+M7a7Tn9f3jo7Q=="],
 
-    "@agentgate-hedera/passport": ["@agentgate-hedera/passport@0.1.7", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@x402/hedera": "^2.19.0", "@x402/hono": "^2.19.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-NSKG86T1BmAwI87Gx2rE4+qZfXP93lftPaDTENkiLlYxjzRfYRZ5CNMgtApZGUPPhPqeyEUKPlK6C+dl77ASvw=="],
+    "@agentgate-hedera/passport": ["@agentgate-hedera/passport@0.1.8", "", { "dependencies": { "@agentgate-hedera/hedera-core": "^0.1.11", "@x402/hedera": "^2.19.0", "@x402/hono": "^2.19.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-qjdl4mxFwMuXoQBydsKFkzJ+BrB082jd5RxgM1+aQee0iQaVMj6pg0Rb0r9x7adeNyaR6gOGgLIhLc6C9exYkQ=="],
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 
@@ -1367,8 +1367,6 @@
     "@agentgate-hedera/mcp/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@file:../hedera-core", {}],
 
     "@agentgate-hedera/mcp/@agentgate-hedera/passport": ["@agentgate-hedera/passport@file:../passport", {}],
-
-    "@agentgate-hedera/passport/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@file:../hedera-core", {}],
 
     "@apm-js-collab/code-transformer-bundler-plugins/es-module-lexer": ["es-module-lexer@2.3.1", "", {}, ""],
 
