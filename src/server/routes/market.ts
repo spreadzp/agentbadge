@@ -74,7 +74,7 @@ marketRoutes.post(
       deadline?: number;
     };
 
-    if (!posterDid || !title || !description || !priceHbar || !capabilities) {
+    if (!posterDid || !title || !description || priceHbar === undefined || !capabilities) {
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required fields: posterDid, title, description, priceHbar, capabilities");
     }
 
@@ -1188,7 +1188,7 @@ marketRoutes.post(
     if (!description) {
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: description");
     }
-    if (!priceHbar) {
+    if (priceHbar === undefined) {
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: priceHbar");
     }
     if (!capabilities) {

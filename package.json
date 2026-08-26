@@ -37,7 +37,6 @@
     "validate:agent-readiness": "bun run generate:agent-readiness-schemas && vitest run tests/agent-readiness-*.test.ts",
     "demo:full-flow": "bun scripts/full-flow-demo.ts",
     "demo:medical-marketplace": "bun scripts/demo-medical-marketplace.ts",
-    "push": "git add -A && git commit -m \"$(date +%Y-%m-%d) update\" && git push origin main",
     "deploy": "fly deploy",
     "lighthouse": "lhci autorun",
     "medical-agent": "bun src/agents/cli.ts",

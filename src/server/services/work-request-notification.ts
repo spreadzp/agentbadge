@@ -12,6 +12,7 @@ import {
   sendTelegramMessage,
 } from "./contact.service";
 import type { WorkRequestRecord } from "./work-request-store";
+import { logger } from "@agentgate-hedera/passport";
 
 const MAX_SUMMARY_PREVIEW = 200;
 
@@ -67,6 +68,6 @@ export async function notifyWorkRequest(wr: WorkRequestRecord): Promise<void> {
   }
 
   if (errors.length > 0) {
-    console.warn("[work-request] Notification errors:", errors.join("; "));
+    logger.warn("work-request: notification errors", { errors: errors.join("; ") });
   }
 }

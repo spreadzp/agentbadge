@@ -14,6 +14,7 @@ import { errorResponse } from "../../lib/error-response";
 import { workRequestStore } from "../../services/work-request-store";
 import { notifyWorkRequest } from "../../services/work-request-notification";
 import { createRateLimiter } from "../../middleware/rate-limit";
+import { logger } from "@agentgate-hedera/passport";
 
 export const workRequestRoutes = new Hono();
 
@@ -160,7 +161,7 @@ workRequestRoutes.post(
 
     // Async notification — fire and forget, errors logged but don't block
     notifyWorkRequest(record).catch((err) => {
-      console.warn("[work-request] Notification failed:", err);
+      logger.warn("work-request: notification failed", { error: err });
     });
 
     return c.json(

@@ -19,6 +19,7 @@
 
 import type { MiddlewareHandler } from "hono";
 import { createHash, randomBytes, createHmac } from "node:crypto";
+import { logger } from "@agentgate-hedera/passport";
 
 export interface L402Config {
   /** Root key for macaroon generation */
@@ -182,9 +183,7 @@ export function l402PaymentMiddleware(config: L402Config): MiddlewareHandler {
   const mode = resolveL402Mode(config);
 
   if (mode === "disabled") {
-    console.warn(
-      "[L402] Middleware is DISABLED — no LND config and L402_TEST_MODE is not 'true'. Endpoint is not gated.",
-    );
+    logger.warn("L402 Middleware is DISABLED — no LND config and L402_TEST_MODE is not 'true'. Endpoint is not gated.");
     return async (_c, next) => {
       await next();
     };

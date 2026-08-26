@@ -166,7 +166,7 @@ if (!isMockMode) {
     loadConfig();
     logger.info("Environment configuration validated");
   } catch (e) {
-    console.error("[SERVER] Config error:", e);
+    logger.error("SERVER: Config error", { error: e });
     process.exit(1);
   }
 }
@@ -304,7 +304,7 @@ app.post("/api/indexnow", adminAuth, async (c) => {
       body: JSON.stringify(payload),
     });
 
-    console.log(`[indexnow] Submitted ${urls.length} URL(s)`);
+    logger.info("IndexNow submitted", { urlCount: urls.length });
 
     return c.json({ ok: resp.ok, status: resp.status, urls: urls.length });
   } catch (e) {
@@ -455,8 +455,8 @@ try {
     fetch: app.fetch,
     idleTimeout: 0,
   });
-  console.error(`[SERVER] Listening on http://${server.hostname}:${server.port}`);
+  logger.info("SERVER listening", { url: `http://${server.hostname}:${server.port}` });
 } catch (e) {
-  console.error("[SERVER] Bun.serve failed:", e);
+  logger.error("SERVER: Bun.serve failed", { error: e });
   process.exit(1);
 }

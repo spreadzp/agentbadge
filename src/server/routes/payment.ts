@@ -19,6 +19,7 @@ import { EventLedger, withIdempotency } from "../lib/event-ledger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { captureError } from "../lib/sentry";
+import { logger } from "@agentgate-hedera/passport";
 import { checkoutResponseSchema, errorSchema } from "../openapi";
 import { renderPaymentSuccess, renderPaymentError } from "../../views/payment-success";
 import { renderPaymentCanceled } from "../../views/payment-canceled";
@@ -191,7 +192,7 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
                 async () => { await fulfillOrder(session); },
                 {
                     onAlert: (info) => {
-                        console.error(`[webhook] ALERT: ${info.attempts} failed attempts for event ${info.eventId}`, info.lastError);
+                        logger.error("webhook: repeated failures", { attempts: info.attempts, eventId: info.eventId, lastError: info.lastError });
                         captureError(new Error(`Webhook repeated failures: ${info.eventId}`), {
                             eventId: info.eventId,
                             sessionId: info.sessionId,

@@ -19,7 +19,6 @@ COPY package.json bun.lock ./
 RUN bun install --production --frozen-lockfile
 
 COPY src ./src
-COPY tests ./tests
 COPY content ./content
 COPY public ./public
 COPY --from=css-builder /build/public/css/tailwind.css ./public/css/tailwind.css

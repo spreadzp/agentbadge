@@ -18,6 +18,7 @@
 import type { MiddlewareHandler, Context } from "hono";
 import { createHash, randomBytes } from "node:crypto";
 import { didToAccountId } from "@agentgate-hedera/hedera-core";
+import { logger } from "@agentgate-hedera/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 
@@ -156,7 +157,7 @@ export function requireDidSignature(
       const warnDate = new Date();
       warnDate.setDate(warnDate.getDate() + 14);
       c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
-      console.warn(`[DID-AUTH-WARN] unsigned mutation: ${c.req.method} ${c.req.path}`);
+      logger.warn("DID-AUTH-WARN: unsigned mutation", { method: c.req.method, path: c.req.path });
       await next();
       return;
     }
@@ -179,7 +180,7 @@ export function requireDidSignature(
         const warnDate = new Date();
         warnDate.setDate(warnDate.getDate() + 14);
         c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
-        console.warn(`[DID-AUTH-WARN] timestamp skew: ${c.req.method} ${c.req.path}`);
+        logger.warn("DID-AUTH-WARN: timestamp skew", { method: c.req.method, path: c.req.path });
         await next();
         return;
       }
@@ -192,7 +193,7 @@ export function requireDidSignature(
         const warnDate = new Date();
         warnDate.setDate(warnDate.getDate() + 14);
         c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
-        console.warn(`[DID-AUTH-WARN] invalid nonce: ${c.req.method} ${c.req.path}`);
+        logger.warn("DID-AUTH-WARN: invalid nonce", { method: c.req.method, path: c.req.path });
         await next();
         return;
       }
@@ -224,7 +225,7 @@ export function requireDidSignature(
         const warnDate = new Date();
         warnDate.setDate(warnDate.getDate() + 14);
         c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
-        console.warn(`[DID-AUTH-WARN] DID not resolved: ${c.req.method} ${c.req.path} did=${did}`);
+        logger.warn("DID-AUTH-WARN: DID not resolved", { method: c.req.method, path: c.req.path, did });
         // Re-inject body for downstream handlers
         (c.req as unknown as { rawBody: string }).rawBody = rawBody;
         c.req.json = (async () => (rawBody ? JSON.parse(rawBody) : {})) as typeof c.req.json;
@@ -246,7 +247,7 @@ export function requireDidSignature(
         const warnDate = new Date();
         warnDate.setDate(warnDate.getDate() + 14);
         c.header("X-AgentBadge-Auth-Warn", `required-after-${warnDate.toISOString().slice(0, 10)}`);
-        console.warn(`[DID-AUTH-WARN] signature invalid: ${c.req.method} ${c.req.path} did=${did}`);
+        logger.warn("DID-AUTH-WARN: signature invalid", { method: c.req.method, path: c.req.path, did });
         // Re-inject body for downstream handlers
         (c.req as unknown as { rawBody: string }).rawBody = rawBody;
         c.req.json = (async () => (rawBody ? JSON.parse(rawBody) : {})) as typeof c.req.json;
