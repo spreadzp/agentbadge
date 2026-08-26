@@ -474,6 +474,37 @@ export function checkAb103(state: SourceState): Evidence[] {
   return [httpEvidence(snaps.mcp_probe)];
 }
 
+// ─── AB-119: OAuth token endpoint reachable ───────────────────────────────────
+export function checkAb119(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.auth_probe) return [];
+  const probe = JSON.parse(snaps.auth_probe.body ?? "{}");
+  if (probe.tokenObtained) {
+    return [httpEvidence({ ...snaps.auth_probe, status: 200 })];
+  }
+  return [httpEvidence({ ...snaps.auth_probe, status: 0 })];
+}
+
+// ─── AB-120: Authenticated endpoint callable ──────────────────────────────────
+export function checkAb120(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.auth_probe) return [];
+  const probe = JSON.parse(snaps.auth_probe.body ?? "{}");
+  const endpointStatus = probe.endpointStatus ?? 0;
+  return [httpEvidence({ ...snaps.auth_probe, status: endpointStatus })];
+}
+
+// ─── AB-121: Token response valid format ──────────────────────────────────────
+export function checkAb121(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.auth_probe) return [];
+  const probe = JSON.parse(snaps.auth_probe.body ?? "{}");
+  if (probe.tokenObtained) {
+    return [httpEvidence({ ...snaps.auth_probe, status: 200 })];
+  }
+  return [httpEvidence({ ...snaps.auth_probe, status: 0 })];
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -511,4 +542,7 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-101": checkAb101,
   "AB-102": checkAb102,
   "AB-103": checkAb103,
+  "AB-119": checkAb119,
+  "AB-120": checkAb120,
+  "AB-121": checkAb121,
 };

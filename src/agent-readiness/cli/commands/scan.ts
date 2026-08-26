@@ -44,6 +44,9 @@ const SCAN_FLAGS = [
   { name: "compact", shortName: "", type: "boolean" as const, description: "Compact M2M JSON output (no whitespace)" },
   { name: "report-url", shortName: "", type: "string" as const, description: "Web report URL to include in output" },
   { name: "funnel", shortName: "", type: "boolean" as const, description: "Show readiness funnel in output" },
+  { name: "auth-test", shortName: "", type: "boolean" as const, description: "Enable OAuth client_credentials auth probe during scan" },
+  { name: "client-id", shortName: "", type: "string" as const, description: "OAuth client_id for auth probe (or CLIENT_ID env var)" },
+  { name: "client-secret", shortName: "", type: "string" as const, description: "OAuth client_secret for auth probe (or CLIENT_SECRET env var)" },
 ];
 
 export function registerScanCommand(): void {
