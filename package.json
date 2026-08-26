@@ -43,7 +43,7 @@
   "dependencies": {
     "@agentgate-hedera/hedera-core": "^0.1.12",
     "@agentgate-hedera/mcp": "^0.1.9",
-    "@agentgate-hedera/passport": "^0.1.8",
+    "@agentgate-hedera/passport": "^0.1.9",
     "@hashgraph/sdk": "^2.55.0",
     "@hono/standard-validator": "^0.3.0",
     "@hono/swagger-ui": "^0.6.1",
