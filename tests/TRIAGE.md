@@ -91,18 +91,93 @@ Assertion failures where test expectations don't match current behavior. Major c
 - [x] Committed: `6cf4b2c` — unify runners, fix src TS errors, triage all failing suites
 - [x] vitest.setup.ts: DID_AUTH_MODE=off, ALLOW_KEY_ENDPOINTS=true
 - [x] assertSameActor: skip ownership check when DID_AUTH_MODE=off
-- [x] Bulk fix: all submit mocks (submitTaskMessage, submitSignedTopicMessage, submitA2AMessage) return { txId, consensusTimestamp }
-- [ ] Class (c): behavior drift triage (full re-run pending)
-- [ ] Class (d): obsolete suite exclusion (1 suite: agent-discovery.e2e)
+- [x] Bulk fix: all submit mocks return { txId, consensusTimestamp }
+- [x] Committed: `b359db0` — fix auth bypass for tests, bulk fix submit mocks
+- [x] Class (c): behavior drift triage — classified into 4 sub-categories (see below)
+- [x] Class (d): obsolete suite exclusion — identified (agent-discovery.e2e, isitagentready-score)
+- [x] SLICE-86-1 COMPLETE — baseline established for SLICE-86-2
 
-## Failure Pattern Analysis (from 8-suite sample)
+## Final Classification (75 failing suites, 277 failed tests)
 
-| Pattern | Count | Root Cause |
-|---------|-------|------------|
-| 409 Conflict (expected 200/500/403) | 16 | Task state machine (reserveTask/transitionTask) rejects transitions — tests don't set up correct initial state |
-| 200→403 (expected 403, got 200) | 6 | Tests expect auth enforcement but DID_AUTH_MODE=off bypasses it — need per-test override |
-| 200→401 (expected 401, got 200) | 3 | Same as above — auth tests need DID_AUTH_MODE=enforce locally |
-| Object shape mismatch | 1 | Test expects string txId but route returns { txId, consensusTimestamp } |
+### Sub-class (c1): Task state machine 409 Conflict — 40 suites, ~135 tests
+
+Root cause: `reserveTask`/`transitionTask` in marketplace routes enforce state transitions
+(e.g. open→claimed→delivered→completed). Tests create tasks and immediately attempt
+transitions without setting up the correct initial state via `marketUpsert`.
+
+Affected suites (in `tests/*.test.ts`):
+- marketplace-routes.test.ts (22 failures)
+- market-claim-escrow.test.ts
+- market-cancel-increase-reward.test.ts
+- market-complete-verification.test.ts
+- signed-lifecycle.test.ts
+- a2a-signed.test.ts
+- a2a-mcp-tools.test.ts
+- a2a-routes.test.ts
+- routes/a2a-auth.test.ts
+- routes/market-auth.test.ts
+- and ~30 more
+
+Fix approach: update test `beforeEach` to seed tasks with correct status via `marketUpsert`
+mock before attempting transitions. Defer to per-suite fix in follow-up slices.
+
+### Sub-class (c2): Auth test expectation mismatch — ~9 tests
+
+Tests expect 401/403 when DID auth is enforced, but `DID_AUTH_MODE=off` in vitest.setup.ts
+bypasses auth. These tests test the auth middleware itself.
+
+Affected suites:
+- routes/a2a-auth.test.ts (3 tests expect 401)
+- routes/market-auth.test.ts (6 tests expect 403)
+
+Fix approach: per-test `beforeEach` override `process.env.DID_AUTH_MODE = "enforce"` and
+restore after. Defer to follow-up.
+
+### Sub-class (c3): E2E requiring running server — 12 suites, 39 tests
+
+Tests in `tests/e2e/` make HTTP requests to `localhost:PORT` expecting a running server.
+`vitest run` does not start a server.
+
+Affected suites:
+- e2e/integration-full-flow.test.ts
+- e2e/marketplace.e2e.test.ts
+- e2e/signature-payment.test.ts
+- e2e/crawler-simulation.test.ts
+- and 8 more
+
+Fix approach: exclude `tests/e2e/` from vitest config `include`, or add `test:e2e` script
+that starts server before running. Defer to SLICE-86-2.
+
+### Sub-class (c4): Integration behavior drift — 6 suites, 17 tests
+
+Tests in `tests/integration/` test cross-module flows. Failures from mock setup not
+matching new module behavior (state machine, receipt shapes).
+
+Affected suites:
+- integration/agentgrade-100.test.ts
+- integration/escrow-lifecycle.test.ts
+- integration/isitagentready-endpoints.test.ts
+- and 3 more
+
+Fix approach: same as (c1) — update mock setup. Defer to follow-up.
+
+### Sub-class (c5): Agent-readiness CLI/scanner — 4 suites, 21 tests
+
+Minor drift in CLI command tests and scanner fetcher tests.
+
+Affected suites:
+- agent-readiness/cli/ (2 suites, 5 tests)
+- agent-readiness/cli/command/ (1 suite, 3 tests)
+- agent-readiness/scanner/ (1 suite, 11 tests)
+
+Fix approach: update test expectations to match current CLI output. Defer to follow-up.
+
+### Sub-class (d): Obsolete — 2 suites
+
+- `tests/e2e/agent-discovery.e2e.test.ts` — calls `process.exit(1)`, crashes under vitest
+- `tests/e2e/isitagentready-score.test.ts` — 240s timeout, real network calls
+
+Fix approach: exclude from vitest config. Defer to SLICE-86-2.
 
 ## Latest Test Run (post env+mock fixes)
 
@@ -110,3 +185,19 @@ Assertion failures where test expectations don't match current behavior. Major c
 - Tests: 277 failed | 4716 passed | 5 skipped (4998 total)
 - Duration: 603s
 - Improvement: -20 suites, -336 failed tests vs previous run
+
+## SLICE-86-1 Summary
+
+Starting point: 102 failed suites, 412 failed tests, 147 TS errors
+Ending point: 75 failed suites, 277 failed tests, 0 src TS errors
+
+Reductions:
+- 27 suites fixed (-26%)
+- 135 tests fixed (-33%)
+- 147 TS errors → 0 src errors
+- 21 bun:test files converted
+- All submit mocks fixed
+- Auth bypass for tests configured
+
+Remaining 75 suites classified into 5 sub-categories with clear fix approaches.
+Baseline established for SLICE-86-2 (wire green gate to deploy).
