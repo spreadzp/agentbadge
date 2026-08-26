@@ -46,6 +46,7 @@ import { fetchOauthAuthorizationServer } from "./fetchers/oauth-authorization-se
 import { fetchLlmPolicy } from "./fetchers/llm-policy-fetcher";
 import { fetchAuthProbe, type AuthProbeCredentials } from "./fetchers/auth-probe-fetcher";
 import { fetchEndpointProbe } from "./fetchers/endpoint-probe-fetcher";
+import { fetchOperationalDiscovery } from "./fetchers/operational-discovery-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
@@ -106,6 +107,7 @@ export const DEFAULT_RESOURCES = [
   "ai_sitemap",
   "oauth_authorization_server",
   "llm_policy",
+  "operational_discovery",
 ] as const;
 
 export async function scanDomain(
@@ -175,7 +177,10 @@ export async function scanDomain(
         maxEndpoints: opts?.probeEndpoints ?? 3,
       }
       : undefined;
-    const result = await fetchResource(resource, baseUrl, rateLimiter, cache, authContext, epCtx);
+    const odCtx: OperationalDiscoveryContext | undefined = resource === "operational_discovery"
+      ? { homepageSnapshot: snapshots["homepage_meta"] ?? null }
+      : undefined;
+    const result = await fetchResource(resource, baseUrl, rateLimiter, cache, authContext, epCtx, odCtx);
     snapshots[resource] = result;
     completed++;
     opts?.onProgress?.(resource, completed, total);
@@ -189,6 +194,10 @@ interface EndpointProbeContext {
   maxEndpoints: number;
 }
 
+interface OperationalDiscoveryContext {
+  homepageSnapshot: ResponseSnapshot | null;
+}
+
 async function fetchResource(
   resource: string,
   baseUrl: string,
@@ -196,6 +205,7 @@ async function fetchResource(
   cache: SnapshotCache | null,
   authContext?: AuthProbeContext,
   endpointProbeContext?: EndpointProbeContext,
+  operationalDiscoveryContext?: OperationalDiscoveryContext,
 ): Promise<ResponseSnapshot | null> {
   const cacheKey = `${baseUrl}/${resource}`;
   if (cache?.has(cacheKey)) {
@@ -567,6 +577,18 @@ async function fetchResource(
       );
       snapshot = createSnapshot({
         url: `${baseUrl}/endpoint-probe`,
+        status: 200,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "operational_discovery": {
+      const homepageSnap = operationalDiscoveryContext?.homepageSnapshot ?? null;
+      const result = await fetchOperationalDiscovery(baseUrl, homepageSnap);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/operational-discovery`,
         status: 200,
         body: JSON.stringify(result),
         resolvedIp: null,

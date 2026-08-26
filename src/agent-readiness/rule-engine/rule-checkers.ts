@@ -536,6 +536,33 @@ export function checkAb124(state: SourceState): Evidence[] {
   return [httpEvidence({ ...snaps.endpoint_probe, status: anyContentType ? 200 : 0 })];
 }
 
+// ─── AB-125: LocalBusiness schema.org present ─────────────────────────────────
+export function checkAb125(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.operational_discovery) return [];
+  const data = JSON.parse(snaps.operational_discovery.body ?? "{}");
+  const found = data.status === "found";
+  return [httpEvidence({ ...snaps.operational_discovery, status: found ? 200 : 0 })];
+}
+
+// ─── AB-126: Opening hours machine-readable ───────────────────────────────────
+export function checkAb126(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.operational_discovery) return [];
+  const data = JSON.parse(snaps.operational_discovery.body ?? "{}");
+  const hasHours = !!data.business?.openingHours;
+  return [httpEvidence({ ...snaps.operational_discovery, status: hasHours ? 200 : 0 })];
+}
+
+// ─── AB-127: Area served defined ──────────────────────────────────────────────
+export function checkAb127(state: SourceState): Evidence[] {
+  const snaps = getSnapshots(state);
+  if (!snaps.operational_discovery) return [];
+  const data = JSON.parse(snaps.operational_discovery.body ?? "{}");
+  const hasArea = !!data.business?.areaServed;
+  return [httpEvidence({ ...snaps.operational_discovery, status: hasArea ? 200 : 0 })];
+}
+
 // Registry: rule_id → checker function
 export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> = {
   "AB-001": checkAb001,
@@ -579,4 +606,7 @@ export const RULE_CHECKERS: Record<string, (state: SourceState) => Evidence[]> =
   "AB-122": checkAb122,
   "AB-123": checkAb123,
   "AB-124": checkAb124,
+  "AB-125": checkAb125,
+  "AB-126": checkAb126,
+  "AB-127": checkAb127,
 };

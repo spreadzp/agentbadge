@@ -102,6 +102,9 @@ import { AB121 } from "./rules/AB121";
 import { AB122 } from "./rules/AB122";
 import { AB123 } from "./rules/AB123";
 import { AB124 } from "./rules/AB124";
+import { AB125 } from "./rules/AB125";
+import { AB126 } from "./rules/AB126";
+import { AB127 } from "./rules/AB127";
 import { AB098 } from "./rules/AB098";
 import { AB099 } from "./rules/AB099";
 import { AB100 } from "./rules/AB100";
@@ -216,6 +219,9 @@ export const AGENT_READINESS_RULESET = {
     AB122,
     AB123,
     AB124,
+    AB125,
+    AB126,
+    AB127,
     AB098,
     AB099,
     AB100,
