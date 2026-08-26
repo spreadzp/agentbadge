@@ -2,13 +2,10 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["tests/**/*.test.ts"],
-    exclude: [
-      "tests/e2e/**",
-      "tests/agent-readiness/e2e/**",
-    ],
+    include: ["tests/e2e/**/*.test.ts"],
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
+    testTimeout: 120000,
     server: {
       deps: {
         inline: ["@agentgate-hedera/passport"],

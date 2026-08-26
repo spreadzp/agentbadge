@@ -1,7 +1,7 @@
 import { html, raw } from "hono/html";
 import { type BlogArticle, type BlogExternalLink } from "../server/lib/blog-data";
 
-const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
+export const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
   devto: "Dev.to",
   medium: "Medium",
   linkedin: "LinkedIn",
