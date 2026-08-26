@@ -410,6 +410,10 @@ if (marketTopicId) {
   startMarketCacheRebuild(marketTopicId, { incremental: true });
 }
 
+// SLICE-84-2: Start escrow reconciler background sweeper (config-gated)
+import { startEscrowReconciler } from "./services/escrow-reconciler";
+startEscrowReconciler();
+
 // Capture unhandled errors from routes
 app.onError((err, c) => {
   captureError(err, {
