@@ -105,6 +105,11 @@ export const CATEGORY_DESCRIPTIONS: Record<Category, CategoryDescription> = {
     title: "Accessibility",
     description: "Is your site accessible to all users, including those using assistive technology?",
   },
+  active_probing: {
+    icon: "🔍",
+    title: "Active Probing",
+    description: "Are auth, endpoints, and operational metadata discoverable by active probing?",
+  },
 };
 
 export const RULE_DESCRIPTIONS: RuleDescription[] = [

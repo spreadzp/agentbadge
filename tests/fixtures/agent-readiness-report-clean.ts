@@ -53,6 +53,7 @@ export const cleanReport: AgentReadinessReport = {
       infrastructure: 0,
       seo_aeo: 0,
       accessibility: 0,
+      active_probing: 0,
     },
   },
   assertions: [

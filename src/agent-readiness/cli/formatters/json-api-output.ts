@@ -14,6 +14,9 @@ export interface JsonApiInput {
   compact?: boolean;
   reportUrl?: string;
   funnel?: import("../../scoring/funnel-computer").FunnelResult;
+  authProbe?: unknown;
+  endpointProbe?: unknown;
+  operationalDiscovery?: unknown;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -34,6 +37,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   infrastructure: "Infrastructure",
   seo_aeo: "SEO / AEO",
   accessibility: "Accessibility",
+  active_probing: "Active Probing",
 };
 
 function isPassed(status: string): boolean {
@@ -103,6 +107,18 @@ export function formatJsonApiOutput(input: JsonApiInput): string {
 
   if (input.funnel) {
     output.funnel = input.funnel;
+  }
+
+  if (input.authProbe !== undefined) {
+    output.auth_probe = input.authProbe;
+  }
+
+  if (input.endpointProbe !== undefined) {
+    output.endpoint_probe = input.endpointProbe;
+  }
+
+  if (input.operationalDiscovery !== undefined) {
+    output.operational_discovery = input.operationalDiscovery;
   }
 
   const space = input.compact ? 0 : 2;

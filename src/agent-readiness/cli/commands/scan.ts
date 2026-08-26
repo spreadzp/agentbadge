@@ -125,6 +125,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         infrastructure: 5,
         seo_aeo: 5,
         accessibility: 4,
+        active_probing: 5,
       },
     };
     const scoreResult = runScoringEngine({
@@ -169,6 +170,18 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
           Object.entries(scoreResult.categories).map(([k, v]) => [k, (v as any).score ?? 0]),
         ))
         : undefined;
+
+      // Extract probe/operational_discovery data from snapshots
+      const authProbeData = sourceState.snapshots.auth_probe?.body
+        ? JSON.parse(sourceState.snapshots.auth_probe.body)
+        : undefined;
+      const endpointProbeData = sourceState.snapshots.endpoint_probe?.body
+        ? JSON.parse(sourceState.snapshots.endpoint_probe.body)
+        : undefined;
+      const operationalDiscoveryData = sourceState.snapshots.operational_discovery?.body
+        ? JSON.parse(sourceState.snapshots.operational_discovery.body)
+        : undefined;
+
       const apiJson = formatJsonApiOutput({
         url,
         score: scoreVal,
@@ -178,6 +191,9 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         compact,
         reportUrl,
         funnel: funnelData,
+        authProbe: authProbeData,
+        endpointProbe: endpointProbeData,
+        operationalDiscovery: operationalDiscoveryData,
       });
       return { exitCode: 0, stdout: apiJson, stderr: "" };
     }

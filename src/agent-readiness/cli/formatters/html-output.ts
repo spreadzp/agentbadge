@@ -22,6 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   infrastructure: "Infrastructure",
   seo_aeo: "SEO / AEO",
   accessibility: "Accessibility",
+  active_probing: "Active Probing",
 };
 
 function gradeLetter(score: number): string {
