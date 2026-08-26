@@ -24,8 +24,64 @@ import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 import { toPublicError } from "../lib/error-map";
+// SLICE-90-12: Base Sepolia passport type checks
+import { isBaseDid, parseBaseDid, BaseChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/base-core";
 
 export const marketRoutes = new Hono();
+
+// SLICE-90-12: Check passport type for Base Sepolia DIDs
+// Returns null if check passes, or a Response if it fails
+async function checkPassportType(
+  did: string,
+  requiredType: "CREATOR" | "EXECUTOR",
+): Promise<Response | null> {
+  if (!isBaseDid(did)) return null; // Only check Base Sepolia DIDs
+
+  const parsed = parseBaseDid(did);
+  if (!parsed) return null;
+
+  const operatorKey = process.env.BASE_OPERATOR_KEY;
+  if (!operatorKey) return null; // Skip if Base not configured
+
+  const adapter = new BaseChainAdapter({
+    rpcUrl: BASE_SEPOLIA_RPC,
+    chainId: BASE_SEPOLIA_CHAIN_ID,
+    operatorKey,
+    passportNft: BASE_SEPOLIA_ADDRESSES.AgentPassport,
+    taskEscrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    usdcAddress: BASE_SEPOLIA_ADDRESSES.MockUSDC,
+    explorerUrl: BASE_SEPOLIA_EXPLORER,
+  });
+
+  const info = await adapter.getPassportInfo(parsed.nftAddress, parsed.tokenId);
+  if (!info) {
+    return new Response(
+      JSON.stringify({ error: { code: ErrorCodes.PASSPORT_NOT_FOUND, message: "Passport not found on Base Sepolia" } }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (info.deleted) {
+    return new Response(
+      JSON.stringify({ error: { code: ErrorCodes.PASSPORT_REVOKED, message: "Passport is revoked" } }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (info.passportType !== requiredType) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: ErrorCodes.PASSPORT_TYPE_MISMATCH,
+          message: `Passport type ${info.passportType} does not match required type ${requiredType}`,
+        },
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  return null;
+}
 
 // Parse base64-encoded signature array string into Uint8Array[]
 function parseSignatureB64(signatureB64: string): Uint8Array[] {
@@ -93,6 +149,10 @@ marketRoutes.post(
     // Assert verified DID matches actor field (defense-in-depth)
     const actorMismatch = assertSameActor(c, posterDid);
     if (actorMismatch) return actorMismatch;
+
+    // SLICE-90-12: Require CREATOR passport type for Base Sepolia DIDs
+    const typeCheck = await checkPassportType(posterDid, "CREATOR");
+    if (typeCheck) return typeCheck;
 
     try {
       const timestamp = Math.floor(Date.now() / 1000);
@@ -252,6 +312,10 @@ marketRoutes.post(
     const actorMismatch = assertSameActor(c, claimerDid);
     if (actorMismatch) return actorMismatch;
 
+    // SLICE-90-12: Require EXECUTOR passport type for Base Sepolia DIDs
+    const typeCheck = await checkPassportType(claimerDid, "EXECUTOR");
+    if (typeCheck) return typeCheck;
+
     const task = getTaskById(taskId);
     if (!task) {
       return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
@@ -388,6 +452,10 @@ marketRoutes.post(
     // Assert verified DID matches actor field (defense-in-depth)
     const actorMismatch = assertSameActor(c, claimerDid);
     if (actorMismatch) return actorMismatch;
+
+    // SLICE-90-12: Require EXECUTOR passport type for Base Sepolia DIDs
+    const typeCheck = await checkPassportType(claimerDid, "EXECUTOR");
+    if (typeCheck) return typeCheck;
 
     const task = getTaskById(taskId);
     if (!task) {
