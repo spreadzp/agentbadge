@@ -4,6 +4,7 @@ import { describeRoute } from "hono-openapi";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
+import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 
 export const totalScanRoutes = new Hono();
 
@@ -19,14 +20,14 @@ totalScanRoutes.post(
     },
   }),
   async (c) => {
-    let body: any;
+    let body: unknown;
     try {
       body = await c.req.json();
     } catch {
       return c.json({ error: "Invalid JSON body" }, 400);
     }
 
-    const url = body?.url;
+    const url = (body as Record<string, unknown>)?.url;
     if (!url || typeof url !== "string") {
       return c.json({ error: "URL is required" }, 400);
     }
@@ -42,10 +43,11 @@ totalScanRoutes.post(
       return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
     }
 
-    // SSRF protection: block private/internal IP ranges
+    // SSRF protection: canonical guard (replaces inline blocklist)
     const hostname = new URL(normalizedUrl).hostname;
-    const privateRanges = ["localhost", "127.", "192.168.", "10.", "172.16.", "::1", "0.0.0.0"];
-    if (privateRanges.some((r) => hostname === r || hostname.startsWith(r))) {
+    try {
+      assertSafeTarget(hostname);
+    } catch {
       return c.json({ error: "Private URLs are not allowed" }, 403);
     }
 
