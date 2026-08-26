@@ -44,12 +44,21 @@ import { fetchAgentCard } from "./fetchers/agent-card-fetcher";
 import { fetchAiSitemap } from "./fetchers/ai-sitemap-fetcher";
 import { fetchOauthAuthorizationServer } from "./fetchers/oauth-authorization-server-fetcher";
 import { fetchLlmPolicy } from "./fetchers/llm-policy-fetcher";
+import { fetchAuthProbe, type AuthProbeCredentials } from "./fetchers/auth-probe-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
   timeout?: number;
   resources?: string[];
   onProgress?: (resource: string, completed: number, total: number) => void;
+  authTest?: boolean;
+  clientId?: string;
+  clientSecret?: string;
+}
+
+interface AuthProbeContext {
+  credentials: AuthProbeCredentials;
+  oauthSnapshot: ResponseSnapshot | null;
 }
 
 export const DEFAULT_RESOURCES = [
@@ -113,7 +122,13 @@ export async function scanDomain(
 
   const rateLimiter = new ScannerRateLimiter();
   const cache = opts?.noCache ? null : new SnapshotCache();
-  const resources = opts?.resources ?? [...DEFAULT_RESOURCES];
+  let resources = opts?.resources ?? [...DEFAULT_RESOURCES];
+
+  // Conditionally add auth_probe when authTest is enabled and credentials are provided
+  const authEnabled = opts?.authTest === true && !!opts?.clientId && !!opts?.clientSecret;
+  if (authEnabled && !resources.includes("auth_probe")) {
+    resources = [...resources, "auth_probe"];
+  }
 
   const snapshots: Record<string, ResponseSnapshot | null> = {};
   let completed = 0;
@@ -135,9 +150,17 @@ export async function scanDomain(
     opts?.onProgress?.(resource, completed, total);
   }));
 
-  // Sequential: guide, openapi, mcp
+  // Build auth probe context after oauth_authorization_server is fetched
+  const authContext: AuthProbeContext | undefined = authEnabled
+    ? {
+      credentials: { clientId: opts!.clientId!, clientSecret: opts!.clientSecret! },
+      oauthSnapshot: snapshots["oauth_authorization_server"] ?? null,
+    }
+    : undefined;
+
+  // Sequential: guide, openapi, mcp, auth_probe (needs oauth snapshot)
   for (const resource of sequentialResources) {
-    const result = await fetchResource(resource, baseUrl, rateLimiter, cache);
+    const result = await fetchResource(resource, baseUrl, rateLimiter, cache, authContext);
     snapshots[resource] = result;
     completed++;
     opts?.onProgress?.(resource, completed, total);
@@ -151,6 +174,7 @@ async function fetchResource(
   baseUrl: string,
   rateLimiter: ScannerRateLimiter,
   cache: SnapshotCache | null,
+  authContext?: AuthProbeContext,
 ): Promise<ResponseSnapshot | null> {
   const cacheKey = `${baseUrl}/${resource}`;
   if (cache?.has(cacheKey)) {
@@ -493,6 +517,21 @@ async function fetchResource(
         url: r.url, status: r.status, body: r.body,
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
       }) : null;
+      break;
+    }
+    case "auth_probe": {
+      if (!authContext) {
+        snapshot = null;
+        break;
+      }
+      const result = await fetchAuthProbe(baseUrl, authContext.oauthSnapshot, authContext.credentials);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/auth-probe`,
+        status: 200,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
       break;
     }
   }

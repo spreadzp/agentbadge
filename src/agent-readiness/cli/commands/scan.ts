@@ -79,10 +79,13 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
   const outputPath = typeof flags.output === "string" ? flags.output : DEFAULT_OUTPUT_PATH;
   const noCache = flags["no-cache"] === true;
   const showFunnel = flags.funnel === true;
+  const authTest = flags["auth-test"] === true;
+  const clientId = typeof flags["client-id"] === "string" ? flags["client-id"] : process.env.CLIENT_ID;
+  const clientSecret = typeof flags["client-secret"] === "string" ? flags["client-secret"] : process.env.CLIENT_SECRET;
 
   try {
     // Step 1: Scan domain (Epic 33)
-    const sourceState = await scanDomain(url, { noCache });
+    const sourceState = await scanDomain(url, { noCache, authTest, clientId, clientSecret });
 
     // Step 2: Run rule engine (Epic 34)
     const ruleEngineResult = RuleEngine.run(sourceState);
