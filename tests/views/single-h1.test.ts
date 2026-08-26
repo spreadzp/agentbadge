@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { Layout } from "../../src/views/layout";
 import { LandingLayout } from "../../src/views/landing/layout";
 import { FaqPage } from "../../src/views/faq-page";

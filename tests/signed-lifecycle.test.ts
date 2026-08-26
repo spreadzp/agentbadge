@@ -219,7 +219,7 @@ describe("SLICE-15-6: Full signed lifecycle (post → claim → deliver → comp
     mockedGetTaskById.mockReturnValue(deliveredTask as any);
     vi.mocked(prepareTransferTransaction).mockResolvedValue({ txBytes: FAKE_TX_BYTES, txId: "0.0.111@prepare" });
     vi.mocked(transferHbarWithSignature).mockResolvedValue("0.0.111@payment-tx");
-    vi.mocked(submitTaskMessage).mockResolvedValue("0.0.111@complete-tx");
+    vi.mocked(submitTaskMessage).mockResolvedValue({ txId: "0.0.111@complete-tx", consensusTimestamp: null });
 
     const app = makeApp();
     const res = await app.request("/market/tasks/task-signed-001/complete-with-key", {
@@ -321,7 +321,7 @@ describe("SLICE-15-6: All 4 txIds stored in cache after signed lifecycle", () =>
     mockedGetTaskById.mockReturnValue(mockDeliveredTask() as any);
     vi.mocked(prepareTransferTransaction).mockResolvedValue({ txBytes: FAKE_TX_BYTES, txId: "0.0.123@prepare" });
     vi.mocked(transferHbarWithSignature).mockResolvedValue("0.0.123@payment-tx");
-    vi.mocked(submitTaskMessage).mockResolvedValue("0.0.123@complete-tx");
+    vi.mocked(submitTaskMessage).mockResolvedValue({ txId: "0.0.123@complete-tx", consensusTimestamp: null });
 
     const completeRes = await app.request("/market/tasks/task-signed-001/complete-with-key", {
       method: "POST",
@@ -365,7 +365,7 @@ describe("SLICE-15-6: HBAR transfer amount correctness", () => {
     mockedGetTaskById.mockReturnValue(task as any);
     vi.mocked(prepareTransferTransaction).mockResolvedValue({ txBytes: FAKE_TX_BYTES, txId: "0.0.111@prepare" });
     vi.mocked(transferHbarWithSignature).mockResolvedValue("0.0.111@payment-7.5");
-    vi.mocked(submitTaskMessage).mockResolvedValue("0.0.111@complete-tx");
+    vi.mocked(submitTaskMessage).mockResolvedValue({ txId: "0.0.111@complete-tx", consensusTimestamp: null });
 
     const app = makeApp();
     const res = await app.request("/market/tasks/task-signed-001/complete-with-key", {

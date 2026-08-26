@@ -129,7 +129,7 @@ beforeEach(() => {
     if (did === CLAIMER_DID) return "0.0.456";
     return null;
   });
-  mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+  mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
   mockedRunVerification.mockResolvedValue({
     passed: true,
     attempts: 1,

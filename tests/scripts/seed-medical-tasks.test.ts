@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { seedMedicalTasks, type SeedResult } from "../../src/scripts/seed-medical-tasks";
 
 // Mock fetch
@@ -6,7 +6,7 @@ const originalFetch = globalThis.fetch;
 
 function createMockFetch(responses: { ok: boolean; json: () => Promise<unknown>; status?: number; text?: () => Promise<string> }[]) {
   let callIndex = 0;
-  return mock(async (_url: string, _opts?: RequestInit) => {
+  return vi.fn(async (_url: string, _opts?: RequestInit) => {
     const res = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
     return {

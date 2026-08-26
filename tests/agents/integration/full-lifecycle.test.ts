@@ -2,7 +2,7 @@
  * SLICE-26-13: Integration test — full lifecycle with 3 datasets
  */
 
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { runAnalysisPipeline } from "../../../src/agents/analysis/pipeline";
 import { generateHtmlLayout } from "../../../src/agents/report/html-layout";
 import { generateJsonReport, validateJsonReport } from "../../../src/agents/report/json-report";

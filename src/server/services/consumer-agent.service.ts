@@ -13,7 +13,6 @@ import { generateRandomMedicalData, type MedicalData } from "./medical-data.serv
 import {
   marketUpsert as upsert,
   marketGet as getTask,
-  listTasks,
   updateTaskStatus,
 } from "@agentgate-hedera/passport";
 import { submitTaskMessage, verifyA2ADid, didToAccountId, transferHbar } from "@agentgate-hedera/hedera-core";
@@ -105,7 +104,7 @@ export class MedicalDataConsumerAgent {
 
     let txId: string;
     try {
-      txId = await submitTaskMessage(message);
+      txId = (await submitTaskMessage(message)).txId;
     } catch {
       txId = `0.0.5266613@${timestamp}.000000000`;
     }
@@ -221,7 +220,7 @@ export class MedicalDataConsumerAgent {
     };
     let completedTxId: string | undefined;
     try {
-      completedTxId = await submitTaskMessage(message);
+      completedTxId = (await submitTaskMessage(message)).txId;
     } catch {
       // HCS submit failed — continue with cache-only update
     }

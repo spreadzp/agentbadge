@@ -13,7 +13,6 @@ import { generateRandomMedicalData, type MedicalData } from "./medical-data.serv
 import { analyzeMedicalData, type AnalysisResult } from "./medical-processor.service";
 import { generateHtmlReport } from "./html-report.service";
 import {
-  marketUpsert as upsert,
   marketGet as getTask,
   listTasks,
   updateTaskStatus,
@@ -113,7 +112,7 @@ export class MedicalDataProviderAgent {
     };
     let claimTxId: string | undefined;
     try {
-      claimTxId = await submitTaskMessage(message);
+      claimTxId = (await submitTaskMessage(message)).txId;
     } catch {
       // HCS submit failed — continue with cache-only update for demo
     }
@@ -174,7 +173,7 @@ export class MedicalDataProviderAgent {
     };
     let deliverTxId: string | undefined;
     try {
-      deliverTxId = await submitTaskMessage(message);
+      deliverTxId = (await submitTaskMessage(message)).txId;
     } catch {
       // HCS submit failed — continue with cache-only update for demo
     }

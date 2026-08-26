@@ -10,7 +10,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@agentgate-hedera/hedera-core")>();
   return {
     ...actual,
-    submitTaskMessage: vi.fn().mockResolvedValue("0.0.999@1.1"),
+    submitTaskMessage: vi.fn().mockResolvedValue({ txId: "0.0.999@1.1", consensusTimestamp: null }),
   };
 });
 
@@ -131,7 +131,7 @@ describe("SLICE-24-6: runVerification", () => {
 describe("SLICE-24-6: logReputationPenalty", () => {
   beforeEach(() => {
     vi.mocked(submitTaskMessage).mockClear();
-    vi.mocked(submitTaskMessage).mockResolvedValue("0.0.999@1.1");
+    vi.mocked(submitTaskMessage).mockResolvedValue({ txId: "0.0.999@1.1", consensusTimestamp: null });
   });
 
   it("submits HCS message with correct format", async () => {

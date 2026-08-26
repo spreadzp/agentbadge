@@ -2,7 +2,7 @@
  * SLICE-26-13: Edge case tests
  */
 
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { runAnalysisPipeline } from "../../src/agents/analysis/pipeline";
 import { correctAnalysis } from "../../src/agents/self-correcting-loop";
 import { runSelfCorrectingLoop } from "../../src/agents/self-correcting-loop";

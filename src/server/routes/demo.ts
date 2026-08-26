@@ -76,7 +76,7 @@ demo.post("/medical-data/generate-and-process", async (c) => {
 
   let txId: string;
   try {
-    txId = await submitTaskMessage(message);
+    txId = (await submitTaskMessage(message)).txId;
   } catch {
     txId = `0.0.5266613@${timestamp}.000000000`;
   }
@@ -154,7 +154,7 @@ demo.post("/medical-data/generate-and-report", async (c) => {
 
   let txId: string;
   try {
-    txId = await submitTaskMessage(message);
+    txId = (await submitTaskMessage(message)).txId;
   } catch {
     txId = `0.0.5266613@${timestamp}.000000000`;
   }
@@ -210,7 +210,7 @@ demo.post("/marketplace/seed", async (c) => {
 
   let txId: string;
   try {
-    txId = await submitTaskMessage(message);
+    txId = (await submitTaskMessage(message)).txId;
   } catch {
     txId = `0.0.5266613@${timestamp}.000000000`;
   }
@@ -262,7 +262,7 @@ demo.post("/marketplace/task-with-patient/:patientId", async (c) => {
 
   let txId: string;
   try {
-    txId = await submitTaskMessage(message);
+    txId = (await submitTaskMessage(message)).txId;
   } catch {
     txId = `0.0.5266613@${timestamp}.000000000`;
   }
@@ -309,7 +309,7 @@ demo.post("/marketplace/task-with-patient/:patientId", async (c) => {
 
 demo.get("/marketplace/tasks", (c) => {
   const capability = c.req.query("capability") || undefined;
-  const { tasks, total } = listTasks({ capability, limit: 100 });
+  const { tasks } = listTasks({ capability, limit: 100 });
   const medicalTasks = tasks.filter((t) => t.capabilities.includes("medical-analysis"));
   return c.json({ tasks: medicalTasks, total: medicalTasks.length });
 });
@@ -499,7 +499,7 @@ demo.post("/consumer/run-workflow", async (c) => {
 import { generatePimaDataset, generatePimaSample } from "../../agents/analysis/pima-dataset";
 import { generateAnalysisReport, runAnalysisPipeline, buildDatasetMetadata, generateJsonReportFromDataset } from "../../agents/analysis/pipeline";
 import { uploadReportBundle } from "../../agents/ipfs-uploader";
-import { runSelfCorrectingLoop, correctAnalysis } from "../../agents/self-correcting-loop";
+import { runSelfCorrectingLoop } from "../../agents/self-correcting-loop";
 
 demo.get("/analysis/dataset", (c) => {
   const rows = parseInt(c.req.query("rows") || "100", 10);
@@ -601,7 +601,7 @@ demo.post("/analysis/self-correct", async (c) => {
         { type: "freshness", description: "Has glossary terms", minGlossaryTerms: 1 },
       ],
     },
-    verify: async (_taskId, _r, _template) => {
+    verify: async () => {
       callCount++;
       if (callCount === 1) {
         return {
@@ -616,7 +616,7 @@ demo.post("/analysis/self-correct", async (c) => {
         failedChecks: [],
       };
     },
-    completeTask: async (taskId) => {
+    completeTask: async () => {
       return true;
     },
     maxAttempts: 3,

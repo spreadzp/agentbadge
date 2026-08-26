@@ -155,7 +155,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const card = buildAgentCard();
     return c.json(card, 200, {
       "Cache-Control": "public, max-age=3600",
@@ -202,7 +202,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const baseUrl = BASE_URL;
     const descriptor = {
       name: "agentbadge",
@@ -269,7 +269,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const baseUrl = BASE_URL;
     return c.json(
       {
@@ -941,7 +941,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "https://facilitator-agentbadge.fly.dev";
     const payTo = process.env.x402_TREASURY ?? process.env.HEDERA_OPERATOR_ID ?? "0.0.5266613";
     const network = process.env.HEDERA_NETWORK ?? "testnet";
@@ -1075,7 +1075,7 @@ wellKnownRoutes.get(
       200: { description: "WebMCP manifest", content: { "application/json": {} } },
     },
   }),
-  () => {
+  (c) => {
     const manifest = {
       name: "AgentBadge",
       version: "1.0.0",
@@ -1126,7 +1126,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const baseUrl = BASE_URL;
     const resource = c.req.query("resource") ?? `${baseUrl}/`;
 
@@ -1243,7 +1243,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const baseUrl = BASE_URL;
     const passportTokenId = process.env.PASSPORT_TOKEN_ID ?? "0.0.0";
 
@@ -1293,7 +1293,7 @@ wellKnownRoutes.get(
     summary: "Redirect to documentation",
     description: "302 redirect to the AgentBadge documentation on GitBook.",
   }),
-  () => {
+  (c) => {
     return c.redirect("https://agentbadge.gitbook.io/agentbadge-docs", 302);
   },
 );
@@ -1312,7 +1312,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const baseUrl = BASE_URL;
     return c.json(
       {
@@ -1360,7 +1360,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const baseUrl = BASE_URL;
     return c.json(
       {
@@ -1455,7 +1455,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     const baseUrl = BASE_URL;
     const skills = [
       {
@@ -1508,7 +1508,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  () => {
+  (c) => {
     return c.json(
       {
         keys: [

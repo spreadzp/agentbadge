@@ -11,6 +11,10 @@ const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
   github: "GitHub",
   hashnode: "Hashnode",
   twitter: "X (Twitter)",
+  qiita: "Qiita",
+  zenn: "Zenn",
+  velog: "Velog",
+  hsoub: "Hsoub",
 };
 
 function ForAIAgentsBlock(article: BlogArticle) {

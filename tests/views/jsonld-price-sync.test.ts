@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { landingJsonLd } from "../../src/server/lib/json-ld";
 import { getCatalog } from "@agentgate-hedera/hedera-core";
 

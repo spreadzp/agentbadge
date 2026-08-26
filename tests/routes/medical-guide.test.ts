@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { medicalGuideRoutes } from "../../src/server/routes/medical-guide";
 
 async function fetchGuide(): Promise<string> {

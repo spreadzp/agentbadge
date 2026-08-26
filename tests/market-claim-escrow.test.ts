@@ -98,7 +98,7 @@ beforeEach(() => {
     if (did === CLAIMER_DID) return "0.0.456";
     return null;
   });
-  mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+  mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
   mockedCreateScheduledTransfer.mockResolvedValue({
     scheduleId: FAKE_SCHEDULE_ID,
     scheduleTxId: FAKE_SCHEDULE_TX_ID,

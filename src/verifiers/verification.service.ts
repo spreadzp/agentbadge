@@ -49,5 +49,5 @@ export async function logReputationPenalty(
     report,
     timestamp: Date.now(),
   };
-  return submitTaskMessage(message);
+  return (await submitTaskMessage(message)).txId;
 }
