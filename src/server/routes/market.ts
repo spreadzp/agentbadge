@@ -26,6 +26,8 @@ import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 import { toPublicError } from "../lib/error-map";
 // SLICE-90-12: Base Sepolia passport type checks
 import { isBaseDid, parseBaseDid, BaseChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/base-core";
+// SLICE-90-13: Session budget tracking
+import { SessionRegistry } from "@agentgate-hedera/base-core";
 
 export const marketRoutes = new Hono();
 
@@ -83,7 +85,49 @@ async function checkPassportType(
   return null;
 }
 
-// Parse base64-encoded signature array string into Uint8Array[]
+// SLICE-90-13: Check session budget cap for Base Sepolia DIDs
+// Returns null if check passes or is not applicable, or a Response if it fails
+async function checkSessionCap(
+  did: string,
+  amount: number,
+  sessionId: number,
+): Promise<Response | null> {
+  if (!isBaseDid(did)) return null; // Only check Base Sepolia DIDs
+
+  const operatorKey = process.env.BASE_OPERATOR_KEY;
+  if (!operatorKey) return null; // Skip if Base not configured
+
+  const sessionRegistryAddr = BASE_SEPOLIA_ADDRESSES.SessionRegistry;
+  if (sessionRegistryAddr === "0x0000000000000000000000000000000000000000") return null; // Skip if not deployed
+
+  if (!sessionId) return null; // No session → skip
+
+  const registry = new SessionRegistry(sessionRegistryAddr, {
+    rpcUrl: BASE_SEPOLIA_RPC,
+    chainId: BASE_SEPOLIA_CHAIN_ID,
+    operatorKey,
+    passportNft: BASE_SEPOLIA_ADDRESSES.AgentPassport,
+    taskEscrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    usdcAddress: BASE_SEPOLIA_ADDRESSES.MockUSDC,
+    explorerUrl: BASE_SEPOLIA_EXPLORER,
+  });
+
+  const amountWei = BigInt(Math.floor(amount * 1e6)); // USDC has 6 decimals
+  const check = await registry.checkSessionValid(sessionId, amountWei);
+  if (!check.ok) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: ErrorCodes.SESSION_BUDGET_EXCEEDED,
+          message: `Session budget check failed: ${check.reason}`,
+        },
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  return null;
+}
 function parseSignatureB64(signatureB64: string): Uint8Array[] {
   const sigB64Array = JSON.parse(signatureB64) as string[];
   return sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
@@ -346,6 +390,14 @@ marketRoutes.post(
 
       // SLICE-24-8: Create escrow scheduled transfer (poster → claimer)
       try {
+        // SLICE-90-13: Check session budget cap before escrow (Base Sepolia only)
+        const sessionId = Number(c.req.header("X-SESSION-ID") ?? 0);
+        const capCheck = await checkSessionCap(claimerDid, task.priceHbar, sessionId);
+        if (capCheck) {
+          transitionTask(taskId, ["claiming"], "posted", { claimerDid: undefined });
+          return capCheck;
+        }
+
         const fromAccountId = await didToAccountId(task.posterDid);
         const toAccountId = await didToAccountId(claimerDid);
         if (!fromAccountId || !toAccountId) {

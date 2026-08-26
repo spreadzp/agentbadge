@@ -13,6 +13,7 @@ export const ErrorCodes = {
 
   // 402 — payment
   PAYMENT_REQUIRED: "PAYMENT_REQUIRED",
+  SESSION_BUDGET_EXCEEDED: "SESSION_BUDGET_EXCEEDED",
 
   // 403 — passport/identity
   PASSPORT_NOT_FOUND: "PASSPORT_NOT_FOUND",
