@@ -90,6 +90,7 @@ import { initSentry, captureError } from "./lib/sentry";
 import { ErrorCodes } from "./lib/error-codes";
 import { errorResponse } from "./lib/error-response";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
+import { baseX402PaymentMiddleware } from "./middleware/x402-base";
 
 // Initialize Sentry before anything else (no-op if SENTRY_DSN not set)
 initSentry();
@@ -226,6 +227,32 @@ if (mppSecretKey || mppRecipient) {
       stripeSecretKey,
     }),
   );
+}
+
+// SLICE-90-9: x402 Base Sepolia payment middleware (active when CHAIN_MODE=base)
+const chainMode = process.env.CHAIN_MODE ?? "hedera";
+const baseX402FacilitatorUrl = process.env.X402_FACILITATOR_URL ?? "";
+const baseUsdcAddress = process.env.BASE_USDC_ADDRESS ?? "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+const baseTreasury = process.env.BASE_TREASURY ?? "";
+const baseX402Price = process.env.X402_BASE_PRICE ?? "1000000"; // 1 USDC
+
+if (chainMode === "base" && baseX402FacilitatorUrl && baseTreasury) {
+  app.use(
+    "/passport/request",
+    baseX402PaymentMiddleware({
+      facilitatorUrl: baseX402FacilitatorUrl,
+      payTo: baseTreasury,
+      usdcAddress: baseUsdcAddress,
+      networkId: "eip155:84532",
+      price: baseX402Price,
+      description: "Agent Passport NFT issuance (Base Sepolia)",
+      mimeType: "application/json",
+    }),
+  );
+  logger.info("x402 Base Sepolia payment middleware active", {
+    facilitator: baseX402FacilitatorUrl,
+    usdc: baseUsdcAddress,
+  });
 }
 
 app.route("/", linkedinRoutes);
