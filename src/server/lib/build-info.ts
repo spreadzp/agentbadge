@@ -8,6 +8,9 @@
  * deploy time via Dockerfile build arg. APP_VERSION is injected via
  * Dockerfile build arg from package.json, or read from package.json
  * directly as fallback.
+ *
+ * NOTE: Uses `||` instead of `??` because Dockerfile ENV sets empty
+ * string when build-arg is not passed (e.g. bare `fly deploy`).
  */
 
 import { readFileSync } from "node:fs";
@@ -24,8 +27,8 @@ function readPkgVersion(): string {
 }
 
 export const BUILD_DATE =
-  process.env.BUILD_DATE ?? new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  process.env.BUILD_DATE || new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-export const GIT_COMMIT = process.env.SOURCE_COMMIT ?? "dev";
+export const GIT_COMMIT = process.env.SOURCE_COMMIT || "dev";
 
-export const APP_VERSION = process.env.APP_VERSION ?? readPkgVersion();
+export const APP_VERSION = process.env.APP_VERSION || readPkgVersion();
