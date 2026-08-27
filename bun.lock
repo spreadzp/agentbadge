@@ -5,8 +5,8 @@
     "": {
       "name": "agentgate",
       "dependencies": {
-        "@agentgate-hedera/evm-core": "^0.1.0",
-        "@agentgate-hedera/hedera-core": "^0.1.12",
+        "@agentgate-hedera/evm-core": "^0.1.1",
+        "@agentgate-hedera/hedera-core": "^0.1.14",
         "@agentgate-hedera/mcp": "^0.1.9",
         "@agentgate-hedera/passport": "^0.1.9",
         "@hashgraph/sdk": "^2.55.0",
@@ -49,9 +49,9 @@
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, ""],
 
-    "@agentgate-hedera/evm-core": ["@agentgate-hedera/evm-core@0.1.0", "", { "dependencies": { "@agentgate-hedera/hedera-core": "^0.1.13", "ethers": "^6.17.0" } }, "sha512-L49nwujYf16zkbFLjhg0xdGk9fkkOTGIL8GWtH1zQDMd3HGRTUINP9bD8nuGy+euqbKLF8LFKh3eX440pRlh+w=="],
+    "@agentgate-hedera/evm-core": ["@agentgate-hedera/evm-core@0.1.1", "", { "dependencies": { "@agentgate-hedera/hedera-core": "^0.1.14", "ethers": "^6.17.0" } }, "sha512-vq2izS6llIyFTQV68WdwGayc7HqdCazkNyJGKf0wg773vlxpXVWqmpX4nt8Do5UNcDUw7MSV/T99Y2kp2yrwxg=="],
 
-    "@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.12", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-fqpZU07tonw8PV1tnsKHdpnXSO7Wa3BmFaS0yZIUjFGWIIfDvEGL5WxECiwAaG1Le46hwvAHf58qTdo7RTT7iA=="],
+    "@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.14", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-TOlIemy8Boi1b38tyQbqDbZSKC4jK2q1HyLJbyWHyQpmQopDzcwJPPNk8xlq3HmtfOXG2lm3XFKLgQL4Xdosdg=="],
 
     "@agentgate-hedera/mcp": ["@agentgate-hedera/mcp@0.1.9", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@agentgate-hedera/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GN4zZqneU+6RCTYWvTZEDad2XN7+4GDNdmgn1mguKl9J8o5JxCpC16s1D+3KIuNHNTvBwXQd+M7a7Tn9f3jo7Q=="],
 
@@ -1367,11 +1367,11 @@
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
 
-    "@agentgate-hedera/evm-core/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.13", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-A7nxgmdc6pq/rKhQSHjhyyadPT0NhsKFVMmMxBuqyF5Bs65t/EzsVCy0ZvgcqSvjuRMkenqxHsbgPL4KJZB+2A=="],
-
     "@agentgate-hedera/mcp/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@file:../hedera-core", {}],
 
     "@agentgate-hedera/mcp/@agentgate-hedera/passport": ["@agentgate-hedera/passport@file:../passport", {}],
+
+    "@agentgate-hedera/passport/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@0.1.12", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-fqpZU07tonw8PV1tnsKHdpnXSO7Wa3BmFaS0yZIUjFGWIIfDvEGL5WxECiwAaG1Le46hwvAHf58qTdo7RTT7iA=="],
 
     "@apm-js-collab/code-transformer-bundler-plugins/es-module-lexer": ["es-module-lexer@2.3.1", "", {}, ""],
 
