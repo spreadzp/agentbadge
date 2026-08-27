@@ -58,23 +58,23 @@ eventsRoutes.get(
 
     try {
       const { getBaseEventIndexer } = await import("../lib/base-event-indexer");
-      const indexer = getBaseEventIndexer();
+      const indexer = getBaseEventIndexer() as unknown as { getIndexedEvents: () => unknown[] };
 
-      let events: ReturnType<typeof indexer.getIndexedEvents> = indexer.getIndexedEvents();
+      let events: Record<string, unknown>[] = indexer.getIndexedEvents() as Record<string, unknown>[];
 
       if (source) {
-        events = events.filter((e: (typeof events)[number]) => e.source === source);
+        events = events.filter((e) => e.source === source);
       }
       if (eventName) {
-        events = events.filter((e: (typeof events)[number]) => e.eventName === eventName);
+        events = events.filter((e) => e.eventName === eventName);
       }
       if (fromBlock) {
         const from = Number(fromBlock);
-        events = events.filter((e: (typeof events)[number]) => e.blockNumber >= from);
+        events = events.filter((e) => Number(e.blockNumber) >= from);
       }
       if (toBlock) {
         const to = Number(toBlock);
-        events = events.filter((e: (typeof events)[number]) => e.blockNumber <= to);
+        events = events.filter((e) => Number(e.blockNumber) <= to);
       }
 
       const maxLimit = limit ? Number(limit) : 100;

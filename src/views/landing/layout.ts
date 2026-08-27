@@ -237,6 +237,63 @@ export function LandingLayout(
             else { btn.querySelector('.show-more-remaining').textContent = remaining; }
           }
         </script>
+        <script>
+          if ('modelContext' in navigator) {
+            navigator.modelContext.provideContext([
+              {
+                name: 'agent-readiness-scan',
+                description: 'Scan a website for AI agent readiness compliance. Returns a compliance score and list of checks.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    url: { type: 'string', description: 'The URL to scan for agent readiness' }
+                  },
+                  required: ['url']
+                },
+                execute: async function(args) {
+                  var res = await fetch('/api/scan?url=' + encodeURIComponent(args.url));
+                  return await res.json();
+                }
+              },
+              {
+                name: 'badge-generate',
+                description: 'Generate a compliance badge SVG for a given URL and score.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    url: { type: 'string', description: 'The URL to generate a badge for' },
+                    score: { type: 'number', description: 'The compliance score (0-100)' }
+                  },
+                  required: ['url']
+                },
+                execute: async function(args) {
+                  var res = await fetch('/api/badge?url=' + encodeURIComponent(args.url) + '&score=' + (args.score || 0));
+                  return await res.text();
+                }
+              },
+              {
+                name: 'passport-issue',
+                description: 'Issue an AgentBadge passport NFT for a given account on Hedera.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    accountId: { type: 'string', description: 'Hedera account ID (e.g. 0.0.123)' },
+                    tier: { type: 'string', description: 'Passport tier (bronze, silver, gold)', enum: ['bronze', 'silver', 'gold'] }
+                  },
+                  required: ['accountId']
+                },
+                execute: async function(args) {
+                  var res = await fetch('/passport/issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountId: args.accountId, tier: args.tier || 'bronze' })
+                  });
+                  return await res.json();
+                }
+              }
+            ]);
+          }
+        </script>
       </body>
     </html>`;
 }

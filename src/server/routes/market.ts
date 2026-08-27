@@ -24,14 +24,23 @@ import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 import { toPublicError } from "../lib/error-map";
-// TODO(EPIC-90): re-enable when base-core is published to npm
-// import { isBaseDid, parseBaseDid, BaseChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/base-core";
-// import { SessionRegistry } from "@agentgate-hedera/base-core";
+// TODO(EPIC-90): re-enable when evm-core is published to npm
+// import { isBaseDid, parseBaseDid, EvmChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/evm-core";
+// import { SessionRegistry } from "@agentgate-hedera/evm-core";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isBaseDid = (_did: string): boolean => false;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const parseBaseDid = (_did: string): null => null;
+const parseBaseDid = (_did: string): { nftAddress: string; tokenId: number; chainId: number } | null => null;
+// Stubs for commented-out evm-core imports (re-enable when published)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const BaseChainAdapter: new (cfg: unknown) => any = function (cfg: unknown) { void cfg; throw new Error("evm-core not deployed"); } as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SessionRegistry: new (addr: string, cfg: unknown) => any = function (addr: string, cfg: unknown) { void addr; void cfg; throw new Error("evm-core not deployed"); } as any;
+const BASE_SEPOLIA_RPC = "";
+const BASE_SEPOLIA_CHAIN_ID = 0;
+const BASE_SEPOLIA_EXPLORER = "";
+const BASE_SEPOLIA_ADDRESSES = { AgentPassport: "", TaskEscrow: "", X402Token: "", DIDRegistry: "", MockUSDC: "", SessionRegistry: "" };
 
 export const marketRoutes = new Hono();
 
@@ -54,7 +63,8 @@ async function checkPassportType(
     chainId: BASE_SEPOLIA_CHAIN_ID,
     operatorKey,
     passportNft: BASE_SEPOLIA_ADDRESSES.AgentPassport,
-    taskEscrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    escrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    eventLog: BASE_SEPOLIA_ADDRESSES.DIDRegistry,
     usdcAddress: BASE_SEPOLIA_ADDRESSES.MockUSDC,
     explorerUrl: BASE_SEPOLIA_EXPLORER,
   });
@@ -111,7 +121,8 @@ async function checkSessionCap(
     chainId: BASE_SEPOLIA_CHAIN_ID,
     operatorKey,
     passportNft: BASE_SEPOLIA_ADDRESSES.AgentPassport,
-    taskEscrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    escrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    eventLog: BASE_SEPOLIA_ADDRESSES.DIDRegistry,
     usdcAddress: BASE_SEPOLIA_ADDRESSES.MockUSDC,
     explorerUrl: BASE_SEPOLIA_EXPLORER,
   });

@@ -10,8 +10,8 @@ import {
   BASE_SEPOLIA_RPC,
   BASE_SEPOLIA_CHAIN_ID,
   BASE_SEPOLIA_EXPLORER,
-  type BaseConfig,
-} from "@agentgate-hedera/base-core";
+  type EvmConfig,
+} from "@agentgate-hedera/evm-core";
 
 export function isBaseE2EEnabled(): boolean {
   return (
@@ -20,7 +20,7 @@ export function isBaseE2EEnabled(): boolean {
   );
 }
 
-export function getBaseTestConfig(): BaseConfig {
+export function getBaseTestConfig(): EvmConfig {
   const operatorKey = process.env.BASE_OPERATOR_KEY;
   if (!operatorKey) {
     throw new Error("BASE_OPERATOR_KEY not set — cannot run Base Sepolia E2E tests");
@@ -31,7 +31,8 @@ export function getBaseTestConfig(): BaseConfig {
     chainId: Number(process.env.BASE_CHAIN_ID ?? BASE_SEPOLIA_CHAIN_ID),
     operatorKey,
     passportNft: process.env.BASE_PASSPORT_NFT ?? BASE_SEPOLIA_ADDRESSES.AgentPassport,
-    taskEscrow: process.env.BASE_TASK_ESCROW ?? BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    escrow: process.env.BASE_TASK_ESCROW ?? BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    eventLog: BASE_SEPOLIA_ADDRESSES.DIDRegistry,
     usdcAddress: process.env.BASE_USDC_ADDRESS ?? BASE_SEPOLIA_ADDRESSES.MockUSDC,
     explorerUrl: process.env.BASE_EXPLORER_URL ?? BASE_SEPOLIA_EXPLORER,
   };

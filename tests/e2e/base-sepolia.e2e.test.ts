@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { ethers } from "ethers";
-import { BaseChainAdapter } from "@agentgate-hedera/base-core";
+import { EvmChainAdapter } from "@agentgate-hedera/evm-core";
 import {
   isBaseE2EEnabled,
   getBaseTestConfig,
@@ -20,7 +20,7 @@ import {
 const shouldRun = isBaseE2EEnabled();
 
 describe.skipIf(!shouldRun)("Base Sepolia E2E", () => {
-  let adapter: BaseChainAdapter;
+  let adapter: EvmChainAdapter;
   let operatorAddress: string;
   let mintedTokenId: number;
   let mintedTokenAddress: string;
@@ -29,7 +29,7 @@ describe.skipIf(!shouldRun)("Base Sepolia E2E", () => {
 
   beforeAll(() => {
     const cfg = getBaseTestConfig();
-    adapter = new BaseChainAdapter(cfg);
+    adapter = new EvmChainAdapter(cfg);
     operatorAddress = new ethers.Wallet(cfg.operatorKey).address;
   });
 
