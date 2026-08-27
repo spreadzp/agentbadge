@@ -1,5 +1,5 @@
 {
-  "name": "agentgate",
+  "name": "agentbadge",
   "version": "0.1.0",
   "license": "Apache-2.0",
   "author": "AgentBadge <support@agentbadge.xyz>",
@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@agentgate-hedera/hedera-core": "^0.1.12",
+    "@agentgate-hedera/evm-core": "file:../../packages/evm-core",
     "@agentgate-hedera/mcp": "^0.1.9",
     "@agentgate-hedera/passport": "^0.1.9",
     "@hashgraph/sdk": "^2.55.0",
