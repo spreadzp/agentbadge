@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
+import { explorerName } from "../server/lib/chain-ui.js";
 
 export interface UseCase {
   title: string;
@@ -9,6 +10,8 @@ export interface UseCase {
   onChainProof: string;
   hashScanPattern: string;
 }
+
+const _explorerName = explorerName();
 
 export const USE_CASES: UseCase[] = [
   {
@@ -28,7 +31,7 @@ export const USE_CASES: UseCase[] = [
     solution:
       "Agent A implements x402 on its endpoint. Agent B sends a request, receives HTTP 402 with payment requirements, pays 5 HBAR directly to Agent A's Hedera account, and retries with payment proof. Settlement is instant on Hedera.",
     onChainProof:
-      "HBAR transfer transaction on Hedera — verifiable via HashScan. The x402 facilitator verifies the transfer before serving the response.",
+      "HBAR transfer transaction on Hedera — verifiable via ${_explorerName}. The x402 facilitator verifies the transfer before serving the response.",
     hashScanPattern: "https://hashscan.io/testnet/transaction/{txId}",
   },
   {
@@ -80,7 +83,7 @@ export function UseCasesPage(jsonLd?: object[]) {
           <span class="text-xs font-medium text-sky-400">ON-CHAIN PROOF</span>
           <p class="mt-1 text-sm text-slate-300">${uc.onChainProof}</p>
           <p class="mt-1 text-xs text-slate-400">
-            Verify on <a href="${uc.hashScanPattern}" class="text-sky-400 underline hover:text-sky-300" target="_blank" rel="noopener">HashScan</a>
+            Verify on <a href="${uc.hashScanPattern}" class="text-sky-400 underline hover:text-sky-300" target="_blank" rel="noopener">${_explorerName}</a>
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { html, raw } from "hono/html";
 import type { CachedMarketTask, CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import { explorerTxUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /**
  * Detect content type of resultBody and render accordingly:
@@ -50,38 +51,26 @@ function relativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
-const NETWORK = process.env.HEDERA_NETWORK ?? "testnet";
-
-function txToHashScanUrl(txId: string): string {
-  const atIdx = txId.indexOf("@");
-  if (atIdx === -1) {
-    return `https://hashscan.io/${NETWORK}/transaction/${txId}`;
-  }
-  const accountId = txId.substring(0, atIdx);
-  const timestamp = txId.substring(atIdx + 1);
-  const tsDash = timestamp.replace(".", "-");
-  return `https://hashscan.io/${NETWORK}/transaction/${accountId}-${tsDash}`;
-}
 
 function hashScanLinks(txId?: string, color: string = "emerald"): ReturnType<typeof html> | string {
   if (!txId) return html`<span class="text-xs text-slate-600 italic">pending</span>`;
-  const url = txToHashScanUrl(txId);
+  const url = explorerTxUrl(txId);
   return html`<div class="flex items-center gap-1">
     <a
       href="${url}"
       target="_blank"
       rel="noopener"
-      title="View transaction on HashScan"
+      title="View transaction on ${explorerName()}"
       class="text-${color}-500 hover:text-${color}-400 transition-colors"
-      aria-label="View on HashScan"
+      aria-label="View on ${explorerName()}"
     >
       <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
     </a>
     <button
       type="button"
-      title="Copy HashScan link"
+      title="Copy ${explorerName()} link"
       class="text-${color}-500 hover:text-${color}-400 transition-colors cursor-pointer"
-      aria-label="Copy HashScan link"
+      aria-label="Copy ${explorerName()} link"
       onclick="navigator.clipboard.writeText('${url}').then(()=>{this.textContent='✓';setTimeout(()=>{this.textContent='⧉'},1500)})"
     >
       <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -192,7 +181,7 @@ export function EscrowPanel(task: CachedMarketTask, viewerDid?: string): ReturnT
   const scheduleId = task.scheduleId;
   const isPoster = viewerDid === task.posterDid;
   const hashscanUrl = scheduleId
-    ? `https://hashscan.io/testnet/transaction/${scheduleId}`
+    ? explorerTxUrl(scheduleId)
     : null;
 
   // Only show panel if there's an escrow or schedule
@@ -586,7 +575,6 @@ export function TaskMessagesFragment(
     : task.posterDid;
   const otherRole = viewerDid === task.posterDid ? "task claimer" : "task poster";
   const encodedViewer = encodeURIComponent(viewerDid);
-  const encodedOther = encodeURIComponent(otherDid);
 
   const inbox = messages.filter((m) => m.to === viewerDid);
   const outbox = messages.filter((m) => m.from === viewerDid);

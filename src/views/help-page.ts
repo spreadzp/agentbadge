@@ -1,6 +1,7 @@
 import { html } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
+import { explorerName, chainDisplayName, explorerTxUrl } from "../server/lib/chain-ui.js";
 
 /**
  * Help page — describes what the site is, lists available pages,
@@ -248,13 +249,13 @@ export function HelpPage() {
         </li>
         <li>
           <a
-            href="https://hashscan.io/testnet"
+            href="${explorerTxUrl('')}"
             target="_blank"
             rel="noopener"
             class="text-emerald-400 hover:text-emerald-300"
-            >HashScan</a
+            >${explorerName()}</a
           >
-          <span class="text-slate-400">— Hedera testnet explorer</span>
+          <span class="text-slate-400">— ${chainDisplayName()} explorer</span>
         </li>
       </ul>
     </section>

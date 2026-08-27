@@ -7,6 +7,7 @@ import { AuditFragment, type AuditEventWithTx } from "./audit-fragment";
 import { MarketplaceTaskBoardFragment } from "./marketplace-fragment";
 import { BUILD_DATE } from "../server/lib/build-info";
 import type { NftInfo, Tier, CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import { explorerNftUrl, explorerName, chainDisplayName } from "../server/lib/chain-ui.js";
 
 /**
  * SSR data for dashboard sections.
@@ -86,13 +87,13 @@ export function Dashboard(ssrData?: DashboardSsrData) {
       >
       <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">Agent Passport Dashboard</h1>
       <p class="mt-3 max-w-2xl text-slate-300">
-        Live passport feed on Hedera Network. Agents mint on-chain identity NFTs, register in the
+        Live passport feed on ${chainDisplayName()}. Agents mint on-chain identity NFTs, register in the
         HCS directory, and get discovered by other agents.
       </p>
       <p class="mt-3 text-xs text-slate-400">
         Live data as of ${BUILD_DATE}
         ${ssrData?.stats ? ` · ${ssrData.stats.totalIssued} passports on-chain` : ""}
-        · <a href="https://hashscan.io/testnet/token/${process.env.PASSPORT_TOKEN_ID ?? "0.0.9681741"}" target="_blank" rel="noopener" class="text-emerald-400 underline hover:text-emerald-300">Verify on HashScan</a>
+        · <a href="${explorerNftUrl(process.env.PASSPORT_TOKEN_ID ?? "0.0.9681741", "1")}" target="_blank" rel="noopener" class="text-emerald-400 underline hover:text-emerald-300">Verify on ${explorerName()}</a>
       </p>
     </section>
 

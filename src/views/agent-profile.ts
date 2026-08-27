@@ -2,6 +2,7 @@ import { html } from "hono/html";
 import { raw } from "hono/html";
 import { PageHeader } from "./page-header";
 import type { AgentWithActive } from "./agents-fragment";
+import { explorerNftUrl, explorerAccountUrl, explorerName, formatPrice } from "../server/lib/chain-ui.js";
 
 /**
  * Render a full agent profile page (mini-landing).
@@ -10,9 +11,8 @@ import type { AgentWithActive } from "./agents-fragment";
  * HashScan link, A2A inbox/outbox links, and registration timestamp.
  */
 export function AgentProfilePage({ agent }: { agent: AgentWithActive }) {
-  const network = process.env.HEDERA_NETWORK ?? "testnet";
-  const hashScanUrl = `https://hashscan.io/${network}/token/${agent.tokenId}/${agent.serial}`;
-  const accountHashScanUrl = `https://hashscan.io/${network}/account/${agent.accountId}`;
+  const hashScanUrl = explorerNftUrl(agent.tokenId, String(agent.serial));
+  const accountHashScanUrl = explorerAccountUrl(agent.accountId);
   const issuedDate = new Date(agent.timestamp * 1000).toLocaleString();
 
   const ipfsGateway = "https://ipfs.io/ipfs/";
@@ -71,8 +71,8 @@ export function AgentProfilePage({ agent }: { agent: AgentWithActive }) {
           <a href="${accountHashScanUrl}" target="_blank" rel="noopener" class="font-mono text-emerald-400 underline hover:text-emerald-300">${agent.accountId || "—"}</a>
         </div>
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-slate-400">HBAR Balance</span>
-          <span class="font-mono ${agent.hbarBalance != null ? 'text-amber-300' : 'text-slate-500'}">${agent.hbarBalance != null ? `${agent.hbarBalance.toFixed(2)} ℏ` : "—"}</span>
+          <span class="text-slate-400">Balance</span>
+          <span class="font-mono ${agent.hbarBalance != null ? 'text-amber-300' : 'text-slate-500'}">${agent.hbarBalance != null ? formatPrice(agent.hbarBalance) : "—"}</span>
         </div>
         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
           <span class="text-slate-400">NFT Serial</span>
@@ -136,7 +136,7 @@ export function AgentProfilePage({ agent }: { agent: AgentWithActive }) {
         <a href="${hashScanUrl}" target="_blank" rel="noopener"
            class="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-          View on HashScan
+          View on ${explorerName()}
         </a>
         <a href="/ui/agents"
            class="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">

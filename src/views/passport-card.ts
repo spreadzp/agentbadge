@@ -1,5 +1,6 @@
 import { html } from "hono/html";
 import type { PassportInfo } from "@agentgate-hedera/passport";
+import { explorerNftUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /**
  * Full passport detail card — HTML fragment (no <html> wrapper).
@@ -9,8 +10,7 @@ import type { PassportInfo } from "@agentgate-hedera/passport";
  * DID, tier, capabilities, owner, issued date, active/revoked status, HashScan link.
  */
 export function PassportDetailCard({ info }: { info: PassportInfo }) {
-  const network = process.env.HEDERA_NETWORK ?? "testnet";
-  const hashScanLink = `https://hashscan.io/${network}/token/${info.tokenId}/${info.serialNumber}`;
+  const hashScanLink = explorerNftUrl(info.tokenId, String(info.serialNumber));
   const dateStr = new Date(info.issuedAt * 1000).toLocaleString();
 
   return html`<div class="rounded-xl border border-slate-800 bg-slate-900 p-6 max-w-2xl">
@@ -69,7 +69,7 @@ export function PassportDetailCard({ info }: { info: PassportInfo }) {
         href="${hashScanLink}"
         target="_blank"
         class="text-emerald-400 hover:text-emerald-300 text-sm"
-        >View on HashScan ↗</a
+        >View on ${explorerName()} ↗</a
       >
     </div>
   </div>`;
