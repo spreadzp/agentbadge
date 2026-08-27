@@ -1,4 +1,5 @@
 import { html } from "hono/html";
+import { APP_VERSION, GIT_COMMIT } from "../server/lib/build-info";
 
 /**
  * Shared Footer component — used by both Layout() and LandingLayout().
@@ -154,6 +155,7 @@ export function Footer(): ReturnType<typeof html> {
     </div>
     <div class="border-t border-slate-800 py-4 text-center text-xs text-slate-400">
       © 2026 AgentBadge. MIT License. Built on Hedera.
+      <span class="ml-2 text-slate-500">v${APP_VERSION} · ${GIT_COMMIT.slice(0, 7)}</span>
     </div>
   </footer>`;
 }

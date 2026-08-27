@@ -18,6 +18,9 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --production
 
+ARG APP_VERSION
+ENV APP_VERSION=${APP_VERSION}
+
 COPY src ./src
 COPY tests ./tests
 COPY content ./content

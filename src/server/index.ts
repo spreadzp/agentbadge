@@ -92,6 +92,7 @@ import { ErrorCodes } from "./lib/error-codes";
 import { errorResponse } from "./lib/error-response";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
 import { baseX402PaymentMiddleware } from "./middleware/x402-base";
+import { APP_VERSION, BUILD_DATE, GIT_COMMIT } from "./lib/build-info";
 
 // Initialize Sentry before anything else (no-op if SENTRY_DSN not set)
 initSentry();
@@ -271,6 +272,9 @@ app.get("/health", (c) => {
   const tools = listTools();
   return c.json({
     status: "healthy",
+    version: APP_VERSION,
+    buildDate: BUILD_DATE,
+    gitCommit: GIT_COMMIT,
     uptime: process.uptime(),
     mcp: {
       toolsCount: tools.length,
