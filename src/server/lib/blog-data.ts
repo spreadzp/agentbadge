@@ -813,6 +813,40 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 <p><strong>Related:</strong> <a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — SEO made websites discoverable. Agent Readiness makes APIs usable by AI agents. See the 10 differences.</p>
 
 <p><strong>Related:</strong> <a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — the evolution from website optimization to content optimization to API optimization for the agentic web.</p>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/what-is-agent-readiness-1b59",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/what-is-agent-readiness-agentbadge-blog-agentbadge-6661bd18750a",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-aiagents-share-7494045030396039169-QbUp/",
+      },
+      {
+        platform: "hackernews",
+        url: "https://news.ycombinator.com/item?id=49361630",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2088268170003907062",
+      },
+      {
+        platform: "qiita",
+        url: "https://qiita.com/buidl25/items/071c755727117a117c30",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/What-Is-Agent-Readiness-エージェント対応度とは",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185154-ما-هي-جاهزية-الوكلاء-agent-readiness",
+      },
+    ],
   },
   {
     slug: "api-has-seo-agent-readiness",
@@ -1394,6 +1428,28 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 <p><strong>Don't certify. Measure.</strong></p>
 
 <p><em>Agent Readiness for the agentic web.</em>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/the-web-is-becoming-agentic-what-happens-to-api-discovery-ddl",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/the-web-is-becoming-agentic-what-happens-to-api-discovery-d122f53ea95f",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_the-web-is-becoming-agentic-what-happens-share-7494492096607911936-WHhy/",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2088726795025531347",
+      },
+      {
+        platform: "qiita",
+        url: "https://qiita.com/buidl25/items/bac0af66ab884d5f9a19",
+      },
+    ],
   },
   {
     slug: "from-seo-to-geo-to-agent-readiness",
@@ -2451,7 +2507,48 @@ SUCCESS / FAILURE</code></pre>
 <p><strong>Don't certify. Measure.</strong></p>
 
 <p><em>For AI agents: the <a href="/agent-guide/articles/what-ai-agent-needs-to-understand-api">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
-    externalLinks: [],
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/what-does-an-ai-agent-actually-need-to-understand-an-api-mnc",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/what-does-an-ai-agent-actually-need-to-understand-an-api-3437e896cad0",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-agentreadiness-openapi-agenticweb-activity-7346021578993885184-2k2B",
+      },
+      {
+        platform: "hackernoon",
+        url: "https://app.hackernoon.com/drafts/6a87fd59ae8e8a513e297000",
+      },
+      {
+        platform: "reddit",
+        url: "https://www.reddit.com/r/AIDiscussion/comments/1vu9or1/what_information_does_an_ai_agent_actually_need/",
+      },
+      {
+        platform: "hashnode",
+        url: "https://agentbadge.hashnode.dev/what-does-an-ai-agent-actually-need-to-understand-an-api",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2090544674612142249",
+      },
+      {
+        platform: "zenn",
+        url: "https://zenn.dev/buidl25/articles/what-ai-agent-needs-to-understand-api",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/What-Does-an-AI-Agent-Actually-Need-to-Understand-an-API-AI-%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8%EA%B0%80-API%EB%A5%BC-%EC%9D%B4%ED%95%B4%ED%95%98%EA%B8%B0-%EC%9C%84%ED%95%B4-%EC%8B%A4%EC%A0%9C%EB%A1%9C-%ED%95%84%EC%9A%94%ED%95%9C-%EA%B2%83",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185180-ما-الذي-يحتاجه-وكيل-الذكاء-الاصطناعي-فعليًا-لفهم-واجهة-برمجية-api",
+      },
+    ],
   },
   {
     slug: "why-openapi-isnt-enough",
@@ -2667,7 +2764,40 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json</co
 <p><em>OpenAPI describes an API. Agent Readiness describes whether an agent can actually use it.</em></p>
 
 <p><em>For AI agents: the <a href="/agent-guide/articles/why-openapi-isnt-enough">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
-    externalLinks: [],
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/why-your-openapi-spec-isnt-enough-for-ai-agents-3cpe",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/why-your-openapi-spec-isnt-enough-for-ai-agents-2a8fa11d2960",
+      },
+      {
+        platform: "linkedin",
+        url: "https://lnkd.in/p/dET7CMEU",
+      },
+      {
+        platform: "reddit",
+        url: "https://www.reddit.com/r/AI_Agents/comments/1vypbug/is_openapi_enough_for_ai_agents_what_do_you/",
+      },
+      {
+        platform: "hashnode",
+        url: "https://agentbadge.hashnode.dev/why-your-openapi-spec-isn-t-enough-for-ai-agents",
+      },
+      {
+        platform: "zenn",
+        url: "https://zenn.dev/buidl25/articles/why-openapi-isnt-enough-for-ai-agents",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/Why-Your-OpenAPI-Spec-Isnt-Enough-for-AI-Agents-OpenAPI-%EC%82%AC%EC%96%91%EC%9D%B4-AI-%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8%EC%97%90%EA%B2%8C-%EC%B6%A9%EB%B6%84%ED%95%98%EC%A7%80-%EC%95%8A%EC%9D%80-%EC%9D%B4%EC%9C%A0",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185226-ما-الذي-يحتاجه-وكيل-الذكاء-الاصطناعي-فعليا-لفهم-واجهة-برمجية-api",
+      },
+    ],
   },
   {
     slug: "how-do-you-measure-agent-readiness",
@@ -2990,7 +3120,48 @@ Missing:
 <p><em>Don't certify. Measure.</em></p>
 
 <p><em>For AI agents: the <a href="/agent-guide/articles/how-do-you-measure-agent-readiness">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
-    externalLinks: [],
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/how-do-you-measure-agent-readiness-3328",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/how-do-you-measure-agent-readiness-7cb901d373ea",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/feed/update/urn:li:activity:7498387449077989376/",
+      },
+      {
+        platform: "hackernoon",
+        url: "https://app.hackernoon.com/articles/6a8f0df5807c8a77117228a5",
+      },
+      {
+        platform: "reddit",
+        url: "https://www.reddit.com/r/AIDiscussion/comments/1vz30hb/how_do_you_measure_if_an_api_is_ready_for_ai/",
+      },
+      {
+        platform: "hashnode",
+        url: "https://agentbadge.hashnode.dev/how-do-you-measure-agent-readiness",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2092620769977082069",
+      },
+      {
+        platform: "zenn",
+        url: "https://zenn.dev/buidl25/articles/how-do-you-measure-agent-readiness",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/How-Do-You-Measure-Agent-Readiness",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185233-كيف-تقيس-جاهزية-الوكلاء",
+      },
+    ],
   },
 ];
 
