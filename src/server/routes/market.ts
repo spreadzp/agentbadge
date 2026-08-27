@@ -24,10 +24,14 @@ import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 import { toPublicError } from "../lib/error-map";
-// SLICE-90-12: Base Sepolia passport type checks
-import { isBaseDid, parseBaseDid, BaseChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/base-core";
-// SLICE-90-13: Session budget tracking
-import { SessionRegistry } from "@agentgate-hedera/base-core";
+// TODO(EPIC-90): re-enable when base-core is published to npm
+// import { isBaseDid, parseBaseDid, BaseChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/base-core";
+// import { SessionRegistry } from "@agentgate-hedera/base-core";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const isBaseDid = (_did: string): boolean => false;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const parseBaseDid = (_did: string): null => null;
 
 export const marketRoutes = new Hono();
 
