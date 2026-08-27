@@ -1246,35 +1246,67 @@ wellKnownRoutes.get(
   (c) => {
     const baseUrl = BASE_URL;
     const passportTokenId = process.env.PASSPORT_TOKEN_ID ?? "0.0.0";
+    const evmPassportNft = process.env.BASE_PASSPORT_NFT;
+    const evmChainId = process.env.BASE_CHAIN_ID ?? "84532";
+
+    const didConfigurations: Array<Record<string, unknown>> = [
+      {
+        did: `did:hcs:${passportTokenId}:1`,
+        vc: {
+          "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://identity.foundation/.well-known/did-configuration/v1",
+          ],
+          type: ["VerifiableCredential", "DomainLinkageCredential"],
+          issuer: `did:hcs:${passportTokenId}:1`,
+          issuanceDate: new Date().toISOString(),
+          credentialSubject: {
+            id: `did:hcs:${passportTokenId}:1`,
+            origin: baseUrl,
+          },
+          proof: {
+            type: "Ed25519Signature2018",
+            verificationMethod: `did:hcs:${passportTokenId}:1#keys-1`,
+            created: new Date().toISOString(),
+            proofPurpose: "assertionMethod",
+            proofValue: "",
+          },
+        },
+      },
+    ];
+
+    // Add EVM DID configuration when Base Sepolia passport NFT is configured
+    if (evmPassportNft) {
+      const evmDid = `did:eip155:${evmChainId}:passport:${evmPassportNft}:1`;
+      didConfigurations.push({
+        did: evmDid,
+        vc: {
+          "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://identity.foundation/.well-known/did-configuration/v1",
+          ],
+          type: ["VerifiableCredential", "DomainLinkageCredential"],
+          issuer: evmDid,
+          issuanceDate: new Date().toISOString(),
+          credentialSubject: {
+            id: evmDid,
+            origin: baseUrl,
+          },
+          proof: {
+            type: "Eip712Signature2021",
+            verificationMethod: `${evmDid}#keys-1`,
+            created: new Date().toISOString(),
+            proofPurpose: "assertionMethod",
+            proofValue: "",
+          },
+        },
+      });
+    }
 
     return c.json(
       {
         "@context": "https://identity.foundation/.well-known/did-configuration/v1",
-        did_configurations: [
-          {
-            did: `did:hcs:${passportTokenId}:1`,
-            vc: {
-              "@context": [
-                "https://www.w3.org/2018/credentials/v1",
-                "https://identity.foundation/.well-known/did-configuration/v1",
-              ],
-              type: ["VerifiableCredential", "DomainLinkageCredential"],
-              issuer: `did:hcs:${passportTokenId}:1`,
-              issuanceDate: new Date().toISOString(),
-              credentialSubject: {
-                id: `did:hcs:${passportTokenId}:1`,
-                origin: baseUrl,
-              },
-              proof: {
-                type: "Ed25519Signature2018",
-                verificationMethod: `did:hcs:${passportTokenId}:1#keys-1`,
-                created: new Date().toISOString(),
-                proofPurpose: "assertionMethod",
-                proofValue: "",
-              },
-            },
-          },
-        ],
+        did_configurations: didConfigurations,
       },
       200,
       {

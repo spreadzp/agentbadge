@@ -80,6 +80,7 @@ import { demandGuideRoutes } from "./routes/agent-guide/demand";
 import { changelogRoutes } from "./routes/changelog";
 import { agencyJsonRoutes } from "./routes/agency-json";
 import { wellKnownRoutes } from "./routes/well-known";
+import { agentCardRoutes } from "./routes/agent-card";
 import { feedRoutes } from "./routes/feed";
 import { metricsApp } from "./routes/metrics";
 import { telemetryApp } from "./routes/telemetry";
@@ -379,6 +380,7 @@ app.route("/", auditRoutes);
 app.route("/", eventsRoutes);
 app.route("/", catalogRoutes);
 app.route("/", wellKnownRoutes);
+app.route("/", agentCardRoutes);
 app.route("/", feedRoutes);
 app.route("/", mcpRoutes);
 
