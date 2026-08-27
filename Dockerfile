@@ -19,7 +19,11 @@ COPY package.json bun.lock ./
 RUN bun install --production
 
 ARG APP_VERSION
+ARG GIT_COMMIT
+ARG BUILD_DATE
 ENV APP_VERSION=${APP_VERSION}
+ENV SOURCE_COMMIT=${GIT_COMMIT}
+ENV BUILD_DATE=${BUILD_DATE}
 
 COPY src ./src
 COPY tests ./tests
