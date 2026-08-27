@@ -37,7 +37,7 @@
     "validate:agent-readiness": "bun run generate:agent-readiness-schemas && vitest run tests/agent-readiness-*.test.ts",
     "demo:full-flow": "bun scripts/full-flow-demo.ts",
     "demo:medical-marketplace": "bun scripts/demo-medical-marketplace.ts",
-    "deploy": "fly deploy",
+    "deploy": "bash scripts/deploy.sh",
     "lighthouse": "lhci autorun",
     "medical-agent": "bun src/agents/cli.ts",
     "medical-agent:task": "bun src/agents/cli.ts --task-id"
