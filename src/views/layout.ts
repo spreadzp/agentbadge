@@ -2,6 +2,7 @@ import { html, raw } from "hono/html";
 import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle } from "../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../server/lib/json-ld";
 import { getPlausibleScript } from "../server/lib/plausible";
+import { chainDisplayName, chainBadgeColor } from "../server/lib/chain-ui.js";
 import { Footer } from "./footer";
 
 /**
@@ -10,6 +11,11 @@ import { Footer } from "./footer";
  *
  * Style: slate-* palette + emerald accents, matching Facilitator project.
  */
+const BADGE_COLORS: Record<string, string> = {
+  blue: "bg-blue-500/10 text-blue-300 border border-blue-500/40",
+  purple: "bg-purple-500/10 text-purple-300 border border-purple-500/40",
+};
+
 export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd?: object[], noIndex?: boolean) {
   const composedTitle = title
     ? pageTitle(title)
@@ -128,6 +134,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
                 <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-7 w-7 rounded" /></picture>
                 ${SITE_NAME}
               </a>
+              ${chainDisplayName() ? raw(`<span class="chain-badge inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_COLORS[chainBadgeColor()] ?? BADGE_COLORS.purple}">${chainDisplayName()}</span>`) : ""}
 
               <!-- Hamburger toggle (mobile only) — pure CSS, no JS -->
               <input id="nav-toggle" type="checkbox" class="peer hidden" />

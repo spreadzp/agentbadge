@@ -6,6 +6,7 @@ import { UseCasesPage } from "../../src/views/use-cases-page";
 // Mock chain-ui to control output per chain
 vi.mock("../../src/server/lib/chain-ui.js", () => ({
   chainDisplayName: vi.fn(() => "Hedera Testnet"),
+  chainBadgeColor: vi.fn(() => "purple"),
   explorerName: vi.fn(() => "HashScan"),
   explorerTxUrl: vi.fn((txId: string) => `https://hashscan.io/testnet/tx/${txId}`),
   formatPrice: vi.fn((n: number) => `${n} HBAR`),

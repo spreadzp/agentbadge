@@ -115,6 +115,16 @@ export function chainDisplayName(): string {
 }
 
 /**
+ * Return the badge color for the current chain (e.g., "purple" for Hedera, "blue" for Base).
+ */
+export function chainBadgeColor(): string {
+  const cfg = config();
+  if (cfg.chainMode === "hedera") return "purple";
+  if (cfg.chainMode === "base" || cfg.chainMode === "evm") return "blue";
+  return "purple";
+}
+
+/**
  * Return the explorer name (e.g., "HashScan" or "Basescan").
  */
 export function explorerName(): string {
