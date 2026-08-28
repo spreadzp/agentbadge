@@ -11,6 +11,7 @@ export interface AuthProbeResult {
   tokenEndpoint?: string;
   endpointStatus?: number;
   grantType?: string;
+  tokenExpiresIn?: number;
   error?: string;
 }
 
@@ -83,11 +84,11 @@ export async function fetchAuthProbe(
       headers: { Authorization: `Bearer ${accessToken}` },
     });
   } catch (e) {
-    return { status: "endpoint_error", tokenObtained: true, tokenEndpoint, error: `network: ${(e as Error).message}` };
+    return { status: "endpoint_error", tokenObtained: true, tokenEndpoint, tokenExpiresIn: typeof tokenBody.expires_in === "number" ? tokenBody.expires_in : undefined, error: `network: ${(e as Error).message}` };
   }
 
   if (probeResp.ok) {
-    return { status: "success", tokenObtained: true, tokenEndpoint, endpointStatus: probeResp.status, grantType: "client_credentials" };
+    return { status: "success", tokenObtained: true, tokenEndpoint, endpointStatus: probeResp.status, grantType: "client_credentials", tokenExpiresIn: typeof tokenBody.expires_in === "number" ? tokenBody.expires_in : undefined };
   }
 
   return {
@@ -96,6 +97,7 @@ export async function fetchAuthProbe(
     tokenEndpoint,
     endpointStatus: probeResp.status,
     grantType: "client_credentials",
+    tokenExpiresIn: typeof tokenBody.expires_in === "number" ? tokenBody.expires_in : undefined,
     error: `Endpoint returned ${probeResp.status}`,
   };
 }
