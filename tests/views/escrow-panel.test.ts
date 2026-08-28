@@ -1,21 +1,32 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { EscrowPanel } from "../../src/views/marketplace-fragment";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { MarketTask } from "../../src/server/lib/market-task.js";
 
-function makeTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
+vi.mock("../../src/server/lib/chain-ui.js", () => ({
+  explorerTxUrl: (txId: string) => `https://explorer.test/tx/${txId}`,
+  explorerName: () => "Explorer",
+  accountPlaceholder: () => "0.0.xxxx",
+  formatPrice: (raw: string | number) => `${raw} HBAR`,
+}));
+
+function makeTask(overrides: Partial<MarketTask> = {}): MarketTask {
   return {
-    taskId: "task-123",
+    id: "task-123",
     title: "Test Task",
     description: "Test description",
     status: "claimed",
-    priceHbar: 50,
+    price: "50 HBAR",
+    priceRaw: "5000000000",
+    currency: "HBAR",
     capabilities: ["medical-analysis"],
     posterDid: "did:hcs:0.0.1001:1",
-    claimerDid: "did:hcs:0.0.1002:2",
-    createdAt: Date.now() / 1000,
+    posterAddress: "0.0.1001",
     txId: "0.0.1001@1700000000.000000000",
+    txExplorerUrl: "https://explorer.test/tx/0.0.1001@1700000000.000000000",
+    consensusTimestamp: "1700000000.000000000",
+    createdAt: Date.now() / 1000,
     ...overrides,
-  } as CachedMarketTask;
+  };
 }
 
 describe("EscrowPanel", () => {
@@ -44,10 +55,10 @@ describe("EscrowPanel", () => {
     expect(result).toContain("cancelled");
   });
 
-  it("includes HashScan link when scheduleId present", () => {
+  it("includes explorer link when scheduleId present", () => {
     const task = makeTask({ escrowStatus: "pending", scheduleId: "0.0.555" });
     const result = EscrowPanel(task).toString();
-    expect(result).toContain("hashscan.io");
+    expect(result).toContain("explorer.test");
     expect(result).toContain("0.0.555");
   });
 
@@ -99,7 +110,7 @@ describe("EscrowPanel", () => {
   });
 
   it("includes price in escrow panel", () => {
-    const task = makeTask({ escrowStatus: "pending", scheduleId: "0.0.555", priceHbar: 75 });
+    const task = makeTask({ escrowStatus: "pending", scheduleId: "0.0.555", price: "75 HBAR" });
     const result = EscrowPanel(task).toString();
     expect(result).toContain("75 HBAR");
   });

@@ -8,6 +8,7 @@ import { MarketplaceTaskBoardFragment } from "./marketplace-fragment";
 import { BUILD_DATE } from "../server/lib/build-info";
 import type { NftInfo, Tier, CachedMarketTask } from "@agentgate-hedera/hedera-core";
 import { explorerNftUrl, explorerName, chainDisplayName } from "../server/lib/chain-ui.js";
+import { normalizeTasks } from "../server/lib/market-task.js";
 
 /**
  * SSR data for dashboard sections.
@@ -70,7 +71,7 @@ export function Dashboard(ssrData?: DashboardSsrData) {
       </div>`;
 
   const tasksHtml = ssrData?.tasks?.length
-    ? MarketplaceTaskBoardFragment(ssrData.tasks).toString()
+    ? MarketplaceTaskBoardFragment(normalizeTasks(ssrData.tasks)).toString()
     : `<div class="rounded-lg border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">
         <p>No marketplace tasks available.</p>
         <p class="text-sm mt-2 text-slate-400">

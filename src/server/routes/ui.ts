@@ -36,6 +36,7 @@ import { HelpPage } from "../../views/help-page";
 import { MedicalDemoPage } from "../../views/medical-demo-page";
 import { A2AInboxFragment } from "../../views/a2a-fragment";
 import { MarketplaceTaskBoardFragment, TaskDetailsFragment, TaskMessagesFragment, EscrowPanel } from "../../views/marketplace-fragment";
+import { normalizeTask, normalizeTasks } from "../lib/market-task.js";
 import { AgentProfilePage } from "../../views/agent-profile";
 import { Layout } from "../../views/layout";
 import { PageHeader } from "../../views/page-header";
@@ -1290,7 +1291,7 @@ uiRoutes.get("/ui/market/tasks", (c) => {
     return c.json({ tasks: result.tasks, count: result.tasks.length, total: result.total, limit: 100, offset });
   }
 
-  const fragment = MarketplaceTaskBoardFragment(result.tasks);
+  const fragment = MarketplaceTaskBoardFragment(normalizeTasks(result.tasks));
   return c.html(wrapFragment(c, fragment.toString(), PageTitles["/ui/market/tasks"], PageMetaRegistry["/ui/market/tasks"]));
 });
 
@@ -1319,7 +1320,7 @@ uiRoutes.get("/ui/market/tasks/:id", (c) => {
     ? (task.claimerDid ?? task.posterDid)
     : task.posterDid;
   const messages = viewerDid ? getA2AConversation(viewerDid, otherDid) : [];
-  const fragment = TaskDetailsFragment(task, viewerDid || undefined, messages);
+  const fragment = TaskDetailsFragment(normalizeTask(task), viewerDid || undefined, messages);
   const pollUrl = `/ui/market/tasks/${taskId}/fragment${viewerDid ? `?did=${encodeURIComponent(viewerDid)}` : ""}`;
   const wrapped = html`<div class="htmx-poll-wrapper" hx-get="${pollUrl}" hx-trigger="every 10s" hx-swap="outerHTML">
     ${fragment}
@@ -1342,7 +1343,7 @@ uiRoutes.get("/ui/market/tasks/:id/fragment", (c) => {
     ? (task.claimerDid ?? task.posterDid)
     : task.posterDid;
   const messages = viewerDid ? getA2AConversation(viewerDid, otherDid) : [];
-  const fragment = TaskDetailsFragment(task, viewerDid || undefined, messages);
+  const fragment = TaskDetailsFragment(normalizeTask(task), viewerDid || undefined, messages);
   const pollUrl = `/ui/market/tasks/${taskId}/fragment${viewerDid ? `?did=${encodeURIComponent(viewerDid)}` : ""}`;
   return c.html(html`<div class="htmx-poll-wrapper" hx-get="${pollUrl}" hx-trigger="every 10s" hx-swap="outerHTML">
     ${fragment}
@@ -1359,7 +1360,7 @@ uiRoutes.get("/ui/market/tasks/:id/escrow-fragment", (c) => {
     return c.html('<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-slate-400"><p>Task not found.</p></div>');
   }
   const viewerDid = c.req.query("did") ?? "";
-  return c.html(EscrowPanel(task, viewerDid || undefined).toString());
+  return c.html(EscrowPanel(normalizeTask(task), viewerDid || undefined).toString());
 });
 
 /**
@@ -1475,6 +1476,6 @@ uiRoutes.post("/ui/market/tasks/:id/send-message", async (c) => {
   }
 
   const messages = getA2AConversation(from, task.posterDid);
-  const fragment = TaskMessagesFragment(task, messages, from);
+  const fragment = TaskMessagesFragment(normalizeTask(task), messages, from);
   return c.html(fragment.toString());
 });
