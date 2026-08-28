@@ -15,6 +15,37 @@ vi.mock("../../src/server/lib/chain-ui.js", () => ({
   accountPattern: vi.fn(() => /^0\.0\.\d+$/),
 }));
 
+// Mock chain-templates so json-ld.ts getChainTemplateVars works
+vi.mock("../../src/server/lib/chain-templates.js", () => ({
+  applyChainTemplates: vi.fn((s: string) => s),
+  getChainTemplateVars: vi.fn(() => ({
+    CHAIN_NAME: "Hedera Testnet",
+    CURRENCY: "HBAR",
+    EXPLORER: "HashScan",
+    EXPLORER_URL: "https://hashscan.io/testnet",
+    MIRROR_NODE: "Mirror Node",
+    NFT_STANDARD: "HTS",
+    CONSENSUS: "HCS",
+  })),
+}));
+
+// Mock env config so json-ld.ts chainCurrency works
+vi.mock("../../src/config/env.js", () => ({
+  getConfig: vi.fn(() => ({
+    chainMode: "hedera",
+    hederaNetwork: "testnet",
+    ui: {
+      currencySymbol: "HBAR",
+      currencyDecimals: 8,
+      explorerName: "HashScan",
+      explorerUrl: "https://hashscan.io/testnet",
+      chainDisplayName: "Hedera Testnet",
+      chainBadgeColor: "purple",
+    },
+  })),
+  resetConfigCache: vi.fn(),
+}));
+
 import { chainDisplayName, chainBadgeColor } from "../../src/server/lib/chain-ui.js";
 
 function renderLayout(): string {

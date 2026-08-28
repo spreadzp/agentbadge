@@ -1,5 +1,6 @@
 import { html } from "hono/html";
 import type { TierEntry } from "@agentgate-hedera/hedera-core";
+import { formatPrice } from "../server/lib/chain-ui.js";
 
 const TIER_STYLES: Record<string, { border: string; badge: string; label: string }> = {
   bronze: {
@@ -41,7 +42,7 @@ export function CatalogFragment({ tiers }: { tiers: TierEntry[] }) {
           </span>
           <span class="text-2xl font-semibold text-white">${tier.price}</span>
         </div>
-        <div class="mt-1 text-right text-xs text-slate-400">HBAR</div>
+        <div class="mt-1 text-right text-xs text-slate-400">${formatPrice(tier.price)}</div>
 
         <ul class="mt-4 space-y-2">
           ${tier.capabilities.map(
