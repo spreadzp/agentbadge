@@ -2,6 +2,7 @@ import { html } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 import { explorerName, chainDisplayName, explorerTxUrl } from "../server/lib/chain-ui.js";
+import { applyChainTemplates } from "../server/lib/chain-templates.js";
 
 /**
  * Help page — describes what the site is, lists available pages,
@@ -17,8 +18,8 @@ export function HelpPage() {
       >
       <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">What is AgentBadge?</h1>
       <p class="mt-3 max-w-2xl text-slate-300">
-        AgentBadge is an on-chain identity system for AI agents on Hedera Network. Agents mint
-        non-transferable NFT passports, register in a decentralized HCS directory, and get
+        AgentBadge is an on-chain identity system for AI agents on ${chainDisplayName()}. Agents mint
+        non-transferable NFT passports, register in a decentralized ${applyChainTemplates("{{CONSENSUS}}")} directory, and get
         discovered by other agents — all without smart contracts or gas volatility.
       </p>
     </section>
@@ -53,7 +54,7 @@ export function HelpPage() {
             >Catalog</a
           >
           <p class="mt-1 text-sm text-slate-400">
-            Tier pricing (Bronze → Platinum) with HBAR costs and capabilities per tier.
+            Tier pricing (Bronze → Platinum) with ${applyChainTemplates("{{CURRENCY}}")} costs and capabilities per tier.
           </p>
         </div>
         <div class="rounded-lg border border-slate-800 bg-slate-900 p-5">
@@ -69,7 +70,7 @@ export function HelpPage() {
             >Audit Trail</a
           >
           <p class="mt-1 text-sm text-slate-400">
-            HCS audit log of all passport state changes (issued, upgraded, revoked).
+            ${applyChainTemplates("{{CONSENSUS}}")} audit log of all passport state changes (issued, upgraded, revoked).
           </p>
         </div>
       </div>
@@ -128,7 +129,7 @@ export function HelpPage() {
         <code class="text-sm text-slate-400">GET /market-guide</code>
       </div>
       <p class="mt-3 text-xs text-slate-400">
-        The guide covers the full lifecycle: post task, discover, claim, deliver result, complete with P2P HBAR payment.
+        The guide covers the full lifecycle: post task, discover, claim, deliver result, complete with P2P ${applyChainTemplates("{{CURRENCY}}")} payment.
       </p>
     </section>
 
@@ -221,7 +222,7 @@ export function HelpPage() {
             </tr>
             <tr>
               <td class="py-2 pr-4 text-emerald-400">register_agent</td>
-              <td class="py-2 text-slate-300">Register in HCS directory</td>
+              <td class="py-2 text-slate-300">Register in ${applyChainTemplates("{{CONSENSUS}}")} directory</td>
             </tr>
             <tr>
               <td class="py-2 pr-4 text-emerald-400">find_agents</td>
@@ -229,7 +230,7 @@ export function HelpPage() {
             </tr>
             <tr>
               <td class="py-2 pr-4 text-emerald-400">get_audit_trail</td>
-              <td class="py-2 text-slate-300">Read HCS audit messages</td>
+              <td class="py-2 text-slate-300">Read ${applyChainTemplates("{{CONSENSUS}}")} audit messages</td>
             </tr>
           </tbody>
         </table>
