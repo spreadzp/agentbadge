@@ -3317,7 +3317,7 @@ Confidence:
 <pre><code>{
   "target": "https://api.example.com",
   "ruleset": "agent-readiness-v1.0",
-  "scanner_version": "0.1.0",
+  "scanner_version": "0.2.0",
   "timestamp": "...",
   "assertions": [...],
   "score": {
@@ -3402,7 +3402,7 @@ Result: 76 → 72</code></pre>
     externalLinks: [
       {
         platform: "devto",
-        url: "",
+        url: "https://dev.to/spread2009/inside-an-agent-readiness-scanner-rules-evidence-and-reproducibility-3j9k",
       },
       {
         platform: "medium",

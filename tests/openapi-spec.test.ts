@@ -46,7 +46,7 @@ describe("OpenAPI spec", () => {
     app.get("/swagger.json", (c) => {
       return c.json({
         openapi: "3.0.0",
-        info: { title: "AgentBadge API", version: "0.1.0" },
+        info: { title: "AgentBadge API", version: "0.2.0" },
         paths: {},
       });
     });

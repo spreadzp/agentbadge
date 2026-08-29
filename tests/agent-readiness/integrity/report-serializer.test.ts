@@ -136,7 +136,7 @@ describe("SLICE-36-5: Report Serializer", () => {
     expect(report.integrity.signature.key_id).toBe("agentbadge-prod-2026-q3");
   });
 
-  it("schema_version is 0.1.0", () => {
+  it("schema_version is 0.2.0", () => {
     const report = assembleReport({
       scope: mockScope,
       assertions: mockAssertions,
@@ -144,7 +144,7 @@ describe("SLICE-36-5: Report Serializer", () => {
       previousHash: null,
       keyId: "test-key-1",
     });
-    expect(report.schema_version).toBe("0.1.0");
+    expect(report.schema_version).toBe("0.2.0");
   });
 
   it("scanned_at is ISO 8601", () => {
