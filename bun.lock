@@ -9,6 +9,7 @@
         "@agentgate-hedera/hedera-core": "^0.1.14",
         "@agentgate-hedera/mcp": "^0.1.9",
         "@agentgate-hedera/passport": "^0.1.9",
+        "@agentgate-hedera/webmcp": "file:../../packages/webmcp",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/standard-validator": "^0.3.0",
         "@hono/swagger-ui": "^0.6.1",
@@ -56,6 +57,8 @@
     "@agentgate-hedera/mcp": ["@agentgate-hedera/mcp@0.1.9", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@agentgate-hedera/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GN4zZqneU+6RCTYWvTZEDad2XN7+4GDNdmgn1mguKl9J8o5JxCpC16s1D+3KIuNHNTvBwXQd+M7a7Tn9f3jo7Q=="],
 
     "@agentgate-hedera/passport": ["@agentgate-hedera/passport@0.1.9", "", { "dependencies": { "@agentgate-hedera/hedera-core": "^0.1.12", "@x402/hedera": "^2.19.0", "@x402/hono": "^2.19.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-U25X+16IoZfL9Vt4HEEu1t7Jp5NYSx0h350W4zftJPAzV5xzoNToqExfvNW7pmNwCWmgU55fgwiCqnd6wnKi6Q=="],
+
+    "@agentgate-hedera/webmcp": ["@agentgate-hedera/webmcp@file:../../packages/webmcp", { "devDependencies": { "bun-types": "^1.3.14", "typescript": "^5.9.0", "vitest": "^2.0.0" } }],
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 
