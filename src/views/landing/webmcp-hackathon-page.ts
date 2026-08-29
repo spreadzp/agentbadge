@@ -1,4 +1,5 @@
 import { html, raw } from "hono/html";
+import { injectWebMCP, allTools } from "@agentgate-hedera/webmcp";
 
 /**
  * WebMcpHackathonPage — landing page for the WebMCP Challenge hackathon.
@@ -255,11 +256,7 @@ function WebMcpDiscovery() {
         </a>
       </div>
     </div>
-    <!-- WebMCP script injection placeholder — filled in SLICE-91-6 -->
-    <script>
-      // document.modelContext.registerTool() calls will be injected here
-      // by SLICE-91-6 (Migrate to registerTool)
-    </script>
+    ${raw(injectWebMCP(allTools))}
   </section>`;
 }
 

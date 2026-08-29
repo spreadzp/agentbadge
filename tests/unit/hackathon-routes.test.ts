@@ -156,10 +156,30 @@ describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
       expect(body).toContain("ChatGPT");
     });
 
-    it("contains WebMCP script injection placeholder", async () => {
+    it("contains document.modelContext.registerTool calls", async () => {
       const res = await app.request("/hackathon/webmcp");
       const body = await res.text();
-      expect(body).toContain("modelContext");
+      expect(body).toContain("document.modelContext.registerTool");
+    });
+
+    it("contains await before registerTool calls", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("await document.modelContext.registerTool");
+    });
+
+    it("contains all 6 registerTool calls", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      const matches = body.match(/await document\.modelContext\.registerTool\(/g);
+      expect(matches).toHaveLength(6);
+    });
+
+    it("contains try/catch for graceful failure", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("try {");
+      expect(body).toContain("catch");
     });
 
     it("contains link to well-known webmcp.json", async () => {
@@ -173,6 +193,18 @@ describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
       const body = await res.text();
       expect(body).not.toContain("navigator.modelContext");
       expect(body).not.toContain("provideContext");
+    });
+
+    it("does NOT have WebMCP script on homepage", async () => {
+      const res = await app.request("/");
+      const body = await res.text();
+      expect(body).not.toContain("registerTool");
+    });
+
+    it("does NOT have WebMCP script on /hackathon/datahub", async () => {
+      const res = await app.request("/hackathon/datahub");
+      const body = await res.text();
+      expect(body).not.toContain("registerTool");
     });
   });
 });
