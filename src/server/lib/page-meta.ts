@@ -85,6 +85,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge integrates DataHub MCP Server for medical data verification. AI agents discover datasets, verify quality via assertions, and settle payments through Hedera escrow.",
     path: "/datahub",
   },
+  "/hackathon/webmcp": {
+    title: "WebMCP Challenge — AgentBadge",
+    description:
+      "AgentBadge WebMCP implementation for the WebMCP Challenge hackathon. Six imperative tools, declarative API, and discovery endpoint for agent-native compliance.",
+    path: "/hackathon/webmcp",
+  },
   "/dashboard": {
     title: "Dashboard",
     description:
