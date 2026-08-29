@@ -114,3 +114,65 @@ describe("SLICE-91-2: Move DataHub to /hackathon/datahub", () => {
     });
   });
 });
+
+describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
+  const app = new Hono();
+  app.route("/", hackathonRoutes);
+
+  describe("GET /hackathon/webmcp", () => {
+    it("returns 200 with rendered HTML", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      expect(res.status).toBe(200);
+      const body = await res.text();
+      expect(body).toContain("<!DOCTYPE html>");
+    });
+
+    it("contains hero heading with WebMCP", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("WebMCP");
+    });
+
+    it("contains all 6 imperative tool names", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("agent-readiness-scan");
+      expect(body).toContain("badge-generate");
+      expect(body).toContain("passport-issue");
+      expect(body).toContain("passport-verify");
+      expect(body).toContain("get-compliance-score");
+      expect(body).toContain("search-rules");
+    });
+
+    it("contains Chrome flag instructions", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("chrome://flags");
+    });
+
+    it("contains ChatGPT browser instructions", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("ChatGPT");
+    });
+
+    it("contains WebMCP script injection placeholder", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("modelContext");
+    });
+
+    it("contains link to well-known webmcp.json", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain(".well-known/webmcp.json");
+    });
+
+    it("uses document.modelContext not navigator.modelContext", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).not.toContain("navigator.modelContext");
+      expect(body).not.toContain("provideContext");
+    });
+  });
+});

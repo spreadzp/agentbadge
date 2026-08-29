@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { LandingLayout } from "../../views/landing/layout";
 import { DataHubLandingPage } from "../../views/landing/datahub-landing-page";
+import { WebMcpHackathonPage } from "../../views/landing/webmcp-hackathon-page";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { landingJsonLd } from "../lib/json-ld";
 
@@ -35,8 +36,10 @@ hackathonRoutes.get("/hackathon/:name", (c) => {
   let content: string;
   if (name === "datahub") {
     content = DataHubLandingPage().toString();
+  } else if (name === "webmcp") {
+    content = WebMcpHackathonPage().toString();
   } else {
-    content = '<main><section class="hero"><h1>WebMCP Challenge</h1><p>AgentBadge WebMCP implementation — agent-native compliance platform.</p></section></main>';
+    content = '<main><section class="hero"><h1>Hackathon</h1><p>Page not found.</p></section></main>';
   }
 
   return c.html(LandingLayout(content, undefined, meta, landingJsonLd()));
