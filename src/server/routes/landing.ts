@@ -1,13 +1,10 @@
 import { Hono } from "hono";
-import { html, raw } from "hono/html";
 import { LandingLayout } from "../../views/landing/layout";
 import { LandingPage } from "../../views/landing/landing-page";
 import { AgencyHubPage } from "../../views/landing/agency-hub-page";
-import { DataHubLandingPage } from "../../views/landing/datahub-landing-page";
-import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
-import { defaultCoreSchemas, landingJsonLd } from "../lib/json-ld";
-import { getNftsForToken, getTopicMessages, type NftInfo, type Tier } from "@agentgate-hedera/hedera-core";
-import { retrieveMetadata } from "@agentgate-hedera/passport";
+import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
+import { landingJsonLd } from "../lib/json-ld";
+import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentgate-hedera/hedera-core";
 import { listTasks as marketListTasks } from "@agentgate-hedera/passport";
 
 /**
@@ -105,19 +102,15 @@ landingRoutes.get("/passport", async (c) => {
 });
 
 /**
- * GET /datahub — DataHub hackathon landing page.
+ * GET /datahub — 301 redirect to /hackathon/datahub (SLICE-91-2).
  *
- * Showcases how AgentBadge integrates DataHub MCP Server for medical data
- * verification with Hedera escrow. Linked from the dashboard sidebar.
+ * DataHub moved under /hackathon/:name routing pattern.
+ * Query parameters preserved in redirect.
  */
-landingRoutes.get("/datahub", async (c) => {
-  const meta = PageMetaRegistry["/datahub"];
-  const jsonLd = landingJsonLd();
-
-  const content = DataHubLandingPage().toString();
-  const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
-  return c.html(pageHtml);
+landingRoutes.get("/datahub", (c) => {
+  const query = new URL(c.req.url).search;
+  return c.redirect(`/hackathon/datahub${query}`, 301);
 });
 
 // Note: GET /dashboard is registered in ui.ts (the former GET / handler).
-// landingRoutes owns GET /, GET /passport, and GET /datahub to avoid route conflicts.
+// landingRoutes owns GET /, GET /passport. /datahub now redirects to /hackathon/datahub.

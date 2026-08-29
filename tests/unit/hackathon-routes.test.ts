@@ -20,6 +20,7 @@ vi.mock("../../src/config/env.js", () => ({
 
 import { Hono } from "hono";
 import { hackathonRoutes } from "../../src/server/routes/hackathon";
+import { landingRoutes } from "../../src/server/routes/landing";
 import { PageMeta } from "../../src/server/lib/page-meta";
 
 describe("SLICE-91-1: Hackathon Routing Structure", () => {
@@ -65,18 +66,51 @@ describe("SLICE-91-1: Hackathon Routing Structure", () => {
       expect(PageMeta["/hackathon/webmcp"].description).toBeTruthy();
       expect(PageMeta["/hackathon/webmcp"].path).toBe("/hackathon/webmcp");
     });
+  });
+});
 
-    it("does not include /hackathon/datahub yet (SLICE-91-2)", () => {
-      expect(PageMeta["/hackathon/datahub"]).toBeUndefined();
+describe("SLICE-91-2: Move DataHub to /hackathon/datahub", () => {
+  const hackathonApp = new Hono();
+  hackathonApp.route("/", hackathonRoutes);
+
+  const landingApp = new Hono();
+  landingApp.route("/", landingRoutes);
+
+  describe("GET /hackathon/datahub", () => {
+    it("returns 200 with DataHub content", async () => {
+      const res = await hackathonApp.request("/hackathon/datahub");
+      expect(res.status).toBe(200);
+      const body = await res.text();
+      expect(body).toContain("<!DOCTYPE html>");
     });
   });
 
-  describe("Route isolation", () => {
-    it("does not conflict with existing /datahub route", async () => {
-      // /datahub should still be served by landingRoutes, not hackathonRoutes
-      // This test just verifies hackathonRoutes doesn't handle /datahub
-      const res = await app.request("/datahub");
-      expect(res.status).toBe(404); // hackathonRoutes doesn't have /datahub
+  describe("GET /datahub (redirect)", () => {
+    it("returns 301 redirect to /hackathon/datahub", async () => {
+      const res = await landingApp.request("/datahub");
+      expect(res.status).toBe(301);
+      expect(res.headers.get("location")).toBe("/hackathon/datahub");
+    });
+
+    it("preserves query parameters in redirect", async () => {
+      const res = await landingApp.request("/datahub?foo=bar");
+      expect(res.status).toBe(301);
+      const location = res.headers.get("location") ?? "";
+      expect(location).toContain("/hackathon/datahub");
+      expect(location).toContain("foo=bar");
+    });
+  });
+
+  describe("PageMeta registry", () => {
+    it("includes /hackathon/datahub entry", () => {
+      expect(PageMeta["/hackathon/datahub"]).toBeDefined();
+      expect(PageMeta["/hackathon/datahub"].title).toBeTruthy();
+      expect(PageMeta["/hackathon/datahub"].description).toBeTruthy();
+      expect(PageMeta["/hackathon/datahub"].path).toBe("/hackathon/datahub");
+    });
+
+    it("removes old /datahub entry", () => {
+      expect(PageMeta["/datahub"]).toBeUndefined();
     });
   });
 });
