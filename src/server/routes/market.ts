@@ -24,29 +24,14 @@ import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 import { toPublicError } from "../lib/error-map";
-// TODO(EPIC-90): re-enable when evm-core is published to npm
-// import { isBaseDid, parseBaseDid, EvmChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/evm-core";
-// import { SessionRegistry } from "@agentgate-hedera/evm-core";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const isBaseDid = (_did: string): boolean => false;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const parseBaseDid = (_did: string): { nftAddress: string; tokenId: number; chainId: number } | null => null;
-// Stubs for commented-out evm-core imports (re-enable when published)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const BaseChainAdapter: new (cfg: unknown) => any = function (cfg: unknown) { void cfg; throw new Error("evm-core not deployed"); } as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const SessionRegistry: new (addr: string, cfg: unknown) => any = function (addr: string, cfg: unknown) { void addr; void cfg; throw new Error("evm-core not deployed"); } as any;
-const BASE_SEPOLIA_RPC = "";
-const BASE_SEPOLIA_CHAIN_ID = 0;
-const BASE_SEPOLIA_EXPLORER = "";
-const BASE_SEPOLIA_ADDRESSES = { AgentPassport: "", TaskEscrow: "", X402Token: "", DIDRegistry: "", MockUSDC: "", SessionRegistry: "" };
+import { isBaseDid, parseBaseDid, EvmChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/evm-core";
+import { SessionRegistry } from "@agentgate-hedera/evm-core";
 
 export const marketRoutes = new Hono();
 
 // SLICE-90-12: Check passport type for Base Sepolia DIDs
 // Returns null if check passes, or a Response if it fails
-async function checkPassportType(
+export async function checkPassportType(
   did: string,
   requiredType: "CREATOR" | "EXECUTOR",
 ): Promise<Response | null> {
@@ -58,7 +43,7 @@ async function checkPassportType(
   const operatorKey = process.env.BASE_OPERATOR_KEY;
   if (!operatorKey) return null; // Skip if Base not configured
 
-  const adapter = new BaseChainAdapter({
+  const adapter = new EvmChainAdapter({
     rpcUrl: BASE_SEPOLIA_RPC,
     chainId: BASE_SEPOLIA_CHAIN_ID,
     operatorKey,
@@ -101,7 +86,7 @@ async function checkPassportType(
 
 // SLICE-90-13: Check session budget cap for Base Sepolia DIDs
 // Returns null if check passes or is not applicable, or a Response if it fails
-async function checkSessionCap(
+export async function checkSessionCap(
   did: string,
   amount: number,
   sessionId: number,
