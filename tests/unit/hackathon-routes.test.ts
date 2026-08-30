@@ -208,3 +208,107 @@ describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
     });
   });
 });
+
+describe("SLICE-91-10: Declarative API Form Annotations", () => {
+  const app = new Hono();
+  app.route("/", hackathonRoutes);
+
+  describe("GET /hackathon/webmcp — declarative form", () => {
+    it("contains toolname attribute on form", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain('toolname="submitScanRequest"');
+    });
+
+    it("contains tooldescription attribute on form", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("tooldescription=");
+    });
+
+    it("contains toolautosubmit attribute on form", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("toolautosubmit");
+    });
+
+    it("contains action pointing to /api/scan", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain('action="/api/scan"');
+    });
+
+    it("contains toolparamdescription on input", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("toolparamdescription=");
+    });
+
+    it("contains input with name='url'", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain('name="url"');
+    });
+
+    it("contains input with type='url'", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain('type="url"');
+    });
+
+    it("contains required attribute on input", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("required");
+    });
+
+    it("contains label associated with input", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("<label");
+      expect(body).toContain("for=");
+    });
+
+    it("contains agentInvoked in script", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("agentInvoked");
+    });
+
+    it("contains respondWith in script", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("respondWith");
+    });
+
+    it("contains toolactivated event listener", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("toolactivated");
+    });
+
+    it("contains toolcancel event listener", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("toolcancel");
+    });
+
+    it("contains :tool-form-active CSS pseudo-class", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain(":tool-form-active");
+    });
+
+    it("contains :tool-submit-active CSS pseudo-class", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain(":tool-submit-active");
+    });
+
+    it("contains prefers-reduced-motion in CSS", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      const body = await res.text();
+      expect(body).toContain("prefers-reduced-motion");
+    });
+  });
+});

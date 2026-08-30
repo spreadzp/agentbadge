@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { injectWebMCP, allTools } from "@agentgate-hedera/webmcp";
+import { injectWebMCP, allTools, generateDeclarativeForm, generateDeclarativeScript, generateDeclarativeStyles } from "@agentgate-hedera/webmcp";
 
 /**
  * WebMcpHackathonPage — landing page for the WebMCP Challenge hackathon.
@@ -145,6 +145,26 @@ function WebMcpTools() {
 }
 
 function WebMcpDeclarative() {
+  const formHtml = generateDeclarativeForm({
+    toolname: "submitScanRequest",
+    tooldescription: "Submit a URL for agent readiness scanning. Returns a compliance report.",
+    action: "/api/scan",
+    method: "GET",
+    toolautosubmit: true,
+    inputs: [
+      {
+        name: "url",
+        type: "url",
+        id: "scanUrl",
+        label: "URL to Scan",
+        required: true,
+        toolparamdescription: "The URL to scan for AI agent readiness compliance.",
+      },
+    ],
+  });
+  const scriptHtml = generateDeclarativeScript();
+  const stylesHtml = generateDeclarativeStyles();
+
   return html`<section class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
     <div class="grid gap-12 md:grid-cols-2">
       <div>
@@ -167,6 +187,10 @@ function WebMcpDeclarative() {
               <span class="font-mono text-indigo-300">url (string)</span>
             </div>
           </div>
+          <div class="mt-6 rounded-lg border border-slate-700/40 bg-slate-950/50 p-4">
+            <h4 class="mb-3 text-sm font-semibold text-slate-300">Live Form</h4>
+            ${raw(formHtml)}
+          </div>
         </div>
       </div>
       <div>
@@ -184,6 +208,8 @@ function WebMcpDeclarative() {
         </div>
       </div>
     </div>
+    ${raw(stylesHtml)}
+    ${raw(scriptHtml)}
   </section>`;
 }
 
