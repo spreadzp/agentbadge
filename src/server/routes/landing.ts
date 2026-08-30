@@ -36,6 +36,7 @@ landingRoutes.get("/", async (c) => {
     [
       '</.well-known/api-catalog>; rel="api-catalog"',
       '</.well-known/mcp.json>; rel="service-desc"',
+      '</.well-known/webmcp.json>; rel="service-desc"',
       '</openapi.json>; rel="service-desc"',
       '</.well-known/oauth-authorization-server>; rel="oauth-server"',
       '</sitemap.xml>; rel="sitemap"',
