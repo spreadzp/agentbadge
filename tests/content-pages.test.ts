@@ -14,50 +14,54 @@ import { PUBLIC_PAGES, PageMeta } from "../src/server/lib/page-meta";
 const app = new Hono();
 app.route("/", contentPageRoutes);
 
+function allFaqContent(): string {
+  return getFaqEntries().map((qa) => qa.question + " " + qa.answer).join("\n");
+}
+
 // ─── Unit: FAQ page ───────────────────────────────────────────
 
 describe("FaqPage unit", () => {
-  it("renders >= 10 Q&A pairs in raw HTML", () => {
+  it("renders >= 8 Q&A pairs in raw HTML (page 1)", () => {
     const html = FaqPage().toString();
-    // Count <details> elements = Q&A pairs
+    // Count <details> elements = Q&A pairs on page 1
     const detailsCount = (html.match(/<details/g) || []).length;
-    expect(detailsCount).toBeGreaterThanOrEqual(10);
-    expect(detailsCount).toBe(FAQ_ENTRIES.length);
+    expect(detailsCount).toBe(8);
   });
 
-  it("includes all question texts in HTML", () => {
-    const html = FaqPage().toString();
-    for (const qa of FAQ_ENTRIES) {
-      expect(html).toContain(qa.question);
-      expect(html).toContain(qa.answer);
+  it("includes all question texts in FAQ entries", () => {
+    const content = allFaqContent();
+    for (const qa of getFaqEntries()) {
+      expect(content).toContain(qa.question);
+      expect(content).toContain(qa.answer);
     }
   });
 
   it("renders FAQPage JSON-LD with matching Question count", () => {
-    const schemas = [faqPageLd(FAQ_ENTRIES)];
+    const allEntries = getFaqEntries();
+    const schemas = [faqPageLd(allEntries)];
     const json = JSON.stringify(schemas);
     const parsed = JSON.parse(json);
     const faqSchema = parsed.find((s: { "@type": string }) => s["@type"] === "FAQPage");
     expect(faqSchema).toBeDefined();
-    expect(faqSchema.mainEntity.length).toBe(FAQ_ENTRIES.length);
-    for (let i = 0; i < FAQ_ENTRIES.length; i++) {
+    expect(faqSchema.mainEntity.length).toBe(allEntries.length);
+    for (let i = 0; i < allEntries.length; i++) {
       expect(faqSchema.mainEntity[i]["@type"]).toBe("Question");
-      expect(faqSchema.mainEntity[i].name).toBe(FAQ_ENTRIES[i].question);
-      expect(faqSchema.mainEntity[i].acceptedAnswer.text).toBe(FAQ_ENTRIES[i].answer);
+      expect(faqSchema.mainEntity[i].name).toBe(allEntries[i].question);
+      expect(faqSchema.mainEntity[i].acceptedAnswer.text).toBe(allEntries[i].answer);
     }
   });
 
   it("uses canonical terminology from CONTEXT.md", () => {
-    const html = FaqPage().toString();
+    const content = allFaqContent();
     // Key terms that must appear (from CONTEXT.md glossary)
-    expect(html).toContain("HTS");
-    expect(html).toContain("HCS");
-    expect(html).toContain("DID");
-    expect(html).toContain("x402");
-    expect(html).toContain("MCP");
-    expect(html).toContain("HBAR");
-    expect(html).toContain("Mirror Node");
-    expect(html).toContain("non-transferable");
+    expect(content).toContain("HTS");
+    expect(content).toContain("HCS");
+    expect(content).toContain("DID");
+    expect(content).toContain("x402");
+    expect(content).toContain("MCP");
+    expect(content).toContain("HBAR");
+    expect(content).toContain("Mirror Node");
+    expect(content).toContain("non-transferable");
   });
 
   it("includes unique title and description via PageMeta", () => {
@@ -77,60 +81,60 @@ describe("FaqPage SLICE-105-1: Core scanner EPIC Q&A", () => {
   });
 
   it("includes four scoring pillars question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("four scoring pillars");
-    expect(html).toContain("Discovery");
-    expect(html).toContain("Understandability");
-    expect(html).toContain("Executability");
-    expect(html).toContain("Verifiability");
+    const content = allFaqContent();
+    expect(content).toContain("four scoring pillars");
+    expect(content).toContain("Discovery");
+    expect(content).toContain("Understandability");
+    expect(content).toContain("Executability");
+    expect(content).toContain("Verifiability");
   });
 
   it("includes evidence-based scoring question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("evidence-based scoring");
-    expect(html).toContain("VERIFIED");
-    expect(html).toContain("CONFLICT");
+    const content = allFaqContent();
+    expect(content).toContain("evidence-based scoring");
+    expect(content).toContain("VERIFIED");
+    expect(content).toContain("CONFLICT");
   });
 
   it("includes declared vs observed question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("declared and observed");
+    const content = allFaqContent();
+    expect(content).toContain("declared and observed");
   });
 
   it("includes gap engine question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("gap engine");
+    const content = allFaqContent();
+    expect(content).toContain("gap engine");
   });
 
   it("includes runtime agent testing question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("runtime agent testing");
+    const content = allFaqContent();
+    expect(content).toContain("runtime agent testing");
   });
 
   it("includes ExecutionTrace question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("ExecutionTrace");
+    const content = allFaqContent();
+    expect(content).toContain("ExecutionTrace");
   });
 
   it("includes Agent Success Rate (ASR) question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("Agent Success Rate");
-    expect(html).toContain("ASR");
+    const content = allFaqContent();
+    expect(content).toContain("Agent Success Rate");
+    expect(content).toContain("ASR");
   });
 
   it("includes scanner authentication question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("authentication");
+    const content = allFaqContent();
+    expect(content).toContain("authentication");
   });
 
   it("includes continuous monitoring question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("continuous monitoring");
+    const content = allFaqContent();
+    expect(content).toContain("continuous monitoring");
   });
 
   it("includes funnel report question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("funnel report");
+    const content = allFaqContent();
+    expect(content).toContain("funnel report");
   });
 
   it("all new Q&A answers mention AgentBadge brand", () => {
@@ -155,13 +159,13 @@ describe("FaqPage SLICE-105-1: Core scanner EPIC Q&A", () => {
   });
 
   it("new Q&A answers include blog article links where relevant", () => {
-    const html = FaqPage().toString();
+    const content = allFaqContent();
     // Scoring pillars → how-do-you-measure-agent-readiness
-    expect(html).toContain("/blog/how-do-you-measure-agent-readiness");
+    expect(content).toContain("/blog/how-do-you-measure-agent-readiness");
     // OpenAPI gap → why-openapi-isnt-enough
-    expect(html).toContain("/blog/why-openapi-isnt-enough");
+    expect(content).toContain("/blog/why-openapi-isnt-enough");
     // What agents need → what-ai-agent-needs-to-understand-api
-    expect(html).toContain("/blog/what-ai-agent-needs-to-understand-api");
+    expect(content).toContain("/blog/what-ai-agent-needs-to-understand-api");
   });
 
   it("no duplicate questions with original 16", () => {
@@ -201,43 +205,43 @@ describe("FaqPage SLICE-105-2: Platform EPIC Q&A", () => {
   });
 
   it("includes ChainAdapter question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("ChainAdapter");
+    const content = allFaqContent();
+    expect(content).toContain("ChainAdapter");
   });
 
   it("includes multi-chain support question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("blockchains does AgentBadge support");
+    const content = allFaqContent();
+    expect(content).toContain("blockchains does AgentBadge support");
   });
 
   it("includes WebMCP question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("WebMCP");
+    const content = allFaqContent();
+    expect(content).toContain("WebMCP");
   });
 
   it("includes task escrow question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("task escrow");
+    const content = allFaqContent();
+    expect(content).toContain("task escrow");
   });
 
   it("includes AgentBadge blog question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("AgentBadge blog");
+    const content = allFaqContent();
+    expect(content).toContain("AgentBadge blog");
   });
 
   it("includes SEO for agents question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("SEO for agents");
+    const content = allFaqContent();
+    expect(content).toContain("SEO for agents");
   });
 
   it("includes marketplace task lifecycle question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("task lifecycle");
+    const content = allFaqContent();
+    expect(content).toContain("task lifecycle");
   });
 
   it("includes agent support question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("support");
+    const content = allFaqContent();
+    expect(content).toContain("support");
   });
 
   it("all SLICE-105-2 Q&A answers mention AgentBadge brand", () => {
@@ -260,13 +264,13 @@ describe("FaqPage SLICE-105-2: Platform EPIC Q&A", () => {
   });
 
   it("SLICE-105-2 Q&A answers include blog article links where relevant", () => {
-    const html = FaqPage().toString();
+    const content = allFaqContent();
     // SEO/GEO → from-seo-to-geo-to-agent-readiness
-    expect(html).toContain("/blog/from-seo-to-geo-to-agent-readiness");
+    expect(content).toContain("/blog/from-seo-to-geo-to-agent-readiness");
     // API discovery → web-becoming-agentic-api-discovery
-    expect(html).toContain("/blog/web-becoming-agentic-api-discovery");
+    expect(content).toContain("/blog/web-becoming-agentic-api-discovery");
     // Agent Readiness overview → what-is-agent-readiness
-    expect(html).toContain("/blog/what-is-agent-readiness");
+    expect(content).toContain("/blog/what-is-agent-readiness");
   });
 
   it("no duplicate questions with SLICE-105-1 or original 16", () => {
@@ -285,54 +289,54 @@ describe("FaqPage SLICE-105-3: Blog article Q&A", () => {
   });
 
   it("includes Agent Readiness definition question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("What is Agent Readiness");
+    const content = allFaqContent();
+    expect(content).toContain("What is Agent Readiness");
   });
 
   it("includes SEO vs Agent Readiness question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("different from SEO");
+    const content = allFaqContent();
+    expect(content).toContain("different from SEO");
   });
 
   it("includes GEO question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("GEO");
-    expect(html).toContain("Generative Engine Optimization");
+    const content = allFaqContent();
+    expect(content).toContain("GEO");
+    expect(content).toContain("Generative Engine Optimization");
   });
 
   it("includes MCP vs REST API question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("MCP vs REST");
+    const content = allFaqContent();
+    expect(content).toContain("MCP vs REST");
   });
 
   it("includes 8 layers of context question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("8 layers");
+    const content = allFaqContent();
+    expect(content).toContain("8 layers");
   });
 
   it("includes OpenAPI not enough question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("OpenAPI enough");
+    const content = allFaqContent();
+    expect(content).toContain("OpenAPI enough");
   });
 
   it("includes how to measure Agent Readiness question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("How should Agent Readiness be measured");
+    const content = allFaqContent();
+    expect(content).toContain("How should Agent Readiness be measured");
   });
 
   it("includes scanner reproducibility question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("reproducible");
+    const content = allFaqContent();
+    expect(content).toContain("reproducible");
   });
 
   it("includes agentic web question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("agentic web");
+    const content = allFaqContent();
+    expect(content).toContain("agentic web");
   });
 
   it("includes SEO vs GEO difference question", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("difference between SEO and GEO");
+    const content = allFaqContent();
+    expect(content).toContain("difference between SEO and GEO");
   });
 
   it("all SLICE-105-3 Q&A answers mention AgentBadge brand", () => {
@@ -357,27 +361,27 @@ describe("FaqPage SLICE-105-3: Blog article Q&A", () => {
   });
 
   it("SLICE-105-3 Q&A answers include blog article links", () => {
-    const html = FaqPage().toString();
+    const content = allFaqContent();
     // Agent Readiness definition → what-is-agent-readiness
-    expect(html).toContain("/blog/what-is-agent-readiness");
+    expect(content).toContain("/blog/what-is-agent-readiness");
     // SEO vs Agent Readiness → api-has-seo-agent-readiness
-    expect(html).toContain("/blog/api-has-seo-agent-readiness");
+    expect(content).toContain("/blog/api-has-seo-agent-readiness");
     // GEO → from-seo-to-geo-to-agent-readiness
-    expect(html).toContain("/blog/from-seo-to-geo-to-agent-readiness");
+    expect(content).toContain("/blog/from-seo-to-geo-to-agent-readiness");
     // MCP vs REST → mcp-vs-api
-    expect(html).toContain("/blog/mcp-vs-api");
+    expect(content).toContain("/blog/mcp-vs-api");
     // x402 → x402-payments
-    expect(html).toContain("/blog/x402-payments");
+    expect(content).toContain("/blog/x402-payments");
     // 8 layers → what-ai-agent-needs-to-understand-api
-    expect(html).toContain("/blog/what-ai-agent-needs-to-understand-api");
+    expect(content).toContain("/blog/what-ai-agent-needs-to-understand-api");
     // OpenAPI not enough → why-openapi-isnt-enough
-    expect(html).toContain("/blog/why-openapi-isnt-enough");
+    expect(content).toContain("/blog/why-openapi-isnt-enough");
     // How to measure → how-do-you-measure-agent-readiness
-    expect(html).toContain("/blog/how-do-you-measure-agent-readiness");
+    expect(content).toContain("/blog/how-do-you-measure-agent-readiness");
     // Reproducibility → inside-an-agent-readiness-scanner
-    expect(html).toContain("/blog/inside-an-agent-readiness-scanner");
+    expect(content).toContain("/blog/inside-an-agent-readiness-scanner");
     // Agentic web → web-becoming-agentic-api-discovery
-    expect(html).toContain("/blog/web-becoming-agentic-api-discovery");
+    expect(content).toContain("/blog/web-becoming-agentic-api-discovery");
   });
 
   it("no duplicate questions with SLICE-105-1, SLICE-105-2, or original 16", () => {
@@ -385,6 +389,125 @@ describe("FaqPage SLICE-105-3: Blog article Q&A", () => {
     const allQuestions = allEntries.map((e) => e.question);
     const uniqueQuestions = new Set(allQuestions);
     expect(uniqueQuestions.size).toBe(allQuestions.length);
+  });
+});
+
+// ─── Unit: FAQ SLICE-105-4 — Pagination ───────────────────────
+
+describe("FaqPage SLICE-105-4: Pagination", () => {
+  it("exports FAQ_PER_PAGE = 8", async () => {
+    const mod = await import("../src/views/faq-page");
+    expect(mod.FAQ_PER_PAGE).toBe(8);
+  });
+
+  it("paginateFaqEntries returns correct meta for page 1", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items, meta } = mod.paginateFaqEntries(allEntries, 1);
+    expect(meta.currentPage).toBe(1);
+    expect(meta.totalArticles).toBe(allEntries.length);
+    expect(meta.totalPages).toBe(Math.ceil(allEntries.length / 8));
+    expect(items.length).toBe(8);
+    expect(meta.hasPrev).toBe(false);
+    expect(meta.hasNext).toBe(true);
+  });
+
+  it("paginateFaqEntries returns correct meta for last page", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const totalPages = Math.ceil(allEntries.length / 8);
+    const { items, meta } = mod.paginateFaqEntries(allEntries, totalPages);
+    expect(meta.currentPage).toBe(totalPages);
+    expect(meta.hasNext).toBe(false);
+    expect(meta.hasPrev).toBe(true);
+    expect(items.length).toBe(allEntries.length - (totalPages - 1) * 8);
+  });
+
+  it("paginateFaqEntries clamps invalid page values", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const totalPages = Math.ceil(allEntries.length / 8);
+    const { meta: metaZero } = mod.paginateFaqEntries(allEntries, 0);
+    expect(metaZero.currentPage).toBe(1);
+    const { meta: metaNeg } = mod.paginateFaqEntries(allEntries, -5);
+    expect(metaNeg.currentPage).toBe(1);
+    const { meta: metaHuge } = mod.paginateFaqEntries(allEntries, 9999);
+    expect(metaHuge.currentPage).toBe(totalPages);
+    const { meta: metaUndef } = mod.paginateFaqEntries(allEntries, undefined);
+    expect(metaUndef.currentPage).toBe(1);
+    const { meta: metaNaN } = mod.paginateFaqEntries(allEntries, NaN);
+    expect(metaNaN.currentPage).toBe(1);
+  });
+
+  it("FaqPage renders pagination nav with page links", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain('aria-label="Pagination"');
+    expect(html).toContain("/faq?page=");
+  });
+
+  it("FaqPage renders prev/next buttons", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("← Prev");
+    expect(html).toContain("Next →");
+  });
+
+  it("GET /faq returns page 1 with 8 Q&A items", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    expect(html).toContain("Frequently Asked Questions");
+    // Should contain pagination
+    expect(html).toContain('aria-label="Pagination"');
+  });
+
+  it("GET /faq?page=2 returns second page", async () => {
+    const res = await app.request("/faq?page=2");
+    const html = await res.text();
+    expect(html).toContain('aria-label="Pagination"');
+    // Page 1 link is /faq (not /faq?page=1), matching blog pattern
+    expect(html).toContain('href="/faq"');
+    expect(html).toContain("/faq?page=3");
+  });
+
+  it("GET /faq?page=0 clamps to page 1", async () => {
+    const res = await app.request("/faq?page=0");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('aria-current="page"');
+  });
+
+  it("GET /faq?page=9999 clamps to last page", async () => {
+    const res = await app.request("/faq?page=9999");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('aria-label="Pagination"');
+  });
+
+  it("canonical URL is /faq for page 1", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    expect(html).toContain('<link rel="canonical" href="');
+    // Should contain /faq without ?page=
+    const canonicalMatch = html.match(/rel="canonical" href="([^"]+)"/);
+    expect(canonicalMatch).toBeDefined();
+    expect(canonicalMatch![1]).toContain("/faq");
+    expect(canonicalMatch![1]).not.toContain("?page=");
+  });
+
+  it("canonical URL is /faq?page=N for page > 1", async () => {
+    const res = await app.request("/faq?page=2");
+    const html = await res.text();
+    const canonicalMatch = html.match(/rel="canonical" href="([^"]+)"/);
+    expect(canonicalMatch).toBeDefined();
+    expect(canonicalMatch![1]).toContain("/faq?page=2");
+  });
+
+  it("JSON-LD FAQPage contains only current page Q&A pairs", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    // JSON-LD should only have items from page 1, not all entries
+    expect(items.length).toBe(8);
+    expect(items.length).toBeLessThan(allEntries.length);
   });
 });
 
@@ -454,12 +577,12 @@ describe("UseCasesPage unit", () => {
 // ─── Integration: routes ──────────────────────────────────────
 
 describe("Content pages integration", () => {
-  it("GET /faq returns 200 with >= 10 Q&A pairs in HTML", async () => {
+  it("GET /faq returns 200 with 8 Q&A pairs in HTML (page 1)", async () => {
     const res = await app.request("/faq");
     expect(res.status).toBe(200);
     const html = await res.text();
     const detailsCount = (html.match(/<details/g) || []).length;
-    expect(detailsCount).toBeGreaterThanOrEqual(10);
+    expect(detailsCount).toBe(8);
   });
 
   it("GET /faq includes FAQPage JSON-LD with matching Question count", async () => {
@@ -472,7 +595,8 @@ describe("Content pages integration", () => {
     const schemas = JSON.parse(match![1]);
     const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
     expect(faqSchema).toBeDefined();
-    expect(faqSchema.mainEntity.length).toBe(FAQ_ENTRIES.length);
+    // JSON-LD should only contain current page's Q&A (8 per page)
+    expect(faqSchema.mainEntity.length).toBe(8);
   });
 
   it("GET /faq has unique title and meta description", async () => {

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { FaqPage, FAQ_ENTRIES } from "../../views/faq-page";
+import { FaqPage, getFaqEntries, paginateFaqEntries } from "../../views/faq-page";
 import { UseCasesPage, USE_CASES } from "../../views/use-cases-page";
 import { AboutPage } from "../../views/about-page";
 import { PricingPage } from "../../views/pricing-page";
@@ -25,8 +25,12 @@ contentPageRoutes.get(
     },
   }),
   (c) => {
-    const schemas = [...defaultCoreSchemas(), faqPageLd(FAQ_ENTRIES)];
-    return c.html(FaqPage(schemas));
+    const pageParam = c.req.query("page");
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    const allEntries = getFaqEntries();
+    const { items, meta } = paginateFaqEntries(allEntries, page);
+    const schemas = [...defaultCoreSchemas(), faqPageLd(items)];
+    return c.html(FaqPage(items, meta, schemas));
   },
 );
 

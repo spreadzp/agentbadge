@@ -61,6 +61,8 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="alternate" type="text/markdown" title="Full Documentation" href="https://agentbadge.gitbook.io/agentbadge-docs" />
         <link rel="alternate" type="application/json" title="Agent Card (A2A)" href="/.well-known/agent-card.json" />
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
+        ${meta?.prevRel ? html`<link rel="prev" href="${meta.prevRel}" />` : ""}
+        ${meta?.nextRel ? html`<link rel="next" href="${meta.nextRel}" />` : ""}
         <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://unpkg.com" crossorigin />
         <link rel="dns-prefetch" href="https://unpkg.com" />

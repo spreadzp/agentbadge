@@ -1,7 +1,8 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
-import { PageMeta } from "../server/lib/page-meta";
+import { PageMeta, BASE_URL } from "../server/lib/page-meta";
 import { applyChainTemplates } from "../server/lib/chain-templates.js";
+import type { PaginationMeta } from "../server/lib/blog-data.js";
 
 export interface QaPair {
   question: string;
@@ -231,6 +232,60 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
   },
 ];
 
+export const FAQ_PER_PAGE = 8;
+
+export function paginateFaqEntries(
+  entries: QaPair[],
+  page: number | undefined,
+): { items: QaPair[]; meta: PaginationMeta } {
+  const totalArticles = entries.length;
+  const totalPages = Math.max(1, Math.ceil(totalArticles / FAQ_PER_PAGE));
+  const rawPage = typeof page === "number" && !Number.isNaN(page) ? page : 1;
+  const currentPage = Math.min(Math.max(1, rawPage), totalPages);
+  const start = (currentPage - 1) * FAQ_PER_PAGE;
+  const items = entries.slice(start, start + FAQ_PER_PAGE);
+  return {
+    items,
+    meta: {
+      currentPage,
+      totalPages,
+      totalArticles,
+      hasPrev: currentPage > 1,
+      hasNext: currentPage < totalPages,
+    },
+  };
+}
+
+function renderFaqPagination(meta: PaginationMeta): string {
+  if (meta.totalPages <= 1) return "";
+
+  const pages: string[] = [];
+  for (let i = 1; i <= meta.totalPages; i++) {
+    const isCurrent = i === meta.currentPage;
+    const link = i === 1 ? "/faq" : `/faq?page=${i}`;
+    if (isCurrent) {
+      pages.push(`<span aria-current="page" class="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-white">${i}</span>`);
+    } else {
+      pages.push(`<a href="${link}" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:border-emerald-500 hover:text-emerald-400">${i}</a>`);
+    }
+  }
+
+  const prevLink = meta.currentPage === 2 ? "/faq" : `/faq?page=${meta.currentPage - 1}`;
+  const nextLink = `/faq?page=${meta.currentPage + 1}`;
+  const prevBtn = meta.hasPrev
+    ? `<a href="${prevLink}" rel="prev" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:border-emerald-500 hover:text-emerald-400" aria-label="Previous page">← Prev</a>`
+    : `<span class="rounded-lg border border-slate-800 px-3 py-2 text-sm font-medium text-slate-600" aria-disabled="true">← Prev</span>`;
+  const nextBtn = meta.hasNext
+    ? `<a href="${nextLink}" rel="next" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:border-emerald-500 hover:text-emerald-400" aria-label="Next page">Next →</a>`
+    : `<span class="rounded-lg border border-slate-800 px-3 py-2 text-sm font-medium text-slate-600" aria-disabled="true">Next →</span>`;
+
+  return `<nav aria-label="Pagination" class="mt-10 flex items-center justify-center gap-2">
+    ${prevBtn}
+    ${pages.join("")}
+    ${nextBtn}
+  </nav>`;
+}
+
 export function getFaqEntries(): QaPair[] {
   return RAW_FAQ_ENTRIES.map((qa) => ({
     question: qa.question,
@@ -245,8 +300,27 @@ export const FAQ_ENTRIES = new Proxy([] as QaPair[], {
   },
 });
 
-export function FaqPage(jsonLd?: object[]) {
-  const faqEntries = getFaqEntries();
+export function FaqPage(
+  entriesOrJsonLd?: QaPair[] | object[],
+  paginationMeta?: PaginationMeta,
+  jsonLd?: object[],
+): string {
+  let faqEntries: QaPair[];
+  let meta: PaginationMeta | undefined;
+  let schemas: object[] | undefined;
+
+  if (Array.isArray(entriesOrJsonLd) && entriesOrJsonLd.length > 0 && typeof entriesOrJsonLd[0] === "object" && "question" in entriesOrJsonLd[0]) {
+    faqEntries = entriesOrJsonLd as QaPair[];
+    meta = paginationMeta;
+    schemas = jsonLd;
+  } else {
+    faqEntries = getFaqEntries();
+    const paginated = paginateFaqEntries(faqEntries, 1);
+    faqEntries = paginated.items;
+    meta = paginated.meta;
+    schemas = entriesOrJsonLd as object[] | undefined;
+  }
+
   const qaHtml = faqEntries.map(
     (qa, i) => `<details class="group rounded-lg border border-slate-800 bg-slate-900 p-4">
       <summary class="flex cursor-pointer items-center justify-between text-sm font-medium text-white">
@@ -257,6 +331,21 @@ export function FaqPage(jsonLd?: object[]) {
       <span class="sr-only" id="faq-q-${i + 1}">${qa.question}</span>
     </details>`,
   ).join("");
+
+  const paginationHtml = meta ? renderFaqPagination(meta) : "";
+
+  const faqMeta = meta
+    ? {
+      ...PageMeta["/faq"],
+      path: meta.currentPage > 1 ? `/faq?page=${meta.currentPage}` : "/faq",
+      prevRel: meta.hasPrev
+        ? `${BASE_URL}${meta.currentPage === 2 ? "/faq" : `/faq?page=${meta.currentPage - 1}`}`
+        : undefined,
+      nextRel: meta.hasNext
+        ? `${BASE_URL}/faq?page=${meta.currentPage + 1}`
+        : undefined,
+    }
+    : PageMeta["/faq"];
 
   const content = html`<section class="rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8">
     <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">FAQ</span>
@@ -274,6 +363,8 @@ export function FaqPage(jsonLd?: object[]) {
     ${raw(qaHtml)}
   </section>
 
+  ${raw(paginationHtml)}
+
   <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
     <p class="text-slate-300">Still have questions?</p>
     <p class="mt-2 text-sm text-slate-400">
@@ -284,5 +375,5 @@ export function FaqPage(jsonLd?: object[]) {
     </p>
   </section>`;
 
-  return Layout(content.toString(), PageMeta["/faq"].title, PageMeta["/faq"], jsonLd);
+  return Layout(content.toString(), faqMeta.title, faqMeta, schemas);
 }
