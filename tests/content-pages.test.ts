@@ -511,6 +511,125 @@ describe("FaqPage SLICE-105-4: Pagination", () => {
   });
 });
 
+// ─── Unit: FAQ SLICE-105-5 — Content + Pagination UI ─────────
+
+describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
+  it("has no duplicate questions", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const questions = allEntries.map((qa) => qa.question);
+    const unique = new Set(questions);
+    expect(questions.length).toBe(unique.size);
+  });
+
+  it("page 1 contains brand question 'What is AgentBadge?'", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const questions = items.map((qa) => qa.question);
+    expect(questions).toContain("What is AgentBadge?");
+  });
+
+  it("page 1 contains brand question 'What is AgentBadge NOT?'", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const questions = items.map((qa) => qa.question);
+    expect(questions).toContain("What is AgentBadge NOT?");
+  });
+
+  it("page 1 contains service question 'What does it cost?'", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const questions = items.map((qa) => qa.question);
+    expect(questions).toContain("What does it cost?");
+  });
+
+  it("page 1 contains quick-win question 'How do I integrate via MCP?'", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const questions = items.map((qa) => qa.question);
+    expect(questions).toContain("How do I integrate via MCP?");
+  });
+
+  it("page 1 contains quick-win question 'Is this on testnet or mainnet?'", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const questions = items.map((qa) => qa.question);
+    expect(questions).toContain("Is this on testnet or mainnet?");
+  });
+
+  it("page 1 does NOT contain deep concept questions", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const questions = items.map((qa) => qa.question);
+    expect(questions).not.toContain("What is an ExecutionTrace in AgentBadge's runtime testing?");
+    expect(questions).not.toContain("What is Agent Success Rate (ASR) in AgentBadge?");
+    expect(questions).not.toContain("What is the difference between SEO and GEO?");
+  });
+
+  it("renders agent resource footer with llms.txt link", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain('href="/llms.txt"');
+  });
+
+  it("renders agent resource footer with llms-full.txt link", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain('href="/llms-full.txt"');
+  });
+
+  it("renders agent resource footer with agent-guide link", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain('href="/agent-guide"');
+  });
+
+  it("renders agent resource footer with sitemap.xml link", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain('href="/sitemap.xml"');
+  });
+
+  it("renders agent resource footer with ai-plugin.json link", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain('href="/.well-known/ai-plugin.json"');
+  });
+
+  it("renders agent resource footer with blog link", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain('href="/blog"');
+  });
+
+  it("agent resource footer appears on every page", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const totalPages = Math.ceil(allEntries.length / 8);
+    for (let p = 1; p <= totalPages; p++) {
+      const { items, meta } = mod.paginateFaqEntries(allEntries, p);
+      const html = FaqPage(items, meta, []).toString();
+      expect(html).toContain('href="/llms.txt"');
+      expect(html).toContain('href="/agent-guide"');
+    }
+  });
+
+  it("GET /faq includes agent resource footer", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    expect(html).toContain('href="/llms.txt"');
+    expect(html).toContain('href="/llms-full.txt"');
+    expect(html).toContain('href="/.well-known/ai-plugin.json"');
+  });
+
+  it("GET /faq?page=2 includes agent resource footer", async () => {
+    const res = await app.request("/faq?page=2");
+    const html = await res.text();
+    expect(html).toContain('href="/llms.txt"');
+    expect(html).toContain('href="/agent-guide"');
+  });
+});
+
 // ─── Unit: Use Cases page ─────────────────────────────────────
 
 describe("UseCasesPage unit", () => {

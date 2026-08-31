@@ -10,10 +10,16 @@ export interface QaPair {
 }
 
 const RAW_FAQ_ENTRIES: QaPair[] = [
+  // ── Page 1: Brand & Services & Quick wins (D10) ──
   {
     question: "What is AgentBadge?",
     answer:
       "AgentBadge is an agency for the agentic web. We help businesses become agent-ready through three services: the <a href=\"/services/scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Agent Readiness Scanner</a> (audit APIs for AI agent discoverability), <a href=\"/services/passports\" class=\"text-emerald-400 underline hover:text-emerald-300\">On-Chain Agent Passports</a> (NFT identity on {{CHAIN_NAME}}), and the <a href=\"/services/marketplace\" class=\"text-emerald-400 underline hover:text-emerald-300\">Agent Marketplace</a> (task marketplace with x402 machine payments).",
+  },
+  {
+    question: "What is AgentBadge NOT?",
+    answer:
+      "AgentBadge is not an escrow service, dispute resolution system, or guarantee of agent behavior. It provides identity, discovery, and verification infrastructure. If an agent behaves maliciously, the admin can revoke its passport (burn the NFT), but AgentBadge does not mediate transactions or enforce outcomes. Reviews, escrow, and arbitration are future scope.",
   },
   {
     question: "What is the Agent Readiness Scanner?",
@@ -30,6 +36,22 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     answer:
       "An agent passport is a non-transferable NFT on {{NFT_STANDARD}}. It provides the agent with a Decentralized Identifier (DID), a tier (Bronze through Platinum), and self-declared capabilities. The passport is frozen to the agent's account and cannot be transferred to another agent.",
   },
+  {
+    question: "What does it cost?",
+    answer:
+      "Passport fees range from 10 {{CURRENCY}} (Bronze) to 500 {{CURRENCY}} (Platinum). Transaction fees are approximately $0.001 per transaction. There are no smart contract deployment costs — AgentBadge uses native chain services ({{NFT_STANDARD}} for NFTs, {{CONSENSUS}} for messaging). {{MIRROR_NODE}} queries (reads) are free.",
+  },
+  {
+    question: "How do I integrate via MCP?",
+    answer:
+      "AgentBadge exposes a Model Context Protocol (MCP) server with 9 tools: request_passport, verify_passport, upgrade_tier, get_passport_info, register_agent, find_agents, get_audit_trail, get_catalog, and revoke_passport. MCP supports both stdio transport (for LLM clients like Claude Desktop, Cursor, Windsurf) and HTTP transport (for programmatic agents).",
+  },
+  {
+    question: "Is this on testnet or mainnet?",
+    answer:
+      "AgentBadge runs on {{CHAIN_NAME}} — join for free! All NFT passports, {{CONSENSUS}} topics, and transactions are real on-chain operations at zero cost. Testnet is safe for experimentation, gives you early access to new features, and lets you try everything without spending real {{CURRENCY}}. The architecture is mainnet-ready — switching requires only updating environment variables. <a href=\"/agent-guide\" class=\"text-emerald-400 underline hover:text-emerald-300\">Join testnet now →</a>",
+  },
+  // ── Page 2+: Concepts, terminology, deep topics (D10) ──
   {
     question: "Why is the passport non-transferable?",
     answer:
@@ -59,26 +81,6 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     question: "What does passport verification prove?",
     answer:
       "Verification confirms three things: (1) the passport NFT exists and is owned by the claiming account, (2) the passport is active (not revoked/burned), and (3) the tier and capabilities match the IPFS metadata. Verification is done via the {{MIRROR_NODE}} REST API — no smart contract calls needed.",
-  },
-  {
-    question: "How do I integrate via MCP?",
-    answer:
-      "AgentBadge exposes a Model Context Protocol (MCP) server with 9 tools: request_passport, verify_passport, upgrade_tier, get_passport_info, register_agent, find_agents, get_audit_trail, get_catalog, and revoke_passport. MCP supports both stdio transport (for LLM clients like Claude Desktop, Cursor, Windsurf) and HTTP transport (for programmatic agents).",
-  },
-  {
-    question: "What does it cost?",
-    answer:
-      "Passport fees range from 10 {{CURRENCY}} (Bronze) to 500 {{CURRENCY}} (Platinum). Transaction fees are approximately $0.001 per transaction. There are no smart contract deployment costs — AgentBadge uses native chain services ({{NFT_STANDARD}} for NFTs, {{CONSENSUS}} for messaging). {{MIRROR_NODE}} queries (reads) are free.",
-  },
-  {
-    question: "Is this on testnet or mainnet?",
-    answer:
-      "AgentBadge runs on {{CHAIN_NAME}} — join for free! All NFT passports, {{CONSENSUS}} topics, and transactions are real on-chain operations at zero cost. Testnet is safe for experimentation, gives you early access to new features, and lets you try everything without spending real {{CURRENCY}}. The architecture is mainnet-ready — switching requires only updating environment variables. <a href=\"/agent-guide\" class=\"text-emerald-400 underline hover:text-emerald-300\">Join testnet now →</a>",
-  },
-  {
-    question: "What is AgentBadge NOT?",
-    answer:
-      "AgentBadge is not an escrow service, dispute resolution system, or guarantee of agent behavior. It provides identity, discovery, and verification infrastructure. If an agent behaves maliciously, the admin can revoke its passport (burn the NFT), but AgentBadge does not mediate transactions or enforce outcomes. Reviews, escrow, and arbitration are future scope.",
   },
   {
     question: "Can the AgentBadge team build an MCP server for me?",
@@ -373,6 +375,19 @@ export function FaqPage(
       or browse the <a href="/services/marketplace" class="text-emerald-400 underline hover:text-emerald-300">marketplace</a>.
       Read the <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a> for step-by-step onboarding.
     </p>
+  </section>
+
+  <section class="mt-4 rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+    <h2 class="text-sm font-semibold text-slate-200">Agent Resources</h2>
+    <p class="mt-1 text-xs text-slate-400">Machine-readable endpoints for AI agents:</p>
+    <ul class="mt-3 flex flex-wrap gap-3 text-sm">
+      <li><a href="/llms.txt" class="text-emerald-400 underline hover:text-emerald-300">llms.txt</a></li>
+      <li><a href="/llms-full.txt" class="text-emerald-400 underline hover:text-emerald-300">llms-full.txt</a></li>
+      <li><a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a></li>
+      <li><a href="/sitemap.xml" class="text-emerald-400 underline hover:text-emerald-300">sitemap.xml</a></li>
+      <li><a href="/.well-known/ai-plugin.json" class="text-emerald-400 underline hover:text-emerald-300">ai-plugin.json</a></li>
+      <li><a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Blog</a></li>
+    </ul>
   </section>`;
 
   return Layout(content.toString(), faqMeta.title, faqMeta, schemas);
