@@ -32,11 +32,44 @@ vi.mock("@agentbadge/passport", () => ({
       issuedAt: 1700000000,
     };
   }),
+}));
+
+// Mock local did.ts parseDid (real implementation)
+vi.mock("../../src/server/routes/did", () => ({
   parseDid: vi.fn((did: string) => {
-    const match = /^did:(?:hcs|hedera):(\d+\.\d+\.\d+):(\d+)$/.exec(did);
+    const match = /^did:hcs:(\d+\.\d+\.\d+):(\d+)$/.exec(did);
     if (!match) return null;
     return { tokenId: match[1], serial: Number(match[2]) };
   }),
+}));
+
+// Mock @agentbadge/evm-core
+vi.mock("@agentbadge/evm-core", () => ({
+  isEvmDid: vi.fn((did: string) => /^did:eip155:/.test(did)),
+  parseEvmDid: vi.fn((did: string) => {
+    const m = /^did:eip155:(\d+):passport:(0x[a-fA-F0-9]{40}):(\d+)$/.exec(did);
+    if (!m) return null;
+    return { chainId: Number(m[1]), nftAddress: m[2], tokenId: Number(m[3]) };
+  }),
+}));
+
+// Mock chain-adapter-factory
+vi.mock("../../src/server/lib/chain-adapter-factory", () => ({
+  getChainAdapter: vi.fn(async () => ({
+    getPassportInfo: vi.fn(async (nftAddress: string, tokenId: number) => {
+      if (nftAddress === "0x0000000000000000000000000000000000000000") return null;
+      return {
+        token_id: String(tokenId),
+        serial_number: 1,
+        account_id: "0xabc123def456",
+        metadata: "ipfs://mock",
+        deleted: false,
+        created_timestamp: "1700000000",
+        passportType: "CREATOR",
+        capabilities: [],
+      };
+    }),
+  })),
 }));
 
 // Mock scanDomain to avoid real HTTP requests
@@ -115,11 +148,41 @@ describe("SLICE-91-9: WebMCP API Endpoints", () => {
       expect(body).toHaveProperty("issuedAt");
     });
 
-    it("accepts did parameter", async () => {
-      const res = await app.request("/api/passport/verify?did=did:hedera:0.0.123:0");
+    it("accepts Hedera did parameter (did:hcs:...)", async () => {
+      const res = await app.request("/api/passport/verify?did=did:hcs:0.0.123:0");
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body).toHaveProperty("valid");
+      expect(body).toHaveProperty("owner");
+      expect(body).toHaveProperty("tier");
+      expect(body).toHaveProperty("issuedAt");
+      expect(body).toHaveProperty("did");
+    });
+
+    it("accepts EVM did parameter (did:eip155:...)", async () => {
+      const res = await app.request("/api/passport/verify?did=did:eip155:84532:passport:0x1234567890abcdef1234567890abcdef12345678:1");
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toHaveProperty("valid");
+      expect(body.valid).toBe(true);
+      expect(body).toHaveProperty("owner");
+      expect(body).toHaveProperty("tier");
+      expect(body).toHaveProperty("issuedAt");
+      expect(body).toHaveProperty("did");
+    });
+
+    it("returns 400 for invalid DID format", async () => {
+      const res = await app.request("/api/passport/verify?did=invalid-did");
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("Invalid DID format");
+    });
+
+    it("returns 404 for non-existent EVM passport", async () => {
+      const res = await app.request("/api/passport/verify?did=did:eip155:84532:passport:0x0000000000000000000000000000000000000000:1");
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.valid).toBe(false);
     });
 
     it("returns 404 for non-existent tokenId", async () => {

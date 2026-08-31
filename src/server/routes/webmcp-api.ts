@@ -12,7 +12,10 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getPassportInfo, parseDid } from "@agentbadge/passport";
+import { getPassportInfo } from "@agentbadge/passport";
+import { isEvmDid, parseEvmDid } from "@agentbadge/evm-core";
+import { parseDid } from "./did";
+import { getChainAdapter } from "../lib/chain-adapter-factory";
 import { RULE_DESCRIPTIONS } from "../../agent-readiness/rule-descriptions";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
@@ -44,16 +47,36 @@ webmcpApiRoutes.get(
     let resolvedTokenId = tokenId;
     let serial = 0;
 
-    if (did) {
-      const parsed = parseDid(did);
-      if (!parsed) {
-        return c.json({ error: "Invalid DID format" }, 400);
-      }
-      resolvedTokenId = parsed.tokenId;
-      serial = parsed.serial;
-    }
-
     try {
+      if (did) {
+        if (isEvmDid(did)) {
+          const parsed = parseEvmDid(did);
+          if (!parsed) {
+            return c.json({ error: "Invalid DID format" }, 400);
+          }
+          const adapter = await getChainAdapter();
+          const passport = await adapter.getPassportInfo(parsed.nftAddress, parsed.tokenId);
+          if (!passport) {
+            return c.json({ valid: false, error: "Passport not found" }, 404);
+          }
+          const evmInfo = passport as import("@agentbadge/evm-core").EvmPassportInfo;
+          return c.json({
+            valid: !evmInfo.deleted,
+            owner: evmInfo.account_id,
+            tier: evmInfo.passportType,
+            issuedAt: evmInfo.created_timestamp,
+            did,
+          }, 200);
+        }
+
+        const parsed = parseDid(did);
+        if (!parsed) {
+          return c.json({ error: "Invalid DID format" }, 400);
+        }
+        resolvedTokenId = parsed.tokenId;
+        serial = parsed.serial;
+      }
+
       const info = await getPassportInfo(resolvedTokenId!, serial);
       if (!info) {
         return c.json({ valid: false, error: "Passport not found" }, 404);
