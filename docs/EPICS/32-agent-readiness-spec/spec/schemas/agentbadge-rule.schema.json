@@ -101,6 +101,16 @@
       "additionalProperties": false,
       "description": "Check definition — how the rule is evaluated"
     },
+    "pillar": {
+      "type": "string",
+      "enum": [
+        "discovery",
+        "understandability",
+        "executability",
+        "verifiability"
+      ],
+      "description": "Optional pillar override — if absent, pillar is derived from category via CATEGORY_TO_PILLAR map (spec v0.2 §A.8)"
+    },
     "fix": {
       "type": "object",
       "properties": {

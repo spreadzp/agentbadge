@@ -164,6 +164,67 @@
           "type": "number",
           "minimum": -100,
           "maximum": 100
+        },
+        "pillars": {
+          "type": "array",
+          "description": "Per-pillar scores (v0.2 additive, optional) — see spec v0.2 §11.1",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pillar": {
+                "type": "string",
+                "enum": [
+                  "discovery",
+                  "understandability",
+                  "executability",
+                  "verifiability"
+                ],
+                "description": "Pillar enum — see spec v0.2 §A.7"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Pillar weight (default 20/25/30/25)"
+              },
+              "rawScore": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Raw pillar score before floor capping"
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Final pillar score after floor capping"
+              },
+              "categoryCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of categories mapped to this pillar"
+              },
+              "applicableCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of applicable categories (NOT_APPLICABLE excluded)"
+              },
+              "floorTriggered": {
+                "type": "boolean",
+                "description": "Whether a floor cap was triggered on this pillar"
+              }
+            },
+            "required": [
+              "pillar",
+              "weight",
+              "rawScore",
+              "score",
+              "categoryCount",
+              "applicableCount",
+              "floorTriggered"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
