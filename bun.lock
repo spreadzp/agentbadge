@@ -7,7 +7,7 @@
       "dependencies": {
         "@agentbadge/evm-core": "^0.1.1",
         "@agentbadge/hedera-core": "^0.1.15",
-        "@agentbadge/mcp": "file:../../packages/mcp",
+        "@agentbadge/mcp": "npm:@agentgate-hedera/mcp@^0.1.9",
         "@agentbadge/passport": "^0.1.8",
         "@agentbadge/webmcp": "^0.3.0",
         "@hashgraph/sdk": "^2.55.0",
@@ -54,7 +54,7 @@
 
     "@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.1.15", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-JXCk9yETkiVeYvynFss5C4uLtsI93KXjmpXn/O0ajTvr47JzOLJRMU1hL4fvvB9Dt3ZFC9NylyLcOckKlfVgdg=="],
 
-    "@agentbadge/mcp": ["@agentbadge/mcp@file:../../packages/mcp", { "dependencies": { "@agentbadge/hedera-core": "file:../hedera-core", "@agentbadge/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "devDependencies": { "bun-types": "^1.3.14", "esbuild": "^0.21.0", "typescript": "^5.9.0" } }],
+    "@agentbadge/mcp": ["@agentgate-hedera/mcp@0.1.9", "", { "dependencies": { "@agentgate-hedera/hedera-core": "file:../hedera-core", "@agentgate-hedera/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GN4zZqneU+6RCTYWvTZEDad2XN7+4GDNdmgn1mguKl9J8o5JxCpC16s1D+3KIuNHNTvBwXQd+M7a7Tn9f3jo7Q=="],
 
     "@agentbadge/passport": ["@agentbadge/passport@0.1.8", "", { "dependencies": { "@agentbadge/hedera-core": "^0.1.15", "@x402/hedera": "^2.19.0", "@x402/hono": "^2.19.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-T90XdBsnL3Lm/q2MvRynZeC7FxhlRMKoAaoVtbFPjDMaHlm++grnteUSPtU5X6fpNnE4xyHeAqN+UAdVd1B7KQ=="],
 
@@ -1370,9 +1370,9 @@
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
 
-    "@agentbadge/mcp/@agentbadge/hedera-core": ["@agentbadge/hedera-core@file:../../packages/hedera-core", {}],
+    "@agentbadge/mcp/@agentgate-hedera/hedera-core": ["@agentgate-hedera/hedera-core@file:../hedera-core", {}],
 
-    "@agentbadge/mcp/@agentbadge/passport": ["@agentbadge/passport@file:../../packages/passport", {}],
+    "@agentbadge/mcp/@agentgate-hedera/passport": ["@agentgate-hedera/passport@file:../passport", {}],
 
     "@apm-js-collab/code-transformer-bundler-plugins/es-module-lexer": ["es-module-lexer@2.3.1", "", {}, ""],
 
