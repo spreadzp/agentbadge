@@ -193,6 +193,90 @@ describe("FaqPage SLICE-105-1: Core scanner EPIC Q&A", () => {
   });
 });
 
+// ─── Unit: FAQ SLICE-105-2 — Platform EPIC Q&A ────────────────
+
+describe("FaqPage SLICE-105-2: Platform EPIC Q&A", () => {
+  it("has >= 34 Q&A pairs (26 from SLICE-105-1 + 8 new)", () => {
+    expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(34);
+  });
+
+  it("includes ChainAdapter question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("ChainAdapter");
+  });
+
+  it("includes multi-chain support question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("blockchains does AgentBadge support");
+  });
+
+  it("includes WebMCP question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("WebMCP");
+  });
+
+  it("includes task escrow question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("task escrow");
+  });
+
+  it("includes AgentBadge blog question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("AgentBadge blog");
+  });
+
+  it("includes SEO for agents question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("SEO for agents");
+  });
+
+  it("includes marketplace task lifecycle question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("task lifecycle");
+  });
+
+  it("includes agent support question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("support");
+  });
+
+  it("all SLICE-105-2 Q&A answers mention AgentBadge brand", () => {
+    const allEntries = getFaqEntries();
+    const newQuestions = [
+      "ChainAdapter",
+      "blockchains does AgentBadge support",
+      "WebMCP",
+      "task escrow",
+      "AgentBadge blog",
+      "SEO for agents",
+      "task lifecycle",
+      "support",
+    ];
+    for (const q of newQuestions) {
+      const entry = allEntries.find((e) => e.question.toLowerCase().includes(q.toLowerCase()));
+      expect(entry, `Q&A containing "${q}" should exist`).toBeDefined();
+      expect(entry!.answer).toContain("AgentBadge");
+    }
+  });
+
+  it("SLICE-105-2 Q&A answers include blog article links where relevant", () => {
+    const html = FaqPage().toString();
+    // SEO/GEO → from-seo-to-geo-to-agent-readiness
+    expect(html).toContain("/blog/from-seo-to-geo-to-agent-readiness");
+    // API discovery → web-becoming-agentic-api-discovery
+    expect(html).toContain("/blog/web-becoming-agentic-api-discovery");
+    // Agent Readiness overview → what-is-agent-readiness
+    expect(html).toContain("/blog/what-is-agent-readiness");
+  });
+
+  it("no duplicate questions with SLICE-105-1 or original 16", () => {
+    const allEntries = getFaqEntries();
+    const allQuestions = allEntries.map((e) => e.question);
+    const uniqueQuestions = new Set(allQuestions);
+    expect(uniqueQuestions.size).toBe(allQuestions.length);
+  });
+});
+
 // ─── Unit: Use Cases page ─────────────────────────────────────
 
 describe("UseCasesPage unit", () => {

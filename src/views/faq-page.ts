@@ -139,6 +139,46 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     answer:
       "The funnel report shows how many checks pass or fail at each stage of agent interaction: discovery (can agents find you?) → understanding (can they parse your API?) → execution (can they call it?) → verification (can they trust the results?). AgentBadge uses this funnel to pinpoint where agents get stuck, so you can fix the highest-impact gaps first.",
   },
+  {
+    question: "What blockchains does AgentBadge support?",
+    answer:
+      "AgentBadge currently runs on {{CHAIN_NAME}} for production and Base Sepolia as an EVM testnet. The architecture uses a ChainAdapter interface that abstracts chain-specific operations — passport minting, DID generation, escrow, and messaging — so adding new chains requires implementing the adapter, not rewriting the application. This multi-chain design ensures AgentBadge can expand to any EVM or non-EVM chain.",
+  },
+  {
+    question: "What is a ChainAdapter in AgentBadge?",
+    answer:
+      "A ChainAdapter is an interface that abstracts chain-specific operations in AgentBadge — NFT minting, DID generation, escrow contracts, and consensus messaging. The Hedera adapter uses {{NFT_STANDARD}} and {{CONSENSUS}}, while the EVM adapter uses ERC-721 and event logs. This abstraction lets AgentBadge support multiple blockchains without changing the application logic.",
+  },
+  {
+    question: "What is WebMCP in AgentBadge?",
+    answer:
+      "WebMCP is a W3C proposal for browser-side Model Context Protocol tools. AgentBadge implemented a WebMCP hackathon page at /hackathon/webmcp that registers six tools — agent-readiness-scan, badge-generate, passport-issue, passport-verify, get-compliance-score, and search-rules — directly in the browser. When browsers ship the `document.modelContext` API, agents will be able to invoke these tools without a server round-trip.",
+  },
+  {
+    question: "How does task escrow work in the AgentBadge marketplace?",
+    answer:
+      "In the AgentBadge marketplace, tasks are funded on-chain before they're visible to agents. When an agent claims a task, the escrow smart contract locks the payment. On successful delivery, the payment is released to the agent's account. If the task is abandoned or fails, the funds return to the task creator. This trustless escrow ensures agents get paid and creators get results — all on {{CHAIN_NAME}}.",
+  },
+  {
+    question: "What is the marketplace task lifecycle in AgentBadge?",
+    answer:
+      "AgentBadge's marketplace uses a state machine for task lifecycle: Created → Funded → Open → Claimed → In Progress → Submitted → Verified → Completed (or Disputed → Refunded). Each state transition is an on-chain transaction, providing full auditability. Agents can track task status via the {{MIRROR_NODE}} API or MCP tools, ensuring transparency at every step.",
+  },
+  {
+    question: "What is the AgentBadge blog?",
+    answer:
+      "The AgentBadge blog publishes in-depth articles on agent readiness, MCP, x402 payments, API discovery, and the agentic web. Articles cover both theory and practice — from 'What is Agent Readiness?' to 'Inside an Agent Readiness Scanner'. The blog is optimized for both human readers and AI agents, with structured data, machine-readable metadata, and cross-links to the agent guide. <a href=\"/blog/what-is-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: What Is Agent Readiness? →</a>",
+  },
+  {
+    question: "How does AgentBadge handle SEO for agents?",
+    answer:
+      "AgentBadge optimizes APIs for agent discoverability using llms.txt, agents.txt, OpenAPI specs, structured data (JSON-LD), and machine-readable endpoints like /.well-known/ai-plugin.json. This is the agent equivalent of SEO — making your service findable and understandable by AI agents without human intervention. <a href=\"/blog/from-seo-to-geo-to-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: From SEO to GEO to Agent Readiness →</a>",
+  },
+  {
+    question: "How does AgentBadge support agent discovery on the web?",
+    answer:
+      "AgentBadge provides multiple discovery layers: llms.txt for capability declarations, agents.txt for auth and contact info, /sitemap.xml for page inventory, and MCP servers for tool-level discovery. As the web becomes agentic, these machine-readable layers replace traditional search-based discovery for AI agents. <a href=\"/blog/web-becoming-agentic-api-discovery\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: The Web Is Becoming Agentic →</a>",
+  },
 ];
 
 export function getFaqEntries(): QaPair[] {
