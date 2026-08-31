@@ -277,6 +277,117 @@ describe("FaqPage SLICE-105-2: Platform EPIC Q&A", () => {
   });
 });
 
+// ─── Unit: FAQ SLICE-105-3 — Blog Article Q&A ─────────────────
+
+describe("FaqPage SLICE-105-3: Blog article Q&A", () => {
+  it("has >= 44 Q&A pairs (34 from SLICE-105-2 + 10 new)", () => {
+    expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(44);
+  });
+
+  it("includes Agent Readiness definition question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("What is Agent Readiness");
+  });
+
+  it("includes SEO vs Agent Readiness question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("different from SEO");
+  });
+
+  it("includes GEO question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("GEO");
+    expect(html).toContain("Generative Engine Optimization");
+  });
+
+  it("includes MCP vs REST API question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("MCP vs REST");
+  });
+
+  it("includes 8 layers of context question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("8 layers");
+  });
+
+  it("includes OpenAPI not enough question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("OpenAPI enough");
+  });
+
+  it("includes how to measure Agent Readiness question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("How should Agent Readiness be measured");
+  });
+
+  it("includes scanner reproducibility question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("reproducible");
+  });
+
+  it("includes agentic web question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("agentic web");
+  });
+
+  it("includes SEO vs GEO difference question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("difference between SEO and GEO");
+  });
+
+  it("all SLICE-105-3 Q&A answers mention AgentBadge brand", () => {
+    const allEntries = getFaqEntries();
+    const newQuestions = [
+      "What is Agent Readiness",
+      "different from SEO",
+      "GEO",
+      "MCP vs REST",
+      "8 layers",
+      "OpenAPI enough",
+      "How should Agent Readiness be measured",
+      "reproducible",
+      "agentic web",
+      "difference between SEO and GEO",
+    ];
+    for (const q of newQuestions) {
+      const entry = allEntries.find((e) => e.question.toLowerCase().includes(q.toLowerCase()));
+      expect(entry, `Q&A containing "${q}" should exist`).toBeDefined();
+      expect(entry!.answer).toContain("AgentBadge");
+    }
+  });
+
+  it("SLICE-105-3 Q&A answers include blog article links", () => {
+    const html = FaqPage().toString();
+    // Agent Readiness definition → what-is-agent-readiness
+    expect(html).toContain("/blog/what-is-agent-readiness");
+    // SEO vs Agent Readiness → api-has-seo-agent-readiness
+    expect(html).toContain("/blog/api-has-seo-agent-readiness");
+    // GEO → from-seo-to-geo-to-agent-readiness
+    expect(html).toContain("/blog/from-seo-to-geo-to-agent-readiness");
+    // MCP vs REST → mcp-vs-api
+    expect(html).toContain("/blog/mcp-vs-api");
+    // x402 → x402-payments
+    expect(html).toContain("/blog/x402-payments");
+    // 8 layers → what-ai-agent-needs-to-understand-api
+    expect(html).toContain("/blog/what-ai-agent-needs-to-understand-api");
+    // OpenAPI not enough → why-openapi-isnt-enough
+    expect(html).toContain("/blog/why-openapi-isnt-enough");
+    // How to measure → how-do-you-measure-agent-readiness
+    expect(html).toContain("/blog/how-do-you-measure-agent-readiness");
+    // Reproducibility → inside-an-agent-readiness-scanner
+    expect(html).toContain("/blog/inside-an-agent-readiness-scanner");
+    // Agentic web → web-becoming-agentic-api-discovery
+    expect(html).toContain("/blog/web-becoming-agentic-api-discovery");
+  });
+
+  it("no duplicate questions with SLICE-105-1, SLICE-105-2, or original 16", () => {
+    const allEntries = getFaqEntries();
+    const allQuestions = allEntries.map((e) => e.question);
+    const uniqueQuestions = new Set(allQuestions);
+    expect(uniqueQuestions.size).toBe(allQuestions.length);
+  });
+});
+
 // ─── Unit: Use Cases page ─────────────────────────────────────
 
 describe("UseCasesPage unit", () => {
