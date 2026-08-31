@@ -1244,6 +1244,89 @@ EPICs 87–91 are planned for Whitechain Builders Program grant implementation �
 
 Full EPIC documents: [`docs/EPICS/`](../../docs/EPICS/)
 
+## WebMCP Challenge Hackathon
+
+**Live:** [agentbadge.xyz/hackathon/webmcp](https://agentbadge.xyz/hackathon/webmcp)
+**Demo video:** [YouTube — to be added](https://youtube.com)
+
+AgentBadge is the first agent-native compliance platform powered by [WebMCP](https://webmcp.org). It exposes 6 imperative tools and 1 declarative form via `document.modelContext.registerTool()` (W3C spec compliant), enabling AI agents in the browser to scan websites, generate compliance badges, verify blockchain passports, and search the rules catalog — all without API keys or custom integrations.
+
+### WebMCP Tools
+
+#### Imperative API (6 tools)
+
+| Tool | Description | Annotations |
+|---|---|---|
+| `agent-readiness-scan` | Scan any URL for 70+ agent readiness checks | readOnly: true, untrusted: true |
+| `badge-generate` | Generate a compliance badge SVG for a URL | readOnly: true, untrusted: false |
+| `passport-issue` | Issue an AgentBadge passport NFT on Hedera | readOnly: false, untrusted: false |
+| `passport-verify` | Verify a passport NFT by tokenId or DID | readOnly: true, untrusted: false |
+| `get-compliance-score` | Get a quick compliance score for a URL | readOnly: true, untrusted: true |
+| `search-rules` | Search the compliance rules catalog by keyword | readOnly: true, untrusted: false |
+
+#### Declarative API (1 form)
+
+- Form `submitScanRequest` with `toolname`, `tooldescription`, and `toolparamdescription` attributes
+- Supports `agentInvoked` submit event with `respondWith()` for agent-initiated execution
+
+### Discovery
+
+- `/.well-known/webmcp.json` endpoint with CORS headers and `Cache-Control`
+- `Link: </.well-known/webmcp.json>; rel="service-desc"` header on `/hackathon/webmcp`
+- Discovery JSON includes tool names, descriptions, input schemas, and annotations (no execute functions)
+
+### Architecture
+
+- `@agentgate-hedera/webmcp` — separate npm package with `injectWebMCP()`, `unregisterAllTools()`, declarative form helpers, and discovery builder
+- `AbortController` per tool for dynamic registration/unregistration
+- `toolchange` event listener for tool list updates
+- `exposedTo` option for cross-origin tool access
+- Security annotations (`readOnlyHint`, `untrustedContentHint`) per MCP best practices
+- 288 unit tests + 89 E2E tests covering cross-origin, abort signal, edge cases, and security
+
+### Testing WebMCP Locally
+
+1. Clone the repo and install dependencies:
+
+```bash
+cd hackathon/server
+bun install
+```
+
+2. Copy `.env.example` to `.env` and fill in required values:
+
+```bash
+cp .env.example .env
+```
+
+3. Start the dev server:
+
+```bash
+bun run dev
+```
+
+4. Open `http://localhost:3000/hackathon/webmcp` in Chrome with WebMCP enabled:
+   - Navigate to `chrome://flags/#enable-webmcp-testing`
+   - Enable the flag and restart Chrome
+
+5. Alternatively, test with ChatGPT's in-app browser:
+   - Open ChatGPT and ask it to visit `http://localhost:3000/hackathon/webmcp`
+   - Ask the agent to scan a URL for agent readiness
+
+6. Run tests:
+
+```bash
+# Unit tests (webmcp package)
+cd packages/webmcp && bunx vitest run --run
+
+# E2E tests (hackathon server)
+cd hackathon/server && bunx vitest run --run --config vitest.e2e.config.ts
+```
+
+### EPIC-91 Slice Documents
+
+Full development documentation: [`docs/EPICS/91-webmcp-challenge-hackathon/`](../../docs/EPICS/91-webmcp-challenge-hackathon/)
+
 ## Contact
 
 - **Support:** [support@agentbadge.xyz](mailto:support@agentbadge.xyz)

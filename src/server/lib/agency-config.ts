@@ -31,11 +31,11 @@ export const AGENCY_SERVICES: AgencyService[] = [
     name: "Agent Readiness Scanner",
     tagline: "Audit any API for AI agent discoverability",
     description:
-      "Scan your API or website against 72 agent readiness rules across 15 categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.",
+      "Scan your API or website against 130 agent readiness rules across 17 categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.",
     url: "/services/scanner",
     icon: "🔍",
     features: [
-      "72 checks across 15 categories",
+      "130 checks across 17 categories",
       "Deterministic evidence-based scoring",
       "CLI and web scanner",
       "Improvement guides with fix hints",
@@ -44,7 +44,7 @@ export const AGENCY_SERVICES: AgencyService[] = [
     howItWorks: [
       { step: "Enter your URL", description: "Provide any API endpoint or website URL. The scanner fetches all well-known resources: robots.txt, sitemap.xml, llms.txt, OpenAPI spec, agent-card.json, and more." },
       { step: "Fetch resources", description: "The scanner downloads and parses each resource, checking for presence, format, and content. HTTP headers, content negotiation, and response codes are captured as evidence." },
-      { step: "Evaluate rules", description: "72 deterministic rules across 15 categories are evaluated against the fetched evidence. Each rule produces a pass, fail, or not-applicable result with a detailed hint." },
+      { step: "Evaluate rules", description: "130 deterministic rules across 17 categories are evaluated against the fetched evidence. Each rule produces a pass, fail, or not-applicable result with a detailed hint." },
       { step: "Get your report", description: "Receive a structured report with an AgentGrade score (0-100), category breakdown, top issues to fix, and actionable improvement guides with code examples." },
     ],
     useCases: [

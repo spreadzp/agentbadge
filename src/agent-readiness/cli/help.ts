@@ -4,7 +4,7 @@
 
 import { getAllCommands } from "./router";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 export function handleHelp(argv: string[]): { exitCode: number; stdout: string; stderr: string } {
   // Global help

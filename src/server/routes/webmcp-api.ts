@@ -3,6 +3,8 @@
  *
  * SLICE-91-9: Additional tools endpoints.
  *
+ * GET /scan             — full agent readiness scan report for a URL
+ * GET /badge            — generate compliance badge SVG for a URL
  * GET /passport/verify  — verify passport by tokenId or DID
  * GET /score            — quick compliance score for a URL
  * GET /rules/search     — search agent readiness rules catalog
@@ -66,6 +68,113 @@ webmcpApiRoutes.get(
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       return c.json({ valid: false, error: `Verification failed: ${message}` }, 500);
+    }
+  },
+);
+
+// ─── GET /scan ─────────────────────────────────────────────────────
+webmcpApiRoutes.get(
+  "/scan",
+  describeRoute({
+    tags: ["WebMCP"],
+    summary: "Full agent readiness scan for a URL — returns complete report with categories and missing rules",
+    responses: {
+      200: { description: "Full scan report" },
+      400: { description: "Missing or invalid URL" },
+      403: { description: "Private URLs are not allowed" },
+    },
+  }),
+  async (c) => {
+    const url = c.req.query("url");
+    if (!url) {
+      return c.json({ error: "URL is required" }, 400);
+    }
+
+    let normalizedUrl = url.trim();
+    if (!normalizedUrl.match(/^https?:\/\//)) {
+      normalizedUrl = "https://" + normalizedUrl;
+    }
+
+    try {
+      new URL(normalizedUrl);
+    } catch {
+      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+    }
+
+    const hostname = new URL(normalizedUrl).hostname;
+    try {
+      assertSafeTarget(hostname);
+    } catch {
+      return c.json({ error: "Private URLs are not allowed" }, 403);
+    }
+
+    try {
+      const sourceState = await scanDomain(normalizedUrl, {});
+      const result = RuleEngine.run(sourceState);
+      const report = formatScanReport(normalizedUrl, result);
+      return c.json(report, 200);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return c.json({ error: `Scan failed: ${message}` }, 500);
+    }
+  },
+);
+
+// ─── GET /badge ────────────────────────────────────────────────────
+webmcpApiRoutes.get(
+  "/badge",
+  describeRoute({
+    tags: ["WebMCP"],
+    summary: "Generate a compliance badge SVG for a URL based on live scan",
+    responses: {
+      200: { description: "SVG badge image" },
+      400: { description: "Missing or invalid URL" },
+      403: { description: "Private URLs are not allowed" },
+    },
+  }),
+  async (c) => {
+    const url = c.req.query("url");
+    if (!url) {
+      return c.json({ error: "URL is required" }, 400);
+    }
+
+    let normalizedUrl = url.trim();
+    if (!normalizedUrl.match(/^https?:\/\//)) {
+      normalizedUrl = "https://" + normalizedUrl;
+    }
+
+    try {
+      new URL(normalizedUrl);
+    } catch {
+      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+    }
+
+    const hostname = new URL(normalizedUrl).hostname;
+    try {
+      assertSafeTarget(hostname);
+    } catch {
+      return c.json({ error: "Private URLs are not allowed" }, 403);
+    }
+
+    try {
+      const sourceState = await scanDomain(normalizedUrl, {});
+      const result = RuleEngine.run(sourceState);
+      const report = formatScanReport(normalizedUrl, result);
+      const { generateBadgeSvg } = await import("../../agent-readiness/badge/svg-generator");
+      const svg = generateBadgeSvg({
+        scope: hostname,
+        score: report.score,
+        rulesetVersion: "1.0.0",
+        scannedAt: new Date().toISOString(),
+        reportUrl: `https://agentbadge.xyz/r/${hostname}`,
+        stale: false,
+      });
+      c.header("Content-Type", "image/svg+xml");
+      c.header("Cache-Control", "public, max-age=3600");
+      return c.body(svg);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return c.json({ error: `Badge generation failed: ${message}` }, 500);
     }
   },
 );

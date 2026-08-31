@@ -91,7 +91,7 @@ function WebMcpTools() {
       desc: "Issue an AgentBadge passport NFT for a given account on Hedera.",
       readOnly: false,
       untrusted: false,
-      endpoint: "POST /passport/issue",
+      endpoint: "POST /passport/request",
       icon: "M12 4v16m8-8H4",
     },
     {
@@ -218,34 +218,30 @@ function WebMcpDemoInstructions() {
     <div class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
       <div class="text-center">
         <h2 class="text-2xl font-bold text-white sm:text-3xl">Try It Now</h2>
-        <p class="mt-4 text-slate-400">Test WebMCP tools with ChatGPT or Chrome</p>
+        <p class="mt-4 text-slate-400">WebMCP is a W3C proposal — test the endpoints directly today</p>
       </div>
       <div class="mt-12 grid gap-8 md:grid-cols-2">
         <div class="rounded-xl border border-slate-700/40 bg-slate-900/50 p-8">
           <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10">
-            <svg class="h-6 w-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            <svg class="h-6 w-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
-          <h3 class="mt-4 text-xl font-semibold text-white">Chrome Flag</h3>
-          <ol class="mt-4 space-y-3 text-sm text-slate-400">
-            <li class="flex gap-3"><span class="font-bold text-cyan-400">1.</span> Open <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-cyan-300">chrome://flags/#enable-webmcp-testing</code> in Chrome</li>
-            <li class="flex gap-3"><span class="font-bold text-cyan-400">2.</span> Enable the WebMCP testing flag</li>
-            <li class="flex gap-3"><span class="font-bold text-cyan-400">3.</span> Relaunch Chrome</li>
-            <li class="flex gap-3"><span class="font-bold text-cyan-400">4.</span> Navigate to this page and open ChatGPT in the sidebar</li>
-            <li class="flex gap-3"><span class="font-bold text-cyan-400">5.</span> Ask ChatGPT to scan a website for agent readiness</li>
-          </ol>
+          <h3 class="mt-4 text-xl font-semibold text-white">Test via curl</h3>
+          <p class="mt-3 text-sm text-slate-400">All six tool endpoints are live HTTP APIs. Test them directly:</p>
+          <pre class="mt-4 overflow-x-auto rounded-lg bg-slate-950/70 p-4 text-xs text-slate-300"><code>curl -s "http://localhost:4021/api/scan?url=https://example.com" | jq .
+
+curl -s "http://localhost:4021/api/score?url=https://example.com" | jq .
+
+curl -s "http://localhost:4021/api/rules/search?q=robots" | jq .
+
+curl -s "http://localhost:4021/api/badge?url=https://example.com" | head -3</code></pre>
         </div>
         <div class="rounded-xl border border-slate-700/40 bg-slate-900/50 p-8">
           <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-500/10">
-            <svg class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            <svg class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
           </div>
-          <h3 class="mt-4 text-xl font-semibold text-white">ChatGPT In-App Browser</h3>
-          <ol class="mt-4 space-y-3 text-sm text-slate-400">
-            <li class="flex gap-3"><span class="font-bold text-emerald-400">1.</span> Open ChatGPT on desktop</li>
-            <li class="flex gap-3"><span class="font-bold text-emerald-400">2.</span> Use the in-app browser to navigate to this page</li>
-            <li class="flex gap-3"><span class="font-bold text-emerald-400">3.</span> ChatGPT will discover available WebMCP tools automatically</li>
-            <li class="flex gap-3"><span class="font-bold text-emerald-400">4.</span> Ask ChatGPT to use any of the six tools — e.g., "scan example.com for agent readiness"</li>
-            <li class="flex gap-3"><span class="font-bold text-emerald-400">5.</span> The tool executes via <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-emerald-300">document.modelContext</code> and returns results</li>
-          </ol>
+          <h3 class="mt-4 text-xl font-semibold text-white">Declarative Form</h3>
+          <p class="mt-3 text-sm text-slate-400">The form above works as a normal HTML form. Enter a URL and click Scan — no WebMCP support needed.</p>
+          <p class="mt-4 text-sm text-slate-400">When browsers implement <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-emerald-300">document.modelContext</code>, the inject script will automatically register all 6 tools. The page is spec-ready.</p>
         </div>
       </div>
     </div>
