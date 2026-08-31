@@ -16,6 +16,7 @@ import { getPassportInfo } from "@agentbadge/passport";
 import { isEvmDid, parseEvmDid } from "@agentbadge/evm-core";
 import { parseDid } from "./did";
 import { getChainAdapter } from "../lib/chain-adapter-factory";
+import { getConfig } from "../../config/env";
 import { RULE_DESCRIPTIONS } from "../../agent-readiness/rule-descriptions";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
@@ -53,6 +54,10 @@ webmcpApiRoutes.get(
           const parsed = parseEvmDid(did);
           if (!parsed) {
             return c.json({ error: "Invalid DID format" }, 400);
+          }
+          const cfg = getConfig();
+          if (cfg.chainMode === "hedera") {
+            return c.json({ error: "EVM DIDs are not supported in Hedera chain mode" }, 400);
           }
           const adapter = await getChainAdapter();
           const passport = await adapter.getPassportInfo(parsed.nftAddress, parsed.tokenId);

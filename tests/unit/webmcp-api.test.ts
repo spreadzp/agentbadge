@@ -1,18 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
 
+// Config mock — mutable so individual tests can override chainMode
+const mockConfig = {
+  chainMode: "hedera" as string,
+  hederaNetwork: "testnet",
+  ui: {
+    currencySymbol: "ℏ",
+    chainName: "Hedera Testnet",
+    nftStandard: "HIP-412",
+    consensus: "HCS",
+    explorerTxUrl: "https://hashscan.io/testnet/transaction/",
+    explorerAccountUrl: "https://hashscan.io/testnet/account/",
+  },
+};
+
 vi.mock("../../src/config/env.js", () => ({
-  getConfig: vi.fn(() => ({
-    chainMode: "hedera",
-    hederaNetwork: "testnet",
-    ui: {
-      currencySymbol: "ℏ",
-      chainName: "Hedera Testnet",
-      nftStandard: "HIP-412",
-      consensus: "HCS",
-      explorerTxUrl: "https://hashscan.io/testnet/transaction/",
-      explorerAccountUrl: "https://hashscan.io/testnet/account/",
-    },
-  })),
+  getConfig: vi.fn(() => mockConfig),
   loadConfig: vi.fn(() => ({})),
   resetConfigCache: vi.fn(),
 }));
@@ -160,15 +163,27 @@ describe("SLICE-91-9: WebMCP API Endpoints", () => {
     });
 
     it("accepts EVM did parameter (did:eip155:...)", async () => {
+      mockConfig.chainMode = "base";
+      try {
+        const res = await app.request("/api/passport/verify?did=did:eip155:84532:passport:0x1234567890abcdef1234567890abcdef12345678:1");
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body).toHaveProperty("valid");
+        expect(body.valid).toBe(true);
+        expect(body).toHaveProperty("owner");
+        expect(body).toHaveProperty("tier");
+        expect(body).toHaveProperty("issuedAt");
+        expect(body).toHaveProperty("did");
+      } finally {
+        mockConfig.chainMode = "hedera";
+      }
+    });
+
+    it("returns 400 for EVM DID in Hedera chain mode", async () => {
       const res = await app.request("/api/passport/verify?did=did:eip155:84532:passport:0x1234567890abcdef1234567890abcdef12345678:1");
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body).toHaveProperty("valid");
-      expect(body.valid).toBe(true);
-      expect(body).toHaveProperty("owner");
-      expect(body).toHaveProperty("tier");
-      expect(body).toHaveProperty("issuedAt");
-      expect(body).toHaveProperty("did");
+      expect(body.error).toMatch(/EVM DIDs are not supported/i);
     });
 
     it("returns 400 for invalid DID format", async () => {
@@ -179,10 +194,15 @@ describe("SLICE-91-9: WebMCP API Endpoints", () => {
     });
 
     it("returns 404 for non-existent EVM passport", async () => {
-      const res = await app.request("/api/passport/verify?did=did:eip155:84532:passport:0x0000000000000000000000000000000000000000:1");
-      expect(res.status).toBe(404);
-      const body = await res.json();
-      expect(body.valid).toBe(false);
+      mockConfig.chainMode = "base";
+      try {
+        const res = await app.request("/api/passport/verify?did=did:eip155:84532:passport:0x0000000000000000000000000000000000000000:1");
+        expect(res.status).toBe(404);
+        const body = await res.json();
+        expect(body.valid).toBe(false);
+      } finally {
+        mockConfig.chainMode = "hedera";
+      }
     });
 
     it("returns 404 for non-existent tokenId", async () => {
