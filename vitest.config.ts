@@ -11,7 +11,7 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     server: {
       deps: {
-        inline: ["@agentbadge/passport", "@agentbadge/hedera-core"],
+        inline: ["@agentbadge/passport", "@agentbadge/hedera-core", "@agentbadge/webmcp", "@agentbadge/evm-core"],
       },
     },
   },
