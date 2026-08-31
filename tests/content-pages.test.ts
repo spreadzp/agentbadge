@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { contentPageRoutes } from "../src/server/routes/content-pages";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { FaqPage, FAQ_ENTRIES } from "../src/views/faq-page";
+import { FaqPage, FAQ_ENTRIES, getFaqEntries } from "../src/views/faq-page";
 import { UseCasesPage, USE_CASES } from "../src/views/use-cases-page";
 import { AboutPage } from "../src/views/about-page";
 import { PricingPage } from "../src/views/pricing-page";
@@ -66,6 +66,130 @@ describe("FaqPage unit", () => {
     expect(meta.title).toContain("FAQ");
     expect(meta.description.length).toBeGreaterThan(50);
     expect(meta.path).toBe("/faq");
+  });
+});
+
+// ─── Unit: FAQ SLICE-105-1 — Core Scanner EPIC Q&A ────────────
+
+describe("FaqPage SLICE-105-1: Core scanner EPIC Q&A", () => {
+  it("has >= 26 Q&A pairs (16 original + 10 new)", () => {
+    expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(26);
+  });
+
+  it("includes four scoring pillars question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("four scoring pillars");
+    expect(html).toContain("Discovery");
+    expect(html).toContain("Understandability");
+    expect(html).toContain("Executability");
+    expect(html).toContain("Verifiability");
+  });
+
+  it("includes evidence-based scoring question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("evidence-based scoring");
+    expect(html).toContain("VERIFIED");
+    expect(html).toContain("CONFLICT");
+  });
+
+  it("includes declared vs observed question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("declared and observed");
+  });
+
+  it("includes gap engine question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("gap engine");
+  });
+
+  it("includes runtime agent testing question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("runtime agent testing");
+  });
+
+  it("includes ExecutionTrace question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("ExecutionTrace");
+  });
+
+  it("includes Agent Success Rate (ASR) question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("Agent Success Rate");
+    expect(html).toContain("ASR");
+  });
+
+  it("includes scanner authentication question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("authentication");
+  });
+
+  it("includes continuous monitoring question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("continuous monitoring");
+  });
+
+  it("includes funnel report question", () => {
+    const html = FaqPage().toString();
+    expect(html).toContain("funnel report");
+  });
+
+  it("all new Q&A answers mention AgentBadge brand", () => {
+    const allEntries = getFaqEntries();
+    const newQuestions = [
+      "four scoring pillars",
+      "evidence-based scoring",
+      "declared and observed",
+      "gap engine",
+      "runtime agent testing",
+      "ExecutionTrace",
+      "Agent Success Rate",
+      "scanner handle authentication",
+      "continuous monitoring",
+      "funnel report",
+    ];
+    for (const q of newQuestions) {
+      const entry = allEntries.find((e) => e.question.toLowerCase().includes(q.toLowerCase()));
+      expect(entry, `Q&A containing "${q}" should exist`).toBeDefined();
+      expect(entry!.answer).toContain("AgentBadge");
+    }
+  });
+
+  it("new Q&A answers include blog article links where relevant", () => {
+    const html = FaqPage().toString();
+    // Scoring pillars → how-do-you-measure-agent-readiness
+    expect(html).toContain("/blog/how-do-you-measure-agent-readiness");
+    // OpenAPI gap → why-openapi-isnt-enough
+    expect(html).toContain("/blog/why-openapi-isnt-enough");
+    // What agents need → what-ai-agent-needs-to-understand-api
+    expect(html).toContain("/blog/what-ai-agent-needs-to-understand-api");
+  });
+
+  it("no duplicate questions with original 16", () => {
+    const originalQuestions = [
+      "What is AgentBadge?",
+      "What is the Agent Readiness Scanner?",
+      "What is the Agent Marketplace?",
+      "What is an agent passport?",
+      "Why is the passport non-transferable?",
+      "What are the passport tiers?",
+      "What is x402 payment?",
+      "What is the HCS directory?",
+      "How does A2A messaging work?",
+      "What does passport verification prove?",
+      "How do I integrate via MCP?",
+      "What does it cost?",
+      "Is this on testnet or mainnet?",
+      "What is AgentBadge NOT?",
+      "Can the AgentBadge team build an MCP server for me?",
+      "Does the team offer GEO optimization consulting?",
+    ];
+    const allEntries = getFaqEntries();
+    const allQuestions = allEntries.map((e) => e.question);
+    const uniqueQuestions = new Set(allQuestions);
+    expect(uniqueQuestions.size).toBe(allQuestions.length);
+    for (const q of originalQuestions) {
+      expect(allQuestions.filter((aq) => aq === q).length).toBe(1);
+    }
   });
 });
 

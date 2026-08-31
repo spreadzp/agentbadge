@@ -89,6 +89,56 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     answer:
       "Yes. Generative Engine Optimization (GEO) makes your service discoverable by AI agents through llms.txt, agent-card.json, ai-sitemap.xml, and structured OpenAPI specs. The AgentBadge team helps with full GEO implementation — from endpoint setup to content negotiation and machine-readable metadata. See <a href=\"/agent-guide/team/services\" class=\"text-emerald-400 underline hover:text-emerald-300\">our services catalog</a> to get started.",
   },
+  {
+    question: "What are the four scoring pillars in AgentBadge's scanner?",
+    answer:
+      "AgentBadge scores APIs across four pillars: Discovery (20%) — can agents find your API? Understandability (25%) — can agents understand how to use it? Executability (30%) — can agents actually call it successfully? Verifiability (25%) — can results be verified? Each pillar aggregates multiple categories of checks for a balanced, evidence-backed score. <a href=\"/blog/how-do-you-measure-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: How Do You Measure Agent Readiness? →</a>",
+  },
+  {
+    question: "What is evidence-based scoring in AgentBadge?",
+    answer:
+      "Every AgentBadge check produces evidence with a status: VERIFIED (confirmed by live response), INFERRED (deduced from indirect signals), CONFLICT (spec says one thing, response says another), or MISSING (no evidence found). This means your score is not an opinion — it's a reproducible measurement based on what the scanner actually observed. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
+  },
+  {
+    question: "What is the difference between declared and observed API behavior?",
+    answer:
+      "Declared behavior is what your OpenAPI spec, llms.txt, and documentation say your API does. Observed behavior is what AgentBadge's scanner actually finds when it probes your endpoints. When these don't match, the gap engine flags a CONFLICT — for example, your spec says OAuth2 but the endpoint actually requires an API key. <a href=\"/blog/why-openapi-isnt-enough\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Why Your OpenAPI Spec Isn't Enough →</a>",
+  },
+  {
+    question: "What is the AgentBadge gap engine?",
+    answer:
+      "The gap engine detects mismatches between what your API declares and what it actually does. When AgentBadge finds a CONFLICT or MISSING status, the gap engine generates a fix recommendation explaining exactly what to change. This bridges the gap between scanning and fixing — you get actionable steps, not just a score. <a href=\"/blog/what-ai-agent-needs-to-understand-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: What Does an AI Agent Need to Understand an API? →</a>",
+  },
+  {
+    question: "What is runtime agent testing in AgentBadge?",
+    answer:
+      "Runtime agent testing is a controlled simulation where AgentBadge sends real requests to your API as an agent would — discovering endpoints, reading docs, authenticating, calling methods, and handling errors. This goes beyond static checks by verifying that an agent can actually complete tasks end-to-end. The results produce an Agent Success Rate (ASR) alongside the static score.",
+  },
+  {
+    question: "What is an ExecutionTrace in AgentBadge's runtime testing?",
+    answer:
+      "An ExecutionTrace is a step-by-step record of a runtime agent test in AgentBadge. Each trace captures the sequence of requests, responses, outcomes, and stop reasons (completed, auth_blocked, budget_exhausted, timeout). Traces are deterministic — the same API state produces the same trace — so you can replay and verify results reproducibly.",
+  },
+  {
+    question: "What is Agent Success Rate (ASR) in AgentBadge?",
+    answer:
+      "Agent Success Rate (ASR) is the percentage of runtime tasks an agent completes successfully during AgentBadge's runtime testing. ASR is reported per category (discovery, auth, execution) and includes a partial bucket for tasks that partially succeeded. ASR sits beside the static readiness score — it never replaces it — giving you a real-world complement to the static measurement.",
+  },
+  {
+    question: "How does the AgentBadge scanner handle authentication?",
+    answer:
+      "AgentBadge checks for OAuth2 discovery endpoints, API key requirements, Bearer token schemes, agents.txt auth directives, and well-known configuration URLs. The scanner verifies that auth flows are documented and machine-readable — agents need to discover how to authenticate without human help. Missing or unclear auth is one of the most common readiness gaps AgentBadge finds.",
+  },
+  {
+    question: "What is continuous monitoring in AgentBadge?",
+    answer:
+      "Continuous monitoring runs AgentBadge scans periodically and alerts you when your readiness score changes. This catches regressions — a new deployment that breaks OpenAPI, a removed llms.txt, a changed auth scheme — before agents encounter them in production. Monitoring ensures your agent readiness stays high over time, not just at a single audit moment.",
+  },
+  {
+    question: "What is the AgentBadge funnel report?",
+    answer:
+      "The funnel report shows how many checks pass or fail at each stage of agent interaction: discovery (can agents find you?) → understanding (can they parse your API?) → execution (can they call it?) → verification (can they trust the results?). AgentBadge uses this funnel to pinpoint where agents get stuck, so you can fix the highest-impact gaps first.",
+  },
 ];
 
 export function getFaqEntries(): QaPair[] {
