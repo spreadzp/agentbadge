@@ -4,9 +4,9 @@ import { analyzeMedicalData, type AnalysisResult } from "../services/medical-pro
 import { generateHtmlReport } from "../services/html-report.service";
 import { MedicalDataProviderAgent } from "../services/provider-agent.service";
 import { MedicalDataConsumerAgent } from "../services/consumer-agent.service";
-import { marketUpsert as upsert, listTasks, marketGet as getTask } from "@agentgate-hedera/passport";
-import { submitTaskMessage } from "@agentgate-hedera/hedera-core";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import { marketUpsert as upsert, listTasks, marketGet as getTask } from "@agentbadge/passport";
+import { submitTaskMessage } from "@agentbadge/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 

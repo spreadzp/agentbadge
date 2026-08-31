@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { DataHubVerifier } from "../../src/verifiers/datahub.verifier";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 const mockTask: CachedMarketTask = {
   taskId: "task-123",

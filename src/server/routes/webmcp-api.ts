@@ -12,7 +12,7 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getPassportInfo, parseDid } from "@agentgate-hedera/passport";
+import { getPassportInfo, parseDid } from "@agentbadge/passport";
 import { RULE_DESCRIPTIONS } from "../../agent-readiness/rule-descriptions";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";

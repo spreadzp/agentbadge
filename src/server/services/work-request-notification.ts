@@ -12,7 +12,7 @@ import {
   sendTelegramMessage,
 } from "./contact.service";
 import type { WorkRequestRecord } from "./work-request-store";
-import { logger } from "@agentgate-hedera/passport";
+import { logger } from "@agentbadge/passport";
 
 const MAX_SUMMARY_PREVIEW = 200;
 

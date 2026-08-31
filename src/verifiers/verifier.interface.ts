@@ -1,4 +1,4 @@
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 export interface VerificationResult {
   passed: boolean;

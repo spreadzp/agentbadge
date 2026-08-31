@@ -17,9 +17,9 @@ import {
   listTasks,
   updateTaskStatus,
   logger,
-} from "@agentgate-hedera/passport";
-import { submitTaskMessage, verifyA2ADid } from "@agentgate-hedera/hedera-core";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import { submitTaskMessage, verifyA2ADid } from "@agentbadge/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 export interface ProviderAgentConfig {
   providerDid: string;

@@ -1,5 +1,6 @@
 import { html, raw } from "hono/html";
-import { injectWebMCP, allTools, generateDeclarativeForm, generateDeclarativeScript, generateDeclarativeStyles } from "@agentgate-hedera/webmcp";
+import { injectWebMCP, allTools, generateDeclarativeScript, generateDeclarativeStyles } from "@agentbadge/webmcp";
+import { BASE_URL } from "../../server/lib/page-meta";
 
 /**
  * WebMcpHackathonPage — landing page for the WebMCP Challenge hackathon.
@@ -145,23 +146,6 @@ function WebMcpTools() {
 }
 
 function WebMcpDeclarative() {
-  const formHtml = generateDeclarativeForm({
-    toolname: "submitScanRequest",
-    tooldescription: "Submit a URL for agent readiness scanning. Returns a compliance report.",
-    action: "/api/scan",
-    method: "GET",
-    toolautosubmit: true,
-    inputs: [
-      {
-        name: "url",
-        type: "url",
-        id: "scanUrl",
-        label: "URL to Scan",
-        required: true,
-        toolparamdescription: "The URL to scan for AI agent readiness compliance.",
-      },
-    ],
-  });
   const scriptHtml = generateDeclarativeScript();
   const stylesHtml = generateDeclarativeStyles();
 
@@ -189,7 +173,11 @@ function WebMcpDeclarative() {
           </div>
           <div class="mt-6 rounded-lg border border-slate-700/40 bg-slate-950/50 p-4">
             <h4 class="mb-3 text-sm font-semibold text-slate-300">Live Form</h4>
-            ${raw(formHtml)}
+            <form toolname="submitScanRequest" tooldescription="Submit a URL for agent readiness scanning. Returns a compliance report." action="/api/scan" method="GET" toolautosubmit class="flex flex-col gap-3">
+              <label for="scanUrl" class="text-sm font-medium text-slate-300">URL to Scan</label>
+              <input type="url" id="scanUrl" name="url" required toolparamdescription="The URL to scan for AI agent readiness compliance." placeholder="https://example.com" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-slate-200 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15" />
+              <button type="submit" class="self-start rounded-lg bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60">Scan</button>
+            </form>
           </div>
         </div>
       </div>
@@ -227,13 +215,13 @@ function WebMcpDemoInstructions() {
           </div>
           <h3 class="mt-4 text-xl font-semibold text-white">Test via curl</h3>
           <p class="mt-3 text-sm text-slate-400">All six tool endpoints are live HTTP APIs. Test them directly:</p>
-          <pre class="mt-4 overflow-x-auto rounded-lg bg-slate-950/70 p-4 text-xs text-slate-300"><code>curl -s "http://localhost:4021/api/scan?url=https://example.com" | jq .
+          <pre class="mt-4 overflow-x-auto rounded-lg bg-slate-950/70 p-4 text-xs text-slate-300"><code>curl -s "${BASE_URL}/api/scan?url=https://example.com" | jq .
 
-curl -s "http://localhost:4021/api/score?url=https://example.com" | jq .
+curl -s "${BASE_URL}/api/score?url=https://example.com" | jq .
 
-curl -s "http://localhost:4021/api/rules/search?q=robots" | jq .
+curl -s "${BASE_URL}/api/rules/search?q=robots" | jq .
 
-curl -s "http://localhost:4021/api/badge?url=https://example.com" | head -3</code></pre>
+curl -s "${BASE_URL}/api/badge?url=https://example.com" | head -3</code></pre>
         </div>
         <div class="rounded-xl border border-slate-700/40 bg-slate-900/50 p-8">
           <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-500/10">

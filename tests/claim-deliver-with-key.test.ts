@@ -9,7 +9,7 @@ import {
   registerGuideTools,
   registerSigningTools,
   listTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 import { PrivateKey } from "@hashgraph/sdk";
 
@@ -193,7 +193,7 @@ describe("SLICE-15-4: claim_task_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing claimerDid", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("claim_task_with_key", {
       taskId: "task-1",
       claimerPrivateKey: makePrivateKey(),
@@ -203,7 +203,7 @@ describe("SLICE-15-4: claim_task_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing taskId", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("claim_task_with_key", {
       claimerDid: VALID_DID,
       claimerPrivateKey: makePrivateKey(),
@@ -213,7 +213,7 @@ describe("SLICE-15-4: claim_task_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing claimerPrivateKey", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("claim_task_with_key", {
       taskId: "task-1",
       claimerDid: VALID_DID,
@@ -242,7 +242,7 @@ describe("SLICE-15-4: deliver_result_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing claimerDid", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("deliver_result_with_key", {
       taskId: "task-1",
       resultBody: "test result",
@@ -253,7 +253,7 @@ describe("SLICE-15-4: deliver_result_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing taskId", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("deliver_result_with_key", {
       claimerDid: VALID_DID,
       resultBody: "test result",
@@ -264,7 +264,7 @@ describe("SLICE-15-4: deliver_result_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing claimerPrivateKey", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("deliver_result_with_key", {
       taskId: "task-1",
       claimerDid: VALID_DID,

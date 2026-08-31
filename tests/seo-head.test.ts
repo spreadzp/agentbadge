@@ -12,8 +12,8 @@ import {
   jobPostingLd,
   profilePageLd,
 } from "../src/server/lib/json-ld";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
-import type { DirectoryEntry } from "@agentgate-hedera/passport";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
+import type { DirectoryEntry } from "@agentbadge/passport";
 
 describe("SLICE-18-1: SEO Head Layer", () => {
   describe("Layout() with meta parameter", () => {

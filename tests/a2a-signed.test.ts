@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   submitA2AMessage: vi.fn(),
   verifyA2ADid: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   submitSignedTopicMessage: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   a2aUpsert: vi.fn(),
   getMessagesByTo: vi.fn(() => []),
@@ -28,8 +28,8 @@ import {
   signTransactionBytes,
   submitSignedTopicMessage,
   verifyA2ADid,
-} from "@agentgate-hedera/hedera-core";
-import { a2aUpsert as upsert } from "@agentgate-hedera/passport";
+} from "@agentbadge/hedera-core";
+import { a2aUpsert as upsert } from "@agentbadge/passport";
 
 const mockedPrepare = vi.mocked(prepareA2ATopicMessage);
 const mockedSign = vi.mocked(signTransactionBytes);

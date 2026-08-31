@@ -1,5 +1,5 @@
 import type { ITaskVerifier, VerificationResult } from "./verifier.interface";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 /**
  * DataHub integration notes:

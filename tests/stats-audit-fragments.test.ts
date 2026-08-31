@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { AuditMessage, TopicMessage, NftInfo } from "@agentgate-hedera/hedera-core";
+import type { AuditMessage, TopicMessage, NftInfo } from "@agentbadge/hedera-core";
 
 // Mock services
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftsForToken: vi.fn(),
   getNftInfo: vi.fn(),
@@ -18,14 +18,14 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
 }));
 
 // Mock IPFS
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   uploadMetadata: vi.fn(),
   retrieveMetadata: vi.fn(),
 }));
 
-import { getNftsForToken, getTopicMessages } from "@agentgate-hedera/hedera-core";
-import { retrieveMetadata } from "@agentgate-hedera/passport";
+import { getNftsForToken, getTopicMessages } from "@agentbadge/hedera-core";
+import { retrieveMetadata } from "@agentbadge/passport";
 import { uiRoutes } from "../src/server/routes/ui";
 
 const mockedGetNftsForToken = vi.mocked(getNftsForToken);

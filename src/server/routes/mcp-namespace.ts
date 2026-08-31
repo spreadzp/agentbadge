@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getNamespace, type ToolResult } from "@agentgate-hedera/mcp";
+import { getNamespace, type ToolResult } from "@agentbadge/mcp";
 
 export function createNamespaceRoutes(namespaceName: string): Hono {
   const routes = new Hono();

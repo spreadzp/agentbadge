@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
 }));
@@ -9,8 +9,8 @@ import {
   issuePassport,
   upgradeTier,
   revokePassport,
-} from "@agentgate-hedera/passport";
-import { getNftInfo } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import { getNftInfo } from "@agentbadge/hedera-core";
 
 const mockedGetNftInfo = vi.mocked(getNftInfo);
 

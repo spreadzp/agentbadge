@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...(await importOriginal()),
   marketUpsert: vi.fn(),
   marketGet: vi.fn(),
@@ -8,7 +8,7 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
   updateTaskStatus: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...(await importOriginal()),
   submitTaskMessage: vi.fn().mockResolvedValue({ txId: "0.0.5266613@123.000000000", consensusTimestamp: null }),
   verifyA2ADid: vi.fn().mockResolvedValue(true),
@@ -16,8 +16,8 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   transferHbar: vi.fn().mockResolvedValue("0.0.5266613@999.000000000"),
 }));
 
-import { marketUpsert as upsert, marketGet as getTask, listTasks, updateTaskStatus } from "@agentgate-hedera/passport";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import { marketUpsert as upsert, marketGet as getTask, listTasks, updateTaskStatus } from "@agentbadge/passport";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 function makeMockTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
   return {

@@ -19,7 +19,7 @@ import { EventLedger, withIdempotency } from "../lib/event-ledger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { captureError } from "../lib/sentry";
-import { logger } from "@agentgate-hedera/passport";
+import { logger } from "@agentbadge/passport";
 import { checkoutResponseSchema, errorSchema } from "../openapi";
 import { renderPaymentSuccess, renderPaymentError } from "../../views/payment-success";
 import { renderPaymentCanceled } from "../../views/payment-canceled";

@@ -20,7 +20,7 @@ import { changelogRoutes } from "../../src/server/routes/changelog";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../../src/server/middleware/rate-limit";
 import { signatureVerificationMiddleware } from "../../src/server/middleware/signature-verification";
-import { MCP_TOOLS_INDEX, getLlmsTxt } from "@agentgate-hedera/hedera-core";
+import { MCP_TOOLS_INDEX, getLlmsTxt } from "@agentbadge/hedera-core";
 
 function makeCrawlerApp(): Hono {
   const app = new Hono();

@@ -43,11 +43,11 @@
     "medical-agent:task": "bun src/agents/cli.ts --task-id"
   },
   "dependencies": {
-    "@agentgate-hedera/evm-core": "^0.1.1",
-    "@agentgate-hedera/hedera-core": "^0.1.15",
-    "@agentgate-hedera/mcp": "^0.1.9",
-    "@agentgate-hedera/passport": "^0.1.9",
-    "@agentgate-hedera/webmcp": "^0.3.0",
+    "@agentbadge/evm-core": "^0.1.1",
+    "@agentbadge/hedera-core": "^0.1.15",
+    "@agentbadge/mcp": "file:../../packages/mcp",
+    "@agentbadge/passport": "^0.1.8",
+    "@agentbadge/webmcp": "^0.3.0",
     "@hashgraph/sdk": "^2.55.0",
     "@hono/standard-validator": "^0.3.0",
     "@hono/swagger-ui": "^0.6.1",

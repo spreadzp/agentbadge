@@ -8,8 +8,8 @@
 
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
-import type { Tier } from "@agentgate-hedera/hedera-core";
-import { upgradeTier, calculateUpgradePrice } from "@agentgate-hedera/passport";
+import type { Tier } from "@agentbadge/hedera-core";
+import { upgradeTier, calculateUpgradePrice } from "@agentbadge/passport";
 import { upgradeRequestSchema, errorSchema } from "../openapi";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";

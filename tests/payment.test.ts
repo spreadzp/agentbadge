@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-import { getPrice, TIER_PRICES_TINYBARS } from "@agentgate-hedera/passport";
-import { TIER_PRICES_HBAR } from "@agentgate-hedera/hedera-core";
+import { getPrice, TIER_PRICES_TINYBARS } from "@agentbadge/passport";
+import { TIER_PRICES_HBAR } from "@agentbadge/hedera-core";
 
 describe("getPrice", () => {
   it("returns correct tinybars for bronze (10 HBAR)", () => {

@@ -14,8 +14,8 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from "vites
 import type { Hono } from "hono";
 
 import { setupMockEnv, makeTestApp, makeEvmWallet, signWalletOwnership } from "./helpers";
-import { clear as clearDirectoryCache } from "@agentgate-hedera/passport";
-import { registerPassportTools, registerAuditCatalogTools, registerDirectoryTools } from "@agentgate-hedera/mcp";
+import { clear as clearDirectoryCache } from "@agentbadge/passport";
+import { registerPassportTools, registerAuditCatalogTools, registerDirectoryTools } from "@agentbadge/mcp";
 
 describe("SLICE-7-15: Integration Tests — Full E2E Flows", () => {
   let app: Hono;

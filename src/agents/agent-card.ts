@@ -6,7 +6,7 @@
  */
 
 import { Hono } from "hono";
-import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
+import type { Tier, Capability } from "@agentbadge/hedera-core";
 import { ErrorCodes } from "../server/lib/error-codes";
 import { errorResponse } from "../server/lib/error-response";
 

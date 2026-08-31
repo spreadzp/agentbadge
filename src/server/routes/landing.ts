@@ -4,8 +4,8 @@ import { LandingPage } from "../../views/landing/landing-page";
 import { AgencyHubPage } from "../../views/landing/agency-hub-page";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { landingJsonLd } from "../lib/json-ld";
-import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentgate-hedera/hedera-core";
-import { listTasks as marketListTasks } from "@agentgate-hedera/passport";
+import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentbadge/hedera-core";
+import { listTasks as marketListTasks } from "@agentbadge/passport";
 
 /**
  * Landing page routes.

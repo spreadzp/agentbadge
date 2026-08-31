@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ethers } from "ethers";
 import { Hono } from "hono";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...(await importOriginal()),
   didToAccountId: vi.fn(async () => "0.0.1234567"),
   isValidA2ADid: vi.fn(() => true),
@@ -15,7 +15,7 @@ import {
   requireDidSignature,
   challengeHandler,
 } from "../../src/server/middleware/did-auth";
-import { didToAccountId } from "@agentgate-hedera/hedera-core";
+import { didToAccountId } from "@agentbadge/hedera-core";
 
 // ─── Challenge Builder ───────────────────────────────────────────
 

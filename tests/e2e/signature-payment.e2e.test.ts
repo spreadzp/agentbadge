@@ -6,8 +6,8 @@ import { makeHttpClient } from "../fixtures/http-client";
 import {
   marketClear as clearMarketCache,
   marketGet as get,
-} from "@agentgate-hedera/passport";
-import { topicMessages } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import { topicMessages } from "@agentbadge/hedera-core";
 import type { Hono } from "hono";
 
 const E2E_TIMEOUT = 30000;
@@ -15,8 +15,8 @@ const E2E_TIMEOUT = 30000;
 // Mock signTransactionBytes since mock prepareTransferTransaction returns fake txBytes
 // that can't be parsed by @hashgraph/sdk's Transaction.fromBytes.
 // The real signing is unit-tested in SLICE-12-4.
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agentgate-hedera/hedera-core")>();
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agentbadge/hedera-core")>();
   return {
     ...actual,
     signTransactionBytes: vi.fn((_txBytes: string, _privateKeyHex: string) => {
@@ -30,14 +30,14 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
 });
 
 // Import after mock setup
-import { signTransactionBytes } from "@agentgate-hedera/hedera-core";
+import { signTransactionBytes } from "@agentbadge/hedera-core";
 import {
   preparePaymentHandler,
   completeTaskHandler,
   postTaskHandler,
   claimTaskHandler,
   deliverResultHandler,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 describe("SLICE-12-6: E2E Signature-based P2P Payment", () => {
   let app: Hono;

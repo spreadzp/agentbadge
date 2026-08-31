@@ -9,8 +9,8 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getCatalog } from "@agentgate-hedera/hedera-core";
-import { listTools } from "@agentgate-hedera/mcp";
+import { getCatalog } from "@agentbadge/hedera-core";
+import { listTools } from "@agentbadge/mcp";
 import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
 import { GuideLayout } from "../../views/guide-layout";
 import { didAuthSectionFull } from "../lib/did-auth-docs";
@@ -188,7 +188,7 @@ These agents run inside an IDE or desktop app with built-in MCP client support. 
   "mcpServers": {
     "agentbadge": {
       "command": "npx",
-      "args": ["-y", "@agentgate-hedera/mcp", "--stdio"]
+      "args": ["-y", "@agentbadge/mcp", "--stdio"]
     }
   }
 }
@@ -298,11 +298,11 @@ curl -X POST ${baseUrl}/a2a/send \\
 **For Node/Bun-based CLI agents — use NPM package programmatically:**
 
 \`\`\`bash
-npm install @agentgate-hedera/mcp @agentgate-hedera/passport @agentgate-hedera/hedera-core
+npm install @agentbadge/mcp @agentbadge/passport @agentbadge/hedera-core
 \`\`\`
 
 \`\`\`typescript
-import { registerPassportTools, registerA2ATools, registerMarketplaceTools, startStdio } from "@agentgate-hedera/mcp";
+import { registerPassportTools, registerA2ATools, registerMarketplaceTools, startStdio } from "@agentbadge/mcp";
 
 registerPassportTools();
 registerA2ATools();

@@ -5,16 +5,16 @@ import {
   getPassportInfo,
   upgradeTier,
   revokePassport,
-} from "@agentgate-hedera/passport";
-import { handleHttpToolCall } from "@agentgate-hedera/mcp";
-import { registerPassportTools } from "@agentgate-hedera/mcp";
-import { registerAuditCatalogTools } from "@agentgate-hedera/mcp";
-import { registerDirectoryTools } from "@agentgate-hedera/mcp";
+} from "@agentbadge/passport";
+import { handleHttpToolCall } from "@agentbadge/mcp";
+import { registerPassportTools } from "@agentbadge/mcp";
+import { registerAuditCatalogTools } from "@agentbadge/mcp";
+import { registerDirectoryTools } from "@agentbadge/mcp";
 import {
   upsert as upsertDirectory,
   clear as clearDirectory,
   getAll,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 import type { Hono } from "hono";
 
 

@@ -71,7 +71,7 @@ describe("SLICE-56-8: JSON-LD Organization/Service/Person", () => {
 describe("SLICE-56-9: MCP Manifest and Tools", () => {
   // We verify the tools are registered by importing the module and checking
   // that registerParityTools doesn't throw. The actual MCP tool registry
-  // is module-level in @agentgate-hedera/mcp, so we test via import side-effects.
+  // is module-level in @agentbadge/mcp, so we test via import side-effects.
 
   it("registerParityTools executes without error", async () => {
     const { registerParityTools } = await import("../src/mcp/parity-tools");

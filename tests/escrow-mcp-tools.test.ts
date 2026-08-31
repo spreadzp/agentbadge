@@ -17,7 +17,7 @@ import {
   increaseRewardHandler,
   verifyResultHandler,
   registerEscrowTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 const POSTER_DID = "did:hcs:0.0.123:1";
 const TASK_ID = "task-1700000000-abc123";

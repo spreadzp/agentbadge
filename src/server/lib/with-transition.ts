@@ -4,8 +4,8 @@
  * Encapsulates the CAS pattern so handlers shrink to declarative configs.
  */
 
-import { reserveTask, transitionTask, type TransitionResult } from "@agentgate-hedera/passport";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import { reserveTask, transitionTask, type TransitionResult } from "@agentbadge/passport";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 import { ErrorCodes, type ErrorCode } from "./error-codes";
 import { errorResponse } from "./error-response";
 import type { Context } from "hono";

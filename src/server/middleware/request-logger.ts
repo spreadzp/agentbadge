@@ -9,7 +9,7 @@
 
 import type { Context, Next } from "hono";
 import { randomUUID } from "node:crypto";
-import { logger } from "@agentgate-hedera/passport";
+import { logger } from "@agentbadge/passport";
 import { httpRequestTotal, httpDurationMs } from "../metrics/metrics";
 import { redactSecrets } from "../lib/redact";
 

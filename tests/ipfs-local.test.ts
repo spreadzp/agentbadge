@@ -3,7 +3,7 @@ import { mkdir, rm, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { PassportMetadata } from "@agentgate-hedera/hedera-core";
+import type { PassportMetadata } from "@agentbadge/hedera-core";
 
 const TEST_STORAGE = join(tmpdir(), `ipfs-test-${Date.now()}`);
 
@@ -42,7 +42,7 @@ describe("ipfs/local", () => {
   });
 
   it("uploadMetadata writes file and returns local://{hash}", async () => {
-    const { uploadMetadata } = await import("@agentgate-hedera/passport");
+    const { uploadMetadata } = await import("@agentbadge/passport");
     const uri = await uploadMetadata(sampleMetadata);
     expect(uri).toMatch(/^local:\/\/[a-f0-9]{64}$/);
     const hash = uri.replace("local://", "");
@@ -54,7 +54,7 @@ describe("ipfs/local", () => {
   });
 
   it("retrieveMetadata reads back the same JSON", async () => {
-    const { uploadMetadata, retrieveMetadata } = await import("@agentgate-hedera/passport");
+    const { uploadMetadata, retrieveMetadata } = await import("@agentbadge/passport");
     const uri = await uploadMetadata(sampleMetadata);
     const retrieved = await retrieveMetadata(uri);
     expect(retrieved.name).toBe(sampleMetadata.name);
@@ -64,7 +64,7 @@ describe("ipfs/local", () => {
   });
 
   it("uploadMetadata is deterministic — same data → same hash", async () => {
-    const { uploadMetadata } = await import("@agentgate-hedera/passport");
+    const { uploadMetadata } = await import("@agentbadge/passport");
     const uri1 = await uploadMetadata(sampleMetadata);
     const uri2 = await uploadMetadata(sampleMetadata);
     expect(uri1).toBe(uri2);

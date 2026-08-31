@@ -199,7 +199,7 @@ describe("SLICE-82-3: agent-card.json has auth block", () => {
 describe("SLICE-82-3: MCP tools include DID auth info", () => {
   it("get_did_auth_info parity tool is registered and mentions DID signature", async () => {
     const { registerParityTools } = await import("../src/mcp/parity-tools");
-    const { listTools: listAllTools } = await import("@agentgate-hedera/mcp");
+    const { listTools: listAllTools } = await import("@agentbadge/mcp");
     registerParityTools();
     const tools = listAllTools();
     const authTool = tools.find((t) => t.name === "get_did_auth_info");

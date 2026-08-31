@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { PassportMetadata } from "@agentgate-hedera/hedera-core";
+import type { PassportMetadata } from "@agentbadge/hedera-core";
 
 const sampleMetadata: PassportMetadata = {
   name: "Agent Passport #1",
@@ -49,13 +49,13 @@ describe("ipfs/upload", () => {
   });
 
   it("uploadMetadata returns ipfs://{cid}", async () => {
-    const { uploadMetadata } = await import("@agentgate-hedera/passport");
+    const { uploadMetadata } = await import("@agentbadge/passport");
     const uri = await uploadMetadata(sampleMetadata);
     expect(uri).toMatch(/^ipfs:\/\/bafyrei/);
   });
 
   it("retrieveMetadata fetches via IPFS gateway and parses JSON", async () => {
-    const { retrieveMetadata } = await import("@agentgate-hedera/passport");
+    const { retrieveMetadata } = await import("@agentbadge/passport");
     const cid = "bafyreiatestcid123";
     const result = await retrieveMetadata(`ipfs://${cid}`);
     expect(result.name).toBe(sampleMetadata.name);
@@ -66,7 +66,7 @@ describe("ipfs/upload", () => {
   it("uploadMetadata throws if IPFS_API_KEY not set", async () => {
     vi.stubEnv("IPFS_API_KEY", "");
     vi.stubEnv("IPFS_API_SECRET", "");
-    const { uploadMetadata } = await import("@agentgate-hedera/passport");
+    const { uploadMetadata } = await import("@agentbadge/passport");
     await expect(uploadMetadata(sampleMetadata)).rejects.toThrow("IPFS_API_KEY");
   });
 });

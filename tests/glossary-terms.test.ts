@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadGlossaryTerms } from "../src/server/services/glossary.service";
-import type { GlossaryTermConfig } from "@agentgate-hedera/hedera-core";
+import type { GlossaryTermConfig } from "@agentbadge/hedera-core";
 
 describe("SLICE-25-6: Medical Glossary Terms", () => {
   const terms = loadGlossaryTerms();

@@ -8,8 +8,8 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
   })),
 }));
 
-import { createNamespace, listTools } from "@agentgate-hedera/mcp";
-import { registerAuditCatalogTools } from "@agentgate-hedera/mcp";
+import { createNamespace, listTools } from "@agentbadge/mcp";
+import { registerAuditCatalogTools } from "@agentbadge/mcp";
 import { registerComplianceTools } from "../src/mcp/compliance-tools";
 import { registerParityTools } from "../src/mcp/parity-tools";
 

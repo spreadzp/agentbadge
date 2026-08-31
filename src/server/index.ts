@@ -7,7 +7,7 @@ import { HEDERA_TESTNET_CAIP2 } from "@x402/hedera";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 
-import { getPrice, logger } from "@agentgate-hedera/passport";
+import { getPrice, logger } from "@agentbadge/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { adminAuth } from "./middleware/adminAuth";
 import { mppPaymentMiddleware } from "./middleware/mpp";
@@ -17,7 +17,7 @@ import {
   startBackgroundRebuild,
   a2aStartBackgroundRebuild as startA2ACacheRebuild,
   marketStartBackgroundRebuild as startMarketCacheRebuild,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 import {
   registerPassportTools,
   registerAuditCatalogTools,
@@ -32,7 +32,7 @@ import {
   registerAllTools,
   listTools,
   createNamespace,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { registerComplianceTools } from "../mcp/compliance-tools";
 import { registerParityTools } from "../mcp/parity-tools";
 import { rateLimitMiddleware } from "./middleware/rate-limit";

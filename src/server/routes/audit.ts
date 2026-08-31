@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
-import { getAuditTrail } from "@agentgate-hedera/mcp";
+import { getAuditTrail } from "@agentbadge/mcp";
 import { auditEventSchema, errorSchema } from "../openapi";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";

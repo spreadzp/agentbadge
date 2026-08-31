@@ -8,9 +8,9 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
   })),
 }));
 
-import { createNamespace, listTools } from "@agentgate-hedera/mcp";
-import { registerMarketplaceTools } from "@agentgate-hedera/mcp";
-import { registerDatasetTools } from "@agentgate-hedera/mcp";
+import { createNamespace, listTools } from "@agentbadge/mcp";
+import { registerMarketplaceTools } from "@agentbadge/mcp";
+import { registerDatasetTools } from "@agentbadge/mcp";
 
 describe("SLICE-72-5: market namespace wiring", () => {
   it("registerMarketplaceTools(ns) registers into market namespace", () => {

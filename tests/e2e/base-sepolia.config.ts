@@ -11,7 +11,7 @@ import {
   BASE_SEPOLIA_CHAIN_ID,
   BASE_SEPOLIA_EXPLORER,
   type EvmConfig,
-} from "@agentgate-hedera/evm-core";
+} from "@agentbadge/evm-core";
 
 export function isBaseE2EEnabled(): boolean {
   return (

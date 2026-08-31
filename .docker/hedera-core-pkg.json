@@ -1,5 +1,5 @@
 {
-  "name": "@agentgate-hedera/hedera-core",
+  "name": "@agentbadge/hedera-core",
   "version": "0.1.8",
   "description": "Hedera blockchain operations for AgentGate",
   "type": "module",

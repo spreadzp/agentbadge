@@ -5,8 +5,8 @@
  * SLICE-90-16
  */
 
-import type { ChainAdapter } from "@agentgate-hedera/hedera-core";
-import { hederaChainAdapter } from "@agentgate-hedera/hedera-core";
+import type { ChainAdapter } from "@agentbadge/hedera-core";
+import { hederaChainAdapter } from "@agentbadge/hedera-core";
 
 export type ChainMode = "hedera" | "base";
 
@@ -46,7 +46,7 @@ export async function getChainAdapter(): Promise<ChainAdapter> {
   // CHAIN_MODE=base — dynamic import to avoid circular dependency
   // and to allow hedera-only deployments without evm-core installed
   const { EvmChainAdapter, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER, BASE_SEPOLIA_ADDRESSES } =
-    await import("@agentgate-hedera/evm-core");
+    await import("@agentbadge/evm-core");
 
   const operatorKey = process.env.BASE_OPERATOR_KEY;
   if (!operatorKey) {

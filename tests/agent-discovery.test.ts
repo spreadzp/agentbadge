@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { NftInfo } from "@agentgate-hedera/hedera-core";
+import type { NftInfo } from "@agentbadge/hedera-core";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
   getTopicMessages: vi.fn(),
@@ -9,8 +9,8 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   submitDirectoryMessage: vi.fn(),
 }));
 
-import { getNftInfo } from "@agentgate-hedera/hedera-core";
-import { upsert, clear, type DirectoryEntry } from "@agentgate-hedera/passport";
+import { getNftInfo } from "@agentbadge/hedera-core";
+import { upsert, clear, type DirectoryEntry } from "@agentbadge/passport";
 import { agentRoutes } from "../src/server/routes/agents";
 
 const mockedGetNftInfo = vi.mocked(getNftInfo);

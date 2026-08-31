@@ -5,8 +5,8 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 // Mock the MCP server module
-vi.mock("@agentgate-hedera/mcp", async () => {
-  const actual: Record<string, unknown> = await vi.importActual("@agentgate-hedera/mcp");
+vi.mock("@agentbadge/mcp", async () => {
+  const actual: Record<string, unknown> = await vi.importActual("@agentbadge/mcp");
   return {
     ...actual,
     registerDiscoveryTools: vi.fn(),
@@ -23,7 +23,7 @@ import {
   searchAgentsHandler,
   getServerInfoHandler,
   getAiSitemapHandler,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 describe("MCP Discovery Tools (SLICE-17-12)", () => {
   beforeEach(() => {

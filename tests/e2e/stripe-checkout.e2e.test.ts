@@ -15,8 +15,8 @@ import Stripe from "stripe";
 import { makeTestApp, setupMockEnv } from "./helpers";
 
 // Mock issuePassport so we don't hit Hedera, but preserve all other exports
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agentgate-hedera/passport")>();
+vi.mock("@agentbadge/passport", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agentbadge/passport")>();
   return {
     ...actual,
     issuePassport: vi.fn().mockResolvedValue({
@@ -60,7 +60,7 @@ vi.mock("../../src/server/lib/stripe-client", async (importOriginal) => {
   };
 });
 
-import { issuePassport } from "@agentgate-hedera/passport";
+import { issuePassport } from "@agentbadge/passport";
 import { sendDiscordMessage } from "../../src/server/services/contact.service";
 import { resetProcessedSessions } from "../../src/server/lib/order-fulfillment";
 

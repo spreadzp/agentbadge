@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PassportRequestForm } from "../../src/views/passport-request-form";
-import type { TierEntry } from "@agentgate-hedera/hedera-core";
+import type { TierEntry } from "@agentbadge/hedera-core";
 
 // Mock chain-ui to control output per chain
 vi.mock("../../src/server/lib/chain-ui.js", () => ({

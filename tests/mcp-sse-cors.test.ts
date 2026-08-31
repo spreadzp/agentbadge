@@ -9,7 +9,7 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
   })),
 }));
 
-import { registerTool, type ToolResult } from "@agentgate-hedera/mcp";
+import { registerTool, type ToolResult } from "@agentbadge/mcp";
 import { Hono } from "hono";
 import { corsMiddleware } from "../src/server/middleware/cors";
 import { mcpRoutes } from "../src/server/routes/mcp";

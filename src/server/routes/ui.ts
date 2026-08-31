@@ -44,12 +44,12 @@ import { PageTitles } from "../lib/page-titles";
 import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
 import { passportLd, jobPostingLd, profilePageLd, defaultCoreSchemas } from "../lib/json-ld";
 import { getAcceptedFormat } from "../lib/content-negotiation";
-import { getCatalog, getNftsForToken, getNftInfo, getTopicMessages, isValidA2ADid, prepareA2ATopicMessage, signTransactionBytes, submitSignedTopicMessage } from "@agentgate-hedera/hedera-core";
-import type { NftInfo, Tier, Capability, AuditMessage } from "@agentgate-hedera/hedera-core";
-import { retrieveMetadata, getAll, type DirectoryEntry } from "@agentgate-hedera/passport";
-import { getMessagesByTo as getA2AMessagesByTo, getMessagesByFrom as getA2AMessagesByFrom, getConversation as getA2AConversation, a2aUpsert as a2aCacheUpsert } from "@agentgate-hedera/passport";
-import { listTasks as marketListTasks, marketGet } from "@agentgate-hedera/passport";
-import type { PassportInfo } from "@agentgate-hedera/passport";
+import { getCatalog, getNftsForToken, getNftInfo, getTopicMessages, isValidA2ADid, prepareA2ATopicMessage, signTransactionBytes, submitSignedTopicMessage } from "@agentbadge/hedera-core";
+import type { NftInfo, Tier, Capability, AuditMessage } from "@agentbadge/hedera-core";
+import { retrieveMetadata, getAll, type DirectoryEntry } from "@agentbadge/passport";
+import { getMessagesByTo as getA2AMessagesByTo, getMessagesByFrom as getA2AMessagesByFrom, getConversation as getA2AConversation, a2aUpsert as a2aCacheUpsert } from "@agentbadge/passport";
+import { listTasks as marketListTasks, marketGet } from "@agentbadge/passport";
+import type { PassportInfo } from "@agentbadge/passport";
 
 /** Check if request is from HTMX (partial) vs direct browser access (full page). */
 function isHtmxRequest(c: Context): boolean {

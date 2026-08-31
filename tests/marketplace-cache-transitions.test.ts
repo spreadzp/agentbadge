@@ -6,8 +6,8 @@ import {
   returnTaskToMarket,
   setEscrowStatus,
   marketClear as clear,
-} from "@agentgate-hedera/passport";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 function makeTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
   return {

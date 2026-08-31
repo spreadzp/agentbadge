@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { isValidA2AMessage, type A2AMessage, type CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import { isValidA2AMessage, type A2AMessage, type CachedA2AMessage } from "@agentbadge/hedera-core";
 
 describe("isValidA2AMessage", () => {
   const valid: A2AMessage = {
@@ -79,7 +79,7 @@ describe("submitA2AMessage (mock)", () => {
   });
 
   it("submits a message and returns a transaction ID", async () => {
-    const { submitA2AMessage } = await import("@agentgate-hedera/hedera-core");
+    const { submitA2AMessage } = await import("@agentbadge/hedera-core");
     const message: A2AMessage = {
       type: "a2a_message",
       from: "did:hcs:0.0.123:1",
@@ -95,8 +95,8 @@ describe("submitA2AMessage (mock)", () => {
   });
 
   it("persists message to mock topic store for cache rebuild", async () => {
-    const { submitA2AMessage } = await import("@agentgate-hedera/hedera-core");
-    const { getTopicMessages } = await import("@agentgate-hedera/hedera-core");
+    const { submitA2AMessage } = await import("@agentbadge/hedera-core");
+    const { getTopicMessages } = await import("@agentbadge/hedera-core");
     const message: A2AMessage = {
       type: "a2a_message",
       from: "did:hcs:0.0.123:1",

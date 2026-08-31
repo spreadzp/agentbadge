@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agentgate-hedera/hedera-core")>();
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agentbadge/hedera-core")>();
   return {
     ...actual,
     submitA2AMessage: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
   };
 });
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   a2aUpsert: vi.fn(),
   getMessagesByTo: vi.fn().mockReturnValue([]),
@@ -25,8 +25,8 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
   paginate: vi.fn().mockReturnValue([]),
 }));
 
-import { submitA2AMessage, verifyA2ADid, didToAccountId } from "@agentgate-hedera/hedera-core";
-import { a2aUpsert as upsert } from "@agentgate-hedera/passport";
+import { submitA2AMessage, verifyA2ADid, didToAccountId } from "@agentbadge/hedera-core";
+import { a2aUpsert as upsert } from "@agentbadge/passport";
 import { a2aRoutes } from "../../src/server/routes/a2a";
 import {
   configureDidAuthForTesting,

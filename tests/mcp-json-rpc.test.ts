@@ -14,7 +14,7 @@ import {
   listTools,
   handleHttpToolCall,
   type ToolResult,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { Hono } from "hono";
 import { mcpRoutes } from "../src/server/routes/mcp";
 import { makeTestApp } from "./e2e/helpers";

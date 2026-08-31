@@ -9,7 +9,7 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
-import { isEvmDid, parseEvmDid, passportToAgentCard } from "@agentgate-hedera/evm-core";
+import { isEvmDid, parseEvmDid, passportToAgentCard } from "@agentbadge/evm-core";
 import { getChainAdapter } from "../lib/chain-adapter-factory";
 
 const agentCardResponseSchema = z.object({
@@ -65,7 +65,7 @@ agentCardRoutes.get(
 
       // EvmChainAdapter returns EvmPassportInfo which extends NftInfo
       // with passportType and capabilities fields
-      const evmPassport = passport as import("@agentgate-hedera/evm-core").EvmPassportInfo;
+      const evmPassport = passport as import("@agentbadge/evm-core").EvmPassportInfo;
       const card = passportToAgentCard(evmPassport, did);
       return c.json(card, 200, {
         "Content-Type": "application/json",

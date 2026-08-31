@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { TaskMessageWithTx, CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { TaskMessageWithTx, CachedMarketTask } from "@agentbadge/hedera-core";
 
 // Mock getTaskMessages — the passport bundle imports it externally from hedera-core.
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getTaskMessages: vi.fn(),
 }));
 
-import { getTaskMessages } from "@agentgate-hedera/hedera-core";
+import { getTaskMessages } from "@agentbadge/hedera-core";
 import {
   marketClear,
   marketUpsert,
   marketGet,
   updateTaskStatus,
   marketRebuildFromHcs,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 
 const mockedGetTaskMessages = vi.mocked(getTaskMessages);
 

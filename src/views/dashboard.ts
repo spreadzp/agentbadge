@@ -6,7 +6,7 @@ import { FeedFragment } from "./feed-fragment";
 import { AuditFragment, type AuditEventWithTx } from "./audit-fragment";
 import { MarketplaceTaskBoardFragment } from "./marketplace-fragment";
 import { BUILD_DATE } from "../server/lib/build-info";
-import type { NftInfo, Tier, CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { NftInfo, Tier, CachedMarketTask } from "@agentbadge/hedera-core";
 import { explorerNftUrl, explorerName, chainDisplayName } from "../server/lib/chain-ui.js";
 import { normalizeTasks } from "../server/lib/market-task.js";
 

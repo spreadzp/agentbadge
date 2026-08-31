@@ -54,6 +54,7 @@ export function AgencyHubPage() {
     ${raw(CrossSellSection().toString())}
     ${raw(ScannerPreviewSection().toString())}
     ${raw(NeedMoreSection().toString())}
+    ${raw(FaqSection().toString())}
     ${raw(AgencyCtaSection().toString())}
   </div>`;
 }
@@ -153,6 +154,55 @@ function ScannerPreviewSection() {
         <div class="mt-6 text-center">
           <a href="/services/scanner" class="inline-flex items-center justify-center rounded-lg border border-emerald-500 px-6 py-3 text-sm font-semibold text-emerald-400 transition-colors hover:bg-emerald-500 hover:text-white">
             Learn about the Scanner →
+          </a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function FaqSection() {
+  return html`
+    <section class="px-4 py-16 md:px-8">
+      <div class="mx-auto max-w-3xl">
+        <h2 class="text-2xl font-bold text-white text-center">Frequently Asked Questions</h2>
+        <p class="mt-3 text-slate-400 text-center max-w-2xl mx-auto">
+          Quick answers about AgentBadge, agent readiness, and on-chain identity.
+        </p>
+        <div class="mt-8 space-y-4">
+          <details class="group rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+            <summary class="flex cursor-pointer items-center justify-between text-white font-medium">
+              What is AgentBadge?
+              <svg class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="mt-3 text-sm text-slate-400">AgentBadge is an agency that helps businesses become agent-ready. We scan your APIs for AI agent compatibility, issue on-chain identity passports, and provide a marketplace for agent-to-agent tasks.</p>
+          </details>
+          <details class="group rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+            <summary class="flex cursor-pointer items-center justify-between text-white font-medium">
+              What is an agent readiness scan?
+              <svg class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="mt-3 text-sm text-slate-400">A scan checks your API or website against 130+ agent readiness rules across 18 categories — discovery, documentation, authentication, payments, and more. You get a score, evidence, and actionable fixes.</p>
+          </details>
+          <details class="group rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+            <summary class="flex cursor-pointer items-center justify-between text-white font-medium">
+              What is an on-chain agent passport?
+              <svg class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="mt-3 text-sm text-slate-400">An NFT passport on Hedera that serves as verifiable on-chain identity for your AI agent. It includes capabilities, tier, and a DID for agent-to-agent trust.</p>
+          </details>
+          <details class="group rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+            <summary class="flex cursor-pointer items-center justify-between text-white font-medium">
+              Do I need to pay for a scan?
+              <svg class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <p class="mt-3 text-sm text-slate-400">No. The agent readiness scan is free — no signup required. You get results in seconds with a full breakdown of checks.</p>
+          </details>
+        </div>
+        <div class="mt-6 text-center">
+          <a href="/faq" class="inline-flex items-center gap-2 text-sm font-medium text-emerald-400 hover:text-emerald-300">
+            See all FAQs
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
           </a>
         </div>
       </div>

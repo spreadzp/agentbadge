@@ -21,7 +21,7 @@ import {
   registerMarketplaceTools,
   registerGuideTools,
   listTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 const BASE_URL = "http://localhost:4021";
 

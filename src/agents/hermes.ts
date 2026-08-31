@@ -11,7 +11,7 @@
  *   5. Print summary
  */
 
-import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
+import type { Tier, Capability } from "@agentbadge/hedera-core";
 import { signWalletOwnership } from "./wallet";
 import { buildAgentCard, serveAgentCard } from "./agent-card";
 

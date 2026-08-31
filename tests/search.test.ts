@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
   getTopicMessages: vi.fn(),
@@ -8,8 +8,8 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   submitDirectoryMessage: vi.fn(),
 }));
 
-import { upsert, clear, type DirectoryEntry } from "@agentgate-hedera/passport";
-import { marketUpsert, marketClear, listTasks } from "@agentgate-hedera/passport";
+import { upsert, clear, type DirectoryEntry } from "@agentbadge/passport";
+import { marketUpsert, marketClear, listTasks } from "@agentbadge/passport";
 import { searchRoutes } from "../src/server/routes/search";
 
 function makeEntry(did: string, overrides: Partial<DirectoryEntry> = {}): DirectoryEntry {
@@ -174,7 +174,7 @@ describe("GET /api/search", () => {
   });
 
   it("does not call Mirror Node (in-memory only)", async () => {
-    const { getNftInfo } = await import("@agentgate-hedera/hedera-core");
+    const { getNftInfo } = await import("@agentbadge/hedera-core");
     upsert(makeEntry("did:hcs:0.0.123:1", { name: "TestBot" }));
 
     const res = await searchRoutes.fetch(new Request("http://localhost/api/search?q=test"));

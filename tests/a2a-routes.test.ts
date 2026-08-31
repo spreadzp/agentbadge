@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   submitA2AMessage: vi.fn(),
   verifyA2ADid: vi.fn(),
@@ -8,7 +8,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   getTopicMessages: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   a2aUpsert: vi.fn(),
   getMessagesByTo: vi.fn(() => []),
@@ -20,9 +20,9 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
 
 import { Hono } from "hono";
 import { a2aRoutes } from "../src/server/routes/a2a";
-import { submitA2AMessage, verifyA2ADid } from "@agentgate-hedera/hedera-core";
-import { a2aUpsert as upsert, getMessagesByTo, getConversation } from "@agentgate-hedera/passport";
-import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import { submitA2AMessage, verifyA2ADid } from "@agentbadge/hedera-core";
+import { a2aUpsert as upsert, getMessagesByTo, getConversation } from "@agentbadge/passport";
+import type { CachedA2AMessage } from "@agentbadge/hedera-core";
 
 const mockedSubmitA2AMessage = vi.mocked(submitA2AMessage);
 const mockedVerifyA2ADid = vi.mocked(verifyA2ADid);

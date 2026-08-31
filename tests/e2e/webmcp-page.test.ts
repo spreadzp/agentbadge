@@ -28,14 +28,14 @@ vi.mock("../../src/config/env.js", () => ({
   resetConfigCache: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", () => ({
+vi.mock("@agentbadge/passport", () => ({
   getPassportInfo: vi.fn(async () => null),
   parseDid: vi.fn(() => null),
   getPrice: vi.fn(() => ({ amount: 0, currency: "HBAR" })),
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
 }));
 
-vi.mock("@agentgate-hedera/evm-core", () => ({
+vi.mock("@agentbadge/evm-core", () => ({
   EvmChainAdapter: vi.fn(),
   SessionRegistry: vi.fn(),
   EventIndexer: vi.fn(),
@@ -64,7 +64,7 @@ vi.mock("@agentgate-hedera/evm-core", () => ({
   SESSION_REGISTRY_ABI: [],
 }));
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
   getNftsForToken: vi.fn(),

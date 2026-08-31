@@ -19,11 +19,11 @@ import {
   reserveTask,
   transitionTask,
   marketClear,
-} from "@agentgate-hedera/passport";
-import type { CachedMarketTask, TaskMessage } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import type { CachedMarketTask, TaskMessage } from "@agentbadge/hedera-core";
 
 // Mock Hedera functions
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>;
   return {
     ...actual,
@@ -82,7 +82,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
 
       // Track call order
       const callOrder: string[] = [];
-      const { submitTaskMessage, createScheduledTransfer } = await import("@agentgate-hedera/hedera-core");
+      const { submitTaskMessage, createScheduledTransfer } = await import("@agentbadge/hedera-core");
 
       vi.mocked(createScheduledTransfer).mockImplementationOnce(async () => {
         callOrder.push("createScheduledTransfer");
@@ -101,12 +101,12 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
 
       // Simulate claim flow
       reserveTask("wal-1", ["posted"], "claiming");
-      const { submitTaskMessage: stm } = await import("@agentgate-hedera/hedera-core");
+      const { submitTaskMessage: stm } = await import("@agentbadge/hedera-core");
       await stm({ type: "task_claimed", taskId: "wal-1", claimerDid: "did:hedera:001", timestamp: Date.now() });
       transitionTask("wal-1", ["claiming"], "claimed", { claimerDid: "did:hedera:001", claimTxId: "tx-claimed" });
 
       // Escrow creation
-      const { createScheduledTransfer: cst, didToAccountId } = await import("@agentgate-hedera/hedera-core");
+      const { createScheduledTransfer: cst, didToAccountId } = await import("@agentbadge/hedera-core");
       const fromAccount = (await didToAccountId("did:hedera:test-poster"))!;
       const toAccount = (await didToAccountId("did:hedera:001"))!;
       const { scheduleId, scheduleTxId } = await cst(fromAccount, toAccount, 10, { memo: "escrow:wal-1" });
@@ -128,7 +128,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
       const task = makePostedTask("fail-1");
       marketUpsert(task);
 
-      const { createScheduledTransfer, submitTaskMessage } = await import("@agentgate-hedera/hedera-core");
+      const { createScheduledTransfer, submitTaskMessage } = await import("@agentbadge/hedera-core");
 
       // Fail escrow creation
       vi.mocked(createScheduledTransfer).mockRejectedValueOnce(new Error("Hedera timeout"));
@@ -146,7 +146,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
 
       // Attempt escrow creation — should fail
       try {
-        const { createScheduledTransfer: cst, didToAccountId } = await import("@agentgate-hedera/hedera-core");
+        const { createScheduledTransfer: cst, didToAccountId } = await import("@agentbadge/hedera-core");
         const fromAccount = (await didToAccountId("did:hedera:test-poster"))!;
         const toAccount = (await didToAccountId("did:hedera:001"))!;
         await cst(fromAccount, toAccount, 10, { memo: "escrow:fail-1" });
@@ -182,7 +182,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
 
       // Import reconciler — should find and reclaim
       const { sweepEscrows } = await import("../../src/server/services/escrow-reconciler");
-      const { deleteScheduledTransaction } = await import("@agentgate-hedera/hedera-core");
+      const { deleteScheduledTransaction } = await import("@agentbadge/hedera-core");
 
       const result = await sweepEscrows();
 
@@ -201,7 +201,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
       updateTaskStatus("orphan-2", "posted", { claimerDid: undefined });
 
       const { sweepEscrows } = await import("../../src/server/services/escrow-reconciler");
-      const { deleteScheduledTransaction } = await import("@agentgate-hedera/hedera-core");
+      const { deleteScheduledTransaction } = await import("@agentbadge/hedera-core");
 
       // First sweep
       const result1 = await sweepEscrows();
@@ -224,7 +224,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
       setEscrowStatus("skip-2", "cancelled", { scheduleId: "0.0.222" });
 
       const { sweepEscrows } = await import("../../src/server/services/escrow-reconciler");
-      const { deleteScheduledTransaction } = await import("@agentgate-hedera/hedera-core");
+      const { deleteScheduledTransaction } = await import("@agentbadge/hedera-core");
 
       const result = await sweepEscrows();
       expect(result.reclaimed).toBe(0);

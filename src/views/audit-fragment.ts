@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { AuditMessage } from "@agentgate-hedera/hedera-core";
+import type { AuditMessage } from "@agentbadge/hedera-core";
 import { explorerTxUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /** Audit event with on-chain consensus timestamp from Mirror Node. */

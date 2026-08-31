@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock passport.service before importing MCP tools
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   issuePassport: vi.fn(),
   getPassportInfo: vi.fn(),
@@ -17,9 +17,9 @@ import {
   listAllPassports,
   upgradeTier,
   revokePassport,
-} from "@agentgate-hedera/passport";
-import { registerPassportTools } from "@agentgate-hedera/mcp";
-import { handleHttpToolCall, listTools } from "@agentgate-hedera/mcp";
+} from "@agentbadge/passport";
+import { registerPassportTools } from "@agentbadge/mcp";
+import { handleHttpToolCall, listTools } from "@agentbadge/mcp";
 
 // ─── Tool Registration ────────────────────────────────────────
 

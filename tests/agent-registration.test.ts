@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
   submitAuditMessage: vi.fn(async () => "0.0.999@1.000"),
   submitDirectoryMessage: vi.fn(async () => "0.0.998@1.000"),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   upsert: vi.fn(),
   getAll: vi.fn(() => []),
@@ -17,10 +17,10 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
 
 import { Hono } from "hono";
 import { agentRoutes } from "../src/server/routes/agents";
-import { getNftInfo } from "@agentgate-hedera/hedera-core";
-import { submitAuditMessage, submitDirectoryMessage } from "@agentgate-hedera/hedera-core";
-import { upsert } from "@agentgate-hedera/passport";
-import type { NftInfo } from "@agentgate-hedera/hedera-core";
+import { getNftInfo } from "@agentbadge/hedera-core";
+import { submitAuditMessage, submitDirectoryMessage } from "@agentbadge/hedera-core";
+import { upsert } from "@agentbadge/passport";
+import type { NftInfo } from "@agentbadge/hedera-core";
 
 const VALID_DID = "did:hcs:0.0.1234567:1";
 const VALID_TOKEN_ID = "0.0.1234567";

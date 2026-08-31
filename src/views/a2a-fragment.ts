@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { CachedA2AMessage } from "@agentbadge/hedera-core";
 
 const PAGE_SIZE = 4;
 

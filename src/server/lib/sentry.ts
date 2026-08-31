@@ -10,7 +10,7 @@
  */
 
 import * as Sentry from "@sentry/node";
-import { logger } from "@agentgate-hedera/passport";
+import { logger } from "@agentbadge/passport";
 import { redactSecrets } from "./redact";
 
 let enabled = false;

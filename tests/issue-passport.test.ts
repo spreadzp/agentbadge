@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { issuePassport } from "@agentgate-hedera/passport";
-import { resetMockState } from "@agentgate-hedera/hedera-core";
+import { issuePassport } from "@agentbadge/passport";
+import { resetMockState } from "@agentbadge/hedera-core";
 
 describe("issuePassport", () => {
   beforeEach(() => {

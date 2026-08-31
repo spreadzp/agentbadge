@@ -5,7 +5,7 @@ import {
   getNftsForToken,
   getNftsForAccount,
   getTopicMessages,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 
 describe("Mirror Node query timeout — SLICE-7-8", () => {
   const originalFetch = globalThis.fetch;

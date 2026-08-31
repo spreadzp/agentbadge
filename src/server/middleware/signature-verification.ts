@@ -1,1 +1,1 @@
-export { signatureVerificationMiddleware } from "@agentgate-hedera/passport";
+export { signatureVerificationMiddleware } from "@agentbadge/passport";

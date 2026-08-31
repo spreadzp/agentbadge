@@ -19,7 +19,7 @@ const mockIsPolling = vi.fn(() => false);
 const mockGetIndexedEvents = vi.fn(() => []);
 const mockClearIndexedEvents = vi.fn();
 
-vi.mock("@agentgate-hedera/evm-core", () => ({
+vi.mock("@agentbadge/evm-core", () => ({
   EvmChainAdapter: vi.fn().mockImplementation(() => ({})),
   EventIndexer: vi.fn().mockImplementation(() => ({
     start: mockStart,

@@ -5,7 +5,7 @@
  * Normalization from chain-specific data happens here, not in views.
  */
 
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 import { getConfig } from "../../config/env.js";
 import { explorerTxUrl, formatPrice } from "./chain-ui.js";
 

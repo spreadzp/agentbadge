@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { CachedA2AMessage } from "@agentbadge/hedera-core";
 import type { MarketTask } from "../server/lib/market-task.js";
 import { explorerTxUrl, explorerName, accountPlaceholder } from "../server/lib/chain-ui.js";
 

@@ -5,7 +5,7 @@ import {
   registerMarketplaceTools,
   registerDatasetTools,
   listTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 describe("SLICE-72-5: Market namespace wiring", () => {
   it("registerMarketplaceTools(ns) registers tools in the given namespace", () => {

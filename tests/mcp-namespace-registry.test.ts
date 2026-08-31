@@ -17,7 +17,7 @@ import {
   registerTool,
   listTools,
   handleHttpToolCall,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 describe("NamespaceRegistry", () => {
   it("should create a NamespaceRegistry instance with createNamespace", () => {

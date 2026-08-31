@@ -7,16 +7,16 @@ import {
   submitDirectoryMessage,
   wipeNFT,
   updateNftMetadata,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 
 import {
   getNftInfo,
   getNftsForToken,
   getNftsForAccount,
   getTopicMessages,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 
-import { mockSettle } from "@agentgate-hedera/hedera-core";
+import { mockSettle } from "@agentbadge/hedera-core";
 
 const ORIG_MOCK_HEDERA = process.env.MOCK_HEDERA;
 
@@ -185,7 +185,7 @@ describe("dispatcher", () => {
   it("exports mock implementations when MOCK_HEDERA=true", async () => {
     process.env.MOCK_HEDERA = "true";
     vi.resetModules();
-    const mod = await import("@agentgate-hedera/hedera-core");
+    const mod = await import("@agentbadge/hedera-core");
     expect(mod.mintPassportNFT).toBeDefined();
     expect(mod.getNftInfo).toBeDefined();
   });
@@ -193,7 +193,7 @@ describe("dispatcher", () => {
   it("exports real implementations when MOCK_HEDERA is not true", async () => {
     process.env.MOCK_HEDERA = "false";
     vi.resetModules();
-    const mod = await import("@agentgate-hedera/hedera-core");
+    const mod = await import("@agentbadge/hedera-core");
     expect(mod.mintPassportNFT).toBeDefined();
     expect(mod.getNftInfo).toBeDefined();
   });

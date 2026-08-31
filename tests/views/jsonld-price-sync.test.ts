@@ -32,7 +32,7 @@ vi.mock("../../src/server/lib/chain-templates.js", () => ({
 }));
 
 import { landingJsonLd } from "../../src/server/lib/json-ld";
-import { getCatalog } from "@agentgate-hedera/hedera-core";
+import { getCatalog } from "@agentbadge/hedera-core";
 
 /**
  * SLICE-80-1: FAQ/Offer JSON-LD prices must match catalog source.

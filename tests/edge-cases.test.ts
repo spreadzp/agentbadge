@@ -11,9 +11,9 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { NftInfo } from "@agentgate-hedera/hedera-core";
+import type { NftInfo } from "@agentbadge/hedera-core";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
   getNftsForToken: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   updateNftMetadata: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   uploadMetadata: vi.fn(),
   retrieveMetadata: vi.fn(),
@@ -52,7 +52,7 @@ import {
   issuePassport,
   upgradeTier,
   getPassportInfo,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 
 const validPassportBody = (overrides: Record<string, unknown> = {}) =>
   JSON.stringify({

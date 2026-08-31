@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ethers } from "ethers";
 
-import { verifyWalletOwnership } from "@agentgate-hedera/passport";
+import { verifyWalletOwnership } from "@agentbadge/passport";
 
 describe("verifyWalletOwnership", () => {
   it("returns true for a valid signature", async () => {

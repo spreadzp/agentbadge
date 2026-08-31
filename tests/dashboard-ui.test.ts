@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import type { NftInfo } from "@agentgate-hedera/hedera-core";
+import type { NftInfo } from "@agentbadge/hedera-core";
 
 // Mock mirror service for feed data
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftsForToken: vi.fn(),
   getNftInfo: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   updateNftMetadata: vi.fn(),
 }));
 
-import { getNftsForToken } from "@agentgate-hedera/hedera-core";
+import { getNftsForToken } from "@agentbadge/hedera-core";
 import { uiRoutes } from "../src/server/routes/ui";
 
 const mockedGetNftsForToken = vi.mocked(getNftsForToken);

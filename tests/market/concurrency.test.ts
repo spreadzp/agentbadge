@@ -13,8 +13,8 @@ import {
   transitionTask,
   listTasks,
   marketClear,
-} from "@agentgate-hedera/passport";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 // Helper: create a task in "posted" state
 function makePostedTask(id: string): CachedMarketTask {

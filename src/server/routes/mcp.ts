@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { handleHttpToolCall, listTools, handleHttpRequest } from "@agentgate-hedera/mcp";
+import { handleHttpToolCall, listTools, handleHttpRequest } from "@agentbadge/mcp";
 
 export const mcpRoutes = new Hono();
 

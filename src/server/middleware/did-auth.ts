@@ -17,8 +17,8 @@
 
 import type { MiddlewareHandler, Context } from "hono";
 import { createHash, randomBytes } from "node:crypto";
-import { didToAccountId } from "@agentgate-hedera/hedera-core";
-import { logger } from "@agentgate-hedera/passport";
+import { didToAccountId } from "@agentbadge/hedera-core";
+import { logger } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 

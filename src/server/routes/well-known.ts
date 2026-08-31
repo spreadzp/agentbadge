@@ -17,9 +17,9 @@ import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
 import { BLOG_ARTICLES } from "../lib/blog-data";
-import { getNamespace } from "@agentgate-hedera/mcp";
+import { getNamespace } from "@agentbadge/mcp";
 import { didAuthSectionCompact, agentCardAuthBlock } from "../lib/did-auth-docs";
-import { buildDiscoveryJson, allTools } from "@agentgate-hedera/webmcp";
+import { buildDiscoveryJson, allTools } from "@agentbadge/webmcp";
 
 const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
 

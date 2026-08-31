@@ -6,7 +6,7 @@ import {
   registerGuideTools,
   registerA2ATools,
   listTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 describe("SLICE-72-6: Discovery namespace wiring", () => {
   it("registerDiscoveryTools(ns) registers tools in the given namespace", () => {

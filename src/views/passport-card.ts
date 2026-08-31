@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { PassportInfo } from "@agentgate-hedera/passport";
+import type { PassportInfo } from "@agentbadge/passport";
 import { explorerNftUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /**

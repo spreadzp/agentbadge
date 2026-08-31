@@ -5,7 +5,7 @@ import {
   getNftsForToken,
   getNftsForAccount,
   getTopicMessagesPaginated,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 
 describe("Mirror Node pagination — SLICE-7-9", () => {
   const originalFetch = globalThis.fetch;

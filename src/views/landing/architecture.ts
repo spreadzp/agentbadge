@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { listTools } from "@agentgate-hedera/mcp";
+import { listTools } from "@agentbadge/mcp";
 
 /**
  * ArchitectureSection — 6 tech pills + link to /about.

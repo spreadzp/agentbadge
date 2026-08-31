@@ -6,7 +6,7 @@
  */
 
 import { Hono } from "hono";
-import { logger } from "@agentgate-hedera/passport";
+import { logger } from "@agentbadge/passport";
 
 export const linkedinRoutes = new Hono();
 

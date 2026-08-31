@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createNamespace, registerPassportTools, registerSigningTools, registerEscrowTools, registerMarketplaceTools, registerDatasetTools, registerDiscoveryTools, registerDirectoryTools, registerGuideTools, registerA2ATools, registerAuditCatalogTools, getNamespace, listAllNamespaces } from "@agentgate-hedera/mcp";
+import { createNamespace, registerPassportTools, registerSigningTools, registerEscrowTools, registerMarketplaceTools, registerDatasetTools, registerDiscoveryTools, registerDirectoryTools, registerGuideTools, registerA2ATools, registerAuditCatalogTools, getNamespace, listAllNamespaces } from "@agentbadge/mcp";
 import { registerComplianceTools } from "../src/mcp/compliance-tools";
 import { registerParityTools } from "../src/mcp/parity-tools";
 

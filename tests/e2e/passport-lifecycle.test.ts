@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
 
 import { setupMockEnv, makeTestApp, makeEvmWallet, signWalletOwnership } from "./helpers";
-import { nftStore, topicMessages } from "@agentgate-hedera/hedera-core";
+import { nftStore, topicMessages } from "@agentbadge/hedera-core";
 
 describe("SLICE-6-1: Passport Lifecycle E2E", () => {
   let app: ReturnType<typeof makeTestApp>;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listTools, registerDatasetTools, downloadDatasetHandler, uploadResultHandler } from "@agentgate-hedera/mcp";
+import { listTools, registerDatasetTools, downloadDatasetHandler, uploadResultHandler } from "@agentbadge/mcp";
 
 describe("download_dataset", () => {
   beforeEach(() => {

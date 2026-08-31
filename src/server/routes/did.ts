@@ -8,7 +8,7 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getPassportInfo, type PassportInfo } from "@agentgate-hedera/passport";
+import { getPassportInfo, type PassportInfo } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 

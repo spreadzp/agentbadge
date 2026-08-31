@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { NftInfo } from "@agentgate-hedera/hedera-core";
+import type { NftInfo } from "@agentbadge/hedera-core";
 import { explorerNftUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /**

@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { listTools } from "@agentgate-hedera/mcp";
+import { listTools } from "@agentbadge/mcp";
 
 /**
  * ProblemSolutionSection — 4-card grid showing problem→solution pairs.

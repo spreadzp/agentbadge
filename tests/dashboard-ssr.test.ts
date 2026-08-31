@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, vi } from "vitest";
 import { Hono } from "hono";
 
 // Mock getNftsForToken + getTopicMessages to avoid external API calls
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agentgate-hedera/hedera-core")>();
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agentbadge/hedera-core")>();
   return {
     ...actual,
     getNftsForToken: vi.fn().mockResolvedValue([
@@ -62,8 +62,8 @@ const { corsMiddleware } = await import("../src/server/middleware/cors");
 const { rateLimitMiddleware } = await import("../src/server/middleware/rate-limit");
 const { signatureVerificationMiddleware } = await import("../src/server/middleware/signature-verification");
 
-import { marketUpsert, marketClear } from "@agentgate-hedera/passport";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import { marketUpsert, marketClear } from "@agentbadge/passport";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 import { Dashboard, type DashboardSsrData } from "../src/views/dashboard";
 
 function makeTestApp(): Hono {

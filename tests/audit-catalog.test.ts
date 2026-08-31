@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
 // Mock mirror.service before importing routes
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getTopicMessages: vi.fn(),
 }));
 
-import { getTopicMessages } from "@agentgate-hedera/hedera-core";
-import { getCatalog, getLlmsTxt } from "@agentgate-hedera/hedera-core";
-import { registerAuditCatalogTools, getAuditTrail } from "@agentgate-hedera/mcp";
-import { handleHttpToolCall, listTools } from "@agentgate-hedera/mcp";
+import { getTopicMessages } from "@agentbadge/hedera-core";
+import { getCatalog, getLlmsTxt } from "@agentbadge/hedera-core";
+import { registerAuditCatalogTools, getAuditTrail } from "@agentbadge/mcp";
+import { handleHttpToolCall, listTools } from "@agentbadge/mcp";
 import { auditRoutes } from "../src/server/routes/audit";
 import { catalogRoutes } from "../src/server/routes/catalog";
-import type { TopicMessage } from "@agentgate-hedera/hedera-core";
+import type { TopicMessage } from "@agentbadge/hedera-core";
 
 // ─── Catalog Module ───────────────────────────────────────────
 

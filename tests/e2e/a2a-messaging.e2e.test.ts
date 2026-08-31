@@ -4,10 +4,10 @@ import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vites
 import { setupMockEnv } from "./helpers";
 import { createTestAgent, revokeTestAgent, resetTestState, type TestAgent } from "../fixtures/agents";
 import { makeHttpClient } from "../fixtures/http-client";
-import { a2aClear as clearA2ACache } from "@agentgate-hedera/passport";
-import { topicMessages } from "@agentgate-hedera/hedera-core";
-import { a2aUpsert, getMessagesByTo, getConversation } from "@agentgate-hedera/passport";
-import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import { a2aClear as clearA2ACache } from "@agentbadge/passport";
+import { topicMessages } from "@agentbadge/hedera-core";
+import { a2aUpsert, getMessagesByTo, getConversation } from "@agentbadge/passport";
+import type { CachedA2AMessage } from "@agentbadge/hedera-core";
 
 const E2E_TIMEOUT = 30000;
 
@@ -156,8 +156,8 @@ describe("SLICE-8-8: A2A Messaging E2E", () => {
       "6. Messages persist in HCS and are recoverable via getTopicMessages()",
       async () => {
         // Submit a message via mock service
-        const { submitA2AMessage } = await import("@agentgate-hedera/hedera-core");
-        const { getTopicMessages } = await import("@agentgate-hedera/hedera-core");
+        const { submitA2AMessage } = await import("@agentbadge/hedera-core");
+        const { getTopicMessages } = await import("@agentbadge/hedera-core");
 
         await submitA2AMessage({
           type: "a2a_message",

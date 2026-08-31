@@ -3,7 +3,7 @@ import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 import { AGENCY_BRAND, AGENCY_SERVICES } from "../server/lib/agency-config";
 import { TEAM_MEMBERS } from "../server/lib/team-data";
-import { listTools } from "@agentgate-hedera/mcp";
+import { listTools } from "@agentbadge/mcp";
 import type { RegistryIndex } from "../server/registry/types";
 import { explorerName, explorerTxUrl } from "../server/lib/chain-ui.js";
 

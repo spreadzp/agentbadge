@@ -2,7 +2,7 @@ import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageHeader } from "./page-header";
 import { PageMeta } from "../server/lib/page-meta";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 /**
  * Detect content type of resultBody and render accordingly:

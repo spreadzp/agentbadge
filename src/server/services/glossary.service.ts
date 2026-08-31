@@ -1,4 +1,4 @@
-import type { GlossaryTermConfig } from "@agentgate-hedera/hedera-core";
+import type { GlossaryTermConfig } from "@agentbadge/hedera-core";
 import glossaryJson from "../../data/glossary-terms.json";
 
 const VALID_CATEGORIES = ["cardiovascular", "endocrine", "general", "demographic"] as const;

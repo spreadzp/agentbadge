@@ -15,10 +15,10 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 
-import type { Capability, Tier, DirectoryMessage } from "@agentgate-hedera/hedera-core";
-import { getNftInfo, submitAuditMessage, submitDirectoryMessage } from "@agentgate-hedera/hedera-core";
+import type { Capability, Tier, DirectoryMessage } from "@agentbadge/hedera-core";
+import { getNftInfo, submitAuditMessage, submitDirectoryMessage } from "@agentbadge/hedera-core";
 import { agentWithActiveSchema, listAgentsResponseSchema, errorSchema } from "../openapi";
-import { upsert, getAll, get as getEntry, type DirectoryEntry, logger } from "@agentgate-hedera/passport";
+import { upsert, getAll, get as getEntry, type DirectoryEntry, logger } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { agentLinks } from "../lib/hateoas";

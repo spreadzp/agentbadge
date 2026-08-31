@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
+import type { Tier, Capability } from "@agentbadge/hedera-core";
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   getPassportInfo: vi.fn(),
 }));
 
 import { verifyRoutes } from "../src/server/routes/verify";
 import { didRoutes } from "../src/server/routes/did";
-import { getPassportInfo } from "@agentgate-hedera/passport";
-import type { PassportInfo } from "@agentgate-hedera/passport";
+import { getPassportInfo } from "@agentbadge/passport";
+import type { PassportInfo } from "@agentbadge/passport";
 
 const mockPassportInfo = (overrides: Partial<PassportInfo> = {}): PassportInfo => ({
   active: true,

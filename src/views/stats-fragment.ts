@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { AuditMessage, Tier } from "@agentgate-hedera/hedera-core";
+import type { AuditMessage, Tier } from "@agentbadge/hedera-core";
 
 /**
  * Stats fragment — live counters for the dashboard.

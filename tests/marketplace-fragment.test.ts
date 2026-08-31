@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 import type { MarketTask } from "../src/server/lib/market-task.js";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftsForToken: vi.fn(),
   getNftInfo: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   updateNftMetadata: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   uploadMetadata: vi.fn(),
   retrieveMetadata: vi.fn(),
@@ -91,7 +91,7 @@ vi.mock("../src/server/lib/market-task.js", () => ({
   })),
 }));
 
-import { marketGet as get, listTasks } from "@agentgate-hedera/passport";
+import { marketGet as get, listTasks } from "@agentbadge/passport";
 import { MarketplaceTaskBoardFragment, TaskDetailsFragment } from "../src/views/marketplace-fragment";
 import { uiRoutes } from "../src/server/routes/ui";
 

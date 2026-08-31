@@ -4,16 +4,16 @@ import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vites
 import { setupMockEnv, makeTestApp } from "./helpers";
 import { createTestAgent, revokeTestAgent, resetTestState, type TestAgent } from "../fixtures/agents";
 import { makeHttpClient } from "../fixtures/http-client";
-import { marketClear as clearMarketCache, marketUpsert as upsert, marketGet as get, listTasks } from "@agentgate-hedera/passport";
-import { topicMessages } from "@agentgate-hedera/hedera-core";
+import { marketClear as clearMarketCache, marketUpsert as upsert, marketGet as get, listTasks } from "@agentbadge/passport";
+import { topicMessages } from "@agentbadge/hedera-core";
 import {
   postTaskHandler,
   listTasksHandler,
   claimTaskHandler,
   deliverResultHandler,
   completeTaskHandler,
-} from "@agentgate-hedera/mcp";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/mcp";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 import type { Hono } from "hono";
 
 const E2E_TIMEOUT = 30000;

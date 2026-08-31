@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { CachedA2AMessage } from "@agentbadge/hedera-core";
 import type { MarketTask } from "../src/server/lib/market-task.js";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftsForToken: vi.fn(),
   getNftInfo: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   submitSignedTopicMessage: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   getMessagesByTo: vi.fn(),
   getConversation: vi.fn(),

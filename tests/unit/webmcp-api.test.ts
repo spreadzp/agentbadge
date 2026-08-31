@@ -18,7 +18,7 @@ vi.mock("../../src/config/env.js", () => ({
 }));
 
 // Mock passport package
-vi.mock("@agentgate-hedera/passport", () => ({
+vi.mock("@agentbadge/passport", () => ({
   getPassportInfo: vi.fn(async (tokenId: string) => {
     if (tokenId === "0.0.999") return null;
     return {

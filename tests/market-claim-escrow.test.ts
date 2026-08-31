@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { PrivateKey } from "@hashgraph/sdk";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agentgate-hedera/hedera-core")>();
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agentbadge/hedera-core")>();
   return {
     ...actual,
     submitTaskMessage: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
   };
 });
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   marketUpsert: vi.fn(),
   marketGet: vi.fn(),
@@ -41,13 +41,13 @@ import {
   submitSignedTopicMessage,
   signTransactionBytes,
   createScheduledTransfer,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 import {
   getTaskById,
   updateTaskStatus,
   setEscrowStatus,
   returnTaskToMarket,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 import { marketRoutes } from "../src/server/routes/market";
 
 const mockedVerify = vi.mocked(verifyA2ADid);
