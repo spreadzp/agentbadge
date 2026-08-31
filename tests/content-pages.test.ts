@@ -630,6 +630,155 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   });
 });
 
+// ─── SLICE-105-6: Pagination & JSON-LD Verification ──────────
+
+describe("SLICE-105-6: Pagination integration tests", () => {
+  it("GET /faq?page=-1 clamps to page 1", async () => {
+    const res = await app.request("/faq?page=-1");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // Page 1 should be marked as current
+    const currentMatch = html.match(/aria-current="page"[^>]*>.*?(\d+)</s);
+    expect(currentMatch).toBeDefined();
+    expect(currentMatch![1]).toBe("1");
+  });
+
+  it("GET /faq?page=abc treats as page 1", async () => {
+    const res = await app.request("/faq?page=abc");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    const currentMatch = html.match(/aria-current="page"[^>]*>.*?(\d+)</s);
+    expect(currentMatch).toBeDefined();
+    expect(currentMatch![1]).toBe("1");
+  });
+
+  it("GET /faq?page=1 has no active prev button (disabled)", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    // Prev button should be disabled (aria-disabled="true")
+    expect(html).toContain('aria-disabled="true"');
+    // Should NOT have rel="prev" on page 1
+    expect(html).not.toContain('rel="prev"');
+  });
+
+  it("GET /faq?page=last has no active next button (disabled)", async () => {
+    const mod = await import("../src/views/faq-page");
+    const allEntries = mod.getFaqEntries();
+    const totalPages = Math.ceil(allEntries.length / mod.FAQ_PER_PAGE);
+    const res = await app.request(`/faq?page=${totalPages}`);
+    const html = await res.text();
+    // Next button should be disabled on last page
+    expect(html).toContain('aria-disabled="true"');
+    // Should NOT have rel="next" on last page
+    expect(html).not.toContain('rel="next"');
+  });
+
+  it("GET /faq?page=2 returns different Q&A pairs than page 1", async () => {
+    const res1 = await app.request("/faq");
+    const html1 = await res1.text();
+    const res2 = await app.request("/faq?page=2");
+    const html2 = await res2.text();
+    // Extract first question from each page
+    const q1Match = html1.match(/<summary[^>]*>\s*<span>([^<]+)<\/span>/);
+    const q2Match = html2.match(/<summary[^>]*>\s*<span>([^<]+)<\/span>/);
+    expect(q1Match).toBeDefined();
+    expect(q2Match).toBeDefined();
+    expect(q1Match![1]).not.toBe(q2Match![1]);
+  });
+
+  it("GET /faq includes pagination nav when totalPages > 1", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    expect(html).toContain('aria-label="Pagination"');
+    // Should have page number links
+    expect(html).toContain('aria-current="page"');
+  });
+});
+
+describe("SLICE-105-6: JSON-LD per-page verification", () => {
+  it("FAQPage schema present on page 1 with datePublished and dateModified", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    expect(match).not.toBeNull();
+    const schemas = JSON.parse(match![1]);
+    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    expect(faqSchema).toBeDefined();
+    expect(faqSchema.datePublished).toBeDefined();
+    expect(faqSchema.dateModified).toBeDefined();
+  });
+
+  it("FAQPage schema present on page 2 with datePublished and dateModified", async () => {
+    const res = await app.request("/faq?page=2");
+    const html = await res.text();
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    expect(match).not.toBeNull();
+    const schemas = JSON.parse(match![1]);
+    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    expect(faqSchema).toBeDefined();
+    expect(faqSchema.datePublished).toBeDefined();
+    expect(faqSchema.dateModified).toBeDefined();
+  });
+
+  it("mainEntity count matches <details> count on page 1", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    const schemas = JSON.parse(match![1]);
+    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    const detailsCount = (html.match(/<details/g) || []).length;
+    expect(faqSchema.mainEntity.length).toBe(detailsCount);
+    expect(faqSchema.mainEntity.length).toBe(8);
+  });
+
+  it("mainEntity count matches <details> count on page 2", async () => {
+    const res = await app.request("/faq?page=2");
+    const html = await res.text();
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    const schemas = JSON.parse(match![1]);
+    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    const detailsCount = (html.match(/<details/g) || []).length;
+    expect(faqSchema.mainEntity.length).toBe(detailsCount);
+  });
+
+  it("each Question has name and acceptedAnswer.text on page 1", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    const schemas = JSON.parse(match![1]);
+    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    for (const entity of faqSchema.mainEntity) {
+      expect(entity["@type"]).toBe("Question");
+      expect(entity.name).toBeDefined();
+      expect(typeof entity.name).toBe("string");
+      expect(entity.name.length).toBeGreaterThan(0);
+      expect(entity.acceptedAnswer).toBeDefined();
+      expect(entity.acceptedAnswer["@type"]).toBe("Answer");
+      expect(entity.acceptedAnswer.text).toBeDefined();
+      expect(typeof entity.acceptedAnswer.text).toBe("string");
+      expect(entity.acceptedAnswer.text.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("page 1 and page 2 JSON-LD contain different Q&A pairs", async () => {
+    const res1 = await app.request("/faq");
+    const html1 = await res1.text();
+    const res2 = await app.request("/faq?page=2");
+    const html2 = await res2.text();
+    const match1 = html1.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    const match2 = html2.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    const schemas1 = JSON.parse(match1![1]);
+    const schemas2 = JSON.parse(match2![1]);
+    const faq1 = schemas1.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    const faq2 = schemas2.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    const names1 = faq1.mainEntity.map((e: { name: string }) => e.name);
+    const names2 = faq2.mainEntity.map((e: { name: string }) => e.name);
+    // No overlap between page 1 and page 2 questions
+    const overlap = names1.filter((n: string) => names2.includes(n));
+    expect(overlap.length).toBe(0);
+  });
+});
+
 // ─── Unit: Use Cases page ─────────────────────────────────────
 
 describe("UseCasesPage unit", () => {
