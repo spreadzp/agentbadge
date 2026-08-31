@@ -1,4 +1,4 @@
-import type { Status, Category, Severity } from "../shared.schema";
+import type { Status, Category, Severity, Pillar } from "../shared.schema";
 
 export type AssertionStatus = Status;
 
@@ -31,12 +31,33 @@ export interface StatusContributions {
   NOT_APPLICABLE: number;
 }
 
+export type ScoringModel = "v1-categories" | "v2-pillars";
+
+export interface PillarWeights {
+  discovery: number;
+  understandability: number;
+  executability: number;
+  verifiability: number;
+}
+
+export interface PillarScore {
+  pillar: Pillar;
+  weight: number;
+  rawScore: number;
+  score: number;
+  categoryCount: number;
+  applicableCount: number;
+  floorTriggered: boolean;
+}
+
 export interface ScoringConfig {
   categoryWeights: CategoryWeights;
   statusContributions: StatusContributions;
   floorCap: number;
   floorCategories: Category[];
   floorTriggerSeverity: Severity[];
+  scoringModel: ScoringModel;
+  pillarWeights: PillarWeights;
 }
 
 export interface CategoryScore {
@@ -113,10 +134,19 @@ export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {
   NOT_APPLICABLE: 0.0,
 };
 
+export const DEFAULT_PILLAR_WEIGHTS: PillarWeights = {
+  discovery: 20,
+  understandability: 25,
+  executability: 30,
+  verifiability: 25,
+};
+
 export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
   categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
   statusContributions: DEFAULT_STATUS_CONTRIBUTIONS,
   floorCap: 40,
   floorCategories: ["discovery", "documentation"],
   floorTriggerSeverity: ["high"],
+  scoringModel: "v2-pillars",
+  pillarWeights: DEFAULT_PILLAR_WEIGHTS,
 };

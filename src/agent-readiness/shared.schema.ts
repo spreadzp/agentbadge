@@ -28,6 +28,10 @@ export const categoryEnum = z
   ])
   .describe("Rule category: discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth, infrastructure, seo_aeo, accessibility, active_probing");
 
+export const pillarEnum = z
+  .enum(["discovery", "understandability", "executability", "verifiability"])
+  .describe("Scoring pillar: discovery, understandability, executability, verifiability (spec v0.2 §A.7)");
+
 export const statusEnum = z
   .enum(["VERIFIED", "INFERRED", "CONFLICT", "MISSING", "NOT_APPLICABLE"])
   .describe("Assertion status: VERIFIED (direct evidence), INFERRED (indirect, carries confidence), CONFLICT (sources disagree), MISSING (no evidence found), NOT_APPLICABLE (rule does not apply to this scope)");
@@ -56,6 +60,7 @@ export const fixTypeEnum = z
 // ─── Inferred TypeScript types ────────────────────────────────────────────────
 
 export type Category = z.infer<typeof categoryEnum>;
+export type Pillar = z.infer<typeof pillarEnum>;
 export type Status = z.infer<typeof statusEnum>;
 export type Severity = z.infer<typeof severityEnum>;
 export type CheckType = z.infer<typeof checkTypeEnum>;
