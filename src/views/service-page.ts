@@ -264,6 +264,126 @@ function ServiceHero(service: AgencyService) {
               html += '</div></div>';
               return html;
             }
+            function formatVerifiedAt(verifiedAt) {
+              if (!verifiedAt) return '—';
+              try {
+                var d = new Date(verifiedAt);
+                var now = new Date();
+                var diffMs = now.getTime() - d.getTime();
+                var diffDays = Math.floor(diffMs / 86400000);
+                var dateStr = d.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+                if (diffDays === 0) return dateStr + ' (today)';
+                if (diffDays === 1) return dateStr + ' (1 day ago)';
+                if (diffDays < 30) return dateStr + ' (' + diffDays + ' days ago)';
+                return dateStr;
+              } catch(e) {
+                return verifiedAt || '—';
+              }
+            }
+            function renderEvidenceDrawer(a) {
+              var claim = a.claim || a.name || 'unknown';
+              var status = a.status || 'unknown';
+              var confidence = a.confidence !== undefined ? Math.round(a.confidence * 100) : 0;
+              var reviewLevel = a.review_level || '';
+              var verifiedAt = a.verified_at || '';
+              var sourceLabel = a.source_label || '';
+              var stale = a.stale || false;
+              var evidence = a.evidence || [];
+              var isGap = status === 'GAP';
+
+              var html = '<div class="evidence-drawer hidden mt-2 pl-4 border-l-2 border-slate-700 space-y-2 text-xs">';
+
+              // Claim
+              html += '<blockquote class="border-l-2 border-indigo-500 pl-3 text-slate-300 italic">' + claim + '</blockquote>';
+
+              // Status + source_label badge
+              html += '<div class="flex items-center gap-2">';
+              html += '<span class="text-slate-400">STATUS</span>';
+              html += '<span class="font-semibold ' + (isGap ? 'text-rose-400' : 'text-emerald-400') + '">' + status + '</span>';
+              if (sourceLabel) {
+                html += '<span class="text-slate-500">via ' + sourceLabel + '</span>';
+              }
+              html += '</div>';
+
+              // GAP narrative
+              if (isGap) {
+                html += '<div class="text-rose-300">No evidence found in any source — information gap, agents cannot answer this question about your service.</div>';
+              }
+
+              // Confidence + review level
+              html += '<div class="flex items-center gap-2">';
+              html += '<span class="text-slate-400">CONFIDENCE</span>';
+              html += '<span class="text-slate-300">' + confidence + '%</span>';
+              if (reviewLevel === 'automatic') {
+                html += '<span class="px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-300">automatic</span>';
+              } else if (reviewLevel === 'assisted') {
+                html += '<span class="px-1.5 py-0.5 rounded bg-amber-900 text-amber-300">assisted review</span>';
+              }
+              html += '</div>';
+
+              // Verified at + stale marker
+              html += '<div class="flex items-center gap-2">';
+              html += '<span class="text-slate-400">VERIFIED</span>';
+              html += '<span class="text-slate-300">' + formatVerifiedAt(verifiedAt) + '</span>';
+              if (stale) {
+                html += '<span class="text-amber-400">⚠ stale evidence</span>';
+              }
+              html += '</div>';
+
+              // Evidence summaries
+              if (evidence.length > 0) {
+                html += '<div class="space-y-1">';
+                html += '<div class="text-slate-400">EVIDENCE</div>';
+                for (var i = 0; i < evidence.length; i++) {
+                  var ev = evidence[i];
+                  var capturedAt = ev.captured_at ? formatVerifiedAt(ev.captured_at) : '';
+                  html += '<div class="text-slate-500">';
+                  html += ev.summary || '';
+                  if (capturedAt) html += ' (captured ' + capturedAt + ')';
+                  html += '</div>';
+                }
+                html += '</div>';
+              }
+
+              html += '</div>';
+              return html;
+            }
+            function renderAssertionList(report) {
+              if (!report.assertions || report.assertions.length === 0) return '';
+              var html = '<div class="rounded-lg border border-slate-700 overflow-hidden">';
+              html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">All Checks (' + report.assertions.length + ')</div>';
+              html += '<div class="divide-y divide-slate-800">';
+              for (var i = 0; i < report.assertions.length; i++) {
+                var a = report.assertions[i];
+                var status = a.status || 'unknown';
+                var name = a.name || a.rule_id || 'unknown';
+                var ruleId = a.rule_id || '';
+                var reviewLevel = a.review_level || '';
+                var statusColor = status === 'VERIFIED' || status === 'INFERRED' ? 'text-emerald-400' : status === 'GAP' ? 'text-rose-400' : status === 'CONFLICT' ? 'text-amber-400' : 'text-slate-400';
+                var drawerId = 'drawer-' + i;
+                html += '<div class="px-4 py-3">';
+                html += '<div class="flex items-center justify-between cursor-pointer" onclick="var d=document.getElementById(\\'' + drawerId + '\\'); if(d){d.classList.toggle(\\'hidden\\');}">';
+                html += '<div class="flex items-center gap-2">';
+                html += '<span class="text-xs font-mono text-slate-600">' + ruleId + '</span>';
+                html += '<span class="text-sm text-slate-300">' + name + '</span>';
+                html += '</div>';
+                html += '<div class="flex items-center gap-2">';
+                if (reviewLevel === 'assisted') {
+                  html += '<span class="text-xs px-1.5 py-0.5 rounded bg-amber-900 text-amber-300">assisted</span>';
+                } else if (reviewLevel === 'automatic') {
+                  html += '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-300">automatic</span>';
+                }
+                html += '<span class="text-xs font-semibold ' + statusColor + '">' + status + '</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '<div id="' + drawerId + '">';
+                html += renderEvidenceDrawer(a);
+                html += '</div>';
+                html += '</div>';
+              }
+              html += '</div></div>';
+              return html;
+            }
             function renderReport(container, report) {
               var html = '<div class="space-y-6">';
 
@@ -334,6 +454,12 @@ function ServiceHero(service: AgencyService) {
                   html += '</div>';
                 }
                 html += '</div></div>';
+              }
+
+              // All Checks with evidence drawers (V2 assertions)
+              var assertionHtml = renderAssertionList(report);
+              if (assertionHtml) {
+                html += assertionHtml;
               }
 
               html += '</div>';
