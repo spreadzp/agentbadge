@@ -1,17 +1,20 @@
-import type { ScoringConfig, CategoryWeights, StatusContributions } from "./scoring-types";
+import type { ScoringConfig, CategoryWeights, ScoringModel, PillarWeights } from "./scoring-types";
 import {
-  DEFAULT_CATEGORY_WEIGHTS,
   DEFAULT_STATUS_CONTRIBUTIONS,
+  DEFAULT_PILLAR_WEIGHTS,
 } from "./scoring-types";
 
 const DEFAULT_FLOOR_CAP = 40;
 const DEFAULT_FLOOR_CATEGORIES = ["discovery", "documentation"] as const;
 const DEFAULT_FLOOR_TRIGGER_SEVERITY = ["high"] as const;
+const DEFAULT_SCORING_MODEL: ScoringModel = "v2-pillars";
 
 export interface RulesetManifest {
   name: string;
   version: string;
   categoryWeights: CategoryWeights;
+  scoringModel?: ScoringModel;
+  pillarWeights?: PillarWeights;
 }
 
 export function loadScoringConfig(manifest: RulesetManifest): ScoringConfig {
@@ -21,6 +24,8 @@ export function loadScoringConfig(manifest: RulesetManifest): ScoringConfig {
     floorCap: DEFAULT_FLOOR_CAP,
     floorCategories: [...DEFAULT_FLOOR_CATEGORIES],
     floorTriggerSeverity: [...DEFAULT_FLOOR_TRIGGER_SEVERITY],
+    scoringModel: manifest.scoringModel ?? DEFAULT_SCORING_MODEL,
+    pillarWeights: manifest.pillarWeights ?? DEFAULT_PILLAR_WEIGHTS,
   };
 }
 

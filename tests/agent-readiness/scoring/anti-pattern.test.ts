@@ -2,18 +2,13 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { runScoringEngine } from "../../../src/agent-readiness/scoring/scoring-engine";
+import { DEFAULT_CATEGORY_WEIGHTS } from "../../../src/agent-readiness/scoring/scoring-types";
 import { allVerified, mixedStatus } from "../../fixtures/scoring";
 
 const mockManifest = {
   name: "agent-readiness",
   version: "1.2.0",
-  categoryWeights: {
-    discovery: 25,
-    documentation: 25,
-    actionability: 20,
-    machine_readable: 20,
-    verification: 10,
-  },
+  categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
 };
 
 describe("SLICE-35-9: Anti-Pattern Guards", () => {
@@ -63,7 +58,7 @@ describe("SLICE-35-9: Anti-Pattern Guards", () => {
     }
   });
 
-  it("INFERRED status always contributes exactly 70% regardless of confidence value", () => {
+  it("INFERRED status always contributes exactly 60% regardless of confidence value", () => {
     const highConf = mixedStatus.map((a) => ({ ...a, confidence: 1.0 }));
     const lowConf = mixedStatus.map((a) => ({ ...a, confidence: 0.1 }));
 

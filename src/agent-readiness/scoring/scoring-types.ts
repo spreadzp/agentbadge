@@ -89,6 +89,7 @@ export interface ScoreDeltaItem {
 export interface ScoreDelta {
   totalDelta: number;
   categoryDeltas: Partial<Record<Category, number>>;
+  pillarDeltas: Partial<Record<Pillar, number>>;
   statusChanges: {
     ruleId: string;
     from: AssertionStatus;
@@ -100,6 +101,7 @@ export interface ScoreDelta {
 export interface ScoreResult {
   total: TotalScore;
   categories: Record<Category, CategoryScore>;
+  pillars: Record<Pillar, PillarScore>;
   delta: ScoreDelta | null;
   config: ScoringConfig;
   computedAt: string;
@@ -128,7 +130,7 @@ export const DEFAULT_CATEGORY_WEIGHTS: CategoryWeights = {
 
 export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {
   VERIFIED: 1.0,
-  INFERRED: 0.7,
+  INFERRED: 0.6,
   CONFLICT: 0.0,
   MISSING: 0.0,
   NOT_APPLICABLE: 0.0,

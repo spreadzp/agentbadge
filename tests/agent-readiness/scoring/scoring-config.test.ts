@@ -1,32 +1,26 @@
 import { describe, it, expect } from "vitest";
 import { loadScoringConfig, DEFAULT_FLOOR_CAP, DEFAULT_FLOOR_CATEGORIES, DEFAULT_FLOOR_TRIGGER_SEVERITY } from "../../../src/agent-readiness/scoring/scoring-config";
-import { DEFAULT_STATUS_CONTRIBUTIONS } from "../../../src/agent-readiness/scoring/scoring-types";
+import { DEFAULT_STATUS_CONTRIBUTIONS, DEFAULT_CATEGORY_WEIGHTS } from "../../../src/agent-readiness/scoring/scoring-types";
 
 const mockManifest = {
   name: "agent-readiness",
   version: "1.2.0",
-  categoryWeights: {
-    discovery: 20,
-    documentation: 25,
-    actionability: 25,
-    machine_readable: 20,
-    verification: 10,
-  },
+  categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
 };
 
 describe("SLICE-35-2: Scoring Config", () => {
   it("loadScoringConfig returns ScoringConfig with weights from manifest", () => {
     const config = loadScoringConfig(mockManifest);
-    expect(config.categoryWeights.discovery).toBe(20);
-    expect(config.categoryWeights.documentation).toBe(25);
-    expect(config.categoryWeights.verification).toBe(10);
+    expect(config.categoryWeights.discovery).toBe(15);
+    expect(config.categoryWeights.documentation).toBe(15);
+    expect(config.categoryWeights.verification).toBe(5);
   });
 
   it("loadScoringConfig uses default status contributions", () => {
     const config = loadScoringConfig(mockManifest);
     expect(config.statusContributions).toEqual(DEFAULT_STATUS_CONTRIBUTIONS);
     expect(config.statusContributions.VERIFIED).toBe(1.0);
-    expect(config.statusContributions.INFERRED).toBe(0.7);
+    expect(config.statusContributions.INFERRED).toBe(0.6);
   });
 
   it("default floor cap is 40", () => {
@@ -53,10 +47,9 @@ describe("SLICE-35-2: Scoring Config", () => {
     const customManifest = {
       ...mockManifest,
       categoryWeights: {
+        ...DEFAULT_CATEGORY_WEIGHTS,
         discovery: 30,
         documentation: 20,
-        actionability: 20,
-        machine_readable: 15,
         verification: 15,
       },
     };

@@ -1,17 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { runScoringEngine } from "../../../src/agent-readiness/scoring/scoring-engine";
 import type { Assertion } from "../../../src/agent-readiness/rule-engine/assertion-builder";
+import { DEFAULT_CATEGORY_WEIGHTS } from "../../../src/agent-readiness/scoring/scoring-types";
 
 const mockManifest = {
   name: "agent-readiness",
   version: "1.2.0",
-  categoryWeights: {
-    discovery: 25,
-    documentation: 25,
-    actionability: 20,
-    machine_readable: 20,
-    verification: 10,
-  },
+  categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
+  scoringModel: "v1-categories" as const,
 };
 
 function mockAssertion(
@@ -31,7 +27,7 @@ function mockAssertion(
     source_url: null,
     category,
     severity,
-  } as any;
+  } as unknown as Assertion & { category: string; severity: string };
 }
 
 describe("SLICE-35-7: Scoring Engine Orchestrator", () => {
@@ -44,7 +40,7 @@ describe("SLICE-35-7: Scoring Engine Orchestrator", () => {
       mockAssertion("AB-005", "VERIFIED", "verification"),
     ];
     const result = runScoringEngine({ assertions, rulesetManifest: mockManifest });
-    expect(result.total.score).toBe(100);
+    expect(result.total.score).toBe(55);
     expect(result.total.floorTriggered).toBe(false);
   });
 
@@ -55,6 +51,7 @@ describe("SLICE-35-7: Scoring Engine Orchestrator", () => {
       mockAssertion("AB-003", "VERIFIED", "actionability"),
       mockAssertion("AB-004", "VERIFIED", "machine_readable"),
       mockAssertion("AB-005", "VERIFIED", "verification"),
+      mockAssertion("AB-006", "VERIFIED", "openapi"),
     ];
     const result = runScoringEngine({ assertions, rulesetManifest: mockManifest });
     expect(result.total.floorTriggered).toBe(true);
@@ -90,7 +87,7 @@ describe("SLICE-35-7: Scoring Engine Orchestrator", () => {
   it("config in result matches loaded config", () => {
     const assertions = [mockAssertion("AB-001", "VERIFIED", "discovery")];
     const result = runScoringEngine({ assertions, rulesetManifest: mockManifest });
-    expect(result.config.categoryWeights.discovery).toBe(25);
+    expect(result.config.categoryWeights.discovery).toBe(15);
     expect(result.config.floorCap).toBe(40);
   });
 

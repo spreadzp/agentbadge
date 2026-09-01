@@ -8,9 +8,11 @@ import {
   type CategoryWeights,
   type StatusContributions,
   type AssertionStatus,
+  type PillarScore,
   DEFAULT_CATEGORY_WEIGHTS,
   DEFAULT_STATUS_CONTRIBUTIONS,
   DEFAULT_SCORING_CONFIG,
+  DEFAULT_PILLAR_WEIGHTS,
 } from "../../../src/agent-readiness/scoring/scoring-types";
 
 describe("SLICE-35-1: Scoring Types", () => {
@@ -44,7 +46,7 @@ describe("SLICE-35-1: Scoring Types", () => {
   it("StatusContributions has all 5 statuses", () => {
     const s: StatusContributions = DEFAULT_STATUS_CONTRIBUTIONS;
     expect(s.VERIFIED).toBe(1.0);
-    expect(s.INFERRED).toBe(0.7);
+    expect(s.INFERRED).toBe(0.6);
     expect(s.CONFLICT).toBe(0.0);
     expect(s.MISSING).toBe(0.0);
     expect(s.NOT_APPLICABLE).toBe(0.0);
@@ -87,6 +89,7 @@ describe("SLICE-35-1: Scoring Types", () => {
     const ts: TotalScore = {
       rawScore: 75,
       score: 40,
+      grade: "D",
       floorTriggered: true,
       floorReason: "High-severity discovery rule MISSING",
     };
@@ -96,8 +99,9 @@ describe("SLICE-35-1: Scoring Types", () => {
 
   it("ScoreDelta is nullable (null when no previous report)", () => {
     const sr: ScoreResult = {
-      total: { rawScore: 80, score: 80, floorTriggered: false, floorReason: null },
+      total: { rawScore: 80, score: 80, grade: "B", floorTriggered: false, floorReason: null },
       categories: {} as Record<string, CategoryScore>,
+      pillars: {} as Record<string, PillarScore>,
       delta: null,
       config: DEFAULT_SCORING_CONFIG,
       computedAt: new Date().toISOString(),
@@ -109,6 +113,7 @@ describe("SLICE-35-1: Scoring Types", () => {
     const d: ScoreDelta = {
       totalDelta: 5,
       categoryDeltas: { discovery: 3 },
+      pillarDeltas: { discovery: 3 },
       statusChanges: [{ ruleId: "AB-001", from: "MISSING", to: "VERIFIED" }],
       items: [],
     };
@@ -119,8 +124,9 @@ describe("SLICE-35-1: Scoring Types", () => {
 
   it("ScoreResult includes config for reproducibility", () => {
     const sr: ScoreResult = {
-      total: { rawScore: 80, score: 80, floorTriggered: false, floorReason: null },
+      total: { rawScore: 80, score: 80, grade: "B", floorTriggered: false, floorReason: null },
       categories: {} as Record<string, CategoryScore>,
+      pillars: {} as Record<string, PillarScore>,
       delta: null,
       config: DEFAULT_SCORING_CONFIG,
       computedAt: new Date().toISOString(),
@@ -136,6 +142,8 @@ describe("SLICE-35-1: Scoring Types", () => {
       floorCap: 40,
       floorCategories: ["discovery", "documentation"],
       floorTriggerSeverity: ["high"],
+      scoringModel: "v2-pillars",
+      pillarWeights: DEFAULT_PILLAR_WEIGHTS,
     };
     expect(config.floorCap).toBe(40);
     expect(config.categoryWeights.verification).toBe(5);

@@ -1,6 +1,7 @@
 import type { Assertion } from "../rule-engine/assertion-builder";
 import type { ScoreResult, ScoreDelta } from "./scoring-types";
 import type { ScoringConfig } from "./scoring-types";
+import type { Pillar } from "../shared.schema";
 import { roundTo2 } from "./category-scorer";
 
 export interface ScoreDeltaItem {
@@ -30,7 +31,7 @@ export function computeDelta(
     if (!previous) continue;
     if (current.status === previous.status) continue;
 
-    const category = (current as any).category as string | undefined;
+    const category = (current as unknown as { category?: string }).category;
     if (!category) continue;
 
     const weight = (config.categoryWeights as unknown as Record<string, number>)[category] ?? 0;
@@ -65,9 +66,24 @@ export function computeDelta(
     categoryDeltas[item.category] = (categoryDeltas[item.category] ?? 0) + item.scoreImpact;
   }
 
+  const pillarDeltas: Partial<Record<Pillar, number>> = {};
+  if (currentResult.pillars && previousResult.pillars) {
+    for (const pillar of Object.keys(currentResult.pillars) as Pillar[]) {
+      const current = currentResult.pillars[pillar];
+      const previous = previousResult.pillars[pillar];
+      if (current && previous) {
+        const delta = roundTo2(current.score - previous.score);
+        if (delta !== 0) {
+          pillarDeltas[pillar] = delta;
+        }
+      }
+    }
+  }
+
   return {
     totalDelta,
     categoryDeltas,
+    pillarDeltas,
     statusChanges,
     items,
   };
@@ -75,6 +91,6 @@ export function computeDelta(
 
 function getScoredCount(assertions: Assertion[], category: string): number {
   return assertions.filter(
-    (a) => (a as any).category === category && a.status !== "NOT_APPLICABLE",
+    (a) => (a as unknown as { category?: string }).category === category && a.status !== "NOT_APPLICABLE",
   ).length;
 }
