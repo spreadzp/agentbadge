@@ -1,0 +1,36 @@
+{
+  "_comment": "Golden assertions fixture for SLICE-93-11. 20 assertions across 12 categories spanning all 4 pillars. Includes VERIFIED, INFERRED, CONFLICT, MISSING, NOT_APPLICABLE. AB-002 triggers floor (MISSING, severity high, category discovery). Hand-computed expected values documented in golden-pillar-score.test.ts.",
+  "assertions": [
+    { "rule_id": "AB-001", "rule_version": "1.0.0", "name": "robots.txt", "status": "VERIFIED", "category": "discovery", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "robots.txt found" },
+    { "rule_id": "AB-002", "rule_version": "1.0.0", "name": "sitemap.xml", "status": "MISSING", "category": "discovery", "severity": "high", "confidence": 0.9, "evidence": [], "timestamp": "", "source_url": "https://example.com/sitemap.xml", "reason": "sitemap.xml not found" },
+    { "rule_id": "AB-003", "rule_version": "1.0.0", "name": "llms.txt", "status": "VERIFIED", "category": "discovery", "severity": "medium", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "llms.txt found" },
+
+    { "rule_id": "AB-004", "rule_version": "1.0.0", "name": "openapi.json", "status": "VERIFIED", "category": "machine_readable", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "OpenAPI spec found" },
+    { "rule_id": "AB-005", "rule_version": "1.0.0", "name": "json-ld", "status": "INFERRED", "category": "machine_readable", "severity": "medium", "confidence": 0.6, "evidence": [], "timestamp": "", "source_url": null, "reason": "JSON-LD inferred from page" },
+
+    { "rule_id": "AB-006", "rule_version": "1.0.0", "name": "openapi-endpoints", "status": "VERIFIED", "category": "openapi", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "OpenAPI endpoints valid" },
+
+    { "rule_id": "AB-007", "rule_version": "1.0.0", "name": "agent-guide", "status": "VERIFIED", "category": "documentation", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "Agent guide found" },
+    { "rule_id": "AB-008", "rule_version": "1.0.0", "name": "quickstart", "status": "INFERRED", "category": "documentation", "severity": "medium", "confidence": 0.6, "evidence": [], "timestamp": "", "source_url": null, "reason": "Quickstart inferred" },
+    { "rule_id": "AB-009", "rule_version": "1.0.0", "name": "tutorials", "status": "NOT_APPLICABLE", "category": "documentation", "severity": "low", "confidence": 0.0, "evidence": [], "timestamp": "", "source_url": null, "reason": "Tutorials not applicable" },
+
+    { "rule_id": "AB-010", "rule_version": "1.0.0", "name": "actionable-endpoints", "status": "VERIFIED", "category": "actionability", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "Actionable endpoints found" },
+    { "rule_id": "AB-011", "rule_version": "1.0.0", "name": "error-codes", "status": "CONFLICT", "category": "actionability", "severity": "medium", "confidence": 0.5, "evidence": [], "timestamp": "", "source_url": null, "reason": "Error codes conflict" },
+
+    { "rule_id": "AB-012", "rule_version": "1.0.0", "name": "aria-labels", "status": "INFERRED", "category": "accessibility", "severity": "low", "confidence": 0.6, "evidence": [], "timestamp": "", "source_url": null, "reason": "ARIA labels inferred" },
+
+    { "rule_id": "AB-013", "rule_version": "1.0.0", "name": "bot-auth", "status": "VERIFIED", "category": "bot_auth", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "Bot auth configured" },
+    { "rule_id": "AB-014", "rule_version": "1.0.0", "name": "rate-limits", "status": "MISSING", "category": "bot_auth", "severity": "medium", "confidence": 0.9, "evidence": [], "timestamp": "", "source_url": null, "reason": "Rate limits not found" },
+
+    { "rule_id": "AB-015", "rule_version": "1.0.0", "name": "payments-endpoint", "status": "VERIFIED", "category": "payments", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "Payments endpoint found" },
+
+    { "rule_id": "AB-016", "rule_version": "1.0.0", "name": "identity-verification", "status": "INFERRED", "category": "identity", "severity": "medium", "confidence": 0.6, "evidence": [], "timestamp": "", "source_url": null, "reason": "Identity verification inferred" },
+
+    { "rule_id": "AB-017", "rule_version": "1.0.0", "name": "verification-badge", "status": "VERIFIED", "category": "verification", "severity": "high", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "Verification badge found" },
+    { "rule_id": "AB-018", "rule_version": "1.0.0", "name": "signature-check", "status": "INFERRED", "category": "verification", "severity": "medium", "confidence": 0.6, "evidence": [], "timestamp": "", "source_url": null, "reason": "Signature check inferred" },
+
+    { "rule_id": "AB-019", "rule_version": "1.0.0", "name": "uptime-monitor", "status": "MISSING", "category": "infrastructure", "severity": "low", "confidence": 0.9, "evidence": [], "timestamp": "", "source_url": null, "reason": "Uptime monitor not found" },
+
+    { "rule_id": "AB-020", "rule_version": "1.0.0", "name": "active-probe", "status": "VERIFIED", "category": "active_probing", "severity": "medium", "confidence": 0.95, "evidence": [], "timestamp": "", "source_url": null, "reason": "Active probe successful" }
+  ]
+}
