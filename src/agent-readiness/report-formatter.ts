@@ -6,6 +6,9 @@ import { DEFAULT_CATEGORY_WEIGHTS } from "./scoring/scoring-types";
 import type { RulesetManifest } from "./scoring/scoring-config";
 import { PILLAR_LABELS, PILLAR_QUESTIONS, CATEGORY_TO_PILLAR, PILLARS } from "./scoring/pillar-map";
 import type { Pillar } from "./shared.schema";
+import type { Assertion } from "./rule-engine/assertion-builder";
+import { evidenceSummary } from "./rule-engine/evidence.types";
+import { strongestSource, classifyEvidence, SOURCE_CLASS_LABELS, type SourceClass } from "./rule-engine/source-hierarchy";
 
 export interface PillarReport {
   pillar: string;
@@ -15,6 +18,31 @@ export interface PillarReport {
   score: number;
   floorTriggered: boolean;
   categories: string[];
+}
+
+export interface AssertionEvidenceEntry {
+  type: string;
+  captured_at: string | null;
+  source_class: SourceClass | null;
+  summary: string;
+}
+
+export interface AssertionV2Payload {
+  rule_id: string;
+  rule_version: string;
+  status: string;
+  confidence: number;
+  timestamp: string;
+  source_url: string | null;
+  reason: string;
+  category: string;
+  name: string;
+  claim: string;
+  verified_at: string;
+  review_level: "automatic" | "assisted" | null;
+  source_class: SourceClass | null;
+  source_label: string | null;
+  evidence: AssertionEvidenceEntry[];
 }
 
 export interface ScanReport {
@@ -33,6 +61,7 @@ export interface ScanReport {
   pillars: PillarReport[];
   floorTriggered: boolean;
   floorReason: string | null;
+  assertions: AssertionV2Payload[];
 }
 
 export interface CategoryReport {
@@ -136,6 +165,8 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     })
     .slice(0, 10);
 
+  const serializedAssertions = assertions.map(serializeAssertionV2);
+
   const summary = `Your site scored ${score}/100 (${grade} grade). ${verified} of ${total} rules passed, ${missing} need attention, ${notApplicable} not applicable.`;
 
   return {
@@ -154,5 +185,39 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     pillars,
     floorTriggered: scoreResult.total.floorTriggered,
     floorReason: scoreResult.total.floorReason,
+    assertions: serializedAssertions,
+  };
+}
+
+function serializeAssertionV2(a: Assertion): AssertionV2Payload {
+  const strongest = a.evidence.length > 0
+    ? strongestSource(a.evidence)
+    : null;
+  const sourceClass = strongest?.sourceClass ?? null;
+  const sourceLabel = sourceClass ? SOURCE_CLASS_LABELS[sourceClass] : null;
+
+  const evidenceEntries: AssertionEvidenceEntry[] = a.evidence.map((e) => ({
+    type: e.type,
+    captured_at: e.captured_at ?? null,
+    source_class: e.source_class ?? classifyEvidence(e),
+    summary: evidenceSummary(e),
+  }));
+
+  return {
+    rule_id: a.rule_id,
+    rule_version: a.rule_version,
+    status: a.status,
+    confidence: a.confidence,
+    timestamp: a.timestamp,
+    source_url: a.source_url,
+    reason: a.reason,
+    category: a.category,
+    name: a.name,
+    claim: a.claim,
+    verified_at: a.verified_at,
+    review_level: a.review_level,
+    source_class: sourceClass,
+    source_label: sourceLabel,
+    evidence: evidenceEntries,
   };
 }

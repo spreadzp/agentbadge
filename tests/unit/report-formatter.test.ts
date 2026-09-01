@@ -100,14 +100,17 @@ describe("SLICE-58-6: Total scan report formatter", () => {
     expect(report.top_missing[2].effort_hint).toBe("complex");
   });
 
-  it("does not include raw evidence in report", () => {
+  it("includes summarized evidence in V2 assertion payload, not raw evidence fields", () => {
     const result = makeResult([
-      makeAssertion({ rule_id: "AB-001", status: "VERIFIED", evidence: [{ type: "robots", url: "https://example.com/robots.txt" }] }),
+      makeAssertion({ rule_id: "AB-001", status: "VERIFIED", evidence: [{ type: "robots", url: "https://example.com/robots.txt", status: 200, allows_all: true, disallowed_paths: [] }] as unknown as Assertion["evidence"] }),
     ]);
     const report = formatScanReport("https://example.com", result);
     const reportJson = JSON.stringify(report);
-    expect(reportJson).not.toContain('"evidence"');
-    expect(reportJson).not.toContain('robots.txt');
+    // V2: summarized evidence entries are present
+    expect(reportJson).toContain('"evidence"');
+    // Raw evidence fields (disallowed_paths, allows_all) should NOT leak into the payload
+    expect(reportJson).not.toContain('"disallowed_paths"');
+    expect(reportJson).not.toContain('"allows_all"');
   });
 
   it("summary is human-readable and includes counts", () => {
