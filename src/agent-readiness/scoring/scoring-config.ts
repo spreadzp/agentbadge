@@ -1,5 +1,7 @@
 import type { ScoringConfig, CategoryWeights, ScoringModel, PillarWeights } from "./scoring-types";
 import type { Category, Pillar } from "../shared.schema";
+import type { SourceClass } from "../rule-engine/source-hierarchy";
+import { DEFAULT_FRESHNESS_THRESHOLDS } from "../rule-engine/freshness";
 import {
   DEFAULT_STATUS_CONTRIBUTIONS,
   DEFAULT_PILLAR_WEIGHTS,
@@ -21,6 +23,14 @@ export interface ScoringSection {
   pillars?: PillarsConfig;
 }
 
+export interface FreshnessConfig {
+  thresholds?: Partial<Record<SourceClass, number>>;
+}
+
+export interface EvidenceSection {
+  freshness?: FreshnessConfig;
+}
+
 export interface RulesetManifest {
   name: string;
   version: string;
@@ -28,6 +38,7 @@ export interface RulesetManifest {
   scoringModel?: ScoringModel;
   pillarWeights?: PillarWeights;
   scoring?: ScoringSection;
+  evidence?: EvidenceSection;
 }
 
 function resolvePillarWeights(manifest: RulesetManifest): PillarWeights {
@@ -67,6 +78,12 @@ function resolveScoringModel(manifest: RulesetManifest): ScoringModel {
     return topLevel;
   }
   return DEFAULT_SCORING_MODEL;
+}
+
+export function resolveFreshnessThresholds(manifest: RulesetManifest): Record<SourceClass, number> {
+  const overrides = manifest.evidence?.freshness?.thresholds;
+  if (!overrides) return { ...DEFAULT_FRESHNESS_THRESHOLDS };
+  return { ...DEFAULT_FRESHNESS_THRESHOLDS, ...overrides };
 }
 
 export function loadScoringConfig(manifest: RulesetManifest): ScoringConfig {
