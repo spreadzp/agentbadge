@@ -95,6 +95,9 @@ webmcpApiRoutes.get(
       }, 200);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
+      if (/Mirror Node error 400|not found/i.test(message)) {
+        return c.json({ valid: false, error: "Passport not found" }, 404);
+      }
       return c.json({ valid: false, error: `Verification failed: ${message}` }, 500);
     }
   },

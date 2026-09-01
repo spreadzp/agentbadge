@@ -24,6 +24,7 @@ vi.mock("../../src/config/env.js", () => ({
 vi.mock("@agentbadge/passport", () => ({
   getPassportInfo: vi.fn(async (tokenId: string) => {
     if (tokenId === "0.0.999") return null;
+    if (tokenId === "0.0.888") throw new Error("Mirror Node error 400: not found");
     return {
       active: true,
       tokenId,
@@ -210,6 +211,14 @@ describe("SLICE-91-9: WebMCP API Endpoints", () => {
       expect(res.status).toBe(404);
       const body = await res.json();
       expect(body.valid).toBe(false);
+    });
+
+    it("returns 404 (not 500) when mirror node throws 400 for tokenId", async () => {
+      const res = await app.request("/api/passport/verify?tokenId=0.0.888");
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.valid).toBe(false);
+      expect(body.error).toBe("Passport not found");
     });
   });
 
