@@ -17,6 +17,8 @@ import { RuleEngine } from "../agent-readiness/rule-engine/rule-engine";
 import { runScoringEngine } from "../agent-readiness/scoring/scoring-engine";
 import type { Assertion } from "../agent-readiness/rule-engine/assertion-builder";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
+import { PILLAR_LABELS, PILLAR_QUESTIONS, PILLARS } from "../agent-readiness/scoring/pillar-map";
+import type { PillarScore } from "../agent-readiness/scoring/scoring-types";
 
 const complianceArgsSchema = z.object({
   url: z
@@ -32,8 +34,19 @@ interface ComplianceCheck {
   category?: string;
 }
 
+interface PillarEntry {
+  pillar: string;
+  label: string;
+  question: string;
+  weight: number;
+  score: number;
+  floorTriggered: boolean;
+}
+
 interface ComplianceResult {
   score: number;
+  scoringModel: string;
+  pillars: PillarEntry[];
   checks: ComplianceCheck[];
   summary: {
     totalChecks: number;
@@ -126,10 +139,26 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     const failed = checks.filter((c) => c.status === "fail").length;
     const skipped = checks.filter((c) => c.status === "skip").length;
 
+    const pillars: PillarEntry[] = [];
+    for (const key of PILLARS) {
+      const ps = scoreResult.pillars?.[key] as PillarScore | undefined;
+      if (!ps) continue;
+      pillars.push({
+        pillar: ps.pillar,
+        label: PILLAR_LABELS[key],
+        question: PILLAR_QUESTIONS[key],
+        weight: ps.weight,
+        score: ps.score,
+        floorTriggered: ps.floorTriggered,
+      });
+    }
+
     const result: ComplianceResult = {
       score: typeof scoreResult.total === "number"
         ? scoreResult.total
         : scoreResult.total.score ?? scoreResult.total.rawScore ?? 0,
+      scoringModel: "v2-pillars",
+      pillars,
       checks,
       summary: {
         totalChecks: checks.length,
@@ -151,7 +180,7 @@ export function registerComplianceTools(ns?: NamespaceRegistry): void {
   const r = getRegistry(ns);
   r.registerTool(
     "check_compliance",
-    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), individual check results (id, name, status, hint), and summary (totalChecks, passed, failed, skipped). Use this to verify agent-readiness of any website.",
+    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), four-pillar breakdown (Discovery/Understandability/Executability/Verifiability — where the service stands for agent use), individual check results (id, name, status, hint), and summary (totalChecks, passed, failed, skipped). Use this to verify agent-readiness of any website.",
     {
       url: z
         .string()
