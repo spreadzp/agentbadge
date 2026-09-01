@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // ─── Canonical enums for Agent Readiness schemas ─────────────────────────────
-// Source of truth: AGENT-READINESS-SPEC-v0.2.md, Appendix A.
+// Source of truth: AGENT-READINESS-SPEC-v0.3.md, Appendix A.
 // These enums MUST match the spec exactly — do not add values without
 // updating the spec first.
 
