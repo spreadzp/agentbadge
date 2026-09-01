@@ -48,7 +48,7 @@ describe("SLICE-69-3: Payments Gap Rules (MPP, SPT)", () => {
     expect(AGENT_READINESS_RULESET.rules.length).toBeGreaterThanOrEqual(100);
   });
 
-  it("ruleset version is 2.0.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("2.0.0");
+  it("ruleset version is 2.1.0", () => {
+    expect(AGENT_READINESS_RULESET.version).toBe("2.1.0");
   });
 });

@@ -15,6 +15,7 @@ function getRegistry(ns?: NamespaceRegistry) {
 import { scanDomain } from "../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../agent-readiness/rule-engine/rule-engine";
 import { runScoringEngine } from "../agent-readiness/scoring/scoring-engine";
+import type { Assertion } from "../agent-readiness/rule-engine/assertion-builder";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
 
 const complianceArgsSchema = z.object({
@@ -79,6 +80,7 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     const manifest = {
       name: AGENT_READINESS_RULESET.name,
       version: AGENT_READINESS_RULESET.version,
+      scoring: AGENT_READINESS_RULESET.scoring,
       categoryWeights: {
         discovery: 15,
         documentation: 15,
@@ -102,21 +104,21 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     };
 
     const scoreResult = runScoringEngine({
-      assertions: ruleEngineResult.assertions as any,
+      assertions: ruleEngineResult.assertions as Assertion[],
       rulesetManifest: manifest,
     });
 
-    const checks: ComplianceCheck[] = (ruleEngineResult.assertions as any[]).map(
+    const checks: ComplianceCheck[] = (ruleEngineResult.assertions as unknown as Array<Record<string, unknown>>).map(
       (assertion) => ({
-        id: assertion.rule_id ?? assertion.id ?? "unknown",
-        name: assertion.rule_name ?? assertion.name ?? assertion.rule_id ?? "unknown",
+        id: (assertion.rule_id as string) ?? (assertion.id as string) ?? "unknown",
+        name: (assertion.rule_name as string) ?? (assertion.name as string) ?? (assertion.rule_id as string) ?? "unknown",
         status: assertion.status === "VERIFIED" || assertion.status === "INFERRED"
           ? "pass"
           : assertion.status === "NOT_APPLICABLE"
             ? "skip"
             : "fail",
-        hint: assertion.hint ?? assertion.fix_hint ?? undefined,
-        category: assertion.category ?? undefined,
+        hint: (assertion.hint as string | undefined) ?? (assertion.fix_hint as string | undefined) ?? undefined,
+        category: (assertion.category as string | undefined) ?? undefined,
       }),
     );
 
@@ -127,7 +129,7 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     const result: ComplianceResult = {
       score: typeof scoreResult.total === "number"
         ? scoreResult.total
-        : (scoreResult.total as any).score ?? (scoreResult.total as any).rawScore ?? 0,
+        : scoreResult.total.score ?? scoreResult.total.rawScore ?? 0,
       checks,
       summary: {
         totalChecks: checks.length,
