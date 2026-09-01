@@ -16,12 +16,12 @@ describe("Session-scoped auth rules", () => {
       credential_security: { data: { usesOAuth2: false, usesStaticApiKey: true } },
     };
     const result = AB128.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-128: FAILS when no credential_security source", () => {
     const result = AB128.evaluate({});
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-129: Credentials via headers — VERIFIED", () => {
@@ -37,7 +37,7 @@ describe("Session-scoped auth rules", () => {
       credential_security: { data: { credentialsInHeader: false, credentialsInQuery: true } },
     };
     const result = AB129.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-130: OAuth scopes defined — VERIFIED", () => {
@@ -53,7 +53,7 @@ describe("Session-scoped auth rules", () => {
       credential_security: { data: { scopesDefined: false } },
     };
     const result = AB130.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-131: Token revocation endpoint — VERIFIED", () => {
@@ -69,7 +69,7 @@ describe("Session-scoped auth rules", () => {
       credential_security: { data: { revocationSupported: false } },
     };
     const result = AB131.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-132: Token introspection (optional) — VERIFIED", () => {
@@ -85,7 +85,7 @@ describe("Session-scoped auth rules", () => {
       credential_security: { data: { introspectionSupported: false } },
     };
     const result = AB132.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-133: Private key JWT (optional) — VERIFIED", () => {

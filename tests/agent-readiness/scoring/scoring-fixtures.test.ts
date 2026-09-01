@@ -19,13 +19,13 @@ describe("SLICE-35-8: Scoring Fixtures", () => {
 
   it("all-missing fixture has 13 assertions, all MISSING", () => {
     expect(allMissing).toHaveLength(13);
-    expect(allMissing.every((a) => a.status === "MISSING")).toBe(true);
+    expect(allMissing.every((a) => a.status === "GAP")).toBe(true);
   });
 
   it("floor-triggered fixture has AB-003 as MISSING in discovery high", () => {
     expect(floorTriggered).toHaveLength(13);
     const ab003 = floorTriggered.find((a) => a.rule_id === "AB-003");
-    expect(ab003?.status).toBe("MISSING");
+    expect(ab003?.status).toBe("GAP");
     expect((ab003 as any).category).toBe("discovery");
     expect((ab003 as any).severity).toBe("high");
   });
@@ -36,7 +36,7 @@ describe("SLICE-35-8: Scoring Fixtures", () => {
     expect(statuses.has("VERIFIED")).toBe(true);
     expect(statuses.has("INFERRED")).toBe(true);
     expect(statuses.has("CONFLICT")).toBe(true);
-    expect(statuses.has("MISSING")).toBe(true);
+    expect(statuses.has("GAP")).toBe(true);
     expect(statuses.has("NOT_APPLICABLE")).toBe(true);
   });
 
@@ -51,13 +51,13 @@ describe("SLICE-35-8: Scoring Fixtures", () => {
   it("delta: AB-001 MISSING→VERIFIED, AB-004 VERIFIED→MISSING, AB-009 INFERRED→VERIFIED", () => {
     const ab001prev = deltaPrevious.find((a) => a.rule_id === "AB-001");
     const ab001curr = deltaCurrent.find((a) => a.rule_id === "AB-001");
-    expect(ab001prev?.status).toBe("MISSING");
+    expect(ab001prev?.status).toBe("GAP");
     expect(ab001curr?.status).toBe("VERIFIED");
 
     const ab004prev = deltaPrevious.find((a) => a.rule_id === "AB-004");
     const ab004curr = deltaCurrent.find((a) => a.rule_id === "AB-004");
     expect(ab004prev?.status).toBe("VERIFIED");
-    expect(ab004curr?.status).toBe("MISSING");
+    expect(ab004curr?.status).toBe("GAP");
 
     const ab009prev = deltaPrevious.find((a) => a.rule_id === "AB-009");
     const ab009curr = deltaCurrent.find((a) => a.rule_id === "AB-009");

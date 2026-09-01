@@ -69,7 +69,7 @@ describe("SLICE-93-5: Scoring engine pillar integration", () => {
 
   it("floor: high-severity MISSING in discovery → total capped ≤ 40, pillar floorTriggered", () => {
     const assertions = [
-      mockAssertion("AB-001", "MISSING", "discovery", "high"),
+      mockAssertion("AB-001", "GAP", "discovery", "high"),
       mockAssertion("AB-002", "VERIFIED", "documentation"),
       mockAssertion("AB-003", "VERIFIED", "bot_auth"),
       mockAssertion("AB-004", "VERIFIED", "verification"),
@@ -94,7 +94,7 @@ describe("SLICE-93-5: Scoring engine pillar integration", () => {
 
   it("delta: two runs with changed assertions → pillarDeltas correct", () => {
     const previous = [
-      mockAssertion("AB-001", "MISSING", "discovery"),
+      mockAssertion("AB-001", "GAP", "discovery"),
       mockAssertion("AB-002", "VERIFIED", "documentation"),
     ];
     const current = [

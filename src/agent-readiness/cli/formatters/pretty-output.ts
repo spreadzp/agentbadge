@@ -92,7 +92,7 @@ export function formatPrettyOutput(report: AgentReadinessReport, opts?: PrettyOu
     confidence: number;
     category?: string;
     source_url?: string | null;
-  }>).filter((a) => a.status === "MISSING" || a.status === "CONFLICT");
+  }>).filter((a) => a.status === "GAP" || a.status === "CONFLICT");
 
   if (assertions.length > 0) {
     lines.push("─".repeat(60));

@@ -39,27 +39,27 @@ describe("StatusDeterminator", () => {
     expect(result.status).toBe("NOT_APPLICABLE");
   });
 
-  // ─── MISSING ─────────────────────────────────────────────────────────────
+  // ─── GAP ─────────────────────────────────────────────────────────────
 
-  it("returns MISSING when evidence is null", () => {
+  it("returns GAP when evidence is null", () => {
     const result = StatusDeterminator.determine({
       rule: mockRule(),
       evidence: null,
       isApplicable: true,
     });
 
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
     expect(result.reason).toContain("No evidence");
   });
 
-  it("returns MISSING when evidence array is empty", () => {
+  it("returns GAP when evidence array is empty", () => {
     const result = StatusDeterminator.determine({
       rule: mockRule(),
       evidence: [],
       isApplicable: true,
     });
 
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   // ─── VERIFIED ────────────────────────────────────────────────────────────
@@ -137,14 +137,14 @@ describe("StatusDeterminator", () => {
 
   // ─── Edge Cases ──────────────────────────────────────────────────────────
 
-  it("returns MISSING when evidence exists but doesn't match rule target", () => {
+  it("returns GAP when evidence exists but doesn't match rule target", () => {
     const result = StatusDeterminator.determine({
       rule: mockRule({ check: { type: "http_fetch", target: "/nonexistent" } }),
       evidence: [{ type: "robots", url: "https://example.com/robots.txt", status: 200, allows_all: true, disallowed_paths: [] }],
       isApplicable: true,
     });
 
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("returns VERIFIED for robots evidence matching robots target", () => {

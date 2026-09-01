@@ -16,12 +16,12 @@ describe("Token lifecycle & credential vault rules", () => {
       auth_probe: { tokenExpiresIn: undefined },
     } as unknown as EvaluateInput;
     const result = AB141.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-141: MISSING when no auth_probe source", () => {
     const result = AB141.evaluate({});
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-142: Refresh token rotation (optional) — VERIFIED", () => {
@@ -41,7 +41,7 @@ describe("Token lifecycle & credential vault rules", () => {
       },
     } as unknown as EvaluateInput;
     const result = AB142.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-142: MISSING when invalid JSON body", () => {
@@ -49,7 +49,7 @@ describe("Token lifecycle & credential vault rules", () => {
       oauth_authorization_server: { body: "not json" },
     } as unknown as EvaluateInput;
     const result = AB142.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-143: Token revocation endpoint reachable — VERIFIED", () => {
@@ -65,7 +65,7 @@ describe("Token lifecycle & credential vault rules", () => {
       credential_security: { data: { revocationSupported: false } },
     };
     const result = AB143.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-144: Auth.md documents credential vault — VERIFIED", () => {
@@ -81,12 +81,12 @@ describe("Token lifecycle & credential vault rules", () => {
       auth_md: { body: "# Auth\n\nUse API key." },
     } as unknown as EvaluateInput;
     const result = AB144.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-144: MISSING when no auth_md source", () => {
     const result = AB144.evaluate({});
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-145: No static API keys in OpenAPI security — VERIFIED", () => {
@@ -102,7 +102,7 @@ describe("Token lifecycle & credential vault rules", () => {
       credential_security: { data: { usesStaticApiKey: true } },
     };
     const result = AB145.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-141: rule metadata correct", () => {

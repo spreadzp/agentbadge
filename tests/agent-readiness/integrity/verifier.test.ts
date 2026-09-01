@@ -18,7 +18,7 @@ const mockScope = {
 
 const mockAssertions = [
   { rule_id: "AB-001", status: "VERIFIED" },
-  { rule_id: "AB-002", status: "MISSING" },
+  { rule_id: "AB-002", status: "GAP" },
 ];
 
 function createSignedReport() {
@@ -44,7 +44,7 @@ describe("SLICE-36-8: Report Verifier — Offline Integrity Check", () => {
 
   it("tampered assertion → verified: false, reason: hash_mismatch", () => {
     const { signed, key } = createSignedReport();
-    const tampered = { ...signed, assertions: [{ rule_id: "AB-001", status: "MISSING" }] };
+    const tampered = { ...signed, assertions: [{ rule_id: "AB-001", status: "GAP" }] };
     const result = verifyReport(JSON.stringify(tampered), key.publicKey);
     expect(result.verified).toBe(false);
     expect(result.reason).toBe("hash_mismatch");

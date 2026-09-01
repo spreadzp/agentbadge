@@ -27,7 +27,7 @@ function makeReport(overrides?: Partial<AgentReadinessReport>): AgentReadinessRe
     },
     assertions: [
       { rule_id: "AB-001", status: "PASS", reason: "robots.txt found", confidence: 0.95 },
-      { rule_id: "AB-002", status: "MISSING", reason: "No sitemap.xml", confidence: 0.9, severity: "medium" },
+      { rule_id: "AB-002", status: "GAP", reason: "No sitemap.xml", confidence: 0.9, severity: "medium" },
       { rule_id: "AB-003", status: "CONFLICT", reason: "Conflicting endpoints", confidence: 0.85, severity: "high" },
     ],
     integrity: {
@@ -134,7 +134,7 @@ describe("SLICE-39-3: CI Summary Formatter", () => {
   it("truncates issues to 10 with summary", () => {
     const manyIssues = Array.from({ length: 15 }, (_, i) => ({
       rule_id: `AB-${String(i).padStart(3, "0")}`,
-      status: "MISSING",
+      status: "GAP",
       reason: `Issue ${i}`,
       confidence: 0.9,
     }));

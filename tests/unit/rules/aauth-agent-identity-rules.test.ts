@@ -16,12 +16,12 @@ describe("AAuth & Agent Identity rules", () => {
       aauth: { data: { aauthFound: false } },
     };
     const result = AB135.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-135: MISSING when no aauth source", () => {
     const result = AB135.evaluate({});
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-136: Agent Authorization Grant supported — VERIFIED", () => {
@@ -37,7 +37,7 @@ describe("AAuth & Agent Identity rules", () => {
       aauth: { data: { agentGrantSupported: false } },
     };
     const result = AB136.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-137: AAuth scope descriptions (optional) — VERIFIED", () => {
@@ -53,7 +53,7 @@ describe("AAuth & Agent Identity rules", () => {
       aauth: { data: { scopeDescriptions: [] } },
     };
     const result = AB137.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-138: DPoP supported (optional) — VERIFIED", () => {
@@ -69,7 +69,7 @@ describe("AAuth & Agent Identity rules", () => {
       credential_security: { data: { dpopSupported: false } },
     };
     const result = AB138.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-139: mTLS-bound tokens (optional) — VERIFIED", () => {
@@ -85,7 +85,7 @@ describe("AAuth & Agent Identity rules", () => {
       credential_security: { data: { mtlsBoundTokens: false } },
     };
     const result = AB139.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-140: Auth.md documents agent auth flow — VERIFIED", () => {
@@ -101,12 +101,12 @@ describe("AAuth & Agent Identity rules", () => {
       auth_md: { body: "# Auth\n\nUse API key in header." },
     } as unknown as EvaluateInput;
     const result = AB140.evaluate(input);
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-140: MISSING when no auth_md source", () => {
     const result = AB140.evaluate({});
-    expect(result.status).toBe("MISSING");
+    expect(result.status).toBe("GAP");
   });
 
   it("AB-135: rule metadata correct", () => {

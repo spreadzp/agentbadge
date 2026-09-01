@@ -17,7 +17,7 @@ import {
 
 describe("SLICE-35-1: Scoring Types", () => {
   it("AssertionStatus includes all 5 statuses", () => {
-    const statuses: AssertionStatus[] = ["VERIFIED", "INFERRED", "CONFLICT", "MISSING", "NOT_APPLICABLE"];
+    const statuses: AssertionStatus[] = ["VERIFIED", "INFERRED", "CONFLICT", "GAP", "NOT_APPLICABLE"];
     expect(statuses).toHaveLength(5);
   });
 
@@ -48,15 +48,15 @@ describe("SLICE-35-1: Scoring Types", () => {
     expect(s.VERIFIED).toBe(1.0);
     expect(s.INFERRED).toBe(0.6);
     expect(s.CONFLICT).toBe(0.0);
-    expect(s.MISSING).toBe(0.0);
+    expect(s.GAP).toBe(0.0);
     expect(s.NOT_APPLICABLE).toBe(0.0);
   });
 
-  it("VERIFIED contribution > INFERRED > CONFLICT = MISSING", () => {
+  it("VERIFIED contribution > INFERRED > CONFLICT = GAP", () => {
     const s = DEFAULT_STATUS_CONTRIBUTIONS;
     expect(s.VERIFIED).toBeGreaterThan(s.INFERRED);
     expect(s.INFERRED).toBeGreaterThan(s.CONFLICT);
-    expect(s.CONFLICT).toBe(s.MISSING);
+    expect(s.CONFLICT).toBe(s.GAP);
   });
 
   it("DEFAULT_SCORING_CONFIG has correct floorCap", () => {
@@ -91,7 +91,7 @@ describe("SLICE-35-1: Scoring Types", () => {
       score: 40,
       grade: "D",
       floorTriggered: true,
-      floorReason: "High-severity discovery rule MISSING",
+      floorReason: "High-severity discovery rule GAP",
     };
     expect(ts.rawScore).not.toBe(ts.score);
     expect(ts.floorTriggered).toBe(true);
@@ -114,7 +114,7 @@ describe("SLICE-35-1: Scoring Types", () => {
       totalDelta: 5,
       categoryDeltas: { discovery: 3 },
       pillarDeltas: { discovery: 3 },
-      statusChanges: [{ ruleId: "AB-001", from: "MISSING", to: "VERIFIED" }],
+      statusChanges: [{ ruleId: "AB-001", from: "GAP", to: "VERIFIED" }],
       items: [],
     };
     expect(d.totalDelta).toBe(5);

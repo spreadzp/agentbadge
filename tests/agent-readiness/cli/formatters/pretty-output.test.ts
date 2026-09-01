@@ -48,7 +48,7 @@ function makeReport(overrides: Partial<AgentReadinessReport> = {}): AgentReadine
     },
     assertions: [
       { rule_id: "AB-001", rule_version: "1.0.0", status: "VERIFIED", evidence: [], confidence: 0.95, timestamp: "", source_url: null, reason: "robots.txt found" },
-      { rule_id: "AB-002", rule_version: "1.0.0", status: "MISSING", evidence: [], confidence: 0.9, timestamp: "", source_url: "https://example.com/sitemap.xml", reason: "sitemap.xml not found" },
+      { rule_id: "AB-002", rule_version: "1.0.0", status: "GAP", evidence: [], confidence: 0.9, timestamp: "", source_url: "https://example.com/sitemap.xml", reason: "sitemap.xml not found" },
       { rule_id: "AB-003", rule_version: "1.0.0", status: "CONFLICT", evidence: [], confidence: 0.6, timestamp: "", source_url: null, reason: "agent-guide has conflicting info" },
     ],
     integrity: {
@@ -80,10 +80,10 @@ describe("formatPrettyOutput", () => {
     expect(out).toContain("documentation");
   });
 
-  it("renders top issues for MISSING and CONFLICT", () => {
+  it("renders top issues for GAP and CONFLICT", () => {
     const out = formatPrettyOutput(makeReport());
     expect(out).toContain("Top Issues");
-    expect(out).toContain("[MISSING]");
+    expect(out).toContain("[GAP]");
     expect(out).toContain("AB-002");
     expect(out).toContain("[CONFLICT]");
     expect(out).toContain("AB-003");

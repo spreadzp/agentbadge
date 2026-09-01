@@ -33,8 +33,16 @@ export const pillarEnum = z
   .describe("Scoring pillar: discovery, understandability, executability, verifiability (spec v0.2 §A.7)");
 
 export const statusEnum = z
-  .enum(["VERIFIED", "INFERRED", "CONFLICT", "MISSING", "NOT_APPLICABLE"])
-  .describe("Assertion status: VERIFIED (direct evidence), INFERRED (indirect, carries confidence), CONFLICT (sources disagree), MISSING (no evidence found), NOT_APPLICABLE (rule does not apply to this scope)");
+  .enum(["VERIFIED", "INFERRED", "CONFLICT", "GAP", "NOT_APPLICABLE"])
+  .describe("Assertion status: VERIFIED (direct evidence), INFERRED (indirect, carries confidence), CONFLICT (sources disagree), GAP (no evidence found — canonical V2 name; MISSING accepted as legacy input alias), NOT_APPLICABLE (rule does not apply to this scope)");
+
+export function normalizeStatus(s: string): Status {
+  return s === "MISSING" ? "GAP" : s as Status;
+}
+
+export const statusInputSchema = z
+  .union([statusEnum, z.literal("MISSING")])
+  .transform((v) => normalizeStatus(v));
 
 export const severityEnum = z
   .enum(["high", "medium", "low"])

@@ -22,7 +22,7 @@ function makeEvaluable(
   return {
     ...rule,
     evaluate(sources: EvaluateInput): EvaluateResult {
-      return { status: checkFn(sources) ? "VERIFIED" : "MISSING" };
+      return { status: checkFn(sources) ? "VERIFIED" : "GAP" };
     },
   };
 }

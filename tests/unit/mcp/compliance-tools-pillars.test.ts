@@ -25,7 +25,7 @@ vi.mock("../../../src/agent-readiness/rule-engine/rule-engine", () => ({
     run: vi.fn().mockReturnValue({
       assertions: [
         { rule_id: "AB-001", rule_name: "robots.txt", status: "VERIFIED", evidence: [], confidence: 0.95, category: "discovery" },
-        { rule_id: "AB-002", rule_name: "sitemap.xml", status: "MISSING", evidence: [], confidence: 0.9, category: "discovery" },
+        { rule_id: "AB-002", rule_name: "sitemap.xml", status: "GAP", evidence: [], confidence: 0.9, category: "discovery" },
       ],
     }),
   },

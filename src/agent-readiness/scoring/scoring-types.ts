@@ -27,7 +27,7 @@ export interface StatusContributions {
   VERIFIED: number;
   INFERRED: number;
   CONFLICT: number;
-  MISSING: number;
+  GAP: number;
   NOT_APPLICABLE: number;
 }
 
@@ -132,7 +132,7 @@ export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {
   VERIFIED: 1.0,
   INFERRED: 0.6,
   CONFLICT: 0.0,
-  MISSING: 0.0,
+  GAP: 0.0,
   NOT_APPLICABLE: 0.0,
 };
 

@@ -36,8 +36,8 @@ describe("fix command", () => {
 
   it("generates fix suggestions for MISSING assertions", async () => {
     const report = makeReport([
-      { rule_id: "AB-001", status: "MISSING", reason: "robots.txt not found", confidence: 0.9, source_url: null },
-      { rule_id: "AB-002", status: "MISSING", reason: "sitemap.xml not found", confidence: 0.9, source_url: null },
+      { rule_id: "AB-001", status: "GAP", reason: "robots.txt not found", confidence: 0.9, source_url: null },
+      { rule_id: "AB-002", status: "GAP", reason: "sitemap.xml not found", confidence: 0.9, source_url: null },
       { rule_id: "AB-003", status: "VERIFIED", reason: "ok", confidence: 1.0, source_url: null },
     ]);
     const reportPath = join(tempDir, "report.json");
@@ -57,7 +57,7 @@ describe("fix command", () => {
 
   it("outputs JSON with --json flag", async () => {
     const report = makeReport([
-      { rule_id: "AB-001", status: "MISSING", reason: "no robots", confidence: 0.9, source_url: null },
+      { rule_id: "AB-001", status: "GAP", reason: "no robots", confidence: 0.9, source_url: null },
     ]);
     const reportPath = join(tempDir, "report.json");
     await writeFile(reportPath, JSON.stringify(report), "utf-8");
@@ -71,7 +71,7 @@ describe("fix command", () => {
 
   it("outputs to stdout with --dry-run", async () => {
     const report = makeReport([
-      { rule_id: "AB-003", status: "MISSING", reason: "no guide", confidence: 0.9, source_url: null },
+      { rule_id: "AB-003", status: "GAP", reason: "no guide", confidence: 0.9, source_url: null },
     ]);
     const reportPath = join(tempDir, "report.json");
     await writeFile(reportPath, JSON.stringify(report), "utf-8");
@@ -84,8 +84,8 @@ describe("fix command", () => {
 
   it("sorts by severity (high first)", async () => {
     const report = makeReport([
-      { rule_id: "AB-004", status: "MISSING", reason: "no openapi", confidence: 0.9, source_url: null },
-      { rule_id: "AB-001", status: "MISSING", reason: "no robots", confidence: 0.9, source_url: null },
+      { rule_id: "AB-004", status: "GAP", reason: "no openapi", confidence: 0.9, source_url: null },
+      { rule_id: "AB-001", status: "GAP", reason: "no robots", confidence: 0.9, source_url: null },
     ]);
     const reportPath = join(tempDir, "report.json");
     await writeFile(reportPath, JSON.stringify(report), "utf-8");

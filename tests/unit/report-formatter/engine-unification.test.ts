@@ -46,7 +46,7 @@ describe("SLICE-93-7: Engine unification — formatScanReport uses runScoringEng
       makeAssertion({ rule_id: "AB-002", status: "VERIFIED", category: "discovery" }),
       makeAssertion({ rule_id: "AB-003", status: "VERIFIED", category: "discovery" }),
       makeAssertion({ rule_id: "AB-004", status: "VERIFIED", category: "discovery" }),
-      makeAssertion({ rule_id: "AB-005", status: "MISSING", category: "documentation" }),
+      makeAssertion({ rule_id: "AB-005", status: "GAP", category: "documentation" }),
     ];
     const result = makeResult(assertions);
 
@@ -66,7 +66,7 @@ describe("SLICE-93-7: Engine unification — formatScanReport uses runScoringEng
       makeAssertion({ rule_id: "AB-002", status: "VERIFIED", category: "discovery" }),
       makeAssertion({ rule_id: "AB-003", status: "VERIFIED", category: "discovery" }),
       makeAssertion({ rule_id: "AB-004", status: "VERIFIED", category: "discovery" }),
-      makeAssertion({ rule_id: "AB-005", status: "MISSING", category: "documentation" }),
+      makeAssertion({ rule_id: "AB-005", status: "GAP", category: "documentation" }),
     ];
     const result = makeResult(assertions);
 
@@ -81,7 +81,7 @@ describe("SLICE-93-7: Engine unification — formatScanReport uses runScoringEng
   it("pillars array present with 4 entries", () => {
     const assertions = [
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED", category: "discovery" }),
-      makeAssertion({ rule_id: "AB-002", status: "MISSING", category: "documentation" }),
+      makeAssertion({ rule_id: "AB-002", status: "GAP", category: "documentation" }),
     ];
     const result = makeResult(assertions);
 
@@ -114,7 +114,7 @@ describe("SLICE-93-7: Engine unification — formatScanReport uses runScoringEng
   it("legacy fields still present with compatible shapes", () => {
     const assertions = [
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED", category: "discovery" }),
-      makeAssertion({ rule_id: "AB-002", status: "MISSING", category: "discovery" }),
+      makeAssertion({ rule_id: "AB-002", status: "GAP", category: "discovery" }),
     ];
     const result = makeResult(assertions);
 
@@ -145,7 +145,7 @@ describe("SLICE-93-7: Engine unification — formatScanReport uses runScoringEng
       ...Array.from({ length: 10 }, (_, i) =>
         makeAssertion({ rule_id: `AB-${String(i + 11).padStart(3, "0")}`, status: "VERIFIED", category: "documentation" }),
       ),
-      makeAssertion({ rule_id: "AB-021", status: "MISSING", category: "documentation", severity: "high" } as unknown as Partial<Assertion> & { rule_id: string }),
+      makeAssertion({ rule_id: "AB-021", status: "GAP", category: "documentation", severity: "high" } as unknown as Partial<Assertion> & { rule_id: string }),
     ];
     const result = makeResult(assertions);
 
@@ -163,7 +163,7 @@ describe("SLICE-93-7: Engine unification — formatScanReport uses runScoringEng
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED", category: "discovery" }),
       makeAssertion({ rule_id: "AB-002", status: "VERIFIED", category: "discovery" }),
       makeAssertion({ rule_id: "AB-003", status: "VERIFIED", category: "discovery" }),
-      makeAssertion({ rule_id: "AB-004", status: "MISSING", category: "discovery" }),
+      makeAssertion({ rule_id: "AB-004", status: "GAP", category: "discovery" }),
       makeAssertion({ rule_id: "AB-005", status: "NOT_APPLICABLE", category: "payments" }),
     ];
     const result = makeResult(assertions);

@@ -47,7 +47,7 @@ describe("SLICE-35-6: Delta Computer", () => {
   });
 
   it("one rule VERIFIED→MISSING → negative scoreImpact, totalDelta < 0", () => {
-    const current = [mockAssertion("AB-001", "MISSING")];
+    const current = [mockAssertion("AB-001", "GAP")];
     const previous = [mockAssertion("AB-001", "VERIFIED")];
     const result = computeDelta(
       current,
@@ -60,12 +60,12 @@ describe("SLICE-35-6: Delta Computer", () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0].scoreImpact).toBeLessThan(0);
     expect(result.items[0].previousStatus).toBe("VERIFIED");
-    expect(result.items[0].currentStatus).toBe("MISSING");
+    expect(result.items[0].currentStatus).toBe("GAP");
   });
 
   it("one rule MISSING→VERIFIED → positive scoreImpact, totalDelta > 0", () => {
     const current = [mockAssertion("AB-001", "VERIFIED")];
-    const previous = [mockAssertion("AB-001", "MISSING")];
+    const previous = [mockAssertion("AB-001", "GAP")];
     const result = computeDelta(
       current,
       previous,
@@ -126,7 +126,7 @@ describe("SLICE-35-6: Delta Computer", () => {
 
   it("statusChanges array is populated from items", () => {
     const current = [mockAssertion("AB-001", "VERIFIED")];
-    const previous = [mockAssertion("AB-001", "MISSING")];
+    const previous = [mockAssertion("AB-001", "GAP")];
     const result = computeDelta(
       current,
       previous,
@@ -136,7 +136,7 @@ describe("SLICE-35-6: Delta Computer", () => {
     );
     expect(result.statusChanges).toHaveLength(1);
     expect(result.statusChanges[0].ruleId).toBe("AB-001");
-    expect(result.statusChanges[0].from).toBe("MISSING");
+    expect(result.statusChanges[0].from).toBe("GAP");
     expect(result.statusChanges[0].to).toBe("VERIFIED");
   });
 
@@ -147,9 +147,9 @@ describe("SLICE-35-6: Delta Computer", () => {
       mockAssertion("AB-003", "VERIFIED"),
     ];
     const previous = [
-      mockAssertion("AB-001", "MISSING"),
-      mockAssertion("AB-002", "MISSING"),
-      mockAssertion("AB-003", "MISSING"),
+      mockAssertion("AB-001", "GAP"),
+      mockAssertion("AB-002", "GAP"),
+      mockAssertion("AB-003", "GAP"),
     ];
     const result = computeDelta(
       current,

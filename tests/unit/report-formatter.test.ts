@@ -33,7 +33,7 @@ describe("SLICE-58-6: Total scan report formatter", () => {
   it("produces a ScanReport with score, grade, and summary", () => {
     const result = makeResult([
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED", category: "discovery" }),
-      makeAssertion({ rule_id: "AB-002", status: "MISSING", category: "discovery" }),
+      makeAssertion({ rule_id: "AB-002", status: "GAP", category: "discovery" }),
     ]);
     const report = formatScanReport("https://example.com", result);
     // Engine v2: discovery pillar score=50, weight=20 → total=50*20/100=10
@@ -49,7 +49,7 @@ describe("SLICE-58-6: Total scan report formatter", () => {
       makeAssertion({ rule_id: "AB-002", status: "VERIFIED" }),
       makeAssertion({ rule_id: "AB-003", status: "VERIFIED" }),
       makeAssertion({ rule_id: "AB-004", status: "VERIFIED" }),
-      makeAssertion({ rule_id: "AB-005", status: "MISSING" }),
+      makeAssertion({ rule_id: "AB-005", status: "GAP" }),
     ]);
     const report = formatScanReport("https://example.com", result);
     // Engine v2: discovery category=80, pillar=80, total=80*20/100=16
@@ -59,11 +59,11 @@ describe("SLICE-58-6: Total scan report formatter", () => {
 
   it("grade F for score < 20", () => {
     const result = makeResult([
-      makeAssertion({ rule_id: "AB-001", status: "MISSING" }),
-      makeAssertion({ rule_id: "AB-002", status: "MISSING" }),
-      makeAssertion({ rule_id: "AB-003", status: "MISSING" }),
-      makeAssertion({ rule_id: "AB-004", status: "MISSING" }),
-      makeAssertion({ rule_id: "AB-005", status: "MISSING" }),
+      makeAssertion({ rule_id: "AB-001", status: "GAP" }),
+      makeAssertion({ rule_id: "AB-002", status: "GAP" }),
+      makeAssertion({ rule_id: "AB-003", status: "GAP" }),
+      makeAssertion({ rule_id: "AB-004", status: "GAP" }),
+      makeAssertion({ rule_id: "AB-005", status: "GAP" }),
     ]);
     const report = formatScanReport("https://example.com", result);
     expect(report.score).toBe(0);
@@ -73,7 +73,7 @@ describe("SLICE-58-6: Total scan report formatter", () => {
   it("categories sorted by completeness (highest first)", () => {
     const result = makeResult([
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED", category: "discovery" }),
-      makeAssertion({ rule_id: "AB-002", status: "MISSING", category: "discovery" }),
+      makeAssertion({ rule_id: "AB-002", status: "GAP", category: "discovery" }),
       makeAssertion({ rule_id: "AB-004", status: "VERIFIED", category: "documentation" }),
       makeAssertion({ rule_id: "AB-005", status: "VERIFIED", category: "documentation" }),
     ]);
@@ -88,9 +88,9 @@ describe("SLICE-58-6: Total scan report formatter", () => {
 
   it("top_missing sorted by effort (quick wins first)", () => {
     const result = makeResult([
-      makeAssertion({ rule_id: "AB-045", status: "MISSING", category: "infrastructure" }),
-      makeAssertion({ rule_id: "AB-004", status: "MISSING", category: "documentation" }),
-      makeAssertion({ rule_id: "AB-001", status: "MISSING", category: "discovery" }),
+      makeAssertion({ rule_id: "AB-045", status: "GAP", category: "infrastructure" }),
+      makeAssertion({ rule_id: "AB-004", status: "GAP", category: "documentation" }),
+      makeAssertion({ rule_id: "AB-001", status: "GAP", category: "discovery" }),
     ]);
     const report = formatScanReport("https://example.com", result);
     expect(report.top_missing.length).toBe(3);
@@ -114,7 +114,7 @@ describe("SLICE-58-6: Total scan report formatter", () => {
     const result = makeResult([
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED" }),
       makeAssertion({ rule_id: "AB-002", status: "VERIFIED" }),
-      makeAssertion({ rule_id: "AB-003", status: "MISSING" }),
+      makeAssertion({ rule_id: "AB-003", status: "GAP" }),
       makeAssertion({ rule_id: "AB-004", status: "NOT_APPLICABLE" }),
     ]);
     const report = formatScanReport("https://example.com", result);
@@ -127,8 +127,8 @@ describe("SLICE-58-6: Total scan report formatter", () => {
     const result = makeResult([
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED" }),
       makeAssertion({ rule_id: "AB-002", status: "INFERRED" }),
-      makeAssertion({ rule_id: "AB-003", status: "MISSING" }),
-      makeAssertion({ rule_id: "AB-004", status: "MISSING" }),
+      makeAssertion({ rule_id: "AB-003", status: "GAP" }),
+      makeAssertion({ rule_id: "AB-004", status: "GAP" }),
     ]);
     const report = formatScanReport("https://example.com", result);
     expect(report.verified).toBe(2);

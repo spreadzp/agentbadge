@@ -113,7 +113,7 @@ export function generateGuideMarkdown(input: GuideInput): string {
   lines.push("");
 
   let failing = input.assertions.filter(
-    (a) => a.status === "MISSING" || a.status === "CONFLICT",
+    (a) => a.status === "GAP" || a.status === "CONFLICT",
   );
 
   if (input.categoryFilter) {

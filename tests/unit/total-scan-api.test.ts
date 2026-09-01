@@ -16,7 +16,7 @@ vi.mock("../../src/agent-readiness/rule-engine/rule-engine", () => ({
     run: vi.fn().mockReturnValue({
       assertions: [
         { rule_id: "AB-001", status: "VERIFIED", evidence: [{ source: "robots" }], category: "discovery", name: "robots.txt" },
-        { rule_id: "AB-002", status: "MISSING", evidence: [], category: "discovery", name: "sitemap" },
+        { rule_id: "AB-002", status: "GAP", evidence: [], category: "discovery", name: "sitemap" },
         { rule_id: "AB-003", status: "NOT_APPLICABLE", evidence: [], category: "payments", name: "x402" },
       ],
     }),

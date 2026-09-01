@@ -12,7 +12,7 @@ function makeAssertion(overrides: Partial<Assertion> = {}): Assertion {
   return {
     rule_id: "AB-001",
     rule_version: "1.0.0",
-    status: "MISSING",
+    status: "GAP",
     evidence: [],
     confidence: 0.9,
     timestamp: "",
@@ -44,8 +44,8 @@ describe("generateGuideMarkdown", () => {
       score: 50,
       grade: "F",
       assertions: [
-        makeAssertion({ rule_id: "AB-001", status: "MISSING", reason: "no robots", category: "discovery", name: "robots.txt present" }),
-        makeAssertion({ rule_id: "AB-004", status: "MISSING", reason: "no openapi", category: "machine_readable", name: "OpenAPI spec" }),
+        makeAssertion({ rule_id: "AB-001", status: "GAP", reason: "no robots", category: "discovery", name: "robots.txt present" }),
+        makeAssertion({ rule_id: "AB-004", status: "GAP", reason: "no openapi", category: "machine_readable", name: "OpenAPI spec" }),
       ],
       ruleSeverityMap: { "AB-001": "high", "AB-004": "medium" },
     });
@@ -64,7 +64,7 @@ describe("generateGuideMarkdown", () => {
       score: 60,
       grade: "D",
       assertions: [
-        makeAssertion({ rule_id: "AB-001", status: "MISSING", reason: "robots.txt not found", name: "robots.txt present" }),
+        makeAssertion({ rule_id: "AB-001", status: "GAP", reason: "robots.txt not found", name: "robots.txt present" }),
       ],
       ruleFixMap: { "AB-001": "Add a robots.txt file at the site root allowing agent access." },
     });
@@ -79,7 +79,7 @@ describe("generateGuideMarkdown", () => {
       score: 60,
       grade: "D",
       assertions: [
-        makeAssertion({ rule_id: "AB-001", status: "MISSING", reason: "no robots", name: "robots.txt" }),
+        makeAssertion({ rule_id: "AB-001", status: "GAP", reason: "no robots", name: "robots.txt" }),
       ],
       ruleFixMap: { "AB-001": "Add robots.txt" },
       ruleExampleMap: { "AB-001": "```\nUser-agent: *\nAllow: /\n```" },
@@ -111,7 +111,7 @@ describe("generateGuideMarkdown", () => {
       assertions: [
         makeAssertion({ rule_id: "AB-001", status: "VERIFIED", name: "robots ok" }),
         makeAssertion({ rule_id: "AB-002", status: "NOT_APPLICABLE", name: "n/a" }),
-        makeAssertion({ rule_id: "AB-003", status: "MISSING", name: "missing guide" }),
+        makeAssertion({ rule_id: "AB-003", status: "GAP", name: "missing guide" }),
       ],
     });
     expect(md).not.toContain("AB-001");

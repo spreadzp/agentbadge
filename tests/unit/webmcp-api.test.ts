@@ -90,7 +90,7 @@ vi.mock("../../src/agent-readiness/rule-engine/rule-engine", () => ({
     run: vi.fn(() => ({
       assertions: [
         { rule_id: "AB-001", status: "VERIFIED", category: "discovery" },
-        { rule_id: "AB-002", status: "MISSING", category: "discovery" },
+        { rule_id: "AB-002", status: "GAP", category: "discovery" },
       ],
       rulesetVersion: "1.0",
       scannedAt: new Date().toISOString(),

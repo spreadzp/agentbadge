@@ -71,7 +71,7 @@ describe("formatJsonApiOutput", () => {
       grade: "F",
       assertions: [
         makeAssertion({ rule_id: "AB-001", status: "VERIFIED" }),
-        makeAssertion({ rule_id: "AB-002", status: "MISSING" }),
+        makeAssertion({ rule_id: "AB-002", status: "GAP" }),
         makeAssertion({ rule_id: "AB-003", status: "VERIFIED" }),
         makeAssertion({ rule_id: "AB-004", status: "NOT_APPLICABLE" }),
       ],
@@ -90,7 +90,7 @@ describe("formatJsonApiOutput", () => {
       grade: "B",
       assertions: [
         makeAssertion({ rule_id: "AB-001", category: "discovery", status: "VERIFIED", name: "robots.txt" }),
-        makeAssertion({ rule_id: "AB-002", category: "discovery", status: "MISSING", name: "sitemap.xml" }),
+        makeAssertion({ rule_id: "AB-002", category: "discovery", status: "GAP", name: "sitemap.xml" }),
       ],
       categoryScores: [makeCategoryScore({ category: "discovery", ruleCount: 2, applicableCount: 2 })],
     });
@@ -112,7 +112,7 @@ describe("formatJsonApiOutput", () => {
       grade: "B",
       assertions: [
         makeAssertion({ rule_id: "AB-001", status: "VERIFIED", name: "robots.txt present" }),
-        makeAssertion({ rule_id: "AB-002", status: "MISSING", name: "sitemap.xml present" }),
+        makeAssertion({ rule_id: "AB-002", status: "GAP", name: "sitemap.xml present" }),
       ],
       categoryScores: [makeCategoryScore()],
     });
@@ -132,7 +132,7 @@ describe("formatJsonApiOutput", () => {
       assertions: [
         makeAssertion({
           rule_id: "AB-002",
-          status: "MISSING",
+          status: "GAP",
           name: "sitemap.xml present",
           fix: { eligible: true, type: "create_file", note: "Add sitemap.xml at /sitemap.xml" },
         }),

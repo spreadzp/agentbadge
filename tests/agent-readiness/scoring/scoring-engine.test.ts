@@ -46,7 +46,7 @@ describe("SLICE-35-7: Scoring Engine Orchestrator", () => {
 
   it("Discovery high-severity MISSING → floor triggered, total capped at 40", () => {
     const assertions = [
-      mockAssertion("AB-001", "MISSING", "discovery", "high"),
+      mockAssertion("AB-001", "GAP", "discovery", "high"),
       mockAssertion("AB-002", "VERIFIED", "documentation"),
       mockAssertion("AB-003", "VERIFIED", "actionability"),
       mockAssertion("AB-004", "VERIFIED", "machine_readable"),
@@ -66,7 +66,7 @@ describe("SLICE-35-7: Scoring Engine Orchestrator", () => {
 
   it("with previousResult → delta computed", () => {
     const current = [mockAssertion("AB-001", "VERIFIED", "discovery")];
-    const previous = [mockAssertion("AB-001", "MISSING", "discovery")];
+    const previous = [mockAssertion("AB-001", "GAP", "discovery")];
 
     const prevResult = runScoringEngine({
       assertions: previous,

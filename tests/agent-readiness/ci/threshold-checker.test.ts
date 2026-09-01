@@ -56,7 +56,7 @@ describe("SLICE-39-4: Threshold Checker", () => {
 
   it("fails on high severity unverified assertion", () => {
     const result = checkThresholds(makeReport(90, [
-      { rule_id: "AB-001", status: "MISSING", severity: "high" },
+      { rule_id: "AB-001", status: "GAP", severity: "high" },
     ]), 0);
     expect(result.passed).toBe(false);
     expect(result.exitCode).toBe(2);
@@ -81,21 +81,21 @@ describe("SLICE-39-4: Threshold Checker", () => {
 
   it("ignores medium severity unverified", () => {
     const result = checkThresholds(makeReport(90, [
-      { rule_id: "AB-001", status: "MISSING", severity: "medium" },
+      { rule_id: "AB-001", status: "GAP", severity: "medium" },
     ]), 0);
     expect(result.passed).toBe(true);
   });
 
   it("ignores low severity unverified", () => {
     const result = checkThresholds(makeReport(90, [
-      { rule_id: "AB-001", status: "MISSING", severity: "low" },
+      { rule_id: "AB-001", status: "GAP", severity: "low" },
     ]), 0);
     expect(result.passed).toBe(true);
   });
 
   it("fails on both score and severity", () => {
     const result = checkThresholds(makeReport(50, [
-      { rule_id: "AB-001", status: "MISSING", severity: "high" },
+      { rule_id: "AB-001", status: "GAP", severity: "high" },
     ]), 70);
     expect(result.passed).toBe(false);
     expect(result.exitCode).toBe(2);
@@ -104,7 +104,7 @@ describe("SLICE-39-4: Threshold Checker", () => {
 
   it("handles missing severity field", () => {
     const result = checkThresholds(makeReport(90, [
-      { rule_id: "AB-001", status: "MISSING" },
+      { rule_id: "AB-001", status: "GAP" },
     ]), 0);
     expect(result.passed).toBe(true);
   });

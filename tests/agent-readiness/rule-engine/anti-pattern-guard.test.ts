@@ -92,7 +92,7 @@ describe("Anti-Pattern Guard Tests", () => {
     const result = ConfidenceComputer.compute({
       rule: { rule_id: "AB-001", version: "1.0.0", name: "test", category: "documentation", severity: "high", counted_in_score: true, check: { type: "http_fetch" }, fix: { eligible: false, type: "none" } } as any,
       evidence: [],
-      status: "MISSING",
+      status: "GAP",
     });
 
     // MISSING with 0 evidence → exactly 0.0

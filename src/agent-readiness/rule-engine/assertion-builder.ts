@@ -1,6 +1,7 @@
 import type { AgentReadinessRule } from "../rule.schema";
 import type { Evidence } from "./evidence.types";
 import type { AssertionStatus } from "./status-determinator";
+import { normalizeStatus } from "../shared.schema";
 
 export interface Assertion {
   rule_id: string;
@@ -59,7 +60,7 @@ class AssertionBuilderClass {
     return {
       rule_id: parsed.rule_id,
       rule_version: parsed.rule_version,
-      status: parsed.status,
+      status: normalizeStatus(parsed.status),
       evidence: parsed.evidence,
       confidence: parsed.confidence,
       timestamp: parsed.timestamp,

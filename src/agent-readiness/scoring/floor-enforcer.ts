@@ -25,7 +25,7 @@ export function checkFloor(
     if (!severity || !config.floorTriggerSeverity.includes(severity as any)) continue;
     if (!category || !config.floorCategories.includes(category as any)) continue;
 
-    if (assertion.status === "MISSING" || assertion.status === "CONFLICT") {
+    if (assertion.status === "GAP" || assertion.status === "CONFLICT") {
       triggeringRules.push(assertion.rule_id);
       triggeringCategories.add(category);
     }

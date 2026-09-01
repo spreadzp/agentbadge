@@ -21,7 +21,7 @@ const mockScope = {
 
 const mockAssertions = [
   { rule_id: "AB-001", status: "VERIFIED" },
-  { rule_id: "AB-002", status: "MISSING" },
+  { rule_id: "AB-002", status: "GAP" },
 ];
 
 describe("SLICE-36-5: Report Serializer", () => {

@@ -17,7 +17,7 @@ class ConfidenceComputerClass {
       case "NOT_APPLICABLE":
         return null;
 
-      case "MISSING":
+      case "GAP":
         return 0.0;
 
       case "CONFLICT":

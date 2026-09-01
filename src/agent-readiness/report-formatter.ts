@@ -24,6 +24,7 @@ export interface ScanReport {
   total_rules: number;
   verified: number;
   missing: number;
+  gap: number;
   not_applicable: number;
   skipped: number;
   categories: CategoryReport[];
@@ -57,7 +58,8 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
   const assertions = result.assertions;
   const total = assertions.length;
   const verified = assertions.filter((a) => a.status === "VERIFIED" || a.status === "INFERRED").length;
-  const missing = assertions.filter((a) => a.status === "MISSING").length;
+  const missing = assertions.filter((a) => a.status === "GAP").length;
+  const gap = missing;
   const notApplicable = assertions.filter((a) => a.status === "NOT_APPLICABLE").length;
   const skipped = assertions.filter((a) => (a.status as string) === "SKIPPED").length;
 
@@ -81,7 +83,7 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     const entry = categoryMap.get(cat)!;
     entry.total++;
     if (a.status === "VERIFIED" || a.status === "INFERRED") entry.verified++;
-    if (a.status === "MISSING") entry.missing++;
+    if (a.status === "GAP") entry.missing++;
   }
 
   const categories: CategoryReport[] = [];
@@ -116,7 +118,7 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
   });
 
   const missingAssertions = assertions
-    .filter((a) => a.status === "MISSING")
+    .filter((a) => a.status === "GAP")
     .map((a) => {
       const desc = RULE_DESCRIPTIONS.find((r) => r.rule_id === a.rule_id);
       return {
@@ -143,6 +145,7 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     total_rules: total,
     verified,
     missing,
+    gap,
     not_applicable: notApplicable,
     skipped,
     categories: categories.sort((a, b) => b.completeness_pct - a.completeness_pct),

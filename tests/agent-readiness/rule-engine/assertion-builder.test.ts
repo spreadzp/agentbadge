@@ -48,16 +48,16 @@ describe("AssertionBuilder", () => {
     expect(assertion.reason).toBe("robots.txt found and accessible");
   });
 
-  it("builds a MISSING assertion with empty evidence", () => {
+  it("builds a GAP assertion with empty evidence", () => {
     const assertion = AssertionBuilder.build({
       rule: mockRule(),
       evidence: [],
-      status: "MISSING",
+      status: "GAP",
       confidence: 0,
       reason: "No evidence found",
     });
 
-    expect(assertion.status).toBe("MISSING");
+    expect(assertion.status).toBe("GAP");
     expect(assertion.evidence).toEqual([]);
     expect(assertion.confidence).toBe(0);
     expect(assertion.source_url).toBeNull();
@@ -89,7 +89,7 @@ describe("AssertionBuilder", () => {
     const low = AssertionBuilder.build({
       rule: mockRule(),
       evidence: [],
-      status: "MISSING",
+      status: "GAP",
       confidence: -0.5,
       reason: "test",
     });
