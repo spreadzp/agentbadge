@@ -1,5 +1,21 @@
 import type { RuleEngineResult } from "./rule-engine/rule-engine";
 import { RULE_DESCRIPTIONS, CATEGORY_DESCRIPTIONS } from "./rule-descriptions";
+import { runScoringEngine } from "./scoring/scoring-engine";
+import { AGENT_READINESS_RULESET } from "./ruleset";
+import { DEFAULT_CATEGORY_WEIGHTS } from "./scoring/scoring-types";
+import type { RulesetManifest } from "./scoring/scoring-config";
+import { PILLAR_LABELS, PILLAR_QUESTIONS, CATEGORY_TO_PILLAR, PILLARS } from "./scoring/pillar-map";
+import type { Pillar } from "./shared.schema";
+
+export interface PillarReport {
+  pillar: string;
+  label: string;
+  question: string;
+  weight: number;
+  score: number;
+  floorTriggered: boolean;
+  categories: string[];
+}
 
 export interface ScanReport {
   url: string;
@@ -13,6 +29,9 @@ export interface ScanReport {
   categories: CategoryReport[];
   top_missing: MissingRule[];
   summary: string;
+  pillars: PillarReport[];
+  floorTriggered: boolean;
+  floorReason: string | null;
 }
 
 export interface CategoryReport {
@@ -41,10 +60,19 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
   const missing = assertions.filter((a) => a.status === "MISSING").length;
   const notApplicable = assertions.filter((a) => a.status === "NOT_APPLICABLE").length;
   const skipped = assertions.filter((a) => (a.status as string) === "SKIPPED").length;
-  const score = total > 0 ? Math.round((verified / total) * 100) : 0;
+
+  const manifest: RulesetManifest = {
+    name: AGENT_READINESS_RULESET.name,
+    version: AGENT_READINESS_RULESET.version,
+    scoring: AGENT_READINESS_RULESET.scoring,
+    categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
+  };
+
+  const scoreResult = runScoringEngine({ assertions, rulesetManifest: manifest });
+  const score = scoreResult.total.score;
+  const grade = scoreResult.total.grade;
 
   const categoryMap = new Map<string, { verified: number; missing: number; total: number }>();
-
   for (const a of assertions) {
     const cat = a.category || "unknown";
     if (!categoryMap.has(cat)) {
@@ -59,6 +87,7 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
   const categories: CategoryReport[] = [];
   for (const [cat, counts] of categoryMap) {
     const desc = CATEGORY_DESCRIPTIONS[cat as keyof typeof CATEGORY_DESCRIPTIONS];
+    const engineCs = scoreResult.categories[cat as keyof typeof scoreResult.categories];
     categories.push({
       category: cat,
       name: desc?.title ?? cat,
@@ -66,9 +95,25 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
       total: counts.total,
       verified: counts.verified,
       missing: counts.missing,
-      completeness_pct: counts.total > 0 ? Math.round((counts.verified / counts.total) * 100) : 0,
+      completeness_pct: engineCs ? Math.round(engineCs.score) : (counts.total > 0 ? Math.round((counts.verified / counts.total) * 100) : 0),
     });
   }
+
+  const pillars: PillarReport[] = PILLARS.map((p: Pillar) => {
+    const ps = scoreResult.pillars[p];
+    const memberCategories = Object.entries(CATEGORY_TO_PILLAR)
+      .filter(([, pillar]) => pillar === p)
+      .map(([cat]) => cat);
+    return {
+      pillar: p,
+      label: PILLAR_LABELS[p],
+      question: PILLAR_QUESTIONS[p],
+      weight: ps.weight,
+      score: ps.score,
+      floorTriggered: ps.floorTriggered,
+      categories: memberCategories,
+    };
+  });
 
   const missingAssertions = assertions
     .filter((a) => a.status === "MISSING")
@@ -89,8 +134,6 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     })
     .slice(0, 10);
 
-  const grade = score >= 80 ? "A" : score >= 60 ? "B" : score >= 40 ? "C" : score >= 20 ? "D" : "F";
-
   const summary = `Your site scored ${score}/100 (${grade} grade). ${verified} of ${total} rules passed, ${missing} need attention, ${notApplicable} not applicable.`;
 
   return {
@@ -105,5 +148,8 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     categories: categories.sort((a, b) => b.completeness_pct - a.completeness_pct),
     top_missing: missingAssertions,
     summary,
+    pillars,
+    floorTriggered: scoreResult.total.floorTriggered,
+    floorReason: scoreResult.total.floorReason,
   };
 }

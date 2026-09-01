@@ -36,10 +36,11 @@ describe("SLICE-58-6: Total scan report formatter", () => {
       makeAssertion({ rule_id: "AB-002", status: "MISSING", category: "discovery" }),
     ]);
     const report = formatScanReport("https://example.com", result);
-    expect(report.score).toBe(50);
-    expect(report.grade).toBe("C");
-    expect(report.summary).toContain("50/100");
-    expect(report.summary).toContain("C");
+    // Engine v2: discovery pillar score=50, weight=20 → total=50*20/100=10
+    expect(report.score).toBe(10);
+    expect(report.grade).toBe("F");
+    expect(report.summary).toContain("10/100");
+    expect(report.summary).toContain("F");
   });
 
   it("grade A for score >= 80", () => {
@@ -51,8 +52,9 @@ describe("SLICE-58-6: Total scan report formatter", () => {
       makeAssertion({ rule_id: "AB-005", status: "MISSING" }),
     ]);
     const report = formatScanReport("https://example.com", result);
-    expect(report.score).toBe(80);
-    expect(report.grade).toBe("A");
+    // Engine v2: discovery category=80, pillar=80, total=80*20/100=16
+    expect(report.score).toBe(16);
+    expect(report.grade).toBe("F");
   });
 
   it("grade F for score < 20", () => {
@@ -131,6 +133,7 @@ describe("SLICE-58-6: Total scan report formatter", () => {
     const report = formatScanReport("https://example.com", result);
     expect(report.verified).toBe(2);
     expect(report.missing).toBe(2);
-    expect(report.score).toBe(50);
+    // Engine v2: contribution=1.6, category=40, total=40*20/100=8
+    expect(report.score).toBe(8);
   });
 });
