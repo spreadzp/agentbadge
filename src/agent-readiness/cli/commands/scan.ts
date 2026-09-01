@@ -150,6 +150,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         categories: Object.fromEntries(
           Object.entries(scoreResult.categories).map(([k, v]) => [k, { score: v.score }]),
         ),
+        pillars: scoreResult.pillars,
         delta: scoreResult.delta
           ? { totalDelta: scoreResult.delta.totalDelta ?? 0 }
           : null,
@@ -196,6 +197,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         authProbe: authProbeData,
         endpointProbe: endpointProbeData,
         operationalDiscovery: operationalDiscoveryData,
+        pillars: scoreResult.pillars,
       });
       return { exitCode: 0, stdout: apiJson, stderr: "" };
     }
@@ -223,7 +225,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
           Object.entries(scoreResult.categories).map(([k, v]) => [k, v.score ?? 0]),
         ))
         : undefined;
-      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData });
+      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData, pillars: scoreResult.pillars });
       if (outputPath !== DEFAULT_OUTPUT_PATH) {
         await writeFile(outputPath, html, "utf-8");
         return { exitCode: 0, stdout: `HTML report written to ${outputPath}`, stderr: "", outputFile: outputPath };

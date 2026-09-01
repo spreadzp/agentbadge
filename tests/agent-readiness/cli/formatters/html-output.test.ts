@@ -1,6 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { formatHtmlOutput } from "../../../../src/agent-readiness/cli/formatters/html-output";
 import type { RuleResult } from "../../../../src/agent-readiness/cli/output";
+import type { PillarScore } from "../../../../src/agent-readiness/scoring/scoring-types";
+
+function makePillarScore(overrides: Partial<PillarScore> = {}): PillarScore {
+  return {
+    pillar: "discovery",
+    weight: 20,
+    rawScore: 90,
+    score: 90,
+    categoryCount: 8,
+    applicableCount: 8,
+    floorTriggered: false,
+    ...overrides,
+  };
+}
 
 function makeResults(): RuleResult[] {
   return [
@@ -109,5 +123,62 @@ describe("formatHtmlOutput", () => {
     const html = formatHtmlOutput([], { score: 0 });
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("0");
+  });
+
+  // SLICE-93-9: Pillar output tests
+  describe("pillar output", () => {
+    const pillars: Record<string, PillarScore> = {
+      discovery: makePillarScore({ pillar: "discovery", weight: 20, rawScore: 90, score: 90 }),
+      understandability: makePillarScore({ pillar: "understandability", weight: 25, rawScore: 68, score: 68 }),
+      executability: makePillarScore({ pillar: "executability", weight: 30, rawScore: 77, score: 77 }),
+      verifiability: makePillarScore({ pillar: "verifiability", weight: 25, rawScore: 72, score: 72 }),
+    };
+
+    it("renders Four Pillars section when pillars provided", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75, pillars });
+      expect(html).toContain("Four Pillars");
+    });
+
+    it("renders all four pillar labels", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75, pillars });
+      expect(html).toContain("Discovery");
+      expect(html).toContain("Understandability");
+      expect(html).toContain("Executability");
+      expect(html).toContain("Verifiability");
+    });
+
+    it("renders weight-scaled scores in NN/weight format", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75, pillars });
+      expect(html).toContain("18/20");
+      expect(html).toContain("17/25");
+      expect(html).toContain("23/30");
+    });
+
+    it("renders progress bars for pillars", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75, pillars });
+      expect(html).toContain("pillar-bar");
+    });
+
+    it("renders floor annotation when floorTriggered", () => {
+      const pillarsWithFloor = {
+        ...pillars,
+        discovery: makePillarScore({ pillar: "discovery", weight: 20, rawScore: 30, score: 30, floorTriggered: true }),
+      };
+      const html = formatHtmlOutput(makeResults(), { score: 75, pillars: pillarsWithFloor });
+      expect(html).toContain("floor");
+    });
+
+    it("omits Four Pillars section when pillars not provided (degradation)", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75 });
+      expect(html).not.toContain("Four Pillars");
+    });
+
+    it("existing score header and grade markup untouched when pillars added", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 85, pillars });
+      expect(html).toContain("score-header");
+      expect(html).toContain("grade-badge");
+      expect(html).toContain("85");
+      expect(html).toContain("/100");
+    });
   });
 });
