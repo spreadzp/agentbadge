@@ -1,0 +1,107 @@
+{
+  "name": "AgentBadge WebMCP",
+  "children": [
+    {
+      "name": "Core Specification",
+      "children": [
+        {
+          "name": "document.modelContext"
+        },
+        {
+          "name": "registerTool(tool)"
+        },
+        {
+          "name": "SecureContext required"
+        },
+        {
+          "name": "AbortSignal support"
+        }
+      ]
+    },
+    {
+      "name": "Imperative Tools",
+      "children": [
+        {
+          "name": "agent-readiness-scan"
+        },
+        {
+          "name": "badge-generate"
+        },
+        {
+          "name": "passport-issue"
+        },
+        {
+          "name": "passport-verify"
+        },
+        {
+          "name": "get-compliance-score"
+        },
+        {
+          "name": "search-rules"
+        }
+      ]
+    },
+    {
+      "name": "Declarative API",
+      "children": [
+        {
+          "name": "submitScanRequest form"
+        },
+        {
+          "name": "toolname attribute"
+        },
+        {
+          "name": "toolautosubmit"
+        },
+        {
+          "name": "respondWith() support"
+        }
+      ]
+    },
+    {
+      "name": "Discovery Mechanism",
+      "children": [
+        {
+          "name": "/.well-known/webmcp.json"
+        },
+        {
+          "name": "Link service-desc header"
+        },
+        {
+          "name": "Tool metadata & schemas"
+        }
+      ]
+    },
+    {
+      "name": "Security & Annotations",
+      "children": [
+        {
+          "name": "readOnlyHint"
+        },
+        {
+          "name": "untrustedContentHint"
+        },
+        {
+          "name": "exposedTo origins"
+        }
+      ]
+    },
+    {
+      "name": "Hackathon Strategy",
+      "children": [
+        {
+          "name": "WebMCP Leverage"
+        },
+        {
+          "name": "Execution & Live URL"
+        },
+        {
+          "name": "Potential Impact"
+        },
+        {
+          "name": "Creativity & Ambition"
+        }
+      ]
+    }
+  ]
+}
