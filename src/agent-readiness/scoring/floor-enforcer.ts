@@ -6,6 +6,9 @@ export interface FloorCheckResult {
   capValue: number | null;
   triggeringRules: string[];
   triggeringCategories: string[];
+  criticalTriggered: boolean;
+  criticalCapValue: number | null;
+  criticalTriggeringRules: string[];
 }
 
 export function checkFloor(
@@ -14,29 +17,45 @@ export function checkFloor(
 ): FloorCheckResult {
   const triggeringRules: string[] = [];
   const triggeringCategories = new Set<string>();
+  const criticalTriggeringRules: string[] = [];
 
   for (const assertion of assertions) {
-    // Check if assertion's rule severity matches floor trigger severity
-    // Assertion doesn't carry severity directly — orchestrator must pass rules
-    // For now, we check via assertion metadata if available
     const severity = (assertion as any).severity as string | undefined;
     const category = (assertion as any).category as string | undefined;
 
     if (!severity || !config.floorTriggerSeverity.includes(severity as any)) continue;
-    if (!category || !config.floorCategories.includes(category as any)) continue;
 
     if (assertion.status === "GAP" || assertion.status === "CONFLICT") {
-      triggeringRules.push(assertion.rule_id);
-      triggeringCategories.add(category);
+      // Critical severity triggers regardless of category
+      if (severity === "critical") {
+        criticalTriggeringRules.push(assertion.rule_id);
+      } else if (category && config.floorCategories.includes(category as any)) {
+        // High severity triggers only for floor categories
+        triggeringRules.push(assertion.rule_id);
+        triggeringCategories.add(category);
+      }
     }
   }
 
-  const triggered = triggeringRules.length > 0;
+  const highFloorTriggered = triggeringRules.length > 0;
+  const criticalFloorTriggered = criticalTriggeringRules.length > 0;
+  const triggered = highFloorTriggered || criticalFloorTriggered;
+
+  const highCap = highFloorTriggered ? config.floorCap : null;
+  const criticalCap = criticalFloorTriggered ? (config.criticalFloorCap ?? 30) : null;
+
+  // When both floors fire, min applies
+  const caps = [highCap, criticalCap].filter((c): c is number => c !== null);
+  const capValue = caps.length > 0 ? Math.min(...caps) : null;
+
   return {
     triggered,
-    capValue: triggered ? config.floorCap : null,
-    triggeringRules,
+    capValue,
+    triggeringRules: [...triggeringRules, ...criticalTriggeringRules],
     triggeringCategories: Array.from(triggeringCategories),
+    criticalTriggered: criticalFloorTriggered,
+    criticalCapValue: criticalCap,
+    criticalTriggeringRules,
   };
 }
 

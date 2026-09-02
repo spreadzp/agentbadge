@@ -136,13 +136,13 @@ export const DEFAULT_CATEGORY_WEIGHTS: CategoryWeights = {
   accessibility: 4,
   active_probing: 5,
   // v0.4 (EPIC-95) — semantic layer categories
-  pricing: 3,
-  rate_limits: 3,
-  error_semantics: 3,
-  retry_semantics: 2,
-  sandbox: 1,
-  versioning: 2,
-  agent_policy: 2,
+  pricing: 8,
+  rate_limits: 6,
+  error_semantics: 5,
+  retry_semantics: 3,
+  sandbox: 2,
+  versioning: 4,
+  agent_policy: 4,
 };
 
 export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {

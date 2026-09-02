@@ -97,6 +97,9 @@ describe("SLICE-35-4: Floor Enforcer", () => {
       capValue: 40,
       triggeringRules: ["AB-001"],
       triggeringCategories: ["discovery"],
+      criticalTriggered: false,
+      criticalCapValue: null,
+      criticalTriggeringRules: [],
     };
     const categoryScores: CategoryScore[] = [
       { category: "discovery", weight: 25, rawScore: 80, score: 80, ruleCount: 5, applicableCount: 5, floorTriggered: false },
@@ -113,6 +116,9 @@ describe("SLICE-35-4: Floor Enforcer", () => {
       capValue: null,
       triggeringRules: [],
       triggeringCategories: [],
+      criticalTriggered: false,
+      criticalCapValue: null,
+      criticalTriggeringRules: [],
     };
     const categoryScores: CategoryScore[] = [
       { category: "discovery", weight: 25, rawScore: 80, score: 80, ruleCount: 5, applicableCount: 5, floorTriggered: false },

@@ -20,6 +20,9 @@ const noFloor: FloorCheckResult = {
   capValue: null,
   triggeringRules: [],
   triggeringCategories: [],
+  criticalTriggered: false,
+  criticalCapValue: null,
+  criticalTriggeringRules: [],
 };
 
 const floor40: FloorCheckResult = {
@@ -27,6 +30,9 @@ const floor40: FloorCheckResult = {
   capValue: 40,
   triggeringRules: ["AB-001"],
   triggeringCategories: ["discovery"],
+  criticalTriggered: false,
+  criticalCapValue: null,
+  criticalTriggeringRules: [],
 };
 
 describe("SLICE-35-5: Total Scorer", () => {
