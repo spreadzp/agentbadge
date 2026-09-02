@@ -266,9 +266,257 @@ const checkerOpenapiErrorSchemas: SemanticChecker = (sources) => {
   return { outcome: "absent", detail: "Error responses declared but none have schemas or descriptions" };
 };
 
+// ─── Pricing / Rate limits helpers ─────────────────────────────────────────
+
+interface PricingDeclaration {
+  source: string;
+  pricePerCall?: string;
+  rateLimit?: string;
+}
+
+function extractPricingFromGuide(snap: ResponseSnapshot | null): PricingDeclaration | null {
+  if (!snap?.body) return null;
+  try {
+    const json = JSON.parse(snap.body) as Record<string, unknown>;
+    const pricing = json.pricing as Record<string, unknown> | undefined;
+    if (pricing && typeof pricing === "object") {
+      return {
+        source: "guide",
+        pricePerCall: typeof pricing.price_per_call === "string" ? pricing.price_per_call : undefined,
+        rateLimit: typeof pricing.rate_limit === "string" ? pricing.rate_limit : undefined,
+      };
+    }
+  } catch {
+    // Not JSON — check prose for pricing keywords
+    const lower = snap.body.toLowerCase();
+    if (lower.includes("pricing") || lower.includes("cost") || lower.includes("$0.")) {
+      return { source: "guide", pricePerCall: "prose-only" };
+    }
+  }
+  return null;
+}
+
+function extractPricingFromOpenApi(snap: ResponseSnapshot | null): PricingDeclaration | null {
+  if (!snap?.body) return null;
+  const spec = parseJsonBody(snap) as OpenApiSpec | null;
+  if (!spec) return null;
+  const ext = (spec as unknown as Record<string, unknown>).x_pricing as Record<string, unknown> | undefined;
+  if (ext && typeof ext === "object") {
+    return {
+      source: "openapi",
+      pricePerCall: typeof ext.price_per_call === "string" ? ext.price_per_call : undefined,
+      rateLimit: typeof ext.rate_limit === "string" ? ext.rate_limit : undefined,
+    };
+  }
+  return null;
+}
+
+function extractPricingFromWellKnown(snap: ResponseSnapshot | null): PricingDeclaration | null {
+  if (!snap?.body) return null;
+  try {
+    const json = JSON.parse(snap.body) as Record<string, unknown>;
+    if (typeof json === "object" && json !== null) {
+      return {
+        source: "pricing.json",
+        pricePerCall: typeof json.price_per_call === "string" ? json.price_per_call : undefined,
+        rateLimit: typeof json.rate_limit === "string" ? json.rate_limit : undefined,
+      };
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
+}
+
+function extractPricingFromLlms(snap: ResponseSnapshot | null): PricingDeclaration | null {
+  if (!snap?.body) return null;
+  const lower = snap.body.toLowerCase();
+  // Structured section: "## Pricing" or "## Rate Limits" with key-value lines
+  const hasPricingSection = lower.includes("## pricing") || lower.includes("## cost");
+  const hasRateSection = lower.includes("## rate") || lower.includes("## limits");
+  if (!hasPricingSection && !hasRateSection) {
+    // Prose-only: mentions pricing/cost somewhere
+    if (lower.includes("pricing") || lower.includes("cost per") || lower.includes("$0.")) {
+      return { source: "llms", pricePerCall: "prose-only" };
+    }
+    return null;
+  }
+  // Try to extract structured values
+  const priceMatch = snap.body.match(/price[_\s-]*per[_\s-]*call\s*[:=]\s*\S+/i);
+  const rateMatch = snap.body.match(/rate[_\s-]*limit\s*[:=]\s*\S+/i);
+  return {
+    source: "llms",
+    pricePerCall: priceMatch?.[0]?.split(/[:=]/)[1]?.trim(),
+    rateLimit: rateMatch?.[0]?.split(/[:=]/)[1]?.trim(),
+  };
+}
+
+function extractRateLimitFromGuide(snap: ResponseSnapshot | null): PricingDeclaration | null {
+  if (!snap?.body) return null;
+  try {
+    const json = JSON.parse(snap.body) as Record<string, unknown>;
+    const rateLimits = json.rate_limits as Record<string, unknown> | undefined;
+    if (rateLimits && typeof rateLimits === "object") {
+      return {
+        source: "guide",
+        rateLimit: typeof rateLimits.requests_per_minute === "string"
+          ? rateLimits.requests_per_minute as string
+          : JSON.stringify(rateLimits),
+      };
+    }
+  } catch {
+    const lower = snap.body.toLowerCase();
+    if (lower.includes("rate limit") || lower.includes("requests per")) {
+      return { source: "guide", rateLimit: "prose-only" };
+    }
+  }
+  return null;
+}
+
+function extractRateLimitFromOpenApi(snap: ResponseSnapshot | null): PricingDeclaration | null {
+  if (!snap?.body) return null;
+  const spec = parseJsonBody(snap) as OpenApiSpec | null;
+  if (!spec) return null;
+  const ext = (spec as unknown as Record<string, unknown>).x_rate_limit as Record<string, unknown> | undefined;
+  if (ext && typeof ext === "object") {
+    return {
+      source: "openapi",
+      rateLimit: typeof ext.requests_per_minute === "string"
+        ? ext.requests_per_minute as string
+        : JSON.stringify(ext),
+    };
+  }
+  return null;
+}
+
+function extractRateLimitFromLlms(snap: ResponseSnapshot | null): PricingDeclaration | null {
+  if (!snap?.body) return null;
+  const lower = snap.body.toLowerCase();
+  const hasRateSection = lower.includes("## rate") || lower.includes("## limits");
+  if (!hasRateSection && !lower.includes("rate limit") && !lower.includes("requests per")) {
+    return null;
+  }
+  const rateMatch = snap.body.match(/rate[_\s-]*limit\s*[:=]\s*\S+/i);
+  if (rateMatch) {
+    return { source: "llms", rateLimit: rateMatch[0]?.split(/[:=]/)[1]?.trim() };
+  }
+  return { source: "llms", rateLimit: "prose-only" };
+}
+
+// ─── AB-150: Pricing discoverability ────────────────────────────────────────
+
+const checkerPricingDiscoverability: SemanticChecker = (sources) => {
+  const guideDecl = extractPricingFromGuide(sources.guide ?? null);
+  const openApiDecl = extractPricingFromOpenApi(sources.openapi ?? null);
+  const wellKnownDecl = extractPricingFromWellKnown(sources.pricing ?? null);
+  const llmsDecl = extractPricingFromLlms(sources.llms ?? null);
+
+  const machineReadable = [guideDecl, openApiDecl, wellKnownDecl].filter(
+    (d) => d !== null && d.pricePerCall !== "prose-only",
+  );
+  const proseOnly = [guideDecl, llmsDecl].filter(
+    (d) => d !== null && d.pricePerCall === "prose-only",
+  );
+
+  const hasAnySource = sources.guide || sources.openapi || sources.pricing || sources.llms;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  if (machineReadable.length > 0) {
+    const srcs = machineReadable.map((d) => d!.source).join(", ");
+    return { outcome: "found", detail: `Machine-readable pricing found in: ${srcs}` };
+  }
+  if (proseOnly.length > 0) {
+    const srcs = proseOnly.map((d) => d!.source).join(", ");
+    return { outcome: "partial", detail: `Pricing mentioned in prose only: ${srcs}` };
+  }
+  return { outcome: "absent", detail: "No pricing information found in any source" };
+};
+
+// ─── AB-151: Rate limits machine-readable ───────────────────────────────────
+
+const checkerRateLimitsMachineReadable: SemanticChecker = (sources) => {
+  const guideDecl = extractRateLimitFromGuide(sources.guide ?? null);
+  const openApiDecl = extractRateLimitFromOpenApi(sources.openapi ?? null);
+  const llmsDecl = extractRateLimitFromLlms(sources.llms ?? null);
+
+  const machineReadable = [guideDecl, openApiDecl].filter(
+    (d) => d !== null && d.rateLimit !== "prose-only",
+  );
+  const proseOnly = [guideDecl, llmsDecl].filter(
+    (d) => d !== null && d.rateLimit === "prose-only",
+  );
+
+  const hasAnySource = sources.guide || sources.openapi || sources.llms;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  // Check for 429 over-limit behavior documentation
+  const guideBody = sources.guide?.body ?? "";
+  const llmsBody = sources.llms?.body ?? "";
+  const has429Doc = guideBody.includes("429") || llmsBody.includes("429") ||
+    guideBody.toLowerCase().includes("retry-after") || llmsBody.toLowerCase().includes("retry-after");
+
+  if (machineReadable.length > 0 && has429Doc) {
+    const srcs = machineReadable.map((d) => d!.source).join(", ");
+    return { outcome: "found", detail: `Machine-readable rate limits in: ${srcs} (429 behavior documented)` };
+  }
+  if (machineReadable.length > 0) {
+    const srcs = machineReadable.map((d) => d!.source).join(", ");
+    return { outcome: "partial", detail: `Machine-readable rate limits in: ${srcs} but no 429 behavior documented` };
+  }
+  if (proseOnly.length > 0) {
+    const srcs = proseOnly.map((d) => d!.source).join(", ");
+    return { outcome: "partial", detail: `Rate limits mentioned in prose only: ${srcs}` };
+  }
+  return { outcome: "absent", detail: "No rate limit information found in any source" };
+};
+
+// ─── AB-152: Pricing/limits cross-source consistency ────────────────────────
+
+export function findPricingDeclarations(sources: Snapshots): PricingDeclaration[] {
+  const decls: PricingDeclaration[] = [];
+  const guide = extractPricingFromGuide(sources.guide ?? null);
+  if (guide) decls.push(guide);
+  const openapi = extractPricingFromOpenApi(sources.openapi ?? null);
+  if (openapi) decls.push(openapi);
+  const wellKnown = extractPricingFromWellKnown(sources.pricing ?? null);
+  if (wellKnown) decls.push(wellKnown);
+  return decls;
+}
+
+const checkerPricingLimitsConsistency: SemanticChecker = (sources) => {
+  const decls = findPricingDeclarations(sources);
+  const hasAnySource = sources.guide || sources.openapi || sources.pricing;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  // Filter to declarations with actual price values (not prose-only)
+  const priced = decls.filter((d) => d.pricePerCall && d.pricePerCall !== "prose-only");
+
+  if (priced.length === 0) {
+    return { outcome: "absent", detail: "No machine-readable pricing declarations found to cross-check" };
+  }
+
+  if (priced.length === 1) {
+    return { outcome: "found", detail: `Single source (${priced[0].source}): ${priced[0].pricePerCall} — no conflict possible` };
+  }
+
+  // Compare values across sources
+  const values = priced.map((d) => d.pricePerCall);
+  const allMatch = values.every((v) => v === values[0]);
+
+  if (allMatch) {
+    return { outcome: "found", detail: `Pricing consistent across ${priced.length} sources: ${values[0]}` };
+  }
+
+  const conflictDetails = priced.map((d) => `${d.source}=${d.pricePerCall}`).join(", ");
+  return { outcome: "absent", detail: `Pricing CONFLICT across sources: ${conflictDetails}` };
+};
+
 export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   openapi_operation_descriptions: checkerOpenapiOperationDescriptions,
   openapi_parameter_semantics: checkerOpenapiParameterSemantics,
   openapi_examples: checkerOpenapiExamples,
   openapi_error_schemas: checkerOpenapiErrorSchemas,
+  pricing_discoverability: checkerPricingDiscoverability,
+  rate_limits_machine_readable: checkerRateLimitsMachineReadable,
+  pricing_limits_consistency: checkerPricingLimitsConsistency,
 };
