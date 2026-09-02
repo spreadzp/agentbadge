@@ -37,8 +37,13 @@ class ConfidenceComputerClass {
   /**
    * VERIFIED with direct evidence:
    * 1 source → 0.9, 2+ sources → 0.95, 3+ → 1.0
+   * Semantic validation VERIFIED (single source) → 0.9
    */
   private computeVerifiedConfidence(evidence: Evidence[]): number {
+    const hasSemantic = evidence.some(
+      (e) => e.type === "http" && e.semantic_outcome === "found",
+    );
+    if (hasSemantic && evidence.length === 1) return 0.9;
     const count = evidence.length;
     if (count >= 3) return 1.0;
     if (count >= 2) return 0.95;
@@ -48,8 +53,13 @@ class ConfidenceComputerClass {
   /**
    * INFERRED: indirect evidence only.
    * 1 source → 0.5, 2 → 0.6, 3+ → 0.7
+   * Semantic validation INFERRED (partial, single source) → 0.55
    */
   private computeInferredConfidence(evidence: Evidence[]): number {
+    const hasSemanticPartial = evidence.some(
+      (e) => e.type === "http" && e.semantic_outcome === "partial",
+    );
+    if (hasSemanticPartial && evidence.length === 1) return 0.55;
     const count = evidence.length;
     if (count >= 3) return 0.7;
     if (count >= 2) return 0.6;

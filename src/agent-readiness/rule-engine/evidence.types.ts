@@ -13,6 +13,8 @@ export interface HttpEvidence {
   resolved_ip: string | null;
   captured_at?: string;
   source_class?: SourceClass;
+  semantic_outcome?: "found" | "partial" | "absent" | "no_source";
+  semantic_detail?: string;
 }
 
 export interface OpenApiEvidence {

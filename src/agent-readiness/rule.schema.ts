@@ -56,6 +56,10 @@ export const agentReadinessRuleSchema = z.object({
       .string()
       .optional()
       .describe("Target path or URL for http_fetch / schema_validation"),
+    semantic: z
+      .string()
+      .optional()
+      .describe("Semantic criterion id — required when type = semantic_validation (references SEMANTIC_CHECKERS registry)"),
   }).describe("Check definition — how the rule is evaluated"),
 
   fix: z.object({

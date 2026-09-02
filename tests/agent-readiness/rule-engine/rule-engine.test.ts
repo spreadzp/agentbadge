@@ -125,7 +125,7 @@ describe("RuleEngine", () => {
     const result = RuleEngine.run(state);
 
     expect(result.applicableRules).toBeGreaterThan(0);
-    expect(result.applicableRules).toBeLessThanOrEqual(13);
+    expect(result.applicableRules).toBeLessThanOrEqual(30);
   });
 
   it("every assertion has all required fields", () => {

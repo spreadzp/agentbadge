@@ -8,6 +8,7 @@ import { AssertionBuilder, type Assertion } from "./assertion-builder";
 import type { Evidence } from "./evidence.types";
 import { OpenApiParser } from "./openapi-parser";
 import { classifyEvidence } from "./source-hierarchy";
+import { SEMANTIC_CHECKERS } from "./semantic-checkers";
 
 export interface RuleEngineResult {
   assertions: Assertion[];
@@ -197,6 +198,50 @@ class RuleEngineClass {
     // Handle cross_evidence check type specially
     if (rule.check.type === "cross_evidence") {
       return this.collectCrossEvidence(rule, snapshots);
+    }
+
+    // Handle semantic_validation: run named semantic checker, wrap result as http evidence
+    if (rule.check.type === "semantic_validation") {
+      const semanticId = rule.check.semantic as string | undefined;
+      if (!semanticId || !SEMANTIC_CHECKERS[semanticId]) {
+        return [];
+      }
+      const checker = SEMANTIC_CHECKERS[semanticId];
+      const result = checker(snapshots);
+
+      // Find the primary source snapshot to attach evidence metadata
+      const sourceKeys = rule.check.sources ?? [];
+      const primarySnap = sourceKeys.length > 0
+        ? snapshots[sourceKeys[0]]
+        : null;
+
+      if (!primarySnap) {
+        // Source snapshot missing — still produce evidence with no_source outcome
+        return [{
+          type: "http" as const,
+          url: "",
+          status: 0,
+          headers: {},
+          content_hash: "",
+          content_type: null,
+          resolved_ip: null,
+          semantic_outcome: result.outcome,
+          semantic_detail: result.detail,
+        }];
+      }
+
+      return [{
+        type: "http" as const,
+        url: primarySnap.url,
+        status: primarySnap.status,
+        headers: primarySnap.headers ?? {},
+        content_hash: primarySnap.bodyHash,
+        content_type: primarySnap.contentType,
+        resolved_ip: primarySnap.resolvedIp,
+        captured_at: primarySnap.fetchedAt,
+        semantic_outcome: result.outcome,
+        semantic_detail: result.detail,
+      }];
     }
 
     // Determine which snapshot keys to collect evidence from

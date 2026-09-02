@@ -40,6 +40,29 @@ class StatusDeterminatorClass {
       };
     }
 
+    // Semantic validation: map semantic_outcome → status (three-valued)
+    if (input.rule.check.type === "semantic_validation") {
+      const semanticEv = input.evidence.find(
+        (e) => e.type === "http" && e.semantic_outcome,
+      ) as Extract<Evidence, { type: "http" }> | undefined;
+
+      if (semanticEv) {
+        const outcome = semanticEv.semantic_outcome!;
+        const detail = semanticEv.semantic_detail ?? "";
+        switch (outcome) {
+          case "found":
+            return { status: "VERIFIED", reason: detail };
+          case "partial":
+            return { status: "INFERRED", reason: detail };
+          case "absent":
+            return { status: "GAP", reason: `source present but semantic content absent: ${detail}` };
+          case "no_source":
+            return { status: "GAP", reason: `source not found: ${detail}` };
+        }
+      }
+      // No semantic_outcome on evidence → fall through to normal logic
+    }
+
     const hasCross = input.evidence.some((e) => e.type === "cross");
     if (hasCross) {
       const crossEv = input.evidence.find((e) => e.type === "cross") as Extract<Evidence, { type: "cross" }>;
