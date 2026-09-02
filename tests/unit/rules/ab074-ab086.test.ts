@@ -78,6 +78,6 @@ describe("SLICE-69-2: A2A Agent Card & MCP Gap Rules", () => {
   });
 
   it("ruleset version is 2.2.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
+    expect(AGENT_READINESS_RULESET.version).toBe("1.4.0");
   });
 });

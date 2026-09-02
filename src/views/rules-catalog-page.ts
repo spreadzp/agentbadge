@@ -10,6 +10,7 @@ import {
 } from "../agent-readiness/rule-descriptions";
 import { categoryEnum } from "../agent-readiness/shared.schema";
 import { PILLARS, PILLAR_CATEGORIES } from "../agent-readiness/scoring/pillar-map";
+import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
 import { faqPageLd, defaultCoreSchemas } from "../server/lib/json-ld";
 
 const EFFORT_STYLES: Record<string, string> = {
@@ -24,9 +25,19 @@ const EFFORT_LABELS: Record<string, string> = {
   complex: "Complex",
 };
 
+const SEVERITY_STYLES: Record<string, string> = {
+  critical: "text-rose-300 border-rose-500/40 bg-rose-500/10",
+  high: "text-orange-300 border-orange-500/40 bg-orange-500/10",
+  medium: "text-amber-300 border-amber-500/40 bg-amber-500/10",
+  low: "text-sky-300 border-sky-500/40 bg-sky-500/10",
+};
+
 function ruleCard(rule: RuleDescription) {
   const effortStyle = EFFORT_STYLES[rule.effort_hint];
   const effortLabel = EFFORT_LABELS[rule.effort_hint];
+  const ruleDef = AGENT_READINESS_RULESET.rules.find((r) => r.rule_id === rule.rule_id);
+  const severity = rule.severity ?? ruleDef?.severity ?? "medium";
+  const severityStyle = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.medium;
   return html`<a
     href="/rules/${rule.rule_id}"
     class="block rounded-lg border border-slate-800 bg-slate-900/50 p-4 hover:border-slate-600 hover:bg-slate-800/50 transition-colors"
@@ -39,9 +50,14 @@ function ruleCard(rule: RuleDescription) {
           <div class="text-sm text-slate-400 mt-0.5 line-clamp-2">${rule.short_description}</div>
         </div>
       </div>
-      <span class="flex-shrink-0 text-[10px] border ${raw(effortStyle)} rounded px-1.5 py-0.5 font-mono uppercase tracking-wider">
-        ${effortLabel}
-      </span>
+      <div class="flex flex-col items-end gap-1 flex-shrink-0">
+        <span class="text-[10px] border ${raw(severityStyle)} rounded px-1.5 py-0.5 font-mono uppercase tracking-wider">
+          ${severity}
+        </span>
+        <span class="text-[10px] border ${raw(effortStyle)} rounded px-1.5 py-0.5 font-mono uppercase tracking-wider">
+          ${effortLabel}
+        </span>
+      </div>
     </div>
   </a>`;
 }
@@ -154,8 +170,10 @@ export function RulesCatalogPage() {
             <span class="w-2 h-2 rounded-full bg-rose-400"></span> Complex
           </span>
           <span class="inline-flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-700">
-            <span class="inline-flex items-center gap-1 text-xs font-mono border border-amber-500/40 bg-amber-500/10 rounded px-1.5 py-0.5 text-amber-300">GAP</span>
-            <span class="text-slate-500">Missing evidence</span>
+            <span class="inline-flex items-center gap-1 text-xs font-mono border border-rose-500/40 bg-rose-500/10 rounded px-1.5 py-0.5 text-rose-300">CRITICAL</span>
+            <span class="inline-flex items-center gap-1 text-xs font-mono border border-amber-500/40 bg-amber-500/10 rounded px-1.5 py-0.5 text-amber-300">MEDIUM</span>
+            <span class="inline-flex items-center gap-1 text-xs font-mono border border-sky-500/40 bg-sky-500/10 rounded px-1.5 py-0.5 text-sky-300">LOW</span>
+            <span class="text-slate-500">Severity</span>
           </span>
         </div>
       </div>

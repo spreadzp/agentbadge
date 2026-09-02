@@ -76,7 +76,7 @@ describe("SLICE-69-1: AB-073..AB-078 infrastructure & OpenAPI gap rules", () => 
   });
 
   it("ruleset version is 2.2.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
+    expect(AGENT_READINESS_RULESET.version).toBe("1.4.0");
   });
 
   it("no duplicate rule IDs in ruleset", () => {

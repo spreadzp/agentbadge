@@ -114,10 +114,26 @@ import { AB100 } from "./rules/AB100";
 import { AB101 } from "./rules/AB101";
 import { AB102 } from "./rules/AB102";
 import { AB103 } from "./rules/AB103";
+// Phase-B semantic rules (EPIC-95)
+import { AB146 } from "./rules/AB146";
+import { AB147 } from "./rules/AB147";
+import { AB148 } from "./rules/AB148";
+import { AB149 } from "./rules/AB149";
+import { AB150 } from "./rules/AB150";
+import { AB151 } from "./rules/AB151";
+import { AB152 } from "./rules/AB152";
+import { AB153 } from "./rules/AB153";
+import { AB154 } from "./rules/AB154";
+import { AB155 } from "./rules/AB155";
+import { AB156 } from "./rules/AB156";
+import { AB157 } from "./rules/AB157";
+import { AB158 } from "./rules/AB158";
+import { AB159 } from "./rules/AB159";
+import { AB160 } from "./rules/AB160";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
-  version: "2.2.0",
+  version: "1.4.0",
   scoring: {
     pillars: {
       weights: { discovery: 20, understandability: 25, executability: 30, verifiability: 25 },
@@ -255,6 +271,22 @@ export const AGENT_READINESS_RULESET = {
     AB101,
     AB102,
     AB103,
+    // Phase-B semantic rules (EPIC-95)
+    AB146,
+    AB147,
+    AB148,
+    AB149,
+    AB150,
+    AB151,
+    AB152,
+    AB153,
+    AB154,
+    AB155,
+    AB156,
+    AB157,
+    AB158,
+    AB159,
+    AB160,
   ] as AgentReadinessRule[],
 } as const;
 

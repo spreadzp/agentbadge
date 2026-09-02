@@ -118,6 +118,6 @@ describe("SLICE-69-5: Homepage Meta & Robots Rules", () => {
   });
 
   it("ruleset version is 2.2.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
+    expect(AGENT_READINESS_RULESET.version).toBe("1.4.0");
   });
 });

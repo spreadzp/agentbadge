@@ -11,6 +11,7 @@ export interface RuleDescription {
   right_example: string;
   effort_hint: "quick" | "moderate" | "complex";
   estimated_cost: string;
+  severity?: string;
 }
 
 export interface CategoryDescription {

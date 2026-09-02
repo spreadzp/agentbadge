@@ -18,7 +18,7 @@ import { runScoringEngine } from "../agent-readiness/scoring/scoring-engine";
 import type { Assertion } from "../agent-readiness/rule-engine/assertion-builder";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
 import { PILLAR_LABELS, PILLAR_QUESTIONS, PILLARS } from "../agent-readiness/scoring/pillar-map";
-import type { PillarScore } from "../agent-readiness/scoring/scoring-types";
+import { DEFAULT_CATEGORY_WEIGHTS, type PillarScore } from "../agent-readiness/scoring/scoring-types";
 import { strongestSource, classifyEvidence, SOURCE_CLASS_LABELS } from "../agent-readiness/rule-engine/source-hierarchy";
 import { evidenceSummary } from "../agent-readiness/rule-engine/evidence.types";
 import { withFreshness } from "../agent-readiness/rule-engine/freshness";
@@ -113,26 +113,7 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
       name: AGENT_READINESS_RULESET.name,
       version: AGENT_READINESS_RULESET.version,
       scoring: AGENT_READINESS_RULESET.scoring,
-      categoryWeights: {
-        discovery: 15,
-        documentation: 15,
-        actionability: 10,
-        machine_readable: 10,
-        verification: 5,
-        content_negotiation: 10,
-        payments: 10,
-        bazaar: 5,
-        openapi: 10,
-        skills: 5,
-        agents_txt: 5,
-        webmcp: 5,
-        identity: 5,
-        bot_auth: 5,
-        infrastructure: 5,
-        seo_aeo: 5,
-        accessibility: 4,
-        active_probing: 5,
-      },
+      categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
     };
 
     const scoreResult = runScoringEngine({
