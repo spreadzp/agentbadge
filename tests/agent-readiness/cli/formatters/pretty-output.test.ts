@@ -80,11 +80,16 @@ describe("formatPrettyOutput", () => {
     expect(out).toContain("documentation");
   });
 
-  it("renders top issues for GAP and CONFLICT", () => {
+  it("renders INFORMATION GAPS section for GAP assertions", () => {
     const out = formatPrettyOutput(makeReport());
-    expect(out).toContain("Top Issues");
+    expect(out).toContain("INFORMATION GAPS");
     expect(out).toContain("[GAP]");
     expect(out).toContain("AB-002");
+  });
+
+  it("renders Conflicts section for CONFLICT assertions", () => {
+    const out = formatPrettyOutput(makeReport());
+    expect(out).toContain("Conflicts");
     expect(out).toContain("[CONFLICT]");
     expect(out).toContain("AB-003");
   });
@@ -174,6 +179,48 @@ describe("formatPrettyOutput", () => {
       expect(pillarsIdx).toBeGreaterThan(-1);
       expect(categoryIdx).toBeGreaterThan(-1);
       expect(pillarsIdx).toBeLessThan(categoryIdx);
+    });
+  });
+
+  // SLICE-94-9: Evidence V2 fields
+  describe("v2 evidence fields", () => {
+    it("renders claim as title line for GAP assertions", () => {
+      const report = makeReport({
+        assertions: [
+          { rule_id: "AB-002", rule_version: "1.0.0", status: "GAP", evidence: [], confidence: 0.9, timestamp: "", source_url: null, reason: "sitemap.xml not found", claim: "sitemap.xml should be present" } as never,
+        ],
+      });
+      const out = formatPrettyOutput(report);
+      expect(out).toContain("sitemap.xml should be present");
+    });
+
+    it("renders confidence percentage for GAP assertions", () => {
+      const report = makeReport({
+        assertions: [
+          { rule_id: "AB-002", rule_version: "1.0.0", status: "GAP", evidence: [], confidence: 0.9, timestamp: "", source_url: null, reason: "sitemap.xml not found", claim: "sitemap.xml should be present" } as never,
+        ],
+      });
+      const out = formatPrettyOutput(report);
+      expect(out).toContain("90%");
+    });
+
+    it("renders review level chip for CONFLICT assertions", () => {
+      const report = makeReport({
+        assertions: [
+          { rule_id: "AB-003", rule_version: "1.0.0", status: "CONFLICT", evidence: [], confidence: 0.6, timestamp: "", source_url: null, reason: "conflicting info", claim: "agent-guide consistent", review_level: "assisted" } as never,
+        ],
+      });
+      const out = formatPrettyOutput(report);
+      expect(out).toContain("assisted");
+    });
+
+    it("separates INFORMATION GAPS before Conflicts", () => {
+      const out = formatPrettyOutput(makeReport());
+      const gapsIdx = out.indexOf("INFORMATION GAPS");
+      const conflictsIdx = out.indexOf("Conflicts");
+      expect(gapsIdx).toBeGreaterThan(-1);
+      expect(conflictsIdx).toBeGreaterThan(-1);
+      expect(gapsIdx).toBeLessThan(conflictsIdx);
     });
   });
 });

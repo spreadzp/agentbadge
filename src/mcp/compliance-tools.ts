@@ -19,6 +19,9 @@ import type { Assertion } from "../agent-readiness/rule-engine/assertion-builder
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
 import { PILLAR_LABELS, PILLAR_QUESTIONS, PILLARS } from "../agent-readiness/scoring/pillar-map";
 import type { PillarScore } from "../agent-readiness/scoring/scoring-types";
+import { strongestSource, classifyEvidence, SOURCE_CLASS_LABELS } from "../agent-readiness/rule-engine/source-hierarchy";
+import { evidenceSummary } from "../agent-readiness/rule-engine/evidence.types";
+import { withFreshness } from "../agent-readiness/rule-engine/freshness";
 
 const complianceArgsSchema = z.object({
   url: z
@@ -32,6 +35,12 @@ interface ComplianceCheck {
   status: "pass" | "fail" | "skip";
   hint?: string;
   category?: string;
+  claim?: string;
+  verified_at?: string;
+  review_level?: string | null;
+  source_class?: string | null;
+  source_label?: string | null;
+  evidence?: Array<{ type: string; captured_at: string | null; source_class: string | null; summary: string }>;
 }
 
 interface PillarEntry {
@@ -41,6 +50,15 @@ interface PillarEntry {
   weight: number;
   score: number;
   floorTriggered: boolean;
+}
+
+interface EvidenceSummary {
+  verified: number;
+  inferred: number;
+  gap: number;
+  conflict: number;
+  not_applicable: number;
+  stale_count: number;
 }
 
 interface ComplianceResult {
@@ -54,6 +72,7 @@ interface ComplianceResult {
     failed: number;
     skipped: number;
   };
+  evidence_summary?: EvidenceSummary;
 }
 
 function validationError(message: string): ToolResult {
@@ -122,17 +141,34 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     });
 
     const checks: ComplianceCheck[] = (ruleEngineResult.assertions as unknown as Array<Record<string, unknown>>).map(
-      (assertion) => ({
-        id: (assertion.rule_id as string) ?? (assertion.id as string) ?? "unknown",
-        name: (assertion.rule_name as string) ?? (assertion.name as string) ?? (assertion.rule_id as string) ?? "unknown",
-        status: assertion.status === "VERIFIED" || assertion.status === "INFERRED"
-          ? "pass"
-          : assertion.status === "NOT_APPLICABLE"
-            ? "skip"
-            : "fail",
-        hint: (assertion.hint as string | undefined) ?? (assertion.fix_hint as string | undefined) ?? undefined,
-        category: (assertion.category as string | undefined) ?? undefined,
-      }),
+      (assertion) => {
+        const a = assertion as unknown as Assertion;
+        const strongest = a.evidence.length > 0 ? strongestSource(a.evidence) : null;
+        const sourceClass = strongest?.sourceClass ?? null;
+        const sourceLabel = sourceClass ? (SOURCE_CLASS_LABELS[sourceClass] ?? null) : null;
+        return {
+          id: (assertion.rule_id as string) ?? (assertion.id as string) ?? "unknown",
+          name: (assertion.rule_name as string) ?? (assertion.name as string) ?? (assertion.rule_id as string) ?? "unknown",
+          status: assertion.status === "VERIFIED" || assertion.status === "INFERRED"
+            ? "pass"
+            : assertion.status === "NOT_APPLICABLE"
+              ? "skip"
+              : "fail",
+          hint: (assertion.hint as string | undefined) ?? (assertion.fix_hint as string | undefined) ?? undefined,
+          category: (assertion.category as string | undefined) ?? undefined,
+          claim: a.claim ?? a.name ?? a.rule_id,
+          verified_at: a.verified_at ?? a.timestamp ?? null,
+          review_level: a.review_level ?? null,
+          source_class: sourceClass,
+          source_label: sourceLabel,
+          evidence: a.evidence.map((e) => ({
+            type: e.type,
+            captured_at: e.captured_at ?? null,
+            source_class: e.source_class ?? classifyEvidence(e),
+            summary: evidenceSummary(e),
+          })),
+        };
+      },
     );
 
     const passed = checks.filter((c) => c.status === "pass").length;
@@ -153,6 +189,17 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
       });
     }
 
+    // SLICE-94-9: evidence_summary block
+    const allAssertions = ruleEngineResult.assertions as Assertion[];
+    const evidenceSummaryBlock: EvidenceSummary = {
+      verified: allAssertions.filter((a) => a.status === "VERIFIED").length,
+      inferred: allAssertions.filter((a) => a.status === "INFERRED").length,
+      gap: allAssertions.filter((a) => a.status === "GAP").length,
+      conflict: allAssertions.filter((a) => a.status === "CONFLICT").length,
+      not_applicable: allAssertions.filter((a) => a.status === "NOT_APPLICABLE").length,
+      stale_count: allAssertions.filter((a) => withFreshness(a).stale).length,
+    };
+
     const result: ComplianceResult = {
       score: typeof scoreResult.total === "number"
         ? scoreResult.total
@@ -166,6 +213,7 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
         failed,
         skipped,
       },
+      evidence_summary: evidenceSummaryBlock,
     };
 
     return {
@@ -180,7 +228,7 @@ export function registerComplianceTools(ns?: NamespaceRegistry): void {
   const r = getRegistry(ns);
   r.registerTool(
     "check_compliance",
-    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), four-pillar breakdown (Discovery/Understandability/Executability/Verifiability — where the service stands for agent use), individual check results (id, name, status, hint), and summary (totalChecks, passed, failed, skipped). Use this to verify agent-readiness of any website.",
+    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), four-pillar breakdown (Discovery/Understandability/Executability/Verifiability — where the service stands for agent use), individual check results (id, name, status, hint, claim, verified_at, review_level, source_class, source_label, evidence entries with captured_at/summary), evidence_summary (verified, inferred, gap, conflict, not_applicable, stale_count), and summary (totalChecks, passed, failed, skipped). GAP status indicates information gaps where no evidence was found. Use this to verify agent-readiness of any website.",
     {
       url: z
         .string()

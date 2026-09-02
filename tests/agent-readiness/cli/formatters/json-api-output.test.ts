@@ -28,6 +28,9 @@ function makeAssertion(overrides: Partial<Assertion> = {}): Assertion {
     reason: "ok",
     category: "discovery",
     name: "robots.txt present",
+    claim: "robots.txt present",
+    verified_at: "",
+    review_level: "automatic",
     fix: { eligible: true, type: "create_file", note: "Add robots.txt at /robots.txt" },
     ...overrides,
   };
@@ -288,6 +291,170 @@ describe("formatJsonApiOutput", () => {
       });
       const parsed = JSON.parse(json);
       expect(parsed.pillars).toBeUndefined();
+    });
+  });
+
+  // SLICE-94-9: Evidence V2 fields
+  describe("v2 evidence fields", () => {
+    it("each check includes claim field", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 80,
+        grade: "B",
+        assertions: [
+          makeAssertion({ rule_id: "AB-001", status: "VERIFIED", name: "robots.txt present", claim: "robots.txt is present and valid" }),
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(check.claim).toBe("robots.txt is present and valid");
+    });
+
+    it("each check includes verified_at field", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 80,
+        grade: "B",
+        assertions: [
+          makeAssertion({ rule_id: "AB-001", status: "VERIFIED", verified_at: "2024-01-01T00:00:00Z" }),
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(check.verified_at).toBe("2024-01-01T00:00:00Z");
+    });
+
+    it("each check includes review_level field", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 80,
+        grade: "B",
+        assertions: [
+          makeAssertion({ rule_id: "AB-001", status: "VERIFIED", review_level: "automatic" }),
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(check.review_level).toBe("automatic");
+    });
+
+    it("each check includes source_class and source_label", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 80,
+        grade: "B",
+        assertions: [
+          makeAssertion({
+            rule_id: "AB-001",
+            status: "VERIFIED",
+            evidence: [{
+              type: "openapi" as const,
+              url: "https://example.com/openapi.json",
+              paths: ["/api"],
+              methods: ["GET"],
+              captured_at: "2024-01-01T00:00:00Z",
+            }],
+          }),
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(check.source_class).toBe("machine_readable_spec");
+      expect(check.source_label).toBeDefined();
+    });
+
+    it("each check includes evidence entries with captured_at and summary", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 80,
+        grade: "B",
+        assertions: [
+          makeAssertion({
+            rule_id: "AB-001",
+            status: "VERIFIED",
+            evidence: [{
+              type: "http" as const,
+              url: "https://example.com/robots.txt",
+              status: 200,
+              headers: {},
+              content_hash: "abc123def456",
+              content_type: "text/plain",
+              resolved_ip: null,
+              captured_at: "2024-01-01T00:00:00Z",
+            }],
+          }),
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(Array.isArray(check.evidence)).toBe(true);
+      expect(check.evidence).toHaveLength(1);
+      expect(check.evidence[0].type).toBe("http");
+      expect(check.evidence[0].captured_at).toBe("2024-01-01T00:00:00Z");
+      expect(check.evidence[0].summary).toContain("HTTP");
+    });
+
+    it("GAP status checks have source_class null", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 50,
+        grade: "F",
+        assertions: [
+          makeAssertion({ rule_id: "AB-002", status: "GAP", evidence: [] }),
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(check.source_class).toBeNull();
+      expect(check.source_label).toBeNull();
+      expect(check.evidence).toEqual([]);
+    });
+
+    it("legacy assertions without v2 fields format without crash", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 80,
+        grade: "B",
+        assertions: [
+          { ...makeAssertion({ rule_id: "AB-001", status: "VERIFIED" }), claim: undefined as unknown as string, verified_at: undefined as unknown as string, review_level: undefined as unknown as import("../../../../src/agent-readiness/rule-engine/review-level").ReviewLevel },
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(check.claim).toBeDefined();
+      expect(check.verified_at).toBeDefined();
+      expect(check.review_level).toBeNull();
+    });
+
+    it("old keys remain intact alongside v2 fields (additive check)", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 80,
+        grade: "B",
+        assertions: [
+          makeAssertion({ rule_id: "AB-001", status: "VERIFIED", name: "robots.txt" }),
+        ],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      const check = parsed.categories[0].checks[0];
+      expect(check.rule_id).toBe("AB-001");
+      expect(check.label).toBe("robots.txt");
+      expect(check.passed).toBe(true);
+      expect(check.optional).toBeDefined();
+      expect(check.claim).toBeDefined();
+      expect(check.verified_at).toBeDefined();
+      expect(check.review_level).toBeDefined();
+      expect(check.source_class).toBeDefined();
+      expect(check.source_label).toBeDefined();
+      expect(check.evidence).toBeDefined();
     });
   });
 });

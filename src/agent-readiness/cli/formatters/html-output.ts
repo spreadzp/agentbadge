@@ -6,6 +6,7 @@ import type { RuleResult } from "../output";
 import type { PillarScore } from "../../scoring/scoring-types";
 import { PILLAR_LABELS } from "../../scoring/pillar-map";
 import { weightScaledScore, orderedPillars } from "./pillar-helpers";
+import { formatStatusBadgeHtml } from "./status-badge";
 
 const CATEGORY_LABELS: Record<string, string> = {
   discovery: "Discovery",
@@ -87,10 +88,15 @@ export function formatHtmlOutput(
         const icon = r.status === "pass" ? "✓" : r.status === "fail" ? "✗" : "○";
         const statusClass = r.status === "pass" ? "pass" : r.status === "fail" ? "fail" : "skip";
         const name = escapeHtml(r.name ?? r.rule_id);
+        const rExt = r as unknown as Record<string, unknown>;
+        const claim = escapeHtml((rExt.claim as string) ?? r.name ?? r.rule_id);
+        const v2Status = r.status === "pass" ? "VERIFIED" : r.status === "fail" ? "GAP" : "NOT_APPLICABLE";
+        const badge = formatStatusBadgeHtml({ ...(rExt as unknown as import("./status-badge").AssertionLike), status: v2Status });
+        const sourceLabel = escapeHtml((rExt.source_label as string) ?? "—");
         const fixNote = opts?.fixHints && r.fix?.eligible && r.fix?.note
           ? `<div class="fix-note">${escapeHtml(r.fix.note)}</div>`
           : "";
-        return `<tr class="${statusClass}"><td class="icon">${icon}</td><td class="rule-id">${escapeHtml(r.rule_id)}</td><td class="rule-name">${name}</td></tr>${fixNote ? `<tr class="fix-row"><td></td><td colspan="2">${fixNote}</td></tr>` : ""}`;
+        return `<tr class="${statusClass}"><td class="icon">${icon}</td><td class="rule-id">${escapeHtml(r.rule_id)}</td><td class="rule-name">${name}</td><td class="claim">${claim}</td><td class="source">${sourceLabel}</td><td class="badge-cell">${badge}</td></tr>${fixNote ? `<tr class="fix-row"><td></td><td colspan="5">${fixNote}</td></tr>` : ""}`;
       })
       .join("\n");
 
@@ -98,7 +104,7 @@ export function formatHtmlOutput(
       <section class="category">
         <h2>${escapeHtml(label)} <span class="category-score">${passed}/${total} passed</span></h2>
         <table>
-          <thead><tr><th></th><th>Rule</th><th>Name</th></tr></thead>
+          <thead><tr><th></th><th>Rule</th><th>Name</th><th>Claim</th><th>Source</th><th>Status</th></tr></thead>
           <tbody>
             ${rows}
           </tbody>
@@ -237,6 +243,14 @@ export function formatHtmlOutput(
     }
     td.icon { width: 1.5rem; text-align: center; font-weight: 700; }
     td.rule-id { font-family: monospace; font-size: 0.875rem; white-space: nowrap; }
+    td.claim { font-size: 0.8125rem; color: var(--muted); }
+    td.source { font-size: 0.8125rem; color: var(--muted); }
+    td.badge-cell { font-size: 0.8125rem; white-space: nowrap; }
+    .badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .badge-verified { background: var(--pass); color: #fff; }
+    .badge-gap { background: var(--fail); color: #fff; }
+    .badge-conflict { background: #f59e0b; color: #fff; }
+    .badge-na { background: var(--skip); color: #fff; }
     tr.pass .icon { color: var(--pass); }
     tr.fail .icon { color: var(--fail); }
     tr.skip .icon { color: var(--skip); }

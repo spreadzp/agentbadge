@@ -181,4 +181,62 @@ describe("formatHtmlOutput", () => {
       expect(html).toContain("/100");
     });
   });
+
+  // SLICE-94-9: Evidence V2 fields
+  describe("v2 evidence fields", () => {
+    it("renders Claim column header in assertion table", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75 });
+      expect(html).toContain("Claim");
+    });
+
+    it("renders Source column header in assertion table", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75 });
+      expect(html).toContain("Source");
+    });
+
+    it("renders claim text in assertion row", () => {
+      const results: RuleResult[] = [
+        { rule_id: "AB-001", status: "pass", category: "discovery", name: "robots.txt found", claim: "robots.txt is present" } as RuleResult,
+      ];
+      const html = formatHtmlOutput(results, { score: 100 });
+      expect(html).toContain("robots.txt is present");
+    });
+
+    it("renders badge cell with status badge class", () => {
+      const html = formatHtmlOutput(makeResults(), { score: 75 });
+      expect(html).toContain("badge");
+    });
+
+    it("renders GAP badge for fail status", () => {
+      const results: RuleResult[] = [
+        { rule_id: "AB-002", status: "fail", category: "discovery", name: "sitemap.xml not found" } as RuleResult,
+      ];
+      const html = formatHtmlOutput(results, { score: 50 });
+      expect(html).toContain("GAP");
+    });
+
+    it("renders VERIFIED badge for pass status", () => {
+      const results: RuleResult[] = [
+        { rule_id: "AB-001", status: "pass", category: "discovery", name: "robots.txt found" } as RuleResult,
+      ];
+      const html = formatHtmlOutput(results, { score: 100 });
+      expect(html).toContain("VERIFIED");
+    });
+
+    it("renders source label when available", () => {
+      const results: RuleResult[] = [
+        { rule_id: "AB-001", status: "pass", category: "discovery", name: "robots.txt found", source_label: "Website Content" } as RuleResult,
+      ];
+      const html = formatHtmlOutput(results, { score: 100 });
+      expect(html).toContain("Website Content");
+    });
+
+    it("renders dash for missing source label", () => {
+      const results: RuleResult[] = [
+        { rule_id: "AB-002", status: "fail", category: "discovery", name: "sitemap.xml not found" } as RuleResult,
+      ];
+      const html = formatHtmlOutput(results, { score: 50 });
+      expect(html).toContain("—");
+    });
+  });
 });

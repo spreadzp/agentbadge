@@ -77,4 +77,54 @@ describe("SLICE-49-14: MCP check_compliance tool", () => {
 
     expect(result.isError).toBe(true);
   });
+
+  // SLICE-94-9: Evidence V2 fields
+  it("returns evidence_summary block with status counts", async () => {
+    const result = await checkComplianceHandler({
+      url: "https://agentbadge.xyz",
+    });
+
+    const text = result.content[0].text;
+    const parsed = JSON.parse(text);
+
+    expect(parsed).toHaveProperty("evidence_summary");
+    expect(parsed.evidence_summary).toHaveProperty("verified");
+    expect(parsed.evidence_summary).toHaveProperty("inferred");
+    expect(parsed.evidence_summary).toHaveProperty("gap");
+    expect(parsed.evidence_summary).toHaveProperty("conflict");
+    expect(parsed.evidence_summary).toHaveProperty("not_applicable");
+    expect(parsed.evidence_summary).toHaveProperty("stale_count");
+    expect(typeof parsed.evidence_summary.verified).toBe("number");
+    expect(typeof parsed.evidence_summary.gap).toBe("number");
+    expect(typeof parsed.evidence_summary.stale_count).toBe("number");
+  }, 120000);
+
+  it("checks include v2 fields: claim, verified_at, review_level", async () => {
+    const result = await checkComplianceHandler({
+      url: "https://agentbadge.xyz",
+    });
+
+    const text = result.content[0].text;
+    const parsed = JSON.parse(text);
+
+    const check = parsed.checks[0];
+    expect(check).toHaveProperty("claim");
+    expect(check).toHaveProperty("verified_at");
+    expect(check).toHaveProperty("review_level");
+    expect(check).toHaveProperty("source_class");
+    expect(check).toHaveProperty("source_label");
+  }, 120000);
+
+  it("checks include evidence entries array", async () => {
+    const result = await checkComplianceHandler({
+      url: "https://agentbadge.xyz",
+    });
+
+    const text = result.content[0].text;
+    const parsed = JSON.parse(text);
+
+    const check = parsed.checks[0];
+    expect(check).toHaveProperty("evidence");
+    expect(Array.isArray(check.evidence)).toBe(true);
+  }, 120000);
 });

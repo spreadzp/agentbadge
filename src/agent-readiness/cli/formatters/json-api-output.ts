@@ -6,6 +6,8 @@ import type { Assertion } from "../../rule-engine/assertion-builder";
 import type { CategoryScore, PillarScore } from "../../scoring/scoring-types";
 import { PILLAR_LABELS } from "../../scoring/pillar-map";
 import { orderedPillars } from "./pillar-helpers";
+import { strongestSource, classifyEvidence, SOURCE_CLASS_LABELS } from "../../rule-engine/source-hierarchy";
+import { evidenceSummary } from "../../rule-engine/evidence.types";
 
 export interface JsonApiInput {
   url: string;
@@ -79,6 +81,19 @@ export function formatJsonApiOutput(input: JsonApiInput): string {
       if (!check.passed && a.fix?.note) {
         check.hint = a.fix.note;
       }
+      // SLICE-94-9: v2 additive fields
+      check.claim = a.claim ?? a.name ?? a.rule_id;
+      check.verified_at = a.verified_at ?? a.timestamp ?? null;
+      check.review_level = a.review_level ?? null;
+      const strongest = a.evidence.length > 0 ? strongestSource(a.evidence) : null;
+      check.source_class = strongest?.sourceClass ?? null;
+      check.source_label = strongest ? (SOURCE_CLASS_LABELS[strongest.sourceClass] ?? null) : null;
+      check.evidence = a.evidence.map((e) => ({
+        type: e.type,
+        captured_at: e.captured_at ?? null,
+        source_class: e.source_class ?? classifyEvidence(e),
+        summary: evidenceSummary(e),
+      }));
       return check;
     });
 

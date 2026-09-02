@@ -9,6 +9,7 @@ import { renderFunnelAscii } from "./funnel-output";
 import { PILLAR_LABELS } from "../../scoring/pillar-map";
 import type { PillarScore } from "../../scoring/scoring-types";
 import { weightScaledScore, orderedPillars } from "./pillar-helpers";
+import { formatStatusBadge } from "./status-badge";
 
 export interface PrettyOutputOptions {
   showFunnel?: boolean;
@@ -84,24 +85,51 @@ export function formatPrettyOutput(report: AgentReadinessReport, opts?: PrettyOu
     lines.push("");
   }
 
-  // Top issues
-  const assertions = (report.assertions as Array<{
+  // Top issues — split into INFORMATION GAPS and CONFLICTS
+  const allAssertions = report.assertions as Array<{
     rule_id: string;
     status: string;
     reason: string;
     confidence: number;
     category?: string;
     source_url?: string | null;
-  }>).filter((a) => a.status === "GAP" || a.status === "CONFLICT");
+    claim?: string;
+    verified_at?: string;
+    review_level?: string | null;
+    evidence?: Array<{ type: string; captured_at?: string; source_class?: string }>;
+  }>;
 
-  if (assertions.length > 0) {
+  const gapAssertions = allAssertions.filter((a) => a.status === "GAP");
+  const conflictAssertions = allAssertions.filter((a) => a.status === "CONFLICT");
+
+  if (gapAssertions.length > 0) {
     lines.push("─".repeat(60));
-    lines.push("  Top Issues");
+    lines.push("  INFORMATION GAPS");
     lines.push("─".repeat(60));
-    const sorted = assertions.sort((a, b) => b.confidence - a.confidence);
+    const sorted = gapAssertions.sort((a, b) => b.confidence - a.confidence);
     const top = sorted.slice(0, 5);
     for (const a of top) {
-      lines.push(`  [${a.status}] ${a.rule_id}`);
+      const badge = formatStatusBadge(a);
+      const title = a.claim ?? a.rule_id;
+      lines.push(`  ${badge} ${title}`);
+      lines.push(`    ${a.reason}`);
+      if (a.source_url) {
+        lines.push(`    Source: ${a.source_url}`);
+      }
+    }
+    lines.push("");
+  }
+
+  if (conflictAssertions.length > 0) {
+    lines.push("─".repeat(60));
+    lines.push("  Conflicts");
+    lines.push("─".repeat(60));
+    const sorted = conflictAssertions.sort((a, b) => b.confidence - a.confidence);
+    const top = sorted.slice(0, 5);
+    for (const a of top) {
+      const badge = formatStatusBadge(a);
+      const title = a.claim ?? a.rule_id;
+      lines.push(`  ${badge} ${title}`);
       lines.push(`    ${a.reason}`);
       if (a.source_url) {
         lines.push(`    Source: ${a.source_url}`);
