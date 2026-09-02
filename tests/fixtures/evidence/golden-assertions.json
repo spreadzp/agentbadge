@@ -1,0 +1,261 @@
+{
+  "_meta": {
+    "description": "Golden evidence fixture for SLICE-94-10 — 10 canned assertions covering all statuses and evidence mixes",
+    "spec_version": "v0.3",
+    "expected_values": {
+      "AB-001": { "status": "VERIFIED", "claim": "robots.txt present", "review_level": "automatic", "source_class": "machine_readable_guide" },
+      "AB-002": { "status": "VERIFIED", "claim": "sitemap.xml present", "review_level": "automatic", "source_class": "machine_readable_guide" },
+      "AB-006": { "status": "VERIFIED", "claim": "MCP server descriptor accessible", "review_level": "automatic", "source_class": "machine_readable_spec" },
+      "AB-010": { "status": "GAP", "claim": "Pricing is machine-readable and discoverable by agents", "review_level": "automatic", "source_class": null },
+      "AB-011": { "status": "VERIFIED", "claim": "Rate limit headers present", "review_level": "automatic", "source_class": "runtime" },
+      "AB-013": { "status": "INFERRED", "claim": "Owner verification mechanism present", "review_level": "assisted", "source_class": "website_content" },
+      "AB-007": { "status": "CONFLICT", "claim": "Sitemap and robots.txt are consistent", "review_level": "automatic", "source_class": "machine_readable_guide" },
+      "AB-015": { "status": "NOT_APPLICABLE", "claim": "JSON-LD structured data present", "review_level": null, "source_class": null },
+      "AB-003": { "status": "VERIFIED", "claim": "OpenAPI spec present", "review_level": "automatic", "source_class": "machine_readable_spec" },
+      "AB-009": { "status": "GAP", "claim": "Exact match for agent identifier", "review_level": "assisted", "source_class": null }
+    }
+  },
+  "assertions": [
+    {
+      "rule_id": "AB-001",
+      "rule_version": "1.0.0",
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "type": "robots",
+          "url": "https://example.com/robots.txt",
+          "status": 200,
+          "allows_all": true,
+          "disallowed_paths": [],
+          "captured_at": "2026-09-01T10:00:00Z",
+          "source_class": "machine_readable_guide"
+        }
+      ],
+      "confidence": 0.95,
+      "timestamp": "2026-09-01T10:00:01Z",
+      "source_url": "https://example.com/robots.txt",
+      "reason": "robots.txt found and accessible",
+      "category": "discovery",
+      "name": "robots.txt present",
+      "claim": "robots.txt present",
+      "verified_at": "2026-09-01T10:00:00Z",
+      "review_level": "automatic"
+    },
+    {
+      "rule_id": "AB-002",
+      "rule_version": "1.0.0",
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "type": "sitemap",
+          "url": "https://example.com/sitemap.xml",
+          "status": 200,
+          "url_count": 42,
+          "urls": ["https://example.com/", "https://example.com/about"],
+          "captured_at": "2026-09-01T10:00:02Z",
+          "source_class": "machine_readable_guide"
+        }
+      ],
+      "confidence": 0.95,
+      "timestamp": "2026-09-01T10:00:03Z",
+      "source_url": "https://example.com/sitemap.xml",
+      "reason": "sitemap.xml found with 42 URLs",
+      "category": "discovery",
+      "name": "sitemap.xml present",
+      "claim": "sitemap.xml present",
+      "verified_at": "2026-09-01T10:00:02Z",
+      "review_level": "automatic"
+    },
+    {
+      "rule_id": "AB-003",
+      "rule_version": "1.0.0",
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "type": "openapi",
+          "url": "https://example.com/openapi.json",
+          "paths": ["/api/v1/status", "/api/v1/agents"],
+          "methods": ["GET", "POST"],
+          "captured_at": "2026-09-01T10:00:04Z",
+          "source_class": "machine_readable_spec"
+        }
+      ],
+      "confidence": 0.95,
+      "timestamp": "2026-09-01T10:00:05Z",
+      "source_url": "https://example.com/openapi.json",
+      "reason": "OpenAPI spec found with 2 paths",
+      "category": "executability",
+      "name": "OpenAPI spec present",
+      "claim": "OpenAPI spec present",
+      "verified_at": "2026-09-01T10:00:04Z",
+      "review_level": "automatic"
+    },
+    {
+      "rule_id": "AB-006",
+      "rule_version": "1.0.0",
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "type": "http",
+          "url": "https://example.com/.well-known/mcp.json",
+          "status": 200,
+          "headers": { "content-type": "application/json" },
+          "content_hash": "abc123",
+          "content_type": "application/json",
+          "resolved_ip": "93.184.216.34",
+          "captured_at": "2026-09-01T10:00:06Z",
+          "source_class": "machine_readable_spec"
+        }
+      ],
+      "confidence": 0.95,
+      "timestamp": "2026-09-01T10:00:07Z",
+      "source_url": "https://example.com/.well-known/mcp.json",
+      "reason": "MCP server descriptor found",
+      "category": "executability",
+      "name": "MCP server descriptor present",
+      "claim": "MCP server descriptor accessible",
+      "verified_at": "2026-09-01T10:00:06Z",
+      "review_level": "automatic"
+    },
+    {
+      "rule_id": "AB-007",
+      "rule_version": "1.0.0",
+      "status": "CONFLICT",
+      "evidence": [
+        {
+          "type": "cross",
+          "sources": [
+            {
+              "type": "robots",
+              "url": "https://example.com/robots.txt",
+              "status": 200,
+              "allows_all": false,
+              "disallowed_paths": ["/private"],
+              "captured_at": "2026-09-01T10:00:00Z",
+              "source_class": "machine_readable_guide"
+            },
+            {
+              "type": "sitemap",
+              "url": "https://example.com/sitemap.xml",
+              "status": 200,
+              "url_count": 42,
+              "urls": ["https://example.com/private"],
+              "captured_at": "2026-09-01T10:00:02Z",
+              "source_class": "machine_readable_guide"
+            }
+          ],
+          "match_keys": ["url"],
+          "conflict_reason": "sitemap lists /private but robots.txt disallows it",
+          "captured_at": "2026-09-01T10:00:02Z",
+          "source_class": "machine_readable_guide"
+        }
+      ],
+      "confidence": 0.95,
+      "timestamp": "2026-09-01T10:00:08Z",
+      "source_url": null,
+      "reason": "Cross-evidence conflict: sitemap lists /private but robots.txt disallows it",
+      "category": "discovery",
+      "name": "Sitemap and robots.txt consistency",
+      "claim": "Sitemap and robots.txt are consistent",
+      "verified_at": "2026-09-01T10:00:02Z",
+      "review_level": "automatic"
+    },
+    {
+      "rule_id": "AB-009",
+      "rule_version": "1.0.0",
+      "status": "GAP",
+      "evidence": [],
+      "confidence": 0.5,
+      "timestamp": "2026-09-01T10:00:09Z",
+      "source_url": null,
+      "reason": "No matching evidence found for exact match",
+      "category": "verifiability",
+      "name": "Exact match for agent identifier",
+      "claim": "Exact match for agent identifier",
+      "verified_at": "2026-09-01T10:00:09Z",
+      "review_level": "assisted"
+    },
+    {
+      "rule_id": "AB-010",
+      "rule_version": "1.0.0",
+      "status": "GAP",
+      "evidence": [],
+      "confidence": 0.9,
+      "timestamp": "2026-09-01T10:00:10Z",
+      "source_url": "https://example.com/pricing.json",
+      "reason": "pricing.json not found (HTTP 404)",
+      "category": "understandability",
+      "name": "Pricing endpoint present",
+      "claim": "Pricing is machine-readable and discoverable by agents",
+      "verified_at": "2026-09-01T10:00:10Z",
+      "review_level": "automatic"
+    },
+    {
+      "rule_id": "AB-011",
+      "rule_version": "1.0.0",
+      "status": "VERIFIED",
+      "evidence": [
+        {
+          "type": "http",
+          "url": "https://example.com/api/v1/status",
+          "status": 200,
+          "headers": { "x-ratelimit-limit": "100", "x-ratelimit-remaining": "95" },
+          "content_hash": "def456",
+          "content_type": "application/json",
+          "resolved_ip": "93.184.216.34",
+          "captured_at": "2026-09-01T10:00:11Z",
+          "source_class": "runtime"
+        }
+      ],
+      "confidence": 0.95,
+      "timestamp": "2026-09-01T10:00:12Z",
+      "source_url": "https://example.com/api/v1/status",
+      "reason": "Rate limit headers found in response",
+      "category": "executability",
+      "name": "Rate limit headers present",
+      "claim": "Rate limit headers present",
+      "verified_at": "2026-09-01T10:00:11Z",
+      "review_level": "automatic"
+    },
+    {
+      "rule_id": "AB-013",
+      "rule_version": "1.0.0",
+      "status": "INFERRED",
+      "evidence": [
+        {
+          "type": "html",
+          "url": "https://example.com/about",
+          "title": "About Us — Verified Owner",
+          "content_hash": "ghi789",
+          "content_type": "text/html",
+          "captured_at": "2026-09-01T10:00:13Z",
+          "source_class": "website_content"
+        }
+      ],
+      "confidence": 0.6,
+      "timestamp": "2026-09-01T10:00:14Z",
+      "source_url": "https://example.com/about",
+      "reason": "Owner verification inferred from about page content",
+      "category": "verifiability",
+      "name": "Owner verification mechanism",
+      "claim": "Owner verification mechanism present",
+      "verified_at": "2026-09-01T10:00:13Z",
+      "review_level": "assisted"
+    },
+    {
+      "rule_id": "AB-015",
+      "rule_version": "1.0.0",
+      "status": "NOT_APPLICABLE",
+      "evidence": [],
+      "confidence": 0,
+      "timestamp": "2026-09-01T10:00:15Z",
+      "source_url": null,
+      "reason": "Rule does not apply to this scope",
+      "category": "understandability",
+      "name": "JSON-LD structured data",
+      "claim": "JSON-LD structured data present",
+      "verified_at": "2026-09-01T10:00:15Z",
+      "review_level": null
+    }
+  ]
+}
