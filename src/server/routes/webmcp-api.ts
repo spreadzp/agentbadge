@@ -272,7 +272,7 @@ webmcpApiRoutes.get(
     },
   }),
   (c) => {
-    const q = c.req.query("q")?.toLowerCase().trim();
+    const q = (c.req.query("q") ?? c.req.query("query"))?.toLowerCase().trim();
     const category = c.req.query("category")?.toLowerCase().trim();
 
     let rules = RULE_DESCRIPTIONS.map((r) => ({
