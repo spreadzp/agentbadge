@@ -72,7 +72,7 @@ describe("POST /a2a/send", () => {
     mockedVerifyA2ADid.mockReset();
     mockedSubmitA2AMessage.mockReset();
     mockedVerifyA2ADid.mockResolvedValue(true);
-    mockedSubmitA2AMessage.mockResolvedValue("0.0.2@1700000000.000000001");
+    mockedSubmitA2AMessage.mockResolvedValue({ txId: "0.0.2@1700000000.000000001", consensusTimestamp: null });
   });
 
   it("returns txId and timestamp on valid message", async () => {

@@ -1,11 +1,11 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { uploadReportBundle, uploadToPinata, buildReportBundle } from "../../src/agents/ipfs-uploader";
 
 // Mock global fetch
 const originalFetch = globalThis.fetch;
 
 function mockFetchResponse(ok: boolean, status: number, body: unknown) {
-  globalThis.fetch = mock(async () => {
+  globalThis.fetch = vi.fn(async () => {
     return {
       ok,
       status,
@@ -17,7 +17,7 @@ function mockFetchResponse(ok: boolean, status: number, body: unknown) {
 
 function mockFetchSequence(responses: { ok: boolean; status: number; body: unknown }[]) {
   let callIndex = 0;
-  globalThis.fetch = mock(async () => {
+  globalThis.fetch = vi.fn(async () => {
     const resp = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
     return {
@@ -93,7 +93,7 @@ describe("uploadToPinata", () => {
 
   it("retries on network error and succeeds on 2nd attempt", async () => {
     let callCount = 0;
-    globalThis.fetch = mock(async () => {
+    globalThis.fetch = vi.fn(async () => {
       callCount++;
       if (callCount === 1) throw new TypeError("network error");
       return {
@@ -110,7 +110,7 @@ describe("uploadToPinata", () => {
   });
 
   it("fails after max retries", async () => {
-    globalThis.fetch = mock(async () => {
+    globalThis.fetch = vi.fn(async () => {
       throw new TypeError("persistent network error");
     }) as unknown as typeof fetch;
 

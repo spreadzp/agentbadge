@@ -20,7 +20,12 @@ describe("Contact View", () => {
       expect(html).toContain('hx-post="/contact"');
     });
 
-    it("has correct HTMX target and swap", () => {
+    it("renders email channel button", () => {
+      expect(html).toContain('data-channel="email"');
+      expect(html).toContain(">Email<");
+    });
+
+    it("renders contact info placeholder mentioning email", () => {
       expect(html).toContain('hx-target="#contact-result"');
       expect(html).toContain('hx-swap="innerHTML"');
     });
@@ -127,6 +132,11 @@ describe("Contact View", () => {
       expect(html).toContain("emerald");
       expect(html).toContain("telegram");
       expect(html).toContain("Feedback sent");
+    });
+
+    it("returns styled success message for email", () => {
+      const html = contactSuccessFragment("email");
+      expect(html).toContain("Feedback sent via email");
     });
 
     it("contains thank you message", () => {

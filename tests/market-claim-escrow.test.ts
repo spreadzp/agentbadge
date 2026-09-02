@@ -98,13 +98,13 @@ beforeEach(() => {
     if (did === CLAIMER_DID) return "0.0.456";
     return null;
   });
-  mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+  mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
   mockedCreateScheduledTransfer.mockResolvedValue({
     scheduleId: FAKE_SCHEDULE_ID,
     scheduleTxId: FAKE_SCHEDULE_TX_ID,
   });
   mockedPrepareTopic.mockResolvedValue({ txBytes: FAKE_TX_BYTES, txId: "0.0.999@prepare" });
-  mockedSubmitSigned.mockResolvedValue("0.0.999@signed-submit");
+  mockedSubmitSigned.mockResolvedValue({ txId: "0.0.999@signed-submit", consensusTimestamp: null });
   mockedSignTxBytes.mockReturnValue({ signature: FAKE_SIGNATURE, publicKey: FAKE_PUBLIC_KEY });
   mockedUpdateTaskStatus.mockReturnValue(true);
   mockedSetEscrowStatus.mockReturnValue(true);

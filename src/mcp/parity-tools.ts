@@ -20,7 +20,7 @@ const BASE_URL = process.env.BASE_URL ?? `http://localhost:${process.env.PORT ??
 /**
  * Generic GET wrapper — fetches a REST endpoint and returns JSON as text.
  */
-async function getEndpoint(path: string, description: string): Promise<ToolResult> {
+async function getEndpoint(path: string): Promise<ToolResult> {
   try {
     const resp = await fetch(`${BASE_URL}${path}`);
     const text = await resp.text();
@@ -28,9 +28,10 @@ async function getEndpoint(path: string, description: string): Promise<ToolResul
       content: [{ type: "text", text }],
       isError: !resp.ok,
     };
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
     return {
-      content: [{ type: "text", text: `Error fetching ${path}: ${e.message}` }],
+      content: [{ type: "text", text: `Error fetching ${path}: ${msg}` }],
       isError: true,
     };
   }
@@ -39,7 +40,7 @@ async function getEndpoint(path: string, description: string): Promise<ToolResul
 /**
  * Generic POST wrapper — sends a JSON body to a REST endpoint and returns JSON as text.
  */
-async function postEndpoint(path: string, body: Record<string, unknown>, description: string): Promise<ToolResult> {
+async function postEndpoint(path: string, body: Record<string, unknown>): Promise<ToolResult> {
   try {
     const resp = await fetch(`${BASE_URL}${path}`, {
       method: "POST",
@@ -51,9 +52,10 @@ async function postEndpoint(path: string, body: Record<string, unknown>, descrip
       content: [{ type: "text", text }],
       isError: !resp.ok,
     };
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
     return {
-      content: [{ type: "text", text: `Error posting to ${path}: ${e.message}` }],
+      content: [{ type: "text", text: `Error posting to ${path}: ${msg}` }],
       isError: true,
     };
   }
@@ -62,94 +64,94 @@ async function postEndpoint(path: string, body: Record<string, unknown>, descrip
 // ─── Well-known endpoints ─────────────────────────────────────────
 
 async function getOauthAuthorizationServerHandler(): Promise<ToolResult> {
-  return getEndpoint("/.well-known/oauth-authorization-server", "OAuth authorization server metadata");
+  return getEndpoint("/.well-known/oauth-authorization-server");
 }
 
 async function getOauthProtectedResourceHandler(): Promise<ToolResult> {
-  return getEndpoint("/.well-known/oauth-protected-resource", "OAuth protected resource metadata");
+  return getEndpoint("/.well-known/oauth-protected-resource");
 }
 
 async function getWebfingerHandler(args: Record<string, unknown>): Promise<ToolResult> {
   const resource = args.resource as string;
   const path = resource ? `/.well-known/webfinger?resource=${encodeURIComponent(resource)}` : "/.well-known/webfinger";
-  return getEndpoint(path, "WebFinger resource discovery");
+  return getEndpoint(path);
 }
 
 async function getHttpMessageSignaturesDirectoryHandler(): Promise<ToolResult> {
-  return getEndpoint("/.well-known/http-message-signatures-directory", "HTTP Message Signatures directory");
+  return getEndpoint("/.well-known/http-message-signatures-directory");
 }
 
 // ─── DID resolution ───────────────────────────────────────────────
 
 async function resolveDidHandler(args: Record<string, unknown>): Promise<ToolResult> {
   const did = args.did as string;
-  return getEndpoint(`/did/${encodeURIComponent(did)}`, "DID resolution");
+  return getEndpoint(`/did/${encodeURIComponent(did)}`);
 }
 
 // ─── Admin ────────────────────────────────────────────────────────
 
 async function rebuildCacheHandler(): Promise<ToolResult> {
-  return postEndpoint("/admin/rebuild-cache", {}, "Rebuild directory cache from HCS");
+  return postEndpoint("/admin/rebuild-cache", {});
 }
 
 // ─── Content pages ────────────────────────────────────────────────
 
 async function getFeedHandler(): Promise<ToolResult> {
-  return getEndpoint("/feed", "Activity feed");
+  return getEndpoint("/feed");
 }
 
 async function getChangelogHandler(): Promise<ToolResult> {
-  return getEndpoint("/changelog", "Changelog");
+  return getEndpoint("/changelog");
 }
 
 async function getFaqHandler(): Promise<ToolResult> {
-  return getEndpoint("/faq", "FAQ page");
+  return getEndpoint("/faq");
 }
 
 async function getAboutHandler(): Promise<ToolResult> {
-  return getEndpoint("/about", "About page");
+  return getEndpoint("/about");
 }
 
 async function getPricingHandler(): Promise<ToolResult> {
-  return getEndpoint("/pricing", "Pricing page");
+  return getEndpoint("/pricing");
 }
 
 async function getPrivacyHandler(): Promise<ToolResult> {
-  return getEndpoint("/privacy", "Privacy policy");
+  return getEndpoint("/privacy");
 }
 
 async function getTermsHandler(): Promise<ToolResult> {
-  return getEndpoint("/terms", "Terms of service");
+  return getEndpoint("/terms");
 }
 
 async function getServicesHandler(): Promise<ToolResult> {
-  return getEndpoint("/services", "Services page");
+  return getEndpoint("/services");
 }
 
 async function getTeamHandler(): Promise<ToolResult> {
-  return getEndpoint("/team", "Team page");
+  return getEndpoint("/team");
 }
 
 async function getUseCasesHandler(): Promise<ToolResult> {
-  return getEndpoint("/use-cases", "Use cases page");
+  return getEndpoint("/use-cases");
 }
 
 async function getWorkWithUsHandler(): Promise<ToolResult> {
-  return getEndpoint("/work-with-us", "Work with us page");
+  return getEndpoint("/work-with-us");
 }
 
 // ─── Guides ───────────────────────────────────────────────────────
 
 async function getMarketGuideHandler(): Promise<ToolResult> {
-  return getEndpoint("/market-guide", "Market guide");
+  return getEndpoint("/market-guide");
 }
 
 async function getMarketplaceGuideHandler(): Promise<ToolResult> {
-  return getEndpoint("/marketplace-guide", "Marketplace guide");
+  return getEndpoint("/marketplace-guide");
 }
 
 async function getMedicalGuideHandler(): Promise<ToolResult> {
-  return getEndpoint("/medical-guide", "Medical guide");
+  return getEndpoint("/medical-guide");
 }
 
 // ─── Work requests ────────────────────────────────────────────────
@@ -161,33 +163,39 @@ async function listWorkRequestsHandler(args: Record<string, unknown>): Promise<T
   if (limit) params.set("limit", String(limit));
   if (offset) params.set("offset", String(offset));
   const qs = params.toString();
-  return getEndpoint(`/api/work-requests${qs ? `?${qs}` : ""}`, "List work requests");
+  return getEndpoint(`/api/work-requests${qs ? `?${qs}` : ""}`);
 }
 
 async function getWorkRequestHandler(args: Record<string, unknown>): Promise<ToolResult> {
   const id = args.id as string;
-  return getEndpoint(`/api/work-requests/${encodeURIComponent(id)}`, "Get work request by ID");
+  return getEndpoint(`/api/work-requests/${encodeURIComponent(id)}`);
 }
 
 async function createWorkRequestHandler(args: Record<string, unknown>): Promise<ToolResult> {
-  return postEndpoint("/api/work-requests", args, "Create a work request");
+  return postEndpoint("/api/work-requests", args);
 }
 
 // ─── Agent by DID ───────────────────────────────────────────────
 
 async function getAgentByDidHandler(args: Record<string, unknown>): Promise<ToolResult> {
   const did = args.did as string;
-  return getEndpoint(`/agents/${encodeURIComponent(did)}`, "Agent details by DID");
+  return getEndpoint(`/agents/${encodeURIComponent(did)}`);
 }
 
 // ─── Agency services & contact (SLICE-56-9) ──────────────────────
 
 async function getServicesInfoHandler(): Promise<ToolResult> {
-  return getEndpoint("/agency.json", "Canonical agency profile with services, capabilities, and contacts");
+  return getEndpoint("/agency.json");
 }
 
 async function contactUsHandler(): Promise<ToolResult> {
-  return getEndpoint("/agent-guide/team/contact", "Contact information and routing for agency inquiries");
+  return getEndpoint("/agent-guide/team/contact");
+}
+
+// ─── DID Auth (SLICE-82-3) ────────────────────────────────────────
+
+async function getDidAuthInfoHandler(): Promise<ToolResult> {
+  return getEndpoint("/llms.txt");
 }
 
 // ─── Registration ─────────────────────────────────────────────────
@@ -398,5 +406,13 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
     "Fetch contact information and routing (/agent-guide/team/contact) — provides contact details and inquiry routing for the agency.",
     {},
     contactUsHandler,
+  );
+
+  // DID Auth (SLICE-82-3)
+  r.registerTool(
+    "get_did_auth_info",
+    "Fetch DID signature authentication details from /llms.txt. All mutation endpoints (POST /market/*, POST /a2a/*) require a DID control proof: sign the canonical challenge string with your Hedera account key and send X-AgentBadge-Signature, X-AgentBadge-Timestamp, X-AgentBadge-Nonce, X-AgentBadge-Did headers. Read endpoints are free — no DID signature required.",
+    {},
+    getDidAuthInfoHandler,
   );
 }

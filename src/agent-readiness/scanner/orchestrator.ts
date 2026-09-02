@@ -44,12 +44,27 @@ import { fetchAgentCard } from "./fetchers/agent-card-fetcher";
 import { fetchAiSitemap } from "./fetchers/ai-sitemap-fetcher";
 import { fetchOauthAuthorizationServer } from "./fetchers/oauth-authorization-server-fetcher";
 import { fetchLlmPolicy } from "./fetchers/llm-policy-fetcher";
+import { fetchAuthProbe, type AuthProbeCredentials } from "./fetchers/auth-probe-fetcher";
+import { fetchEndpointProbe } from "./fetchers/endpoint-probe-fetcher";
+import { fetchOperationalDiscovery } from "./fetchers/operational-discovery-fetcher";
+import { fetchAAuth } from "./fetchers/aauth-fetcher";
+import { fetchCredentialSecurity } from "./fetchers/credential-security-fetcher";
 
 export interface ScanOptions {
   noCache?: boolean;
   timeout?: number;
   resources?: string[];
   onProgress?: (resource: string, completed: number, total: number) => void;
+  authTest?: boolean;
+  clientId?: string;
+  clientSecret?: string;
+  probe?: boolean;
+  probeEndpoints?: number;
+}
+
+interface AuthProbeContext {
+  credentials: AuthProbeCredentials;
+  oauthSnapshot: ResponseSnapshot | null;
 }
 
 export const DEFAULT_RESOURCES = [
@@ -94,6 +109,9 @@ export const DEFAULT_RESOURCES = [
   "ai_sitemap",
   "oauth_authorization_server",
   "llm_policy",
+  "operational_discovery",
+  "aauth",
+  "credential_security",
 ] as const;
 
 export async function scanDomain(
@@ -113,7 +131,18 @@ export async function scanDomain(
 
   const rateLimiter = new ScannerRateLimiter();
   const cache = opts?.noCache ? null : new SnapshotCache();
-  const resources = opts?.resources ?? [...DEFAULT_RESOURCES];
+  let resources = opts?.resources ?? [...DEFAULT_RESOURCES];
+
+  // Conditionally add auth_probe when authTest is enabled and credentials are provided
+  const authEnabled = opts?.authTest === true && !!opts?.clientId && !!opts?.clientSecret;
+  if (authEnabled && !resources.includes("auth_probe")) {
+    resources = [...resources, "auth_probe"];
+  }
+
+  // Conditionally add endpoint_probe when probe is enabled
+  if (opts?.probe === true && !resources.includes("endpoint_probe")) {
+    resources = [...resources, "endpoint_probe"];
+  }
 
   const snapshots: Record<string, ResponseSnapshot | null> = {};
   let completed = 0;
@@ -121,11 +150,11 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth"].includes(r),
   );
   const sequentialResources = resources.filter(
     (r) =>
-      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy"].includes(r),
+      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -135,9 +164,30 @@ export async function scanDomain(
     opts?.onProgress?.(resource, completed, total);
   }));
 
-  // Sequential: guide, openapi, mcp
+  // Build auth probe context after oauth_authorization_server is fetched
+  const authContext: AuthProbeContext | undefined = authEnabled
+    ? {
+      credentials: { clientId: opts!.clientId!, clientSecret: opts!.clientSecret! },
+      oauthSnapshot: snapshots["oauth_authorization_server"] ?? null,
+    }
+    : undefined;
+
+  // Sequential: guide, openapi, mcp, auth_probe (needs oauth snapshot), endpoint_probe (needs openapi)
   for (const resource of sequentialResources) {
-    const result = await fetchResource(resource, baseUrl, rateLimiter, cache);
+    // Build endpoint probe context once openapi snapshot is available
+    const epCtx: EndpointProbeContext | undefined = opts?.probe === true && resource === "endpoint_probe"
+      ? {
+        openapiSnapshot: snapshots["openapi"] ?? null,
+        maxEndpoints: opts?.probeEndpoints ?? 3,
+      }
+      : undefined;
+    const odCtx: OperationalDiscoveryContext | undefined = resource === "operational_discovery"
+      ? { homepageSnapshot: snapshots["homepage_meta"] ?? null }
+      : undefined;
+    const csCtx: CredentialSecurityContext | undefined = resource === "credential_security"
+      ? { oauthBody: snapshots["oauth_authorization_server"]?.body ?? null, openapiBody: snapshots["openapi"]?.body ?? null }
+      : undefined;
+    const result = await fetchResource(resource, baseUrl, rateLimiter, cache, authContext, epCtx, odCtx, csCtx);
     snapshots[resource] = result;
     completed++;
     opts?.onProgress?.(resource, completed, total);
@@ -146,11 +196,29 @@ export async function scanDomain(
   return assembleSourceState(domain, snapshots);
 }
 
+interface EndpointProbeContext {
+  openapiSnapshot: ResponseSnapshot | null;
+  maxEndpoints: number;
+}
+
+interface OperationalDiscoveryContext {
+  homepageSnapshot: ResponseSnapshot | null;
+}
+
+interface CredentialSecurityContext {
+  oauthBody: string | null;
+  openapiBody: string | null;
+}
+
 async function fetchResource(
   resource: string,
   baseUrl: string,
   rateLimiter: ScannerRateLimiter,
   cache: SnapshotCache | null,
+  authContext?: AuthProbeContext,
+  endpointProbeContext?: EndpointProbeContext,
+  operationalDiscoveryContext?: OperationalDiscoveryContext,
+  credentialSecurityContext?: CredentialSecurityContext,
 ): Promise<ResponseSnapshot | null> {
   const cacheKey = `${baseUrl}/${resource}`;
   if (cache?.has(cacheKey)) {
@@ -493,6 +561,76 @@ async function fetchResource(
         url: r.url, status: r.status, body: r.body,
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
       }) : null;
+      break;
+    }
+    case "auth_probe": {
+      if (!authContext) {
+        snapshot = null;
+        break;
+      }
+      const result = await fetchAuthProbe(baseUrl, authContext.oauthSnapshot, authContext.credentials);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/auth-probe`,
+        status: 200,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "endpoint_probe": {
+      if (!endpointProbeContext) {
+        snapshot = null;
+        break;
+      }
+      const result = await fetchEndpointProbe(
+        baseUrl,
+        endpointProbeContext.openapiSnapshot,
+        { maxEndpoints: endpointProbeContext.maxEndpoints },
+      );
+      snapshot = createSnapshot({
+        url: `${baseUrl}/endpoint-probe`,
+        status: 200,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "operational_discovery": {
+      const homepageSnap = operationalDiscoveryContext?.homepageSnapshot ?? null;
+      const result = await fetchOperationalDiscovery(baseUrl, homepageSnap);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/operational-discovery`,
+        status: 200,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "aauth": {
+      const result = await fetchAAuth(baseUrl);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/.well-known/aauth.json`,
+        status: result.data.aauthFound ? 200 : 404,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
+      break;
+    }
+    case "credential_security": {
+      const oauthBody = credentialSecurityContext?.oauthBody ?? null;
+      const openapiBody = credentialSecurityContext?.openapiBody ?? null;
+      const result = fetchCredentialSecurity(baseUrl, oauthBody, openapiBody);
+      snapshot = createSnapshot({
+        url: `${baseUrl}/credential-security`,
+        status: 200,
+        body: JSON.stringify(result),
+        resolvedIp: null,
+        fetchTimeMs: 0,
+      });
       break;
     }
   }

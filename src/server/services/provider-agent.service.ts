@@ -13,10 +13,10 @@ import { generateRandomMedicalData, type MedicalData } from "./medical-data.serv
 import { analyzeMedicalData, type AnalysisResult } from "./medical-processor.service";
 import { generateHtmlReport } from "./html-report.service";
 import {
-  marketUpsert as upsert,
   marketGet as getTask,
   listTasks,
   updateTaskStatus,
+  logger,
 } from "@agentgate-hedera/passport";
 import { submitTaskMessage, verifyA2ADid } from "@agentgate-hedera/hedera-core";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
@@ -98,10 +98,10 @@ export class MedicalDataProviderAgent {
     try {
       const providerValid = await verifyA2ADid(this.config.providerDid);
       if (!providerValid) {
-        console.warn(`[demo] Provider passport not verified: ${this.config.providerDid} — continuing in demo mode`);
+        logger.warn("demo: provider passport not verified, continuing in demo mode", { providerDid: this.config.providerDid });
       }
     } catch {
-      console.warn(`[demo] Passport verification skipped for ${this.config.providerDid} — continuing in demo mode`);
+      logger.warn("demo: passport verification skipped, continuing in demo mode", { providerDid: this.config.providerDid });
     }
 
     const timestamp = Math.floor(Date.now() / 1000);
@@ -113,7 +113,7 @@ export class MedicalDataProviderAgent {
     };
     let claimTxId: string | undefined;
     try {
-      claimTxId = await submitTaskMessage(message);
+      claimTxId = (await submitTaskMessage(message)).txId;
     } catch {
       // HCS submit failed — continue with cache-only update for demo
     }
@@ -174,7 +174,7 @@ export class MedicalDataProviderAgent {
     };
     let deliverTxId: string | undefined;
     try {
-      deliverTxId = await submitTaskMessage(message);
+      deliverTxId = (await submitTaskMessage(message)).txId;
     } catch {
       // HCS submit failed — continue with cache-only update for demo
     }

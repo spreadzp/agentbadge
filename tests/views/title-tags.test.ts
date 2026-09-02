@@ -6,7 +6,7 @@
  * - Not end with em-dash brand suffix ("— AgentBadge")
  * - When composed with pageTitle(), produce ≤ 72 chars with single brand
  */
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { PageMeta, pageTitle, SITE_NAME } from "../../src/server/lib/page-meta";
 
 describe("SLICE-80-2: Title composer — single brand suffix", () => {

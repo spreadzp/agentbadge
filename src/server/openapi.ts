@@ -1,4 +1,5 @@
 import z from "zod";
+import { APP_VERSION } from "./lib/build-info";
 
 // ─── Shared Zod schemas for OpenAPI documentation ─────────────────
 
@@ -332,7 +333,7 @@ export const rateLimitHeaders: Record<string, { description: string; schema: { t
 export const openApiConfig = {
   info: {
     title: "AgentBadge API",
-    version: "1.0.0",
+    version: APP_VERSION,
     description:
       "On-chain identity system for AI agents on Hedera Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
   },

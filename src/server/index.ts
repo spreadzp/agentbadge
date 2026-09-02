@@ -9,6 +9,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 
 import { getPrice, logger } from "@agentgate-hedera/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
+import { adminAuth } from "./middleware/adminAuth";
 import { mppPaymentMiddleware } from "./middleware/mpp";
 import { l402PaymentMiddleware } from "./middleware/l402";
 import { bazaarExtensionMiddleware } from "./middleware/bazaar-extension";
@@ -51,6 +52,7 @@ import { didRoutes } from "./routes/did";
 import { adminRoutes } from "./routes/admin";
 import { upgradeRoutes } from "./routes/upgrade";
 import { auditRoutes } from "./routes/audit";
+import { eventsRoutes } from "./routes/events";
 import { catalogRoutes } from "./routes/catalog";
 import { uiRoutes } from "./routes/ui";
 import { landingRoutes } from "./routes/landing";
@@ -59,6 +61,7 @@ import { agentGuideRoutes } from "./routes/agent-guide";
 import { agentKnowledgeRoutes } from "./routes/agent-knowledge";
 import { teamRoutes } from "./routes/agent-guide/team";
 import { a2aRoutes } from "./routes/a2a";
+import { linkedinRoutes } from "./routes/linkedin";
 import { marketRoutes } from "./routes/market";
 import { searchRoutes } from "./routes/search";
 import { marketGuideRoutes } from "./routes/market-guide";
@@ -77,6 +80,7 @@ import { demandGuideRoutes } from "./routes/agent-guide/demand";
 import { changelogRoutes } from "./routes/changelog";
 import { agencyJsonRoutes } from "./routes/agency-json";
 import { wellKnownRoutes } from "./routes/well-known";
+import { agentCardRoutes } from "./routes/agent-card";
 import { feedRoutes } from "./routes/feed";
 import { metricsApp } from "./routes/metrics";
 import { telemetryApp } from "./routes/telemetry";
@@ -88,6 +92,8 @@ import { initSentry, captureError } from "./lib/sentry";
 import { ErrorCodes } from "./lib/error-codes";
 import { errorResponse } from "./lib/error-response";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
+import { baseX402PaymentMiddleware } from "./middleware/x402-base";
+import { APP_VERSION, BUILD_DATE, GIT_COMMIT } from "./lib/build-info";
 
 // Initialize Sentry before anything else (no-op if SENTRY_DSN not set)
 initSentry();
@@ -149,7 +155,6 @@ app.use(
     rootKey: process.env.L402_ROOT_KEY,
     lndUrl: process.env.L402_LND_URL,
     lndMacaroon: process.env.L402_LND_MACAROON,
-    testMode: process.env.L402_TEST_MODE !== "false",
   }),
 );
 app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));
@@ -165,7 +170,7 @@ if (!isMockMode) {
     loadConfig();
     logger.info("Environment configuration validated");
   } catch (e) {
-    console.error("[SERVER] Config error:", e);
+    logger.error("SERVER: Config error", { error: e });
     process.exit(1);
   }
 }
@@ -227,66 +232,50 @@ if (mppSecretKey || mppRecipient) {
   );
 }
 
-// LinkedIn OAuth callback — exchange auth code for access token
-app.get("/linkedin/callback", async (c) => {
-  const authCode = c.req.query("code");
-  const error = c.req.query("error");
+// SLICE-90-9: x402 Base Sepolia payment middleware (active when CHAIN_MODE=base)
+// SLICE-90-11: Start event indexer when CHAIN_MODE=base
+const chainMode = process.env.CHAIN_MODE ?? "hedera";
 
-  if (error) {
-    return c.json({ ok: false, error: `LinkedIn OAuth error: ${error}` }, 400);
-  }
+if (chainMode === "base") {
+  import("./lib/base-event-indexer").then(({ startBaseEventIndexer }) => {
+    startBaseEventIndexer();
+  }).catch((e) => {
+    console.warn("[Server] Failed to start base event indexer:", e);
+  });
+}
+const baseX402FacilitatorUrl = process.env.X402_FACILITATOR_URL ?? "";
+const baseUsdcAddress = process.env.BASE_USDC_ADDRESS ?? "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+const baseTreasury = process.env.BASE_TREASURY ?? "";
+const baseX402Price = process.env.X402_BASE_PRICE ?? "1000000"; // 1 USDC
 
-  if (!authCode) {
-    return c.json({ ok: false, error: "Missing 'code' query parameter" }, 400);
-  }
+if (chainMode === "base" && baseX402FacilitatorUrl && baseTreasury) {
+  app.use(
+    "/passport/request",
+    baseX402PaymentMiddleware({
+      facilitatorUrl: baseX402FacilitatorUrl,
+      payTo: baseTreasury,
+      usdcAddress: baseUsdcAddress,
+      networkId: "eip155:84532",
+      price: baseX402Price,
+      description: "Agent Passport NFT issuance (Base Sepolia)",
+      mimeType: "application/json",
+    }),
+  );
+  logger.info("x402 Base Sepolia payment middleware active", {
+    facilitator: baseX402FacilitatorUrl,
+    usdc: baseUsdcAddress,
+  });
+}
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
-  const redirectUri = process.env.LINKEDIN_REDIRECT_URI ?? `http://localhost:${port}/linkedin/callback`;
-
-  if (!clientId || !clientSecret) {
-    return c.json({ ok: false, error: "LINKEDIN_CLIENT_ID or LINKEDIN_CLIENT_SECRET not set in .env" }, 500);
-  }
-
-  try {
-    const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code: authCode,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-      }),
-    });
-
-    const tokenData = await tokenRes.json() as Record<string, unknown>;
-
-    if (!tokenRes.ok) {
-      console.error("[LinkedIn OAuth] Token exchange failed:", tokenData);
-      return c.json({ ok: false, error: "Token exchange failed", details: tokenData }, 502);
-    }
-
-    const accessToken = tokenData.access_token as string;
-    console.log("[LinkedIn OAuth] Access token obtained:", accessToken);
-
-    return c.json({
-      ok: true,
-      access_token: accessToken,
-      expires_in: tokenData.expires_in,
-      message: "Authorization successful! You can close this tab.",
-    });
-  } catch (e) {
-    console.error("[LinkedIn OAuth] Error:", e);
-    return c.json({ ok: false, error: String(e) }, 500);
-  }
-});
+app.route("/", linkedinRoutes);
 
 app.get("/health", (c) => {
   const tools = listTools();
   return c.json({
     status: "healthy",
+    version: APP_VERSION,
+    buildDate: BUILD_DATE,
+    gitCommit: GIT_COMMIT,
     uptime: process.uptime(),
     mcp: {
       toolsCount: tools.length,
@@ -322,11 +311,29 @@ app.use("/6abf90e7f0354fb09ac01108f46a17e7.txt", serveStatic({ root: "./public",
 
 const INDEXNOW_KEY = "6abf90e7f0354fb09ac01108f46a17e7";
 const INDEXNOW_BASE = "https://agentbadge.xyz";
+const INDEXNOW_ALLOWED_HOSTS = (process.env.INDEXNOW_ALLOWED_HOSTS ?? "agentbadge.xyz").split(",");
+const INDEXNOW_MAX_URLS = 10;
 
-app.post("/api/indexnow", async (c) => {
+app.post("/api/indexnow", adminAuth, async (c) => {
   try {
     const body = await c.req.json<{ urls?: string[] }>();
     const urls = body.urls ?? [`${INDEXNOW_BASE}/`];
+
+    if (urls.length > INDEXNOW_MAX_URLS) {
+      return c.json({ error: `Too many URLs (max ${INDEXNOW_MAX_URLS})` }, 400);
+    }
+
+    for (const u of urls) {
+      try {
+        const parsed = new URL(u);
+        if (!INDEXNOW_ALLOWED_HOSTS.includes(parsed.hostname)) {
+          return c.json({ error: `URL not allowed: ${u}` }, 403);
+        }
+      } catch {
+        return c.json({ error: `Invalid URL: ${u}` }, 400);
+      }
+    }
+
     const payload = {
       host: "agentbadge.xyz",
       key: INDEXNOW_KEY,
@@ -338,6 +345,9 @@ app.post("/api/indexnow", async (c) => {
       headers: { "Content-Type": "application/json; charset=utf-8" },
       body: JSON.stringify(payload),
     });
+
+    logger.info("IndexNow submitted", { urlCount: urls.length });
+
     return c.json({ ok: resp.ok, status: resp.status, urls: urls.length });
   } catch (e) {
     return c.json({ ok: false, error: String(e) }, 500);
@@ -367,8 +377,10 @@ app.route("/", agentRoutes);
 app.route("/", adminRoutes);
 app.route("/", upgradeRoutes);
 app.route("/", auditRoutes);
+app.route("/", eventsRoutes);
 app.route("/", catalogRoutes);
 app.route("/", wellKnownRoutes);
+app.route("/", agentCardRoutes);
 app.route("/", feedRoutes);
 app.route("/", mcpRoutes);
 
@@ -464,6 +476,10 @@ if (marketTopicId) {
   startMarketCacheRebuild(marketTopicId, { incremental: true });
 }
 
+// SLICE-84-2: Start escrow reconciler background sweeper (config-gated)
+import { startEscrowReconciler } from "./services/escrow-reconciler";
+startEscrowReconciler();
+
 // Capture unhandled errors from routes
 app.onError((err, c) => {
   captureError(err, {
@@ -483,8 +499,8 @@ try {
     fetch: app.fetch,
     idleTimeout: 0,
   });
-  console.error(`[SERVER] Listening on http://${server.hostname}:${server.port}`);
+  logger.info("SERVER listening", { url: `http://${server.hostname}:${server.port}` });
 } catch (e) {
-  console.error("[SERVER] Bun.serve failed:", e);
+  logger.error("SERVER: Bun.serve failed", { error: e });
   process.exit(1);
 }

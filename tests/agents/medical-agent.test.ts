@@ -1,4 +1,4 @@
-import { describe, it, expect, mock } from "bun:test";
+import { describe, it, expect, vi } from "vitest";
 import { MedicalAgent, type AgentState, type AgentDependencies, type AgentLogEntry } from "../../src/agents/medical-agent";
 import { generatePimaSample } from "../../src/agents/analysis/pima-dataset";
 import { runAnalysisPipeline } from "../../src/agents/analysis/pipeline";
@@ -17,14 +17,14 @@ function makeDeps(): AgentDependencies {
   const csvData = sampleDataset.columns.join(",") + "\n" + sampleDataset.rows.map((r) => r.join(",")).join("\n");
 
   return {
-    claimTask: mock(() => Promise.resolve(true)),
-    downloadDataset: mock(() => Promise.resolve(csvData)),
-    parseCsv: mock((_csv: string) => Promise.resolve(sampleDataset)),
-    analyze: mock((_ds: TypedDataset) => {
+    claimTask: vi.fn(() => Promise.resolve(true)),
+    downloadDataset: vi.fn(() => Promise.resolve(csvData)),
+    parseCsv: vi.fn((_csv: string) => Promise.resolve(sampleDataset)),
+    analyze: vi.fn((_ds: TypedDataset) => {
       const report = runAnalysisPipeline(sampleDataset, "Pima Indians Diabetes", "pima");
       return Promise.resolve(report);
     }),
-    generateReport: mock((_report: AnalysisReport) => {
+    generateReport: vi.fn((_report: AnalysisReport) => {
       const bundle: ReportBundle = {
         html: "<html><body>report</body></html>",
         json: { taskId: "test", summary: "ok" },
@@ -32,11 +32,11 @@ function makeDeps(): AgentDependencies {
       };
       return Promise.resolve(bundle);
     }),
-    uploadToIPFS: mock(() => Promise.resolve("ipfs://QmTest123")),
-    deliverResult: mock(() => Promise.resolve(true)),
-    verifyResult: mock(() => Promise.resolve({ passed: true, checks: [], failedChecks: [] })),
-    completeTask: mock(() => Promise.resolve(true)),
-    correctAnalysis: mock((failedChecks: string[], report: AnalysisReport) => report),
+    uploadToIPFS: vi.fn(() => Promise.resolve("ipfs://QmTest123")),
+    deliverResult: vi.fn(() => Promise.resolve(true)),
+    verifyResult: vi.fn(() => Promise.resolve({ passed: true, checks: [], failedChecks: [] })),
+    completeTask: vi.fn(() => Promise.resolve(true)),
+    correctAnalysis: vi.fn((failedChecks: string[], report: AnalysisReport) => report),
   };
 }
 
@@ -84,7 +84,7 @@ describe("MedicalAgent", () => {
   it("retries on verification failure (pass on 3rd attempt)", async () => {
     const deps = makeDeps();
     let verifyCount = 0;
-    deps.verifyResult = mock(() => {
+    deps.verifyResult = vi.fn(() => {
       verifyCount++;
       if (verifyCount < 3) {
         return Promise.resolve({
@@ -109,7 +109,7 @@ describe("MedicalAgent", () => {
 
   it("aborts after 3 verification failures", async () => {
     const deps = makeDeps();
-    deps.verifyResult = mock(() =>
+    deps.verifyResult = vi.fn(() =>
       Promise.resolve({
         passed: false,
         checks: [{ description: "always", passed: false, message: "fails" }],
@@ -127,7 +127,7 @@ describe("MedicalAgent", () => {
 
   it("aborts on HFS download failure", async () => {
     const deps = makeDeps();
-    deps.downloadDataset = mock(() => Promise.reject(new Error("HFS timeout")));
+    deps.downloadDataset = vi.fn(() => Promise.reject(new Error("HFS timeout")));
 
     const agent = new MedicalAgent(CONFIG, deps);
     const result = await agent.run("task-download-fail");
@@ -139,7 +139,7 @@ describe("MedicalAgent", () => {
 
   it("aborts on claim failure (already claimed)", async () => {
     const deps = makeDeps();
-    deps.claimTask = mock(() => Promise.reject(new Error("Task already claimed")));
+    deps.claimTask = vi.fn(() => Promise.reject(new Error("Task already claimed")));
 
     const agent = new MedicalAgent(CONFIG, deps);
     const result = await agent.run("task-claim-fail");
@@ -151,7 +151,7 @@ describe("MedicalAgent", () => {
 
   it("aborts on analysis failure", async () => {
     const deps = makeDeps();
-    deps.analyze = mock(() => Promise.reject(new Error("analysis error")));
+    deps.analyze = vi.fn(() => Promise.reject(new Error("analysis error")));
 
     const agent = new MedicalAgent(CONFIG, deps);
     const result = await agent.run("task-analysis-fail");
@@ -178,7 +178,7 @@ describe("MedicalAgent", () => {
 
   it("returns to IDLE after abort", async () => {
     const deps = makeDeps();
-    deps.claimTask = mock(() => Promise.reject(new Error("fail")));
+    deps.claimTask = vi.fn(() => Promise.reject(new Error("fail")));
     const agent = new MedicalAgent(CONFIG, deps);
     await agent.run("task-abort-idle");
     expect(agent.getState()).toBe("IDLE");

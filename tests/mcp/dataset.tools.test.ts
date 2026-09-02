@@ -1,16 +1,16 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { listTools, registerDatasetTools, downloadDatasetHandler, uploadResultHandler } from "@agentgate-hedera/mcp";
 
 describe("download_dataset", () => {
   beforeEach(() => {
-    mock.restore();
+    vi.restore();
     process.env.OPERATOR_ID = "0.0.1001";
     process.env.OPERATOR_KEY = "302e0201000a";
   });
 
   it("downloads CSV from HFS with valid fileId", async () => {
     const mockCsv = "age,glucose,outcome\n45,120,0\n50,180,1\n";
-    globalThis.fetch = mock(() =>
+    globalThis.fetch = vi.fn(() =>
       Promise.resolve(
         new Response(mockCsv, { status: 200, headers: { "Content-Type": "text/csv" } }),
       ),
@@ -25,7 +25,7 @@ describe("download_dataset", () => {
   });
 
   it("returns error on invalid fileId", async () => {
-    globalThis.fetch = mock(() =>
+    globalThis.fetch = vi.fn(() =>
       Promise.resolve(
         new Response(JSON.stringify({ error: "File not found" }), { status: 404 }),
       ),
@@ -47,7 +47,7 @@ describe("download_dataset", () => {
   });
 
   it("returns error on network failure", async () => {
-    globalThis.fetch = mock(() => Promise.reject(new TypeError("Network error"))) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn(() => Promise.reject(new TypeError("Network error"))) as unknown as typeof fetch;
 
     const result = await downloadDatasetHandler({
       fileId: "0.0.12345",
@@ -72,11 +72,11 @@ describe("download_dataset", () => {
 
 describe("upload_result", () => {
   beforeEach(() => {
-    mock.restore();
+    vi.restore();
   });
 
   it("uploads and returns CID + URI", async () => {
-    globalThis.fetch = mock(() =>
+    globalThis.fetch = vi.fn(() =>
       Promise.resolve(
         new Response(JSON.stringify({ IpfsHash: "QmTest123" }), { status: 200 }),
       ),

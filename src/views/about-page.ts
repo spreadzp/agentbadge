@@ -5,6 +5,7 @@ import { AGENCY_BRAND, AGENCY_SERVICES } from "../server/lib/agency-config";
 import { TEAM_MEMBERS } from "../server/lib/team-data";
 import { listTools } from "@agentgate-hedera/mcp";
 import type { RegistryIndex } from "../server/registry/types";
+import { explorerName, explorerTxUrl } from "../server/lib/chain-ui.js";
 
 /**
  * About page — agency story, mission, services overview.
@@ -99,7 +100,7 @@ export function AboutPage(jsonLd?: object[], registry?: RegistryIndex) {
         switching requires only updating environment variables (<code class="text-emerald-300">HEDERA_NETWORK=mainnet</code>
         and a mainnet operator key).</p>
         <p class="mt-3">All passports, HCS messages, and transactions are real on-chain operations —
-        verifiable on <a href="https://hashscan.io/testnet" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">HashScan</a>.</p>
+        verifiable on <a href="${explorerTxUrl('')}" class="text-emerald-400 underline hover:text-emerald-300" target="_blank" rel="noopener">${explorerName()}</a>.</p>
         <p class="mt-3"><a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Join testnet now →</a></p>`,
   ))}
 

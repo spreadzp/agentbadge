@@ -10,7 +10,7 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
 
 vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   ...(await importOriginal()),
-  submitTaskMessage: vi.fn().mockResolvedValue("0.0.5266613@123.000000000"),
+  submitTaskMessage: vi.fn().mockResolvedValue({ txId: "0.0.5266613@123.000000000", consensusTimestamp: null }),
   verifyA2ADid: vi.fn().mockResolvedValue(true),
 }));
 

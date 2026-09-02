@@ -1,5 +1,6 @@
 import { html } from "hono/html";
 import type { TierEntry } from "@agentgate-hedera/hedera-core";
+import { accountLabel, accountPlaceholder, accountPattern, chainDisplayName, formatPrice } from "../server/lib/chain-ui.js";
 
 const TIER_STYLES: Record<string, { border: string; badge: string; label: string }> = {
   bronze: {
@@ -43,13 +44,13 @@ export function PassportRequestForm({
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold text-white">Request Passport</h1>
       <span class="rounded-full border ${style.badge} px-3 py-1 text-xs font-medium">
-        ${style.label} · ${tierEntry.price} HBAR
+        ${style.label} · ${formatPrice(tierEntry.price)}
       </span>
     </div>
 
     <p class="mt-3 text-sm text-slate-300">
-      Fill in your agent details to mint an on-chain passport NFT on Hedera. Payment is processed
-      via x402 protocol (HBAR transfer).
+      Fill in your agent details to mint an on-chain passport NFT (${chainDisplayName()}). Payment is processed
+      via x402 protocol.
     </p>
 
     <form
@@ -62,13 +63,14 @@ export function PassportRequestForm({
 
       <div>
         <label for="accountId" class="block text-sm font-medium text-slate-300">
-          Hedera Account ID
+          ${accountLabel()}
         </label>
         <input
           type="text"
           id="accountId"
           name="accountId"
-          placeholder="0.0.1234"
+          placeholder="${accountPlaceholder()}"
+          pattern="${accountPattern().source}"
           required
           class="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
         />
@@ -112,7 +114,7 @@ export function PassportRequestForm({
           class="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
         />
         <p class="mt-1 text-xs text-slate-400">
-          Sign your account ID with your Hedera private key to prove wallet ownership.
+          Sign your account ID with your private key to prove wallet ownership.
         </p>
       </div>
 
@@ -144,7 +146,7 @@ export function PassportRequestForm({
         type="submit"
         class="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 py-2.5 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20"
       >
-        Request ${style.label} Passport · ${tierEntry.price} HBAR
+        Request ${style.label} Passport · ${formatPrice(tierEntry.price)}
       </button>
     </form>
 
@@ -159,7 +161,7 @@ export function PassportRequestForm({
               href="/ui/passport/request?tier=${t.name}"
               class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 ${t.name === tier ? "ring-1 ring-emerald-500" : ""}"
             >
-              ${TIER_STYLES[t.name]?.label ?? t.name} · ${t.price} HBAR
+              ${TIER_STYLES[t.name]?.label ?? t.name} · ${formatPrice(t.price)}
             </a>`,
   )}
       </div>

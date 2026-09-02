@@ -55,7 +55,7 @@ describe("A2A MCP Tools", () => {
       mockedGetNftInfo
         .mockResolvedValueOnce(validNft)
         .mockResolvedValueOnce({ ...validNft, serial_number: 2 });
-      mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000001");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
 
       const result = await sendMessageHandler({
         from: SENDER_DID,
@@ -132,7 +132,7 @@ describe("A2A MCP Tools", () => {
       mockedGetNftInfo
         .mockResolvedValueOnce(validNft)
         .mockResolvedValueOnce({ ...validNft, serial_number: 2 });
-      mockedSubmit.mockResolvedValue("0.0.111@1234567890.000000001");
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
 
       await sendMessageHandler({
         from: SENDER_DID,

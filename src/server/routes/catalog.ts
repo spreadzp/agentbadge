@@ -12,6 +12,7 @@ import { catalogTierSchema } from "../openapi";
 import z from "zod";
 import { FAQ_ENTRIES } from "../../views/faq-page";
 import { BLOG_ARTICLES } from "../lib/blog-data";
+import { didAuthSectionCompact } from "../lib/did-auth-docs";
 
 export const catalogRoutes = new Hono();
 
@@ -88,7 +89,7 @@ catalogRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseTxt = getLlmsTxt();
     const teamSection = `
 ## Engineering Capabilities
@@ -144,7 +145,8 @@ We offer consulting and development services for the agentic web:
 
 - [llms-full.txt](/llms-full.txt) — Complete site content in a single request (services, FAQ, blog, guides)
 `;
-    const txt = baseTxt + teamSection;
+    const authSection = didAuthSectionCompact() + "\n\n";
+    const txt = authSection + baseTxt + teamSection;
     return new Response(txt, {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
@@ -170,14 +172,18 @@ catalogRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
     const baseLlms = getLlmsTxt();
+
+    const authSection = didAuthSectionCompact();
 
     const fullContent = `# AgentBadge — Full LLM Context
 
 # Source: ${baseUrl}/llms-full.txt
 # Generated for RAG ingestion and embedded agents
+
+${authSection}
 
 ${baseLlms}
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { MarketTask } from "../src/server/lib/market-task.js";
 
 vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
@@ -32,6 +33,64 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
   marketRebuildFromHcs: vi.fn(),
 }));
 
+vi.mock("../src/server/lib/chain-ui.js", () => ({
+  explorerTxUrl: (txId: string) => `https://explorer.test/tx/${txId}`,
+  explorerName: () => "Explorer",
+  accountPlaceholder: () => "0.0.xxxx",
+  formatPrice: (raw: string | number) => `${raw} HBAR`,
+}));
+
+vi.mock("../src/server/lib/market-task.js", () => ({
+  normalizeTask: (task: CachedMarketTask) => ({
+    id: task.taskId,
+    title: task.title,
+    description: task.description,
+    price: `${task.priceHbar} HBAR`,
+    priceRaw: String(task.priceHbar),
+    currency: "HBAR",
+    capabilities: task.capabilities,
+    posterDid: task.posterDid,
+    posterAddress: task.posterDid.split(":").slice(-2)[0] ?? task.posterDid,
+    txId: task.txId,
+    txExplorerUrl: `https://explorer.test/tx/${task.txId}`,
+    status: task.status,
+    consensusTimestamp: task.consensusTimestamp,
+    createdAt: task.createdAt,
+    claimerDid: task.claimerDid,
+    resultBody: task.resultBody,
+    resultIpfs: task.resultIpfs,
+    paymentTxId: task.paymentTxId,
+    claimTxId: task.claimTxId,
+    deliverTxId: task.deliverTxId,
+    completedTxId: task.completedTxId,
+    scheduleId: task.scheduleId,
+    scheduleTxId: task.scheduleTxId,
+    escrowStatus: task.escrowStatus,
+    verifierType: task.verifierType,
+    verificationAttempts: task.verificationAttempts,
+    verificationReport: task.verificationReport,
+    transitionalSince: task.transitionalSince,
+    lastError: task.lastError,
+    deadline: task.deadline,
+  }),
+  normalizeTasks: (tasks: CachedMarketTask[]) => tasks.map((t: CachedMarketTask) => ({
+    id: t.taskId,
+    title: t.title,
+    description: t.description,
+    price: `${t.priceHbar} HBAR`,
+    priceRaw: String(t.priceHbar),
+    currency: "HBAR",
+    capabilities: t.capabilities,
+    posterDid: t.posterDid,
+    posterAddress: t.posterDid.split(":").slice(-2)[0] ?? t.posterDid,
+    txId: t.txId,
+    txExplorerUrl: `https://explorer.test/tx/${t.txId}`,
+    status: t.status,
+    consensusTimestamp: t.consensusTimestamp,
+    createdAt: t.createdAt,
+  })),
+}));
+
 import { marketGet as get, listTasks } from "@agentgate-hedera/passport";
 import { MarketplaceTaskBoardFragment, TaskDetailsFragment } from "../src/views/marketplace-fragment";
 import { uiRoutes } from "../src/server/routes/ui";
@@ -39,7 +98,27 @@ import { uiRoutes } from "../src/server/routes/ui";
 const mockedGet = vi.mocked(get);
 const mockedListTasks = vi.mocked(listTasks);
 
-function makeTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
+function makeTask(overrides: Partial<MarketTask> = {}): MarketTask {
+  const base: MarketTask = {
+    id: "task-001",
+    posterDid: "did:hcs:0.0.123:1",
+    title: "Data Analysis Task",
+    description: "Analyze sensor data and produce a summary report",
+    price: "50 HBAR",
+    priceRaw: "5000000000",
+    currency: "HBAR",
+    capabilities: ["data_analysis", "reporting"],
+    status: "posted",
+    txId: "0.0.999-123-456",
+    txExplorerUrl: "https://explorer.test/tx/0.0.999-123-456",
+    posterAddress: "0.0.123",
+    consensusTimestamp: "1700000000.000000001",
+    createdAt: 1700000000,
+  };
+  return { ...base, ...overrides };
+}
+
+function makeCachedTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
   return {
     taskId: "task-001",
     posterDid: "did:hcs:0.0.123:1",
@@ -74,7 +153,7 @@ describe("MarketplaceTaskBoardFragment", () => {
 
   it("shows first 4 tasks and Show more button when >4 tasks", () => {
     const tasks = Array.from({ length: 6 }, (_, i) =>
-      makeTask({ taskId: `task-${i + 1}`, title: `Task ${i + 1}` }),
+      makeTask({ id: `task-${i + 1}`, title: `Task ${i + 1}` }),
     );
     const html = MarketplaceTaskBoardFragment(tasks).toString();
     expect(html).toContain("Task 1");
@@ -94,7 +173,7 @@ describe("MarketplaceTaskBoardFragment", () => {
 
   it("Show more button uses onclick showMore", () => {
     const tasks = Array.from({ length: 6 }, (_, i) =>
-      makeTask({ taskId: `task-${i + 1}`, title: `Task ${i + 1}` }),
+      makeTask({ id: `task-${i + 1}`, title: `Task ${i + 1}` }),
     );
     const html = MarketplaceTaskBoardFragment(tasks).toString();
     expect(html).toContain("onclick=\"showMore");
@@ -102,7 +181,7 @@ describe("MarketplaceTaskBoardFragment", () => {
   });
 
   it("task card has View Details link to /ui/market/tasks/:id", () => {
-    const tasks = [makeTask({ taskId: "task-42" })];
+    const tasks = [makeTask({ id: "task-42" })];
     const html = MarketplaceTaskBoardFragment(tasks).toString();
     expect(html).toContain('href="/ui/market/tasks/task-42"');
     expect(html).toContain("View Details");
@@ -131,7 +210,7 @@ describe("TaskDetailsFragment", () => {
   });
 
   it("shows Claim button with HTMX POST for posted tasks", () => {
-    const task = makeTask({ status: "posted", taskId: "task-99" });
+    const task = makeTask({ status: "posted", id: "task-99" });
     const html = TaskDetailsFragment(task).toString();
     expect(html).toContain("hx-post");
     expect(html).toContain("/market/tasks/task-99/claim");
@@ -187,7 +266,7 @@ describe("TaskDetailsFragment", () => {
     expect(html).toContain("pending");
   });
 
-  it("shows HashScan links for all txIds on completed task", () => {
+  it("shows explorer links for all txIds on completed task", () => {
     const task = makeTask({
       status: "completed",
       claimerDid: "did:hcs:0.0.999:3",
@@ -197,7 +276,7 @@ describe("TaskDetailsFragment", () => {
       completedTxId: "0.0.888-1700000004-000000001",
     });
     const html = TaskDetailsFragment(task).toString();
-    expect(html).toContain("hashscan.io");
+    expect(html).toContain("explorer.test");
     expect(html).toContain("0.0.888-1700000001");
     expect(html).toContain("0.0.888-1700000002");
     expect(html).toContain("0.0.777-1700000003");
@@ -208,7 +287,7 @@ describe("TaskDetailsFragment", () => {
     const task = makeTask({ status: "posted", txId: "0.0.999-123-456" });
     const html = TaskDetailsFragment(task).toString();
     expect(html).toContain("Post TX:");
-    expect(html).toContain("hashscan.io");
+    expect(html).toContain("explorer.test");
     expect(html).toContain("pending");
   });
 });
@@ -226,7 +305,7 @@ describe("GET /ui/market/tasks", () => {
 
   it("returns 200 HTML fragment with tasks", async () => {
     mockedListTasks.mockReturnValue({
-      tasks: [makeTask()],
+      tasks: [makeCachedTask()],
       total: 1,
     });
 
@@ -276,7 +355,7 @@ describe("GET /ui/market/tasks/:id", () => {
   });
 
   it("returns 200 with task details", async () => {
-    mockedGet.mockReturnValue(makeTask({ taskId: "task-42" }));
+    mockedGet.mockReturnValue(makeCachedTask({ taskId: "task-42" }));
 
     const res = await app.request("/ui/market/tasks/task-42", {
       headers: { "HX-Request": "true" },
@@ -299,7 +378,7 @@ describe("GET /ui/market/tasks/:id", () => {
   });
 
   it("shows Claim button for posted task", async () => {
-    mockedGet.mockReturnValue(makeTask({ status: "posted", taskId: "task-7" }));
+    mockedGet.mockReturnValue(makeCachedTask({ status: "posted", taskId: "task-7" }));
 
     const res = await app.request("/ui/market/tasks/task-7", {
       headers: { "HX-Request": "true" },

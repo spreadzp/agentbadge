@@ -1,5 +1,6 @@
 import { html } from "hono/html";
 import type { AuditMessage } from "@agentgate-hedera/hedera-core";
+import { explorerTxUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /** Audit event with on-chain consensus timestamp from Mirror Node. */
 export interface AuditEventWithTx extends AuditMessage {
@@ -23,9 +24,8 @@ export function AuditRow({ event }: { event: AuditEventWithTx }) {
 
   const colorClass = typeColors[event.type] ?? "text-slate-300";
 
-  const network = process.env.HEDERA_NETWORK ?? "testnet";
   const hashScanUrl = event.consensusTimestamp
-    ? `https://hashscan.io/${network}/transaction/${event.consensusTimestamp}`
+    ? explorerTxUrl(event.consensusTimestamp)
     : null;
 
   return html`<div class="rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm">
@@ -38,17 +38,17 @@ export function AuditRow({ event }: { event: AuditEventWithTx }) {
                   href="${hashScanUrl}"
                   target="_blank"
                   rel="noopener"
-                  title="View transaction on HashScan"
+                  title="View transaction on ${explorerName()}"
                   class="inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400 transition-colors"
-                  aria-label="View on HashScan"
+                  aria-label="View on ${explorerName()}"
                 >
                   <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </a>
                 <button
                   type="button"
-                  title="Copy HashScan link"
+                  title="Copy ${explorerName()} link"
                   class="inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
-                  aria-label="Copy HashScan link"
+                  aria-label="Copy ${explorerName()} link"
                   onclick="navigator.clipboard.writeText('${hashScanUrl}').then(()=>{this.textContent='✓';setTimeout(()=>{this.textContent='⧉'},1500)})"
                 >
                   <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>

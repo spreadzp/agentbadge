@@ -150,11 +150,36 @@ export async function signScheduledTransaction(scheduleId, _signerPrivateKey) {
     }
     return { txId: fakeTxId(), executed: true };
 }
+export async function signScheduledTransactionWithSignature(scheduleId, _txBytesBase64, _publicKeyStr, _signatureBytes) {
+    if (!scheduleId || !scheduleId.trim()) {
+        throw new Error("scheduleId must be a non-empty string");
+    }
+    return { txId: fakeTxId(), executed: true };
+}
 export async function deleteScheduledTransaction(scheduleId) {
     if (!scheduleId || !scheduleId.trim()) {
         throw new Error("scheduleId must be a non-empty string");
     }
     return { scheduleId, deleted: true };
+}
+const fileStore = new Map();
+let fileCounter = 0;
+const HFS_MAX_SIZE_BYTES = 1024 * 1024;
+export async function uploadFileToHFS(contents, _fileMemo) {
+    if (contents.length > HFS_MAX_SIZE_BYTES) {
+        throw new Error(`File too large: ${contents.length} bytes exceeds max size of ${HFS_MAX_SIZE_BYTES} bytes (1024 KB)`);
+    }
+    fileCounter += 1;
+    const fileId = `0.0.${fileCounter}`;
+    fileStore.set(fileId, Buffer.from(contents));
+    return { fileId, txId: fakeTxId() };
+}
+export async function downloadFileFromHFS(fileId) {
+    const data = fileStore.get(fileId);
+    if (!data) {
+        throw new Error(`File not found: ${fileId} (404)`);
+    }
+    return Buffer.from(data);
 }
 export function resetMockState() {
     nftStore.clear();
@@ -162,5 +187,7 @@ export function resetMockState() {
     topicMessages.clear();
     messageCounters.clear();
     scheduleCounter = 0;
+    fileStore.clear();
+    fileCounter = 0;
 }
 export { nftStore, topicMessages };

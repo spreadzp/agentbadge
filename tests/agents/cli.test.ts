@@ -1,5 +1,5 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
-import { parseCliArgs, loadCliConfig, runCli, type CliConfig, type CliOptions } from "../../src/agents/cli";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { parseCliArgs, loadCliConfig, runCli, type CliConfig } from "../../src/agents/cli";
 
 // ─── parseCliArgs ──────────────────────────────────────────────────
 
@@ -89,7 +89,7 @@ describe("runCli", () => {
   };
 
   it("runs specific task with --task-id and exits 0 on success", async () => {
-    const mockRun = mock(() => Promise.resolve({ completed: true, attempts: 1 }));
+    const mockRun = vi.fn(() => Promise.resolve({ completed: true, attempts: 1 }));
     const result = await runCli({
       config: CONFIG,
       options: { taskId: "task-xyz" },
@@ -100,7 +100,7 @@ describe("runCli", () => {
   });
 
   it("exits 1 on task failure (aborted)", async () => {
-    const mockRun = mock(() => Promise.resolve({ completed: false, attempts: 3 }));
+    const mockRun = vi.fn(() => Promise.resolve({ completed: false, attempts: 3 }));
     const result = await runCli({
       config: CONFIG,
       options: { taskId: "task-fail" },
@@ -110,7 +110,7 @@ describe("runCli", () => {
   });
 
   it("exits 1 on runtime error", async () => {
-    const mockRun = mock(() => Promise.reject(new Error("network error")));
+    const mockRun = vi.fn(() => Promise.reject(new Error("network error")));
     const result = await runCli({
       config: CONFIG,
       options: { taskId: "task-err" },
@@ -120,8 +120,8 @@ describe("runCli", () => {
   });
 
   it("polls marketplace when no --task-id", async () => {
-    const mockPoll = mock(() => Promise.resolve("task-from-poll"));
-    const mockRun = mock(() => Promise.resolve({ completed: true, attempts: 1 }));
+    const mockPoll = vi.fn(() => Promise.resolve("task-from-poll"));
+    const mockRun = vi.fn(() => Promise.resolve({ completed: true, attempts: 1 }));
     const result = await runCli({
       config: CONFIG,
       options: {},
@@ -134,8 +134,8 @@ describe("runCli", () => {
   });
 
   it("exits 1 when no tasks available", async () => {
-    const mockPoll = mock(() => Promise.resolve(null));
-    const mockRun = mock(() => Promise.resolve({ completed: true, attempts: 1 }));
+    const mockPoll = vi.fn(() => Promise.resolve(null));
+    const mockRun = vi.fn(() => Promise.resolve({ completed: true, attempts: 1 }));
     const result = await runCli({
       config: CONFIG,
       options: {},

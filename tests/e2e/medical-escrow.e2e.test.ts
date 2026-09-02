@@ -154,7 +154,7 @@ beforeEach(() => {
     if (did === CLAIMER_DID) return "0.0.456";
     return null;
   });
-  mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+  mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
   mockedCreateScheduledTransfer.mockResolvedValue({
     scheduleId: SCHEDULE_ID,
     scheduleTxId: SCHEDULE_TX_ID,
@@ -212,7 +212,7 @@ describe("SLICE-24-14 Flow A: Successful medical task — full lifecycle", () =>
         escrowStatus: "pending",
       }));
       mockedVerify.mockResolvedValue(true);
-      mockedSubmitTaskMessage.mockResolvedValue("0.0.999@deliver-tx");
+      mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@deliver-tx", consensusTimestamp: null });
 
       const deliverRes = await app.request("/market/tasks/task-med-001/deliver", {
         method: "POST",
@@ -236,7 +236,7 @@ describe("SLICE-24-14 Flow A: Successful medical task — full lifecycle", () =>
         resultBody: MEDICAL_RESULT_HTML,
       }));
       mockedVerify.mockResolvedValue(true);
-      mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+      mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
       // DataHub verifier: assertions pass, glossary terms found (Hypertension, BMI, Glucose)
       mockedRunVerification.mockResolvedValue({
         passed: true,
@@ -302,7 +302,7 @@ describe("SLICE-24-14 Flow B: Verification fails 3x → task returned to marketp
         escrowStatus: "pending",
       }));
       mockedVerify.mockResolvedValue(true);
-      mockedSubmitTaskMessage.mockResolvedValue("0.0.999@deliver-tx");
+      mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@deliver-tx", consensusTimestamp: null });
 
       const deliverRes = await app.request("/market/tasks/task-med-001/deliver", {
         method: "POST",
@@ -324,7 +324,7 @@ describe("SLICE-24-14 Flow B: Verification fails 3x → task returned to marketp
         resultBody: MEDICAL_RESULT_MISSING_TERMS,
       }));
       mockedVerify.mockResolvedValue(true);
-      mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+      mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
       mockedRunVerification.mockResolvedValue({
         passed: false,
         attempts: 1,
@@ -355,7 +355,7 @@ describe("SLICE-24-14 Flow B: Verification fails 3x → task returned to marketp
         resultBody: MEDICAL_RESULT_MISSING_TERMS,
       }));
       mockedVerify.mockResolvedValue(true);
-      mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+      mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
       mockedRunVerification.mockResolvedValue({
         passed: false,
         attempts: 2,
@@ -381,7 +381,7 @@ describe("SLICE-24-14 Flow B: Verification fails 3x → task returned to marketp
         resultBody: MEDICAL_RESULT_MISSING_TERMS,
       }));
       mockedVerify.mockResolvedValue(true);
-      mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+      mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
       mockedRunVerification.mockResolvedValue({
         passed: false,
         attempts: 3,
@@ -438,7 +438,7 @@ describe("SLICE-24-14 Flow C: Cancel by poster — escrow cancelled, HBAR return
         priceHbar: 5,
       }));
       mockedDeleteScheduledTransaction.mockResolvedValue({ scheduleId: SCHEDULE_ID, deleted: true });
-      mockedSubmitTaskMessage.mockResolvedValue("0.0.999@cancel-tx");
+      mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@cancel-tx", consensusTimestamp: null });
 
       const cancelRes = await app.request("/market/tasks/task-med-001/cancel", {
         method: "POST",

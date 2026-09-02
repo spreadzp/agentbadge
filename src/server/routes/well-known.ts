@@ -18,6 +18,7 @@ import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
 import { BLOG_ARTICLES } from "../lib/blog-data";
 import { getNamespace } from "@agentgate-hedera/mcp";
+import { didAuthSectionCompact, agentCardAuthBlock } from "../lib/did-auth-docs";
 
 const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
 
@@ -119,6 +120,7 @@ export function buildAgentCard() {
       demand_request: `${baseUrl}/api/demand/request`,
       agents_txt: `${baseUrl}/agents.txt`,
     },
+    auth: agentCardAuthBlock(baseUrl),
     payment: {
       protocol: "x402",
       scheme: "exact",
@@ -609,7 +611,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const xml = buildAiSitemap();
     return new Response(xml, {
       headers: {
@@ -636,7 +638,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const body = `User-agent: *
 Allow: /
@@ -776,7 +778,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const xml = buildSitemap();
     return new Response(xml, {
       headers: {
@@ -790,7 +792,7 @@ wellKnownRoutes.get(
 
 // HEAD handler — Google sends HEAD before GET; Bun strips body for HEAD
 // and recalculates Content-Length to 0, which makes GSC think sitemap is empty.
-wellKnownRoutes.on("HEAD", "/sitemap.xml", (c) => {
+wellKnownRoutes.on("HEAD", "/sitemap.xml", () => {
   const xml = buildSitemap();
   return new Response(null, {
     headers: {
@@ -817,7 +819,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const body = `# ai.txt — AI Agent Usage Policy
 # https://agentbadge.xyz
 
@@ -862,7 +864,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const body = `---
 name: agentbadge-api
@@ -1003,7 +1005,7 @@ wellKnownRoutes.get(
       200: { description: "Agent policy text", content: { "text/plain": {} } },
     },
   }),
-  (c) => {
+  () => {
     const policy = `# AgentBadge — Agent Access Policy
 
 AI agents are welcome to access this site.
@@ -1015,6 +1017,14 @@ AI agents are welcome to access this site.
 - OpenAPI spec: /openapi.json
 - Sitemap: /ai-sitemap.xml
 - Respect robots.txt and crawl-delay directives
+
+## Authentication
+
+Read endpoints are free — no authentication required.
+
+Mutation endpoints (POST /market/*, POST /a2a/*) require a DID signature. Use the challenge endpoint at GET /auth/challenge to get a canonical challenge string, sign it with your Hedera account key, and send the signature in the X-AgentBadge-Signature header. See llms.txt for full details.
+
+${didAuthSectionCompact()}
 
 ## Agency Profile
 
@@ -1236,35 +1246,67 @@ wellKnownRoutes.get(
   (c) => {
     const baseUrl = BASE_URL;
     const passportTokenId = process.env.PASSPORT_TOKEN_ID ?? "0.0.0";
+    const evmPassportNft = process.env.BASE_PASSPORT_NFT;
+    const evmChainId = process.env.BASE_CHAIN_ID ?? "84532";
+
+    const didConfigurations: Array<Record<string, unknown>> = [
+      {
+        did: `did:hcs:${passportTokenId}:1`,
+        vc: {
+          "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://identity.foundation/.well-known/did-configuration/v1",
+          ],
+          type: ["VerifiableCredential", "DomainLinkageCredential"],
+          issuer: `did:hcs:${passportTokenId}:1`,
+          issuanceDate: new Date().toISOString(),
+          credentialSubject: {
+            id: `did:hcs:${passportTokenId}:1`,
+            origin: baseUrl,
+          },
+          proof: {
+            type: "Ed25519Signature2018",
+            verificationMethod: `did:hcs:${passportTokenId}:1#keys-1`,
+            created: new Date().toISOString(),
+            proofPurpose: "assertionMethod",
+            proofValue: "",
+          },
+        },
+      },
+    ];
+
+    // Add EVM DID configuration when Base Sepolia passport NFT is configured
+    if (evmPassportNft) {
+      const evmDid = `did:eip155:${evmChainId}:passport:${evmPassportNft}:1`;
+      didConfigurations.push({
+        did: evmDid,
+        vc: {
+          "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://identity.foundation/.well-known/did-configuration/v1",
+          ],
+          type: ["VerifiableCredential", "DomainLinkageCredential"],
+          issuer: evmDid,
+          issuanceDate: new Date().toISOString(),
+          credentialSubject: {
+            id: evmDid,
+            origin: baseUrl,
+          },
+          proof: {
+            type: "Eip712Signature2021",
+            verificationMethod: `${evmDid}#keys-1`,
+            created: new Date().toISOString(),
+            proofPurpose: "assertionMethod",
+            proofValue: "",
+          },
+        },
+      });
+    }
 
     return c.json(
       {
         "@context": "https://identity.foundation/.well-known/did-configuration/v1",
-        did_configurations: [
-          {
-            did: `did:hcs:${passportTokenId}:1`,
-            vc: {
-              "@context": [
-                "https://www.w3.org/2018/credentials/v1",
-                "https://identity.foundation/.well-known/did-configuration/v1",
-              ],
-              type: ["VerifiableCredential", "DomainLinkageCredential"],
-              issuer: `did:hcs:${passportTokenId}:1`,
-              issuanceDate: new Date().toISOString(),
-              credentialSubject: {
-                id: `did:hcs:${passportTokenId}:1`,
-                origin: baseUrl,
-              },
-              proof: {
-                type: "Ed25519Signature2018",
-                verificationMethod: `did:hcs:${passportTokenId}:1#keys-1`,
-                created: new Date().toISOString(),
-                proofPurpose: "assertionMethod",
-                proofValue: "",
-              },
-            },
-          },
-        ],
+        did_configurations: didConfigurations,
       },
       200,
       {
@@ -1383,7 +1425,7 @@ wellKnownRoutes.get(
       },
     },
   }),
-  (c) => {
+  () => {
     const baseUrl = BASE_URL;
     const body = `# Auth.md — Agent Authentication
 

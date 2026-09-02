@@ -77,7 +77,7 @@ beforeEach(() => {
     signature: JSON.stringify(["dGVzdFNpZw=="]),
     publicKey: "0xpubkey",
   });
-  mockedSubmit.mockResolvedValue("0.0.1234567@1700000000.000000001");
+  mockedSubmit.mockResolvedValue({ txId: "0.0.1234567@1700000000.000000001", consensusTimestamp: null });
 });
 
 describe("POST /a2a/send-with-key", () => {

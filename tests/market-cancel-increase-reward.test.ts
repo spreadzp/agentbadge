@@ -78,7 +78,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockedVerify.mockResolvedValue(true);
   mockedDidToAccountId.mockResolvedValue("0.0.123");
-  mockedSubmitTaskMessage.mockResolvedValue("0.0.777@hcs-tx");
+  mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.777@hcs-tx", consensusTimestamp: null });
   mockedDeleteScheduledTransaction.mockResolvedValue({ scheduleId: "0.0.555", deleted: true });
   mockedCreateScheduledTransfer.mockResolvedValue({
     scheduleId: "0.0.888",

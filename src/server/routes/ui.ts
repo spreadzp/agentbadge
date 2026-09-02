@@ -23,7 +23,7 @@
 import { Hono, type Context } from "hono";
 import { html, raw } from "hono/html";
 import { Dashboard, type DashboardSsrData } from "../../views/dashboard";
-import { FeedFragment, PassportCard } from "../../views/feed-fragment";
+import { PassportCard } from "../../views/feed-fragment";
 import { PassportDetailCard, PassportNotFound } from "../../views/passport-card";
 import { AgentsFragment, AgentRow, type AgentWithActive } from "../../views/agents-fragment";
 import { SearchForm, SearchResults, parseSearchQuery } from "../../views/search-fragment";
@@ -36,6 +36,7 @@ import { HelpPage } from "../../views/help-page";
 import { MedicalDemoPage } from "../../views/medical-demo-page";
 import { A2AInboxFragment } from "../../views/a2a-fragment";
 import { MarketplaceTaskBoardFragment, TaskDetailsFragment, TaskMessagesFragment, EscrowPanel } from "../../views/marketplace-fragment";
+import { normalizeTask, normalizeTasks } from "../lib/market-task.js";
 import { AgentProfilePage } from "../../views/agent-profile";
 import { Layout } from "../../views/layout";
 import { PageHeader } from "../../views/page-header";
@@ -44,7 +45,7 @@ import { PageMeta as PageMetaRegistry, type PageMeta } from "../lib/page-meta";
 import { passportLd, jobPostingLd, profilePageLd, defaultCoreSchemas } from "../lib/json-ld";
 import { getAcceptedFormat } from "../lib/content-negotiation";
 import { getCatalog, getNftsForToken, getNftInfo, getTopicMessages, isValidA2ADid, prepareA2ATopicMessage, signTransactionBytes, submitSignedTopicMessage } from "@agentgate-hedera/hedera-core";
-import type { NftInfo, Tier, Capability, AuditMessage, CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { NftInfo, Tier, Capability, AuditMessage } from "@agentgate-hedera/hedera-core";
 import { retrieveMetadata, getAll, type DirectoryEntry } from "@agentgate-hedera/passport";
 import { getMessagesByTo as getA2AMessagesByTo, getMessagesByFrom as getA2AMessagesByFrom, getConversation as getA2AConversation, a2aUpsert as a2aCacheUpsert } from "@agentgate-hedera/passport";
 import { listTasks as marketListTasks, marketGet } from "@agentgate-hedera/passport";
@@ -1290,7 +1291,7 @@ uiRoutes.get("/ui/market/tasks", (c) => {
     return c.json({ tasks: result.tasks, count: result.tasks.length, total: result.total, limit: 100, offset });
   }
 
-  const fragment = MarketplaceTaskBoardFragment(result.tasks);
+  const fragment = MarketplaceTaskBoardFragment(normalizeTasks(result.tasks));
   return c.html(wrapFragment(c, fragment.toString(), PageTitles["/ui/market/tasks"], PageMetaRegistry["/ui/market/tasks"]));
 });
 
@@ -1319,7 +1320,7 @@ uiRoutes.get("/ui/market/tasks/:id", (c) => {
     ? (task.claimerDid ?? task.posterDid)
     : task.posterDid;
   const messages = viewerDid ? getA2AConversation(viewerDid, otherDid) : [];
-  const fragment = TaskDetailsFragment(task, viewerDid || undefined, messages);
+  const fragment = TaskDetailsFragment(normalizeTask(task), viewerDid || undefined, messages);
   const pollUrl = `/ui/market/tasks/${taskId}/fragment${viewerDid ? `?did=${encodeURIComponent(viewerDid)}` : ""}`;
   const wrapped = html`<div class="htmx-poll-wrapper" hx-get="${pollUrl}" hx-trigger="every 10s" hx-swap="outerHTML">
     ${fragment}
@@ -1342,7 +1343,7 @@ uiRoutes.get("/ui/market/tasks/:id/fragment", (c) => {
     ? (task.claimerDid ?? task.posterDid)
     : task.posterDid;
   const messages = viewerDid ? getA2AConversation(viewerDid, otherDid) : [];
-  const fragment = TaskDetailsFragment(task, viewerDid || undefined, messages);
+  const fragment = TaskDetailsFragment(normalizeTask(task), viewerDid || undefined, messages);
   const pollUrl = `/ui/market/tasks/${taskId}/fragment${viewerDid ? `?did=${encodeURIComponent(viewerDid)}` : ""}`;
   return c.html(html`<div class="htmx-poll-wrapper" hx-get="${pollUrl}" hx-trigger="every 10s" hx-swap="outerHTML">
     ${fragment}
@@ -1359,7 +1360,7 @@ uiRoutes.get("/ui/market/tasks/:id/escrow-fragment", (c) => {
     return c.html('<div class="rounded-lg border border-slate-800 bg-slate-900 p-4 text-center text-slate-400"><p>Task not found.</p></div>');
   }
   const viewerDid = c.req.query("did") ?? "";
-  return c.html(EscrowPanel(task, viewerDid || undefined).toString());
+  return c.html(EscrowPanel(normalizeTask(task), viewerDid || undefined).toString());
 });
 
 /**
@@ -1417,7 +1418,6 @@ uiRoutes.post("/ui/market/tasks/:id/send-message", async (c) => {
   const privateKey = (formData.get("privateKey") as string) ?? "";
 
   if (!from || !to || !body) {
-    const messages = getA2AConversation(from, task.posterDid);
     return c.html(
       html`<div id="task-messages" class="space-y-3">
         <div class="rounded-lg border border-red-800 bg-red-900 p-3 text-sm text-red-200">
@@ -1462,7 +1462,7 @@ uiRoutes.post("/ui/market/tasks/:id/send-message", async (c) => {
     const sigB64Array = JSON.parse(signature) as string[];
     const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
     const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
-    const consensusTimestamp = `${timestamp}.${String(Date.now() % 1_000_000_000).padStart(9, "0")}`;
+    const consensusTimestamp = `pending-consensus:${txId}`;
     a2aCacheUpsert({ ...message, txId, consensusTimestamp });
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : "HCS submission failed";
@@ -1476,6 +1476,6 @@ uiRoutes.post("/ui/market/tasks/:id/send-message", async (c) => {
   }
 
   const messages = getA2AConversation(from, task.posterDid);
-  const fragment = TaskMessagesFragment(task, messages, from);
+  const fragment = TaskMessagesFragment(normalizeTask(task), messages, from);
   return c.html(fragment.toString());
 });

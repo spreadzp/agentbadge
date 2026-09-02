@@ -20,6 +20,7 @@ export interface CategoryWeights {
   infrastructure: number;
   seo_aeo: number;
   accessibility: number;
+  active_probing: number;
 }
 
 export interface StatusContributions {
@@ -101,6 +102,7 @@ export const DEFAULT_CATEGORY_WEIGHTS: CategoryWeights = {
   infrastructure: 1,
   seo_aeo: 5,
   accessibility: 4,
+  active_probing: 5,
 };
 
 export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {

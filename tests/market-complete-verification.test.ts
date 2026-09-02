@@ -37,7 +37,7 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
 }));
 
 vi.mock("../src/verifiers", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/verifiers")>();
+  const actual = await importOriginal<typeof import("../src/verifiers")>();
   return {
     ...actual,
     runVerification: vi.fn(),
@@ -121,7 +121,7 @@ beforeEach(() => {
     if (did === CLAIMER_DID) return "0.0.456";
     return null;
   });
-  mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+  mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
   mockedRunVerification.mockResolvedValue({
     passed: true,
     attempts: 1,

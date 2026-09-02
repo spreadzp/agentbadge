@@ -51,6 +51,8 @@ SECRETS=(
 # Optional secrets (set if present in .env, skip silently if missing)
 OPTIONAL_SECRETS=(
   SENTRY_DSN
+  SOURCE_COMMIT
+  BUILD_DATE
 )
 
 # ── Colors ───────────────────────────────────────────────────────────

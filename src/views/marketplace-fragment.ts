@@ -1,5 +1,7 @@
 import { html, raw } from "hono/html";
-import type { CachedMarketTask, CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { MarketTask } from "../server/lib/market-task.js";
+import { explorerTxUrl, explorerName, accountPlaceholder } from "../server/lib/chain-ui.js";
 
 /**
  * Detect content type of resultBody and render accordingly:
@@ -50,38 +52,26 @@ function relativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
-const NETWORK = process.env.HEDERA_NETWORK ?? "testnet";
 
-function txToHashScanUrl(txId: string): string {
-  const atIdx = txId.indexOf("@");
-  if (atIdx === -1) {
-    return `https://hashscan.io/${NETWORK}/transaction/${txId}`;
-  }
-  const accountId = txId.substring(0, atIdx);
-  const timestamp = txId.substring(atIdx + 1);
-  const tsDash = timestamp.replace(".", "-");
-  return `https://hashscan.io/${NETWORK}/transaction/${accountId}-${tsDash}`;
-}
-
-function hashScanLinks(txId?: string, color: string = "emerald"): ReturnType<typeof html> | string {
+function explorerLinks(txId?: string, color: string = "emerald"): ReturnType<typeof html> | string {
   if (!txId) return html`<span class="text-xs text-slate-600 italic">pending</span>`;
-  const url = txToHashScanUrl(txId);
+  const url = explorerTxUrl(txId);
   return html`<div class="flex items-center gap-1">
     <a
       href="${url}"
       target="_blank"
       rel="noopener"
-      title="View transaction on HashScan"
+      title="View transaction on ${explorerName()}"
       class="text-${color}-500 hover:text-${color}-400 transition-colors"
-      aria-label="View on HashScan"
+      aria-label="View on ${explorerName()}"
     >
       <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
     </a>
     <button
       type="button"
-      title="Copy HashScan link"
+      title="Copy ${explorerName()} link"
       class="text-${color}-500 hover:text-${color}-400 transition-colors cursor-pointer"
-      aria-label="Copy HashScan link"
+      aria-label="Copy ${explorerName()} link"
       onclick="navigator.clipboard.writeText('${url}').then(()=>{this.textContent='✓';setTimeout(()=>{this.textContent='⧉'},1500)})"
     >
       <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -89,7 +79,7 @@ function hashScanLinks(txId?: string, color: string = "emerald"): ReturnType<typ
   </div>`;
 }
 
-function statusBadge(status: CachedMarketTask["status"]) {
+function statusBadge(status: MarketTask["status"]) {
   const colors: Record<string, string> = {
     posted: "bg-emerald-900 text-emerald-300 border-emerald-700",
     claimed: "bg-amber-900 text-amber-300 border-amber-700",
@@ -99,7 +89,7 @@ function statusBadge(status: CachedMarketTask["status"]) {
   return html`<span class="px-2 py-0.5 rounded text-xs font-medium border ${colors[status] ?? colors.completed}">${status}</span>`;
 }
 
-function TaskCard({ task }: { task: CachedMarketTask }) {
+export function TaskCard({ task }: { task: MarketTask }) {
   const descPreview = task.description.length > 100
     ? `${task.description.substring(0, 100)}…`
     : task.description;
@@ -111,32 +101,32 @@ function TaskCard({ task }: { task: CachedMarketTask }) {
         ${statusBadge(task.status)}
       </div>
       <div class="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-        <span class="font-mono text-slate-600" title="Task ID">${task.taskId}</span>
+        <span class="font-mono text-slate-600" title="Task ID">${task.id}</span>
         <button
           type="button"
           title="Copy Task ID"
           class="text-slate-600 hover:text-emerald-400 transition-colors cursor-pointer"
-          onclick="navigator.clipboard.writeText('${task.taskId}').then(()=>{this.textContent='✓';setTimeout(()=>{this.textContent='⧉'},1500)})"
+          onclick="navigator.clipboard.writeText('${task.id}').then(()=>{this.textContent='✓';setTimeout(()=>{this.textContent='⧉'},1500)})"
         >⧉</button>
       </div>
       <p class="mt-1 text-xs text-slate-400 line-clamp-2">${descPreview}</p>
       <div class="mt-2 flex items-center gap-3 text-xs text-slate-500">
-        <span class="text-emerald-400 font-medium">${task.priceHbar} HBAR</span>
+        <span class="text-emerald-400 font-medium">${task.price}</span>
         <span>${task.capabilities.join(", ")}</span>
       </div>
       <div class="mt-3 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-xs text-slate-500" title="${task.posterDid}">${shortDid(task.posterDid)}</span>
-          ${hashScanLinks(task.txId)}
+          ${explorerLinks(task.txId)}
         </div>
         <div class="flex items-center gap-3">
           <a
-            href="/ui/medical-demo/${task.taskId}"
+            href="/ui/medical-demo/${task.id}"
             class="text-xs text-emerald-400 hover:text-emerald-300"
             title="Medical Demo for this task"
           >Demo</a>
           <a
-            href="/ui/market/tasks/${task.taskId}"
+            href="/ui/market/tasks/${task.id}"
             class="text-xs text-blue-400 hover:text-blue-300"
           >View Details</a>
         </div>
@@ -145,7 +135,7 @@ function TaskCard({ task }: { task: CachedMarketTask }) {
   `;
 }
 
-export function MarketplaceTaskBoardFragment(tasks: CachedMarketTask[]) {
+export function MarketplaceTaskBoardFragment(tasks: MarketTask[]) {
   if (tasks.length === 0) {
     return html`<div class="rounded-lg border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">
       <p>No tasks available.</p>
@@ -187,18 +177,18 @@ function escrowStatusBadge(status: string): ReturnType<typeof html> {
   return html`<span class="px-2 py-0.5 rounded text-xs font-medium border ${color}">${label}</span>`;
 }
 
-export function EscrowPanel(task: CachedMarketTask, viewerDid?: string): ReturnType<typeof html> | string {
+export function EscrowPanel(task: MarketTask, viewerDid?: string): ReturnType<typeof html> | string {
   const escrowStatus = task.escrowStatus ?? "none";
   const scheduleId = task.scheduleId;
   const isPoster = viewerDid === task.posterDid;
-  const hashscanUrl = scheduleId
-    ? `https://hashscan.io/testnet/transaction/${scheduleId}`
+  const escrowUrl = scheduleId
+    ? explorerTxUrl(scheduleId)
     : null;
 
   // Only show panel if there's an escrow or schedule
   if (escrowStatus === "none" && !scheduleId) return "";
 
-  const pollUrl = `/ui/market/tasks/${task.taskId}/escrow-fragment${viewerDid ? `?did=${encodeURIComponent(viewerDid)}` : ""}`;
+  const pollUrl = `/ui/market/tasks/${task.id}/escrow-fragment${viewerDid ? `?did=${encodeURIComponent(viewerDid)}` : ""}`;
 
   return html`<div
     class="rounded-lg border border-slate-700 bg-slate-900 p-4 space-y-3"
@@ -220,13 +210,13 @@ export function EscrowPanel(task: CachedMarketTask, viewerDid?: string): ReturnT
       </div>
       <div>
         <span class="text-slate-500">Amount:</span>
-        <div class="mt-0.5 text-emerald-400 font-medium">${task.priceHbar} HBAR</div>
+        <div class="mt-0.5 text-emerald-400 font-medium">${task.price}</div>
       </div>
-      ${hashscanUrl
+      ${escrowUrl
       ? html`<div class="col-span-2">
-            <a href="${hashscanUrl}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300">
+            <a href="${escrowUrl}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300">
               <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-              View on HashScan
+              View on ${explorerName()}
             </a>
           </div>`
       : ""}
@@ -235,14 +225,14 @@ export function EscrowPanel(task: CachedMarketTask, viewerDid?: string): ReturnT
       ? html`<div class="flex items-center gap-2 pt-2 border-t border-slate-800">
             <button
               class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-medium"
-              hx-post="/market/tasks/${task.taskId}/complete"
+              hx-post="/market/tasks/${task.id}/complete"
               hx-swap="outerHTML"
             >
               Sign & Release
             </button>
             <button
               class="px-3 py-1.5 bg-red-800 hover:bg-red-700 text-white rounded-lg text-xs font-medium"
-              hx-post="/market/tasks/${task.taskId}/cancel"
+              hx-post="/market/tasks/${task.id}/cancel"
               hx-swap="outerHTML"
             >
               Cancel & Refund
@@ -253,7 +243,7 @@ export function EscrowPanel(task: CachedMarketTask, viewerDid?: string): ReturnT
       ? html`<div class="flex items-center gap-2 pt-2 border-t border-slate-800">
             <button
               class="px-3 py-1.5 bg-red-800 hover:bg-red-700 text-white rounded-lg text-xs font-medium"
-              hx-post="/market/tasks/${task.taskId}/cancel"
+              hx-post="/market/tasks/${task.id}/cancel"
               hx-swap="outerHTML"
             >
               Cancel & Refund
@@ -273,7 +263,7 @@ export interface VerificationResult {
   reportText?: string;
 }
 
-export function VerificationPanel(task: CachedMarketTask): ReturnType<typeof html> | string {
+export function VerificationPanel(task: MarketTask): ReturnType<typeof html> | string {
   const attempts = task.verificationAttempts ?? 0;
   const report = task.verificationReport;
   const verifierType = task.verifierType ?? "noop";
@@ -405,7 +395,7 @@ export function DataHubLinks(datasetUrn?: string): ReturnType<typeof html> | str
 }
 
 export function TaskDetailsFragment(
-  task: CachedMarketTask,
+  task: MarketTask,
   viewerDid?: string,
   messages: CachedA2AMessage[] = [],
 ) {
@@ -419,11 +409,11 @@ export function TaskDetailsFragment(
       <div class="grid grid-cols-2 gap-4 text-sm">
         <div>
           <span class="text-slate-500">Task ID:</span>
-          <span class="font-mono text-slate-300 text-xs">${task.taskId}</span>
+          <span class="font-mono text-slate-300 text-xs">${task.id}</span>
         </div>
         <div>
           <span class="text-slate-500">Price:</span>
-          <span class="text-emerald-400 font-medium">${task.priceHbar} HBAR</span>
+          <span class="text-emerald-400 font-medium">${task.price}</span>
         </div>
         <div>
           <span class="text-slate-500">Posted by:</span>
@@ -454,35 +444,35 @@ export function TaskDetailsFragment(
         <div class="flex items-center gap-1.5">
           <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
           <span class="text-xs text-slate-500">Post TX:</span>
-          ${hashScanLinks(task.txId, "emerald")}
+          ${explorerLinks(task.txId, "emerald")}
         </div>
         <div class="flex items-center gap-1.5">
           <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12" transform="rotate(180 12 12)" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l3 3 3-3" /></svg>
           <span class="text-xs text-slate-500">Claim TX:</span>
-          ${hashScanLinks(task.claimTxId, "amber")}
+          ${explorerLinks(task.claimTxId, "amber")}
         </div>
         <div class="flex items-center gap-1.5">
           <svg class="h-4 w-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
           <span class="text-xs text-slate-500">Deliver TX:</span>
-          ${hashScanLinks(task.deliverTxId, "blue")}
+          ${explorerLinks(task.deliverTxId, "blue")}
         </div>
         <div class="flex items-center gap-1.5">
           <svg class="h-4 w-4 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <span class="text-xs text-slate-500">Payment TX:</span>
-          ${hashScanLinks(task.paymentTxId, "violet")}
+          ${explorerLinks(task.paymentTxId, "violet")}
         </div>
         <div class="flex items-center gap-1.5">
           <svg class="h-4 w-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
           <span class="text-xs text-slate-500">Completed TX:</span>
-          ${hashScanLinks(task.completedTxId, "teal")}
+          ${explorerLinks(task.completedTxId, "teal")}
         </div>
       </div>
       ${EscrowPanel(task, viewerDid)}
       ${VerificationPanel(task)}
-      ${DataHubLinks((task as CachedMarketTask & { datasetUrn?: string }).datasetUrn)}
+      ${DataHubLinks((task as MarketTask & { datasetUrn?: string }).datasetUrn)}
       <div class="pt-2">
         <a
-          href="/ui/medical-demo/${task.taskId}"
+          href="/ui/medical-demo/${task.id}"
           class="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
@@ -493,7 +483,7 @@ export function TaskDetailsFragment(
       ? html`<div class="pt-4">
             <button
               class="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium"
-              hx-post="/market/tasks/${task.taskId}/claim"
+              hx-post="/market/tasks/${task.id}/claim"
               hx-swap="outerHTML"
             >
               Claim Task
@@ -505,7 +495,7 @@ export function TaskDetailsFragment(
             <div class="flex items-center justify-between mb-2">
               <h3 class="text-sm font-semibold text-white">Delivery Result</h3>
               <a
-                href="/ui/market/tasks/${task.taskId}/result"
+                href="/ui/market/tasks/${task.id}/result"
                 target="_blank"
                 rel="noopener"
                 class="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300"
@@ -536,7 +526,7 @@ export function TaskDetailsFragment(
                 </div>
               </div>
               <form
-                hx-get="/ui/market/tasks/${task.taskId}/fragment"
+                hx-get="/ui/market/tasks/${task.id}/fragment"
                 hx-target="closest div.htmx-poll-wrapper"
                 hx-swap="outerHTML"
                 class="flex items-center gap-2"
@@ -577,7 +567,7 @@ export function TaskDetailsFragment(
 }
 
 export function TaskMessagesFragment(
-  task: CachedMarketTask,
+  task: MarketTask,
   messages: CachedA2AMessage[],
   viewerDid: string,
 ) {
@@ -586,7 +576,6 @@ export function TaskMessagesFragment(
     : task.posterDid;
   const otherRole = viewerDid === task.posterDid ? "task claimer" : "task poster";
   const encodedViewer = encodeURIComponent(viewerDid);
-  const encodedOther = encodeURIComponent(otherDid);
 
   const inbox = messages.filter((m) => m.to === viewerDid);
   const outbox = messages.filter((m) => m.from === viewerDid);
@@ -640,7 +629,7 @@ export function TaskMessagesFragment(
                         <p>${msg.body}</p>
                         <div class="flex items-center gap-1.5 mt-0.5">
                           <span class="text-xs text-slate-500">${relativeTime(msg.timestamp)}</span>
-                          ${hashScanLinks(msg.txId, "slate")}
+                          ${explorerLinks(msg.txId, "slate")}
                         </div>
                       </div>
                     </div>`)}
@@ -654,7 +643,7 @@ export function TaskMessagesFragment(
                         <p>${msg.body}</p>
                         <div class="flex items-center gap-1.5 mt-0.5">
                           <span class="text-xs text-emerald-400">${relativeTime(msg.timestamp)}</span>
-                          ${hashScanLinks(msg.txId, "emerald")}
+                          ${explorerLinks(msg.txId, "emerald")}
                         </div>
                       </div>
                     </div>`)}
@@ -664,7 +653,7 @@ export function TaskMessagesFragment(
       </div>
 
       <form
-        hx-post="/ui/market/tasks/${task.taskId}/send-message"
+        hx-post="/ui/market/tasks/${task.id}/send-message"
         hx-target="#task-messages"
         hx-swap="outerHTML"
         class="space-y-2"
@@ -675,7 +664,7 @@ export function TaskMessagesFragment(
           <input
             type="text"
             name="fromAccountId"
-            placeholder="Account ID (0.0.xxxx)"
+            placeholder="${accountPlaceholder()}"
             required
             class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />

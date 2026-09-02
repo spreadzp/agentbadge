@@ -1,10 +1,11 @@
 export * from "./types";
 export { type DirectoryMessage } from "./hedera.service";
 export { type PaginatedMessages } from "./mirror.service";
-export { mintPassportNFT, transferNFTToAgent, grantKyc, burnPassportNFT, submitAuditMessage, submitDirectoryMessage, submitA2AMessage, submitTaskMessage, prepareTopicMessageTransaction, prepareA2ATopicMessage, submitSignedTopicMessage, wipeNFT, updateNftMetadata, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, signTransactionBytes, type SignatureResult, getNftInfo, getNftsForToken, getNftsForAccount, getTopicMessages, getTopicMessagesPaginated, getTaskMessages, verifyA2ADid, } from "./services-index";
+export { mintPassportNFT, transferNFTToAgent, grantKyc, burnPassportNFT, submitAuditMessage, submitDirectoryMessage, submitA2AMessage, submitTaskMessage, prepareTopicMessageTransaction, prepareA2ATopicMessage, submitSignedTopicMessage, wipeNFT, updateNftMetadata, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, signTransactionBytes, type SignatureResult, getNftInfo, getNftsForToken, getNftsForAccount, getTopicMessages, getTopicMessagesPaginated, getTaskMessages, verifyA2ADid, uploadFileToHFS, downloadFileFromHFS, type HFSUploadResult, } from "./services-index";
 export * from "./mock-hedera.service";
 export * from "./mock-mirror.service";
 export * from "./mock-settle";
+export { createScheduledTransfer, signScheduledTransaction, deleteScheduledTransaction, } from "./services-index";
 export { isValidA2ADid, extractTokenAndSerial, didToAccountId, getMessageDirection, } from "./did";
 export { getCatalog, getLlmsTxt, type TierEntry, MCP_TOOLS_INDEX, type McpToolEntry } from "./catalog";
 export { DataHubClient } from "./services-index";

@@ -2,46 +2,27 @@
  * Demand API routes.
  *
  * SLICE-46-12: POST /api/demand/request — register demand for a capability.
- * Rate limited: 10/hour/IP. In-memory storage with aggregation.
+ * Rate limited: 10/hour/IP. Unified rate limiter.
  */
 
 import { Hono } from "hono";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import { demandStore } from "../../services/demand-registry";
+import { createRateLimiter } from "../../middleware/rate-limit";
 
 export const demandRoutes = new Hono();
 
-// ─── Rate limiting (in-memory, per IP) ───────────────────
+// ─── Rate limiting (unified, SLICE-86-3) ─────────────────
 
-interface RateBucket {
-  count: number;
-  resetAt: number;
-}
-
-const buckets = new Map<string, RateBucket>();
-const WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const MAX_REQUESTS = 10;
-
-function checkRateLimit(ip: string): { allowed: boolean; remaining: number; retryAfter: number } {
-  const now = Date.now();
-  const entry = buckets.get(ip);
-
-  if (!entry || entry.resetAt <= now) {
-    buckets.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return { allowed: true, remaining: MAX_REQUESTS - 1, retryAfter: 0 };
-  }
-
-  if (entry.count >= MAX_REQUESTS) {
-    return { allowed: false, remaining: 0, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
-  }
-
-  entry.count += 1;
-  return { allowed: true, remaining: MAX_REQUESTS - entry.count, retryAfter: 0 };
-}
+const demandLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  routes: ["/api/demand/request"],
+});
 
 export function resetDemandRateLimits(): void {
-  buckets.clear();
+  // No-op — unified limiter handles its own store
 }
 
 // ─── Validation ──────────────────────────────────────────
@@ -85,18 +66,10 @@ function validateDemandRequest(body: unknown): { capability_query?: string; cont
 // ─── POST /api/demand/request ────────────────────────────
 
 demandRoutes.post("/api/demand/request", async (c) => {
-  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "unknown";
-
-  const rate = checkRateLimit(ip);
-  if (!rate.allowed) {
-    c.header("Retry-After", String(rate.retryAfter));
-    c.header("X-RateLimit-Limit", String(MAX_REQUESTS));
-    c.header("X-RateLimit-Remaining", "0");
-    return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "Rate limit: 10 requests per hour per IP");
+  const rlResult = await demandLimiter(c, async () => { });
+  if (rlResult instanceof Response) {
+    return rlResult;
   }
-
-  c.header("X-RateLimit-Limit", String(MAX_REQUESTS));
-  c.header("X-RateLimit-Remaining", String(rate.remaining));
 
   let body: unknown;
   try {

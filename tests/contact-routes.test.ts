@@ -4,14 +4,16 @@ import { Hono } from "hono";
 vi.mock("../src/server/services/contact.service", () => ({
   sendDiscordMessage: vi.fn(),
   sendTelegramMessage: vi.fn(),
+  sendEmailMessage: vi.fn(),
 }));
 
-import { sendDiscordMessage, sendTelegramMessage } from "../src/server/services/contact.service";
+import { sendDiscordMessage, sendTelegramMessage, sendEmailMessage } from "../src/server/services/contact.service";
 import { contactRoutes, resetRateLimit } from "../src/server/routes/contact";
 import { contactPage, contactSuccessFragment, contactErrorFragment } from "../src/views/contact-page";
 
 const mockedSendDiscord = vi.mocked(sendDiscordMessage);
 const mockedSendTelegram = vi.mocked(sendTelegramMessage);
+const mockedSendEmail = vi.mocked(sendEmailMessage);
 
 describe("Contact Routes", () => {
   let app: Hono;
@@ -25,6 +27,7 @@ describe("Contact Routes", () => {
     app.route("/", contactRoutes);
     mockedSendDiscord.mockResolvedValue(undefined);
     mockedSendTelegram.mockResolvedValue(undefined);
+    mockedSendEmail.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -135,7 +138,7 @@ describe("Contact Routes", () => {
       const res = await app.request("/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel: "email", message: "test" }),
+        body: JSON.stringify({ channel: "fax", message: "test" }),
       });
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -221,6 +224,34 @@ describe("Contact Routes", () => {
       expect(res.status).toBe(500);
       const data = await res.json();
       expect(data.error).toContain("DISCORD_WEBHOOK_URL not configured");
+    });
+
+    it("returns 200 on valid Email submission", async () => {
+      const res = await app.request("/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "email", message: "Hello via email!", contactInfo: "user@example.com" }),
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.channel).toBe("email");
+      expect(mockedSendEmail).toHaveBeenCalledWith({
+        message: "Hello via email!",
+        contactInfo: "user@example.com",
+      });
+    });
+
+    it("returns 500 on email service error", async () => {
+      mockedSendEmail.mockRejectedValueOnce(new Error("RESEND_API_KEY not configured"));
+      const res = await app.request("/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "email", message: "test" }),
+      });
+      expect(res.status).toBe(500);
+      const data = await res.json();
+      expect(data.error).toContain("RESEND_API_KEY not configured");
     });
 
     it("passes fileName and fileContent to Discord sender", async () => {

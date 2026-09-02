@@ -90,6 +90,54 @@ export function isBlockedIp(ip: string): boolean {
   return isPrivateIp(ip);
 }
 
+/**
+ * Canonical hostname-level SSRF guard.
+ * Resolves hostname to IP, then validates via assertSafeIp.
+ * Use this at API entry points instead of ad-hoc string blocklists.
+ */
+export function assertSafeTarget(hostname: string): void {
+  // If it's already an IP, validate directly
+  if (isIPv4(hostname) || isIPv6(hostname)) {
+    assertSafeIp(hostname);
+    return;
+  }
+
+  // For hostnames, the orchestrator's resolveAndPin will validate.
+  // This function is a synchronous pre-check for obvious cases.
+  // Hex/octal encoded IPs are caught by isIPv4 if they match the pattern,
+  // but decimal-encoded (e.g. 2130706433) need special handling.
+  const decimal = parseInt(hostname, 10);
+  if (!Number.isNaN(decimal) && decimal > 0) {
+    // Convert decimal IP to dotted notation
+    const a = (decimal >>> 24) & 0xff;
+    const b = (decimal >>> 16) & 0xff;
+    const c = (decimal >>> 8) & 0xff;
+    const d = decimal & 0xff;
+    const dotted = `${a}.${b}.${c}.${d}`;
+    if (dotted !== hostname) {
+      assertSafeIp(dotted);
+      return;
+    }
+  }
+
+  // Octal: 0177.0.0.1 — parse each octet
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    const parts = hostname.split(".");
+    const dotted = parts
+      .map((p) => {
+        if (p.startsWith("0") && p.length > 1) {
+          return parseInt(p, 8).toString();
+        }
+        return p;
+      })
+      .join(".");
+    if (dotted !== hostname) {
+      assertSafeIp(dotted);
+      return;
+    }
+  }
+}
+
 export function assertSafeIp(ip: string): void {
   if (process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "1" || process.env.AGENTBADGE_ALLOW_PRIVATE_IPS === "true") {
     return;

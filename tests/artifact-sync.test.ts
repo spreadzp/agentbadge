@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { softwareApplicationLd, organizationLd } from "../src/server/lib/json-ld";
 import { listTools } from "@agentgate-hedera/mcp";
 import {

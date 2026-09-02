@@ -8,7 +8,7 @@
 
 import type Stripe from "stripe";
 import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
-import { issuePassport } from "@agentgate-hedera/passport";
+import { issuePassport, logger } from "@agentgate-hedera/passport";
 import { sendDiscordMessage } from "../services/contact.service";
 
 const processedSessions = new Set<string>();
@@ -19,13 +19,13 @@ export function resetProcessedSessions(): void {
 
 export async function fulfillOrder(session: Stripe.Checkout.Session): Promise<void> {
   if (processedSessions.has(session.id)) {
-    console.log(`[fulfillOrder] Session ${session.id} already processed, skipping`);
+    logger.info("fulfillOrder: session already processed, skipping", { sessionId: session.id });
     return;
   }
 
   const productId = session.metadata?.productId;
   if (!productId) {
-    console.error(`[fulfillOrder] No productId in session metadata: ${session.id}`);
+    logger.error("fulfillOrder: no productId in session metadata", { sessionId: session.id });
     return;
   }
 
@@ -40,7 +40,7 @@ export async function fulfillOrder(session: Stripe.Checkout.Session): Promise<vo
       await fulfillPassportMint(session);
       break;
     default:
-      console.warn(`[fulfillOrder] Unknown productId: ${productId}, session=${session.id}`);
+      logger.warn("fulfillOrder: unknown productId", { productId, sessionId: session.id });
   }
 
   processedSessions.add(session.id);
@@ -52,15 +52,15 @@ async function fulfillDirectoryListing(session: Stripe.Checkout.Session): Promis
   const listingId = session.metadata?.listingId;
 
   if (!listingId) {
-    console.error(`[fulfillDirectoryListing] Missing listingId in metadata: ${session.id}`);
+    logger.error("fulfillDirectoryListing: missing listingId in metadata", { sessionId: session.id });
     return;
   }
 
-  console.log(`[fulfillDirectoryListing] Listing ${listingId} published, session=${session.id}`);
+  logger.info("fulfillDirectoryListing: listing published", { listingId, sessionId: session.id });
 
   const email = session.customer_details?.email ?? session.customer_email;
   if (email) {
-    console.log(`[fulfillDirectoryListing] Confirmation email queued for ${email}`);
+    logger.info("fulfillDirectoryListing: confirmation email queued", { email });
   }
 }
 
@@ -74,7 +74,7 @@ async function fulfillPassportMint(session: Stripe.Checkout.Session): Promise<vo
   const imageUrl = session.metadata?.imageUrl;
 
   if (!tier || !accountId) {
-    console.error(`[fulfillPassportMint] Missing required metadata (tier or accountId): ${session.id}`);
+    logger.error("fulfillPassportMint: missing required metadata (tier or accountId)", { sessionId: session.id });
     return;
   }
 
@@ -89,9 +89,7 @@ async function fulfillPassportMint(session: Stripe.Checkout.Session): Promise<vo
     imageUrl,
   );
 
-  console.log(
-    `[fulfillPassportMint] Passport minted: tokenId=${result.tokenId}, serial=${result.serialNumber}, session=${session.id}`,
-  );
+  logger.info("fulfillPassportMint: passport minted", { tokenId: result.tokenId, serialNumber: result.serialNumber, sessionId: session.id });
 }
 
 async function notifyPaymentDiscord(session: Stripe.Checkout.Session, productId: string): Promise<void> {
@@ -107,9 +105,9 @@ async function notifyPaymentDiscord(session: Stripe.Checkout.Session, productId:
 
   try {
     await sendDiscordMessage({ message });
-    console.log(`[fulfillOrder] Discord notification sent for session ${session.id}`);
+    logger.info("fulfillOrder: Discord notification sent", { sessionId: session.id });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[fulfillOrder] Discord notification failed: ${msg}`);
+    logger.error("fulfillOrder: Discord notification failed", { error: msg });
   }
 }

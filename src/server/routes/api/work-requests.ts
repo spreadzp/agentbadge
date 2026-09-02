@@ -7,62 +7,33 @@
  * GET    /api/work-requests/:id  — get work request status (200)
  */
 
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { ErrorCodes } from "../../lib/error-codes";
+import { ErrorCodes, type ErrorCode } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import { workRequestStore } from "../../services/work-request-store";
 import { notifyWorkRequest } from "../../services/work-request-notification";
+import { createRateLimiter } from "../../middleware/rate-limit";
+import { logger } from "@agentgate-hedera/passport";
 
 export const workRequestRoutes = new Hono();
 
-// ─── Rate limiting (in-memory, per IP) ───────────────────
+// ─── Rate limiting (unified, SLICE-86-3) ─────────────────
 
-interface RateBucket {
-  count: number;
-  resetAt: number;
-}
+const postLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  routes: ["/api/work-requests"],
+});
 
-const postBuckets = new Map<string, RateBucket>();
-const POST_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const POST_MAX = 5;
-
-const getBuckets = new Map<string, RateBucket>();
-const GET_WINDOW_MS = 60 * 1000; // 1 min
-const GET_MAX = 100;
-
-function getClientIp(c: Context): string {
-  return (
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    "unknown"
-  );
-}
-
-function checkRateLimit(
-  buckets: Map<string, RateBucket>,
-  ip: string,
-  max: number,
-  windowMs: number,
-): { allowed: boolean; remaining: number; retryAfter: number } {
-  const now = Date.now();
-  let entry = buckets.get(ip);
-
-  if (!entry || entry.resetAt <= now) {
-    entry = { count: 0, resetAt: now + windowMs };
-    buckets.set(ip, entry);
-  }
-
-  entry.count++;
-  const remaining = Math.max(0, max - entry.count);
-  const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
-
-  return { allowed: entry.count <= max, remaining, retryAfter };
-}
+const getLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 min
+  max: 100,
+  routes: ["/api/work-requests/:id"],
+});
 
 export function resetRateLimits(): void {
-  postBuckets.clear();
-  getBuckets.clear();
+  // No-op — unified limiter handles its own store
 }
 
 // ─── Validation ───────────────────────────────────────────
@@ -161,15 +132,9 @@ workRequestRoutes.post(
     },
   }),
   async (c) => {
-    const ip = getClientIp(c);
-    const rl = checkRateLimit(postBuckets, ip, POST_MAX, POST_WINDOW_MS);
-
-    c.header("X-RateLimit-Limit", String(POST_MAX));
-    c.header("X-RateLimit-Remaining", String(rl.remaining));
-
-    if (!rl.allowed) {
-      c.header("Retry-After", String(Math.max(1, rl.retryAfter)));
-      return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "Too Many Requests");
+    const rlResult = await postLimiter(c, async () => { });
+    if (rlResult instanceof Response) {
+      return rlResult;
     }
 
     let body: unknown;
@@ -181,7 +146,7 @@ workRequestRoutes.post(
 
     const error = validateWorkRequest(body);
     if (error) {
-      return errorResponse(c, 400, error.code as any, error.message);
+      return errorResponse(c, 400, error.code as ErrorCode, error.message);
     }
 
     const { request, preferred_contact } = body as {
@@ -196,7 +161,7 @@ workRequestRoutes.post(
 
     // Async notification — fire and forget, errors logged but don't block
     notifyWorkRequest(record).catch((err) => {
-      console.warn("[work-request] Notification failed:", err);
+      logger.warn("work-request: notification failed", { error: err });
     });
 
     return c.json(
@@ -224,15 +189,9 @@ workRequestRoutes.get(
     },
   }),
   async (c) => {
-    const ip = getClientIp(c);
-    const rl = checkRateLimit(getBuckets, ip, GET_MAX, GET_WINDOW_MS);
-
-    c.header("X-RateLimit-Limit", String(GET_MAX));
-    c.header("X-RateLimit-Remaining", String(rl.remaining));
-
-    if (!rl.allowed) {
-      c.header("Retry-After", String(Math.max(1, rl.retryAfter)));
-      return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "Too Many Requests");
+    const rlResult = await getLimiter(c, async () => { });
+    if (rlResult instanceof Response) {
+      return rlResult;
     }
 
     const id = c.req.param("id");

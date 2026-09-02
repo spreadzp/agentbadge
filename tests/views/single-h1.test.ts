@@ -1,4 +1,36 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, vi } from "vitest";
+
+// Mock env config so json-ld.ts chainCurrency works
+vi.mock("../../src/config/env.js", () => ({
+  getConfig: vi.fn(() => ({
+    chainMode: "hedera",
+    hederaNetwork: "testnet",
+    ui: {
+      currencySymbol: "HBAR",
+      currencyDecimals: 8,
+      explorerName: "HashScan",
+      explorerUrl: "https://hashscan.io/testnet",
+      chainDisplayName: "Hedera Testnet",
+      chainBadgeColor: "purple",
+    },
+  })),
+  resetConfigCache: vi.fn(),
+}));
+
+// Mock chain-templates so json-ld.ts chainVars works
+vi.mock("../../src/server/lib/chain-templates.js", () => ({
+  applyChainTemplates: vi.fn((s: string) => s),
+  getChainTemplateVars: vi.fn(() => ({
+    CHAIN_NAME: "Hedera Testnet",
+    CURRENCY: "HBAR",
+    EXPLORER: "HashScan",
+    EXPLORER_URL: "https://hashscan.io/testnet",
+    MIRROR_NODE: "Mirror Node",
+    NFT_STANDARD: "HTS",
+    CONSENSUS: "HCS",
+  })),
+}));
+
 import { Layout } from "../../src/views/layout";
 import { LandingLayout } from "../../src/views/landing/layout";
 import { FaqPage } from "../../src/views/faq-page";
@@ -33,10 +65,6 @@ function countH1(html: string): number {
 
 function wrapInLayout(content: string, title?: string): string {
   return Layout(content, title ?? "Test Page").toString();
-}
-
-function wrapInLandingLayout(content: string, title?: string): string {
-  return LandingLayout(content, title ?? "Test Page").toString();
 }
 
 describe("SLICE-80-3: Single H1 per page", () => {

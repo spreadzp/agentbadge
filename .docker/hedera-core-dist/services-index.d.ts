@@ -1,4 +1,4 @@
-import type { A2AMessage, AuditMessage, MintResult, NftInfo, TaskMessage, TaskMessageWithTx, TopicMessage } from "./types";
+import type { A2AMessage, AuditMessage, HFSUploadResult, MintResult, NftInfo, TaskMessage, TaskMessageWithTx, TopicMessage } from "./types";
 import type { DirectoryMessage } from "./hedera.service";
 import type { PaginatedMessages, ScheduleInfo } from "./mirror.service";
 export declare function mintPassportNFT(tokenId: string, ipfsUri: string): Promise<MintResult>;
@@ -39,10 +39,17 @@ export declare function signScheduledTransaction(scheduleId: string, signerPriva
     txId: string;
     executed: boolean;
 }>;
+export declare function signScheduledTransactionWithSignature(scheduleId: string, txBytesBase64: string, publicKeyStr: string, signatureBytes: Uint8Array | Uint8Array[]): Promise<{
+    txId: string;
+    executed: boolean;
+}>;
 export declare function deleteScheduledTransaction(scheduleId: string): Promise<{
     scheduleId: string;
     deleted: boolean;
 }>;
+export type { HFSUploadResult } from "./types";
+export declare function uploadFileToHFS(contents: Buffer, fileMemo?: string): Promise<HFSUploadResult>;
+export declare function downloadFileFromHFS(fileId: string): Promise<Buffer>;
 export type { ScheduleInfo } from "./mirror.service";
 export declare function getScheduleInfo(scheduleId: string): Promise<ScheduleInfo | null>;
 export { signTransactionBytes, type SignatureResult } from "./signing";

@@ -82,3 +82,14 @@ Set up automated scanning in your CI/CD pipeline:
 ```
 
 This ensures every deployment is checked for Agent Readiness.
+
+## Recommended Reading
+
+Deep-dive articles for understanding Agent Readiness measurement:
+
+- [What Is Agent Readiness?](/agent-guide/articles/what-is-agent-readiness) — Article 1: foundational concept
+- [Why AI Agents Fail to Use APIs](/agent-guide/articles/why-ai-agents-fail-apis) — Article 5: failure modes
+- [What Does an AI Agent Need to Understand an API?](/agent-guide/articles/what-ai-agent-needs-to-understand-api) — Article 6: 8 context layers
+- [Why Your OpenAPI Spec Isn't Enough](/agent-guide/articles/why-openapi-isnt-enough) — Article 7: structural gap
+- [How Do You Measure Agent Readiness?](/agent-guide/articles/how-do-you-measure-agent-readiness) — Article 8: measurement framework
+- [Inside an Agent Readiness Scanner](/agent-guide/articles/inside-an-agent-readiness-scanner) — Article 9: rules, evidence, and reproducibility

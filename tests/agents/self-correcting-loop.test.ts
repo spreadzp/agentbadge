@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   correctAnalysis,
   runSelfCorrectingLoop,
@@ -87,8 +87,8 @@ describe("correctAnalysis", () => {
 
 describe("runSelfCorrectingLoop", () => {
   it("passes on 1st attempt → completed, attempts=1", async () => {
-    const verifyFn = mock(() => Promise.resolve(PASSING_VALIDATION));
-    const completeFn = mock(() => Promise.resolve(true));
+    const verifyFn = vi.fn(() => Promise.resolve(PASSING_VALIDATION));
+    const completeFn = vi.fn(() => Promise.resolve(true));
 
     const result = await runSelfCorrectingLoop({
       taskId: "task-1",
@@ -107,12 +107,12 @@ describe("runSelfCorrectingLoop", () => {
 
   it("passes on 2nd attempt after correction → completed, attempts=2", async () => {
     let callCount = 0;
-    const verifyFn = mock(() => {
+    const verifyFn = vi.fn(() => {
       callCount++;
       if (callCount === 1) return Promise.resolve(failingValidation(["no glossary terms referenced"]));
       return Promise.resolve(PASSING_VALIDATION);
     });
-    const completeFn = mock(() => Promise.resolve(true));
+    const completeFn = vi.fn(() => Promise.resolve(true));
 
     const result = await runSelfCorrectingLoop({
       taskId: "task-2",
@@ -130,8 +130,8 @@ describe("runSelfCorrectingLoop", () => {
   });
 
   it("aborts after 3 failures → not completed, attempts=3", async () => {
-    const verifyFn = mock(() => Promise.resolve(failingValidation(["persistent failure"])));
-    const completeFn = mock(() => Promise.resolve(true));
+    const verifyFn = vi.fn(() => Promise.resolve(failingValidation(["persistent failure"])));
+    const completeFn = vi.fn(() => Promise.resolve(true));
 
     const result = await runSelfCorrectingLoop({
       taskId: "task-3",
@@ -149,8 +149,8 @@ describe("runSelfCorrectingLoop", () => {
   });
 
   it("calls completeTask on success", async () => {
-    const verifyFn = mock(() => Promise.resolve(PASSING_VALIDATION));
-    const completeFn = mock(() => Promise.resolve(true));
+    const verifyFn = vi.fn(() => Promise.resolve(PASSING_VALIDATION));
+    const completeFn = vi.fn(() => Promise.resolve(true));
 
     await runSelfCorrectingLoop({
       taskId: "task-complete",
@@ -165,8 +165,8 @@ describe("runSelfCorrectingLoop", () => {
   });
 
   it("does not call completeTask on abort", async () => {
-    const verifyFn = mock(() => Promise.resolve(failingValidation(["always fails"])));
-    const completeFn = mock(() => Promise.resolve(true));
+    const verifyFn = vi.fn(() => Promise.resolve(failingValidation(["always fails"])));
+    const completeFn = vi.fn(() => Promise.resolve(true));
 
     await runSelfCorrectingLoop({
       taskId: "task-abort",
@@ -182,12 +182,12 @@ describe("runSelfCorrectingLoop", () => {
 
   it("logs all attempts with failed checks and corrections", async () => {
     let callCount = 0;
-    const verifyFn = mock(() => {
+    const verifyFn = vi.fn(() => {
       callCount++;
       if (callCount < 3) return Promise.resolve(failingValidation(["no glossary terms referenced"]));
       return Promise.resolve(PASSING_VALIDATION);
     });
-    const completeFn = mock(() => Promise.resolve(true));
+    const completeFn = vi.fn(() => Promise.resolve(true));
 
     const result = await runSelfCorrectingLoop({
       taskId: "task-logs",

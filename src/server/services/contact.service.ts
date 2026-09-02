@@ -1,5 +1,5 @@
 export interface ContactInput {
-  channel: "discord" | "telegram";
+  channel: "discord" | "telegram" | "email";
   message: string;
   contactInfo?: string;
   fileName?: string;
@@ -14,6 +14,11 @@ export interface DiscordMessageOpts {
 }
 
 export interface TelegramMessageOpts {
+  message: string;
+  contactInfo?: string;
+}
+
+export interface EmailMessageOpts {
   message: string;
   contactInfo?: string;
 }
@@ -84,5 +89,38 @@ export async function sendTelegramMessage(opts: TelegramMessageOpts): Promise<vo
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Telegram API error: ${res.status} — ${err}`);
+  }
+}
+
+export async function sendEmailMessage(opts: EmailMessageOpts): Promise<void> {
+  const recipient = process.env.SUPPORT_EMAIL ?? "support@agentbadge.xyz";
+  const apiKey = process.env.RESEND_API_KEY;
+
+  const content = formatFeedbackMessage({
+    channel: "email",
+    message: opts.message,
+    contactInfo: opts.contactInfo,
+  });
+
+  if (apiKey) {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from: "AgentBadge Feedback <feedback@agentbadge.xyz>",
+        to: [recipient],
+        subject: "New Feedback via Contact Form",
+        text: content,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Resend API error: ${res.status} — ${err}`);
+    }
+  } else {
+    throw new Error("RESEND_API_KEY not configured");
   }
 }

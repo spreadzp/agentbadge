@@ -1,5 +1,4 @@
 import type { RuleEngineResult } from "./rule-engine/rule-engine";
-import type { Assertion } from "./rule-engine/assertion-builder";
 import { RULE_DESCRIPTIONS, CATEGORY_DESCRIPTIONS } from "./rule-descriptions";
 
 export interface ScanReport {
@@ -41,7 +40,7 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
   const verified = assertions.filter((a) => a.status === "VERIFIED" || a.status === "INFERRED").length;
   const missing = assertions.filter((a) => a.status === "MISSING").length;
   const notApplicable = assertions.filter((a) => a.status === "NOT_APPLICABLE").length;
-  const skipped = assertions.filter((a) => a.status === "SKIPPED").length;
+  const skipped = assertions.filter((a) => (a.status as string) === "SKIPPED").length;
   const score = total > 0 ? Math.round((verified / total) * 100) : 0;
 
   const categoryMap = new Map<string, { verified: number; missing: number; total: number }>();
@@ -79,7 +78,7 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
         rule_id: a.rule_id,
         title: desc?.title ?? a.rule_id,
         category: a.category || "unknown",
-        hint: (a as any).hint ?? (a as any).fix_hint ?? "See rule documentation for fix instructions.",
+        hint: ((a as unknown as Record<string, unknown>).hint ?? (a as unknown as Record<string, unknown>).fix_hint ?? "See rule documentation for fix instructions.") as string,
         effort_hint: desc?.effort_hint ?? "moderate",
         estimated_cost: desc?.estimated_cost ?? "$10-50",
       } as MissingRule;

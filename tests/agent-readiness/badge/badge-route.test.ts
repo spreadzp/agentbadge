@@ -6,7 +6,7 @@ import type { AgentReadinessReport } from "../../../src/agent-readiness/report.s
 function makeReport(score: number, scope: string = "test-api"): AgentReadinessReport {
   return {
     report_id: "01HTEST0000000000000000001",
-    schema_version: "0.1.0",
+    schema_version: "0.2.0",
     ruleset: { name: "agent-readiness", version: "1.2.0" },
     scope: {
       agent_id: scope,

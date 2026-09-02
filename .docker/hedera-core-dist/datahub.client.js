@@ -2,28 +2,101 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_GMS_URL = "http://localhost:8080";
 export class DataHubClient {
     baseUrl;
-    token;
+    staticToken;
+    actorId;
     timeoutMs;
     mockMode;
+    cachedToken = null;
     constructor() {
         this.baseUrl = (process.env.DATAHUB_GMS_URL ?? DEFAULT_GMS_URL).replace(/\/$/, "");
-        this.token = process.env.DATAHUB_TOKEN;
+        this.staticToken = process.env.DATAHUB_GMS_TOKEN ?? process.env.DATAHUB_TOKEN;
+        this.actorId = process.env.DATAHUB_GMS_ACTOR_ID ?? "datahub";
         this.timeoutMs = parseTimeout();
         this.mockMode = !process.env.DATAHUB_ENABLED || process.env.DATAHUB_ENABLED === "false";
     }
-    async graphql(query, variables) {
+    async generateToken() {
+        const data = await this.rawGraphQL(TOKEN_MUTATION, { type: "PERSONAL", actorId: this.actorId }, false);
+        const tokenData = data.datahubAccessToken;
+        this.cachedToken = {
+            accessToken: tokenData.accessToken,
+            expiresAt: new Date(tokenData.expiresAt),
+        };
+        return tokenData.accessToken;
+    }
+    async ensureToken() {
+        if (this.staticToken)
+            return this.staticToken;
+        if (this.cachedToken && !isTokenExpiringSoon(this.cachedToken.expiresAt)) {
+            return this.cachedToken.accessToken;
+        }
+        return this.generateToken();
+    }
+    async rawGraphQL(query, variables, withAuth) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), this.timeoutMs);
         try {
             const headers = {
                 "Content-Type": "application/json",
             };
-            if (this.token) {
-                headers["Authorization"] = `Bearer ${this.token}`;
+            if (withAuth && this.cachedToken) {
+                headers["Authorization"] = `Bearer ${this.cachedToken.accessToken}`;
+            }
+            else if (withAuth && this.staticToken) {
+                headers["Authorization"] = `Bearer ${this.staticToken}`;
             }
             const res = await fetch(`${this.baseUrl}/api/graphql`, {
                 method: "POST",
                 headers,
+                body: JSON.stringify({ query, variables }),
+                signal: controller.signal,
+            });
+            if (!res.ok) {
+                const body = await res.text().catch(() => "");
+                throw new Error(`DataHub HTTP ${res.status}: ${body || res.statusText}`);
+            }
+            const json = (await res.json());
+            if (json.errors && json.errors.length > 0) {
+                throw new Error(json.errors.map((e) => e.message).join("; "));
+            }
+            if (!json.data) {
+                throw new Error("DataHub returned no data");
+            }
+            return json.data;
+        }
+        catch (err) {
+            if (err instanceof DOMException && err.name === "AbortError") {
+                throw new Error(`DataHub timeout after ${this.timeoutMs}ms`);
+            }
+            throw err;
+        }
+        finally {
+            clearTimeout(timer);
+        }
+    }
+    async graphql(query, variables) {
+        const token = await this.ensureToken();
+        try {
+            return await this.doGraphQL(query, variables, token);
+        }
+        catch (err) {
+            if (err instanceof Error && err.message.startsWith("DataHub HTTP 401")) {
+                this.cachedToken = null;
+                const newToken = await this.ensureToken();
+                return this.doGraphQL(query, variables, newToken);
+            }
+            throw err;
+        }
+    }
+    async doGraphQL(query, variables, token) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+        try {
+            const res = await fetch(`${this.baseUrl}/api/graphql`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
                 body: JSON.stringify({ query, variables }),
                 signal: controller.signal,
             });
@@ -159,6 +232,10 @@ function parseTimeout() {
     const parsed = parseInt(raw, 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
 }
+const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+function isTokenExpiringSoon(expiresAt) {
+    return Date.now() + TOKEN_REFRESH_BUFFER_MS >= expiresAt.getTime();
+}
 const SEARCH_QUERY = `
   query Search($query: String!, $type: EntityType!, $limit: Int!) {
     search(query: $query, type: $type, limit: $limit) {
@@ -266,6 +343,14 @@ const ASSERTION_RESULTS_QUERY = `
         status
         timestamp
       }
+    }
+  }
+`;
+const TOKEN_MUTATION = `
+  mutation GenerateToken($type: AccessTokenTokenType!, $actorId: String!) {
+    datahubAccessToken(input: { type: $type, actorId: $actorId }) {
+      accessToken
+      expiresAt
     }
   }
 `;

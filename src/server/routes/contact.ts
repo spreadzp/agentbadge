@@ -3,25 +3,22 @@ import { contactPage, contactSuccessFragment, contactErrorFragment } from "../..
 import {
   sendDiscordMessage,
   sendTelegramMessage,
+  sendEmailMessage,
 } from "../services/contact.service";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { createRateLimiter } from "../middleware/rate-limit";
 
 export const contactRoutes = new Hono();
 
-const rateLimitMap = new Map<string, number>();
-const RATE_LIMIT_MS = 60_000;
+const contactLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 1,
+  routes: ["/contact"],
+});
 
 export function resetRateLimit(): void {
-  rateLimitMap.clear();
-}
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const last = rateLimitMap.get(ip);
-  if (last && now - last < RATE_LIMIT_MS) return false;
-  rateLimitMap.set(ip, now);
-  return true;
+  // No-op — unified limiter handles its own store
 }
 
 function isHtmxRequest(c: import("hono").Context): boolean {
@@ -84,8 +81,8 @@ contactRoutes.post("/contact", async (c) => {
     fileContent = parsed.fileContent;
   }
 
-  if (!channel || !["discord", "telegram"].includes(channel)) {
-    const msg = "Channel must be 'discord' or 'telegram'";
+  if (!channel || !["discord", "telegram", "email"].includes(channel)) {
+    const msg = "Channel must be 'discord', 'telegram', or 'email'";
     return htmx
       ? c.html(contactErrorFragment(msg), 400)
       : errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, msg);
@@ -115,8 +112,8 @@ contactRoutes.post("/contact", async (c) => {
       : errorResponse(c, 400, ErrorCodes.INVALID_JSON, msg);
   }
 
-  const ip = c.req.header("x-forwarded-for") ?? "unknown";
-  if (!checkRateLimit(ip)) {
+  const rateLimitResult = await contactLimiter(c, async () => { });
+  if (rateLimitResult instanceof Response) {
     const msg = "Rate limit exceeded. Try again in a minute.";
     return htmx
       ? c.html(contactErrorFragment(msg), 429)
@@ -126,8 +123,10 @@ contactRoutes.post("/contact", async (c) => {
   try {
     if (channel === "discord") {
       await sendDiscordMessage({ message, contactInfo, fileName, fileContent });
-    } else {
+    } else if (channel === "telegram") {
       await sendTelegramMessage({ message, contactInfo });
+    } else {
+      await sendEmailMessage({ message, contactInfo });
     }
     return htmx
       ? c.html(contactSuccessFragment(channel), 200)

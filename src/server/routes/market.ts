@@ -13,14 +13,132 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, deleteScheduledTransaction } from "@agentgate-hedera/hedera-core";
-import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
+import { submitTaskMessage, verifyA2ADid, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentgate-hedera/hedera-core";
+// SLICE-84-3: ULID for task IDs
+import { generateReportId as generateUlid } from "../../agent-readiness/integrity/ulid";
+import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, logger, reserveTask, transitionTask } from "@agentgate-hedera/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { taskLinks } from "../lib/hateoas";
 import { runVerification } from "../../verifiers";
+import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
+import { keyEndpointGate } from "../middleware/key-endpoint-gate";
+import { toPublicError } from "../lib/error-map";
+import { isBaseDid, parseBaseDid, EvmChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/evm-core";
+import { SessionRegistry } from "@agentgate-hedera/evm-core";
 
 export const marketRoutes = new Hono();
+
+// SLICE-90-12: Check passport type for Base Sepolia DIDs
+// Returns null if check passes, or a Response if it fails
+export async function checkPassportType(
+  did: string,
+  requiredType: "CREATOR" | "EXECUTOR",
+): Promise<Response | null> {
+  if (!isBaseDid(did)) return null; // Only check Base Sepolia DIDs
+
+  const parsed = parseBaseDid(did);
+  if (!parsed) return null;
+
+  const operatorKey = process.env.BASE_OPERATOR_KEY;
+  if (!operatorKey) return null; // Skip if Base not configured
+
+  const adapter = new EvmChainAdapter({
+    rpcUrl: BASE_SEPOLIA_RPC,
+    chainId: BASE_SEPOLIA_CHAIN_ID,
+    operatorKey,
+    passportNft: BASE_SEPOLIA_ADDRESSES.AgentPassport,
+    escrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    eventLog: BASE_SEPOLIA_ADDRESSES.DIDRegistry,
+    usdcAddress: BASE_SEPOLIA_ADDRESSES.MockUSDC,
+    explorerUrl: BASE_SEPOLIA_EXPLORER,
+  });
+
+  const info = await adapter.getPassportInfo(parsed.nftAddress, parsed.tokenId);
+  if (!info) {
+    return new Response(
+      JSON.stringify({ error: { code: ErrorCodes.PASSPORT_NOT_FOUND, message: "Passport not found on Base Sepolia" } }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (info.deleted) {
+    return new Response(
+      JSON.stringify({ error: { code: ErrorCodes.PASSPORT_REVOKED, message: "Passport is revoked" } }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (info.passportType !== requiredType) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: ErrorCodes.PASSPORT_TYPE_MISMATCH,
+          message: `Passport type ${info.passportType} does not match required type ${requiredType}`,
+        },
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  return null;
+}
+
+// SLICE-90-13: Check session budget cap for Base Sepolia DIDs
+// Returns null if check passes or is not applicable, or a Response if it fails
+export async function checkSessionCap(
+  did: string,
+  amount: number,
+  sessionId: number,
+): Promise<Response | null> {
+  if (!isBaseDid(did)) return null; // Only check Base Sepolia DIDs
+
+  const operatorKey = process.env.BASE_OPERATOR_KEY;
+  if (!operatorKey) return null; // Skip if Base not configured
+
+  const sessionRegistryAddr = BASE_SEPOLIA_ADDRESSES.SessionRegistry;
+  if (sessionRegistryAddr === "0x0000000000000000000000000000000000000000") return null; // Skip if not deployed
+
+  if (!sessionId) return null; // No session → skip
+
+  const registry = new SessionRegistry(sessionRegistryAddr, {
+    rpcUrl: BASE_SEPOLIA_RPC,
+    chainId: BASE_SEPOLIA_CHAIN_ID,
+    operatorKey,
+    passportNft: BASE_SEPOLIA_ADDRESSES.AgentPassport,
+    escrow: BASE_SEPOLIA_ADDRESSES.TaskEscrow,
+    eventLog: BASE_SEPOLIA_ADDRESSES.DIDRegistry,
+    usdcAddress: BASE_SEPOLIA_ADDRESSES.MockUSDC,
+    explorerUrl: BASE_SEPOLIA_EXPLORER,
+  });
+
+  const amountWei = BigInt(Math.floor(amount * 1e6)); // USDC has 6 decimals
+  const check = await registry.checkSessionValid(sessionId, amountWei);
+  if (!check.ok) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: ErrorCodes.SESSION_BUDGET_EXCEEDED,
+          message: `Session budget check failed: ${check.reason}`,
+        },
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  return null;
+}
+function parseSignatureB64(signatureB64: string): Uint8Array[] {
+  const sigB64Array = JSON.parse(signatureB64) as string[];
+  return sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+}
+
+// EPIC-83 SLICE-83-2: Gate key-accepting endpoints (410 Gone unless ALLOW_KEY_ENDPOINTS=true)
+marketRoutes.use("/market/*", keyEndpointGate());
+
+// Apply DID signature verification to all mutation POST routes (except -with-key endpoints, EPIC-83)
+// Middleware self-skips GET/HEAD and -with-key paths
+marketRoutes.use("/market/*", requireDidSignature());
 
 // ─── POST /market/tasks ──────────────────────────────────────────
 
@@ -34,7 +152,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task posted successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Poster passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or passport not found" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -55,7 +174,7 @@ marketRoutes.post(
       deadline?: number;
     };
 
-    if (!posterDid || !title || !description || !priceHbar || !capabilities) {
+    if (!posterDid || !title || !description || priceHbar === undefined || !capabilities) {
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required fields: posterDid, title, description, priceHbar, capabilities");
     }
 
@@ -71,10 +190,13 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a positive number");
     }
 
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
+
+    // SLICE-90-12: Require CREATOR passport type for Base Sepolia DIDs
+    const typeCheck = await checkPassportType(posterDid, "CREATOR");
+    if (typeCheck) return typeCheck;
 
     try {
       const timestamp = Math.floor(Date.now() / 1000);
@@ -97,7 +219,7 @@ marketRoutes.post(
         return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Task payload exceeds 4KB limit");
       }
 
-      const txId = await submitTaskMessage(message);
+      const { txId, consensusTimestamp } = await submitTaskMessage(message);
 
       const cached = {
         taskId,
@@ -109,7 +231,7 @@ marketRoutes.post(
         deadline,
         status: "posted" as const,
         txId,
-        consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+        consensusTimestamp: consensusTimestamp ?? `pending-consensus:${txId}`,
         createdAt: timestamp,
       };
       upsert(cached);
@@ -118,9 +240,9 @@ marketRoutes.post(
 
       return c.json({ txId, taskId, timestamp, _links: taskLinks(taskId, posterDid, "posted") }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "HCS submission failed";
-      logger.error("Marketplace task submission failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace task submission failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -164,8 +286,9 @@ marketRoutes.get(
         200,
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Cache error";
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Cache error", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -206,7 +329,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task claimed successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Claimer passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match claimerDid or passport not found" },
       404: { description: "Task not found" },
       409: { description: "Task is not in 'posted' status" },
       500: { description: "HCS submission failure" },
@@ -228,18 +352,23 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid claimerDid format");
     }
 
-    const claimerValid = await verifyA2ADid(claimerDid);
-    if (!claimerValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, claimerDid);
+    if (actorMismatch) return actorMismatch;
+
+    // SLICE-90-12: Require EXECUTOR passport type for Base Sepolia DIDs
+    const typeCheck = await checkPassportType(claimerDid, "EXECUTOR");
+    if (typeCheck) return typeCheck;
 
     const task = getTaskById(taskId);
     if (!task) {
       return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
     }
 
-    if (task.status !== "posted") {
-      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot claim`);
+    // SLICE-84-1: Atomic reservation before async HCS I/O
+    const reservation = reserveTask(taskId, ["posted"], "claiming");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${reservation.currentStatus}, cannot claim`);
     }
 
     try {
@@ -250,16 +379,36 @@ marketRoutes.post(
         claimerDid,
         timestamp,
       };
-      const txId = await submitTaskMessage(message);
+      const { txId } = await submitTaskMessage(message);
 
-      updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["claiming"], "claimed", { claimerDid, claimTxId: txId });
+      if (!committed.ok) {
+        logger.error("Claim commit failed — task state changed during HCS I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, "Task state changed during claim");
+      }
 
       // SLICE-24-8: Create escrow scheduled transfer (poster → claimer)
       try {
+        // SLICE-90-13: Check session budget cap before escrow (Base Sepolia only)
+        const sessionId = Number(c.req.header("X-SESSION-ID") ?? 0);
+        const capCheck = await checkSessionCap(claimerDid, task.priceHbar, sessionId);
+        if (capCheck) {
+          transitionTask(taskId, ["claiming"], "posted", { claimerDid: undefined });
+          return capCheck;
+        }
+
         const fromAccountId = await didToAccountId(task.posterDid);
         const toAccountId = await didToAccountId(claimerDid);
         if (!fromAccountId || !toAccountId) {
           logger.error("Escrow creation failed: could not resolve DID to account ID", { taskId, posterDid: task.posterDid, claimerDid });
+          // SLICE-84-2: Emit failure event instead of silent revert
+          try {
+            await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: "Could not resolve DID to account ID", timestamp });
+          } catch (hcsErr) {
+            logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+          }
+          returnTaskToMarket(taskId);
           return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve DID to account ID for escrow creation");
         }
 
@@ -270,6 +419,7 @@ marketRoutes.post(
           { memo: `escrow:${task.taskId}:${claimerDid}` },
         );
 
+        // SLICE-84-2: WAL — persist scheduleId BEFORE HCS message
         setEscrowStatus(taskId, "pending", { scheduleId, scheduleTxId });
 
         const escrowMessage = {
@@ -286,18 +436,26 @@ marketRoutes.post(
       } catch (escrowErr) {
         const escrowMsg = escrowErr instanceof Error ? escrowErr.message : "Escrow creation failed";
         logger.error("Escrow creation failed, reverting task to posted", { error: escrowMsg, taskId });
+        // SLICE-84-2: Emit task_escrow_failed HCS event instead of silent revert
+        try {
+          await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: escrowMsg, timestamp });
+        } catch (hcsErr) {
+          logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+        }
         returnTaskToMarket(taskId);
         return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "HCS submission failed";
-      logger.error("Marketplace task claim failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      // SLICE-84-1: Rollback reservation on HCS failure
+      transitionTask(taskId, ["claiming"], "posted", { claimerDid: undefined });
+      const pub = toPublicError(err);
+      logger.error("Marketplace task claim failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
 
-// ─── POST /market/tasks/:taskId/deliver ───────────────────────────
+// ─── POST /market/tasks/:taskId/deliver──────────────────────────
 
 marketRoutes.post(
   "/market/tasks/:taskId/deliver",
@@ -308,7 +466,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task delivered successfully" },
       400: { description: "Invalid request body, missing results, or resultBody too large" },
-      403: { description: "Only the claimer can deliver" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match claimerDid or only claimer can deliver" },
       404: { description: "Task not found" },
       409: { description: "Task is not in 'claimed' status" },
       500: { description: "HCS submission failure" },
@@ -342,22 +501,27 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `resultBody too large (${Buffer.byteLength(resultBody, "utf8")} bytes, max 4096). Use IPFS for larger results.`);
     }
 
-    const claimerValid = await verifyA2ADid(claimerDid);
-    if (!claimerValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Claimer passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, claimerDid);
+    if (actorMismatch) return actorMismatch;
+
+    // SLICE-90-12: Require EXECUTOR passport type for Base Sepolia DIDs
+    const typeCheck = await checkPassportType(claimerDid, "EXECUTOR");
+    if (typeCheck) return typeCheck;
 
     const task = getTaskById(taskId);
     if (!task) {
       return errorResponse(c, 404, ErrorCodes.TASK_NOT_FOUND, "Task not found");
     }
 
-    if (task.status !== "claimed") {
-      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${task.status}, cannot deliver`);
-    }
-
     if (task.claimerDid !== claimerDid) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only claimer can deliver");
+    }
+
+    // SLICE-84-1: Atomic reservation before async HCS I/O
+    const reservation = reserveTask(taskId, ["claimed"], "delivering");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${reservation.currentStatus}, cannot deliver`);
     }
 
     try {
@@ -370,17 +534,24 @@ marketRoutes.post(
         resultBody,
         timestamp,
       };
-      const txId = await submitTaskMessage(message);
+      const { txId } = await submitTaskMessage(message);
 
-      updateTaskStatus(taskId, "delivered", { resultIpfs, resultBody, deliverTxId: txId });
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["delivering"], "delivered", { resultIpfs, resultBody, deliverTxId: txId });
+      if (!committed.ok) {
+        logger.error("Deliver commit failed — task state changed during HCS I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, "Task state changed during delivery");
+      }
 
       logger.info("Marketplace task delivered", { txId, taskId, claimerDid });
 
       return c.json({ taskId, txId, timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "HCS submission failed";
-      logger.error("Marketplace task delivery failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      // SLICE-84-1: Rollback reservation on failure
+      transitionTask(taskId, ["delivering"], "claimed");
+      const pub = toPublicError(err);
+      logger.error("Marketplace task delivery failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -459,8 +630,7 @@ marketRoutes.post(
 
       const { txBytes } = await prepareTopicMessageTransaction(fromAccountId, message);
       const { signature, publicKey } = signTransactionBytes(txBytes, claimerPrivateKey);
-      const sigB64Array = JSON.parse(signature) as string[];
-      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const signatureBytes = parseSignatureB64(signature);
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       updateTaskStatus(taskId, "claimed", { claimerDid, claimTxId: txId });
@@ -470,6 +640,13 @@ marketRoutes.post(
         const posterAccountId = await didToAccountId(task.posterDid);
         if (!posterAccountId) {
           logger.error("Escrow creation failed: could not resolve poster DID", { taskId, posterDid: task.posterDid });
+          // SLICE-84-2: Emit failure event instead of silent revert
+          try {
+            await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: "Could not resolve poster DID to account ID", timestamp });
+          } catch (hcsErr) {
+            logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+          }
+          returnTaskToMarket(taskId);
           return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID for escrow creation");
         }
 
@@ -480,6 +657,7 @@ marketRoutes.post(
           { memo: `escrow:${task.taskId}:${claimerDid}` },
         );
 
+        // SLICE-84-2: WAL — persist scheduleId BEFORE HCS message
         setEscrowStatus(taskId, "pending", { scheduleId, scheduleTxId });
 
         const escrowMessage = {
@@ -496,13 +674,19 @@ marketRoutes.post(
       } catch (escrowErr) {
         const escrowMsg = escrowErr instanceof Error ? escrowErr.message : "Escrow creation failed";
         logger.error("Escrow creation failed (claim-with-key), reverting task to posted", { error: escrowMsg, taskId });
+        // SLICE-84-2: Emit task_escrow_failed HCS event instead of silent revert
+        try {
+          await submitTaskMessage({ type: "task_escrow_failed", taskId, reason: escrowMsg, timestamp });
+        } catch (hcsErr) {
+          logger.error("Failed to emit task_escrow_failed", { taskId, error: hcsErr instanceof Error ? hcsErr.message : String(hcsErr) });
+        }
         returnTaskToMarket(taskId);
         return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, `Claim succeeded but escrow creation failed: ${escrowMsg}`, { retryable: true });
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Signed claim failed";
-      logger.error("Signed claim failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Signed claim failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -594,8 +778,7 @@ marketRoutes.post(
 
       const { txBytes } = await prepareTopicMessageTransaction(fromAccountId, message);
       const { signature, publicKey } = signTransactionBytes(txBytes, claimerPrivateKey);
-      const sigB64Array = JSON.parse(signature) as string[];
-      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+      const signatureBytes = parseSignatureB64(signature);
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       updateTaskStatus(taskId, "delivered", { resultIpfs, resultBody, deliverTxId: txId });
@@ -604,9 +787,9 @@ marketRoutes.post(
 
       return c.json({ taskId, txId, timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Signed delivery failed";
-      logger.error("Signed delivery failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Signed delivery failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -625,7 +808,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Transaction prepared successfully" },
       400: { description: "Task not in delivered status or missing claimer" },
-      403: { description: "Caller is not the poster or passport revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Transaction preparation failure" },
     },
@@ -648,6 +832,10 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
+
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
 
@@ -657,11 +845,6 @@ marketRoutes.post(
 
     if (task.posterDid !== posterDid) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can prepare payment");
-    }
-
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
     }
 
     if (task.status !== "delivered") {
@@ -696,9 +879,9 @@ marketRoutes.post(
         200,
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Transaction preparation failed";
-      logger.error("Payment preparation failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Payment preparation failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -717,7 +900,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task completed successfully" },
       400: { description: "Task not in delivered status, missing claimer, or missing payment fields" },
-      403: { description: "Caller is not the poster or passport revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Payment or HCS submission failure" },
     },
@@ -746,6 +930,10 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
+
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
 
@@ -755,11 +943,6 @@ marketRoutes.post(
 
     if (task.posterDid !== posterDid) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, "Only the task poster can complete this task");
-    }
-
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
     }
 
     if (task.status !== "delivered") {
@@ -777,15 +960,40 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Payment method required: provide (txBytes + publicKey + signature) or posterPrivateKey");
     }
 
-    // Escrow active: posterPrivateKey is mandatory — no fallback to direct transfer
-    if (task.scheduleId && !hasPrivateKey) {
+    // Escrow active: accept signature-based release (EPIC-83 SLICE-83-1) or posterPrivateKey
+    const hasEscrowSignature = task.scheduleId && txBytes && publicKey && signature;
+    if (task.scheduleId && !hasPrivateKey && !hasEscrowSignature) {
       return errorResponse(
         c,
         400,
         ErrorCodes.ESCROW_SIGNATURE_REQUIRED,
-        "Escrow is active (scheduleId exists). posterPrivateKey is required to release the scheduled HBAR transfer. " +
-        "Use complete_task_with_key MCP tool, or cancel the escrow first to switch to direct payment.",
+        "Escrow is active (scheduleId exists). Provide (scheduleId + txBytes + publicKey + signature) for keyless release, " +
+        "or posterPrivateKey. Use complete_task_with_key MCP tool for convenience.",
       );
+    }
+
+    // Validate signature fields completeness for escrow signature path
+    if (task.scheduleId && !hasPrivateKey) {
+      if (!txBytes || !publicKey || !signature) {
+        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Escrow signature release requires all of: txBytes, publicKey, signature");
+      }
+    }
+
+    // EPIC-83 SLICE-83-1: Verify signer is authorized for this escrow
+    if (task.scheduleId && hasEscrowSignature) {
+      const scheduleInfo = await getScheduleInfo(task.scheduleId);
+      if (scheduleInfo && scheduleInfo.signers.length > 0) {
+        const isKnownSigner = scheduleInfo.signers.some((s) => s === publicKey);
+        if (!isKnownSigner) {
+          return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER, "Provided public key is not an authorized signer for this scheduled transaction");
+        }
+      }
+    }
+
+    // SLICE-84-1: Atomic reservation before async verification+payment+HCS I/O
+    const reservation = reserveTask(taskId, ["delivered"], "completing");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, `Task is ${reservation.currentStatus}, cannot complete`);
     }
 
     try {
@@ -817,10 +1025,17 @@ marketRoutes.post(
       let paymentTxId: string;
 
       if (task.scheduleId) {
-        // Escrow path: sign scheduled tx to release HBAR
-        // posterPrivateKey is guaranteed to be present (checked before verification)
-        const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey!);
-        paymentTxId = result.txId;
+        // Escrow path: release scheduled HBAR transfer
+        // EPIC-83 SLICE-83-1: prefer signature-based release (no private key on server)
+        if (hasEscrowSignature) {
+          const signatureBytes = parseSignatureB64(signature!);
+          const result = await signScheduledTransactionWithSignature(task.scheduleId, txBytes!, publicKey!, signatureBytes);
+          paymentTxId = result.txId;
+        } else {
+          // Legacy: posterPrivateKey path (will be deprecated in SLICE-83-2)
+          const result = await signScheduledTransaction(task.scheduleId, posterPrivateKey!);
+          paymentTxId = result.txId;
+        }
         setEscrowStatus(taskId, "released");
       } else {
         // Backward compat: no escrow, direct transfer
@@ -829,8 +1044,7 @@ marketRoutes.post(
           return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve claimer DID to account ID");
         }
         if (hasSignature) {
-          const sigB64Array = JSON.parse(signature!) as string[];
-          const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+          const signatureBytes = parseSignatureB64(signature!);
           paymentTxId = await transferHbarWithSignature(txBytes!, publicKey!, signatureBytes);
         } else {
           const fromAccountId = await didToAccountId(posterDid);
@@ -849,17 +1063,24 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
 
-      updateTaskStatus(taskId, "completed", { paymentTxId, completedTxId: hcsTxId });
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["completing"], "completed", { paymentTxId, completedTxId: hcsTxId });
+      if (!committed.ok) {
+        logger.error("Complete commit failed — task state changed during I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, "Task state changed during completion");
+      }
 
       logger.info("Marketplace task completed", { hcsTxId, taskId, paymentTxId });
 
       return c.json({ taskId, paymentTxId, completedAt: timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Payment or HCS submission failed";
-      logger.error("Marketplace task completion failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      // SLICE-84-1: Rollback reservation on failure
+      transitionTask(taskId, ["completing"], "delivered");
+      const pub = toPublicError(err);
+      logger.error("Marketplace task completion failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -877,6 +1098,7 @@ marketRoutes.post(
     responses: {
       200: { description: "Signature and public key returned" },
       400: { description: "Missing or invalid txBytes / privateKey" },
+      401: { description: "Missing or invalid DID signature headers" },
     },
   }),
   async (c) => {
@@ -1013,8 +1235,7 @@ marketRoutes.post(
 
         const { txBytes } = await prepareTransferTransaction(fromAccountId, toAccountId, task.priceHbar);
         const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
-        const sigB64Array = JSON.parse(signature) as string[];
-        const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
+        const signatureBytes = parseSignatureB64(signature);
         paymentTxId = await transferHbarWithSignature(txBytes, publicKey, signatureBytes);
       }
 
@@ -1026,7 +1247,7 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
 
       updateTaskStatus(taskId, "completed", { paymentTxId, completedTxId: hcsTxId });
 
@@ -1034,9 +1255,9 @@ marketRoutes.post(
 
       return c.json({ taskId, paymentTxId, completedAt: timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Convenience completion failed";
-      logger.error("Complete-with-key failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Complete-with-key failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1055,7 +1276,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task posted with agent-signed HCS transaction" },
       400: { description: "Missing required fields or invalid input" },
-      403: { description: "Poster passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or poster passport not found" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -1086,7 +1308,7 @@ marketRoutes.post(
     if (!description) {
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: description");
     }
-    if (!priceHbar) {
+    if (priceHbar === undefined) {
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required field: priceHbar");
     }
     if (!capabilities) {
@@ -1108,10 +1330,9 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a positive number");
     }
 
-    const posterValid = await verifyA2ADid(posterDid);
-    if (!posterValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Poster passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
 
     try {
       const fromAccountId = await didToAccountId(posterDid);
@@ -1120,7 +1341,7 @@ marketRoutes.post(
       }
 
       const timestamp = Math.floor(Date.now() / 1000);
-      const taskId = `task-${timestamp}-${Math.random().toString(36).slice(2, 8)}`;
+      const taskId = `task-${generateUlid()}`;
 
       const message = {
         type: "task_posted" as const,
@@ -1144,10 +1365,9 @@ marketRoutes.post(
 
       // 2. Sign the frozen transaction bytes with agent's private key
       const { signature, publicKey } = signTransactionBytes(txBytes, posterPrivateKey);
+      const signatureBytes = parseSignatureB64(signature);
 
       // 3. Submit signed transaction to HCS
-      const sigB64Array = JSON.parse(signature) as string[];
-      const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       const cached = {
@@ -1160,7 +1380,7 @@ marketRoutes.post(
         deadline,
         status: "posted" as const,
         txId,
-        consensusTimestamp: new Date(timestamp * 1000).toISOString(),
+        consensusTimestamp: `pending-consensus:${txId}`,
         createdAt: timestamp,
       };
       upsert(cached);
@@ -1169,9 +1389,9 @@ marketRoutes.post(
 
       return c.json({ txId, taskId, timestamp }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Signed task posting failed";
-      logger.error("Signed task posting failed", { error: msg });
-      return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Signed task posting failed", { error: err instanceof Error ? err.message : String(err) });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1190,7 +1410,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Task cancelled successfully" },
       400: { description: "Task cannot be cancelled from current status" },
-      403: { description: "Caller is not the poster" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Escrow cancellation or HCS submission failed" },
     },
@@ -1213,6 +1434,10 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
+
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
 
@@ -1228,6 +1453,12 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `Task cannot be cancelled from status: ${task.status}`);
     }
 
+    // SLICE-84-1: Atomic reservation before async escrow+HCS I/O
+    const reservation = reserveTask(taskId, ["posted", "claimed", "delivered"], "cancelling");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.INVALID_JSON, `Task is ${reservation.currentStatus}, cannot cancel`);
+    }
+
     try {
       if (task.scheduleId) {
         try {
@@ -1238,7 +1469,12 @@ marketRoutes.post(
         }
       }
 
-      updateTaskStatus(taskId, "cancelled");
+      // SLICE-84-1: Commit from transitional to final state
+      const committed = transitionTask(taskId, ["cancelling"], "cancelled");
+      if (!committed.ok) {
+        logger.error("Cancel commit failed — task state changed during I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.INVALID_JSON, "Task state changed during cancel");
+      }
 
       const timestamp = Math.floor(Date.now() / 1000);
       const message = {
@@ -1248,15 +1484,17 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
 
       logger.info("Marketplace task cancelled", { hcsTxId, taskId });
 
       return c.json({ taskId, cancelledAt: timestamp, hbarReturned: task.scheduleId ? task.priceHbar : 0 }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Cancel failed";
-      logger.error("Marketplace task cancel failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      // SLICE-84-1: Rollback to original status on failure
+      transitionTask(taskId, ["cancelling"], task.status);
+      const pub = toPublicError(err);
+      logger.error("Marketplace task cancel failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1274,7 +1512,8 @@ marketRoutes.post(
     responses: {
       200: { description: "Reward increased successfully" },
       400: { description: "Invalid new price or task status" },
-      403: { description: "Caller is not the poster" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match posterDid or caller is not the poster" },
       404: { description: "Task not found" },
       500: { description: "Escrow recreation or HCS submission failed" },
     },
@@ -1304,6 +1543,10 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing or invalid field: newPriceHbar");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, posterDid);
+    if (actorMismatch) return actorMismatch;
+
     const taskId = c.req.param("taskId");
     const task = getTaskById(taskId);
 
@@ -1323,9 +1566,18 @@ marketRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_JSON, `newPriceHbar (${newPriceHbar}) must be greater than current price (${task.priceHbar})`);
     }
 
+    // SLICE-84-1: Atomic reservation before async escrow+HCS I/O
+    const originalStatus = task.status;
+    const reservation = reserveTask(taskId, ["posted", "claimed"], "updating_reward");
+    if (!reservation.ok) {
+      return errorResponse(c, 409, ErrorCodes.INVALID_JSON, `Task is ${reservation.currentStatus}, cannot increase reward`);
+    }
+
     try {
       const fromAccountId = await didToAccountId(posterDid);
       if (!fromAccountId) {
+        // SLICE-84-1: Rollback on early return
+        transitionTask(taskId, ["updating_reward"], originalStatus);
         return errorResponse(c, 400, ErrorCodes.INTERNAL_ERROR, "Could not resolve poster DID to account ID");
       }
 
@@ -1360,15 +1612,24 @@ marketRoutes.post(
         timestamp,
       };
 
-      const hcsTxId = await submitTaskMessage(message);
+      const { txId: hcsTxId } = await submitTaskMessage(message);
+
+      // SLICE-84-1: Commit back to original status with updated price
+      const committed = transitionTask(taskId, ["updating_reward"], originalStatus, { priceHbar: newPriceHbar });
+      if (!committed.ok) {
+        logger.error("Increase-reward commit failed — task state changed during I/O", { taskId, currentStatus: committed.currentStatus });
+        return errorResponse(c, 409, ErrorCodes.INVALID_JSON, "Task state changed during reward increase");
+      }
 
       logger.info("Marketplace task reward increased", { hcsTxId, taskId, oldPrice: task.priceHbar, newPrice: newPriceHbar });
 
       return c.json({ taskId, newScheduleId, newPriceHbar, hcsTxId }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Reward increase failed";
-      logger.error("Marketplace reward increase failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      // SLICE-84-1: Rollback to original status on failure
+      transitionTask(taskId, ["updating_reward"], originalStatus);
+      const pub = toPublicError(err);
+      logger.error("Marketplace reward increase failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );
@@ -1397,11 +1658,14 @@ marketRoutes.get(
 
     return c.json({
       taskId,
-      scheduleId: (task as any).scheduleId ?? null,
-      escrowStatus: (task as any).escrowStatus ?? "none",
-      verificationAttempts: (task as any).verificationAttempts ?? 0,
-      verifierType: (task as any).verifierType ?? "noop",
+      scheduleId: task.scheduleId ?? null,
+      escrowStatus: task.escrowStatus ?? "none",
+      verificationAttempts: task.verificationAttempts ?? 0,
+      verifierType: task.verifierType ?? "noop",
       priceHbar: task.priceHbar,
+      // SLICE-84-2: Extended fields for reconciler observability
+      transitionalSince: task.transitionalSince ?? null,
+      lastError: task.lastError ?? null,
     }, 200);
   },
 );
@@ -1435,7 +1699,7 @@ marketRoutes.post(
     }
 
     try {
-      const outcome = await runVerification(task as any);
+      const outcome = await runVerification(task);
 
       if (outcome.attempts !== undefined) {
         updateTaskVerificationAttempts(taskId, outcome.attempts);
@@ -1451,9 +1715,9 @@ marketRoutes.post(
         report: outcome.result?.report ?? null,
       }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Verification failed";
-      logger.error("Marketplace verification failed", { error: msg, taskId });
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, msg, { retryable: true });
+      const pub = toPublicError(err);
+      logger.error("Marketplace verification failed", { error: err instanceof Error ? err.message : String(err), taskId });
+      return errorResponse(c, 500, pub.code, pub.safeMessage, { retryable: true });
     }
   },
 );

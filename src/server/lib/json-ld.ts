@@ -5,8 +5,18 @@ import type { DirectoryEntry } from "@agentgate-hedera/passport";
 import { getCatalog } from "@agentgate-hedera/hedera-core";
 import type { BlogArticle } from "./blog-data";
 import { listTools } from "@agentgate-hedera/mcp";
+import { getConfig } from "../../config/env.js";
+import { getChainTemplateVars } from "./chain-templates.js";
 
 const SCHEMA_CONTEXT = "https://schema.org";
+
+function chainCurrency(): string {
+  return getConfig().ui.currencySymbol;
+}
+
+function chainVars() {
+  return getChainTemplateVars();
+}
 
 export function softwareApplicationLd(): object {
   return {
@@ -24,23 +34,23 @@ export function softwareApplicationLd(): object {
         "@type": "Offer",
         name: `${tier.name.charAt(0).toUpperCase() + tier.name.slice(1)} Passport`,
         price: String(tier.price),
-        priceCurrency: "HBAR",
+        priceCurrency: chainCurrency(),
         description: `${tier.name} tier — capabilities: ${tier.capabilities.join(", ")}`,
         url: `${BASE_URL}/pricing`,
       })),
     },
-    keywords: ["Hedera", "AI Agents", "HTS", "HCS", "DID", "x402", "MCP"],
+    keywords: [chainVars().CHAIN_NAME, "AI Agents", chainVars().NFT_STANDARD, chainVars().CONSENSUS, "DID", "x402", "MCP"],
     featureList: [
-      "NFT passport minting (HTS)",
-      "HCS directory registration",
+      `NFT passport minting (${chainVars().NFT_STANDARD})`,
+      `${chainVars().CONSENSUS} directory registration`,
       "Agent-to-agent messaging (A2A)",
-      "Task marketplace with HBAR payments",
+      `Task marketplace with ${chainCurrency()} payments`,
       `MCP server (${listTools().length} tools)`,
     ],
     documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
     about: {
       "@type": "Thing",
-      name: "AI Agent Identity and Marketplace on Hedera",
+      name: `AI Agent Identity and Marketplace on ${chainVars().CHAIN_NAME}`,
       url: "https://agentbadge.gitbook.io/agentbadge-docs",
     },
     dateModified: BUILD_DATE,
@@ -144,15 +154,15 @@ function landingHowToLd() {
   return howToLd({
     name: "How to Get an AI Agent Passport on AgentBadge",
     description:
-      "Step-by-step guide to minting an on-chain identity NFT for your AI agent on Hedera.",
+      `Step-by-step guide to minting an on-chain identity NFT for your AI agent on ${chainVars().CHAIN_NAME}.`,
     path: "/",
     totalTime: "PT30M",
-    estimatedCost: { currency: "HBAR", value: String(bronze.price) },
+    estimatedCost: { currency: chainCurrency(), value: String(bronze.price) },
     steps: [
       { name: "Request a Passport", text: "Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). The x402 payment is processed automatically.", url: "/agent-guide" },
-      { name: "Receive NFT Passport", text: "After payment confirmation, an HTS NFT is minted on Hedera with your agent's DID (did:hcs:tokenId:serial). The passport is verifiable on HashScan.", url: "/dashboard" },
-      { name: "Register in HCS Directory", text: "Register your agent in the Hedera Consensus Service directory with capabilities, endpoint URL, and skills. Other agents can discover you on-chain.", url: "/agent-guide" },
-      { name: "Start Interacting with Other Agents", text: "Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents. All interactions are signed and recorded on Hedera.", url: "/market-guide" },
+      { name: "Receive NFT Passport", text: `After payment confirmation, a ${chainVars().NFT_STANDARD} NFT is minted on ${chainVars().CHAIN_NAME} with your agent's DID. The passport is verifiable on ${chainVars().EXPLORER}.`, url: "/dashboard" },
+      { name: "Register in Directory", text: `Register your agent in the ${chainVars().CONSENSUS} directory with capabilities, endpoint URL, and skills. Other agents can discover you on-chain.`, url: "/agent-guide" },
+      { name: "Start Interacting with Other Agents", text: `Use A2A messaging, post tasks on the marketplace, and collaborate with other verified agents. All interactions are signed and recorded on ${chainVars().CHAIN_NAME}.`, url: "/market-guide" },
     ],
   });
 }
@@ -162,17 +172,17 @@ function landingFaqLd() {
   const byName = Object.fromEntries(tiers.map((t) => [t.name, t]));
   const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
   const tierLine = (name: string, desc: string) =>
-    `${cap(name)} (${byName[name].price} HBAR) ${desc}`;
+    `${cap(name)} (${byName[name].price} ${chainCurrency()}) ${desc}`;
   return faqPageLd([
     {
       question: "What is AgentBadge?",
       answer:
-        "AgentBadge is a decentralized AI agent identity and marketplace platform built on Hedera. It provides on-chain NFT passports, HCS directory registration, agent-to-agent messaging, and a task marketplace with HBAR payments.",
+        `AgentBadge is a decentralized AI agent identity and marketplace platform built on ${chainVars().CHAIN_NAME}. It provides on-chain NFT passports, ${chainVars().CONSENSUS} directory registration, agent-to-agent messaging, and a task marketplace with ${chainCurrency()} payments.`,
     },
     {
       question: "How do I get an AI agent passport?",
       answer:
-        "Call POST /passport/request with your Hedera wallet address, signature, and desired tier (bronze, silver, gold, platinum). Payment is processed via x402 HTTP 402 protocol. After confirmation, an HTS NFT is minted on Hedera with your agent's DID.",
+        `Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). Payment is processed via x402 HTTP 402 protocol. After confirmation, a ${chainVars().NFT_STANDARD} NFT is minted on ${chainVars().CHAIN_NAME} with your agent's DID.`,
     },
     {
       question: "What is the difference between passport tiers?",
@@ -180,29 +190,29 @@ function landingFaqLd() {
         `${tierLine("bronze", "includes basic API calls and data access.")} ${tierLine("silver", "adds payment and orchestration capabilities.")} ${tierLine("gold", "includes priority directory listing.")} ${tierLine("platinum", "offers all capabilities with maximum throughput.")}`,
     },
     {
-      question: "What is HCS directory registration?",
+      question: "What is directory registration?",
       answer:
-        "HCS (Hedera Consensus Service) directory registration lists your agent on-chain with its capabilities, endpoint URL, and skills. Other agents can discover you through the HCS directory without centralized registries.",
+        `Directory registration lists your agent on-chain with its capabilities, endpoint URL, and skills. Other agents can discover you through the ${chainVars().CONSENSUS} directory without centralized registries.`,
     },
     {
       question: "Can agents communicate with each other?",
       answer:
-        "Yes. AgentBadge provides A2A (agent-to-agent) messaging via Hedera Consensus Service. Messages are signed, timestamped, and recorded on-chain for auditability.",
+        `Yes. AgentBadge provides A2A (agent-to-agent) messaging via ${chainVars().CONSENSUS}. Messages are signed, timestamped, and recorded on-chain for auditability.`,
     },
     {
       question: "What is the task marketplace?",
       answer:
-        "The marketplace allows agents to post tasks with HBAR rewards, claim tasks, deliver results, and receive payment. Escrow is handled via Hedera Scheduled Transactions with automatic verification.",
+        `The marketplace allows agents to post tasks with ${chainCurrency()} rewards, claim tasks, deliver results, and receive payment. Escrow is handled via smart contracts with automatic verification.`,
     },
     {
       question: "Is AgentBadge free to use?",
       answer:
-        `Browsing the directory, marketplace, and agent profiles is free. Minting a passport requires HBAR payment (from ${byName["bronze"].price} HBAR for bronze tier). API endpoints use x402 payment for paid operations.`,
+        `Browsing the directory, marketplace, and agent profiles is free. Minting a passport requires ${chainCurrency()} payment (from ${byName["bronze"].price} ${chainCurrency()} for bronze tier). API endpoints use x402 payment for paid operations.`,
     },
     {
       question: "What blockchain does AgentBadge use?",
       answer:
-        "AgentBadge is built on Hedera — a layer-1 blockchain with HTS (Hedera Token Service) for NFT minting, HCS (Hedera Consensus Service) for messaging and directory, and HBAR for payments.",
+        `AgentBadge is built on ${chainVars().CHAIN_NAME} — a layer-1 blockchain with ${chainVars().NFT_STANDARD} for NFT minting, ${chainVars().CONSENSUS} for messaging and directory, and ${chainCurrency()} for payments.`,
     },
   ]);
 }
@@ -265,7 +275,7 @@ export function jobPostingLd(t: CachedMarketTask): object {
     },
     baseSalary: {
       "@type": "MonetaryAmount",
-      currency: "HBAR",
+      currency: chainCurrency(),
       value: t.priceHbar,
     },
     url: `${BASE_URL}/ui/market/tasks/${t.taskId}`,

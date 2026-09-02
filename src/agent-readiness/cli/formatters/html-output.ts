@@ -22,6 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   infrastructure: "Infrastructure",
   seo_aeo: "SEO / AEO",
   accessibility: "Accessibility",
+  active_probing: "Active Probing",
 };
 
 function gradeLetter(score: number): string {
@@ -51,6 +52,7 @@ export interface HtmlOutputOptions {
   grade?: string;
   reportUrl?: string;
   fixHints?: boolean;
+  funnel?: import("../../scoring/funnel-computer").FunnelResult;
 }
 
 export function formatHtmlOutput(
@@ -116,6 +118,10 @@ export function formatHtmlOutput(
         </ul>
       </section>`
       : "";
+
+  const funnelSection = opts?.funnel
+    ? renderHtmlFunnel(opts.funnel)
+    : "";
 
   const reportUrlLine = reportUrl
     ? `<p class="report-url"><a href="${escapeHtml(reportUrl)}">View full report →</a></p>`
@@ -258,6 +264,35 @@ export function formatHtmlOutput(
       font-weight: 500;
     }
     .report-url a:hover { text-decoration: underline; }
+    .funnel {
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .funnel h2 { font-size: 1.125rem; margin-bottom: 0.75rem; }
+    .funnel-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.25rem 0;
+    }
+    .funnel-name { width: 120px; font-size: 0.875rem; }
+    .funnel-bar {
+      flex: 1;
+      height: 20px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .funnel-fill {
+      height: 100%;
+      background: var(--pass);
+      transition: width 0.3s;
+    }
+    .funnel-pct { font-size: 0.875rem; color: var(--muted); }
+    .drop-off { color: var(--fail); font-size: 0.75rem; }
   </style>
 </head>
 <body>
@@ -267,8 +302,29 @@ export function formatHtmlOutput(
     <div class="score-label">Agent Readiness Score</div>
     ${reportUrlLine}
   </div>
+  ${funnelSection}
   ${categorySections.join("\n")}
   ${fixSection}
 </body>
 </html>`;
+}
+
+function renderHtmlFunnel(funnel: import("../../scoring/funnel-computer").FunnelResult): string {
+  const rows = funnel.stages
+    .map((stage, i) => {
+      const pct = Math.round(stage.score);
+      const dropOff = i > 0 ? ` <span class="drop-off">↓${funnel.dropOff[i - 1]}%</span>` : "";
+      return `<div class="funnel-row">
+        <span class="funnel-name">${escapeHtml(stage.name)}</span>
+        <div class="funnel-bar"><div class="funnel-fill" style="width:${pct}%"></div></div>
+        <span class="funnel-pct">${pct}%${dropOff}</span>
+      </div>`;
+    })
+    .join("\n");
+
+  return `
+  <section class="funnel">
+    <h2>Readiness Funnel</h2>
+    ${rows}
+  </section>`;
 }

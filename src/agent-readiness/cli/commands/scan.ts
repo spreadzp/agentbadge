@@ -21,6 +21,7 @@ import { renderBadgeSvg } from "./badge";
 import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput, formatMarkdownOutput } from "../output";
 import { computeGrade } from "../../scoring/grade-computer";
 import { formatJsonApiOutput } from "../formatters/json-api-output";
+import { computeFunnel } from "../../scoring/funnel-computer";
 
 const DEFAULT_OUTPUT_PATH = "agentbadge-report.json";
 
@@ -42,6 +43,12 @@ const SCAN_FLAGS = [
   { name: "fix-hints", shortName: "", type: "boolean" as const, description: "Include fix suggestions in output" },
   { name: "compact", shortName: "", type: "boolean" as const, description: "Compact M2M JSON output (no whitespace)" },
   { name: "report-url", shortName: "", type: "string" as const, description: "Web report URL to include in output" },
+  { name: "funnel", shortName: "", type: "boolean" as const, description: "Show readiness funnel in output" },
+  { name: "auth-test", shortName: "", type: "boolean" as const, description: "Enable OAuth client_credentials auth probe during scan" },
+  { name: "client-id", shortName: "", type: "string" as const, description: "OAuth client_id for auth probe (or CLIENT_ID env var)" },
+  { name: "client-secret", shortName: "", type: "string" as const, description: "OAuth client_secret for auth probe (or CLIENT_SECRET env var)" },
+  { name: "probe", shortName: "", type: "boolean" as const, description: "Enable endpoint probing during scan" },
+  { name: "probe-endpoints", shortName: "", type: "string" as const, description: "Max endpoints to probe (default: 3)", default: "3" },
 ];
 
 export function registerScanCommand(): void {
@@ -73,10 +80,16 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
   const threshold = typeof flags.threshold === "string" ? parseInt(flags.threshold, 10) : 0;
   const outputPath = typeof flags.output === "string" ? flags.output : DEFAULT_OUTPUT_PATH;
   const noCache = flags["no-cache"] === true;
+  const showFunnel = flags.funnel === true;
+  const authTest = flags["auth-test"] === true;
+  const clientId = typeof flags["client-id"] === "string" ? flags["client-id"] : process.env.CLIENT_ID;
+  const clientSecret = typeof flags["client-secret"] === "string" ? flags["client-secret"] : process.env.CLIENT_SECRET;
+  const probe = flags.probe === true;
+  const probeEndpoints = typeof flags["probe-endpoints"] === "string" ? parseInt(flags["probe-endpoints"], 10) : 3;
 
   try {
     // Step 1: Scan domain (Epic 33)
-    const sourceState = await scanDomain(url, { noCache });
+    const sourceState = await scanDomain(url, { noCache, authTest, clientId, clientSecret, probe, probeEndpoints });
 
     // Step 2: Run rule engine (Epic 34)
     const ruleEngineResult = RuleEngine.run(sourceState);
@@ -112,6 +125,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         infrastructure: 5,
         seo_aeo: 5,
         accessibility: 4,
+        active_probing: 5,
       },
     };
     const scoreResult = runScoringEngine({
@@ -151,6 +165,23 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       const scoreVal = (scoreResult.total as any).score ?? 0;
       const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
       const categoryScores = Object.values(scoreResult.categories) as any[];
+      const funnelData = showFunnel
+        ? computeFunnel(Object.fromEntries(
+          Object.entries(scoreResult.categories).map(([k, v]) => [k, (v as any).score ?? 0]),
+        ))
+        : undefined;
+
+      // Extract probe/operational_discovery data from snapshots
+      const authProbeData = sourceState.snapshots.auth_probe?.body
+        ? JSON.parse(sourceState.snapshots.auth_probe.body)
+        : undefined;
+      const endpointProbeData = sourceState.snapshots.endpoint_probe?.body
+        ? JSON.parse(sourceState.snapshots.endpoint_probe.body)
+        : undefined;
+      const operationalDiscoveryData = sourceState.snapshots.operational_discovery?.body
+        ? JSON.parse(sourceState.snapshots.operational_discovery.body)
+        : undefined;
+
       const apiJson = formatJsonApiOutput({
         url,
         score: scoreVal,
@@ -159,6 +190,10 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         categoryScores,
         compact,
         reportUrl,
+        funnel: funnelData,
+        authProbe: authProbeData,
+        endpointProbe: endpointProbeData,
+        operationalDiscovery: operationalDiscoveryData,
       });
       return { exitCode: 0, stdout: apiJson, stderr: "" };
     }
@@ -181,7 +216,12 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     if (format === "html") {
       const scoreVal = (scoreResult.total as any).score ?? scoreResult.total as any;
       const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
-      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl });
+      const funnelData = showFunnel
+        ? computeFunnel(Object.fromEntries(
+          Object.entries(scoreResult.categories).map(([k, v]) => [k, (v as any).score ?? 0]),
+        ))
+        : undefined;
+      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData });
       if (outputPath !== DEFAULT_OUTPUT_PATH) {
         await writeFile(outputPath, html, "utf-8");
         return { exitCode: 0, stdout: `HTML report written to ${outputPath}`, stderr: "", outputFile: outputPath };
@@ -212,7 +252,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       exitCode = 1;
     }
 
-    const prettyOutput = formatPrettyOutput(report);
+    const prettyOutput = formatPrettyOutput(report, { showFunnel });
     const reportLine = reportUrl ? `\nWeb report: ${reportUrl}` : "";
     return {
       exitCode,

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { CachedA2AMessage, CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { MarketTask } from "../src/server/lib/market-task.js";
 
 vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
@@ -27,25 +28,35 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
   a2aClear: vi.fn(),
 }));
 
+vi.mock("../src/server/lib/chain-ui.js", () => ({
+  explorerTxUrl: (txId: string) => `https://explorer.test/tx/${txId}`,
+  explorerName: () => "Explorer",
+  accountPlaceholder: () => "0.0.xxxx",
+}));
+
 import { TaskMessagesFragment } from "../src/views/marketplace-fragment";
 
 const VIEWER_DID = "did:hcs:0.0.123:5";
 const POSTER_DID = "did:hcs:0.0.456:10";
 
-function makeTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
-  return {
-    taskId: "task-001",
+function makeTask(overrides: Partial<MarketTask> = {}): MarketTask {
+  const base: MarketTask = {
+    id: "task-001",
     posterDid: POSTER_DID,
     title: "Test Task",
     description: "Test description",
-    priceHbar: 5,
+    price: "5 HBAR",
+    priceRaw: "500000000",
+    currency: "HBAR",
     capabilities: ["data_analysis"],
     status: "posted",
     txId: "0.0.999@1700000000.000000001",
+    txExplorerUrl: "https://explorer.test/tx/0.0.999@1700000000.000000001",
+    posterAddress: "0.0.456",
     consensusTimestamp: "1700000000.000000001",
     createdAt: 1700000000,
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 function makeMsg(overrides: Partial<CachedA2AMessage> = {}): CachedA2AMessage {
@@ -110,14 +121,14 @@ describe("TaskMessagesFragment", () => {
     expect(str).not.toContain("Outbox (");
   });
 
-  it("includes HashScan link for message txId", () => {
+  it("includes explorer link for message txId", () => {
     const task = makeTask();
     const txId = "0.0.999@1700000000.000000001";
     const messages = [makeMsg({ txId })];
     const fragment = TaskMessagesFragment(task, messages, VIEWER_DID);
     const str = fragment.toString();
-    expect(str).toContain("hashscan.io");
-    expect(str).toContain("0.0.999-1700000000-000000001");
+    expect(str).toContain("explorer.test");
+    expect(str).toContain(txId);
   });
 
   it("includes fromAccountId and privateKey fields in reply form", () => {
@@ -152,7 +163,7 @@ describe("TaskMessagesFragment", () => {
     const task = makeTask();
     const fragment = TaskMessagesFragment(task, [], VIEWER_DID);
     const str = fragment.toString();
-    expect(str).toContain(`hx-post="/ui/market/tasks/${task.taskId}/send-message"`);
+    expect(str).toContain(`hx-post="/ui/market/tasks/${task.id}/send-message"`);
     expect(str).toContain('hx-target="#task-messages"');
     expect(str).toContain('hx-swap="outerHTML"');
   });

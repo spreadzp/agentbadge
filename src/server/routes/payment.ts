@@ -15,12 +15,16 @@ import type Stripe from "stripe";
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { listFiatProducts, getFiatProduct } from "../lib/pricing";
 import { fulfillOrder } from "../lib/order-fulfillment";
+import { EventLedger, withIdempotency } from "../lib/event-ledger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { captureError } from "../lib/sentry";
+import { logger } from "@agentgate-hedera/passport";
 import { checkoutResponseSchema, errorSchema } from "../openapi";
 import { renderPaymentSuccess, renderPaymentError } from "../../views/payment-success";
 import { renderPaymentCanceled } from "../../views/payment-canceled";
+
+const webhookLedger = new EventLedger();
 
 const fiatProductListSchema = z.object({
     products: z.array(
@@ -181,15 +185,31 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
     switch (event.type) {
         case "checkout.session.completed": {
             const session = event.data.object as Stripe.Checkout.Session;
-            try {
-                await fulfillOrder(session);
-            } catch (err) {
-                const message = err instanceof Error ? err.message : "Unknown error";
-                console.error(`[webhook] Fulfillment failed for session ${session.id}:`, message);
-                captureError(err, { sessionId: session.id, eventType: event.type });
-                return c.json({ error: "Fulfillment failed" }, 500);
+            const result = await withIdempotency(
+                webhookLedger,
+                event.id,
+                session.id,
+                async () => { await fulfillOrder(session); },
+                {
+                    onAlert: (info) => {
+                        logger.error("webhook: repeated failures", { attempts: info.attempts, eventId: info.eventId, lastError: info.lastError });
+                        captureError(new Error(`Webhook repeated failures: ${info.eventId}`), {
+                            eventId: info.eventId,
+                            sessionId: info.sessionId,
+                            attempts: info.attempts,
+                        });
+                    },
+                },
+            );
+            if (result.fulfilled) {
+                return c.json({ received: true });
             }
-            break;
+            if (result.deduped) {
+                return c.json({ received: true, deduped: true });
+            }
+            // Fulfillment failed
+            captureError(new Error(result.error), { sessionId: session.id, eventType: event.type });
+            return c.json({ error: "Fulfillment failed" }, 500);
         }
         default:
             break;

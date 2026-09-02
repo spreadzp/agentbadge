@@ -20,13 +20,21 @@ import {
   prepareA2ATopicMessage,
   signTransactionBytes,
   submitSignedTopicMessage,
-  didToAccountId,
 } from "@agentgate-hedera/hedera-core";
 import { a2aUpsert as upsert, getMessagesByTo, getConversation, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
+import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 
 export const a2aRoutes = new Hono();
+
+// EPIC-83 SLICE-83-2: Gate key-accepting endpoints (410 Gone unless ALLOW_KEY_ENDPOINTS=true)
+a2aRoutes.use("/a2a/*", keyEndpointGate());
+
+// Apply DID signature verification to mutation POST routes (except -with-key endpoints, EPIC-83)
+// Middleware self-skips GET/HEAD and -with-key paths
+a2aRoutes.use("/a2a/*", requireDidSignature());
 
 a2aRoutes.use("/a2a/*", async (c, next) => {
   await next();
@@ -47,7 +55,8 @@ a2aRoutes.post(
     responses: {
       200: { description: "Message sent successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Sender or recipient passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match sender, or sender/recipient passport not found or revoked" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -74,6 +83,10 @@ a2aRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid DID format");
     }
 
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, from);
+    if (actorMismatch) return actorMismatch;
+
     const fullMessage = JSON.stringify({
       type: "a2a_message",
       from,
@@ -92,11 +105,6 @@ a2aRoutes.post(
       );
     }
 
-    const senderValid = await verifyA2ADid(from);
-    if (!senderValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Sender passport not found or revoked");
-    }
-
     const recipientValid = await verifyA2ADid(to);
     if (!recipientValid) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Recipient passport not found or revoked");
@@ -112,9 +120,9 @@ a2aRoutes.post(
         contentType: contentType || "text/plain",
         timestamp,
       };
-      const txId = await submitA2AMessage(message);
+      const { txId, consensusTimestamp: receiptTs } = await submitA2AMessage(message);
 
-      const consensusTimestamp = `${timestamp}.${String(Date.now() % 1_000_000_000).padStart(9, "0")}`;
+      const consensusTimestamp = receiptTs ?? `pending-consensus:${txId}`;
       upsert({ ...message, txId, consensusTimestamp });
 
       logger.info("A2A message sent", { txId, from, to });
@@ -216,7 +224,7 @@ a2aRoutes.post(
       const signatureBytes = sigB64Array.map((s) => new Uint8Array(Buffer.from(s, "base64")));
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
-      const consensusTimestamp = `${timestamp}.${String(Date.now() % 1_000_000_000).padStart(9, "0")}`;
+      const consensusTimestamp = `pending-consensus:${txId}`;
       upsert({ ...message, txId, consensusTimestamp });
 
       logger.info("A2A message sent with key", { txId, from, to });
@@ -242,7 +250,8 @@ a2aRoutes.post(
     responses: {
       200: { description: "Message sent successfully" },
       400: { description: "Invalid request body or DID format" },
-      403: { description: "Sender or recipient passport not found or revoked" },
+      401: { description: "Missing or invalid DID signature headers" },
+      403: { description: "Verified DID does not match sender, or sender/recipient passport not found or revoked" },
       500: { description: "HCS submission failure" },
     },
   }),
@@ -274,10 +283,9 @@ a2aRoutes.post(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid DID format");
     }
 
-    const senderValid = await verifyA2ADid(from);
-    if (!senderValid) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND, "Sender passport not found or revoked");
-    }
+    // Assert verified DID matches actor field (defense-in-depth)
+    const actorMismatch = assertSameActor(c, from);
+    if (actorMismatch) return actorMismatch;
 
     const recipientValid = await verifyA2ADid(to);
     if (!recipientValid) {
@@ -290,7 +298,7 @@ a2aRoutes.post(
       const txId = await submitSignedTopicMessage(txBytes, publicKey, signatureBytes);
 
       const timestamp = Math.floor(Date.now() / 1000);
-      const consensusTimestamp = `${timestamp}.${String(Date.now() % 1_000_000_000).padStart(9, "0")}`;
+      const consensusTimestamp = `pending-consensus:${txId}`;
       const message = {
         type: "a2a_message" as const,
         from,

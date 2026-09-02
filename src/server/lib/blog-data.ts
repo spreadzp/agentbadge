@@ -813,6 +813,40 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 <p><strong>Related:</strong> <a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — SEO made websites discoverable. Agent Readiness makes APIs usable by AI agents. See the 10 differences.</p>
 
 <p><strong>Related:</strong> <a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — the evolution from website optimization to content optimization to API optimization for the agentic web.</p>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/what-is-agent-readiness-1b59",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/what-is-agent-readiness-agentbadge-blog-agentbadge-6661bd18750a",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-aiagents-share-7494045030396039169-QbUp/",
+      },
+      {
+        platform: "hackernews",
+        url: "https://news.ycombinator.com/item?id=49361630",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2088268170003907062",
+      },
+      {
+        platform: "qiita",
+        url: "https://qiita.com/buidl25/items/071c755727117a117c30",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/What-Is-Agent-Readiness-エージェント対応度とは",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185154-ما-هي-جاهزية-الوكلاء-agent-readiness",
+      },
+    ],
   },
   {
     slug: "api-has-seo-agent-readiness",
@@ -1394,6 +1428,28 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 <p><strong>Don't certify. Measure.</strong></p>
 
 <p><em>Agent Readiness for the agentic web.</em>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/the-web-is-becoming-agentic-what-happens-to-api-discovery-ddl",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/the-web-is-becoming-agentic-what-happens-to-api-discovery-d122f53ea95f",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_the-web-is-becoming-agentic-what-happens-share-7494492096607911936-WHhy/",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2088726795025531347",
+      },
+      {
+        platform: "qiita",
+        url: "https://qiita.com/buidl25/items/bac0af66ab884d5f9a19",
+      },
+    ],
   },
   {
     slug: "from-seo-to-geo-to-agent-readiness",
@@ -2451,7 +2507,48 @@ SUCCESS / FAILURE</code></pre>
 <p><strong>Don't certify. Measure.</strong></p>
 
 <p><em>For AI agents: the <a href="/agent-guide/articles/what-ai-agent-needs-to-understand-api">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
-    externalLinks: [],
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/what-does-an-ai-agent-actually-need-to-understand-an-api-mnc",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/what-does-an-ai-agent-actually-need-to-understand-an-api-3437e896cad0",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-agentreadiness-openapi-agenticweb-activity-7346021578993885184-2k2B",
+      },
+      {
+        platform: "hackernoon",
+        url: "https://app.hackernoon.com/drafts/6a87fd59ae8e8a513e297000",
+      },
+      {
+        platform: "reddit",
+        url: "https://www.reddit.com/r/AIDiscussion/comments/1vu9or1/what_information_does_an_ai_agent_actually_need/",
+      },
+      {
+        platform: "hashnode",
+        url: "https://agentbadge.hashnode.dev/what-does-an-ai-agent-actually-need-to-understand-an-api",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2090544674612142249",
+      },
+      {
+        platform: "zenn",
+        url: "https://zenn.dev/buidl25/articles/what-ai-agent-needs-to-understand-api",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/What-Does-an-AI-Agent-Actually-Need-to-Understand-an-API-AI-%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8%EA%B0%80-API%EB%A5%BC-%EC%9D%B4%ED%95%B4%ED%95%98%EA%B8%B0-%EC%9C%84%ED%95%B4-%EC%8B%A4%EC%A0%9C%EB%A1%9C-%ED%95%84%EC%9A%94%ED%95%9C-%EA%B2%83",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185180-ما-الذي-يحتاجه-وكيل-الذكاء-الاصطناعي-فعليًا-لفهم-واجهة-برمجية-api",
+      },
+    ],
   },
   {
     slug: "why-openapi-isnt-enough",
@@ -2611,7 +2708,7 @@ Should I retry?</code></pre>
 
 <blockquote><p><strong>How do we objectively determine what an agent can actually discover, understand, and use?</strong></p></blockquote>
 
-<p>That's the measurement problem. And it's what <a href="/blog/measure-dont-certify">Article 8 — "Measuring Agent Readiness: A Practical Framework for AI-Ready APIs"</a> addresses.</p>
+<p>That's the measurement problem. And it's what <a href="/blog/how-do-you-measure-agent-readiness">Article 8 — "How Do You Measure Agent Readiness?"</a> addresses.</p>
 
 <p>The measurement framework turns the 7 layers into 72 deterministic checks across 15 categories. Each check produces evidence. Each evidence item is scored. Each score is verifiable.</p>
 
@@ -2667,7 +2764,667 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json</co
 <p><em>OpenAPI describes an API. Agent Readiness describes whether an agent can actually use it.</em></p>
 
 <p><em>For AI agents: the <a href="/agent-guide/articles/why-openapi-isnt-enough">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
-    externalLinks: [],
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/why-your-openapi-spec-isnt-enough-for-ai-agents-3cpe",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/why-your-openapi-spec-isnt-enough-for-ai-agents-2a8fa11d2960",
+      },
+      {
+        platform: "linkedin",
+        url: "https://lnkd.in/p/dET7CMEU",
+      },
+      {
+        platform: "reddit",
+        url: "https://www.reddit.com/r/AI_Agents/comments/1vypbug/is_openapi_enough_for_ai_agents_what_do_you/",
+      },
+      {
+        platform: "hashnode",
+        url: "https://agentbadge.hashnode.dev/why-your-openapi-spec-isn-t-enough-for-ai-agents",
+      },
+      {
+        platform: "zenn",
+        url: "https://zenn.dev/buidl25/articles/why-openapi-isnt-enough-for-ai-agents",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/Why-Your-OpenAPI-Spec-Isnt-Enough-for-AI-Agents-OpenAPI-%EC%82%AC%EC%96%91%EC%9D%B4-AI-%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8%EC%97%90%EA%B2%8C-%EC%B6%A9%EB%B6%84%ED%95%98%EC%A7%80-%EC%95%8A%EC%9D%80-%EC%9D%B4%EC%9C%A0",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185226-ما-الذي-يحتاجه-وكيل-الذكاء-الاصطناعي-فعليا-لفهم-واجهة-برمجية-api",
+      },
+    ],
+  },
+  {
+    slug: "how-do-you-measure-agent-readiness",
+    title: "How Do You Measure Agent Readiness?",
+    description:
+      "Don't ask an LLM if your API is agent-ready. Measure specific properties with deterministic checks and show evidence for each result. A reproducible measurement framework for Agent Readiness.",
+    author: "AgentBadge Team",
+    authorRole: "Agency for the Agentic Web",
+    date: "2026-08-26",
+    dateModified: "2026-08-26",
+    agentGuideSlug: "how-do-you-measure-agent-readiness",
+    heroImage: "/images/blog/how-do-you-measure-agent-readiness/1s.webp",
+    ogImage: "/images/blog/how-do-you-measure-agent-readiness/og.webp",
+    shortAnswer:
+      "Agent Readiness should be measured with deterministic checks and evidence, not LLM opinions. The framework uses four categories (Discovery, Documentation, Authentication, Machine Readability), four assertion statuses (VERIFIED, INFERRED, CONFLICT, MISSING), and a reproducibility formula: same URL + same ruleset + same time = same result.",
+    tags: ["agent-readiness", "measurement", "evidence", "deterministic", "scoring"],
+    readingTime: "10 min",
+    content: `<blockquote><p>If Agent Readiness is real, it should be measurable. And the measurement should be reproducible.</p></blockquote>
+
+<p>You've read about <a href="/blog/what-is-agent-readiness">what Agent Readiness is</a>. You've seen <a href="/blog/why-ai-agents-fail-to-use-apis">why AI agents fail to use APIs</a> and <a href="/blog/what-ai-agent-needs-to-understand-api">what an agent needs to understand</a>. You know <a href="/blog/why-openapi-isnt-enough">why OpenAPI alone isn't enough</a>.</p>
+
+<p>Now the question shifts from "what" to "how":</p>
+
+<blockquote><p><strong>How do you objectively determine whether an API is ready for AI agents?</strong></p></blockquote>
+
+<p>This article introduces a measurement framework for Agent Readiness — one built on deterministic checks, evidence, and reproducibility. Not opinions. Not LLM scores. Measurable properties that any scanner can verify.</p>
+
+<img src="/images/blog/how-do-you-measure-agent-readiness/1s.webp" alt="Hero — Subjective labels on the left (AI-friendly, Agent-ready, Optimized for AI) with question marks, deterministic formula on the right (same URL + same ruleset + same time = same result) with a green checkmark" />
+
+<hr />
+
+<h2>The Measurement Problem</h2>
+
+<p>Labels like "AI-friendly API", "Agent-ready", and "Optimized for AI" are everywhere. They sound useful. They aren't.</p>
+
+<p>Two auditors can look at the same API and disagree on whether it's "agent-friendly." An LLM can score the same API differently on different runs. A marketing page can claim "AI-optimized" without any way to verify what that means.</p>
+
+<p>The problem isn't that these labels are wrong. The problem is that they're <strong>not reproducible</strong>. If two people can look at the same API and reach different conclusions, the measurement isn't real — it's an opinion.</p>
+
+<p>If Agent Readiness is a real property of an API, it should be measurable. And the measurement should satisfy a simple requirement:</p>
+
+<pre><code>same URL + same ruleset + same point in time = same result</code></pre>
+
+<p>This is the reproducibility requirement. It's what separates measurement from opinion.</p>
+
+<hr />
+
+<h2>What Should We Measure?</h2>
+
+<p>Agent Readiness isn't a single number. It's a set of properties across four categories:</p>
+
+<ul>
+  <li><strong>Discovery</strong> — Can an agent find the API?</li>
+  <li><strong>Documentation</strong> — Can an agent understand the API?</li>
+  <li><strong>Authentication</strong> — Can an agent authenticate autonomously?</li>
+  <li><strong>Machine Readability</strong> — Can an agent interact machine-to-machine?</li>
+</ul>
+
+<p>But these aren't just checkboxes. Each category contains specific, testable assertions — properties that can be verified with HTTP requests:</p>
+
+<pre><code>Discovery
+  ✓ OpenAPI is discoverable
+  ✓ llms.txt exists
+  ✓ Documented API entry point exists
+
+Authentication
+  ✓ Authentication mechanism is declared
+  ✓ Required credentials are documented
+  ✓ Protected endpoint behavior is understandable</code></pre>
+
+<p>The question isn't "does the API have OpenAPI?" The question is "can we verify that OpenAPI is discoverable?" — and that's a testable property.</p>
+
+<img src="/images/blog/how-do-you-measure-agent-readiness/2s.webp" alt="Deterministic pipeline: URL → Scanner → Evidence → Rules → Score, with AI copilot as optional dashed step at the end" />
+
+<hr />
+
+<h2>Deterministic Before Intelligent</h2>
+
+<p>This is the central principle of the measurement framework.</p>
+
+<p>First:</p>
+
+<pre><code>HTTP response → Rule → Evidence → Result</code></pre>
+
+<p>Then, AI can help interpret complex cases. But the AI is a copilot, not the primary engine.</p>
+
+<p>The wrong approach:</p>
+
+<pre><code>URL → LLM → "Looks agent-ready: 76/100"</code></pre>
+
+<p>The right approach:</p>
+
+<pre><code>URL → Deterministic scanner → Evidence → Rules → Score → AI copilot (optional)</code></pre>
+
+<p>This is what distinguishes AgentBadge from an AI auditor. Deterministic checks are reproducible — same input, same output, every time. LLM assessments are not. An LLM might score the same API as 76 today and 82 tomorrow. A deterministic scanner will give you the same result as long as the API hasn't changed.</p>
+
+<p>This doesn't mean AI is useless. AI is excellent at interpreting ambiguous evidence, suggesting fixes, and explaining results. But the measurement itself — the check, the evidence, the score — should be deterministic.</p>
+
+<hr />
+
+<h2>Evidence, Not Opinions</h2>
+
+<p>Every assertion in the measurement framework comes with evidence. Not "we think this is true" — but the actual HTTP response that proves it.</p>
+
+<p>Here's what an evidence card looks like:</p>
+
+<pre><code>OPENAPI_DISCOVERABLE
+Status: VERIFIED
+
+Evidence:
+  GET /openapi.json
+  HTTP 200
+  Content-Type: application/json
+  Valid OpenAPI document</code></pre>
+
+<img src="/images/blog/how-do-you-measure-agent-readiness/3s.webp" alt="Evidence card: OPENAPI_DISCOVERABLE with Status: VERIFIED in green, evidence block showing GET /openapi.json, HTTP 200, Content-Type: application/json, Valid OpenAPI document" />
+
+<p>This is the key difference between measuring and certifying. A certification says "this API is agent-ready." An evidence card says "here is the HTTP response that proves OpenAPI is discoverable."</p>
+
+<blockquote><p><strong>Don't tell developers what to believe. Show them what we measured.</strong></p></blockquote>
+
+<p>When every assertion includes evidence, the conversation changes. Instead of debating whether an API is "ready," you can point to specific findings: 72 checks run, 58 passed, 14 failed — here's the evidence for each.</p>
+
+<hr />
+
+<h2>Assertions</h2>
+
+<p>A scan result is not a magic score. It's a set of assertions — each one testable, each one with a status and evidence:</p>
+
+<table>
+  <thead>
+    <tr><th>Assertion</th><th>Status</th><th>Evidence</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>OpenAPI discoverable</td><td>VERIFIED</td><td><code>/openapi.json → 200</code></td></tr>
+    <tr><td>Authentication documented</td><td>VERIFIED</td><td><code>securitySchemes</code> present in spec</td></tr>
+    <tr><td>Machine-readable errors</td><td>MISSING</td><td>HTML error response, not structured</td></tr>
+    <tr><td>Agent guide</td><td>MISSING</td><td><code>404 /agent-guide.json</code></td></tr>
+  </tbody>
+</table>
+
+<img src="/images/blog/how-do-you-measure-agent-readiness/4s.webp" alt="Assertions table: four rows showing Assertion, Status, and Evidence columns — two VERIFIED in green, two MISSING in red" />
+
+<p>This table is the heart of the measurement. Before you look at the score, you look at the assertions. Each assertion tells you something specific about the API — and each one is independently verifiable.</p>
+
+<hr />
+
+<h2>VERIFIED / INFERRED / CONFLICT / MISSING</h2>
+
+<p>Every assertion has one of four statuses:</p>
+
+<ul>
+  <li><strong>VERIFIED</strong> — Direct proof exists. The scanner found the evidence.</li>
+  <li><strong>MISSING</strong> — Not found. The scanner looked and didn't find it.</li>
+  <li><strong>INFERRED</strong> — There are reasonable grounds to believe this is true, but the evidence is insufficient for verification.</li>
+  <li><strong>CONFLICT</strong> — Two sources contradict each other.</li>
+</ul>
+
+<p>Here's a real example of CONFLICT:</p>
+
+<pre><code>OpenAPI spec says:    POST /refund
+Agent Guide says:     POST /refund-request</code></pre>
+
+<p>Two sources, same API, different paths. The assertion status is CONFLICT — not VERIFIED, not MISSING. The scanner can't verify which is correct without making a live request, so it flags the contradiction.</p>
+
+<img src="/images/blog/how-do-you-measure-agent-readiness/5s.webp" alt="Status model: four cards in a 2x2 grid — VERIFIED (green checkmark), MISSING (red x), INFERRED (yellow question mark), CONFLICT (orange warning) with one-line definitions" />
+
+<p>The distinction between INFERRED and VERIFIED matters. INFERRED means "this looks right, but we can't prove it." VERIFIED means "here's the proof." An API that claims to have structured errors but returns <code>text/html</code> on error responses isn't VERIFIED — it might be INFERRED or MISSING depending on what the scanner found.</p>
+
+<blockquote><p><strong>Confidence is not the same thing as verification.</strong></p></blockquote>
+
+<hr />
+
+<h2>Scoring</h2>
+
+<p>Only after assertions are established do we compute a score. The score is derived from the assertions — not the other way around.</p>
+
+<pre><code>Discovery           18/20
+Documentation       19/25
+Authentication      17/20
+Machine Readability 15/20
+Verification        10/15
+─────────────────────────
+Total               79/100</code></pre>
+
+<img src="/images/blog/how-do-you-measure-agent-readiness/6s.webp" alt="Scoring breakdown: five category bars in cyan with scores, total 79/100 in green, and a category floor example showing Discovery = 0 blocking a 91/100 total" />
+
+<p>There's a critical rule in the scoring model: <strong>category floor</strong>. A high total score should not hide a critical zero in a fundamental category.</p>
+
+<p>If Discovery = 0, the API is effectively invisible to agents. No amount of excellent documentation or perfect authentication can compensate for the fact that agents can't find the API. A score of 91/100 with Discovery = 0 is misleading — it suggests the API is nearly ready when it's actually missing the most fundamental layer.</p>
+
+<p>The category floor prevents this. If any critical category is zero, the total score is capped. A high score should reflect actual readiness, not average out a fatal gap.</p>
+
+<blockquote><p><strong>A high score should not hide a critical zero.</strong></p></blockquote>
+
+<hr />
+
+<h2>Score ≠ Certification</h2>
+
+<p>AgentBadge doesn't say "this API is safe" or "this API is approved for agents."</p>
+
+<p>It says: <strong>"Here is what we measured, under this ruleset, at this point in time."</strong></p>
+
+<p>This distinction matters for three reasons:</p>
+
+<ol>
+  <li><strong>Trust</strong> — Developers can verify the evidence themselves. They don't need to trust a badge; they can check the proof.</li>
+  <li><strong>Legal risk</strong> — Certification implies endorsement. Measurement implies observation. AgentBadge observes and reports; it doesn't endorse.</li>
+  <li><strong>Reproducibility</strong> — Anyone can run the same checks and get the same results. The measurement is transparent, not opaque.</li>
+</ol>
+
+<blockquote><p><strong>Don't certify. Measure.</strong></p></blockquote>
+
+<hr />
+
+<h2>Reproducibility</h2>
+
+<p>A measurement is only useful if it can be independently verified. The reproducibility formula is:</p>
+
+<pre><code>URL + timestamp + ruleset version + scan artifact + report hash</code></pre>
+
+<p>Example:</p>
+
+<pre><code>Agent Readiness v1.0
+Scan: 2026-08-26T14:03:22Z
+Ruleset: agentbadge-ruleset@1.0.0
+Report hash: a3f7b2c1...
+Score: 79/100</code></pre>
+
+<p>Every scan records the URL, the timestamp, the ruleset version, and produces a report hash. The scan artifact is preserved. Another scanner — or another developer — can run the same checks against the same URL with the same ruleset and verify the results.</p>
+
+<p>This is what makes the measurement real. It's not a subjective assessment that changes with the auditor. It's a deterministic process that produces the same output for the same input.</p>
+
+<hr />
+
+<h2>Static Measurement vs Real Agent Behavior</h2>
+
+<p>An honest caveat: <strong>static readiness does not prove that every AI agent will successfully use an API.</strong></p>
+
+<p>AgentBadge measures whether an API <em>can be</em> discovered, understood, and potentially used by an agent — based on observable evidence. It doesn't measure whether every agent <em>will</em> successfully complete every task.</p>
+
+<p>These are different questions:</p>
+
+<ul>
+  <li><strong>Static measurement</strong>: "Does the API expose the properties that an agent needs?" (Phase 1)</li>
+  <li><strong>Active verification</strong>: "Can an agent actually perform specific operations?" (Phase 2)</li>
+  <li><strong>Behavioral verification</strong>: "What does the agent do when it encounters this API in production?" (Future)</li>
+</ul>
+
+<p>The measurement framework starts with Phase 1 — static measurement. It's the foundation. But it's not the end of the road.</p>
+
+<pre><code>Phase 1: Static measurement (current)
+    ↓
+Phase 2: Active verification (next)
+    ↓
+Future: Behavioral / runtime verification</code></pre>
+
+<p>Runtime telemetry, agent behavior logging, and real-world performance metrics are future work. They belong in later articles, not this one. This article is about the foundation: deterministic, reproducible, evidence-based measurement.</p>
+
+<hr />
+
+<h2>What to Do with Results</h2>
+
+<p>Measurement without action is just data. The cycle is:</p>
+
+<pre><code>Measure → Evidence → Fix</code></pre>
+
+<p>Here's what a typical result looks like:</p>
+
+<pre><code>Score: 76/100
+
+Missing:
+  ✗ Authentication documentation
+  ✗ Machine-readable errors
+  ✗ Agent discovery endpoint</code></pre>
+
+<p>The question every API team asks: <strong>"What can I do about it?"</strong></p>
+
+<p>The answer is in the evidence. Each MISSING assertion points to a specific, fixable gap:</p>
+
+<ul>
+  <li><strong>Authentication documentation missing</strong> → Add <code>securitySchemes</code> to your OpenAPI spec with flow details</li>
+  <li><strong>Machine-readable errors missing</strong> → Return <code>application/problem+json</code> (RFC 9457) instead of HTML error pages</li>
+  <li><strong>Agent discovery endpoint missing</strong> → Add <code>/.well-known/openapi</code> or <code>/agent-guide.json</code></li>
+</ul>
+
+<p>Fix the gaps. Re-scan. Verify the improvements with measurable evidence.</p>
+
+<p>This is where measurement becomes actionable — and where it bridges to <a href="/blog/from-scan-to-fix">Article 12: "From Scan to Fix: How to Improve Your Agent Readiness Score"</a> (upcoming).</p>
+
+<hr />
+
+<h2>For AI Agents</h2>
+
+<p>If you're an AI agent evaluating API readiness, AgentBadge provides a machine-readable knowledge layer with structured metadata about the measurement framework, scoring model, and scanner capabilities.</p>
+
+<pre><code>/agent-guide/
+/agent-guide/articles/how-do-you-measure-agent-readiness
+/agent-guide/concepts/agent-readiness
+/agent-guide/concepts/scoring
+/agent-guide/capabilities/scanner
+/agent-guide/knowledge-map.json</code></pre>
+
+<p>The machine-readable endpoint for this article provides 10 fields: <code>measurement_problem</code>, <code>key_concepts</code>, <code>deterministic_approach</code>, <code>evidence_model</code>, <code>assertion_statuses</code>, <code>scoring_model</code>, <code>reproducibility</code>, <code>agentbadge_relevant_capabilities</code>, <code>recommended_next_actions</code>, <code>related_articles</code>.</p>
+
+<hr />
+
+<h2>Related Articles</h2>
+
+<ul>
+  <li><a href="/blog/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1: the foundational concept</li>
+  <li><a href="/blog/why-ai-agents-fail-to-use-apis">Why AI Agents Fail to Use APIs</a> — Article 5: 7 failure modes that measurement addresses</li>
+  <li><a href="/blog/what-ai-agent-needs-to-understand-api">What Does an AI Agent Need to Understand an API?</a> — Article 6: 8 context layers that measurement checks</li>
+  <li><a href="/blog/why-openapi-isnt-enough">Why Your OpenAPI Spec Isn't Enough for AI Agents</a> — Article 7: the structural gap that measurement fills</li>
+  <li><em>Inside an Agent Readiness Scanner</em> — Article 9 (upcoming): the engineering architecture behind the measurement engine</li>
+</ul>
+
+<hr />
+
+<p><em>Don't certify. Measure.</em></p>
+
+<p><em>For AI agents: the <a href="/agent-guide/articles/how-do-you-measure-agent-readiness">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/how-do-you-measure-agent-readiness-3328",
+      },
+      {
+        platform: "medium",
+        url: "https://paulspread-99907.medium.com/how-do-you-measure-agent-readiness-7cb901d373ea",
+      },
+      {
+        platform: "linkedin",
+        url: "https://www.linkedin.com/feed/update/urn:li:activity:7498387449077989376/",
+      },
+      {
+        platform: "hackernoon",
+        url: "https://app.hackernoon.com/articles/6a8f0df5807c8a77117228a5",
+      },
+      {
+        platform: "reddit",
+        url: "https://www.reddit.com/r/AIDiscussion/comments/1vz30hb/how_do_you_measure_if_an_api_is_ready_for_ai/",
+      },
+      {
+        platform: "hashnode",
+        url: "https://agentbadge.hashnode.dev/how-do-you-measure-agent-readiness",
+      },
+      {
+        platform: "twitter",
+        url: "https://x.com/paul_spread/status/2092620769977082069",
+      },
+      {
+        platform: "zenn",
+        url: "https://zenn.dev/buidl25/articles/how-do-you-measure-agent-readiness",
+      },
+      {
+        platform: "velog",
+        url: "https://velog.io/@buidl_25/How-Do-You-Measure-Agent-Readiness",
+      },
+      {
+        platform: "hsoub",
+        url: "https://io.hsoub.com/artificial_intelligence/185233-كيف-تقيس-جاهزية-الوكلاء",
+      },
+    ],
+  },
+  {
+    slug: "inside-an-agent-readiness-scanner",
+    title: "Inside an Agent Readiness Scanner: Rules, Evidence and Reproducibility",
+    description:
+      "Why 87/100? Evidence over opinions in API measurement. Rules, evidence, assertions, scoring, and reproducibility — inside the AgentBadge scanner.",
+    author: "AgentBadge Team",
+    authorRole: "Agency for the Agentic Web",
+    date: "2026-08-27",
+    dateModified: "2026-08-27",
+    agentGuideSlug: "inside-an-agent-readiness-scanner",
+    heroImage: "/images/blog/inside-an-agent-readiness-scanner/1s.webp",
+    ogImage: "/images/blog/inside-an-agent-readiness-scanner/og.webp",
+    shortAnswer:
+      "An Agent Readiness score is not an LLM opinion. It's the output of a deterministic pipeline: Rules → Evidence → Assertions → Score → Report. Every assertion has a status (VERIFIED, INFERRED, CONFLICT, MISSING). Rules are versioned. Results are reproducible: same target + same measurement state + same ruleset = same result.",
+    tags: ["agent-readiness", "scanner", "evidence", "reproducibility", "rules"],
+    readingTime: "12 min",
+    content: `<blockquote><p>For AI agents: Start with the <a href="/agent-guide/">Agent Knowledge Layer</a> to access machine-readable concepts, scanner capabilities, scoring rules, and the complete learning path.</p></blockquote>
+
+<p>When someone tells you that an API has an <strong>87/100 Agent Readiness score</strong>, the first question should not be:</p>
+
+<blockquote><p>"Is 87 a good score?"</p></blockquote>
+
+<p>The better question is:</p>
+
+<blockquote><p><strong>"Why is it 87?"</strong></p></blockquote>
+
+<p>And the question after that is even more important:</p>
+
+<blockquote><p><strong>"Can I reproduce the result myself?"</strong></p></blockquote>
+
+<p>Agent Readiness should not be an opinion generated by an LLM. It should be a measurable property of a service, calculated from explicit rules and supported by evidence.</p>
+
+<p>The core idea is simple: <strong>Rules → Evidence → Assertions → Score → Report</strong></p>
+
+<img src="/images/blog/inside-an-agent-readiness-scanner/1s.webp" alt="Hero — Measurement pipeline diagram: API → Scanner → Rules → Evidence → Assertions → Score → Report, with assertion states VERIFIED, INFERRED, CONFLICT, MISSING shown below" />
+
+<hr />
+
+<h2>1. A scanner should measure, not guess</h2>
+
+<p>Imagine two tools scanning the same API.</p>
+
+<p>Tool A says: "Your API appears to be highly suitable for AI agents."</p>
+
+<p>Tool B says: "AB-004 passed because <code>https://example.com/openapi.json</code> returned HTTP 200 and contained a valid OpenAPI document."</p>
+
+<p>Which result would you trust? The second one tells you what was checked, what rule was applied, what evidence was found, why the rule passed or failed, and where the evidence came from.</p>
+
+<blockquote><p><strong>Every meaningful score should be explainable through evidence.</strong></p></blockquote>
+
+<p>The scanner should not ask an AI model: "How agent-ready does this API feel?" It should ask deterministic questions: "Does this URL exist?" "Does it return the expected content type?" "Does the response contain an OpenAPI document?"</p>
+
+<hr />
+
+<h2>2. Rules are the measurement instrument</h2>
+
+<p>AgentBadge treats rules as explicit, versioned measurement definitions.</p>
+
+<pre><code>AB-001
+Name: OpenAPI discoverability
+
+Given:
+  target = https://example.com
+
+Check:
+  GET /.well-known/openapi.json
+
+Pass when:
+  HTTP status = 200
+  AND response is valid OpenAPI
+
+Evidence:
+  URL
+  HTTP status
+  content type
+  content hash
+
+Severity:
+  medium</code></pre>
+
+<p>The rule is not: "The API looks well documented." It is: "This specific machine-readable artifact was found and passed these specific checks."</p>
+
+<hr />
+
+<h2>3. Deterministic before intelligent</h2>
+
+<blockquote><p><strong>Deterministic before intelligent.</strong></p></blockquote>
+
+<table>
+<tr><th>Question</th><th>Preferred method</th></tr>
+<tr><td>Does <code>robots.txt</code> exist?</td><td>HTTP request</td></tr>
+<tr><td>Does sitemap exist?</td><td>HTTP request + parser</td></tr>
+<tr><td>Does OpenAPI exist?</td><td>HTTP request + schema validation</td></tr>
+<tr><td>Is JSON valid?</td><td>JSON parser</td></tr>
+<tr><td>Does declared endpoint exist in another document?</td><td>Exact matching</td></tr>
+<tr><td>What does an undocumented endpoint mean?</td><td>AI-assisted inference</td></tr>
+<tr><td>What does an API capability actually mean?</td><td>Human confirmation / assisted review</td></tr>
+</table>
+
+<p>AI is a <strong>copilot</strong>, not the authority responsible for the score.</p>
+
+<hr />
+
+<h2>4. Evidence is the missing layer</h2>
+
+<p>A score without evidence is difficult to trust. <code>Documentation: 18/25</code> tells you almost nothing.</p>
+
+<pre><code>AB-007  OpenAPI discoverability
+
+STATUS: VERIFIED
+
+Evidence:
+GET https://api.example.com/openapi.json
+HTTP 200
+Content-Type: application/json
+
+OpenAPI version:
+3.1.0
+
+Confidence:
+1.00</code></pre>
+
+<p><strong>Evidence is part of the measurement itself.</strong></p>
+
+<hr />
+
+<h2>5. Assertions connect evidence and scoring</h2>
+
+<pre><code>{
+  "rule_id": "AB-007",
+  "status": "VERIFIED",
+  "target": "https://api.example.com/openapi.json",
+  "evidence": {
+    "http_status": 200,
+    "content_type": "application/json"
+  },
+  "confidence": 1.0
+}</code></pre>
+
+<p>Four states: <strong>VERIFIED</strong> (direct evidence), <strong>INFERRED</strong> (reasonable but insufficient), <strong>CONFLICT</strong> (two sources disagree), <strong>MISSING</strong> (not found).</p>
+
+<hr />
+
+<h2>6. Confidence is not the same as verification</h2>
+
+<p>An LLM may be 94% confident an API supports refunds. Without machine-readable evidence, it stays INFERRED. The user can Confirm, Edit, or Reject.</p>
+
+<hr />
+
+<h2>7. Reproducibility matters</h2>
+
+<pre><code>{
+  "target": "https://api.example.com",
+  "ruleset": "agent-readiness-v1.0",
+  "scanner_version": "0.2.0",
+  "timestamp": "...",
+  "assertions": [...],
+  "score": {
+    "total": 76,
+    "categories": {
+      "discovery": 18,
+      "documentation": 20,
+      "authentication": 17,
+      "machine_readability": 21
+    }
+  }
+}</code></pre>
+
+<img src="/images/blog/inside-an-agent-readiness-scanner/3s.webp" alt="Reproducibility infographic — three identical inputs converging into the same result" />
+
+<hr />
+
+<h2>8. Rules must be versioned</h2>
+
+<p><code>Agent Readiness v1.0</code> must not silently become <code>v1.1</code>. Same target + same measurement state + same ruleset = reproducible result.</p>
+
+<hr />
+
+<h2>9. Why open rules do not destroy the product</h2>
+
+<p>The moat is not secret rules. It's the standard installed inside the developer workflow: GitHub Actions, README badges, continuous monitoring, regression alerts.</p>
+
+<hr />
+
+<h2>10. The score should explain itself</h2>
+
+<pre><code>+8  OpenAPI documentation detected
+-12  New authentication issue detected
++0   Discovery unchanged
+Result: 76 → 72</code></pre>
+
+<hr />
+
+<h2>11. From Measure to Prove to Improve</h2>
+
+<p><strong>MEASURE (Scan) → PROVE (Evidence + Assertions) → IMPROVE (Fix / Review) → Measure again.</strong></p>
+
+<img src="/images/blog/inside-an-agent-readiness-scanner/2s.webp" alt="Measure → Prove → Improve cycle diagram" />
+
+<hr />
+
+<h2>12. What AgentBadge should never claim</h2>
+
+<p>AgentBadge measures Agent Readiness. It does not certify security, business correctness, or reliability.</p>
+
+<blockquote><p><strong>Don't certify. Measure.</strong></p></blockquote>
+
+<hr />
+
+<h2>13. What this enables</h2>
+
+<pre><code>npx @agentbadge/cli scan https://api.example.com</code></pre>
+
+<p>CI enforcement, README badges, programmatic queries, vendor comparison.</p>
+
+<hr />
+
+<h2>14. The bigger idea</h2>
+
+<p>Performance has metrics. Accessibility has checks. Security has scanners. The agentic web needs the same.</p>
+
+<p><strong>Define the rules. Collect the evidence. Show the reasoning. Version the rules. Make the result reproducible.</strong></p>
+
+<hr />
+
+<h2>Related Articles</h2>
+
+<ul>
+<li><a href="/blog/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1</li>
+<li><a href="/blog/why-ai-agents-fail-to-use-apis">Why AI Agents Fail to Use APIs</a> — Article 5</li>
+<li><a href="/blog/what-ai-agent-needs-to-understand-api">What Does an AI Agent Need to Understand an API?</a> — Article 6</li>
+<li><a href="/blog/why-openapi-isnt-enough">Why Your OpenAPI Spec Isn't Enough</a> — Article 7</li>
+<li><a href="/blog/how-do-you-measure-agent-readiness">How Do You Measure Agent Readiness?</a> — Article 8</li>
+</ul>
+
+<p><em>For AI agents: the <a href="/agent-guide/articles/inside-an-agent-readiness-scanner">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
+    externalLinks: [
+      {
+        platform: "devto",
+        url: "https://dev.to/spread2009/inside-an-agent-readiness-scanner-rules-evidence-and-reproducibility-3j9k",
+      },
+      {
+        platform: "medium",
+        url: "",
+      },
+      {
+        platform: "linkedin",
+        url: "",
+      },
+      {
+        platform: "hashnode",
+        url: "",
+      },
+      {
+        platform: "twitter",
+        url: "",
+      },
+      {
+        platform: "reddit",
+        url: "",
+      },
+    ],
   },
 ];
 

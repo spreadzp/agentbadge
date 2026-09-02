@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { VerificationPanel } from "../../src/views/marketplace-fragment";
 import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
 

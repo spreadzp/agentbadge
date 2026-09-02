@@ -1,5 +1,6 @@
 import { resolveAndPin } from "./dns-pin";
 import { assertSafeIp } from "./ip-guard";
+import { fetchPinned } from "./pinned-fetch";
 import {
   ScannerError,
   ScannerErrorCodes,
@@ -137,7 +138,7 @@ async function fetchSingleHop(
   const totalTimer = setTimeout(() => controller.abort(), config.timeout.total);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchPinned(url, ip, {
       method: "GET",
       redirect: "manual",
       signal: controller.signal,
@@ -155,7 +156,6 @@ async function fetchSingleHop(
     let totalSize = 0;
 
     if (reader) {
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

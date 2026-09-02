@@ -33,11 +33,17 @@ export interface LineageEdge {
 }
 export declare class DataHubClient {
     private readonly baseUrl;
-    private readonly token;
+    private readonly staticToken;
+    private readonly actorId;
     private readonly timeoutMs;
     private readonly mockMode;
+    private cachedToken;
     constructor();
+    generateToken(): Promise<string>;
+    ensureToken(): Promise<string>;
+    private rawGraphQL;
     private graphql;
+    private doGraphQL;
     search(query: string, type: string, limit: number): Promise<DataHubSearchResult>;
     getEntity(urn: string): Promise<DataHubEntity | null>;
     listSchemaFields(datasetUrn: string): Promise<DataHubSchemaField[]>;

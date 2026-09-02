@@ -1,4 +1,4 @@
-import type { A2AMessage, AuditMessage, DirectoryMessage, MintResult, TaskMessage } from "./types";
+import type { A2AMessage, AuditMessage, DirectoryMessage, HFSUploadResult, MintResult, TaskMessage } from "./types";
 interface MockNft {
     token_id: string;
     serial_number: number;
@@ -55,9 +55,15 @@ export declare function signScheduledTransaction(scheduleId: string, _signerPriv
     txId: string;
     executed: boolean;
 }>;
+export declare function signScheduledTransactionWithSignature(scheduleId: string, _txBytesBase64: string, _publicKeyStr: string, _signatureBytes: Uint8Array | Uint8Array[]): Promise<{
+    txId: string;
+    executed: boolean;
+}>;
 export declare function deleteScheduledTransaction(scheduleId: string): Promise<{
     scheduleId: string;
     deleted: boolean;
 }>;
+export declare function uploadFileToHFS(contents: Buffer, _fileMemo?: string): Promise<HFSUploadResult>;
+export declare function downloadFileFromHFS(fileId: string): Promise<Buffer>;
 export declare function resetMockState(): void;
 export { nftStore, topicMessages };

@@ -125,7 +125,7 @@ beforeEach(() => {
     if (did === CLAIMER_DID) return "0.0.456";
     return null;
   });
-  mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+  mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
   mockedCreateScheduledTransfer.mockResolvedValue({
     scheduleId: SCHEDULE_ID_1,
     scheduleTxId: SCHEDULE_TX_ID,
@@ -184,7 +184,7 @@ describe("SLICE-24-13 Scenario 1: Happy path — full lifecycle with escrow", ()
       escrowStatus: "pending",
     }));
     mockedVerify.mockResolvedValue(true);
-    mockedSubmitTaskMessage.mockResolvedValue("0.0.999@deliver-tx");
+    mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@deliver-tx", consensusTimestamp: null });
 
     const deliverRes = await app.request("/market/tasks/task-int-001/deliver", {
       method: "POST",
@@ -205,7 +205,7 @@ describe("SLICE-24-13 Scenario 1: Happy path — full lifecycle with escrow", ()
       resultBody: "analysis complete",
     }));
     mockedVerify.mockResolvedValue(true);
-    mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+    mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
     mockedRunVerification.mockResolvedValue({
       passed: true,
       attempts: 1,
@@ -277,7 +277,7 @@ describe("SLICE-24-13 Scenario 2: Verification fail then retry success", () => {
       verificationAttempts: 1,
     }));
     mockedVerify.mockResolvedValue(true);
-    mockedSubmitTaskMessage.mockResolvedValue("0.0.999@hcs-tx");
+    mockedSubmitTaskMessage.mockResolvedValue({ txId: "0.0.999@hcs-tx", consensusTimestamp: null });
     mockedRunVerification.mockResolvedValue({
       passed: true,
       attempts: 2,

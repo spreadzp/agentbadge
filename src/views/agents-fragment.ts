@@ -1,5 +1,6 @@
 import { html } from "hono/html";
 import type { DirectoryEntry } from "@agentgate-hedera/passport";
+import { explorerNftUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /** Agent entry with active status. */
 export interface AgentWithActive extends DirectoryEntry {
@@ -13,8 +14,7 @@ export interface AgentWithActive extends DirectoryEntry {
  * (SLICE-4-3, hackathon-flow.md:130-132)
  */
 export function AgentRow({ agent }: { agent: AgentWithActive }) {
-  const network = process.env.HEDERA_NETWORK ?? "testnet";
-  const hashScanUrl = `https://hashscan.io/${network}/token/${agent.tokenId}/${agent.serial}`;
+  const hashScanUrl = explorerNftUrl(agent.tokenId, String(agent.serial));
 
   const profileUrl = agent.accountId
     ? `/ui/agents/${agent.accountId}`
@@ -78,17 +78,17 @@ export function AgentRow({ agent }: { agent: AgentWithActive }) {
             href="${hashScanUrl}"
             target="_blank"
             rel="noopener"
-            title="View passport NFT on HashScan"
+            title="View passport NFT on ${explorerName()}"
             class="inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400 transition-colors"
-            aria-label="View on HashScan"
+            aria-label="View on ${explorerName()}"
           >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
           </a>
           <button
             type="button"
-            title="Copy HashScan link"
+            title="Copy ${explorerName()} link"
             class="inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
-            aria-label="Copy HashScan link"
+            aria-label="Copy ${explorerName()} link"
             onclick="navigator.clipboard.writeText('${hashScanUrl}').then(()=>{this.textContent='✓';setTimeout(()=>{this.textContent='⧉'},1500)})"
           >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
