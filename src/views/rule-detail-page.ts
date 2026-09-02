@@ -8,6 +8,52 @@ import {
 } from "../agent-readiness/rule-descriptions";
 import { CATEGORY_TO_PILLAR, PILLAR_LABELS } from "../agent-readiness/scoring/pillar-map";
 import { articleLd, breadcrumbListLd, defaultCoreSchemas } from "../server/lib/json-ld";
+import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
+import { SOURCE_CLASS_LABELS, classifyEvidence } from "../agent-readiness/rule-engine/source-hierarchy";
+import type { Evidence } from "../agent-readiness/rule-engine/evidence.types";
+import type { CheckType } from "../agent-readiness/shared.schema";
+
+function evidenceExpectedLine(checkType: CheckType): { types: string[]; sourceClass: string; sourceLabel: string } | null {
+  const evidenceTypeMap: Record<string, string[]> = {
+    http_fetch: ["http", "html"],
+    schema_validation: ["openapi", "json_schema"],
+    exact_match: ["http", "html", "openapi"],
+    cross_evidence: ["cross"],
+    http_probe: ["http"],
+    content_parse: ["http"],
+    json_rpc: ["http"],
+    header_check: ["http"],
+  };
+  const types = evidenceTypeMap[checkType];
+  if (!types || types.length === 0) return null;
+  const primaryType = types[0] as Evidence["type"];
+  const sourceClass = classifyEvidence(primaryType, checkType);
+  const sourceLabel = SOURCE_CLASS_LABELS[sourceClass];
+  return { types, sourceClass, sourceLabel };
+}
+
+function evidenceExpectedHtml(ruleId: string): string {
+  const rule = AGENT_READINESS_RULESET.rules.find((r) => r.rule_id === ruleId);
+  if (!rule) return "";
+  const expected = evidenceExpectedLine(rule.check.type);
+  if (!expected) return "";
+  const typeBadges = expected.types
+    .map(
+      (t) =>
+        `<span class="inline-flex items-center gap-1.5 text-xs font-mono border border-slate-700 rounded-full px-2.5 py-0.5 text-slate-300">${t}</span>`,
+    )
+    .join(" ");
+  return `<section>
+    <h2 class="text-xl font-semibold mb-3">Evidence expected</h2>
+    <div class="flex flex-wrap items-center gap-3">
+      <p class="text-slate-400 text-sm">This rule is verified by:</p>
+      ${typeBadges}
+      <span class="inline-flex items-center gap-1.5 text-sm border border-indigo-500/30 bg-indigo-500/10 rounded-full px-3 py-1 text-indigo-300">
+        Source: ${expected.sourceLabel}
+      </span>
+    </div>
+  </section>`;
+}
 
 const EFFORT_STYLES: Record<string, string> = {
   quick: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
@@ -126,6 +172,8 @@ export function RuleDetailPage(rule: RuleDescription) {
           <h2 class="text-xl font-semibold mb-3">Why it matters</h2>
           <p class="text-slate-300 text-lg leading-relaxed">${rule.user_value}</p>
         </section>
+
+        ${raw(evidenceExpectedHtml(rule.rule_id))}
 
         <!-- Wrong vs Right -->
         <section class="grid gap-4 md:grid-cols-2">

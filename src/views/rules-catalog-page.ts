@@ -153,6 +153,10 @@ export function RulesCatalogPage() {
           <span class="inline-flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-rose-400"></span> Complex
           </span>
+          <span class="inline-flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-700">
+            <span class="inline-flex items-center gap-1 text-xs font-mono border border-amber-500/40 bg-amber-500/10 rounded px-1.5 py-0.5 text-amber-300">GAP</span>
+            <span class="text-slate-500">Missing evidence</span>
+          </span>
         </div>
       </div>
 
