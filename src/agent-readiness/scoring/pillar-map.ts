@@ -20,6 +20,13 @@ export const CATEGORY_TO_PILLAR: Readonly<Record<Category, Pillar>> = {
   verification: "verifiability",
   infrastructure: "verifiability",
   active_probing: "verifiability",
+  pricing: "understandability",
+  rate_limits: "understandability",
+  error_semantics: "executability",
+  retry_semantics: "executability",
+  sandbox: "executability",
+  versioning: "executability",
+  agent_policy: "verifiability",
 };
 
 export const PILLARS: readonly Pillar[] = [

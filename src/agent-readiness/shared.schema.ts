@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // ─── Canonical enums for Agent Readiness schemas ─────────────────────────────
-// Source of truth: AGENT-READINESS-SPEC-v0.3.md, Appendix A.
+// Source of truth: AGENT-READINESS-SPEC-v0.4.md, Appendix A.
 // These enums MUST match the spec exactly — do not add values without
 // updating the spec first.
 
@@ -25,8 +25,16 @@ export const categoryEnum = z
     "seo_aeo",
     "accessibility",
     "active_probing",
+    // v0.4 (EPIC-95) — semantic layer categories
+    "pricing",
+    "rate_limits",
+    "error_semantics",
+    "retry_semantics",
+    "sandbox",
+    "versioning",
+    "agent_policy",
   ])
-  .describe("Rule category: discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth, infrastructure, seo_aeo, accessibility, active_probing");
+  .describe("Rule category (25 total): 18 legacy + 7 v0.4 semantic (pricing, rate_limits, error_semantics, retry_semantics, sandbox, versioning, agent_policy)");
 
 export const pillarEnum = z
   .enum(["discovery", "understandability", "executability", "verifiability"])
@@ -45,8 +53,8 @@ export const statusInputSchema = z
   .transform((v) => normalizeStatus(v));
 
 export const severityEnum = z
-  .enum(["high", "medium", "low"])
-  .describe("Rule severity: high (triggers category floor), medium (normal), low (informational). Note: 'critical' is intentionally excluded from v0.1 — see spec §A.3");
+  .enum(["critical", "high", "medium", "low"])
+  .describe("Rule severity: critical (agents cannot proceed, triggers total ≤ 30 floor), high (triggers category floor), medium (normal), low (informational). v0.4 adds critical — see spec §A.3");
 
 export const checkTypeEnum = z
   .enum([
@@ -58,8 +66,10 @@ export const checkTypeEnum = z
     "content_parse",
     "json_rpc",
     "header_check",
+    // v0.4 (EPIC-95) — semantic validation
+    "semantic_validation",
   ])
-  .describe("Check type: http_fetch (HTTP GET + parse), schema_validation (validate against JSON Schema), exact_match (string/structural equality), cross_evidence (compare two fetched sources on shared key), http_probe (HTTP request with status/header check), content_parse (parse response body for specific content), json_rpc (JSON-RPC call to MCP endpoint), header_check (verify specific HTTP headers)");
+  .describe("Check type (9 total): http_fetch, schema_validation, exact_match, cross_evidence, http_probe, content_parse, json_rpc, header_check, semantic_validation (v0.4: pure function parsing structured sources for semantic criteria, no LLM)");
 
 export const fixTypeEnum = z
   .enum(["deterministic", "assisted", "none"])

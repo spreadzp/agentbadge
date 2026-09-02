@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { categoryEnum } from "./shared.schema";
 import { assertionSchema } from "./assertion.schema";
 import { integritySchema } from "./integrity.schema";
 
@@ -13,13 +12,13 @@ export const agentReadinessReportSchema = z.object({
     .describe("ULID — 26-char Crockford Base32, see spec §11"),
 
   schema_version: z
-    .literal("0.3.0")
-    .describe("Literal version pin — only '0.3.0' accepted in v0.3"),
+    .literal("0.4.0")
+    .describe("Literal version pin — only '0.4.0' accepted in v0.4"),
 
   ruleset: z
     .object({
-      name: z.literal("agent-readiness").describe("Ruleset name — always 'agent-readiness' in v0.1"),
-      version: z.literal("2.0.0").describe("Ruleset semver — always '2.0.0' in v0.1"),
+      name: z.literal("agent-readiness").describe("Ruleset name — always 'agent-readiness'"),
+      version: z.literal("2.2.0").describe("Ruleset semver — '2.2.0' in v0.4 (EPIC-95)"),
     })
     .describe("Reference to the ruleset used for this scan"),
 
@@ -69,8 +68,8 @@ export const agentReadinessReportSchema = z.object({
         .max(100)
         .describe("Overall readiness score (0-100), weighted sum of category scores"),
       categories: z
-        .record(categoryEnum, z.number().min(0).max(100))
-        .describe("Per-category scores (0-100), keyed by category enum"),
+        .record(z.string(), z.number().min(0).max(100))
+        .describe("Per-category scores (0-100), keyed by category name. Not all 25 categories need be present if no rules in that category were evaluated."),
       delta: z
         .number()
         .min(-100)

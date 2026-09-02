@@ -8,7 +8,7 @@ import type { RulesetManifest } from "../../../src/agent-readiness/scoring/scori
 
 const baseManifest: RulesetManifest = {
   name: "agent-readiness",
-  version: "2.1.0",
+  version: "2.2.0",
   categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
 };
 

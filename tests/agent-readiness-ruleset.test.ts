@@ -21,7 +21,7 @@ const MVP_RULE_IDS = [
 describe("AGENT_READINESS_RULESET manifest", () => {
   it("has name 'agent-readiness' and version '2.1.0'", () => {
     expect(AGENT_READINESS_RULESET.name).toBe("agent-readiness");
-    expect(AGENT_READINESS_RULESET.version).toBe("2.1.0");
+    expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
   });
 
   it("has at least 100 rules", () => {

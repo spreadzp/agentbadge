@@ -21,6 +21,14 @@ export interface CategoryWeights {
   seo_aeo: number;
   accessibility: number;
   active_probing: number;
+  // v0.4 (EPIC-95)
+  pricing: number;
+  rate_limits: number;
+  error_semantics: number;
+  retry_semantics: number;
+  sandbox: number;
+  versioning: number;
+  agent_policy: number;
 }
 
 export interface StatusContributions {
@@ -56,6 +64,7 @@ export interface ScoringConfig {
   floorCap: number;
   floorCategories: Category[];
   floorTriggerSeverity: Severity[];
+  criticalFloorCap?: number;
   scoringModel: ScoringModel;
   pillarWeights: PillarWeights;
 }
@@ -126,6 +135,14 @@ export const DEFAULT_CATEGORY_WEIGHTS: CategoryWeights = {
   seo_aeo: 5,
   accessibility: 4,
   active_probing: 5,
+  // v0.4 (EPIC-95) — semantic layer categories
+  pricing: 3,
+  rate_limits: 3,
+  error_semantics: 3,
+  retry_semantics: 2,
+  sandbox: 1,
+  versioning: 2,
+  agent_policy: 2,
 };
 
 export const DEFAULT_STATUS_CONTRIBUTIONS: StatusContributions = {
@@ -148,7 +165,8 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
   statusContributions: DEFAULT_STATUS_CONTRIBUTIONS,
   floorCap: 40,
   floorCategories: ["discovery", "documentation"],
-  floorTriggerSeverity: ["high"],
+  floorTriggerSeverity: ["high", "critical"],
+  criticalFloorCap: 30,
   scoringModel: "v2-pillars",
   pillarWeights: DEFAULT_PILLAR_WEIGHTS,
 };

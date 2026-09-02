@@ -5,8 +5,8 @@ import type { AgentReadinessReport } from "../../../src/agent-readiness/integrit
 function makeReport(overrides?: Partial<AgentReadinessReport>): AgentReadinessReport {
   return {
     report_id: "01HTEST0000000000000000001",
-    schema_version: "0.3.0",
-    ruleset: { name: "agent-readiness", version: "1.2.0" },
+    schema_version: "0.4.0",
+    ruleset: { name: "agent-readiness", version: "2.2.0" },
     scope: {
       agent_id: "test-api",
       agent_version: "1.0",
@@ -67,7 +67,7 @@ describe("SLICE-39-3: CI Summary Formatter", () => {
 
   it("includes ruleset version", () => {
     const md = formatCiSummary(makeReport());
-    expect(md).toContain("agent-readiness v1.2.0");
+    expect(md).toContain("agent-readiness v2.2.0");
   });
 
   it("includes report ID", () => {

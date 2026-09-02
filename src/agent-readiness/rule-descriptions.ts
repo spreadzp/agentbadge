@@ -110,6 +110,41 @@ export const CATEGORY_DESCRIPTIONS: Record<Category, CategoryDescription> = {
     title: "Active Probing",
     description: "Are auth, endpoints, and operational metadata discoverable by active probing?",
   },
+  pricing: {
+    icon: "💲",
+    title: "Pricing",
+    description: "Is pricing information available in machine-readable formats for automated clients?",
+  },
+  rate_limits: {
+    icon: "⏱️",
+    title: "Rate Limits",
+    description: "Are rate limits and over-limit behavior declared machine-readably?",
+  },
+  error_semantics: {
+    icon: "🚫",
+    title: "Error Semantics",
+    description: "Are 4xx error responses declared with schemas and descriptions in the spec?",
+  },
+  retry_semantics: {
+    icon: "🔁",
+    title: "Retry Semantics",
+    description: "Are idempotency and retry guidance (Retry-After) declared for agents?",
+  },
+  sandbox: {
+    icon: "🧪",
+    title: "Sandbox",
+    description: "Is a test/sandbox environment advertised for agent experimentation?",
+  },
+  versioning: {
+    icon: "📌",
+    title: "Versioning",
+    description: "Is the API version declared with a deprecation/sunset policy?",
+  },
+  agent_policy: {
+    icon: "📜",
+    title: "Agent Policy",
+    description: "Is there a machine-readable usage policy for automated clients?",
+  },
 };
 
 export interface PillarDescription {

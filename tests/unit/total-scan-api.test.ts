@@ -26,7 +26,7 @@ vi.mock("../../src/agent-readiness/rule-engine/rule-engine", () => ({
 vi.mock("../../src/agent-readiness/ruleset", () => ({
   AGENT_READINESS_RULESET: {
     name: "agent-readiness",
-    version: "2.1.0",
+    version: "2.2.0",
     rules: [],
     scoring: {
       pillars: {

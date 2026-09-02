@@ -8,8 +8,8 @@ import type { AgentReadinessReport } from "../../../src/agent-readiness/report.s
 function makeReport(score: number, scope: string = "test-api", scannedAt?: string): AgentReadinessReport {
   return {
     report_id: "01HTEST0000000000000000001",
-    schema_version: "0.3.0",
-    ruleset: { name: "agent-readiness", version: "1.2.0" },
+    schema_version: "0.4.0",
+    ruleset: { name: "agent-readiness", version: "2.2.0" },
     scope: {
       agent_id: scope,
       agent_version: "1.0",
@@ -158,7 +158,7 @@ describe("SLICE-38-7: Badge Integration Tests — E2E Route + Cache", () => {
       const res = await app.request("/badge/my-api.svg");
       const body = await res.text();
       expect(body).toContain("my-api");
-      expect(body).toContain("ruleset v1.2.0");
+      expect(body).toContain("ruleset v2.2.0");
     });
 
     it("green for score >= 90", async () => {

@@ -23,18 +23,39 @@
         "documentation",
         "actionability",
         "machine_readable",
-        "verification"
+        "verification",
+        "content_negotiation",
+        "payments",
+        "bazaar",
+        "openapi",
+        "skills",
+        "agents_txt",
+        "webmcp",
+        "identity",
+        "bot_auth",
+        "infrastructure",
+        "seo_aeo",
+        "accessibility",
+        "active_probing",
+        "pricing",
+        "rate_limits",
+        "error_semantics",
+        "retry_semantics",
+        "sandbox",
+        "versioning",
+        "agent_policy"
       ],
-      "description": "Rule category: discovery, documentation, actionability, machine_readable, verification"
+      "description": "Rule category (v0.4 §A.2): discovery, documentation, actionability, machine_readable, verification, content_negotiation, payments, bazaar, openapi, skills, agents_txt, webmcp, identity, bot_auth, infrastructure, seo_aeo, accessibility, active_probing, pricing, rate_limits, error_semantics, retry_semantics, sandbox, versioning, agent_policy"
     },
     "severity": {
       "type": "string",
       "enum": [
+        "critical",
         "high",
         "medium",
         "low"
       ],
-      "description": "Rule severity: high (triggers category floor), medium (normal), low (informational). Note: 'critical' is intentionally excluded from v0.1 — see spec §A.3"
+      "description": "Rule severity: critical (agents cannot proceed — triggers total cap ≤ 30, v0.4 §A.3/§6.3), high (triggers category floor), medium (normal), low (informational)"
     },
     "counted_in_score": {
       "type": "boolean",
@@ -68,9 +89,14 @@
             "http_fetch",
             "schema_validation",
             "exact_match",
-            "cross_evidence"
+            "cross_evidence",
+            "http_probe",
+            "content_parse",
+            "json_rpc",
+            "header_check",
+            "semantic_validation"
           ],
-          "description": "Check type: http_fetch (HTTP GET + parse), schema_validation (validate against JSON Schema), exact_match (string/structural equality), cross_evidence (compare two fetched sources on shared key)"
+          "description": "Check type: http_fetch (HTTP GET + parse), schema_validation (validate against JSON Schema), exact_match (string/structural equality), cross_evidence (compare two fetched sources on shared key), http_probe (HTTP request with status/header check), content_parse (parse response body for specific content), json_rpc (JSON-RPC call to MCP endpoint), header_check (verify specific HTTP headers), semantic_validation (pure function parsing structured sources for semantic criteria — no LLM, deterministic boundary, v0.4 §A.4)"
         },
         "sources": {
           "description": "Array of source identifiers to fetch/compare (for http_fetch, cross_evidence)",

@@ -12,8 +12,8 @@ export interface IntegrityBlock {
 
 export interface AgentReadinessReport {
   report_id: string;
-  schema_version: "0.3.0";
-  ruleset: { name: "agent-readiness"; version: "1.4.0" };
+  schema_version: "0.4.0";
+  ruleset: { name: "agent-readiness"; version: "2.2.0" };
   scope: {
     agent_id: string;
     agent_version: string;
@@ -69,8 +69,8 @@ export function assembleReport(input: ReportAssemblyInput): AgentReadinessReport
 
   const reportBody: Record<string, unknown> = {
     report_id: reportId,
-    schema_version: "0.3.0",
-    ruleset: { name: "agent-readiness", version: "1.4.0" },
+    schema_version: "0.4.0",
+    ruleset: { name: "agent-readiness", version: "2.2.0" },
     scope: {
       ...input.scope,
       timestamp: scannedAt,

@@ -16,8 +16,8 @@ beforeEach(async () => {
 function makeReport(score: number) {
   return {
     report_id: "01HTEST",
-    schema_version: "0.3.0",
-    ruleset: { name: "agent-readiness", version: "1.2.0" },
+    schema_version: "0.4.0",
+    ruleset: { name: "agent-readiness", version: "2.2.0" },
     scope: { agent_id: "test", agent_version: "1.0", endpoint_base_url: "https://test.com", timestamp: "" },
     scanned_at: "",
     previous_hash: null,

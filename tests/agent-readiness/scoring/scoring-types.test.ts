@@ -40,7 +40,7 @@ describe("SLICE-35-1: Scoring Types", () => {
     const w = DEFAULT_CATEGORY_WEIGHTS;
     const sum = Object.values(w).reduce((a, b) => a + b, 0);
     expect(sum).toBeGreaterThanOrEqual(100);
-    expect(sum).toBeLessThanOrEqual(120);
+    expect(sum).toBeLessThanOrEqual(140);
   });
 
   it("StatusContributions has all 5 statuses", () => {

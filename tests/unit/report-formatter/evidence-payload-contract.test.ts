@@ -113,8 +113,8 @@ describe("SLICE-94-10: Payload contract — report envelope shape", () => {
   it("can construct a minimal report envelope with v2 assertions", () => {
     const report = {
       report_id: "01JTEST000000000000000TEST",
-      schema_version: "0.3.0",
-      ruleset: { name: "agent-readiness", version: "2.1.0" },
+      schema_version: "0.4.0",
+      ruleset: { name: "agent-readiness", version: "2.2.0" },
       scope: {
         agent_id: "test-agent",
         agent_version: "1.0.0",

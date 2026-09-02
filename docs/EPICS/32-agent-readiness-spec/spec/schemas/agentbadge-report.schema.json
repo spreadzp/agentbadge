@@ -141,9 +141,29 @@
               "documentation",
               "actionability",
               "machine_readable",
-              "verification"
+              "verification",
+              "content_negotiation",
+              "payments",
+              "bazaar",
+              "openapi",
+              "skills",
+              "agents_txt",
+              "webmcp",
+              "identity",
+              "bot_auth",
+              "infrastructure",
+              "seo_aeo",
+              "accessibility",
+              "active_probing",
+              "pricing",
+              "rate_limits",
+              "error_semantics",
+              "retry_semantics",
+              "sandbox",
+              "versioning",
+              "agent_policy"
             ],
-            "description": "Rule category: discovery, documentation, actionability, machine_readable, verification"
+            "description": "Rule category (v0.4 §A.2) — 25 categories"
           },
           "additionalProperties": {
             "type": "number",
@@ -268,11 +288,12 @@
           "severity": {
             "type": "string",
             "enum": [
+              "critical",
               "high",
               "medium",
               "low"
             ],
-            "description": "Rule severity: high (triggers category floor), medium (normal), low (informational). Note: 'critical' is intentionally excluded from v0.1 — see spec §A.3"
+            "description": "Rule severity: critical (agents cannot proceed — triggers total cap ≤ 30, v0.4 §A.3/§6.3), high (triggers category floor), medium (normal), low (informational)"
           },
           "counted_in_score": {
             "type": "boolean",

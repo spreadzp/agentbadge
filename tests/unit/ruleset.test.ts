@@ -15,9 +15,9 @@ const NEW_RULE_IDS = [
 
 const NEW_CATEGORIES = ["seo_aeo", "accessibility"];
 
-describe("SLICE-75-7: Ruleset version 2.1.0 and integrity", () => {
-  it("ruleset version is 2.1.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("2.1.0");
+describe("SLICE-75-7: Ruleset version 2.2.0 and integrity", () => {
+  it("ruleset version is 2.2.0", () => {
+    expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
   });
 
   it("ruleset name is agent-readiness", () => {

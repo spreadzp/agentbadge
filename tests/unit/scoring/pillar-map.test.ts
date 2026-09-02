@@ -18,8 +18,8 @@ describe("SLICE-93-3: Category→Pillar canonical map", () => {
       }
     });
 
-    it("has exactly 18 entries", () => {
-      expect(Object.keys(CATEGORY_TO_PILLAR)).toHaveLength(18);
+    it("has exactly 25 entries", () => {
+      expect(Object.keys(CATEGORY_TO_PILLAR)).toHaveLength(25);
     });
   });
 
@@ -43,6 +43,14 @@ describe("SLICE-93-3: Category→Pillar canonical map", () => {
       verification: "verifiability",
       infrastructure: "verifiability",
       active_probing: "verifiability",
+      // v0.4 (EPIC-95)
+      pricing: "understandability",
+      rate_limits: "understandability",
+      error_semantics: "executability",
+      retry_semantics: "executability",
+      sandbox: "executability",
+      versioning: "executability",
+      agent_policy: "verifiability",
     };
 
     it("matches the hardcoded spec table exactly", () => {
@@ -61,16 +69,16 @@ describe("SLICE-93-3: Category→Pillar canonical map", () => {
       expect(PILLAR_CATEGORIES.discovery).toHaveLength(8);
     });
 
-    it("understandability has 3 categories", () => {
-      expect(PILLAR_CATEGORIES.understandability).toHaveLength(3);
+    it("understandability has 5 categories", () => {
+      expect(PILLAR_CATEGORIES.understandability).toHaveLength(5);
     });
 
-    it("executability has 4 categories", () => {
-      expect(PILLAR_CATEGORIES.executability).toHaveLength(4);
+    it("executability has 8 categories", () => {
+      expect(PILLAR_CATEGORIES.executability).toHaveLength(8);
     });
 
-    it("verifiability has 3 categories", () => {
-      expect(PILLAR_CATEGORIES.verifiability).toHaveLength(3);
+    it("verifiability has 4 categories", () => {
+      expect(PILLAR_CATEGORIES.verifiability).toHaveLength(4);
     });
 
     it("no pillar has zero categories", () => {
