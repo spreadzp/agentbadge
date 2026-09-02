@@ -746,6 +746,339 @@ const checkerVersioningDeclared: SemanticChecker = (sources) => {
   return { outcome: "absent", detail: "No versioning information found in any source" };
 };
 
+// ─── AB-156: Sandbox environment declared ───────────────────────────────────
+
+const checkerSandboxDeclared: SemanticChecker = (sources) => {
+  const guideSnap = sources.guide;
+  const openapiSnap = sources.openapi;
+  const llmsSnap = sources.llms;
+  const hasAnySource = guideSnap || openapiSnap || llmsSnap;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  let sandboxMentioned = false;
+  let sandboxUrl = false;
+
+  // Check guide for sandbox/test environment
+  const guideBody = guideSnap?.body ?? "";
+  if (guideBody) {
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("sandbox") || lower.includes("test environment") || lower.includes("test mode") || lower.includes("staging")) {
+      sandboxMentioned = true;
+      // Check for URL pattern
+      if (lower.includes("http") && (lower.includes("sandbox") || lower.includes("staging") || lower.includes("test"))) {
+        sandboxUrl = true;
+      }
+      // Check guide JSON for sandbox/testEnvironment field
+      const guideJson = parseJsonBody(guideSnap) as Record<string, unknown> | null;
+      if (guideJson) {
+        const sandbox = (guideJson as Record<string, unknown>).sandbox as Record<string, unknown> | undefined;
+        const testEnv = (guideJson as Record<string, unknown>).testEnvironment as Record<string, unknown> | undefined;
+        const staging = (guideJson as Record<string, unknown>).staging as Record<string, unknown> | undefined;
+        const sandboxObj = sandbox ?? testEnv ?? staging;
+        if (sandboxObj) {
+          if (typeof sandboxObj === "string" && sandboxObj.includes("http")) sandboxUrl = true;
+          if (typeof sandboxObj === "object" && sandboxObj !== null) {
+            const url = (sandboxObj as Record<string, unknown>).url as string | undefined;
+            const baseUrl = (sandboxObj as Record<string, unknown>).baseUrl as string | undefined;
+            if (url?.includes("http") || baseUrl?.includes("http")) sandboxUrl = true;
+          }
+        }
+      }
+    }
+  }
+
+  // Check OpenAPI servers for sandbox
+  if (openapiSnap?.body) {
+    const spec = parseJsonBody(openapiSnap) as OpenApiSpec | null;
+    if (spec) {
+      const servers = (spec as unknown as Record<string, unknown>).servers as Array<Record<string, unknown>> | undefined;
+      if (servers) {
+        for (const server of servers) {
+          const url = server?.url as string | undefined;
+          const desc = server?.description as string | undefined;
+          if (url && (url.includes("sandbox") || url.includes("staging") || url.includes("test"))) {
+            sandboxMentioned = true;
+            sandboxUrl = true;
+          }
+          if (desc && (desc.toLowerCase().includes("sandbox") || desc.toLowerCase().includes("test"))) {
+            sandboxMentioned = true;
+            if (url) sandboxUrl = true;
+          }
+        }
+      }
+    }
+  }
+
+  // Check llms.txt for sandbox section
+  const llmsBody = llmsSnap?.body ?? "";
+  if (llmsBody) {
+    const lower = llmsBody.toLowerCase();
+    if (lower.includes("sandbox") || lower.includes("test environment") || lower.includes("staging")) {
+      sandboxMentioned = true;
+      if (lower.includes("http") && (lower.includes("sandbox") || lower.includes("staging"))) {
+        sandboxUrl = true;
+      }
+    }
+  }
+
+  if (sandboxMentioned && sandboxUrl) {
+    return { outcome: "found", detail: "Sandbox/test environment declared with base URL" };
+  }
+  if (sandboxMentioned) {
+    return { outcome: "partial", detail: "Sandbox mentioned by name but no base URL provided" };
+  }
+  return { outcome: "absent", detail: "No sandbox or test environment found in any source" };
+};
+
+// ─── AB-157: Agent policy machine-readable ──────────────────────────────────
+
+const checkerAgentPolicyMachineReadable: SemanticChecker = (sources) => {
+  const guideSnap = sources.guide;
+  const llmsSnap = sources.llms;
+  const aiTxtSnap = sources.ai_txt;
+  const hasAnySource = guideSnap || llmsSnap || aiTxtSnap;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  let explicitPolicy = false;
+  let tosLinkOnly = false;
+
+  // Check agents.txt / ai.txt for explicit Allow/Disallow
+  const aiTxtBody = aiTxtSnap?.body ?? "";
+  if (aiTxtBody) {
+    const lower = aiTxtBody.toLowerCase();
+    if (lower.includes("allow:") || lower.includes("disallow:") || lower.includes("user-agent:")) {
+      // Check for AI-agent-specific rules beyond crawler defaults
+      // "agent" and "bot" alone are crawler terms; look for AI-specific identifiers
+      if (lower.includes("ai") || lower.includes("gpt") || lower.includes("claude") || lower.includes("automated") || lower.includes("llm") || lower.includes("permitted") || lower.includes("prohibited")) {
+        explicitPolicy = true;
+      }
+    }
+  }
+
+  // Check guide for policy/allowedUse field
+  const guideBody = guideSnap?.body ?? "";
+  if (guideBody) {
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("policy") || lower.includes("allowed use") || lower.includes("alloweduse") || lower.includes("agent policy") || lower.includes("automated") || lower.includes("permitted")) {
+      if (lower.includes("allow") || lower.includes("disallow") || lower.includes("permitted") || lower.includes("prohibited") || lower.includes("restricted")) {
+        explicitPolicy = true;
+      }
+    }
+    // Generic ToS link only
+    if (lower.includes("terms of service") || lower.includes("/tos") || lower.includes("/terms") || lower.includes("/legal")) {
+      if (!explicitPolicy) tosLinkOnly = true;
+    }
+  }
+
+  // Check llms.txt for policy section
+  const llmsBody = llmsSnap?.body ?? "";
+  if (llmsBody) {
+    const lower = llmsBody.toLowerCase();
+    if (lower.includes("## policy") || lower.includes("## agent policy") || lower.includes("allowed") || lower.includes("disallowed")) {
+      explicitPolicy = true;
+    }
+  }
+
+  if (explicitPolicy) {
+    return { outcome: "found", detail: "Machine-readable agent policy found" };
+  }
+  if (tosLinkOnly) {
+    return { outcome: "partial", detail: "Only generic ToS link found, no agent-specific policy" };
+  }
+  return { outcome: "absent", detail: "No agent policy found in any source" };
+};
+
+// ─── AB-158: Capability list declared ───────────────────────────────────────
+
+const checkerCapabilityListDeclared: SemanticChecker = (sources) => {
+  const guideSnap = sources.guide;
+  if (!guideSnap) return { outcome: "no_source", detail: "No guide snapshot available" };
+
+  let hasList = false;
+  let hasDescriptions = false;
+
+  const guideBody = guideSnap.body ?? "";
+  if (!guideBody) return { outcome: "no_source", detail: "Guide snapshot has no body" };
+
+  // Try parsing as JSON
+  const guideJson = parseJsonBody(guideSnap) as Record<string, unknown> | null;
+  if (guideJson) {
+    const capabilities = (guideJson as Record<string, unknown>).capabilities as unknown[] | undefined;
+    const endpoints = (guideJson as Record<string, unknown>).endpoints as unknown[] | undefined;
+    const features = (guideJson as Record<string, unknown>).features as unknown[] | undefined;
+    const list = capabilities ?? endpoints ?? features;
+    if (list && Array.isArray(list) && list.length > 0) {
+      hasList = true;
+      for (const item of list) {
+        if (typeof item === "object" && item !== null) {
+          const desc = (item as Record<string, unknown>).description as string | undefined;
+          if (desc && desc.trim().length > 0) {
+            hasDescriptions = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback: check guide body text for capability-like content
+  if (!hasList) {
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("## capabilities") || lower.includes("## endpoints") || lower.includes("## features") || lower.includes("## what we do")) {
+      hasList = true;
+      // Check if items have descriptions (text after the list item)
+      if (lower.includes("- ") && lower.split("- ").length > 3) {
+        hasDescriptions = true;
+      }
+    }
+  }
+
+  if (hasList && hasDescriptions) {
+    return { outcome: "found", detail: "Capability list with per-item descriptions found in guide" };
+  }
+  if (hasList) {
+    return { outcome: "partial", detail: "Capability list present but items lack descriptions" };
+  }
+  return { outcome: "absent", detail: "No capability list found in guide" };
+};
+
+// ─── AB-159: Business constraints documented ────────────────────────────────
+
+const checkerBusinessConstraintsDocumented: SemanticChecker = (sources) => {
+  const guideSnap = sources.guide;
+  const llmsSnap = sources.llms;
+  const hasAnySource = guideSnap || llmsSnap;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  let perCapabilityConstraints = false;
+  let globalConstraints = false;
+
+  // Check guide for per-capability constraints
+  const guideBody = guideSnap?.body ?? "";
+  if (guideBody) {
+    const guideJson = parseJsonBody(guideSnap) as Record<string, unknown> | null;
+    if (guideJson) {
+      const capabilities = (guideJson as Record<string, unknown>).capabilities as unknown[] | undefined;
+      const endpoints = (guideJson as Record<string, unknown>).endpoints as unknown[] | undefined;
+      const list = capabilities ?? endpoints;
+      if (list && Array.isArray(list)) {
+        for (const item of list) {
+          if (typeof item === "object" && item !== null) {
+            const constraints = (item as Record<string, unknown>).constraints as unknown[] | Record<string, unknown> | undefined;
+            const policies = (item as Record<string, unknown>).policies as unknown[] | Record<string, unknown> | undefined;
+            const limits = (item as Record<string, unknown>).limits as Record<string, unknown> | undefined;
+            if (constraints || policies || limits) {
+              perCapabilityConstraints = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback: text-based check
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("refund") || lower.includes("cancellation") || lower.includes("constraint") || lower.includes("limit") || lower.includes("window")) {
+      if (lower.includes("per ") || lower.includes("each ") || lower.includes("for ") || lower.includes("capability") || lower.includes("endpoint")) {
+        perCapabilityConstraints = true;
+      } else {
+        globalConstraints = true;
+      }
+    }
+  }
+
+  // Check llms.txt for constraints section
+  const llmsBody = llmsSnap?.body ?? "";
+  if (llmsBody) {
+    const lower = llmsBody.toLowerCase();
+    if (lower.includes("## constraints") || lower.includes("## limits") || lower.includes("## policies")) {
+      if (lower.includes("refund") || lower.includes("cancellation") || lower.includes("limit") || lower.includes("window")) {
+        perCapabilityConstraints = true;
+      } else {
+        globalConstraints = true;
+      }
+    }
+  }
+
+  if (perCapabilityConstraints) {
+    return { outcome: "found", detail: "Per-capability business constraints documented" };
+  }
+  if (globalConstraints) {
+    return { outcome: "partial", detail: "Global constraints mentioned but not per-capability" };
+  }
+  return { outcome: "absent", detail: "No business constraints found in any source" };
+};
+
+// ─── AB-160: Support path declared ──────────────────────────────────────────
+
+const checkerSupportPathDeclared: SemanticChecker = (sources) => {
+  const guideSnap = sources.guide;
+  const llmsSnap = sources.llms;
+  const securityTxtSnap = sources.security_txt;
+  const hasAnySource = guideSnap || llmsSnap || securityTxtSnap;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  let dedicatedSupport = false;
+  let genericContact = false;
+
+  // Check guide for support field
+  const guideBody = guideSnap?.body ?? "";
+  if (guideBody) {
+    const guideJson = parseJsonBody(guideSnap) as Record<string, unknown> | null;
+    if (guideJson) {
+      const support = (guideJson as Record<string, unknown>).support as Record<string, unknown> | string | undefined;
+      if (support) {
+        if (typeof support === "string" && (support.includes("@") || support.includes("http"))) {
+          dedicatedSupport = true;
+        } else if (typeof support === "object" && support !== null) {
+          const email = (support as Record<string, unknown>).email as string | undefined;
+          const url = (support as Record<string, unknown>).url as string | undefined;
+          if (email?.includes("@") || url?.includes("http")) {
+            dedicatedSupport = true;
+          }
+        }
+      }
+    }
+
+    // Fallback: text-based
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("support@") || lower.includes("support ") && lower.includes("email") || lower.includes("/support") || lower.includes("help@") || lower.includes("contact@")) {
+      dedicatedSupport = true;
+    }
+    if (lower.includes("/contact") || lower.includes("contact us") || lower.includes("contact page")) {
+      if (!dedicatedSupport) genericContact = true;
+    }
+  }
+
+  // Check llms.txt for support section
+  const llmsBody = llmsSnap?.body ?? "";
+  if (llmsBody) {
+    const lower = llmsBody.toLowerCase();
+    if (lower.includes("## support") || lower.includes("## contact") || lower.includes("support:")) {
+      if (lower.includes("@") || lower.includes("http") || lower.includes("mailto:")) {
+        dedicatedSupport = true;
+      }
+    }
+  }
+
+  // Check security.txt (RFC 9116) for Contact
+  const securityTxtBody = securityTxtSnap?.body ?? "";
+  if (securityTxtBody) {
+    const lower = securityTxtBody.toLowerCase();
+    if (lower.includes("contact:") && (lower.includes("mailto:") || lower.includes("http") || lower.includes("@"))) {
+      dedicatedSupport = true;
+    }
+  }
+
+  if (dedicatedSupport) {
+    return { outcome: "found", detail: "Dedicated support contact declared" };
+  }
+  if (genericContact) {
+    return { outcome: "partial", detail: "Only generic contact page URL found" };
+  }
+  return { outcome: "absent", detail: "No support contact found in any source" };
+};
+
 export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   openapi_operation_descriptions: checkerOpenapiOperationDescriptions,
   openapi_parameter_semantics: checkerOpenapiParameterSemantics,
@@ -757,4 +1090,9 @@ export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   authentication_clarity: checkerAuthenticationClarity,
   retry_semantics_declared: checkerRetrySemanticsDeclared,
   versioning_declared: checkerVersioningDeclared,
+  sandbox_declared: checkerSandboxDeclared,
+  agent_policy_machine_readable: checkerAgentPolicyMachineReadable,
+  capability_list_declared: checkerCapabilityListDeclared,
+  business_constraints_documented: checkerBusinessConstraintsDocumented,
+  support_path_declared: checkerSupportPathDeclared,
 };
