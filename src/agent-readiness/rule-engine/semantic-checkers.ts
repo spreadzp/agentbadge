@@ -511,6 +511,241 @@ const checkerPricingLimitsConsistency: SemanticChecker = (sources) => {
   return { outcome: "absent", detail: `Pricing CONFLICT across sources: ${conflictDetails}` };
 };
 
+// ─── AB-153: Authentication clarity ─────────────────────────────────────────
+
+const checkerAuthenticationClarity: SemanticChecker = (sources) => {
+  const openapiSnap = sources.openapi;
+  const guideSnap = sources.guide;
+  const hasAnySource = openapiSnap || guideSnap;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  let schemePresent = false;
+  let schemeDescribed = false;
+  let credentialLocation = false;
+  let howToObtain = false;
+
+  // Check OpenAPI securitySchemes
+  if (openapiSnap?.body) {
+    const spec = parseJsonBody(openapiSnap) as OpenApiSpec | null;
+    if (spec) {
+      const components = (spec as unknown as Record<string, unknown>).components as Record<string, unknown> | undefined;
+      const securitySchemes = components?.securitySchemes as Record<string, unknown> | undefined;
+      if (securitySchemes && typeof securitySchemes === "object") {
+        schemePresent = true;
+        for (const scheme of Object.values(securitySchemes) as Array<Record<string, unknown>>) {
+          if (scheme?.description && String(scheme.description).trim().length > 0) {
+            schemeDescribed = true;
+          }
+          // Credential location: header name (Authorization), or in: query/header
+          const schemeType = scheme?.type as string | undefined;
+          if (schemeType === "http" || schemeType === "apiKey") {
+            const headerName = scheme?.name as string | undefined;
+            const schemeIn = scheme?.in as string | undefined;
+            if (headerName || schemeIn) {
+              credentialLocation = true;
+            }
+          }
+          if (schemeType === "oauth2") {
+            credentialLocation = true; // OAuth2 implies credentials in Authorization header
+          }
+        }
+      }
+    }
+  }
+
+  // Check guide for auth documentation
+  const guideBody = guideSnap?.body ?? "";
+  if (guideBody) {
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("auth") || lower.includes("oauth") || lower.includes("api key") || lower.includes("bearer")) {
+      if (!schemePresent) schemePresent = true; // guide documents auth even without OpenAPI
+      // How to obtain credentials
+      if (lower.includes("obtain") || lower.includes("register") || lower.includes("sign up") ||
+        lower.includes("create") || lower.includes("request") || lower.includes("token endpoint") ||
+        lower.includes("client_id") || lower.includes("api key")) {
+        howToObtain = true;
+      }
+      // Credential location in guide
+      if (lower.includes("authorization header") || lower.includes("bearer token") ||
+        lower.includes("api key in") || lower.includes("x-api-key") || lower.includes("header")) {
+        credentialLocation = true;
+      }
+    }
+  }
+
+  // Also check OpenAPI securityScheme descriptions for how-to-obtain
+  if (openapiSnap?.body) {
+    const spec = parseJsonBody(openapiSnap) as OpenApiSpec | null;
+    if (spec) {
+      const components = (spec as unknown as Record<string, unknown>).components as Record<string, unknown> | undefined;
+      const securitySchemes = components?.securitySchemes as Record<string, unknown> | undefined;
+      if (securitySchemes) {
+        for (const scheme of Object.values(securitySchemes) as Array<Record<string, unknown>>) {
+          const desc = scheme?.description as string | undefined;
+          if (desc && (desc.toLowerCase().includes("obtain") || desc.toLowerCase().includes("register") ||
+            desc.toLowerCase().includes("token endpoint") || desc.toLowerCase().includes("client_id"))) {
+            howToObtain = true;
+          }
+        }
+      }
+    }
+  }
+
+  if (schemePresent && credentialLocation && howToObtain) {
+    return { outcome: "found", detail: "Auth scheme, credential location, and how-to-obtain all evident" };
+  }
+  if (schemePresent && (credentialLocation || schemeDescribed)) {
+    return { outcome: "partial", detail: "Auth scheme present but obtain/location incomplete" };
+  }
+  if (schemePresent) {
+    return { outcome: "partial", detail: "Auth scheme present but no description or credential guidance" };
+  }
+  return { outcome: "absent", detail: "No authentication documentation found in any source" };
+};
+
+// ─── AB-154: Retry semantics declared ───────────────────────────────────────
+
+const checkerRetrySemanticsDeclared: SemanticChecker = (sources) => {
+  const openapiSnap = sources.openapi;
+  const guideSnap = sources.guide;
+  const hasAnySource = openapiSnap || guideSnap;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  let idempotencyDeclared = false;
+  let retryAfterDeclared = false;
+  let retryGuidance = false;
+
+  // Check OpenAPI for Idempotency-Key parameter and Retry-After in responses
+  if (openapiSnap?.body) {
+    const spec = parseJsonBody(openapiSnap) as OpenApiSpec | null;
+    if (spec) {
+      const operations = getOperations(spec);
+      for (const { op } of operations) {
+        // Check parameters for Idempotency-Key
+        if (op.parameters) {
+          for (const param of op.parameters) {
+            if (param.name && param.name.toLowerCase().includes("idempotency")) {
+              idempotencyDeclared = true;
+            }
+          }
+        }
+        // Check responses for Retry-After header or 429/5xx descriptions
+        if (op.responses) {
+          for (const [code, resp] of Object.entries(op.responses)) {
+            if ((code.startsWith("4") || code.startsWith("5")) && resp?.description) {
+              if (resp.description.toLowerCase().includes("retry-after")) {
+                retryAfterDeclared = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Check guide for retry guidance
+  const guideBody = guideSnap?.body ?? "";
+  if (guideBody) {
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("idempotency") || lower.includes("idempotency-key")) {
+      idempotencyDeclared = true;
+    }
+    if (lower.includes("retry-after") || lower.includes("retry after")) {
+      retryAfterDeclared = true;
+    }
+    if (lower.includes("retry") && (lower.includes("429") || lower.includes("backoff") ||
+      lower.includes("exponential") || lower.includes("guidance") || lower.includes("safe to retry"))) {
+      retryGuidance = true;
+    }
+  }
+
+  const score = [idempotencyDeclared, retryAfterDeclared, retryGuidance].filter(Boolean).length;
+  if (score >= 2) {
+    const parts: string[] = [];
+    if (idempotencyDeclared) parts.push("idempotency");
+    if (retryAfterDeclared) parts.push("retry-after");
+    if (retryGuidance) parts.push("retry guidance");
+    return { outcome: "found", detail: `Retry semantics declared: ${parts.join(", ")}` };
+  }
+  if (score === 1) {
+    const part = idempotencyDeclared ? "idempotency" : retryAfterDeclared ? "retry-after" : "retry guidance";
+    return { outcome: "partial", detail: `Partial retry semantics: only ${part} declared` };
+  }
+  return { outcome: "absent", detail: "No retry semantics found in any source" };
+};
+
+// ─── AB-155: Versioning declared ────────────────────────────────────────────
+
+const checkerVersioningDeclared: SemanticChecker = (sources) => {
+  const openapiSnap = sources.openapi;
+  const guideSnap = sources.guide;
+  const hasAnySource = openapiSnap || guideSnap;
+  if (!hasAnySource) return { outcome: "no_source", detail: "No source snapshots available" };
+
+  let versionPresent = false;
+  let versionedPaths = false;
+  let deprecationPolicy = false;
+  let sunsetHeader = false;
+
+  // Check OpenAPI info.version
+  if (openapiSnap?.body) {
+    const spec = parseJsonBody(openapiSnap) as OpenApiSpec | null;
+    if (spec) {
+      const info = (spec as unknown as Record<string, unknown>).info as Record<string, unknown> | undefined;
+      if (info?.version && typeof info.version === "string" && info.version.trim().length > 0) {
+        versionPresent = true;
+      }
+      // Check for versioned paths (e.g., /v1/users)
+      if (spec.paths) {
+        for (const path of Object.keys(spec.paths)) {
+          if (/\/v\d+[\/]/.test(path) || /\/api\/v\d+/.test(path)) {
+            versionedPaths = true;
+            break;
+          }
+        }
+      }
+      // Check for Sunset header in responses
+      const operations = getOperations(spec);
+      for (const { op } of operations) {
+        if (op.responses) {
+          for (const resp of Object.values(op.responses)) {
+            const headers = (resp as unknown as Record<string, unknown>)?.headers as Record<string, unknown> | undefined;
+            if (headers?.Sunset || headers?.sunset) {
+              sunsetHeader = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Check guide for deprecation policy
+  const guideBody = guideSnap?.body ?? "";
+  if (guideBody) {
+    const lower = guideBody.toLowerCase();
+    if (lower.includes("deprecat") || lower.includes("sunset") || lower.includes("end of life") ||
+      lower.includes("eol") || lower.includes("retire")) {
+      deprecationPolicy = true;
+    }
+    if (lower.includes("version") || lower.includes("v1") || lower.includes("v2")) {
+      versionPresent = true;
+    }
+  }
+
+  if (sunsetHeader) deprecationPolicy = true;
+
+  if (versionPresent && deprecationPolicy) {
+    const parts: string[] = ["version"];
+    if (versionedPaths) parts.push("versioned paths");
+    if (deprecationPolicy) parts.push("deprecation policy");
+    return { outcome: "found", detail: `Versioning declared: ${parts.join(", ")}` };
+  }
+  if (versionPresent) {
+    return { outcome: "partial", detail: "Version declared but no deprecation policy" };
+  }
+  return { outcome: "absent", detail: "No versioning information found in any source" };
+};
+
 export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   openapi_operation_descriptions: checkerOpenapiOperationDescriptions,
   openapi_parameter_semantics: checkerOpenapiParameterSemantics,
@@ -519,4 +754,7 @@ export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   pricing_discoverability: checkerPricingDiscoverability,
   rate_limits_machine_readable: checkerRateLimitsMachineReadable,
   pricing_limits_consistency: checkerPricingLimitsConsistency,
+  authentication_clarity: checkerAuthenticationClarity,
+  retry_semantics_declared: checkerRetrySemanticsDeclared,
+  versioning_declared: checkerVersioningDeclared,
 };

@@ -10,7 +10,7 @@ import { PILLARS } from "./pillar-map";
 
 const DEFAULT_FLOOR_CAP = 40;
 const DEFAULT_FLOOR_CATEGORIES = ["discovery", "documentation"] as const;
-const DEFAULT_FLOOR_TRIGGER_SEVERITY = ["high"] as const;
+const DEFAULT_FLOOR_TRIGGER_SEVERITY = ["high", "critical"] as const;
 const DEFAULT_SCORING_MODEL: ScoringModel = "v2-pillars";
 
 export interface PillarsConfig {

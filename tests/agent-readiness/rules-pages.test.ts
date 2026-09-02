@@ -13,11 +13,11 @@ describe("Rules Catalog Page (SLICE-50-2)", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("What We Check");
-    expect(html).toContain("103 rules");
-    expect(html).toContain("17 categories");
+    expect(html).toContain("121 rules");
+    expect(html).toContain("25 categories");
   });
 
-  it("contains all 15 category sections", async () => {
+  it("contains all 25 category sections", async () => {
     const res = await app.request("/rules");
     const html = await res.text();
     const categories = [
@@ -36,6 +36,16 @@ describe("Rules Catalog Page (SLICE-50-2)", () => {
       "Identity",
       "Bot Authentication",
       "Infrastructure",
+      "SEO / AEO",
+      "Accessibility",
+      "Active Probing",
+      "Pricing",
+      "Rate Limits",
+      "Error Semantics",
+      "Retry Semantics",
+      "Sandbox",
+      "Versioning",
+      "Agent Policy",
     ];
     for (const cat of categories) {
       expect(html).toContain(cat);
@@ -130,9 +140,9 @@ describe("Rules JSON API (SLICE-50-4)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
     const data = await res.json();
-    expect(data.total).toBe(103);
-    expect(data.categories.length).toBe(17);
-    expect(data.rules.length).toBe(103);
+    expect(data.total).toBe(121);
+    expect(data.categories.length).toBe(25);
+    expect(data.rules.length).toBe(121);
   });
 
   it("GET /api/rules/AB-001 returns 200 with rule", async () => {
@@ -154,7 +164,7 @@ describe("Rules JSON API (SLICE-50-4)", () => {
   it("categories include rule counts", async () => {
     const res = await app.request("/api/rules");
     const data = await res.json();
-    const discovery = data.categories.find((c: any) => c.id === "discovery");
+    const discovery = data.categories.find((c: { id: string }) => c.id === "discovery");
     expect(discovery.rule_count).toBeGreaterThanOrEqual(8);
     expect(discovery.icon).toBeTruthy();
     expect(discovery.title).toBeTruthy();
