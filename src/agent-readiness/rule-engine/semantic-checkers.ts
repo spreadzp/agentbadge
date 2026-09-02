@@ -18,6 +18,17 @@ export function parseJsonBody(snapshot: ResponseSnapshot): unknown | null {
   }
 }
 
+interface OpenApiMediaType {
+  example?: unknown;
+  examples?: Record<string, unknown>;
+  schema?: unknown;
+}
+
+interface OpenApiResponse {
+  description?: string;
+  content?: Record<string, OpenApiMediaType>;
+}
+
 interface OpenApiOperation {
   description?: string;
   parameters?: Array<{
@@ -27,6 +38,10 @@ interface OpenApiOperation {
     required?: boolean;
     schema?: unknown;
   }>;
+  requestBody?: {
+    content?: Record<string, OpenApiMediaType>;
+  };
+  responses?: Record<string, OpenApiResponse>;
 }
 
 interface OpenApiPathItem {
@@ -129,7 +144,131 @@ const checkerOpenapiParameterSemantics: SemanticChecker = (sources) => {
   };
 };
 
+const checkerOpenapiExamples: SemanticChecker = (sources) => {
+  const snap = sources.openapi;
+  if (!snap) return { outcome: "no_source", detail: "OpenAPI snapshot not found" };
+
+  const spec = parseJsonBody(snap) as OpenApiSpec | null;
+  if (!spec) return { outcome: "no_source", detail: "OpenAPI body could not be parsed as JSON" };
+
+  const operations = getOperations(spec);
+  if (operations.length === 0) {
+    return { outcome: "absent", detail: "No operations found in OpenAPI spec" };
+  }
+
+  let requestExamples = 0;
+  let responseExamples = 0;
+  let schemaExamples = 0;
+
+  for (const { op } of operations) {
+    if (op.requestBody?.content) {
+      for (const mediaType of Object.values(op.requestBody.content)) {
+        if (mediaType?.example || mediaType?.examples) {
+          requestExamples++;
+          break;
+        }
+      }
+    }
+    if (op.responses) {
+      for (const resp of Object.values(op.responses)) {
+        if (resp?.content) {
+          for (const mediaType of Object.values(resp.content)) {
+            if (mediaType?.example || mediaType?.examples) {
+              responseExamples++;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const components = (spec as unknown as { components?: { schemas?: Record<string, unknown> } }).components;
+  if (components?.schemas) {
+    for (const schema of Object.values(components.schemas) as Array<Record<string, unknown>>) {
+      if (schema?.example || schema?.properties) {
+        const props = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+        const hasPropExample = Object.values(props).some((p) => p?.example);
+        if (schema.example || hasPropExample) {
+          schemaExamples++;
+        }
+      }
+    }
+  }
+
+  if (requestExamples > 0 && responseExamples > 0) {
+    return { outcome: "found", detail: `Examples for ${requestExamples} request(s) and ${responseExamples} response(s)` };
+  }
+  if (schemaExamples > 0 || requestExamples > 0 || responseExamples > 0) {
+    return { outcome: "partial", detail: `Partial examples: ${requestExamples} request, ${responseExamples} response, ${schemaExamples} schema` };
+  }
+  return { outcome: "absent", detail: "No examples found in operations or schemas" };
+};
+
+const checkerOpenapiErrorSchemas: SemanticChecker = (sources) => {
+  const snap = sources.openapi;
+  if (!snap) return { outcome: "no_source", detail: "OpenAPI snapshot not found" };
+
+  const spec = parseJsonBody(snap) as OpenApiSpec | null;
+  if (!spec) return { outcome: "no_source", detail: "OpenAPI body could not be parsed as JSON" };
+
+  const operations = getOperations(spec);
+  if (operations.length === 0) {
+    return { outcome: "absent", detail: "No operations found in OpenAPI spec" };
+  }
+
+  let opsWithErrorSchemas = 0;
+  let opsWith4xx = 0;
+  let hasProblemJson = false;
+
+  for (const { op } of operations) {
+    if (!op.responses) continue;
+
+    const errorCodes = Object.keys(op.responses).filter(
+      (code) => code.startsWith("4") || code.startsWith("5"),
+    );
+    if (errorCodes.length === 0) continue;
+    opsWith4xx++;
+
+    let hasSchema = false;
+    for (const code of errorCodes) {
+      const resp = op.responses[code];
+      if (resp?.content) {
+        for (const [mediaType, mediaTypeObj] of Object.entries(resp.content)) {
+          if (mediaType.includes("application/problem+json")) {
+            hasProblemJson = true;
+          }
+          if (mediaTypeObj?.schema) {
+            hasSchema = true;
+          }
+        }
+      }
+      if (resp?.description && resp.description.trim().length > 0) {
+        hasSchema = true;
+      }
+    }
+    if (hasSchema) opsWithErrorSchemas++;
+  }
+
+  if (opsWith4xx === 0) {
+    return { outcome: "absent", detail: "No error responses (4xx/5xx) declared in any operation" };
+  }
+
+  if (opsWithErrorSchemas === operations.length && hasProblemJson) {
+    return { outcome: "found", detail: `All ${opsWithErrorSchemas} operations have error schemas (RFC 9457 problem+json detected)` };
+  }
+  if (opsWithErrorSchemas === operations.length) {
+    return { outcome: "found", detail: `All ${opsWithErrorSchemas} operations have error schemas` };
+  }
+  if (opsWithErrorSchemas > 0) {
+    return { outcome: "partial", detail: `${opsWithErrorSchemas} of ${operations.length} operations have error schemas` };
+  }
+  return { outcome: "absent", detail: "Error responses declared but none have schemas or descriptions" };
+};
+
 export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   openapi_operation_descriptions: checkerOpenapiOperationDescriptions,
   openapi_parameter_semantics: checkerOpenapiParameterSemantics,
+  openapi_examples: checkerOpenapiExamples,
+  openapi_error_schemas: checkerOpenapiErrorSchemas,
 };
