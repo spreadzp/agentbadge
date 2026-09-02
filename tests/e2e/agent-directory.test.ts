@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
 
 import { setupMockEnv, makeTestApp, makeEvmWallet, signWalletOwnership } from "./helpers";
-import { clear as clearDirectoryCache } from "@agentgate-hedera/passport";
-import { rebuildFromHcs } from "@agentgate-hedera/passport";
-import { submitDirectoryMessage } from "@agentgate-hedera/hedera-core";
+import { clear as clearDirectoryCache } from "@agentbadge/passport";
+import { rebuildFromHcs } from "@agentbadge/passport";
+import { submitDirectoryMessage } from "@agentbadge/hedera-core";
 
 describe("SLICE-6-2: Agent Directory E2E", () => {
   let app: ReturnType<typeof makeTestApp>;

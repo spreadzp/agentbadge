@@ -164,6 +164,67 @@
           "type": "number",
           "minimum": -100,
           "maximum": 100
+        },
+        "pillars": {
+          "type": "array",
+          "description": "Per-pillar scores (v0.2 additive, optional) — see spec v0.2 §11.1",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pillar": {
+                "type": "string",
+                "enum": [
+                  "discovery",
+                  "understandability",
+                  "executability",
+                  "verifiability"
+                ],
+                "description": "Pillar enum — see spec v0.2 §A.7"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Pillar weight (default 20/25/30/25)"
+              },
+              "rawScore": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Raw pillar score before floor capping"
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Final pillar score after floor capping"
+              },
+              "categoryCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of categories mapped to this pillar"
+              },
+              "applicableCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of applicable categories (NOT_APPLICABLE excluded)"
+              },
+              "floorTriggered": {
+                "type": "boolean",
+                "description": "Whether a floor cap was triggered on this pillar"
+              }
+            },
+            "required": [
+              "pillar",
+              "weight",
+              "rawScore",
+              "score",
+              "categoryCount",
+              "applicableCount",
+              "floorTriggered"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -190,14 +251,7 @@
           },
           "category": {
             "type": "string",
-            "enum": [
-              "discovery",
-              "documentation",
-              "actionability",
-              "machine_readable",
-              "verification"
-            ],
-            "description": "Rule category: discovery, documentation, actionability, machine_readable, verification"
+            "description": "Rule category — see spec §A.2 for category enum"
           },
           "status": {
             "type": "string",
@@ -205,10 +259,11 @@
               "VERIFIED",
               "INFERRED",
               "CONFLICT",
+              "GAP",
               "MISSING",
               "NOT_APPLICABLE"
             ],
-            "description": "Assertion status: VERIFIED (direct evidence), INFERRED (indirect, carries confidence), CONFLICT (sources disagree), MISSING (no evidence found), NOT_APPLICABLE (rule does not apply to this scope)"
+            "description": "Assertion status: VERIFIED (direct evidence), INFERRED (indirect, carries confidence), CONFLICT (sources disagree), GAP (no evidence found — canonical V2 name; MISSING accepted as legacy input alias, never emitted in new payloads), NOT_APPLICABLE (rule does not apply to this scope)"
           },
           "severity": {
             "type": "string",
@@ -232,24 +287,9 @@
           "evidence": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "source": {
-                  "type": "string",
-                  "description": "Evidence source identifier (e.g. 'openapi', 'agent_guide', 'http_fetch')"
-                },
-                "detail": {
-                  "type": "string",
-                  "description": "Human-readable description of the evidence"
-                }
-              },
-              "required": [
-                "source",
-                "detail"
-              ],
-              "additionalProperties": false
+              "$ref": "#/$defs/evidence"
             },
-            "description": "Array of evidence objects justifying the assertion's status"
+            "description": "Array of evidence objects justifying the assertion's status — see spec §12.1"
           },
           "conflict": {
             "description": "Present only when status = CONFLICT — see spec §5, §12.2",
@@ -284,6 +324,79 @@
               "sides"
             ],
             "additionalProperties": false
+          },
+          "claim": {
+            "type": "string",
+            "description": "Human-readable statement being checked (V2, spec v0.3 §12) — e.g. 'Pricing is machine-readable and discoverable by agents'"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of latest evidence capture (V2, spec v0.3 §12) — falls back to assertion build 'timestamp' for evidence-less assertions"
+          },
+          "review_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "automatic",
+                  "assisted"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Review routing for fix pipeline (V2, spec v0.3 §12.5): 'automatic' if confidence >= 0.80, 'assisted' if < 0.80, null for NOT_APPLICABLE. NEVER a scoring input — extends §6.1 boundary"
+          },
+          "age_days": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Days since evidence capture (V2, spec v0.3 §12.4) — computed at read/display time, not stored at scan time"
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "Whether this assertion's evidence is stale per source-class freshness thresholds (V2, spec v0.3 §12.4)"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of assertion build time (distinct from verified_at = evidence capture time)"
+          },
+          "source_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Primary source URL for this assertion, if any"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Human-readable explanation of the status determination"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable rule name"
+          },
+          "fix": {
+            "type": "object",
+            "properties": {
+              "eligible": {
+                "type": "boolean"
+              },
+              "type": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "eligible",
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "Fix metadata for the fix pipeline"
           }
         },
         "required": [
@@ -296,7 +409,8 @@
           "confidence",
           "evidence"
         ],
-        "additionalProperties": false
+        "additionalProperties": true,
+        "description": "Assertion object — see spec §12. V2 fields (claim, verified_at, review_level, age_days, stale) are optional; legacy fields (timestamp, source_url, reason, name, fix) are emitted by the runtime. additionalProperties: true for forward compat."
       },
       "description": "Array of assertion objects — one per evaluated rule, see spec §12"
     },
@@ -365,5 +479,181 @@
     "assertions",
     "integrity"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "http",
+            "openapi",
+            "json_schema",
+            "html",
+            "robots",
+            "sitemap",
+            "github",
+            "manual_confirmation",
+            "cross"
+          ],
+          "description": "Evidence variant discriminator — 9-variant discriminated union (spec v0.3 §12.1)"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when this evidence was captured (V2, spec v0.3 §12.1) — propagated from ResponseSnapshot.fetchedAt"
+        },
+        "source_class": {
+          "type": "string",
+          "enum": [
+            "runtime",
+            "machine_readable_spec",
+            "machine_readable_guide",
+            "official_docs",
+            "website_content",
+            "ai_inference"
+          ],
+          "description": "Source hierarchy class (V2, spec v0.3 §12.3): runtime (6) > machine_readable_spec (5) > machine_readable_guide (4) > official_docs (3) > website_content (2) > ai_inference (1)"
+        },
+        "url": {
+          "type": "string",
+          "description": "Source URL (http, openapi, json_schema, html, robots, sitemap variants)"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599,
+          "description": "HTTP status code (http, robots, sitemap variants)"
+        },
+        "headers": {
+          "type": "object",
+          "description": "HTTP response headers (http variant)"
+        },
+        "content_hash": {
+          "type": "string",
+          "description": "Content hash (http, html, github variants)"
+        },
+        "content_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Content-Type header value (http, html variants)"
+        },
+        "resolved_ip": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Resolved IP address (http variant)"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "API paths discovered (openapi variant)"
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "HTTP methods discovered (openapi variant)"
+        },
+        "schema_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Schema keys found (json_schema variant)"
+        },
+        "valid": {
+          "type": "boolean",
+          "description": "Whether the schema is valid (json_schema variant)"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Page title (html variant)"
+        },
+        "allows_all": {
+          "type": "boolean",
+          "description": "Whether robots.txt allows all crawlers (robots variant)"
+        },
+        "disallowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Disallowed paths from robots.txt (robots variant)"
+        },
+        "url_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of URLs in sitemap (sitemap variant)"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "URLs from sitemap (sitemap variant)"
+        },
+        "repo": {
+          "type": "string",
+          "description": "GitHub repository (github variant)"
+        },
+        "path": {
+          "type": "string",
+          "description": "File path in GitHub repo (github variant)"
+        },
+        "last_commit": {
+          "type": "string",
+          "description": "Last commit hash (github variant)"
+        },
+        "confirmed_by": {
+          "type": "string",
+          "description": "Who confirmed this manually (manual_confirmation variant)"
+        },
+        "confirmed_at": {
+          "type": "string",
+          "description": "When manual confirmation happened (manual_confirmation variant)"
+        },
+        "note": {
+          "type": "string",
+          "description": "Confirmation note (manual_confirmation variant)"
+        },
+        "sources": {
+          "type": "array",
+          "description": "Cross-evidence sources (cross variant)"
+        },
+        "match_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Keys matched in cross-evidence (cross variant)"
+        },
+        "conflict_reason": {
+          "type": "string",
+          "description": "Reason for conflict in cross-evidence (cross variant)"
+        },
+        "source": {
+          "type": "string",
+          "description": "Legacy evidence source identifier (v0.1 compat — accepted on input, not emitted in V2)"
+        },
+        "detail": {
+          "type": "string",
+          "description": "Legacy evidence detail (v0.1 compat — accepted on input, not emitted in V2)"
+        }
+      },
+      "required": [],
+      "additionalProperties": true,
+      "description": "Evidence object — 9-variant discriminated union (spec v0.3 §12.1). V2 adds captured_at + source_class. Legacy {source, detail} shape accepted on input for backward compat. 'type' is not required to allow legacy evidence shape."
+    }
+  }
 }

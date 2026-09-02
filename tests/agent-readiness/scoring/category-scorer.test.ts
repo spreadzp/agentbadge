@@ -29,8 +29,8 @@ describe("SLICE-35-3: Category Scorer", () => {
 
   it("all MISSING → score 0", () => {
     const assertions = [
-      mockAssertion("AB-001", "MISSING"),
-      mockAssertion("AB-002", "MISSING"),
+      mockAssertion("AB-001", "GAP"),
+      mockAssertion("AB-002", "GAP"),
     ];
     const result = scoreCategory("discovery", assertions, DEFAULT_SCORING_CONFIG);
     expect(result.score).toBe(0);
@@ -39,7 +39,7 @@ describe("SLICE-35-3: Category Scorer", () => {
   it("50% VERIFIED, 50% MISSING → score 50", () => {
     const assertions = [
       mockAssertion("AB-001", "VERIFIED"),
-      mockAssertion("AB-002", "MISSING"),
+      mockAssertion("AB-002", "GAP"),
     ];
     const result = scoreCategory("discovery", assertions, DEFAULT_SCORING_CONFIG);
     expect(result.score).toBe(50);
@@ -56,13 +56,13 @@ describe("SLICE-35-3: Category Scorer", () => {
     expect(result.ruleCount).toBe(2);
   });
 
-  it("1 INFERRED, 1 VERIFIED → score 85 (70+100)/2", () => {
+  it("1 INFERRED, 1 VERIFIED → score 80 (60+100)/2", () => {
     const assertions = [
       mockAssertion("AB-001", "INFERRED"),
       mockAssertion("AB-002", "VERIFIED"),
     ];
     const result = scoreCategory("discovery", assertions, DEFAULT_SCORING_CONFIG);
-    expect(result.score).toBe(85);
+    expect(result.score).toBe(80);
   });
 
   it("empty assertions → score 0", () => {
@@ -90,8 +90,8 @@ describe("SLICE-35-3: Category Scorer", () => {
       mockAssertion("AB-003", "INFERRED"),
     ];
     const result = scoreCategory("discovery", assertions, DEFAULT_SCORING_CONFIG);
-    // (100 + 100 + 70) / 3 = 90.0
-    expect(result.score).toBe(90);
+    // (100 + 100 + 60) / 3 = 86.67
+    expect(result.score).toBe(86.67);
     expect(result.score.toString().split(".")[1]?.length ?? 0).toBeLessThanOrEqual(2);
   });
 

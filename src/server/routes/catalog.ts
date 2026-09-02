@@ -7,7 +7,7 @@
 
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
-import { getCatalog, getLlmsTxt } from "@agentgate-hedera/hedera-core";
+import { getCatalog, getLlmsTxt } from "@agentbadge/hedera-core";
 import { catalogTierSchema } from "../openapi";
 import z from "zod";
 import { FAQ_ENTRIES } from "../../views/faq-page";

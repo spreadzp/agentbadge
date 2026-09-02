@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...(await importOriginal()),
   marketUpsert: vi.fn(),
   marketGet: vi.fn(),
   listTasks: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...(await importOriginal()),
 }));
 
-import { marketUpsert as upsert, marketGet as getTask, listTasks } from "@agentgate-hedera/passport";
+import { marketUpsert as upsert, marketGet as getTask, listTasks } from "@agentbadge/passport";
 import demo from "../src/server/routes/demo";
 
 describe("SLICE-11-4: Marketplace Task Setup", () => {

@@ -4,11 +4,11 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-vi.mock("@agentgate-hedera/passport", () => ({
+vi.mock("@agentbadge/passport", () => ({
   issuePassport: vi.fn(),
 }));
 
-import { issuePassport } from "@agentgate-hedera/passport";
+import { issuePassport } from "@agentbadge/passport";
 import { fulfillOrder, resetProcessedSessions } from "../src/server/lib/order-fulfillment";
 
 const mockedIssuePassport = vi.mocked(issuePassport);

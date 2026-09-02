@@ -1,4 +1,4 @@
-import type { Category } from "./shared.schema";
+import type { Category, Pillar } from "./shared.schema";
 
 export interface RuleDescription {
   rule_id: string;
@@ -109,6 +109,44 @@ export const CATEGORY_DESCRIPTIONS: Record<Category, CategoryDescription> = {
     icon: "🔍",
     title: "Active Probing",
     description: "Are auth, endpoints, and operational metadata discoverable by active probing?",
+  },
+};
+
+export interface PillarDescription {
+  label: string;
+  question: string;
+  weight: number;
+  description: string;
+}
+
+export const PILLAR_DESCRIPTIONS: Record<Pillar, PillarDescription> = {
+  discovery: {
+    label: "Discovery",
+    question: "Can an agent find you?",
+    weight: 20,
+    description:
+      "Measures whether AI agents can discover your site and its capabilities through standard protocols like robots.txt, sitemaps, OpenAPI specs, llms.txt, agents.txt, and structured data. Covers 8 categories: discovery, machine-readable, OpenAPI, skills, agents.txt, WebMCP, content negotiation, and SEO/AEO.",
+  },
+  understandability: {
+    label: "Understandability",
+    question: "Can an agent understand you?",
+    weight: 25,
+    description:
+      "Measures whether AI agents can comprehend your API documentation, act on instructions, and access content in accessible formats. Covers 3 categories: documentation, actionability, and accessibility.",
+  },
+  executability: {
+    label: "Executability",
+    question: "Can an agent act on your API?",
+    weight: 30,
+    description:
+      "Measures whether AI agents can authenticate, transact, and interact with your services programmatically. Covers 4 categories: bot auth, identity, payments, and bazaar (marketplace listing).",
+  },
+  verifiability: {
+    label: "Verifiability",
+    question: "Can an agent verify what it observed?",
+    weight: 25,
+    description:
+      "Measures whether AI agents can verify your identity, infrastructure reliability, and operational metadata through active probing. Covers 3 categories: verification, infrastructure, and active probing.",
   },
 };
 

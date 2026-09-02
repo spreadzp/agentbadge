@@ -32,7 +32,7 @@ function makeMockAssertions(count: number): Assertion[] {
     assertions.push({
       rule_id: `AB-${String(i + 1).padStart(3, "0")}`,
       rule_version: "1.0.0",
-      status: i % 3 === 0 ? "VERIFIED" : i % 3 === 1 ? "MISSING" : "NOT_APPLICABLE",
+      status: i % 3 === 0 ? "VERIFIED" : i % 3 === 1 ? "GAP" : "NOT_APPLICABLE",
       evidence: [],
       confidence: 0.9,
       timestamp: "",
@@ -153,7 +153,7 @@ describe("AgentGrade CLI Parity", () => {
       {
         rule_id: "AB-001",
         rule_version: "1.0.0",
-        status: "MISSING",
+        status: "GAP",
         evidence: [],
         confidence: 0.9,
         timestamp: "",

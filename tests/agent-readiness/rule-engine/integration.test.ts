@@ -82,12 +82,12 @@ describe("Rule Engine Integration — All Rules", () => {
     expect(ids).toEqual(sorted);
   });
 
-  it("empty SourceState produces all NOT_APPLICABLE or MISSING", () => {
+  it("empty SourceState produces all NOT_APPLICABLE or GAP", () => {
     const result = RuleEngine.run(emptySourceState);
-    const naOrMissing = result.assertions.filter(
-      (a) => a.status === "NOT_APPLICABLE" || a.status === "MISSING",
+    const naOrGap = result.assertions.filter(
+      (a) => a.status === "NOT_APPLICABLE" || a.status === "GAP",
     );
-    expect(naOrMissing.length).toBe(result.assertions.length);
+    expect(naOrGap.length).toBe(result.assertions.length);
   });
 
   it("every checker in RULE_CHECKERS runs without throwing on full SourceState", () => {

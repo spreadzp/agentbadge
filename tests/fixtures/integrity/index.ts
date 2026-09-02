@@ -15,7 +15,7 @@ const mockScope = {
 
 const mockAssertions = [
   { rule_id: "AB-001", status: "VERIFIED", severity: "critical" },
-  { rule_id: "AB-002", status: "MISSING", severity: "important" },
+  { rule_id: "AB-002", status: "GAP", severity: "important" },
   { rule_id: "AB-003", status: "VERIFIED", severity: "minor" },
 ];
 
@@ -50,7 +50,7 @@ export function createTamperedReport(): AgentReadinessReport {
   return {
     ...signed,
     assertions: [
-      { rule_id: "AB-001", status: "MISSING", severity: "critical" },
+      { rule_id: "AB-001", status: "GAP", severity: "critical" },
       ...mockAssertions.slice(1),
     ],
   };

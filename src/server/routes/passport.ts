@@ -12,9 +12,9 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 
-import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
+import type { Tier, Capability } from "@agentbadge/hedera-core";
 import { passportRequestSchema, passportResponseSchema, errorSchema } from "../openapi";
-import { issuePassport, type IssuePassportResult } from "@agentgate-hedera/passport";
+import { issuePassport, type IssuePassportResult } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { passportLinks } from "../lib/hateoas";

@@ -8,10 +8,10 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
   })),
 }));
 
-import { createNamespace, listTools } from "@agentgate-hedera/mcp";
-import { registerPassportTools } from "@agentgate-hedera/mcp";
-import { registerSigningTools } from "@agentgate-hedera/mcp";
-import { registerEscrowTools } from "@agentgate-hedera/mcp";
+import { createNamespace, listTools } from "@agentbadge/mcp";
+import { registerPassportTools } from "@agentbadge/mcp";
+import { registerSigningTools } from "@agentbadge/mcp";
+import { registerEscrowTools } from "@agentbadge/mcp";
 
 describe("SLICE-72-4: passport namespace wiring", () => {
   it("registerPassportTools(ns) registers into passport namespace", () => {

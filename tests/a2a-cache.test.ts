@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { TopicMessage } from "@agentgate-hedera/hedera-core";
+import type { TopicMessage } from "@agentbadge/hedera-core";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getTopicMessages: vi.fn(),
 }));
 
-import { getTopicMessages } from "@agentgate-hedera/hedera-core";
+import { getTopicMessages } from "@agentbadge/hedera-core";
 import {
   a2aUpsert as upsert,
   a2aGetAll as getAll,
@@ -14,8 +14,8 @@ import {
   getConversation,
   a2aClear as clear,
   a2aRebuildFromHcs as rebuildFromHcs,
-} from "@agentgate-hedera/passport";
-import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import type { CachedA2AMessage } from "@agentbadge/hedera-core";
 
 const mockedGetTopicMessages = vi.mocked(getTopicMessages);
 

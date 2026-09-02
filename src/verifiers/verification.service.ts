@@ -1,5 +1,5 @@
-import type { CachedMarketTask, TaskVerificationFailedMessage } from "@agentgate-hedera/hedera-core";
-import { submitTaskMessage } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask, TaskVerificationFailedMessage } from "@agentbadge/hedera-core";
+import { submitTaskMessage } from "@agentbadge/hedera-core";
 import { VerifierRegistry } from "./verifier.registry";
 import type { VerificationResult } from "./verifier.interface";
 

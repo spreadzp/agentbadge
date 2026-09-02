@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { DirectoryEntry } from "@agentgate-hedera/passport";
+import type { DirectoryEntry } from "@agentbadge/passport";
 import { explorerNftUrl, explorerName } from "../server/lib/chain-ui.js";
 
 /** Agent entry with active status. */

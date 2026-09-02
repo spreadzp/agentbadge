@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { TierEntry } from "@agentgate-hedera/hedera-core";
+import type { TierEntry } from "@agentbadge/hedera-core";
 import { accountLabel, accountPlaceholder, accountPattern, chainDisplayName, formatPrice } from "../server/lib/chain-ui.js";
 
 const TIER_STYLES: Record<string, { border: string; badge: string; label: string }> = {

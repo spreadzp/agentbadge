@@ -5,10 +5,10 @@
  * and reclaims them. Config-gated via ESCROW_RECONCILER_ENABLED.
  */
 
-import { listTasks, setEscrowStatus } from "@agentgate-hedera/passport";
-import { deleteScheduledTransaction, submitTaskMessage } from "@agentgate-hedera/hedera-core";
-import type { TaskMessage } from "@agentgate-hedera/hedera-core";
-import { logger } from "@agentgate-hedera/passport";
+import { listTasks, setEscrowStatus } from "@agentbadge/passport";
+import { deleteScheduledTransaction, submitTaskMessage } from "@agentbadge/hedera-core";
+import type { TaskMessage } from "@agentbadge/hedera-core";
+import { logger } from "@agentbadge/passport";
 
 export interface SweepResult {
   reclaimed: number;

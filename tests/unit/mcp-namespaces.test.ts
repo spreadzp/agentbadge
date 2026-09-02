@@ -14,7 +14,7 @@ import {
   registerGuideTools,
   registerA2ATools,
   registerAuditCatalogTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { registerComplianceTools } from "../../src/mcp/compliance-tools";
 import { registerParityTools } from "../../src/mcp/parity-tools";
 

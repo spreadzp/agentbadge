@@ -71,7 +71,7 @@ describe("scan command", () => {
     expect(result.stdout).toBeTruthy();
     const report = JSON.parse(result.stdout);
     expect(report.report_id).toBeTruthy();
-    expect(report.schema_version).toBe("0.2.0");
+    expect(report.schema_version).toBe("0.3.0");
     expect(report.ruleset.name).toBe("agent-readiness");
     expect(report.score.overall).toBeTypeOf("number");
     expect(report.assertions).toBeInstanceOf(Array);

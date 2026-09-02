@@ -58,7 +58,7 @@ export function formatCiSummary(report: AgentReadinessReport): string {
 
   // Issues (MISSING / CONFLICT / FAIL)
   const assertions = (report.assertions as Assertion[]).filter(
-    (a) => a.status === "MISSING" || a.status === "CONFLICT" || a.status === "FAIL",
+    (a) => a.status === "GAP" || a.status === "CONFLICT" || a.status === "FAIL",
   );
 
   if (assertions.length > 0) {

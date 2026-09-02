@@ -3,7 +3,9 @@
  */
 
 import type { Assertion } from "../../rule-engine/assertion-builder";
-import type { CategoryScore } from "../../scoring/scoring-types";
+import type { CategoryScore, PillarScore } from "../../scoring/scoring-types";
+import { PILLAR_LABELS } from "../../scoring/pillar-map";
+import { orderedPillars } from "./pillar-helpers";
 
 export interface JsonApiInput {
   url: string;
@@ -17,6 +19,7 @@ export interface JsonApiInput {
   authProbe?: unknown;
   endpointProbe?: unknown;
   operationalDiscovery?: unknown;
+  pillars?: Record<string, PillarScore>;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -119,6 +122,17 @@ export function formatJsonApiOutput(input: JsonApiInput): string {
 
   if (input.operationalDiscovery !== undefined) {
     output.operational_discovery = input.operationalDiscovery;
+  }
+
+  if (input.pillars) {
+    output.pillars = orderedPillars(input.pillars).map(({ key, score: ps }) => ({
+      pillar: ps.pillar,
+      label: PILLAR_LABELS[key as keyof typeof PILLAR_LABELS],
+      weight: ps.weight,
+      score: ps.score,
+      rawScore: ps.rawScore,
+      floorTriggered: ps.floorTriggered,
+    }));
   }
 
   const space = input.compact ? 0 : 2;

@@ -6,6 +6,7 @@ import {
   CATEGORY_DESCRIPTIONS,
   type RuleDescription,
 } from "../agent-readiness/rule-descriptions";
+import { CATEGORY_TO_PILLAR, PILLAR_LABELS } from "../agent-readiness/scoring/pillar-map";
 import { articleLd, breadcrumbListLd, defaultCoreSchemas } from "../server/lib/json-ld";
 
 const EFFORT_STYLES: Record<string, string> = {
@@ -28,6 +29,8 @@ export function RuleDetailPage(rule: RuleDescription) {
   const catDesc = CATEGORY_DESCRIPTIONS[rule.category];
   const effortStyle = EFFORT_STYLES[rule.effort_hint];
   const effortLabel = EFFORT_LABELS[rule.effort_hint];
+  const pillar = CATEGORY_TO_PILLAR[rule.category];
+  const pillarLabel = PILLAR_LABELS[pillar];
 
   const relatedRules = RULE_DESCRIPTIONS.filter(
     (r) => r.category === rule.category && r.rule_id !== rule.rule_id,
@@ -100,6 +103,9 @@ export function RuleDetailPage(rule: RuleDescription) {
           >
             <span>${catDesc.icon}</span> ${catDesc.title}
           </a>
+          <span class="inline-flex items-center gap-1.5 text-sm border border-indigo-500/30 bg-indigo-500/10 rounded-full px-3 py-1 text-indigo-300">
+            Pillar: ${pillarLabel}
+          </span>
           <span class="inline-flex items-center gap-1.5 text-sm border ${raw(effortStyle)} rounded-full px-3 py-1 font-mono uppercase tracking-wider">
             ${effortLabel}
           </span>

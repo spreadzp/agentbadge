@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../src/server/middleware/signature-verification", () => ({
   signatureVerificationMiddleware: vi.fn(async (_c: any, next: any) => {
-    const { verifyWalletOwnership } = await import("@agentgate-hedera/passport");
+    const { verifyWalletOwnership } = await import("@agentbadge/passport");
     const c = _c;
     const body = await c.req.json();
     if (!body.accountId || !body.signature) {
@@ -16,7 +16,7 @@ vi.mock("../src/server/middleware/signature-verification", () => ({
   }),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   verifyWalletOwnership: vi.fn(async () => true),
   issuePassport: vi.fn(async () => ({
@@ -31,7 +31,7 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
 import { Hono } from "hono";
 import { signatureVerificationMiddleware } from "../src/server/middleware/signature-verification";
 import { passportRoutes } from "../src/server/routes/passport";
-import { verifyWalletOwnership, issuePassport } from "@agentgate-hedera/passport";
+import { verifyWalletOwnership, issuePassport } from "@agentbadge/passport";
 
 describe("POST /passport/request", () => {
   let app: Hono;

@@ -20,7 +20,7 @@ function buildRuleSummary(assertion: AssertionLike): string {
       return "This rule is partially implemented — some evidence was found but not fully verified.";
     case "CONFLICT":
       return "Conflicting evidence was found — sources disagree on this rule.";
-    case "MISSING":
+    case "GAP":
       return "This rule is not implemented. " + (assertion.fix?.note ?? "See the fix guide above.");
     case "NOT_APPLICABLE":
       return "This rule does not apply to your site based on the detected resources.";

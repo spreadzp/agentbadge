@@ -20,7 +20,7 @@ describe("SLICE-36-2: Content Hash — SHA-256", () => {
 
   it("changed assertion → different hash", () => {
     const body1 = { a: 1, status: "VERIFIED" };
-    const body2 = { a: 1, status: "MISSING" };
+    const body2 = { a: 1, status: "GAP" };
     expect(computeContentHash(body1)).not.toBe(computeContentHash(body2));
   });
 

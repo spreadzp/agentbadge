@@ -1,4 +1,4 @@
-import type { CategoryScore, TotalScore } from "./scoring-types";
+import type { CategoryScore, TotalScore, PillarScore, PillarWeights } from "./scoring-types";
 import type { FloorCheckResult } from "./floor-enforcer";
 import { roundTo2 } from "./category-scorer";
 import { computeGrade } from "./grade-computer";
@@ -9,6 +9,40 @@ export function computeTotalScore(
 ): TotalScore {
   const rawScore = categoryScores.reduce(
     (sum, cs) => sum + (cs.score * cs.weight) / 100,
+    0,
+  );
+
+  const roundedRaw = roundTo2(rawScore);
+
+  if (floorCheck.triggered && floorCheck.capValue !== null) {
+    const capped = Math.min(roundedRaw, floorCheck.capValue);
+    return {
+      rawScore: roundedRaw,
+      score: capped,
+      grade: computeGrade(capped),
+      floorTriggered: roundedRaw > floorCheck.capValue,
+      floorReason: roundedRaw > floorCheck.capValue
+        ? `Floor cap applied: ${floorCheck.triggeringRules.join(", ")}`
+        : null,
+    };
+  }
+
+  return {
+    rawScore: roundedRaw,
+    score: roundedRaw,
+    grade: computeGrade(roundedRaw),
+    floorTriggered: false,
+    floorReason: null,
+  };
+}
+
+export function computeTotalScoreV2(
+  pillarScores: PillarScore[],
+  floorCheck: FloorCheckResult,
+  pillarWeights: PillarWeights,
+): TotalScore {
+  const rawScore = pillarScores.reduce(
+    (sum, ps) => sum + (ps.score * pillarWeights[ps.pillar]) / 100,
     0,
   );
 

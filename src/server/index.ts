@@ -7,7 +7,7 @@ import { HEDERA_TESTNET_CAIP2 } from "@x402/hedera";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 
-import { getPrice, logger } from "@agentgate-hedera/passport";
+import { getPrice, logger } from "@agentbadge/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { adminAuth } from "./middleware/adminAuth";
 import { mppPaymentMiddleware } from "./middleware/mpp";
@@ -17,7 +17,7 @@ import {
   startBackgroundRebuild,
   a2aStartBackgroundRebuild as startA2ACacheRebuild,
   marketStartBackgroundRebuild as startMarketCacheRebuild,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 import {
   registerPassportTools,
   registerAuditCatalogTools,
@@ -32,7 +32,7 @@ import {
   registerAllTools,
   listTools,
   createNamespace,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { registerComplianceTools } from "../mcp/compliance-tools";
 import { registerParityTools } from "../mcp/parity-tools";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
@@ -56,6 +56,7 @@ import { eventsRoutes } from "./routes/events";
 import { catalogRoutes } from "./routes/catalog";
 import { uiRoutes } from "./routes/ui";
 import { landingRoutes } from "./routes/landing";
+import { hackathonRoutes } from "./routes/hackathon";
 import { servicesRoutes } from "./routes/services";
 import { agentGuideRoutes } from "./routes/agent-guide";
 import { agentKnowledgeRoutes } from "./routes/agent-knowledge";
@@ -79,6 +80,7 @@ import { demandRoutes } from "./routes/api/demand";
 import { demandGuideRoutes } from "./routes/agent-guide/demand";
 import { changelogRoutes } from "./routes/changelog";
 import { agencyJsonRoutes } from "./routes/agency-json";
+import { webmcpApiRoutes } from "./routes/webmcp-api";
 import { wellKnownRoutes } from "./routes/well-known";
 import { agentCardRoutes } from "./routes/agent-card";
 import { feedRoutes } from "./routes/feed";
@@ -412,6 +414,7 @@ app.route("/mcp/market", createNamespaceRoutes("market"));
 app.route("/mcp/discovery", createNamespaceRoutes("discovery"));
 app.route("/mcp/audit", createNamespaceRoutes("audit"));
 app.route("/", landingRoutes);
+app.route("/", hackathonRoutes);
 app.route("/", servicesRoutes);
 app.route("/", uiRoutes);
 app.route("/", agentGuideRoutes);
@@ -425,6 +428,7 @@ app.route("/", medicalGuideRoutes);
 app.route("/", contactRoutes);
 app.route("/", contentPageRoutes);
 app.route("/", blogRoutes);
+app.route("/api", webmcpApiRoutes);
 app.route("/api", rulesApiRoutes);
 app.route("/api", scanRuleRoutes);
 app.route("/api", totalScanRoutes);

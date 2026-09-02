@@ -1,7 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { formatJsonApiOutput } from "../../../../src/agent-readiness/cli/formatters/json-api-output";
 import type { Assertion } from "../../../../src/agent-readiness/rule-engine/assertion-builder";
-import type { CategoryScore } from "../../../../src/agent-readiness/scoring/scoring-types";
+import type { CategoryScore, PillarScore } from "../../../../src/agent-readiness/scoring/scoring-types";
+
+function makePillarScore(overrides: Partial<PillarScore> = {}): PillarScore {
+  return {
+    pillar: "discovery",
+    weight: 20,
+    rawScore: 90,
+    score: 90,
+    categoryCount: 8,
+    applicableCount: 8,
+    floorTriggered: false,
+    ...overrides,
+  };
+}
 
 function makeAssertion(overrides: Partial<Assertion> = {}): Assertion {
   return {
@@ -58,7 +71,7 @@ describe("formatJsonApiOutput", () => {
       grade: "F",
       assertions: [
         makeAssertion({ rule_id: "AB-001", status: "VERIFIED" }),
-        makeAssertion({ rule_id: "AB-002", status: "MISSING" }),
+        makeAssertion({ rule_id: "AB-002", status: "GAP" }),
         makeAssertion({ rule_id: "AB-003", status: "VERIFIED" }),
         makeAssertion({ rule_id: "AB-004", status: "NOT_APPLICABLE" }),
       ],
@@ -77,7 +90,7 @@ describe("formatJsonApiOutput", () => {
       grade: "B",
       assertions: [
         makeAssertion({ rule_id: "AB-001", category: "discovery", status: "VERIFIED", name: "robots.txt" }),
-        makeAssertion({ rule_id: "AB-002", category: "discovery", status: "MISSING", name: "sitemap.xml" }),
+        makeAssertion({ rule_id: "AB-002", category: "discovery", status: "GAP", name: "sitemap.xml" }),
       ],
       categoryScores: [makeCategoryScore({ category: "discovery", ruleCount: 2, applicableCount: 2 })],
     });
@@ -99,7 +112,7 @@ describe("formatJsonApiOutput", () => {
       grade: "B",
       assertions: [
         makeAssertion({ rule_id: "AB-001", status: "VERIFIED", name: "robots.txt present" }),
-        makeAssertion({ rule_id: "AB-002", status: "MISSING", name: "sitemap.xml present" }),
+        makeAssertion({ rule_id: "AB-002", status: "GAP", name: "sitemap.xml present" }),
       ],
       categoryScores: [makeCategoryScore()],
     });
@@ -119,7 +132,7 @@ describe("formatJsonApiOutput", () => {
       assertions: [
         makeAssertion({
           rule_id: "AB-002",
-          status: "MISSING",
+          status: "GAP",
           name: "sitemap.xml present",
           fix: { eligible: true, type: "create_file", note: "Add sitemap.xml at /sitemap.xml" },
         }),
@@ -189,5 +202,92 @@ describe("formatJsonApiOutput", () => {
     expect(parsed.checks.total).toBe(1);
     expect(parsed.checks.passed).toBe(1);
     expect(parsed.checks.failed).toBe(0);
+  });
+
+  // SLICE-93-9: Pillar output tests
+  describe("pillar output", () => {
+    const pillars = {
+      discovery: makePillarScore({ pillar: "discovery", weight: 20, rawScore: 90, score: 90 }),
+      understandability: makePillarScore({ pillar: "understandability", weight: 25, rawScore: 68, score: 68 }),
+      executability: makePillarScore({ pillar: "executability", weight: 30, rawScore: 77, score: 77 }),
+      verifiability: makePillarScore({ pillar: "verifiability", weight: 25, rawScore: 72, score: 72 }),
+    };
+
+    it("includes pillars array in JSON output", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 76,
+        grade: "B",
+        assertions: [makeAssertion()],
+        categoryScores: [makeCategoryScore()],
+        pillars,
+      });
+      const parsed = JSON.parse(json);
+      expect(parsed.pillars).toBeDefined();
+      expect(Array.isArray(parsed.pillars)).toBe(true);
+      expect(parsed.pillars).toHaveLength(4);
+    });
+
+    it("first pillar has pillar key === discovery", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 76,
+        grade: "B",
+        assertions: [makeAssertion()],
+        categoryScores: [makeCategoryScore()],
+        pillars,
+      });
+      const parsed = JSON.parse(json);
+      expect(parsed.pillars[0].pillar).toBe("discovery");
+    });
+
+    it("each pillar has pillar, label, weight, score, rawScore, floorTriggered", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 76,
+        grade: "B",
+        assertions: [makeAssertion()],
+        categoryScores: [makeCategoryScore()],
+        pillars,
+      });
+      const parsed = JSON.parse(json);
+      for (const p of parsed.pillars) {
+        expect(p.pillar).toBeDefined();
+        expect(p.label).toBeDefined();
+        expect(p.weight).toBeDefined();
+        expect(p.score).toBeDefined();
+        expect(p.rawScore).toBeDefined();
+        expect(p.floorTriggered).toBeDefined();
+      }
+    });
+
+    it("legacy keys still present when pillars added (additive check)", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 76,
+        grade: "B",
+        assertions: [makeAssertion()],
+        categoryScores: [makeCategoryScore()],
+        pillars,
+      });
+      const parsed = JSON.parse(json);
+      expect(parsed.url).toBe("https://example.com");
+      expect(parsed.score).toBe(76);
+      expect(parsed.grade).toBe("B");
+      expect(parsed.checks).toBeDefined();
+      expect(parsed.categories).toBeDefined();
+    });
+
+    it("omits pillars key when not provided (degradation)", () => {
+      const json = formatJsonApiOutput({
+        url: "https://example.com",
+        score: 76,
+        grade: "B",
+        assertions: [makeAssertion()],
+        categoryScores: [makeCategoryScore()],
+      });
+      const parsed = JSON.parse(json);
+      expect(parsed.pillars).toBeUndefined();
+    });
   });
 });

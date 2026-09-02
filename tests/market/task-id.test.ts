@@ -10,13 +10,13 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { marketClear } from "@agentgate-hedera/passport";
+import { marketClear } from "@agentbadge/passport";
 import { generateReportId as generateUlid } from "../../src/agent-readiness/integrity/ulid";
 import * as fs from "fs";
 import * as path from "path";
 
 // Mock hedera-core
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>;
   return {
     ...actual,
@@ -78,7 +78,7 @@ describe("SLICE-84-3: ULID Task IDs", () => {
 
   describe("submitTaskMessage receipt", () => {
     it("returns { txId, consensusTimestamp } object, not bare string", async () => {
-      const { submitTaskMessage } = await import("@agentgate-hedera/hedera-core");
+      const { submitTaskMessage } = await import("@agentbadge/hedera-core");
       const result = await submitTaskMessage({ type: "task_posted", taskId: "test", posterDid: "did:test", title: "T", description: "D", priceHbar: 1, capabilities: [], timestamp: Date.now() });
 
       expect(typeof result).toBe("object");

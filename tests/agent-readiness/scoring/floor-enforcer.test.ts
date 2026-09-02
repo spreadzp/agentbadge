@@ -38,7 +38,7 @@ describe("SLICE-35-4: Floor Enforcer", () => {
   it("one high-severity Discovery rule MISSING → floor triggered, capValue=40", () => {
     const assertions = [
       mockAssertion("AB-001", "VERIFIED", "high", "discovery"),
-      mockAssertion("AB-002", "MISSING", "high", "discovery"),
+      mockAssertion("AB-002", "GAP", "high", "discovery"),
     ];
     const result = checkFloor(assertions, DEFAULT_SCORING_CONFIG);
     expect(result.triggered).toBe(true);
@@ -56,7 +56,7 @@ describe("SLICE-35-4: Floor Enforcer", () => {
 
   it("high-severity Actionability rule MISSING → floor NOT triggered (not in floorCategories)", () => {
     const assertions = [
-      mockAssertion("AB-005", "MISSING", "high", "actionability"),
+      mockAssertion("AB-005", "GAP", "high", "actionability"),
     ];
     const result = checkFloor(assertions, DEFAULT_SCORING_CONFIG);
     expect(result.triggered).toBe(false);
@@ -64,7 +64,7 @@ describe("SLICE-35-4: Floor Enforcer", () => {
 
   it("medium-severity Discovery rule MISSING → floor NOT triggered (not high severity)", () => {
     const assertions = [
-      mockAssertion("AB-001", "MISSING", "medium", "discovery"),
+      mockAssertion("AB-001", "GAP", "medium", "discovery"),
     ];
     const result = checkFloor(assertions, DEFAULT_SCORING_CONFIG);
     expect(result.triggered).toBe(false);
@@ -72,7 +72,7 @@ describe("SLICE-35-4: Floor Enforcer", () => {
 
   it("triggeringRules contains the correct rule_id(s)", () => {
     const assertions = [
-      mockAssertion("AB-001", "MISSING", "high", "discovery"),
+      mockAssertion("AB-001", "GAP", "high", "discovery"),
       mockAssertion("AB-003", "CONFLICT", "high", "documentation"),
     ];
     const result = checkFloor(assertions, DEFAULT_SCORING_CONFIG);
@@ -83,8 +83,8 @@ describe("SLICE-35-4: Floor Enforcer", () => {
 
   it("triggeringCategories contains affected categories", () => {
     const assertions = [
-      mockAssertion("AB-001", "MISSING", "high", "discovery"),
-      mockAssertion("AB-003", "MISSING", "high", "documentation"),
+      mockAssertion("AB-001", "GAP", "high", "discovery"),
+      mockAssertion("AB-003", "GAP", "high", "documentation"),
     ];
     const result = checkFloor(assertions, DEFAULT_SCORING_CONFIG);
     expect(result.triggeringCategories).toContain("discovery");

@@ -13,8 +13,8 @@ export const agentReadinessReportSchema = z.object({
     .describe("ULID — 26-char Crockford Base32, see spec §11"),
 
   schema_version: z
-    .literal("0.2.0")
-    .describe("Literal version pin — only '0.2.0' accepted in v0.2"),
+    .literal("0.3.0")
+    .describe("Literal version pin — only '0.3.0' accepted in v0.3"),
 
   ruleset: z
     .object({

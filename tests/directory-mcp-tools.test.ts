@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { z } from "zod";
-import type { NftInfo } from "@agentgate-hedera/hedera-core";
+import type { NftInfo } from "@agentbadge/hedera-core";
 
 // Mock services before importing tools
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
   getTopicMessages: vi.fn(),
@@ -15,14 +15,14 @@ import {
   getNftInfo,
   submitAuditMessage,
   submitDirectoryMessage,
-} from "@agentgate-hedera/hedera-core";
-import { upsert, getAll, get, clear, type DirectoryEntry } from "@agentgate-hedera/passport";
+} from "@agentbadge/hedera-core";
+import { upsert, getAll, get, clear, type DirectoryEntry } from "@agentbadge/passport";
 import {
   registerDirectoryTools,
   registerAgent,
   findAgents,
-} from "@agentgate-hedera/mcp";
-import { handleHttpToolCall, listTools } from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
+import { handleHttpToolCall, listTools } from "@agentbadge/mcp";
 
 const mockedGetNftInfo = vi.mocked(getNftInfo);
 const mockedSubmitAudit = vi.mocked(submitAuditMessage);

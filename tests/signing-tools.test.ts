@@ -25,10 +25,10 @@ import {
   registerGuideTools,
   registerSigningTools,
   listTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 import { Client, PrivateKey, TransferTransaction, Hbar } from "@hashgraph/sdk";
-import { signTransactionBytes } from "@agentgate-hedera/hedera-core";
+import { signTransactionBytes } from "@agentbadge/hedera-core";
 
 const BASE_URL = "http://localhost:4021";
 

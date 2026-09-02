@@ -1,7 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
-import { listTools } from "@agentgate-hedera/mcp";
+import { listTools } from "@agentbadge/mcp";
 
 /**
  * Pricing page — passport tiers in HBAR with comparison table.

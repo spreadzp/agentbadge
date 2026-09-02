@@ -14,9 +14,9 @@ import {
   marketUpsert as upsert,
   marketGet as getTask,
   updateTaskStatus,
-} from "@agentgate-hedera/passport";
-import { submitTaskMessage, verifyA2ADid, didToAccountId, transferHbar } from "@agentgate-hedera/hedera-core";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/passport";
+import { submitTaskMessage, verifyA2ADid, didToAccountId, transferHbar } from "@agentbadge/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 export interface ConsumerAgentConfig {
   consumerDid: string;

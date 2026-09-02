@@ -12,7 +12,7 @@ export interface IntegrityBlock {
 
 export interface AgentReadinessReport {
   report_id: string;
-  schema_version: "0.2.0";
+  schema_version: "0.3.0";
   ruleset: { name: "agent-readiness"; version: "1.4.0" };
   scope: {
     agent_id: string;
@@ -30,6 +30,7 @@ export interface AgentReadinessReport {
     delta?: number;
   };
   assertions: unknown[];
+  pillars?: Record<string, unknown>;
   integrity: IntegrityBlock;
 }
 
@@ -44,6 +45,7 @@ export interface ReportAssemblyInput {
   scoreResult: {
     total: { score: number; grade?: string };
     categories: Record<string, { score: number }>;
+    pillars?: Record<string, unknown>;
     delta?: { totalDelta: number } | null;
   };
   previousHash: string | null;
@@ -67,7 +69,7 @@ export function assembleReport(input: ReportAssemblyInput): AgentReadinessReport
 
   const reportBody: Record<string, unknown> = {
     report_id: reportId,
-    schema_version: "0.2.0",
+    schema_version: "0.3.0",
     ruleset: { name: "agent-readiness", version: "1.4.0" },
     scope: {
       ...input.scope,
@@ -80,6 +82,9 @@ export function assembleReport(input: ReportAssemblyInput): AgentReadinessReport
   };
   if (input.sourceState != null) {
     reportBody.source_state = JSON.stringify(input.sourceState);
+  }
+  if (input.scoreResult.pillars != null) {
+    reportBody.pillars = input.scoreResult.pillars;
   }
 
   const contentHash = computeContentHash(reportBody);

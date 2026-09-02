@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agentgate-hedera/hedera-core")>();
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agentbadge/hedera-core")>();
   return {
     ...actual,
     submitTaskMessage: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
   };
 });
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   marketUpsert: vi.fn(),
   marketGet: vi.fn(),
@@ -29,9 +29,9 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
   returnTaskToMarket: vi.fn(),
 }));
 
-import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, createScheduledTransfer } from "@agentgate-hedera/hedera-core";
-import { didToAccountId } from "@agentgate-hedera/hedera-core";
-import { marketUpsert as upsert, marketGet as get, getTaskById, updateTaskStatus, listTasks, setEscrowStatus, returnTaskToMarket } from "@agentgate-hedera/passport";
+import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, createScheduledTransfer } from "@agentbadge/hedera-core";
+import { didToAccountId } from "@agentbadge/hedera-core";
+import { marketUpsert as upsert, marketGet as get, getTaskById, updateTaskStatus, listTasks, setEscrowStatus, returnTaskToMarket } from "@agentbadge/passport";
 import { marketRoutes } from "../src/server/routes/market";
 
 const mockedSubmit = vi.mocked(submitTaskMessage);

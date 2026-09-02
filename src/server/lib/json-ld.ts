@@ -1,10 +1,10 @@
 import { SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "./page-meta";
 import { BUILD_DATE } from "./build-info";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
-import type { DirectoryEntry } from "@agentgate-hedera/passport";
-import { getCatalog } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
+import type { DirectoryEntry } from "@agentbadge/passport";
+import { getCatalog } from "@agentbadge/hedera-core";
 import type { BlogArticle } from "./blog-data";
-import { listTools } from "@agentgate-hedera/mcp";
+import { listTools } from "@agentbadge/mcp";
 import { getConfig } from "../../config/env.js";
 import { getChainTemplateVars } from "./chain-templates.js";
 

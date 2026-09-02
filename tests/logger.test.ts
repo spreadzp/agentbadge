@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { logger, setLogLevel, type LogLevel } from "@agentgate-hedera/passport";
+import { logger, setLogLevel, type LogLevel } from "@agentbadge/passport";
 
 describe("logger — SLICE-7-4", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;

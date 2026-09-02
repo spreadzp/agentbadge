@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Hono } from "hono";
 import demo from "../../src/server/routes/demo";
 import { seedMedicalTasks } from "../../src/scripts/seed-medical-tasks";
-import { marketUpsert as upsert, marketGet as getTask, listTasks } from "@agentgate-hedera/passport";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import { marketUpsert as upsert, marketGet as getTask, listTasks } from "@agentbadge/passport";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 const app = new Hono();
 app.route("/api/demo", demo);

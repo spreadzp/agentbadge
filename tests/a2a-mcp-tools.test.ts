@@ -1,26 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   submitA2AMessage: vi.fn(),
   getNftInfo: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   a2aUpsert: vi.fn(),
   getMessagesByTo: vi.fn(),
   getConversation: vi.fn(),
 }));
 
-import { submitA2AMessage, getNftInfo } from "@agentgate-hedera/hedera-core";
-import { a2aUpsert as upsert, getMessagesByTo, getConversation } from "@agentgate-hedera/passport";
+import { submitA2AMessage, getNftInfo } from "@agentbadge/hedera-core";
+import { a2aUpsert as upsert, getMessagesByTo, getConversation } from "@agentbadge/passport";
 import {
   sendMessageHandler,
   getInboxHandler,
   getConversationHandler,
   registerA2ATools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 const mockedSubmit = vi.mocked(submitA2AMessage);
 const mockedGetNftInfo = vi.mocked(getNftInfo);

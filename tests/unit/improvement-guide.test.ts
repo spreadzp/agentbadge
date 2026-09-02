@@ -6,8 +6,8 @@ describe("SLICE-48-23: Improvement guide generation", () => {
     const guide = generateImprovementGuide({
       score: 45,
       checks: [
-        { id: "AB-015", name: "Agent UA gets non-HTML", status: "MISSING", hint: "Add content negotiation", fixExample: "app.use(accepts())" },
-        { id: "AB-039", name: "x402.json found", status: "MISSING", hint: "Create /.well-known/x402.json", fixExample: "{}" },
+        { id: "AB-015", name: "Agent UA gets non-HTML", status: "GAP", hint: "Add content negotiation", fixExample: "app.use(accepts())" },
+        { id: "AB-039", name: "x402.json found", status: "GAP", hint: "Create /.well-known/x402.json", fixExample: "{}" },
       ],
     });
     expect(guide).toContain("# Improvement Guide");
@@ -20,8 +20,8 @@ describe("SLICE-48-23: Improvement guide generation", () => {
     const guide = generateImprovementGuide({
       score: 50,
       checks: [
-        { id: "AB-039", name: "x402.json", status: "MISSING", category: "payments", hint: "Create x402.json" },
-        { id: "AB-015", name: "Content negotiation", status: "MISSING", category: "machine_readable", hint: "Add accepts()" },
+        { id: "AB-039", name: "x402.json", status: "GAP", category: "payments", hint: "Create x402.json" },
+        { id: "AB-015", name: "Content negotiation", status: "GAP", category: "machine_readable", hint: "Add accepts()" },
       ],
     });
     expect(guide.indexOf("AB-015")).toBeLessThan(guide.indexOf("AB-039"));

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { categoryEnum, severityEnum, checkTypeEnum, fixTypeEnum } from "./shared.schema";
+import { categoryEnum, severityEnum, checkTypeEnum, fixTypeEnum, pillarEnum } from "./shared.schema";
 
 // ─── Rule schema ──────────────────────────────────────────────────────────────
 // Source: AGENT-READINESS-SPEC-v0.1.md, agentbadge-rule.schema.json
@@ -21,6 +21,10 @@ export const agentReadinessRuleSchema = z.object({
 
   category: categoryEnum,
   severity: severityEnum,
+
+  pillar: pillarEnum
+    .optional()
+    .describe("Optional pillar override — if absent, pillar is derived from category via the canonical map (spec v0.2 §A.8)"),
 
   counted_in_score: z
     .boolean()

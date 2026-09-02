@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import type { DirectoryEntry } from "@agentgate-hedera/passport";
+import type { DirectoryEntry } from "@agentbadge/passport";
 import { AgentRow, type AgentWithActive } from "./agents-fragment";
 
 /** Search query classification result. */

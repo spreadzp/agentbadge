@@ -49,6 +49,6 @@ describe("SLICE-58-1/58-2: Scan Rule API Integration", () => {
     });
     const data = await res.json();
     expect(data.status).toBeDefined();
-    expect(["VERIFIED", "INFERRED", "MISSING", "NOT_APPLICABLE", "CONFLICT", "SKIPPED"]).toContain(data.status);
+    expect(["VERIFIED", "INFERRED", "GAP", "NOT_APPLICABLE", "CONFLICT", "SKIPPED"]).toContain(data.status);
   });
 });

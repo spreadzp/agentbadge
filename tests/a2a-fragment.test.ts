@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { CachedA2AMessage } from "@agentgate-hedera/hedera-core";
+import type { CachedA2AMessage } from "@agentbadge/hedera-core";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftsForToken: vi.fn(),
   getNftInfo: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   updateNftMetadata: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   getMessagesByTo: vi.fn(),
   getConversation: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
   a2aClear: vi.fn(),
 }));
 
-import { getMessagesByTo } from "@agentgate-hedera/passport";
+import { getMessagesByTo } from "@agentbadge/passport";
 import { A2AInboxFragment } from "../src/views/a2a-fragment";
 import { uiRoutes } from "../src/server/routes/ui";
 

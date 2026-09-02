@@ -1,11 +1,12 @@
 import type { Assertion } from "../rule-engine/assertion-builder";
-import type { ScoreResult, ScoringConfig, CategoryScore } from "./scoring-types";
-import type { Category } from "../shared.schema";
+import type { ScoreResult, CategoryScore, PillarScore } from "./scoring-types";
+import type { Category, Pillar } from "../shared.schema";
 import { loadScoringConfig, type RulesetManifest } from "./scoring-config";
 import { scoreCategory } from "./category-scorer";
 import { checkFloor, applyFloorToCategories } from "./floor-enforcer";
-import { computeTotalScore } from "./total-scorer";
+import { computeTotalScore, computeTotalScoreV2 } from "./total-scorer";
 import { computeDelta } from "./delta-computer";
+import { computePillarScores } from "./pillar-scorer";
 
 export interface ScoringEngineInput {
   assertions: Assertion[];
@@ -27,7 +28,22 @@ export function runScoringEngine(input: ScoringEngineInput): ScoreResult {
 
   const categoryScores = applyFloorToCategories(rawCategoryScores, floorCheck);
 
-  const total = computeTotalScore(categoryScores, floorCheck);
+  const pillarScoreList = computePillarScores({
+    categoryScores,
+    pillarWeights: config.pillarWeights,
+  });
+
+  const pillarsRecord = pillarScoreList.reduce(
+    (acc, ps) => {
+      acc[ps.pillar] = ps;
+      return acc;
+    },
+    {} as Record<Pillar, PillarScore>,
+  );
+
+  const total = config.scoringModel === "v1-categories"
+    ? computeTotalScore(categoryScores, floorCheck)
+    : computeTotalScoreV2(pillarScoreList, floorCheck, config.pillarWeights);
 
   const categoriesRecord = categoryScores.reduce(
     (acc, cs) => {
@@ -41,6 +57,7 @@ export function runScoringEngine(input: ScoringEngineInput): ScoreResult {
   if (input.previousResult && input.previousAssertions) {
     const currentResultPartial: ScoreResult = {
       categories: categoriesRecord,
+      pillars: pillarsRecord,
       total,
       delta: null,
       config,
@@ -57,6 +74,7 @@ export function runScoringEngine(input: ScoringEngineInput): ScoreResult {
 
   return {
     categories: categoriesRecord,
+    pillars: pillarsRecord,
     total,
     delta,
     config,
@@ -67,7 +85,7 @@ export function runScoringEngine(input: ScoringEngineInput): ScoreResult {
 function groupByCategory(assertions: Assertion[]): Map<string, Assertion[]> {
   const map = new Map<string, Assertion[]>();
   for (const a of assertions) {
-    const category = (a as any).category as string | undefined;
+    const category = (a as unknown as { category?: string }).category;
     if (!category) continue;
     const list = map.get(category) ?? [];
     list.push(a);

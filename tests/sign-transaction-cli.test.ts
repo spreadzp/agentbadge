@@ -3,12 +3,12 @@
  *
  * Tests the sign-transaction.ts script by importing its core logic
  * and verifying it produces correct signatures compatible with
- * signTransactionBytes from @agentgate-hedera/hedera-core.
+ * signTransactionBytes from @agentbadge/hedera-core.
  */
 
 import { describe, it, expect } from "vitest";
 import { PrivateKey, Transaction, TransferTransaction, Client, Hbar } from "@hashgraph/sdk";
-import { signTransactionBytes } from "@agentgate-hedera/hedera-core";
+import { signTransactionBytes } from "@agentbadge/hedera-core";
 import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
-import { resetMockState, mintPassportNFT, transferNFTToAgent } from "@agentgate-hedera/hedera-core";
+import type { Tier, Capability } from "@agentbadge/hedera-core";
+import { resetMockState, mintPassportNFT, transferNFTToAgent } from "@agentbadge/hedera-core";
 
 import { upgradeRoutes } from "../src/server/routes/upgrade";
-import { calculateUpgradePrice, upgradeTier, uploadMetadata } from "@agentgate-hedera/passport";
-import type { PassportInfo } from "@agentgate-hedera/passport";
+import { calculateUpgradePrice, upgradeTier, uploadMetadata } from "@agentbadge/passport";
+import type { PassportInfo } from "@agentbadge/passport";
 
 const mockNft = (overrides: Record<string, unknown> = {}) => ({
   token_id: "0.0.123",
@@ -88,7 +88,7 @@ describe("upgradeTier", () => {
     const mintResult = await mintPassportNFT("0.0.123", metadataUri);
     await transferNFTToAgent("0.0.123", mintResult.serial, "0.0.100", "0.0.456");
     // Burn the NFT to mark it as deleted
-    const { burnPassportNFT } = await import("@agentgate-hedera/hedera-core");
+    const { burnPassportNFT } = await import("@agentbadge/hedera-core");
     await burnPassportNFT("0.0.123", mintResult.serial);
 
     await expect(upgradeTier("0.0.123", mintResult.serial, "gold", "0.0.456")).rejects.toThrow();

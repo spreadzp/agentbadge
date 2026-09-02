@@ -13,7 +13,7 @@ function makeEvaluable(
   return {
     ...rule,
     evaluate(sources: EvaluateInput): { status: Status } {
-      return { status: checkFn(sources) ? "VERIFIED" : "MISSING" };
+      return { status: checkFn(sources) ? "VERIFIED" : "GAP" };
     },
   };
 }

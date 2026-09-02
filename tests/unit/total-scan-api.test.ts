@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 // Mock scanner + rule engine
 vi.mock("../../src/agent-readiness/scanner/orchestrator", () => ({
-  scanDomain: vi.fn().mockImplementation(async (url: string, opts?: any) => {
+  scanDomain: vi.fn().mockImplementation(async (url: string, opts?: { onProgress?: (resource: string, completed: number, total: number) => void }) => {
     // Simulate progress callbacks for a few resources
     const resources = ["robots", "sitemap", "openapi"];
     resources.forEach((r, i) => opts?.onProgress?.(r, i + 1, resources.length));
@@ -16,7 +16,7 @@ vi.mock("../../src/agent-readiness/rule-engine/rule-engine", () => ({
     run: vi.fn().mockReturnValue({
       assertions: [
         { rule_id: "AB-001", status: "VERIFIED", evidence: [{ source: "robots" }], category: "discovery", name: "robots.txt" },
-        { rule_id: "AB-002", status: "MISSING", evidence: [], category: "discovery", name: "sitemap" },
+        { rule_id: "AB-002", status: "GAP", evidence: [], category: "discovery", name: "sitemap" },
         { rule_id: "AB-003", status: "NOT_APPLICABLE", evidence: [], category: "payments", name: "x402" },
       ],
     }),
@@ -24,7 +24,17 @@ vi.mock("../../src/agent-readiness/rule-engine/rule-engine", () => ({
 }));
 
 vi.mock("../../src/agent-readiness/ruleset", () => ({
-  AGENT_READINESS_RULESET: { rules: [] },
+  AGENT_READINESS_RULESET: {
+    name: "agent-readiness",
+    version: "2.1.0",
+    rules: [],
+    scoring: {
+      pillars: {
+        weights: { discovery: 20, understandability: 25, executability: 30, verifiability: 25 },
+        scoringModel: "v2-pillars" as const,
+      },
+    },
+  },
 }));
 
 const { totalScanRoutes } = await import("../../src/server/routes/total-scan-api");
@@ -121,6 +131,14 @@ describe("SLICE-58-5: Total scan SSE endpoint", () => {
     expect(result.grade).toBeDefined();
     expect(result.categories).toBeDefined();
     expect(result.summary).toBeDefined();
+    // SLICE-93-7: pillars field present in SSE result
+    expect(result.pillars).toBeDefined();
+    expect(Array.isArray(result.pillars)).toBe(true);
+    expect(result.pillars).toHaveLength(4);
+    expect(result.pillars[0]).toHaveProperty("pillar");
+    expect(result.pillars[0]).toHaveProperty("label");
+    expect(result.pillars[0]).toHaveProperty("weight");
+    expect(result.pillars[0]).toHaveProperty("score");
   });
 
   it("done event contains completed: true", async () => {

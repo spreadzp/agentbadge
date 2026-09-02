@@ -6,9 +6,9 @@
  * MOCK_HEDERA=true — no real Hedera calls.
  */
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from "vitest";
-import type { NftInfo } from "@agentgate-hedera/hedera-core";
+import type { NftInfo } from "@agentbadge/hedera-core";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftInfo: vi.fn(),
   getNftsForToken: vi.fn(),
@@ -17,8 +17,8 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   submitDirectoryMessage: vi.fn(),
 }));
 
-import { getNftInfo, getNftsForToken } from "@agentgate-hedera/hedera-core";
-import { upsert, clear, type DirectoryEntry } from "@agentgate-hedera/passport";
+import { getNftInfo, getNftsForToken } from "@agentbadge/hedera-core";
+import { upsert, clear, type DirectoryEntry } from "@agentbadge/passport";
 import { createApp } from "../../src/server/index";
 
 const mockedGetNftInfo = vi.mocked(getNftInfo);

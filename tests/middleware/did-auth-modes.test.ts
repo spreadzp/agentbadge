@@ -10,8 +10,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@agentgate-hedera/hedera-core")>()),
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@agentbadge/hedera-core")>()),
   didToAccountId: vi.fn(async () => "0.0.1234567"),
 }));
 

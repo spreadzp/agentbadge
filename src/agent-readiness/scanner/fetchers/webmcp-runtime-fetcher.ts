@@ -5,7 +5,7 @@ export interface WebmcpRuntimeFetchResult {
   url: string;
   status: number;
   hasModelContext: boolean;
-  hasProvideContext: boolean;
+  hasRegisterTool: boolean;
   toolCount: number;
   bodyHash: string | null;
   resolvedIp: string | null;
@@ -21,25 +21,25 @@ export async function fetchWebmcpRuntime(
       allowedContentTypes: ["text/html", "application/xhtml+xml"],
     });
     const html = result.bodyText;
-    const hasModelContext = html.includes("navigator.modelContext");
-    const hasProvideContext = html.includes("provideContext");
+    const hasModelContext = html.includes("document.modelContext");
+    const hasRegisterTool = html.includes("registerTool");
     const toolCount = countToolDefinitions(html);
     return {
       url,
       status: result.status,
       hasModelContext,
-      hasProvideContext,
+      hasRegisterTool,
       toolCount,
       bodyHash: sha256(result.body),
       resolvedIp: result.resolvedIp,
       fetchTime: result.fetchTime,
     };
-  } catch (e) {
+  } catch {
     return {
       url,
       status: 0,
       hasModelContext: false,
-      hasProvideContext: false,
+      hasRegisterTool: false,
       toolCount: 0,
       bodyHash: null,
       resolvedIp: null,

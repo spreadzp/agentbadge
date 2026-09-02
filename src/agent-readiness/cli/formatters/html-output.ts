@@ -3,6 +3,9 @@
  */
 
 import type { RuleResult } from "../output";
+import type { PillarScore } from "../../scoring/scoring-types";
+import { PILLAR_LABELS } from "../../scoring/pillar-map";
+import { weightScaledScore, orderedPillars } from "./pillar-helpers";
 
 const CATEGORY_LABELS: Record<string, string> = {
   discovery: "Discovery",
@@ -53,6 +56,7 @@ export interface HtmlOutputOptions {
   reportUrl?: string;
   fixHints?: boolean;
   funnel?: import("../../scoring/funnel-computer").FunnelResult;
+  pillars?: Record<string, PillarScore>;
 }
 
 export function formatHtmlOutput(
@@ -121,6 +125,10 @@ export function formatHtmlOutput(
 
   const funnelSection = opts?.funnel
     ? renderHtmlFunnel(opts.funnel)
+    : "";
+
+  const pillarSection = opts?.pillars
+    ? renderHtmlPillars(opts.pillars)
     : "";
 
   const reportUrlLine = reportUrl
@@ -293,6 +301,35 @@ export function formatHtmlOutput(
     }
     .funnel-pct { font-size: 0.875rem; color: var(--muted); }
     .drop-off { color: var(--fail); font-size: 0.75rem; }
+    .pillars {
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .pillars h2 { font-size: 1.125rem; margin-bottom: 0.75rem; }
+    .pillar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.25rem 0;
+    }
+    .pillar-name { width: 140px; font-size: 0.875rem; }
+    .pillar-bar {
+      flex: 1;
+      height: 20px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .pillar-fill {
+      height: 100%;
+      background: var(--pass);
+      transition: width 0.3s;
+    }
+    .pillar-score { font-size: 0.875rem; color: var(--muted); }
+    .pillar-floor { color: var(--fail); font-size: 0.75rem; }
   </style>
 </head>
 <body>
@@ -302,11 +339,32 @@ export function formatHtmlOutput(
     <div class="score-label">Agent Readiness Score</div>
     ${reportUrlLine}
   </div>
+  ${pillarSection}
   ${funnelSection}
   ${categorySections.join("\n")}
   ${fixSection}
 </body>
 </html>`;
+}
+
+function renderHtmlPillars(pillars: Record<string, PillarScore>): string {
+  const rows = orderedPillars(pillars).map(({ key, score: ps }) => {
+    const label = PILLAR_LABELS[key as keyof typeof PILLAR_LABELS];
+    const scaled = weightScaledScore(ps);
+    const pct = Math.round((ps.score / 100) * 100);
+    const floorNote = ps.floorTriggered ? ' <span class="pillar-floor">[floor]</span>' : "";
+    return `<div class="pillar-row">
+      <span class="pillar-name">${escapeHtml(label)}</span>
+      <div class="pillar-bar"><div class="pillar-fill" style="width:${pct}%"></div></div>
+      <span class="pillar-score">${scaled}/${ps.weight}${floorNote}</span>
+    </div>`;
+  }).join("\n");
+
+  return `
+  <section class="pillars">
+    <h2>Four Pillars</h2>
+    ${rows}
+  </section>`;
 }
 
 function renderHtmlFunnel(funnel: import("../../scoring/funnel-computer").FunnelResult): string {

@@ -8,7 +8,7 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 
-import { getAll, listTasks } from "@agentgate-hedera/passport";
+import { getAll, listTasks } from "@agentbadge/passport";
 import { searchResultSchema } from "../openapi";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";

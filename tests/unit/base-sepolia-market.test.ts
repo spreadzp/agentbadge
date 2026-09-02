@@ -16,7 +16,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const mockGetPassportInfo = vi.fn();
 const mockCheckSessionValid = vi.fn();
 
-vi.mock("@agentgate-hedera/evm-core", () => ({
+vi.mock("@agentbadge/evm-core", () => ({
   isBaseDid: (did: string) => did.startsWith("did:eip155:84532:"),
   parseBaseDid: (did: string) => {
     if (!did.startsWith("did:eip155:84532:passport:")) return null;

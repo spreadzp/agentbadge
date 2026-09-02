@@ -3,18 +3,18 @@ import { runVerification, logReputationPenalty, MAX_VERIFICATION_ATTEMPTS } from
 import { VerifierRegistry } from "../../src/verifiers/verifier.registry";
 import { NoopVerifier } from "../../src/verifiers/noop.verifier";
 import type { ITaskVerifier, VerificationResult } from "../../src/verifiers/verifier.interface";
-import type { CachedMarketTask } from "@agentgate-hedera/hedera-core";
+import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 // Mock submitTaskMessage
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agentgate-hedera/hedera-core")>();
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agentbadge/hedera-core")>();
   return {
     ...actual,
     submitTaskMessage: vi.fn().mockResolvedValue({ txId: "0.0.999@1.1", consensusTimestamp: null }),
   };
 });
 
-const { submitTaskMessage } = await import("@agentgate-hedera/hedera-core");
+const { submitTaskMessage } = await import("@agentbadge/hedera-core");
 
 function makeTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
   return {

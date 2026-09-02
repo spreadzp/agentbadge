@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeAll } from "vitest";
 
 
 import { setupMockEnv, makeEvmWallet, signWalletOwnership } from "./helpers";
-import { handleHttpToolCall } from "@agentgate-hedera/mcp";
-import { registerPassportTools } from "@agentgate-hedera/mcp";
-import { registerAuditCatalogTools, getAuditTrail } from "@agentgate-hedera/mcp";
-import { registerDirectoryTools } from "@agentgate-hedera/mcp";
-import { clear as clearDirectoryCache } from "@agentgate-hedera/passport";
+import { handleHttpToolCall } from "@agentbadge/mcp";
+import { registerPassportTools } from "@agentbadge/mcp";
+import { registerAuditCatalogTools, getAuditTrail } from "@agentbadge/mcp";
+import { registerDirectoryTools } from "@agentbadge/mcp";
+import { clear as clearDirectoryCache } from "@agentbadge/passport";
 
 describe("SLICE-6-3: MCP Tools Integration E2E", () => {
   let wallet: ReturnType<typeof makeEvmWallet>;

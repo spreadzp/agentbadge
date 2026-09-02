@@ -26,7 +26,7 @@ vi.mock("../../src/agent-readiness/rule-engine/rule-engine", () => ({
         {
           rule_id: "AB-007",
           rule_version: "1.0.0",
-          status: "MISSING",
+          status: "GAP",
           evidence: [],
           confidence: 0,
           timestamp: "2026-01-01T00:00:00Z",
@@ -110,7 +110,7 @@ describe("SLICE-58-1: Human-readable scan-rule API", () => {
 
   it("summary for MISSING includes hint text", async () => {
     const { data } = await scanRule("https://example.com", "AB-007");
-    expect(data.status).toBe("MISSING");
+    expect(data.status).toBe("GAP");
     expect(data.summary).toContain("not implemented");
     expect(data.completeness_pct).toBe(0);
   });
@@ -142,7 +142,7 @@ describe("SLICE-58-1: Human-readable scan-rule API", () => {
 
   it("checks_performed is 0 for MISSING with no evidence", async () => {
     const { data } = await scanRule("https://example.com", "AB-007");
-    expect(data.status).toBe("MISSING");
+    expect(data.status).toBe("GAP");
     expect(data.checks_performed).toBe(0);
   });
 

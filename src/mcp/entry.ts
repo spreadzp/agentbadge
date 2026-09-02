@@ -13,7 +13,7 @@ import {
   registerA2ATools,
   registerAuditCatalogTools,
   type NamespaceRegistry,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { registerComplianceTools } from "./compliance-tools";
 import { registerParityTools } from "./parity-tools";
 

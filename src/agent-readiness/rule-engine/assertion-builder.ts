@@ -1,6 +1,8 @@
 import type { AgentReadinessRule } from "../rule.schema";
 import type { Evidence } from "./evidence.types";
 import type { AssertionStatus } from "./status-determinator";
+import { normalizeStatus } from "../shared.schema";
+import { computeReviewLevel, type ReviewLevel } from "./review-level";
 
 export interface Assertion {
   rule_id: string;
@@ -13,6 +15,9 @@ export interface Assertion {
   reason: string;
   category: string;
   name: string;
+  claim: string;
+  verified_at: string;
+  review_level: ReviewLevel;
   fix?: { eligible: boolean; type: string; note?: string };
 }
 
@@ -28,18 +33,27 @@ class AssertionBuilderClass {
     confidence: number;
     reason: string;
     sourceUrl?: string | null;
+    claim?: string;
   }): Assertion {
+    const timestamp = new Date().toISOString();
+    const claim = input.claim ?? input.rule.name;
+    const verifiedAt = this.computeVerifiedAt(input.evidence, timestamp);
+    const clampedConfidence = this.clampConfidence(input.confidence);
+    const reviewLevel = computeReviewLevel({ confidence: clampedConfidence, status: input.status });
     return {
       rule_id: input.rule.rule_id,
       rule_version: input.rule.version,
       status: input.status,
       evidence: [...input.evidence],
-      confidence: this.clampConfidence(input.confidence),
-      timestamp: new Date().toISOString(),
+      confidence: clampedConfidence,
+      timestamp,
       source_url: input.sourceUrl ?? null,
       reason: input.reason,
       category: input.rule.category,
       name: input.rule.name,
+      claim,
+      verified_at: verifiedAt,
+      review_level: reviewLevel,
       fix: input.rule.fix,
     };
   }
@@ -56,23 +70,40 @@ class AssertionBuilderClass {
    */
   deserialize(json: string): Assertion {
     const parsed = JSON.parse(json);
+    const timestamp = parsed.timestamp ?? new Date().toISOString();
+    const status = normalizeStatus(parsed.status);
+    const confidence = parsed.confidence ?? 0;
+    const reviewLevel = parsed.review_level !== undefined
+      ? parsed.review_level
+      : computeReviewLevel({ confidence, status });
     return {
       rule_id: parsed.rule_id,
       rule_version: parsed.rule_version,
-      status: parsed.status,
-      evidence: parsed.evidence,
-      confidence: parsed.confidence,
-      timestamp: parsed.timestamp,
+      status,
+      evidence: parsed.evidence ?? [],
+      confidence,
+      timestamp,
       source_url: parsed.source_url ?? null,
       reason: parsed.reason,
       category: parsed.category ?? "",
       name: parsed.name ?? "",
+      claim: parsed.claim ?? parsed.name ?? "",
+      verified_at: parsed.verified_at ?? timestamp,
+      review_level: reviewLevel,
       fix: parsed.fix,
     };
   }
 
   private clampConfidence(value: number): number {
     return Math.max(0, Math.min(1, value));
+  }
+
+  private computeVerifiedAt(evidence: Evidence[], fallback: string): string {
+    const timestamps = evidence
+      .map((e) => e.captured_at)
+      .filter((t): t is string => typeof t === "string" && t.length > 0);
+    if (timestamps.length === 0) return fallback;
+    return timestamps.reduce((max, t) => (t > max ? t : max), timestamps[0]);
   }
 }
 

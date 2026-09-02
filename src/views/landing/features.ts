@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { listTools } from "@agentgate-hedera/mcp";
+import { listTools } from "@agentbadge/mcp";
 
 /**
  * FeaturesSection — 6-card grid showcasing AgentBadge capabilities.

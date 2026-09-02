@@ -11,7 +11,7 @@ import {
   BASE_SEPOLIA_RPC,
   BASE_SEPOLIA_CHAIN_ID,
   BASE_SEPOLIA_EXPLORER,
-} from "@agentgate-hedera/evm-core";
+} from "@agentbadge/evm-core";
 
 let indexer: EventIndexer | null = null;
 

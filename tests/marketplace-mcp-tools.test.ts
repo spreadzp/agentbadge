@@ -22,7 +22,7 @@ import {
   preparePaymentHandler,
   completeTaskHandler,
   registerMarketplaceTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 const POSTER_DID = "did:hcs:0.0.123:1";
 const CLAIMER_DID = "did:hcs:0.0.123:2";

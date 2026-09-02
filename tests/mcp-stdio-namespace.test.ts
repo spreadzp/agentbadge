@@ -4,12 +4,12 @@ import {
   getNamespace,
   listAllNamespaces,
   registerAllTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { registerComplianceTools } from "../src/mcp/compliance-tools";
 import { registerParityTools } from "../src/mcp/parity-tools";
 
 describe("SLICE-72-9: Stdio namespace selection + registerAllTools", () => {
-  it("registerAllTools is exported from @agentgate-hedera/mcp", () => {
+  it("registerAllTools is exported from @agentbadge/mcp", () => {
     expect(typeof registerAllTools).toBe("function");
   });
 

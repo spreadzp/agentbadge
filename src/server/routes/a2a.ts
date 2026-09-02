@@ -20,8 +20,8 @@ import {
   prepareA2ATopicMessage,
   signTransactionBytes,
   submitSignedTopicMessage,
-} from "@agentgate-hedera/hedera-core";
-import { a2aUpsert as upsert, getMessagesByTo, getConversation, validatePagination, paginate, logger } from "@agentgate-hedera/passport";
+} from "@agentbadge/hedera-core";
+import { a2aUpsert as upsert, getMessagesByTo, getConversation, validatePagination, paginate, logger } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";

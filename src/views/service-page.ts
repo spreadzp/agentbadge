@@ -190,37 +190,256 @@ function ServiceHero(service: AgencyService) {
               }
             });
 
+            function scoreColorClass(score) {
+              return score >= 80 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-rose-400';
+            }
+            function barColorClass(pct) {
+              return pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+            }
+            function renderPillarRow(pillar) {
+              var scaled = Math.round(pillar.score * pillar.weight / 100);
+              var pct = pillar.weight > 0 ? Math.round(pillar.score) : 0;
+              var barW = pillar.weight > 0 ? Math.round(pillar.score) : 0;
+              var html = '<div class="px-4 py-3">';
+              html += '<div class="flex items-center justify-between cursor-pointer" onclick="this.parentElement.querySelector(\\'.pillar-categories\\').classList.toggle(\\'hidden\\')">';
+              html += '<div>';
+              html += '<div class="text-sm font-semibold text-slate-200">' + pillar.label + '</div>';
+              html += '<div class="text-xs text-slate-500" title="' + pillar.question + '">' + pillar.question + '</div>';
+              html += '</div>';
+              html += '<div class="flex items-center gap-3">';
+              if (pillar.floorTriggered) {
+                html += '<span class="text-xs px-1.5 py-0.5 rounded bg-rose-900 text-rose-300">FLOOR</span>';
+              }
+              html += '<span class="text-sm ' + scoreColorClass(pct) + '">' + scaled + '/' + pillar.weight + '</span>';
+              html += '</div>';
+              html += '</div>';
+              html += '<div class="mt-1.5 h-1.5 w-full rounded-full bg-slate-800">';
+              html += '<div class="h-1.5 rounded-full ' + barColorClass(pct) + '" style="width:' + barW + '%"></div>';
+              html += '</div>';
+              html += '<div class="pillar-categories hidden mt-2 space-y-1">';
+              if (pillar.categories && pillar.categories.length > 0) {
+                for (var k = 0; k < pillar.categories.length; k++) {
+                  html += '<div class="text-xs text-slate-500">• ' + pillar.categories[k] + '</div>';
+                }
+              }
+              html += '</div>';
+              html += '</div>';
+              return html;
+            }
+            function renderIssueBuckets(report) {
+              if (!report.top_missing || report.top_missing.length === 0) return '';
+              var buckets = { CRITICAL: [], HIGH: [], MEDIUM: [], LOW: [] };
+              for (var i = 0; i < report.top_missing.length; i++) {
+                var rule = report.top_missing[i];
+                var sev = (rule.severity || 'medium').toUpperCase();
+                if (buckets[sev]) {
+                  buckets[sev].push(rule);
+                } else {
+                  buckets.MEDIUM.push(rule);
+                }
+              }
+              var html = '<div class="rounded-lg border border-slate-700 overflow-hidden">';
+              html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">Prioritized Issues</div>';
+              html += '<div class="divide-y divide-slate-800">';
+              var order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+              var colors = { CRITICAL: 'text-rose-400', HIGH: 'text-amber-400', MEDIUM: 'text-yellow-400', LOW: 'text-slate-400' };
+              for (var b = 0; b < order.length; b++) {
+                var bucket = order[b];
+                var items = buckets[bucket];
+                if (items.length === 0) continue;
+                html += '<div class="px-4 py-2 bg-slate-900/30">';
+                html += '<div class="text-xs font-semibold ' + colors[bucket] + '">' + bucket + ' (' + items.length + ')</div>';
+                html += '</div>';
+                for (var j = 0; j < items.length; j++) {
+                  var r = items[j];
+                  html += '<div class="px-4 py-3">';
+                  html += '<div class="flex items-center justify-between">';
+                  html += '<span class="text-sm text-slate-300">' + r.title + '</span>';
+                  html += '<span class="text-xs text-slate-500">' + r.estimated_cost + '</span>';
+                  html += '</div>';
+                  html += '<div class="text-xs text-slate-500 mt-1">' + r.hint + '</div>';
+                  html += '</div>';
+                }
+              }
+              html += '</div></div>';
+              return html;
+            }
+            function formatVerifiedAt(verifiedAt) {
+              if (!verifiedAt) return '—';
+              try {
+                var d = new Date(verifiedAt);
+                var now = new Date();
+                var diffMs = now.getTime() - d.getTime();
+                var diffDays = Math.floor(diffMs / 86400000);
+                var dateStr = d.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+                if (diffDays === 0) return dateStr + ' (today)';
+                if (diffDays === 1) return dateStr + ' (1 day ago)';
+                if (diffDays < 30) return dateStr + ' (' + diffDays + ' days ago)';
+                return dateStr;
+              } catch(e) {
+                return verifiedAt || '—';
+              }
+            }
+            function renderEvidenceDrawer(a) {
+              var claim = a.claim || a.name || 'unknown';
+              var status = a.status || 'unknown';
+              var confidence = a.confidence !== undefined ? Math.round(a.confidence * 100) : 0;
+              var reviewLevel = a.review_level || '';
+              var verifiedAt = a.verified_at || '';
+              var sourceLabel = a.source_label || '';
+              var stale = a.stale || false;
+              var evidence = a.evidence || [];
+              var isGap = status === 'GAP';
+
+              var html = '<div class="evidence-drawer hidden mt-2 pl-4 border-l-2 border-slate-700 space-y-2 text-xs">';
+
+              // Claim
+              html += '<blockquote class="border-l-2 border-indigo-500 pl-3 text-slate-300 italic">' + claim + '</blockquote>';
+
+              // Status + source_label badge
+              html += '<div class="flex items-center gap-2">';
+              html += '<span class="text-slate-400">STATUS</span>';
+              html += '<span class="font-semibold ' + (isGap ? 'text-rose-400' : 'text-emerald-400') + '">' + status + '</span>';
+              if (sourceLabel) {
+                html += '<span class="text-slate-500">via ' + sourceLabel + '</span>';
+              }
+              html += '</div>';
+
+              // GAP narrative
+              if (isGap) {
+                html += '<div class="text-rose-300">No evidence found in any source — information gap, agents cannot answer this question about your service.</div>';
+              }
+
+              // Confidence + review level
+              html += '<div class="flex items-center gap-2">';
+              html += '<span class="text-slate-400">CONFIDENCE</span>';
+              html += '<span class="text-slate-300">' + confidence + '%</span>';
+              if (reviewLevel === 'automatic') {
+                html += '<span class="px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-300">automatic</span>';
+              } else if (reviewLevel === 'assisted') {
+                html += '<span class="px-1.5 py-0.5 rounded bg-amber-900 text-amber-300">assisted review</span>';
+              }
+              html += '</div>';
+
+              // Verified at + stale marker
+              html += '<div class="flex items-center gap-2">';
+              html += '<span class="text-slate-400">VERIFIED</span>';
+              html += '<span class="text-slate-300">' + formatVerifiedAt(verifiedAt) + '</span>';
+              if (stale) {
+                html += '<span class="text-amber-400">⚠ stale evidence</span>';
+              }
+              html += '</div>';
+
+              // Evidence summaries
+              if (evidence.length > 0) {
+                html += '<div class="space-y-1">';
+                html += '<div class="text-slate-400">EVIDENCE</div>';
+                for (var i = 0; i < evidence.length; i++) {
+                  var ev = evidence[i];
+                  var capturedAt = ev.captured_at ? formatVerifiedAt(ev.captured_at) : '';
+                  html += '<div class="text-slate-500">';
+                  html += ev.summary || '';
+                  if (capturedAt) html += ' (captured ' + capturedAt + ')';
+                  html += '</div>';
+                }
+                html += '</div>';
+              }
+
+              html += '</div>';
+              return html;
+            }
+            function renderAssertionList(report) {
+              if (!report.assertions || report.assertions.length === 0) return '';
+              var html = '<div class="rounded-lg border border-slate-700 overflow-hidden">';
+              html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">All Checks (' + report.assertions.length + ')</div>';
+              html += '<div class="divide-y divide-slate-800">';
+              for (var i = 0; i < report.assertions.length; i++) {
+                var a = report.assertions[i];
+                var status = a.status || 'unknown';
+                var name = a.name || a.rule_id || 'unknown';
+                var ruleId = a.rule_id || '';
+                var reviewLevel = a.review_level || '';
+                var statusColor = status === 'VERIFIED' || status === 'INFERRED' ? 'text-emerald-400' : status === 'GAP' ? 'text-rose-400' : status === 'CONFLICT' ? 'text-amber-400' : 'text-slate-400';
+                var drawerId = 'drawer-' + i;
+                html += '<div class="px-4 py-3">';
+                html += '<div class="flex items-center justify-between cursor-pointer" onclick="var d=document.getElementById(\\'' + drawerId + '\\'); if(d){d.classList.toggle(\\'hidden\\');}">';
+                html += '<div class="flex items-center gap-2">';
+                html += '<span class="text-xs font-mono text-slate-600">' + ruleId + '</span>';
+                html += '<span class="text-sm text-slate-300">' + name + '</span>';
+                html += '</div>';
+                html += '<div class="flex items-center gap-2">';
+                if (reviewLevel === 'assisted') {
+                  html += '<span class="text-xs px-1.5 py-0.5 rounded bg-amber-900 text-amber-300">assisted</span>';
+                } else if (reviewLevel === 'automatic') {
+                  html += '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-300">automatic</span>';
+                }
+                html += '<span class="text-xs font-semibold ' + statusColor + '">' + status + '</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '<div id="' + drawerId + '">';
+                html += renderEvidenceDrawer(a);
+                html += '</div>';
+                html += '</div>';
+              }
+              html += '</div></div>';
+              return html;
+            }
             function renderReport(container, report) {
-              var scoreColor = report.score >= 80 ? 'text-emerald-400' : report.score >= 50 ? 'text-amber-400' : 'text-rose-400';
               var html = '<div class="space-y-6">';
 
+              // Total score block
               html += '<div class="flex items-center gap-6">';
-              html += '<div class="text-5xl font-bold ' + scoreColor + '">' + report.score + '</div>';
+              html += '<div class="text-5xl font-bold ' + scoreColorClass(report.score) + '">' + report.score + '</div>';
               html += '<div>';
               html += '<div class="text-2xl font-semibold text-white">Grade: ' + report.grade + '</div>';
               html += '<div class="text-slate-400 text-sm">' + report.summary + '</div>';
               html += '</div></div>';
 
+              // Floor warning
+              if (report.floorTriggered) {
+                html += '<div class="rounded-lg border border-rose-800 bg-rose-900/20 px-4 py-3">';
+                html += '<div class="flex items-center gap-2">';
+                html += '<span class="text-rose-400 text-sm font-semibold">⚠ Floor Cap Active</span>';
+                html += '</div>';
+                html += '<div class="text-xs text-rose-300 mt-1">' + (report.floorReason || 'Score capped due to critical missing rules.') + '</div>';
+                html += '</div>';
+              }
+
+              // Four Pillars block (graceful degradation)
+              if (report.pillars && report.pillars.length > 0) {
+                html += '<div class="rounded-lg border border-slate-700 overflow-hidden">';
+                html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">YOUR AGENT READINESS — Four Pillars</div>';
+                html += '<div class="divide-y divide-slate-800">';
+                for (var p = 0; p < report.pillars.length; p++) {
+                  html += renderPillarRow(report.pillars[p]);
+                }
+                html += '</div></div>';
+              }
+
+              // Category Breakdown (legacy, always shown)
               html += '<div class="rounded-lg border border-slate-700 overflow-hidden">';
               html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">Category Breakdown</div>';
               html += '<div class="divide-y divide-slate-800">';
               for (var i = 0; i < report.categories.length; i++) {
                 var cat = report.categories[i];
                 var pct = cat.completeness_pct;
-                var barColor = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500';
                 html += '<div class="px-4 py-3 flex items-center gap-4">';
                 html += '<span class="text-lg">' + cat.icon + '</span>';
                 html += '<div class="flex-1">';
                 html += '<div class="text-sm text-slate-300">' + cat.name + '</div>';
                 html += '<div class="mt-1 h-1.5 w-full rounded-full bg-slate-800">';
-                html += '<div class="h-1.5 rounded-full ' + barColor + '" style="width:' + pct + '%"></div>';
+                html += '<div class="h-1.5 rounded-full ' + barColorClass(pct) + '" style="width:' + pct + '%"></div>';
                 html += '</div></div>';
                 html += '<div class="text-xs text-slate-500">' + cat.verified + '/' + cat.total + '</div>';
                 html += '</div>';
               }
               html += '</div></div>';
 
-              if (report.top_missing && report.top_missing.length > 0) {
+              // Prioritized Issues (with buckets) or legacy Top Issues
+              var issueHtml = renderIssueBuckets(report);
+              if (issueHtml) {
+                html += issueHtml;
+              } else if (report.top_missing && report.top_missing.length > 0) {
                 html += '<div class="rounded-lg border border-slate-700 overflow-hidden">';
                 html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">Top Issues to Fix</div>';
                 html += '<div class="divide-y divide-slate-800">';
@@ -235,6 +454,12 @@ function ServiceHero(service: AgencyService) {
                   html += '</div>';
                 }
                 html += '</div></div>';
+              }
+
+              // All Checks with evidence drawers (V2 assertions)
+              var assertionHtml = renderAssertionList(report);
+              if (assertionHtml) {
+                html += assertionHtml;
               }
 
               html += '</div>';

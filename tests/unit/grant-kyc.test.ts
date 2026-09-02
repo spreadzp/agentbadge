@@ -9,9 +9,9 @@ process.env.AUDIT_TOPIC_ID = "0.0.555";
 process.env.DIRECTORY_TOPIC_ID = "0.0.666";
 
 // Import after env vars are set
-const serviceIndex = await import("@agentgate-hedera/hedera-core");
-const passportService = await import("@agentgate-hedera/passport");
-const mockHedera = await import("@agentgate-hedera/hedera-core");
+const serviceIndex = await import("@agentbadge/hedera-core");
+const passportService = await import("@agentbadge/passport");
+const mockHedera = await import("@agentbadge/hedera-core");
 
 describe("grantKyc", () => {
   beforeEach(() => {

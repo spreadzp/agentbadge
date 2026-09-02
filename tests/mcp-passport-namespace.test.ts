@@ -7,7 +7,7 @@ import {
   registerSigningTools,
   registerEscrowTools,
   listTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 describe("SLICE-72-4: Passport namespace wiring", () => {
   it("registerPassportTools(ns) registers tools in the given namespace", () => {

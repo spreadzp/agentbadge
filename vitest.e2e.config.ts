@@ -8,7 +8,7 @@ export default defineConfig({
     testTimeout: 120000,
     server: {
       deps: {
-        inline: ["@agentgate-hedera/passport"],
+        inline: ["@agentbadge/passport"],
       },
     },
   },

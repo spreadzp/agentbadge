@@ -142,11 +142,11 @@ describe("SLICE-49-10: CLI Fetchers", () => {
   });
 
   describe("fetchWebmcpRuntime", () => {
-    it("detects navigator.modelContext in HTML", async () => {
-      mockResponse('<html><script>navigator.modelContext.provideContext([{name:"test",inputSchema:{},execute:()=>{}}])</script></html>', 200);
+    it("detects document.modelContext in HTML", async () => {
+      mockResponse('<html><script>await document.modelContext.registerTool({name:"test",inputSchema:{},execute:()=>{}})</script></html>', 200);
       const result = await fetchWebmcpRuntime("https://example.com");
       expect(result.hasModelContext).toBe(true);
-      expect(result.hasProvideContext).toBe(true);
+      expect(result.hasRegisterTool).toBe(true);
       expect(result.toolCount).toBeGreaterThanOrEqual(1);
     });
 

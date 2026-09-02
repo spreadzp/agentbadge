@@ -8,11 +8,11 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
   })),
 }));
 
-import { createNamespace, listTools } from "@agentgate-hedera/mcp";
-import { registerDiscoveryTools } from "@agentgate-hedera/mcp";
-import { registerDirectoryTools } from "@agentgate-hedera/mcp";
-import { registerGuideTools } from "@agentgate-hedera/mcp";
-import { registerA2ATools } from "@agentgate-hedera/mcp";
+import { createNamespace, listTools } from "@agentbadge/mcp";
+import { registerDiscoveryTools } from "@agentbadge/mcp";
+import { registerDirectoryTools } from "@agentbadge/mcp";
+import { registerGuideTools } from "@agentbadge/mcp";
+import { registerA2ATools } from "@agentbadge/mcp";
 
 describe("SLICE-72-6: discovery namespace wiring", () => {
   it("registerDiscoveryTools(ns) registers into discovery namespace", () => {

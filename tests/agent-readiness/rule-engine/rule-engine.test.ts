@@ -134,7 +134,7 @@ describe("RuleEngine", () => {
     for (const a of result.assertions) {
       expect(a.rule_id).toMatch(/^AB-/);
       expect(a.rule_version).toMatch(/^\d+\.\d+\.\d+$/);
-      expect(a.status).toMatch(/^(VERIFIED|INFERRED|CONFLICT|MISSING|NOT_APPLICABLE)$/);
+      expect(a.status).toMatch(/^(VERIFIED|INFERRED|CONFLICT|GAP|NOT_APPLICABLE)$/);
       expect(Array.isArray(a.evidence)).toBe(true);
       expect(typeof a.confidence).toBe("number");
       expect(a.timestamp).toBeTruthy();

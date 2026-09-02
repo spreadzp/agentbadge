@@ -80,7 +80,7 @@ function generateFixSuggestions(report: AgentReadinessReport): FixSuggestion[] {
   }>;
 
   for (const assertion of assertions) {
-    if (assertion.status === "MISSING" || assertion.status === "CONFLICT") {
+    if (assertion.status === "GAP" || assertion.status === "CONFLICT") {
       const suggestion = mapRuleToFix(assertion.rule_id, assertion.reason, assertion.source_url);
       if (suggestion) {
         suggestions.push(suggestion);
@@ -96,8 +96,8 @@ function generateFixSuggestions(report: AgentReadinessReport): FixSuggestion[] {
 
 function mapRuleToFix(
   ruleId: string,
-  reason: string,
-  sourceUrl: string | null,
+  _reason: string,
+  _sourceUrl: string | null,
 ): FixSuggestion | null {
   const fixMap: Record<string, Omit<FixSuggestion, "rule_id">> = {
     "AB-001": {

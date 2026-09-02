@@ -4,10 +4,12 @@ import { type PageMeta } from "../server/lib/page-meta";
 import {
   RULE_DESCRIPTIONS,
   CATEGORY_DESCRIPTIONS,
+  PILLAR_DESCRIPTIONS,
   type RuleDescription,
   type CategoryDescription,
 } from "../agent-readiness/rule-descriptions";
 import { categoryEnum } from "../agent-readiness/shared.schema";
+import { PILLARS, PILLAR_CATEGORIES } from "../agent-readiness/scoring/pillar-map";
 import { faqPageLd, defaultCoreSchemas } from "../server/lib/json-ld";
 
 const EFFORT_STYLES: Record<string, string> = {
@@ -77,7 +79,30 @@ function categorySection(
   </details>`;
 }
 
-export function RulesCatalogPage(jsonLd?: object[]) {
+function pillarSection(
+  pillar: string,
+  pillarDesc: { label: string; question: string; weight: number; description: string },
+  categorySections: unknown[],
+) {
+  return html`<section class="space-y-3" id="pillar-${pillar}">
+    <div class="flex items-center justify-between gap-4 border-b border-slate-700 pb-3 mb-2">
+      <div>
+        <h2 class="text-xl font-bold text-slate-100">${pillarDesc.label}</h2>
+        <p class="text-sm text-slate-400 mt-0.5">${pillarDesc.question}</p>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="text-xs font-mono text-slate-500 border border-slate-700 rounded px-2 py-0.5">
+          Weight: ${pillarDesc.weight}
+        </span>
+      </div>
+    </div>
+    <div class="space-y-3">
+      ${raw(categorySections.join("\n"))}
+    </div>
+  </section>`;
+}
+
+export function RulesCatalogPage() {
   const categories = categoryEnum.options;
   const faqEntries = categories.map((cat) => ({
     question: `What is the ${CATEGORY_DESCRIPTIONS[cat].title} category?`,
@@ -93,14 +118,18 @@ export function RulesCatalogPage(jsonLd?: object[]) {
     path: "/rules",
   };
 
-  const sections = categories
-    .map((cat, i) => {
-      const rules = RULE_DESCRIPTIONS.filter((r) => r.category === cat);
-      if (rules.length === 0) return "";
-      return categorySection(cat, CATEGORY_DESCRIPTIONS[cat], rules, i);
-    })
-    .filter(Boolean)
-    .join("\n");
+  const sections = PILLARS.map((pillar) => {
+    const pillarCats = PILLAR_CATEGORIES[pillar];
+    const catSections = pillarCats
+      .map((cat, i) => {
+        const rules = RULE_DESCRIPTIONS.filter((r) => r.category === cat);
+        if (rules.length === 0) return "";
+        return categorySection(cat, CATEGORY_DESCRIPTIONS[cat], rules, i);
+      })
+      .filter(Boolean);
+    if (catSections.length === 0) return "";
+    return pillarSection(pillar, PILLAR_DESCRIPTIONS[pillar], catSections);
+  }).filter(Boolean).join("\n");
 
   const content = html`<div class="min-h-screen">
     <div class="mx-auto max-w-4xl px-4 py-16 md:py-24">

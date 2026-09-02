@@ -15,9 +15,9 @@ const NEW_RULE_IDS = [
 
 const NEW_CATEGORIES = ["seo_aeo", "accessibility"];
 
-describe("SLICE-75-7: Ruleset version 2.0.0 and integrity", () => {
-  it("ruleset version is 2.0.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("2.0.0");
+describe("SLICE-75-7: Ruleset version 2.1.0 and integrity", () => {
+  it("ruleset version is 2.1.0", () => {
+    expect(AGENT_READINESS_RULESET.version).toBe("2.1.0");
   });
 
   it("ruleset name is agent-readiness", () => {
@@ -62,9 +62,9 @@ describe("SLICE-75-7: Ruleset version 2.0.0 and integrity", () => {
   });
 
   it("new categories (seo_aeo, accessibility) are present in ruleset", () => {
-    const categories = new Set(AGENT_READINESS_RULESET.rules.map((r) => r.category));
+    const categories = new Set(AGENT_READINESS_RULESET.rules.map((r) => r.category as string));
     for (const cat of NEW_CATEGORIES) {
-      expect(categories.has(cat as any)).toBe(true);
+      expect(categories.has(cat)).toBe(true);
     }
   });
 

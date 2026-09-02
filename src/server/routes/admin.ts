@@ -9,7 +9,7 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import { adminAuth } from "../middleware/adminAuth";
-import { revokePassport, rebuildFromHcs, logger } from "@agentgate-hedera/passport";
+import { revokePassport, rebuildFromHcs, logger } from "@agentbadge/passport";
 import { revokeRequestSchema, errorSchema } from "../openapi";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";

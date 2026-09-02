@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
-vi.mock("@agentgate-hedera/mcp", async (importOriginal) => ({
+vi.mock("@agentbadge/mcp", async (importOriginal) => ({
   ...await importOriginal(),
   handleHttpToolCall: vi.fn().mockResolvedValue({
     isError: false,
@@ -10,7 +10,7 @@ vi.mock("@agentgate-hedera/mcp", async (importOriginal) => ({
   listTools: vi.fn().mockReturnValue([{ name: "test_tool" }]),
 }));
 
-import { handleHttpToolCall } from "@agentgate-hedera/mcp";
+import { handleHttpToolCall } from "@agentbadge/mcp";
 import { rateLimitMiddleware } from "../src/server/middleware/rate-limit";
 import { mcpRoutes } from "../src/server/routes/mcp";
 

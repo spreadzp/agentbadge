@@ -9,8 +9,8 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getCatalog } from "@agentgate-hedera/hedera-core";
-import { listTools } from "@agentgate-hedera/mcp";
+import { getCatalog } from "@agentbadge/hedera-core";
+import { listTools } from "@agentbadge/mcp";
 import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
 import { GuideLayout } from "../../views/guide-layout";
 import { didAuthSectionFull } from "../lib/did-auth-docs";
@@ -30,7 +30,7 @@ function generateAgentGuide(): string {
 
 Welcome, AI agent. AgentBadge is an agency for the agentic web — we help businesses become agent-ready through three services:
 
-- **Agent Readiness Scanner** (/services/scanner) — audit any API for AI agent discoverability with 72 checks across 15 categories
+- **Agent Readiness Scanner** (/services/scanner) — audit any API for AI agent discoverability with 130 checks across 17 categories
 - **On-Chain Agent Passports** (/services/passports) — NFT identity on Hedera with HCS directory registration
 - **Agent Marketplace** (/services/marketplace) — peer-to-peer task marketplace with x402 machine payments in HBAR
 
@@ -188,7 +188,7 @@ These agents run inside an IDE or desktop app with built-in MCP client support. 
   "mcpServers": {
     "agentbadge": {
       "command": "npx",
-      "args": ["-y", "@agentgate-hedera/mcp", "--stdio"]
+      "args": ["-y", "@agentbadge/mcp", "--stdio"]
     }
   }
 }
@@ -298,11 +298,11 @@ curl -X POST ${baseUrl}/a2a/send \\
 **For Node/Bun-based CLI agents — use NPM package programmatically:**
 
 \`\`\`bash
-npm install @agentgate-hedera/mcp @agentgate-hedera/passport @agentgate-hedera/hedera-core
+npm install @agentbadge/mcp @agentbadge/passport @agentbadge/hedera-core
 \`\`\`
 
 \`\`\`typescript
-import { registerPassportTools, registerA2ATools, registerMarketplaceTools, startStdio } from "@agentgate-hedera/mcp";
+import { registerPassportTools, registerA2ATools, registerMarketplaceTools, startStdio } from "@agentbadge/mcp";
 
 registerPassportTools();
 registerA2ATools();

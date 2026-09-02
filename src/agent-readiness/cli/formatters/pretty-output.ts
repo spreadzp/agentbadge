@@ -6,6 +6,9 @@ import type { AgentReadinessReport } from "../../integrity/report-serializer";
 import { computeGrade } from "../../scoring/grade-computer";
 import { computeFunnel } from "../../scoring/funnel-computer";
 import { renderFunnelAscii } from "./funnel-output";
+import { PILLAR_LABELS } from "../../scoring/pillar-map";
+import type { PillarScore } from "../../scoring/scoring-types";
+import { weightScaledScore, orderedPillars } from "./pillar-helpers";
 
 export interface PrettyOutputOptions {
   showFunnel?: boolean;
@@ -38,6 +41,21 @@ export function formatPrettyOutput(report: AgentReadinessReport, opts?: PrettyOu
     lines.push(`  Delta: ${sign}${delta} from previous scan`);
   }
   lines.push("");
+
+  // Pillars breakdown
+  const pillars = report.pillars as Record<string, PillarScore> | undefined;
+  if (pillars) {
+    lines.push("─".repeat(60));
+    lines.push("  PILLARS");
+    lines.push("─".repeat(60));
+    for (const { key, score: ps } of orderedPillars(pillars)) {
+      const label = PILLAR_LABELS[key as keyof typeof PILLAR_LABELS];
+      const scaled = weightScaledScore(ps);
+      const floorNote = ps.floorTriggered ? " [floor]" : "";
+      lines.push(`  ${label.padEnd(20)} ${scaled}/${ps.weight}${floorNote}`);
+    }
+    lines.push("");
+  }
 
   // Category breakdown
   lines.push("─".repeat(60));
@@ -74,7 +92,7 @@ export function formatPrettyOutput(report: AgentReadinessReport, opts?: PrettyOu
     confidence: number;
     category?: string;
     source_url?: string | null;
-  }>).filter((a) => a.status === "MISSING" || a.status === "CONFLICT");
+  }>).filter((a) => a.status === "GAP" || a.status === "CONFLICT");
 
   if (assertions.length > 0) {
     lines.push("─".repeat(60));

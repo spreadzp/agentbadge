@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
 import { setupMockEnv, makeTestApp, makeEvmWallet, signWalletOwnership } from "./helpers";
-import { clear as clearDirectoryCache } from "@agentgate-hedera/passport";
+import { clear as clearDirectoryCache } from "@agentbadge/passport";
 import type { Hono } from "hono";
 
 describe("EPIC-7: Security Hardening E2E", () => {

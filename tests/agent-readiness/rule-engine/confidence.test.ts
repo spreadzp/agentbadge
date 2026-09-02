@@ -29,11 +29,11 @@ describe("ConfidenceComputer", () => {
     expect(result).toBeNull();
   });
 
-  it("returns 0.0 for MISSING", () => {
+  it("returns 0.0 for GAP", () => {
     const result = ConfidenceComputer.compute({
       rule: mockRule(),
       evidence: [],
-      status: "MISSING",
+      status: "GAP",
     });
     expect(result).toBe(0.0);
   });

@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { type ToolResult, type ToolHandler, type NamespaceRegistry, getNamespace } from "@agentgate-hedera/mcp";
+import { type ToolResult, type ToolHandler, type NamespaceRegistry, getNamespace } from "@agentbadge/mcp";
 
 function getRegistry(ns?: NamespaceRegistry) {
   return ns ?? getNamespace("all")!;
@@ -15,7 +15,10 @@ function getRegistry(ns?: NamespaceRegistry) {
 import { scanDomain } from "../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../agent-readiness/rule-engine/rule-engine";
 import { runScoringEngine } from "../agent-readiness/scoring/scoring-engine";
+import type { Assertion } from "../agent-readiness/rule-engine/assertion-builder";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
+import { PILLAR_LABELS, PILLAR_QUESTIONS, PILLARS } from "../agent-readiness/scoring/pillar-map";
+import type { PillarScore } from "../agent-readiness/scoring/scoring-types";
 
 const complianceArgsSchema = z.object({
   url: z
@@ -31,8 +34,19 @@ interface ComplianceCheck {
   category?: string;
 }
 
+interface PillarEntry {
+  pillar: string;
+  label: string;
+  question: string;
+  weight: number;
+  score: number;
+  floorTriggered: boolean;
+}
+
 interface ComplianceResult {
   score: number;
+  scoringModel: string;
+  pillars: PillarEntry[];
   checks: ComplianceCheck[];
   summary: {
     totalChecks: number;
@@ -79,6 +93,7 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     const manifest = {
       name: AGENT_READINESS_RULESET.name,
       version: AGENT_READINESS_RULESET.version,
+      scoring: AGENT_READINESS_RULESET.scoring,
       categoryWeights: {
         discovery: 15,
         documentation: 15,
@@ -102,21 +117,21 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     };
 
     const scoreResult = runScoringEngine({
-      assertions: ruleEngineResult.assertions as any,
+      assertions: ruleEngineResult.assertions as Assertion[],
       rulesetManifest: manifest,
     });
 
-    const checks: ComplianceCheck[] = (ruleEngineResult.assertions as any[]).map(
+    const checks: ComplianceCheck[] = (ruleEngineResult.assertions as unknown as Array<Record<string, unknown>>).map(
       (assertion) => ({
-        id: assertion.rule_id ?? assertion.id ?? "unknown",
-        name: assertion.rule_name ?? assertion.name ?? assertion.rule_id ?? "unknown",
+        id: (assertion.rule_id as string) ?? (assertion.id as string) ?? "unknown",
+        name: (assertion.rule_name as string) ?? (assertion.name as string) ?? (assertion.rule_id as string) ?? "unknown",
         status: assertion.status === "VERIFIED" || assertion.status === "INFERRED"
           ? "pass"
           : assertion.status === "NOT_APPLICABLE"
             ? "skip"
             : "fail",
-        hint: assertion.hint ?? assertion.fix_hint ?? undefined,
-        category: assertion.category ?? undefined,
+        hint: (assertion.hint as string | undefined) ?? (assertion.fix_hint as string | undefined) ?? undefined,
+        category: (assertion.category as string | undefined) ?? undefined,
       }),
     );
 
@@ -124,10 +139,26 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
     const failed = checks.filter((c) => c.status === "fail").length;
     const skipped = checks.filter((c) => c.status === "skip").length;
 
+    const pillars: PillarEntry[] = [];
+    for (const key of PILLARS) {
+      const ps = scoreResult.pillars?.[key] as PillarScore | undefined;
+      if (!ps) continue;
+      pillars.push({
+        pillar: ps.pillar,
+        label: PILLAR_LABELS[key],
+        question: PILLAR_QUESTIONS[key],
+        weight: ps.weight,
+        score: ps.score,
+        floorTriggered: ps.floorTriggered,
+      });
+    }
+
     const result: ComplianceResult = {
       score: typeof scoreResult.total === "number"
         ? scoreResult.total
-        : (scoreResult.total as any).score ?? (scoreResult.total as any).rawScore ?? 0,
+        : scoreResult.total.score ?? scoreResult.total.rawScore ?? 0,
+      scoringModel: "v2-pillars",
+      pillars,
       checks,
       summary: {
         totalChecks: checks.length,
@@ -149,7 +180,7 @@ export function registerComplianceTools(ns?: NamespaceRegistry): void {
   const r = getRegistry(ns);
   r.registerTool(
     "check_compliance",
-    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), individual check results (id, name, status, hint), and summary (totalChecks, passed, failed, skipped). Use this to verify agent-readiness of any website.",
+    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), four-pillar breakdown (Discovery/Understandability/Executability/Verifiability — where the service stands for agent use), individual check results (id, name, status, hint), and summary (totalChecks, passed, failed, skipped). Use this to verify agent-readiness of any website.",
     {
       url: z
         .string()

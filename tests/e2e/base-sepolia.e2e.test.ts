@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { ethers } from "ethers";
-import { EvmChainAdapter } from "@agentgate-hedera/evm-core";
+import { EvmChainAdapter } from "@agentbadge/evm-core";
 import {
   isBaseE2EEnabled,
   getBaseTestConfig,

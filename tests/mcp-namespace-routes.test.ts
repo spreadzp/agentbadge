@@ -10,7 +10,7 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
 }));
 
 import { Hono } from "hono";
-import { createNamespace, registerTool } from "@agentgate-hedera/mcp";
+import { createNamespace, registerTool } from "@agentbadge/mcp";
 import { createNamespaceRoutes } from "../src/server/routes/mcp-namespace";
 
 describe("Namespace HTTP routes — tools/list", () => {

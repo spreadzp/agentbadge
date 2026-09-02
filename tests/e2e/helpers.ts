@@ -44,7 +44,7 @@ import {
   registerAllTools,
   listTools,
   createNamespace,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { registerComplianceTools } from "../../src/mcp/compliance-tools";
 import { registerParityTools } from "../../src/mcp/parity-tools";
 import { createNamespaceRoutes } from "../../src/server/routes/mcp-namespace";

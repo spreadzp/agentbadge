@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { TopicMessage } from "@agentgate-hedera/hedera-core";
+import type { TopicMessage } from "@agentbadge/hedera-core";
 
 // Mock mirror.service before importing directoryCache
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getTopicMessages: vi.fn(),
 }));
 
-import { getTopicMessages } from "@agentgate-hedera/hedera-core";
+import { getTopicMessages } from "@agentbadge/hedera-core";
 import {
   upsert,
   getAll,
@@ -15,7 +15,7 @@ import {
   clear,
   rebuildFromHcs,
   type DirectoryEntry,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 
 const mockedGetTopicMessages = vi.mocked(getTopicMessages);
 

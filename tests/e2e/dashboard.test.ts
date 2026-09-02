@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { setupMockEnv, makeTestApp, makeEvmWallet, signWalletOwnership } from "./helpers";
-import { issuePassport } from "@agentgate-hedera/passport";
+import { issuePassport } from "@agentbadge/passport";
 import {
   upsert as upsertDirectory,
   clear as clearDirectory,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 import type { Hono } from "hono";
 
 

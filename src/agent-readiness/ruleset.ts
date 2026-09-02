@@ -117,7 +117,13 @@ import { AB103 } from "./rules/AB103";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
-  version: "2.0.0",
+  version: "2.1.0",
+  scoring: {
+    pillars: {
+      weights: { discovery: 20, understandability: 25, executability: 30, verifiability: 25 },
+      scoringModel: "v2-pillars" as const,
+    },
+  },
   rules: [
     AB001,
     AB002,

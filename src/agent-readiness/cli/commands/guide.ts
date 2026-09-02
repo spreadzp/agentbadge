@@ -12,6 +12,7 @@ import {
 import { scanDomain } from "../../scanner/orchestrator";
 import { RuleEngine } from "../../rule-engine/rule-engine";
 import { runScoringEngine } from "../../scoring/scoring-engine";
+import type { RulesetManifest } from "../../scoring/scoring-config";
 import { AGENT_READINESS_RULESET } from "../../ruleset";
 import { computeGrade } from "../../scoring/grade-computer";
 import type { Assertion } from "../../rule-engine/assertion-builder";
@@ -57,20 +58,21 @@ async function guideHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comma
     const manifest = {
       name: AGENT_READINESS_RULESET.name,
       version: AGENT_READINESS_RULESET.version,
+      scoring: AGENT_READINESS_RULESET.scoring,
       categoryWeights: {},
     };
 
     const scoreResult = runScoringEngine({
       assertions,
-      rulesetManifest: manifest as any,
+      rulesetManifest: manifest as unknown as RulesetManifest,
     });
 
-    const score = (scoreResult.total as any).score ?? 0;
-    const grade = (scoreResult.total as any).grade ?? computeGrade(score);
+    const score = scoreResult.total.score ?? 0;
+    const grade = scoreResult.total.grade ?? computeGrade(score);
 
     const ruleSeverityMap: Record<string, string> = {};
     const ruleFixMap: Record<string, string> = {};
-    for (const rule of AGENT_READINESS_RULESET.rules as any[]) {
+    for (const rule of AGENT_READINESS_RULESET.rules as readonly { rule_id: string; severity: string; fix?: { note?: string } }[]) {
       ruleSeverityMap[rule.rule_id] = rule.severity;
       if (rule.fix?.note) {
         ruleFixMap[rule.rule_id] = rule.fix.note;
@@ -111,7 +113,7 @@ export function generateGuideMarkdown(input: GuideInput): string {
   lines.push("");
 
   let failing = input.assertions.filter(
-    (a) => a.status === "MISSING" || a.status === "CONFLICT",
+    (a) => a.status === "GAP" || a.status === "CONFLICT",
   );
 
   if (input.categoryFilter) {

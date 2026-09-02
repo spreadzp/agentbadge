@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { softwareApplicationLd, organizationLd } from "../src/server/lib/json-ld";
-import { listTools } from "@agentgate-hedera/mcp";
+import { listTools } from "@agentbadge/mcp";
 import {
   registerPassportTools,
   registerAuditCatalogTools,
@@ -10,7 +10,7 @@ import {
   registerGuideTools,
   registerSigningTools,
   registerDiscoveryTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 // Register all tools so listTools() returns the full set
 registerPassportTools();

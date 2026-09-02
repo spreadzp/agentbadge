@@ -7,6 +7,7 @@ import { ConfidenceComputer } from "./confidence";
 import { AssertionBuilder, type Assertion } from "./assertion-builder";
 import type { Evidence } from "./evidence.types";
 import { OpenApiParser } from "./openapi-parser";
+import { classifyEvidence } from "./source-hierarchy";
 
 export interface RuleEngineResult {
   assertions: Assertion[];
@@ -43,6 +44,7 @@ class RuleEngineClass {
       if (isApplicable) applicableCount++;
 
       const evidence = this.collectEvidence(rule, sourceState);
+      this.enrichEvidence(evidence, rule);
       const statusResult = StatusDeterminator.determine({
         rule,
         evidence,
@@ -161,6 +163,29 @@ class RuleEngineClass {
   }
 
   /**
+   * Enrich evidence with captured_at (from snapshot) and source_class.
+   * Single enrichment pass — less invasive than editing every construction site.
+   */
+  private enrichEvidence(evidence: Evidence[], rule: AgentReadinessRule): void {
+    for (const ev of evidence) {
+      if (!ev.source_class) {
+        ev.source_class = classifyEvidence(ev, rule.check.type);
+      }
+    }
+    // For cross evidence, compute captured_at as max of member sources
+    for (const ev of evidence) {
+      if (ev.type === "cross" && !ev.captured_at) {
+        const memberTimestamps = ev.sources
+          .map((s) => s.captured_at)
+          .filter((t): t is string => typeof t === "string" && t.length > 0);
+        if (memberTimestamps.length > 0) {
+          ev.captured_at = memberTimestamps.reduce((max, t) => (t > max ? t : max), memberTimestamps[0]);
+        }
+      }
+    }
+  }
+
+  /**
    * Collect evidence from source state for a rule.
    */
   private collectEvidence(rule: AgentReadinessRule, sourceState: SourceState): Evidence[] {
@@ -196,6 +221,7 @@ class RuleEngineClass {
           status: snap.status,
           allows_all: true,
           disallowed_paths: [],
+          captured_at: snap.fetchedAt,
         });
         continue;
       }
@@ -215,6 +241,7 @@ class RuleEngineClass {
           status: snap.status,
           url_count: sitemapUrls.length,
           urls: sitemapUrls.slice(0, 100),
+          captured_at: snap.fetchedAt,
         });
         continue;
       }
@@ -228,6 +255,7 @@ class RuleEngineClass {
             url: snap.url,
             paths: facts.paths,
             methods: facts.methods,
+            captured_at: snap.fetchedAt,
           });
         } else {
           evidence.push({
@@ -235,6 +263,7 @@ class RuleEngineClass {
             url: snap.url,
             paths: [],
             methods: [],
+            captured_at: snap.fetchedAt,
           });
         }
         continue;
@@ -265,6 +294,7 @@ class RuleEngineClass {
                 content_hash: snap.bodyHash,
                 content_type: snap.contentType,
                 resolved_ip: snap.resolvedIp,
+                captured_at: snap.fetchedAt,
               });
             }
           }
@@ -281,6 +311,7 @@ class RuleEngineClass {
             content_hash: snap.bodyHash,
             content_type: snap.contentType,
             resolved_ip: snap.resolvedIp,
+            captured_at: snap.fetchedAt,
           });
         }
         continue;
@@ -295,6 +326,7 @@ class RuleEngineClass {
         content_hash: snap.bodyHash,
         content_type: snap.contentType,
         resolved_ip: snap.resolvedIp,
+        captured_at: snap.fetchedAt,
       });
     }
 
@@ -326,6 +358,7 @@ class RuleEngineClass {
             url: snap.url,
             paths: facts.paths,
             methods: facts.methods,
+            captured_at: snap.fetchedAt,
           });
         }
       } else if (srcKey === "guide") {
@@ -364,6 +397,7 @@ class RuleEngineClass {
           url: snap.url,
           paths,
           methods,
+          captured_at: snap.fetchedAt,
         });
       } else {
         // Generic HTTP evidence for other sources
@@ -375,6 +409,7 @@ class RuleEngineClass {
           content_hash: snap.bodyHash,
           content_type: snap.contentType,
           resolved_ip: snap.resolvedIp,
+          captured_at: snap.fetchedAt,
         });
       }
     }

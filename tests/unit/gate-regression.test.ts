@@ -25,7 +25,7 @@ describe("SLICE-86-2 regression: report-formatter SKIPPED status", () => {
     const mockAssertions: Assertion[] = [
       makeAssertion({ rule_id: "AB-001", status: "VERIFIED" as never }),
       makeAssertion({ rule_id: "AB-002", status: "SKIPPED" as never }),
-      makeAssertion({ rule_id: "AB-003", status: "MISSING" as never, category: "documentation" }),
+      makeAssertion({ rule_id: "AB-003", status: "GAP" as never, category: "documentation" }),
     ];
 
     const result = formatScanReport("https://example.com", {

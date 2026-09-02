@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { getLlmsTxt, MCP_TOOLS_INDEX } from "@agentgate-hedera/hedera-core";
+import { getLlmsTxt, MCP_TOOLS_INDEX } from "@agentbadge/hedera-core";
 import {
   listTools,
   registerPassportTools,
@@ -11,7 +11,7 @@ import {
   registerGuideTools,
   registerSigningTools,
   registerDiscoveryTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { catalogRoutes } from "../src/server/routes/catalog";
 
 describe("SLICE-18-8: llms.txt upgrade", () => {

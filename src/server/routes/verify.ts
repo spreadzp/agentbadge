@@ -16,7 +16,7 @@ import {
   getPassportInfo,
   listPassportsByAddress,
   listAllPassports,
-} from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { passportLinks } from "../lib/hateoas";

@@ -13,10 +13,10 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { submitTaskMessage, verifyA2ADid, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentgate-hedera/hedera-core";
+import { submitTaskMessage, verifyA2ADid, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentbadge/hedera-core";
 // SLICE-84-3: ULID for task IDs
 import { generateReportId as generateUlid } from "../../agent-readiness/integrity/ulid";
-import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, logger, reserveTask, transitionTask } from "@agentgate-hedera/passport";
+import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, logger, reserveTask, transitionTask } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { taskLinks } from "../lib/hateoas";
@@ -24,8 +24,8 @@ import { runVerification } from "../../verifiers";
 import { requireDidSignature, assertSameActor } from "../middleware/did-auth";
 import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 import { toPublicError } from "../lib/error-map";
-import { isBaseDid, parseBaseDid, EvmChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentgate-hedera/evm-core";
-import { SessionRegistry } from "@agentgate-hedera/evm-core";
+import { isBaseDid, parseBaseDid, EvmChainAdapter, BASE_SEPOLIA_ADDRESSES, BASE_SEPOLIA_RPC, BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_EXPLORER } from "@agentbadge/evm-core";
+import { SessionRegistry } from "@agentbadge/evm-core";
 
 export const marketRoutes = new Hono();
 

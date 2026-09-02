@@ -7,8 +7,8 @@
  */
 
 import type Stripe from "stripe";
-import type { Tier, Capability } from "@agentgate-hedera/hedera-core";
-import { issuePassport, logger } from "@agentgate-hedera/passport";
+import type { Tier, Capability } from "@agentbadge/hedera-core";
+import { issuePassport, logger } from "@agentbadge/passport";
 import { sendDiscordMessage } from "../services/contact.service";
 
 const processedSessions = new Set<string>();

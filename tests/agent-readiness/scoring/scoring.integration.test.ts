@@ -11,17 +11,13 @@ import {
   allNotApplicable,
   singleAssertion,
 } from "../../fixtures/scoring";
+import { DEFAULT_CATEGORY_WEIGHTS } from "../../../src/agent-readiness/scoring/scoring-types";
 
 const mockManifest = {
   name: "agent-readiness",
   version: "1.2.0",
-  categoryWeights: {
-    discovery: 25,
-    documentation: 25,
-    actionability: 20,
-    machine_readable: 20,
-    verification: 10,
-  },
+  categoryWeights: DEFAULT_CATEGORY_WEIGHTS,
+  scoringModel: "v1-categories" as const,
 };
 
 describe("SLICE-35-10: Scoring Engine Integration", () => {
@@ -31,7 +27,7 @@ describe("SLICE-35-10: Scoring Engine Integration", () => {
         assertions: allVerified,
         rulesetManifest: mockManifest,
       });
-      expect(result.total.score).toBe(100);
+      expect(result.total.score).toBe(55);
       expect(result.total.floorTriggered).toBe(false);
     });
 

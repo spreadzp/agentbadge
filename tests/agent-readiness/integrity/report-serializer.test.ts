@@ -21,7 +21,7 @@ const mockScope = {
 
 const mockAssertions = [
   { rule_id: "AB-001", status: "VERIFIED" },
-  { rule_id: "AB-002", status: "MISSING" },
+  { rule_id: "AB-002", status: "GAP" },
 ];
 
 describe("SLICE-36-5: Report Serializer", () => {
@@ -136,7 +136,7 @@ describe("SLICE-36-5: Report Serializer", () => {
     expect(report.integrity.signature.key_id).toBe("agentbadge-prod-2026-q3");
   });
 
-  it("schema_version is 0.2.0", () => {
+  it("schema_version is 0.3.0", () => {
     const report = assembleReport({
       scope: mockScope,
       assertions: mockAssertions,
@@ -144,7 +144,7 @@ describe("SLICE-36-5: Report Serializer", () => {
       previousHash: null,
       keyId: "test-key-1",
     });
-    expect(report.schema_version).toBe("0.2.0");
+    expect(report.schema_version).toBe("0.3.0");
   });
 
   it("scanned_at is ISO 8601", () => {

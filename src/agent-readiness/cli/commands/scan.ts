@@ -13,13 +13,14 @@ import {
 import { scanDomain } from "../../scanner/orchestrator";
 import { RuleEngine } from "../../rule-engine/rule-engine";
 import { runScoringEngine } from "../../scoring/scoring-engine";
-import { assembleReport, type AgentReadinessReport } from "../../integrity/report-serializer";
+import { assembleReport } from "../../integrity/report-serializer";
 import { AGENT_READINESS_RULESET } from "../../ruleset";
 import { formatPrettyOutput } from "../formatters/pretty-output";
 import { formatHtmlOutput } from "../formatters/html-output";
 import { renderBadgeSvg } from "./badge";
-import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatJsonOutput, formatMarkdownOutput } from "../output";
+import { shouldFailCi, shouldFailThreshold, formatFixOutput, formatMarkdownOutput } from "../output";
 import { computeGrade } from "../../scoring/grade-computer";
+import type { Assertion } from "../../rule-engine/assertion-builder";
 import { formatJsonApiOutput } from "../formatters/json-api-output";
 import { computeFunnel } from "../../scoring/funnel-computer";
 
@@ -95,7 +96,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     const ruleEngineResult = RuleEngine.run(sourceState);
 
     // Filter assertions by category or rule_id if requested
-    let assertions = ruleEngineResult.assertions as any[];
+    let assertions = ruleEngineResult.assertions as Assertion[];
     if (category) {
       assertions = assertions.filter((a) => a.category === category);
     }
@@ -107,6 +108,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     const manifest = {
       name: AGENT_READINESS_RULESET.name,
       version: AGENT_READINESS_RULESET.version,
+      scoring: AGENT_READINESS_RULESET.scoring,
       categoryWeights: {
         discovery: 15,
         documentation: 15,
@@ -129,7 +131,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       },
     };
     const scoreResult = runScoringEngine({
-      assertions: ruleEngineResult.assertions as any,
+      assertions: ruleEngineResult.assertions as Assertion[],
       rulesetManifest: manifest,
     });
 
@@ -148,8 +150,9 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         categories: Object.fromEntries(
           Object.entries(scoreResult.categories).map(([k, v]) => [k, { score: v.score }]),
         ),
+        pillars: scoreResult.pillars,
         delta: scoreResult.delta
-          ? { totalDelta: (scoreResult.delta as any).totalDelta ?? 0 }
+          ? { totalDelta: scoreResult.delta.totalDelta ?? 0 }
           : null,
       },
       previousHash: null,
@@ -162,12 +165,12 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     }
 
     if (jsonApi) {
-      const scoreVal = (scoreResult.total as any).score ?? 0;
-      const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
-      const categoryScores = Object.values(scoreResult.categories) as any[];
+      const scoreVal = scoreResult.total.score ?? 0;
+      const grade = scoreResult.total.grade ?? computeGrade(scoreVal);
+      const categoryScores = Object.values(scoreResult.categories);
       const funnelData = showFunnel
         ? computeFunnel(Object.fromEntries(
-          Object.entries(scoreResult.categories).map(([k, v]) => [k, (v as any).score ?? 0]),
+          Object.entries(scoreResult.categories).map(([k, v]) => [k, v.score ?? 0]),
         ))
         : undefined;
 
@@ -194,6 +197,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         authProbe: authProbeData,
         endpointProbe: endpointProbeData,
         operationalDiscovery: operationalDiscoveryData,
+        pillars: scoreResult.pillars,
       });
       return { exitCode: 0, stdout: apiJson, stderr: "" };
     }
@@ -207,21 +211,21 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     }
 
     if (format === "markdown") {
-      const scoreVal = (scoreResult.total as any).score ?? scoreResult.total as any;
-      const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
+      const scoreVal = scoreResult.total.score;
+      const grade = scoreResult.total.grade ?? computeGrade(scoreVal);
       const md = formatMarkdownOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl });
       return { exitCode: 0, stdout: md, stderr: "" };
     }
 
     if (format === "html") {
-      const scoreVal = (scoreResult.total as any).score ?? scoreResult.total as any;
-      const grade = (scoreResult.total as any).grade ?? computeGrade(scoreVal);
+      const scoreVal = scoreResult.total.score;
+      const grade = scoreResult.total.grade ?? computeGrade(scoreVal);
       const funnelData = showFunnel
         ? computeFunnel(Object.fromEntries(
-          Object.entries(scoreResult.categories).map(([k, v]) => [k, (v as any).score ?? 0]),
+          Object.entries(scoreResult.categories).map(([k, v]) => [k, v.score ?? 0]),
         ))
         : undefined;
-      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData });
+      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData, pillars: scoreResult.pillars });
       if (outputPath !== DEFAULT_OUTPUT_PATH) {
         await writeFile(outputPath, html, "utf-8");
         return { exitCode: 0, stdout: `HTML report written to ${outputPath}`, stderr: "", outputFile: outputPath };
@@ -230,7 +234,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     }
 
     if (format === "badge") {
-      const scoreNum = (scoreResult.total as any).score ?? scoreResult.total as any;
+      const scoreNum = scoreResult.total.score;
       const svg = renderBadgeSvg("agent readiness", scoreNum);
       if (outputPath !== DEFAULT_OUTPUT_PATH) {
         await writeFile(outputPath, svg, "utf-8");
@@ -248,7 +252,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       exitCode = 1;
     }
     // Threshold check
-    if (threshold > 0 && shouldFailThreshold((scoreResult.total as any).score ?? scoreResult.total as any, threshold)) {
+    if (threshold > 0 && shouldFailThreshold(scoreResult.total.score, threshold)) {
       exitCode = 1;
     }
 

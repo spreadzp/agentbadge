@@ -16,7 +16,7 @@ import {
   startStdio,
   mcpServer,
   type ToolResult,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 import { Hono } from "hono";
 import { mcpRoutes } from "../src/server/routes/mcp";
 

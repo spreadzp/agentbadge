@@ -6,7 +6,7 @@ import {
   deleteScheduledTransaction,
   getScheduleInfo,
   resetMockState,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 
 const OPERATOR_ID = "0.0.5266613";
 const OPERATOR_KEY =

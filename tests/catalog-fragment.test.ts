@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
-vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
+vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
   getNftsForToken: vi.fn(),
   getNftInfo: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("@agentgate-hedera/hedera-core", async (importOriginal) => ({
   updateNftMetadata: vi.fn(),
 }));
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   uploadMetadata: vi.fn(),
   retrieveMetadata: vi.fn(),

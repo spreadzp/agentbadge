@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   revokePassport: vi.fn(),
 }));
 
-import { revokePassport } from "@agentgate-hedera/passport";
+import { revokePassport } from "@agentbadge/passport";
 import { adminRoutes } from "../src/server/routes/admin";
 
 const ORIGINAL_API_KEY = process.env.ADMIN_API_KEY;

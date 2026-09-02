@@ -17,8 +17,9 @@ import { serverAgentCardSchema, openApiConfig } from "../openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../lib/page-meta";
 import { BUILD_DATE } from "../lib/build-info";
 import { BLOG_ARTICLES } from "../lib/blog-data";
-import { getNamespace } from "@agentgate-hedera/mcp";
+import { getNamespace } from "@agentbadge/mcp";
 import { didAuthSectionCompact, agentCardAuthBlock } from "../lib/did-auth-docs";
+import { buildDiscoveryJson, allTools } from "@agentbadge/webmcp";
 
 const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
 
@@ -223,6 +224,53 @@ wellKnownRoutes.get(
       namespaces: [...MCP_NAMESPACES],
     };
     return c.json(descriptor, 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  },
+);
+
+// ─── WebMCP Discovery (SLICE-91-11) ──────────────────────────────
+
+wellKnownRoutes.get(
+  "/.well-known/webmcp.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "WebMCP discovery document (declarative tool catalog)",
+    description:
+      "Returns the WebMCP discovery JSON listing all imperative tools available on the site. Enables AI agents to discover WebMCP tools via RFC 8615 well-known URI pattern.",
+    responses: {
+      200: {
+        description: "WebMCP discovery JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                tools: z.array(
+                  z.object({
+                    name: z.string(),
+                    description: z.string(),
+                    inputSchema: z.object({
+                      type: z.string(),
+                      properties: z.record(z.string(), z.unknown()),
+                      required: z.array(z.string()),
+                    }),
+                    annotations: z.object({
+                      readOnlyHint: z.boolean(),
+                      untrustedContentHint: z.boolean(),
+                      title: z.string().optional(),
+                    }),
+                  }),
+                ),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const discovery = buildDiscoveryJson(allTools);
+    return c.json(discovery, 200, {
       "Cache-Control": "public, max-age=3600",
     });
   },

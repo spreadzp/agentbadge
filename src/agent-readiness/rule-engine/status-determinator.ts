@@ -35,7 +35,7 @@ class StatusDeterminatorClass {
 
     if (input.evidence === null || input.evidence.length === 0) {
       return {
-        status: "MISSING",
+        status: "GAP",
         reason: `No evidence found for rule ${input.rule.rule_id}`,
       };
     }
@@ -73,7 +73,7 @@ class StatusDeterminatorClass {
     }
 
     return {
-      status: "MISSING",
+      status: "GAP",
       reason: `Evidence found but does not confirm or contradict rule ${input.rule.rule_id}`,
     };
   }

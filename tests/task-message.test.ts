@@ -5,7 +5,7 @@ import {
   type TaskClaimedMessage,
   type TaskDeliveredMessage,
   type TaskCompletedMessage,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 
 describe("isValidTaskMessage", () => {
   const posted: TaskPostedMessage = {
@@ -132,7 +132,7 @@ describe("submitTaskMessage (mock)", () => {
   });
 
   it("submits a task_posted message and returns a transaction ID", async () => {
-    const { submitTaskMessage } = await import("@agentgate-hedera/hedera-core");
+    const { submitTaskMessage } = await import("@agentbadge/hedera-core");
     const message: TaskPostedMessage = {
       type: "task_posted",
       taskId: "test-task-1",
@@ -150,7 +150,7 @@ describe("submitTaskMessage (mock)", () => {
   });
 
   it("persists message to mock topic store for retrieval", async () => {
-    const { submitTaskMessage, getTopicMessages } = await import("@agentgate-hedera/hedera-core");
+    const { submitTaskMessage, getTopicMessages } = await import("@agentbadge/hedera-core");
     const message: TaskPostedMessage = {
       type: "task_posted",
       taskId: "test-task-2",
@@ -172,7 +172,7 @@ describe("submitTaskMessage (mock)", () => {
   });
 
   it("submits all 4 message types", async () => {
-    const { submitTaskMessage, getTaskMessages } = await import("@agentgate-hedera/hedera-core");
+    const { submitTaskMessage, getTaskMessages } = await import("@agentbadge/hedera-core");
     const ts = Math.floor(Date.now() / 1000);
 
     await submitTaskMessage({
@@ -223,7 +223,7 @@ describe("getTaskMessages (mock)", () => {
 
   it("filters out invalid messages", async () => {
     const { submitTaskMessage, getTaskMessages, getTopicMessages } = await import(
-      "@agentgate-hedera/hedera-core"
+      "@agentbadge/hedera-core"
     );
 
     // Submit a valid task message
@@ -239,7 +239,7 @@ describe("getTaskMessages (mock)", () => {
     });
 
     // Manually push an invalid message to the topic store
-    const { topicMessages } = await import("@agentgate-hedera/hedera-core");
+    const { topicMessages } = await import("@agentbadge/hedera-core");
     const msgs = topicMessages.get("0.0.888") ?? [];
     msgs.push({
       consensus_timestamp: "9999999999.000000001",
@@ -255,7 +255,7 @@ describe("getTaskMessages (mock)", () => {
   });
 
   it("returns empty array for topic with no messages", async () => {
-    const { getTaskMessages } = await import("@agentgate-hedera/hedera-core");
+    const { getTaskMessages } = await import("@agentbadge/hedera-core");
     const tasks = await getTaskMessages("0.0.999");
     expect(tasks).toEqual([]);
   });

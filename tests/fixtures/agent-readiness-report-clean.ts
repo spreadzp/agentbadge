@@ -2,10 +2,10 @@ import type { AgentReadinessReport } from "../../src/agent-readiness/report.sche
 
 export const cleanReport: AgentReadinessReport = {
   report_id: "01J5KQM8X3V2N1Y0A6B7C8D9E0",
-  schema_version: "0.2.0",
+  schema_version: "0.3.0",
   ruleset: {
     name: "agent-readiness",
-    version: "2.0.0",
+    version: "2.1.0",
   },
   scope: {
     agent_id: "did:heder:agentbadge-demo-agent",

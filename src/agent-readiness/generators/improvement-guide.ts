@@ -34,7 +34,7 @@ const CATEGORY_WEIGHTS: Record<string, number> = {
 
 export function generateImprovementGuide(scanResult: ScanResultForGuide): string {
   const failing = scanResult.checks.filter(
-    (c) => c.status === "fail" || c.status === "MISSING" || c.status === "missing",
+    (c) => c.status === "fail" || c.status === "GAP" || c.status === "gap",
   );
 
   const sorted = [...failing].sort((a, b) => {

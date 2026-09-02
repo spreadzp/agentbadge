@@ -5,7 +5,7 @@ import {
   transferNFTToAgent,
   submitAuditMessage,
   resetMockState,
-} from "@agentgate-hedera/hedera-core";
+} from "@agentbadge/hedera-core";
 
 describe("hedera.service", () => {
   beforeEach(() => {

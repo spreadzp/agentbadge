@@ -1,9 +1,9 @@
 import { ethers } from "ethers";
 import { setupMockEnv, makeTestApp, makeEvmWallet, signWalletOwnership } from "../e2e/helpers";
-import { nftStore, topicMessages } from "@agentgate-hedera/hedera-core";
-import { a2aClear as clearA2ACache } from "@agentgate-hedera/passport";
-import { clear as clearDirectoryCache } from "@agentgate-hedera/passport";
-import { marketClear as clearMarketCache } from "@agentgate-hedera/passport";
+import { nftStore, topicMessages } from "@agentbadge/hedera-core";
+import { a2aClear as clearA2ACache } from "@agentbadge/passport";
+import { clear as clearDirectoryCache } from "@agentbadge/passport";
+import { marketClear as clearMarketCache } from "@agentbadge/passport";
 import type { Hono } from "hono";
 
 export interface TestAgent {

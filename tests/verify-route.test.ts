@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@agentgate-hedera/passport", async (importOriginal) => ({
+vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   getPassportInfo: vi.fn(),
   listPassportsByAddress: vi.fn(),
@@ -13,8 +13,8 @@ import {
   getPassportInfo,
   listPassportsByAddress,
   listAllPassports,
-} from "@agentgate-hedera/passport";
-import type { PassportInfo } from "@agentgate-hedera/passport";
+} from "@agentbadge/passport";
+import type { PassportInfo } from "@agentbadge/passport";
 
 const mockPassportInfo = (overrides: Partial<PassportInfo> = {}): PassportInfo => ({
   active: true,

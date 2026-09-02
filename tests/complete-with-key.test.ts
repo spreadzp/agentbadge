@@ -9,7 +9,7 @@ import {
   registerGuideTools,
   registerSigningTools,
   listTools,
-} from "@agentgate-hedera/mcp";
+} from "@agentbadge/mcp";
 
 import { PrivateKey } from "@hashgraph/sdk";
 
@@ -116,7 +116,7 @@ describe("SLICE-15-2: complete_task_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing taskId", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("complete_task_with_key", {
       posterDid: "did:hcs:0.0.123:1",
       posterPrivateKey: makePrivateKey(),
@@ -126,7 +126,7 @@ describe("SLICE-15-2: complete_task_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing posterDid", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("complete_task_with_key", {
       taskId: "task-123",
       posterPrivateKey: makePrivateKey(),
@@ -136,7 +136,7 @@ describe("SLICE-15-2: complete_task_with_key MCP tool", () => {
   });
 
   it("returns validation error for missing posterPrivateKey", async () => {
-    const { handleHttpToolCall } = await import("@agentgate-hedera/mcp");
+    const { handleHttpToolCall } = await import("@agentbadge/mcp");
     const result = await handleHttpToolCall("complete_task_with_key", {
       taskId: "task-123",
       posterDid: "did:hcs:0.0.123:1",

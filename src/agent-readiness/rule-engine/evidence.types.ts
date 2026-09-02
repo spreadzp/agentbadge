@@ -1,5 +1,7 @@
-// ─── Evidence Types — 8 Discriminated Union Variants ──────────────────────────
-// Source: AGENT-READINESS-SPEC-v0.1.md, §4 Evidence Model
+// ─── Evidence Types — 9 Discriminated Union Variants ──────────────────────────
+// Source: AGENT-READINESS-SPEC-v0.3.md, §4 Evidence Model
+
+import type { SourceClass } from "./source-hierarchy";
 
 export interface HttpEvidence {
   type: "http";
@@ -9,6 +11,8 @@ export interface HttpEvidence {
   content_hash: string;
   content_type: string | null;
   resolved_ip: string | null;
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface OpenApiEvidence {
@@ -16,6 +20,8 @@ export interface OpenApiEvidence {
   url: string;
   paths: string[];
   methods: string[];
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface JsonSchemaEvidence {
@@ -23,6 +29,8 @@ export interface JsonSchemaEvidence {
   url: string;
   schema_keys: string[];
   valid: boolean;
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface HtmlEvidence {
@@ -31,6 +39,8 @@ export interface HtmlEvidence {
   title: string | null;
   content_hash: string;
   content_type: string | null;
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface RobotsEvidence {
@@ -39,6 +49,8 @@ export interface RobotsEvidence {
   status: number;
   allows_all: boolean;
   disallowed_paths: string[];
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface SitemapEvidence {
@@ -47,6 +59,8 @@ export interface SitemapEvidence {
   status: number;
   url_count: number;
   urls: string[];
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface GithubEvidence {
@@ -55,6 +69,8 @@ export interface GithubEvidence {
   path: string;
   content_hash: string;
   last_commit: string;
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface ManualConfirmationEvidence {
@@ -62,6 +78,8 @@ export interface ManualConfirmationEvidence {
   confirmed_by: string;
   confirmed_at: string;
   note: string;
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export interface CrossEvidence {
@@ -69,6 +87,8 @@ export interface CrossEvidence {
   sources: Evidence[];
   match_keys: string[];
   conflict_reason: string;
+  captured_at?: string;
+  source_class?: SourceClass;
 }
 
 export type Evidence =
