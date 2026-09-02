@@ -46,7 +46,7 @@ webmcpApiRoutes.get(
     }
 
     let resolvedTokenId = tokenId;
-    let serial = 0;
+    let serial = 1;
 
     try {
       if (did) {
