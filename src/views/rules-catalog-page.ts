@@ -12,6 +12,14 @@ import { categoryEnum } from "../agent-readiness/shared.schema";
 import { PILLARS, PILLAR_CATEGORIES } from "../agent-readiness/scoring/pillar-map";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
 import { faqPageLd, defaultCoreSchemas } from "../server/lib/json-ld";
+import { DEFAULT_GAP_TYPE_BY_CATEGORY } from "../agent-readiness/gap-engine/gap-types";
+
+const GAP_TYPE_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
+  documentation: { label: "Documentation", description: "Artifact is absent — nothing to read" },
+  semantic: { label: "Semantic", description: "Artifact exists but doesn't answer the agent's question" },
+  capability: { label: "Capability", description: "Service lacks what agents need" },
+  evidence: { label: "Evidence", description: "Sources disagree" },
+};
 
 const EFFORT_STYLES: Record<string, string> = {
   quick: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
@@ -38,6 +46,8 @@ function ruleCard(rule: RuleDescription) {
   const ruleDef = AGENT_READINESS_RULESET.rules.find((r) => r.rule_id === rule.rule_id);
   const severity = rule.severity ?? ruleDef?.severity ?? "medium";
   const severityStyle = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.medium;
+  const gapType = ruleDef?.gap_type ?? DEFAULT_GAP_TYPE_BY_CATEGORY[rule.category];
+  const gapTypeLabel = GAP_TYPE_DESCRIPTIONS[gapType]?.label ?? gapType;
   return html`<a
     href="/rules/${rule.rule_id}"
     class="block rounded-lg border border-slate-800 bg-slate-900/50 p-4 hover:border-slate-600 hover:bg-slate-800/50 transition-colors"
@@ -56,6 +66,9 @@ function ruleCard(rule: RuleDescription) {
         </span>
         <span class="text-[10px] border ${raw(effortStyle)} rounded px-1.5 py-0.5 font-mono uppercase tracking-wider">
           ${effortLabel}
+        </span>
+        <span class="text-[10px] border border-slate-700 rounded px-1.5 py-0.5 font-mono text-slate-400" title="Gap type: ${gapTypeLabel}">
+          ${gapTypeLabel}
         </span>
       </div>
     </div>
@@ -175,6 +188,13 @@ export function RulesCatalogPage() {
             <span class="inline-flex items-center gap-1 text-xs font-mono border border-sky-500/40 bg-sky-500/10 rounded px-1.5 py-0.5 text-sky-300">LOW</span>
             <span class="text-slate-500">Severity</span>
           </span>
+        </div>
+        <!-- Gap type legend -->
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500">
+          <span class="text-slate-600">Gap types:</span>
+          ${raw(Object.entries(GAP_TYPE_DESCRIPTIONS).map(([_key, desc]) =>
+    `<span class="inline-flex items-center gap-1 text-xs font-mono border border-slate-700 rounded-full px-2.5 py-0.5 text-slate-400" title="${desc.description}">${desc.label}</span>`
+  ).join(" "))}
         </div>
       </div>
 

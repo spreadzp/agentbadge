@@ -12,6 +12,7 @@ import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
 import { SOURCE_CLASS_LABELS, classifyEvidence } from "../agent-readiness/rule-engine/source-hierarchy";
 import type { Evidence } from "../agent-readiness/rule-engine/evidence.types";
 import type { CheckType } from "../agent-readiness/shared.schema";
+import { DEFAULT_GAP_TYPE_BY_CATEGORY, FIX_HINT_BY_GAP_TYPE } from "../agent-readiness/gap-engine/gap-types";
 
 function evidenceExpectedLine(checkType: CheckType): { types: string[]; sourceClass: string; sourceLabel: string } | null {
   const evidenceTypeMap: Record<string, string[]> = {
@@ -77,6 +78,15 @@ export function RuleDetailPage(rule: RuleDescription) {
   const effortLabel = EFFORT_LABELS[rule.effort_hint];
   const pillar = CATEGORY_TO_PILLAR[rule.category];
   const pillarLabel = PILLAR_LABELS[pillar];
+
+  // Gap engine metadata
+  const ruleDef = AGENT_READINESS_RULESET.rules.find((r) => r.rule_id === rule.rule_id);
+  const defaultGapType = DEFAULT_GAP_TYPE_BY_CATEGORY[rule.category];
+  const gapType = ruleDef?.gap_type ?? defaultGapType;
+  const hasGapTypeOverride = ruleDef?.gap_type !== undefined;
+  const defaultFixHint = FIX_HINT_BY_GAP_TYPE[gapType as keyof typeof FIX_HINT_BY_GAP_TYPE];
+  const fixHint = ruleDef?.fix_hint ?? defaultFixHint;
+  const hasFixHintOverride = ruleDef?.fix_hint !== undefined;
 
   const relatedRules = RULE_DESCRIPTIONS.filter(
     (r) => r.category === rule.category && r.rule_id !== rule.rule_id,
@@ -157,6 +167,12 @@ export function RuleDetailPage(rule: RuleDescription) {
           </span>
           <span class="inline-flex items-center gap-1.5 text-sm border border-slate-700 rounded-full px-3 py-1 text-slate-300">
             Est. cost: ${rule.estimated_cost}
+          </span>
+          <span class="inline-flex items-center gap-1.5 text-sm border border-violet-500/30 bg-violet-500/10 rounded-full px-3 py-1 text-violet-300" title="${hasGapTypeOverride ? `Override (default: ${defaultGapType})` : 'Default by category'}">
+            Gap: ${gapType}${hasGapTypeOverride ? " *" : ""}
+          </span>
+          <span class="inline-flex items-center gap-1.5 text-sm border border-slate-700 rounded-full px-3 py-1 text-slate-400" title="${hasFixHintOverride ? `Override (default: ${defaultFixHint})` : 'Default by gap type'}">
+            Fix: ${fixHint}${hasFixHintOverride ? " *" : ""}
           </span>
         </div>
       </div>
