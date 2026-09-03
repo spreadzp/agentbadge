@@ -17,4 +17,5 @@ export const AB159: AgentReadinessRule = {
     type: "assisted",
     note: "Document per-capability constraints (refunds, cancellation windows, limits) in your guide or llms.txt",
   },
+  display_question: "What business rules constrain each action (refunds, cancellations, limits)?",
 };

@@ -17,4 +17,5 @@ export const AB153: AgentReadinessRule = {
     type: "assisted",
     note: "Define securitySchemes in OpenAPI with descriptions, and document how to obtain credentials in your agent guide",
   },
+  display_question: "How do I authenticate to use this API?",
 };

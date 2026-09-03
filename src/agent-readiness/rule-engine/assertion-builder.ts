@@ -19,6 +19,8 @@ export interface Assertion {
   verified_at: string;
   review_level: ReviewLevel;
   fix?: { eligible: boolean; type: string; note?: string };
+  severity?: string;
+  display_question?: string;
 }
 
 class AssertionBuilderClass {
@@ -55,6 +57,8 @@ class AssertionBuilderClass {
       verified_at: verifiedAt,
       review_level: reviewLevel,
       fix: input.rule.fix,
+      severity: input.rule.severity,
+      display_question: input.rule.display_question,
     };
   }
 

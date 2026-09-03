@@ -17,4 +17,5 @@ export const AB147: AgentReadinessRule = {
     type: "assisted",
     note: "Add descriptions and constraints to all parameters in your OpenAPI spec",
   },
+  display_question: "What parameters does each operation accept?",
 };

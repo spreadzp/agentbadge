@@ -17,4 +17,5 @@ export const AB150: AgentReadinessRule = {
     type: "assisted",
     note: "Add machine-readable pricing to your agent guide, pricing.json, or OpenAPI x-pricing extension",
   },
+  display_question: "What does a call cost?",
 };

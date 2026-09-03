@@ -72,6 +72,11 @@ export const agentReadinessRuleSchema = z.object({
       .optional()
       .describe("Additional context about the fix approach"),
   }).describe("Fix definition — how a failing rule can be remediated"),
+
+  display_question: z
+    .string()
+    .optional()
+    .describe("Agent-perspective question for GAP display (e.g. 'What does a call cost?')"),
 });
 
 export type AgentReadinessRule = z.infer<typeof agentReadinessRuleSchema>;

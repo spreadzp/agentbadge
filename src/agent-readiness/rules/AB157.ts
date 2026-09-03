@@ -17,4 +17,5 @@ export const AB157: AgentReadinessRule = {
     type: "assisted",
     note: "Add explicit agent permissions (Allow/Disallow) in agents.txt, guide policy field, or llms.txt policy section",
   },
+  display_question: "Am I allowed to use this API as an AI agent?",
 };

@@ -17,4 +17,5 @@ export const AB160: AgentReadinessRule = {
     type: "assisted",
     note: "Add a dedicated support contact (email/URL) in your guide, llms.txt, or .well-known/security.txt (RFC 9116)",
   },
+  display_question: "Where do I get help if something goes wrong?",
 };

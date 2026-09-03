@@ -228,33 +228,56 @@ function ServiceHero(service: AgencyService) {
             }
             function renderIssueBuckets(report) {
               if (!report.top_missing || report.top_missing.length === 0) return '';
-              var buckets = { CRITICAL: [], HIGH: [], MEDIUM: [], LOW: [] };
+              var blockers = [];
+              var otherBuckets = { HIGH: [], MEDIUM: [], LOW: [] };
               for (var i = 0; i < report.top_missing.length; i++) {
                 var rule = report.top_missing[i];
                 var sev = (rule.severity || 'medium').toUpperCase();
-                if (buckets[sev]) {
-                  buckets[sev].push(rule);
+                if (sev === 'CRITICAL') {
+                  blockers.push(rule);
+                } else if (otherBuckets[sev]) {
+                  otherBuckets[sev].push(rule);
                 } else {
-                  buckets.MEDIUM.push(rule);
+                  otherBuckets.MEDIUM.push(rule);
                 }
               }
               var html = '<div class="rounded-lg border border-slate-700 overflow-hidden">';
               html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">Prioritized Issues</div>';
               html += '<div class="divide-y divide-slate-800">';
-              var order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
-              var colors = { CRITICAL: 'text-rose-400', HIGH: 'text-amber-400', MEDIUM: 'text-yellow-400', LOW: 'text-slate-400' };
+
+              // BLOCKER bucket (critical severity) — pinned at top
+              if (blockers.length > 0) {
+                html += '<div class="px-4 py-2 bg-rose-900/30 border-l-4 border-rose-500">';
+                html += '<div class="text-xs font-semibold text-rose-300">🚫 BLOCKER (' + blockers.length + ')</div>';
+                html += '</div>';
+                for (var j = 0; j < blockers.length; j++) {
+                  var b = blockers[j];
+                  var bTitle = b.display_question || b.title;
+                  html += '<div class="px-4 py-3 bg-rose-900/10">';
+                  html += '<div class="flex items-center justify-between">';
+                  html += '<span class="text-sm text-rose-200">' + bTitle + '</span>';
+                  html += '<span class="text-xs text-rose-400 font-mono">BLOCKER</span>';
+                  html += '</div>';
+                  html += '<div class="text-xs text-slate-500 mt-1">' + b.hint + '</div>';
+                  html += '</div>';
+                }
+              }
+
+              var order = ['HIGH', 'MEDIUM', 'LOW'];
+              var colors = { HIGH: 'text-amber-400', MEDIUM: 'text-yellow-400', LOW: 'text-slate-400' };
               for (var b = 0; b < order.length; b++) {
                 var bucket = order[b];
-                var items = buckets[bucket];
+                var items = otherBuckets[bucket];
                 if (items.length === 0) continue;
                 html += '<div class="px-4 py-2 bg-slate-900/30">';
                 html += '<div class="text-xs font-semibold ' + colors[bucket] + '">' + bucket + ' (' + items.length + ')</div>';
                 html += '</div>';
                 for (var j = 0; j < items.length; j++) {
                   var r = items[j];
+                  var rTitle = r.display_question || r.title;
                   html += '<div class="px-4 py-3">';
                   html += '<div class="flex items-center justify-between">';
-                  html += '<span class="text-sm text-slate-300">' + r.title + '</span>';
+                  html += '<span class="text-sm text-slate-300">' + rTitle + '</span>';
                   html += '<span class="text-xs text-slate-500">' + r.estimated_cost + '</span>';
                   html += '</div>';
                   html += '<div class="text-xs text-slate-500 mt-1">' + r.hint + '</div>';
@@ -300,6 +323,9 @@ function ServiceHero(service: AgencyService) {
               html += '<div class="flex items-center gap-2">';
               html += '<span class="text-slate-400">STATUS</span>';
               html += '<span class="font-semibold ' + (isGap ? 'text-rose-400' : 'text-emerald-400') + '">' + status + '</span>';
+              if (status === 'INFERRED' || a.semantic_outcome === 'partial') {
+                html += '<span class="px-1.5 py-0.5 rounded bg-amber-900 text-amber-300 text-xs">partial</span>';
+              }
               if (sourceLabel) {
                 html += '<span class="text-slate-500">via ' + sourceLabel + '</span>';
               }
@@ -359,15 +385,27 @@ function ServiceHero(service: AgencyService) {
                 var name = a.name || a.rule_id || 'unknown';
                 var ruleId = a.rule_id || '';
                 var reviewLevel = a.review_level || '';
+                var isGap = status === 'GAP';
+                var isCritical = (a.severity || '').toLowerCase() === 'critical';
+                // GAP issues show display_question as title; critical gets BLOCKER prefix
+                var displayTitle = name;
+                if (isGap && a.display_question) {
+                  displayTitle = isCritical ? '🚫 ' + a.display_question : a.display_question;
+                } else if (isCritical) {
+                  displayTitle = '🚫 ' + name;
+                }
                 var statusColor = status === 'VERIFIED' || status === 'INFERRED' ? 'text-emerald-400' : status === 'GAP' ? 'text-rose-400' : status === 'CONFLICT' ? 'text-amber-400' : 'text-slate-400';
                 var drawerId = 'drawer-' + i;
-                html += '<div class="px-4 py-3">';
+                html += '<div class="px-4 py-3' + (isCritical && isGap ? ' bg-rose-900/10' : '') + '">';
                 html += '<div class="flex items-center justify-between cursor-pointer" onclick="var d=document.getElementById(\\'' + drawerId + '\\'); if(d){d.classList.toggle(\\'hidden\\');}">';
                 html += '<div class="flex items-center gap-2">';
                 html += '<span class="text-xs font-mono text-slate-600">' + ruleId + '</span>';
-                html += '<span class="text-sm text-slate-300">' + name + '</span>';
+                html += '<span class="text-sm text-slate-300">' + displayTitle + '</span>';
                 html += '</div>';
                 html += '<div class="flex items-center gap-2">';
+                if (isCritical) {
+                  html += '<span class="text-xs px-1.5 py-0.5 rounded bg-rose-900 text-rose-300 font-mono">BLOCKER</span>';
+                }
                 if (reviewLevel === 'assisted') {
                   html += '<span class="text-xs px-1.5 py-0.5 rounded bg-amber-900 text-amber-300">assisted</span>';
                 } else if (reviewLevel === 'automatic') {

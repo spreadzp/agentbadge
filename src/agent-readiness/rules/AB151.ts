@@ -17,4 +17,5 @@ export const AB151: AgentReadinessRule = {
     type: "assisted",
     note: "Declare rate limits in machine-readable format and document over-limit behavior (429 + Retry-After)",
   },
+  display_question: "How many calls can I make per minute?",
 };

@@ -17,4 +17,5 @@ export const AB149: AgentReadinessRule = {
     type: "assisted",
     note: "Declare 4xx/5xx responses with content schemas and descriptions; consider RFC 9457 application/problem+json",
   },
+  display_question: "What errors can occur and what do they mean?",
 };

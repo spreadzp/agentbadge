@@ -17,4 +17,5 @@ export const AB155: AgentReadinessRule = {
     type: "assisted",
     note: "Declare API version in OpenAPI info.version and document a deprecation policy (RFC 8594 Sunset header)",
   },
+  display_question: "What version of the API am I using and is it stable?",
 };

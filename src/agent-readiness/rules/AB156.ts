@@ -17,4 +17,5 @@ export const AB156: AgentReadinessRule = {
     type: "assisted",
     note: "Declare a sandbox/test environment URL in your agent guide or OpenAPI servers",
   },
+  display_question: "Is there a sandbox where I can test calls safely?",
 };

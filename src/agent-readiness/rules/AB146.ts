@@ -17,4 +17,5 @@ export const AB146: AgentReadinessRule = {
     type: "assisted",
     note: "Add description or summary to every operation in your OpenAPI spec",
   },
+  display_question: "What does each API operation do?",
 };

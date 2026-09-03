@@ -17,4 +17,5 @@ export const AB152: AgentReadinessRule = {
     type: "assisted",
     note: "Ensure pricing and rate limit values are consistent across all sources that declare them",
   },
+  display_question: "Are pricing and rate limits consistent across all sources?",
 };

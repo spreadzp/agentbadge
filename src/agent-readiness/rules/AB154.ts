@@ -17,4 +17,5 @@ export const AB154: AgentReadinessRule = {
     type: "assisted",
     note: "Declare Idempotency-Key support and Retry-After headers for 429/5xx responses",
   },
+  display_question: "Can I safely retry a failed request?",
 };

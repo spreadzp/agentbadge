@@ -17,4 +17,5 @@ export const AB158: AgentReadinessRule = {
     type: "assisted",
     note: "Add a capabilities/endpoints array with per-item descriptions to your agent guide",
   },
+  display_question: "What can this API do and which endpoints should I use?",
 };

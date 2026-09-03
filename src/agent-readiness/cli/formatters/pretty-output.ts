@@ -110,7 +110,10 @@ export function formatPrettyOutput(report: AgentReadinessReport, opts?: PrettyOu
     const top = sorted.slice(0, 5);
     for (const a of top) {
       const badge = formatStatusBadge(a);
-      const title = a.claim ?? a.rule_id;
+      const isCritical = ((a as { severity?: string }).severity || "").toLowerCase() === "critical";
+      const blockerPrefix = isCritical ? "[BLOCKER] " : "";
+      const dq = (a as { display_question?: string }).display_question;
+      const title = blockerPrefix + (dq ?? a.claim ?? a.rule_id);
       lines.push(`  ${badge} ${title}`);
       lines.push(`    ${a.reason}`);
       if (a.source_url) {

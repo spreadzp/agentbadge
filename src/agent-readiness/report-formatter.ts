@@ -43,6 +43,9 @@ export interface AssertionV2Payload {
   source_class: SourceClass | null;
   source_label: string | null;
   evidence: AssertionEvidenceEntry[];
+  severity?: string;
+  display_question?: string;
+  semantic_outcome?: string;
 }
 
 export interface ScanReport {
@@ -81,6 +84,8 @@ export interface MissingRule {
   hint: string;
   effort_hint: string;
   estimated_cost: string;
+  severity?: string;
+  display_question?: string;
 }
 
 export function formatScanReport(url: string, result: RuleEngineResult): ScanReport {
@@ -157,6 +162,8 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
         hint: ((a as unknown as Record<string, unknown>).hint ?? (a as unknown as Record<string, unknown>).fix_hint ?? "See rule documentation for fix instructions.") as string,
         effort_hint: desc?.effort_hint ?? "moderate",
         estimated_cost: desc?.estimated_cost ?? "$10-50",
+        severity: a.severity,
+        display_question: a.display_question,
       } as MissingRule;
     })
     .sort((a, b) => {
@@ -219,5 +226,8 @@ function serializeAssertionV2(a: Assertion): AssertionV2Payload {
     source_class: sourceClass,
     source_label: sourceLabel,
     evidence: evidenceEntries,
+    severity: a.severity,
+    display_question: a.display_question,
+    semantic_outcome: (a.evidence as Array<{ semantic_outcome?: string }>).find((e) => e.semantic_outcome)?.semantic_outcome,
   };
 }

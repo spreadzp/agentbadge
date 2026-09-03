@@ -17,4 +17,5 @@ export const AB148: AgentReadinessRule = {
     type: "assisted",
     note: "Add example or examples fields to request bodies and response content in your OpenAPI spec",
   },
+  display_question: "What does a valid request and response look like?",
 };
