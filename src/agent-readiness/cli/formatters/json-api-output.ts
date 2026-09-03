@@ -8,6 +8,8 @@ import { PILLAR_LABELS } from "../../scoring/pillar-map";
 import { orderedPillars } from "./pillar-helpers";
 import { strongestSource, classifyEvidence, SOURCE_CLASS_LABELS } from "../../rule-engine/source-hierarchy";
 import { evidenceSummary } from "../../rule-engine/evidence.types";
+import type { Gap } from "../../gap-engine/gap-types";
+import type { GapSummary } from "../../gap-engine/gap-engine";
 
 export interface JsonApiInput {
   url: string;
@@ -22,6 +24,8 @@ export interface JsonApiInput {
   endpointProbe?: unknown;
   operationalDiscovery?: unknown;
   pillars?: Record<string, PillarScore>;
+  gaps?: Gap[];
+  gap_summary?: GapSummary;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -148,6 +152,14 @@ export function formatJsonApiOutput(input: JsonApiInput): string {
       rawScore: ps.rawScore,
       floorTriggered: ps.floorTriggered,
     }));
+  }
+
+  if (input.gaps !== undefined) {
+    output.gaps = input.gaps;
+  }
+
+  if (input.gap_summary !== undefined) {
+    output.gap_summary = input.gap_summary;
   }
 
   const space = input.compact ? 0 : 2;

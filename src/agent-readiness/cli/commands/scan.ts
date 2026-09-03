@@ -23,6 +23,11 @@ import { computeGrade } from "../../scoring/grade-computer";
 import type { Assertion } from "../../rule-engine/assertion-builder";
 import { formatJsonApiOutput } from "../formatters/json-api-output";
 import { computeFunnel } from "../../scoring/funnel-computer";
+import { deriveGaps, summarizeGaps } from "../../gap-engine/gap-engine";
+import { prioritizeGaps } from "../../gap-engine/gap-priority";
+import { annotateFixReadiness } from "../../gap-engine/gap-fix-hints";
+import { DEFAULT_CATEGORY_WEIGHTS } from "../../scoring/scoring-types";
+import type { AgentReadinessRule } from "../../rule.schema";
 
 const DEFAULT_OUTPUT_PATH = "agentbadge-report.json";
 
@@ -135,7 +140,14 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       rulesetManifest: manifest,
     });
 
-    // Step 4: Assemble report (Epic 36)
+    // Step 4: Compute gaps (EPIC-96)
+    const rawGaps = deriveGaps(ruleEngineResult.assertions as Assertion[], AGENT_READINESS_RULESET.rules as unknown as AgentReadinessRule[]);
+    const ruleSeverities = AGENT_READINESS_RULESET.rules.map((r) => ({ rule_id: r.rule_id, severity: r.severity as "critical" | "high" | "medium" | "low" }));
+    const prioritizedGaps = prioritizeGaps(rawGaps, DEFAULT_CATEGORY_WEIGHTS, ruleSeverities);
+    const annotatedGaps = annotateFixReadiness(prioritizedGaps, AGENT_READINESS_RULESET.rules as unknown as AgentReadinessRule[]);
+    const gapSummary = summarizeGaps(annotatedGaps);
+
+    // Step 5: Assemble report (Epic 36)
     const parsed = new URL(url);
     const report = assembleReport({
       scope: {
@@ -157,6 +169,8 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
       },
       previousHash: null,
       keyId: "default",
+      gaps: annotatedGaps,
+      gap_summary: gapSummary,
     });
 
     if (fix) {
@@ -198,6 +212,8 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         endpointProbe: endpointProbeData,
         operationalDiscovery: operationalDiscoveryData,
         pillars: scoreResult.pillars,
+        gaps: annotatedGaps,
+        gap_summary: gapSummary,
       });
       return { exitCode: 0, stdout: apiJson, stderr: "" };
     }
@@ -207,7 +223,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
         ? assertions.map((r) => ({ ...r, fixHint: r.fix ?? null }))
         : assertions;
       const space = compact ? 0 : 2;
-      return { exitCode: 0, stdout: JSON.stringify({ results: payload }, null, space), stderr: "" };
+      return { exitCode: 0, stdout: JSON.stringify({ results: payload, gaps: annotatedGaps, gap_summary: gapSummary }, null, space), stderr: "" };
     }
 
     if (format === "markdown") {
@@ -225,7 +241,7 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
           Object.entries(scoreResult.categories).map(([k, v]) => [k, v.score ?? 0]),
         ))
         : undefined;
-      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData, pillars: scoreResult.pillars });
+      const html = formatHtmlOutput(assertions, { score: scoreVal, grade, fixHints, reportUrl, funnel: funnelData, pillars: scoreResult.pillars, gaps: annotatedGaps, gap_summary: gapSummary });
       if (outputPath !== DEFAULT_OUTPUT_PATH) {
         await writeFile(outputPath, html, "utf-8");
         return { exitCode: 0, stdout: `HTML report written to ${outputPath}`, stderr: "", outputFile: outputPath };

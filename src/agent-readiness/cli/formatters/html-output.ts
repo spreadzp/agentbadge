@@ -4,9 +4,12 @@
 
 import type { RuleResult } from "../output";
 import type { PillarScore } from "../../scoring/scoring-types";
+import type { Gap } from "../../gap-engine/gap-types";
+import type { GapSummary } from "../../gap-engine/gap-engine";
 import { PILLAR_LABELS } from "../../scoring/pillar-map";
 import { weightScaledScore, orderedPillars } from "./pillar-helpers";
 import { formatStatusBadgeHtml } from "./status-badge";
+import { formatGapLine } from "./pretty-output";
 
 const CATEGORY_LABELS: Record<string, string> = {
   discovery: "Discovery",
@@ -58,6 +61,8 @@ export interface HtmlOutputOptions {
   fixHints?: boolean;
   funnel?: import("../../scoring/funnel-computer").FunnelResult;
   pillars?: Record<string, PillarScore>;
+  gaps?: Gap[];
+  gap_summary?: GapSummary;
 }
 
 export function formatHtmlOutput(
@@ -135,6 +140,10 @@ export function formatHtmlOutput(
 
   const pillarSection = opts?.pillars
     ? renderHtmlPillars(opts.pillars)
+    : "";
+
+  const gapSection = opts?.gaps !== undefined
+    ? renderHtmlGaps(opts.gaps, opts.gap_summary)
     : "";
 
   const reportUrlLine = reportUrl
@@ -354,6 +363,7 @@ export function formatHtmlOutput(
     ${reportUrlLine}
   </div>
   ${pillarSection}
+  ${gapSection}
   ${funnelSection}
   ${categorySections.join("\n")}
   ${fixSection}
@@ -398,5 +408,37 @@ function renderHtmlFunnel(funnel: import("../../scoring/funnel-computer").Funnel
   <section class="funnel">
     <h2>Readiness Funnel</h2>
     ${rows}
+  </section>`;
+}
+
+const PRIORITY_ORDER: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+
+function renderHtmlGaps(gaps: Gap[], summary?: GapSummary): string {
+  if (gaps.length === 0) {
+    return `<section class="gaps"><h2>Gap Roadmap</h2><p>No gaps — all agent questions answered</p></section>`;
+  }
+
+  const summaryLine = summary
+    ? (() => {
+      const parts: string[] = [];
+      for (const p of ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const) {
+        const cnt = summary.by_priority[p] ?? 0;
+        if (cnt > 0) parts.push(`${cnt} ${p.toLowerCase()}`);
+      }
+      return `<p class="gap-summary">${summary.total} gaps: ${parts.join(" · ")}</p>`;
+    })()
+    : "";
+
+  const sorted = [...gaps].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9));
+  const items = sorted.map((gap) => {
+    const line = formatGapLine(gap);
+    return `<li>${escapeHtml(line.trim())}</li>`;
+  }).join("\n");
+
+  return `
+  <section class="gaps">
+    <h2>Gap Roadmap</h2>
+    ${summaryLine}
+    <ul class="gap-list">${items}</ul>
   </section>`;
 }

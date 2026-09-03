@@ -3,6 +3,8 @@
  */
 
 import type { AgentReadinessReport } from "../../integrity/report-serializer";
+import type { Gap } from "../../gap-engine/gap-types";
+import type { GapSummary } from "../../gap-engine/gap-engine";
 import { computeGrade } from "../../scoring/grade-computer";
 import { computeFunnel } from "../../scoring/funnel-computer";
 import { renderFunnelAscii } from "./funnel-output";
@@ -10,6 +12,19 @@ import { PILLAR_LABELS } from "../../scoring/pillar-map";
 import type { PillarScore } from "../../scoring/scoring-types";
 import { weightScaledScore, orderedPillars } from "./pillar-helpers";
 import { formatStatusBadge } from "./status-badge";
+
+const PRIORITY_ORDER: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+const HINT_LABELS: Record<string, string> = { deterministic: "deterministic", assisted: "assisted", manual: "manual" };
+
+export function formatGapLine(gap: Gap): string {
+  const isBlocker = gap.priority === "CRITICAL";
+  const blockerPrefix = isBlocker ? "[BLOCKER] " : "";
+  const title = gap.title;
+  const typeLabel = gap.type;
+  const ruleCount = gap.related_rules.length;
+  const fixHint = HINT_LABELS[gap.fix_hint] ?? gap.fix_hint;
+  return `  [${gap.priority}] ${blockerPrefix}${title} — ${gap.category} (${typeLabel}, ${ruleCount} rules) → fix: ${fixHint}`;
+}
 
 export interface PrettyOutputOptions {
   showFunnel?: boolean;
@@ -82,6 +97,34 @@ export function formatPrettyOutput(report: AgentReadinessReport, opts?: PrettyOu
     lines.push("  Readiness Funnel");
     lines.push("─".repeat(60));
     lines.push(renderFunnelAscii(funnel));
+    lines.push("");
+  }
+
+  // GAP ROADMAP (EPIC-96)
+  if (report.gaps && report.gaps.length > 0) {
+    lines.push("─".repeat(60));
+    lines.push("  GAP ROADMAP");
+    lines.push("─".repeat(60));
+    const gs = report.gap_summary as GapSummary | undefined;
+    if (gs) {
+      const parts: string[] = [];
+      for (const p of ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const) {
+        const cnt = gs.by_priority[p] ?? 0;
+        if (cnt > 0) parts.push(`${cnt} ${p.toLowerCase()}`);
+      }
+      lines.push(`  ${gs.total} gaps: ${parts.join(" · ")}`);
+      lines.push("");
+    }
+    const sortedGaps = [...report.gaps].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9));
+    for (const gap of sortedGaps) {
+      lines.push(formatGapLine(gap));
+    }
+    lines.push("");
+  } else if (report.gaps && report.gaps.length === 0) {
+    lines.push("─".repeat(60));
+    lines.push("  GAP ROADMAP");
+    lines.push("─".repeat(60));
+    lines.push("  No gaps — all agent questions answered");
     lines.push("");
   }
 

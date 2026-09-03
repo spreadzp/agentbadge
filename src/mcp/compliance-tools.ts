@@ -22,6 +22,12 @@ import { DEFAULT_CATEGORY_WEIGHTS, type PillarScore } from "../agent-readiness/s
 import { strongestSource, classifyEvidence, SOURCE_CLASS_LABELS } from "../agent-readiness/rule-engine/source-hierarchy";
 import { evidenceSummary } from "../agent-readiness/rule-engine/evidence.types";
 import { withFreshness } from "../agent-readiness/rule-engine/freshness";
+import { deriveGaps, summarizeGaps } from "../agent-readiness/gap-engine/gap-engine";
+import { prioritizeGaps } from "../agent-readiness/gap-engine/gap-priority";
+import { annotateFixReadiness } from "../agent-readiness/gap-engine/gap-fix-hints";
+import type { AgentReadinessRule } from "../agent-readiness/rule.schema";
+import type { Gap } from "../agent-readiness/gap-engine/gap-types";
+import type { GapSummary } from "../agent-readiness/gap-engine/gap-engine";
 
 const complianceArgsSchema = z.object({
   url: z
@@ -73,6 +79,8 @@ interface ComplianceResult {
     skipped: number;
   };
   evidence_summary?: EvidenceSummary;
+  gaps?: Gap[];
+  gap_summary?: GapSummary;
 }
 
 function validationError(message: string): ToolResult {
@@ -181,6 +189,13 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
       stale_count: allAssertions.filter((a) => withFreshness(a).stale).length,
     };
 
+    // EPIC-96: gap roadmap
+    const rawGaps = deriveGaps(allAssertions, AGENT_READINESS_RULESET.rules as unknown as AgentReadinessRule[]);
+    const ruleSeverities = AGENT_READINESS_RULESET.rules.map((r) => ({ rule_id: r.rule_id, severity: r.severity as "critical" | "high" | "medium" | "low" }));
+    const prioritizedGaps = prioritizeGaps(rawGaps, DEFAULT_CATEGORY_WEIGHTS, ruleSeverities);
+    const annotatedGaps = annotateFixReadiness(prioritizedGaps, AGENT_READINESS_RULESET.rules as unknown as AgentReadinessRule[]);
+    const gapSummary = summarizeGaps(annotatedGaps);
+
     const result: ComplianceResult = {
       score: typeof scoreResult.total === "number"
         ? scoreResult.total
@@ -195,6 +210,8 @@ export const checkComplianceHandler: ToolHandler = async (args) => {
         skipped,
       },
       evidence_summary: evidenceSummaryBlock,
+      gaps: annotatedGaps,
+      gap_summary: gapSummary,
     };
 
     return {
@@ -209,7 +226,7 @@ export function registerComplianceTools(ns?: NamespaceRegistry): void {
   const r = getRegistry(ns);
   r.registerTool(
     "check_compliance",
-    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), four-pillar breakdown (Discovery/Understandability/Executability/Verifiability — where the service stands for agent use), individual check results (id, name, status, hint, claim, verified_at, review_level, source_class, source_label, evidence entries with captured_at/summary), evidence_summary (verified, inferred, gap, conflict, not_applicable, stale_count), and summary (totalChecks, passed, failed, skipped). GAP status indicates information gaps where no evidence was found. Use this to verify agent-readiness of any website.",
+    "Scan any URL for isitagentready compliance. Returns a structured JSON report with score (0-100), four-pillar breakdown (Discovery/Understandability/Executability/Verifiability — where the service stands for agent use), individual check results (id, name, status, hint, claim, verified_at, review_level, source_class, source_label, evidence entries with captured_at/summary), evidence_summary (verified, inferred, gap, conflict, not_applicable, stale_count), summary (totalChecks, passed, failed, skipped), and gaps (prioritized gap roadmap with fix hints — what the agent is missing and how to fix it). GAP status indicates information gaps where no evidence was found. Use this to verify agent-readiness of any website.",
     {
       url: z
         .string()
