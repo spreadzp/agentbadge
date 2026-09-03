@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { categoryEnum, severityEnum, checkTypeEnum, fixTypeEnum, pillarEnum } from "./shared.schema";
+import { categoryEnum, severityEnum, checkTypeEnum, fixTypeEnum, pillarEnum, gapTypeEnum } from "./shared.schema";
 
 // ─── Rule schema ──────────────────────────────────────────────────────────────
 // Source: AGENT-READINESS-SPEC-v0.1.md, agentbadge-rule.schema.json
@@ -77,6 +77,10 @@ export const agentReadinessRuleSchema = z.object({
     .string()
     .optional()
     .describe("Agent-perspective question for GAP display (e.g. 'What does a call cost?')"),
+
+  gap_type: gapTypeEnum
+    .optional()
+    .describe("Optional gap type override — if absent, DEFAULT_GAP_TYPE_BY_CATEGORY[category] applies (spec v0.5 §8.1)"),
 });
 
 export type AgentReadinessRule = z.infer<typeof agentReadinessRuleSchema>;

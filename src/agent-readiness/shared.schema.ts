@@ -75,6 +75,19 @@ export const fixTypeEnum = z
   .enum(["deterministic", "assisted", "none"])
   .describe("Fix type: deterministic (safe to auto-generate), assisted (requires human confirm/edit/reject), none (not fixable by AgentBadge)");
 
+// v0.5 (EPIC-96) — Gap Engine enums
+export const gapTypeEnum = z
+  .enum(["documentation", "semantic", "capability", "evidence"])
+  .describe("Gap type (spec v0.5 §8): documentation (artifact absent), semantic (present but unclear), capability (service lacks it), evidence (sources disagree)");
+
+export const gapPriorityEnum = z
+  .enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"])
+  .describe("Gap priority (spec v0.5 §8.2): derived from severity base, impact quartiles, frequency bump, critical floor, clamp");
+
+export const fixHintEnum = z
+  .enum(["deterministic", "assisted", "manual"])
+  .describe("Fix hint (spec v0.5 §8.3): deterministic (auto-generate), assisted (LLM draft + review), manual (human investigation)");
+
 // ─── Inferred TypeScript types ────────────────────────────────────────────────
 
 export type Category = z.infer<typeof categoryEnum>;
@@ -83,6 +96,9 @@ export type Status = z.infer<typeof statusEnum>;
 export type Severity = z.infer<typeof severityEnum>;
 export type CheckType = z.infer<typeof checkTypeEnum>;
 export type FixType = z.infer<typeof fixTypeEnum>;
+export type GapType = z.infer<typeof gapTypeEnum>;
+export type GapPriority = z.infer<typeof gapPriorityEnum>;
+export type FixHint = z.infer<typeof fixHintEnum>;
 
 // ─── Funnel schemas (EPIC-87) ─────────────────────────────────────────────────
 
