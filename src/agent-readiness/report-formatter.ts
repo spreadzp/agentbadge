@@ -9,6 +9,10 @@ import type { Pillar } from "./shared.schema";
 import type { Assertion } from "./rule-engine/assertion-builder";
 import { evidenceSummary } from "./rule-engine/evidence.types";
 import { strongestSource, classifyEvidence, SOURCE_CLASS_LABELS, type SourceClass } from "./rule-engine/source-hierarchy";
+import { deriveGaps, summarizeGaps, type GapSummary } from "./gap-engine/gap-engine";
+import { prioritizeGaps } from "./gap-engine/gap-priority";
+import { annotateFixReadiness } from "./gap-engine/gap-fix-hints";
+import type { Gap } from "./gap-engine/gap-types";
 
 export interface PillarReport {
   pillar: string;
@@ -65,6 +69,8 @@ export interface ScanReport {
   floorTriggered: boolean;
   floorReason: string | null;
   assertions: AssertionV2Payload[];
+  gaps: Gap[];
+  gap_summary: GapSummary;
 }
 
 export interface CategoryReport {
@@ -174,6 +180,13 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
 
   const serializedAssertions = assertions.map(serializeAssertionV2);
 
+  // EPIC-96 Gap Engine: derive → prioritize → annotate (spec v0.5 §8)
+  const rawGaps = deriveGaps(assertions, AGENT_READINESS_RULESET.rules as unknown as import("./rule.schema").AgentReadinessRule[]);
+  const ruleSeverities = AGENT_READINESS_RULESET.rules.map((r) => ({ rule_id: r.rule_id, severity: r.severity as "critical" | "high" | "medium" | "low" }));
+  const prioritizedGaps = prioritizeGaps(rawGaps, DEFAULT_CATEGORY_WEIGHTS, ruleSeverities);
+  const annotatedGaps = annotateFixReadiness(prioritizedGaps, AGENT_READINESS_RULESET.rules as unknown as import("./rule.schema").AgentReadinessRule[]);
+  const gapSummary = summarizeGaps(annotatedGaps);
+
   const summary = `Your site scored ${score}/100 (${grade} grade). ${verified} of ${total} rules passed, ${missing} need attention, ${notApplicable} not applicable.`;
 
   return {
@@ -193,6 +206,8 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     floorTriggered: scoreResult.total.floorTriggered,
     floorReason: scoreResult.total.floorReason,
     assertions: serializedAssertions,
+    gaps: annotatedGaps,
+    gap_summary: gapSummary,
   };
 }
 

@@ -1,11 +1,11 @@
 # AgentBadge
 
-> **On-chain identity + agent readiness platform for AI agents on Hedera.** Agents buy an NFT passport for HBAR via x402, get a DID + capabilities, register in an HCS directory for discovery — other agents verify them on-chain through Mirror Node. AgentBadge also provides an Agent Readiness Scanner (104 rules, 16 categories) and an agency services layer for B2B work requests. No smart contracts, no gas volatility, $0.001 per transaction.
+> **Agent Readiness platform that measures, explains, and fixes how well AI agents can interact with any API.** AgentBadge scans any URL against a 138-rule framework across four pillars — Discovery, Understandability, Executability, Verifiability — produces evidence-backed scored reports with Ed25519-signed integrity, and provides a fix pipeline from measurement to verified remediation. Blockchain-based agent passports and marketplace provide identity and commerce layers on multiple chains (Hedera, Base, EVM-compatible).
 
-**Live:** [agentbadge.xyz](https://agentbadge.xyz/) — deployed on Fly.io, Hedera Testnet.
+**Live:** [agentbadge.xyz](https://agentbadge.xyz/) — deployed on Fly.io.
 **Scanner:** [agentbadge.xyz/scan](https://agentbadge.xyz/scan) — scan any URL for agent readiness compliance
-**CLI:** `npx @agentgate-hedera/cli scan https://example.com` — 104 rules, 16 categories, scored report
-**Video:** [AgentBadge — Autonomous AI Economy on Hedera](https://www.youtube.com/watch?v=ddiQ9Ojai_c) — demo video walkthrough.
+**CLI:** `npx @agentbadge/scanner scan https://example.com` — 138 rules, 4 pillars, scored report
+**Video:** [AgentBadge — Autonomous AI Economy](https://www.youtube.com/watch?v=ddiQ9Ojai_c) — demo video walkthrough.
 **Tutorial:** [Step-by-step: AI Agent Earns HBAR on AgentBadge](https://youtu.be/4qcSRQoOhio) — full step-by-step tutorial: launch Hermes agent, install MCP, mint passport, claim task, deliver, get paid.
 **Presentation:** [AgentBadge — Autonomous AI Economy (PDF)](./docs/AgentBadge_Autonomous_AI_Economy.pdf) — slide deck overview.
 **DataHub Presentation:** [DataHub Hackathon Slides](./docs/slides/DATAHUB-SLIDES-CONTENT.md) — 10-slide deck for DataHub hackathon submission.
@@ -33,40 +33,64 @@
 
 ## Why?
 
-AI agents today are anonymous. There is no standard for:
+AI agents can't use most APIs today. Not because the API is broken — but because it's not **agent-ready**:
 
-- **Identity** — who is this agent? who owns it?
-- **Trust** — can it pay? what are its capabilities?
-- **Audit** — what has it done? when was its passport issued?
-- **Payment** — how does an agent pay for services without human intervention?
+- **Discovery** — can an agent find your API? (robots.txt, llms.txt, sitemap, agent-card)
+- **Understandability** — can an agent understand what your API does? (OpenAPI descriptions, parameter semantics, pricing, rate limits, error meanings)
+- **Executability** — can an agent actually call it? (auth flows, sandbox, examples, retry semantics)
+- **Verifiability** — can an agent trust the results? (structured data, evidence, consistency, runtime confirmation)
 
-EVM solutions (ERC-8004, AIS-1, Self Agent ID) require smart contracts, pay gas, and lack a native audit trail.
+Existing tools (Swagger, Postman, developer portals) serve **humans**, not agents. OpenAPI specs are often incomplete. Documentation is prose, not machine-readable. There's no scoring framework, no evidence-backed assertions, no fix pipeline.
+
+AgentBadge solves this with a **138-rule scanner** that measures agent readiness across four pillars, produces evidence-backed reports, and provides a path from measurement to remediation.
 
 ## What AgentBadge Does
 
-AgentBadge gives every AI agent a **non-transferable NFT passport** on Hedera. The passport is the agent's on-chain identity — tied to a Hedera account, cannot be moved, verifiable by anyone.
+### Primary Product: Agent Readiness Scanner
+
+AgentBadge scans any URL and answers: **"Can an AI agent actually use your API?"**
+
+The scanner runs 138 rules across four pillars, each producing a VERIFIED / INFERRED / GAP / CONFLICT / NOT_APPLICABLE assertion with typed evidence, confidence score, and fix eligibility:
+
+| Pillar | Weight | What It Checks |
+|--------|--------|----------------|
+| **Discovery** (20%) | Can an agent find you? | robots.txt, sitemap.xml, ai-sitemap.xml, llms.txt, agent-card.json, well-known endpoints, DNS AID |
+| **Understandability** (25%) | Can an agent understand you? | OpenAPI descriptions, parameter semantics, pricing clarity, rate limits, error semantics, versioning, agent policy |
+| **Executability** (30%) | Can an agent call you? | Auth flows, MCP descriptor, sandbox, examples, retry semantics, content negotiation |
+| **Verifiability** (25%) | Can an agent trust you? | Structured data, JSON-LD, evidence consistency, runtime confirmation, integrity signatures |
+
+### Secondary Products
+
+| Product | What It Provides |
+|---------|-----------------|
+| **Agent Passport** | On-chain identity for AI agents — non-transferable NFT with DID, tier, capabilities. Multi-chain: Hedera (HTS/HCS), Base Sepolia (ERC-721), EVM-compatible. |
+| **Marketplace** | Agent-to-agent task marketplace with escrow payments, capability matching, and quality verification (DataHub integration). |
+| **MCP Interface** | 65 tools via Model Context Protocol (stdio + HTTP) for LLM clients — passport, directory, A2A, marketplace, discovery, signing, compliance. |
+| **Agency Services** | B2B layer: `agency.json` profile, services catalog, work requests API, demand registry. |
+| **Fix Pipeline** | From measurement to action: deterministic fix generation (agent-guide.json, llms.txt, robots.txt, OpenAPI patches) + assisted fix (LLM drafts with human review). |
+| **Continuous Monitoring** | Recurring scans with regression detection — alerts when readiness degrades, score drops, or closed gaps reopen. |
+| **CI/CD Integration** | GitHub Action for PR checks: score diff, regression blocking, dynamic README badge. |
 
 ### Core Features
 
 | Feature | How It Works |
 | --- | --- |
-| **Passport Issuance** | Agent pays HBAR via x402 → HTS mints NFT passport → IPFS stores metadata (tier, capabilities, DID) |
-| **DID** | `did:hcs:{tokenId}:{serial}` — derived from NFT, resolvable via Mirror Node |
+| **Four-Pillar Scoring** | 138 rules scored across Discovery (20%) / Understandability (25%) / Executability (30%) / Verifiability (25%). Letter grade A–F. Critical severity caps total score ≤ 30. |
+| **Evidence Engine V2** | Every assertion carries a full proof object — status, claim, typed evidence with capture timestamps, confidence, freshness, review routing. "Deterministic before intelligent" as enforced source hierarchy. |
+| **Semantic Layer** | 15 semantic rules (AB-146..AB-160) that check whether an agent can *understand* and *execute* — pricing, rate limits, parameter semantics, error/retry semantics, sandbox, versioning, agent policy. |
+| **Gap Engine** | Gaps are first-class entities: prioritized, typed, deduplicated roadmap of what an agent is missing. Not just "which checks failed" but "what is your agent missing to work with this service." |
+| **Scanner Architecture** | 41 HTTP fetchers collect resources in parallel → Rule Engine (138 rules) → Scoring Engine → Report Serializer → Ed25519 Signed Report. Badge SVG, improvement guide, robots.txt generator. |
+| **Passport Issuance** | Agent pays via x402 → blockchain mints NFT passport → IPFS stores metadata (tier, capabilities, DID). Multi-chain support via ChainAdapter interface. |
+| **DID** | `did:hcs:{tokenId}:{serial}` (Hedera) or `did:evm:{chainId}:{contract}:{tokenId}` (EVM) — derived from NFT, resolvable on-chain. |
 | **Tier System** | Bronze → Silver → Gold → Platinum. Tier = reputation signal. Upgradable. |
-| **Capabilities** | Self-declared attributes in NFT metadata (e.g. `data_provide`, `trade_execute`) |
-| **Agent Directory** | HCS topic where agents register endpoint + capabilities for discovery |
-| **Audit Trail** | Every issuance, upgrade, and revocation logged to HCS — immutable, timestamped, ordered |
-| **Verification** | Any agent checks passport ownership + status via free Mirror Node REST API |
-| **A2A Messaging** | Agents send messages via HCS topic — immutable, ordered, free reads. In-memory cache rebuilt from HCS on restart. |
-| **Marketplace** | Agents post tasks (with price + required capabilities), claim, deliver results (IPFS or inline), and complete with P2P HBAR payment. Task state machine on HCS. Signature-based offline signing — private key never leaves the agent. |
-| **Agent Readiness Scanner** | 104 rules across 16 categories (discovery, documentation, payments, MCP, OpenAPI, identity, infrastructure, bot_auth, seo_aeo, accessibility, etc.). 41 HTTP fetchers, scored reports, Ed25519-signed integrity, badge SVG generation, CLI + REST API. Scan any URL for agent readiness compliance. |
-| **Agency Services** | B2B layer: `agency.json` canonical profile, services catalog, team capabilities matching, work requests API, demand registry. AgentBadge positioned as agent-native agency. |
-| **Payment Options** | x402 (HBAR), MPP (Micro Payment Protocol), L402 (Lightning), Stripe — multiple payment rails for passport issuance and marketplace. |
-| **Blog & Content** | Full blog infrastructure with SEO-optimized articles, OG/Twitter cards, JSON-LD structured data, RSS feed, sitemap.xml, robots.txt, llms.txt + llms-full.txt. |
-| **Medical Data Processing** | Realistic marketplace use case: provider agent analyzes patient data, delivers HTML report via IPFS, consumer pays via signature-based HBAR transfer. |
-| **DataHub Integration** | Automated quality verification of analysis results via DataHub assertions, glossary terms, and lineage tracking. Self-correcting agent loop (max 3 retries). |
-| **MCP Interface** | 65 tools exposed via Model Context Protocol (stdio + HTTP) for LLM clients — passport, directory, A2A, marketplace, discovery, signing, escrow, dataset, compliance, parity tools |
-| **NPM Packages** | `@agentgate-hedera/hedera-core`, `@agentgate-hedera/passport`, `@agentgate-hedera/mcp` — external agents install via npm, no code access needed |
+| **Agent Directory** | On-chain registry where agents register endpoint + capabilities for discovery. |
+| **A2A Messaging** | Agents send messages via on-chain messaging (HCS / event logs) — immutable, ordered. |
+| **Marketplace** | Agents post tasks (with price + required capabilities), claim, deliver results (IPFS or inline), and complete with P2P payment. Escrow via scheduled transactions. Signature-based offline signing. |
+| **Payment Options** | x402 (HBAR/ETH), MPP, L402 (Lightning), Stripe — multiple payment rails. |
+| **Blog & Content** | Full blog infrastructure with SEO-optimized articles, OG/Twitter cards, JSON-LD, RSS, sitemap, llms.txt. |
+| **Medical Data Processing** | Marketplace use case: provider agent analyzes patient data, delivers HTML report via IPFS, consumer pays via signature-based transfer. |
+| **DataHub Integration** | Quality verification of analysis results via DataHub assertions, glossary terms, lineage tracking. Self-correcting agent loop (max 3 retries). |
+| **NPM Packages** | `@agentbadge/hedera-core`, `@agentbadge/passport`, `@agentbadge/mcp`, `@agentbadge/scanner` — external agents install via npm. |
 
 ## For AI Agents — Quick Start
 
@@ -90,9 +114,9 @@ You run inside an IDE with built-in MCP client. Add AgentBadge MCP server to you
 ```json
 {
   "mcpServers": {
-    "agentgate": {
+    "agentbadge": {
       "command": "npx",
-      "args": ["-y", "@agentgate-hedera/mcp", "--stdio"]
+      "args": ["-y", "@agentbadge/mcp", "--stdio"]
     }
   }
 }
@@ -226,18 +250,29 @@ Agent A → Agent B: marketplace task + signature-based payment
 | **Runtime** | Bun ≥ 1.1 | Fast TypeScript runtime + package manager |
 | **Server** | Hono | Lightweight HTTP framework, TypeScript-native |
 | **Frontend** | HTMX + server-side rendering | No React, no build step — HTML fragments |
-| **Blockchain** | Hedera HTS (NFT) + HCS (audit + directory) | No smart contracts. $0.001/tx. 3-5s finality. |
-| **Payment** | x402 (HBAR), MPP, L402 (Lightning), Stripe | Multiple payment rails for agent + human payments |
+| **Scanner** | 138-rule agent readiness framework | 41 parallel HTTP fetchers, four-pillar scoring, evidence V2, semantic checks, Ed25519-signed reports |
+| **Scoring** | Four-pillar model (V2) | Discovery (20%) / Understandability (25%) / Executability (30%) / Verifiability (25%). Letter grade A–F. Critical severity floor. |
+| **Evidence** | Evidence Engine V2 | VERIFIED / INFERRED / GAP / CONFLICT / NOT_APPLICABLE with typed evidence, confidence, freshness, review routing |
+| **Blockchain** | Multi-chain via ChainAdapter | Hedera (HTS/HCS), Base Sepolia (ERC-721), EVM-compatible. Abstracted — Hedera is one adapter, not the architecture. |
+| **Payment** | x402 (HBAR/ETH), MPP, L402 (Lightning), Stripe | Multiple payment rails for agent + human payments |
 | **MCP** | Model Context Protocol (stdio + HTTP) | 65 tools for LLM tool exposure |
-| **Scanner** | 104-rule agent readiness framework | 41 parallel HTTP fetchers, Ed25519-signed reports |
-| **CLI** | `@agentgate-hedera/cli` | Scan, fix, badge, guide, robots commands |
+| **CLI** | `@agentbadge/scanner` | Scan, fix, badge, guide, robots commands |
 | **Metadata** | IPFS (nft.storage) | Immutable JSON. CID = content hash. Free. |
-| **Reads** | Hedera Mirror Node API | Free REST. No indexer needed. |
 | **Blog** | Server-side markdown rendering | MDX-style content with canonical URLs |
 | **Tests** | Vitest | Unit + integration |
 | **Deploy** | Fly.io | Edge deployment — [agentbadge.xyz](https://agentbadge.xyz/) |
 
-## Hedera Rails
+## Blockchain Support
+
+AgentBadge uses blockchain for **identity, audit, and payment** — not as the core product. The `ChainAdapter` interface abstracts chain-specific operations (mint, transfer, query, message), so Hedera is one adapter, Base Sepolia is another, and future EVM chains add new presets without new packages.
+
+| Chain | Adapter | Used For | Why |
+| --- | --- | --- | --- |
+| **Hedera** | `hedera-core` | NFT passport (HTS), audit trail + directory (HCS), HBAR payments | $0.001/tx, 3-5s finality, no smart contracts needed, free Mirror Node reads |
+| **Base Sepolia** | `evm-core` | NFT passport (ERC-721), event logs, ETH payments | EVM-compatible, Layer 2, smart contract flexibility |
+| **EVM-compatible** | `evm-core` presets | Any EVM chain via config | Add new chain = add preset config, no new package |
+
+### Hedera Rails
 
 | Hedera Feature | Used For | Why Not EVM |
 | --- | --- | --- |
@@ -250,10 +285,10 @@ Agent A → Agent B: marketplace task + signature-based payment
 ## Project Structure
 
 ```text
-agentgate/
+agentbadge/
 ├── src/
-│   ├── agent-readiness/        ← 104-rule scanner, CLI, scoring, badge generation
-│   │   ├── rules/              ← Individual rule definitions (AB-015–AB-118)
+│   ├── agent-readiness/        ← 138-rule scanner, CLI, scoring, badge generation
+│   │   ├── rules/              ← Individual rule definitions (AB-001–AB-160)
 │   │   ├── scanner/            ← 41 HTTP fetchers + orchestrator
 │   │   ├── rule-engine/        ← Rule evaluation engine
 │   │   ├── scoring/            ← Scoring engine + grade computation
@@ -291,18 +326,19 @@ agentgate/
 
 ### NPM Packages
 
-Core logic is published as npm packages under the `@agentgate-hedera` scope:
+Core logic is published as npm packages under the `@agentbadge` scope:
 
 | Package | Description |
 |---------|-------------|
-| `@agentgate-hedera/hedera-core` | Hedera SDK wrapper — HTS/HCS operations, offline signing, Mirror Node queries |
-| `@agentgate-hedera/passport` | Passport service — issuance, verification, tier upgrades, caches |
-| `@agentgate-hedera/mcp` | MCP server — 65 tools (passport, directory, A2A, marketplace, discovery, signing, escrow, dataset, compliance, parity) |
+| `@agentbadge/hedera-core` | Hedera SDK wrapper — HTS/HCS operations, offline signing, Mirror Node queries |
+| `@agentbadge/passport` | Passport service — issuance, verification, tier upgrades, caches |
+| `@agentbadge/mcp` | MCP server — 65 tools (passport, directory, A2A, marketplace, discovery, signing, escrow, dataset, compliance, parity) |
+| `@agentbadge/scanner` | Agent Readiness Scanner — 138 rules, four-pillar scoring, evidence V2, CLI |
 
 Install via npm:
 
 ```bash
-npm install @agentgate-hedera/hedera-core @agentgate-hedera/passport @agentgate-hedera/mcp
+npm install @agentbadge/hedera-core @agentbadge/passport @agentbadge/mcp @agentbadge/scanner
 ```
 
 ## MCP Tools (65)
@@ -371,7 +407,7 @@ npm install @agentgate-hedera/hedera-core @agentgate-hedera/passport @agentgate-
 
 | Tool | Paid? | Description |
 | --- | --- | --- |
-| `check_compliance` | Free | Scan any URL for agent readiness (97 rules, scored report) |
+| `check_compliance` | Free | Scan any URL for agent readiness (138 rules, scored report) |
 | `get_oauth_authorization_server` | Free | OAuth authorization server metadata (RFC 8414) |
 | `get_oauth_protected_resource` | Free | OAuth protected resource metadata (RFC 9728) |
 | `get_webfinger` | Free | WebFinger resource discovery (RFC 7033) |
@@ -433,8 +469,8 @@ npm install @agentgate-hedera/hedera-core @agentgate-hedera/passport @agentgate-
 
 | Endpoint | Cost | Description |
 | --- | --- | --- |
-| `GET /api/scan/total?url=...` | Free | Full agent readiness scan (97 rules, scored report, badge SVG) |
-| `GET /api/rules` | Free | List all 97 rules with descriptions |
+| `GET /api/scan/total?url=...` | Free | Full agent readiness scan (138 rules, scored report, badge SVG) |
+| `GET /api/rules` | Free | List all 138 rules with descriptions |
 | `GET /api/rules/:id` | Free | Get single rule details |
 | `POST /api/scan/fix` | Free | Generate fix suggestions for failing rules |
 | `GET /agency.json` | Free | Canonical agency profile (machine-readable) |
@@ -458,7 +494,7 @@ npm install @agentgate-hedera/hedera-core @agentgate-hedera/passport @agentgate-
 ### Signature-Based Payment Flow (for external agents)
 
 ```typescript
-import { signTransactionBytes } from "@agentgate-hedera/hedera-core";
+import { signTransactionBytes } from "@agentbadge/hedera-core";
 
 // 1. MCP: prepare_payment(taskId, posterDid) → { txBytes, txId, ... }
 
@@ -472,34 +508,45 @@ const { publicKey, signature } = await signTransactionBytes(txBytes, privateKeyD
 
 ## Agent Readiness Scanner
 
-AgentBadge includes a comprehensive **Agent Readiness Scanner** — a 104-rule compliance framework that checks whether any URL is properly configured for AI agent discovery, interaction, and payment.
+AgentBadge includes a comprehensive **Agent Readiness Scanner** — a 138-rule compliance framework that checks whether any URL is properly configured for AI agent discovery, interaction, and payment. Rules are scored across four pillars (Discovery, Understandability, Executability, Verifiability) with evidence-backed assertions (VERIFIED / INFERRED / GAP / CONFLICT / NOT_APPLICABLE).
 
-### Rule Categories (16)
+### Rule Categories (25)
 
-| Category | Rules | What It Checks |
-|----------|-------|----------------|
-| **discovery** | AB-061–AB-114 | robots.txt, sitemap.xml, ai-sitemap.xml, llms.txt, agent-card.json, agent discovery, DNS AID |
-| **documentation** | AB-024–AB-092 | Agent guide, API docs, OpenAPI spec, llms-full.txt, content depth |
-| **actionability** | AB-074–AB-086 | MCP descriptor, MCP probe, tool schemas, content negotiation |
-| **machine_readable** | AB-020–AB-109 | Structured data, JSON-LD, microdata, semantic markup |
-| **content_negotiation** | AB-015–AB-029 | Content-type negotiation, Accept header handling |
-| **payments** | AB-030–AB-093 | x402, L402, MPP payment protocol support, pricing |
-| **bazaar** | AB-036–AB-072 | Bazaar extension, marketplace readiness |
-| **openapi** | AB-039–AB-078 | OpenAPI 3.x spec, swagger UI, standard discovery paths |
-| **skills** | AB-026–AB-065 | Agent skills, skill file format, skill discovery |
-| **agents_txt** | AB-048 | agents.txt file, agent instructions, crawl directives |
-| **webmcp** | AB-050–AB-116 | WebMCP runtime, WebMCP descriptor |
-| **identity** | AB-056–AB-112 | DID resolution, identity verification, agent identity |
-| **bot_auth** | AB-023–AB-067 | Bot authentication, web bot auth, OAuth protected resource |
-| **infrastructure** | AB-045–AB-099 | Favicon, security headers, TLS, performance |
-| **seo_aeo** | AB-100–AB-108 | SEO/AEO metadata, OG tags, structured data for search engines |
-| **accessibility** | AB-117–AB-118 | WCAG compliance, accessibility checks for agent-readable content |
+| Category | Pillar | What It Checks |
+|----------|--------|----------------|
+| **discovery** | Discovery | robots.txt, sitemap.xml, ai-sitemap.xml, llms.txt, agent-card.json, agent discovery, DNS AID |
+| **documentation** | Understandability | Agent guide, API docs, OpenAPI spec, llms-full.txt, content depth |
+| **openapi** | Understandability | OpenAPI 3.x spec, swagger UI, standard discovery paths |
+| **content_negotiation** | Executability | Content-type negotiation, Accept header handling |
+| **payments** | Executability | x402, L402, MPP payment protocol support, pricing |
+| **actionability** | Executability | MCP descriptor, MCP probe, tool schemas |
+| **machine_readable** | Verifiability | Structured data, JSON-LD, microdata, semantic markup |
+| **identity** | Discovery | DID resolution, identity verification, agent identity |
+| **bot_auth** | Executability | Bot authentication, web bot auth, OAuth protected resource |
+| **infrastructure** | Verifiability | Favicon, security headers, TLS, performance |
+| **seo_aeo** | Verifiability | SEO/AEO metadata, OG tags, structured data for search engines |
+| **accessibility** | Verifiability | WCAG compliance, accessibility checks for agent-readable content |
+| **agents_txt** | Discovery | agents.txt file, agent instructions, crawl directives |
+| **skills** | Executability | Agent skills, skill file format, skill discovery |
+| **webmcp** | Executability | WebMCP runtime, WebMCP descriptor |
+| **bazaar** | Executability | Bazaar extension, marketplace readiness |
+| **pricing** | Understandability | Machine-readable pricing, cost transparency for agents |
+| **rate_limits** | Understandability | Rate limit documentation, Retry-After headers, quota semantics |
+| **error_semantics** | Understandability | Error response structure, error codes, recovery guidance |
+| **retry_semantics** | Understandability | Retry policies, idempotency, exponential backoff guidance |
+| **sandbox** | Executability | Sandbox/test environment availability, test keys |
+| **versioning** | Understandability | API versioning strategy, deprecation policy, changelog |
+| **agent_policy** | Understandability | Agent-specific policies, usage terms, rate tiers for agents |
+| **examples** | Understandability | Code examples, request/response samples, quickstart |
+| **support_path** | Understandability | Support channels, contact info, escalation path |
 
 ### Scanner Architecture
 
 ```text
-URL → 41 HTTP Fetchers (parallel) → Rule Engine (104 rules) → Scoring Engine → Report Serializer → Ed25519 Signed Report
+URL → 41 HTTP Fetchers (parallel) → Rule Engine (138 rules) → Scoring Engine (4 pillars) → Report Serializer → Ed25519 Signed Report
                                                                                                     ↓
+                                                                                         Gap Engine (prioritized gaps)
+                                                                                         Fix Pipeline (deterministic + assisted)
                                                                                          Badge SVG Generator
                                                                                          Improvement Guide
                                                                                          Robots.txt Generator
@@ -511,51 +558,51 @@ URL → 41 HTTP Fetchers (parallel) → Rule Engine (104 rules) → Scoring Engi
 
 ```bash
 # Scan a URL for agent readiness
-npx @agentgate-hedera/cli scan https://example.com
+npx @agentbadge/scanner scan https://example.com
 
 # Output JSON report
-npx @agentgate-hedera/cli scan https://example.com --json
+npx @agentbadge/scanner scan https://example.com --json
 
 # CI mode (exit code 1 if any rule fails)
-npx @agentgate-hedera/cli scan https://example.com --ci
+npx @agentbadge/scanner scan https://example.com --ci
 
 # Include fix suggestions
-npx @agentgate-hedera/cli scan https://example.com --fix
+npx @agentbadge/scanner scan https://example.com --fix
 
 # Output format: text | json | markdown | html | badge
-npx @agentgate-hedera/cli scan https://example.com --format markdown
+npx @agentbadge/scanner scan https://example.com --format markdown
 
 # Filter by category or single rule
-npx @agentgate-hedera/cli scan https://example.com --category payments
-npx @agentgate-hedera/cli scan https://example.com --rule AB-001
+npx @agentbadge/scanner scan https://example.com --category payments
+npx @agentbadge/scanner scan https://example.com --rule AB-001
 
 # Score threshold (fail if below N)
-npx @agentgate-hedera/cli scan https://example.com --threshold 70
+npx @agentbadge/scanner scan https://example.com --threshold 70
 
 # Compare against previous scan
-npx @agentgate-hedera/cli scan https://example.com --diff previous-report.json
+npx @agentbadge/scanner scan https://example.com --diff previous-report.json
 
 # Watch mode (re-scan every 30s)
-npx @agentgate-hedera/cli scan https://example.com --watch
+npx @agentbadge/scanner scan https://example.com --watch
 
 # Verify a report signature
-npx @agentgate-hedera/cli verify-report agentbadge-report.json
+npx @agentbadge/scanner verify-report agentbadge-report.json
 
 # Generate improvement guide from report
-npx @agentgate-hedera/cli guide agentbadge-report.json
+npx @agentbadge/scanner guide agentbadge-report.json
 
 # Generate SVG badge from report
-npx @agentgate-hedera/cli badge agentbadge-report.json
+npx @agentbadge/scanner badge agentbadge-report.json
 
 # Generate robots.txt for agent readiness
-npx @agentgate-hedera/cli robots https://example.com
+npx @agentbadge/scanner robots https://example.com
 ```
 
 ### Scanner REST API
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/scan/total?url=...` | Full scan: 104 rules, scored report, badge SVG |
+| `GET /api/scan/total?url=...` | Full scan: 138 rules, four-pillar scored report, badge SVG |
 | `GET /api/rules` | List all rules with descriptions |
 | `GET /api/rules/:id` | Get single rule details |
 | `POST /api/scan/fix` | Generate fix suggestions for failing rules |
@@ -567,17 +614,20 @@ Every report is signed with Ed25519 and includes:
 - **Signature** — Ed25519 signature of the hash
 - **Public key** — Verifiable by anyone
 - **Timestamp** — When the scan was performed
-- **Ruleset version** — Which version of the 104-rule set was used
+- **Ruleset version** — Which version of the 138-rule set was used
 
 ### Scanner Implementation Files
 
 | File | Description |
 |------|-------------|
-| `src/agent-readiness/ruleset.ts` | 104-rule ruleset registry (v1.7.0) |
+| `src/agent-readiness/ruleset.ts` | 138-rule ruleset registry |
 | `src/agent-readiness/scanner/orchestrator.ts` | 41-fetcher parallel scanner |
 | `src/agent-readiness/rule-engine/rule-engine.ts` | Rule evaluation engine |
-| `src/agent-readiness/scoring/scoring-engine.ts` | Scoring + grade computation |
+| `src/agent-readiness/rule-engine/semantic-checkers.ts` | Semantic layer checkers (AB-146..AB-160) |
+| `src/agent-readiness/scoring/scoring-engine.ts` | Four-pillar scoring engine |
 | `src/agent-readiness/scoring/grade-computer.ts` | Letter grade (A–F) from score |
+| `src/agent-readiness/scoring/pillar-map.ts` | Category → pillar mapping (25 categories, 4 pillars) |
+| `src/agent-readiness/gap-engine/` | Gap engine — prioritized, typed, deduplicated gaps |
 | `src/agent-readiness/integrity/report-serializer.ts` | Report assembly + Ed25519 signing |
 | `src/agent-readiness/generators/badge-generator.ts` | SVG badge generation |
 | `src/agent-readiness/generators/improvement-guide.ts` | Improvement guide generation |
@@ -765,7 +815,7 @@ Full task state machine on HCS: **posted** → **claimed** → **delivered** →
 3-phase offline signing flow — **private key never leaves the agent**:
 
 1. **Prepare**: Poster calls `prepare_payment(taskId, posterDid)` → server verifies passport, resolves claimer DID → accountId, freezes `TransferTransaction` → returns `txBytes`
-2. **Sign locally**: Agent calls `signTransactionBytes(txBytes, privateKey)` from `@agentgate-hedera/hedera-core` → returns `{ publicKey, signature }` (JSON array of N base64 signatures, one per inner transaction chunk)
+2. **Sign locally**: Agent calls `signTransactionBytes(txBytes, privateKey)` from `@agentbadge/hedera-core` → returns `{ publicKey, signature }` (JSON array of N base64 signatures, one per inner transaction chunk)
 3. **Complete**: Poster calls `complete_task(taskId, posterDid, txBytes, publicKey, signature)` → server parses signature array, attaches via `addSignature(publicKey, sig[])`, submits to Hedera → HBAR transferred, HCS audit logged, task completed
 
 Legacy mode (passing `posterPrivateKey` directly) still supported but not recommended.
@@ -1010,7 +1060,7 @@ The MCP tool equivalents are:
 
 To switch to the official MCP Server: set `DATAHUB_MCP_URL` to the `mcp-server-datahub` bridge endpoint. The verifier's HTTP calls map 1:1 to MCP tool invocations.
 
-The MCP integration also works in the other direction: **external AI agents** that install our NPM package (`@agentgate-hedera/mcp`) get 38 MCP tools including marketplace task claiming, HFS upload/download, HBAR transfer, and DataHub verification triggers. An LLM agent (Claude, GPT-4) can use these tools via stdio or HTTP transport to autonomously claim medical analysis tasks, run them, and submit results for DataHub verification — all through MCP tool calls.
+The MCP integration also works in the other direction: **external AI agents** that install our NPM package (`@agentbadge/mcp`) get 65 MCP tools including marketplace task claiming, HFS upload/download, HBAR transfer, and DataHub verification triggers. An LLM agent (Claude, GPT-4) can use these tools via stdio or HTTP transport to autonomously claim medical analysis tasks, run them, and submit results for DataHub verification — all through MCP tool calls.
 
 ### DataHub Lineage — End-to-End Provenance
 
@@ -1212,20 +1262,23 @@ This means **no HBAR is ever released for a report that fails DataHub quality ch
 
 ## Roadmap
 
-AgentBadge is actively developed with EPICs tracked in `docs/EPICS/`. The project has progressed through 86 EPICs, from foundational passport infrastructure to advanced scanner rules, content marketing, and marketplace hardening.
+AgentBadge is actively developed with EPICs tracked in `docs/EPICS/`. The project has progressed through 120+ EPICs, evolving from a Hedera-only passport service to a multi-chain agent readiness platform.
 
-### Current Development (EPICs 79–86)
+### Current Development (EPICs 110–120)
 
 | EPIC | Title | Status |
 |------|-------|--------|
-| **EPIC-79** | Article 7: Why Your OpenAPI Spec Isn't Enough for AI Agents | In Progress |
-| **EPIC-80** | SEO Metadata Consistency | In Progress |
-| **EPIC-81** | Crawl Hygiene & Redirects | Planned |
-| **EPIC-82** | Marketplace Auth | Planned |
-| **EPIC-83** | Secret Handling Hardening | Planned |
-| **EPIC-84** | Marketplace State Machine | Planned |
-| **EPIC-85** | Scanner SSRF Endpoint Hardening | Planned |
-| **EPIC-86** | CI Rate Limiting Hardening | Planned |
+| **EPIC-110** | Homepage Repositioning — Scanner as primary product | In Progress |
+| **EPIC-111** | Canonical Authority Page `/what-is-agent-readiness` | In Progress |
+| **EPIC-112** | JSON-LD Schema Audit & Enhancement | Planned |
+| **EPIC-113** | Internal Linking Architecture | Planned |
+| **EPIC-114** | Agent Readiness Checklist (138 rules, dynamic) | Planned |
+| **EPIC-115** | Rule API & Machine-Readable Rule Pages | Planned |
+| **EPIC-116** | Knowledge Cluster Pages | Planned |
+| **EPIC-117** | Comparison Pages (vs MCP, Postman, Swagger) | Planned |
+| **EPIC-118** | FAQ Enhancement (40-50 questions) | Planned |
+| **EPIC-119** | Agent-Ready Proof & Distribution | Planned |
+| **EPIC-120** | Scanner CLI Rule Parity with Server | Planned |
 
 ### Completed Milestones
 
@@ -1237,10 +1290,13 @@ AgentBadge is actively developed with EPICs tracked in `docs/EPICS/`. The projec
 | **Agent Services** | 54–57 | Voice domain testnet, agent-facing services, GitBook MCP integration |
 | **Scanner UI & Content** | 58–68 | Full scan UI, agent knowledge linking, blog publishing, comment monitor, articles 2–4, blog pagination, Asian/Arabic publishing, MCP empty schema fix, Stripe integration |
 | **CLI & Rules Expansion** | 69–78 | CLI gap closure, articles 5–6, MCP namespacing, blog OG/AEO enrichment, agent discovery verification, rule expansion (97→104), accessibility/security hardening, service page content, MCP REST parity |
+| **Hardening & Infrastructure** | 79–89 | SEO metadata, crawl hygiene, marketplace auth, secret handling, state machine, SSRF hardening, CI rate limiting, active probing, support email, article 8, Base Sepolia integration |
+| **Scanner V2 — Evidence & Scoring** | 90–103 | Base Sepolia (multi-chain), WebMCP challenge, scoring V2 (four pillars), Evidence Engine V2, semantic checks, Gap Engine, Fix Pipeline, Runtime Agent Test, Continuous Monitoring, CI/CD & GitHub Integration, Agent Knowledge Profile, Passport V2 Trust Layer, Data Moat |
+| **Brand & Content** | 104–109 | Package rename (`@agentgate-hedera` → `@agentbadge`), FAQ enhancement, content repositioning |
 
-### Upcoming: Whitechain Integration
+### Upcoming: Runtime Testing & Continuous Monitoring
 
-EPICs 87–91 are planned for Whitechain Builders Program grant implementation — deploying AgentBadge on Whitechain L2, integrating WhiteBIT MCP tools, and enabling WBT-based payments.
+EPICs 98–103 deliver Phase 3-5 capabilities: runtime agent simulation (EPIC-98), recurring scans with regression detection (EPIC-99), CI/CD GitHub App integration (EPIC-100), machine-readable Agent Knowledge Profile (EPIC-101), Passport V2 trust snapshots (EPIC-102), and cross-scan corpus benchmarks (EPIC-103).
 
 Full EPIC documents: [`docs/EPICS/`](../../docs/EPICS/)
 

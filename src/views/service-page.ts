@@ -226,6 +226,91 @@ function ServiceHero(service: AgencyService) {
               html += '</div>';
               return html;
             }
+            function renderGapBlock(report) {
+              if (!report.gaps || report.gaps.length === 0) {
+                return '<div class="rounded-lg border border-emerald-700/50 bg-emerald-900/10 px-4 py-3 text-sm text-emerald-300">No gaps — your service answers every agent question we check</div>';
+              }
+              var gs = report.gap_summary || { total: report.gaps.length, by_priority: {}, by_type: {} };
+              var prioLabels = { CRITICAL: 'CRITICAL', HIGH: 'HIGH', MEDIUM: 'MEDIUM', LOW: 'LOW' };
+              var prioColors = { CRITICAL: 'bg-rose-900 text-rose-300', HIGH: 'bg-amber-900 text-amber-300', MEDIUM: 'bg-yellow-900 text-yellow-300', LOW: 'bg-slate-700 text-slate-300' };
+              var typeLabels = { documentation: 'Documentation', semantic: 'Semantic', capability: 'Capability', evidence: 'Evidence' };
+              var hintLabels = { deterministic: 'Auto-fixable', assisted: 'Assisted', manual: 'Manual' };
+              var hintColors = { deterministic: 'text-emerald-400', assisted: 'text-amber-400', manual: 'text-rose-400' };
+
+              var html = '<div class="rounded-lg border border-slate-700 overflow-hidden">';
+              html += '<div class="bg-slate-800 px-4 py-2">';
+              html += '<div class="text-sm font-semibold text-slate-300">What your agent is missing</div>';
+              // Summary chips
+              html += '<div class="mt-2 flex flex-wrap gap-2">';
+              var prios = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+              for (var pi = 0; pi < prios.length; pi++) {
+                var p = prios[pi];
+                var cnt = gs.by_priority[p] || 0;
+                if (cnt > 0) {
+                  html += '<span class="text-xs px-2 py-0.5 rounded ' + prioColors[p] + '">' + cnt + ' ' + prioLabels[p] + '</span>';
+                }
+              }
+              html += '<span class="text-xs text-slate-500 ml-2">';
+              var typeParts = [];
+              var types = ['documentation', 'semantic', 'capability', 'evidence'];
+              for (var ti = 0; ti < types.length; ti++) {
+                var tc = gs.by_type[types[ti]] || 0;
+                if (tc > 0) typeParts.push(tc + ' ' + typeLabels[types[ti]]);
+              }
+              html += typeParts.join(' · ');
+              html += '</span>';
+              html += '</div>';
+              html += '</div>';
+
+              // Gap rows
+              html += '<div class="divide-y divide-slate-800">';
+              for (var i = 0; i < report.gaps.length; i++) {
+                var gap = report.gaps[i];
+                var isBlocker = gap.priority === 'CRITICAL';
+                var rowClass = isBlocker ? 'px-4 py-3 bg-rose-900/10 border-l-4 border-rose-500' : 'px-4 py-3';
+                html += '<div class="' + rowClass + '">';
+                // Header row: priority badge + title + type chip
+                html += '<div class="flex items-center justify-between gap-2">';
+                html += '<div class="flex items-center gap-2">';
+                html += '<span class="text-xs px-1.5 py-0.5 rounded ' + prioColors[gap.priority] + '">' + gap.priority + '</span>';
+                html += '<span class="text-sm text-slate-200">' + gap.title + '</span>';
+                html += '</div>';
+                html += '<span class="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">' + (typeLabels[gap.type] || gap.type) + '</span>';
+                html += '</div>';
+                // Description
+                if (gap.description) {
+                  html += '<div class="text-xs text-slate-500 mt-1">' + gap.description + '</div>';
+                }
+                // Related rules (fold-out)
+                if (gap.related_rules && gap.related_rules.length > 0) {
+                  html += '<div class="mt-1">';
+                  html += '<button class="text-xs text-indigo-400 hover:text-indigo-300" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">Related rules (' + gap.related_rules.length + ')</button>';
+                  html += '<div class="hidden mt-1 space-y-0.5">';
+                  for (var r = 0; r < gap.related_rules.length; r++) {
+                    html += '<div class="text-xs text-slate-500 font-mono">' + gap.related_rules[r] + '</div>';
+                  }
+                  html += '</div>';
+                  html += '</div>';
+                }
+                // Fix hint + artifacts
+                html += '<div class="mt-1 flex items-center gap-3">';
+                html += '<span class="text-xs ' + hintColors[gap.fix_hint] + '">' + (hintLabels[gap.fix_hint] || gap.fix_hint) + '</span>';
+                if (gap.fix_artifacts && gap.fix_artifacts.length > 0) {
+                  html += '<span class="text-xs text-slate-600">artifacts: ' + gap.fix_artifacts.join(', ') + '</span>';
+                }
+                html += '</div>';
+                // Priority reason (expandable)
+                if (gap.priority_reason) {
+                  html += '<div class="mt-1">';
+                  html += '<button class="text-xs text-slate-600 hover:text-slate-400" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">why?</button>';
+                  html += '<div class="hidden mt-1 text-xs text-slate-600 font-mono">' + gap.priority_reason + '</div>';
+                  html += '</div>';
+                }
+                html += '</div>';
+              }
+              html += '</div></div>';
+              return html;
+            }
             function renderIssueBuckets(report) {
               if (!report.top_missing || report.top_missing.length === 0) return '';
               var blockers = [];
@@ -452,6 +537,12 @@ function ServiceHero(service: AgencyService) {
                   html += renderPillarRow(report.pillars[p]);
                 }
                 html += '</div></div>';
+              }
+
+              // Gap Engine block (EPIC-96)
+              var gapHtml = renderGapBlock(report);
+              if (gapHtml) {
+                html += gapHtml;
               }
 
               // Category Breakdown (legacy, always shown)

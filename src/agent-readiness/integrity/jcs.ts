@@ -14,6 +14,7 @@ function canonicalize(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
       .sort(([a], [b]) => lexicographicCompare(a, b));
     return `{${entries.map(([k, v]) => `${canonicalString(k)}:${canonicalize(v)}`).join(",")}}`;
   }

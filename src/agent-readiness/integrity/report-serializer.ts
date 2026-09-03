@@ -1,5 +1,7 @@
 import { generateReportId } from "./ulid";
 import { computeContentHash } from "./content-hash";
+import type { Gap } from "../gap-engine/gap-types";
+import type { GapSummary } from "../gap-engine/gap-engine";
 
 export interface IntegrityBlock {
   content_hash: string;
@@ -31,6 +33,8 @@ export interface AgentReadinessReport {
   };
   assertions: unknown[];
   pillars?: Record<string, unknown>;
+  gaps?: Gap[];
+  gap_summary?: GapSummary;
   integrity: IntegrityBlock;
 }
 
@@ -50,6 +54,8 @@ export interface ReportAssemblyInput {
   };
   previousHash: string | null;
   keyId: string;
+  gaps?: Gap[];
+  gap_summary?: GapSummary;
 }
 
 export function assembleReport(input: ReportAssemblyInput): AgentReadinessReport {
@@ -85,6 +91,12 @@ export function assembleReport(input: ReportAssemblyInput): AgentReadinessReport
   }
   if (input.scoreResult.pillars != null) {
     reportBody.pillars = input.scoreResult.pillars;
+  }
+  if (input.gaps != null) {
+    reportBody.gaps = input.gaps;
+  }
+  if (input.gap_summary != null) {
+    reportBody.gap_summary = input.gap_summary;
   }
 
   const contentHash = computeContentHash(reportBody);
