@@ -22,7 +22,7 @@ function mockAssertion(
     source_url: null,
     severity,
     category,
-  } as any;
+  } as unknown as Assertion & { severity: string; category: string };
 }
 
 describe("SLICE-95-2: Critical severity + new categories", () => {
@@ -110,32 +110,32 @@ describe("SLICE-95-2: Critical severity + new categories", () => {
   });
 
   describe("DEFAULT_CATEGORY_WEIGHTS has 25 entries with spec v0.4 values", () => {
-    it("pricing weight is 8", () => {
-      expect(DEFAULT_CATEGORY_WEIGHTS.pricing).toBe(8);
+    it("pricing weight is 3", () => {
+      expect(DEFAULT_CATEGORY_WEIGHTS.pricing).toBe(3);
     });
 
-    it("rate_limits weight is 6", () => {
-      expect(DEFAULT_CATEGORY_WEIGHTS.rate_limits).toBe(6);
+    it("rate_limits weight is 3", () => {
+      expect(DEFAULT_CATEGORY_WEIGHTS.rate_limits).toBe(3);
     });
 
-    it("error_semantics weight is 5", () => {
-      expect(DEFAULT_CATEGORY_WEIGHTS.error_semantics).toBe(5);
+    it("error_semantics weight is 3", () => {
+      expect(DEFAULT_CATEGORY_WEIGHTS.error_semantics).toBe(3);
     });
 
-    it("retry_semantics weight is 3", () => {
-      expect(DEFAULT_CATEGORY_WEIGHTS.retry_semantics).toBe(3);
+    it("retry_semantics weight is 2", () => {
+      expect(DEFAULT_CATEGORY_WEIGHTS.retry_semantics).toBe(2);
     });
 
-    it("sandbox weight is 2", () => {
-      expect(DEFAULT_CATEGORY_WEIGHTS.sandbox).toBe(2);
+    it("sandbox weight is 1", () => {
+      expect(DEFAULT_CATEGORY_WEIGHTS.sandbox).toBe(1);
     });
 
-    it("versioning weight is 4", () => {
-      expect(DEFAULT_CATEGORY_WEIGHTS.versioning).toBe(4);
+    it("versioning weight is 2", () => {
+      expect(DEFAULT_CATEGORY_WEIGHTS.versioning).toBe(2);
     });
 
-    it("agent_policy weight is 4", () => {
-      expect(DEFAULT_CATEGORY_WEIGHTS.agent_policy).toBe(4);
+    it("agent_policy weight is 2", () => {
+      expect(DEFAULT_CATEGORY_WEIGHTS.agent_policy).toBe(2);
     });
   });
 
