@@ -13,7 +13,6 @@ export interface HttpEvidence {
   resolved_ip: string | null;
   captured_at?: string;
   source_class?: SourceClass;
-  semantic_outcome?: "found" | "partial" | "absent" | "no_source";
   semantic_detail?: string;
 }
 
@@ -93,16 +92,18 @@ export interface CrossEvidence {
   source_class?: SourceClass;
 }
 
+export type SemanticOutcome = "found" | "partial" | "absent" | "no_source";
+
 export type Evidence =
-  | HttpEvidence
-  | OpenApiEvidence
-  | JsonSchemaEvidence
-  | HtmlEvidence
-  | RobotsEvidence
-  | SitemapEvidence
-  | GithubEvidence
-  | ManualConfirmationEvidence
-  | CrossEvidence;
+  | (HttpEvidence & { semantic_outcome?: SemanticOutcome })
+  | (OpenApiEvidence & { semantic_outcome?: SemanticOutcome })
+  | (JsonSchemaEvidence & { semantic_outcome?: SemanticOutcome })
+  | (HtmlEvidence & { semantic_outcome?: SemanticOutcome })
+  | (RobotsEvidence & { semantic_outcome?: SemanticOutcome })
+  | (SitemapEvidence & { semantic_outcome?: SemanticOutcome })
+  | (GithubEvidence & { semantic_outcome?: SemanticOutcome })
+  | (ManualConfirmationEvidence & { semantic_outcome?: SemanticOutcome })
+  | (CrossEvidence & { semantic_outcome?: SemanticOutcome });
 
 export type EvidenceType = Evidence["type"];
 

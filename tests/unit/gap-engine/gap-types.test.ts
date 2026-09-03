@@ -4,16 +4,13 @@ import {
   gapPriorityEnum,
   fixHintEnum,
   categoryEnum,
-  type GapType as _GapType,
-  type GapPriority as _GapPriority,
-  type FixHint as _FixHint,
-} from "../../src/agent-readiness/shared.schema";
+} from "../../../src/agent-readiness/shared.schema";
 import {
   type Gap,
   DEFAULT_GAP_TYPE_BY_CATEGORY,
   FIX_HINT_BY_GAP_TYPE,
-} from "../../src/agent-readiness/gap-engine/gap-types";
-import { agentReadinessRuleSchema } from "../../src/agent-readiness/rule.schema";
+} from "../../../src/agent-readiness/gap-engine/gap-types";
+import { agentReadinessRuleSchema } from "../../../src/agent-readiness/rule.schema";
 
 /**
  * SLICE-96-2: Gap Types in Runtime — Enums, Interface, Category Defaults

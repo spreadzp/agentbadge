@@ -44,6 +44,7 @@ function makeReport(overrides: Partial<AgentReadinessReport> = {}): AgentReadine
     previous_hash: null,
     score: {
       overall: 75,
+      grade: "C+",
       categories: { discovery: 80, documentation: 70, actionability: 60, machine_readable: 50, verification: 90 },
     },
     assertions: [
