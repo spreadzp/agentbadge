@@ -80,13 +80,18 @@ import { demandRoutes } from "./routes/api/demand";
 import { demandGuideRoutes } from "./routes/agent-guide/demand";
 import { changelogRoutes } from "./routes/changelog";
 import { agencyJsonRoutes } from "./routes/agency-json";
+import { profileRoutes } from "./routes/profile";
+import { profileViewerRoutes } from "./routes/profile-viewer";
 import { webmcpApiRoutes } from "./routes/webmcp-api";
 import { wellKnownRoutes } from "./routes/well-known";
 import { agentCardRoutes } from "./routes/agent-card";
 import { feedRoutes } from "./routes/feed";
+import { trustRoutes } from "./routes/trust";
 import { metricsApp } from "./routes/metrics";
 import { telemetryApp } from "./routes/telemetry";
 import { paymentRoutes } from "./routes/payment";
+import { createMonitoringRoutes } from "./routes/monitoring";
+import { createMonitoringStore } from "../agent-readiness/monitoring/monitoring-store";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -419,6 +424,7 @@ app.route("/", servicesRoutes);
 app.route("/", uiRoutes);
 app.route("/", agentGuideRoutes);
 app.route("/", agentKnowledgeRoutes);
+app.route("/", trustRoutes);
 app.route("/", teamRoutes);
 app.route("/", a2aRoutes);
 app.route("/", marketRoutes);
@@ -439,10 +445,29 @@ app.route("/", demandRoutes);
 app.route("/", demandGuideRoutes);
 app.route("/", changelogRoutes);
 app.route("/", agencyJsonRoutes);
+app.route("/", profileRoutes);
+app.route("/", profileViewerRoutes);
 app.route("/api/demo", demo);
 app.route("/", metricsApp);
 app.route("/", telemetryApp);
 app.route("/", paymentRoutes);
+
+// Monitoring routes (EPIC-99)
+const monitoringDataDir = process.env.MONITORING_DATA_DIR ?? ".data/monitoring";
+const monitoringStore = createMonitoringStore(monitoringDataDir);
+const monitoringApp = createMonitoringRoutes({
+  store: monitoringStore,
+  now: () => new Date(),
+  scanFn: async (url: string) => {
+    const { scanDomain } = await import("../agent-readiness/scanner/orchestrator");
+    const { RuleEngine } = await import("../agent-readiness/rule-engine/rule-engine");
+    const { formatScanReport } = await import("../agent-readiness/report-formatter");
+    const sourceState = await scanDomain(url);
+    const result = RuleEngine.run(sourceState);
+    return formatScanReport(url, result);
+  },
+});
+app.route("/", monitoringApp);
 
 // OpenAPI spec + Swagger UI
 const openApiSpecHandler = openAPIRouteHandler(app, {
