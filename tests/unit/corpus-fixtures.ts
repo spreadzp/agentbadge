@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SLICE-103-2: Test fixtures for corpus extractor and store tests.
  */
@@ -100,7 +99,7 @@ export function makeMockScoreResult(): ScoreResult {
         applicableCount: 1,
         floorTriggered: false,
       },
-    } as any,
+    } as unknown as ScoreResult["categories"],
     pillars: {
       discovery: {
         pillar: "discovery",
@@ -120,16 +119,16 @@ export function makeMockScoreResult(): ScoreResult {
         applicableCount: 1,
         floorTriggered: false,
       },
-    } as any,
+    } as unknown as ScoreResult["pillars"],
     delta: null,
     config: {
-      categoryWeights: {} as any,
+      categoryWeights: {} as unknown as ScoreResult["config"]["categoryWeights"],
       statusContributions: { VERIFIED: 1, INFERRED: 0.6, CONFLICT: 0, GAP: 0, NOT_APPLICABLE: 0 },
       floorCap: 40,
       floorCategories: [],
       floorTriggerSeverity: [],
       scoringModel: "v2-pillars",
-      pillarWeights: {} as any,
+      pillarWeights: {} as unknown as ScoreResult["config"]["pillarWeights"],
     },
     computedAt: "2025-09-06T12:00:00Z",
   };

@@ -88,13 +88,11 @@ totalScanRoutes.post(
           scoring: AGENT_READINESS_RULESET.scoring,
           categoryWeights: {},
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const scoreResult = runScoringEngine({ assertions: result.assertions, rulesetManifest: manifest as any });
+        const scoreResult = runScoringEngine({ assertions: result.assertions, rulesetManifest: manifest as unknown as Parameters<typeof runScoringEngine>[0]["rulesetManifest"] });
         const gaps = result.assertions
           .filter((a) => a.status === "GAP")
           .map((a) => ({ gap_id: `gap:${a.category}:${a.rule_id}`, category: a.category, priority: a.severity ?? "MEDIUM", type: "documentation" }));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const gapSummary = summarizeGaps(gaps as any);
+        const gapSummary = summarizeGaps(gaps as unknown as Parameters<typeof summarizeGaps>[0]);
         const corpusStore = new FileCorpusStore();
         hookScanToCorpus({ result, scoreResult, gapSummary }, corpusStore).catch(() => { });
       } catch {
