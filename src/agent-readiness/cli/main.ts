@@ -11,6 +11,8 @@ import { registerFixCommand } from "./commands/fix";
 import { registerBadgeCommand } from "./commands/badge";
 import { registerGuideCommand } from "./commands/guide";
 import { registerRobotsCommand } from "./commands/robots";
+import { registerProfileCommand } from "./commands/profile";
+import { registerTrustCommand } from "./commands/trust";
 
 registerScanCommand();
 registerVerifyCommand();
@@ -18,6 +20,8 @@ registerFixCommand();
 registerBadgeCommand();
 registerGuideCommand();
 registerRobotsCommand();
+registerProfileCommand();
+registerTrustCommand();
 
 async function main() {
   const argv = process.argv.slice(2);
