@@ -5,6 +5,11 @@ import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
+import { runScoringEngine } from "../../agent-readiness/scoring/scoring-engine";
+import { summarizeGaps } from "../../agent-readiness/gap-engine/gap-engine";
+import { AGENT_READINESS_RULESET } from "../../agent-readiness/ruleset";
+import { hookScanToCorpus } from "../../agent-readiness/corpus/corpus-hook";
+import { FileCorpusStore } from "../../agent-readiness/corpus/corpus-store";
 
 export const totalScanRoutes = new Hono();
 
@@ -75,6 +80,26 @@ totalScanRoutes.post(
 
       await stream.write(`event: result\ndata: ${JSON.stringify(report)}\n\n`);
       await stream.write(`event: done\ndata: ${JSON.stringify({ completed: true })}\n\n`);
+
+      // Fire-and-forget: hook scan result into corpus (SLICE-103-2)
+      try {
+        const manifest = {
+          version: AGENT_READINESS_RULESET.version,
+          scoring: AGENT_READINESS_RULESET.scoring,
+          categoryWeights: {},
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scoreResult = runScoringEngine({ assertions: result.assertions, rulesetManifest: manifest as any });
+        const gaps = result.assertions
+          .filter((a) => a.status === "GAP")
+          .map((a) => ({ gap_id: `gap:${a.category}:${a.rule_id}`, category: a.category, priority: a.severity ?? "MEDIUM", type: "documentation" }));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gapSummary = summarizeGaps(gaps as any);
+        const corpusStore = new FileCorpusStore();
+        hookScanToCorpus({ result, scoreResult, gapSummary }, corpusStore).catch(() => { });
+      } catch {
+        // Corpus hook must never affect scan response
+      }
     });
   },
 );
