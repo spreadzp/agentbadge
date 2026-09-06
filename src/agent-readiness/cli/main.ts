@@ -13,6 +13,9 @@ import { registerGuideCommand } from "./commands/guide";
 import { registerRobotsCommand } from "./commands/robots";
 import { registerProfileCommand } from "./commands/profile";
 import { registerTrustCommand } from "./commands/trust";
+import { registerBenchmarksCommand } from "./commands/benchmarks";
+import { registerCorpusCommand } from "./commands/corpus";
+import { registerReportCommand } from "./commands/report";
 
 registerScanCommand();
 registerVerifyCommand();
@@ -22,6 +25,9 @@ registerGuideCommand();
 registerRobotsCommand();
 registerProfileCommand();
 registerTrustCommand();
+registerBenchmarksCommand();
+registerCorpusCommand();
+registerReportCommand();
 
 async function main() {
   const argv = process.argv.slice(2);
