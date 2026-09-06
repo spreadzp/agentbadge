@@ -1,0 +1,36 @@
+{
+  "valid": true,
+  "checks": [
+    {
+      "name": "structural",
+      "passed": true
+    },
+    {
+      "name": "hash",
+      "passed": true
+    },
+    {
+      "name": "signature",
+      "passed": true
+    },
+    {
+      "name": "on_chain_lookup",
+      "passed": true,
+      "detail": "Skipped (skipOnChain=true)"
+    },
+    {
+      "name": "on_chain_hash",
+      "passed": true,
+      "detail": "Skipped (skipOnChain=true)"
+    },
+    {
+      "name": "freshness",
+      "passed": true
+    },
+    {
+      "name": "domain_ownership",
+      "passed": true
+    }
+  ],
+  "reason": null
+}

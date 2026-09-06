@@ -1,0 +1,55 @@
+{
+  "snapshot_version": "1.0.0",
+  "spec_version": "0.10.0",
+  "domain": "api.example.com",
+  "generated_at": "2026-09-06T06:10:44.975Z",
+  "profile_ref": {
+    "profile_version": "1.0.0",
+    "profile_hash": "sha256:ac45cc75cdf7d925f12760a017b4701a89ca301b0dd95824f3f88dece3875cc3",
+    "endpoint": "https://api.example.com/.well-known/agent-profile.json"
+  },
+  "evidence_root": {
+    "assertion_count": 15,
+    "evidence_hashes": [
+      "sha256:e43c64bead2c76af309fdc815cfd15703977ddaf1cc64cd1ae8aeefa9778371a",
+      "sha256:b804ca65efb526ff32788f622618912b4bd838adcf4e6141a8dcc441151c5c1d",
+      "sha256:cd6990633526dfcb51e416f311cfaaa9ea4715d3a266c0bebbc9702842a61196",
+      "sha256:2e8022c33b40dcbe0c2c83cf53d8ed6c92324b4b06f92e7b0b4237ee9a84fad0",
+      "sha256:ea11f0df875a8dfe9fbd441ddac12ab4117c70127c0886ecd1df3f9f238c05f0",
+      "sha256:b9f38a1cfeb1bbad76cca550fe41068e5a365cff5b7ff7d327a21e6b3b71a023",
+      "sha256:11130a265d8c1ca1f56a9ceb12aa68b5f38dc72929c7b7d92123cbf07c69149f",
+      "sha256:5195d6ff34cd3155fc84c5bc12aa3558a588b814e153c895110bcb9fd9070fc2",
+      "sha256:b1de28482359810e0d5e4640eef9993f2e9f3a284e1795e8757942c00b6e647b",
+      "sha256:b5dd610cdaac8067a7313f86d70d2f38263b511fffb5feffb76d778039fc9720",
+      "sha256:0ee72bb0dadedf757e9c3d120eaed2984e8a1e58a1ee7b739ab469f47f80a115",
+      "sha256:7fb2bfea8e14198b13a896f99bfa04fbb3e30e51d3150b5ce66f996460ea88eb",
+      "sha256:1af768074df834d70c08b1ad1e0d23dc1619142252f7b17ac91f6318639dfb77",
+      "sha256:00d3925095c298be5451370eb72299c5068620abb8325e45c3468e59baa0f348",
+      "sha256:fbbf8ab4f8c0620ae5527483519655951142614f52915cbdd957b7d9d12dbff6"
+    ],
+    "merkle_root": "sha256:ee5212f44857569235b4bf15924a023dfb981cde808fdbb23072e37919cda0b9",
+    "computed_at": "2026-09-06T06:10:44.975Z"
+  },
+  "score_summary": {
+    "total": 78,
+    "grade": "B",
+    "verified_rules": 32,
+    "total_rules": 40,
+    "gaps": 6,
+    "conflicts": 1
+  },
+  "domain_ownership": {
+    "method": "dns_txt",
+    "verified": true,
+    "verified_at": "2026-09-04T21:55:00Z",
+    "challenge_token": "ab_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+    "proof": "TXT _agentbadge.api.example.com = ab_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+  },
+  "integrity": {
+    "snapshot_hash": "sha256:685aa2c52d4c078a3dd34e61e961a42bfee0636e9db624f11d32c6c0cfcb73bb",
+    "signature_algorithm": "ed25519",
+    "signature": "KzS4RGw7qN3DLxEgbbmvUx2bd2fwBED55ccVqDiIcYHJ3rn+YpNoSzzq/EAfkHwpGBJcWfBllv/HE2DhobPxBQ==",
+    "public_key": "t8VpF4CaRpA/FeGGcxSHfc8RkhYAnZ2pi6NKC0zm2wo=",
+    "key_id": "test-key-1"
+  }
+}
