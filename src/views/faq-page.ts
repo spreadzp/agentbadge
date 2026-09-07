@@ -1,8 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
-import { PageMeta, BASE_URL } from "../server/lib/page-meta";
+import { PageMeta } from "../server/lib/page-meta";
 import { applyChainTemplates } from "../server/lib/chain-templates.js";
-import type { PaginationMeta } from "../server/lib/blog-data.js";
 import { RelatedLinks } from "./related-links";
 
 const faqCrossLinks = [
@@ -392,12 +391,12 @@ export const RAW_FAQ_ENTRIES: QaPair[] = [
   {
     question: "How does AgentBadge score?",
     answer:
-      "AgentBadge scores across four pillars: Discovery (20%, can agents find you?), Understandability (25%, can agents understand your API?), Executability (30%, can agents successfully call your API?), and Verifiability (25%, can agents trust the results?). Each pillar aggregates multiple categories of checks. The overall score is a weighted average.",
+      "AgentBadge scores across four pillars: Discovery (20%, can agents find you?), Understandability (25%, can agents understand your API?), Executability (30%, can agents successfully call your API?), and Verifiability (25%, can agents trust the results?). Each pillar aggregates multiple categories of checks. The overall score is a weighted average. <a href=\"/how-ai-agents-use-apis\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
   },
   {
     question: "What does AgentBadge measure?",
     answer:
-      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence (HTTP responses, parsed schemas, headers), not opinions. The scanner is deterministic and reproducible: same URL + same ruleset version = same result.",
+      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence (HTTP responses, parsed schemas, headers), not opinions. The scanner is deterministic and reproducible: same URL + same ruleset version = same result. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
   },
   {
     question: "Can I self-host the scanner?",
@@ -407,7 +406,7 @@ export const RAW_FAQ_ENTRIES: QaPair[] = [
   {
     question: "Is OpenAPI enough?",
     answer:
-      "OpenAPI is necessary but not sufficient. It covers syntax (endpoints, parameters, schemas) but not semantics (what responses mean), execution (auth flows, idempotency), or safety (rate limits, retries). Agents need all 8 context layers. AgentBadge checks for OpenAPI plus llms.txt, MCP, examples, structured metadata, and more. <a href=\"/blog/what-ai-agent-needs-to-understand-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read more →</a>",
+      "OpenAPI is necessary but not sufficient. It covers syntax (endpoints, parameters, schemas) but not semantics (what responses mean), execution (auth flows, idempotency), or safety (rate limits, retries). Agents need all 8 context layers. AgentBadge checks for OpenAPI plus llms.txt, MCP, examples, structured metadata, and more. <a href=\"/openapi-vs-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
   },
   {
     question: "How long does a scan take?",
@@ -557,25 +556,25 @@ export const HOMEPAGE_FAQ: HomepageFaqItem[] = [
   {
     question: "What is Agent Readiness?",
     shortAnswer:
-      "Agent Readiness is the ability of your API or service to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces.",
+      "Agent Readiness is the ability of your API or service to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
     faqAnchor: "what-is-agent-readiness",
   },
   {
     question: "What does AgentBadge measure?",
     shortAnswer:
-      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence, not opinions.",
+      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence, not opinions. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
     faqAnchor: "what-does-agentbadge-measure",
   },
   {
     question: "Is OpenAPI enough?",
     shortAnswer:
-      "OpenAPI is necessary but not sufficient. It covers syntax (endpoints, parameters) but not semantics, execution (auth flows), or safety (idempotency, retries). Agents need all 8 context layers.",
+      "OpenAPI is necessary but not sufficient. It covers syntax (endpoints, parameters) but not semantics, execution (auth flows), or safety (idempotency, retries). Agents need all 8 context layers. <a href=\"/openapi-vs-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
     faqAnchor: "is-openapi-enough",
   },
   {
     question: "How does AgentBadge score?",
     shortAnswer:
-      "AgentBadge scores across four pillars: Discovery (20%), Understandability (25%), Executability (30%), Verifiability (25%). Each pillar aggregates multiple categories of checks.",
+      "AgentBadge scores across four pillars: Discovery (20%), Understandability (25%), Executability (30%), Verifiability (25%). Each pillar aggregates multiple categories of checks. <a href=\"/how-ai-agents-use-apis\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
     faqAnchor: "how-does-agentbadge-score",
   },
   {
@@ -586,60 +585,6 @@ export const HOMEPAGE_FAQ: HomepageFaqItem[] = [
   },
 ];
 
-export const FAQ_PER_PAGE = 8;
-
-export function paginateFaqEntries(
-  entries: QaPair[],
-  page: number | undefined,
-): { items: QaPair[]; meta: PaginationMeta } {
-  const totalArticles = entries.length;
-  const totalPages = Math.max(1, Math.ceil(totalArticles / FAQ_PER_PAGE));
-  const rawPage = typeof page === "number" && !Number.isNaN(page) ? page : 1;
-  const currentPage = Math.min(Math.max(1, rawPage), totalPages);
-  const start = (currentPage - 1) * FAQ_PER_PAGE;
-  const items = entries.slice(start, start + FAQ_PER_PAGE);
-  return {
-    items,
-    meta: {
-      currentPage,
-      totalPages,
-      totalArticles,
-      hasPrev: currentPage > 1,
-      hasNext: currentPage < totalPages,
-    },
-  };
-}
-
-function renderFaqPagination(meta: PaginationMeta): string {
-  if (meta.totalPages <= 1) return "";
-
-  const pages: string[] = [];
-  for (let i = 1; i <= meta.totalPages; i++) {
-    const isCurrent = i === meta.currentPage;
-    const link = i === 1 ? "/faq" : `/faq?page=${i}`;
-    if (isCurrent) {
-      pages.push(`<span aria-current="page" class="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-white">${i}</span>`);
-    } else {
-      pages.push(`<a href="${link}" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:border-emerald-500 hover:text-emerald-400">${i}</a>`);
-    }
-  }
-
-  const prevLink = meta.currentPage === 2 ? "/faq" : `/faq?page=${meta.currentPage - 1}`;
-  const nextLink = `/faq?page=${meta.currentPage + 1}`;
-  const prevBtn = meta.hasPrev
-    ? `<a href="${prevLink}" rel="prev" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:border-emerald-500 hover:text-emerald-400" aria-label="Previous page">← Prev</a>`
-    : `<span class="rounded-lg border border-slate-800 px-3 py-2 text-sm font-medium text-slate-600" aria-disabled="true">← Prev</span>`;
-  const nextBtn = meta.hasNext
-    ? `<a href="${nextLink}" rel="next" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:border-emerald-500 hover:text-emerald-400" aria-label="Next page">Next →</a>`
-    : `<span class="rounded-lg border border-slate-800 px-3 py-2 text-sm font-medium text-slate-600" aria-disabled="true">Next →</span>`;
-
-  return `<nav aria-label="Pagination" class="mt-10 flex items-center justify-center gap-2">
-    ${prevBtn}
-    ${pages.join("")}
-    ${nextBtn}
-  </nav>`;
-}
-
 export function getFaqEntries(): QaPair[] {
   return RAW_FAQ_ENTRIES.map((qa) => ({
     question: qa.question,
@@ -647,77 +592,75 @@ export function getFaqEntries(): QaPair[] {
   }));
 }
 
-export const FAQ_ENTRIES = new Proxy([] as QaPair[], {
-  get(_, prop) {
-    const entries = getFaqEntries();
-    return Reflect.get(entries, prop);
-  },
-});
-
 export function FaqPage(
-  entriesOrJsonLd?: QaPair[] | object[],
-  paginationMeta?: PaginationMeta,
+  entries: QaPair[],
   jsonLd?: object[],
 ): string {
-  let faqEntries: QaPair[];
-  let meta: PaginationMeta | undefined;
-  let schemas: object[] | undefined;
+  const faqMeta = PageMeta["/faq"];
+  const schemas = jsonLd;
 
-  if (Array.isArray(entriesOrJsonLd) && entriesOrJsonLd.length > 0 && typeof entriesOrJsonLd[0] === "object" && "question" in entriesOrJsonLd[0]) {
-    faqEntries = entriesOrJsonLd as QaPair[];
-    meta = paginationMeta;
-    schemas = jsonLd;
-  } else {
-    faqEntries = getFaqEntries();
-    const paginated = paginateFaqEntries(faqEntries, 1);
-    faqEntries = paginated.items;
-    meta = paginated.meta;
-    schemas = entriesOrJsonLd as object[] | undefined;
-  }
-
-  const qaHtml = faqEntries.map(
-    (qa, i) => `<details class="group rounded-lg border border-slate-800 bg-slate-900 p-4">
-      <summary class="flex cursor-pointer items-center justify-between text-sm font-medium text-white">
-        <span>${qa.question}</span>
-        <span class="ml-4 text-slate-400 group-open:rotate-180 transition-transform">▼</span>
-      </summary>
-      <p class="mt-3 text-sm text-slate-300 leading-relaxed">${qa.answer}</p>
-      <span class="sr-only" id="faq-q-${i + 1}">${qa.question}</span>
-    </details>`,
-  ).join("");
-
-  const paginationHtml = meta ? renderFaqPagination(meta) : "";
-
-  const faqMeta = meta
-    ? {
-      ...PageMeta["/faq"],
-      path: meta.currentPage > 1 ? `/faq?page=${meta.currentPage}` : "/faq",
-      prevRel: meta.hasPrev
-        ? `${BASE_URL}${meta.currentPage === 2 ? "/faq" : `/faq?page=${meta.currentPage - 1}`}`
-        : undefined,
-      nextRel: meta.hasNext
-        ? `${BASE_URL}/faq?page=${meta.currentPage + 1}`
-        : undefined,
-    }
-    : PageMeta["/faq"];
+  // Group entries by category
+  const categorized = FAQ_CATEGORIES.map((cat) => {
+    const items = cat.questionSlugs.map((slug) => {
+      const entry = entries.find((e) => slugifyQuestion(e.question) === slug);
+      if (!entry) return null;
+      return { ...entry, anchor: slug };
+    }).filter((item): item is NonNullable<typeof item> => item !== null);
+    return { name: cat.name, slug: cat.slug, items };
+  }).filter((cat) => cat.items.length > 0);
 
   const content = html`<section class="rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8">
     <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">FAQ</span>
     <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">Frequently Asked Questions</h1>
-    <p class="mt-3 max-w-2xl text-slate-300">
-      Everything about AgentBadge: on-chain AI agent identity, NFT passports, ${applyChainTemplates("{{CONSENSUS}}")} directory,
-      A2A messaging, x402 payments, and MCP integration.
-    </p>
-    <div class="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-      <p class="text-sm text-slate-200"><strong>TL;DR:</strong> AgentBadge is an agency for the agentic web. We provide agent readiness scanning, on-chain NFT passports, and a peer-to-peer agent marketplace with x402 payments. Agents get identity, discoverability, and autonomous task execution.</p>
+    <p class="mt-4 max-w-2xl text-slate-400">Answers to 40+ questions about AgentBadge, agent readiness, and on-chain identity.</p>
+
+    <!-- Category Navigation: Desktop sidebar + Mobile tabs -->
+    <div class="mt-8 flex flex-col gap-8 md:flex-row">
+      <!-- Sidebar (desktop) -->
+      <nav class="hidden md:block w-48 flex-shrink-0">
+        <div class="sticky top-8 space-y-1">
+          ${raw(FAQ_CATEGORIES.map((cat) => html`
+            <a href="#${cat.slug}" class="block rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
+              ${cat.name}
+            </a>
+          `).join(""))}
+        </div>
+      </nav>
+
+      <!-- Mobile tabs -->
+      <div class="md:hidden -mx-4 px-4 overflow-x-auto">
+        <div class="flex gap-2 pb-2">
+          ${raw(FAQ_CATEGORIES.map((cat) => html`
+            <a href="#${cat.slug}" class="whitespace-nowrap rounded-lg border border-slate-800 px-3 py-1.5 text-xs text-slate-400 hover:border-emerald-500 hover:text-emerald-400">
+              ${cat.name}
+            </a>
+          `).join(""))}
+        </div>
+      </div>
+
+      <!-- FAQ Content -->
+      <div class="flex-1 min-w-0">
+        ${raw(categorized.map((cat) => html`
+          <section id="${cat.slug}" class="mb-12 scroll-mt-8">
+            <h2 class="text-xl font-semibold text-white mb-4">${cat.name}</h2>
+            <div class="space-y-3">
+              ${raw(cat.items.map((item) => html`
+                <details id="${item!.anchor}" class="group scroll-mt-8 rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+                  <summary class="flex cursor-pointer items-center justify-between text-white font-medium">
+                    ${item!.question}
+                    <svg class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </summary>
+                  <div class="mt-3 text-sm text-slate-400 leading-relaxed">
+                    ${raw(item!.answer)}
+                  </div>
+                </details>
+              `).join(""))}
+            </div>
+          </section>
+        `).join(""))}
+      </div>
     </div>
   </section>
-
-  <section class="mt-8 space-y-3">
-    ${raw(qaHtml)}
-  </section>
-
-  ${raw(paginationHtml)}
 
   <section class="mt-8 rounded-lg border border-slate-800 bg-slate-900 p-6 text-center">
     <p class="text-slate-300">Still have questions?</p>
