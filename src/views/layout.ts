@@ -63,6 +63,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="service-desc" type="application/json" title="OpenAPI Specs" href="/api/specs" />
         ${meta?.prevRel ? html`<link rel="prev" href="${meta.prevRel}" />` : ""}
         ${meta?.nextRel ? html`<link rel="next" href="${meta.nextRel}" />` : ""}
+        ${meta?.jsonUrl ? html`<link rel="alternate" type="application/json" title="Machine-Readable Rule" href="${meta.jsonUrl}" />` : ""}
         <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://unpkg.com" crossorigin />
         <link rel="dns-prefetch" href="https://unpkg.com" />

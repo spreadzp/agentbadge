@@ -12,6 +12,7 @@ export interface PageMeta {
   articleModifiedTime?: string;
   ogImageAlt?: string;
   markdownUrl?: string;
+  jsonUrl?: string;
   rssUrl?: string;
   prevRel?: string;
   nextRel?: string;
@@ -199,6 +200,19 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge — agency for the agentic web. Learn about our mission to make businesses agent-ready with scanning, passports, and marketplace.",
     path: "/about",
   },
+  "/what-is-agent-readiness": {
+    title: "What Is Agent Readiness?",
+    description:
+      "Agent Readiness is the degree to which an API or service can be discovered, understood, and used by AI agents without human intervention.",
+    path: "/what-is-agent-readiness",
+    ogType: "article",
+  },
+  "/agent-readiness-checklist": {
+    title: "Agent Readiness Checklist",
+    description:
+      "The complete agent readiness checklist — all rules across categories and pillars. Check your API's agent readiness against the definitive list.",
+    path: "/agent-readiness-checklist",
+  },
   "/blog": {
     title: "Blog",
     description:
@@ -244,6 +258,8 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/changelog", changefreq: "weekly", priority: "0.8" },
   { path: "/pricing", changefreq: "weekly", priority: "0.8" },
   { path: "/about", changefreq: "monthly", priority: "0.7" },
+  { path: "/what-is-agent-readiness", changefreq: "weekly", priority: "0.9" },
+  { path: "/agent-readiness-checklist", changefreq: "weekly", priority: "0.8" },
   { path: "/work-with-us", changefreq: "monthly", priority: "0.6" },
   { path: "/blog", changefreq: "weekly", priority: "0.8" },
   ...BLOG_ARTICLES.map((a) => ({

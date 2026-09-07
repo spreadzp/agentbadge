@@ -89,6 +89,15 @@ export function RuleDetailPage(rule: RuleDescription) {
   const fixHint = ruleDef?.fix_hint ?? defaultFixHint;
   const hasFixHintOverride = ruleDef?.fix_hint !== undefined;
 
+  const severity = ruleDef?.severity ?? "medium";
+  const severityStyles: Record<string, string> = {
+    critical: "border-rose-500/40 bg-rose-500/10 text-rose-300",
+    high: "border-rose-500/30 bg-rose-500/10 text-rose-300",
+    medium: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+    low: "border-slate-600 bg-slate-800/50 text-slate-400",
+  };
+  const severityBadge = `<span class="inline-flex items-center gap-1.5 text-sm border ${severityStyles[severity] ?? severityStyles.medium} rounded-full px-3 py-1 font-mono uppercase tracking-wider">Severity: ${severity}</span>`;
+
   const relatedRules = RULE_DESCRIPTIONS.filter(
     (r) => r.category === rule.category && r.rule_id !== rule.rule_id,
   ).slice(0, 5);
@@ -97,6 +106,7 @@ export function RuleDetailPage(rule: RuleDescription) {
     title: `${rule.rule_id}: ${rule.title}`,
     description: rule.short_description,
     path: `/rules/${rule.rule_id}`,
+    jsonUrl: `/rules/${rule.rule_id}.json`,
   };
 
   const schemas = [
@@ -166,6 +176,7 @@ export function RuleDetailPage(rule: RuleDescription) {
           <span class="inline-flex items-center gap-1.5 text-sm border ${raw(effortStyle)} rounded-full px-3 py-1 font-mono uppercase tracking-wider">
             ${effortLabel}
           </span>
+          ${raw(severityBadge)}
           <span class="inline-flex items-center gap-1.5 text-sm border border-slate-700 rounded-full px-3 py-1 text-slate-300">
             Est. cost: ${rule.estimated_cost}
           </span>
@@ -329,6 +340,15 @@ export function RuleDetailPage(rule: RuleDescription) {
           ← Back to all rules
         </a>
       </div>
+
+      <!-- Machine-Readable -->
+      <section class="mt-8 border-t border-slate-800 pt-6">
+        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wide">Machine-Readable</h2>
+        <p class="text-sm text-slate-500 mt-2">
+          This rule is also available as JSON:
+          <a href="/rules/${rule.rule_id}.json" class="text-emerald-400 hover:text-emerald-300 font-mono">/rules/${rule.rule_id}.json</a>
+        </p>
+      </section>
     </div>
   </div>`;
 
