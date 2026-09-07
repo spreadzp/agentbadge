@@ -1,5 +1,6 @@
 import { html, raw } from "hono/html";
 import { type BlogArticle, type BlogExternalLink } from "../server/lib/blog-data";
+import { RelatedArticles } from "./related-articles";
 
 export const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
   devto: "Dev.to",
@@ -57,7 +58,7 @@ function ExternalLinksBlock(links: BlogExternalLink[]) {
   </section>`;
 }
 
-export function BlogArticlePage(article: BlogArticle) {
+export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
   return html`<div class="blog-article">
     <article>
       <header class="px-4 py-16 md:px-8">
@@ -111,8 +112,9 @@ export function BlogArticlePage(article: BlogArticle) {
         <div class="mx-auto max-w-3xl">
           ${ForAIAgentsBlock(article)}
           ${article.externalLinks && article.externalLinks.length > 0 ? ExternalLinksBlock(article.externalLinks) : ""}
+          ${related && related.length > 0 ? raw(RelatedArticles(related)) : ""}
           <div class="mt-8 flex flex-wrap gap-2">
-            ${raw(article.tags.map((t) => `<span class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">${t}</span>`).join(""))}
+            ${raw(article.tags.map((t) => `<a href="/blog?tag=${encodeURIComponent(t)}" class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:text-emerald-400">${t}</a>`).join(""))}
           </div>
           <div class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6 text-center">
             <p class="text-slate-400">Want to check your API's agent readiness?</p>

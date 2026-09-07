@@ -3,7 +3,7 @@ import { describeRoute } from "hono-openapi";
 import { LandingLayout } from "../../views/landing/layout";
 import { BlogListPage } from "../../views/blog-list";
 import { BlogArticlePage } from "../../views/blog-article";
-import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles } from "../lib/blog-data";
+import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles, getRelatedArticles, getTagCounts, filterByTag } from "../lib/blog-data";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { defaultCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../lib/json-ld";
 import { BASE_URL } from "../lib/page-meta";
@@ -26,22 +26,27 @@ blogRoutes.get(
     };
     const pageParam = c.req.query("page");
     const page = pageParam ? parseInt(pageParam, 10) : 1;
-    const { items, meta: paginationMeta } = paginateArticles(BLOG_ARTICLES, page);
+    const tagParam = c.req.query("tag");
+    const tagCounts = getTagCounts(BLOG_ARTICLES);
+    const filteredArticles = tagParam ? filterByTag(BLOG_ARTICLES, tagParam) : BLOG_ARTICLES;
+    const { items, meta: paginationMeta } = paginateArticles(filteredArticles, page);
 
     const schemas = [
       ...defaultCoreSchemas(),
       blogLd({
         description: meta.description,
-        path: "/blog",
+        path: tagParam ? `/blog?tag=${tagParam}` : "/blog",
         articles: items,
       }),
       itemListLd(items),
       breadcrumbFor("/blog", "Blog"),
     ];
-    const content = BlogListPage(items, paginationMeta).toString();
-    const canonicalPath = paginationMeta.currentPage > 1
-      ? `/blog?page=${paginationMeta.currentPage}`
-      : "/blog";
+    const content = BlogListPage(items, paginationMeta, { tagCounts, activeTag: tagParam }).toString();
+    const canonicalPath = tagParam
+      ? `/blog?tag=${encodeURIComponent(tagParam)}`
+      : paginationMeta.currentPage > 1
+        ? `/blog?page=${paginationMeta.currentPage}`
+        : "/blog";
     const prevRel = paginationMeta.hasPrev
       ? `${BASE_URL}${paginationMeta.currentPage === 2 ? "/blog" : `/blog?page=${paginationMeta.currentPage - 1}`}`
       : undefined;
@@ -180,7 +185,8 @@ blogRoutes.get(
         },
       },
     ];
-    const content = BlogArticlePage(article).toString();
+    const relatedArticles = getRelatedArticles(article, BLOG_ARTICLES);
+    const content = BlogArticlePage(article, relatedArticles).toString();
     const pageHtml = LandingLayout(content, undefined, meta, schemas);
     return c.html(pageHtml);
   },

@@ -3587,6 +3587,44 @@ export function paginateArticles(
   };
 }
 
+export function getRelatedArticles(
+  article: BlogArticle,
+  all: BlogArticle[],
+  limit = 3,
+): BlogArticle[] {
+  return all
+    .filter((a) => a.slug !== article.slug)
+    .map((a) => ({
+      article: a,
+      sharedTags: a.tags.filter((t) => article.tags.includes(t)).length,
+    }))
+    .filter((x) => x.sharedTags > 0)
+    .sort((a, b) => b.sharedTags - a.sharedTags)
+    .slice(0, limit)
+    .map((x) => x.article);
+}
+
+export function getTagCounts(
+  articles: BlogArticle[],
+): { tag: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const a of articles) {
+    for (const t of a.tags) {
+      counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export function filterByTag(
+  articles: BlogArticle[],
+  tag: string,
+): BlogArticle[] {
+  return articles.filter((a) => a.tags.includes(tag));
+}
+
 export function generateBlogIndexMarkdown(): string {
   const lines = BLOG_ARTICLES.map(
     (a) => `- [${a.title}](${BASE_URL_FOR_MD}/blog/${a.slug}) — ${a.description}\n  - HTML: ${BASE_URL_FOR_MD}/blog/${a.slug}\n  - Markdown: ${BASE_URL_FOR_MD}/blog/${a.slug}.md\n  - Published: ${a.date}`,

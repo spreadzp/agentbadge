@@ -1,11 +1,20 @@
 import { html, raw } from "hono/html";
 import { type BlogArticle, type PaginationMeta } from "../server/lib/blog-data";
 
-export function BlogListPage(items: BlogArticle[], meta: PaginationMeta) {
+export interface TagFilterData {
+  tagCounts: { tag: string; count: number }[];
+  activeTag?: string;
+}
+
+export function BlogListPage(items: BlogArticle[], meta: PaginationMeta, tagFilter?: TagFilterData) {
   const cards = items
     .map((a) => articleCard(a))
     .join("");
   const pagination = renderPagination(meta);
+  const tagBar = tagFilter ? renderTagFilterBar(tagFilter) : "";
+  const filterNotice = tagFilter?.activeTag
+    ? `<div class="mx-auto max-w-6xl mb-6 text-sm text-slate-400">Showing articles tagged: <span class="font-semibold text-emerald-400">${tagFilter.activeTag}</span> · <a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Clear filter</a></div>`
+    : "";
 
   return html`<div class="blog-list">
     <section class="px-4 py-16 md:px-8">
@@ -21,13 +30,29 @@ export function BlogListPage(items: BlogArticle[], meta: PaginationMeta) {
         </p>
       </div>
     </section>
+    ${raw(tagBar)}
     <section class="px-4 pb-16 md:px-8">
+      ${raw(filterNotice)}
       <div class="mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         ${raw(cards)}
       </div>
       ${raw(pagination)}
     </section>
   </div>`;
+}
+
+function renderTagFilterBar(data: TagFilterData): string {
+  if (data.tagCounts.length === 0) return "";
+  const pills = data.tagCounts
+    .map(({ tag, count }) => {
+      const isActive = data.activeTag === tag;
+      const cls = isActive
+        ? "bg-emerald-500 text-white"
+        : "border border-slate-700 text-slate-300 hover:border-emerald-500 hover:text-emerald-400";
+      return `<a href="/blog?tag=${encodeURIComponent(tag)}" class="rounded-full px-3 py-1 text-xs font-medium ${cls}">${tag} (${count})</a>`;
+    })
+    .join("");
+  return `<div class="px-4 md:px-8 pt-4"><div class="mx-auto max-w-6xl flex flex-wrap gap-2">${pills}</div></div>`;
 }
 
 function renderPagination(meta: PaginationMeta): string {
@@ -78,7 +103,7 @@ function articleCard(a: BlogArticle): string {
       </h2>
       <p class="mt-2 text-sm text-slate-400 flex-1">${desc}</p>
       <div class="mt-3 flex flex-wrap gap-1.5">
-        ${a.tags.slice(0, 3).map((t) => `<span class="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400">${t}</span>`).join("")}
+        ${a.tags.slice(0, 3).map((t) => `<a href="/blog?tag=${encodeURIComponent(t)}" class="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400 hover:text-emerald-400">${t}</a>`).join("")}
       </div>
       <a href="/blog/${a.slug}" class="mt-4 inline-flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300">
         Read more →
