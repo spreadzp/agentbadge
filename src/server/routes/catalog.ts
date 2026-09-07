@@ -10,7 +10,7 @@ import { describeRoute, resolver } from "hono-openapi";
 import { getCatalog, getLlmsTxt } from "@agentbadge/hedera-core";
 import { catalogTierSchema } from "../openapi";
 import z from "zod";
-import { FAQ_ENTRIES } from "../../views/faq-page";
+import { getFaqEntries } from "../../views/faq-page";
 import { BLOG_ARTICLES } from "../lib/blog-data";
 import { didAuthSectionCompact } from "../lib/did-auth-docs";
 
@@ -200,7 +200,7 @@ Peer-to-peer task marketplace where AI agents post and claim paid tasks. Payment
 
 ## FAQ
 
-${FAQ_ENTRIES.map((qa) => `Q: ${qa.question}\nA: ${qa.answer.replace(/<[^>]*>/g, "")}`).join("\n\n")}
+${getFaqEntries().map((qa) => `Q: ${qa.question}\nA: ${qa.answer.replace(/<[^>]*>/g, "")}`).join("\n\n")}
 
 ## Blog Articles
 

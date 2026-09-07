@@ -212,10 +212,33 @@ export function RulesCatalogPage() {
         </div>
       </div>
 
+      <!-- Learn about agent readiness -->
+      <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 mb-8">
+        <h2 class="text-lg font-semibold text-white">Learn about agent readiness</h2>
+        <p class="text-slate-400 mt-2">New to agent readiness? Start with these guides:</p>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <a href="/what-is-an-ai-ready-api" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">What is an AI-Ready API?</a>
+          <a href="/how-to-make-an-api-agent-ready" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">How to Make an API Agent-Ready</a>
+          <a href="/agent-readiness-vs-seo" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">Agent Readiness vs SEO</a>
+          <a href="/openapi-vs-agent-readiness" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">OpenAPI vs Agent Readiness</a>
+        </div>
+      </section>
+
       <!-- Category sections -->
       <div class="space-y-3">
         ${raw(sections)}
       </div>
+
+      <!-- Comparisons section -->
+      <section class="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
+        <h2 class="text-lg font-semibold text-white">How does AgentBadge compare?</h2>
+        <p class="text-slate-400 mt-2">Wondering if you need AgentBadge alongside your existing tools?</p>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <a href="/comparisons/agentbadge-vs-mcp" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">vs MCP</a>
+          <a href="/comparisons/agentbadge-vs-postman" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">vs Postman</a>
+          <a href="/comparisons/agentbadge-vs-swagger" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">vs Swagger</a>
+        </div>
+      </section>
 
       <!-- CTA -->
       <div class="mt-12 text-center border-t border-slate-800 pt-8">
