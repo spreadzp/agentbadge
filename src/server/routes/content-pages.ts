@@ -9,6 +9,7 @@ import { PrivacyPage } from "../../views/privacy-page";
 import { Layout } from "../../views/layout";
 import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
+import { buildRuleApiResponse } from "../lib/rule-api-builder";
 import { ChecklistPage } from "../../views/checklist-page";
 import { faqPageLd, articleLd, pageCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
@@ -157,6 +158,30 @@ contentPageRoutes.get(
   }),
   (c) => {
     return c.html(RulesCatalogPage());
+  },
+);
+
+contentPageRoutes.get(
+  "/rules/:id.json",
+  describeRoute({
+    tags: ["Content"],
+    summary: "Rule Detail (JSON)",
+    description: "Machine-readable JSON for a single agent readiness rule. Same response as GET /api/rules/:id.",
+    responses: {
+      200: { description: "JSON rule data" },
+      404: { description: "Rule not found" },
+    },
+  }),
+  (c) => {
+    const ruleId = c.req.param("id") ?? "";
+    const rule = buildRuleApiResponse(ruleId);
+    if (!rule) {
+      return c.json({ error: "Rule not found", rule_id: ruleId }, 404);
+    }
+    return c.json(rule, 200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    });
   },
 );
 
