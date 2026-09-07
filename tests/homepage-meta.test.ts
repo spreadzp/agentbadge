@@ -8,6 +8,7 @@ import { ReadinessHeroSection } from "../src/views/landing/sections/readiness-he
 import { ReadinessImmediateProofSection } from "../src/views/landing/sections/readiness-immediate-proof";
 import { ReadinessConceptualFlowSection } from "../src/views/landing/sections/readiness-conceptual-flow";
 import { ReadinessAgentReadyProofSection } from "../src/views/landing/sections/readiness-agent-ready-proof";
+import { ReadinessLandingPage } from "../src/views/landing/readiness-landing-page";
 import { RULE_DESCRIPTIONS } from "../src/agent-readiness/rule-descriptions";
 
 describe("Homepage meta fixes", () => {
@@ -152,6 +153,30 @@ describe("SLICE-110-5: Agent-ready proof block", () => {
     expect(html).toContain("/agent-guide");
     expect(html).toContain("/openapi.json");
     expect(html).toContain("webmcp.json");
+  });
+});
+
+describe("SLICE-110-6: Section repositioning", () => {
+  it("all sections present in landing page", () => {
+    const html = ReadinessLandingPage().toString();
+    expect(html).toContain('id="scan"');
+    expect(html).toContain("Immediate Proof");
+    expect(html).toContain("Conceptual Model");
+    expect(html).toContain("Agent-Ready Proof");
+    expect(html).toContain('id="pricing"');
+  });
+
+  it("section order: Hero → ImmediateProof → ConceptualFlow → How → AgentReadyProof", () => {
+    const html = ReadinessLandingPage().toString();
+    const heroIdx = html.indexOf('id="scan"');
+    const proofIdx = html.indexOf("Immediate Proof");
+    const flowIdx = html.indexOf("Conceptual Model");
+    const howIdx = html.indexOf('id="how"');
+    const agentReadyIdx = html.indexOf("Agent-Ready Proof");
+    expect(heroIdx).toBeLessThan(proofIdx);
+    expect(proofIdx).toBeLessThan(flowIdx);
+    expect(flowIdx).toBeLessThan(howIdx);
+    expect(howIdx).toBeLessThan(agentReadyIdx);
   });
 });
 
