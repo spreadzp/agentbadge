@@ -3,7 +3,7 @@ import { describeRoute } from "hono-openapi";
 import { getRegistry } from "../registry/loader";
 import { ServicesPage } from "../../views/services-page";
 import { WorkWithUsPage } from "../../views/work-with-us-page";
-import { articleLd, defaultCoreSchemas } from "../lib/json-ld";
+import { articleLd, defaultCoreSchemas, breadcrumbFor } from "../lib/json-ld";
 
 export const teamPageRoutes = new Hono();
 
@@ -33,7 +33,6 @@ teamPageRoutes.get(
   async (c) => {
     try {
       const registry = await getRegistry();
-      const html = ServicesPage(registry);
       const schemas = [
         ...defaultCoreSchemas(),
         articleLd({
@@ -46,7 +45,9 @@ teamPageRoutes.get(
             body: `${s.problem} Deliverables: ${s.deliverables.join(", ")}.`,
           })),
         }),
+        breadcrumbFor("/services", "Services"),
       ];
+      const html = ServicesPage(registry, schemas);
       return c.html(html);
     } catch {
       return c.html(
@@ -69,7 +70,6 @@ teamPageRoutes.get(
   async (c) => {
     try {
       const registry = await getRegistry();
-      const html = WorkWithUsPage(registry);
       const schemas = [
         ...defaultCoreSchemas(),
         articleLd({
@@ -84,7 +84,9 @@ teamPageRoutes.get(
             },
           ],
         }),
+        breadcrumbFor("/work-with-us", "Work With Us"),
       ];
+      const html = WorkWithUsPage(registry, schemas);
       return c.html(html);
     } catch {
       return c.html(

@@ -5,7 +5,7 @@ import { BlogListPage } from "../../views/blog-list";
 import { BlogArticlePage } from "../../views/blog-article";
 import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles } from "../lib/blog-data";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
-import { defaultCoreSchemas, blogLd, itemListLd } from "../lib/json-ld";
+import { defaultCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../lib/json-ld";
 import { BASE_URL } from "../lib/page-meta";
 
 export const blogRoutes = new Hono();
@@ -36,6 +36,7 @@ blogRoutes.get(
         articles: items,
       }),
       itemListLd(items),
+      breadcrumbFor("/blog", "Blog"),
     ];
     const content = BlogListPage(items, paginationMeta).toString();
     const canonicalPath = paginationMeta.currentPage > 1

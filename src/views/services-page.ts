@@ -3,7 +3,7 @@ import { Layout } from "./layout";
 import type { RegistryIndex } from "../server/registry/types";
 import { breadcrumbListLd } from "../server/lib/json-ld";
 
-export function ServicesPage(registry: RegistryIndex) {
+export function ServicesPage(registry: RegistryIndex, schemas?: object[]) {
   const serviceCards = registry.services
     .map(
       (s) => `<div id="${s.id}" class="rounded-xl border border-slate-700 bg-slate-800/50 p-6">
@@ -73,5 +73,5 @@ export function ServicesPage(registry: RegistryIndex) {
     description:
       "AgentBadge engineering services — MCP server development, blockchain integration, AI agent architecture, GEO optimization. Contract, part-time, and fixed-scope.",
     path: "/services",
-  });
+  }, schemas);
 }

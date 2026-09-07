@@ -2,7 +2,7 @@ import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import type { RegistryIndex } from "../server/registry/types";
 
-export function WorkWithUsPage(registry: RegistryIndex) {
+export function WorkWithUsPage(registry: RegistryIndex, schemas?: object[]) {
   const engagementTypes = [
     {
       name: "Contract",
@@ -99,5 +99,5 @@ export function WorkWithUsPage(registry: RegistryIndex) {
     description:
       "Engage with the AgentBadge engineering team — contract, part-time, or fixed-scope. MCP development, blockchain integration, AI agent architecture, GEO optimization.",
     path: "/work-with-us",
-  });
+  }, schemas);
 }

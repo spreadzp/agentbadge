@@ -9,7 +9,7 @@ import { PrivacyPage } from "../../views/privacy-page";
 import { Layout } from "../../views/layout";
 import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
-import { faqPageLd, articleLd, defaultCoreSchemas, personLd } from "../lib/json-ld";
+import { faqPageLd, articleLd, defaultCoreSchemas, personLd, breadcrumbFor } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
 import { getRegistry } from "../registry/loader";
 import type { RegistryIndex } from "../registry/types";
@@ -29,7 +29,7 @@ contentPageRoutes.get(
     const page = pageParam ? parseInt(pageParam, 10) : 1;
     const allEntries = getFaqEntries();
     const { items, meta } = paginateFaqEntries(allEntries, page);
-    const schemas = [...defaultCoreSchemas(), faqPageLd(items)];
+    const schemas = [...defaultCoreSchemas(), faqPageLd(items), breadcrumbFor("/faq", "FAQ")];
     return c.html(FaqPage(items, meta, schemas));
   },
 );
@@ -55,6 +55,7 @@ contentPageRoutes.get(
           body: `Problem: ${uc.problem} Solution: ${uc.solution} On-chain proof: ${uc.onChainProof}`,
         })),
       }),
+      breadcrumbFor("/use-cases", "Use Cases"),
     ];
     return c.html(UseCasesPage(schemas));
   },
@@ -106,6 +107,7 @@ contentPageRoutes.get(
           },
         ],
       }),
+      breadcrumbFor("/about", "About"),
     ];
     return c.html(AboutPage(schemas, registry));
   },
@@ -143,6 +145,7 @@ contentPageRoutes.get(
           },
         ],
       }),
+      breadcrumbFor("/pricing", "Pricing"),
     ];
     return c.html(PricingPage(schemas));
   },
@@ -156,7 +159,7 @@ contentPageRoutes.get(
     description: "Legal terms governing the use of AgentBadge. MIT-licensed, no warranty, testnet service.",
     responses: { 200: { description: "HTML terms page" } },
   }),
-  (c) => c.html(TermsPage(defaultCoreSchemas())),
+  (c) => c.html(TermsPage([...defaultCoreSchemas(), breadcrumbFor("/terms", "Terms")])),
 );
 
 contentPageRoutes.get(
@@ -167,7 +170,7 @@ contentPageRoutes.get(
     description: "Privacy disclosure for AgentBadge: on-chain data is public, no cookies, no third-party analytics, LLM crawler permissions specified.",
     responses: { 200: { description: "HTML privacy page" } },
   }),
-  (c) => c.html(PrivacyPage(defaultCoreSchemas())),
+  (c) => c.html(PrivacyPage([...defaultCoreSchemas(), breadcrumbFor("/privacy", "Privacy")])),
 );
 
 contentPageRoutes.get(

@@ -9,7 +9,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Layout } from "../../views/layout";
 import { PageMeta } from "../lib/page-meta";
-import { defaultCoreSchemas } from "../lib/json-ld";
+import { defaultCoreSchemas, breadcrumbFor } from "../lib/json-ld";
 import { BUILD_DATE, GIT_COMMIT } from "../lib/build-info";
 
 export const changelogRoutes = new Hono();
@@ -117,6 +117,6 @@ changelogRoutes.get(
         </div>
       </div>`;
 
-    return c.html(Layout(html, meta?.title, meta, defaultCoreSchemas()).toString());
+    return c.html(Layout(html, meta?.title, meta, [...defaultCoreSchemas(), breadcrumbFor("/changelog", "Changelog")]).toString());
   },
 );

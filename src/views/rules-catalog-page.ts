@@ -11,7 +11,7 @@ import {
 import { categoryEnum } from "../agent-readiness/shared.schema";
 import { PILLARS, PILLAR_CATEGORIES } from "../agent-readiness/scoring/pillar-map";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
-import { faqPageLd, defaultCoreSchemas } from "../server/lib/json-ld";
+import { faqPageLd, defaultCoreSchemas, breadcrumbFor } from "../server/lib/json-ld";
 import { DEFAULT_GAP_TYPE_BY_CATEGORY } from "../agent-readiness/gap-engine/gap-types";
 
 const GAP_TYPE_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
@@ -138,7 +138,7 @@ export function RulesCatalogPage() {
     answer: CATEGORY_DESCRIPTIONS[cat].description,
   }));
 
-  const schemas = [...defaultCoreSchemas(), faqPageLd(faqEntries)];
+  const schemas = [...defaultCoreSchemas(), faqPageLd(faqEntries), breadcrumbFor("/rules", "Rules")];
 
   const meta: PageMeta = {
     title: "Rules Catalog",
