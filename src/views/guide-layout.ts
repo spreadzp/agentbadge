@@ -74,6 +74,8 @@ export function GuideLayout(
         <meta name="twitter:description" content="${title} for AI agents on ${SITE_NAME} — Hedera on-chain identity platform." />
         <meta name="twitter:image" content="${BASE_URL}/icons/og-image.png" />
         <meta name="twitter:site" content="@agentbadge" />
+        <meta name="ai-agent-discovery" content="${BASE_URL}/llms.txt" />
+        <meta name="ai-agent-onboarding" content="${BASE_URL}/skill.md" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="alternate" type="text/markdown" title="LLM Context" href="/llms.txt" />
         <link rel="alternate" type="text/markdown" title="Full Documentation" href="https://agentbadge.gitbook.io/agentbadge-docs" />

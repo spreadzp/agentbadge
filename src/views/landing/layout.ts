@@ -56,6 +56,8 @@ export function LandingLayout(
         <meta property="og:site_name" content="${SITE_NAME}" />
         <meta property="og:locale" content="en_US" />
         <meta name="theme-color" content="#0f172a" />
+        <meta name="ai-agent-discovery" content="${BASE_URL}/llms.txt" />
+        <meta name="ai-agent-onboarding" content="${BASE_URL}/skill.md" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="${composedTitle}" />
         <meta name="twitter:description" content="${description}" />
