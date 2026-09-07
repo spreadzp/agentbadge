@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { contentPageRoutes } from "../src/server/routes/content-pages";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
 import { FaqPage, FAQ_ENTRIES, getFaqEntries } from "../src/views/faq-page";
-import { UseCasesPage, USE_CASES } from "../src/views/use-cases-page";
+import { UseCasesPage, getUseCases } from "../src/views/use-cases-page";
 import { AboutPage } from "../src/views/about-page";
 import { PricingPage } from "../src/views/pricing-page";
 import { TermsPage } from "../src/views/terms-page";
@@ -786,12 +786,12 @@ describe("UseCasesPage unit", () => {
     const html = UseCasesPage().toString();
     const articleCount = (html.match(/<article/g) || []).length;
     expect(articleCount).toBeGreaterThanOrEqual(4);
-    expect(articleCount).toBe(USE_CASES.length);
+    expect(articleCount).toBe(getUseCases().length);
   });
 
   it("includes problem, solution, and on-chain proof for each scenario", () => {
     const html = UseCasesPage().toString();
-    for (const uc of USE_CASES) {
+    for (const uc of getUseCases()) {
       expect(html).toContain(uc.title);
       expect(html).toContain(uc.problem);
       expect(html).toContain(uc.solution);
@@ -810,7 +810,7 @@ describe("UseCasesPage unit", () => {
         title: "How AgentBadge Works in Practice",
         description: "test desc",
         path: "/use-cases",
-        sections: USE_CASES.map((uc) => ({
+        sections: getUseCases().map((uc) => ({
           title: uc.title,
           body: uc.problem,
         })),
@@ -820,7 +820,7 @@ describe("UseCasesPage unit", () => {
     const article = parsed.find((s: { "@type": string }) => s["@type"] === "Article");
     expect(article).toBeDefined();
     expect(article.headline).toBe("How AgentBadge Works in Practice");
-    expect(article.articleBody).toContain(USE_CASES[0].title);
+    expect(article.articleBody).toContain(getUseCases()[0].title);
   });
 
   it("includes unique title and description via PageMeta", () => {
@@ -957,7 +957,7 @@ describe("AboutPage unit", () => {
 
   it("includes GitHub link", () => {
     const html = AboutPage().toString();
-    expect(html).toContain("github.com/spreadzp/agentgate");
+    expect(html).toContain("github.com/spreadzp/agentbadge");
   });
 
   it("includes unique title and description via PageMeta", () => {
