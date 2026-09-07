@@ -199,4 +199,44 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
       expect(found).toBe(true);
     });
   });
+
+  describe("SLICE-105-2: Platform EPIC Q&A", () => {
+    const PLATFORM_QUESTIONS = [
+      "What is llms-full.txt and how does it differ from llms.txt?",
+      "How does AgentBadge handle support and contact?",
+      "What are author bios in AgentBadge and why do they matter?",
+      "What is the AgentBadge agency model?",
+      "How does AgentBadge handle noindex and canonical tags?",
+      "What are short answers in AgentBadge's FAQ?",
+    ];
+
+    it("has all 6 new platform EPIC Q&A pairs", () => {
+      const entries = getFaqEntries();
+      for (const q of PLATFORM_QUESTIONS) {
+        const found = entries.find((e) => e.question === q);
+        expect(found, `Missing question: ${q}`).toBeDefined();
+      }
+    });
+
+    it("every platform answer mentions AgentBadge brand name", () => {
+      const entries = getFaqEntries();
+      for (const q of PLATFORM_QUESTIONS) {
+        const found = entries.find((e) => e.question === q);
+        expect(found).toBeDefined();
+        expect(found!.answer).toContain("AgentBadge");
+      }
+    });
+
+    it("no duplicate questions after platform EPIC additions", () => {
+      const entries = getFaqEntries();
+      const allQuestions = entries.map((e) => e.question);
+      const unique = new Set(allQuestions);
+      expect(unique.size).toBe(allQuestions.length);
+    });
+
+    it("total FAQ entries is at least 60", () => {
+      const entries = getFaqEntries();
+      expect(entries.length).toBeGreaterThanOrEqual(60);
+    });
+  });
 });

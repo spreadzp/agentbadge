@@ -283,6 +283,37 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     answer:
       "WebMCP is a web-native variant of the Model Context Protocol that exposes MCP tools over HTTP instead of stdio. This lets agents discover and call tools via standard web requests without a local MCP client. AgentBadge checks for WebMCP endpoints (like /.well-known/mcp.json) as part of its tool discovery checks, ensuring your service is accessible to both stdio-based and web-based AI agents.",
   },
+  // ── SLICE-105-2: Platform EPIC Q&A (51, 52, 53, 54, 55, 84, 88, 90) ──
+  {
+    question: "What is llms-full.txt and how does it differ from llms.txt?",
+    answer:
+      "llms.txt is a concise summary file that tells AI agents what your service does and where to find documentation. llms-full.txt is the extended version — it includes full documentation content, not just links. AgentBadge serves both: llms.txt for quick discovery and llms-full.txt for agents that need complete documentation in a single fetch. This two-tier approach mirrors robots.txt vs sitemap.xml — one for discovery, one for depth.",
+  },
+  {
+    question: "How does AgentBadge handle support and contact?",
+    answer:
+      "AgentBadge provides support via email at support@agentbadge.xyz and a contact form at agentbadge.xyz/contact. For developer questions, the team is available on Telegram and Discord. Support covers scanner setup, passport issuance, marketplace integration, and MCP server development. The team also offers professional services for organizations that need custom agent infrastructure or GEO consulting.",
+  },
+  {
+    question: "What are author bios in AgentBadge and why do they matter?",
+    answer:
+      "AgentBadge blog articles include structured author bios with credentials, expertise areas, and links to professional profiles. These bios serve as E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) signals — both for search engines evaluating content quality and for AI agents assessing source reliability. Author bios help agents determine whether a source is authoritative before citing it, which is critical for agent readiness content.",
+  },
+  {
+    question: "What is the AgentBadge agency model?",
+    answer:
+      "AgentBadge operates as an agency for the agentic web — providing three core services: agent readiness scanning (the scanner), on-chain identity (NFT passports), and a peer-to-peer marketplace (task escrow). The agency model means we don't just build tools — we help organizations become agent-ready through consulting, implementation, and verification. This is the business layer behind the open-source scanner.",
+  },
+  {
+    question: "How does AgentBadge handle noindex and canonical tags?",
+    answer:
+      "AgentBadge uses noindex tags to prevent search engines from indexing low-value pages (pagination, filtered views, API responses) while keeping high-value content crawlable. Canonical tags are set on every page to consolidate duplicate content signals. This ensures search engines and AI agents find the canonical version of each page — important for both SEO and agent readiness, since agents need to cite the correct URL.",
+  },
+  {
+    question: "What are short answers in AgentBadge's FAQ?",
+    answer:
+      "AgentBadge FAQ entries are designed with concise answers (2-4 sentences) that can be directly cited by AI agents and voice assistants. Each answer leads with the key concept, includes the AgentBadge brand name, and links to deeper content. This short-answer format ensures agents get complete information in a single fetch — no need to parse long articles for a quick answer. It's the FAQ equivalent of a featured snippet.",
+  },
 ];
 
 export const FAQ_PER_PAGE = 8;
