@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { type BlogArticle, type BlogExternalLink } from "../server/lib/blog-data";
 import { RelatedArticles } from "./related-articles";
+import { RelatedLinks } from "./related-links";
 
 export const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
   devto: "Dev.to",
@@ -113,6 +114,7 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
           ${ForAIAgentsBlock(article)}
           ${article.externalLinks && article.externalLinks.length > 0 ? ExternalLinksBlock(article.externalLinks) : ""}
           ${related && related.length > 0 ? raw(RelatedArticles(related)) : ""}
+          ${article.relatedLinks && article.relatedLinks.length > 0 ? raw(RelatedLinks("Learn More", article.relatedLinks)) : ""}
           <div class="mt-8 flex flex-wrap gap-2">
             ${raw(article.tags.map((t) => `<a href="/blog?tag=${encodeURIComponent(t)}" class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:text-emerald-400">${t}</a>`).join(""))}
           </div>

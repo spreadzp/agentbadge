@@ -16,6 +16,8 @@ export interface BlogExternalLink {
   url: string;
 }
 
+import type { RelatedLinkItem } from "../views/related-links";
+
 export interface BlogArticle {
   slug: string;
   title: string;
@@ -33,6 +35,7 @@ export interface BlogArticle {
   ogImage?: string;
   shortAnswer?: string;
   externalLinks?: BlogExternalLink[];
+  relatedLinks?: RelatedLinkItem[];
 }
 
 export const BLOG_ARTICLES: BlogArticle[] = [
@@ -847,6 +850,11 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
         url: "https://io.hsoub.com/artificial_intelligence/185154-ما-هي-جاهزية-الوكلاء-agent-readiness",
       },
     ],
+    relatedLinks: [
+      { label: "FAQ", href: "/faq", description: "Common questions about agent readiness" },
+      { label: "Agent Guide", href: "/agent-guide/articles/what-is-agent-readiness", description: "Step-by-step guide to becoming agent-ready" },
+      { label: "Run a Scan", href: "/services/scanner", description: "Check your API's agent readiness score" },
+    ],
   },
   {
     slug: "api-has-seo-agent-readiness",
@@ -1051,6 +1059,11 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
         platform: "twitter",
         url: "https://x.com/paul_spread/status/2088359386578120849",
       },
+    ],
+    relatedLinks: [
+      { label: "FAQ", href: "/faq", description: "Common questions about agent readiness" },
+      { label: "Agent Guide", href: "/agent-guide", description: "Comprehensive guide to agent-ready APIs" },
+      { label: "What Is Agent Readiness?", href: "/blog/what-is-agent-readiness", description: "Start here — the foundational concept" },
     ],
   },
   {
