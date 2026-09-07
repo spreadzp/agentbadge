@@ -131,6 +131,8 @@ We offer consulting and development services for the agentic web:
 - /.well-known/api-catalog — API Catalog (RFC 9727) — linkset of available API endpoints
 - /.well-known/oauth-protected-resource — OAuth Protected Resource metadata (RFC 9728)
 - /auth.md — Agent authentication and registration instructions
+- /verification.md — Verification policy (passport, DID, marketplace, audit)
+- /reputation.md — Reputation specification (signal sources, Sybil resistance, anti-farming)
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
 - /.well-known/agentbadge.json — Deployment descriptor (network, token IDs, API version, payment protocol)
