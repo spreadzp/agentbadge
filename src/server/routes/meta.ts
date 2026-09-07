@@ -6,6 +6,7 @@ import { getErrorCatalog } from "../lib/error-catalog";
 import { getFeeCatalog } from "../lib/fee-catalog";
 import { getTrustTiers } from "../lib/trust-tiers";
 import { getDeploymentDescriptor } from "../lib/deployment-descriptor";
+import { getJwks } from "../lib/jwks";
 
 export const metaRoutes = new Hono();
 
@@ -175,6 +176,45 @@ metaRoutes.get(
   }),
   (c) => {
     return c.json(getDeploymentDescriptor(), 200, {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=3600",
+    });
+  },
+);
+
+metaRoutes.get(
+  "/.well-known/jwks.json",
+  describeRoute({
+    tags: ["Meta"],
+    summary: "JSON Web Key Set — public keys for verifying signed credentials",
+    description:
+      "Returns the public JSON Web Key Set (RFC 7517) for verifying signatures on DID auth challenges, audit trail entries, and other signed credentials issued by AgentBadge.",
+    responses: {
+      200: {
+        description: "JWKS JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                keys: z.array(
+                  z.object({
+                    kty: z.string(),
+                    use: z.string(),
+                    alg: z.string(),
+                    kid: z.string(),
+                    crv: z.string(),
+                    x: z.string(),
+                  }),
+                ),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    return c.json(getJwks(), 200, {
       "Content-Type": "application/json",
       "Cache-Control": "public, max-age=3600",
     });

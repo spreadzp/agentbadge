@@ -126,6 +126,7 @@ We offer consulting and development services for the agentic web:
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
 - /.well-known/agentbadge.json — Deployment descriptor (network, token IDs, API version, payment protocol)
+- /.well-known/jwks.json — JSON Web Key Set (RFC 7517) for verifying signed credentials
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
 - /api/meta/fees — Machine-readable fee/pricing catalog for all AgentBadge services
 - /api/meta/trust-tiers — Identity/trust ladder (6 tiers) with capabilities and requirements
