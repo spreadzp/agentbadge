@@ -3,6 +3,7 @@ import { ReadinessHeroSection } from "./sections/readiness-hero";
 import { ReadinessImmediateProofSection } from "./sections/readiness-immediate-proof";
 import { ReadinessConceptualFlowSection } from "./sections/readiness-conceptual-flow";
 import { ReadinessAgentReadyProofSection } from "./sections/readiness-agent-ready-proof";
+import { ReadinessPassportSecondarySection } from "./sections/readiness-passport-secondary";
 import { ReadinessHowSection } from "./sections/readiness-how";
 import { ReadinessEvidenceSection } from "./sections/readiness-evidence";
 import { ReadinessFixSection } from "./sections/readiness-fix";
@@ -35,6 +36,7 @@ export function ReadinessLandingPage() {
     ReadinessConceptualFlowSection().toString(),
     ReadinessHowSection().toString(),
     ReadinessAgentReadyProofSection().toString(),
+    ReadinessPassportSecondarySection().toString(),
     ReadinessEvidenceSection().toString(),
     ReadinessFixSection().toString(),
     ReadinessWorkflowSection().toString(),

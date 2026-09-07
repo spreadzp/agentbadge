@@ -9,6 +9,7 @@ import { ReadinessImmediateProofSection } from "../src/views/landing/sections/re
 import { ReadinessConceptualFlowSection } from "../src/views/landing/sections/readiness-conceptual-flow";
 import { ReadinessAgentReadyProofSection } from "../src/views/landing/sections/readiness-agent-ready-proof";
 import { ReadinessLandingPage } from "../src/views/landing/readiness-landing-page";
+import { ReadinessPassportSecondarySection } from "../src/views/landing/sections/readiness-passport-secondary";
 import { RULE_DESCRIPTIONS } from "../src/agent-readiness/rule-descriptions";
 
 describe("Homepage meta fixes", () => {
@@ -177,6 +178,26 @@ describe("SLICE-110-6: Section repositioning", () => {
     expect(proofIdx).toBeLessThan(flowIdx);
     expect(flowIdx).toBeLessThan(howIdx);
     expect(howIdx).toBeLessThan(agentReadyIdx);
+  });
+});
+
+describe("SLICE-110-7: Passport secondary block", () => {
+  it("renders H2 'Verify Agent Identity'", () => {
+    const html = ReadinessPassportSecondarySection().toString();
+    expect(html).toContain("Verify Agent Identity");
+  });
+
+  it("CTA links to /passport", () => {
+    const html = ReadinessPassportSecondarySection().toString();
+    expect(html).toContain('href="/passport"');
+    expect(html).toContain("Learn about Agent Passports");
+  });
+
+  it("contains Agent Readiness and Agent Passport distinction", () => {
+    const html = ReadinessPassportSecondarySection().toString();
+    expect(html).toContain("Agent Readiness");
+    expect(html).toContain("Agent Passport");
+    expect(html).toContain("verifiable identity");
   });
 });
 
