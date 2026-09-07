@@ -16,6 +16,8 @@ import { ComparisonHubPage } from "../../views/comparison-hub-page";
 import { COMPARISON_PAGES, getComparisonPage } from "../lib/comparison-data";
 import { CLUSTER_PAGES, getClusterPage } from "../lib/cluster-data";
 import { ClusterPage } from "../../views/cluster-page";
+import { NotesPage } from "../../views/notes-page";
+import { getAuditRuns, getAuditSummary } from "../lib/notes-data";
 import { marked } from "marked";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
@@ -235,6 +237,44 @@ contentPageRoutes.get(
   }),
   (c) => {
     return c.html(ChecklistPage());
+  },
+);
+
+contentPageRoutes.get(
+  "/notes",
+  describeRoute({
+    tags: ["Content"],
+    summary: "Self-Audit Notes",
+    description:
+      "Public engineering notes: AI agents are run against agentbadge.xyz, results and fixes are published. Radical transparency for agent readiness.",
+    responses: { 200: { description: "HTML self-audit notes page" } },
+  }),
+  (c) => {
+    return c.html(NotesPage());
+  },
+);
+
+contentPageRoutes.get(
+  "/notes.json",
+  describeRoute({
+    tags: ["Content"],
+    summary: "Self-Audit Notes (JSON)",
+    description:
+      "Machine-readable JSON of self-audit runs: agent name, result, failure points, fixes applied.",
+    responses: { 200: { description: "JSON audit data" } },
+  }),
+  (c) => {
+    return c.json(
+      {
+        summary: getAuditSummary(),
+        audits: getAuditRuns(),
+      },
+      200,
+      {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "public, max-age=300",
+      },
+    );
   },
 );
 
