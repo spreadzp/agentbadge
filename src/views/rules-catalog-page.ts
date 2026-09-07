@@ -11,7 +11,7 @@ import {
 import { categoryEnum } from "../agent-readiness/shared.schema";
 import { PILLARS, PILLAR_CATEGORIES } from "../agent-readiness/scoring/pillar-map";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
-import { faqPageLd, defaultCoreSchemas, breadcrumbFor } from "../server/lib/json-ld";
+import { defaultCoreSchemas, breadcrumbFor, collectionPageLd } from "../server/lib/json-ld";
 import { DEFAULT_GAP_TYPE_BY_CATEGORY } from "../agent-readiness/gap-engine/gap-types";
 
 const GAP_TYPE_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
@@ -133,12 +133,17 @@ function pillarSection(
 
 export function RulesCatalogPage() {
   const categories = categoryEnum.options;
-  const faqEntries = categories.map((cat) => ({
-    question: `What is the ${CATEGORY_DESCRIPTIONS[cat].title} category?`,
-    answer: CATEGORY_DESCRIPTIONS[cat].description,
-  }));
 
-  const schemas = [...defaultCoreSchemas(), faqPageLd(faqEntries), breadcrumbFor("/rules", "Rules")];
+  const schemas = [
+    ...defaultCoreSchemas(),
+    collectionPageLd({
+      name: "Rules Catalog",
+      description:
+        `All ${RULE_DESCRIPTIONS.length} agent readiness rules across ${categories.length} categories. Understand what AgentBadge checks and why each rule matters for AI agent compatibility.`,
+      path: "/rules",
+    }),
+    breadcrumbFor("/rules", "Rules"),
+  ];
 
   const meta: PageMeta = {
     title: "Rules Catalog",

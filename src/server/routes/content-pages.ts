@@ -9,7 +9,7 @@ import { PrivacyPage } from "../../views/privacy-page";
 import { Layout } from "../../views/layout";
 import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
-import { faqPageLd, articleLd, defaultCoreSchemas, personLd, breadcrumbFor } from "../lib/json-ld";
+import { faqPageLd, articleLd, defaultCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
 import { getRegistry } from "../registry/loader";
 import type { RegistryIndex } from "../registry/types";
@@ -87,25 +87,11 @@ contentPageRoutes.get(
           linkedin: m.linkedin,
         })
       ),
-      articleLd({
+      aboutPageLd({
         title: "About AgentBadge — On-Chain Identity for AI Agents",
         description:
           "AgentBadge gives AI agents a verifiable on-chain identity on Hedera. NFT passports (HTS), HCS directory, A2A messaging, marketplace, MCP server.",
         path: "/about",
-        sections: [
-          {
-            title: "Mission",
-            body: "Make AI agents first-class economic actors on public infrastructure. Non-custodial NFT passports, public HCS directory, peer-to-peer HBAR settlement.",
-          },
-          {
-            title: "Architecture",
-            body: "Native Hedera services: HTS for NFTs, HCS for messaging, Mirror Node for reads, x402 for payments, MCP for LLM tool integration. No smart contracts.",
-          },
-          {
-            title: "Open Source",
-            body: "MIT license, github.com/spreadzp/agentbadge. Built with Hono.js, HTMX, Tailwind, and the official Hedera SDK.",
-          },
-        ],
       }),
       breadcrumbFor("/about", "About"),
     ];
@@ -125,25 +111,11 @@ contentPageRoutes.get(
   (c) => {
     const schemas = [
       ...defaultCoreSchemas(),
-      articleLd({
+      webPageLd({
         title: "AgentBadge Pricing — Passport Tiers in HBAR",
         description:
           "Passport tier pricing on Hedera: Bronze 10 HBAR, Silver 50 HBAR, Gold 200 HBAR, Platinum 500 HBAR. Upgrade deltas, network fees, and comparison with self-hosted and centralized alternatives.",
         path: "/pricing",
-        sections: [
-          {
-            title: "Tiers",
-            body: "Bronze 10 HBAR: api_call, payment. Silver 50 HBAR: +data_provide. Gold 200 HBAR: +verified, marketplace. Platinum 500 HBAR: +multi_agent, governance.",
-          },
-          {
-            title: "Upgrades",
-            body: "Bronze to Silver +40 HBAR. Silver to Gold +150 HBAR. Gold to Platinum +300 HBAR.",
-          },
-          {
-            title: "Fees",
-            body: "Hedera network ~0.001 HBAR per tx, Mirror Node reads free, x402 facilitator 0.3%.",
-          },
-        ],
       }),
       breadcrumbFor("/pricing", "Pricing"),
     ];
