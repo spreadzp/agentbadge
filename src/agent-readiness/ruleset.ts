@@ -130,10 +130,12 @@ import { AB157 } from "./rules/AB157";
 import { AB158 } from "./rules/AB158";
 import { AB159 } from "./rules/AB159";
 import { AB160 } from "./rules/AB160";
+// Pact0 pattern rules (EPIC-125)
+import { AB161 } from "./rules/AB161";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
-  version: "1.4.0",
+  version: "1.5.0",
   scoring: {
     pillars: {
       weights: { discovery: 20, understandability: 25, executability: 30, verifiability: 25 },
@@ -287,6 +289,8 @@ export const AGENT_READINESS_RULESET = {
     AB158,
     AB159,
     AB160,
+    // Pact0 pattern rules (EPIC-125)
+    AB161,
   ] as AgentReadinessRule[],
 } as const;
 

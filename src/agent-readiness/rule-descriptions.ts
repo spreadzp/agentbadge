@@ -1865,4 +1865,17 @@ export const RULE_DESCRIPTIONS: RuleDescription[] = [
     estimated_cost: "$0",
     severity: "low",
   },
+  {
+    rule_id: "AB-161",
+    category: "discovery",
+    icon: "🤖",
+    title: "AI-Agent Discovery meta tags",
+    short_description: "Your HTML head declares ai-agent-discovery and ai-agent-onboarding meta tags pointing to machine-readable entry points.",
+    user_value: "AI agents landing on any page immediately know where to find your llms.txt and onboarding guide, without guessing URL conventions.",
+    wrong_example: "<head>… no AI-agent meta tags …</head>",
+    right_example: '<meta name="ai-agent-discovery" content="https://example.com/llms.txt">\n<meta name="ai-agent-onboarding" content="https://example.com/skill.md">',
+    effort_hint: "quick",
+    estimated_cost: "$0",
+    severity: "high",
+  },
 ];

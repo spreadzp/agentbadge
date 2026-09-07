@@ -9,6 +9,10 @@ export interface HomepageMetaResult {
     faviconPng: boolean;
     canonical: string | null;
     llmsTxtLinked: boolean;
+    aiAgentDiscovery: string | null;
+    aiAgentOnboarding: string | null;
+    aiAgentDiscoveryReachable: boolean;
+    aiAgentOnboardingReachable: boolean;
   };
 }
 
@@ -80,6 +84,10 @@ export async function fetchHomepageMeta(
         faviconPng: false,
         canonical: null,
         llmsTxtLinked: false,
+        aiAgentDiscovery: null,
+        aiAgentOnboarding: null,
+        aiAgentDiscoveryReachable: false,
+        aiAgentOnboardingReachable: false,
       },
     };
   }
@@ -91,6 +99,8 @@ export async function fetchHomepageMeta(
   const faviconPngHref = extractLink(html, "icon", "image/png");
   const canonical = extractLink(html, "canonical");
   const llmsTxtHref = extractLink(html, "alternate", "text/plain");
+  const aiAgentDiscovery = extractMeta(html, "ai-agent-discovery");
+  const aiAgentOnboarding = extractMeta(html, "ai-agent-onboarding");
 
   // Check og:image reachability
   let ogImageReachable = false;
@@ -98,6 +108,26 @@ export async function fetchHomepageMeta(
     try {
       const ogResp = await _fetch(ogImage);
       ogImageReachable = ogResp.ok;
+    } catch {
+      // not reachable
+    }
+  }
+
+  // Check ai-agent meta tag URL reachability (AB-161, EPIC-125)
+  let aiAgentDiscoveryReachable = false;
+  if (aiAgentDiscovery) {
+    try {
+      const resp = await _fetch(aiAgentDiscovery);
+      aiAgentDiscoveryReachable = resp.ok;
+    } catch {
+      // not reachable
+    }
+  }
+  let aiAgentOnboardingReachable = false;
+  if (aiAgentOnboarding) {
+    try {
+      const resp = await _fetch(aiAgentOnboarding);
+      aiAgentOnboardingReachable = resp.ok;
     } catch {
       // not reachable
     }
@@ -114,6 +144,10 @@ export async function fetchHomepageMeta(
       faviconPng: faviconPngHref !== null,
       canonical,
       llmsTxtLinked: llmsTxtHref !== null,
+      aiAgentDiscovery,
+      aiAgentOnboarding,
+      aiAgentDiscoveryReachable,
+      aiAgentOnboardingReachable,
     },
   };
 }

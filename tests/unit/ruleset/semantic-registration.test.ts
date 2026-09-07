@@ -34,14 +34,38 @@ describe("SLICE-95-8: Ruleset Integration", () => {
 
     it("total rule count increased by 15", () => {
       // 130 pre-Phase-B + 15 Phase-B = 145
-      expect(AGENT_READINESS_RULESET.rules.length).toBe(145);
+      expect(AGENT_READINESS_RULESET.rules.length).toBeGreaterThanOrEqual(145);
+    });
+  });
+
+  // ─── EPIC-125: Pact0 pattern rules ──────────────────────────────────────────
+  describe("EPIC-125 rules registered", () => {
+    const EPIC_125_RULE_IDS = ["AB-161"]; // grows per slice
+
+    for (const ruleId of EPIC_125_RULE_IDS) {
+      it(`${ruleId} is registered in AGENT_READINESS_RULESET`, () => {
+        const found = AGENT_READINESS_RULESET.rules.find((r) => r.rule_id === ruleId);
+        expect(found).toBeDefined();
+        expect(found!.counted_in_score).toBe(true);
+        expect(found!.check.type).toBe("semantic_validation");
+      });
+
+      it(`${ruleId} appears exactly once`, () => {
+        const count = AGENT_READINESS_RULESET.rules.filter((r) => r.rule_id === ruleId).length;
+        expect(count).toBe(1);
+      });
+    }
+
+    it("total rule count includes EPIC-125 additions", () => {
+      // 130 pre-Phase-B + 15 Phase-B + 1 EPIC-125 slice 1 = 146
+      expect(AGENT_READINESS_RULESET.rules.length).toBe(146);
     });
   });
 
   // ─── Manifest version ─────────────────────────────────────────────────────
-  describe("Manifest version 1.4.0", () => {
-    it("version is 1.4.0", () => {
-      expect(AGENT_READINESS_RULESET.version).toBe("1.4.0");
+  describe("Manifest version", () => {
+    it("version is 1.5.0 (EPIC-125 additions)", () => {
+      expect(AGENT_READINESS_RULESET.version).toBe("1.5.0");
     });
   });
 
