@@ -2,6 +2,7 @@ import { html, raw } from "hono/html";
 import { ReadinessHeroSection } from "./sections/readiness-hero";
 import { ReadinessImmediateProofSection } from "./sections/readiness-immediate-proof";
 import { ReadinessConceptualFlowSection } from "./sections/readiness-conceptual-flow";
+import { ReadinessAgentReadyProofSection } from "./sections/readiness-agent-ready-proof";
 import { ReadinessHowSection } from "./sections/readiness-how";
 import { ReadinessEvidenceSection } from "./sections/readiness-evidence";
 import { ReadinessFixSection } from "./sections/readiness-fix";
@@ -32,6 +33,7 @@ export function ReadinessLandingPage() {
     ReadinessHeroSection().toString(),
     ReadinessImmediateProofSection().toString(),
     ReadinessConceptualFlowSection().toString(),
+    ReadinessAgentReadyProofSection().toString(),
     ReadinessHowSection().toString(),
     ReadinessEvidenceSection().toString(),
     ReadinessFixSection().toString(),

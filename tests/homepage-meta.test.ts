@@ -7,6 +7,7 @@ import { landingJsonLd } from "../src/server/lib/json-ld";
 import { ReadinessHeroSection } from "../src/views/landing/sections/readiness-hero";
 import { ReadinessImmediateProofSection } from "../src/views/landing/sections/readiness-immediate-proof";
 import { ReadinessConceptualFlowSection } from "../src/views/landing/sections/readiness-conceptual-flow";
+import { ReadinessAgentReadyProofSection } from "../src/views/landing/sections/readiness-agent-ready-proof";
 import { RULE_DESCRIPTIONS } from "../src/agent-readiness/rule-descriptions";
 
 describe("Homepage meta fixes", () => {
@@ -128,6 +129,29 @@ describe("SLICE-110-4: Conceptual flow section", () => {
     expect(discoverIdx).toBeLessThan(understandIdx);
     expect(understandIdx).toBeLessThan(accessIdx);
     expect(accessIdx).toBeLessThan(actIdx);
+  });
+});
+
+describe("SLICE-110-5: Agent-ready proof block", () => {
+  it("renders checklist with 6+ items", () => {
+    const html = ReadinessAgentReadyProofSection().toString();
+    const checkCount = (html.match(/✓/g) || []).length;
+    expect(checkCount).toBeGreaterThanOrEqual(6);
+  });
+
+  it("contains 'agent-ready' statement", () => {
+    const html = ReadinessAgentReadyProofSection().toString();
+    expect(html).toContain("agent-ready");
+    expect(html).toContain("We built AgentBadge");
+  });
+
+  it("each item has ✓ icon", () => {
+    const html = ReadinessAgentReadyProofSection().toString();
+    expect(html).toContain("✓");
+    expect(html).toContain("/llms.txt");
+    expect(html).toContain("/agent-guide");
+    expect(html).toContain("/openapi.json");
+    expect(html).toContain("webmcp.json");
   });
 });
 
