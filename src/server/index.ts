@@ -300,6 +300,34 @@ app.get("/health", (c) => {
   });
 });
 
+// SLICE-121-2: API alias routes — mirror root endpoints under /api/ for AI-agent convention
+app.get("/api/health", (c) => {
+  const tools = listTools();
+  return c.json({
+    status: "healthy",
+    version: APP_VERSION,
+    buildDate: BUILD_DATE,
+    gitCommit: GIT_COMMIT,
+    uptime: process.uptime(),
+    mcp: {
+      toolsCount: tools.length,
+      tools: tools.map((t) => t.name),
+    },
+    payments: {
+      stripe: isStripeConfigured() ? "configured" : "not_configured",
+    },
+    timestamp: Date.now(),
+  });
+});
+app.get("/api/catalog", (c) => c.redirect("/catalog", 301));
+app.get("/api/audit/:tokenId?/:serial?", (c) => {
+  const tokenId = c.req.param("tokenId");
+  const serial = c.req.param("serial");
+  const path = serial ? `/audit/${tokenId}/${serial}` : tokenId ? `/audit/${tokenId}` : "/audit";
+  return c.redirect(path, 301);
+});
+app.all("/api/passport/request", (c) => c.redirect("/passport/request", 301));
+
 // Serve static files from public/ (favicon, icons, logo, CSS, Google verification)
 app.use("/favicon.ico", (c, next) => {
   c.header("Cache-Control", "public, max-age=86400");

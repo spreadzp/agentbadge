@@ -36,7 +36,7 @@ describe("SLICE-121-1: AI-Agent Discovery meta tags", () => {
   });
 
   describe("guide-layout.ts", () => {
-    const html = GuideLayout("Test Guide", "test-guide", [], []).toString();
+    const html = GuideLayout("Test Guide", "# Test Guide", [], "/test-guide").toString();
 
     it('contains <meta name="ai-agent-discovery">', () => {
       expect(html).toContain('name="ai-agent-discovery"');
