@@ -232,6 +232,57 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     answer:
       "SEO (Search Engine Optimization) optimizes websites for search engine crawlers and human queries. GEO (Generative Engine Optimization) optimizes content for generative AI models — making it citable, structured, and authoritative. AgentBadge adds a third layer: Agent Readiness, which optimizes APIs for autonomous AI agents. All three serve different consumers but share principles like structured data and discoverability. <a href=\"/blog/from-seo-to-geo-to-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: From SEO to GEO to Agent Readiness →</a>",
   },
+  // ── SLICE-105-1: Core scanner EPIC Q&A (47, 48, 49, 87, 93, 94, 95, 96, 98, 99) ──
+  {
+    question: "What is content negotiation for AI agents?",
+    answer:
+      "Content negotiation lets an AI agent request a specific response format (JSON, markdown, plain text) via HTTP Accept headers. AgentBadge checks whether your API supports agent-friendly content types — not just HTML. When an agent sends `Accept: application/json`, your server should respond with structured data, not a web page. This is a core Agent Readiness principle: agents need machine-readable responses, not human-facing HTML.",
+  },
+  {
+    question: "What is llms.txt and why does AgentBadge check for it?",
+    answer:
+      "llms.txt is a lightweight standard — similar to robots.txt — that provides LLM-readable information about your site or API. It tells agents what your service does, how to authenticate, and where to find documentation. AgentBadge checks for llms.txt because it's one of the simplest, highest-impact discovery layers: a single file that makes your service instantly understandable to AI agents. <a href=\"/blog/what-ai-agent-needs-to-understand-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: What Does an AI Agent Need to Understand an API? →</a>",
+  },
+  {
+    question: "What is an AgentBadge improvement guide?",
+    answer:
+      "When AgentBadge finds gaps in your API's agent readiness, it generates an improvement guide — a prioritized, actionable list of fixes. Each recommendation explains what to change, why it matters, and how to do it. Improvement guides bridge the gap between scanning and fixing: instead of just reporting a score, AgentBadge tells you exactly what to improve next. <a href=\"/blog/why-openapi-isnt-enough\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Why Your OpenAPI Spec Isn't Enough →</a>",
+  },
+  {
+    question: "What are semantic checks in AgentBadge?",
+    answer:
+      "Semantic checks go beyond syntax validation — they verify that your API documentation is internally consistent and contextually correct. For example, AgentBadge checks that your OpenAPI spec's auth schemes match what your well-known endpoints declare, and that your llms.txt claims align with your actual endpoints. Semantic checks catch contradictions that syntax-only validators miss, giving you a deeper level of readiness verification.",
+  },
+  {
+    question: "What is active probing in AgentBadge's scanner?",
+    answer:
+      "Active probing means AgentBadge sends real HTTP requests to your endpoints — not just parsing your spec. The scanner fetches robots.txt, calls /.well-known/ endpoints, validates OpenAPI schemas, and tests authentication flows. This goes beyond static analysis: if your spec says an endpoint exists but it returns 404, AgentBadge's active probing catches the discrepancy and flags it as a gap.",
+  },
+  {
+    question: "What is the AgentBadge readiness badge?",
+    answer:
+      "The AgentBadge readiness badge is an SVG image that displays your current readiness score and grade (A through F). You can embed it in your README, website, or API docs to show agents and developers that your API has been scanned. The badge links back to your full report on AgentBadge, providing a verifiable trust signal — similar to a CI badge, but for agent readiness.",
+  },
+  {
+    question: "What are confidence levels in AgentBadge's evidence engine?",
+    answer:
+      "AgentBadge's evidence engine assigns confidence levels to each finding based on the source quality. A direct response from your API has higher confidence than an inference from documentation. Evidence is classified by source class (primary, secondary, inferred) and confidence (high, medium, low). This means you can trust that a VERIFIED status came from real observed behavior, not a guess — making AgentBadge's scores reproducible and auditable.",
+  },
+  {
+    question: "How many checks does AgentBadge run?",
+    answer:
+      "AgentBadge runs 70+ checks across 17 categories, covering discovery (robots.txt, llms.txt, OpenAPI), authentication (OAuth2, API keys, well-known), documentation (content negotiation, error schemas), execution (rate limits, idempotency), and verification (semantic consistency, runtime tests). Each check produces a status (VERIFIED, INFERRED, CONFLICT, MISSING) with captured evidence. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
+  },
+  {
+    question: "What is DNS-AID and how does AgentBadge use it?",
+    answer:
+      "DNS-AID is a DNS-based agent identification protocol that lets agents publish their identity and capabilities via DNS TXT records. AgentBadge checks for DNS-AID records as part of its discovery checks — agents can be discovered not just via HTTP endpoints but also via DNS, providing an alternative discovery channel that works even when HTTP endpoints are unavailable. This is part of AgentBadge's multi-layer discovery approach.",
+  },
+  {
+    question: "What is WebMCP and how does it relate to AgentBadge?",
+    answer:
+      "WebMCP is a web-native variant of the Model Context Protocol that exposes MCP tools over HTTP instead of stdio. This lets agents discover and call tools via standard web requests without a local MCP client. AgentBadge checks for WebMCP endpoints (like /.well-known/mcp.json) as part of its tool discovery checks, ensuring your service is accessible to both stdio-based and web-based AI agents.",
+  },
 ];
 
 export const FAQ_PER_PAGE = 8;

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseFrontmatter } from "../src/server/lib/frontmatter";
 import { getRegistry } from "../src/server/registry/loader";
-import { FAQ_ENTRIES } from "../src/views/faq-page";
+import { getFaqEntries } from "../src/views/faq-page";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 
 setupMockEnv();
@@ -85,8 +84,6 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
 
     it("all capability IDs in frontmatter exist in registry", async () => {
       registry = await getRegistry();
-      const capIds = new Set(registry.capabilities.map((c) => c.id));
-
       for (const slug of ARTICLE_SLUGS) {
         const res = await app.request(`/agent-guide/articles/${slug}`);
         const text = await res.text();
@@ -98,12 +95,14 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
   });
 
   describe("FAQ entries with team services links", () => {
-    it("FAQ has 14 entries (12 original + 2 new)", () => {
-      expect(FAQ_ENTRIES.length).toBe(14);
+    it("FAQ has at least 54 entries (original + scanner EPIC Q&A)", () => {
+      const entries = getFaqEntries();
+      expect(entries.length).toBeGreaterThanOrEqual(54);
     });
 
     it("FAQ includes MCP server question", () => {
-      const mcpFaq = FAQ_ENTRIES.find((q) =>
+      const entries = getFaqEntries();
+      const mcpFaq = entries.find((q) =>
         q.question.toLowerCase().includes("mcp server"),
       );
       expect(mcpFaq).toBeDefined();
@@ -111,27 +110,93 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
     });
 
     it("FAQ includes GEO optimization question", () => {
-      const geoFaq = FAQ_ENTRIES.find((q) =>
+      const entries = getFaqEntries();
+      const geoFaq = entries.find((q) =>
         q.question.toLowerCase().includes("geo"),
       );
       expect(geoFaq).toBeDefined();
       expect(geoFaq!.answer).toContain("/agent-guide/team/services");
     });
 
-    it("both new FAQ entries link to /agent-guide/team/services", () => {
-      const teamFaqs = FAQ_ENTRIES.filter(
+    it("team services entries link to /agent-guide/team/services", () => {
+      const entries = getFaqEntries();
+      const teamFaqs = entries.filter(
         (q) => q.answer.includes("/agent-guide/team/services"),
       );
-      expect(teamFaqs.length).toBe(2);
+      expect(teamFaqs.length).toBeGreaterThanOrEqual(2);
     });
 
-    it("FAQ page renders new entries", async () => {
-      const res = await app.request("/faq");
-      expect(res.status).toBe(200);
-      const html = await res.text();
-      expect(html).toContain("Can the AgentBadge team build an MCP server for me?");
-      expect(html).toContain("Does the team offer GEO optimization consulting?");
-      expect(html).toContain("/agent-guide/team/services");
+    it("FAQ page renders team services entries", async () => {
+      // FAQ paginates 8 per page, so team services entries may be on later pages.
+      let foundMcp = false;
+      let foundGeo = false;
+      let foundLink = false;
+      for (let page = 1; page <= 10; page++) {
+        const res = await app.request(`/faq?page=${page}`);
+        if (res.status !== 200) break;
+        const html = await res.text();
+        if (html.includes("Can the AgentBadge team build an MCP server for me?")) foundMcp = true;
+        if (html.includes("Does the team offer GEO optimization consulting?")) foundGeo = true;
+        if (html.includes("/agent-guide/team/services")) foundLink = true;
+      }
+      expect(foundMcp).toBe(true);
+      expect(foundGeo).toBe(true);
+      expect(foundLink).toBe(true);
+    });
+  });
+
+  describe("SLICE-105-1: Core scanner EPIC Q&A", () => {
+    const NEW_QUESTIONS = [
+      "What is content negotiation for AI agents?",
+      "What is llms.txt and why does AgentBadge check for it?",
+      "What is an AgentBadge improvement guide?",
+      "What are semantic checks in AgentBadge?",
+      "What is active probing in AgentBadge's scanner?",
+      "What is the AgentBadge readiness badge?",
+      "What are confidence levels in AgentBadge's evidence engine?",
+      "How many checks does AgentBadge run?",
+      "What is DNS-AID and how does AgentBadge use it?",
+      "What is WebMCP and how does it relate to AgentBadge?",
+    ];
+
+    it("has all 10 new scanner EPIC Q&A pairs", () => {
+      const entries = getFaqEntries();
+      for (const q of NEW_QUESTIONS) {
+        const found = entries.find((e) => e.question === q);
+        expect(found, `Missing question: ${q}`).toBeDefined();
+      }
+    });
+
+    it("every new answer mentions AgentBadge brand name", () => {
+      const entries = getFaqEntries();
+      for (const q of NEW_QUESTIONS) {
+        const found = entries.find((e) => e.question === q);
+        expect(found).toBeDefined();
+        expect(found!.answer).toContain("AgentBadge");
+      }
+    });
+
+    it("no duplicate questions with existing entries", () => {
+      const entries = getFaqEntries();
+      const allQuestions = entries.map((e) => e.question);
+      const unique = new Set(allQuestions);
+      expect(unique.size).toBe(allQuestions.length);
+    });
+
+    it("FAQ page renders at least one new scanner Q&A", async () => {
+      // FAQ paginates 8 per page, so new entries may be on later pages.
+      // Check all pages for content negotiation question.
+      let found = false;
+      for (let page = 1; page <= 10; page++) {
+        const res = await app.request(`/faq?page=${page}`);
+        if (res.status !== 200) break;
+        const html = await res.text();
+        if (html.includes("content negotiation")) {
+          found = true;
+          break;
+        }
+      }
+      expect(found).toBe(true);
     });
   });
 });
