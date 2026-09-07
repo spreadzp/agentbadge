@@ -4,7 +4,7 @@
 
 import { getAllCommands } from "./router";
 
-const VERSION = "0.4.0";
+const VERSION = "0.13.0";
 
 export function handleHelp(argv: string[]): { exitCode: number; stdout: string; stderr: string } {
   // Global help
@@ -53,6 +53,7 @@ function formatGlobalHelp(): string {
   lines.push("  verify-report <path>      Verify report integrity and signature");
   lines.push("  fix <path>                Generate fix suggestions from a report");
   lines.push("  badge <path>              Render an SVG badge from a report");
+  lines.push("  profile                   Generate a Knowledge Profile (JSON/Markdown/YAML)");
   lines.push("");
   lines.push("Global Flags:");
   lines.push("  --help, -h                Show help");

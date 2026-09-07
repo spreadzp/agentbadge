@@ -4,7 +4,27 @@ All notable changes to AgentBadge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] — 2025-01-15
+## [0.13.0] — 2025-09-07
+
+### Added — Data Moat / Cross-Scan Corpus (EPIC-103)
+
+- **SLICE-103-1**: Corpus record schema (spec v0.11 §14), PII sweep, corpus extractor
+- **SLICE-103-2**: File-backed corpus store (JSONL append-only), PII rejection at write
+- **SLICE-103-3**: Aggregation engine (8 functions) + statistical utilities (mean, median, stddev, percentile, bucketize)
+- **SLICE-103-4**: Benchmark computation, trend analysis, in-memory benchmark cache
+- **SLICE-103-5**: Public benchmark API endpoints (overall, category, pillar, stats) with 1h cache TTL
+- **SLICE-103-6**: State of Agent Readiness report generator (markdown + JSON)
+- **SLICE-103-7**: CLI commands — `agentbadge benchmarks`, `agentbadge corpus`, `agentbadge report`
+- **SLICE-103-8**: Web UI — `/benchmarks` dashboard, `/benchmarks/:category` detail, `/benchmarks/reports` archive, `/benchmarks/reports/:id` viewer
+- **SLICE-103-9**: Privacy audit — `auditCorpusForPii()`, golden anonymization fixtures, enhanced PII sweep (FTP URLs, object key scanning)
+- **SLICE-103-10**: E2E lifecycle tests, golden benchmark fixtures (55 records), zero-drift verification, version bump
+
+### Changed
+- CLI version bumped to 0.13.0
+- PII sweep now detects FTP URLs and scans object keys
+- `LandingLayout` import path fixed for benchmark pages
+
+## [0.12.0] — 2025-08-XX
 
 ### Added — Semantic Layer (EPIC-95)
 
