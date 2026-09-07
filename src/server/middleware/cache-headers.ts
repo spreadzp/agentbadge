@@ -14,6 +14,8 @@ const LONG_LIVED_PATHS = [
   "/skill.json",
   "/agents.json",
   "/agents.rss",
+  "/market/tasks.json",
+  "/market/tasks.rss",
   "/.well-known/agent-card.json",
   "/.well-known/mcp.json",
   "/.well-known/oauth-authorization-server",
