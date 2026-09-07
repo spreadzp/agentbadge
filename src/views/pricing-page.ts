@@ -2,6 +2,14 @@ import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 import { listTools } from "@agentbadge/mcp";
+import { RelatedLinks } from "./related-links";
+
+const pricingCrossLinks = [
+  { label: "FAQ", href: "/faq", description: "Common questions about pricing and passports" },
+  { label: "About", href: "/about", description: "Learn about AgentBadge's mission" },
+  { label: "Services", href: "/services", description: "Full overview of our services" },
+  { label: "Agent Guide", href: "/agent-guide", description: "Step-by-step onboarding" },
+];
 
 /**
  * Pricing page — passport tiers in HBAR with comparison table.
@@ -273,6 +281,8 @@ export function PricingPage(jsonLd?: object[]) {
         step-by-step instructions.
       </p>
     </section>
+
+  ${raw(RelatedLinks("Explore More", pricingCrossLinks))}
   `;
 
   return Layout(content.toString(), PageMeta["/pricing"].title, PageMeta["/pricing"], jsonLd);

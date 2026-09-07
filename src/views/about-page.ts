@@ -3,6 +3,14 @@ import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 import { AGENCY_BRAND, AGENCY_SERVICES } from "../server/lib/agency-config";
 import { TEAM_MEMBERS } from "../server/lib/team-data";
+import { RelatedLinks } from "./related-links";
+
+const aboutCrossLinks = [
+  { label: "Blog", href: "/blog", description: "Insights on agent readiness and the agentic web" },
+  { label: "FAQ", href: "/faq", description: "Common questions about AgentBadge" },
+  { label: "Pricing", href: "/pricing", description: "Passport tiers and service costs" },
+  { label: "Services", href: "/services", description: "Scanner, passports, and marketplace" },
+];
 import { listTools } from "@agentbadge/mcp";
 import type { RegistryIndex } from "../server/registry/types";
 import { explorerName, explorerTxUrl } from "../server/lib/chain-ui.js";
@@ -192,6 +200,8 @@ export function AboutPage(jsonLd?: object[], registry?: RegistryIndex) {
         or browse the <a href="/services/marketplace" class="text-emerald-400 underline hover:text-emerald-300">marketplace</a>.
       </p>
     </section>
+
+  ${raw(RelatedLinks("Explore More", aboutCrossLinks))}
   `;
 
   return Layout(content.toString(), PageMeta["/about"].title, PageMeta["/about"], jsonLd);

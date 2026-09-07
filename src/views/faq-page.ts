@@ -3,6 +3,14 @@ import { Layout } from "./layout";
 import { PageMeta, BASE_URL } from "../server/lib/page-meta";
 import { applyChainTemplates } from "../server/lib/chain-templates.js";
 import type { PaginationMeta } from "../server/lib/blog-data.js";
+import { RelatedLinks } from "./related-links";
+
+const faqCrossLinks = [
+  { label: "About AgentBadge", href: "/about", description: "Our mission, architecture, and team" },
+  { label: "Pricing", href: "/pricing", description: "Passport tiers and marketplace fees" },
+  { label: "Use Cases", href: "/use-cases", description: "Real-world scenarios for agent-ready APIs" },
+  { label: "Blog", href: "/blog", description: "Deep dives into agent readiness" },
+];
 
 export interface QaPair {
   question: string;
@@ -521,7 +529,9 @@ export function FaqPage(
       <li><a href="/.well-known/ai-plugin.json" class="text-emerald-400 underline hover:text-emerald-300">ai-plugin.json</a></li>
       <li><a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Blog</a></li>
     </ul>
-  </section>`;
+  </section>
+
+  ${raw(RelatedLinks("Explore More", faqCrossLinks))}`;
 
   return Layout(content.toString(), faqMeta.title, faqMeta, schemas);
 }

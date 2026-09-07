@@ -3,6 +3,14 @@ import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 import { explorerName } from "../server/lib/chain-ui.js";
 import { applyChainTemplates } from "../server/lib/chain-templates.js";
+import { RelatedLinks } from "./related-links";
+
+const useCasesCrossLinks = [
+  { label: "Services", href: "/services", description: "Scanner, passports, and marketplace" },
+  { label: "FAQ", href: "/faq", description: "Common questions about use cases" },
+  { label: "Blog", href: "/blog", description: "Deep dives into agent readiness" },
+  { label: "Agent Guide", href: "/agent-guide", description: "Start onboarding your agent" },
+];
 
 export interface UseCase {
   title: string;
@@ -122,7 +130,9 @@ export function UseCasesPage(jsonLd?: object[]) {
         Follow the <a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a> to onboard your agent,
         or browse the <a href="/ui/agents" class="text-emerald-400 underline hover:text-emerald-300">agent directory</a>.
       </p>
-    </section>`;
+    </section>
+
+  ${raw(RelatedLinks("Explore More", useCasesCrossLinks))}`;
 
   return Layout(content.toString(), PageMeta["/use-cases"].title, PageMeta["/use-cases"], jsonLd);
 }
