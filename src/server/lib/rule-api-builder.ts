@@ -15,7 +15,7 @@ export interface RuleApiResponse {
   effort_hint: "quick" | "moderate" | "complex";
   estimated_cost: string;
 
-  severity: "high" | "medium" | "low";
+  severity: "critical" | "high" | "medium" | "low";
   pillar: string;
   version: string;
   counted_in_score: boolean;
@@ -43,7 +43,7 @@ export interface RuleApiResponse {
 }
 
 export interface RuleSummary extends Omit<RuleDescription, "severity"> {
-  severity: "high" | "medium" | "low";
+  severity: "critical" | "high" | "medium" | "low";
   pillar: string;
   check_type: string;
 }
@@ -67,24 +67,24 @@ export function buildRuleApiResponse(ruleId: string): RuleApiResponse | null {
 
   return {
     ...desc,
-    severity: (rule?.severity as "high" | "medium" | "low") ?? "medium",
+    severity: (rule?.severity as "critical" | "high" | "medium" | "low") ?? "medium",
     pillar,
     version: rule?.version ?? "1.0.0",
     counted_in_score: rule?.counted_in_score ?? true,
     check: rule
       ? {
-          type: rule.check.type,
-          sources: (rule.check as { sources?: string[] }).sources,
-          match_keys: (rule.check as { match_keys?: string[] }).match_keys,
-          target: (rule.check as { target?: string }).target,
-        }
+        type: rule.check.type,
+        sources: (rule.check as { sources?: string[] }).sources,
+        match_keys: (rule.check as { match_keys?: string[] }).match_keys,
+        target: (rule.check as { target?: string }).target,
+      }
       : { type: "http_fetch" },
     fix: rule?.fix
       ? {
-          eligible: rule.fix.eligible,
-          type: rule.fix.type,
-          note: (rule.fix as { note?: string }).note,
-        }
+        eligible: rule.fix.eligible,
+        type: rule.fix.type,
+        note: (rule.fix as { note?: string }).note,
+      }
       : { eligible: false, type: "manual" },
     checklist_anchor: `#${ruleId}`,
     checklist_url: `/agent-readiness-checklist#${ruleId}`,
@@ -100,7 +100,7 @@ export function buildRuleListApiResponse(): RuleSummary[] {
     const pillar = rule?.pillar ?? CATEGORY_TO_PILLAR[desc.category as Category];
     return {
       ...desc,
-      severity: (rule?.severity as "high" | "medium" | "low") ?? "medium",
+      severity: (rule?.severity as "critical" | "high" | "medium" | "low") ?? "medium",
       pillar,
       check_type: rule?.check.type ?? "http_fetch",
     };
