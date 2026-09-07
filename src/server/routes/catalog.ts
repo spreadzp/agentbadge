@@ -127,6 +127,7 @@ We offer consulting and development services for the agentic web:
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
 - /api/meta/fees — Machine-readable fee/pricing catalog for all AgentBadge services
+- /api/meta/trust-tiers — Identity/trust ladder (6 tiers) with capabilities and requirements
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
 
 ## Demand & Work Requests

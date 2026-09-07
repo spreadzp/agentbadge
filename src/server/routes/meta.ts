@@ -4,6 +4,7 @@ import { z } from "zod";
 import { resolver } from "hono-openapi";
 import { getErrorCatalog } from "../lib/error-catalog";
 import { getFeeCatalog } from "../lib/fee-catalog";
+import { getTrustTiers } from "../lib/trust-tiers";
 
 export const metaRoutes = new Hono();
 
@@ -94,6 +95,44 @@ metaRoutes.get(
   }),
   (c) => {
     return c.json(getFeeCatalog(), 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  },
+);
+
+const trustTierSchema = z.object({
+  name: z.string().describe("Tier identifier"),
+  level: z.number().int().describe("Trust level (0=lowest, 5=highest)"),
+  description: z.string().describe("Human-readable description of what this tier means"),
+  unlocks: z.array(z.string()).describe("Capabilities and endpoints unlocked at this tier"),
+  requirements: z.array(z.string()).describe("Requirements to reach this tier"),
+});
+
+metaRoutes.get(
+  "/api/meta/trust-tiers",
+  describeRoute({
+    tags: ["Meta"],
+    summary: "Trust tiers — identity/trust ladder for AI agents",
+    description:
+      "Returns the trust tier ladder: unverified, did_verified, passport_holder, passport_verified, marketplace_participant, trusted_agent. Each tier lists unlocked capabilities and requirements.",
+    responses: {
+      200: {
+        description: "Trust tier catalog",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                total_count: z.number().int(),
+                tiers: z.array(trustTierSchema),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    return c.json(getTrustTiers(), 200, {
       "Cache-Control": "public, max-age=3600",
     });
   },
