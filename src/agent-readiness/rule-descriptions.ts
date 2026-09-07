@@ -1878,4 +1878,17 @@ export const RULE_DESCRIPTIONS: RuleDescription[] = [
     estimated_cost: "$0",
     severity: "high",
   },
+  {
+    rule_id: "AB-162",
+    category: "actionability",
+    icon: "💓",
+    title: "Heartbeat.md availability",
+    short_description: "Your site serves /heartbeat.md with YAML frontmatter, providing a periodic check-in routine for AI agents.",
+    user_value: "AI agents can periodically check your service health and status via a machine-readable heartbeat endpoint, enabling self-healing workflows.",
+    wrong_example: "GET /heartbeat.md → 404",
+    right_example: "---\nstatus: operational\nlast_check: 2026-09-07\n---\n# Heartbeat\nService is operational.",
+    effort_hint: "quick",
+    estimated_cost: "$0",
+    severity: "low",
+  },
 ];

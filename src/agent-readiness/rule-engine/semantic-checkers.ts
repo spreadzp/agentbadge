@@ -1141,6 +1141,48 @@ const checkerAiAgentDiscoveryMeta: SemanticChecker = (sources) => {
   };
 };
 
+// ─── AB-162 (EPIC-125): Heartbeat.md availability ───────────────────────────
+
+const checkerHeartbeatMd: SemanticChecker = (sources) => {
+  const snap = sources.heartbeat;
+  if (!snap) return { outcome: "no_source", detail: "Heartbeat snapshot not found" };
+
+  if (snap.status === 404 || snap.status === 0) {
+    return { outcome: "absent", detail: "/heartbeat.md not found (HTTP 404 or network error)" };
+  }
+
+  if (snap.status >= 400) {
+    return { outcome: "absent", detail: `/heartbeat.md returned HTTP ${snap.status}` };
+  }
+
+  const body = snap.body ?? "";
+  if (!body) {
+    return { outcome: "absent", detail: "/heartbeat.md returned empty body" };
+  }
+
+  const hasFrontmatter = body.trimStart().startsWith("---");
+  if (!hasFrontmatter) {
+    return {
+      outcome: "partial",
+      detail: "/heartbeat.md is Markdown but missing YAML frontmatter (---)",
+    };
+  }
+
+  const lowerBody = body.toLowerCase();
+  const hasKeyword = lowerBody.includes("heartbeat") || lowerBody.includes("check-in") || lowerBody.includes("checkin");
+  if (!hasKeyword) {
+    return {
+      outcome: "partial",
+      detail: "/heartbeat.md has frontmatter but missing 'heartbeat' or 'check-in' keyword",
+    };
+  }
+
+  return {
+    outcome: "found",
+    detail: "/heartbeat.md is valid Markdown with YAML frontmatter and heartbeat content",
+  };
+};
+
 export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   openapi_operation_descriptions: checkerOpenapiOperationDescriptions,
   openapi_parameter_semantics: checkerOpenapiParameterSemantics,
@@ -1158,4 +1200,5 @@ export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   business_constraints_documented: checkerBusinessConstraintsDocumented,
   support_path_declared: checkerSupportPathDeclared,
   ai_agent_discovery_meta: checkerAiAgentDiscoveryMeta,
+  heartbeat_md: checkerHeartbeatMd,
 };

@@ -20,6 +20,7 @@ import { fetchLlmsFull } from "./fetchers/llms-full-fetcher";
 import { fetchRssFeed } from "./fetchers/rss-feed-fetcher";
 import { fetchMcpProbe } from "./fetchers/mcp-probe-fetcher";
 import { fetchHomepageMeta } from "./fetchers/homepage-meta-fetcher";
+import { fetchHeartbeat } from "./fetchers/heartbeat-fetcher";
 import { fetchInfrastructure } from "./fetchers/infrastructure-fetcher";
 import { fetchA2A } from "./fetchers/a2a-fetcher";
 import { fetchIdentity } from "./fetchers/identity-fetcher";
@@ -112,6 +113,7 @@ export const DEFAULT_RESOURCES = [
   "operational_discovery",
   "aauth",
   "credential_security",
+  "heartbeat",
 ] as const;
 
 export async function scanDomain(
@@ -150,11 +152,11 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth", "heartbeat"].includes(r),
   );
   const sequentialResources = resources.filter(
     (r) =>
-      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth"].includes(r),
+      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth", "heartbeat"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -352,6 +354,14 @@ async function fetchResource(
         url: `${baseUrl}/mcp`, status: 200, body: JSON.stringify(r),
         resolvedIp: null, fetchTimeMs: 0,
       });
+      break;
+    }
+    case "heartbeat": {
+      const r = await fetchHeartbeat(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
       break;
     }
     case "homepage_meta": {

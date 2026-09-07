@@ -132,6 +132,7 @@ import { AB159 } from "./rules/AB159";
 import { AB160 } from "./rules/AB160";
 // Pact0 pattern rules (EPIC-125)
 import { AB161 } from "./rules/AB161";
+import { AB162 } from "./rules/AB162";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
@@ -291,6 +292,7 @@ export const AGENT_READINESS_RULESET = {
     AB160,
     // Pact0 pattern rules (EPIC-125)
     AB161,
+    AB162,
   ] as AgentReadinessRule[],
 } as const;
 
