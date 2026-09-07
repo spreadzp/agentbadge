@@ -142,6 +142,7 @@ class RuleEngineClass {
       "agent-card": "a2a",
       "homepage": "homepage_meta",
       "heartbeat": "heartbeat",
+      "skill_json": "skill_json",
       "favicon": "favicon",
       "favicon.svg": "favicon",
       "og-image": "content_negotiation",

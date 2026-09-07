@@ -1891,4 +1891,17 @@ export const RULE_DESCRIPTIONS: RuleDescription[] = [
     estimated_cost: "$0",
     severity: "low",
   },
+  {
+    rule_id: "AB-163",
+    category: "machine_readable",
+    icon: "📋",
+    title: "Skill.json (JSON-LD) availability",
+    short_description: "Your site serves /skill.json as JSON-LD with @context, @type, name, and url/endpoints for machine-readable agent onboarding.",
+    user_value: "AI agents can discover and understand your onboarding contract in a standardized JSON-LD format, enabling automated capability discovery.",
+    wrong_example: "GET /skill.json → 404",
+    right_example: '{"@context":"https://schema.org","@type":"SoftwareApplication","name":"MyAgent","url":"https://example.com/docs"}',
+    effort_hint: "moderate",
+    estimated_cost: "$0",
+    severity: "low",
+  },
 ];
