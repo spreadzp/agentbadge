@@ -5,6 +5,7 @@ import { resolver } from "hono-openapi";
 import { getErrorCatalog } from "../lib/error-catalog";
 import { getFeeCatalog } from "../lib/fee-catalog";
 import { getTrustTiers } from "../lib/trust-tiers";
+import { getDeploymentDescriptor } from "../lib/deployment-descriptor";
 
 export const metaRoutes = new Hono();
 
@@ -133,6 +134,48 @@ metaRoutes.get(
   }),
   (c) => {
     return c.json(getTrustTiers(), 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  },
+);
+
+metaRoutes.get(
+  "/.well-known/agentbadge.json",
+  describeRoute({
+    tags: ["Meta"],
+    summary: "Deployment descriptor — network config, token IDs, API version",
+    description:
+      "Returns a machine-readable deployment descriptor with Hedera network configuration, passport token ID, directory/audit topic IDs, API version, payment protocol, and links to fee/error/trust-tier catalogs.",
+    responses: {
+      200: {
+        description: "Deployment descriptor JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                schema_version: z.string(),
+                deployment_id: z.string(),
+                network: z.string(),
+                passport_token_id: z.string(),
+                directory_topic_id: z.string(),
+                audit_topic_id: z.string(),
+                api_version: z.string(),
+                payment_protocol: z.string(),
+                facilitator: z.string(),
+                fee_catalog_url: z.string(),
+                error_catalog_url: z.string(),
+                trust_tiers_url: z.string(),
+                generated_at: z.string(),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    return c.json(getDeploymentDescriptor(), 200, {
+      "Content-Type": "application/json",
       "Cache-Control": "public, max-age=3600",
     });
   },

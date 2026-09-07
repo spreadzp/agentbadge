@@ -125,6 +125,7 @@ We offer consulting and development services for the agentic web:
 - /auth.md — Agent authentication and registration instructions
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
+- /.well-known/agentbadge.json — Deployment descriptor (network, token IDs, API version, payment protocol)
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
 - /api/meta/fees — Machine-readable fee/pricing catalog for all AgentBadge services
 - /api/meta/trust-tiers — Identity/trust ladder (6 tiers) with capabilities and requirements
