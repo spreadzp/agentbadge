@@ -57,6 +57,20 @@ describe("SLICE-19-2: Routing — landing.ts + /dashboard", () => {
       expect(html).toContain("<noscript>");
       expect(html).toContain("/dashboard");
     });
+
+    it("SLICE-110-8: contains id=agent-readiness-landing (not agency-hub)", async () => {
+      const res = await app.request("/");
+      const html = await res.text();
+      expect(html).toContain('id="agent-readiness-landing"');
+      expect(html).not.toContain('id="agency-hub"');
+    });
+
+    it("SLICE-110-8: contains new hero H1 text", async () => {
+      const res = await app.request("/");
+      const html = await res.text();
+      expect(html).toContain("Can AI Agents Actually");
+      expect(html).toContain("Use Your API?");
+    });
   });
 
   // ─── GET /dashboard → Dashboard page ─────────────────────
