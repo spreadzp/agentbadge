@@ -3,7 +3,7 @@ import { describeRoute } from "hono-openapi";
 import { getRegistry } from "../registry/loader";
 import { ServicesPage } from "../../views/services-page";
 import { WorkWithUsPage } from "../../views/work-with-us-page";
-import { articleLd, defaultCoreSchemas, breadcrumbFor } from "../lib/json-ld";
+import { defaultCoreSchemas, breadcrumbFor, collectionPageLd, webPageLd } from "../lib/json-ld";
 
 export const teamPageRoutes = new Hono();
 
@@ -35,15 +35,11 @@ teamPageRoutes.get(
       const registry = await getRegistry();
       const schemas = [
         ...defaultCoreSchemas(),
-        articleLd({
-          title: "AgentBadge Services Catalog",
+        collectionPageLd({
+          name: "AgentBadge Services Catalog",
           description:
             "Engineering services: MCP server development, blockchain integration, AI agent architecture, GEO optimization.",
           path: "/services",
-          sections: registry.services.map((s) => ({
-            title: s.name,
-            body: `${s.problem} Deliverables: ${s.deliverables.join(", ")}.`,
-          })),
         }),
         breadcrumbFor("/services", "Services"),
       ];
@@ -72,17 +68,11 @@ teamPageRoutes.get(
       const registry = await getRegistry();
       const schemas = [
         ...defaultCoreSchemas(),
-        articleLd({
+        webPageLd({
           title: "Work With the AgentBadge Team",
           description:
             "Engagement types: contract, part-time, fixed-scope. Process, availability, and contact channels.",
           path: "/work-with-us",
-          sections: [
-            {
-              title: "Engagement",
-              body: "Contract, part-time, fixed-scope. Weekly demos for contract, milestone-based for fixed-scope.",
-            },
-          ],
         }),
         breadcrumbFor("/work-with-us", "Work With Us"),
       ];
