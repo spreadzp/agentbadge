@@ -314,6 +314,57 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     answer:
       "AgentBadge FAQ entries are designed with concise answers (2-4 sentences) that can be directly cited by AI agents and voice assistants. Each answer leads with the key concept, includes the AgentBadge brand name, and links to deeper content. This short-answer format ensures agents get complete information in a single fetch — no need to parse long articles for a quick answer. It's the FAQ equivalent of a featured snippet.",
   },
+  // ── SLICE-105-3: Blog article Q&A (grounded in published articles) ──
+  {
+    question: "Why does AgentBadge say 'don't certify — measure'?",
+    answer:
+      "Certification gives a binary pass/fail label that becomes stale. Measurement gives a reproducible score based on observed evidence. AgentBadge follows the measurement philosophy: every check produces a status (VERIFIED, INFERRED, CONFLICT, MISSING) backed by captured evidence, so you always know what was actually tested. This is why AgentBadge scans are reproducible — same URL, same ruleset, same result. <a href=\"/blog/how-do-you-measure-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: How Do You Measure Agent Readiness? →</a>",
+  },
+  {
+    question: "What does AgentBadge's scanner actually do when it scans my API?",
+    answer:
+      "AgentBadge's scanner fetches your robots.txt, llms.txt, OpenAPI spec, well-known endpoints, and authentication flows — then runs 70+ checks across 17 categories. Each check produces evidence (HTTP responses, parsed schemas, discovered URLs) and a status. The scanner also performs active probing: sending real requests to verify your endpoints work as documented. The full report includes a score, grade, gap analysis, and fix recommendations. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
+  },
+  {
+    question: "What problems does AgentBadge solve that OpenAPI alone doesn't?",
+    answer:
+      "OpenAPI covers 2-3 of the 8 context layers an AI agent needs: capabilities and inputs. AgentBadge covers all 8: discovery, capabilities, inputs, authentication, semantics, output, errors, and safety. OpenAPI tells agents what endpoints exist — AgentBadge checks whether agents can actually discover, authenticate, call, and trust those endpoints. The scanner also verifies that your OpenAPI spec matches your actual API behavior, catching drift between declared and observed. <a href=\"/blog/why-openapi-isnt-enough\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Why Your OpenAPI Spec Isn't Enough →</a>",
+  },
+  {
+    question: "How does MCP complement REST APIs for AI agents?",
+    answer:
+      "REST APIs require agents to read documentation, understand HTTP semantics, and construct requests manually. MCP (Model Context Protocol) provides a structured tool interface — agents call named tools with typed parameters and get structured responses. AgentBadge checks for both: REST endpoints via OpenAPI and MCP tools via server descriptors. The future is hybrid: REST for human developers, MCP for AI agents, with OpenAPI bridging both. <a href=\"/blog/mcp-vs-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: MCP vs API →</a>",
+  },
+  {
+    question: "How do x402 payments work with AI agents on {{CHAIN_NAME}}?",
+    answer:
+      "x402 uses HTTP 402 (Payment Required) to let AI agents pay for API calls autonomously. When an agent requests a paid resource, the server responds with 402 and payment requirements. The agent pays in {{CHAIN_NAME}} and retries with payment proof. AgentBadge uses x402 for passport issuance fees, and the scanner checks whether your API supports x402 for agent-to-service payments. This enables autonomous commerce: agents can discover, pay for, and use APIs without human intervention. <a href=\"/blog/x402-payments\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: x402 Payments →</a>",
+  },
+  {
+    question: "What is the SEO → GEO → Agent Readiness progression?",
+    answer:
+      "SEO optimizes websites for search engine crawlers (Google). GEO optimizes content for generative AI responses (ChatGPT, Perplexity). Agent Readiness optimizes APIs for autonomous AI agents. Each layer targets a different consumer but shares principles: structured data, discoverability, and machine-readability. AgentBadge is the first platform to measure all three layers, with a focus on the third — Agent Readiness — which is the newest and least understood. <a href=\"/blog/from-seo-to-geo-to-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: From SEO to GEO to Agent Readiness →</a>",
+  },
+  {
+    question: "How does API discovery work for AI agents in the agentic web?",
+    answer:
+      "AI agents discover APIs through machine-readable layers: llms.txt for capability summaries, agents.txt for auth and contact info, MCP server descriptors for tool-level discovery, and /.well-known/ endpoints for configuration. Traditional SEO (HTML meta tags, sitemaps) helps but isn't sufficient — agents need structured, parseable discovery layers. AgentBadge checks all these layers and reports which ones your API provides. <a href=\"/blog/web-becoming-agentic-api-discovery\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: The Web Is Becoming Agentic →</a>",
+  },
+  {
+    question: "Does my API need SEO if it has Agent Readiness?",
+    answer:
+      "Yes — SEO and Agent Readiness serve different consumers. SEO serves search engines and human users who find your API via Google. Agent Readiness serves AI agents that discover and call your API programmatically. A good SEO score means humans can find you; a good Agent Readiness score means agents can use you. AgentBadge measures both, because the agentic web requires both layers — human discovery (SEO) and agent execution (Agent Readiness). <a href=\"/blog/api-has-seo-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Your API Has SEO. Does It Have Agent Readiness? →</a>",
+  },
+  {
+    question: "What are the 8 layers of context an AI agent needs?",
+    answer:
+      "AgentBadge identifies 8 context layers: discovery (can agents find you?), capabilities (what can your API do?), inputs (what parameters are needed?), authentication (how does an agent log in?), semantics (what do responses mean?), output (what format are responses in?), errors (how are failures communicated?), and safety (are there rate limits and guardrails?). OpenAPI covers 2-3 layers; the rest need llms.txt, MCP, examples, and structured metadata. <a href=\"/blog/what-ai-agent-needs-to-understand-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: What Does an AI Agent Need to Understand an API? →</a>",
+  },
+  {
+    question: "What makes AgentBadge's scanner different from other API scanners?",
+    answer:
+      "AgentBadge's scanner is evidence-based, reproducible, and agent-focused. Unlike LLM-based analyzers that give subjective opinions, AgentBadge runs deterministic checks with captured evidence — every VERIFIED status has HTTP responses or parsed schemas behind it. The scanner is also reproducible: same URL + same ruleset version = same result. And it checks for agent-specific features (llms.txt, MCP, x402, agents.txt) that traditional API scanners ignore. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
+  },
 ];
 
 export const FAQ_PER_PAGE = 8;

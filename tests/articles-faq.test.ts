@@ -239,4 +239,57 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
       expect(entries.length).toBeGreaterThanOrEqual(60);
     });
   });
+
+  describe("SLICE-105-3: Blog article Q&A", () => {
+    const BLOG_QUESTIONS = [
+      "Why does AgentBadge say 'don't certify — measure'?",
+      "What does AgentBadge's scanner actually do when it scans my API?",
+      "What problems does AgentBadge solve that OpenAPI alone doesn't?",
+      "How does MCP complement REST APIs for AI agents?",
+      "How do x402 payments work with AI agents on {{CHAIN_NAME}}?",
+      "What is the SEO → GEO → Agent Readiness progression?",
+      "How does API discovery work for AI agents in the agentic web?",
+      "Does my API need SEO if it has Agent Readiness?",
+      "What are the 8 layers of context an AI agent needs?",
+      "What makes AgentBadge's scanner different from other API scanners?",
+    ];
+
+    it("has all 10 blog article Q&A pairs", () => {
+      const entries = getFaqEntries();
+      for (const q of BLOG_QUESTIONS) {
+        const found = entries.find((e) => e.question === q);
+        expect(found, `Missing question: ${q}`).toBeDefined();
+      }
+    });
+
+    it("every blog Q&A answer mentions AgentBadge brand name", () => {
+      const entries = getFaqEntries();
+      for (const q of BLOG_QUESTIONS) {
+        const found = entries.find((e) => e.question === q);
+        expect(found).toBeDefined();
+        expect(found!.answer).toContain("AgentBadge");
+      }
+    });
+
+    it("every blog Q&A answer includes an inline /blog/ link", () => {
+      const entries = getFaqEntries();
+      for (const q of BLOG_QUESTIONS) {
+        const found = entries.find((e) => e.question === q);
+        expect(found).toBeDefined();
+        expect(found!.answer).toContain("/blog/");
+      }
+    });
+
+    it("no duplicate questions after blog article additions", () => {
+      const entries = getFaqEntries();
+      const allQuestions = entries.map((e) => e.question);
+      const unique = new Set(allQuestions);
+      expect(unique.size).toBe(allQuestions.length);
+    });
+
+    it("total FAQ entries is at least 70", () => {
+      const entries = getFaqEntries();
+      expect(entries.length).toBeGreaterThanOrEqual(70);
+    });
+  });
 });
