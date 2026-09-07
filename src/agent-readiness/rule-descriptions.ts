@@ -1904,4 +1904,17 @@ export const RULE_DESCRIPTIONS: RuleDescription[] = [
     estimated_cost: "$0",
     severity: "low",
   },
+  {
+    rule_id: "AB-164",
+    category: "machine_readable",
+    icon: "❗",
+    title: "Error catalog endpoint",
+    short_description: "Your site serves a JSON error catalog at /api/meta/errors or /errors.json with error codes and descriptions.",
+    user_value: "AI agents can programmatically look up error codes and meanings, enabling intelligent retry and error-handling decisions.",
+    wrong_example: "GET /api/meta/errors → 404",
+    right_example: '[{"code":"RATE_LIMITED","description":"Too many requests"},{"code":"INVALID_INPUT","description":"Validation failed"}]',
+    effort_hint: "moderate",
+    estimated_cost: "$0",
+    severity: "low",
+  },
 ];

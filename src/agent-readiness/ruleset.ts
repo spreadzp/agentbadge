@@ -134,6 +134,7 @@ import { AB160 } from "./rules/AB160";
 import { AB161 } from "./rules/AB161";
 import { AB162 } from "./rules/AB162";
 import { AB163 } from "./rules/AB163";
+import { AB164 } from "./rules/AB164";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
@@ -295,6 +296,7 @@ export const AGENT_READINESS_RULESET = {
     AB161,
     AB162,
     AB163,
+    AB164,
   ] as AgentReadinessRule[],
 } as const;
 

@@ -143,6 +143,7 @@ class RuleEngineClass {
       "homepage": "homepage_meta",
       "heartbeat": "heartbeat",
       "skill_json": "skill_json",
+      "error_catalog": "error_catalog",
       "favicon": "favicon",
       "favicon.svg": "favicon",
       "og-image": "content_negotiation",
