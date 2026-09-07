@@ -9,7 +9,7 @@ import { PrivacyPage } from "../../views/privacy-page";
 import { Layout } from "../../views/layout";
 import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
-import { faqPageLd, articleLd, defaultCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
+import { faqPageLd, articleLd, defaultCoreSchemas, pageCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
 import { getRegistry } from "../registry/loader";
 import type { RegistryIndex } from "../registry/types";
@@ -131,7 +131,7 @@ contentPageRoutes.get(
     description: "Legal terms governing the use of AgentBadge. MIT-licensed, no warranty, testnet service.",
     responses: { 200: { description: "HTML terms page" } },
   }),
-  (c) => c.html(TermsPage([...defaultCoreSchemas(), breadcrumbFor("/terms", "Terms")])),
+  (c) => c.html(TermsPage([...pageCoreSchemas(), webPageLd({ title: "Terms of Service", description: "Legal terms governing the use of AgentBadge. MIT-licensed, no warranty, testnet service.", path: "/terms" }), breadcrumbFor("/terms", "Terms")])),
 );
 
 contentPageRoutes.get(
@@ -142,7 +142,7 @@ contentPageRoutes.get(
     description: "Privacy disclosure for AgentBadge: on-chain data is public, no cookies, no third-party analytics, LLM crawler permissions specified.",
     responses: { 200: { description: "HTML privacy page" } },
   }),
-  (c) => c.html(PrivacyPage([...defaultCoreSchemas(), breadcrumbFor("/privacy", "Privacy")])),
+  (c) => c.html(PrivacyPage([...pageCoreSchemas(), webPageLd({ title: "Privacy Policy", description: "Privacy disclosure for AgentBadge: on-chain data is public, no cookies, no third-party analytics, LLM crawler permissions specified.", path: "/privacy" }), breadcrumbFor("/privacy", "Privacy")])),
 );
 
 contentPageRoutes.get(
