@@ -1,13 +1,15 @@
 /**
- * RSS feed route — SLICE-47-12, rebuilt SLICE-81-3
+ * RSS feed route — SLICE-47-12, rebuilt SLICE-81-3, SLICE-123-1
  *
  * Serves RSS 2.0 XML feed generated from real BLOG_ARTICLES data.
+ * Also serves /agents.json (JSON Feed 1.1) and /agents.rss (RSS 2.0) for agent directory.
  * Deterministic: no request-time timestamps, dates from blog-data.
  */
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { BASE_URL, SITE_NAME } from "../lib/page-meta";
 import { BLOG_ARTICLES } from "../lib/blog-data";
+import { getAll, type DirectoryEntry } from "@agentbadge/passport";
 
 export const feedRoutes = new Hono();
 
@@ -45,7 +47,7 @@ feedRoutes.get(
       },
     },
   }),
-  (c) => {
+  (_c) => {
     const sorted = [...BLOG_ARTICLES].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
@@ -71,6 +73,109 @@ ${itemsXml}
         "Content-Type": "application/rss+xml; charset=utf-8",
         "Content-Length": new TextEncoder().encode(xml).length.toString(),
         "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);
+
+// ─── /agents.json (JSON Feed 1.1) — SLICE-123-1 ────────────────
+
+feedRoutes.get(
+  "/agents.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Agent directory JSON Feed 1.1",
+    description:
+      "Returns a JSON Feed 1.1 of registered agents on AgentBadge. Allows AI-agents to subscribe to directory updates.",
+    responses: {
+      200: {
+        description: "JSON Feed 1.1",
+        content: { "application/json": {} },
+      },
+    },
+  }),
+  () => {
+    const entries = getAll();
+    const feed = {
+      version: "https://jsonfeed.org/version/1.1",
+      title: "AgentBadge — Registered Agents",
+      description:
+        "Directory of AI agents registered on AgentBadge with on-chain passports on Hedera.",
+      home_page_url: BASE_URL,
+      feed_url: `${BASE_URL}/agents.json`,
+      items: entries.map((a: DirectoryEntry) => ({
+        id: a.did,
+        url: `${BASE_URL}/agents/${encodeURIComponent(a.did)}`,
+        title: a.name,
+        content_text: [
+          `Agent: ${a.name}`,
+          `DID: ${a.did}`,
+          `Capabilities: ${a.capabilities.join(", ")}`,
+          `Tier: ${a.tier}`,
+          `Endpoint: ${a.endpoint}`,
+        ].join("\n"),
+        date_published: new Date(a.timestamp * 1000).toISOString(),
+        tags: a.capabilities,
+        ...(a.skills ? { _skills: a.skills } : {}),
+      })),
+    };
+    return new Response(JSON.stringify(feed, null, 2), {
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
+  },
+);
+
+// ─── /agents.rss (RSS 2.0) — SLICE-123-1 ───────────────────────
+
+feedRoutes.get(
+  "/agents.rss",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Agent directory RSS 2.0 feed",
+    description:
+      "Returns an RSS 2.0 XML feed of registered agents on AgentBadge. Allows agents and tools to subscribe to directory updates.",
+    responses: {
+      200: {
+        description: "RSS 2.0 XML feed",
+        content: { "application/rss+xml": {} },
+      },
+    },
+  }),
+  () => {
+    const entries = getAll();
+    const itemsXml = entries
+      .map((a: DirectoryEntry) => {
+        const link = `${BASE_URL}/agents/${encodeURIComponent(a.did)}`;
+        const pubDate = new Date(a.timestamp * 1000).toUTCString();
+        const desc = `DID: ${a.did}, Capabilities: ${a.capabilities.join(", ")}, Tier: ${a.tier}`;
+        return `    <item>
+      <title>${escapeXml(a.name)}</title>
+      <link>${link}</link>
+      <description>${escapeXml(desc)}</description>
+      <guid>${a.did}</guid>
+      <pubDate>${pubDate}</pubDate>
+    </item>`;
+      })
+      .join("\n");
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>AgentBadge — Registered Agents</title>
+    <link>${BASE_URL}</link>
+    <description>Directory of AI agents registered on AgentBadge with on-chain passports on Hedera.</description>
+    <language>en</language>
+${itemsXml}
+  </channel>
+</rss>`;
+
+    return new Response(xml, {
+      headers: {
+        "Content-Type": "application/rss+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=60",
       },
     });
   },
