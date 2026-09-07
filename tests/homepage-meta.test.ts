@@ -6,6 +6,7 @@ import { PageMeta } from "../src/server/lib/page-meta";
 import { landingJsonLd } from "../src/server/lib/json-ld";
 import { ReadinessHeroSection } from "../src/views/landing/sections/readiness-hero";
 import { ReadinessImmediateProofSection } from "../src/views/landing/sections/readiness-immediate-proof";
+import { ReadinessConceptualFlowSection } from "../src/views/landing/sections/readiness-conceptual-flow";
 import { RULE_DESCRIPTIONS } from "../src/agent-readiness/rule-descriptions";
 
 describe("Homepage meta fixes", () => {
@@ -94,6 +95,39 @@ describe("SLICE-110-3: Immediate proof section", () => {
   it("contains 'WebMCP' text", () => {
     const html = ReadinessImmediateProofSection().toString();
     expect(html).toContain("WebMCP");
+  });
+});
+
+describe("SLICE-110-4: Conceptual flow section", () => {
+  it("renders all 4 steps: Discover, Understand, Access, Act", () => {
+    const html = ReadinessConceptualFlowSection().toString();
+    expect(html).toContain("Discover");
+    expect(html).toContain("Understand");
+    expect(html).toContain("Access");
+    expect(html).toContain("Act");
+  });
+
+  it("each step has icon and description", () => {
+    const html = ReadinessConceptualFlowSection().toString();
+    expect(html).toContain("🔍");
+    expect(html).toContain("📖");
+    expect(html).toContain("🔑");
+    expect(html).toContain("⚡");
+    expect(html).toContain("llms.txt");
+    expect(html).toContain("OpenAPI");
+    expect(html).toContain("x402");
+    expect(html).toContain("idempotency");
+  });
+
+  it("flow order is Discover → Understand → Access → Act", () => {
+    const html = ReadinessConceptualFlowSection().toString();
+    const discoverIdx = html.indexOf("Discover");
+    const understandIdx = html.indexOf("Understand");
+    const accessIdx = html.indexOf("Access");
+    const actIdx = html.indexOf("Act");
+    expect(discoverIdx).toBeLessThan(understandIdx);
+    expect(understandIdx).toBeLessThan(accessIdx);
+    expect(accessIdx).toBeLessThan(actIdx);
   });
 });
 

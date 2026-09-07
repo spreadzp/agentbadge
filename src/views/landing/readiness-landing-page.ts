@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { ReadinessHeroSection } from "./sections/readiness-hero";
 import { ReadinessImmediateProofSection } from "./sections/readiness-immediate-proof";
+import { ReadinessConceptualFlowSection } from "./sections/readiness-conceptual-flow";
 import { ReadinessHowSection } from "./sections/readiness-how";
 import { ReadinessEvidenceSection } from "./sections/readiness-evidence";
 import { ReadinessFixSection } from "./sections/readiness-fix";
@@ -30,6 +31,7 @@ export function ReadinessLandingPage() {
   const sections = [
     ReadinessHeroSection().toString(),
     ReadinessImmediateProofSection().toString(),
+    ReadinessConceptualFlowSection().toString(),
     ReadinessHowSection().toString(),
     ReadinessEvidenceSection().toString(),
     ReadinessFixSection().toString(),
