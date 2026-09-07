@@ -1930,4 +1930,17 @@ export const RULE_DESCRIPTIONS: RuleDescription[] = [
     estimated_cost: "$0",
     severity: "low",
   },
+  {
+    rule_id: "AB-166",
+    category: "actionability",
+    icon: "➡️",
+    title: "next_call pattern in API responses",
+    short_description: "Your OpenAPI spec includes a next_call field in response schemas with method, path, and why to guide agents to the next request.",
+    user_value: "AI agents can follow a chain of API calls autonomously without hardcoding navigation logic, improving actionability and reducing integration friction.",
+    wrong_example: '{"data": {"id": 123}}',
+    right_example: '{"data": {"id": 123}, "next_call": {"method": "GET", "path": "/api/v1/items/123", "why": "Fetch item details"}}',
+    effort_hint: "moderate",
+    estimated_cost: "$0",
+    severity: "low",
+  },
 ];
