@@ -3,7 +3,7 @@ import { LandingLayout } from "../../views/landing/layout";
 import { DataHubLandingPage } from "../../views/landing/datahub-landing-page";
 import { WebMcpHackathonPage } from "../../views/landing/webmcp-hackathon-page";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
-import { landingJsonLd } from "../lib/json-ld";
+import { pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../lib/json-ld";
 
 /**
  * Hackathon routes.
@@ -42,7 +42,18 @@ hackathonRoutes.get("/hackathon/:name", async (c) => {
     content = '<main><section class="hero"><h1>Hackathon</h1><p>Page not found.</p></section></main>';
   }
 
-  const response = await c.html(LandingLayout(content, undefined, meta, landingJsonLd()));
+  const jsonLd = [
+    ...pageCoreSchemas(),
+    softwareApplicationLd(),
+    webPageLd({
+      title: meta.title,
+      description: meta.description,
+      path: `/hackathon/${name}`,
+    }),
+    breadcrumbFor(`/hackathon/${name}`, name.charAt(0).toUpperCase() + name.slice(1)),
+  ];
+
+  const response = await c.html(LandingLayout(content, undefined, meta, jsonLd));
   if (name === "webmcp") {
     response.headers.set(
       "Link",

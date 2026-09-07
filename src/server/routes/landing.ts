@@ -3,7 +3,7 @@ import { LandingLayout } from "../../views/landing/layout";
 import { LandingPage } from "../../views/landing/landing-page";
 import { AgencyHubPage } from "../../views/landing/agency-hub-page";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
-import { landingJsonLd } from "../lib/json-ld";
+import { landingJsonLd, pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentbadge/hedera-core";
 import { listTasks as marketListTasks } from "@agentbadge/passport";
 
@@ -53,7 +53,16 @@ landingRoutes.get("/", async (c) => {
  */
 landingRoutes.get("/passport", async (c) => {
   const meta = PageMetaRegistry["/passport"];
-  const jsonLd = landingJsonLd();
+  const jsonLd = [
+    ...pageCoreSchemas(),
+    softwareApplicationLd(),
+    webPageLd({
+      title: meta.title,
+      description: meta.description,
+      path: "/passport",
+    }),
+    breadcrumbFor("/passport", "Passport"),
+  ];
 
   // Fetch SSR stats data for LiveStatsSection
   const tokenId = process.env.PASSPORT_TOKEN_ID;
