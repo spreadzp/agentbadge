@@ -1,5 +1,6 @@
 import { html, raw } from "hono/html";
 import type { AgencyService } from "../server/lib/agency-config";
+import { RelatedLinks } from "./related-links";
 
 /**
  * ServicePageView — reusable landing page template for agency services.
@@ -15,6 +16,34 @@ const expandAbbr = (text: string) =>
     .replace(/\bHTS\b/g, '<abbr title="Hedera Token Service">HTS</abbr>')
     .replace(/\bAEO\b/g, '<abbr title="Answer Engine Optimization">AEO</abbr>')
     .replace(/\bGEO\b/g, '<abbr title="Generative Engine Optimization">GEO</abbr>');
+
+function getServiceCrossLinks(serviceId: string) {
+  const serviceLinks: Record<string, { label: string; href: string; description?: string }[]> = {
+    scanner: [
+      { label: "Passports", href: "/services/passports", description: "On-chain agent identity" },
+      { label: "Marketplace", href: "/services/marketplace", description: "Task marketplace for agents" },
+      { label: "FAQ", href: "/faq", description: "Common questions about our services" },
+      { label: "Pricing", href: "/pricing", description: "Passport tiers and service costs" },
+    ],
+    passports: [
+      { label: "Scanner", href: "/services/scanner", description: "Agent readiness scanning" },
+      { label: "Marketplace", href: "/services/marketplace", description: "Task marketplace for agents" },
+      { label: "FAQ", href: "/faq", description: "Common questions about our services" },
+      { label: "Pricing", href: "/pricing", description: "Passport tiers and service costs" },
+    ],
+    marketplace: [
+      { label: "Scanner", href: "/services/scanner", description: "Agent readiness scanning" },
+      { label: "Passports", href: "/services/passports", description: "On-chain agent identity" },
+      { label: "FAQ", href: "/faq", description: "Common questions about our services" },
+      { label: "Pricing", href: "/pricing", description: "Passport tiers and service costs" },
+    ],
+  };
+  return serviceLinks[serviceId] ?? [
+    { label: "Scanner", href: "/services/scanner", description: "Agent readiness scanning" },
+    { label: "FAQ", href: "/faq", description: "Common questions" },
+    { label: "Pricing", href: "/pricing", description: "Service costs" },
+  ];
+}
 
 export function ServicePageView(service: AgencyService, otherServices: AgencyService[]) {
   const featuresList = service.features
@@ -71,6 +100,7 @@ export function ServicePageView(service: AgencyService, otherServices: AgencySer
         </div>
       </div>
     </section>`)}
+    ${raw(RelatedLinks("Explore More", getServiceCrossLinks(service.id)))}
   </div>`;
 }
 
@@ -591,8 +621,127 @@ function ServiceHero(service: AgencyService) {
                 html += assertionHtml;
               }
 
+              // Runtime section (SLICE-98-8)
+              var runtimeHtml = renderRuntimeSection(report);
+              if (runtimeHtml) {
+                html += runtimeHtml;
+              }
+
               html += '</div>';
               container.innerHTML = html;
+            }
+
+            function renderRuntimeSection(report) {
+              if (!report.runtime) {
+                // Empty state — runtime not run
+                return '<div class="rounded-lg border border-slate-700 overflow-hidden">' +
+                  '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">Runtime Test</div>' +
+                  '<div class="px-4 py-6 text-center">' +
+                  '<div class="text-slate-500 text-sm">Runtime test not run — opt in from CLI or MCP</div>' +
+                  '<div class="text-slate-600 text-xs mt-1">agentbadge runtime &lt;url&gt; — see --help for flags</div>' +
+                  '</div></div>';
+              }
+
+              var rt = report.runtime;
+              var asr = rt.asr;
+              var pct = (asr.asr * 100).toFixed(1);
+              var html = '<div class="rounded-lg border border-slate-700 overflow-hidden">';
+
+              // ASR headline
+              html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300">Runtime Test — Agent Success Rate</div>';
+              html += '<div class="px-4 py-4">';
+              html += '<div class="flex items-center gap-4">';
+              html += '<div class="text-4xl font-bold text-emerald-400">' + pct + '%</div>';
+              html += '<div>';
+              html += '<div class="text-sm text-slate-300">' + asr.successful + '/' + asr.total + ' tasks successful</div>';
+              html += '<div class="text-xs text-slate-500">Partial: ' + asr.partial + ' · Failed: ' + asr.failed + '</div>';
+              html += '</div></div>';
+
+              // Per-category mini-bars
+              html += '<div class="mt-4 space-y-1.5">';
+              var cats = asr.per_category || {};
+              for (var cat in cats) {
+                if (!cats.hasOwnProperty(cat)) continue;
+                var c = cats[cat];
+                var cPct = (c.asr * 100).toFixed(0);
+                html += '<div class="flex items-center gap-2">';
+                html += '<span class="text-xs text-slate-400 w-20 capitalize">' + cat + '</span>';
+                html += '<div class="flex-1 h-1.5 rounded-full bg-slate-700 overflow-hidden">';
+                html += '<div class="h-1.5 rounded-full ' + barColorClass(cPct) + '" style="width:' + cPct + '%"></div>';
+                html += '</div>';
+                html += '<span class="text-xs text-slate-500 w-8">' + c.successful + '/' + c.total + '</span>';
+                html += '</div>';
+              }
+              html += '</div>';
+              html += '</div>';
+
+              // Task table — sorted failed→partial→success
+              var order = { failed: 0, partial: 1, success: 2 };
+              var sorted = (rt.traces || []).slice().sort(function(a, b) {
+                return (order[a.outcome] || 3) - (order[b.outcome] || 3);
+              });
+
+              html += '<div class="divide-y divide-slate-800">';
+              for (var i = 0; i < sorted.length; i++) {
+                var trace = sorted[i];
+                var chipColor = trace.outcome === 'success' ? 'bg-emerald-900/40 text-emerald-400' :
+                  trace.outcome === 'partial' ? 'bg-amber-900/40 text-amber-400' :
+                  'bg-rose-900/40 text-rose-400';
+                var okSteps = trace.steps.filter(function(s) { return s.outcome === 'ok'; }).length;
+
+                html += '<div class="px-4 py-3">';
+                html += '<div class="flex items-center justify-between">';
+                html += '<div class="flex items-center gap-2">';
+                html += '<span class="text-sm font-mono text-slate-300">' + trace.task_id + '</span>';
+                html += '<span class="text-xs rounded px-1.5 py-0.5 ' + chipColor + '">' + trace.outcome + '</span>';
+                html += '</div>';
+                html += '<div class="text-xs text-slate-500">' + okSteps + '/' + trace.steps.length + ' steps · ' + trace.stop_reason + '</div>';
+                html += '</div>';
+
+                // Expandable trace viewer
+                html += '<details class="mt-2">';
+                html += '<summary class="text-xs text-slate-500 cursor-pointer hover:text-slate-300">View trace</summary>';
+                html += '<div class="mt-2 space-y-1">';
+                for (var j = 0; j < trace.steps.length; j++) {
+                  var step = trace.steps[j];
+                  var stepHighlight = (step.outcome === 'stopped' || step.outcome === 'error') ?
+                    'border-l-2 border-rose-500 pl-2 bg-rose-900/10' : 'border-l-2 border-slate-700 pl-2';
+                  html += '<div class="' + stepHighlight + ' py-1">';
+                  html += '<div class="flex items-center gap-2">';
+                  html += '<span class="text-xs text-slate-600 font-mono">' + step.seq + '</span>';
+                  html += '<span class="text-xs text-slate-400">' + step.phase + '</span>';
+                  html += '<span class="text-xs text-slate-300">' + step.action + '</span>';
+                  html += '<span class="text-xs text-slate-500">' + step.outcome + '</span>';
+                  html += '</div>';
+                  if (step.notes) {
+                    html += '<div class="text-xs text-rose-400 ml-6">' + step.notes + '</div>';
+                  }
+                  html += '</div>';
+                }
+                html += '</div></details>';
+                html += '</div>';
+              }
+              html += '</div>';
+
+              // Conflict cards
+              if (rt.conflicts && rt.conflicts.length > 0) {
+                html += '<div class="bg-slate-800 px-4 py-2 text-sm font-semibold text-amber-400">Declared vs Observed — CONFLICTs</div>';
+                html += '<div class="divide-y divide-slate-800">';
+                for (var k = 0; k < rt.conflicts.length; k++) {
+                  var conflict = rt.conflicts[k];
+                  html += '<div class="px-4 py-3">';
+                  html += '<div class="flex items-center gap-2">';
+                  html += '<span class="text-xs rounded px-1.5 py-0.5 bg-amber-900/40 text-amber-400">' + conflict.status + '</span>';
+                  html += '<span class="text-xs text-slate-500">' + conflict.rule_id + '</span>';
+                  html += '</div>';
+                  html += '<div class="text-xs text-slate-400 mt-1">' + conflict.reason + '</div>';
+                  html += '</div>';
+                }
+                html += '</div>';
+              }
+
+              html += '</div>';
+              return html;
             }
           })();
           </script>`;

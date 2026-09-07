@@ -8,6 +8,7 @@ import { describeRoute } from "hono-openapi";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Layout } from "../../views/layout";
+import { RelatedLinks } from "../../views/related-links";
 import { PageMeta } from "../lib/page-meta";
 import { defaultCoreSchemas, breadcrumbFor, articleLd } from "../lib/json-ld";
 import { BUILD_DATE, GIT_COMMIT } from "../lib/build-info";
@@ -117,6 +118,12 @@ changelogRoutes.get(
         </div>
       </div>`;
 
+    const changelogCrossLinks = [
+      { label: "Blog", href: "/blog", description: "Latest articles and announcements" },
+      { label: "Agent Guide", href: "/agent-guide", description: "Onboarding and integration guides" },
+    ];
+    const crossLinks = RelatedLinks("Explore More", changelogCrossLinks);
+
     const latestDate = entries.length > 0 ? entries[0].date : BUILD_DATE;
     const schemas = [
       ...defaultCoreSchemas(),
@@ -128,6 +135,6 @@ changelogRoutes.get(
       }),
       breadcrumbFor("/changelog", "Changelog"),
     ];
-    return c.html(Layout(html, meta?.title, meta, schemas).toString());
+    return c.html(Layout(html + crossLinks, meta?.title, meta, schemas).toString());
   },
 );

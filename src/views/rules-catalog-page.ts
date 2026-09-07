@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { type PageMeta } from "../server/lib/page-meta";
+import { RelatedLinks } from "./related-links";
 import {
   RULE_DESCRIPTIONS,
   CATEGORY_DESCRIPTIONS,
@@ -177,6 +178,14 @@ export function RulesCatalogPage() {
           ${RULE_DESCRIPTIONS.length} rules across ${categories.length} categories. Each rule ensures your site is
           discoverable, understandable, and usable by AI agents.
         </p>
+        <div class="mt-4 text-sm">
+          <a href="/agent-readiness-checklist" class="text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1">
+            View as checklist
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+        </div>
         <div class="mt-6 inline-flex items-center gap-2 text-sm text-slate-500">
           <span class="inline-flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Quick fix
@@ -224,5 +233,12 @@ export function RulesCatalogPage() {
     </div>
   </div>`;
 
-  return Layout(content.toString(), meta.title, meta, schemas);
+  const rulesCrossLinks = [
+    { label: "FAQ", href: "/faq", description: "Common questions about agent readiness rules" },
+    { label: "Agent Guide", href: "/agent-guide", description: "Step-by-step guide to becoming agent-ready" },
+    { label: "Blog", href: "/blog", description: "Deep dives into agent readiness concepts" },
+  ];
+  const crossLinks = RelatedLinks("Explore More", rulesCrossLinks);
+
+  return Layout(content.toString() + crossLinks, meta.title, meta, schemas);
 }

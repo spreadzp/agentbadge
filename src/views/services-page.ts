@@ -2,6 +2,14 @@ import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import type { RegistryIndex } from "../server/registry/types";
 import { breadcrumbListLd } from "../server/lib/json-ld";
+import { RelatedLinks } from "./related-links";
+
+const servicesCrossLinks = [
+  { label: "About", href: "/about", description: "Our mission and architecture" },
+  { label: "FAQ", href: "/faq", description: "Common questions about our services" },
+  { label: "Pricing", href: "/pricing", description: "Passport tiers and service costs" },
+  { label: "Work With Us", href: "/work-with-us", description: "Engagement models and consulting" },
+];
 
 export function ServicesPage(registry: RegistryIndex, schemas?: object[]) {
   const serviceCards = registry.services
@@ -66,6 +74,8 @@ export function ServicesPage(registry: RegistryIndex, schemas?: object[]) {
         or <a href="/agent-guide/team/contact" class="text-emerald-400 underline hover:text-emerald-300">contact us</a>.
       </p>
     </section>
+
+  ${raw(RelatedLinks("Explore More", servicesCrossLinks))}
   `;
 
   return Layout(content.toString(), "Services", {

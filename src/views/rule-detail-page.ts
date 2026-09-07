@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { type PageMeta } from "../server/lib/page-meta";
+import { RelatedLinks } from "./related-links";
 import {
   RULE_DESCRIPTIONS,
   CATEGORY_DESCRIPTIONS,
@@ -331,5 +332,12 @@ export function RuleDetailPage(rule: RuleDescription) {
     </div>
   </div>`;
 
-  return Layout(content.toString(), meta.title, meta, schemas);
+  const ruleDetailCrossLinks = [
+    { label: "All Rules", href: "/rules", description: "Browse the complete rules catalog" },
+    { label: "Agent Guide", href: "/agent-guide", description: "Learn how to fix this rule" },
+    { label: "Blog", href: "/blog", description: "Related articles on agent readiness" },
+  ];
+  const crossLinks = RelatedLinks("Explore More", ruleDetailCrossLinks);
+
+  return Layout(content.toString() + crossLinks, meta.title, meta, schemas);
 }
