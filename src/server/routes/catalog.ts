@@ -125,6 +125,7 @@ We offer consulting and development services for the agentic web:
 - /auth.md — Agent authentication and registration instructions
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
+- /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
 
 ## Demand & Work Requests

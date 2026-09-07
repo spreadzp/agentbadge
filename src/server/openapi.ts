@@ -349,6 +349,7 @@ export const openApiConfig = {
     { name: "Health", description: "Health check" },
     { name: "A2A Messaging", description: "Agent-to-agent messaging" },
     { name: "Marketplace", description: "Agent marketplace for task posting and discovery" },
+    { name: "Meta", description: "Machine-readable metadata endpoints for AI agents" },
   ],
   "x-rate-limit": {
     defaultLimit: 60,
