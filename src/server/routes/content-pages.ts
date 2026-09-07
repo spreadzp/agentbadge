@@ -11,6 +11,27 @@ import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
 import { buildRuleApiResponse } from "../lib/rule-api-builder";
 import { ChecklistPage } from "../../views/checklist-page";
+import { ComparisonPage } from "../../views/comparison-page";
+import { ComparisonHubPage } from "../../views/comparison-hub-page";
+import { COMPARISON_PAGES, getComparisonPage } from "../lib/comparison-data";
+import { CLUSTER_PAGES, getClusterPage } from "../lib/cluster-data";
+import { ClusterPage } from "../../views/cluster-page";
+import { marked } from "marked";
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function renderMarkdown(contentFile: string): string {
+  const fullPath = join(__dirname, "..", contentFile.replace("src/server/", ""));
+  try {
+    const md = readFileSync(fullPath, "utf-8");
+    return marked.parse(md, { async: false }) as string;
+  } catch {
+    return "";
+  }
+}
 import { faqPageLd, articleLd, pageCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
 import { getRegistry } from "../registry/loader";
@@ -219,3 +240,55 @@ contentPageRoutes.get(
     return c.html(ChecklistPage());
   },
 );
+
+// Comparison hub page
+contentPageRoutes.get(
+  "/comparisons",
+  describeRoute({
+    tags: ["Content"],
+    summary: "AgentBadge vs Other Tools — Comparisons Hub",
+    description: "Overview comparison table and links to detailed comparisons: AgentBadge vs MCP, vs Postman, vs Swagger.",
+    responses: { 200: { description: "HTML comparisons hub page" } },
+  }),
+  (c) => {
+    return c.html(ComparisonHubPage());
+  },
+);
+
+// Individual comparison pages
+for (const page of COMPARISON_PAGES) {
+  contentPageRoutes.get(
+    `/comparisons/${page.slug}`,
+    describeRoute({
+      tags: ["Content"],
+      summary: page.title,
+      description: page.description,
+      responses: { 200: { description: "HTML comparison page" } },
+    }),
+    (c) => {
+      const data = getComparisonPage(page.slug);
+      if (!data) return c.html("Not found", 404);
+      const markdownHtml = renderMarkdown(data.contentFile);
+      return c.html(ComparisonPage(data, markdownHtml));
+    },
+  );
+}
+
+// Cluster pages (SLICE-116-3)
+for (const page of CLUSTER_PAGES) {
+  contentPageRoutes.get(
+    `/${page.slug}`,
+    describeRoute({
+      tags: ["Content"],
+      summary: page.title,
+      description: page.description,
+      responses: { 200: { description: "HTML cluster page" } },
+    }),
+    (c) => {
+      const data = getClusterPage(page.slug);
+      if (!data) return c.html("Not found", 404);
+      const markdownHtml = renderMarkdown(data.contentFile);
+      return c.html(ClusterPage(data, markdownHtml));
+    },
+  );
+}

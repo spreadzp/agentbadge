@@ -213,11 +213,71 @@ export const PageMeta: Record<string, PageMeta> = {
       "The complete agent readiness checklist — all rules across categories and pillars. Check your API's agent readiness against the definitive list.",
     path: "/agent-readiness-checklist",
   },
+  "/comparisons": {
+    title: "AgentBadge vs Other Tools — Comparisons",
+    description:
+      "Compare AgentBadge with MCP, Postman, and Swagger. Honest feature-by-feature comparisons.",
+    path: "/comparisons",
+  },
+  "/comparisons/agentbadge-vs-mcp": {
+    title: "AgentBadge vs MCP",
+    description:
+      "MCP connects agents to tools. AgentBadge measures and certifies API readiness. They're complementary.",
+    path: "/comparisons/agentbadge-vs-mcp",
+  },
+  "/comparisons/agentbadge-vs-postman": {
+    title: "AgentBadge vs Postman",
+    description:
+      "Postman tests APIs. AgentBadge certifies API readiness for AI agents. Different goals, complementary tools.",
+    path: "/comparisons/agentbadge-vs-postman",
+  },
+  "/comparisons/agentbadge-vs-swagger": {
+    title: "AgentBadge vs Swagger",
+    description:
+      "Swagger documents APIs for humans. AgentBadge certifies APIs are ready for AI agents. OpenAPI is necessary but not sufficient.",
+    path: "/comparisons/agentbadge-vs-swagger",
+  },
   "/blog": {
     title: "Blog",
     description:
       "Deep dives into agent-ready infrastructure, MCP protocol, x402 payments, and the agentic web.",
     path: "/blog",
+  },
+  "/how-to-make-an-api-agent-ready": {
+    title: "How to Make an API Agent-Ready",
+    description:
+      "A practical guide to making your API discoverable, understandable, and executable by AI agents.",
+    path: "/how-to-make-an-api-agent-ready",
+  },
+  "/agent-readiness-vs-seo": {
+    title: "Agent Readiness vs SEO",
+    description:
+      "SEO optimizes for search engines. Agent readiness optimizes for AI agents. They share some practices but differ in audience, format, and goals.",
+    path: "/agent-readiness-vs-seo",
+  },
+  "/agent-readiness-vs-geo": {
+    title: "Agent Readiness vs GEO",
+    description:
+      "GEO optimizes content for AI-generated answers. Agent readiness ensures APIs are executable by AI agents.",
+    path: "/agent-readiness-vs-geo",
+  },
+  "/openapi-vs-agent-readiness": {
+    title: "OpenAPI vs Agent Readiness",
+    description:
+      "OpenAPI is necessary but not sufficient for agent readiness. Agents need discovery, guides, error handling, and consistency.",
+    path: "/openapi-vs-agent-readiness",
+  },
+  "/what-is-an-ai-ready-api": {
+    title: "What is an AI-Ready API?",
+    description:
+      "An AI-ready API is one that AI agents can discover, understand, and use autonomously.",
+    path: "/what-is-an-ai-ready-api",
+  },
+  "/how-ai-agents-use-apis": {
+    title: "How AI Agents Use APIs",
+    description:
+      "AI agents discover APIs, read documentation, authenticate, make requests, handle errors, and chain calls — all autonomously.",
+    path: "/how-ai-agents-use-apis",
   },
   "/terms": {
     title: "Terms of Service",
@@ -260,6 +320,16 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/about", changefreq: "monthly", priority: "0.7" },
   { path: "/what-is-agent-readiness", changefreq: "weekly", priority: "0.9" },
   { path: "/agent-readiness-checklist", changefreq: "weekly", priority: "0.8" },
+  { path: "/comparisons", changefreq: "monthly", priority: "0.8" },
+  { path: "/comparisons/agentbadge-vs-mcp", changefreq: "monthly", priority: "0.8" },
+  { path: "/comparisons/agentbadge-vs-postman", changefreq: "monthly", priority: "0.8" },
+  { path: "/comparisons/agentbadge-vs-swagger", changefreq: "monthly", priority: "0.8" },
+  { path: "/how-to-make-an-api-agent-ready", changefreq: "monthly", priority: "0.8" },
+  { path: "/agent-readiness-vs-seo", changefreq: "monthly", priority: "0.8" },
+  { path: "/agent-readiness-vs-geo", changefreq: "monthly", priority: "0.8" },
+  { path: "/openapi-vs-agent-readiness", changefreq: "monthly", priority: "0.8" },
+  { path: "/what-is-an-ai-ready-api", changefreq: "monthly", priority: "0.8" },
+  { path: "/how-ai-agents-use-apis", changefreq: "monthly", priority: "0.8" },
   { path: "/work-with-us", changefreq: "monthly", priority: "0.6" },
   { path: "/blog", changefreq: "weekly", priority: "0.8" },
   ...BLOG_ARTICLES.map((a) => ({
