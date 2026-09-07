@@ -13,11 +13,12 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 
 import type { Tier, Capability } from "@agentbadge/hedera-core";
-import { passportRequestSchema, passportResponseSchema, errorSchema } from "../openapi";
+import { passportResponseSchema, errorSchema } from "../openapi";
 import { issuePassport, type IssuePassportResult } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { passportLinks } from "../lib/hateoas";
+import type { NextCall } from "../lib/next-call";
 
 /** Request body for POST /passport/request. */
 export interface PassportRequestBody {
@@ -39,6 +40,7 @@ export interface PassportResponse {
   tier: Tier;
   hashScanLink: string;
   _links?: Record<string, { href: string; method?: string }>;
+  next_call?: NextCall;
 }
 
 export const passportRoutes = new Hono();
@@ -115,6 +117,13 @@ passportRoutes.post(
         tier: result.tier,
         hashScanLink: result.hashScanLink,
         _links: passportLinks(result.tokenId, result.serialNumber),
+        next_call: {
+          method: "POST",
+          path: "/agents/register",
+          body: { did: result.did, name, capabilities },
+          authorization: "Bearer <did-auth-token>",
+          why: "Register your agent in the HCS directory so other agents can discover it.",
+        } satisfies NextCall,
       };
 
       return c.json(response, 200);

@@ -22,6 +22,7 @@ import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
+import type { NextCall } from "../lib/next-call";
 
 export const webmcpApiRoutes = new Hono();
 
@@ -143,7 +144,12 @@ webmcpApiRoutes.get(
       const sourceState = await scanDomain(normalizedUrl, {});
       const result = RuleEngine.run(sourceState);
       const report = formatScanReport(normalizedUrl, result);
-      return c.json(report, 200);
+      const next_call: NextCall = {
+        method: "GET",
+        path: `/api/badge?url=${encodeURIComponent(normalizedUrl)}`,
+        why: "Fetch the trust badge SVG for the scanned domain to display or verify.",
+      };
+      return c.json({ ...report, next_call }, 200);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       return c.json({ error: `Scan failed: ${message}` }, 500);

@@ -13,15 +13,15 @@
 
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
-import z from "zod";
 
 import type { Capability, Tier, DirectoryMessage } from "@agentbadge/hedera-core";
 import { getNftInfo, submitAuditMessage, submitDirectoryMessage } from "@agentbadge/hedera-core";
-import { agentWithActiveSchema, listAgentsResponseSchema, errorSchema } from "../openapi";
+import { listAgentsResponseSchema, errorSchema } from "../openapi";
 import { upsert, getAll, get as getEntry, type DirectoryEntry, logger } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { agentLinks } from "../lib/hateoas";
+import type { NextCall } from "../lib/next-call";
 
 /** Request body for POST /agents/register. */
 export interface RegisterAgentBody {
@@ -335,7 +335,12 @@ agentRoutes.post(
     logger.info("agent_registered", { did, name, capabilities, tokenId, serial });
 
     // 6. Return response
-    const response: { registered: true; warning?: string } = { registered: true };
+    const next_call: NextCall = {
+      method: "GET",
+      path: `/agents/${encodeURIComponent(did)}`,
+      why: "Verify your agent was registered and see its directory entry.",
+    };
+    const response: { registered: true; warning?: string; next_call: NextCall } = { registered: true, next_call };
     if (warning) {
       response.warning = warning;
     }

@@ -13,6 +13,7 @@ import z from "zod";
 import { getFaqEntries } from "../../views/faq-page";
 import { BLOG_ARTICLES } from "../lib/blog-data";
 import { didAuthSectionCompact } from "../lib/did-auth-docs";
+import type { NextCall } from "../lib/next-call";
 
 export const catalogRoutes = new Hono();
 
@@ -34,7 +35,14 @@ catalogRoutes.get(
   }),
   (c) => {
     const tiers = getCatalog();
-    return c.json({ tiers });
+    const next_call: NextCall = {
+      method: "POST",
+      path: "/passport/request",
+      body: { tier: "standard" },
+      authorization: "x402 payment required",
+      why: "Purchase a passport NFT to get an on-chain identity for your agent.",
+    };
+    return c.json({ tiers, next_call });
   },
 );
 
