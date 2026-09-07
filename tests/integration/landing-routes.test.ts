@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { setupMockEnv, makeTestApp } from "../e2e/helpers";
+import { setupMockEnv } from "../e2e/helpers";
 import { PageMeta, PUBLIC_PAGES } from "../../src/server/lib/page-meta";
-import { LandingLayout } from "../../src/views/landing/layout";
 import { landingRoutes } from "../../src/server/routes/landing";
 import { uiRoutes } from "../../src/server/routes/ui";
 import type { Hono as HonoType } from "hono";
@@ -100,9 +99,9 @@ describe("SLICE-19-2: Routing — landing.ts + /dashboard", () => {
       expect(PageMeta["/dashboard"].title).toBe("Dashboard");
     });
 
-    it('"/" description mentions on-chain identity for AI agents', () => {
-      expect(PageMeta["/"].description).toContain("on-chain");
-      expect(PageMeta["/"].description).toContain("AI agent");
+    it('"/" description mentions agent readiness scanning', () => {
+      expect(PageMeta["/"].description).toContain("agent readiness");
+      expect(PageMeta["/"].description).toContain("scan");
     });
   });
 

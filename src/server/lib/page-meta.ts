@@ -41,7 +41,7 @@ export function pageTitle(unique: string): string {
 }
 
 export const SITE_DESCRIPTION =
-  "AgentBadge — agency for the agentic web. We help businesses become agent-ready with readiness scanning, on-chain identity passports, and a task marketplace with machine payments.";
+  "AgentBadge — scan your API or website with 145+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score.";
 
 export const BASE_URL =
   process.env.BASE_URL && process.env.BASE_URL.startsWith("http")
@@ -50,9 +50,9 @@ export const BASE_URL =
 
 export const PageMeta: Record<string, PageMeta> = {
   "/": {
-    title: "Agency for the Agentic Web",
+    title: "AgentBadge — Agent Readiness Scanner & Evidence-Based Scoring",
     description:
-      "AgentBadge is an agency that helps businesses become agent-ready. Readiness scanning, on-chain identity passports, and a task marketplace with machine payments.",
+      "Scan your API or website with 145+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score. Free scan, no signup required.",
     path: "/",
   },
   "/services/scanner": {

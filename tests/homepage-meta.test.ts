@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { LandingLayout } from "../src/views/landing/layout";
-import { PageMeta, BASE_URL } from "../src/server/lib/page-meta";
+import { PageMeta } from "../src/server/lib/page-meta";
+import { landingJsonLd } from "../src/server/lib/json-ld";
 
 describe("Homepage meta fixes", () => {
   let app: Hono;
@@ -54,5 +55,34 @@ describe("Homepage meta fixes", () => {
     const ogMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
     expect(ogMatch).toBeTruthy();
     expect(ogMatch![1]).toContain("agentbadge.xyz");
+  });
+});
+
+describe("SLICE-110-1: PageMeta & SEO metadata for /", () => {
+  it("PageMeta / has scanner-first title", () => {
+    const meta = PageMeta["/"];
+    expect(meta).toBeDefined();
+    expect(meta.title).toContain("Agent Readiness Scanner");
+    expect(meta.title).toContain("AgentBadge");
+  });
+
+  it("PageMeta / description mentions 145+ checks and evidence-based scoring", () => {
+    const meta = PageMeta["/"];
+    expect(meta.description).toContain("145+");
+    expect(meta.description).toContain("evidence-based");
+    expect(meta.description).toContain("scan");
+  });
+
+  it("PageMeta / path is /", () => {
+    const meta = PageMeta["/"];
+    expect(meta.path).toBe("/");
+  });
+
+  it("landingJsonLd returns Organization + SoftwareApplication + WebSite schemas", () => {
+    const schemas = landingJsonLd() as { "@type": string }[];
+    const types = schemas.map((s) => s["@type"]);
+    expect(types).toContain("SoftwareApplication");
+    expect(types).toContain("WebSite");
+    expect(types).toContain("Organization");
   });
 });
