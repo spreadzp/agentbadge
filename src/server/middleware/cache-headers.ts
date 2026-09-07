@@ -11,6 +11,7 @@ const LONG_LIVED_PATHS = [
   "/llms-full.txt",
   "/skill.md",
   "/heartbeat.md",
+  "/skill.json",
   "/.well-known/agent-card.json",
   "/.well-known/mcp.json",
   "/.well-known/oauth-authorization-server",

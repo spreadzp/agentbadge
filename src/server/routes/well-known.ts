@@ -113,6 +113,7 @@ export function buildAgentCard() {
       services: `${baseUrl}/services`,
       team_capabilities: `${baseUrl}/agent-guide/team/capabilities`,
       heartbeat_md: `${baseUrl}/heartbeat.md`,
+      skill_json: `${baseUrl}/skill.json`,
       team_capabilities_json: `${baseUrl}/agent-guide/team/capabilities.json`,
       team_services: `${baseUrl}/agent-guide/team/services`,
       team_availability: `${baseUrl}/agent-guide/team/availability`,
@@ -123,7 +124,7 @@ export function buildAgentCard() {
       agents_txt: `${baseUrl}/agents.txt`,
     },
     auth: agentCardAuthBlock(baseUrl),
-    payment: {
+    "ab:payment": {
       protocol: "x402",
       scheme: "exact",
       network: network === "mainnet" ? "hedera:mainnet" : "hedera:testnet",
@@ -941,6 +942,24 @@ AgentBadge provides agent identity, verification, and marketplace tools on Heder
 | openapi.json | ${baseUrl}/openapi.json | Full API contract (JSON) |
 | MCP server | ${baseUrl}/mcp | JSON-RPC over HTTP (MCP) |
 | Agent Card | ${baseUrl}/.well-known/agent-card.json | Machine-readable agent identity |
+| WebFinger | ${baseUrl}/.well-known/webfinger | Resolve agent DIDs |
+| DID Configuration | ${baseUrl}/.well-known/did.json | Link this origin to Hedera DIDs |
+| API Catalog | ${baseUrl}/.well-known/api-catalog | Linkset of available API endpoints |
+| OAuth Protected Resource | ${baseUrl}/.well-known/oauth-protected-resource | OAuth metadata |
+| Authentication | ${baseUrl}/auth.md | Agent authentication and registration instructions |
+| Agent Skills | ${baseUrl}/.well-known/agent-skills/index.json | Agent Skills discovery index |
+| Web Bot Auth | ${baseUrl}/.well-known/http-message-signatures-directory | JWKS for HTTP Message Signatures |
+| Agency JSON | ${baseUrl}/agency.json | Agency capability registry |
+| Services | ${baseUrl}/services | Human-readable services catalog |
+| Team Capabilities | ${baseUrl}/agent-guide/team/capabilities | Team capabilities with evidence and confidence scores |
+| Team Capabilities (JSON) | ${baseUrl}/agent-guide/team/capabilities.json | Team capabilities in JSON format |
+| Team Services | ${baseUrl}/agent-guide/team/services | Engineering services catalog with deliverables and engagement types |
+| Team Availability | ${baseUrl}/agent-guide/team/availability | Team availability and engagement types |
+| Team Contact | ${baseUrl}/agent-guide/team/contact | Contact channels for work requests |
+| Team Match | ${baseUrl}/agent-guide/team/match | Matching criteria for agent requests to team capabilities |
+| Work Requests | ${baseUrl}/api/work-requests | Submit a work request |
+| Demand Registry | ${baseUrl}/api/demand/request | Register demand for a capability |
+| Agents.txt | ${baseUrl}/agents.txt | Agent access policy |
 
 ### Available MCP Tools
 
@@ -1018,7 +1037,7 @@ Full x402 spec: https://x402.org
 
 - [LLM Context](/llms.txt) — API summary for LLMs
 - [Full Context](/llms-full.txt) — Complete site content
-- [Agent Card](/.well-known/agent-card.json) — Machine-readable identity
+- [Agent Card](/.well-known/agent-card.json) — Machine-readable agent identity
 - [OpenAPI Spec](/api/specs) — Full API specification
 - [OpenAPI YAML](/openapi.yaml) — Full API specification (YAML)
 - [AI Sitemap](/ai-sitemap.xml) — Resource discovery map
@@ -1130,6 +1149,114 @@ If a heartbeat call fails:
         "Content-Type": "text/markdown; charset=utf-8",
         "Cache-Control": "public, max-age=3600",
       },
+    });
+  },
+);
+
+// ─── skill.json (SLICE-121-6) ───────────────────────────────────
+
+wellKnownRoutes.get(
+  "/skill.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Agent skill file (JSON-LD, machine-readable)",
+    description:
+      "Returns a JSON-LD representation of skill.md — machine-readable agent onboarding contract with capabilities, endpoints, auth, and payment info.",
+    responses: {
+      200: {
+        description: "Skill JSON-LD",
+        content: { "application/ld+json": {} },
+      },
+    },
+  }),
+  () => {
+    const baseUrl = BASE_URL;
+    const skill = {
+      "@context": {
+        "@vocab": "https://schema.org/",
+        ab: "https://agentbadge.xyz/vocab#",
+      },
+      "@type": "SoftwareApplication",
+      "@id": `${baseUrl}/skill.json`,
+      name: "agentbadge",
+      version: "1.0.0",
+      format: "agentbadge-agent-v1",
+      description:
+        "AgentBadge gives AI agents on-chain identity via NFT passports on Hedera. Agents register, get DID, and transact on marketplace.",
+      url: baseUrl,
+      applicationCategory: "AIAgentPlatform",
+      operatingSystem: "Web",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Free to use. Paid endpoints use x402 micropayments.",
+      },
+      "ab:capabilities": [
+        "agent_identity",
+        "passport_issuance",
+        "agent_directory",
+        "marketplace",
+        "a2a_messaging",
+        "micropayments",
+        "compliance_checking",
+        "capability_matching",
+      ],
+      "ab:endpoints": {
+        api: `${baseUrl}/api/specs`,
+        openapi_yaml: `${baseUrl}/openapi.yaml`,
+        openapi_json: `${baseUrl}/openapi.json`,
+        mcp: `${baseUrl}/mcp`,
+        llms_txt: `${baseUrl}/llms.txt`,
+        llms_full_txt: `${baseUrl}/llms-full.txt`,
+        skill_md: `${baseUrl}/skill.md`,
+        heartbeat_md: `${baseUrl}/heartbeat.md`,
+        agent_card: `${baseUrl}/.well-known/agent-card.json`,
+        ai_sitemap: `${baseUrl}/ai-sitemap.xml`,
+        agent_guide: `${baseUrl}/agent-guide/context`,
+      },
+      "ab:auth": {
+        type: "none",
+        description:
+          "No API key required. Paid endpoints use x402 (HTTP 402) payment flow. OAuth discovery at /.well-known/oauth-authorization-server.",
+        oauth: `${baseUrl}/.well-known/oauth-authorization-server`,
+      },
+      "ab:payment": {
+        protocol: "x402",
+        description:
+          "Paid endpoints return HTTP 402 with payment requirements. Agent constructs x402 payment header and retries.",
+        spec: "https://x402.org",
+        facilitator: `${baseUrl}/.well-known/x402.json`,
+      },
+      "ab:mcp_tools": [
+        "request_passport",
+        "verify_passport",
+        "register_agent",
+        "find_agents",
+        "post_task",
+        "claim_task",
+        "deliver_result",
+        "complete_task",
+        "send_message",
+        "get_inbox",
+        "get_tier_requirements",
+        "upgrade_tier",
+      ],
+      "ab:linked_files": [
+        { file: "skill.md", url: `${baseUrl}/skill.md`, purpose: "Agent onboarding & skill definition" },
+        { file: "llms.txt", url: `${baseUrl}/llms.txt`, purpose: "LLM-friendly API discovery" },
+        { file: "openapi.yaml", url: `${baseUrl}/openapi.yaml`, purpose: "Full API contract (YAML)" },
+        { file: "openapi.json", url: `${baseUrl}/openapi.json`, purpose: "Full API contract (JSON)" },
+        { file: "mcp", url: `${baseUrl}/mcp`, purpose: "JSON-RPC over HTTP (MCP)" },
+        { file: "agent-card.json", url: `${baseUrl}/.well-known/agent-card.json`, purpose: "Machine-readable agent identity" },
+        { file: "heartbeat.md", url: `${baseUrl}/heartbeat.md`, purpose: "Periodic check-in routine" },
+      ],
+    };
+    return new Response(JSON.stringify(skill, null, 2), {
+      headers: {
+        "Content-Type": "application/ld+json; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     });
   },
 );
