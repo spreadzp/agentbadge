@@ -1917,4 +1917,17 @@ export const RULE_DESCRIPTIONS: RuleDescription[] = [
     estimated_cost: "$0",
     severity: "low",
   },
+  {
+    rule_id: "AB-165",
+    category: "discovery",
+    icon: "📡",
+    title: "Agent feeds (JSON Feed 1.1 / RSS 2.0)",
+    short_description: "Your site serves structured JSON Feed 1.1 or RSS 2.0 feeds at common paths like /agents.json, /jobs.rss, or /feed.json.",
+    user_value: "AI agents can subscribe to your feeds instead of polling, enabling efficient discovery of new tasks, jobs, or marketplace items.",
+    wrong_example: "GET /agents.json → 404",
+    right_example: '{"version":"https://jsonfeed.org/version/1.1","items":[{"id":"task-1","title":"New task"}]}',
+    effort_hint: "moderate",
+    estimated_cost: "$0",
+    severity: "low",
+  },
 ];

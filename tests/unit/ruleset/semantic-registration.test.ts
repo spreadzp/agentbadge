@@ -40,7 +40,7 @@ describe("SLICE-95-8: Ruleset Integration", () => {
 
   // ─── EPIC-125: Pact0 pattern rules ──────────────────────────────────────────
   describe("EPIC-125 rules registered", () => {
-    const EPIC_125_RULE_IDS = ["AB-161", "AB-162", "AB-163", "AB-164"]; // grows per slice
+    const EPIC_125_RULE_IDS = ["AB-161", "AB-162", "AB-163", "AB-164", "AB-165"]; // grows per slice
 
     for (const ruleId of EPIC_125_RULE_IDS) {
       it(`${ruleId} is registered in AGENT_READINESS_RULESET`, () => {
@@ -57,8 +57,8 @@ describe("SLICE-95-8: Ruleset Integration", () => {
     }
 
     it("total rule count includes EPIC-125 additions", () => {
-      // 130 pre-Phase-B + 15 Phase-B + 4 EPIC-125 = 149
-      expect(AGENT_READINESS_RULESET.rules.length).toBe(149);
+      // 130 pre-Phase-B + 15 Phase-B + 5 EPIC-125 = 150
+      expect(AGENT_READINESS_RULESET.rules.length).toBe(150);
     });
   });
 

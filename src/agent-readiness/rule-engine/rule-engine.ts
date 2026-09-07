@@ -144,6 +144,7 @@ class RuleEngineClass {
       "heartbeat": "heartbeat",
       "skill_json": "skill_json",
       "error_catalog": "error_catalog",
+      "agent_feeds": "agent_feeds",
       "favicon": "favicon",
       "favicon.svg": "favicon",
       "og-image": "content_negotiation",

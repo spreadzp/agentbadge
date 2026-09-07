@@ -23,6 +23,7 @@ import { fetchHomepageMeta } from "./fetchers/homepage-meta-fetcher";
 import { fetchHeartbeat } from "./fetchers/heartbeat-fetcher";
 import { fetchSkillJson } from "./fetchers/skill-json-fetcher";
 import { fetchErrorCatalog } from "./fetchers/error-catalog-fetcher";
+import { fetchAgentFeeds } from "./fetchers/agent-feeds-fetcher";
 import { fetchInfrastructure } from "./fetchers/infrastructure-fetcher";
 import { fetchA2A } from "./fetchers/a2a-fetcher";
 import { fetchIdentity } from "./fetchers/identity-fetcher";
@@ -118,6 +119,7 @@ export const DEFAULT_RESOURCES = [
   "heartbeat",
   "skill_json",
   "error_catalog",
+  "agent_feeds",
 ] as const;
 
 export async function scanDomain(
@@ -156,11 +158,11 @@ export async function scanDomain(
 
   // Parallel: robots + sitemap + llms + new fetchers
   const parallelResources = resources.filter((r) =>
-    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth", "heartbeat", "skill_json", "error_catalog"].includes(r),
+    ["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth", "heartbeat", "skill_json", "error_catalog", "agent_feeds"].includes(r),
   );
   const sequentialResources = resources.filter(
     (r) =>
-      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth", "heartbeat", "skill_json", "error_catalog"].includes(r),
+      !["robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard", "skill", "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe", "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon", "pricing", "link_headers", "api_catalog", "oauth_protected_resource", "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid", "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "accessibility", "content_depth", "agent_card", "ai_sitemap", "oauth_authorization_server", "llm_policy", "aauth", "heartbeat", "skill_json", "error_catalog", "agent_feeds"].includes(r),
   );
 
   await Promise.all(parallelResources.map(async (resource) => {
@@ -378,6 +380,14 @@ async function fetchResource(
     }
     case "error_catalog": {
       const r = await fetchErrorCatalog(baseUrl);
+      snapshot = r.body !== null ? createSnapshot({
+        url: r.url, status: r.status, body: r.body,
+        resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
+      }) : null;
+      break;
+    }
+    case "agent_feeds": {
+      const r = await fetchAgentFeeds(baseUrl);
       snapshot = r.body !== null ? createSnapshot({
         url: r.url, status: r.status, body: r.body,
         resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime,
