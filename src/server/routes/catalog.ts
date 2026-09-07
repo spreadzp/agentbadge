@@ -126,6 +126,7 @@ We offer consulting and development services for the agentic web:
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
+- /api/meta/fees — Machine-readable fee/pricing catalog for all AgentBadge services
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
 
 ## Demand & Work Requests
