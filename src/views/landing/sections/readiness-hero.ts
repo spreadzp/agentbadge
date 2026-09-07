@@ -21,18 +21,18 @@ export function ReadinessHeroSection() {
             Agent Readiness Infrastructure
           </div>
           <h1 class="fade-in-up mt-4 text-5xl md:text-7xl font-extrabold leading-none tracking-tight max-w-2xl" style="animation-delay: 0.1s">
-            Can an AI agent actually <em class="not-italic text-emerald-400">use your API?</em>
+            Can AI Agents Actually <em class="not-italic text-emerald-400">Use Your API?</em>
           </h1>
           <p class="fade-in-up mt-6 text-lg text-slate-400 max-w-xl" style="animation-delay: 0.2s">
-            AgentBadge measures whether your API can be discovered, understood and used by AI agents —
-            with deterministic checks, evidence and actionable fixes.
+            Measure your API's Agent Readiness — from discovery and documentation to authentication and execution.
+            Deterministic checks, evidence-based scores, and actionable fixes.
           </p>
           <div class="fade-in-up mt-8 flex flex-wrap gap-4">
             <a
-              href="/agent-guide/articles/what-is-agent-readiness"
+              href="/services/scanner"
               class="pulse-glow inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400"
             >
-              Scan free
+              Scan Your API — Free
               <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
               </svg>

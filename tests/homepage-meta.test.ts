@@ -4,6 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { LandingLayout } from "../src/views/landing/layout";
 import { PageMeta } from "../src/server/lib/page-meta";
 import { landingJsonLd } from "../src/server/lib/json-ld";
+import { ReadinessHeroSection } from "../src/views/landing/sections/readiness-hero";
 
 describe("Homepage meta fixes", () => {
   let app: Hono;
@@ -55,6 +56,25 @@ describe("Homepage meta fixes", () => {
     const ogMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
     expect(ogMatch).toBeTruthy();
     expect(ogMatch![1]).toContain("agentbadge.xyz");
+  });
+});
+
+describe("SLICE-110-2: Hero repositioning", () => {
+  it("renders H1 with 'Can AI Agents Actually Use Your API?'", () => {
+    const html = ReadinessHeroSection().toString();
+    expect(html).toContain("Can AI Agents Actually");
+    expect(html).toContain("Use Your API?");
+  });
+
+  it("subtitle contains 'Agent Readiness'", () => {
+    const html = ReadinessHeroSection().toString();
+    expect(html).toContain("Agent Readiness");
+  });
+
+  it("primary CTA links to /services/scanner", () => {
+    const html = ReadinessHeroSection().toString();
+    expect(html).toContain('href="/services/scanner"');
+    expect(html).toContain("Scan Your API");
   });
 });
 
