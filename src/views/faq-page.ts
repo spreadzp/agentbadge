@@ -17,7 +17,7 @@ export interface QaPair {
   answer: string;
 }
 
-const RAW_FAQ_ENTRIES: QaPair[] = [
+export const RAW_FAQ_ENTRIES: QaPair[] = [
   // ── Page 1: Brand & Services & Quick wins (D10) ──
   {
     question: "What is AgentBadge?",
@@ -331,17 +331,17 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
   {
     question: "What does AgentBadge's scanner actually do when it scans my API?",
     answer:
-      "AgentBadge's scanner fetches your robots.txt, llms.txt, OpenAPI spec, well-known endpoints, and authentication flows — then runs 70+ checks across 17 categories. Each check produces evidence (HTTP responses, parsed schemas, discovered URLs) and a status. The scanner also performs active probing: sending real requests to verify your endpoints work as documented. The full report includes a score, grade, gap analysis, and fix recommendations. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
+      "AgentBadge's scanner fetches your robots.txt, llms.txt, OpenAPI spec, well-known endpoints, and authentication flows — then runs 70+ checks across 17 categories. Each check produces evidence (HTTP responses, parsed schemas, discovered URLs) and a status. The scanner also performs active probing: sending real requests to verify your endpoints work as documented. The full report includes a score, grade, gap analysis, and fix recommendations. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a> <a href=\"/comparisons/agentbadge-vs-postman\" class=\"text-emerald-400 underline hover:text-emerald-300\">See comparison: AgentBadge vs Postman →</a>",
   },
   {
     question: "What problems does AgentBadge solve that OpenAPI alone doesn't?",
     answer:
-      "OpenAPI covers 2-3 of the 8 context layers an AI agent needs: capabilities and inputs. AgentBadge covers all 8: discovery, capabilities, inputs, authentication, semantics, output, errors, and safety. OpenAPI tells agents what endpoints exist — AgentBadge checks whether agents can actually discover, authenticate, call, and trust those endpoints. The scanner also verifies that your OpenAPI spec matches your actual API behavior, catching drift between declared and observed. <a href=\"/blog/why-openapi-isnt-enough\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Why Your OpenAPI Spec Isn't Enough →</a>",
+      "OpenAPI covers 2-3 of the 8 context layers an AI agent needs: capabilities and inputs. AgentBadge covers all 8: discovery, capabilities, inputs, authentication, semantics, output, errors, and safety. OpenAPI tells agents what endpoints exist — AgentBadge checks whether agents can actually discover, authenticate, call, and trust those endpoints. The scanner also verifies that your OpenAPI spec matches your actual API behavior, catching drift between declared and observed. <a href=\"/blog/why-openapi-isnt-enough\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Why Your OpenAPI Spec Isn't Enough →</a> <a href=\"/comparisons/agentbadge-vs-swagger\" class=\"text-emerald-400 underline hover:text-emerald-300\">See comparison: AgentBadge vs Swagger →</a>",
   },
   {
     question: "How does MCP complement REST APIs for AI agents?",
     answer:
-      "REST APIs require agents to read documentation, understand HTTP semantics, and construct requests manually. MCP (Model Context Protocol) provides a structured tool interface — agents call named tools with typed parameters and get structured responses. AgentBadge checks for both: REST endpoints via OpenAPI and MCP tools via server descriptors. The future is hybrid: REST for human developers, MCP for AI agents, with OpenAPI bridging both. <a href=\"/blog/mcp-vs-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: MCP vs API →</a>",
+      "REST APIs require agents to read documentation, understand HTTP semantics, and construct requests manually. MCP (Model Context Protocol) provides a structured tool interface — agents call named tools with typed parameters and get structured responses. AgentBadge checks for both: REST endpoints via OpenAPI and MCP tools via server descriptors. The future is hybrid: REST for human developers, MCP for AI agents, with OpenAPI bridging both. <a href=\"/blog/mcp-vs-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: MCP vs API →</a> <a href=\"/comparisons/agentbadge-vs-mcp\" class=\"text-emerald-400 underline hover:text-emerald-300\">See comparison: AgentBadge vs MCP →</a>",
   },
   {
     question: "How do x402 payments work with AI agents on {{CHAIN_NAME}}?",
@@ -372,6 +372,217 @@ const RAW_FAQ_ENTRIES: QaPair[] = [
     question: "What makes AgentBadge's scanner different from other API scanners?",
     answer:
       "AgentBadge's scanner is evidence-based, reproducible, and agent-focused. Unlike LLM-based analyzers that give subjective opinions, AgentBadge runs deterministic checks with captured evidence — every VERIFIED status has HTTP responses or parsed schemas behind it. The scanner is also reproducible: same URL + same ruleset version = same result. And it checks for agent-specific features (llms.txt, MCP, x402, agents.txt) that traditional API scanners ignore. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
+  },
+  // ── SLICE-118-1: Gap-filling entries ──
+  {
+    question: "How do I get started with AgentBadge?",
+    answer:
+      "Go to <a href=\"/\" class=\"text-emerald-400 underline hover:text-emerald-300\">agentbadge.xyz</a>, enter your API base URL in the scanner, and click Scan. You'll get a readiness score, evidence-backed findings, and fix recommendations in under a minute. No signup required for the free scan.",
+  },
+  {
+    question: "Do I need to sign up to scan my API?",
+    answer:
+      "No. The scanner is free and requires no signup. Enter your API base URL and click Scan. You only need an account for continuous monitoring, passports, and marketplace features.",
+  },
+  {
+    question: "What programming languages are supported?",
+    answer:
+      "AgentBadge scans any HTTP API regardless of backend language. The scanner checks your API's responses, headers, and documentation — not your source code. Whether your API is built in Node.js, Python, Go, Rust, Java, or anything else, the scanner works the same way.",
+  },
+  {
+    question: "How does AgentBadge score?",
+    answer:
+      "AgentBadge scores across four pillars: Discovery (20%, can agents find you?), Understandability (25%, can agents understand your API?), Executability (30%, can agents successfully call your API?), and Verifiability (25%, can agents trust the results?). Each pillar aggregates multiple categories of checks. The overall score is a weighted average.",
+  },
+  {
+    question: "What does AgentBadge measure?",
+    answer:
+      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence (HTTP responses, parsed schemas, headers), not opinions. The scanner is deterministic and reproducible: same URL + same ruleset version = same result.",
+  },
+  {
+    question: "Can I self-host the scanner?",
+    answer:
+      "Yes. The scanner is open source (MIT) and can be self-hosted. This is useful for internal APIs not accessible from the public internet, or for teams that want to run scans in CI/CD pipelines. See the <a href=\"https://github.com/agentbadge/agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">GitHub repo</a> for setup instructions.",
+  },
+  {
+    question: "Is OpenAPI enough?",
+    answer:
+      "OpenAPI is necessary but not sufficient. It covers syntax (endpoints, parameters, schemas) but not semantics (what responses mean), execution (auth flows, idempotency), or safety (rate limits, retries). Agents need all 8 context layers. AgentBadge checks for OpenAPI plus llms.txt, MCP, examples, structured metadata, and more. <a href=\"/blog/what-ai-agent-needs-to-understand-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read more →</a>",
+  },
+  {
+    question: "How long does a scan take?",
+    answer:
+      "Most scans complete in 10–30 seconds depending on API size, number of endpoints, and response times. The scanner fetches your OpenAPI spec, robots.txt, llms.txt, well-known files, and probes a sample of endpoints. You see results in real-time as checks complete.",
+  },
+  {
+    question: "Can I scan multiple APIs?",
+    answer:
+      "Yes. Each scan is independent. You can scan different base URLs, different environments (staging, production), or different API versions. For continuous monitoring of multiple APIs, contact us about enterprise plans.",
+  },
+  {
+    question: "What happens after I scan?",
+    answer:
+      "You get a detailed report with your overall readiness score, pillar scores, per-rule findings (VERIFIED, MISSING, ERROR), evidence for each check, and fix recommendations. You can download the report as JSON or share the public scan URL with your team.",
+  },
+  {
+    question: "Is AgentBadge open source?",
+    answer:
+      "The scanner is MIT licensed and available on <a href=\"https://github.com/agentbadge/agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">GitHub</a>. The platform (passports, marketplace, dashboard) is proprietary. We believe the scanning tool should be open and auditable — trust comes from transparency.",
+  },
+];
+
+export function slugifyQuestion(question: string): string {
+  return question
+    .toLowerCase()
+    .replace(/[?.]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export interface FaqCategory {
+  name: string;
+  slug: string;
+  questionSlugs: string[];
+}
+
+export const FAQ_CATEGORIES: FaqCategory[] = [
+  {
+    name: "Getting Started",
+    slug: "getting-started",
+    questionSlugs: [
+      "what-is-agentbadge",
+      "what-is-agent-readiness",
+      "how-do-i-get-started-with-agentbadge",
+      "do-i-need-to-sign-up-to-scan-my-api",
+      "what-does-it-cost",
+      "is-this-on-testnet-or-mainnet",
+      "what-programming-languages-are-supported",
+    ],
+  },
+  {
+    name: "Scoring & Measurement",
+    slug: "scoring-measurement",
+    questionSlugs: [
+      "what-does-agentbadge-measure",
+      "how-does-agentbadge-score",
+      "what-are-the-four-scoring-pillars-in-agentbadge-s-scanner",
+      "what-is-evidence-based-scoring-in-agentbadge",
+      "what-is-the-agentbadge-gap-engine",
+      "what-is-agent-success-rate-asr-in-agentbadge",
+      "what-is-continuous-monitoring-in-agentbadge",
+      "what-is-the-agentbadge-funnel-report",
+      "how-long-does-a-scan-take",
+      "can-i-self-host-the-scanner",
+    ],
+  },
+  {
+    name: "API & OpenAPI",
+    slug: "api-openapi",
+    questionSlugs: [
+      "is-openapi-enough",
+      "why-isn-t-openapi-enough-for-ai-agents",
+      "what-are-the-8-layers-of-context-an-ai-agent-needs-to-understand-an-api",
+      "what-is-the-difference-between-declared-and-observed-api-behavior",
+      "how-does-the-agentbadge-scanner-handle-authentication",
+    ],
+  },
+  {
+    name: "Identity & Passports",
+    slug: "identity-passports",
+    questionSlugs: [
+      "what-is-an-agent-passport",
+      "what-are-the-passport-tiers",
+      "why-is-the-passport-non-transferable",
+      "what-does-passport-verification-prove",
+      "how-do-i-integrate-via-mcp",
+    ],
+  },
+  {
+    name: "Marketplace & Payments",
+    slug: "marketplace-payments",
+    questionSlugs: [
+      "what-is-the-agent-marketplace",
+      "what-is-x402-payment",
+      "how-does-task-escrow-work-in-the-agentbadge-marketplace",
+      "what-is-the-marketplace-task-lifecycle-in-agentbadge",
+    ],
+  },
+  {
+    name: "Technical",
+    slug: "technical",
+    questionSlugs: [
+      "what-is-the-hcs-directory",
+      "how-does-a2a-messaging-work",
+      "what-blockchains-does-agentbadge-support",
+      "what-is-a-chainadapter-in-agentbadge",
+      "what-is-webmcp-in-agentbadge",
+    ],
+  },
+  {
+    name: "Concepts",
+    slug: "concepts",
+    questionSlugs: [
+      "what-is-the-agentic-web",
+      "what-is-geo-generative-engine-optimization-and-how-does-it-relate-to-agent-readiness",
+      "what-is-mcp-vs-rest-api-for-ai-agents",
+      "what-is-the-difference-between-seo-and-geo",
+      "how-does-agentbadge-handle-seo-for-agents",
+      "how-does-agentbadge-support-agent-discovery-on-the-web",
+      "how-is-agent-readiness-different-from-seo",
+    ],
+  },
+  {
+    name: "Services",
+    slug: "services",
+    questionSlugs: [
+      "what-is-the-agent-readiness-scanner",
+      "what-is-agentbadge-not",
+      "can-the-agentbadge-team-build-an-mcp-server-for-me",
+      "does-the-team-offer-geo-optimization-consulting",
+      "what-is-the-agentbadge-blog",
+      "what-happens-after-i-scan",
+      "can-i-scan-multiple-apis",
+      "is-agentbadge-open-source",
+    ],
+  },
+];
+
+export interface HomepageFaqItem {
+  question: string;
+  shortAnswer: string;
+  faqAnchor: string;
+}
+
+export const HOMEPAGE_FAQ: HomepageFaqItem[] = [
+  {
+    question: "What is Agent Readiness?",
+    shortAnswer:
+      "Agent Readiness is the ability of your API or service to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces.",
+    faqAnchor: "what-is-agent-readiness",
+  },
+  {
+    question: "What does AgentBadge measure?",
+    shortAnswer:
+      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence, not opinions.",
+    faqAnchor: "what-does-agentbadge-measure",
+  },
+  {
+    question: "Is OpenAPI enough?",
+    shortAnswer:
+      "OpenAPI is necessary but not sufficient. It covers syntax (endpoints, parameters) but not semantics, execution (auth flows), or safety (idempotency, retries). Agents need all 8 context layers.",
+    faqAnchor: "is-openapi-enough",
+  },
+  {
+    question: "How does AgentBadge score?",
+    shortAnswer:
+      "AgentBadge scores across four pillars: Discovery (20%), Understandability (25%), Executability (30%), Verifiability (25%). Each pillar aggregates multiple categories of checks.",
+    faqAnchor: "how-does-agentbadge-score",
+  },
+  {
+    question: "What is an Agent Passport?",
+    shortAnswer:
+      "An Agent Passport is a non-transferable NFT on {{NFT_STANDARD}} that provides on-chain identity for AI agents. It includes a DID, tier (Bronze–Platinum), and self-declared capabilities.",
+    faqAnchor: "what-is-an-agent-passport",
   },
 ];
 
