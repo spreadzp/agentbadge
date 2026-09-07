@@ -73,18 +73,23 @@ export function organizationLd(): object {
     "@context": SCHEMA_CONTEXT,
     "@type": "Organization",
     name: SITE_NAME,
+    description: SITE_DESCRIPTION,
     url: BASE_URL,
-    logo: `${BASE_URL}/icons/logo-512.png`,
+    slogan: "Agency for the Agentic Web",
+    logo: {
+      "@type": "ImageObject",
+      url: `${BASE_URL}/icons/logo-512.png`,
+    },
     foundingDate: "2026",
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
+      email: "support@agentbadge.xyz",
       url: `${BASE_URL}/contact`,
       availableLanguage: ["English"],
     },
     sameAs: [
       "https://github.com/spreadzp/agentbadge",
-      "https://raw.githubusercontent.com/spreadzp/agentbadge/refs/heads/main/AGENT-REFERENCE.md",
       "https://www.linkedin.com/company/agentbadge",
       "https://agentbadge.gitbook.io/agentbadge-docs",
     ],
@@ -454,6 +459,27 @@ export function collectionPageLd(opts: {
     url: `${BASE_URL}${opts.path}`,
     inLanguage: "en",
     isPartOf: { "@type": "WebSite", name: SITE_NAME, url: BASE_URL },
+  };
+}
+
+export function ruleItemListLd(opts: {
+  name: string;
+  path: string;
+  items: { name: string; url: string; description: string }[];
+}): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "ItemList",
+    name: opts.name,
+    numberOfItems: opts.items.length,
+    url: `${BASE_URL}${opts.path}`,
+    itemListElement: opts.items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      url: item.url,
+      description: item.description,
+    })),
   };
 }
 
