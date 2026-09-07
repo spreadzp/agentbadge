@@ -5,6 +5,8 @@ import { LandingLayout } from "../src/views/landing/layout";
 import { PageMeta } from "../src/server/lib/page-meta";
 import { landingJsonLd } from "../src/server/lib/json-ld";
 import { ReadinessHeroSection } from "../src/views/landing/sections/readiness-hero";
+import { ReadinessImmediateProofSection } from "../src/views/landing/sections/readiness-immediate-proof";
+import { RULE_DESCRIPTIONS } from "../src/agent-readiness/rule-descriptions";
 
 describe("Homepage meta fixes", () => {
   let app: Hono;
@@ -75,6 +77,23 @@ describe("SLICE-110-2: Hero repositioning", () => {
     const html = ReadinessHeroSection().toString();
     expect(html).toContain('href="/services/scanner"');
     expect(html).toContain("Scan Your API");
+  });
+});
+
+describe("SLICE-110-3: Immediate proof section", () => {
+  it("renders with correct rule count from RULE_DESCRIPTIONS", () => {
+    const html = ReadinessImmediateProofSection().toString();
+    expect(html).toContain(`${RULE_DESCRIPTIONS.length}+`);
+  });
+
+  it("contains 'evidence-based' text", () => {
+    const html = ReadinessImmediateProofSection().toString();
+    expect(html).toContain("evidence-based");
+  });
+
+  it("contains 'WebMCP' text", () => {
+    const html = ReadinessImmediateProofSection().toString();
+    expect(html).toContain("WebMCP");
   });
 });
 
