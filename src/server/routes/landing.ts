@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { LandingLayout } from "../../views/landing/layout";
 import { LandingPage } from "../../views/landing/landing-page";
-import { ReadinessLandingPage } from "../../views/landing/readiness-landing-page";
+import { ReadinessLandingPage, getHomepageFaqJsonLd } from "../../views/landing/readiness-landing-page";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { landingJsonLd, pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentbadge/hedera-core";
@@ -25,7 +25,7 @@ landingRoutes.get("/marketplace", (c) => c.redirect("/services/marketplace", 301
  */
 landingRoutes.get("/", async (c) => {
   const meta = PageMetaRegistry["/"];
-  const jsonLd = landingJsonLd();
+  const jsonLd = [...landingJsonLd(), getHomepageFaqJsonLd()];
 
   const content = ReadinessLandingPage().toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
