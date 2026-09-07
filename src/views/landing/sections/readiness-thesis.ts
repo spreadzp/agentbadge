@@ -23,6 +23,11 @@ export function ReadinessThesisSection() {
         <p class="mt-6 text-slate-400 text-lg max-w-2xl mx-auto">
           AgentBadge is not trying to certify the internet. It is building an open measurement standard and the installed workflow around it: scanner → evidence → fix → CI → badge → monitoring.
         </p>
+        <p class="mt-4 text-slate-500 text-sm max-w-2xl mx-auto">
+          <a href="/what-is-agent-readiness" class="text-emerald-400 underline hover:text-emerald-300">Learn what agent readiness means →</a>
+          ·
+          <a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Read our deep dives on the blog →</a>
+        </p>
         <div class="mt-8 flex flex-wrap justify-center gap-4">
           <a
             href="/agent-guide/articles/what-is-agent-readiness"

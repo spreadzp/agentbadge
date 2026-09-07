@@ -12,6 +12,14 @@ import { ReadinessKnowledgeSection } from "./sections/readiness-knowledge";
 import { ReadinessPricingSection } from "./sections/readiness-pricing";
 import { ReadinessThesisSection } from "./sections/readiness-thesis";
 import { EngineeringCtaSection } from "./engineering-cta";
+import { RelatedLinks } from "../related-links";
+
+const homepageCrossLinks = [
+  { label: "Blog", href: "/blog", description: "Deep dives into agent readiness, MCP, and the agentic web" },
+  { label: "FAQ", href: "/faq", description: "Common questions about AgentBadge and agent readiness" },
+  { label: "Use Cases", href: "/use-cases", description: "Real-world scenarios for agent-ready APIs" },
+  { label: "What Is Agent Readiness?", href: "/what-is-agent-readiness", description: "The canonical guide to agent readiness" },
+];
 
 /**
  * ReadinessLandingPage — assembler for the Agent Readiness landing page.
@@ -43,6 +51,7 @@ export function ReadinessLandingPage() {
     ReadinessKnowledgeSection().toString(),
     ReadinessPricingSection().toString(),
     EngineeringCtaSection().toString(),
+    RelatedLinks("Explore More", homepageCrossLinks),
     ReadinessThesisSection().toString(),
   ];
 
