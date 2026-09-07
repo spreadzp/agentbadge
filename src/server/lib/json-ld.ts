@@ -260,6 +260,7 @@ export function landingJsonLd(): object[] {
     organizationLd(),
     landingHowToLd(),
     landingFaqLd(),
+    breadcrumbFor("/"),
   ];
 }
 

@@ -64,9 +64,9 @@ describe("SLICE-19-3: JSON-LD for landing (5 schemas)", () => {
 
   // ─── landingJsonLd() assembler ───────────────────────────
   describe("landingJsonLd()", () => {
-    it("returns array with 5 schemas", () => {
+    it("returns array with 6 schemas", () => {
       const schemas = landingJsonLd();
-      expect(schemas).toHaveLength(5);
+      expect(schemas).toHaveLength(6);
     });
 
     it("includes SoftwareApplication", () => {
@@ -105,7 +105,7 @@ describe("SLICE-19-3: JSON-LD for landing (5 schemas)", () => {
 
   // ─── renderJsonLd for landing ────────────────────────────
   describe("renderJsonLd() with landing schemas", () => {
-    it("produces valid script tag with 4 schemas", () => {
+    it("produces valid script tag with 6 schemas", () => {
       const html = renderJsonLd(landingJsonLd());
       expect(html).toContain('<script type="application/ld+json">');
       expect(html).toContain("</script>");
@@ -113,7 +113,7 @@ describe("SLICE-19-3: JSON-LD for landing (5 schemas)", () => {
         .replace('<script type="application/ld+json">', "")
         .replace("</script>", "");
       const parsed = JSON.parse(jsonStr);
-      expect(parsed).toHaveLength(5);
+      expect(parsed).toHaveLength(6);
     });
 
     it("escapes < characters in JSON (XSS prevention)", () => {

@@ -10,7 +10,7 @@ import { resolve } from "node:path";
 import { Layout } from "../../views/layout";
 import { RelatedLinks } from "../../views/related-links";
 import { PageMeta } from "../lib/page-meta";
-import { defaultCoreSchemas, breadcrumbFor, articleLd } from "../lib/json-ld";
+import { pageCoreSchemas, breadcrumbFor, articleLd } from "../lib/json-ld";
 import { BUILD_DATE, GIT_COMMIT } from "../lib/build-info";
 
 export const changelogRoutes = new Hono();
@@ -126,7 +126,7 @@ changelogRoutes.get(
 
     const latestDate = entries.length > 0 ? entries[0].date : BUILD_DATE;
     const schemas = [
-      ...defaultCoreSchemas(),
+      ...pageCoreSchemas(),
       articleLd({
         title: "Changelog",
         description: "All notable changes to AgentBadge, newest first. Dates in ISO 8601.",

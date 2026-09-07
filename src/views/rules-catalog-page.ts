@@ -12,7 +12,7 @@ import {
 import { categoryEnum } from "../agent-readiness/shared.schema";
 import { PILLARS, PILLAR_CATEGORIES } from "../agent-readiness/scoring/pillar-map";
 import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
-import { defaultCoreSchemas, breadcrumbFor, collectionPageLd } from "../server/lib/json-ld";
+import { pageCoreSchemas, breadcrumbFor, collectionPageLd } from "../server/lib/json-ld";
 import { DEFAULT_GAP_TYPE_BY_CATEGORY } from "../agent-readiness/gap-engine/gap-types";
 
 const GAP_TYPE_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
@@ -136,7 +136,7 @@ export function RulesCatalogPage() {
   const categories = categoryEnum.options;
 
   const schemas = [
-    ...defaultCoreSchemas(),
+    ...pageCoreSchemas(),
     collectionPageLd({
       name: "Rules Catalog",
       description:

@@ -9,7 +9,8 @@ import { PrivacyPage } from "../../views/privacy-page";
 import { Layout } from "../../views/layout";
 import { RulesCatalogPage } from "../../views/rules-catalog-page";
 import { RuleDetailPage, getRuleDescription } from "../../views/rule-detail-page";
-import { faqPageLd, articleLd, defaultCoreSchemas, pageCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
+import { ChecklistPage } from "../../views/checklist-page";
+import { faqPageLd, articleLd, pageCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
 import { getRegistry } from "../registry/loader";
 import type { RegistryIndex } from "../registry/types";
@@ -29,7 +30,7 @@ contentPageRoutes.get(
     const page = pageParam ? parseInt(pageParam, 10) : 1;
     const allEntries = getFaqEntries();
     const { items, meta } = paginateFaqEntries(allEntries, page);
-    const schemas = [...defaultCoreSchemas(), faqPageLd(items), breadcrumbFor("/faq", "FAQ")];
+    const schemas = [...pageCoreSchemas(), faqPageLd(items), breadcrumbFor("/faq", "FAQ")];
     return c.html(FaqPage(items, meta, schemas));
   },
 );
@@ -44,9 +45,9 @@ contentPageRoutes.get(
   }),
   (c) => {
     const schemas = [
-      ...defaultCoreSchemas(),
+      ...pageCoreSchemas(),
       articleLd({
-        title: "How AgentBadge Works in Practice",
+        title: "Use Cases — How AI Agents Use AgentBadge",
         description:
           "Real-world scenarios for on-chain AI agent identity on Hedera: verified hiring, x402 payments, medical workflows, reputation gating, and cross-agent discovery.",
         path: "/use-cases",
@@ -77,7 +78,7 @@ contentPageRoutes.get(
       // Registry load failed — page still renders with static data
     }
     const schemas = [
-      ...defaultCoreSchemas(),
+      ...pageCoreSchemas(),
       ...TEAM_MEMBERS.map((m) =>
         personLd({
           name: m.name,
@@ -110,7 +111,7 @@ contentPageRoutes.get(
   }),
   (c) => {
     const schemas = [
-      ...defaultCoreSchemas(),
+      ...pageCoreSchemas(),
       webPageLd({
         title: "AgentBadge Pricing — Passport Tiers in HBAR",
         description:
@@ -177,5 +178,19 @@ contentPageRoutes.get(
       return c.html(Layout("Rule not found", "404 — Rule Not Found", { title: "404", description: "Rule not found", path: "/404" }, defaultCoreSchemas()), 404);
     }
     return c.html(RuleDetailPage(rule));
+  },
+);
+
+contentPageRoutes.get(
+  "/agent-readiness-checklist",
+  describeRoute({
+    tags: ["Content"],
+    summary: "Agent Readiness Checklist",
+    description:
+      "Dynamic checklist of all agent readiness rules with stable anchors, core rule highlighting, and editorial intro.",
+    responses: { 200: { description: "HTML checklist page" } },
+  }),
+  (c) => {
+    return c.html(ChecklistPage());
   },
 );

@@ -5,7 +5,7 @@ import { BlogListPage } from "../../views/blog-list";
 import { BlogArticlePage } from "../../views/blog-article";
 import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles, getRelatedArticles, getTagCounts, filterByTag } from "../lib/blog-data";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
-import { defaultCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../lib/json-ld";
+import { pageCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../lib/json-ld";
 import { BASE_URL } from "../lib/page-meta";
 
 export const blogRoutes = new Hono();
@@ -32,7 +32,7 @@ blogRoutes.get(
     const { items, meta: paginationMeta } = paginateArticles(filteredArticles, page);
 
     const schemas = [
-      ...defaultCoreSchemas(),
+      ...pageCoreSchemas(),
       blogLd({
         description: meta.description,
         path: tagParam ? `/blog?tag=${tagParam}` : "/blog",
@@ -162,7 +162,7 @@ blogRoutes.get(
       ...(article.markdown ? { markdownUrl: `/blog/${article.slug}.md` } : {}),
     };
     const schemas = [
-      ...defaultCoreSchemas(),
+      ...pageCoreSchemas(),
       {
         "@context": "https://schema.org",
         "@type": "Article",
@@ -184,6 +184,7 @@ blogRoutes.get(
           "@id": `${BASE_URL}/blog/${article.slug}`,
         },
       },
+      breadcrumbFor(`/blog/${article.slug}`, article.title),
     ];
     const relatedArticles = getRelatedArticles(article, BLOG_ARTICLES);
     const content = BlogArticlePage(article, relatedArticles).toString();

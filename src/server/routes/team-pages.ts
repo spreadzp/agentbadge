@@ -3,7 +3,7 @@ import { describeRoute } from "hono-openapi";
 import { getRegistry } from "../registry/loader";
 import { ServicesPage } from "../../views/services-page";
 import { WorkWithUsPage } from "../../views/work-with-us-page";
-import { defaultCoreSchemas, breadcrumbFor, collectionPageLd, webPageLd } from "../lib/json-ld";
+import { pageCoreSchemas, breadcrumbFor, collectionPageLd, webPageLd } from "../lib/json-ld";
 
 export const teamPageRoutes = new Hono();
 
@@ -34,7 +34,7 @@ teamPageRoutes.get(
     try {
       const registry = await getRegistry();
       const schemas = [
-        ...defaultCoreSchemas(),
+        ...pageCoreSchemas(),
         collectionPageLd({
           name: "AgentBadge Services Catalog",
           description:
@@ -67,7 +67,7 @@ teamPageRoutes.get(
     try {
       const registry = await getRegistry();
       const schemas = [
-        ...defaultCoreSchemas(),
+        ...pageCoreSchemas(),
         webPageLd({
           title: "Work With the AgentBadge Team",
           description:
