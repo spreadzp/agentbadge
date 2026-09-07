@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { openAPIRouteHandler } from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
+import { stringify as yamlStringify } from "yaml";
 import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
 import { HEDERA_TESTNET_CAIP2 } from "@x402/hedera";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
@@ -510,13 +511,25 @@ app.route("/", monitoringApp);
 // OpenAPI spec + Swagger UI
 const openApiSpecHandler = openAPIRouteHandler(app, {
   documentation: openApiConfig,
-  exclude: ["/docs", "/api/specs", "/openapi.json", "/swagger.json", "/ui", /^\/ui\//, "/metrics", "/api/telemetry"],
+  exclude: ["/docs", "/api/specs", "/openapi.json", "/openapi.yaml", "/swagger.json", "/ui", /^\/ui\//, "/metrics", "/api/telemetry"],
   excludeMethods: ["OPTIONS"],
 });
 app.get("/api/specs", openApiSpecHandler);
 // Standard OpenAPI discovery paths (SLICE-47-9)
 app.get("/openapi.json", openApiSpecHandler);
 app.get("/swagger.json", openApiSpecHandler);
+// SLICE-121-3: YAML endpoint for AI-agents that prefer YAML
+app.get("/openapi.yaml", async (_c) => {
+  const specRes = await app.request("/openapi.json");
+  const json = await specRes.json();
+  const yamlStr = yamlStringify(json);
+  return new Response(yamlStr, {
+    headers: {
+      "Content-Type": "application/yaml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+});
 app.get("/docs", swaggerUI({ url: "/api/specs" }));
 
 // Register MCP tools — default "all" namespace (backward compat)
