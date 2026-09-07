@@ -9,7 +9,7 @@
 
 // ── Regex patterns ───────────────────────────────────────────
 
-const URL_PATTERN = /https?:\/\/[^\s"'<>]+/i;
+const URL_PATTERN = /(?:https?|ftp):\/\/[^\s"'<>]+/i;
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 const IPV4_PATTERN = /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/;
 const IPV6_PATTERN = /\b(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}\b/i;
@@ -51,7 +51,8 @@ function sweepValue(value: unknown, findings: string[]): void {
       sweepValue(item, findings);
     }
   } else if (value !== null && typeof value === "object") {
-    for (const val of Object.values(value)) {
+    for (const [key, val] of Object.entries(value)) {
+      sweepString(key, findings);
       sweepValue(val, findings);
     }
   }
