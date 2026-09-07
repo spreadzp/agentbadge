@@ -7,7 +7,6 @@ import {
   breadcrumbListLd,
   webPageLd,
   aboutPageLd,
-  articleLd,
   landingJsonLd,
   renderJsonLd,
 } from "../../../src/server/lib/json-ld";
@@ -339,21 +338,22 @@ describe("SLICE-19-3: JSON-LD for landing (5 schemas)", () => {
     });
   });
 
-  describe("SLICE-21-3: aboutPageLd()", () => {
-    it("returns Article schema (alias for articleLd)", () => {
+  describe("SLICE-21-3: aboutPageLd() (updated in SLICE-112-1)", () => {
+    it("returns AboutPage schema", () => {
       const opts = { title: "About", description: "About page", path: "/about" };
       const schema = aboutPageLd(opts) as Record<string, unknown>;
-      expect(schema["@type"]).toBe("Article");
-      expect(schema.headline).toBe("About");
+      expect(schema["@type"]).toBe("AboutPage");
+      expect(schema.name).toBe("About");
       expect(schema.description).toBe("About page");
       expect(schema.url).toBe(`${BASE_URL}/about`);
     });
 
-    it("output matches articleLd() output", () => {
-      const opts = { title: "Test", description: "Test desc", path: "/test" };
-      const about = aboutPageLd(opts);
-      const article = articleLd(opts);
-      expect(about).toEqual(article);
+    it("has mainEntity pointing to Organization", () => {
+      const opts = { title: "About", description: "About page", path: "/about" };
+      const schema = aboutPageLd(opts) as Record<string, unknown>;
+      const mainEntity = schema.mainEntity as Record<string, unknown>;
+      expect(mainEntity["@type"]).toBe("Organization");
+      expect(mainEntity.url).toBe(BASE_URL);
     });
   });
 

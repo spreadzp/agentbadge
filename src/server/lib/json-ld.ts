@@ -91,8 +91,13 @@ export function organizationLd(): object {
   };
 }
 
+export function pageCoreSchemas(): object[] {
+  return [webSiteLd(), organizationLd()];
+}
+
+/** @deprecated Use pageCoreSchemas() instead — SoftwareApplication is too specific for most pages */
 export function defaultCoreSchemas(): object[] {
-  return [softwareApplicationLd(), webSiteLd(), organizationLd()];
+  return [softwareApplicationLd(), ...pageCoreSchemas()];
 }
 
 // ─── HowTo + BreadcrumbList Schemas (SLICE-21-1) ─────────────
@@ -144,6 +149,32 @@ export function breadcrumbListLd(
       item: it.path.startsWith("http") ? it.path : `${BASE_URL}${it.path}`,
     })),
   };
+}
+
+// ─── Breadcrumb Auto-Generator (SLICE-112-1) ─────────────────
+
+function titleCaseSegment(segment: string): string {
+  return segment
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+export function breadcrumbFor(path: string, label?: string): object {
+  const segments = path.split("/").filter(Boolean);
+  const items: { name: string; path: string }[] = [
+    { name: "Home", path: "/" },
+  ];
+
+  let currentPath = "";
+  for (let i = 0; i < segments.length; i++) {
+    currentPath += `/${segments[i]}`;
+    const isLast = i === segments.length - 1;
+    const name = isLast && label ? label : titleCaseSegment(segments[i]);
+    items.push({ name, path: currentPath });
+  }
+
+  return breadcrumbListLd(items);
 }
 
 // ─── Landing Page Schemas (SLICE-19-3) ────────────────────────
@@ -395,7 +426,35 @@ export function aboutPageLd(opts: {
   description: string;
   path: string;
 }): object {
-  return articleLd(opts);
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "AboutPage",
+    name: opts.title,
+    description: opts.description,
+    url: `${BASE_URL}${opts.path}`,
+    inLanguage: "en",
+    mainEntity: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: BASE_URL,
+    },
+  };
+}
+
+export function collectionPageLd(opts: {
+  name: string;
+  description: string;
+  path: string;
+}): object {
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@type": "CollectionPage",
+    name: opts.name,
+    description: opts.description,
+    url: `${BASE_URL}${opts.path}`,
+    inLanguage: "en",
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: BASE_URL },
+  };
 }
 
 export function renderJsonLd(schemas: object[]): string {
