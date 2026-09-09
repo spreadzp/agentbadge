@@ -8,7 +8,7 @@ export default defineConfig({
     testTimeout: 120000,
     server: {
       deps: {
-        inline: ["@agentbadge/passport"],
+        inline: ["@agentbadge/passport", "@agentbadge/evm-core", "@agentbadge/keeperhub", "@agentbadge/webmcp", "@agentbadge/hedera-core"],
       },
     },
   },
