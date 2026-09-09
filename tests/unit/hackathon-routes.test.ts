@@ -312,3 +312,68 @@ describe("SLICE-91-10: Declarative API Form Annotations", () => {
     });
   });
 });
+
+describe("SLICE-126-1: KeeperHub Routing & PageMeta", () => {
+  const app = new Hono();
+  app.route("/", hackathonRoutes);
+
+  describe("GET /hackathon/keeperhub", () => {
+    it("returns 200 with DOCTYPE html", async () => {
+      const res = await app.request("/hackathon/keeperhub");
+      expect(res.status).toBe(200);
+      const body = await res.text();
+      expect(body).toContain("<!DOCTYPE html>");
+    });
+
+    it("contains KeeperHub heading", async () => {
+      const res = await app.request("/hackathon/keeperhub");
+      const body = await res.text();
+      expect(body).toContain("KeeperHub");
+    });
+
+    it("contains hackathon window text", async () => {
+      const res = await app.request("/hackathon/keeperhub");
+      const body = await res.text();
+      expect(body).toContain("Sep 6");
+    });
+
+    it("does NOT contain WebMCP script injection", async () => {
+      const res = await app.request("/hackathon/keeperhub");
+      const body = await res.text();
+      expect(body).not.toContain("document.modelContext");
+      expect(body).not.toContain("registerTool");
+    });
+
+    it("does NOT have Link header for webmcp.json", async () => {
+      const res = await app.request("/hackathon/keeperhub");
+      const linkHeader = res.headers.get("Link");
+      expect(linkHeader).toBeNull();
+    });
+  });
+
+  describe("PageMeta registry", () => {
+    it("includes /hackathon/keeperhub entry", () => {
+      expect(PageMeta["/hackathon/keeperhub"]).toBeDefined();
+      expect(PageMeta["/hackathon/keeperhub"].title).toBeTruthy();
+      expect(PageMeta["/hackathon/keeperhub"].description).toBeTruthy();
+      expect(PageMeta["/hackathon/keeperhub"].path).toBe("/hackathon/keeperhub");
+    });
+  });
+
+  describe("Regression — existing hackathon routes", () => {
+    it("GET /hackathon/webmcp still 200", async () => {
+      const res = await app.request("/hackathon/webmcp");
+      expect(res.status).toBe(200);
+    });
+
+    it("GET /hackathon/datahub still 200", async () => {
+      const res = await app.request("/hackathon/datahub");
+      expect(res.status).toBe(200);
+    });
+
+    it("unknown hackathon name still 404", async () => {
+      const res = await app.request("/hackathon/nonexistent");
+      expect(res.status).toBe(404);
+    });
+  });
+});
