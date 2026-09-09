@@ -39,6 +39,13 @@ export interface UiConfig {
   accountPlaceholder: string;
 }
 
+export interface X402Config {
+  enabled: boolean;
+  facilitatorUrl: string;
+  payTo: string;
+  price: string;
+}
+
 export interface KeeperHubEnvConfig {
   enabled: boolean;
   apiKey: string;
@@ -48,6 +55,7 @@ export interface KeeperHubEnvConfig {
   apiBaseUrl: string;
   triggerMode: "mcp" | "webhook";
   webhookUrls: Record<string, string>;
+  x402?: X402Config;
   workflowIds: {
     recordScan?: string;
     mintPassport?: string;
@@ -251,6 +259,22 @@ export function loadConfig(): AppConfig {
       }
     }
     const khTriggerMode = (process.env.KEEPERHUB_TRIGGER_MODE ?? "mcp") as "mcp" | "webhook";
+
+    // x402 premium config — optional, default disabled
+    const x402Enabled = booleanFlag("KEEPERHUB_X402_ENABLED");
+    let x402: X402Config | undefined;
+    if (x402Enabled) {
+      x402 = {
+        enabled: true,
+        facilitatorUrl: process.env.X402_FACILITATOR_URL ?? "https://x402.org/facilitator",
+        payTo: process.env.X402_PAY_TO ?? "",
+        price: process.env.X402_PRICE ?? "$0.01",
+      };
+      if (!x402.payTo) {
+        errors.push("X402_PAY_TO required when KEEPERHUB_X402_ENABLED=true");
+      }
+    }
+
     keeperhub = {
       enabled: true,
       apiKey: khApiKey ?? "",
@@ -260,6 +284,7 @@ export function loadConfig(): AppConfig {
       apiBaseUrl: process.env.KEEPERHUB_API_BASE_URL ?? process.env.BASE_URL ?? "https://agentbadge.xyz",
       triggerMode: khTriggerMode,
       webhookUrls: khWebhookUrls,
+      x402,
       workflowIds: {
         recordScan: process.env.KEEPERHUB_WORKFLOW_RECORD_SCAN,
         mintPassport: process.env.KEEPERHUB_WORKFLOW_MINT_PASSPORT,

@@ -3,6 +3,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { openAPIRouteHandler } from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { stringify as yamlStringify } from "yaml";
+import { getConfig } from "../config/env";
 import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
 import { HEDERA_TESTNET_CAIP2 } from "@x402/hedera";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
@@ -476,6 +477,29 @@ app.route("/", contentPageRoutes);
 app.route("/", blogRoutes);
 app.route("/api", webmcpApiRoutes);
 app.route("/api", keeperhubApiRoutes);
+
+// x402 premium payment middleware — conditional, dynamic import for EVM scheme only
+const khCfg = getConfig().keeperhub;
+if (khCfg?.enabled && khCfg.x402?.enabled) {
+  const x402Cfg = khCfg.x402;
+  (async () => {
+    try {
+      const { ExactEvmScheme } = await import("@x402/evm/exact/server");
+      const facilitatorClient = new HTTPFacilitatorClient({ url: x402Cfg.facilitatorUrl });
+      const resourceServer = new x402ResourceServer(facilitatorClient).register("eip155:84532", new ExactEvmScheme());
+      app.use(paymentMiddleware({
+        "POST /api/keeperhub/scan/premium": {
+          accepts: [{ scheme: "exact", price: x402Cfg.price, network: "eip155:84532", payTo: x402Cfg.payTo }],
+          description: "AgentBadge onchain scan recording — executed through KeeperHub, recorded on TrustRegistry (Base Sepolia)",
+          mimeType: "application/json",
+        },
+      }, resourceServer));
+      logger.info("x402 premium middleware wired for POST /api/keeperhub/scan/premium");
+    } catch (e) {
+      logger.error("Failed to wire x402 middleware — premium route unprotected", { error: e instanceof Error ? e.message : String(e) });
+    }
+  })();
+}
 app.route("/api", linkGraphRoutes);
 app.route("/api", rulesApiRoutes);
 app.route("/api", scanRuleRoutes);

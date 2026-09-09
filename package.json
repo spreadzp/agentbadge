@@ -40,7 +40,8 @@
     "deploy": "bash scripts/deploy.sh",
     "lighthouse": "lhci autorun",
     "medical-agent": "bun src/agents/cli.ts",
-    "medical-agent:task": "bun src/agents/cli.ts --task-id"
+    "medical-agent:task": "bun src/agents/cli.ts --task-id",
+    "x402:demo": "bun scripts/x402-pay-demo.mts"
   },
   "dependencies": {
     "@agentbadge/evm-core": "^0.1.1",
@@ -58,6 +59,7 @@
     "@standard-community/standard-openapi": "^0.2.9",
     "@x402/fetch": "^2.19.0",
     "@x402/hedera": "^2.19.0",
+    "@x402/evm": "^2.19.0",
     "@x402/hono": "^2.19.0",
     "ethers": "^6.17.0",
     "hono": "^4.7.0",

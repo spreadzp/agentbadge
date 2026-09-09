@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { streamSSE } from "hono/streaming";
 import { getConfig } from "../../config/env";
@@ -62,6 +62,60 @@ keeperhubApiRoutes.post(
     }
   },
 );
+
+// Shared helper: trigger KeeperHub record-scan workflow, poll execution, store audit event.
+// Used by both POST /scan (confirm mode) and POST /scan/premium (x402-gated).
+async function executeScanRecording(
+  c: Context,
+  normalizedUrl: string,
+  scan: { url: string; score: number; grade: string; rulesPassed: number; rulesTotal: number },
+) {
+  const cfg = getConfig();
+  const workflowId = cfg.keeperhub!.workflowIds.recordScan;
+  if (!workflowId) {
+    return c.json({ error: "record-scan workflow not provisioned (KEEPERHUB_WORKFLOW_RECORD_SCAN)" }, 502);
+  }
+
+  const client = getKeeperHubClient();
+  if (!client) return c.json(keeperhubDisabledResponse(), 503);
+
+  let triggerResult;
+  try {
+    triggerResult = await triggerWorkflow(client, workflowId, { siteUrl: normalizedUrl, score: scan.score, rulesPassed: scan.rulesPassed, rulesTotal: scan.rulesTotal }, {
+      mode: cfg.keeperhub!.triggerMode,
+      webhookUrl: cfg.keeperhub!.webhookUrls["record-scan"],
+      webhookKey: cfg.keeperhub!.webhookKey,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return c.json({ error: message, hint: "check KEEPERHUB_API_KEY / connectivity" }, 502);
+  }
+
+  try {
+    const exec = await client.pollExecution(triggerResult.executionId, 120_000);
+    const txHashes = (exec as { txHashes?: string[] }).txHashes ?? [];
+    auditStore.add({
+      source: "agentbadge-record-scan",
+      siteUrl: normalizedUrl,
+      score: scan.score,
+      status: "recorded",
+      txHashes,
+      executionId: triggerResult.executionId,
+    });
+    return c.json({ mode: "executed", via: triggerResult.via, executionId: triggerResult.executionId, status: exec.status, txHashes, scan });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    auditStore.add({
+      source: "agentbadge-record-scan",
+      siteUrl: normalizedUrl,
+      score: scan.score,
+      status: "failed",
+      executionId: triggerResult.executionId,
+      error: message,
+    });
+    return c.json({ mode: "failed", executionId: triggerResult.executionId, error: message });
+  }
+}
 
 // POST /keeperhub/scan — scan → dry-run preview or confirm → trigger KeeperHub workflow
 keeperhubApiRoutes.post(
@@ -133,51 +187,68 @@ keeperhubApiRoutes.post(
       });
     }
 
-    // Confirm mode
-    const workflowId = cfg.keeperhub.workflowIds.recordScan;
-    if (!workflowId) {
-      return c.json({ error: "record-scan workflow not provisioned (KEEPERHUB_WORKFLOW_RECORD_SCAN)" }, 502);
+    // Confirm mode — use shared helper
+    return executeScanRecording(c, normalizedUrl, scan);
+  },
+);
+
+// POST /keeperhub/scan/premium — x402-gated premium onchain recording
+keeperhubApiRoutes.post(
+  "/keeperhub/scan/premium",
+  describeRoute({
+    tags: ["KeeperHub"],
+    summary: "Premium scan recording via x402 payment (EIP-3009 USDC)",
+    description: "Identical to POST /scan with confirm:true, but gated behind x402 payment middleware. Free alternative: POST /api/keeperhub/scan with confirm:true.",
+  }),
+  async (c) => {
+    const cfg = getConfig();
+    if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
+    if (!cfg.keeperhub.x402?.enabled) {
+      return c.json({ error: "x402 premium disabled", freeAlternative: "POST /api/keeperhub/scan {url, confirm:true}" }, 503);
     }
 
-    const client = getKeeperHubClient();
-    if (!client) return c.json(keeperhubDisabledResponse(), 503);
-
-    let triggerResult;
+    let body: { url?: string };
     try {
-      triggerResult = await triggerWorkflow(client, workflowId, { siteUrl: normalizedUrl, score, rulesPassed, rulesTotal }, {
-        mode: cfg.keeperhub.triggerMode,
-        webhookUrl: cfg.keeperhub.webhookUrls["record-scan"],
-        webhookKey: cfg.keeperhub.webhookKey,
-      });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return c.json({ error: message, hint: "check KEEPERHUB_API_KEY / connectivity" }, 502);
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
     }
 
-    try {
-      const exec = await client.pollExecution(triggerResult.executionId, 120_000);
-      const txHashes = (exec as { txHashes?: string[] }).txHashes ?? [];
-      auditStore.add({
-        source: "agentbadge-record-scan",
-        siteUrl: normalizedUrl,
-        score,
-        status: "recorded",
-        txHashes,
-        executionId: triggerResult.executionId,
-      });
-      return c.json({ mode: "executed", via: triggerResult.via, executionId: triggerResult.executionId, status: exec.status, txHashes, scan });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      auditStore.add({
-        source: "agentbadge-record-scan",
-        siteUrl: normalizedUrl,
-        score,
-        status: "failed",
-        executionId: triggerResult.executionId,
-        error: message,
-      });
-      return c.json({ mode: "failed", executionId: triggerResult.executionId, error: message });
+    const rawUrl = body.url;
+    if (!rawUrl || typeof rawUrl !== "string") {
+      return c.json({ error: "Missing required field: url" }, 400);
     }
+
+    const normalizedUrl = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`;
+    try {
+      new URL(normalizedUrl);
+    } catch {
+      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+    }
+
+    const hostname = new URL(normalizedUrl).hostname;
+    try {
+      assertSafeTarget(hostname);
+    } catch {
+      return c.json({ error: "Private URLs are not allowed" }, 403);
+    }
+
+    let score: number, grade: string, rulesPassed: number, rulesTotal: number;
+    try {
+      const sourceState = await scanDomain(normalizedUrl, {});
+      const result = RuleEngine.run(sourceState);
+      const report = formatScanReport(normalizedUrl, result);
+      score = report.score;
+      grade = report.grade;
+      rulesPassed = report.verified;
+      rulesTotal = report.total_rules;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return c.json({ error: `Scan failed: ${message}` }, 500);
+    }
+
+    const scan = { url: normalizedUrl, score, grade, rulesPassed, rulesTotal };
+    return executeScanRecording(c, normalizedUrl, scan);
   },
 );
 
