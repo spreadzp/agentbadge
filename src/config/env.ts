@@ -46,6 +46,8 @@ export interface KeeperHubEnvConfig {
   webhookKey?: string;
   auditSecret?: string;
   apiBaseUrl: string;
+  triggerMode: "mcp" | "webhook";
+  webhookUrls: Record<string, string>;
   workflowIds: {
     recordScan?: string;
     mintPassport?: string;
@@ -238,6 +240,17 @@ export function loadConfig(): AppConfig {
     if (khWebhookKey && !khWebhookKey.startsWith("wfb_")) {
       errors.push("Invalid KEEPERHUB_WEBHOOK_KEY: expected wfb_ prefix");
     }
+    // Parse webhook URLs JSON map (workflowName → url)
+    let khWebhookUrls: Record<string, string> = {};
+    const khWebhookUrlsRaw = process.env.KEEPERHUB_WEBHOOK_URLS;
+    if (khWebhookUrlsRaw) {
+      try {
+        khWebhookUrls = JSON.parse(khWebhookUrlsRaw);
+      } catch {
+        errors.push("Invalid KEEPERHUB_WEBHOOK_URLS: expected JSON object");
+      }
+    }
+    const khTriggerMode = (process.env.KEEPERHUB_TRIGGER_MODE ?? "mcp") as "mcp" | "webhook";
     keeperhub = {
       enabled: true,
       apiKey: khApiKey ?? "",
@@ -245,6 +258,8 @@ export function loadConfig(): AppConfig {
       webhookKey: khWebhookKey,
       auditSecret: process.env.KEEPERHUB_AUDIT_SECRET,
       apiBaseUrl: process.env.KEEPERHUB_API_BASE_URL ?? process.env.BASE_URL ?? "https://agentbadge.xyz",
+      triggerMode: khTriggerMode,
+      webhookUrls: khWebhookUrls,
       workflowIds: {
         recordScan: process.env.KEEPERHUB_WORKFLOW_RECORD_SCAN,
         mintPassport: process.env.KEEPERHUB_WORKFLOW_MINT_PASSPORT,

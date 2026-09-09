@@ -2,6 +2,12 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getConfig } from "../../config/env";
 import { getKeeperHubClient, keeperhubDisabledResponse } from "../lib/keeperhub";
+import { triggerWorkflow } from "../lib/keeperhub-trigger";
+import { auditStore } from "../lib/keeperhub-audit-store";
+import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
+import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
+import { formatScanReport } from "../../agent-readiness/report-formatter";
+import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 
 export const keeperhubApiRoutes = new Hono();
 
@@ -52,5 +58,179 @@ keeperhubApiRoutes.post(
     } catch (e) {
       return c.json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
+  },
+);
+
+// POST /keeperhub/scan — scan → dry-run preview or confirm → trigger KeeperHub workflow
+keeperhubApiRoutes.post(
+  "/keeperhub/scan",
+  describeRoute({
+    tags: ["KeeperHub"],
+    summary: "Scan a URL and optionally trigger KeeperHub record-scan workflow",
+    description: "Dry-run mode (default) returns scan results + preview of onchain functionArgs. Confirm mode triggers KeeperHub workflow, polls execution, and stores audit event.",
+  }),
+  async (c) => {
+    const cfg = getConfig();
+    if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
+
+    let body: { url?: string; confirm?: boolean };
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+
+    const rawUrl = body.url;
+    if (!rawUrl || typeof rawUrl !== "string") {
+      return c.json({ error: "Missing required field: url" }, 400);
+    }
+
+    const normalizedUrl = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`;
+    try {
+      new URL(normalizedUrl);
+    } catch {
+      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+    }
+
+    const hostname = new URL(normalizedUrl).hostname;
+    try {
+      assertSafeTarget(hostname);
+    } catch {
+      return c.json({ error: "Private URLs are not allowed" }, 403);
+    }
+
+    let score: number, grade: string, rulesPassed: number, rulesTotal: number;
+    try {
+      const sourceState = await scanDomain(normalizedUrl, {});
+      const result = RuleEngine.run(sourceState);
+      const report = formatScanReport(normalizedUrl, result);
+      score = report.score;
+      grade = report.grade;
+      rulesPassed = report.verified;
+      rulesTotal = report.total_rules;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return c.json({ error: `Scan failed: ${message}` }, 500);
+    }
+
+    const scan = { url: normalizedUrl, score, grade, rulesPassed, rulesTotal };
+
+    // Dry-run mode (default)
+    if (body.confirm !== true) {
+      return c.json({
+        mode: "dry-run",
+        scan,
+        wouldExecute: {
+          workflow: "agentbadge-record-scan",
+          workflowId: cfg.keeperhub.workflowIds.recordScan ?? null,
+          network: "84532",
+          contract: "TrustRegistry",
+          functionArgs: [normalizedUrl, score, rulesPassed, rulesTotal],
+        },
+        confirmHint: "POST again with confirm: true",
+      });
+    }
+
+    // Confirm mode
+    const workflowId = cfg.keeperhub.workflowIds.recordScan;
+    if (!workflowId) {
+      return c.json({ error: "record-scan workflow not provisioned (KEEPERHUB_WORKFLOW_RECORD_SCAN)" }, 502);
+    }
+
+    const client = getKeeperHubClient();
+    if (!client) return c.json(keeperhubDisabledResponse(), 503);
+
+    let triggerResult;
+    try {
+      triggerResult = await triggerWorkflow(client, workflowId, { siteUrl: normalizedUrl, score, rulesPassed, rulesTotal }, {
+        mode: cfg.keeperhub.triggerMode,
+        webhookUrl: cfg.keeperhub.webhookUrls["record-scan"],
+        webhookKey: cfg.keeperhub.webhookKey,
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return c.json({ error: message, hint: "check KEEPERHUB_API_KEY / connectivity" }, 502);
+    }
+
+    try {
+      const exec = await client.pollExecution(triggerResult.executionId, 120_000);
+      const txHashes = (exec as { txHashes?: string[] }).txHashes ?? [];
+      auditStore.add({
+        source: "agentbadge-record-scan",
+        siteUrl: normalizedUrl,
+        score,
+        status: "recorded",
+        txHashes,
+        executionId: triggerResult.executionId,
+      });
+      return c.json({ mode: "executed", via: triggerResult.via, executionId: triggerResult.executionId, status: exec.status, txHashes, scan });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      auditStore.add({
+        source: "agentbadge-record-scan",
+        siteUrl: normalizedUrl,
+        score,
+        status: "failed",
+        executionId: triggerResult.executionId,
+        error: message,
+      });
+      return c.json({ mode: "failed", executionId: triggerResult.executionId, error: message });
+    }
+  },
+);
+
+// POST /keeperhub/audit/webhook — callback receiver for KeeperHub workflow callbacks
+keeperhubApiRoutes.post(
+  "/keeperhub/audit/webhook",
+  describeRoute({
+    tags: ["KeeperHub"],
+    summary: "Webhook receiver for KeeperHub audit callbacks",
+    description: "Receives callback POSTs from KeeperHub workflow audit-callback nodes. Validates secret when configured. Coerces string values to numbers.",
+  }),
+  async (c) => {
+    const cfg = getConfig();
+    if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
+
+    // Secret validation when configured
+    if (cfg.keeperhub.auditSecret) {
+      const authHeader = c.req.header("Authorization") ?? "";
+      const expected = `Bearer ${cfg.keeperhub.auditSecret}`;
+      if (authHeader !== expected) {
+        return c.json({ error: "Unauthorized: invalid or missing secret" }, 401);
+      }
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+
+    // Coerce string values to numbers for score/rulesPassed/rulesTotal
+    const coerceNum = (v: unknown): number | undefined => {
+      if (typeof v === "number") return v;
+      if (typeof v === "string") {
+        const n = Number(v);
+        if (!isNaN(n)) return n;
+      }
+      return undefined;
+    };
+
+    const source = (body.source as string) ?? "keeperhub-callback";
+    const siteUrl = (body.siteUrl as string) ?? (body.url as string) ?? "";
+    const score = coerceNum(body.score);
+    const executionId = body.executionId as string | undefined;
+
+    auditStore.add({
+      source,
+      siteUrl,
+      score,
+      status: "recorded",
+      executionId,
+      txHashes: [],
+    });
+
+    return c.json({ ok: true });
   },
 );
