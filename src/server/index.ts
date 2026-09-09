@@ -101,7 +101,8 @@ import { createMonitoringRoutes } from "./routes/monitoring";
 import { createMonitoringStore } from "../agent-readiness/monitoring/monitoring-store";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
-import { loadConfig } from "../config/env";
+import { loadConfig, getConfig } from "../config/env";
+import { attestcoinRoutes, setAttestcoinRouteConfig } from "./routes/attestcoin";
 import { initSentry, captureError } from "./lib/sentry";
 import { ErrorCodes } from "./lib/error-codes";
 import { errorResponse } from "./lib/error-response";
@@ -489,6 +490,19 @@ app.route("/", agencyJsonRoutes);
 app.route("/", profileRoutes);
 app.route("/", profileViewerRoutes);
 app.route("/api/demo", demo);
+
+// Attestcoin routes (EPIC-127) — only when ATTESTCOIN_ENABLED=true
+const attestcoinConfig = getConfig().attestcoin;
+if (attestcoinConfig.enabled) {
+  setAttestcoinRouteConfig({
+    enabled: true,
+    creditcoinRpcUrl: attestcoinConfig.creditcoinRpcUrl,
+    taskStateAddr: attestcoinConfig.taskStateAddr,
+  });
+  app.route("/", attestcoinRoutes);
+  logger.info("Attestcoin routes registered");
+}
+
 app.route("/", metricsApp);
 app.route("/", telemetryApp);
 app.route("/", paymentRoutes);
