@@ -37,6 +37,16 @@ export interface UiConfig {
   accountPlaceholder: string;
 }
 
+export interface AttestcoinConfig {
+  enabled: boolean;
+  taskEscrowSepoliaAddr: string;
+  taskMarketplaceAscAddr: string;
+  taskStateAddr: string;
+  sepoliaRpcUrl: string;
+  creditcoinRpcUrl: string;
+  proverUrl: string;
+}
+
 export interface AppConfig {
   chainMode: ChainMode;
   hederaOperatorId: string;
@@ -56,6 +66,7 @@ export interface AppConfig {
   mockIpfs: boolean;
   evm?: EvmConfig;
   base?: BaseConfig;
+  attestcoin: AttestcoinConfig;
   ui: UiConfig;
 }
 
@@ -214,6 +225,16 @@ export function loadConfig(): AppConfig {
     throw new Error(`Configuration errors:\n  - ${errors.join("\n  - ")}`);
   }
 
+  const attestcoin: AttestcoinConfig = {
+    enabled: booleanFlag("ATTESTCOIN_ENABLED"),
+    taskEscrowSepoliaAddr: process.env.TASK_ESCROW_SEPOLIA_ADDR ?? "",
+    taskMarketplaceAscAddr: process.env.TASK_MARKETPLACE_ASC_ADDR ?? "",
+    taskStateAddr: process.env.TASK_STATE_ADDR ?? "",
+    sepoliaRpcUrl: process.env.SEPOLIA_RPC_URL ?? "",
+    creditcoinRpcUrl: process.env.CREDITCOIN_RPC_URL ?? "https://rpc.cc3-testnet.creditcoin.network",
+    proverUrl: process.env.ATTESTCOIN_PROVER_URL ?? "https://prover.cc3-testnet.creditcoin.network",
+  };
+
   return {
     chainMode,
     hederaOperatorId: hederaOperatorId ?? "",
@@ -233,6 +254,7 @@ export function loadConfig(): AppConfig {
     mockIpfs: booleanFlag("MOCK_IPFS"),
     evm,
     base,
+    attestcoin,
     ui: loadUiConfig(chainMode),
   };
 }

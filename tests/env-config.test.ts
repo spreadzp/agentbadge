@@ -360,4 +360,56 @@ describe("loadConfig", () => {
     expect(config.ui!.currencySymbol).toBe("TEST");
     expect(config.ui!.currencyDecimals).toBe(3);
   });
+
+  it("attestcoin config defaults to disabled with empty addresses", () => {
+    process.env.HEDERA_OPERATOR_ID = "0.0.5266613";
+    process.env.HEDERA_OPERATOR_KEY = "302e020100300506032b657004220420abcdef";
+    process.env.PASSPORT_TOKEN_ID = "0.0.1234567";
+    process.env.AUDIT_TOPIC_ID = "0.0.7654321";
+    process.env.DIRECTORY_TOPIC_ID = "0.0.8765432";
+    process.env["x402_FACILITATOR_URL"] = "https://api.testnet.blocky402.com";
+    process.env["x402_FEE_PAYER"] = "0.0.7162784";
+    process.env["x402_TREASURY"] = "0.0.8011510";
+    process.env.IPFS_API_KEY = "test-key";
+    process.env.IPFS_API_SECRET = "test-secret";
+    delete process.env.ATTESTCOIN_ENABLED;
+
+    const config = loadConfig();
+    expect(config.attestcoin.enabled).toBe(false);
+    expect(config.attestcoin.taskEscrowSepoliaAddr).toBe("");
+    expect(config.attestcoin.taskMarketplaceAscAddr).toBe("");
+    expect(config.attestcoin.taskStateAddr).toBe("");
+    expect(config.attestcoin.sepoliaRpcUrl).toBe("");
+    expect(config.attestcoin.creditcoinRpcUrl).toBe("https://rpc.cc3-testnet.creditcoin.network");
+    expect(config.attestcoin.proverUrl).toBe("https://prover.cc3-testnet.creditcoin.network");
+  });
+
+  it("attestcoin config loads when ATTESTCOIN_ENABLED=true", () => {
+    process.env.HEDERA_OPERATOR_ID = "0.0.5266613";
+    process.env.HEDERA_OPERATOR_KEY = "302e020100300506032b657004220420abcdef";
+    process.env.PASSPORT_TOKEN_ID = "0.0.1234567";
+    process.env.AUDIT_TOPIC_ID = "0.0.7654321";
+    process.env.DIRECTORY_TOPIC_ID = "0.0.8765432";
+    process.env["x402_FACILITATOR_URL"] = "https://api.testnet.blocky402.com";
+    process.env["x402_FEE_PAYER"] = "0.0.7162784";
+    process.env["x402_TREASURY"] = "0.0.8011510";
+    process.env.IPFS_API_KEY = "test-key";
+    process.env.IPFS_API_SECRET = "test-secret";
+    process.env.ATTESTCOIN_ENABLED = "true";
+    process.env.TASK_ESCROW_SEPOLIA_ADDR = "0x1234567890123456789012345678901234567890";
+    process.env.TASK_MARKETPLACE_ASC_ADDR = "0xabcdef1234567890123456789012345678901234";
+    process.env.TASK_STATE_ADDR = "0x0987654321098765432109876543210987654321";
+    process.env.SEPOLIA_RPC_URL = "https://rpc.sepolia.org";
+    process.env.CREDITCOIN_RPC_URL = "https://custom.creditcoin.network";
+    process.env.ATTESTCOIN_PROVER_URL = "https://custom.prover.creditcoin.network";
+
+    const config = loadConfig();
+    expect(config.attestcoin.enabled).toBe(true);
+    expect(config.attestcoin.taskEscrowSepoliaAddr).toBe("0x1234567890123456789012345678901234567890");
+    expect(config.attestcoin.taskMarketplaceAscAddr).toBe("0xabcdef1234567890123456789012345678901234");
+    expect(config.attestcoin.taskStateAddr).toBe("0x0987654321098765432109876543210987654321");
+    expect(config.attestcoin.sepoliaRpcUrl).toBe("https://rpc.sepolia.org");
+    expect(config.attestcoin.creditcoinRpcUrl).toBe("https://custom.creditcoin.network");
+    expect(config.attestcoin.proverUrl).toBe("https://custom.prover.creditcoin.network");
+  });
 });
