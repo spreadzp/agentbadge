@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const { mockAdd } = vi.hoisted(() => ({
+  mockAdd: vi.fn(),
+}));
+
 const mockConfig: Record<string, unknown> = {
   chainMode: "hedera",
   keeperhub: undefined,
@@ -34,15 +38,16 @@ vi.mock("../../../src/server/lib/keeperhub-trigger.js", () => ({
   triggerWorkflow: vi.fn(),
 }));
 
-const mockAdd = vi.fn();
 vi.mock("../../../src/server/lib/keeperhub-audit-store.js", () => ({
   auditStore: {
     add: mockAdd,
     list: vi.fn().mockReturnValue([]),
     clear: vi.fn(),
     size: vi.fn().mockReturnValue(0),
+    listenerCount: vi.fn().mockReturnValue(0),
     once: vi.fn(),
     on: vi.fn(),
+    off: vi.fn(),
     emit: vi.fn(),
   },
 }));

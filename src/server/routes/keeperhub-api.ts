@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+import { streamSSE } from "hono/streaming";
 import { getConfig } from "../../config/env";
 import { getKeeperHubClient, keeperhubDisabledResponse } from "../lib/keeperhub";
 import { triggerWorkflow } from "../lib/keeperhub-trigger";
-import { auditStore } from "../lib/keeperhub-audit-store";
+import { auditStore, type AuditEvent } from "../lib/keeperhub-audit-store";
+import { readLatestScoreFor, readRecentRecords } from "../lib/keeperhub-onchain";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
@@ -232,5 +234,104 @@ keeperhubApiRoutes.post(
     });
 
     return c.json({ ok: true });
+  },
+);
+
+// GET /keeperhub/audit — audit trail with optional onchain enrichment
+keeperhubApiRoutes.get(
+  "/keeperhub/audit",
+  describeRoute({
+    tags: ["KeeperHub"],
+    summary: "Audit trail events with optional onchain enrichment",
+    description: "Returns in-memory audit events (newest first) with optional onchain reads from TrustRegistry. Graceful degradation: onchain failures return null, not 500.",
+  }),
+  async (c) => {
+    const cfg = getConfig();
+    if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
+
+    const siteUrl = c.req.query("siteUrl");
+    const rawLimit = Number(c.req.query("limit") ?? 50);
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 50 : rawLimit), 100);
+    const onchainFlag = c.req.query("onchain") !== "false";
+
+    const events = auditStore.list({ limit, siteUrl });
+
+    let onchain: { latest?: unknown; recent?: unknown; source: string | null } = {
+      source: cfg.base?.trustRegistry ?? null,
+    };
+
+    if (onchainFlag && cfg.base?.trustRegistry) {
+      try {
+        if (siteUrl) {
+          onchain.latest = await readLatestScoreFor(cfg.base.trustRegistry, siteUrl);
+        } else {
+          onchain.recent = await readRecentRecords(cfg.base.trustRegistry, Math.min(limit, 20));
+        }
+      } catch {
+        onchain = { source: cfg.base.trustRegistry };
+      }
+    }
+
+    return c.json({
+      events,
+      onchain,
+      explorer: {
+        name: "Basescan",
+        txUrlTemplate: "https://sepolia.basescan.org/tx/{hash}",
+      },
+    });
+  },
+);
+
+// GET /keeperhub/audit/stream — SSE stream of audit events
+keeperhubApiRoutes.get(
+  "/keeperhub/audit/stream",
+  describeRoute({
+    tags: ["KeeperHub"],
+    summary: "SSE stream of audit events",
+    description: "Server-Sent Events stream: snapshot on connect, live audit events, 25s heartbeat. Max 40 concurrent clients.",
+  }),
+  async (c) => {
+    const cfg = getConfig();
+    if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
+
+    const accept = c.req.header("Accept") ?? "";
+    if (!accept.includes("text/event-stream")) {
+      return c.json({ error: "Not Acceptable: client must accept text/event-stream" }, 406);
+    }
+
+    if (auditStore.listenerCount("audit") >= 40) {
+      return c.json({ error: "Too many SSE clients" }, 503);
+    }
+
+    c.header("X-Accel-Buffering", "no");
+    return streamSSE(c, async (stream) => {
+      // Initial snapshot
+      const snapshot = auditStore.list({ limit: 20 });
+      await stream.writeSSE({ event: "snapshot", data: JSON.stringify({ events: snapshot }) });
+
+      // Subscribe to live events
+      const onAudit = async (event: AuditEvent) => {
+        await stream.writeSSE({ event: "audit", data: JSON.stringify(event) });
+      };
+      auditStore.on("audit", onAudit);
+
+      // Heartbeat every 25s
+      const heartbeat = setInterval(() => {
+        stream.writeSSE({ data: "ping", event: "" }).catch(() => { });
+      }, 25_000);
+
+      // Wait for abort
+      stream.onAbort(() => {
+        auditStore.off("audit", onAudit);
+        clearInterval(heartbeat);
+      });
+
+      // Keep stream open until aborted
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (stream.aborted) break;
+      }
+    });
   },
 );
