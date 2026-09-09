@@ -36,6 +36,7 @@ import {
 } from "@agentbadge/mcp";
 import { registerComplianceTools } from "../mcp/compliance-tools";
 import { registerParityTools } from "../mcp/parity-tools";
+import { registerKeeperhubTools } from "../mcp/keeperhub-tools";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
@@ -88,6 +89,7 @@ import { agencyJsonRoutes } from "./routes/agency-json";
 import { profileRoutes } from "./routes/profile";
 import { profileViewerRoutes } from "./routes/profile-viewer";
 import { webmcpApiRoutes } from "./routes/webmcp-api";
+import { keeperhubApiRoutes } from "./routes/keeperhub-api";
 import { linkGraphRoutes } from "./routes/link-graph-api";
 import { wellKnownRoutes } from "./routes/well-known";
 import { agentCardRoutes } from "./routes/agent-card";
@@ -473,6 +475,7 @@ app.route("/", contactRoutes);
 app.route("/", contentPageRoutes);
 app.route("/", blogRoutes);
 app.route("/api", webmcpApiRoutes);
+app.route("/api", keeperhubApiRoutes);
 app.route("/api", linkGraphRoutes);
 app.route("/api", rulesApiRoutes);
 app.route("/api", scanRuleRoutes);
@@ -538,6 +541,7 @@ app.get("/docs", swaggerUI({ url: "/api/specs" }));
 registerAllTools();
 registerComplianceTools();
 registerParityTools();
+registerKeeperhubTools();
 
 const port = Number(process.env.PORT ?? 4021);
 

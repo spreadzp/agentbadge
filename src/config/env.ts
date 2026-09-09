@@ -26,6 +26,8 @@ export interface BaseConfig {
   taskEscrow: string;
   usdcAddress: string;
   explorerUrl: string;
+  trustRegistry?: string;
+  trustBadge?: string;
 }
 
 export interface UiConfig {
@@ -35,6 +37,20 @@ export interface UiConfig {
   explorerName: string;
   accountLabel: string;
   accountPlaceholder: string;
+}
+
+export interface KeeperHubEnvConfig {
+  enabled: boolean;
+  apiKey: string;
+  serverUrl: string;
+  webhookKey?: string;
+  auditSecret?: string;
+  apiBaseUrl: string;
+  workflowIds: {
+    recordScan?: string;
+    mintPassport?: string;
+    notify?: string;
+  };
 }
 
 export interface AppConfig {
@@ -57,6 +73,7 @@ export interface AppConfig {
   evm?: EvmConfig;
   base?: BaseConfig;
   ui: UiConfig;
+  keeperhub?: KeeperHubEnvConfig;
 }
 
 const ACCOUNT_ID_RE = /^0\.0\.\d+$/;
@@ -179,6 +196,8 @@ export function loadConfig(): AppConfig {
       taskEscrow: baseTaskEscrow!,
       usdcAddress: baseUsdc!,
       explorerUrl: baseExplorerUrl,
+      trustRegistry: process.env.BASE_TRUST_REGISTRY,
+      trustBadge: process.env.BASE_TRUST_BADGE,
     };
   }
 
@@ -205,6 +224,33 @@ export function loadConfig(): AppConfig {
     x402Treasury = requiredAccountId("x402_TREASURY", errors);
     ipfsApiKey = requiredString("IPFS_API_KEY", errors);
     ipfsApiSecret = requiredString("IPFS_API_SECRET", errors);
+  }
+
+  // KeeperHub config — optional, only loaded when enabled
+  const keeperhubEnabled = booleanFlag("KEEPERHUB_ENABLED");
+  let keeperhub: KeeperHubEnvConfig | undefined;
+  if (keeperhubEnabled) {
+    const khApiKey = requiredString("KEEPERHUB_API_KEY", errors);
+    if (khApiKey && !khApiKey.startsWith("kh_")) {
+      errors.push("Invalid KEEPERHUB_API_KEY: expected kh_ prefix (wfb_ keys are for webhook triggers only)");
+    }
+    const khWebhookKey = process.env.KEEPERHUB_WEBHOOK_KEY;
+    if (khWebhookKey && !khWebhookKey.startsWith("wfb_")) {
+      errors.push("Invalid KEEPERHUB_WEBHOOK_KEY: expected wfb_ prefix");
+    }
+    keeperhub = {
+      enabled: true,
+      apiKey: khApiKey ?? "",
+      serverUrl: process.env.KEEPERHUB_SERVER_URL ?? "https://app.keeperhub.com/mcp",
+      webhookKey: khWebhookKey,
+      auditSecret: process.env.KEEPERHUB_AUDIT_SECRET,
+      apiBaseUrl: process.env.KEEPERHUB_API_BASE_URL ?? process.env.BASE_URL ?? "https://agentbadge.xyz",
+      workflowIds: {
+        recordScan: process.env.KEEPERHUB_WORKFLOW_RECORD_SCAN,
+        mintPassport: process.env.KEEPERHUB_WORKFLOW_MINT_PASSPORT,
+        notify: process.env.KEEPERHUB_WORKFLOW_NOTIFY,
+      },
+    };
   }
 
   const hederaNetwork = process.env.HEDERA_NETWORK ?? "testnet";
@@ -234,6 +280,7 @@ export function loadConfig(): AppConfig {
     evm,
     base,
     ui: loadUiConfig(chainMode),
+    keeperhub,
   };
 }
 

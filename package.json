@@ -45,6 +45,7 @@
   "dependencies": {
     "@agentbadge/evm-core": "^0.1.1",
     "@agentbadge/hedera-core": "^0.1.15",
+    "@agentbadge/keeperhub": "file:../../packages/keeperhub",
     "@agentbadge/mcp": "^0.1.9",
     "@agentbadge/passport": "^0.1.8",
     "@agentbadge/webmcp": "^0.3.0",
