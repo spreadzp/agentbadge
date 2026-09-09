@@ -56,6 +56,8 @@ export interface KeeperHubEnvConfig {
   triggerMode: "mcp" | "webhook";
   webhookUrls: Record<string, string>;
   x402?: X402Config;
+  registryAddress?: string;
+  badgeAddress?: string;
   workflowIds: {
     recordScan?: string;
     mintPassport?: string;
@@ -285,6 +287,8 @@ export function loadConfig(): AppConfig {
       triggerMode: khTriggerMode,
       webhookUrls: khWebhookUrls,
       x402,
+      registryAddress: process.env.KEEPERHUB_REGISTRY_ADDRESS,
+      badgeAddress: process.env.KEEPERHUB_BADGE_ADDRESS,
       workflowIds: {
         recordScan: process.env.KEEPERHUB_WORKFLOW_RECORD_SCAN,
         mintPassport: process.env.KEEPERHUB_WORKFLOW_MINT_PASSPORT,

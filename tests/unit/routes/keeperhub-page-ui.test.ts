@@ -112,4 +112,139 @@ describe("SLICE-126-14: KeeperHub demo form UI", () => {
       expect(body).not.toContain("Coming in this integration");
     });
   });
+
+  describe("SLICE-126-15: Hero section", () => {
+    it("contains badge pill with KeeperHub", async () => {
+      const body = await getPage();
+      expect(body).toContain("KeeperHub");
+      expect(body).toMatch(/badge|pill/i);
+    });
+
+    it("contains h1 with onchain trust text", async () => {
+      const body = await getPage();
+      expect(body).toMatch(/Onchain Trust/i);
+    });
+
+    it("contains demo and audit anchor CTAs", async () => {
+      const body = await getPage();
+      expect(body).toContain('#demo');
+      expect(body).toContain('#audit');
+    });
+
+    it("contains GitHub link", async () => {
+      const body = await getPage();
+      expect(body).toMatch(/github\.com/i);
+    });
+
+    it("contains stats row with workflow and MCP counts", async () => {
+      const body = await getPage();
+      expect(body).toContain("3");
+      expect(body).toContain("workflow");
+      expect(body).toContain("4");
+      expect(body).toMatch(/MCP tool/i);
+    });
+  });
+
+  describe("SLICE-126-15: Architecture diagram", () => {
+    it("contains all 5 node names", async () => {
+      const body = await getPage();
+      expect(body).toContain("Scan");
+      expect(body).toContain("KeeperHub");
+      expect(body).toContain("TrustRegistry");
+      expect(body).toContain("TrustBadge");
+      expect(body).toContain("Audit");
+    });
+
+    it("contains score threshold for badge mint branch", async () => {
+      const body = await getPage();
+      expect(body).toMatch(/score.*85|85.*score|≥.*85/i);
+    });
+
+    it("contains Base Sepolia and 84532", async () => {
+      const body = await getPage();
+      expect(body).toContain("Base Sepolia");
+      expect(body).toContain("84532");
+    });
+
+    it("contains mono type tags EVM and MCP", async () => {
+      const body = await getPage();
+      expect(body).toContain("EVM");
+      expect(body).toContain("MCP");
+    });
+  });
+
+  describe("SLICE-126-15: HowItWorks section", () => {
+    it("contains 4 step titles in order", async () => {
+      const body = await getPage();
+      const howIdx = body.indexOf("How it works");
+      expect(howIdx).toBeGreaterThan(-1);
+      const section = body.substring(howIdx);
+      const scanIdx = section.indexOf("Scan");
+      const confirmIdx = section.indexOf("Confirm");
+      const recordIdx = section.indexOf("Record");
+      const verifyIdx = section.indexOf("Verify");
+      expect(scanIdx).toBeGreaterThan(-1);
+      expect(confirmIdx).toBeGreaterThan(scanIdx);
+      expect(recordIdx).toBeGreaterThan(confirmIdx);
+      expect(verifyIdx).toBeGreaterThan(recordIdx);
+    });
+  });
+
+  describe("SLICE-126-15: Audit anchor", () => {
+    it("contains id=audit section", async () => {
+      const body = await getPage();
+      expect(body).toContain('id="audit"');
+    });
+  });
+
+  describe("SLICE-126-15: Stack section", () => {
+    it("contains x402 chip", async () => {
+      const body = await getPage();
+      expect(body).toContain("x402");
+    });
+
+    it("contains Base Sepolia chip", async () => {
+      const body = await getPage();
+      expect(body).toContain("Base Sepolia");
+    });
+
+    it("contains SSE chip", async () => {
+      const body = await getPage();
+      expect(body).toContain("SSE");
+    });
+
+    it("contains Solidity or OZ chip", async () => {
+      const body = await getPage();
+      expect(body).toMatch(/Solidity|OZ\s*5/i);
+    });
+  });
+
+  describe("SLICE-126-15: API table", () => {
+    it("contains premium endpoint", async () => {
+      const body = await getPage();
+      expect(body).toContain("/api/keeperhub/scan/premium");
+    });
+
+    it("contains audit stream endpoint", async () => {
+      const body = await getPage();
+      expect(body).toContain("/audit/stream");
+    });
+
+    it("contains MCP tool names", async () => {
+      const body = await getPage();
+      expect(body).toContain("keeperhub-record-scan");
+    });
+
+    it("contains x402 and price $0.01", async () => {
+      const body = await getPage();
+      expect(body).toContain("$0.01");
+    });
+  });
+
+  describe("SLICE-126-15: Footer", () => {
+    it("contains support email", async () => {
+      const body = await getPage();
+      expect(body).toContain("support@agentbadge.xyz");
+    });
+  });
 });

@@ -1,41 +1,155 @@
 import { html, raw } from "hono/html";
+import type { HtmlEscapedString } from "hono/utils/html";
 
 /**
- * KeeperHubHackathonPage — interactive demo form for scan → onchain record.
+ * KeeperHubHackathonPage — full landing page for the KeeperHub Agent Economy hackathon.
  *
- * Phase D (SLICE-126-14): demo form with dry-run preview + confirm flow.
- * Full landing page (hero, architecture, copy) lands in SLICE-126-15.
- * Live audit table lands in SLICE-126-16.
+ * Phase E (SLICE-126-15): hero, architecture diagram, how-it-works, demo form,
+ * audit anchor, stack chips, API table, footer CTA.
+ *
+ * Demo form (126-14) is preserved as DemoSection — its markup is unchanged.
+ * Audit section (id="audit") is an anchor for 126-16 (SSE audit table).
  */
-export function KeeperHubHackathonPage() {
-  const sections = [
-    KeeperHubHero().toString(),
-    KeeperHubDemo().toString(),
-  ];
-
-  return html`<div>${raw(sections.join(""))}</div>`;
+export interface KeeperHubPageOpts {
+  registryAddress?: string;
+  badgeAddress?: string;
 }
 
-function KeeperHubHero() {
+export function KeeperHubHackathonPage(opts?: KeeperHubPageOpts): HtmlEscapedString {
+  return html`${Hero()}
+    ${ArchitectureDiagram()}
+    ${HowItWorks()}
+    ${DemoSection()}
+    ${AuditSectionAnchor()}
+    ${StackSection()}
+    ${ApiSection(opts)}
+    ${FooterCta()}`;
+}
+
+function sectionWrapper(id: string, extraClass: string, content: HtmlEscapedString): HtmlEscapedString {
+  return html`<section id="${id}" class="border-y border-slate-700/50 bg-slate-900/30 ${extraClass}">
+    <div class="mx-auto max-w-6xl px-6 py-16 sm:px-8 lg:px-12">
+      ${content}
+    </div>
+  </section>`;
+}
+
+function Hero() {
   return html`<section class="relative overflow-hidden border-b border-slate-700/50 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/20">
     <div class="absolute inset-0 pulse-glow bg-gradient-radial from-indigo-500/10 to-transparent"></div>
     <div class="relative mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12 md:py-28">
       <div class="mx-auto max-w-3xl text-center">
-        <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
-          KeeperHub <span class="text-indigo-400">×</span> AgentBadge
+        <span class="inline-block rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-medium text-indigo-300">
+          DoraHacks BUIDL · KeeperHub Main Track
+        </span>
+        <h1 class="mt-6 text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+          Onchain Trust Records for the Agentic Web
         </h1>
         <p class="mt-6 text-lg text-slate-300 sm:text-xl">
-          Onchain trust layer for agent readiness — powered by KeeperHub deterministic execution.
+          AgentBadge scans any site for agent-readiness, records the result onchain through a KeeperHub workflow (Base Sepolia), and mints a soulbound trust badge. KeeperHub Agent Economy hackathon (Sep 6-18, 2026).
         </p>
-        <p class="mt-4 text-sm text-slate-400">
-          Scan any website, record the trust score on TrustRegistry (Base Sepolia), and mint a soulbound TrustBadge. KeeperHub Agent Economy hackathon (Sep 6–18, 2026).
-        </p>
+        <div class="mt-8 flex flex-wrap justify-center gap-4">
+          <a href="#demo" class="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition">
+            Try the demo →
+          </a>
+          <a href="#audit" class="rounded-lg border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-200 hover:border-slate-400 transition">
+            Live audit trail →
+          </a>
+          <a href="https://github.com/agentbadge/agentbadge" target="_blank" rel="noopener" class="rounded-lg border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-200 hover:border-slate-400 transition">
+            GitHub ↗
+          </a>
+        </div>
+        <div class="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div class="rounded-lg border border-slate-700/50 bg-slate-900/50 p-4">
+            <div class="text-2xl font-bold text-white">3</div>
+            <div class="text-xs text-slate-400">KeeperHub workflows</div>
+          </div>
+          <div class="rounded-lg border border-slate-700/50 bg-slate-900/50 p-4">
+            <div class="text-2xl font-bold text-white">2</div>
+            <div class="text-xs text-slate-400">Trust contracts</div>
+          </div>
+          <div class="rounded-lg border border-slate-700/50 bg-slate-900/50 p-4">
+            <div class="text-2xl font-bold text-white">4</div>
+            <div class="text-xs text-slate-400">MCP tools</div>
+          </div>
+          <div class="rounded-lg border border-slate-700/50 bg-slate-900/50 p-4">
+            <div class="text-2xl font-bold text-white">$0.01</div>
+            <div class="text-xs text-slate-400">x402 per record</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>`;
 }
 
-function KeeperHubDemo() {
+function ArchitectureDiagram() {
+  return sectionWrapper("architecture", "", html`
+    <h2 class="text-2xl font-bold text-white">Architecture</h2>
+    <p class="mt-2 text-slate-400">Every arrow is one verifiable transaction on Base Sepolia (84532).</p>
+
+    <div class="mt-8 flex flex-col items-center gap-4">
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        ${NodeCard("Site URL", "https", "web2")}
+        ${Arrow()}
+        ${NodeCard("AgentBadge Scan", "40 rules, score 0-100, any site", "web2")}
+        ${Arrow()}
+        ${NodeCard("KeeperHub Workflow", "webhook trigger, web3/write-contract", "MCP")}
+        ${Arrow()}
+        ${NodeCard("TrustRegistry", "recordScan() on Base", "EVM")}
+        ${Arrow()}
+        ${NodeCard("Audit Trail + SSE", "live feed + Basescan links", "SSE")}
+      </div>
+
+      <div class="flex items-center gap-2 text-slate-500">
+        <span class="text-slate-600">│</span>
+      </div>
+      <p class="text-xs text-slate-500">▼ score ≥ 85 path</p>
+      <div class="flex justify-center">
+        ${NodeCard("TrustBadge mint", "soulbound ERC-721, SBT transfer-blocked", "ERC-721")}
+      </div>
+    </div>
+
+    <p class="mt-6 text-center text-xs text-slate-500">Base Sepolia · testnet — every arrow is one verifiable tx</p>
+  `);
+}
+
+function NodeCard(name: string, desc: string, tag: string): HtmlEscapedString {
+  return html`<div class="rounded-xl border border-slate-700/50 bg-slate-900/50 p-4 text-center">
+    <div class="text-sm font-semibold text-white">${name}</div>
+    <div class="mt-1 text-xs text-slate-400">${desc}</div>
+    <div class="mt-2"><span class="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-indigo-300">${tag}</span></div>
+  </div>`;
+}
+
+function Arrow(): HtmlEscapedString {
+  return html`<span class="text-2xl text-slate-500">→</span>`;
+}
+
+function HowItWorks() {
+  const steps = [
+    { num: "1", title: "Scan", desc: "40-rule agent-readiness scan (SSRF-guarded, free dry-run)" },
+    { num: "2", title: "Confirm", desc: "Dry-run preview shows exactly what lands onchain (functionArgs), then confirm" },
+    { num: "3", title: "Record", desc: "KeeperHub executes the workflow: TrustRegistry.recordScan onchain, tx on Basescan" },
+    { num: "4", title: "Verify", desc: "Audit trail (live SSE) + keeperhub-audit MCP tool; agents pay via x402 (USDC)" },
+  ];
+
+  return sectionWrapper("howitworks", "", html`
+    <h2 class="text-2xl font-bold text-white">How it works</h2>
+    <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      ${raw(steps.map((s) => html`
+        <div class="rounded-xl border border-slate-700/40 bg-slate-900/50 p-6">
+          <div class="flex items-center gap-3">
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">${s.num}</span>
+            <h3 class="text-lg font-semibold text-white">${s.title}</h3>
+          </div>
+          <p class="mt-3 text-sm text-slate-400">${s.desc}</p>
+        </div>
+      `).join(""))}
+    </div>
+  `);
+}
+
+function DemoSection() {
   const demoScript = raw(`
     <script>
       (function() {
@@ -188,5 +302,125 @@ function KeeperHubDemo() {
     </div>
 
     ${demoScript}
+  </section>`;
+}
+
+function AuditSectionAnchor() {
+  return html`<section id="audit" class="border-y border-slate-700/50 bg-slate-900/30">
+    <div class="mx-auto max-w-6xl px-6 py-16 sm:px-8 lg:px-12">
+      <h2 class="text-2xl font-bold text-white">Live Audit Trail</h2>
+      <p class="mt-2 text-slate-400">Real-time stream of onchain recordings — populated by SLICE-126-16.</p>
+      <div class="mt-8 rounded-xl border border-slate-700/40 bg-slate-900/30 p-12 text-center">
+        <p class="text-slate-500">Audit table loads here via SSE (EventSource)</p>
+      </div>
+    </div>
+  </section>`;
+}
+
+function StackSection() {
+  const chips = [
+    { label: "KeeperHub MCP", desc: "workflow engine, org key" },
+    { label: "Base Sepolia", desc: "84532, Basescan" },
+    { label: "TrustRegistry / TrustBadge", desc: "Solidity 0.8.30, OZ 5.1" },
+    { label: "x402 v2", desc: "EIP-3009 USDC, facilitator" },
+    { label: "MCP tools", desc: "4 keeperhub-* tools" },
+    { label: "SSE", desc: "live audit stream" },
+    { label: "Hono + hono/html", desc: "server-rendered, zero client framework" },
+  ];
+
+  return sectionWrapper("stack", "", html`
+    <h2 class="text-2xl font-bold text-white">Stack</h2>
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      ${raw(chips.map((c) => html`
+        <div class="rounded-lg border border-slate-700/40 bg-slate-900/50 p-4">
+          <div class="text-sm font-mono font-semibold text-indigo-300">${c.label}</div>
+          <div class="mt-1 text-xs text-slate-400">${c.desc}</div>
+        </div>
+      `).join(""))}
+    </div>
+  `);
+}
+
+function ApiSection(opts?: KeeperHubPageOpts) {
+  const basescanBase = "https://sepolia.basescan.org";
+  const registryLink = opts?.registryAddress
+    ? html`<a href="${basescanBase}/address/${opts.registryAddress}" target="_blank" rel="noopener" class="text-emerald-400 hover:text-emerald-300 underline font-mono text-xs">${opts.registryAddress}</a>`
+    : html`<span class="text-xs text-slate-500">—</span>`;
+  const badgeLink = opts?.badgeAddress
+    ? html`<a href="${basescanBase}/address/${opts.badgeAddress}" target="_blank" rel="noopener" class="text-emerald-400 hover:text-emerald-300 underline font-mono text-xs">${opts.badgeAddress}</a>`
+    : html`<span class="text-xs text-slate-500">—</span>`;
+
+  return sectionWrapper("api", "", html`
+    <h2 class="text-2xl font-bold text-white">API Surface</h2>
+    <p class="mt-2 text-slate-400">Every public endpoint and MCP tool from Phase C/D.</p>
+
+    <div class="mt-8 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-700 text-left text-xs text-slate-400">
+            <th class="pb-3 pr-4 font-medium">Surface</th>
+            <th class="pb-3 pr-4 font-medium">Endpoint / Tool</th>
+            <th class="pb-3 pr-4 font-medium">Auth</th>
+            <th class="pb-3 font-medium">Returns</th>
+          </tr>
+        </thead>
+        <tbody class="text-slate-300">
+          <tr class="border-b border-slate-800">
+            <td class="py-3 pr-4">Scan (free)</td>
+            <td class="py-3 pr-4 font-mono text-xs text-indigo-300">POST /api/keeperhub/scan</td>
+            <td class="py-3 pr-4 text-xs text-slate-400">—</td>
+            <td class="py-3 text-xs">dry-run preview or onchain tx</td>
+          </tr>
+          <tr class="border-b border-slate-800">
+            <td class="py-3 pr-4">Scan (premium)</td>
+            <td class="py-3 pr-4 font-mono text-xs text-emerald-300">POST /api/keeperhub/scan/premium</td>
+            <td class="py-3 pr-4 text-xs text-slate-400">x402 · $0.01</td>
+            <td class="py-3 text-xs">onchain tx (paid via USDC)</td>
+          </tr>
+          <tr class="border-b border-slate-800">
+            <td class="py-3 pr-4">Audit API</td>
+            <td class="py-3 pr-4 font-mono text-xs text-indigo-300">GET /api/keeperhub/audit</td>
+            <td class="py-3 pr-4 text-xs text-slate-400">—</td>
+            <td class="py-3 text-xs">events + onchain + Basescan links</td>
+          </tr>
+          <tr class="border-b border-slate-800">
+            <td class="py-3 pr-4">Live stream</td>
+            <td class="py-3 pr-4 font-mono text-xs text-indigo-300">GET /api/keeperhub/audit/stream</td>
+            <td class="py-3 pr-4 text-xs text-slate-400">—</td>
+            <td class="py-3 text-xs">event: audit frames (SSE)</td>
+          </tr>
+          <tr class="border-b border-slate-800">
+            <td class="py-3 pr-4">MCP tools</td>
+            <td class="py-3 pr-4 font-mono text-xs text-indigo-300">keeperhub-record-scan · mint-trust-badge · workflow-status · audit</td>
+            <td class="py-3 pr-4 text-xs text-slate-400">MCP session</td>
+            <td class="py-3 text-xs">via AgentBadge MCP server</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-6 flex flex-wrap gap-6 text-xs text-slate-400">
+      <a href="https://github.com/agentbadge/agentbadge" target="_blank" rel="noopener" class="hover:text-slate-200">GitHub repo ↗</a>
+      <span>Contracts on Basescan:</span>
+      <span>TrustRegistry: ${registryLink}</span>
+      <span>TrustBadge: ${badgeLink}</span>
+      <a href="https://dorahacks.io" target="_blank" rel="noopener" class="hover:text-slate-200">DoraHacks BUIDL ↗</a>
+    </div>
+  `);
+}
+
+function FooterCta() {
+  return html`<section class="border-t border-slate-700/50 bg-slate-950">
+    <div class="mx-auto max-w-4xl px-6 py-16 text-center sm:px-8 lg:px-12">
+      <h2 class="text-2xl font-bold text-white">Run the demo above</h2>
+      <p class="mt-3 text-slate-400">A permanent onchain record is 30 seconds away.</p>
+      <div class="mt-6 flex justify-center gap-4">
+        <a href="#demo" class="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition">Try the demo →</a>
+        <a href="#audit" class="rounded-lg border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-200 hover:border-slate-400 transition">Live audit trail →</a>
+      </div>
+      <p class="mt-8 text-xs text-slate-500">
+        Support: <a href="mailto:support@agentbadge.xyz" class="text-slate-400 hover:text-slate-200">support@agentbadge.xyz</a>
+      </p>
+    </div>
   </section>`;
 }

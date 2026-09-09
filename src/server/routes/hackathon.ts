@@ -5,6 +5,7 @@ import { WebMcpHackathonPage } from "../../views/landing/webmcp-hackathon-page";
 import { KeeperHubHackathonPage } from "../../views/landing/keeperhub-hackathon-page";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../lib/json-ld";
+import { getConfig } from "../../config/env";
 
 /**
  * Hackathon routes.
@@ -40,7 +41,11 @@ hackathonRoutes.get("/hackathon/:name", async (c) => {
   } else if (name === "webmcp") {
     content = WebMcpHackathonPage().toString();
   } else if (name === "keeperhub") {
-    content = KeeperHubHackathonPage().toString();
+    const cfg = getConfig();
+    content = KeeperHubHackathonPage({
+      registryAddress: cfg.keeperhub?.registryAddress,
+      badgeAddress: cfg.keeperhub?.badgeAddress,
+    }).toString();
   } else {
     content = '<main><section class="hero"><h1>Hackathon</h1><p>Page not found.</p></section></main>';
   }
