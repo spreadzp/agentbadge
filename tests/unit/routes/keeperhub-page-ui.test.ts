@@ -197,6 +197,102 @@ describe("SLICE-126-14: KeeperHub demo form UI", () => {
     });
   });
 
+  describe("SLICE-126-16: Audit section structure", () => {
+    it("contains h2 Live Audit Trail", async () => {
+      const body = await getPage();
+      expect(body).toContain("Live Audit Trail");
+    });
+
+    it("contains live indicator dot element", async () => {
+      const body = await getPage();
+      expect(body).toContain('id="kh-live-dot"');
+    });
+
+    it("contains empty-state block", async () => {
+      const body = await getPage();
+      expect(body).toContain('id="kh-audit-empty"');
+    });
+
+    it("contains error-state block", async () => {
+      const body = await getPage();
+      expect(body).toContain('id="kh-audit-error"');
+    });
+
+    it("contains audit table with thead cells", async () => {
+      const body = await getPage();
+      expect(body).toContain('id="kh-audit-table"');
+      expect(body).toContain("Status");
+      expect(body).toContain("Site");
+      expect(body).toContain("Score");
+      expect(body).toContain("Tx");
+      expect(body).toContain("Recorded");
+    });
+
+    it("contains kh-audit-rows tbody", async () => {
+      const body = await getPage();
+      expect(body).toContain('id="kh-audit-rows"');
+    });
+  });
+
+  describe("SLICE-126-16: SSE script markers", () => {
+    it("contains EventSource for audit stream", async () => {
+      const body = await getPage();
+      expect(body).toContain('EventSource("/api/keeperhub/audit/stream"');
+    });
+
+    it("contains snapshot event listener", async () => {
+      const body = await getPage();
+      expect(body).toContain('addEventListener("snapshot"');
+    });
+
+    it("contains audit event listener", async () => {
+      const body = await getPage();
+      expect(body).toContain('addEventListener("audit"');
+    });
+
+    it("contains REST fetch for initial snapshot", async () => {
+      const body = await getPage();
+      expect(body).toContain('fetch("/api/keeperhub/audit?limit=20"');
+    });
+
+    it("contains txUrlTemplate reference", async () => {
+      const body = await getPage();
+      expect(body).toContain("txUrlTemplate");
+    });
+
+    it("contains prepend for live rows", async () => {
+      const body = await getPage();
+      expect(body).toContain("prepend");
+    });
+
+    it("contains onerror handler", async () => {
+      const body = await getPage();
+      expect(body).toContain("onerror");
+    });
+
+    it("contains data-id dedupe guard", async () => {
+      const body = await getPage();
+      expect(body).toContain("data-id");
+    });
+
+    it("contains target=_blank for tx links", async () => {
+      const body = await getPage();
+      expect(body).toContain('target="_blank"');
+    });
+  });
+
+  describe("SLICE-126-16: CSS animation markers", () => {
+    it("contains kh-fade keyframes", async () => {
+      const body = await getPage();
+      expect(body).toContain("@keyframes kh-fade");
+    });
+
+    it("contains kh-row-fade class", async () => {
+      const body = await getPage();
+      expect(body).toContain("kh-row-fade");
+    });
+  });
+
   describe("SLICE-126-15: Stack section", () => {
     it("contains x402 chip", async () => {
       const body = await getPage();
@@ -245,6 +341,23 @@ describe("SLICE-126-14: KeeperHub demo form UI", () => {
     it("contains support email", async () => {
       const body = await getPage();
       expect(body).toContain("support@agentbadge.xyz");
+    });
+  });
+
+  describe("SLICE-126-16: Polling fallback markers", () => {
+    it("contains polling fallback schedule", async () => {
+      const body = await getPage();
+      expect(body).toContain("pollTimer");
+    });
+
+    it("contains reconnect scheduling", async () => {
+      const body = await getPage();
+      expect(body).toContain("scheduleReconnect");
+    });
+
+    it("contains setDot function for live indicator", async () => {
+      const body = await getPage();
+      expect(body).toContain("setDot");
     });
   });
 });

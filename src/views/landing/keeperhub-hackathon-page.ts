@@ -306,14 +306,230 @@ function DemoSection() {
 }
 
 function AuditSectionAnchor() {
+  const auditStyle = raw(`
+    <style>
+      @keyframes kh-fade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+      .kh-row-fade { animation: kh-fade 0.4s ease-out; }
+      .kh-dot-live { background-color: rgb(52 211 153); animation: kh-pulse 2s infinite; }
+      .kh-dot-poll { background-color: rgb(251 191 36); }
+      .kh-dot-off { background-color: rgb(71 85 105); }
+      @keyframes kh-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style>
+  `);
+
+  const auditScript = raw(`
+    <script>
+      (function () {
+        var rows = document.getElementById("kh-audit-rows");
+        var dot = document.getElementById("kh-live-dot");
+        var emptyEl = document.getElementById("kh-audit-empty");
+        var errorEl = document.getElementById("kh-audit-error");
+        var explorerTemplate = null;
+        var pollTimer = null;
+        var sseFailures = 0;
+        var pendingEvents = [];
+        var seenIds = new Set();
+
+        function setDot(state) {
+          dot.className = "inline-block h-2.5 w-2.5 rounded-full " +
+            (state === "live" ? "kh-dot-live" : state === "poll" ? "kh-dot-poll" : "kh-dot-off");
+        }
+
+        function showEmpty() {
+          if (!rows.children.length) emptyEl.hidden = false;
+        }
+        function hideEmpty() {
+          emptyEl.hidden = true;
+        }
+        function showError(msg) {
+          errorEl.hidden = false;
+          errorEl.innerHTML = '<div class="rounded-lg border border-red-800/50 bg-red-950/30 p-4"><p class="text-sm text-red-300">' + (msg || "Audit stream unavailable") + "</p></div>";
+        }
+        function hideError() {
+          errorEl.hidden = true;
+        }
+
+        function esc(s) {
+          if (!s) return "";
+          return s.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """);
+        }
+
+        function statusIcon(status) {
+          if (status === "recorded") return '<span class="text-emerald-400" title="recorded">●</span>';
+          if (status === "minted") return '<span class="text-indigo-400" title="minted">★</span>';
+          if (status === "failed") return '<span class="text-red-400" title="failed">✕</span>';
+          return '<span class="text-slate-500">○</span>';
+        }
+
+        function scoreBadge(score) {
+          if (score == null) return '<span class="text-slate-500">—</span>';
+          var cls = score >= 85 ? "text-emerald-400" : score >= 60 ? "text-blue-400" : "text-amber-400";
+          return '<span class="' + cls + ' font-bold">' + score + '</span>';
+        }
+
+        function txLinks(hashes) {
+          if (!hashes || !hashes.length) return '<span class="text-slate-500">—</span>';
+          return hashes.map(function(h) {
+            var href = explorerTemplate ? explorerTemplate.replace("{hash}", h) : "#";
+            return '<a class="text-emerald-400 hover:underline font-mono text-xs" target="_blank" rel="noopener" href="' + href + '">' + h.slice(0,10) + '…' + h.slice(-6) + ' ↗</a>';
+          }).join(" ");
+        }
+
+        function timeAgo(ts) {
+          if (!ts) return "—";
+          var diff = Date.now() - new Date(ts).getTime();
+          var mins = Math.floor(diff / 60000);
+          if (mins < 1) return "just now";
+          if (mins < 60) return mins + "m ago";
+          var hrs = Math.floor(mins / 60);
+          if (hrs < 24) return hrs + "h ago";
+          return Math.floor(hrs / 24) + "d ago";
+        }
+
+        function renderEvent(e, prepend) {
+          if (seenIds.has(e.id)) return;
+          seenIds.add(e.id);
+          var tr = document.createElement("tr");
+          tr.setAttribute("data-id", e.id);
+          tr.className = "kh-row-fade";
+          tr.innerHTML =
+            '<td class="py-3 pr-4 text-center">' + statusIcon(e.status) + '</td>' +
+            '<td class="py-3 pr-4 text-sm text-slate-300">' + esc(e.siteUrl || "—") + '</td>' +
+            '<td class="py-3 pr-4">' + scoreBadge(e.score) + '</td>' +
+            '<td class="py-3 pr-4">' + txLinks(e.txHashes) + '</td>' +
+            '<td class="py-3 text-xs text-slate-500">' + timeAgo(e.receivedAt) + '</td>';
+          if (prepend) {
+            rows.prepend(tr);
+          } else {
+            rows.append(tr);
+          }
+          while (rows.children.length > 50) {
+            rows.removeChild(rows.lastChild);
+          }
+        }
+
+        function flushPending() {
+          while (pendingEvents.length) {
+            renderEvent(pendingEvents.shift(), false);
+          }
+        }
+
+        function startPolling() {
+          if (pollTimer) return;
+          setDot("poll");
+          pollTimer = setInterval(function() {
+            fetch("/api/keeperhub/audit?limit=20")
+              .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
+              .then(function(data) {
+                if (data.explorer && data.explorer.txUrlTemplate) explorerTemplate = data.explorer.txUrlTemplate;
+                (data.events || []).forEach(function(e) { renderEvent(e, false); });
+                hideEmpty();
+              })
+              .catch(function() {});
+          }, 30000);
+        }
+
+        function stopPolling() {
+          if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        function scheduleReconnect() {
+          sseFailures++;
+          if (sseFailures >= 3) {
+            stopPolling();
+            startPolling();
+            return;
+          }
+          setTimeout(function() { connect(); }, Math.min(1000 * sseFailures, 10000));
+        }
+
+        function connect() {
+          try {
+            var es = new EventSource("/api/keeperhub/audit/stream");
+            es.addEventListener("snapshot", function(ev) {
+              setDot("live");
+              sseFailures = 0;
+              stopPolling();
+              var data = JSON.parse(ev.data);
+              if (data.events) {
+                data.events.forEach(function(e) {
+                  if (!seenIds.has(e.id)) pendingEvents.push(e);
+                });
+              }
+              if (explorerTemplate) flushPending();
+              if (rows.children.length) hideEmpty();
+            });
+            es.addEventListener("audit", function(ev) {
+              setDot("live");
+              sseFailures = 0;
+              stopPolling();
+              var e = JSON.parse(ev.data);
+              if (explorerTemplate) {
+                renderEvent(e, true);
+                hideEmpty();
+              } else {
+                pendingEvents.push(e);
+              }
+            });
+            es.onerror = function() {
+              es.close();
+              scheduleReconnect();
+            };
+          } catch (e) {
+            scheduleReconnect();
+          }
+        }
+
+        fetch("/api/keeperhub/audit?limit=20")
+          .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
+          .then(function(data) {
+            if (data.explorer && data.explorer.txUrlTemplate) explorerTemplate = data.explorer.txUrlTemplate;
+            (data.events || []).forEach(function(e) { renderEvent(e, false); });
+            if (!rows.children.length) showEmpty();
+            connect();
+          })
+          .catch(function(status) {
+            if (status === 503) {
+              showError("KeeperHub integration not enabled — audit trail unavailable");
+            } else {
+              showError("Failed to load audit trail");
+            }
+            setDot("off");
+          });
+      })();
+    </script>
+  `);
+
   return html`<section id="audit" class="border-y border-slate-700/50 bg-slate-900/30">
     <div class="mx-auto max-w-6xl px-6 py-16 sm:px-8 lg:px-12">
-      <h2 class="text-2xl font-bold text-white">Live Audit Trail</h2>
-      <p class="mt-2 text-slate-400">Real-time stream of onchain recordings — populated by SLICE-126-16.</p>
-      <div class="mt-8 rounded-xl border border-slate-700/40 bg-slate-900/30 p-12 text-center">
-        <p class="text-slate-500">Audit table loads here via SSE (EventSource)</p>
+      <div class="flex items-center gap-3">
+        <h2 class="text-2xl font-bold text-white">Live Audit Trail</h2>
+        <span id="kh-live-dot" class="inline-block h-2.5 w-2.5 rounded-full kh-dot-off"></span>
       </div>
+      <p class="mt-2 text-slate-400">Onchain records, streamed as they happen.</p>
+
+      <div id="kh-audit-error" hidden class="mt-6"></div>
+      <div id="kh-audit-empty" hidden class="mt-6 rounded-xl border border-slate-700/40 bg-slate-900/30 p-8 text-center">
+        <p class="text-slate-400">No onchain records yet — run the demo above ↑</p>
+      </div>
+
+      <table id="kh-audit-table" class="mt-6 w-full border border-slate-700/50 divide-y divide-slate-700/50">
+        <thead>
+          <tr class="text-left text-xs text-slate-400">
+            <th class="py-3 pr-4 font-medium">Status</th>
+            <th class="py-3 pr-4 font-medium">Site</th>
+            <th class="py-3 pr-4 font-medium">Score</th>
+            <th class="py-3 pr-4 font-medium">Tx</th>
+            <th class="py-3 font-medium">Recorded</th>
+          </tr>
+        </thead>
+        <tbody id="kh-audit-rows"></tbody>
+      </table>
+
+      <p class="mt-4 text-xs text-slate-500">Source: TrustRegistry on Base Sepolia · each Tx links to Basescan</p>
     </div>
+    ${auditStyle}
+    ${auditScript}
   </section>`;
 }
 
