@@ -92,4 +92,27 @@ describe("SLICE-126-11: keeperhub-onchain reader", () => {
     await readLatestScoreFor("0xreg123", "https://b.com");
     expect(mockCreatePublicClient).toHaveBeenCalledTimes(2);
   });
+
+  it("SLICE-126-17: readRecentRecords count > total → all records, no negative range", async () => {
+    mockReadContract
+      .mockResolvedValueOnce(3n)
+      .mockResolvedValueOnce(["https://c.com", 70n, "1.0", 120n, 1700000003n, false])
+      .mockResolvedValueOnce(["https://b.com", 80n, "1.0", 130n, 1700000002n, false])
+      .mockResolvedValueOnce(["https://a.com", 90n, "1.0", 140n, 1700000001n, false]);
+
+    const result = await readRecentRecords("0xreg123", 10);
+    expect(result).toHaveLength(3);
+    expect(result![0].id).toBe(3);
+    expect(result![2].id).toBe(1);
+  });
+
+  it("SLICE-126-17: client reset between tests proves cache clearing", async () => {
+    mockReadContract.mockResolvedValue([50n, 1700000000n, true]);
+    await readLatestScoreFor("0xreg123", "https://a.com");
+    const firstCalls = mockCreatePublicClient.mock.calls.length;
+    resetKeeperHubPublicClient();
+    resetKeeperHubPublicClient();
+    await readLatestScoreFor("0xreg123", "https://b.com");
+    expect(mockCreatePublicClient.mock.calls.length).toBe(firstCalls + 1);
+  });
 });

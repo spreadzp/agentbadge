@@ -68,4 +68,40 @@ describe("SLICE-126-10: keeperhub-audit-store", () => {
     expect(list[0].status).toBe("failed");
     expect(list[0].error).toBe("timeout");
   });
+
+  it("SLICE-126-17: cap eviction removes oldest, not newest", () => {
+    for (let i = 0; i < 500; i++) {
+      auditStore.add({ source: `s${i}`, siteUrl: `https://${i}.com`, status: "recorded" });
+    }
+    expect(auditStore.size()).toBe(500);
+    auditStore.add({ source: "new", siteUrl: "https://new.com", status: "recorded" });
+    expect(auditStore.size()).toBe(500);
+    const list = auditStore.list({ limit: 500 });
+    expect(list[0].source).toBe("new");
+    expect(list[499].source).toBe("s1");
+  });
+
+  it("SLICE-126-17: dedupe replace updates position to front", () => {
+    auditStore.add({ source: "a", siteUrl: "https://a.com", status: "recorded", executionId: "e1" });
+    auditStore.add({ source: "b", siteUrl: "https://b.com", status: "recorded" });
+    auditStore.add({ source: "c", siteUrl: "https://c.com", status: "recorded" });
+    expect(auditStore.list()[2].source).toBe("a");
+    auditStore.add({ source: "a", siteUrl: "https://a.com", status: "failed", executionId: "e1" });
+    const list = auditStore.list();
+    expect(list).toHaveLength(3);
+    expect(list[0].source).toBe("a");
+    expect(list[0].status).toBe("failed");
+  });
+
+  it("SLICE-126-17: emitter on/off pairing under rapid add", () => {
+    let count = 0;
+    const handler = () => { count++; };
+    auditStore.on("audit", handler);
+    for (let i = 0; i < 10; i++) {
+      auditStore.add({ source: `s${i}`, siteUrl: `https://${i}.com`, status: "recorded" });
+    }
+    auditStore.off("audit", handler);
+    auditStore.add({ source: "after", siteUrl: "https://after.com", status: "recorded" });
+    expect(count).toBe(10);
+  });
 });
