@@ -10,6 +10,7 @@ import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
+import { captureError } from "../lib/sentry";
 
 export const keeperhubApiRoutes = new Hono();
 
@@ -58,6 +59,7 @@ keeperhubApiRoutes.post(
       const workflows = await client.listWorkflows();
       return c.json({ ok: true, workflows });
     } catch (e) {
+      captureError(e instanceof Error ? e : new Error(String(e)), { route: "ping" });
       return c.json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
   },
@@ -88,6 +90,7 @@ async function executeScanRecording(
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    captureError(e instanceof Error ? e : new Error(message), { route: "executeScanRecording", stage: "trigger", siteUrl: normalizedUrl });
     return c.json({ error: message, hint: "check KEEPERHUB_API_KEY / connectivity" }, 502);
   }
 
@@ -113,6 +116,7 @@ async function executeScanRecording(
       executionId: triggerResult.executionId,
       error: message,
     });
+    captureError(new Error(message), { route: "executeScanRecording", stage: "poll", executionId: triggerResult.executionId, siteUrl: normalizedUrl });
     return c.json({ mode: "failed", executionId: triggerResult.executionId, error: message });
   }
 }
@@ -166,6 +170,7 @@ keeperhubApiRoutes.post(
       rulesTotal = report.total_rules;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
+      captureError(err instanceof Error ? err : new Error(message), { route: "scan", stage: "orchestrator", siteUrl: normalizedUrl });
       return c.json({ error: `Scan failed: ${message}` }, 500);
     }
 
@@ -244,6 +249,7 @@ keeperhubApiRoutes.post(
       rulesTotal = report.total_rules;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
+      captureError(err instanceof Error ? err : new Error(message), { route: "scan/premium", stage: "orchestrator", siteUrl: normalizedUrl });
       return c.json({ error: `Scan failed: ${message}` }, 500);
     }
 
