@@ -1,5 +1,4 @@
 import {
-  startStdio,
   createNamespace,
   getNamespace,
   registerPassportTools,
@@ -16,6 +15,7 @@ import {
 } from "@agentbadge/mcp";
 import { registerComplianceTools } from "./compliance-tools";
 import { registerParityTools } from "./parity-tools";
+import { registerAttestcoinTools, setAttestcoinToolConfig } from "./attestcoin-tools";
 
 function registerServerAllTools(ns?: NamespaceRegistry): void {
   registerPassportTools(ns);
@@ -30,6 +30,16 @@ function registerServerAllTools(ns?: NamespaceRegistry): void {
   registerAuditCatalogTools(ns);
   registerComplianceTools(ns);
   registerParityTools(ns);
+
+  // Attestcoin tools (EPIC-127) — only when ATTESTCOIN_ENABLED=true
+  if (process.env.ATTESTCOIN_ENABLED === "true") {
+    setAttestcoinToolConfig({
+      enabled: true,
+      creditcoinRpcUrl: process.env.CREDITCOIN_RPC_URL ?? "https://rpc.cc3-testnet.creditcoin.network",
+      taskStateAddr: process.env.TASK_STATE_ADDR ?? "",
+    });
+    registerAttestcoinTools(ns);
+  }
 }
 
 const namespace = process.env.MCP_NAMESPACE ?? process.argv[2] ?? "all";

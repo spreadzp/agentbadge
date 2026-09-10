@@ -92,6 +92,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge WebMCP implementation for the WebMCP Challenge hackathon. Six imperative tools, declarative API, and discovery endpoint for agent-native compliance.",
     path: "/hackathon/webmcp",
   },
+  "/hackathon/attestcoin": {
+    title: "Attestcoin Protocol — Cross-Chain Verified Task Marketplace",
+    description:
+      "AI agents process cryptographically verified cross-chain data via Attestcoin Protocol. Tasks posted on Ethereum Sepolia, verified on Creditcoin, escrow released back on Ethereum.",
+    path: "/hackathon/attestcoin",
+  },
   "/hackathon/keeperhub": {
     title: "KeeperHub Integration — Onchain Trust Layer",
     description:
@@ -314,6 +320,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/passport", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/datahub", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/webmcp", changefreq: "weekly", priority: "0.8" },
+  { path: "/hackathon/attestcoin", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/keeperhub", changefreq: "weekly", priority: "0.8" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/agent-guide", changefreq: "weekly", priority: "0.8" },
