@@ -92,6 +92,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge WebMCP implementation for the WebMCP Challenge hackathon. Six imperative tools, declarative API, and discovery endpoint for agent-native compliance.",
     path: "/hackathon/webmcp",
   },
+  "/hackathon/keeperhub": {
+    title: "KeeperHub Integration — Onchain Trust Layer",
+    description:
+      "AgentBadge integrates KeeperHub as its deterministic onchain execution layer: scan results recorded onchain via KeeperHub workflows, soulbound TrustBadge NFTs, live audit trail on Base.",
+    path: "/hackathon/keeperhub",
+  },
   "/dashboard": {
     title: "Dashboard",
     description:
@@ -308,6 +314,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/passport", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/datahub", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/webmcp", changefreq: "weekly", priority: "0.8" },
+  { path: "/hackathon/keeperhub", changefreq: "weekly", priority: "0.8" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/agent-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/market-guide", changefreq: "weekly", priority: "0.8" },
