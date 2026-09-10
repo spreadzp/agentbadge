@@ -98,6 +98,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AI agents process cryptographically verified cross-chain data via Attestcoin Protocol. Tasks posted on Ethereum Sepolia, verified on Creditcoin, escrow released back on Ethereum.",
     path: "/hackathon/attestcoin",
   },
+  "/hackathon/keeperhub": {
+    title: "KeeperHub Integration — Onchain Trust Layer",
+    description:
+      "AgentBadge integrates KeeperHub as its deterministic onchain execution layer: scan results recorded onchain via KeeperHub workflows, soulbound TrustBadge NFTs, live audit trail on Base.",
+    path: "/hackathon/keeperhub",
+  },
   "/dashboard": {
     title: "Dashboard",
     description:
@@ -315,6 +321,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/hackathon/datahub", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/webmcp", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/attestcoin", changefreq: "weekly", priority: "0.8" },
+  { path: "/hackathon/keeperhub", changefreq: "weekly", priority: "0.8" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/agent-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/market-guide", changefreq: "weekly", priority: "0.8" },

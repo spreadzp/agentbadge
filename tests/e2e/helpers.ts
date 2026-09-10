@@ -30,6 +30,7 @@ import { demandGuideRoutes } from "../../src/server/routes/agent-guide/demand";
 import { agencyJsonRoutes } from "../../src/server/routes/agency-json";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { paymentRoutes } from "../../src/server/routes/payment";
+import { keeperhubApiRoutes } from "../../src/server/routes/keeperhub-api";
 import {
   registerPassportTools,
   registerSigningTools,
@@ -118,6 +119,7 @@ export function makeTestApp(): Hono {
   app.route("/", agencyJsonRoutes);
   app.route("/", wellKnownRoutes);
   app.route("/", paymentRoutes);
+  app.route("/api", keeperhubApiRoutes);
 
   app.get("/health", (c) => {
     const tools = listTools();

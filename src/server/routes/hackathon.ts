@@ -3,8 +3,10 @@ import { LandingLayout } from "../../views/landing/layout";
 import { DataHubLandingPage } from "../../views/landing/datahub-landing-page";
 import { WebMcpHackathonPage } from "../../views/landing/webmcp-hackathon-page";
 import { AttestcoinHackathonPage } from "../../views/landing/attestcoin-hackathon-page";
+import { KeeperHubHackathonPage } from "../../views/landing/keeperhub-hackathon-page";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../lib/json-ld";
+import { getConfig } from "../../config/env";
 
 /**
  * Hackathon routes.
@@ -20,7 +22,7 @@ export const hackathonRoutes = new Hono();
 const NAME_PATTERN = /^[a-z0-9-]+$/;
 
 // Known hackathon names (extended in subsequent slices)
-const KNOWN_HACKATHONS = new Set(["webmcp", "datahub", "attestcoin"]);
+const KNOWN_HACKATHONS = new Set(["webmcp", "datahub", "attestcoin", "keeperhub"]);
 
 hackathonRoutes.get("/hackathon/:name", async (c) => {
   const name = c.req.param("name");
@@ -41,6 +43,12 @@ hackathonRoutes.get("/hackathon/:name", async (c) => {
     content = WebMcpHackathonPage().toString();
   } else if (name === "attestcoin") {
     content = AttestcoinHackathonPage().toString();
+  } else if (name === "keeperhub") {
+    const cfg = getConfig();
+    content = KeeperHubHackathonPage({
+      registryAddress: cfg.keeperhub?.registryAddress,
+      badgeAddress: cfg.keeperhub?.badgeAddress,
+    }).toString();
   } else {
     content = '<main><section class="hero"><h1>Hackathon</h1><p>Page not found.</p></section></main>';
   }
