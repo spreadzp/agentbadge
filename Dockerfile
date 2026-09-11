@@ -31,5 +31,11 @@ COPY content ./content
 COPY public ./public
 COPY --from=css-builder /build/public/css/tailwind.css ./public/css/tailwind.css
 
+# Override @agentbadge/keeperhub with local build (fix: input vs inputs param)
+COPY keeperhub-dist ./node_modules/@agentbadge/keeperhub/dist
+
+# Override @agentbadge/hedera-core with local build (SLICE-127-24: KeeperHub + Attestcoin tools)
+COPY hedera-core-dist ./node_modules/@agentbadge/hedera-core/dist
+
 EXPOSE 4021
 CMD ["bun", "src/server/index.ts"]

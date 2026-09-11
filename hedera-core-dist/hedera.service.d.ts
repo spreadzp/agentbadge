@@ -1,0 +1,52 @@
+import { PrivateKey } from "@hashgraph/sdk";
+import type { A2AMessage, AuditMessage, DirectoryMessage, HcsMessageReceipt, HFSUploadResult, MintResult, TaskMessage } from "./types";
+export type { DirectoryMessage };
+export declare function normalizePrivateKey(keyStr: string): PrivateKey;
+export declare function mintPassportNFT(tokenId: string, ipfsUri: string): Promise<MintResult>;
+export declare function burnPassportNFT(tokenId: string, serial: number): Promise<void>;
+export declare function transferNFTToAgent(tokenId: string, serial: number, fromAccountId: string, toAccountId: string): Promise<void>;
+export declare function grantKyc(tokenId: string, accountId: string): Promise<void>;
+export declare function submitAuditMessage(message: AuditMessage): Promise<string>;
+export declare function submitDirectoryMessage(message: DirectoryMessage): Promise<string>;
+export declare function submitA2AMessage(message: A2AMessage): Promise<HcsMessageReceipt>;
+export declare function submitTaskMessage(message: TaskMessage): Promise<HcsMessageReceipt>;
+export declare function prepareTopicMessageTransaction(agentAccountId: string, message: object, topicIdOverride?: string): Promise<{
+    txBytes: string;
+    txId: string;
+}>;
+export declare function prepareA2ATopicMessage(agentAccountId: string, message: A2AMessage): Promise<{
+    txBytes: string;
+    txId: string;
+}>;
+export declare function submitSignedTopicMessage(txBytesBase64: string, publicKeyDer: string, signatureBytes: Uint8Array[]): Promise<string>;
+export declare function wipeNFT(tokenId: string, accountId: string, serial: number): Promise<void>;
+export declare function updateNftMetadata(tokenId: string, serial: number, newUri: string): Promise<void>;
+export declare function transferHbar(fromAccountId: string, toAccountId: string, amountHbar: number): Promise<string>;
+export declare function transferHbarWithKey(fromAccountId: string, fromPrivateKey: string, toAccountId: string, amountHbar: number): Promise<string>;
+export declare function prepareTransferTransaction(fromAccountId: string, toAccountId: string, amountHbar: number): Promise<{
+    txBytes: string;
+    txId: string;
+}>;
+export declare function transferHbarWithSignature(txBytesBase64: string, publicKeyStr: string, signatureBytes: Uint8Array | Uint8Array[]): Promise<string>;
+export declare function createScheduledTransfer(fromAccountId: string, toAccountId: string, amountHbar: number, options?: {
+    adminKey?: boolean;
+    expirationSeconds?: number;
+    memo?: string;
+}): Promise<{
+    scheduleId: string;
+    scheduleTxId: string;
+}>;
+export declare function signScheduledTransaction(scheduleId: string, signerPrivateKey: string): Promise<{
+    txId: string;
+    executed: boolean;
+}>;
+export declare function signScheduledTransactionWithSignature(scheduleId: string, txBytesBase64: string, publicKeyStr: string, signatureBytes: Uint8Array | Uint8Array[]): Promise<{
+    txId: string;
+    executed: boolean;
+}>;
+export declare function deleteScheduledTransaction(scheduleId: string): Promise<{
+    scheduleId: string;
+    deleted: boolean;
+}>;
+export declare function uploadFileToHFS(contents: Buffer, fileMemo?: string): Promise<HFSUploadResult>;
+export declare function downloadFileFromHFS(fileId: string): Promise<Buffer>;
