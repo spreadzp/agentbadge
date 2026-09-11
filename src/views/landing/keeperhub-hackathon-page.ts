@@ -42,12 +42,25 @@ function Hero() {
         <span class="inline-block rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-medium text-indigo-300">
           DoraHacks BUIDL · KeeperHub Main Track
         </span>
-        <div class="mt-6 flex items-center justify-center gap-3">
-          <img src="/images/hackathons/keeperhub-logo.svg" alt="KeeperHub Logo" class="h-10 w-auto" />
-          <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
-            Onchain Trust Records for the Agentic Web
-          </h1>
+        <div class="mt-6 inline-flex items-center gap-4 rounded-2xl border border-slate-600/50 bg-slate-800/40 px-6 py-3 backdrop-blur-sm">
+          <div class="flex flex-col items-center gap-1">
+            <img src="/icons/favicon-180.png" alt="AgentBadge" class="h-10 w-10 rounded-lg" />
+            <span class="text-[10px] font-medium text-slate-400">AgentBadge</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <svg class="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8m0 0l-3-3m3 3l-3 3M16 17H8m0 0l3-3m-3 3l3 3" />
+            </svg>
+            <span class="text-[9px] text-indigo-400 font-mono">integrates</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <img src="/images/hackathons/keeperhub-logo.svg" alt="KeeperHub" class="h-10 w-auto" />
+            <span class="text-[10px] font-medium text-slate-400">KeeperHub</span>
+          </div>
         </div>
+        <h1 class="mt-6 text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+          Onchain Trust Records for the Agentic Web
+        </h1>
         <p class="mt-6 text-lg text-slate-300 sm:text-xl">
           AgentBadge scans any site for agent-readiness, records the result onchain through a KeeperHub workflow (Base Sepolia), and mints a soulbound trust badge. KeeperHub Agent Economy hackathon (Sep 6-18, 2026).
         </p>

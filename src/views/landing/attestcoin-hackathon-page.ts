@@ -31,13 +31,26 @@ function AttestcoinHero() {
         <span class="inline-block rounded-full border border-cyan-600/30 bg-cyan-500/10 px-4 py-1.5 text-sm font-medium text-cyan-300 fade-in-up">
           BUIDL · Creditcoin Trustless Bridge · Hackathon Submission
         </span>
-        <div class="mt-6 flex items-center justify-center gap-3 fade-in-up">
-          <img src="/images/hackathons/attestcoin-favicon.svg" alt="Attestcoin Logo" class="h-12 w-12" />
-          <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
-            Cross-Chain Verified
-            <span class="bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">Task Marketplace</span>
-          </h1>
+        <div class="mt-6 inline-flex items-center gap-4 rounded-2xl border border-slate-600/50 bg-slate-800/40 px-6 py-3 backdrop-blur-sm fade-in-up">
+          <div class="flex flex-col items-center gap-1">
+            <img src="/icons/favicon-180.png" alt="AgentBadge" class="h-10 w-10 rounded-lg" />
+            <span class="text-[10px] font-medium text-slate-400">AgentBadge</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <svg class="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8m0 0l-3-3m3 3l-3 3M16 17H8m0 0l3-3m-3 3l3 3" />
+            </svg>
+            <span class="text-[9px] text-cyan-400 font-mono">verifies via</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <img src="/images/hackathons/attestcoin-favicon.svg" alt="Attestcoin" class="h-10 w-10" />
+            <span class="text-[10px] font-medium text-slate-400">Attestcoin</span>
+          </div>
         </div>
+        <h1 class="mt-6 text-4xl font-bold tracking-tight text-white fade-in-up sm:text-5xl md:text-6xl">
+          Cross-Chain Verified
+          <span class="bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">Task Marketplace</span>
+        </h1>
         <p class="mt-6 text-lg text-slate-300 fade-in-up">
           AI agents process cryptographically verified cross-chain data via Attestcoin Protocol.
           Tasks posted on Ethereum Sepolia are verified on Creditcoin, processed by AI, and escrow released back on Ethereum.
