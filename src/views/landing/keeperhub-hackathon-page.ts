@@ -42,9 +42,12 @@ function Hero() {
         <span class="inline-block rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-medium text-indigo-300">
           DoraHacks BUIDL · KeeperHub Main Track
         </span>
-        <h1 class="mt-6 text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
-          Onchain Trust Records for the Agentic Web
-        </h1>
+        <div class="mt-6 flex items-center justify-center gap-3">
+          <img src="/images/hackathons/keeperhub-logo.svg" alt="KeeperHub Logo" class="h-10 w-auto" />
+          <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+            Onchain Trust Records for the Agentic Web
+          </h1>
+        </div>
         <p class="mt-6 text-lg text-slate-300 sm:text-xl">
           AgentBadge scans any site for agent-readiness, records the result onchain through a KeeperHub workflow (Base Sepolia), and mints a soulbound trust badge. KeeperHub Agent Economy hackathon (Sep 6-18, 2026).
         </p>
