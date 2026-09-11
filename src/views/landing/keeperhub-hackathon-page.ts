@@ -83,46 +83,76 @@ function Hero() {
 }
 
 function ArchitectureDiagram() {
+  const svgStyle = raw('<style>\n      @keyframes dash-flow { to { stroke-dashoffset: -20; } }\n      .flow-line { stroke-dasharray: 6 4; animation: dash-flow 1s linear infinite; }\n      .flow-line-branch { stroke-dasharray: 6 4; animation: dash-flow 1.5s linear infinite; }\n      .node-rect { fill: rgb(30 41 59 / 0.7); stroke-width: 1.5; rx: 10; }\n      .node-label { fill: rgb(255 255 255); font-size: 13px; font-weight: 600; text-anchor: middle; }\n      .node-desc { fill: rgb(203 213 225); font-size: 10px; text-anchor: middle; }\n      .node-tag { fill: rgb(165 180 252); font-size: 9px; font-family: monospace; text-anchor: middle; }\n      .arrow-label { fill: rgb(148 163 184); font-size: 9px; text-anchor: middle; }\n    </style>');
+
   return sectionWrapper("architecture", "", html`
     <h2 class="text-2xl font-bold text-white">Architecture</h2>
-    <p class="mt-2 text-slate-400">Every arrow is one verifiable transaction on Base Sepolia (84532).</p>
+    <p class="mt-2 text-slate-300">Every arrow is one verifiable transaction on Base Sepolia (84532).</p>
 
-    <div class="mt-8 flex flex-col items-center gap-4">
-      <div class="flex flex-wrap items-center justify-center gap-2">
-        ${NodeCard("Site URL", "https", "web2")}
-        ${Arrow()}
-        ${NodeCard("AgentBadge Scan", "40 rules, score 0-100, any site", "web2")}
-        ${Arrow()}
-        ${NodeCard("KeeperHub Workflow", "webhook trigger, web3/write-contract", "MCP")}
-        ${Arrow()}
-        ${NodeCard("TrustRegistry", "recordScan() on Base", "EVM")}
-        ${Arrow()}
-        ${NodeCard("Audit Trail + SSE", "live feed + Basescan links", "SSE")}
-      </div>
+    <div class="mt-8 overflow-x-auto">
+      <svg viewBox="0 0 900 360" class="mx-auto w-full max-w-4xl" xmlns="http://www.w3.org/2000/svg">
+        ${svgStyle}
 
-      <div class="flex items-center gap-2 text-slate-500">
-        <span class="text-slate-600">│</span>
-      </div>
-      <p class="text-xs text-slate-500">▼ score ≥ 85 path</p>
-      <div class="flex justify-center">
-        ${NodeCard("TrustBadge mint", "soulbound ERC-721, SBT transfer-blocked", "ERC-721")}
-      </div>
+        <defs>
+          <marker id="arrow-indigo" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="rgb(99 102 241)" />
+          </marker>
+          <marker id="arrow-emerald" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="rgb(34 197 94)" />
+          </marker>
+          <marker id="arrow-purple" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="rgb(168 85 247)" />
+          </marker>
+          <marker id="arrow-amber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="rgb(245 158 11)" />
+          </marker>
+        </defs>
+
+        <rect class="node-rect" x="10" y="40" width="140" height="60" stroke="rgb(99 102 241)" />
+        <text class="node-label" x="80" y="62">Site URL</text>
+        <text class="node-desc" x="80" y="78">https://example.com</text>
+        <text class="node-tag" x="80" y="92">web2</text>
+
+        <line class="flow-line" x1="155" y1="70" x2="195" y2="70" stroke="rgb(99 102 241)" stroke-width="2" marker-end="url(#arrow-indigo)" />
+
+        <rect class="node-rect" x="200" y="40" width="160" height="60" stroke="rgb(34 197 94)" />
+        <text class="node-label" x="280" y="62">AgentBadge Scan</text>
+        <text class="node-desc" x="280" y="78">40 rules, score 0-100</text>
+        <text class="node-tag" x="280" y="92">web2</text>
+
+        <line class="flow-line" x1="365" y1="70" x2="405" y2="70" stroke="rgb(34 197 94)" stroke-width="2" marker-end="url(#arrow-emerald)" />
+
+        <rect class="node-rect" x="410" y="40" width="160" height="60" stroke="rgb(168 85 247)" />
+        <text class="node-label" x="490" y="62">KeeperHub Workflow</text>
+        <text class="node-desc" x="490" y="78">webhook, write-contract</text>
+        <text class="node-tag" x="490" y="92">MCP</text>
+
+        <line class="flow-line" x1="575" y1="70" x2="615" y2="70" stroke="rgb(168 85 247)" stroke-width="2" marker-end="url(#arrow-purple)" />
+
+        <rect class="node-rect" x="620" y="40" width="160" height="60" stroke="rgb(245 158 11)" />
+        <text class="node-label" x="700" y="62">TrustRegistry</text>
+        <text class="node-desc" x="700" y="78">recordScan() on Base</text>
+        <text class="node-tag" x="700" y="92">EVM</text>
+
+        <line class="flow-line" x1="700" y1="105" x2="700" y2="155" stroke="rgb(245 158 11)" stroke-width="2" marker-end="url(#arrow-amber)" />
+
+        <rect class="node-rect" x="620" y="160" width="160" height="60" stroke="rgb(6 182 212)" />
+        <text class="node-label" x="700" y="182">Audit Trail + SSE</text>
+        <text class="node-desc" x="700" y="198">live feed + Basescan</text>
+        <text class="node-tag" x="700" y="212">SSE</text>
+
+        <path class="flow-line-branch" d="M 280 105 L 280 250 L 490 250 L 490 290" fill="none" stroke="rgb(99 102 241)" stroke-width="2" marker-end="url(#arrow-indigo)" />
+        <text class="arrow-label" x="300" y="170">score >= 85</text>
+
+        <rect class="node-rect" x="410" y="295" width="160" height="55" stroke="rgb(99 102 241)" />
+        <text class="node-label" x="490" y="317">TrustBadge mint</text>
+        <text class="node-desc" x="490" y="333">soulbound ERC-721 SBT</text>
+        <text class="node-tag" x="490" y="345">ERC-721</text>
+      </svg>
     </div>
 
-    <p class="mt-6 text-center text-xs text-slate-500">Base Sepolia · testnet — every arrow is one verifiable tx</p>
+    <p class="mt-6 text-center text-xs text-slate-400">Base Sepolia testnet — every arrow is one verifiable tx</p>
   `);
-}
-
-function NodeCard(name: string, desc: string, tag: string): HtmlEscapedString {
-  return html`<div class="rounded-xl border border-slate-700/50 bg-slate-900/50 p-4 text-center">
-    <div class="text-sm font-semibold text-white">${name}</div>
-    <div class="mt-1 text-xs text-slate-400">${desc}</div>
-    <div class="mt-2"><span class="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-indigo-300">${tag}</span></div>
-  </div>`;
-}
-
-function Arrow(): HtmlEscapedString {
-  return html`<span class="text-2xl text-slate-500">→</span>`;
 }
 
 function HowItWorks() {

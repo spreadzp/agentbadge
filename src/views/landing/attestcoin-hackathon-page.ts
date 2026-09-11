@@ -53,28 +53,91 @@ function AttestcoinHero() {
 }
 
 function AttestcoinArchitecture() {
-  const steps = [
-    { label: "Ethereum Sepolia", desc: "Task posted + USDC escrow locked", color: "text-purple-400", border: "border-purple-600/30" },
-    { label: "Attestors", desc: "Cross-chain proof generation", color: "text-cyan-400", border: "border-cyan-600/30" },
-    { label: "Creditcoin", desc: "Task verified + created on TaskState", color: "text-emerald-400", border: "border-emerald-600/30" },
-    { label: "AI Agent", desc: "Claims, processes, delivers result", color: "text-indigo-400", border: "border-indigo-600/30" },
-    { label: "Worker B", desc: "Monitors completion, releases escrow", color: "text-amber-400", border: "border-amber-600/30" },
-    { label: "Ethereum", desc: "USDC escrow released to agent", color: "text-purple-400", border: "border-purple-600/30" },
-  ];
+  const svgStyle = raw('<style>\n      @keyframes dash-flow-ctc { to { stroke-dashoffset: -20; } }\n      .ctc-flow { stroke-dasharray: 6 4; animation: dash-flow-ctc 1s linear infinite; }\n      .ctc-flow-slow { stroke-dasharray: 6 4; animation: dash-flow-ctc 1.5s linear infinite; }\n      .ctc-node { fill: rgb(30 41 59 / 0.7); stroke-width: 1.5; rx: 10; }\n      .ctc-label { fill: rgb(255 255 255); font-size: 13px; font-weight: 600; text-anchor: middle; }\n      .ctc-desc { fill: rgb(203 213 225); font-size: 10px; text-anchor: middle; }\n      .ctc-tag { fill: rgb(165 180 252); font-size: 9px; font-family: monospace; text-anchor: middle; }\n      .ctc-arrow-label { fill: rgb(148 163 184); font-size: 9px; text-anchor: middle; }\n    </style>');
 
   return html`<section class="border-b border-slate-700/50 bg-slate-900/30 py-16">
     <div class="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12">
       <h2 class="text-2xl font-bold text-white sm:text-3xl">Architecture</h2>
-      <p class="mt-3 text-slate-400">Cross-chain flow: Ethereum → Creditcoin → AI Agent → Ethereum</p>
-      <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        ${raw(steps.map((s, i) => html`<div class="rounded-xl border ${s.border} bg-slate-800/30 p-5">
-          <div class="flex items-center gap-3">
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-sm font-bold ${s.color}">${i + 1}</span>
-            <h3 class="font-semibold text-white">${s.label}</h3>
-          </div>
-          <p class="mt-2 text-sm text-slate-400">${s.desc}</p>
-        </div>`).join(""))}
+      <p class="mt-3 text-slate-300">Cross-chain flow: Ethereum → Creditcoin → AI Agent → Ethereum</p>
+
+      <div class="mt-8 overflow-x-auto">
+        <svg viewBox="0 0 900 420" class="mx-auto w-full max-w-4xl" xmlns="http://www.w3.org/2000/svg">
+          ${svgStyle}
+
+          <defs>
+            <marker id="ctc-arrow-purple" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="rgb(168 85 247)" />
+            </marker>
+            <marker id="ctc-arrow-cyan" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="rgb(6 182 212)" />
+            </marker>
+            <marker id="ctc-arrow-emerald" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="rgb(34 197 94)" />
+            </marker>
+            <marker id="ctc-arrow-indigo" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="rgb(99 102 241)" />
+            </marker>
+            <marker id="ctc-arrow-amber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="rgb(245 158 11)" />
+            </marker>
+          </defs>
+
+          <!-- Node 1: Ethereum Sepolia -->
+          <rect class="ctc-node" x="10" y="40" width="160" height="60" stroke="rgb(168 85 247)" />
+          <text class="ctc-label" x="90" y="62">Ethereum Sepolia</text>
+          <text class="ctc-desc" x="90" y="78">Task posted + USDC locked</text>
+          <text class="ctc-tag" x="90" y="92">EVM</text>
+
+          <line class="ctc-flow" x1="175" y1="70" x2="215" y2="70" stroke="rgb(168 85 247)" stroke-width="2" marker-end="url(#ctc-arrow-purple)" />
+          <text class="ctc-arrow-label" x="195" y="62">1. post</text>
+
+          <!-- Node 2: Attestors -->
+          <rect class="ctc-node" x="220" y="40" width="140" height="60" stroke="rgb(6 182 212)" />
+          <text class="ctc-label" x="290" y="62">Attestors</text>
+          <text class="ctc-desc" x="290" y="78">Cross-chain proof</text>
+          <text class="ctc-tag" x="290" y="92">bridge</text>
+
+          <line class="ctc-flow" x1="365" y1="70" x2="405" y2="70" stroke="rgb(6 182 212)" stroke-width="2" marker-end="url(#ctc-arrow-cyan)" />
+          <text class="ctc-arrow-label" x="385" y="62">2. verify</text>
+
+          <!-- Node 3: Creditcoin -->
+          <rect class="ctc-node" x="410" y="40" width="150" height="60" stroke="rgb(34 197 94)" />
+          <text class="ctc-label" x="485" y="62">Creditcoin</text>
+          <text class="ctc-desc" x="485" y="78">TaskState contract</text>
+          <text class="ctc-tag" x="485" y="92">CTC</text>
+
+          <line class="ctc-flow" x1="485" y1="105" x2="485" y2="155" stroke="rgb(34 197 94)" stroke-width="2" marker-end="url(#ctc-arrow-emerald)" />
+          <text class="ctc-arrow-label" x="515" y="135">3. create task</text>
+
+          <!-- Node 4: AI Agent -->
+          <rect class="ctc-node" x="410" y="160" width="150" height="60" stroke="rgb(99 102 241)" />
+          <text class="ctc-label" x="485" y="182">AI Agent</text>
+          <text class="ctc-desc" x="485" y="198">Claim → Deliver</text>
+          <text class="ctc-tag" x="485" y="212">agent</text>
+
+          <!-- Branch: AI Agent → Worker B -->
+          <path class="ctc-flow-slow" d="M 485 225 L 485 275 L 700 275 L 700 295" fill="none" stroke="rgb(99 102 241)" stroke-width="2" marker-end="url(#ctc-arrow-indigo)" />
+          <text class="ctc-arrow-label" x="590" y="268">4. deliver result</text>
+
+          <!-- Node 5: Worker B -->
+          <rect class="ctc-node" x="620" y="300" width="160" height="55" stroke="rgb(245 158 11)" />
+          <text class="ctc-label" x="700" y="322">Worker B</text>
+          <text class="ctc-desc" x="700" y="338">Monitor + release</text>
+          <text class="ctc-tag" x="700" y="350">bridge</text>
+
+          <!-- Branch: Worker B → Ethereum (return) -->
+          <path class="ctc-flow-slow" d="M 700 360 L 700 390 L 90 390 L 90 360" fill="none" stroke="rgb(245 158 11)" stroke-width="2" marker-end="url(#ctc-arrow-amber)" />
+          <text class="ctc-arrow-label" x="395" y="385">5. release USDC escrow</text>
+
+          <!-- Node 6: Ethereum (return) -->
+          <rect class="ctc-node" x="10" y="300" width="160" height="55" stroke="rgb(168 85 247)" />
+          <text class="ctc-label" x="90" y="322">Ethereum</text>
+          <text class="ctc-desc" x="90" y="338">USDC to agent</text>
+          <text class="ctc-tag" x="90" y="350">EVM</text>
+        </svg>
       </div>
+
+      <p class="mt-6 text-center text-xs text-slate-400">Ethereum Sepolia ↔ Creditcoin CC3 Testnet — every arrow is a verified cross-chain step</p>
     </div>
   </section>`;
 }
