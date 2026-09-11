@@ -93,6 +93,139 @@ function Hero() {
             <div class="text-xs text-slate-400">x402 per record</div>
           </div>
         </div>
+
+        <div class="mt-8 space-y-3">
+          <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+            <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+              <span class="flex items-center gap-2">
+                <span class="text-purple-400">⚙️</span> KeeperHub Workflows (3)
+              </span>
+              <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+              <p>Three KeeperHub workflows power the onchain trust record pipeline:</p>
+              <div class="space-y-3">
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <p class="font-mono text-purple-300 text-xs">1. record-scan</p>
+                  <p class="mt-1 text-slate-400">Triggered after each AgentBadge scan. Calls <code class="text-amber-300">TrustRegistry.recordScan()</code> on Base Sepolia with the scan result, site URL, score, and rule breakdown. Creates a permanent onchain trust record.</p>
+                </div>
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <p class="font-mono text-purple-300 text-xs">2. mint-trust-badge</p>
+                  <p class="mt-1 text-slate-400">Triggered when scan score ≥ 85. Calls <code class="text-amber-300">TrustBadge.mint()</code> to mint a soulbound ERC-721 NFT on Base Sepolia. The badge is non-transferable and permanently linked to the scanned site.</p>
+                </div>
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <p class="font-mono text-purple-300 text-xs">3. audit-stream</p>
+                  <p class="mt-1 text-slate-400">Long-running workflow that listens for <code class="text-amber-300">RecordScan</code> events on TrustRegistry and streams them via SSE to the audit trail table. No page refresh needed — rows appear live.</p>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+            <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+              <span class="flex items-center gap-2">
+                <span class="text-amber-400">📜</span> Trust Contracts (2)
+              </span>
+              <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+              <p>Two smart contracts on Base Sepolia (84532) form the onchain trust layer:</p>
+              <div class="space-y-3">
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <div class="flex items-center gap-2">
+                    <p class="font-mono text-amber-300 text-xs">TrustRegistry.sol</p>
+                    <span class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400 border border-amber-500/20">Base Sepolia</span>
+                  </div>
+                  <p class="mt-1 text-slate-400">Stores scan records onchain. Key functions:</p>
+                  <ul class="list-disc pl-5 mt-1 space-y-1 text-slate-400 text-xs">
+                    <li><code class="text-amber-300">recordScan(siteUrl, score, rulesPassed, rulesTotal)</code> — creates a trust record</li>
+                    <li><code class="text-amber-300">getRecord(id)</code> — returns scan data for verification</li>
+                    <li><code class="text-amber-300">recordCount()</code> — total records onchain</li>
+                  </ul>
+                  <p class="mt-2 text-slate-400">Emits <code class="text-amber-300">RecordScan</code> event → consumed by audit-stream workflow.</p>
+                </div>
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <div class="flex items-center gap-2">
+                    <p class="font-mono text-amber-300 text-xs">TrustBadge.sol</p>
+                    <span class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400 border border-amber-500/20">ERC-721 SBT</span>
+                  </div>
+                  <p class="mt-1 text-slate-400">Soulbound (non-transferable) NFT contract. Key functions:</p>
+                  <ul class="list-disc pl-5 mt-1 space-y-1 text-slate-400 text-xs">
+                    <li><code class="text-amber-300">mint(to, siteUrl, score)</code> — mints badge (score ≥ 85 only)</li>
+                    <li><code class="text-amber-300">tokenURI(tokenId)</code> — onchain metadata JSON</li>
+                    <li><code class="text-amber-300">_update()</code> — override: revert on transfer (soulbound)</li>
+                  </ul>
+                  <p class="mt-2 text-slate-400">Implements ERC-721 with <code class="text-amber-300">_update</code> override to prevent transfers.</p>
+                </div>
+              </div>
+              <div class="mt-3 rounded-md bg-slate-900/50 p-3 border border-indigo-500/20">
+                <p class="text-xs font-semibold text-indigo-300">Contract interaction flow:</p>
+                <pre class="mt-2 text-[11px] text-slate-400 font-mono leading-relaxed">AgentBadge Scan
+    ↓ (score + rules)
+KeeperHub Workflow: record-scan
+    ↓
+TrustRegistry.recordScan()  ──→  emits RecordScan event
+    ↓                                    ↓
+TrustBadge.mint() (if score ≥ 85)    audit-stream → SSE → browser</pre>
+              </div>
+            </div>
+          </details>
+
+          <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+            <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+              <span class="flex items-center gap-2">
+                <span class="text-cyan-400">🔧</span> MCP Tools (4)
+              </span>
+              <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+              <p>Four MCP tools expose the trust record system to AI agents:</p>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <p class="font-mono text-cyan-300 text-xs">keeperhub-scan</p>
+                  <p class="mt-1 text-slate-400 text-xs">Triggers an AgentBadge scan on a given URL. Returns scan ID, score, and rule breakdown. Supports dry-run mode (no onchain tx).</p>
+                </div>
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <p class="font-mono text-cyan-300 text-xs">keeperhub-record</p>
+                  <p class="mt-1 text-slate-400 text-xs">Records a scan result onchain via KeeperHub workflow. Calls TrustRegistry.recordScan(). Returns tx hash + Basescan link.</p>
+                </div>
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <p class="font-mono text-cyan-300 text-xs">keeperhub-audit</p>
+                  <p class="mt-1 text-slate-400 text-xs">Queries the onchain audit trail. Returns recent trust records with tx hashes, timestamps, and scan scores.</p>
+                </div>
+                <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                  <p class="font-mono text-cyan-300 text-xs">keeperhub-badge</p>
+                  <p class="mt-1 text-slate-400 text-xs">Checks if a site has a TrustBadge NFT. Returns token ID, mint tx, and onchain metadata if badge exists.</p>
+                </div>
+              </div>
+              <div class="mt-2 rounded-md bg-slate-900/50 p-3 border border-emerald-500/20">
+                <p class="text-xs text-slate-400">Agents discover these tools via the MCP server descriptor at <code class="text-emerald-300">/.well-known/mcp.json</code> and call them directly — no UI needed.</p>
+              </div>
+            </div>
+          </details>
+
+          <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+            <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+              <span class="flex items-center gap-2">
+                <span class="text-emerald-400">💵</span> x402 Payment ($0.01/record)
+              </span>
+              <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+              <p>Agents pay for onchain records via the x402 protocol — native HTTP 402 payment:</p>
+              <ol class="list-decimal pl-5 space-y-2 text-slate-400">
+                <li>Agent calls <code class="text-emerald-300">keeperhub-record</code> MCP tool</li>
+                <li>Server returns <strong class="text-amber-300">402 Payment Required</strong> with x402 challenge</li>
+                <li>Agentic Wallet skill signs an <strong class="text-amber-300">EIP-3009</strong> USDC authorization</li>
+                <li>Server settles payment and executes the KeeperHub workflow</li>
+                <li>Two onchain receipts: <strong class="text-emerald-300">USDC transfer</strong> + <strong class="text-emerald-300">TrustRegistry record</strong></li>
+              </ol>
+              <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <p class="text-xs font-mono text-slate-400">Cost breakdown: $0.01 USDC per record (gas on Base Sepolia is negligible)</p>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   </section>`;
