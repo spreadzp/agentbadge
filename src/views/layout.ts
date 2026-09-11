@@ -71,11 +71,11 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="dns-prefetch" href="https://unpkg.com" />
         <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
-        <link rel="preload" href="/css/tailwind.css?v=2" as="style" />
+        <link rel="preload" href="/css/tailwind.css?v=3" as="style" />
         ${raw(jsonLdHtml)}
         ${raw(getPlausibleScript())}
         <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-        <link rel="stylesheet" href="/css/tailwind.css?v=2" />
+        <link rel="stylesheet" href="/css/tailwind.css?v=3" />
         <style>
           @keyframes nav-pop {
             0%   { transform: scale(1); }

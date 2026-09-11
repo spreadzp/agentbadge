@@ -83,7 +83,7 @@ export function GuideLayout(
         <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
         ${raw(allJsonLdHtml)}
-        <link rel="stylesheet" href="/css/tailwind.css?v=2" />
+        <link rel="stylesheet" href="/css/tailwind.css?v=3" />
       </head>
       <body class="min-h-full">
         <div class="mx-auto max-w-4xl px-4 py-8">
