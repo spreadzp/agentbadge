@@ -124,6 +124,14 @@ function ArchitectureDiagram() {
           </marker>
         </defs>
 
+        <!-- AgentBadge group container (dashed border highlights our components) -->
+        <rect x="195" y="25" width="390" height="340" rx="12"
+              fill="rgb(99 102 241 / 0.05)" stroke="rgb(99 102 241)" stroke-width="1.5"
+              stroke-dasharray="8 4" opacity="0.7" />
+        <rect x="200" y="16" width="120" height="20" rx="4"
+              fill="rgb(15 23 42)" stroke="rgb(99 102 241)" stroke-width="1" />
+        <text x="260" y="30" fill="rgb(199 210 254)" font-size="10" font-weight="700" text-anchor="middle">⚡ AgentBadge</text>
+
         <rect class="node-rect" x="10" y="40" width="140" height="60" stroke="rgb(99 102 241)" />
         <text class="node-label" x="80" y="62">Site URL</text>
         <text class="node-desc" x="80" y="78">https://example.com</text>
@@ -172,6 +180,75 @@ function ArchitectureDiagram() {
     </div>
 
     <p class="mt-6 text-center text-xs text-slate-400">Base Sepolia testnet — every arrow is one verifiable tx</p>
+
+    <div class="mt-8 space-y-3">
+      <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+        <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+          <span class="flex items-center gap-2">
+            <span class="text-indigo-400">⚡</span> AgentBadge components in this flow
+          </span>
+          <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+          <p>The <strong class="text-indigo-300">AgentBadge Scan</strong>, <strong class="text-cyan-300">Audit Trail + SSE</strong>, and <strong class="text-indigo-300">TrustBadge mint</strong> nodes (dashed border in the diagram) are AgentBadge components:</p>
+          <ul class="list-disc pl-5 space-y-2 text-slate-400">
+            <li><strong class="text-emerald-300">AgentBadge Scan</strong> — runs a 40-rule agent-readiness scan, produces a score (0-100) and structured report</li>
+            <li><strong class="text-cyan-300">Audit Trail + SSE</strong> — live server-sent events feed streaming onchain records to the browser in real-time</li>
+            <li><strong class="text-indigo-300">TrustBadge mint</strong> — when score ≥ 85, mints a soulbound ERC-721 trust badge on Base Sepolia</li>
+            <li><strong class="text-purple-300">KeeperHub Workflow</strong> and <strong class="text-amber-300">TrustRegistry</strong> are KeeperHub infrastructure components</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+        <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+          <span class="flex items-center gap-2">
+            <span class="text-cyan-400">📋</span> Step-by-step data flow
+          </span>
+          <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+          <ol class="list-decimal pl-5 space-y-2 text-slate-400">
+            <li><strong class="text-indigo-300">Scan</strong> — AgentBadge scans the site URL with 40 agent-readiness rules, producing a score and structured report</li>
+            <li><strong class="text-emerald-300">Trigger</strong> — Scan result triggers a KeeperHub workflow via webhook (write-contract MCP tool)</li>
+            <li><strong class="text-purple-300">Record</strong> — KeeperHub workflow calls TrustRegistry.recordScan() on Base Sepolia, creating an onchain trust record</li>
+            <li><strong class="text-amber-300">Stream</strong> — The onchain record streams live via SSE to the audit trail table (no page refresh needed)</li>
+            <li><strong class="text-indigo-300">Mint</strong> — If the scan score ≥ 85, a soulbound TrustBadge (ERC-721 SBT) is minted on Base Sepolia</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+        <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+          <span class="flex items-center gap-2">
+            <span class="text-emerald-400">❓</span> FAQ
+          </span>
+          <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-4">
+          <div>
+            <p class="font-medium text-slate-200">What is KeeperHub?</p>
+            <p class="mt-1 text-slate-400">KeeperHub is an onchain workflow automation platform that lets smart contracts trigger external actions via MCP tools — webhooks, contract writes, and API calls.</p>
+          </div>
+          <div>
+            <p class="font-medium text-slate-200">How does AgentBadge use KeeperHub?</p>
+            <p class="mt-1 text-slate-400">AgentBadge triggers a KeeperHub workflow after each scan. The workflow calls TrustRegistry.recordScan() on Base Sepolia, creating a permanent onchain trust record.</p>
+          </div>
+          <div>
+            <p class="font-medium text-slate-200">What is a dry-run?</p>
+            <p class="mt-1 text-slate-400">A dry-run preview shows exactly what would be executed onchain (function arguments, workflow name, target contract) without actually sending a transaction. You confirm before anything goes onchain.</p>
+          </div>
+          <div>
+            <p class="font-medium text-slate-200">What is the TrustBadge?</p>
+            <p class="mt-1 text-slate-400">A soulbound (non-transferable) ERC-721 NFT minted on Base Sepolia when a site scores ≥ 85 on the agent-readiness scan. It serves as a permanent onchain proof of agent-readiness.</p>
+          </div>
+          <div>
+            <p class="font-medium text-slate-200">How do agents pay?</p>
+            <p class="mt-1 text-slate-400">Agents pay via x402 protocol — a 402 challenge triggers the Agentic Wallet skill to sign an EIP-3009 USDC transfer. Two onchain receipts: payment settlement + trust record.</p>
+          </div>
+        </div>
+      </details>
+    </div>
   `);
 }
 
