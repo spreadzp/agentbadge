@@ -114,6 +114,7 @@ function ArchitectureDiagram() {
         <text class="node-tag" x="80" y="92">web2</text>
 
         <line class="flow-line" x1="155" y1="70" x2="195" y2="70" stroke="rgb(99 102 241)" stroke-width="2" marker-end="url(#arrow-indigo)" />
+        <text class="arrow-label" x="175" y="62">1. scan</text>
 
         <rect class="node-rect" x="200" y="40" width="160" height="60" stroke="rgb(34 197 94)" />
         <text class="node-label" x="280" y="62">AgentBadge Scan</text>
@@ -121,6 +122,7 @@ function ArchitectureDiagram() {
         <text class="node-tag" x="280" y="92">web2</text>
 
         <line class="flow-line" x1="365" y1="70" x2="405" y2="70" stroke="rgb(34 197 94)" stroke-width="2" marker-end="url(#arrow-emerald)" />
+        <text class="arrow-label" x="385" y="62">2. trigger</text>
 
         <rect class="node-rect" x="410" y="40" width="160" height="60" stroke="rgb(168 85 247)" />
         <text class="node-label" x="490" y="62">KeeperHub Workflow</text>
@@ -128,6 +130,7 @@ function ArchitectureDiagram() {
         <text class="node-tag" x="490" y="92">MCP</text>
 
         <line class="flow-line" x1="575" y1="70" x2="615" y2="70" stroke="rgb(168 85 247)" stroke-width="2" marker-end="url(#arrow-purple)" />
+        <text class="arrow-label" x="595" y="62">3. record</text>
 
         <rect class="node-rect" x="620" y="40" width="160" height="60" stroke="rgb(245 158 11)" />
         <text class="node-label" x="700" y="62">TrustRegistry</text>
@@ -135,6 +138,7 @@ function ArchitectureDiagram() {
         <text class="node-tag" x="700" y="92">EVM</text>
 
         <line class="flow-line" x1="700" y1="105" x2="700" y2="155" stroke="rgb(245 158 11)" stroke-width="2" marker-end="url(#arrow-amber)" />
+        <text class="arrow-label" x="730" y="135">4. stream</text>
 
         <rect class="node-rect" x="620" y="160" width="160" height="60" stroke="rgb(6 182 212)" />
         <text class="node-label" x="700" y="182">Audit Trail + SSE</text>
@@ -142,7 +146,7 @@ function ArchitectureDiagram() {
         <text class="node-tag" x="700" y="212">SSE</text>
 
         <path class="flow-line-branch" d="M 280 105 L 280 250 L 490 250 L 490 290" fill="none" stroke="rgb(99 102 241)" stroke-width="2" marker-end="url(#arrow-indigo)" />
-        <text class="arrow-label" x="300" y="170">score >= 85</text>
+        <text class="arrow-label" x="300" y="170">5. score >= 85 → mint</text>
 
         <rect class="node-rect" x="410" y="295" width="160" height="55" stroke="rgb(99 102 241)" />
         <text class="node-label" x="490" y="317">TrustBadge mint</text>
