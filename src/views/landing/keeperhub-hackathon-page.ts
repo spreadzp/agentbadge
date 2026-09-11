@@ -83,11 +83,11 @@ function Hero() {
 }
 
 function ArchitectureDiagram() {
-  const svgStyle = raw('<style>\n      @keyframes dash-flow { to { stroke-dashoffset: -20; } }\n      .flow-line { stroke-dasharray: 6 4; animation: dash-flow 1s linear infinite; }\n      .flow-line-branch { stroke-dasharray: 6 4; animation: dash-flow 1.5s linear infinite; }\n      .node-rect { fill: rgb(30 41 59 / 0.7); stroke-width: 1.5; rx: 10; }\n      .node-label { fill: rgb(255 255 255); font-size: 13px; font-weight: 600; text-anchor: middle; }\n      .node-desc { fill: rgb(203 213 225); font-size: 10px; text-anchor: middle; }\n      .node-tag { fill: rgb(165 180 252); font-size: 9px; font-family: monospace; text-anchor: middle; }\n      .arrow-label { fill: rgb(148 163 184); font-size: 9px; text-anchor: middle; }\n    </style>');
+  const svgStyle = raw('<style>\n      @keyframes dash-flow { to { stroke-dashoffset: -20; } }\n      .flow-line { stroke-dasharray: 6 4; animation: dash-flow 1s linear infinite; }\n      .flow-line-branch { stroke-dasharray: 6 4; animation: dash-flow 1.5s linear infinite; }\n      .node-rect { fill: rgb(30 41 59 / 0.7); stroke-width: 1.5; rx: 10; }\n      .node-label { fill: rgb(255 255 255); font-size: 13px; font-weight: 700; text-anchor: middle; }\n      .node-desc { fill: rgb(125 211 252); font-size: 10px; text-anchor: middle; }\n      .node-tag { fill: rgb(196 181 253); font-size: 9px; font-family: monospace; text-anchor: middle; }\n      .arrow-label { fill: rgb(252 211 77); font-size: 10px; font-weight: 600; text-anchor: middle; }\n    </style>');
 
   return sectionWrapper("architecture", "", html`
     <h2 class="text-2xl font-bold text-white">Architecture</h2>
-    <p class="mt-2 text-slate-300">Every arrow is one verifiable transaction on Base Sepolia (84532).</p>
+    <p class="mt-2 text-slate-100">Every arrow is one verifiable transaction on Base Sepolia (84532).</p>
 
     <div class="mt-8 overflow-x-auto">
       <svg viewBox="0 0 900 360" class="mx-auto w-full max-w-4xl" xmlns="http://www.w3.org/2000/svg">

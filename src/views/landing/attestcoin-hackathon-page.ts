@@ -53,12 +53,12 @@ function AttestcoinHero() {
 }
 
 function AttestcoinArchitecture() {
-  const svgStyle = raw('<style>\n      @keyframes dash-flow-ctc { to { stroke-dashoffset: -20; } }\n      .ctc-flow { stroke-dasharray: 6 4; animation: dash-flow-ctc 1s linear infinite; }\n      .ctc-flow-slow { stroke-dasharray: 6 4; animation: dash-flow-ctc 1.5s linear infinite; }\n      .ctc-node { fill: rgb(30 41 59 / 0.7); stroke-width: 1.5; rx: 10; }\n      .ctc-label { fill: rgb(255 255 255); font-size: 13px; font-weight: 600; text-anchor: middle; }\n      .ctc-desc { fill: rgb(203 213 225); font-size: 10px; text-anchor: middle; }\n      .ctc-tag { fill: rgb(165 180 252); font-size: 9px; font-family: monospace; text-anchor: middle; }\n      .ctc-arrow-label { fill: rgb(148 163 184); font-size: 9px; text-anchor: middle; }\n    </style>');
+  const svgStyle = raw('<style>\n      @keyframes dash-flow-ctc { to { stroke-dashoffset: -20; } }\n      .ctc-flow { stroke-dasharray: 6 4; animation: dash-flow-ctc 1s linear infinite; }\n      .ctc-flow-slow { stroke-dasharray: 6 4; animation: dash-flow-ctc 1.5s linear infinite; }\n      .ctc-node { fill: rgb(30 41 59 / 0.7); stroke-width: 1.5; rx: 10; }\n      .ctc-label { fill: rgb(255 255 255); font-size: 13px; font-weight: 700; text-anchor: middle; }\n      .ctc-desc { fill: rgb(125 211 252); font-size: 10px; text-anchor: middle; }\n      .ctc-tag { fill: rgb(196 181 253); font-size: 9px; font-family: monospace; text-anchor: middle; }\n      .ctc-arrow-label { fill: rgb(252 211 77); font-size: 10px; font-weight: 600; text-anchor: middle; }\n    </style>');
 
   return html`<section class="border-b border-slate-700/50 bg-slate-900/30 py-16">
     <div class="mx-auto max-w-6xl px-6 sm:px-8 lg:px-12">
       <h2 class="text-2xl font-bold text-white sm:text-3xl">Architecture</h2>
-      <p class="mt-3 text-slate-300">Cross-chain flow: Ethereum → Creditcoin → AI Agent → Ethereum</p>
+      <p class="mt-3 text-slate-100">Cross-chain flow: Ethereum → Creditcoin → AI Agent → Ethereum</p>
 
       <div class="mt-8 overflow-x-auto">
         <svg viewBox="0 0 900 420" class="mx-auto w-full max-w-4xl" xmlns="http://www.w3.org/2000/svg">
