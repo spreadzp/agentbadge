@@ -553,6 +553,30 @@
         14,
         15
       ]
+    },
+    {
+      "id": "on-chain-recording",
+      "type": "concept",
+      "label": "On-Chain Recording",
+      "articles": []
+    },
+    {
+      "id": "trust-badge",
+      "type": "concept",
+      "label": "TrustBadge NFT",
+      "articles": []
+    },
+    {
+      "id": "cross-chain-verification",
+      "type": "concept",
+      "label": "Cross-Chain Verification",
+      "articles": []
+    },
+    {
+      "id": "attestcoin-workers",
+      "type": "concept",
+      "label": "Attestcoin Workers",
+      "articles": []
     }
   ],
   "edges": [
@@ -750,6 +774,36 @@
       "from": "evidence",
       "to": "reproducibility",
       "label": "enables"
+    },
+    {
+      "from": "scanner",
+      "to": "on-chain-recording",
+      "label": "triggers"
+    },
+    {
+      "from": "on-chain-recording",
+      "to": "trust-badge",
+      "label": "mints"
+    },
+    {
+      "from": "scoring",
+      "to": "on-chain-recording",
+      "label": "feeds into"
+    },
+    {
+      "from": "cross-chain-verification",
+      "to": "attestcoin-workers",
+      "label": "uses"
+    },
+    {
+      "from": "attestcoin-workers",
+      "to": "on-chain-recording",
+      "label": "related to"
+    },
+    {
+      "from": "badge",
+      "to": "trust-badge",
+      "label": "evolved as"
     }
   ]
 }

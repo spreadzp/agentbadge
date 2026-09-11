@@ -21,6 +21,10 @@ AgentBadge is an agency for the agentic web. We help businesses become agent-rea
 - [Agent Readiness](/agent-guide/concepts/agent-readiness) — Definition and why it matters
 - [Scoring Engine](/agent-guide/concepts/scoring) — How APIs are scored (binary rules, evidence)
 - [Trust Badge](/agent-guide/concepts/badge) — What the badge means (trust signal, not certification)
+- [On-Chain Recording](/agent-guide/concepts/on-chain-recording) — How scan results are recorded on Base Sepolia via TrustRegistry
+- [TrustBadge NFT](/agent-guide/concepts/trust-badge) — Soulbound NFT badge for verified agents
+- [Cross-Chain Verification](/agent-guide/concepts/cross-chain-verification) — Attestcoin Protocol proof verification
+- [Attestcoin Workers](/agent-guide/concepts/attestcoin-workers) — Worker A/B bridge architecture
 
 ## Capabilities
 

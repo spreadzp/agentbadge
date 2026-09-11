@@ -142,6 +142,80 @@ export const AGENCY_SERVICES: AgencyService[] = [
       { tier: "Enterprise pool", price: "Contact us", features: ["Private task pools", "Custom matching rules", "Bulk task posting", "SLA", "Dedicated support"] },
     ],
   },
+  {
+    id: "on-chain-scan-recording",
+    name: "KeeperHub On-Chain Recording",
+    tagline: "Record scan results on Base Sepolia via TrustRegistry",
+    description:
+      "Trigger on-chain scan recording via KeeperHub workflows. Scan results are permanently recorded on Base Sepolia using the TrustRegistry smart contract, with TrustBadge soulbound NFTs and AgentPassport NFTs minted for verified sites.",
+    url: "/services/on-chain-recording",
+    icon: "⛓️",
+    features: [
+      "On-chain scan recording via TrustRegistry",
+      "TrustBadge soulbound NFT minting",
+      "AgentPassport NFT on Base Sepolia",
+      "Live SSE audit trail stream",
+      "KeeperHub workflow automation",
+      "x402 premium scan payments",
+    ],
+    howItWorks: [
+      { step: "Scan with confirm", description: "Scan a site with confirm: true to trigger on-chain recording. The server initiates a KeeperHub record-scan workflow." },
+      { step: "KeeperHub executes", description: "KeeperHub calls recordScan() on the TrustRegistry contract on Base Sepolia, storing the URL, score, rules passed/total, and timestamp." },
+      { step: "Badge minting", description: "If the site passes, KeeperHub mints a TrustBadge (soulbound NFT) and AgentPassport NFT to the site owner's address." },
+      { step: "Audit trail", description: "All events are available via the SSE stream at /audit/stream for real-time monitoring of on-chain scan recordings and badge mints." },
+    ],
+    useCases: [
+      { title: "Verifiable scan proofs", description: "Record scan results on-chain so they can be independently verified by anyone via Basescan or the TrustRegistry contract." },
+      { title: "Soulbadges for agents", description: "Mint TrustBadge NFTs for agents that pass the readiness scan, providing a non-transferable proof of agent readiness." },
+      { title: "Premium scan payments", description: "Use x402 protocol to charge USDC for premium scans that include on-chain recording, audit trail access, and badge minting." },
+    ],
+    faq: [
+      { question: "What chain is used?", answer: "On-chain recording uses Base Sepolia (chain 84532). The TrustRegistry, TrustBadge, and AgentPassport contracts are all deployed on Base Sepolia." },
+      { question: "How long does recording take?", answer: "KeeperHub workflow execution typically takes 1-5 minutes. The workflow status can be polled via the workflow_status MCP tool or the /api/keeperhub/workflows/:id endpoint." },
+      { question: "What is a soulbound NFT?", answer: "A soulbound NFT is a non-transferable token. TrustBadge uses an _update hook that reverts on any transfer attempt, ensuring the badge stays permanently with the recipient." },
+    ],
+    pricing: [
+      { tier: "Free scan", price: "$0", features: ["Full scan", "Web report", "No on-chain recording"] },
+      { tier: "Premium scan", price: "USDC", features: ["On-chain recording", "TrustBadge mint", "AgentPassport NFT", "Audit trail access", "x402 payment"] },
+    ],
+  },
+  {
+    id: "cross-chain-task-verification",
+    name: "Attestcoin Cross-Chain Verification",
+    tagline: "Cross-chain verified task marketplace on Ethereum + Creditcoin",
+    description:
+      "Verify AI agent tasks across Ethereum Sepolia and Creditcoin CC3 Testnet using the Attestcoin Protocol. Tasks posted on Ethereum are verified on Creditcoin with on-chain proofs, enabling trustless cross-chain task lifecycle management.",
+    url: "/services/cross-chain-verification",
+    icon: "🔗",
+    features: [
+      "Cross-chain task verification (Ethereum ↔ Creditcoin)",
+      "Attestcoin Protocol integration",
+      "Worker A/B bridge architecture",
+      "IPFS result storage",
+      "AI agent task lifecycle",
+      "Live demo with block explorer links",
+    ],
+    howItWorks: [
+      { step: "Task posted on Ethereum", description: "A task is posted on Ethereum Sepolia using the TaskEscrow contract, locking the task details and payment." },
+      { step: "Worker A bridges to Creditcoin", description: "Worker A monitors Ethereum for new tasks and bridges the task hash to the TaskMarketplaceASC contract on Creditcoin CC3 Testnet." },
+      { step: "AI agent processes", description: "An AI agent monitors verified tasks on Creditcoin, evaluates, claims, and processes the task. Results are stored on IPFS." },
+      { step: "Worker B bridges back", description: "Worker B bridges the result hash from Creditcoin back to Ethereum, completing the task with on-chain proof on both chains." },
+    ],
+    useCases: [
+      { title: "Cross-chain task marketplace", description: "Post tasks on Ethereum and have them verified on Creditcoin, enabling cross-chain trust without centralized intermediaries." },
+      { title: "AI agent task automation", description: "AI agents monitor verified tasks, claim them, process results, and complete the lifecycle autonomously using MCP tools or REST API." },
+      { title: "Verifiable computation", description: "Task results are stored on IPFS with hashes recorded on both chains, providing cryptographic proof of computation." },
+    ],
+    faq: [
+      { question: "What chains are supported?", answer: "Attestcoin operates across Ethereum Sepolia (chain 11155111) for task posting and Creditcoin CC3 Testnet for task verification and lifecycle management." },
+      { question: "What is the Attestcoin Protocol?", answer: "Attestcoin is a cross-chain verification protocol built on the Creditcoin protocol. It enables tasks posted on one chain to be verified on another using on-chain proofs." },
+      { question: "Is there a live demo?", answer: "Yes — visit /hackathon/attestcoin for a live demo page showing real-time task lists, architecture diagrams, and block explorer links." },
+    ],
+    pricing: [
+      { tier: "Free", price: "$0", features: ["View verified tasks", "Live demo", "Block explorer links"] },
+      { tier: "API access", price: "Contact us", features: ["REST API access", "MCP tools", "Webhook notifications", "Custom task posting"] },
+    ],
+  },
 ];
 
 export function getAgencyService(id: string): AgencyService | undefined {

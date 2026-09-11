@@ -81,6 +81,11 @@ export function buildAgentCard() {
       "agency_services",
       "work_requests",
       "demand_registry",
+      "on_chain_scan_recording",
+      "trust_badge_minting",
+      "keeperhub_workflows",
+      "cross_chain_task_verification",
+      "attestcoin_protocol",
     ],
     skills: [
       "api_call",
@@ -92,6 +97,8 @@ export function buildAgentCard() {
       "agency_discovery",
       "capability_matching",
       "work_request_submission",
+      "on_chain_recording",
+      "cross_chain_verification",
     ],
     endpoints: {
       api: `${baseUrl}/api/specs`,
@@ -124,6 +131,12 @@ export function buildAgentCard() {
       work_requests: `${baseUrl}/api/work-requests`,
       demand_request: `${baseUrl}/api/demand/request`,
       agents_txt: `${baseUrl}/agents.txt`,
+      keeperhub_scan: `${baseUrl}/api/keeperhub/scan`,
+      audit_stream: `${baseUrl}/audit/stream`,
+      audit_webhook: `${baseUrl}/audit/webhook`,
+      attestcoin_tasks: `${baseUrl}/api/attestcoin/tasks`,
+      attestcoin_verify: `${baseUrl}/api/attestcoin/verify`,
+      attestcoin_demo: `${baseUrl}/hackathon/attestcoin`,
     },
     auth: agentCardAuthBlock(baseUrl),
     "ab:payment": {
@@ -138,6 +151,32 @@ export function buildAgentCard() {
       passport_token_id: process.env.PASSPORT_TOKEN_ID,
       directory_topic_id: process.env.DIRECTORY_TOPIC_ID,
       audit_topic_id: process.env.AUDIT_TOPIC_ID,
+      multi_chain: {
+        base_sepolia: {
+          chain_id: 84532,
+          contracts: {
+            trust_registry: process.env.TRUST_REGISTRY_ADDRESS ?? "",
+            trust_badge: process.env.TRUST_BADGE_ADDRESS ?? "",
+            agent_passport: process.env.AGENT_PASSPORT_BASE_ADDRESS ?? "",
+          },
+          purpose: "On-chain scan recording, TrustBadge soulbound NFT, AgentPassport NFT via KeeperHub",
+        },
+        ethereum_sepolia: {
+          chain_id: 11155111,
+          contracts: {
+            task_escrow: process.env.TASK_ESCROW_ADDRESS ?? "",
+          },
+          purpose: "Attestcoin cross-chain task posting",
+        },
+        creditcoin_testnet: {
+          chain_id: 1023,
+          contracts: {
+            task_marketplace_asc: process.env.TASK_MARKETPLACE_ASC_ADDRESS ?? "",
+            task_state: process.env.TASK_STATE_ADDRESS ?? "",
+          },
+          purpose: "Attestcoin cross-chain task verification and lifecycle",
+        },
+      },
     },
   };
 }

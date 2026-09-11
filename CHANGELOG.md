@@ -4,6 +4,42 @@ All notable changes to AgentBadge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2025-09-14
+
+### Added — KeeperHub On-Chain Recording (EPIC-126)
+
+- **TrustRegistry contract** on Base Sepolia (chain 84532) — records scan results (URL, score, rules passed/total, timestamp) on-chain
+- **TrustBadge soulbound NFT** — non-transferable NFT badge for agents that pass the readiness scan; uses `_update` hook to revert transfers
+- **AgentPassport NFT on Base** — on-chain passport minted via KeeperHub workflow for verified sites
+- **KeeperHub workflow integration** — `record_scan` triggers `record-scan` workflow, `mint_badge` mints TrustBadge + AgentPassport, `workflow_status` checks execution status
+- **Live SSE audit trail** — `/audit/stream` endpoint streams on-chain audit events in real-time (Server-Sent Events)
+- **Webhook receiver** — `/audit/webhook` accepts KeeperHub callback notifications
+- **x402 premium scans** — USDC payment for premium scans that include on-chain recording, badge minting, and audit trail access
+- **MCP tools** — `record_scan`, `mint_badge`, `workflow_status`, `audit_events` (4 new tools in keeperhub category)
+- **npm package** — `@agentbadge/keeperhub` — TypeScript SDK for KeeperHub MCP API, workflow templates, contract ABIs
+
+### Added — Attestcoin Cross-Chain Verification (EPIC-127)
+
+- **Cross-chain verified task marketplace** — tasks posted on Ethereum Sepolia, verified on Creditcoin CC3 Testnet
+- **Attestcoin Protocol integration** — on-chain proof verification using TaskEscrow (Ethereum) and TaskMarketplaceASC + TaskState (Creditcoin) contracts
+- **Worker A/B bridge architecture** — Worker A bridges task hashes from Ethereum to Creditcoin, Worker B bridges result hashes back
+- **AI agent task lifecycle** — agents monitor, evaluate, claim, process, and complete tasks autonomously
+- **IPFS result storage** — task results stored on IPFS with hashes recorded on both chains
+- **Live demo page** — `/hackathon/attestcoin` shows real-time task lists, architecture diagrams, and block explorer links
+- **REST API endpoints** — `GET /api/attestcoin/tasks`, `GET /api/attestcoin/tasks/:taskIds`, `POST /api/attestcoin/verify`
+- **MCP tools** — `verify_cross_chain_task`, `list_verified_tasks`, `get_task_status` (3 new tools in attestcoin category)
+- **npm package** — `@agentbadge/attestcoin` — contract ABIs, TypeScript types, SDK wrapper, Worker A/B code, AI agent logic
+
+### Changed — Website Documentation (SLICE-127-24)
+
+- **FAQ** — 17 new Q&A entries across two new categories: "KeeperHub & On-Chain Recording" (10) and "Cross-Chain Verification (Attestcoin)" (7)
+- **llms.txt** — Added KeeperHub endpoints table, Attestcoin endpoints table, Multi-Chain Support section, npm Packages section, 7 new MCP tools
+- **Agent Card** — Added 5 new capabilities, 2 new skills, 6 new endpoints, multi-chain blockchain config (Base Sepolia, Ethereum Sepolia, Creditcoin Testnet)
+- **Agent Guide** — 4 new concept pages: On-Chain Recording, TrustBadge NFT, Cross-Chain Verification, Attestcoin Workers
+- **Knowledge Map** — 5 new nodes and 6 new edges connecting KeeperHub and Attestcoin concepts to existing knowledge graph
+- **Services Page** — 2 new service entries: KeeperHub On-Chain Recording, Attestcoin Cross-Chain Verification
+- **OpenAPI Spec** — Added KeeperHub and Attestcoin API paths
+
 ## [0.13.0] — 2025-09-07
 
 ### Added — Data Moat / Cross-Scan Corpus (EPIC-103)

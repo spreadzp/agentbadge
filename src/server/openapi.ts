@@ -280,6 +280,78 @@ export const completeTaskResponseSchema = z.object({
   completedAt: z.number().describe("Unix timestamp of completion"),
 });
 
+// ─── KeeperHub schemas (EPIC-126) ──────────────────────────────────
+
+export const recordScanRequestSchema = z.object({
+  url: z.string().url().describe("Target URL to scan and record on-chain"),
+  confirm: z.boolean().default(true).describe("If true, triggers on-chain recording via KeeperHub workflow"),
+});
+
+export const recordScanResponseSchema = z.object({
+  workflowId: z.string().describe("KeeperHub workflow execution ID"),
+  url: z.string().describe("Scanned URL"),
+  status: z.enum(["pending", "running", "completed", "failed"]).describe("Workflow status"),
+  txHash: z.string().optional().describe("On-chain transaction hash on Base Sepolia"),
+  score: z.number().optional().describe("Agent readiness score (0-100)"),
+  rulesPassed: z.number().optional(),
+  rulesTotal: z.number().optional(),
+  badgeMinted: z.boolean().optional().describe("Whether TrustBadge was minted"),
+});
+
+export const workflowStatusResponseSchema = z.object({
+  workflowId: z.string(),
+  status: z.enum(["pending", "running", "completed", "failed"]),
+  steps: z.array(
+    z.object({
+      name: z.string(),
+      status: z.enum(["pending", "running", "completed", "failed"]),
+      txHash: z.string().optional(),
+      timestamp: z.number().optional(),
+    }),
+  ),
+  result: recordScanResponseSchema.optional(),
+});
+
+export const auditEventStreamSchema = z.object({
+  event: z.string().describe("Event type (scan_recorded, badge_minted, workflow_completed)"),
+  url: z.string().optional(),
+  txHash: z.string().optional(),
+  score: z.number().optional(),
+  timestamp: z.number(),
+});
+
+// ─── Attestcoin schemas (EPIC-127) ──────────────────────────────────
+
+export const verifiedTaskSchema = z.object({
+  taskId: z.string().describe("Cross-chain task ID"),
+  ethTxHash: z.string().optional().describe("Ethereum Sepolia transaction hash"),
+  creditcoinTxHash: z.string().optional().describe("Creditcoin transaction hash"),
+  status: z.enum(["posted", "verified", "claimed", "processing", "completed", "failed"]),
+  poster: z.string().optional().describe("Task poster address"),
+  claimer: z.string().optional().describe("Agent that claimed the task"),
+  resultIpfsHash: z.string().optional().describe("IPFS hash of task result"),
+  createdAt: z.number().optional(),
+  completedAt: z.number().optional(),
+});
+
+export const listVerifiedTasksResponseSchema = z.object({
+  tasks: z.array(verifiedTaskSchema),
+  count: z.number(),
+  total: z.number(),
+});
+
+export const verifyTaskRequestSchema = z.object({
+  taskId: z.string().describe("Task ID to verify cross-chain"),
+  ethTxHash: z.string().describe("Ethereum Sepolia transaction hash of the task posting"),
+});
+
+export const verifyTaskResponseSchema = z.object({
+  taskId: z.string(),
+  verified: z.boolean().describe("Whether the task was verified on Creditcoin"),
+  creditcoinTxHash: z.string().optional(),
+  message: z.string(),
+});
+
 // ─── Server Agent Card schema (SLICE-17-1) ───────────────────────
 
 export const serverAgentCardSchema = z.object({
@@ -297,6 +369,12 @@ export const serverAgentCardSchema = z.object({
     llms_txt: z.string(),
     guides: z.string(),
     did_resolver: z.string(),
+    keeperhub_scan: z.string().optional(),
+    audit_stream: z.string().optional(),
+    audit_webhook: z.string().optional(),
+    attestcoin_tasks: z.string().optional(),
+    attestcoin_verify: z.string().optional(),
+    attestcoin_demo: z.string().optional(),
   }),
   payment: z.object({
     protocol: z.string(),
@@ -310,6 +388,23 @@ export const serverAgentCardSchema = z.object({
     passport_token_id: z.string().optional(),
     directory_topic_id: z.string().optional(),
     audit_topic_id: z.string().optional(),
+    multi_chain: z.object({
+      base_sepolia: z.object({
+        chain_id: z.number(),
+        contracts: z.record(z.string(), z.string()),
+        purpose: z.string(),
+      }).optional(),
+      ethereum_sepolia: z.object({
+        chain_id: z.number(),
+        contracts: z.record(z.string(), z.string()),
+        purpose: z.string(),
+      }).optional(),
+      creditcoin_testnet: z.object({
+        chain_id: z.number(),
+        contracts: z.record(z.string(), z.string()),
+        purpose: z.string(),
+      }).optional(),
+    }).optional(),
   }),
 });
 
@@ -350,6 +445,8 @@ export const openApiConfig = {
     { name: "A2A Messaging", description: "Agent-to-agent messaging" },
     { name: "Marketplace", description: "Agent marketplace for task posting and discovery" },
     { name: "Meta", description: "Machine-readable metadata endpoints for AI agents" },
+    { name: "KeeperHub", description: "On-chain scan recording via KeeperHub workflows on Base Sepolia" },
+    { name: "Attestcoin", description: "Cross-chain task verification (Ethereum Sepolia ↔ Creditcoin)" },
   ],
   "x-rate-limit": {
     defaultLimit: 60,
