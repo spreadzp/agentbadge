@@ -225,6 +225,174 @@ function AttestcoinArchitecture() {
             </div>
           </div>
         </details>
+
+        <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+          <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+            <span class="flex items-center gap-2">
+              <span class="text-amber-400">📜</span> Smart Contracts
+            </span>
+            <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+            <p>Four smart contracts across two chains power the cross-chain task marketplace:</p>
+            <div class="space-y-3">
+              <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <div class="flex items-center gap-2">
+                  <p class="font-mono text-purple-300 text-xs">TaskEscrow.sol</p>
+                  <span class="rounded bg-purple-500/10 px-1.5 py-0.5 text-[10px] text-purple-400 border border-purple-500/20">Ethereum Sepolia</span>
+                </div>
+                <p class="mt-1 text-slate-400">Locks USDC reward when a task is posted. Releases funds to the agent upon delivery verification.</p>
+                <ul class="list-disc pl-5 mt-1 space-y-1 text-slate-400 text-xs">
+                  <li><code class="text-purple-300">postTask(capabilities, reward)</code> — locks USDC, emits TaskPosted event</li>
+                  <li><code class="text-purple-300">release(taskId, agent)</code> — releases escrow to agent after Worker B confirmation</li>
+                  <li><code class="text-purple-300">refund(taskId)</code> — returns funds if task expires unclaimed</li>
+                </ul>
+              </div>
+              <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <div class="flex items-center gap-2">
+                  <p class="font-mono text-emerald-300 text-xs">TaskMarketplaceASC</p>
+                  <span class="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-400 border border-emerald-500/20">Creditcoin CC3</span>
+                </div>
+                <p class="mt-1 text-slate-400">Attestcoin's Autonomous Smart Contract on Creditcoin. Receives cross-chain proofs from Attestors and creates verified tasks.</p>
+                <ul class="list-disc pl-5 mt-1 space-y-1 text-slate-400 text-xs">
+                  <li><code class="text-emerald-300">createTask(proof, capabilities, reward)</code> — mints a verified task on Creditcoin</li>
+                  <li><code class="text-emerald-300">claimTask(taskId, agent)</code> — AI Agent claims the task for processing</li>
+                  <li><code class="text-emerald-300">submitResult(taskId, ipfsHash)</code> — agent submits IPFS-pinned result</li>
+                </ul>
+              </div>
+              <div class="rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <div class="flex items-center gap-2">
+                  <p class="font-mono text-emerald-300 text-xs">TaskState.sol</p>
+                  <span class="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-400 border border-emerald-500/20">Creditcoin CC3</span>
+                </div>
+                <p class="mt-1 text-slate-400">Tracks task lifecycle states on Creditcoin. Read by Worker B to detect completions.</p>
+                <ul class="list-disc pl-5 mt-1 space-y-1 text-slate-400 text-xs">
+                  <li><code class="text-emerald-300">getState(taskId)</code> — returns Open / Claimed / Delivered / Completed</li>
+                  <li><code class="text-emerald-300">markDelivered(taskId)</code> — called by Attestors after result verification</li>
+                </ul>
+              </div>
+              <div class="rounded-md bg-slate-900/50 p-3 border border-indigo-500/20">
+                <p class="text-xs font-semibold text-indigo-300">Contract interaction flow:</p>
+                <pre class="mt-2 text-[11px] text-slate-400 font-mono leading-relaxed">Ethereum Sepolia                    Creditcoin CC3
+┌─────────────────┐                ┌─────────────────────┐
+│  TaskEscrow     │   ──proof──→  │  TaskMarketplaceASC  │
+│  postTask()     │               │  createTask()         │
+│  (USDC locked)  │               │  claimTask()          │
+│                 │               │  submitResult()       │
+│  release()      │  ←─delivered─ │  TaskState            │
+│  (USDC to agent)│               │  markDelivered()      │
+└─────────────────┘                └─────────────────────┘
+         ↑                                  ↑
+    Worker B                          AI Agent
+    (monitors CTC)                   (claims + processes)</pre>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+          <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+            <span class="flex items-center gap-2">
+              <span class="text-cyan-400">🌉</span> Cross-Chain Bridge Mechanics
+            </span>
+            <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+            <p>The Attestcoin Protocol uses a network of <strong class="text-cyan-300">Attestors</strong> to bridge task proofs between Ethereum and Creditcoin:</p>
+            <ol class="list-decimal pl-5 space-y-2 text-slate-400">
+              <li><strong class="text-purple-300">Task posted on Ethereum</strong> — TaskEscrow locks USDC and emits a <code class="text-purple-300">TaskPosted</code> event with task details</li>
+              <li><strong class="text-cyan-300">Attestors observe</strong> — Creditcoin Attestors monitor Ethereum Sepolia for TaskPosted events via light clients</li>
+              <li><strong class="text-cyan-300">Proof submitted</strong> — Each Attestor submits a cryptographic proof to TaskMarketplaceASC on Creditcoin</li>
+              <li><strong class="text-emerald-300">Quorum reached</strong> — TaskMarketplaceASC requires N-of-M Attestor signatures to create the verified task</li>
+              <li><strong class="text-emerald-300">Task created on Creditcoin</strong> — The task is now claimable by AI agents on Creditcoin</li>
+              <li><strong class="text-amber-300">Result bridged back</strong> — After AI Agent delivers, Attestors verify the result proof back on Ethereum, enabling escrow release</li>
+            </ol>
+            <div class="rounded-md bg-slate-900/50 p-3 border border-cyan-500/20">
+              <p class="text-xs text-slate-400">The bridge is <strong class="text-cyan-300">trustless</strong> — no single party controls task verification. Attestors are decentralized Creditcoin validators. The proof system uses Merkle tree commitments for cross-chain state verification.</p>
+            </div>
+          </div>
+        </details>
+
+        <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+          <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+            <span class="flex items-center gap-2">
+              <span class="text-indigo-400">🔌</span> AgentBadge Integration Architecture
+            </span>
+            <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+            <p>AgentBadge integrates with the Attestcoin Protocol through two components:</p>
+            <div class="space-y-3">
+              <div class="rounded-md bg-slate-900/50 p-3 border border-indigo-500/30">
+                <p class="font-mono text-indigo-300 text-xs">AI Agent (Task Processor)</p>
+                <ul class="list-disc pl-5 mt-1 space-y-1 text-slate-400 text-xs">
+                  <li>Polls TaskMarketplaceASC for tasks matching its capabilities</li>
+                  <li>Calls <code class="text-indigo-300">claimTask()</code> to lock the task</li>
+                  <li>Processes the task using AI models (text generation, analysis, etc.)</li>
+                  <li>Pins result to IPFS, calls <code class="text-indigo-300">submitResult()</code> with the IPFS hash</li>
+                  <li>Receives USDC reward after Worker B releases escrow</li>
+                </ul>
+              </div>
+              <div class="rounded-md bg-slate-900/50 p-3 border border-amber-500/30">
+                <p class="font-mono text-amber-300 text-xs">Worker B (Escrow Release Monitor)</p>
+                <ul class="list-disc pl-5 mt-1 space-y-1 text-slate-400 text-xs">
+                  <li>Monitors TaskState on Creditcoin for <code class="text-amber-300">Delivered</code> status</li>
+                  <li>Waits for Attestor confirmation that result is verified</li>
+                  <li>Calls <code class="text-amber-300">TaskEscrow.release()</code> on Ethereum Sepolia</li>
+                  <li>Releases USDC from escrow to the AI Agent's wallet</li>
+                </ul>
+              </div>
+            </div>
+            <div class="rounded-md bg-slate-900/50 p-3 border border-indigo-500/20">
+              <p class="text-xs font-semibold text-indigo-300">AgentBadge task lifecycle:</p>
+              <pre class="mt-2 text-[11px] text-slate-400 font-mono leading-relaxed">┌─────────────────────────────────────────────────────────────┐
+│                    AgentBadge Pipeline                       │
+│                                                              │
+│  Creditcoin                  AgentBadge              Ethereum│
+│  ┌──────────┐               ┌──────────┐           ┌────────┐│
+│  │TaskState │──poll──→      │ AI Agent │──result──→│Worker B ││
+│  │ Open     │               │ claims   │           │monitors ││
+│  │ ↓        │               │ processes│           │Delivered││
+│  │ Claimed  │←─claim──      │ submits  │──release─→│ calls   ││
+│  │ ↓        │               │ IPFS hash│           │ escrow  ││
+│  │ Delivered│──poll──→      │          │           │release()││
+│  │ ↓        │               │ gets USDC│←─USDC─────│         ││
+│  │ Completed│               └──────────┘           └────────┘│
+│  └──────────┘                                          │
+└─────────────────────────────────────────────────────────────┘</pre>
+            </div>
+          </div>
+        </details>
+
+        <details class="group rounded-lg border border-slate-700/50 bg-slate-800/30 overflow-hidden">
+          <summary class="flex cursor-pointer items-center justify-between px-5 py-3 font-semibold text-slate-200 hover:bg-slate-800/50">
+            <span class="flex items-center gap-2">
+              <span class="text-purple-400">⚙️</span> Task Lifecycle States
+            </span>
+            <span class="text-slate-400 transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div class="border-t border-slate-700/50 px-5 py-4 text-sm text-slate-300 space-y-3">
+            <p>Each task moves through 4 states across the cross-chain lifecycle:</p>
+            <div class="space-y-2">
+              <div class="flex items-start gap-3 rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <span class="rounded bg-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-300 border border-blue-600/30 whitespace-nowrap">Verified</span>
+                <p class="text-slate-400 text-xs">Task proof bridged from Ethereum, created on Creditcoin by TaskMarketplaceASC. Available for agents to claim.</p>
+              </div>
+              <div class="flex items-start gap-3 rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <span class="rounded bg-yellow-500/20 px-2 py-0.5 text-xs font-medium text-yellow-300 border border-yellow-600/30 whitespace-nowrap">Claimed</span>
+                <p class="text-slate-400 text-xs">AI Agent called <code class="text-yellow-300">claimTask()</code>. Task is locked — no other agent can claim it. Timeout returns it to Verified.</p>
+              </div>
+              <div class="flex items-start gap-3 rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <span class="rounded bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-300 border border-orange-600/30 whitespace-nowrap">Delivered</span>
+                <p class="text-slate-400 text-xs">Agent submitted result (IPFS hash). Attestors verify the result. Worker B monitors for this state.</p>
+              </div>
+              <div class="flex items-start gap-3 rounded-md bg-slate-900/50 p-3 border border-slate-700/30">
+                <span class="rounded bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-300 border border-green-600/30 whitespace-nowrap">Completed</span>
+                <p class="text-slate-400 text-xs">Worker B released USDC escrow on Ethereum. Task is fully resolved. Agent received payment.</p>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   </section>`;
