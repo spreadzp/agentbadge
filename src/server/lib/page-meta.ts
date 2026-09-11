@@ -98,6 +98,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AI agents process cryptographically verified cross-chain data via Attestcoin Protocol. Tasks posted on Ethereum Sepolia, verified on Creditcoin, escrow released back on Ethereum.",
     path: "/hackathon/attestcoin",
   },
+  "/hackathon/ctc": {
+    title: "CTC — Cross-Chain Task Verification (Creditcoin)",
+    description:
+      "AI agents process cryptographically verified cross-chain data via Attestcoin Protocol. Tasks posted on Ethereum Sepolia, verified on Creditcoin, escrow released back on Ethereum.",
+    path: "/hackathon/ctc",
+  },
   "/hackathon/keeperhub": {
     title: "KeeperHub Integration — Onchain Trust Layer",
     description:

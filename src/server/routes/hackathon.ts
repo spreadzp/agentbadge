@@ -22,7 +22,7 @@ export const hackathonRoutes = new Hono();
 const NAME_PATTERN = /^[a-z0-9-]+$/;
 
 // Known hackathon names (extended in subsequent slices)
-const KNOWN_HACKATHONS = new Set(["webmcp", "datahub", "attestcoin", "keeperhub"]);
+const KNOWN_HACKATHONS = new Set(["webmcp", "datahub", "attestcoin", "ctc", "keeperhub"]);
 
 hackathonRoutes.get("/hackathon/:name", async (c) => {
   const name = c.req.param("name");
@@ -41,7 +41,7 @@ hackathonRoutes.get("/hackathon/:name", async (c) => {
     content = DataHubLandingPage().toString();
   } else if (name === "webmcp") {
     content = WebMcpHackathonPage().toString();
-  } else if (name === "attestcoin") {
+  } else if (name === "attestcoin" || name === "ctc") {
     content = AttestcoinHackathonPage().toString();
   } else if (name === "keeperhub") {
     const cfg = getConfig();
