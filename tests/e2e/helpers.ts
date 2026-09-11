@@ -149,6 +149,8 @@ export function setupMockEnv(): void {
   process.env.DIRECTORY_TOPIC_ID = "0.0.9681982";
   process.env.ADMIN_API_KEY = "test-admin-key";
   process.env.IPFS_STORAGE = "./storage/metadata";
+  process.env.KEEPERHUB_ENABLED = "false";
+  process.env.ATTESTCOIN_ENABLED = "false";
 }
 
 export async function signWalletOwnership(privateKey: string, accountId: string): Promise<string> {

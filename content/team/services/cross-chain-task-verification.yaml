@@ -1,0 +1,28 @@
+id: cross-chain-task-verification
+name: Cross-Chain Task Verification
+problem: "Need cryptographically verified cross-chain task execution between Ethereum and Creditcoin"
+keywords:
+  - cross-chain
+  - attestcoin
+  - creditcoin
+  - task verification
+  - ethereum sepolia
+  - block prover
+  - task escrow
+  - task marketplace
+  - ai agent tasks
+  - worker bridge
+  - ipfs storage
+  - mcp tools
+deliverables:
+  - TaskMarketplaceASC + TaskState contract deployment on Creditcoin
+  - TaskEscrow extension on Ethereum Sepolia with USDC locking
+  - Worker A/B bridge architecture (Eth↔CTC)
+  - AI agent autonomous task lifecycle (claim → deliver → complete)
+  - REST API endpoints for cross-chain tasks
+  - MCP tools for cross-chain verification (3 tools)
+  - "@agentbadge/attestcoin npm package"
+engagement:
+  - fixed-scope
+  - contract
+contact: /agent-guide/team/contact

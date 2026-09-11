@@ -24,9 +24,9 @@ interface ChangelogEntry {
 
 function parseChangelog(): ChangelogEntry[] {
   const candidates = [
+    resolve(process.cwd(), "CHANGELOG.md"),
     resolve(process.cwd(), "../../CHANGELOG.md"),
     resolve(process.cwd(), "../../../CHANGELOG.md"),
-    resolve(process.cwd(), "CHANGELOG.md"),
   ];
 
   let content: string | null = null;
@@ -52,15 +52,33 @@ function parseChangelog(): ChangelogEntry[] {
   let current: ChangelogEntry | null = null;
 
   for (const line of lines) {
-    // Heading level 2: ## YYYY-MM-DD ...
-    const h2 = line.match(/^## (\d{4}-\d{2}-\d{2})(?:\s+[—-]\s+(.+))?$/);
-    if (h2) {
+    // Heading level 2: ## [version] — YYYY-MM-DD  OR  ## YYYY-MM-DD ...
+    const h2Version = line.match(/^## \[(\d+\.\d+\.\d+)\]\s+[—-]\s+(\d{4}-\d{2}-\d{2})$/);
+    const h2Date = line.match(/^## (\d{4}-\d{2}-\d{2})(?:\s+[—-]\s+(.+))?$/);
+    if (h2Version) {
       if (current) entries.push(current);
       current = {
-        date: h2[1],
-        title: h2[2] ?? h2[1],
+        date: h2Version[2],
+        version: h2Version[1],
+        title: `v${h2Version[1]}`,
         items: [],
       };
+      continue;
+    }
+    if (h2Date) {
+      if (current) entries.push(current);
+      current = {
+        date: h2Date[1],
+        title: h2Date[2] ?? h2Date[1],
+        items: [],
+      };
+      continue;
+    }
+
+    // Heading level 3: ### Sub-section title
+    if (current && line.match(/^###\s+(.+)$/)) {
+      const subheading = line.replace(/^###\s+/, "").trim();
+      if (subheading) current.items.push(`**${subheading}**`);
       continue;
     }
 

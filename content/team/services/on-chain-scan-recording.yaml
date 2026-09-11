@@ -1,0 +1,27 @@
+id: on-chain-scan-recording
+name: On-Chain Scan Recording
+problem: "Need verifiable on-chain proof that your site passed AI-readiness scans"
+keywords:
+  - on-chain recording
+  - keeperhub
+  - trust registry
+  - trust badge
+  - agent passport
+  - base sepolia
+  - soulbound nft
+  - scan verification
+  - audit trail
+  - sse streaming
+  - mcp tools
+  - agent badge
+deliverables:
+  - TrustRegistry contract deployment on Base Sepolia
+  - TrustBadge soulbound NFT minting for verified sites
+  - KeeperHub workflow automation (record-scan, mint-passport)
+  - Live SSE audit trail streaming
+  - MCP tools for on-chain recording (4 tools)
+  - "@agentbadge/keeperhub npm package"
+engagement:
+  - fixed-scope
+  - contract
+contact: /agent-guide/team/contact

@@ -6,6 +6,11 @@ import {
   breadcrumbFor,
   defaultCoreSchemas,
 } from "../../../src/server/lib/json-ld";
+import { resetConfigCache } from "../../../src/config/env";
+
+resetConfigCache();
+process.env.KEEPERHUB_ENABLED = "false";
+process.env.ATTESTCOIN_ENABLED = "false";
 
 /**
  * SLICE-112-7: Fix /changelog, /services, /work-with-us schema types.

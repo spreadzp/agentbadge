@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { contentPageRoutes } from "../../src/server/routes/content-pages";
+import { setupMockEnv } from "./helpers";
+import { resetConfigCache } from "../../src/config/env";
+
+setupMockEnv();
+resetConfigCache();
 
 const app = new Hono();
 app.route("/", contentPageRoutes);
