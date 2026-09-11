@@ -67,13 +67,13 @@ function AttestcoinArchitecture() {
       <h2 class="text-2xl font-bold text-white sm:text-3xl">Architecture</h2>
       <p class="mt-3 text-slate-400">Cross-chain flow: Ethereum → Creditcoin → AI Agent → Ethereum</p>
       <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        ${steps.map((s, i) => html`<div class="rounded-xl border ${s.border} bg-slate-800/30 p-5">
+        ${raw(steps.map((s, i) => html`<div class="rounded-xl border ${s.border} bg-slate-800/30 p-5">
           <div class="flex items-center gap-3">
             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-sm font-bold ${s.color}">${i + 1}</span>
             <h3 class="font-semibold text-white">${s.label}</h3>
           </div>
           <p class="mt-2 text-sm text-slate-400">${s.desc}</p>
-        </div>`).join("")}
+        </div>`).join(""))}
       </div>
     </div>
   </section>`;
