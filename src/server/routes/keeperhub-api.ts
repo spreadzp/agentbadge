@@ -81,9 +81,11 @@ async function executeScanRecording(
   const client = getKeeperHubClient();
   if (!client) return c.json(keeperhubDisabledResponse(), 503);
 
+  await client.connect();
+
   let triggerResult;
   try {
-    triggerResult = await triggerWorkflow(client, workflowId, { siteUrl: normalizedUrl, score: scan.score, rulesPassed: scan.rulesPassed, rulesTotal: scan.rulesTotal }, {
+    triggerResult = await triggerWorkflow(client, workflowId, { siteUrl: normalizedUrl, score: Math.round(scan.score), rulesPassed: scan.rulesPassed, rulesTotal: scan.rulesTotal }, {
       mode: cfg.keeperhub!.triggerMode,
       webhookUrl: cfg.keeperhub!.webhookUrls["record-scan"],
       webhookKey: cfg.keeperhub!.webhookKey,
@@ -95,8 +97,8 @@ async function executeScanRecording(
   }
 
   try {
-    const exec = await client.pollExecution(triggerResult.executionId, 120_000);
-    const txHashes = (exec as { txHashes?: string[] }).txHashes ?? [];
+    const exec = await client.pollExecution(triggerResult.executionId, { timeoutMs: 300_000, intervalMs: 3000 });
+    const txHashes = exec.status?.transactionHashes?.map((r: { hash: string }) => r.hash) ?? [];
     auditStore.add({
       source: "agentbadge-record-scan",
       siteUrl: normalizedUrl,
@@ -121,6 +123,20 @@ async function executeScanRecording(
   }
 }
 
+/**
+ * Fast parallel fetchers only — skips the 5 slow sequential probes
+ * (guide, openapi, mcp, operational_discovery, credential_security).
+ * ~20 resources, all concurrent → scan completes in ~10-20s instead of ~2min.
+ * Rules depending on skipped resources become NOT_APPLICABLE and are
+ * excluded from the score denominator, so the result stays honest.
+ */
+const QUICK_SCAN_RESOURCES = [
+  "robots", "sitemap", "llms", "content_negotiation", "openapi_standard",
+  "agents_txt", "webmcp", "llms_full", "rss_feed", "mcp_probe",
+  "homepage_meta", "infrastructure", "identity", "favicon", "pricing",
+  "link_headers", "og_meta", "semantic_html", "accessibility", "agent_card",
+];
+
 // POST /keeperhub/scan — scan → dry-run preview or confirm → trigger KeeperHub workflow
 keeperhubApiRoutes.post(
   "/keeperhub/scan",
@@ -133,7 +149,7 @@ keeperhubApiRoutes.post(
     const cfg = getConfig();
     if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
 
-    let body: { url?: string; confirm?: boolean };
+    let body: { url?: string; confirm?: boolean; quick?: boolean };
     try {
       body = await c.req.json();
     } catch {
@@ -159,9 +175,10 @@ keeperhubApiRoutes.post(
       return c.json({ error: "Private URLs are not allowed" }, 403);
     }
 
+    const quick = body.quick === true;
     let score: number, grade: string, rulesPassed: number, rulesTotal: number;
     try {
-      const sourceState = await scanDomain(normalizedUrl, {});
+      const sourceState = await scanDomain(normalizedUrl, quick ? { resources: [...QUICK_SCAN_RESOURCES] } : {});
       const result = RuleEngine.run(sourceState);
       const report = formatScanReport(normalizedUrl, result);
       score = report.score;
@@ -174,7 +191,7 @@ keeperhubApiRoutes.post(
       return c.json({ error: `Scan failed: ${message}` }, 500);
     }
 
-    const scan = { url: normalizedUrl, score, grade, rulesPassed, rulesTotal };
+    const scan = { url: normalizedUrl, score, grade, rulesPassed, rulesTotal, depth: quick ? "quick" as const : "full" as const };
 
     // Dry-run mode (default)
     if (body.confirm !== true) {

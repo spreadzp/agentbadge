@@ -98,7 +98,7 @@ export function ReadinessLandingPage() {
     ReadinessPricingSection().toString(),
     EngineeringCtaSection().toString(),
     FaqSection().toString(),
-    RelatedLinks("Explore More", homepageCrossLinks),
+    `<section class="px-4 py-16 md:px-8"><div class="mx-auto max-w-6xl">${RelatedLinks("Explore More", homepageCrossLinks)}</div></section>`,
     ReadinessThesisSection().toString(),
   ];
 

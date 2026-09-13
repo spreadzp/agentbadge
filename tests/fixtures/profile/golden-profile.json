@@ -1,0 +1,118 @@
+{
+  "profile_version": "1.0.0",
+  "schema_version": "0.9.0",
+  "service": {
+    "domain": "api.example.com",
+    "base_url": "https://api.example.com",
+    "name": "API Discovery",
+    "description": "Example API with OpenAPI spec, OAuth2, and freemium pricing",
+    "verified_at": "2026-09-01T10:00:00Z",
+    "scan_id": "GOLDEN-FIXTURE"
+  },
+  "readiness": {
+    "score": 78,
+    "grade": "B",
+    "categories": {
+      "discovery": 80,
+      "documentation": 87,
+      "openapi": 83,
+      "bot_auth": 75,
+      "pricing": 66,
+      "rate_limits": 100,
+      "error_semantics": 75,
+      "agent_policy": 100
+    },
+    "verified_rules": 32,
+    "total_rules": 40,
+    "gaps": 6,
+    "conflicts": 1
+  },
+  "capabilities": {
+    "data": {
+      "endpoints": [],
+      "protocols": [],
+      "skills": []
+    },
+    "source": "",
+    "confidence": 0.9125000000000001,
+    "verified_at": "2026-09-01T10:00:00Z",
+    "stale": false,
+    "gaps": [
+      "AB-094"
+    ]
+  },
+  "auth": {
+    "data": {
+      "methods": [],
+      "web_bot_auth": false
+    },
+    "source": "",
+    "confidence": 0.8,
+    "verified_at": "2026-09-01T10:00:00Z",
+    "stale": false,
+    "gaps": [
+      "AB-058"
+    ]
+  },
+  "pricing": {
+    "data": {
+      "model": "free",
+      "mechanism": "none"
+    },
+    "source": "",
+    "confidence": 0.825,
+    "verified_at": "2026-09-01T10:00:00Z",
+    "stale": false,
+    "gaps": []
+  },
+  "limits": {
+    "data": {},
+    "source": "",
+    "confidence": 0.8,
+    "verified_at": "2026-09-01T10:00:00Z",
+    "stale": false,
+    "gaps": []
+  },
+  "errors": {
+    "data": {
+      "standard_codes": []
+    },
+    "source": "",
+    "confidence": 0.9,
+    "verified_at": "2026-09-01T10:00:00Z",
+    "stale": false,
+    "gaps": []
+  },
+  "policies": {
+    "data": {
+      "agents_txt": false,
+      "robots_txt": false
+    },
+    "source": "",
+    "confidence": 0.95,
+    "verified_at": "2026-09-01T10:00:00Z",
+    "stale": false,
+    "gaps": []
+  },
+  "freshness": {
+    "profile_generated_at": "2026-09-04T19:08:09.081Z",
+    "oldest_evidence_days": 3,
+    "stale_sections": []
+  },
+  "evidence_summary": {
+    "total_assertions": 15,
+    "by_status": {
+      "VERIFIED": 10,
+      "GAP": 2,
+      "INFERRED": 1,
+      "CONFLICT": 1,
+      "NOT_APPLICABLE": 1
+    },
+    "by_source_class": {},
+    "confidence_range": {
+      "min": 0.7,
+      "max": 0.95,
+      "mean": 0.868181818181818
+    }
+  }
+}

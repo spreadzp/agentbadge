@@ -23,13 +23,6 @@ const TaskStateABI = [
     stateMutability: "view",
     type: "function",
   },
-  {
-    inputs: [],
-    name: "nextTaskId",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
 ] as const;
 
 const TASK_STATUS_NAMES = ["None", "Verified", "Claimed", "Delivered", "Completed"] as const;
@@ -123,12 +116,14 @@ attestcoinRoutes.get(
 
     try {
       const state = getTaskStateContract();
-      const nextTaskId = await state.nextTaskId();
+      // Sequential read: try tasks(1), tasks(2), ... until None status or max limit
+      // (queryFilter times out on Creditcoin RPC due to large block range)
+      const MAX_TASKS = 100;
       const tasks: z.infer<typeof taskSchema>[] = [];
 
-      for (let i = 1n; i < nextTaskId; i++) {
+      for (let i = 1n; i <= BigInt(MAX_TASKS); i++) {
         const task = await state.tasks(i);
-        if (task.status === 0) continue;
+        if (Number(task.status) === 0) break; // None = no more tasks
 
         tasks.push({
           taskId: i.toString(),
@@ -136,7 +131,7 @@ attestcoinRoutes.get(
           reward: task.reward.toString(),
           capabilities: task.capabilities,
           deadline: task.deadline.toString(),
-          status: TASK_STATUS_NAMES[task.status] ?? "Unknown",
+          status: TASK_STATUS_NAMES[Number(task.status)] ?? "Unknown",
           claimer: task.claimer === ZERO_ADDR ? null : task.claimer,
           ipfsResultHash: task.ipfsResultHash === "" ? null : task.ipfsResultHash,
         });
@@ -178,7 +173,7 @@ attestcoinRoutes.get(
       const state = getTaskStateContract();
       const task = await state.tasks(taskId);
 
-      if (task.status === 0) {
+      if (Number(task.status) === 0) {
         return c.json({ error: "Task not found" }, 404);
       }
 
@@ -188,7 +183,7 @@ attestcoinRoutes.get(
         reward: task.reward.toString(),
         capabilities: task.capabilities,
         deadline: task.deadline.toString(),
-        status: TASK_STATUS_NAMES[task.status] ?? "Unknown",
+        status: TASK_STATUS_NAMES[Number(task.status)] ?? "Unknown",
         claimer: task.claimer === ZERO_ADDR ? null : task.claimer,
         ipfsResultHash: task.ipfsResultHash === "" ? null : task.ipfsResultHash,
       }, 200);

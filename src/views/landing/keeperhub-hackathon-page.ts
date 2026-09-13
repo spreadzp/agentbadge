@@ -15,7 +15,7 @@ export interface KeeperHubPageOpts {
   badgeAddress?: string;
 }
 
-export function KeeperHubHackathonPage(opts?: KeeperHubPageOpts): HtmlEscapedString {
+export function KeeperHubHackathonPage(opts?: KeeperHubPageOpts) {
   return html`${Hero()}
     ${ArchitectureDiagram()}
     ${HowItWorks()}
@@ -26,7 +26,7 @@ export function KeeperHubHackathonPage(opts?: KeeperHubPageOpts): HtmlEscapedStr
     ${FooterCta()}`;
 }
 
-function sectionWrapper(id: string, extraClass: string, content: HtmlEscapedString): HtmlEscapedString {
+function sectionWrapper(id: string, extraClass: string, content: HtmlEscapedString | Promise<HtmlEscapedString>) {
   return html`<section id="${id}" class="border-y border-slate-700/50 bg-slate-900/30 ${extraClass}">
     <div class="mx-auto max-w-6xl px-6 py-16 sm:px-8 lg:px-12">
       ${content}
@@ -415,12 +415,14 @@ function DemoSection() {
       (function() {
         var form = document.getElementById("kh-demo-form");
         var runBtn = document.getElementById("kh-run");
+        var quickBtn = document.getElementById("kh-quick");
         var confirmBtn = document.getElementById("kh-confirm");
         var statusEl = document.getElementById("kh-status");
         var resultEl = document.getElementById("kh-result");
         var executedEl = document.getElementById("kh-executed");
         var errorEl = document.getElementById("kh-error");
         var lastScan = null;
+        var lastQuick = false;
 
         function setState(state, msg) {
           statusEl.hidden = false;
@@ -461,9 +463,12 @@ function DemoSection() {
         function renderDryRun(data) {
           var s = data.scan;
           var gradeColor = s.grade === "A" ? "text-emerald-400" : s.grade === "B" ? "text-blue-400" : "text-amber-400";
+          var depthBadge = s.depth === "quick"
+            ? '<span class="ml-2 rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-0.5 text-xs text-indigo-300">quick</span>'
+            : "";
           var html = '<div class="rounded-xl border border-slate-700/40 bg-slate-900/50 p-6">'
             + '<div class="flex items-center justify-between">'
-            + '<div><span class="text-3xl font-bold ' + gradeColor + '">' + s.grade + '</span><span class="ml-2 text-slate-400">Grade</span></div>'
+            + '<div><span class="text-3xl font-bold ' + gradeColor + '">' + s.grade + '</span><span class="ml-2 text-slate-400">Grade</span>' + depthBadge + '</div>'
             + '<div class="text-right"><span class="text-3xl font-bold text-white">' + s.score + '</span><span class="ml-2 text-slate-400">/ 100</span></div>'
             + '</div>'
             + '<div class="mt-4 flex gap-6 text-sm text-slate-400"><span>' + s.rulesPassed + ' / ' + s.rulesTotal + ' rules passed</span></div>'
@@ -491,21 +496,34 @@ function DemoSection() {
             + '<p class="mt-2 text-xs text-slate-500">Execution ID: <code>' + data.executionId + '</code></p></div>';
         }
 
-        form.addEventListener("submit", async function(e) {
-          e.preventDefault();
+        async function runScan(quick) {
           setState("scanning");
           try {
             var res = await fetch("/api/keeperhub/scan", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: document.getElementById("kh-url").value }),
+              body: JSON.stringify({ url: document.getElementById("kh-url").value, quick: quick }),
             });
             var data = await res.json();
             if (!res.ok) { setState("error", describeError(res.status, data)); return; }
             lastScan = data.scan;
+            lastQuick = quick;
             renderDryRun(data);
             setState("dry-run");
           } catch (err) { setState("error", err.message); }
+        }
+
+        form.addEventListener("submit", function(e) {
+          e.preventDefault();
+          runScan(false);
+        });
+
+        quickBtn.addEventListener("click", function() {
+          if (!document.getElementById("kh-url").value) {
+            document.getElementById("kh-url").reportValidity();
+            return;
+          }
+          runScan(true);
         });
 
         confirmBtn.addEventListener("click", async function() {
@@ -515,7 +533,7 @@ function DemoSection() {
             var res = await fetch("/api/keeperhub/scan", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: lastScan.url, confirm: true }),
+              body: JSON.stringify({ url: lastScan.url, confirm: true, quick: lastQuick }),
             });
             var data = await res.json();
             if (data.mode === "executed") { renderExecuted(data); setState("done"); }
@@ -537,10 +555,14 @@ function DemoSection() {
         <input id="kh-url" name="url" type="url" required placeholder="https://example.com"
           class="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
       </div>
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
+        <button type="button" id="kh-quick"
+          class="rounded-lg border border-indigo-500/50 bg-indigo-600/20 px-6 py-3 text-sm font-semibold text-indigo-300 hover:bg-indigo-600/40 transition">
+          Quick check (~15s)
+        </button>
         <button type="submit" id="kh-run"
           class="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition">
-          Dry-run scan
+          Full scan (~2min)
         </button>
         <button type="button" id="kh-confirm" hidden
           class="rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition">
@@ -611,7 +633,9 @@ function AuditSectionAnchor() {
 
         function esc(s) {
           if (!s) return "";
-          return s.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """);
+          var d = document.createElement("div");
+          d.textContent = String(s);
+          return d.innerHTML;
         }
 
         function statusIcon(status) {

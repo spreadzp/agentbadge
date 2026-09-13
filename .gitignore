@@ -1,4 +1,5 @@
 .env
+.env.deployer
 node_modules/
 dist/
 storage/
