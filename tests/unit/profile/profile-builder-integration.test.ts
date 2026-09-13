@@ -25,7 +25,7 @@ function makeFullAssertion(overrides: Partial<Assertion> & { rule_id: string; ca
     timestamp: overrides.timestamp ?? "2026-09-01T10:00:00Z", source_url: overrides.source_url ?? null,
     reason: overrides.reason ?? "ok", category: overrides.category, name: overrides.name ?? overrides.rule_id,
     claim: overrides.claim ?? "claim", verified_at: overrides.verified_at ?? "2026-09-01T10:00:00Z",
-    review_level: "auto" as any,
+    review_level: "automatic",
   };
 }
 

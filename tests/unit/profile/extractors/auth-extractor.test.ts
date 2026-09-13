@@ -21,7 +21,7 @@ function makeAssertion(overrides: Partial<Assertion> & { rule_id: string; catego
     name: overrides.name ?? overrides.rule_id,
     claim: overrides.claim ?? "claim",
     verified_at: overrides.verified_at ?? "2026-09-01T10:00:00Z",
-    review_level: "auto" as any,
+    review_level: "automatic",
   };
 }
 

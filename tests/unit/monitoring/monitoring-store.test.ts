@@ -7,10 +7,6 @@ import {
   type MonitoredProject,
   type RunRecord,
   type AlertRecord,
-  type RegressionReport,
-  type ChannelConfig,
-  type ScheduleConfig,
-  type Thresholds,
 } from "../../../src/agent-readiness/monitoring/monitoring-types";
 import { createMonitoringStore } from "../../../src/agent-readiness/monitoring/monitoring-store";
 
@@ -88,7 +84,7 @@ describe("SLICE-99-2: Monitoring types — validation", () => {
   });
 
   it("rejects bad URL", () => {
-    const result = validateProjectInput({ ...makeProject(), url: "not-a-url" } as any);
+    const result = validateProjectInput({ ...makeProject(), url: "not-a-url" });
     expect(result.success).toBe(false);
   });
 
@@ -99,7 +95,7 @@ describe("SLICE-99-2: Monitoring types — validation", () => {
       schedule: { kind: "daily", hour_utc: 25 },
       channels: [{ type: "webhook", target: "https://hook.example.com" }],
       plan: "free",
-    } as any);
+    });
     expect(result.success).toBe(false);
   });
 
@@ -110,7 +106,7 @@ describe("SLICE-99-2: Monitoring types — validation", () => {
       schedule: { kind: "weekly", hour_utc: 6, day_of_week: 7 },
       channels: [{ type: "webhook", target: "https://hook.example.com" }],
       plan: "free",
-    } as any);
+    });
     expect(result.success).toBe(false);
   });
 
@@ -121,7 +117,7 @@ describe("SLICE-99-2: Monitoring types — validation", () => {
       schedule: { kind: "daily", hour_utc: 6 },
       channels: [{ type: "slack", target: "https://hook.example.com" }],
       plan: "free",
-    } as any);
+    });
     expect(result.success).toBe(false);
   });
 
@@ -132,7 +128,7 @@ describe("SLICE-99-2: Monitoring types — validation", () => {
       schedule: { kind: "weekly", hour_utc: 6 },
       channels: [{ type: "webhook", target: "https://hook.example.com" }],
       plan: "free",
-    } as any);
+    });
     expect(result.success).toBe(false);
   });
 });

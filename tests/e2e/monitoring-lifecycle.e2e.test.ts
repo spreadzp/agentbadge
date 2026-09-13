@@ -7,10 +7,9 @@ import { createHmac } from "node:crypto";
 import { Hono } from "hono";
 import { createMonitoringStore } from "../../src/agent-readiness/monitoring/monitoring-store";
 import { createMonitoringRoutes, type MonitoringAppDeps } from "../../src/server/routes/monitoring";
-import { startMonitoringScheduler, computeNextRun } from "../../src/agent-readiness/monitoring/scheduler";
-import { executeMonitoredRun } from "../../src/agent-readiness/monitoring/run-pipeline";
-import { processRunResult } from "../../src/agent-readiness/monitoring/alert-engine";
+import { startMonitoringScheduler } from "../../src/agent-readiness/monitoring/scheduler";
 import type { ScanReport } from "../../src/agent-readiness/report-formatter";
+import type { Gap } from "../../src/agent-readiness/gap-engine/gap-types";
 import type { MonitoredProject } from "../../src/agent-readiness/monitoring/monitoring-types";
 
 /**
@@ -47,32 +46,32 @@ beforeAll(async () => {
 
 afterAll(() => webhookServer.close());
 
-function makeScanFn(scores: number[]): (url: string) => Promise<ScanReport> {
-  let callIdx = 0;
-  return async () => {
-    const score = scores[Math.min(callIdx++, scores.length - 1)];
-    return {
-      url: "https://api.example.com",
-      score,
-      grade: score >= 80 ? "B" : "C",
-      total_rules: 36,
-      verified: Math.round(score * 0.4),
-      missing: 36 - Math.round(score * 0.4),
-      gap: 36 - Math.round(score * 0.4),
-      not_applicable: 0,
-      skipped: 0,
-      categories: [],
-      top_missing: [],
-      summary: "ok",
-      pillars: [],
-      floorTriggered: false,
-      floorReason: null,
-      assertions: [],
-      gaps: [],
-      gap_summary: { total: 0, by_priority: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }, by_type: { documentation: 0, semantic: 0, capability: 0, evidence: 0 } },
-    };
-  };
-}
+// function makeScanFn(scores: number[]): (url: string) => Promise<ScanReport> {
+//   let callIdx = 0;
+//   return async () => {
+//     const score = scores[Math.min(callIdx++, scores.length - 1)];
+//     return {
+//       url: "https://api.example.com",
+//       score,
+//       grade: score >= 80 ? "B" : "C",
+//       total_rules: 36,
+//       verified: Math.round(score * 0.4),
+//       missing: 36 - Math.round(score * 0.4),
+//       gap: 36 - Math.round(score * 0.4),
+//       not_applicable: 0,
+//       skipped: 0,
+//       categories: [],
+//       top_missing: [],
+//       summary: "ok",
+//       pillars: [],
+//       floorTriggered: false,
+//       floorReason: null,
+//       assertions: [],
+//       gaps: [],
+//       gap_summary: { total: 0, by_priority: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }, by_type: { documentation: 0, semantic: 0, capability: 0, evidence: 0 } },
+//     };
+//   };
+// }
 
 function makeDegradingScanFn(): { scanFn: (url: string) => Promise<ScanReport>; mutate: () => void; restore: () => void } {
   let degraded = false;
@@ -82,7 +81,7 @@ function makeDegradingScanFn(): { scanFn: (url: string) => Promise<ScanReport>; 
     total_rules: 36, verified: 30, missing: 6, gap: 6, not_applicable: 0, skipped: 0,
     categories: [], top_missing: [], summary: "ok", pillars: [],
     floorTriggered: false, floorReason: null, assertions: [],
-    gaps: [{ gap_id: "gap-001", rule_id: "AB-001", priority: "MEDIUM", type: "documentation", message: "Missing docs" } as any],
+    gaps: [{ gap_id: "gap-001", rule_id: "AB-001", priority: "MEDIUM", type: "documentation", message: "Missing docs" } as unknown as Gap],
     gap_summary: { total: 1, by_priority: { CRITICAL: 0, HIGH: 0, MEDIUM: 1, LOW: 0 }, by_type: { documentation: 1, semantic: 0, capability: 0, evidence: 0 } },
   };
   const badReport: ScanReport = {
@@ -90,8 +89,8 @@ function makeDegradingScanFn(): { scanFn: (url: string) => Promise<ScanReport>; 
     score: 65, grade: "C",
     verified: 24, missing: 12, gap: 12,
     gaps: [
-      { gap_id: "gap-001", rule_id: "AB-001", priority: "MEDIUM", type: "documentation", message: "Missing docs" } as any,
-      { gap_id: "gap-002", rule_id: "AB-002", priority: "HIGH", type: "semantic", message: "Semantic mismatch" } as any,
+      { gap_id: "gap-001", rule_id: "AB-001", priority: "MEDIUM", type: "documentation", message: "Missing docs" } as unknown as Gap,
+      { gap_id: "gap-002", rule_id: "AB-002", priority: "HIGH", type: "semantic", message: "Semantic mismatch" } as unknown as Gap,
     ],
     gap_summary: { total: 2, by_priority: { CRITICAL: 0, HIGH: 1, MEDIUM: 1, LOW: 0 }, by_type: { documentation: 1, semantic: 1, capability: 0, evidence: 0 } },
   };

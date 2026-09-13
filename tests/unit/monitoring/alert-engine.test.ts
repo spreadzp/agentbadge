@@ -7,7 +7,7 @@ import { createHmac } from "node:crypto";
 import { createMonitoringStore } from "../../../src/agent-readiness/monitoring/monitoring-store";
 import { processRunResult, formatRegressionAlert, makeDedupeKey } from "../../../src/agent-readiness/monitoring/alert-engine";
 import { sendWebhook } from "../../../src/agent-readiness/monitoring/channels/webhook";
-import type { MonitoredProject, RunRecord, RunSummary, RegressionReport, RegressionItem } from "../../../src/agent-readiness/monitoring/monitoring-types";
+import type { MonitoredProject, RunRecord, RunSummary, RegressionReport } from "../../../src/agent-readiness/monitoring/monitoring-types";
 
 /**
  * SLICE-99-6: Alert engine + channels tests.

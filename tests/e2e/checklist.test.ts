@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { RULE_DESCRIPTIONS, CATEGORY_DESCRIPTIONS, PILLAR_DESCRIPTIONS } from "../../src/agent-readiness/rule-descriptions";
 import { CORE_RULE_IDS } from "../../src/agent-readiness/core-rules";
-import { PILLAR_CATEGORIES } from "../../src/agent-readiness/scoring/pillar-map";
 const BASE = "http://localhost:4021";
 
 describe("SLICE-114-3: /agent-readiness-checklist route + JSON-LD", () => {

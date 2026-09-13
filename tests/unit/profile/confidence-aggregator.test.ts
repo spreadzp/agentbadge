@@ -7,7 +7,7 @@ function makeAssertion(status: Assertion["status"], confidence: number): Asserti
     rule_id: "AB-001", rule_version: "1.0", status, evidence: [], confidence,
     timestamp: "2026-09-01T10:00:00Z", source_url: null, reason: "ok",
     category: "test", name: "test", claim: "claim", verified_at: "2026-09-01T10:00:00Z",
-    review_level: "auto" as any,
+    review_level: "automatic",
   };
 }
 

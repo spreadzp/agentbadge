@@ -24,7 +24,7 @@ export function makeOpenApiEvidenceWithDetail(specJson: string): Evidence {
     captured_at: "2026-09-01T10:00:00Z",
     source_class: "machine_readable_spec",
     semantic_detail: specJson,
-  } as any;
+  } as unknown as Evidence;
 }
 
 export const sampleOpenApiSpec = {

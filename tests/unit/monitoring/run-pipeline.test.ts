@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createMonitoringStore } from "../../../src/agent-readiness/monitoring/monitoring-store";
 import { executeMonitoredRun, summarizeScanResult, getTimeline } from "../../../src/agent-readiness/monitoring/run-pipeline";
-import type { MonitoredProject, RunRecord, RunSummary } from "../../../src/agent-readiness/monitoring/monitoring-types";
+import type { MonitoredProject } from "../../../src/agent-readiness/monitoring/monitoring-types";
 import type { ScanReport } from "../../../src/agent-readiness/report-formatter";
 
 /**
@@ -109,7 +109,7 @@ describe("SLICE-99-4: summarizeScanResult — pure function", () => {
         per_category: {},
         traces: [],
         conflicts_generated: [],
-      } as any,
+      } as never,
     });
     const summary = summarizeScanResult(report);
     expect(summary.asr).toBe(0.875);

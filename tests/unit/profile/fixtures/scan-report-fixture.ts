@@ -54,7 +54,7 @@ export function makeFixtureAssertions(): Assertion[] {
     name: overrides.name ?? overrides.rule_id,
     claim: overrides.claim ?? "claim",
     verified_at: overrides.verified_at ?? baseTimestamp,
-    review_level: overrides.review_level ?? "auto" as any,
+    review_level: overrides.review_level ?? "automatic",
     fix: overrides.fix,
     severity: overrides.severity,
     display_question: overrides.display_question,

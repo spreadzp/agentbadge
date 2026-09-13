@@ -196,12 +196,11 @@ describe("SLICE-103-10: Full Pipeline E2E (scan → corpus → benchmark → rep
   });
 
   it("PII rejection: record with PII is rejected by store", async () => {
-    const store = new FileCorpusStore(tmpDir);
     const scan = makeScanResult(70, "api_description", "fintech");
     const record = extractCorpusRecord(scan);
 
     // Inject PII
-    (record as any).scan_summary.url = "https://evil.example.com";
+    (record as unknown as { scan_summary: { url: string } }).scan_summary.url = "https://evil.example.com";
 
     const piiResult = sweepForPii(record);
     expect(piiResult.clean).toBe(false);

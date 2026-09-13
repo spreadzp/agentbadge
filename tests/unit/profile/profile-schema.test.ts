@@ -190,37 +190,37 @@ describe("SLICE-101-1: empty sections omitted (optional)", () => {
 describe("SLICE-101-1: schema rejects invalid data", () => {
   it("rejects missing profile_version", () => {
     const p = makeValidProfile();
-    delete (p as any).profile_version;
+    delete (p as Record<string, unknown>).profile_version;
     expect(knowledgeProfileSchema.safeParse(p).success).toBe(false);
   });
 
   it("rejects missing schema_version", () => {
     const p = makeValidProfile();
-    delete (p as any).schema_version;
+    delete (p as Record<string, unknown>).schema_version;
     expect(knowledgeProfileSchema.safeParse(p).success).toBe(false);
   });
 
   it("rejects missing service", () => {
     const p = makeValidProfile();
-    delete (p as any).service;
+    delete (p as Record<string, unknown>).service;
     expect(knowledgeProfileSchema.safeParse(p).success).toBe(false);
   });
 
   it("rejects missing readiness", () => {
     const p = makeValidProfile();
-    delete (p as any).readiness;
+    delete (p as Record<string, unknown>).readiness;
     expect(knowledgeProfileSchema.safeParse(p).success).toBe(false);
   });
 
   it("rejects missing freshness", () => {
     const p = makeValidProfile();
-    delete (p as any).freshness;
+    delete (p as Record<string, unknown>).freshness;
     expect(knowledgeProfileSchema.safeParse(p).success).toBe(false);
   });
 
   it("rejects missing evidence_summary", () => {
     const p = makeValidProfile();
-    delete (p as any).evidence_summary;
+    delete (p as Record<string, unknown>).evidence_summary;
     expect(knowledgeProfileSchema.safeParse(p).success).toBe(false);
   });
 
@@ -459,7 +459,7 @@ describe("SLICE-101-1: SECTION_CATEGORY_MAP", () => {
     // Some categories like "verification", "seo_aeo" may be general-purpose
     // and not map to a specific section — that's OK.
     // We check that all sections have at least one category.
-    for (const [section, cats] of Object.entries(SECTION_CATEGORY_MAP)) {
+    for (const [, cats] of Object.entries(SECTION_CATEGORY_MAP)) {
       expect(cats.length).toBeGreaterThan(0);
     }
   });

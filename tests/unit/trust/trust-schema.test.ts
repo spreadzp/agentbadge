@@ -79,7 +79,7 @@ describe("SLICE-102-1: trustSnapshotSchema validation", () => {
 
   it("rejects invalid snapshot_version", () => {
     const snapshot = makeValidSnapshot();
-    (snapshot as any).snapshot_version = 123;
+    (snapshot as Record<string, unknown>).snapshot_version = 123;
     const result = trustSnapshotSchema.safeParse(snapshot);
     expect(result.success).toBe(false);
   });
@@ -93,7 +93,7 @@ describe("SLICE-102-1: trustSnapshotSchema validation", () => {
 
   it("rejects invalid domain_ownership method", () => {
     const snapshot = makeValidSnapshot();
-    (snapshot.domain_ownership as any).method = "invalid_method";
+    (snapshot.domain_ownership as Record<string, unknown>).method = "invalid_method";
     const result = trustSnapshotSchema.safeParse(snapshot);
     expect(result.success).toBe(false);
   });
@@ -114,21 +114,21 @@ describe("SLICE-102-1: trustSnapshotSchema validation", () => {
 
   it("rejects invalid signature_algorithm", () => {
     const snapshot = makeValidSnapshot();
-    (snapshot.integrity as any).signature_algorithm = "rsa";
+    (snapshot.integrity as Record<string, unknown>).signature_algorithm = "rsa";
     const result = trustSnapshotSchema.safeParse(snapshot);
     expect(result.success).toBe(false);
   });
 
   it("rejects invalid chain name", () => {
     const snapshot = makeValidSnapshot();
-    (snapshot.on_chain as any).chain = "ethereum";
+    (snapshot.on_chain as Record<string, unknown>).chain = "ethereum";
     const result = trustSnapshotSchema.safeParse(snapshot);
     expect(result.success).toBe(false);
   });
 
   it("rejects missing required field (domain)", () => {
     const snapshot = makeValidSnapshot();
-    delete (snapshot as any).domain;
+    delete (snapshot as Record<string, unknown>).domain;
     const result = trustSnapshotSchema.safeParse(snapshot);
     expect(result.success).toBe(false);
   });
@@ -192,7 +192,7 @@ describe("SLICE-102-1: trustSnapshotForHashingSchema", () => {
     expect(result.domain).toBe("api.example.com");
     expect(result.integrity.snapshot_hash).toBeDefined();
     // Should NOT have signature field
-    expect((result.integrity as any).signature).toBeUndefined();
+    expect((result.integrity as Record<string, unknown>).signature).toBeUndefined();
   });
 });
 

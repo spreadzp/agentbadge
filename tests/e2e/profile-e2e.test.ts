@@ -8,6 +8,7 @@ import { renderProfileMarkdown } from "../../src/agent-readiness/profile/rendere
 import { renderProfileYaml } from "../../src/agent-readiness/profile/renderers/yaml-renderer";
 import { knowledgeProfileSchema } from "../../src/agent-readiness/profile/profile-schema";
 import { makeFixtureScanReport, makeFixtureAssertions } from "../unit/profile/fixtures/scan-report-fixture";
+import type { Assertion } from "../../src/agent-readiness/rule-engine/assertion-builder";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -179,7 +180,7 @@ describe("SLICE-101-10: Zero-drift — buildProfile output matches goldens", () 
 describe("SLICE-101-10: Section-map completeness", () => {
   it("every rule category in fixture is known (mapped or intentionally unmapped)", () => {
     const assertions = makeFixtureAssertions();
-    const categories = new Set(assertions.map((a: any) => a.category));
+    const categories = new Set(assertions.map((a: Assertion) => a.category));
 
     const knownCategories = new Set([
       "discovery", "documentation", "openapi", "bot_auth", "identity",

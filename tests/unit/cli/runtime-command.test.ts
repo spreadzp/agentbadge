@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createRuntimeTargetServer } from "../../fixtures/runtime-target-server";
 import { registerRuntimeCommand } from "../../../src/agent-readiness/cli/commands/runtime";
-import { registerCommand, getCommand, clearCommands, type ParsedFlags } from "../../../src/agent-readiness/cli/router";
+import { getCommand, clearCommands, type ParsedFlags } from "../../../src/agent-readiness/cli/router";
 
 describe("SLICE-98-7: CLI runtime command", () => {
   let server: ReturnType<typeof createRuntimeTargetServer>;

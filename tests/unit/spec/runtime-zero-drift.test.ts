@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { TaskCategory, SafetyMode, TaskDefinition, TaskBudget } from "../../../src/agent-readiness/runtime/task-schema";
+import type { TaskCategory, SafetyMode, TaskBudget } from "../../../src/agent-readiness/runtime/task-schema";
 import type { TraceOutcome, StopReason, StepOutcome, TraceStep, ExecutionTrace } from "../../../src/agent-readiness/runtime/trace";
 import { RT01_DISCOVER } from "../../../src/agent-readiness/runtime/tasks/rt01-discover";
 import { RT02_DOCS } from "../../../src/agent-readiness/runtime/tasks/rt02-docs";

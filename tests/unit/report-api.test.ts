@@ -7,7 +7,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { Hono } from "hono";
 import { reportRoutes } from "../../src/server/routes/report-api";
-import { FileCorpusStore } from "../../src/agent-readiness/corpus/corpus-store";
 import { createTestRecord } from "./corpus-fixtures";
 
 const REPORTS_DIR = path.join(process.cwd(), "data", "corpus", "reports");
@@ -19,7 +18,7 @@ function makeApp(): Hono {
   return app;
 }
 
-async function setupCorpus(records: ReturnType<typeof createTestRecord>[]) {
+async function _setupCorpus(records: ReturnType<typeof createTestRecord>[]) {
   fs.mkdirSync(CORPUS_DIR, { recursive: true });
   const testFile = path.join(CORPUS_DIR, "test-report-api.jsonl");
   const lines = records.map((r) => JSON.stringify(r)).join("\n");

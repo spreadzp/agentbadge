@@ -64,7 +64,7 @@ describe("SLICE-101-9: storeAndRefresh", () => {
   it("handles errors gracefully", async () => {
     // Pass invalid data to trigger build error
     const result = await storeAndRefresh("test.example.com", {
-      scanReport: null as any,
+      scanReport: null as never,
       assertions: [],
     });
 

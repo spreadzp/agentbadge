@@ -4,6 +4,7 @@ import { registerProfileCommand } from "../../../src/agent-readiness/cli/command
 import * as fs from "fs";
 import * as path from "path";
 import { tmpdir } from "os";
+import type { Assertion } from "../../../src/agent-readiness/rule-engine/assertion-builder";
 
 /**
  * SLICE-101-8: CLI profile command tests.
@@ -133,7 +134,7 @@ describe("SLICE-101-8: CLI profile command", () => {
     const { makeFixtureScanReport, makeFixtureAssertions } = await import("../profile/fixtures/scan-report-fixture");
     const reportData = {
       scanReport: makeFixtureScanReport(),
-      assertions: makeFixtureAssertions().map((a: any) => ({
+      assertions: makeFixtureAssertions().map((a: Assertion) => ({
         ...a,
         verified_at: "2020-01-01T00:00:00Z",
         timestamp: "2020-01-01T00:00:00Z",

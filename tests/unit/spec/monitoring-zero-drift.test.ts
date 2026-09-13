@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   ScheduleConfigSchema,
   ChannelConfigSchema,
-  type ScheduleConfig,
-  type ChannelConfig,
   type MonitoredProject,
   type RunRecord,
   type RunSummary,
