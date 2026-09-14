@@ -1,4 +1,4 @@
-import { html, raw } from "hono/html";
+import { html } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
 
@@ -7,7 +7,7 @@ import { PageMeta } from "../server/lib/page-meta";
  * SLICE-19-1: GDPR/CCPA-friendly privacy disclosure.
  */
 export function PrivacyPage(jsonLd?: object[]) {
-  const updated = "2026-07-29";
+  const updated = "2026-09-14";
 
   const content = html`
     <article class="prose prose-invert mx-auto max-w-3xl">
@@ -25,7 +25,7 @@ export function PrivacyPage(jsonLd?: object[]) {
             <li><strong>On-chain data (public by design):</strong> Hedera account IDs, NFT token IDs and serial numbers, HCS message contents, DID documents, and any capability or skill strings you publish in the directory.</li>
             <li><strong>Server logs:</strong> HTTP access logs (IP address, user agent, request path, response code) retained for up to 30 days for security and rate limiting.</li>
             <li><strong>Contact form:</strong> the message text, optional nickname/email, and channel (Discord or Telegram) that you submit via <a href="/contact" class="text-emerald-400 underline hover:text-emerald-300">/contact</a>.</li>
-            <li><strong>Cookies:</strong> none. We do not use tracking, analytics, advertising, or session cookies.</li>
+            <li><strong>Cookies:</strong> analytics are disabled by default. When enabled, Plausible is cookieless; Google Analytics 4 may set cookies. See section 2 for details.</li>
           </ul>
         </div>
 
@@ -33,7 +33,7 @@ export function PrivacyPage(jsonLd?: object[]) {
           <h2 class="text-xl font-semibold text-white">2. What we do NOT collect</h2>
           <ul class="mt-2 list-disc space-y-1 pl-6 text-sm">
             <li>No email addresses, real names, or phone numbers unless you explicitly provide them via the contact form.</li>
-            <li>No third-party analytics (no Google Analytics, Plausible, Fathom, Mixpanel, etc.).</li>
+            <li>Analytics are disabled by default. When enabled, we use either Plausible (cookieless, GDPR-compliant, no personal data) or Google Analytics 4 (uses cookies). Server-side page-view measurement, when enabled, records only path, title, and referrer — no fingerprints, no personal identifiers.</li>
             <li>No advertising or remarketing pixels.</li>
             <li>No off-chain identity verification — your passport is your identity.</li>
           </ul>
