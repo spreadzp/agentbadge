@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { StatusDeterminator } from "../../../src/agent-readiness/rule-engine/status-determinator";
 import type { AgentReadinessRule } from "../../../src/agent-readiness/rule.schema";
-import type { Evidence } from "../../../src/agent-readiness/rule-engine/evidence.types";
 
 const mockRule = (overrides?: Partial<AgentReadinessRule>): AgentReadinessRule => ({
   rule_id: "AB-001",
@@ -155,5 +154,33 @@ describe("StatusDeterminator", () => {
     });
 
     expect(result.status).toBe("VERIFIED");
+  });
+
+  // ─── SLICE-130-4: content_parse + robots evidence ────────────────────────
+
+  it("returns VERIFIED for content_parse rule with robots evidence + crawl_delay=true (SLICE-130-4)", () => {
+    const result = StatusDeterminator.determine({
+      rule: mockRule({
+        rule_id: "AB-111",
+        check: { type: "content_parse", sources: ["robots"], match_keys: ["crawlDelay"] },
+      }),
+      evidence: [{ type: "robots", url: "https://example.com/robots.txt", status: 200, allows_all: true, disallowed_paths: [], crawl_delay: true }],
+      isApplicable: true,
+    });
+
+    expect(result.status).toBe("VERIFIED");
+  });
+
+  it("returns GAP for content_parse rule with robots evidence + crawl_delay=false (SLICE-130-4)", () => {
+    const result = StatusDeterminator.determine({
+      rule: mockRule({
+        rule_id: "AB-111",
+        check: { type: "content_parse", sources: ["robots"], match_keys: ["crawlDelay"] },
+      }),
+      evidence: [{ type: "robots", url: "https://example.com/robots.txt", status: 200, allows_all: true, disallowed_paths: [], crawl_delay: false }],
+      isApplicable: true,
+    });
+
+    expect(result.status).toBe("GAP");
   });
 });

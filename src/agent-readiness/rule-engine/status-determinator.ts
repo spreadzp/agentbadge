@@ -141,6 +141,16 @@ class StatusDeterminatorClass {
       if (rule.check.type === "content_parse" && e.type === "http") {
         if ((e.status >= 200 && e.status < 300) || e.status === 402) return true;
       }
+      // content_parse on robots evidence: verify match_keys against evidence fields (SLICE-130-4)
+      if (rule.check.type === "content_parse" && e.type === "robots") {
+        const keys = rule.check.match_keys ?? [];
+        const fieldMap: Record<string, unknown> = {
+          crawlDelay: e.crawl_delay,
+          allowsAll: e.allows_all,
+        };
+        const allMatch = keys.length > 0 && keys.every((k) => fieldMap[k] === true);
+        if (allMatch) return true;
+      }
       // header_check: 2xx, 4xx (except 404), or 402 (payment headers)
       if (rule.check.type === "header_check" && e.type === "http") {
         if (e.status >= 200 && e.status < 500 && e.status !== 404) return true;

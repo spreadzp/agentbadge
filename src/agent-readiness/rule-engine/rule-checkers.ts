@@ -21,13 +21,14 @@ function httpEvidence(s: ResponseSnapshot): Evidence {
   };
 }
 
-function robotsEvidence(s: ResponseSnapshot, allowsAll: boolean, disallowed: string[]): Evidence {
+function robotsEvidence(s: ResponseSnapshot, allowsAll: boolean, disallowed: string[], crawlDelay?: boolean): Evidence {
   return {
     type: "robots",
     url: s.url,
     status: s.status,
     allows_all: allowsAll,
     disallowed_paths: disallowed,
+    ...(crawlDelay !== undefined ? { crawl_delay: crawlDelay } : {}),
   };
 }
 
@@ -311,7 +312,7 @@ export function checkAb111(state: SourceState): Evidence[] {
   const body = snaps.robots.body;
   if (!body) return [robotsEvidence(snaps.robots, true, [])];
   const hasCrawlDelay = /^crawl-delay\s*:/im.test(body);
-  return [robotsEvidence(snaps.robots, hasCrawlDelay, [])];
+  return [robotsEvidence(snaps.robots, true, [], hasCrawlDelay)];
 }
 
 // ─── AB-112: OAuth Authorization Server metadata (RFC 9728) ────────────────────
@@ -511,7 +512,7 @@ export function checkAb122(state: SourceState): Evidence[] {
   if (!snaps.endpoint_probe) return [];
   const probe = JSON.parse(snaps.endpoint_probe.body ?? "{}");
   const endpoints = probe.endpoints ?? [];
-  const anyOk = endpoints.some((e: any) => e.responseStatus === 200);
+  const anyOk = endpoints.some((e: { responseStatus?: number }) => e.responseStatus === 200);
   return [httpEvidence({ ...snaps.endpoint_probe, status: anyOk ? 200 : 0 })];
 }
 
@@ -522,7 +523,7 @@ export function checkAb123(state: SourceState): Evidence[] {
   const probe = JSON.parse(snaps.endpoint_probe.body ?? "{}");
   const endpoints = probe.endpoints ?? [];
   if (endpoints.length === 0) return [httpEvidence({ ...snaps.endpoint_probe, status: 0 })];
-  const allMatch = endpoints.every((e: any) => e.matchesOpenApi === true);
+  const allMatch = endpoints.every((e: { matchesOpenApi?: boolean }) => e.matchesOpenApi === true);
   return [httpEvidence({ ...snaps.endpoint_probe, status: allMatch ? 200 : 0 })];
 }
 
@@ -532,7 +533,7 @@ export function checkAb124(state: SourceState): Evidence[] {
   if (!snaps.endpoint_probe) return [];
   const probe = JSON.parse(snaps.endpoint_probe.body ?? "{}");
   const endpoints = probe.endpoints ?? [];
-  const anyContentType = endpoints.some((e: any) => e.contentType != null);
+  const anyContentType = endpoints.some((e: { contentType?: string }) => e.contentType != null);
   return [httpEvidence({ ...snaps.endpoint_probe, status: anyContentType ? 200 : 0 })];
 }
 

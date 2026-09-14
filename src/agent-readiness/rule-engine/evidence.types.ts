@@ -50,6 +50,7 @@ export interface RobotsEvidence {
   status: number;
   allows_all: boolean;
   disallowed_paths: string[];
+  crawl_delay?: boolean;
   captured_at?: string;
   source_class?: SourceClass;
 }

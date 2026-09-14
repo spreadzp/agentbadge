@@ -213,6 +213,36 @@ describe("SLICE-75-3: Agent Discovery Rules AB-109 through AB-114", () => {
       expect(evidence).toHaveLength(1);
     });
 
+    it("evidence has crawl_delay=true when Crawl-delay present (SLICE-130-4)", () => {
+      const state = makeState({
+        robots: makeSnap("User-agent: *\nCrawl-delay: 10\nAllow: /", "text/plain"),
+      });
+      const evidence = RULE_CHECKERS["AB-111"](state);
+      expect(evidence).toHaveLength(1);
+      expect(evidence[0].type).toBe("robots");
+      const robotsEv = evidence[0] as Extract<typeof evidence[0], { type: "robots" }>;
+      expect(robotsEv.crawl_delay).toBe(true);
+    });
+
+    it("evidence has crawl_delay=false when Crawl-delay absent (SLICE-130-4)", () => {
+      const state = makeState({
+        robots: makeSnap("User-agent: *\nAllow: /", "text/plain"),
+      });
+      const evidence = RULE_CHECKERS["AB-111"](state);
+      expect(evidence).toHaveLength(1);
+      const robotsEv = evidence[0] as Extract<typeof evidence[0], { type: "robots" }>;
+      expect(robotsEv.crawl_delay).toBe(false);
+    });
+
+    it("allows_all is not set to crawl-delay value (SLICE-130-4)", () => {
+      const state = makeState({
+        robots: makeSnap("User-agent: *\nCrawl-delay: 10\nAllow: /", "text/plain"),
+      });
+      const evidence = RULE_CHECKERS["AB-111"](state);
+      const robotsEv = evidence[0] as Extract<typeof evidence[0], { type: "robots" }>;
+      expect(robotsEv.allows_all).toBe(true);
+    });
+
     it("returns evidence when no Crawl-delay directive", () => {
       const state = makeState({
         robots: makeSnap("User-agent: *\nDisallow: /private", "text/plain"),
