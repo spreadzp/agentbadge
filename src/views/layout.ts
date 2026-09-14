@@ -3,6 +3,7 @@ import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle } from 
 import { renderJsonLd, defaultCoreSchemas } from "../server/lib/json-ld";
 import { getPlausibleScript } from "../server/lib/plausible";
 import { getGA4Script } from "../server/lib/ga4-script";
+import { getGscVerificationMeta } from "../server/lib/gsc-verification";
 import { chainDisplayName, chainBadgeColor } from "../server/lib/chain-ui.js";
 import { Footer } from "./footer";
 
@@ -73,6 +74,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
         <link rel="preload" href="/css/tailwind.css?v=3" as="style" />
+        ${raw(getGscVerificationMeta())}
         ${raw(jsonLdHtml)}
         ${raw(getGA4Script())}
         ${raw(getPlausibleScript())}

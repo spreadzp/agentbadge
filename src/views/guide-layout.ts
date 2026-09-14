@@ -3,6 +3,7 @@ import { SITE_NAME, BASE_URL, pageTitle } from "../server/lib/page-meta";
 import { renderJsonLd } from "../server/lib/json-ld";
 import { getPlausibleScript } from "../server/lib/plausible";
 import { getGA4Script } from "../server/lib/ga4-script";
+import { getGscVerificationMeta } from "../server/lib/gsc-verification";
 
 /**
  * GuideLayout — HTML shell for guide pages (/agent-guide, /market-guide, /medical-guide).
@@ -84,6 +85,7 @@ export function GuideLayout(
         <link rel="security.txt" href="/.well-known/security.txt" />
         <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
+        ${raw(getGscVerificationMeta())}
         ${raw(allJsonLdHtml)}
         ${raw(getGA4Script())}
         ${raw(getPlausibleScript())}
