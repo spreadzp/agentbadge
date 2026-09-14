@@ -22,6 +22,7 @@ import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
+import { trackEvent, isGa4Enabled } from "../lib/google-analytics";
 import type { NextCall } from "../lib/next-call";
 
 export const webmcpApiRoutes = new Hono();
@@ -140,10 +141,17 @@ webmcpApiRoutes.get(
       return c.json({ error: "Private URLs are not allowed" }, 403);
     }
 
+    if (isGa4Enabled()) {
+      void trackEvent("scan_started", { method: "web", target_host: hostname });
+    }
+
     try {
       const sourceState = await scanDomain(normalizedUrl, {});
       const result = RuleEngine.run(sourceState);
       const report = formatScanReport(normalizedUrl, result);
+      if (isGa4Enabled()) {
+        void trackEvent("scan_completed", { score: Math.round(report.score), grade: report.grade, rule_count: report.total_rules });
+      }
       const next_call: NextCall = {
         method: "GET",
         path: `/api/badge?url=${encodeURIComponent(normalizedUrl)}`,
@@ -206,6 +214,9 @@ webmcpApiRoutes.get(
         reportUrl: `https://agentbadge.xyz/r/${hostname}`,
         stale: false,
       });
+      if (isGa4Enabled()) {
+        void trackEvent("badge_generated", { grade: report.grade, score: Math.round(report.score) });
+      }
       c.header("Content-Type", "image/svg+xml");
       c.header("Cache-Control", "public, max-age=3600");
       return c.body(svg);
