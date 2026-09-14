@@ -36,7 +36,8 @@ export function pageTitle(unique: string): string {
     .replace(/\s*—\s*AgentBadge\s*/gi, " ")
     .replace(/\s*AgentBadge\s*/gi, " ")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(/^[—\-–|:\s]+|[—\-–|:\s]+$/g, "");
   const truncated = cleaned.length > 57 ? cleaned.slice(0, 54) + "..." : cleaned;
   return `${truncated} | ${SITE_NAME}`;
 }
@@ -51,7 +52,7 @@ export const BASE_URL =
 
 export const PageMeta: Record<string, PageMeta> = {
   "/": {
-    title: "AgentBadge — Agent Readiness Scanner & Evidence-Based Scoring",
+    title: "Agent Readiness Scanner & Evidence-Based Scoring",
     description:
       "Scan your API or website with 145+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score. Free scan, no signup required.",
     path: "/",
@@ -87,7 +88,7 @@ export const PageMeta: Record<string, PageMeta> = {
     path: "/hackathon/datahub",
   },
   "/hackathon/webmcp": {
-    title: "WebMCP Challenge — AgentBadge",
+    title: "WebMCP Challenge",
     description:
       "AgentBadge WebMCP implementation for the WebMCP Challenge hackathon. Six imperative tools, declarative API, and discovery endpoint for agent-native compliance.",
     path: "/hackathon/webmcp",

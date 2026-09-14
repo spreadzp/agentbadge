@@ -63,4 +63,35 @@ describe("SLICE-80-2: Title composer — single brand suffix", () => {
       expect(brandCount, `${path}: "${composed}" has ${brandCount} brand occurrences`).toBe(1);
     }
   });
+
+  it("all PageMeta titles composed via pageTitle() have no leading separator", () => {
+    for (const [path, meta] of Object.entries(PageMeta)) {
+      const composed = pageTitle(meta.title);
+      expect(composed, `${path}: "${composed}" starts with a separator`).not.toMatch(/^[—\-–|:\s]/);
+    }
+  });
+});
+
+describe("SLICE-130-1: pageTitle() leading em-dash fix", () => {
+  it("strips leading em-dash when unique part starts with 'AgentBadge —'", () => {
+    const result = pageTitle("AgentBadge — Agent Readiness Scanner & Evidence-Based Scoring");
+    expect(result).toBe("Agent Readiness Scanner & Evidence-Based Scoring | AgentBadge");
+  });
+
+  it("handles 'AgentBadge — X' pattern correctly", () => {
+    const result = pageTitle("AgentBadge — Some Page Title");
+    expect(result).toBe("Some Page Title | AgentBadge");
+  });
+
+  it("handles 'Pricing — AgentBadge' pattern correctly", () => {
+    const result = pageTitle("Pricing — AgentBadge");
+    expect(result).toBe("Pricing | AgentBadge");
+  });
+
+  it("does not produce leading em-dash for any PageMeta title", () => {
+    for (const [path, meta] of Object.entries(PageMeta)) {
+      const composed = pageTitle(meta.title);
+      expect(composed, `${path}: "${composed}" has leading separator`).not.toMatch(/^[—\-–]/);
+    }
+  });
 });
