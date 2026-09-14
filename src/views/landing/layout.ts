@@ -1,6 +1,8 @@
 import { html, raw } from "hono/html";
 import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle } from "../../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../../server/lib/json-ld";
+import { getPlausibleScript } from "../../server/lib/plausible";
+import { getGA4Script } from "../../server/lib/ga4-script";
 import { LandingHeader } from "./header";
 import { Footer } from "../footer";
 
@@ -84,6 +86,8 @@ export function LandingLayout(
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
         <link rel="preload" href="/css/tailwind.css?v=3" as="style" />
         ${raw(jsonLdHtml)}
+        ${raw(getGA4Script())}
+        ${raw(getPlausibleScript())}
         <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
         <link rel="stylesheet" href="/css/tailwind.css?v=3" />
         <style>

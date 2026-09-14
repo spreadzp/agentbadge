@@ -1,6 +1,8 @@
 import { html, raw } from "hono/html";
 import { SITE_NAME, BASE_URL, pageTitle } from "../server/lib/page-meta";
 import { renderJsonLd } from "../server/lib/json-ld";
+import { getPlausibleScript } from "../server/lib/plausible";
+import { getGA4Script } from "../server/lib/ga4-script";
 
 /**
  * GuideLayout — HTML shell for guide pages (/agent-guide, /market-guide, /medical-guide).
@@ -83,6 +85,8 @@ export function GuideLayout(
         <link rel="preconnect" href="https://agentbadge.gitbook.io" crossorigin />
         <link rel="dns-prefetch" href="https://agentbadge.gitbook.io" />
         ${raw(allJsonLdHtml)}
+        ${raw(getGA4Script())}
+        ${raw(getPlausibleScript())}
         <link rel="stylesheet" href="/css/tailwind.css?v=3" />
       </head>
       <body class="min-h-full">
