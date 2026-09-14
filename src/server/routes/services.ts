@@ -17,7 +17,7 @@ export const servicesRoutes = new Hono();
 servicesRoutes.get("/services/scanner", async (c) => {
   const service = getAgencyService("scanner")!;
   const meta = PageMetaRegistry["/services/scanner"];
-  const jsonLd = servicesJsonLd({ name: service.name, description: service.description, path: service.url });
+  const jsonLd = servicesJsonLd({ name: service.name, description: service.description, path: service.url, serviceType: service.tagline });
   const content = ServicePageView(service, AGENCY_SERVICES).toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
   return c.html(pageHtml);
@@ -29,7 +29,7 @@ servicesRoutes.get("/services/scanner", async (c) => {
 servicesRoutes.get("/services/passports", async (c) => {
   const service = getAgencyService("passports")!;
   const meta = PageMetaRegistry["/services/passports"];
-  const jsonLd = servicesJsonLd({ name: service.name, description: service.description, path: service.url });
+  const jsonLd = servicesJsonLd({ name: service.name, description: service.description, path: service.url, serviceType: service.tagline });
   const content = ServicePageView(service, AGENCY_SERVICES).toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
   return c.html(pageHtml);
@@ -41,7 +41,7 @@ servicesRoutes.get("/services/passports", async (c) => {
 servicesRoutes.get("/services/marketplace", async (c) => {
   const service = getAgencyService("marketplace")!;
   const meta = PageMetaRegistry["/services/marketplace"];
-  const jsonLd = servicesJsonLd({ name: service.name, description: service.description, path: service.url });
+  const jsonLd = servicesJsonLd({ name: service.name, description: service.description, path: service.url, serviceType: service.tagline });
   const content = ServicePageView(service, AGENCY_SERVICES).toString();
   const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
   return c.html(pageHtml);

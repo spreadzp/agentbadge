@@ -496,11 +496,13 @@ export function serviceLd(opts: {
   description: string;
   path: string;
   provider?: string;
+  serviceType?: string;
 }): object {
   return {
     "@context": SCHEMA_CONTEXT,
     "@type": "Service",
     name: opts.name,
+    serviceType: opts.serviceType ?? opts.description,
     description: opts.description,
     url: `${BASE_URL}${opts.path}`,
     provider: {
@@ -509,6 +511,10 @@ export function serviceLd(opts: {
       url: BASE_URL,
     },
     areaServed: "Worldwide",
+    audience: {
+      "@type": "Audience",
+      audienceType: "Developers and AI agents",
+    },
   };
 }
 
@@ -516,6 +522,7 @@ export function servicesJsonLd(service: {
   name: string;
   description: string;
   path: string;
+  serviceType?: string;
 }): object[] {
   return [
     softwareApplicationLd(),
@@ -525,6 +532,7 @@ export function servicesJsonLd(service: {
       name: service.name,
       description: service.description,
       path: service.path,
+      serviceType: service.serviceType,
     }),
     breadcrumbListLd([
       { name: "Home", path: "/" },
