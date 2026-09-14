@@ -15,6 +15,7 @@
   <a href="https://agentbadge.xyz">Live product</a> ·
   <a href="https://agentbadge.xyz/hackathon/keeperhub">Demo page</a> ·
   <a href="https://agentbadge.xyz/api/keeperhub/status">API status</a> ·
+  <a href="https://www.npmjs.com/package/@agentbadge/keeperhub">npm: @agentbadge/keeperhub</a> ·
   <a href="https://agentbadge.xyz/llms.txt">llms.txt</a><br/>
   <sub>Network: Base Sepolia (84532)</sub>
 </p>
@@ -59,6 +60,26 @@ The result: every readiness scan leaves a **cryptographic proof** — a transact
 | Webhook triggers | AgentBadge triggers KeeperHub workflows after scanning |
 | Gas sponsorship | Eligible EVM transactions are gas-sponsored |
 | Per-workflow MCP | Each workflow is itself an MCP server other agents can call |
+
+---
+
+## `@agentbadge/keeperhub` — Published npm Package
+
+We built and published **[`@agentbadge/keeperhub`](https://www.npmjs.com/package/@agentbadge/keeperhub)** — an open-source TypeScript client for KeeperHub — and this server consumes it as a real dependency (`"@agentbadge/keeperhub": "^0.1.0"` in `package.json`):
+
+```ts
+import { KeeperHubClient } from "@agentbadge/keeperhub";      // src/server/lib/keeperhub.ts
+import { allKeeperhubTools } from "@agentbadge/keeperhub";    // src/mcp/keeperhub-tools.ts
+```
+
+The package ships:
+
+- **`KeeperHubClient`** — MCP StreamableHTTP transport with Bearer auth, idempotency keys on every write, exponential 429 backoff honoring `Retry-After`, and typed `KeeperHubError` normalization.
+- **Workflow spec builders** — `record-scan`, `mint-passport`, `notify` templates that encode the gotchas we hit in live testing (`abi` as JSON-stringified string, `network`/`gasLimitMultiplier` as strings, positional `functionArgs`).
+- **`WorkflowSpec` validator** — catches spec/ABI mismatches at build time, before upload.
+- **4 MCP tools** — `keeperhub-record-scan`, `keeperhub-mint-trust-badge`, `keeperhub-workflow-status`, `keeperhub-audit` — reusable by any MCP-compatible agent.
+
+Any team can `npm install @agentbadge/keeperhub` and drive the same workflows — the integration is a reusable library, not demo glue code.
 
 ---
 
@@ -157,7 +178,7 @@ The webhook path exists as a resilience fallback: if the MCP transport is degrad
 
 | Surface | How we use it | Where |
 |---|---|---|
-| **MCP server** | `execute_workflow`, `list_workflows`, `get_execution` via `@modelcontextprotocol/sdk` StreamableHTTP transport | `keeperhub-dist/client.js` (source: `packages/keeperhub/src/client.ts` in the monorepo) |
+| **MCP server** | `execute_workflow`, `list_workflows`, `get_execution` via `@modelcontextprotocol/sdk` StreamableHTTP transport | `KeeperHubClient` from `@agentbadge/keeperhub` (npm) |
 | **Webhooks (trigger)** | Fallback trigger path for `record-scan` workflow | `src/server/lib/keeperhub-trigger.ts` |
 | **Webhooks (callback)** | Workflow POSTs execution result back to `/api/keeperhub/audit/webhook` | `src/server/routes/keeperhub-api.ts` |
 | **x402** | Premium scan-recording endpoint gated by EIP-3009 USDC payment | `POST /api/keeperhub/scan/premium` |
@@ -168,7 +189,7 @@ The webhook path exists as a resilience fallback: if the MCP transport is degrad
 
 ## Workflows
 
-Three workflows are provisioned on KeeperHub (Base Sepolia, network `"84532"`). Each is built programmatically by `keeperhub-dist/workflows/` and validated before upload.
+Three workflows are provisioned on KeeperHub (Base Sepolia, network `"84532"`). Each is built programmatically by the workflow builders in `@agentbadge/keeperhub` and validated before upload.
 
 ### 1. `agentbadge-record-scan`
 
@@ -262,7 +283,7 @@ Feature-gated: `KEEPERHUB_ENABLED=false` → every route returns `503` with a st
 
 ## MCP Tools
 
-`@agentbadge/keeperhub` ships four MCP tools (`keeperhub-dist/tools/`). They are also listed in AgentBadge's own MCP server and in `llms.txt`.
+[`@agentbadge/keeperhub`](https://www.npmjs.com/package/@agentbadge/keeperhub) ships four MCP tools. They are also listed in AgentBadge's own MCP server and in `llms.txt`.
 
 | Tool | What it does |
 |---|---|
@@ -350,7 +371,7 @@ An agent with an Agentic Wallet hits `/api/keeperhub/scan/premium`, receives a 4
 
 ### KeeperHubClient — MCP transport with resilience
 
-`keeperhub-dist/client.js` (source: `packages/keeperhub/src/client.ts` in the monorepo)
+`KeeperHubClient` — `@agentbadge/keeperhub` ([npm](https://www.npmjs.com/package/@agentbadge/keeperhub))
 
 ```ts
 const transport = new StreamableHTTPClientTransport(
@@ -398,7 +419,7 @@ Failures are **not** swallowed: a `failed` audit event is stored and the error i
 
 ### Workflow spec builder
 
-`keeperhub-dist/workflows/record-scan.js` (source: `packages/keeperhub/src/workflows/record-scan.ts`)
+Workflow spec builder — `@agentbadge/keeperhub` `workflows/record-scan`
 
 ```ts
 config: {
@@ -453,12 +474,12 @@ src/mcp/keeperhub-tools.ts        # 4 MCP tools (record-scan, mint-badge, status
 src/views/landing/
   keeperhub-hackathon-page.ts     # demo UI: dry-run → confirm → tx links + live SSE feed
 
-keeperhub-dist/                   # @agentbadge/keeperhub compiled package (vendored)
-  client.js                       # KeeperHubClient — MCP transport, backoff, idempotency
-  validate.js                     # WorkflowSpec validator (pre-upload checks)
-  abis.js                         # Contract ABIs + toAbiJson helper
-  workflows/                      # record-scan / mint-passport / notify spec builders
-  tools/                          # MCP tool implementations
+node_modules/@agentbadge/keeperhub/  # our published npm package (v0.1.0)
+  dist/client.js                  # KeeperHubClient — MCP transport, backoff, idempotency
+  dist/validate.js                # WorkflowSpec validator (pre-upload checks)
+  dist/abis.js                    # Contract ABIs + toAbiJson helper
+  dist/workflows/                 # record-scan / mint-passport / notify spec builders
+  dist/tools/                     # MCP tool implementations
 
 tests/                            # 53 unit + 17 e2e tests (keeperhub-*)
   e2e/keeperhub-flow.test.ts      # full scan → dry-run → execute flow (mocked MCP)
@@ -466,9 +487,9 @@ tests/                            # 53 unit + 17 e2e tests (keeperhub-*)
   helpers/mock-keeperhub-client.ts
 ```
 
-Smart contracts (`TrustRegistry.sol`, `TrustBadge.sol`, `AgentPassportNFT.sol`) and the
-`@agentbadge/keeperhub` package source live in the AgentBadge monorepo — deployed
-addresses are on Basescan (Base Sepolia).
+Smart contracts (`TrustRegistry.sol`, `TrustBadge.sol`, `AgentPassportNFT.sol`) live in the
+AgentBadge monorepo — deployed addresses are on Basescan (Base Sepolia). The
+`@agentbadge/keeperhub` package is published on npm: https://www.npmjs.com/package/@agentbadge/keeperhub
 
 ---
 
