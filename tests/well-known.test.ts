@@ -150,6 +150,38 @@ describe("Well-known routes", () => {
     });
   });
 
+  // ─── AI Sitemap at /.well-known/ path (SLICE-130-2) ─────────────
+
+  describe("GET /.well-known/ai-sitemap.xml", () => {
+    it("returns 200 with XML content", async () => {
+      const res = await app.request("/.well-known/ai-sitemap.xml");
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toContain("<?xml");
+      expect(text).toContain("<resources>");
+      expect(text).toContain("</resources>");
+    });
+
+    it("returns application/xml content type", async () => {
+      const res = await app.request("/.well-known/ai-sitemap.xml");
+      expect(res.headers.get("Content-Type")).toContain("application/xml");
+    });
+
+    it("is byte-identical to /ai-sitemap.xml", async () => {
+      const res1 = await app.request("/ai-sitemap.xml");
+      const res2 = await app.request("/.well-known/ai-sitemap.xml");
+      const body1 = await res1.text();
+      const body2 = await res2.text();
+      expect(body2).toBe(body1);
+    });
+
+    it("contains blog URLs", async () => {
+      const res = await app.request("/.well-known/ai-sitemap.xml");
+      const text = await res.text();
+      expect(text).toContain("/blog");
+    });
+  });
+
   // ─── robots.txt (SLICE-18-3) ──────────────────────────────────
 
   describe("GET /robots.txt", () => {

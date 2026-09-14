@@ -728,6 +728,33 @@ wellKnownRoutes.get(
 // ─── robots.txt (SLICE-18-3) ──────────────────────────────────
 
 wellKnownRoutes.get(
+  "/.well-known/ai-sitemap.xml",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "AI Sitemap (well-known path for scanners)",
+    description:
+      "Returns the same AI Sitemap as /ai-sitemap.xml, served at the .well-known path expected by the agent-readiness scanner and AI agents.",
+    responses: {
+      200: {
+        description: "AI Sitemap XML",
+        content: {
+          "application/xml": {},
+        },
+      },
+    },
+  }),
+  () => {
+    const xml = buildAiSitemap();
+    return new Response(xml, {
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);
+
+wellKnownRoutes.get(
   "/robots.txt",
   describeRoute({
     tags: ["Discovery"],
