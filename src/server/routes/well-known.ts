@@ -846,6 +846,7 @@ User-agent: Bytespider
 Disallow: /
 
 Sitemap: ${baseUrl}/sitemap.xml
+Sitemap: ${baseUrl}/ai-sitemap.xml
 Sitemap: https://agentbadge.gitbook.io/agentbadge-docs/sitemap.xml
 `;
     return new Response(body, {

@@ -257,6 +257,12 @@ describe("Well-known routes", () => {
       expect(text).toContain("PerplexityBot");
       expect(text).toContain("Google-Extended");
     });
+
+    it("includes AI sitemap Sitemap reference (SLICE-130-3)", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+      expect(text).toMatch(/Sitemap:\s+https?:\/\/.+\/ai-sitemap\.xml/);
+    });
   });
 
   // ─── sitemap.xml (SLICE-18-3) ─────────────────────────────────
