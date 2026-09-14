@@ -23,6 +23,7 @@ import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 import { trackEvent, isGa4Enabled } from "../lib/google-analytics";
+import { trackPlausibleEvent, isPlausibleEventsEnabled } from "../lib/plausible-events";
 import type { NextCall } from "../lib/next-call";
 
 export const webmcpApiRoutes = new Hono();
@@ -144,6 +145,9 @@ webmcpApiRoutes.get(
     if (isGa4Enabled()) {
       void trackEvent("scan_started", { method: "web", target_host: hostname });
     }
+    if (isPlausibleEventsEnabled()) {
+      void trackPlausibleEvent("scan_started", { method: "web", target_host: hostname }, "/scan");
+    }
 
     try {
       const sourceState = await scanDomain(normalizedUrl, {});
@@ -151,6 +155,9 @@ webmcpApiRoutes.get(
       const report = formatScanReport(normalizedUrl, result);
       if (isGa4Enabled()) {
         void trackEvent("scan_completed", { score: Math.round(report.score), grade: report.grade, rule_count: report.total_rules });
+      }
+      if (isPlausibleEventsEnabled()) {
+        void trackPlausibleEvent("scan_completed", { score: Math.round(report.score), grade: report.grade, rule_count: report.total_rules }, "/scan");
       }
       const next_call: NextCall = {
         method: "GET",
@@ -216,6 +223,9 @@ webmcpApiRoutes.get(
       });
       if (isGa4Enabled()) {
         void trackEvent("badge_generated", { grade: report.grade, score: Math.round(report.score) });
+      }
+      if (isPlausibleEventsEnabled()) {
+        void trackPlausibleEvent("badge_generated", { grade: report.grade, score: Math.round(report.score) }, "/badge");
       }
       c.header("Content-Type", "image/svg+xml");
       c.header("Cache-Control", "public, max-age=3600");
