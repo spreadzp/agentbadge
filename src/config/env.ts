@@ -56,6 +56,15 @@ export interface X402Config {
   price: string;
 }
 
+export interface AnalyticsConfig {
+  ga4Enabled: boolean;
+  ga4MeasurementId: string | undefined;
+  ga4ApiSecret: string | undefined;
+  plausibleEnabled: boolean;
+  plausibleDomain: string | undefined;
+  gscVerification: string | undefined;
+}
+
 export interface KeeperHubEnvConfig {
   enabled: boolean;
   apiKey: string;
@@ -96,6 +105,7 @@ export interface AppConfig {
   base?: BaseConfig;
   attestcoin: AttestcoinConfig;
   ui: UiConfig;
+  analytics: AnalyticsConfig;
   keeperhub?: KeeperHubEnvConfig;
 }
 
@@ -325,6 +335,15 @@ export function loadConfig(): AppConfig {
     proverUrl: process.env.ATTESTCOIN_PROVER_URL ?? "https://prover.cc3-testnet.creditcoin.network",
   };
 
+  const analytics: AnalyticsConfig = {
+    ga4Enabled: booleanFlag("GA4_ENABLED"),
+    ga4MeasurementId: process.env.GA4_MEASUREMENT_ID,
+    ga4ApiSecret: process.env.GA4_API_SECRET,
+    plausibleEnabled: booleanFlag("PLAUSIBLE_ENABLED"),
+    plausibleDomain: process.env.PLAUSIBLE_DOMAIN,
+    gscVerification: process.env.GOOGLE_SITE_VERIFICATION,
+  };
+
   return {
     chainMode,
     hederaOperatorId: hederaOperatorId ?? "",
@@ -346,6 +365,7 @@ export function loadConfig(): AppConfig {
     base,
     attestcoin,
     ui: loadUiConfig(chainMode),
+    analytics,
     keeperhub,
   };
 }
