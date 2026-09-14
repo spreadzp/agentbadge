@@ -14,6 +14,7 @@
 <p align="center">
   <a href="https://agentbadge.xyz">Live product</a> ·
   <a href="https://agentbadge.xyz/hackathon/keeperhub">Demo page</a> ·
+  <a href="https://youtu.be/Fite96Xn3LU">Demo video</a> ·
   <a href="https://agentbadge.xyz/api/keeperhub/status">API status</a> ·
   <a href="https://www.npmjs.com/package/@agentbadge/keeperhub">npm: @agentbadge/keeperhub</a> ·
   <a href="https://agentbadge.xyz/llms.txt">llms.txt</a><br/>
