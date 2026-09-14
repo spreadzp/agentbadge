@@ -165,19 +165,24 @@ blogRoutes.get(
       ...pageCoreSchemas(),
       {
         "@context": "https://schema.org",
-        "@type": "Article",
+        "@type": "BlogPosting",
         headline: article.title,
         description: article.shortAnswer ?? article.description,
         datePublished: article.date,
         dateModified: article.dateModified ?? article.date,
         author: {
-          "@type": "Organization",
+          "@type": "Person",
           name: article.author,
         },
+        image: article.ogImage ? `${BASE_URL}${article.ogImage}` : `${BASE_URL}/favicon.svg`,
         publisher: {
           "@type": "Organization",
           name: "AgentBadge",
           url: BASE_URL,
+          logo: {
+            "@type": "ImageObject",
+            url: `${BASE_URL}/favicon.svg`,
+          },
         },
         mainEntityOfPage: {
           "@type": "WebPage",
