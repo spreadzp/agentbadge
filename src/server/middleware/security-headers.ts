@@ -2,12 +2,12 @@ import type { MiddlewareHandler } from "hono";
 
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://unpkg.com",
-  "script-src-elem 'self' 'unsafe-inline' https://unpkg.com https://plausible.io",
+  "script-src 'self' 'unsafe-inline' https://unpkg.com https://www.googletagmanager.com",
+  "script-src-elem 'self' 'unsafe-inline' https://unpkg.com https://plausible.io https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' https:",
-  "connect-src 'self' https://*.hedera.com https://plausible.io",
+  "connect-src 'self' https://*.hedera.com https://plausible.io https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

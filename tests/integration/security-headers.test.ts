@@ -150,4 +150,47 @@ describe("SLICE-21-6: Security Headers Middleware", () => {
     const res = await app.request("/");
     expect(res.headers.get("X-Permitted-Cross-Domain-Policies")).toBe("none");
   });
+
+  // ─── SLICE-130-9: CSP for GA4 Google domains ─────────────
+
+  it("CSP script-src allows googletagmanager.com", async () => {
+    const res = await app.request("/");
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    expect(csp).toContain("https://www.googletagmanager.com");
+  });
+
+  it("CSP script-src-elem allows googletagmanager.com", async () => {
+    const res = await app.request("/");
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    const scriptSrcElem = csp.match(/script-src-elem[^;]*/)?.[0] ?? "";
+    expect(scriptSrcElem).toContain("https://www.googletagmanager.com");
+  });
+
+  it("CSP connect-src allows google-analytics.com", async () => {
+    const res = await app.request("/");
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    const connectSrc = csp.match(/connect-src[^;]*/)?.[0] ?? "";
+    expect(connectSrc).toContain("https://www.google-analytics.com");
+  });
+
+  it("CSP connect-src allows analytics.google.com", async () => {
+    const res = await app.request("/");
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    const connectSrc = csp.match(/connect-src[^;]*/)?.[0] ?? "";
+    expect(connectSrc).toContain("https://analytics.google.com");
+  });
+
+  it("CSP still allows plausible.io in script-src-elem", async () => {
+    const res = await app.request("/");
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    const scriptSrcElem = csp.match(/script-src-elem[^;]*/)?.[0] ?? "";
+    expect(scriptSrcElem).toContain("https://plausible.io");
+  });
+
+  it("CSP still allows unpkg.com in script-src", async () => {
+    const res = await app.request("/");
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    const scriptSrc = csp.match(/script-src[^;]*/)?.[0] ?? "";
+    expect(scriptSrc).toContain("https://unpkg.com");
+  });
 });
