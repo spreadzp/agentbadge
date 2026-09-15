@@ -111,6 +111,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge integrates KeeperHub as its deterministic onchain execution layer: scan results recorded onchain via KeeperHub workflows, soulbound TrustBadge NFTs, live audit trail on Base.",
     path: "/hackathon/keeperhub",
   },
+  "/hackathon/ai-builders": {
+    title: "AgentBadge — Onchain Trust Records for AI Agents",
+    description:
+      "AgentBadge scans any site for agent-readiness with 40+ deterministic rules, records results onchain on Base Sepolia, and mints soulbound trust badges. MCP-native, x402 payments, live audit trail.",
+    path: "/hackathon/ai-builders",
+  },
   "/dashboard": {
     title: "Dashboard",
     description:
