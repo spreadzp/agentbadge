@@ -105,6 +105,8 @@ import { telemetryApp } from "./routes/telemetry";
 import { paymentRoutes } from "./routes/payment";
 import { createMonitoringRoutes } from "./routes/monitoring";
 import { createMonitoringStore } from "../agent-readiness/monitoring/monitoring-store";
+import { createCirclePaymentsRuntime } from "./lib/circle-payments";
+import { createIdentityRoutes } from "./routes/identity";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -512,6 +514,50 @@ if (attestcoinConfig.enabled) {
   });
   app.route("/", attestcoinRoutes);
   logger.info("Attestcoin routes registered");
+}
+
+// Circle nanopayments (EPIC-129) — only when CIRCLE_PAYMENTS_ENABLED=true.
+// Master flag off → zero behavior change (old x402 paths stay as-is).
+const circleCfg = getConfig().circlePayments;
+if (circleCfg?.enabled) {
+  try {
+    const circleRuntime = createCirclePaymentsRuntime(circleCfg, {
+      onFailure: (f) => {
+        logger.error("Payment fulfillment failure after confirmed settle", {
+          scheme: f.scheme,
+          network: f.network,
+          payer: f.payer,
+          amount: f.amount,
+          reason: f.reason,
+          txRef: f.txRef,
+        });
+        captureError(new Error(`payment-fulfillment: ${f.reason}`), {
+          tags: { scheme: f.scheme, network: f.network },
+        });
+      },
+    });
+    if (circleCfg.identity) {
+      app.route(
+        "/",
+        createIdentityRoutes({
+          payment: circleRuntime.paymentFor("identity.verify"),
+          lookup: circleRuntime.lookup,
+        }),
+      );
+    }
+    logger.info("Circle payments wired", {
+      gateway: circleCfg.gateway,
+      arc: circleCfg.arc,
+      identity: circleCfg.identity,
+    });
+  } catch (e) {
+    logger.error("Failed to wire circle payments — feature disabled", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    captureError(e instanceof Error ? e : new Error(String(e)), {
+      tags: { feature: "circle-payments" },
+    });
+  }
 }
 
 app.route("/", metricsApp);
