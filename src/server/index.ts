@@ -44,6 +44,7 @@ import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
 import { contentNegotiationMiddleware } from "./middleware/content-negotiation";
 import { cacheHeadersMiddleware } from "./middleware/cache-headers";
+import { hostNormalizationMiddleware, trailingSlashMiddleware } from "./middleware/canonical-redirects";
 import { structuredNotFoundHandler } from "./middleware/structured-error-handler";
 import { securityHeaders } from "./middleware/security-headers";
 import { ga4Pageview } from "./middleware/ga4-pageview";
@@ -130,32 +131,9 @@ if (process.env.DATAHUB_ENABLED === "true") {
 const app = new Hono();
 
 // SLICE-81-1: Host + path normalization (www→apex 301, trailing-slash 301, fly.dev exact-match)
-const REDIRECT_HOSTS: Record<string, string> = {
-  "www.agentbadge.xyz": "agentbadge.xyz",
-  "agent-passport-hedera.fly.dev": "agentbadge.xyz",
-};
-
-app.use(async (c, next) => {
-  const host = c.req.header("host") ?? "";
-  const targetHost = REDIRECT_HOSTS[host];
-  if (targetHost) {
-    const url = new URL(c.req.url);
-    url.host = targetHost;
-    return c.redirect(url.toString(), 301);
-  }
-  await next();
-});
-
-app.use(async (c, next) => {
-  const path = c.req.path;
-  if (path.length > 1 && path.endsWith("/")) {
-    const trimmed = path.slice(0, -1);
-    const url = new URL(c.req.url);
-    url.pathname = trimmed;
-    return c.redirect(url.toString(), 301);
-  }
-  await next();
-});
+// SLICE-131-1: extracted to middleware/canonical-redirects.ts — forces https behind proxy
+app.use(hostNormalizationMiddleware());
+app.use(trailingSlashMiddleware());
 
 app.use(requestLoggerMiddleware());
 app.use(corsMiddleware());
