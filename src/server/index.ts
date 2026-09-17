@@ -316,6 +316,8 @@ app.get("/api/audit/:tokenId?/:serial?", (c) => {
   return c.redirect(path, 301);
 });
 app.all("/api/passport/request", (c) => c.redirect("/passport/request", 301));
+// SLICE-131-2: /market landing moved to /services/marketplace (GSC BUG-2)
+app.get("/market", (c) => c.redirect("/services/marketplace", 301));
 
 // Serve static files from public/ (favicon, icons, logo, CSS, Google verification)
 app.use("/favicon.ico", (c, next) => {

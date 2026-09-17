@@ -21,6 +21,9 @@ function createAliasApp() {
     return c.redirect(path, 301);
   });
   app.all("/api/passport/request", (c) => c.redirect("/passport/request", 301));
+  // SLICE-131-2: mirrors index.ts — /market landing moved to /services/marketplace
+  app.get("/market", (c) => c.redirect("/services/marketplace", 301));
+  app.get("/market/tasks", (c) => c.json({ tasks: [] }));
 
   return app;
 }
@@ -57,5 +60,19 @@ describe("SLICE-121-2: API alias routes", () => {
     const res = await app.request("/api/passport/request", { method: "GET" });
     expect(res.status).toBe(301);
     expect(res.headers.get("Location")).toBe("/passport/request");
+  });
+
+  // SLICE-131-2
+  it("/market returns 301 redirect to /services/marketplace", async () => {
+    const res = await app.request("/market");
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe("/services/marketplace");
+  });
+
+  it("/market/tasks is NOT redirected (live API endpoint)", async () => {
+    const res = await app.request("/market/tasks");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tasks).toBeDefined();
   });
 });
