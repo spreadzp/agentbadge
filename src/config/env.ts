@@ -65,6 +65,28 @@ export interface AnalyticsConfig {
   gscVerification: string | undefined;
 }
 
+/**
+ * Circle nanopayments config (EPIC-129, D19).
+ * Present only when CIRCLE_PAYMENTS_ENABLED=true; absent = feature off.
+ */
+export interface CirclePaymentsConfig {
+  enabled: boolean;
+  /** Gateway batch rail (BatchFacilitatorClient + GatewayEvmScheme) */
+  gateway: boolean;
+  /** Arc self-settle rail (eip3009-client-broadcast) */
+  arc: boolean;
+  /** Passport identity in 402 extensions + /api/identity endpoint */
+  identity: boolean;
+  /** ERC-8183 escrow jobs (Phase 2) */
+  escrow: boolean;
+  gatewayApiUrl: string;
+  arcRpcUrl: string;
+  arcChainId: number;
+  sellerAddress: string;
+  /** Server EOA key — required when arc or escrow enabled */
+  arcPrivateKey?: string;
+}
+
 export interface KeeperHubEnvConfig {
   enabled: boolean;
   apiKey: string;
@@ -107,6 +129,7 @@ export interface AppConfig {
   ui: UiConfig;
   analytics: AnalyticsConfig;
   keeperhub?: KeeperHubEnvConfig;
+  circlePayments?: CirclePaymentsConfig;
 }
 
 const ACCOUNT_ID_RE = /^0\.0\.\d+$/;
@@ -318,6 +341,34 @@ export function loadConfig(): AppConfig {
     };
   }
 
+  // Circle payments config — optional, only loaded when enabled (D19)
+  const circlePaymentsEnabled = booleanFlag("CIRCLE_PAYMENTS_ENABLED");
+  let circlePayments: CirclePaymentsConfig | undefined;
+  if (circlePaymentsEnabled) {
+    const sellerAddress = requiredAddress("CIRCLE_SELLER_ADDRESS", errors);
+    const arc = booleanFlag("CIRCLE_ARC_ENABLED");
+    const escrow = booleanFlag("CIRCLE_ESCROW_ENABLED");
+    let arcPrivateKey: string | undefined;
+    if (arc || escrow) {
+      arcPrivateKey = requiredString("ARC_PRIVATE_KEY", errors);
+    }
+    circlePayments = {
+      enabled: true,
+      gateway: booleanFlag("CIRCLE_GATEWAY_ENABLED"),
+      arc,
+      identity: booleanFlag("CIRCLE_IDENTITY_ENABLED"),
+      escrow,
+      gatewayApiUrl:
+        process.env.CIRCLE_GATEWAY_API_URL ??
+        "https://gateway-api-testnet.circle.com",
+      arcRpcUrl:
+        process.env.ARC_RPC_URL ?? "https://rpc.testnet.arc.network",
+      arcChainId: Number(process.env.ARC_CHAIN_ID ?? 5042002),
+      sellerAddress: sellerAddress ?? "",
+      arcPrivateKey,
+    };
+  }
+
   const hederaNetwork = process.env.HEDERA_NETWORK ?? "testnet";
   const port = Number(process.env.PORT ?? 4021);
 
@@ -367,6 +418,7 @@ export function loadConfig(): AppConfig {
     ui: loadUiConfig(chainMode),
     analytics,
     keeperhub,
+    circlePayments,
   };
 }
 
