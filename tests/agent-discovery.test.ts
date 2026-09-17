@@ -70,6 +70,16 @@ describe("GET /agents (discovery)", () => {
     expect(body.agents[1]).toHaveProperty("active", true);
   });
 
+  it("returns X-Robots-Tag: noindex (JSON API, not an indexable page)", async () => {
+    upsert(makeEntry("did:hcs:0.0.123:1"));
+    mockedGetNftInfo.mockResolvedValueOnce(makeNftInfo("0.0.1234567", 1));
+
+    const res = await agentRoutes.fetch(new Request("http://localhost/agents"));
+    expect(res.status).toBe(200);
+    // SLICE-131-3: set by /agents/* middleware in agents.ts
+    expect(res.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+  });
+
   it("filters by capability query param", async () => {
     upsert(makeEntry("did:hcs:0.0.123:1", { capabilities: ["api_call"] }));
     upsert(makeEntry("did:hcs:0.0.123:2", { capabilities: ["data_provide"] }));

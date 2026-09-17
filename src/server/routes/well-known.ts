@@ -775,6 +775,7 @@ Allow: /
 Disallow: /admin
 Disallow: /ui/
 Disallow: /a2a/
+# /agents is a JSON API directory — not an indexable page (SLICE-131-3)
 Disallow: /agents
 Disallow: /market/tasks/
 Disallow: /ui/a2a/inbox/fragment
