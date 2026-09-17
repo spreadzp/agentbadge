@@ -71,7 +71,8 @@
     "quansync": "^1.0.0",
     "stripe": "^22.5.0",
     "yaml": "^2.9.0",
-    "zod": "^4.0.0"
+    "zod": "^4.0.0",
+    "@agentbadge/circle-payments": "file:../../packages/circle-payments"
   },
   "devDependencies": {
     "@lhci/cli": "^0.14.0",
