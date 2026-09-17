@@ -778,6 +778,8 @@ Disallow: /a2a/
 # /agents is a JSON API directory — not an indexable page (SLICE-131-3)
 Disallow: /agents
 Disallow: /market/tasks/
+# /api/* are JSON endpoints — not indexable pages (SLICE-131-4)
+Disallow: /api/
 Disallow: /ui/a2a/inbox/fragment
 Crawl-delay: 10
 
@@ -816,6 +818,7 @@ Allow: /
 
 User-agent: Googlebot
 Allow: /
+Disallow: /api/
 
 User-agent: Bingbot
 Allow: /

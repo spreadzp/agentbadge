@@ -263,6 +263,17 @@ describe("Well-known routes", () => {
       const text = await res.text();
       expect(text).toMatch(/Sitemap:\s+https?:\/\/.+\/ai-sitemap\.xml/);
     });
+
+    it("disallows /api/ for * and Googlebot (SLICE-131-4)", async () => {
+      const res = await app.request("/robots.txt");
+      const text = await res.text();
+
+      // * block
+      expect(text).toContain("Disallow: /api/");
+      // Googlebot has its own group (overrides *), must carry the disallow too
+      const googlebotGroup = text.split("User-agent: Googlebot")[1]?.split("User-agent:")[0] ?? "";
+      expect(googlebotGroup).toContain("Disallow: /api/");
+    });
   });
 
   // ─── sitemap.xml (SLICE-18-3) ─────────────────────────────────
