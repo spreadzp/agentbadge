@@ -9,6 +9,9 @@
 
 import { x402ResourceServer } from "@x402/core/server";
 import {
+  ARC_TESTNET,
+  BASE_SEPOLIA,
+  createBalanceLookup,
   createIdentityExtension,
   createMemoryFailureStore,
   createPaymentRouter,
@@ -28,6 +31,7 @@ import {
   type PaymentStatusLookup,
   type SchemeHandle,
   type ArcSelfSettleHandle,
+  type BalanceLookup,
 } from "@agentbadge/circle-payments";
 import type { CirclePaymentsConfig } from "../../config/env";
 import type { PaymentMiddleware } from "../routes/identity";
@@ -45,6 +49,8 @@ export interface CirclePaymentsRuntime {
   lookup: IdentityLookup;
   /** Payment status lookup — any rail (129-16) */
   statusLookup: PaymentStatusLookup;
+  /** Seller wallet + gateway balances per chain (129-18, ops) */
+  balanceLookup: BalanceLookup;
 }
 
 export interface CirclePaymentsDeps {
@@ -141,12 +147,33 @@ export function createCirclePaymentsRuntime(
     failureStore,
   });
 
+  // 129-18: ops balance lookup — chains = union of enabled rails
+  // (exact → Base Sepolia always; gateway/arc → + Arc Testnet).
+  const balanceChains = [
+    BASE_SEPOLIA,
+    ...(cfg.gateway || cfg.arc ? [ARC_TESTNET] : []),
+  ];
+  const balanceLookup = createBalanceLookup({
+    chains: balanceChains,
+    sellerAddress: cfg.sellerAddress,
+    ...(cfg.gateway ? { gatewayApiUrl: cfg.gatewayApiUrl } : {}),
+    ...(handles.arcSelfSettle
+      ? {
+          publicClients: {
+            [ARC_TESTNET.caip2]:
+              handles.arcSelfSettle.publicClient as never,
+          },
+        }
+      : {}),
+  });
+
   return {
     router,
     failureStore,
     identityExtension,
     lookup,
     statusLookup,
+    balanceLookup,
     paymentFor(routeKey: string): PaymentMiddleware {
       const price = getPrice(routeKey);
       return requirePayment(price, {

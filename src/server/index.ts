@@ -119,6 +119,10 @@ import {
   registerAgentIdentityTools,
   setAgentIdentityToolConfig,
 } from "../mcp/agent-identity-tools";
+import {
+  registerCircleWalletBalanceTools,
+  setCircleWalletBalanceToolConfig,
+} from "../mcp/circle-wallet-balance-tools";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -567,6 +571,11 @@ if (circleCfg?.enabled) {
     setAgentIdentityToolConfig({ lookup: circleRuntime.lookup });
     registerAgentIdentityTools();
     registerAgentIdentityTools(marketNs);
+    setCircleWalletBalanceToolConfig({
+      balanceLookup: circleRuntime.balanceLookup,
+    });
+    registerCircleWalletBalanceTools();
+    registerCircleWalletBalanceTools(marketNs);
     logger.info("Circle payments wired", {
       gateway: circleCfg.gateway,
       arc: circleCfg.arc,
