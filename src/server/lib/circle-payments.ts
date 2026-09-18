@@ -12,6 +12,7 @@ import {
   createIdentityExtension,
   createMemoryFailureStore,
   createPaymentRouter,
+  createPaymentStatusLookup,
   getPrice,
   PRICE_TABLE,
   registerArcSelfSettleScheme,
@@ -24,7 +25,9 @@ import {
   type IdentityExtensionBuilder,
   type IdentityLookup,
   type PaymentRouter,
+  type PaymentStatusLookup,
   type SchemeHandle,
+  type ArcSelfSettleHandle,
 } from "@agentbadge/circle-payments";
 import type { CirclePaymentsConfig } from "../../config/env";
 import type { PaymentMiddleware } from "../routes/identity";
@@ -40,6 +43,8 @@ export interface CirclePaymentsRuntime {
   identityExtension?: IdentityExtensionBuilder;
   /** Passport lookup for the identity route */
   lookup: IdentityLookup;
+  /** Payment status lookup — any rail (129-16) */
+  statusLookup: PaymentStatusLookup;
 }
 
 export interface CirclePaymentsDeps {
@@ -55,7 +60,7 @@ export interface CirclePaymentsDeps {
   handles?: {
     gateway?: SchemeHandle;
     exact?: SchemeHandle;
-    arcSelfSettle?: SchemeHandle;
+    arcSelfSettle?: ArcSelfSettleHandle;
   };
 }
 
@@ -112,11 +117,36 @@ export function createCirclePaymentsRuntime(
     ? createIdentityExtension({ lookup })
     : undefined;
 
+  // 129-16: status lookup — thin read-only gateway transfer query
+  // (GET {api}/x402/transfers/{id}); no privateKey needed.
+  const statusLookup = createPaymentStatusLookup({
+    ...(cfg.gateway
+      ? {
+          gatewayTransfers: {
+            getTransferById: async (id: string) => {
+              const resp = await fetch(
+                `${cfg.gatewayApiUrl}/x402/transfers/${encodeURIComponent(id)}`,
+              );
+              if (!resp.ok) {
+                throw new Error(`gateway transfer lookup ${resp.status}`);
+              }
+              return resp.json();
+            },
+          },
+        }
+      : {}),
+    ...(handles.arcSelfSettle
+      ? { arcSelfSettle: handles.arcSelfSettle }
+      : {}),
+    failureStore,
+  });
+
   return {
     router,
     failureStore,
     identityExtension,
     lookup,
+    statusLookup,
     paymentFor(routeKey: string): PaymentMiddleware {
       const price = getPrice(routeKey);
       return requirePayment(price, {
