@@ -21,6 +21,7 @@ import { registerPaymentStatusTools, setPaymentStatusToolConfig } from "./paymen
 import { registerAgentIdentityTools, setAgentIdentityToolConfig } from "./agent-identity-tools";
 import { registerCircleWalletBalanceTools, setCircleWalletBalanceToolConfig } from "./circle-wallet-balance-tools";
 import { registerSupportedNetworksTools, setSupportedNetworksToolConfig } from "./supported-networks-tools";
+import { registerPaymentHistoryTools, setPaymentHistoryToolConfig } from "./payment-history-tools";
 import { loadConfig, getConfig } from "../config/env";
 import { createCirclePaymentsRuntime } from "../server/lib/circle-payments";
 
@@ -54,6 +55,8 @@ function initCircleTools(ns?: NamespaceRegistry): void {
       },
     });
     registerSupportedNetworksTools(ns);
+    setPaymentHistoryToolConfig({ paymentHistory: rt.paymentHistory });
+    registerPaymentHistoryTools(ns);
   } catch (e) {
     console.error("circle MCP tools not registered:", e instanceof Error ? e.message : e);
   }

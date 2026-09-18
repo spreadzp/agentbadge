@@ -14,6 +14,7 @@ import {
   createBalanceLookup,
   createIdentityExtension,
   createMemoryFailureStore,
+  createPaymentHistory,
   createPaymentRouter,
   createPaymentStatusLookup,
   getPrice,
@@ -32,6 +33,7 @@ import {
   type SchemeHandle,
   type ArcSelfSettleHandle,
   type BalanceLookup,
+  type PaymentHistory,
 } from "@agentbadge/circle-payments";
 import type { CirclePaymentsConfig } from "../../config/env";
 import type { PaymentMiddleware } from "../routes/identity";
@@ -51,6 +53,8 @@ export interface CirclePaymentsRuntime {
   statusLookup: PaymentStatusLookup;
   /** Seller wallet + gateway balances per chain (129-18, ops) */
   balanceLookup: BalanceLookup;
+  /** Settled + failed payment history (129-20, ops) */
+  paymentHistory: PaymentHistory;
 }
 
 export interface CirclePaymentsDeps {
@@ -167,6 +171,38 @@ export function createCirclePaymentsRuntime(
       : {}),
   });
 
+  // 129-20: ops history — settled gateway transfers + failure ledger
+  const paymentHistory = createPaymentHistory({
+    failureStore,
+    sellerAddress: cfg.sellerAddress,
+    ...(cfg.gateway
+      ? {
+          gatewayTransfers: {
+            searchTransfers: async (params: {
+              to?: string;
+              network?: string;
+              status?: string;
+              pageSize?: number;
+            }) => {
+              const q = new URLSearchParams();
+              if (params.to) q.set("to", params.to);
+              if (params.network) q.set("network", params.network);
+              if (params.status) q.set("status", params.status);
+              if (params.pageSize) q.set("pageSize", String(params.pageSize));
+              const qs = q.toString().replaceAll("%3A", ":");
+              const resp = await fetch(
+                `${cfg.gatewayApiUrl}/x402/transfers${qs ? `?${qs}` : ""}`,
+              );
+              if (!resp.ok) {
+                throw new Error(`gateway transfers search ${resp.status}`);
+              }
+              return resp.json();
+            },
+          },
+        }
+      : {}),
+  });
+
   return {
     router,
     failureStore,
@@ -174,6 +210,7 @@ export function createCirclePaymentsRuntime(
     lookup,
     statusLookup,
     balanceLookup,
+    paymentHistory,
     paymentFor(routeKey: string): PaymentMiddleware {
       const price = getPrice(routeKey);
       return requirePayment(price, {

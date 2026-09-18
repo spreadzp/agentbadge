@@ -127,6 +127,10 @@ import {
   registerSupportedNetworksTools,
   setSupportedNetworksToolConfig,
 } from "../mcp/supported-networks-tools";
+import {
+  registerPaymentHistoryTools,
+  setPaymentHistoryToolConfig,
+} from "../mcp/payment-history-tools";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -594,6 +598,11 @@ if (circleCfg?.enabled) {
     });
     registerSupportedNetworksTools();
     registerSupportedNetworksTools(marketNs);
+    setPaymentHistoryToolConfig({
+      paymentHistory: circleRuntime.paymentHistory,
+    });
+    registerPaymentHistoryTools();
+    registerPaymentHistoryTools(marketNs);
     logger.info("Circle payments wired", {
       gateway: circleCfg.gateway,
       arc: circleCfg.arc,
