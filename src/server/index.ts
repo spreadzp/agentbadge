@@ -115,6 +115,10 @@ import {
   registerPaymentStatusTools,
   setPaymentStatusToolConfig,
 } from "../mcp/payment-status-tools";
+import {
+  registerAgentIdentityTools,
+  setAgentIdentityToolConfig,
+} from "../mcp/agent-identity-tools";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -560,6 +564,9 @@ if (circleCfg?.enabled) {
     setPaymentStatusToolConfig({ statusLookup: circleRuntime.statusLookup });
     registerPaymentStatusTools();
     registerPaymentStatusTools(marketNs);
+    setAgentIdentityToolConfig({ lookup: circleRuntime.lookup });
+    registerAgentIdentityTools();
+    registerAgentIdentityTools(marketNs);
     logger.info("Circle payments wired", {
       gateway: circleCfg.gateway,
       arc: circleCfg.arc,
