@@ -82,6 +82,15 @@ import { blogRoutes } from "./routes/blog";
 import { rulesApiRoutes } from "./routes/rules-api";
 import { scanRuleRoutes } from "./routes/scan-rule-api";
 import { scanPacksApiRoutes } from "./routes/scan-packs-api";
+import {
+  BUNDLE_IDS,
+  FULL_SCAN_PRICE,
+  USDC,
+  bundleMetadata,
+  resolveBundleIds,
+  totalPrice,
+} from "../agent-readiness/rule-bundles";
+import { AGENT_READINESS_RULESET } from "../agent-readiness/ruleset";
 import { totalScanRoutes } from "./routes/total-scan-api";
 import { benchmarkRoutes } from "./routes/benchmark-api";
 import { benchmarkPageRoutes } from "./routes/benchmark-pages";
@@ -517,8 +526,59 @@ app.route("/api", linkGraphRoutes);
 app.route("/api", rulesApiRoutes);
 app.route("/api", scanRuleRoutes);
 // EPIC-133: bundle catalog endpoint — gated by scanPacks.enabled (D4)
-if (getConfig().scanPacks.enabled) {
+const scanPacksCfg = getConfig().scanPacks;
+if (scanPacksCfg.enabled) {
   app.route("/api", scanPacksApiRoutes);
+}
+// SLICE-133-16: x402 dynamic pricing on pack scans — gated by
+// scanPacks.enabled + scanPacks.pricingEnabled. Price is computed per
+// request from body.packs via totalPrice(); no packs → FULL_SCAN_PRICE.
+// MUST be registered before totalScanRoutes (Hono composes in order).
+if (scanPacksCfg.enabled && scanPacksCfg.pricingEnabled) {
+  try {
+    const facilitatorClient = new HTTPFacilitatorClient({ url: getConfig().x402FacilitatorUrl });
+    const resourceServer = new x402ResourceServer(facilitatorClient).register(
+      "eip155:84532",
+      new ExactEvmScheme() as unknown as SchemeNetworkServer,
+    );
+    const payTo = getConfig().x402Treasury;
+    app.use(paymentMiddleware({
+      "POST /api/total-scan": {
+        accepts: [{
+          scheme: "exact",
+          network: "eip155:84532",
+          payTo,
+          price: async (ctx) => {
+            const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
+            const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
+            const { ok } = resolveBundleIds(raw);
+            const amount = ok.length > 0 ? totalPrice(ok).amount : FULL_SCAN_PRICE;
+            return `$${amount}`;
+          },
+          extra: { paymentFlow: "upfront" },
+        }],
+        description: "AgentBadge agent-readiness scan — priced per selected rule bundle",
+        mimeType: "text/event-stream",
+        unpaidResponseBody: async (ctx) => {
+          const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
+          const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
+          const { ok } = resolveBundleIds(raw);
+          const catalog = bundleMetadata(AGENT_READINESS_RULESET.rules, ok.length ? ok : [...BUNDLE_IDS]);
+          return {
+            contentType: "application/json",
+            body: {
+              error: "Payment required",
+              packs: catalog.bundles.map((b) => ({ id: b.id, price: b.price, ruleCount: b.ruleCount })),
+              totalPrice: ok.length > 0 ? totalPrice(ok) : { amount: FULL_SCAN_PRICE, currency: USDC },
+            },
+          };
+        },
+      },
+    }, resourceServer));
+    logger.info("x402 middleware wired for POST /api/total-scan (scan packs pricing)");
+  } catch (e) {
+    logger.error("Failed to wire x402 middleware — total-scan unprotected", { error: e instanceof Error ? e.message : String(e) });
+  }
 }
 app.route("/api", totalScanRoutes);
 app.route("/", benchmarkRoutes);
