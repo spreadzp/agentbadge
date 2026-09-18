@@ -413,3 +413,75 @@ describe("loadConfig", () => {
     expect(config.attestcoin.proverUrl).toBe("https://custom.prover.creditcoin.network");
   });
 });
+
+describe("scanPacks config (SLICE-133-13)", () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    delete process.env.SCAN_PACKS_ENABLED;
+    delete process.env.SCAN_PACK_PRICING_ENABLED;
+    delete process.env.SCAN_PRICE_LIGHT;
+    delete process.env.SCAN_PRICE_MEDIUM;
+    delete process.env.SCAN_PRICE_HEAVY;
+    resetConfigCache();
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  function setRequired() {
+    process.env.HEDERA_OPERATOR_ID = "0.0.5266613";
+    process.env.HEDERA_OPERATOR_KEY = "302e020100300506032b657004220420abcdef";
+    process.env.HEDERA_NETWORK = "testnet";
+    process.env.PASSPORT_TOKEN_ID = "0.0.1234567";
+    process.env.AUDIT_TOPIC_ID = "0.0.7654321";
+    process.env.DIRECTORY_TOPIC_ID = "0.0.8765432";
+    process.env.x402_FACILITATOR_URL = "https://api.testnet.blocky402.com";
+    process.env.x402_FEE_PAYER = "0.0.7162784";
+    process.env.x402_TREASURY = "0.0.8011510";
+    process.env.IPFS_API_KEY = "test-key";
+    process.env.IPFS_API_SECRET = "test-secret";
+  }
+
+  it("defaults: enabled=false, pricingEnabled=false, no price overrides", () => {
+    setRequired();
+    const config = loadConfig();
+    expect(config.scanPacks.enabled).toBe(false);
+    expect(config.scanPacks.pricingEnabled).toBe(false);
+    expect(config.scanPacks.priceOverrides).toEqual({});
+  });
+
+  it("SCAN_PACKS_ENABLED=true → enabled", () => {
+    setRequired();
+    process.env.SCAN_PACKS_ENABLED = "true";
+    const config = loadConfig();
+    expect(config.scanPacks.enabled).toBe(true);
+    expect(config.scanPacks.pricingEnabled).toBe(false);
+  });
+
+  it("pricing flag independent of packs flag", () => {
+    setRequired();
+    process.env.SCAN_PACK_PRICING_ENABLED = "true";
+    const config = loadConfig();
+    expect(config.scanPacks.enabled).toBe(false);
+    expect(config.scanPacks.pricingEnabled).toBe(true);
+  });
+
+  it("SCAN_PRICE_* overrides parsed as decimal strings", () => {
+    setRequired();
+    process.env.SCAN_PRICE_LIGHT = "0.15";
+    process.env.SCAN_PRICE_HEAVY = "1.20";
+    const config = loadConfig();
+    expect(config.scanPacks.priceOverrides).toEqual({ light: "0.15", heavy: "1.20" });
+  });
+
+  it("invalid SCAN_PRICE_* values are ignored", () => {
+    setRequired();
+    process.env.SCAN_PRICE_LIGHT = "abc";
+    process.env.SCAN_PRICE_MEDIUM = "-1";
+    const config = loadConfig();
+    expect(config.scanPacks.priceOverrides).toEqual({});
+  });
+});

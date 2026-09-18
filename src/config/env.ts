@@ -91,6 +91,20 @@ export interface CirclePaymentsConfig {
   treasuryAddress?: string;
 }
 
+/**
+ * Scan pack (rule bundle) config (EPIC-133, D4).
+ * `enabled` gates the packs param + /api/scan-packs listing.
+ * `pricingEnabled` gates x402 payment requirement — off = free pack
+ * scans (testing), on = payment required. Independent flags: free pack
+ * scans are possible with pricing off.
+ */
+export interface ScanPacksConfig {
+  enabled: boolean;
+  pricingEnabled: boolean;
+  /** Optional per-cost-class price overrides (USDC decimal strings). */
+  priceOverrides: { light?: string; medium?: string; heavy?: string };
+}
+
 export interface KeeperHubEnvConfig {
   enabled: boolean;
   apiKey: string;
@@ -134,6 +148,7 @@ export interface AppConfig {
   analytics: AnalyticsConfig;
   keeperhub?: KeeperHubEnvConfig;
   circlePayments?: CirclePaymentsConfig;
+  scanPacks: ScanPacksConfig;
 }
 
 const ACCOUNT_ID_RE = /^0\.0\.\d+$/;
@@ -409,6 +424,24 @@ export function loadConfig(): AppConfig {
     gscVerification: process.env.GOOGLE_SITE_VERIFICATION,
   };
 
+  // EPIC-133: scan pack feature + pricing gates (D4) — both default off.
+  const priceOverrides: ScanPacksConfig["priceOverrides"] = {};
+  for (const [envKey, cls] of [
+    ["SCAN_PRICE_LIGHT", "light"],
+    ["SCAN_PRICE_MEDIUM", "medium"],
+    ["SCAN_PRICE_HEAVY", "heavy"],
+  ] as const) {
+    const raw = process.env[envKey];
+    if (raw != null && /^\d+(\.\d+)?$/.test(raw.trim())) {
+      priceOverrides[cls] = raw.trim();
+    }
+  }
+  const scanPacks: ScanPacksConfig = {
+    enabled: booleanFlag("SCAN_PACKS_ENABLED"),
+    pricingEnabled: booleanFlag("SCAN_PACK_PRICING_ENABLED"),
+    priceOverrides,
+  };
+
   return {
     chainMode,
     hederaOperatorId: hederaOperatorId ?? "",
@@ -433,6 +466,7 @@ export function loadConfig(): AppConfig {
     analytics,
     keeperhub,
     circlePayments,
+    scanPacks,
   };
 }
 
