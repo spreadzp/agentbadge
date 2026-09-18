@@ -1,4 +1,6 @@
 import { resolveAndPin } from "./ssrf/dns-pin";
+import { resolveBundleIds, resourcesForBundles } from "../rule-bundles";
+import { AGENT_READINESS_RULESET } from "../ruleset";
 import { ScannerRateLimiter } from "./rate-limiter";
 import { SnapshotCache } from "./cache";
 import { createSnapshot, type ResponseSnapshot } from "./snapshot";
@@ -58,6 +60,11 @@ export interface ScanOptions {
   noCache?: boolean;
   timeout?: number;
   resources?: string[];
+  /**
+   * Bundle ids (canonical or legacy alias) scoping which resources to
+   * fetch (EPIC-133). Explicit `resources` wins when both are set.
+   */
+  bundles?: string[];
   onProgress?: (resource: string, completed: number, total: number) => void;
   authTest?: boolean;
   clientId?: string;
@@ -139,7 +146,14 @@ export async function scanDomain(
 
   const rateLimiter = new ScannerRateLimiter();
   const cache = opts?.noCache ? null : new SnapshotCache();
+  // EPIC-133: bundle-scoped fetch — explicit `resources` wins over `bundles`.
   let resources = opts?.resources ?? [...DEFAULT_RESOURCES];
+  if (!opts?.resources?.length && opts?.bundles?.length) {
+    const { ok } = resolveBundleIds(opts.bundles);
+    if (ok.length > 0) {
+      resources = resourcesForBundles(ok, AGENT_READINESS_RULESET.rules);
+    }
+  }
 
   // Conditionally add auth_probe when authTest is enabled and credentials are provided
   const authEnabled = opts?.authTest === true && !!opts?.clientId && !!opts?.clientSecret;

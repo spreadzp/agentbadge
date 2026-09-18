@@ -9,6 +9,9 @@ import type { Evidence } from "./evidence.types";
 import { OpenApiParser } from "./openapi-parser";
 import { classifyEvidence } from "./source-hierarchy";
 import { SEMANTIC_CHECKERS } from "./semantic-checkers";
+import { BUNDLE_IDS, resolveBundleIds, rulesForBundles } from "../rule-bundles";
+import type { BundleId } from "../rule-bundles";
+import { logger } from "@agentbadge/passport";
 
 export interface RuleEngineResult {
   assertions: Assertion[];
@@ -16,6 +19,8 @@ export interface RuleEngineResult {
   scannedAt: string;
   totalRules: number;
   applicableRules: number;
+  /** Resolved bundle ids that scoped this run (all 10 when unscoped). */
+  bundles: BundleId[];
 }
 
 class RuleEngineClass {
@@ -31,16 +36,30 @@ class RuleEngineClass {
 
   /**
    * Run all rules against a source state and return assertions.
+   * Optional `packs` filter restricts evaluation to rules in the given
+   * bundles — accepts canonical BundleIds and legacy PackId aliases
+   * (EPIC-133). Unknown ids are ignored with a warn log.
    */
-  run(sourceState: SourceState): RuleEngineResult {
+  run(sourceState: SourceState, opts?: { packs?: string[] }): RuleEngineResult {
     if (!this.loadedRules) {
       this.loadedRules = RuleLoader.loadFromManifest();
+    }
+
+    let bundles: BundleId[] = [...BUNDLE_IDS];
+    let rules = this.loadedRules.rules;
+    if (opts?.packs?.length) {
+      const { ok, unknown } = resolveBundleIds(opts.packs);
+      if (unknown.length > 0) {
+        logger.warn("rule-engine.unknown_bundles", { unknown });
+      }
+      bundles = ok;
+      rules = rulesForBundles(ok, this.loadedRules.rules);
     }
 
     const assertions: Assertion[] = [];
     let applicableCount = 0;
 
-    for (const rule of this.loadedRules.rules) {
+    for (const rule of rules) {
       const isApplicable = this.checkApplicability(rule, sourceState);
       if (isApplicable) applicableCount++;
 
@@ -77,8 +96,9 @@ class RuleEngineClass {
       assertions,
       rulesetVersion: this.loadedRules.manifestVersion,
       scannedAt: new Date().toISOString(),
-      totalRules: this.loadedRules.rules.length,
+      totalRules: rules.length,
       applicableRules: applicableCount,
+      bundles,
     };
   }
 
