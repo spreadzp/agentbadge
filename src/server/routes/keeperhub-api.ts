@@ -8,6 +8,9 @@ import { auditStore, type AuditEvent } from "../lib/keeperhub-audit-store";
 import { readLatestScoreFor, readRecentRecords } from "../lib/keeperhub-onchain";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
+import { AGENT_READINESS_RULESET } from "../../agent-readiness/ruleset";
+import { rulesForPacks, packMetadata } from "../../agent-readiness/rule-packs";
+import type { AgentReadinessRule } from "../../agent-readiness/rule.schema";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 import { captureError } from "../lib/sentry";
@@ -137,7 +140,21 @@ const QUICK_SCAN_RESOURCES = [
   "link_headers", "og_meta", "semantic_html", "accessibility", "agent_card",
 ];
 
-// POST /keeperhub/scan — scan → dry-run preview or confirm → trigger KeeperHub workflow
+// GET /keeperhub/packs — rule-pack marketplace metadata (name, description, price, fast)
+keeperhubApiRoutes.get(
+  "/keeperhub/packs",
+  describeRoute({
+    tags: ["KeeperHub"],
+    summary: "List available rule packs with marketplace metadata",
+    description: "Returns pack id, name, description, price (null = free), and fast-profile eligibility. Pass ?packs=a,b to filter.",
+  }),
+  (c) => {
+    const q = c.req.query("packs");
+    const packIds = q ? q.split(",").map((p) => p.trim()).filter(Boolean) : undefined;
+    return c.json({ packs: packMetadata(packIds) });
+  },
+);
+
 keeperhubApiRoutes.post(
   "/keeperhub/scan",
   describeRoute({
@@ -149,7 +166,7 @@ keeperhubApiRoutes.post(
     const cfg = getConfig();
     if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
 
-    let body: { url?: string; confirm?: boolean; quick?: boolean };
+    let body: { url?: string; confirm?: boolean; quick?: boolean; packs?: string[] };
     try {
       body = await c.req.json();
     } catch {
@@ -180,6 +197,11 @@ keeperhubApiRoutes.post(
     try {
       const sourceState = await scanDomain(normalizedUrl, quick ? { resources: [...QUICK_SCAN_RESOURCES] } : {});
       const result = RuleEngine.run(sourceState);
+      const packList = Array.isArray(body.packs) ? body.packs.filter((p) => typeof p === "string") : [];
+      if (packList.length > 0) {
+        const packRuleIds = new Set(rulesForPacks(packList, AGENT_READINESS_RULESET.rules as AgentReadinessRule[]).map((r) => r.rule_id));
+        result.assertions = result.assertions.filter((a) => packRuleIds.has(a.rule_id));
+      }
       const report = formatScanReport(normalizedUrl, result);
       score = report.score;
       grade = report.grade;

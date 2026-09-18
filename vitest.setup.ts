@@ -17,7 +17,16 @@ try {
         const eqIdx = trimmed.indexOf("=");
         if (eqIdx === -1) continue;
         const key = trimmed.slice(0, eqIdx).trim();
-        const value = trimmed.slice(eqIdx + 1).trim();
+        let value = trimmed.slice(eqIdx + 1).trim();
+        // Strip matching surrounding quotes (dotenv semantics) —
+        // KEEPERHUB_API_KEY="kh_…" must validate as kh_-prefixed.
+        if (
+          value.length >= 2 &&
+          ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'")))
+        ) {
+          value = value.slice(1, -1);
+        }
         if (!process.env[key]) process.env[key] = value;
     }
 } catch {

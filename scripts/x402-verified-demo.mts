@@ -16,6 +16,7 @@
  */
 
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import { registerBatchScheme } from "@circle-fin/x402-batching/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { toClientEvmSigner } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
@@ -103,10 +104,23 @@ const signer = toClientEvmSigner(
   account,
   createPublicClient({ chain: baseSepolia, transport: http() }),
 );
-const client = new x402Client().register(
-  "eip155:*",
-  new ExactEvmScheme(signer),
-);
+// spendControls off — demo pays testnet USDC on non-default assets.
+// Selector: prefer plain `exact` (buyer wallet USDC) over
+// GatewayWalletBatched (needs a Gateway unified-balance deposit).
+const client = new x402Client((_v, accepts) => {
+  const plain = accepts.find(
+    (a: { extra?: { name?: string } }) =>
+      a.extra?.name !== "GatewayWalletBatched",
+  );
+  return plain ?? accepts[0];
+}).setSpendControls(false);
+// Batch-aware client: signs GatewayWalletBatched payloads correctly,
+// falls back to plain exact for non-gateway accepts.
+registerBatchScheme(client, {
+  signer,
+  fallbackScheme: new ExactEvmScheme(signer),
+  networks: ["eip155:*"],
+});
 const paidFetch = wrapFetchWithPayment(fetch, client);
 const res = await paidFetch(VERIFIED);
 line(`   → ${res.status}`);

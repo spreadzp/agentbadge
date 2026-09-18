@@ -11,6 +11,7 @@ import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 
 import { getPrice, logger } from "@agentbadge/passport";
+import { getNftsForAccount } from "@agentbadge/hedera-core";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { adminAuth } from "./middleware/adminAuth";
 import { mppPaymentMiddleware } from "./middleware/mpp";
@@ -133,7 +134,6 @@ import {
   setPaymentHistoryToolConfig,
 } from "../mcp/payment-history-tools";
 import { isStripeConfigured } from "./lib/stripe-client";
-import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
 import { attestcoinRoutes, setAttestcoinRouteConfig } from "./routes/attestcoin";
 import { initSentry, captureError } from "./lib/sentry";
@@ -527,7 +527,6 @@ app.route("/", changelogRoutes);
 app.route("/", agencyJsonRoutes);
 app.route("/", profileRoutes);
 app.route("/", profileViewerRoutes);
-app.route("/api/demo", demo);
 
 // Attestcoin routes (EPIC-127) — only when ATTESTCOIN_ENABLED=true
 const attestcoinConfig = getConfig().attestcoin;
@@ -544,9 +543,68 @@ if (attestcoinConfig.enabled) {
 // Circle nanopayments (EPIC-129) — only when CIRCLE_PAYMENTS_ENABLED=true.
 // Master flag off → zero behavior change (old x402 paths stay as-is).
 const circleCfg = getConfig().circlePayments;
+
+/**
+ * Passport lookup for the 402 identity extension + /api/identity route.
+ * EVM address → Hedera account via mirror node → passport NFT check.
+ * Server EOA (seller) has no Hedera account — falls back to the
+ * operator account, which holds the server's own passport.
+ */
+const MIRROR_BASE =
+  getConfig().hederaNetwork === "mainnet"
+    ? "https://mainnet.mirrornode.hedera.com/api/v1"
+    : "https://testnet.mirrornode.hedera.com/api/v1";
+
+const circleIdentityLookup = async (
+  address: string,
+): Promise<
+  | {
+      passportTokenId: string;
+      readinessScore?: number;
+      mintTx?: string;
+      issuedAt?: string;
+      chain?: string;
+    }
+  | undefined
+> => {
+  const cfg = getConfig();
+  let accountId: string | undefined;
+  try {
+    const res = await fetch(`${MIRROR_BASE}/accounts/${address}`);
+    if (res.ok) {
+      const data = (await res.json()) as { account?: string };
+      accountId = data.account;
+    }
+  } catch {
+    /* fall through to seller fallback */
+  }
+  if (
+    !accountId &&
+    circleCfg &&
+    address.toLowerCase() === circleCfg.sellerAddress.toLowerCase()
+  ) {
+    accountId = cfg.hederaOperatorId;
+  }
+  if (!accountId) return undefined;
+
+  const nfts = await getNftsForAccount(accountId);
+  const nft = nfts.find(
+    (n) => n.token_id === cfg.passportTokenId && !n.deleted,
+  );
+  if (!nft) return undefined;
+  return {
+    passportTokenId: `${nft.token_id}:${nft.serial_number}`,
+    issuedAt: new Date(
+      Number(nft.created_timestamp.split(".")[0]) * 1000,
+    ).toISOString(),
+    chain: "hedera",
+  };
+};
+
 if (circleCfg?.enabled) {
   try {
     const circleRuntime = createCirclePaymentsRuntime(circleCfg, {
+      identityLookup: circleIdentityLookup,
       onFailure: (f) => {
         logger.error("Payment fulfillment failure after confirmed settle", {
           scheme: f.scheme,
