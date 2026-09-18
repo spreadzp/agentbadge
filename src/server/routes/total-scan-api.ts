@@ -99,8 +99,8 @@ totalScanRoutes.post(
 
       await stream.write(`event: progress\ndata: ${JSON.stringify({ phase: "evaluating", completed: result.assertions.length, total: result.totalRules })}\n\n`);
 
-      // Phase 3: Format and send report
-      const report = formatScanReport(normalizedUrl, result);
+      // Phase 3: Format and send report (pack-scoped → bundleScores + upsell)
+      const report = formatScanReport(normalizedUrl, result, { packs });
 
       await stream.write(`event: result\ndata: ${JSON.stringify(report)}\n\n`);
       await stream.write(`event: done\ndata: ${JSON.stringify({ completed: true })}\n\n`);

@@ -13,6 +13,9 @@ import { deriveGaps, summarizeGaps, type GapSummary } from "./gap-engine/gap-eng
 import { prioritizeGaps } from "./gap-engine/gap-priority";
 import { annotateFixReadiness } from "./gap-engine/gap-fix-hints";
 import type { Gap } from "./gap-engine/gap-types";
+import { BUNDLE_IDS, FULL_SCAN_PRICE, USDC, bundleMetadata } from "./rule-bundles";
+import type { BundleId } from "./rule-bundles";
+import { computeBundleScores, type BundleScore } from "./scoring/bundle-scorer";
 
 export interface PillarReport {
   pillar: string;
@@ -71,6 +74,21 @@ export interface ScanReport {
   assertions: AssertionV2Payload[];
   gaps: Gap[];
   gap_summary: GapSummary;
+  /** EPIC-133: resolved bundle ids — present only on pack-scoped scans. */
+  bundles?: BundleId[];
+  /** EPIC-133: per-bundle sub-scores — present only on pack-scoped scans. */
+  bundleScores?: Partial<Record<BundleId, BundleScore>>;
+  /** EPIC-133: unchecked bundles upsell — present only on pack-scoped scans. */
+  upsell?: {
+    notChecked: Array<{
+      id: BundleId;
+      name: string;
+      helpText: string;
+      price: { amount: string; currency: string };
+      ruleCount: number;
+    }>;
+    fullScanPrice: { amount: string; currency: string };
+  };
 }
 
 export interface CategoryReport {
@@ -94,7 +112,11 @@ export interface MissingRule {
   display_question?: string;
 }
 
-export function formatScanReport(url: string, result: RuleEngineResult): ScanReport {
+export function formatScanReport(
+  url: string,
+  result: RuleEngineResult,
+  opts?: { packs?: string[] },
+): ScanReport {
   const assertions = result.assertions;
   const total = assertions.length;
   const verified = assertions.filter((a) => a.status === "VERIFIED" || a.status === "INFERRED").length;
@@ -189,7 +211,7 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
 
   const summary = `Your site scored ${score}/100 (${grade} grade). ${verified} of ${total} rules passed, ${missing} need attention, ${notApplicable} not applicable.`;
 
-  return {
+  const report: ScanReport = {
     url,
     score,
     grade,
@@ -209,6 +231,34 @@ export function formatScanReport(url: string, result: RuleEngineResult): ScanRep
     gaps: annotatedGaps,
     gap_summary: gapSummary,
   };
+
+  // EPIC-133 (D6): pack-scoped scans carry per-bundle sub-scores +
+  // upsell block listing unchecked bundles. Absent on full scans.
+  if (opts?.packs?.length && result.bundles.length < BUNDLE_IDS.length) {
+    report.bundles = result.bundles;
+    report.bundleScores = computeBundleScores(
+      assertions,
+      AGENT_READINESS_RULESET.rules as unknown as import("./rule.schema").AgentReadinessRule[],
+    ).scores;
+    const scanned = new Set(result.bundles);
+    const remaining = BUNDLE_IDS.filter((id) => !scanned.has(id));
+    const catalog = bundleMetadata(
+      AGENT_READINESS_RULESET.rules as unknown as import("./rule.schema").AgentReadinessRule[],
+      remaining,
+    );
+    report.upsell = {
+      notChecked: catalog.bundles.map((b) => ({
+        id: b.id,
+        name: b.name,
+        helpText: b.helpText,
+        price: b.price,
+        ruleCount: b.ruleCount,
+      })),
+      fullScanPrice: { amount: FULL_SCAN_PRICE, currency: USDC },
+    };
+  }
+
+  return report;
 }
 
 function serializeAssertionV2(a: Assertion): AssertionV2Payload {
