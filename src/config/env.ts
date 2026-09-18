@@ -85,6 +85,10 @@ export interface CirclePaymentsConfig {
   sellerAddress: string;
   /** Server EOA key — required when arc or escrow enabled */
   arcPrivateKey?: string;
+  /** Platform fee in basis points on escrow settlement (D28, 0 = off) */
+  platformFeeBps: number;
+  /** Treasury receiving the platform fee — required when fee > 0 */
+  treasuryAddress?: string;
 }
 
 export interface KeeperHubEnvConfig {
@@ -366,7 +370,17 @@ export function loadConfig(): AppConfig {
       arcChainId: Number(process.env.ARC_CHAIN_ID ?? 5042002),
       sellerAddress: sellerAddress ?? "",
       arcPrivateKey,
+      platformFeeBps: Number(process.env.CIRCLE_PLATFORM_FEE_BPS ?? 0),
+      treasuryAddress: process.env.CIRCLE_TREASURY_ADDRESS,
     };
+    if (
+      circlePayments.platformFeeBps > 0 &&
+      !circlePayments.treasuryAddress
+    ) {
+      errors.push(
+        "CIRCLE_TREASURY_ADDRESS required when CIRCLE_PLATFORM_FEE_BPS > 0",
+      );
+    }
   }
 
   const hederaNetwork = process.env.HEDERA_NETWORK ?? "testnet";

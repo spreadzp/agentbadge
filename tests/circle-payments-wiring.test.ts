@@ -17,6 +17,7 @@ const BASE_CFG: CirclePaymentsConfig = {
   arcRpcUrl: "https://rpc.testnet.arc.network",
   arcChainId: 5042002,
   sellerAddress: SELLER,
+  platformFeeBps: 0,
 };
 
 const PASSPORT = {

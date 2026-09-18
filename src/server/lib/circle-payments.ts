@@ -42,7 +42,10 @@ export interface CirclePaymentsRuntime {
   /** Router dispatching verify/settle to enabled rails */
   router: PaymentRouter;
   /** requirePayment bound to runtime opts — pass a PRICE_TABLE key */
-  paymentFor(routeKey: string): PaymentMiddleware;
+  paymentFor(
+    routeKey: string,
+    opts?: { identity?: boolean },
+  ): PaymentMiddleware;
   /** Fulfillment-failure ledger (ops / MCP payment_history) */
   failureStore: FailureStore;
   /** 402 extensions builder — present only when identity flag on */

@@ -22,6 +22,7 @@ function cfg(over: Partial<CirclePaymentsConfig>): CirclePaymentsConfig {
     arcRpcUrl: "https://rpc.testnet.arc.network",
     arcChainId: 5042002,
     sellerAddress: SELLER,
+    platformFeeBps: 0,
     ...over,
   };
 }
