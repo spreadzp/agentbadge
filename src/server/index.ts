@@ -123,6 +123,10 @@ import {
   registerCircleWalletBalanceTools,
   setCircleWalletBalanceToolConfig,
 } from "../mcp/circle-wallet-balance-tools";
+import {
+  registerSupportedNetworksTools,
+  setSupportedNetworksToolConfig,
+} from "../mcp/supported-networks-tools";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -576,6 +580,20 @@ if (circleCfg?.enabled) {
     });
     registerCircleWalletBalanceTools();
     registerCircleWalletBalanceTools(marketNs);
+    setSupportedNetworksToolConfig({
+      router: circleRuntime.router,
+      getFlags: () => {
+        const c = getConfig().circlePayments;
+        return {
+          gateway: c?.gateway ?? false,
+          arc: c?.arc ?? false,
+          identity: c?.identity ?? false,
+          escrow: c?.escrow ?? false,
+        };
+      },
+    });
+    registerSupportedNetworksTools();
+    registerSupportedNetworksTools(marketNs);
     logger.info("Circle payments wired", {
       gateway: circleCfg.gateway,
       arc: circleCfg.arc,
