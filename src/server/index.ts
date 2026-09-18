@@ -107,6 +107,10 @@ import { createMonitoringRoutes } from "./routes/monitoring";
 import { createMonitoringStore } from "../agent-readiness/monitoring/monitoring-store";
 import { createCirclePaymentsRuntime } from "./lib/circle-payments";
 import { createIdentityRoutes } from "./routes/identity";
+import {
+  registerCirclePayTools,
+  setCirclePayToolConfig,
+} from "../mcp/circle-pay-tools";
 import { isStripeConfigured } from "./lib/stripe-client";
 import demo from "./routes/demo";
 import { loadConfig } from "../config/env";
@@ -545,6 +549,10 @@ if (circleCfg?.enabled) {
         }),
       );
     }
+    // SLICE-129-15: circle_pay MCP tool — "all" + market namespaces
+    setCirclePayToolConfig({ router: circleRuntime.router });
+    registerCirclePayTools();
+    registerCirclePayTools(marketNs);
     logger.info("Circle payments wired", {
       gateway: circleCfg.gateway,
       arc: circleCfg.arc,
