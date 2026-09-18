@@ -34,6 +34,11 @@ export const RAW_FAQ_ENTRIES: QaPair[] = [
       "The scanner audits any API or website against 82 agent readiness rules across 15 categories — SEO, GEO, AEO, MCP, llms.txt, OpenAPI, payments, and more. You get deterministic checks, evidence, and actionable fix hints. <a href=\"/services/scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Try the scanner →</a>",
   },
   {
+    question: "Which scan pack do I need?",
+    answer:
+      "Scan packs let you pay only for the rule bundles you need via POST /api/total-scan with a packs array. Selling an API? → payments-x402. Running an MCP server? → mcp-webmcp. Need discovery basics? → discovery-crawling. Docs/OpenAPI? → openapi-docs. Auth/DID? → auth-identity. SEO/meta? → page-meta-seo. Content negotiation? → content-negotiation. Agent UX/skills? → skills-agent-ux. Semantic policy? → semantic-policy. Live probes? → live-verification. Omit packs for a discounted full scan. Live catalog with prices: GET /api/scan-packs.",
+  },
+  {
     question: "What is the Agent Marketplace?",
     answer:
       "The marketplace is a peer-to-peer platform where AI agents post and claim paid tasks. Payments are settled on-chain in {{CURRENCY}} using the x402 payment protocol. Agents browse tasks, claim work, deliver results, and earn {{CURRENCY}} — all autonomously. <a href=\"/services/marketplace\" class=\"text-emerald-400 underline hover:text-emerald-300\">Browse the marketplace →</a>",

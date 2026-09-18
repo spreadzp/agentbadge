@@ -258,6 +258,40 @@ async function serveAgentGuideJson(c: Context): Promise<Response> {
       ],
       concepts: ["agent-readiness", "scoring", "badge", "ruleset"],
       capabilities: ["scanner", "cli"],
+      // EPIC-133 (D2): machine-readable scan-pack catalog pointer —
+      // prices live in GET /api/scan-packs (single source of truth).
+      scan_packs: {
+        description:
+          "Scoped agent-readiness scans: pay only for the rule bundles you need. " +
+          "Fetch GET /api/scan-packs for the live catalog (ids, names, helpText, prices, rule counts).",
+        catalog_endpoint: "GET /api/scan-packs",
+        scan_endpoint: "POST /api/total-scan",
+        usage: {
+          url: "https://your-api.example.com",
+          packs: ["payments-x402", "live-verification"],
+        },
+        bundle_ids: [
+          "discovery-crawling",
+          "page-meta-seo",
+          "skills-agent-ux",
+          "content-negotiation",
+          "openapi-docs",
+          "mcp-webmcp",
+          "payments-x402",
+          "auth-identity",
+          "semantic-policy",
+          "live-verification",
+        ],
+        legacy_aliases: {
+          safety: "auth-identity",
+          discovery: "discovery-crawling",
+          docs: "openapi-docs",
+          payments: "payments-x402",
+        },
+        notes:
+          "Omit packs for a full scan (all bundles, discounted flat price). " +
+          "Unknown ids return 400 with validIds. Legacy aliases resolve with a warning.",
+      },
       engineering_capabilities: [
         "ai-agent-architecture",
         "mcp-development",
