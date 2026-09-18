@@ -81,6 +81,7 @@ import { contentPageRoutes } from "./routes/content-pages";
 import { blogRoutes } from "./routes/blog";
 import { rulesApiRoutes } from "./routes/rules-api";
 import { scanRuleRoutes } from "./routes/scan-rule-api";
+import { scanPacksApiRoutes } from "./routes/scan-packs-api";
 import { totalScanRoutes } from "./routes/total-scan-api";
 import { benchmarkRoutes } from "./routes/benchmark-api";
 import { benchmarkPageRoutes } from "./routes/benchmark-pages";
@@ -515,6 +516,10 @@ app.route("/api", keeperhubApiRoutes);
 app.route("/api", linkGraphRoutes);
 app.route("/api", rulesApiRoutes);
 app.route("/api", scanRuleRoutes);
+// EPIC-133: bundle catalog endpoint — gated by scanPacks.enabled (D4)
+if (getConfig().scanPacks.enabled) {
+  app.route("/api", scanPacksApiRoutes);
+}
 app.route("/api", totalScanRoutes);
 app.route("/", benchmarkRoutes);
 app.route("/", benchmarkPageRoutes);
