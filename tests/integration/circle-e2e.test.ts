@@ -66,8 +66,8 @@ describe.skipIf(!E2E)("circle e2e (CIRCLE_E2E=1)", () => {
       expect(a.amount).toBe("1000"); // $0.001
     }
     // identity extension present when flag on
-    if (pr.extensions?.identity) {
-      expect(pr.extensions.identity.verifyUrl).toContain("/api/identity/");
+    if (pr.extensions?.agentbadge) {
+      expect(pr.extensions.agentbadge.verifyUrl).toContain("/verify/");
     }
   });
 

@@ -211,8 +211,12 @@ export function createCirclePaymentsRuntime(
     statusLookup,
     balanceLookup,
     paymentHistory,
-    paymentFor(routeKey: string): PaymentMiddleware {
+    paymentFor(
+      routeKey: string,
+      opts?: { identity?: boolean },
+    ): PaymentMiddleware {
       const price = getPrice(routeKey);
+      const withIdentity = opts?.identity !== false && identityExtension;
       return requirePayment(price, {
         sellerAddress: cfg.sellerAddress,
         gateway: cfg.gateway,
@@ -222,8 +226,8 @@ export function createCirclePaymentsRuntime(
         router,
         failureStore,
         onFailure: deps.onFailure,
-        ...(identityExtension
-          ? { extensions: () => identityExtension(cfg.sellerAddress) }
+        ...(withIdentity
+          ? { extensions: () => identityExtension!(cfg.sellerAddress) }
           : {}),
       }) as unknown as PaymentMiddleware;
     },

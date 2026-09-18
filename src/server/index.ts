@@ -107,6 +107,7 @@ import { createMonitoringRoutes } from "./routes/monitoring";
 import { createMonitoringStore } from "../agent-readiness/monitoring/monitoring-store";
 import { createCirclePaymentsRuntime } from "./lib/circle-payments";
 import { createIdentityRoutes } from "./routes/identity";
+import { createDemoRoutes } from "./routes/demo";
 import {
   registerCirclePayTools,
   setCirclePayToolConfig,
@@ -569,6 +570,16 @@ if (circleCfg?.enabled) {
         }),
       );
     }
+    // SLICE-129-23: demo pair — verified (extension) vs raw (no extension)
+    app.route(
+      "/",
+      createDemoRoutes({
+        verifiedPayment: circleRuntime.paymentFor("demo.data"),
+        rawPayment: circleRuntime.paymentFor("demo.data", {
+          identity: false,
+        }),
+      }),
+    );
     // SLICE-129-15/16: circle MCP tools — "all" + market namespaces
     setCirclePayToolConfig({ router: circleRuntime.router });
     registerCirclePayTools();
