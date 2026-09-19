@@ -22,10 +22,36 @@ totalScanRoutes.post(
     summary: "Run a full agent readiness scan with SSE streaming",
     description:
       "Streams scan progress and results via Server-Sent Events. Returns progress events during fetch/evaluate phases, then a result event with the full report, then a done event. " +
-      "Optional `packs: string[]` scopes the scan to rule bundles (see GET /api/scan-packs for valid ids; legacy pack aliases accepted).",
+      "Optional `packs: string[]` scopes the scan to rule bundles (see GET /api/scan-packs for valid ids; legacy pack aliases accepted). " +
+      "Auth: access pass via X-Wallet/X-Sig/X-Timestamp (EIP-191 signature over the agentbadge-access:v1 challenge — see docs/agent-access.md), or x402 payment.",
+    parameters: [
+      {
+        name: "X-Wallet",
+        in: "header",
+        required: false,
+        schema: { type: "string" },
+        description: "Agent wallet address (EOA or ERC-1271 contract wallet) holding a valid access pass",
+      },
+      {
+        name: "X-Sig",
+        in: "header",
+        required: false,
+        schema: { type: "string" },
+        description: "EIP-191 signature over the canonical challenge (agentbadge-access:v1, wallet, method, path, timestamp)",
+      },
+      {
+        name: "X-Timestamp",
+        in: "header",
+        required: false,
+        schema: { type: "string" },
+        description: "Unix seconds, ±300s skew window — must match the timestamp in the signed challenge",
+      },
+    ],
     responses: {
       200: { description: "SSE stream of scan progress and results" },
       400: { description: "Missing or invalid URL, or unknown bundle ids" },
+      401: { description: "Missing/invalid auth headers, stale timestamp, or signature verification failed" },
+      402: { description: "No valid access pass for this wallet+class — purchase via x402" },
     },
   }),
   async (c) => {
