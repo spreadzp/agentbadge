@@ -105,6 +105,27 @@ export interface ScanPacksConfig {
   priceOverrides: { light?: string; medium?: string; heavy?: string };
 }
 
+/**
+ * NFT access marketplace config (EPIC-138, SLICE-138-3).
+ * `enabled` gates /api/market/* routes. x402 gating on passport mint +
+ * service buy activates only when X402_FACILITATOR_URL is also set.
+ */
+export interface MarketplaceConfig {
+  enabled: boolean;
+  /** MarketplacePassNFT on Arc (passports + service passes). */
+  nftAddress: string;
+  /** MarketplaceSplitter on Arc — x402 payTo for service purchases. */
+  splitterAddress: string;
+  /** USDC ERC-20 on the payment chain (Base Sepolia). */
+  usdcAddress: string;
+  /** Platform treasury — passport sales payTo + splitter treasury. */
+  treasury: string;
+  /** Business passport price, USDC decimal string (e.g. "10"). */
+  passportPriceUsd: string;
+  /** Passport duration in days (≤365 on-chain, D11). */
+  passportDurationDays: number;
+}
+
 export interface KeeperHubEnvConfig {
   enabled: boolean;
   apiKey: string;
@@ -149,6 +170,7 @@ export interface AppConfig {
   keeperhub?: KeeperHubEnvConfig;
   circlePayments?: CirclePaymentsConfig;
   scanPacks: ScanPacksConfig;
+  marketplace?: MarketplaceConfig;
 }
 
 const ACCOUNT_ID_RE = /^0\.0\.\d+$/;
@@ -442,6 +464,39 @@ export function loadConfig(): AppConfig {
     priceOverrides,
   };
 
+  // EPIC-138: marketplace config — optional, only loaded when enabled.
+  let marketplace: MarketplaceConfig | undefined;
+  if (booleanFlag("MARKETPLACE_ENABLED")) {
+    const mkNft = requiredAddress("MARKETPLACE_NFT", errors);
+    const mkSplitter = requiredAddress("MARKETPLACE_SPLITTER", errors);
+    const mkTreasury =
+      process.env.MARKETPLACE_TREASURY ?? process.env.X402_PAY_TO ?? "";
+    if (mkTreasury && !ADDR_RE.test(mkTreasury)) {
+      errors.push("Invalid MARKETPLACE_TREASURY: expected 0x…40-hex address");
+    }
+    const mkDurationDays = Number(
+      process.env.MARKETPLACE_PASSPORT_DURATION_DAYS ?? 365,
+    );
+    if (
+      !Number.isInteger(mkDurationDays) ||
+      mkDurationDays < 1 ||
+      mkDurationDays > 365
+    ) {
+      errors.push("Invalid MARKETPLACE_PASSPORT_DURATION_DAYS: 1-365");
+    }
+    marketplace = {
+      enabled: true,
+      nftAddress: mkNft ?? "",
+      splitterAddress: mkSplitter ?? "",
+      usdcAddress:
+        process.env.MARKETPLACE_USDC ??
+        "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia USDC
+      treasury: mkTreasury,
+      passportPriceUsd: process.env.MARKETPLACE_PASSPORT_PRICE_USD ?? "10",
+      passportDurationDays: mkDurationDays,
+    };
+  }
+
   return {
     chainMode,
     hederaOperatorId: hederaOperatorId ?? "",
@@ -467,6 +522,7 @@ export function loadConfig(): AppConfig {
     keeperhub,
     circlePayments,
     scanPacks,
+    marketplace,
   };
 }
 

@@ -151,6 +151,29 @@ We offer consulting and development services for the agentic web:
 - /agent-guide/demand — Demand Registry API docs (Markdown)
 - /agent-guide/demand/schema.json — Demand request JSON schema
 
+## NFT Access Marketplace (Arc Testnet)
+
+Sell API/MCP access as NFT passes with x402 USDC payments. Businesses
+register services; agents buy passes and call gated endpoints with a
+wallet signature — no API keys, no accounts.
+
+- GET /api/market/services — Service catalog (JSON, ?q= ?category= filters)
+- GET /api/market/services/:id — Service detail
+- POST /api/market/buy/:serviceId — Buy pass (x402-gated, EIP-3009 USDC)
+- GET /api/market/passes/:wallet — Buyer's passes
+- POST /api/market/passport — Mint business passport (x402-gated)
+- POST /api/market/services — Register service (wallet-signed)
+- /market/services — Catalog UI; /market/sell — onboarding UI;
+  /market/buy/:id — checkout; /market/passes — buyer passes
+- Auth for gated endpoints: X-Agent-Wallet + X-Agent-Signature +
+  X-Agent-Timestamp over challenge "agentbadge-pass-auth:v1\\nwallet:…\\ndomain:…\\ntimestamp:…" (300s window)
+- npm: @agentbadge/pass-auth — honoPassAuth / expressPassAuth /
+  mcpPassAuth middleware; on-chain hasAccess check, no calls to
+  agentbadge.xyz in the request path
+- Docs: docs/marketplace/business-guide.md, docs/marketplace/buyer-guide.md
+- Identity: pass bound to wallet = did:pkh:eip155:5042002:<address>;
+  optional ERC-8004 agent link
+
 ## External Documentation
 
 - **GitBook Docs**: https://agentbadge.gitbook.io/agentbadge-docs — Full project documentation, guides, API reference, architecture

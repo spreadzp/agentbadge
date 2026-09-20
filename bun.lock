@@ -5,7 +5,7 @@
     "": {
       "name": "agentgate",
       "dependencies": {
-        "@agentbadge/circle-payments": "file:../../packages/circle-payments",
+        "@agentbadge/circle-payments": "^0.1.1",
         "@agentbadge/evm-core": "^0.1.1",
         "@agentbadge/hedera-core": "^0.1.15",
         "@agentbadge/keeperhub": "^0.1.0",
@@ -32,6 +32,7 @@
         "protobufjs": "^7.4.0",
         "quansync": "^1.0.0",
         "stripe": "^22.5.0",
+        "viem": "^2.55.8",
         "yaml": "^2.9.0",
         "zod": "^4.0.0",
       },
@@ -58,7 +59,7 @@
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, ""],
 
-    "@agentbadge/circle-payments": ["@agentbadge/circle-payments@file:../../packages/circle-payments", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "devDependencies": { "@vitest/coverage-v8": "^2.0.0", "bun-types": "^1.3.14", "hono": "^4.13.8", "tsx": "^4.19.0", "typescript": "^5.9.0", "vitest": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" } }],
+    "@agentbadge/circle-payments": ["@agentbadge/circle-payments@0.1.2", "", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-Ljex68PcUvJJd3d2MIH/UTQ+IFeGcEnfStexPgcOb9zzxhgN4wQlMowgSEIFizivHYXcmUJ1TJ5hGDr2FCEGCA=="],
 
     "@agentbadge/evm-core": ["@agentbadge/evm-core@0.1.1", "", { "dependencies": { "@agentbadge/hedera-core": "^0.1.14", "ethers": "^6.17.0" } }, "sha512-ry1xR/RNfQJDq8aAyYTr+V0yDnYS5Ooe9g/n9hj0HcpM6w4CwU0RXw4bLcX2LRyIcfX++BkYMYkWY9w/+ofoSg=="],
 
@@ -1491,8 +1492,6 @@
     "zod": ["zod@4.4.3", "", {}, ""],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
-
-    "@agentbadge/circle-payments/hono": ["hono@4.13.8", "", {}, "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="],
 
     "@agentbadge/passport/@x402/hedera": ["@x402/hedera@2.19.0", "", { "dependencies": { "@hiero-ledger/proto": "2.31.0", "@hiero-ledger/sdk": "2.85.0", "@x402/core": "~2.19.0" } }, ""],
 

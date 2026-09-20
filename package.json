@@ -1,6 +1,6 @@
 {
   "name": "agentbadge",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "license": "Apache-2.0",
   "author": "AgentBadge <support@agentbadge.xyz>",
   "bugs": {
@@ -70,9 +70,10 @@
     "protobufjs": "^7.4.0",
     "quansync": "^1.0.0",
     "stripe": "^22.5.0",
+    "viem": "^2.55.8",
     "yaml": "^2.9.0",
     "zod": "^4.0.0",
-    "@agentbadge/circle-payments": "file:../../packages/circle-payments"
+    "@agentbadge/circle-payments": "^0.1.1"
   },
   "devDependencies": {
     "@circle-fin/x402-batching": "^3.5.0",

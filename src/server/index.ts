@@ -4,7 +4,7 @@ import { openAPIRouteHandler } from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { stringify as yamlStringify } from "yaml";
 import { getConfig } from "../config/env";
-import { paymentMiddleware, x402ResourceServer, type SchemeNetworkServer } from "@x402/hono";
+import { paymentMiddleware, paymentMiddlewareFromHTTPServer, x402ResourceServer, x402HTTPResourceServer, type SchemeNetworkServer } from "@x402/hono";
 import { HEDERA_TESTNET_CAIP2 } from "@x402/hedera";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
@@ -117,6 +117,15 @@ import { paymentRoutes } from "./routes/payment";
 import { createMonitoringRoutes } from "./routes/monitoring";
 import { createMonitoringStore } from "../agent-readiness/monitoring/monitoring-store";
 import { createCirclePaymentsRuntime } from "./lib/circle-payments";
+import { createMintOnSettleHook, packsToClassMask, CLASS_FULL } from "./lib/access-pass-minter";
+import { checkAccessPassRequest, verifyWalletSigRequest } from "./middleware/agent-auth";
+import { marketplaceApiRoutes } from "./routes/marketplace-api";
+import { marketplacePageRoutes } from "./routes/marketplace-pages";
+import {
+  createMarketplaceMintOnSettleHook,
+  getService as getMarketService,
+  validatePassportMeta,
+} from "./lib/marketplace";
 import { createIdentityRoutes } from "./routes/identity";
 import { createDemoRoutes } from "./routes/demo";
 import {
@@ -536,19 +545,23 @@ if (scanPacksCfg.enabled) {
 // MUST be registered before totalScanRoutes (Hono composes in order).
 if (scanPacksCfg.enabled && scanPacksCfg.pricingEnabled) {
   try {
-    const facilitatorClient = new HTTPFacilitatorClient({ url: getConfig().x402FacilitatorUrl });
-    const resourceServer = new x402ResourceServer(facilitatorClient).register(
-      "eip155:84532",
-      new ExactEvmScheme() as unknown as SchemeNetworkServer,
-    );
-    const payTo = getConfig().x402Treasury;
-    app.use(paymentMiddleware({
+    // EVM scheme on Base Sepolia → EVM facilitator + EVM treasury.
+    // (x402FacilitatorUrl/x402Treasury are Hedera-scoped: blocky402 + 0.0.x account id.)
+    const facilitatorClient = new HTTPFacilitatorClient({
+      url: process.env.X402_FACILITATOR_URL ?? getConfig().x402FacilitatorUrl,
+    });
+    const resourceServer = new x402ResourceServer(facilitatorClient)
+      .register("eip155:84532", new ExactEvmScheme() as unknown as SchemeNetworkServer)
+      // EPIC-137: mint/extend the payer's AccessPassNFT on Arc after settle.
+      .onAfterSettle(createMintOnSettleHook());
+    const payTo = process.env.X402_PAY_TO ?? getConfig().x402Treasury;
+    const totalScanRoutes402 = {
       "POST /api/total-scan": {
         accepts: [{
           scheme: "exact",
-          network: "eip155:84532",
+          network: "eip155:84532" as const,
           payTo,
-          price: async (ctx) => {
+          price: async (ctx: { adapter: { getBody?: () => unknown } }) => {
             const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
             const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
             const { ok } = resolveBundleIds(raw);
@@ -559,7 +572,7 @@ if (scanPacksCfg.enabled && scanPacksCfg.pricingEnabled) {
         }],
         description: "AgentBadge agent-readiness scan — priced per selected rule bundle",
         mimeType: "text/event-stream",
-        unpaidResponseBody: async (ctx) => {
+        unpaidResponseBody: async (ctx: { adapter: { getBody?: () => unknown } }) => {
           const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
           const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
           const { ok } = resolveBundleIds(raw);
@@ -574,11 +587,142 @@ if (scanPacksCfg.enabled && scanPacksCfg.pricingEnabled) {
           };
         },
       },
-    }, resourceServer));
-    logger.info("x402 middleware wired for POST /api/total-scan (scan packs pricing)");
+    };
+    const httpServer = new x402HTTPResourceServer(resourceServer, totalScanRoutes402)
+      // EPIC-137: access-pass holders skip payment — signed challenge + valid pass on Arc.
+      .onProtectedRequest(async (ctx) => {
+        const wallet = ctx.adapter.getHeader("x-wallet");
+        const signature = ctx.adapter.getHeader("x-sig");
+        const timestamp = ctx.adapter.getHeader("x-timestamp");
+        if (!wallet && !signature && !timestamp) return; // → x402 payment flow
+        const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
+        const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
+        const { ok } = resolveBundleIds(raw);
+        const mask = packsToClassMask(ok.length ? ok : [...BUNDLE_IDS]);
+        // Multi-class request (or empty → full scan) requires a FULL pass —
+        // hasAccess ORs mask bits, so a mixed mask would be too permissive.
+        const cls = mask === 0 || (mask & (mask - 1)) !== 0 ? CLASS_FULL : mask;
+        const result = await checkAccessPassRequest({
+          wallet,
+          signature,
+          timestamp,
+          method: ctx.method,
+          path: ctx.path,
+          cls,
+        });
+        if (result === "granted") return { grantAccess: true };
+        if (result === "no-pass") return; // valid sig, no pass → 402 payment offer
+        return { abort: true, reason: "invalid access-pass signature or headers" };
+      });
+    app.use(paymentMiddlewareFromHTTPServer(httpServer));
+    logger.info("x402 middleware wired for POST /api/total-scan (scan packs pricing + access pass)");
   } catch (e) {
     logger.error("Failed to wire x402 middleware — total-scan unprotected", { error: e instanceof Error ? e.message : String(e) });
   }
+}
+
+// EPIC-138, SLICE-138-3: marketplace routes — gated by marketplace.enabled.
+// x402 gating (passport mint + service buy) activates only when a
+// facilitator is configured; without it the endpoints run ungated
+// (testnet/dev convenience, same pattern as scanPacks.pricingEnabled).
+const marketplaceCfg = getConfig().marketplace;
+if (marketplaceCfg?.enabled) {
+  const marketFacilitatorUrl =
+    process.env.X402_FACILITATOR_URL ?? getConfig().x402FacilitatorUrl;
+  if (marketFacilitatorUrl && marketplaceCfg.splitterAddress) {
+    try {
+      const marketFacilitator = new HTTPFacilitatorClient({
+        url: marketFacilitatorUrl,
+      });
+      const marketResourceServer = new x402ResourceServer(marketFacilitator)
+        .register(
+          "eip155:84532",
+          new ExactEvmScheme() as unknown as SchemeNetworkServer,
+        )
+        // Settled buy → credit splitter (90/10) + mint service pass.
+        .onAfterSettle(createMarketplaceMintOnSettleHook());
+      const marketRoutes402 = {
+        "POST /api/market/passport": {
+          accepts: [
+            {
+              scheme: "exact",
+              network: "eip155:84532" as const,
+              payTo: marketplaceCfg.treasury,
+              price: `$${marketplaceCfg.passportPriceUsd}`,
+            },
+          ],
+          description: "AgentBadge Business Passport — yearly marketplace access",
+          mimeType: "application/json",
+        },
+        "POST /api/market/buy/:serviceId": {
+          accepts: [
+            {
+              scheme: "exact",
+              network: "eip155:84532" as const,
+              // USDC lands on the splitter; afterSettle credits the service.
+              payTo: marketplaceCfg.splitterAddress,
+              price: async (ctx: { path: string }) => {
+                const m = /\/api\/market\/buy\/(0x[0-9a-fA-F]{64})/.exec(
+                  ctx.path,
+                );
+                const svc = m ? getMarketService(m[1]) : undefined;
+                return svc ? `$${svc.priceUsd}` : "$1";
+              },
+            },
+          ],
+          description: "Marketplace service access pass",
+          mimeType: "application/json",
+        },
+      };
+      const marketHttpServer = new x402HTTPResourceServer(
+        marketResourceServer,
+        marketRoutes402,
+      ).onProtectedRequest(async (ctx) => {
+        // Passport mint: require a valid wallet signature + valid metadata
+        // BEFORE payment — don't charge for requests that can't mint.
+        if (ctx.path === "/api/market/passport") {
+          const sig = await verifyWalletSigRequest({
+            wallet: ctx.adapter.getHeader("x-wallet"),
+            signature: ctx.adapter.getHeader("x-sig"),
+            timestamp: ctx.adapter.getHeader("x-timestamp"),
+            method: ctx.method,
+            path: ctx.path,
+          });
+          if (sig !== "valid") {
+            return {
+              abort: true,
+              reason: "valid X-Wallet/X-Sig/X-Timestamp required",
+            };
+          }
+          const body = (await ctx.adapter.getBody?.()) as unknown;
+          const v = validatePassportMeta(body);
+          if (!v.ok) return { abort: true, reason: v.error };
+        }
+        // Buy: service must exist in the catalog before we accept payment.
+        const buyMatch = /\/api\/market\/buy\/(0x[0-9a-fA-F]{64})/.exec(
+          ctx.path,
+        );
+        if (buyMatch && !getMarketService(buyMatch[1])) {
+          return { abort: true, reason: "unknown serviceId" };
+        }
+        return;
+      });
+      app.use(paymentMiddlewareFromHTTPServer(marketHttpServer));
+      logger.info(
+        "x402 middleware wired for marketplace (passport mint + service buy)",
+      );
+    } catch (e) {
+      logger.error("Failed to wire marketplace x402 middleware", {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  // Routes registered AFTER the x402 middleware — Hono runs
+  // handlers in registration order, so the payment gate must
+  // precede the route handlers or it never executes (139-3 fix).
+  app.route("/api", marketplaceApiRoutes);
+  app.route("/", marketplacePageRoutes); // SLICE-138-5: /market/* UI
 }
 app.route("/api", totalScanRoutes);
 app.route("/", benchmarkRoutes);
@@ -624,12 +768,12 @@ const circleIdentityLookup = async (
   address: string,
 ): Promise<
   | {
-      passportTokenId: string;
-      readinessScore?: number;
-      mintTx?: string;
-      issuedAt?: string;
-      chain?: string;
-    }
+    passportTokenId: string;
+    readinessScore?: number;
+    mintTx?: string;
+    issuedAt?: string;
+    chain?: string;
+  }
   | undefined
 > => {
   const cfg = getConfig();
