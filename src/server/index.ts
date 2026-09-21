@@ -117,12 +117,14 @@ import { paymentRoutes } from "./routes/payment";
 import { createMonitoringRoutes } from "./routes/monitoring";
 import { createMonitoringStore } from "../agent-readiness/monitoring/monitoring-store";
 import { createCirclePaymentsRuntime } from "./lib/circle-payments";
+import { registerArcSelfSettleScheme } from "@agentbadge/circle-payments";
 import { createMintOnSettleHook, packsToClassMask, CLASS_FULL } from "./lib/access-pass-minter";
 import { checkAccessPassRequest, verifyWalletSigRequest } from "./middleware/agent-auth";
 import { marketplaceApiRoutes } from "./routes/marketplace-api";
 import { marketplacePageRoutes } from "./routes/marketplace-pages";
 import {
   createMarketplaceMintOnSettleHook,
+  getMarketplaceOps,
   getService as getMarketService,
   validatePassportMeta,
 } from "./lib/marketplace";
@@ -641,6 +643,15 @@ if (marketplaceCfg?.enabled) {
         )
         // Settled buy → credit splitter (90/10) + mint service pass.
         .onAfterSettle(createMarketplaceMintOnSettleHook());
+      // SLICE-139-7: Arc self-settle rail — AA/SCA buyers pay on
+      // Arc (eip3009-client-broadcast). payer = Transfer.from = SCA.
+      // Registers the scheme AND returns the verify/settle handle used
+      // by the pre-middleware below. `as never` — server's @x402/core
+      // differs from circle-payments' (private facilitatorClients).
+      const arcSelfSettle = registerArcSelfSettleScheme(
+        marketResourceServer as never,
+        { sellerAddress: marketplaceCfg.treasury },
+      );
       const marketRoutes402 = {
         "POST /api/market/passport": {
           accepts: [
@@ -706,6 +717,87 @@ if (marketplaceCfg?.enabled) {
           return { abort: true, reason: "unknown serviceId" };
         }
         return;
+      });
+      // SLICE-139-7: Arc self-settle path for AA/SCA buyers.
+      // Runs BEFORE the x402 middleware — intercepts POST buy
+      // requests carrying an Arc (eip155:5042002) payment
+      // signature, verifies the broadcast tx on-chain, and mints
+      // the pass to payer (= USDC Transfer.from = the SCA).
+      // Requests without an Arc payment signature fall through to
+      // the x402 middleware (Base exact rail / 402) unchanged.
+      app.use("/api/market/buy/:serviceId", async (c, next) => {
+        if (c.req.method !== "POST") return next();
+        const psc = c.req.header("payment-signature");
+        if (!psc) return next();
+        let decoded: {
+          accepted?: { network?: string };
+          payload?: { txHash?: string };
+        };
+        try {
+          decoded = JSON.parse(
+            Buffer.from(psc, "base64").toString("utf8"),
+          );
+        } catch {
+          return next();
+        }
+        if (decoded?.accepted?.network !== "eip155:5042002") {
+          return next(); // Base rail → x402 middleware
+        }
+
+        const serviceId = c.req.param("serviceId").toLowerCase();
+        const svc = getMarketService(serviceId);
+        if (!svc) return c.json({ error: "unknown serviceId" }, 404);
+
+        // Server-side requirements — never trust client amounts.
+        const requirements = {
+          scheme: "eip3009-client-broadcast",
+          network: "eip155:5042002",
+          asset: "0x3600000000000000000000000000000000000000",
+          amount: String(Math.round(Number(svc.priceUsd) * 1e6)),
+          payTo: marketplaceCfg.treasury,
+          maxTimeoutSeconds: 345600,
+        };
+        const v = await arcSelfSettle.verify(decoded, requirements as never);
+        if (!v.isValid) {
+          return c.json({ error: v.invalidReason ?? "arc payment invalid" }, 402);
+        }
+        const r = await arcSelfSettle.settle(decoded, requirements as never);
+        if (!r.success) {
+          return c.json({ error: r.errorReason ?? "arc settle failed" }, 402);
+        }
+
+        const payer = r.payer as `0x${string}`;
+        const ops = getMarketplaceOps();
+        const durationSec = svc.durationSec ?? svc.durationDays * 86_400;
+        // Arc payment went to treasury (no Base splitter split) —
+        // skip creditPayment; mint the pass to payer (= SCA).
+        let mintTx: string | undefined;
+        try {
+          mintTx = await ops.mintServicePass(
+            payer,
+            serviceId as `0x${string}`,
+            durationSec,
+            0n,
+          );
+          logger.info("marketplace-mint: arc pass minted", {
+            payer, serviceId, mintTx, paymentTx: r.transaction,
+          });
+        } catch (err) {
+          logger.error("marketplace-mint: arc mint failed", {
+            payer, serviceId, err: String(err),
+          });
+        }
+        return c.json({
+          purchased: true,
+          serviceId,
+          service: svc.name,
+          price: { amount: svc.priceUsd, currency: "USDC" },
+          durationDays: svc.durationDays,
+          payer,
+          paymentTx: r.transaction,
+          mintTx,
+          note: "Service pass minted to the payer wallet on Arc Testnet (arc self-settle)",
+        });
       });
       app.use(paymentMiddlewareFromHTTPServer(marketHttpServer));
       logger.info(

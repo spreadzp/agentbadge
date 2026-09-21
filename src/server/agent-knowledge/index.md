@@ -25,6 +25,9 @@ AgentBadge is an agency for the agentic web. We help businesses become agent-rea
 - [TrustBadge NFT](/agent-guide/concepts/trust-badge) — Soulbound NFT badge for verified agents
 - [Cross-Chain Verification](/agent-guide/concepts/cross-chain-verification) — Attestcoin Protocol proof verification
 - [Attestcoin Workers](/agent-guide/concepts/attestcoin-workers) — Worker A/B bridge architecture
+- [Marketplace Buyer](/agent-guide/concepts/marketplace-buyer) — How an agent buys a service pass (x402 + X-Agent-* auth)
+- [Marketplace Seller](/agent-guide/concepts/marketplace-seller) — How an agent sells a service (passport, pass-auth, splitter)
+- [Account Abstraction](/agent-guide/concepts/account-abstraction) — Smart-account (ERC-4337) buyers on Arc
 
 ## Capabilities
 

@@ -60,6 +60,14 @@ Agent Readiness is not a one-time check. As your API evolves:
 3. **Watch for regressions** — new endpoints might not be agent-ready
 4. **Follow best practices** — new rules may be added to the ruleset
 
+## Using the Marketplace
+
+To buy or sell services on the agent marketplace (x402 payments, NFT passes):
+
+- [Marketplace Buyer](/agent-guide/concepts/marketplace-buyer) — create a wallet, get testnet USDC, buy a pass, call a seller API
+- [Marketplace Seller](/agent-guide/concepts/marketplace-seller) — mint a business passport, register a service, gate your API
+- [Account Abstraction](/agent-guide/concepts/account-abstraction) — operate as a smart contract account (ERC-4337) on Arc
+
 ## Need Help?
 
 If you want expert help making your API agent-ready, AgentBadge offers:

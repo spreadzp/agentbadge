@@ -577,6 +577,24 @@
       "type": "concept",
       "label": "Attestcoin Workers",
       "articles": []
+    },
+    {
+      "id": "marketplace-buyer",
+      "type": "concept",
+      "label": "Marketplace Buyer",
+      "articles": []
+    },
+    {
+      "id": "marketplace-seller",
+      "type": "concept",
+      "label": "Marketplace Seller",
+      "articles": []
+    },
+    {
+      "id": "account-abstraction",
+      "type": "concept",
+      "label": "Account Abstraction",
+      "articles": []
     }
   ],
   "edges": [
@@ -804,6 +822,26 @@
       "from": "badge",
       "to": "trust-badge",
       "label": "evolved as"
+    },
+    {
+      "from": "marketplace-buyer",
+      "to": "marketplace-seller",
+      "label": "pays"
+    },
+    {
+      "from": "marketplace-seller",
+      "to": "marketplace-buyer",
+      "label": "serves"
+    },
+    {
+      "from": "account-abstraction",
+      "to": "marketplace-buyer",
+      "label": "extends"
+    },
+    {
+      "from": "marketplace-buyer",
+      "to": "on-chain-recording",
+      "label": "mints pass via"
     }
   ]
 }
