@@ -49,7 +49,8 @@ describe("Anti-Pattern Guard Tests", () => {
       "assertion-builder.ts",
       "confidence.ts",
       "rule-engine.ts",
-      "rule-checkers.ts",
+      "evidence-collector.ts",
+      "rule-checkers/index.ts",
       "conflict-detector.ts",
       "openapi-parser.ts",
     ];
