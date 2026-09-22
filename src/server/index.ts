@@ -11,6 +11,8 @@ import { wireCirclePayments } from "./wiring/circle-payments";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
+import { CacheRateLimitStore } from "./middleware/rate-limit-redis-store";
+import { getCache } from "./lib/cache";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
 import { contentNegotiationMiddleware } from "./middleware/content-negotiation";
@@ -29,7 +31,7 @@ import {
   registerPostMarketplaceRoutes,
   registerOpsRoutes,
 } from "./routes";
-import { loadConfig } from "../config/env";
+import { loadConfig, getConfig } from "../config/env";
 import { initSentry } from "./lib/sentry";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
 
@@ -61,7 +63,14 @@ app.use(cacheHeadersMiddleware());
 // EPIC-140: extracted to wiring/payments.ts — must stay BEFORE signature/rateLimit.
 wireL402(app);
 app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));
-app.use(rateLimitMiddleware());
+// EPIC-144: shared cache-backed counters when CACHE_ENABLED, else MemoryStore.
+app.use(
+  rateLimitMiddleware(
+    getConfig().cache?.enabled
+      ? { store: new CacheRateLimitStore(getCache()) }
+      : undefined,
+  ),
+);
 app.use(bazaarExtensionMiddleware());
 
 // SLICE-130-7: GA4 pageview tracking — fire-and-forget for HTML 200 GET responses

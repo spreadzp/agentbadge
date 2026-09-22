@@ -78,7 +78,8 @@
     "@agentbadge/circle-payments": "^0.1.1",
     "@agentbadge/bstock-tracker": "file:../../packages/bstock-tracker",
     "@agentbadge/pass-auth": "file:../../packages/pass-auth",
-    "@agentbadge/database": "file:../../packages/database"
+    "@agentbadge/database": "file:../../packages/database",
+    "@agentbadge/cache": "file:../../packages/cache"
   },
   "devDependencies": {
     "@circle-fin/x402-batching": "^3.5.0",

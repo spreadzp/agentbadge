@@ -29,6 +29,13 @@ export interface RateLimitStore {
   delete(key: string): void;
   sweep(now: number): void;
   size(): number;
+  /**
+   * Optional async fast-path (EPIC-144): atomic increment for one window.
+   * When present, the middleware awaits this instead of the sync
+   * get/set/count++ path — required for remote stores where local
+   * mutation would be lost. Must never throw (degrade to count 0).
+   */
+  hit?(key: string, windowMs: number): Promise<RateLimitEntry>;
 }
 
 export interface RateLimitConfig {
@@ -53,6 +60,8 @@ interface RateLimitOptions {
   windowMs?: number;
   /** Max requests per window per IP (default: 60) */
   max?: number;
+  /** Custom store (EPIC-144: CacheRateLimitStore when CACHE_ENABLED) */
+  store?: RateLimitStore;
 }
 
 // ─── MemoryStore ─────────────────────────────────────────
@@ -180,14 +189,18 @@ export function createRateLimiter(config?: RateLimitConfig) {
 
     maybeSweep(now);
 
-    let entry = store.get(key);
-
-    if (!entry || entry.resetAt <= now) {
-      entry = { count: 0, resetAt: now + windowMs };
+    let entry: RateLimitEntry;
+    if (store.hit) {
+      // Remote store (EPIC-144): atomic INCR+EXPIRE, no local mutation.
+      entry = await store.hit(key, windowMs);
+    } else {
+      entry = store.get(key) ?? { count: 0, resetAt: now + windowMs };
+      if (entry.resetAt <= now) {
+        entry = { count: 0, resetAt: now + windowMs };
+      }
+      entry.count++;
       store.set(key, entry);
     }
-
-    entry.count++;
 
     const remaining = Math.max(0, max - entry.count);
     const retryAfterSec = Math.ceil((entry.resetAt - now) / 1000);
