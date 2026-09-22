@@ -4,6 +4,21 @@ All notable changes to AgentBadge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] — 2026-09-22
+
+### Added — Architecture Awareness Layer (EPIC-142)
+
+- **`ARCHITECTURE.md`** (repo root) — curated layer map: server layering rules, decision table (13 rows), packages map, conventions cheat-sheet
+- **`scripts/arch-graph.mts`** — generates `docs/architecture-graph.md` (mermaid module-dependency diagram of `src/**`, deterministic output)
+- **`arch:graph` / `arch:graph:check` npm scripts** — regenerate graph / regenerate + `git diff --exit-code` staleness gate
+- **`.github/workflows/arch-guard.yml`** — CI check fails when `src/**` imports change without regenerating the graph
+- **ESLint layer boundaries** — `no-restricted-imports` errors: `views/` ↛ `server/routes|middleware|services|wiring`; `config/env` is a leaf (↛ server/views/agent-readiness/mcp/agents/verifiers)
+- **`/arch-fit` workflow** — placement-decision skill hooked into epic-slice-development step 2
+
+### Changed
+
+- `WorkRequestStatus`/`WorkRequestData`/`WorkRequestRecord` types extracted to `src/server/lib/work-request-types.ts` (store re-exports for backward compatibility) — fixes the single boundary violation found by the new lint rules
+
 ## [0.14.0] — 2025-09-14
 
 ### Added — KeeperHub On-Chain Recording (EPIC-126)
