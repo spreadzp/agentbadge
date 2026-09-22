@@ -58,6 +58,9 @@ export async function startBstockFeeds(
     onPrices: (p) => eng.onBinancePrices(p),
     onQuotes: (q) => eng.onBinanceQuotes(q),
     onError: (e) => console.error("[bstock] binance feed:", e),
+    // equity/ws/price pushes underlying tickers, not bStock codes —
+    // WS never goes silent, so quotes must poll unconditionally.
+    pollAlways: true,
   });
   feed.start();
   stops.push(() => feed.stop());
