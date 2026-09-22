@@ -97,14 +97,16 @@ const database = getDatabase();
 if (database.db) {
   database
     .health()
-    .then((up) => {
+    .then((up: boolean) => {
       if (up) {
         logger.info("database: connected");
       } else {
         logger.error("database: health probe failed", {});
       }
     })
-    .catch((e) => logger.error("database: health probe error", { error: e }));
+    .catch((e: unknown) =>
+      logger.error("database: health probe error", { error: e }),
+    );
 } else {
   logger.info("database: disabled (in-memory)");
 }

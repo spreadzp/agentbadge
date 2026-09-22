@@ -80,6 +80,32 @@ OPTIONAL_SECRETS=(
   DATABASE_URL
   # NOTE: DIRECT_URL is intentionally NOT whitelisted — it is the unpooled
   # migration URL and stays local in .env.deployer (see packages/database/RUNBOOK.md)
+
+  # ── bStock delta tracker (EPIC-141) ──
+  BSTOCK_ENABLED
+  BSTOCK_FEED_ENABLED
+  BSTOCK_SERVICE_ID
+  BSTOCK_SELLER_PASSPORT_ID
+  BSTOCK_PRICE_USD
+  BSTOCK_PASS_DURATION_SEC
+  BSTOCK_RATE_LIMIT_PER_MIN
+  BSTOCK_MAX_SSE_CONNECTIONS
+  MCP_AGENT_TOKENS
+  FINNHUB_API_KEY
+  ALPACA_API_KEY
+  ALPACA_API_SECRET
+  TELEGRAM_BOT_BSTOK_TOKEN
+  X402_PAY_TO
+  X402_USDC_ADDRESS
+  # .env keeps BSTOK-infix names; pushed under canonical names via SECRET_RENAME
+  BINANCE_BSTOK_API_KEY
+  BINANCE_BSTOK_API_SECRET
+)
+
+# .env name → Fly secret name (when they differ)
+declare -A SECRET_RENAME=(
+  [BINANCE_BSTOK_API_KEY]="BINANCE_API_KEY"
+  [BINANCE_BSTOK_API_SECRET]="BINANCE_API_SECRET"
 )
 
 # ── Colors ───────────────────────────────────────────────────────────
@@ -180,15 +206,16 @@ echo ""
 # Required secrets
 for key in "${SECRETS[@]}"; do
   value="${!key}"
+  fly_key="${SECRET_RENAME[$key]:-$key}"
   # Use --stage to batch all secrets in one deployment
-  if flyctl secrets set --stage "$key=$value" 2>/dev/null; then
-    info "  ✓ $key"
+  if flyctl secrets set --stage "$fly_key=$value" 2>/dev/null; then
+    info "  ✓ $fly_key"
   else
     # Fallback: without --stage (immediate)
-    if flyctl secrets set "$key=$value" 2>/dev/null; then
-      info "  ✓ $key (immediate)"
+    if flyctl secrets set "$fly_key=$value" 2>/dev/null; then
+      info "  ✓ $fly_key (immediate)"
     else
-      error "  ✗ Failed to set $key"
+      error "  ✗ Failed to set $fly_key"
     fi
   fi
 done
@@ -200,13 +227,14 @@ for key in "${OPTIONAL_SECRETS[@]}"; do
     continue
   fi
   value="${!key}"
-  if flyctl secrets set --stage "$key=$value" 2>/dev/null; then
-    info "  ✓ $key (optional)"
+  fly_key="${SECRET_RENAME[$key]:-$key}"
+  if flyctl secrets set --stage "$fly_key=$value" 2>/dev/null; then
+    info "  ✓ $fly_key (optional)"
   else
-    if flyctl secrets set "$key=$value" 2>/dev/null; then
-      info "  ✓ $key (optional, immediate)"
+    if flyctl secrets set "$fly_key=$value" 2>/dev/null; then
+      info "  ✓ $fly_key (optional, immediate)"
     else
-      warn "  ✗ Failed to set $key (optional, skipped)"
+      warn "  ✗ Failed to set $fly_key (optional, skipped)"
     fi
   fi
 done
