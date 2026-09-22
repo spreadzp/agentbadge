@@ -1,6 +1,6 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
-import type { WorkRequestRecord } from "../server/services/work-request-store";
+import type { WorkRequestRecord } from "../server/lib/work-request-types";
 
 export function WorkRequestDetailPage(wr: WorkRequestRecord) {
   const statusColors: Record<string, string> = {

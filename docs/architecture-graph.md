@@ -122,6 +122,7 @@ flowchart LR
   server_services["server/services"] --> data["data"]
   server_services["server/services"] --> pkg_hedera_core["pkg: hedera-core"]
   server_services["server/services"] --> pkg_passport["pkg: passport"]
+  server_services["server/services"] --> server_lib["server/lib"]
   server_wiring["server/wiring"] --> agent_readiness["agent-readiness"]
   server_wiring["server/wiring"] --> config["config"]
   server_wiring["server/wiring"] --> mcp["mcp"]
@@ -148,7 +149,6 @@ flowchart LR
   views["views"] --> pkg_webmcp["pkg: webmcp"]
   views["views"] --> server_lib["server/lib"]
   views["views"] --> server_registry["server/registry"]
-  views["views"] --> server_services["server/services"]
 ```
 
 - Nodes are top-level modules (`server/routes`, `views`, `agent-readiness/*`, ...).

@@ -3,30 +3,16 @@
  *
  * SLICE-46-9: Stores work requests with status flow.
  * Status: received → human_review → needs_information → accepted/declined → completed
+ * Types live in lib/work-request-types.ts (EPIC-142-4 layer boundary).
  */
 
-export type WorkRequestStatus =
-  | "received"
-  | "human_review"
-  | "needs_information"
-  | "accepted"
-  | "declined"
-  | "completed";
+import type {
+  WorkRequestData,
+  WorkRequestRecord,
+  WorkRequestStatus,
+} from "../lib/work-request-types";
 
-export interface WorkRequestData {
-  title: string;
-  summary: string;
-  requirements?: string[];
-}
-
-export interface WorkRequestRecord {
-  id: string;
-  status: WorkRequestStatus;
-  request: WorkRequestData;
-  preferred_contact?: { channel: string };
-  created_at: string;
-  updated_at: string;
-}
+export type { WorkRequestData, WorkRequestRecord, WorkRequestStatus };
 
 class WorkRequestStore {
   private records = new Map<string, WorkRequestRecord>();

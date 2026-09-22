@@ -83,6 +83,59 @@ export default [
       "max-lines": "off",
     },
   },
+  // LAYER BOUNDARIES (EPIC-142, ARCHITECTURE.md §2). Views are pure
+  // templates: they receive data and never import request-handling layers.
+  {
+    files: ["src/views/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/server/routes",
+                "**/server/routes/**",
+                "**/server/middleware",
+                "**/server/middleware/**",
+                "**/server/services",
+                "**/server/services/**",
+                "**/server/wiring",
+                "**/server/wiring/**",
+              ],
+              message:
+                "Views must not import routes/middleware/services/wiring — handlers live in server/routes, computation in server/lib.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // config/env is a leaf: siblings and @agentbadge/* packages only.
+  {
+    files: ["src/config/env/**/*.ts", "src/config/env.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/server/**",
+                "**/views/**",
+                "**/agent-readiness/**",
+                "**/mcp/**",
+                "**/agents/**",
+                "**/verifiers/**",
+              ],
+              message:
+                "config/env is a leaf — it must not import application layers.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     ignores: ["dist/", "node_modules/", "graphify-out/"],
   },
