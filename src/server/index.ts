@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { getConfig } from "../config/env";
 import { logger } from "@agentbadge/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { bazaarExtensionMiddleware } from "./middleware/bazaar-extension";
@@ -22,6 +21,7 @@ import { securityHeaders } from "./middleware/security-headers";
 import { ga4Pageview } from "./middleware/ga4-pageview";
 import { opsRoutes } from "./routes/ops";
 import { linkedinRoutes } from "./routes/linkedin";
+import { getDatabase } from "./lib/database";
 import {
   registerCoreRoutes,
   registerPageRoutes,
@@ -79,6 +79,25 @@ if (!isMockMode) {
     logger.error("SERVER: Config error", { error: e });
     process.exit(1);
   }
+}
+
+// EPIC-143: database init — DATABASE_ENABLED=false/unset → in-memory
+// fallback, zero behavior change. Probe is async + non-fatal: a bad URL
+// logs an error and health reports db:"down" instead of crash-looping.
+const database = getDatabase();
+if (database.db) {
+  database
+    .health()
+    .then((up) => {
+      if (up) {
+        logger.info("database: connected");
+      } else {
+        logger.error("database: health probe failed", {});
+      }
+    })
+    .catch((e) => logger.error("database: health probe error", { error: e }));
+} else {
+  logger.info("database: disabled (in-memory)");
 }
 
 // EPIC-140: x402 Hedera + MPP/Stripe + Base x402 gates extracted to
@@ -158,6 +177,20 @@ try {
     idleTimeout: 0,
   });
   logger.info("SERVER listening", { url: `http://${server.hostname}:${server.port}` });
+
+  // EPIC-143: graceful shutdown — the ONLY place database.close() is called
+  // (shared pool; never close per-request).
+  const shutdown = async (signal: string) => {
+    logger.info("SERVER shutting down", { signal });
+    try {
+      await database.close();
+    } catch (e) {
+      logger.error("database: close failed", { error: e });
+    }
+    process.exit(0);
+  };
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 } catch (e) {
   logger.error("SERVER: Bun.serve failed", { error: e });
   process.exit(1);

@@ -8,17 +8,27 @@ import { logger } from "@agentbadge/passport";
 import { APP_VERSION, BUILD_DATE, GIT_COMMIT } from "../lib/build-info";
 import { isStripeConfigured } from "../lib/stripe-client";
 import { adminAuth } from "../middleware/adminAuth";
+import { getDatabase } from "../lib/database";
 
 export const opsRoutes = new Hono();
 
-const healthHandler = (c: Context) => {
+const healthHandler = async (c: Context) => {
   const tools = listTools();
+  // EPIC-143: db status — "disabled" when DATABASE_ENABLED is unset/false,
+  // otherwise a live SELECT 1 probe.
+  const database = getDatabase();
+  const dbStatus = database.db
+    ? (await database.health())
+      ? "up"
+      : "down"
+    : "disabled";
   return c.json({
     status: "healthy",
     version: APP_VERSION,
     buildDate: BUILD_DATE,
     gitCommit: GIT_COMMIT,
     uptime: process.uptime(),
+    db: dbStatus,
     mcp: {
       toolsCount: tools.length,
       tools: tools.map((t) => t.name),

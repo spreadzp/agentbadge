@@ -373,6 +373,11 @@ describe("loadConfig", () => {
     process.env.IPFS_API_KEY = "test-key";
     process.env.IPFS_API_SECRET = "test-secret";
     delete process.env.ATTESTCOIN_ENABLED;
+    // .env leaks these via vitest.setup.ts — clear for a true "defaults" check
+    delete process.env.TASK_ESCROW_SEPOLIA_ADDR;
+    delete process.env.TASK_MARKETPLACE_ASC_ADDR;
+    delete process.env.TASK_STATE_ADDR;
+    delete process.env.SEPOLIA_RPC_URL;
 
     const config = loadConfig();
     expect(config.attestcoin.enabled).toBe(false);
@@ -483,5 +488,65 @@ describe("scanPacks config (SLICE-133-13)", () => {
     process.env.SCAN_PRICE_MEDIUM = "-1";
     const config = loadConfig();
     expect(config.scanPacks.priceOverrides).toEqual({});
+  });
+});
+
+describe("database env section (EPIC-143)", () => {
+  const originalEnv = { ...process.env };
+
+  function setRequired() {
+    process.env.HEDERA_OPERATOR_ID = "0.0.5266613";
+    process.env.HEDERA_OPERATOR_KEY = "302e020100300506032b657004220420abcdef";
+    process.env.HEDERA_NETWORK = "testnet";
+    process.env.PASSPORT_TOKEN_ID = "0.0.1234567";
+    process.env.AUDIT_TOPIC_ID = "0.0.7654321";
+    process.env.DIRECTORY_TOPIC_ID = "0.0.8765432";
+    process.env.x402_FACILITATOR_URL = "https://api.testnet.blocky402.com";
+    process.env.x402_FEE_PAYER = "0.0.7162784";
+    process.env.x402_TREASURY = "0.0.8011510";
+    process.env.IPFS_API_KEY = "test-key";
+    process.env.IPFS_API_SECRET = "test-secret";
+  }
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    delete process.env.DATABASE_ENABLED;
+    delete process.env.DATABASE_URL;
+    delete process.env.DIRECT_URL;
+    resetConfigCache();
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("DATABASE_ENABLED unset → section absent (in-memory fallback)", () => {
+    setRequired();
+    const config = loadConfig();
+    expect(config.database).toBeUndefined();
+  });
+
+  it("DATABASE_ENABLED=false → section absent", () => {
+    setRequired();
+    process.env.DATABASE_ENABLED = "false";
+    const config = loadConfig();
+    expect(config.database).toBeUndefined();
+  });
+
+  it("DATABASE_ENABLED=true without DATABASE_URL → aggregated error", () => {
+    setRequired();
+    process.env.DATABASE_ENABLED = "true";
+    expect(() => loadConfig()).toThrow(/DATABASE_URL/);
+  });
+
+  it("DATABASE_ENABLED=true + DATABASE_URL → section present, directUrl passthrough", () => {
+    setRequired();
+    process.env.DATABASE_ENABLED = "true";
+    process.env.DATABASE_URL = "postgres://postgres:postgres@localhost:5335/agentbadge";
+    process.env.DIRECT_URL = "postgres://postgres:postgres@localhost:5335/agentbadge";
+    const config = loadConfig();
+    expect(config.database?.enabled).toBe(true);
+    expect(config.database?.url).toContain("localhost:5335");
+    expect(config.database?.directUrl).toContain("localhost:5335");
   });
 });
