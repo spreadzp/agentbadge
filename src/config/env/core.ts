@@ -7,7 +7,9 @@
  */
 
 import { loadAttestcoin } from "./attestcoin";
+import { loadBstock } from "./bstock";
 import { loadCirclePayments } from "./circle-payments";
+import { loadDatabase } from "./database";
 import { loadKeeperHub } from "./keeperhub";
 import { loadMarketplace } from "./marketplace";
 import { loadScanPacks } from "./scan-packs";
@@ -187,6 +189,8 @@ export function loadConfig(): AppConfig {
   // Optional feature sections — accumulate errors.
   const keeperhub = loadKeeperHub(errors);
   const circlePayments = loadCirclePayments(errors);
+  const bstock = loadBstock(errors);
+  const database = loadDatabase(errors);
 
   const hederaNetwork = process.env.HEDERA_NETWORK ?? "testnet";
   const port = Number(process.env.PORT ?? 4021);
@@ -224,6 +228,8 @@ export function loadConfig(): AppConfig {
     analytics,
     keeperhub,
     circlePayments,
+    bstock,
+    database,
     scanPacks,
     marketplace,
   };

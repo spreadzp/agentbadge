@@ -18,8 +18,17 @@ import {
   registerEscrowTools,
   registerDatasetTools,
   registerAllTools,
+  registerBstockTools,
   type NamespaceRegistry,
 } from "@agentbadge/mcp";
+import { getConfig } from "../../config/env";
+import { getBstockEngine } from "../lib/bstock/engine";
+import {
+  bstockAuth,
+  bstockRateLimit,
+  bstockSseCap,
+  BstockSseCap,
+} from "../middleware/bstock-gate";
 import { registerComplianceTools } from "../../mcp/compliance-tools";
 import { registerParityTools } from "../../mcp/parity-tools";
 import { registerKeeperhubTools } from "../../mcp/keeperhub-tools";
@@ -30,6 +39,7 @@ export interface McpNamespaces {
   marketNs: NamespaceRegistry;
   discoveryNs: NamespaceRegistry;
   auditNs: NamespaceRegistry;
+  bstockNs?: NamespaceRegistry;
 }
 
 // Register MCP namespace tools BEFORE mounting namespace routes
@@ -55,7 +65,15 @@ export function registerMcpNamespaces(): McpNamespaces {
   registerComplianceTools(auditNs);
   registerParityTools(auditNs);
 
-  return { passportNs, marketNs, discoveryNs, auditNs };
+  // EPIC-141: bStock namespace — only when BSTOCK_ENABLED (feature gate).
+  const bstockCfg = getConfig().bstock;
+  let bstockNs: NamespaceRegistry | undefined;
+  if (bstockCfg?.enabled) {
+    bstockNs = createNamespace("bstock");
+    registerBstockTools(getBstockEngine(), bstockNs);
+  }
+
+  return { passportNs, marketNs, discoveryNs, auditNs, bstockNs };
 }
 
 // Namespace MCP routes — each serves only its namespace's tools
@@ -64,6 +82,18 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
   app.route("/mcp/market", createNamespaceRoutes("market"));
   app.route("/mcp/discovery", createNamespaceRoutes("discovery"));
   app.route("/mcp/audit", createNamespaceRoutes("audit"));
+
+  // EPIC-141: /mcp/bstock — bearer auth + per-token rate limit + SSE cap.
+  const bstockCfg = getConfig().bstock;
+  if (bstockCfg?.enabled) {
+    app.use(
+      "/mcp/bstock/*",
+      bstockAuth(bstockCfg.agentTokens),
+      bstockRateLimit(bstockCfg.rateLimitPerMin),
+      bstockSseCap(new BstockSseCap(bstockCfg.maxSseConnections)),
+    );
+    app.route("/mcp/bstock", createNamespaceRoutes("bstock"));
+  }
 }
 
 // Register MCP tools — default "all" namespace (backward compat)

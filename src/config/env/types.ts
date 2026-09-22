@@ -143,6 +143,29 @@ export interface KeeperHubEnvConfig {
   };
 }
 
+/**
+ * Database persistence config (EPIC-143, SLICE-143-4).
+ * Present only when DATABASE_ENABLED=true; absent = in-memory fallback.
+ */
+export interface DatabaseEnvConfig {
+  enabled: boolean;
+  /** Pooled runtime URL (DATABASE_URL). */
+  url: string;
+  /** Unpooled URL for CLI/migrations — not used by the runtime. */
+  directUrl?: string;
+}
+
+/** bStock tracker config (EPIC-141). Loaded when BSTOCK_ENABLED=true. */
+export interface BstockEnvConfig {
+  enabled: boolean;
+  /** Bearer token → agentId map (MCP_AGENT_TOKENS=agent:token,...). */
+  agentTokens: Map<string, string>;
+  /** Per-token rate limit, req/min (default 60). */
+  rateLimitPerMin: number;
+  /** Max concurrent SSE connections (default 20). */
+  maxSseConnections: number;
+}
+
 export interface AppConfig {
   chainMode: ChainMode;
   hederaOperatorId: string;
@@ -167,6 +190,8 @@ export interface AppConfig {
   analytics: AnalyticsConfig;
   keeperhub?: KeeperHubEnvConfig;
   circlePayments?: CirclePaymentsConfig;
+  bstock?: BstockEnvConfig;
+  database?: DatabaseEnvConfig;
   scanPacks: ScanPacksConfig;
   marketplace?: MarketplaceConfig;
 }

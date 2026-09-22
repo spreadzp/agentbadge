@@ -49,7 +49,7 @@
     "@agentbadge/evm-core": "^0.1.1",
     "@agentbadge/hedera-core": "^0.1.15",
     "@agentbadge/keeperhub": "^0.1.0",
-    "@agentbadge/mcp": "^0.1.9",
+    "@agentbadge/mcp": "file:../../packages/mcp",
     "@agentbadge/passport": "^0.1.8",
     "@agentbadge/webmcp": "^0.3.0",
     "@hashgraph/sdk": "^2.55.0",
@@ -75,7 +75,9 @@
     "viem": "^2.55.8",
     "yaml": "^2.9.0",
     "zod": "^4.0.0",
-    "@agentbadge/circle-payments": "^0.1.1"
+    "@agentbadge/circle-payments": "^0.1.1",
+    "@agentbadge/bstock-tracker": "file:../../packages/bstock-tracker",
+    "@agentbadge/database": "file:../../packages/database"
   },
   "devDependencies": {
     "@circle-fin/x402-batching": "^3.5.0",
