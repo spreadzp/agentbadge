@@ -18,7 +18,7 @@ function setup() {
   const subs = new TelegramSubscriptions(registry);
   const ns = createNamespace("bstock");
   registerBstockTelegramTools({ subscriptions: subs }, ns);
-  const app = new Hono();
+  const app = new Hono<{ Variables: { agentId: string } }>();
   // Simulate bstockAuth: agentId from bearer token.
   app.use("/mcp/bstock/*", async (c, next) => {
     const token = c.req.header("Authorization")?.slice(7) ?? "";
@@ -29,7 +29,9 @@ function setup() {
   return { registry, subs, app };
 }
 
-const call = (app: Hono, tool: string, args: unknown, token = "tok-1") =>
+type TestApp = Hono<{ Variables: { agentId: string } }>;
+
+const call = (app: TestApp, tool: string, args: unknown, token = "tok-1") =>
   app.request(`/mcp/bstock/tools/${tool}`, {
     method: "POST",
     headers: {

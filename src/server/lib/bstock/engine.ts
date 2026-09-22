@@ -7,11 +7,10 @@
  */
 
 import { DeltaEngine } from "@agentbadge/bstock-tracker";
-import type { BstockEngineLike } from "@agentbadge/mcp";
 
 let engine: DeltaEngine | null = null;
 
-export function getBstockEngine(): BstockEngineLike {
+export function getBstockEngine(): DeltaEngine {
   if (!engine) {
     engine = new DeltaEngine();
   }

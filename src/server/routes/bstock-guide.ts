@@ -100,8 +100,16 @@ Renewal: repeat the buy — the pass extends (\`ServicePassExtended\`).
 bstockGuideRoutes.get(
   "/bstock-guide",
   describeRoute({
-    description: "Markdown bStock delta tracker guide",
-    content: { "text/markdown": {} },
+    tags: ["bStock"],
+    summary: "bStock delta tracker agent guide (markdown)",
+    description:
+      "Markdown instructions for AI agents: free tier, x402 payment flow, rate limits, call examples.",
+    responses: {
+      200: {
+        description: "Markdown bStock guide",
+        content: { "text/markdown": {} },
+      },
+    },
   }),
   (c) => {
     const markdown = generateBstockGuide();

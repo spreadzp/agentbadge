@@ -25,6 +25,7 @@ import {
 import { getConfig } from "../../config/env";
 import { getBstockEngine } from "../lib/bstock/engine";
 import { ensureBstockService } from "../lib/bstock/service";
+import { startBstockFeeds } from "../lib/bstock/feeds";
 import {
   getTelegramSubscriptions,
   getBstockTelegramBot,
@@ -126,6 +127,11 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
       bstockSseCap(new BstockSseCap(bstockCfg.maxSseConnections)),
     );
     app.route("/mcp/bstock", createNamespaceRoutes("bstock"));
+
+    // Live price feeds — opt-in via BSTOCK_FEED_ENABLED (off in tests).
+    if (process.env.BSTOCK_FEED_ENABLED === "true") {
+      void startBstockFeeds(getBstockEngine());
+    }
 
     // 141-9/10: Telegram bot — webhook + 1/min alert batch + ~1h digest.
     const bot = getBstockTelegramBot(getBstockEngine());
