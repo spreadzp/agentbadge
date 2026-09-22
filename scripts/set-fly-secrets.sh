@@ -76,6 +76,10 @@ OPTIONAL_SECRETS=(
   BASE_ESCROW_ADDRESS
   BASE_USDC_ADDRESS
   BASE_EVENT_LOG_ADDRESS
+  DATABASE_ENABLED
+  DATABASE_URL
+  # NOTE: DIRECT_URL is intentionally NOT whitelisted — it is the unpooled
+  # migration URL and stays local in .env.deployer (see packages/database/RUNBOOK.md)
 )
 
 # ── Colors ───────────────────────────────────────────────────────────
