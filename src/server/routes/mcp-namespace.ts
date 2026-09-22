@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { getNamespace, type ToolResult } from "@agentbadge/mcp";
 
 export function createNamespaceRoutes(namespaceName: string): Hono {
@@ -58,7 +58,10 @@ export function createNamespaceRoutes(namespaceName: string): Hono {
           error: { code: -32602, message: "Missing required parameter: name" },
         });
       }
-      const result: ToolResult = await ns.handleHttpToolCall(params.name, params.arguments ?? {});
+      const result: ToolResult = await ns.handleHttpToolCall(
+        params.name,
+        withAgentId(c, params.arguments ?? {}),
+      );
       if (result.isError) {
         return c.json({
           jsonrpc: "2.0",
@@ -112,9 +115,23 @@ export function createNamespaceRoutes(namespaceName: string): Hono {
       return c.json(result);
     }
 
-    const result = await ns.handleHttpToolCall(toolName, args);
+    const result = await ns.handleHttpToolCall(toolName, withAgentId(c, args));
     return c.json(result);
   });
 
   return routes;
+}
+
+/**
+ * Inject the caller's agentId (set by bearer-auth middleware) into tool
+ * args as `_agentId` — lets per-agent tools (e.g. telegram subscriptions,
+ * SLICE-141-10) identify the caller without changing ToolHandler's
+ * signature in @agentbadge/mcp.
+ */
+function withAgentId(
+  c: Context,
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const agentId = c.get("agentId") as string | undefined;
+  return agentId ? { ...args, _agentId: agentId } : args;
 }

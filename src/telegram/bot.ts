@@ -15,6 +15,7 @@ import { Hono } from "hono";
 import type { DeltaView, DeltaEvent } from "@agentbadge/bstock-tracker";
 import { formatAlert, formatEvent, buildDigest } from "./format";
 import { ChatRegistry } from "./registry";
+import type { TelegramSubscriptions } from "./subscriptions";
 
 export interface BstockTelegramEngine {
   listDeltas(): DeltaView[];
@@ -28,6 +29,12 @@ export interface BstockTelegramBotOptions {
   engine: BstockTelegramEngine;
   /** Injectable sender — production default hits the Bot API. */
   send: TelegramSend;
+  /**
+   * Subscription store (141-10). When provided, alerts/digests go ONLY
+   * to subscribed chat_ids; when absent, all registered chats receive
+   * them (back-compat with 141-9 tests).
+   */
+  subscriptions?: TelegramSubscriptions;
 }
 
 interface TgMessage {
@@ -51,8 +58,14 @@ export function makeTelegramSender(botToken: string): TelegramSend {
 }
 
 export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
-  const { registry, engine, send } = opts;
+  const { registry, engine, send, subscriptions } = opts;
   let lastEventCount = 0;
+
+  /** Delivery targets: subscribed chats only when subscriptions exist. */
+  function targets(): number[] {
+    if (!subscriptions) return registry.list().map((c) => c.chatId);
+    return subscriptions.subscribedChatIds();
+  }
 
   const routes = new Hono();
 
@@ -85,15 +98,15 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
     if (lines.length === 0) return;
 
     const text = lines.join("\n");
-    for (const { chatId } of registry.list()) {
+    for (const chatId of targets()) {
       await send(chatId, text);
     }
   }
 
-  /** ~1h cron: digest of all tickers to every registered chat. */
+  /** ~1h cron: digest of all tickers to every subscribed chat. */
   async function digestTick(): Promise<void> {
     const text = buildDigest(engine.listDeltas());
-    for (const { chatId } of registry.list()) {
+    for (const chatId of targets()) {
       await send(chatId, text);
     }
   }

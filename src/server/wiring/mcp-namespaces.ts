@@ -19,11 +19,16 @@ import {
   registerDatasetTools,
   registerAllTools,
   registerBstockTools,
+  registerBstockTelegramTools,
   type NamespaceRegistry,
 } from "@agentbadge/mcp";
 import { getConfig } from "../../config/env";
 import { getBstockEngine } from "../lib/bstock/engine";
 import { ensureBstockService } from "../lib/bstock/service";
+import {
+  getTelegramSubscriptions,
+  getBstockTelegramBot,
+} from "../../telegram/state";
 import { getMarketplaceOps } from "../lib/marketplace";
 import { hasAccess } from "@agentbadge/pass-auth";
 import { HTTPFacilitator } from "../middleware/x402-base";
@@ -76,6 +81,10 @@ export function registerMcpNamespaces(): McpNamespaces {
   if (bstockCfg?.enabled) {
     bstockNs = createNamespace("bstock");
     registerBstockTools(getBstockEngine(), bstockNs);
+    registerBstockTelegramTools(
+      { subscriptions: getTelegramSubscriptions() },
+      bstockNs,
+    );
   }
 
   return { passportNs, marketNs, discoveryNs, auditNs, bstockNs };
@@ -117,6 +126,14 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
       bstockSseCap(new BstockSseCap(bstockCfg.maxSseConnections)),
     );
     app.route("/mcp/bstock", createNamespaceRoutes("bstock"));
+
+    // 141-9/10: Telegram bot — webhook + 1/min alert batch + ~1h digest.
+    const bot = getBstockTelegramBot(getBstockEngine());
+    if (bot) {
+      app.route("/", bot.routes);
+      setInterval(() => void bot.alertTick(), 60_000).unref();
+      setInterval(() => void bot.digestTick(), 3_600_000).unref();
+    }
   }
 }
 

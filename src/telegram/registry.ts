@@ -26,4 +26,13 @@ export class ChatRegistry {
   has(chatId: number): boolean {
     return this.chats.has(chatId);
   }
+
+  /** Reverse lookup — username (with or without @) → chat_id. */
+  findByUsername(username: string): number | undefined {
+    const needle = username.replace(/^@/, "").toLowerCase();
+    for (const [chatId, name] of this.chats) {
+      if (name.replace(/^@/, "").toLowerCase() === needle) return chatId;
+    }
+    return undefined;
+  }
 }
