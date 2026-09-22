@@ -41,6 +41,7 @@ import { metaRoutes } from "./meta";
 import { searchRoutes } from "./search";
 import { marketGuideRoutes } from "./market-guide";
 import { medicalGuideRoutes } from "./medical-guide";
+import { bstockGuideRoutes } from "./bstock-guide";
 import { contactRoutes } from "./contact";
 import { contentPageRoutes } from "./content-pages";
 import { blogRoutes } from "./blog";
@@ -106,6 +107,7 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", searchRoutes);
   app.route("/", marketGuideRoutes);
   app.route("/", medicalGuideRoutes);
+  app.route("/", bstockGuideRoutes);
   app.route("/", contactRoutes);
   app.route("/", contentPageRoutes);
   app.route("/", blogRoutes);
