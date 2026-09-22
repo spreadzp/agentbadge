@@ -17,14 +17,11 @@
         "@agentbadge/passport": "^0.2.1",
         "@agentbadge/webmcp": "^0.3.0",
         "@hashgraph/sdk": "^2.55.0",
-        "@hono/standard-validator": "^0.3.0",
         "@hono/swagger-ui": "^0.6.1",
         "@modelcontextprotocol/sdk": "^1.12.0",
         "@sentry/node": "^10.67.0",
         "@standard-community/standard-json": "^0.3.5",
-        "@standard-community/standard-openapi": "^0.2.9",
         "@x402/evm": "^2.25.0",
-        "@x402/fetch": "^2.25.0",
         "@x402/hedera": "^2.25.0",
         "@x402/hono": "^2.25.0",
         "ethers": "^6.17.0",
@@ -44,10 +41,12 @@
         "@circle-fin/x402-batching": "^3.5.0",
         "@lhci/cli": "^0.14.0",
         "@resvg/resvg-js": "^2.6.2",
+        "@standard-community/standard-openapi": "^0.2.9",
         "@tailwindcss/typography": "^0.5.20",
         "@typescript-eslint/eslint-plugin": "^8.0.0",
         "@typescript-eslint/parser": "^8.0.0",
         "@vitest/coverage-v8": "^2.1.9",
+        "@x402/fetch": "^2.25.0",
         "ajv": "^8.20.0",
         "ajv-formats": "^3.0.1",
         "bun-types": "^1.1.0",
@@ -245,7 +244,7 @@
 
     "@hono/node-server": ["@hono/node-server@1.19.15", "", { "peerDependencies": { "hono": "^4" } }, ""],
 
-    "@hono/standard-validator": ["@hono/standard-validator@0.3.0", "", { "peerDependencies": { "hono": ">=4.11.2" } }, ""],
+    "@hono/standard-validator": ["@hono/standard-validator@0.4.0", "", { "peerDependencies": { "@standard-schema/spec": "^1.0.0", "hono": ">=4.11.2" } }, "sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw=="],
 
     "@hono/swagger-ui": ["@hono/swagger-ui@0.6.1", "", { "peerDependencies": { "hono": ">=4.0.0" } }, ""],
 
@@ -1912,8 +1911,6 @@
     "foreground-child/signal-exit": ["signal-exit@4.1.0", "", {}, "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw=="],
 
     "glob/minimatch": ["minimatch@9.0.9", "", { "dependencies": { "brace-expansion": "^2.0.2" } }, "sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg=="],
-
-    "hono-openapi/@hono/standard-validator": ["@hono/standard-validator@0.4.0", "", { "peerDependencies": { "@standard-schema/spec": "^1.0.0", "hono": ">=4.11.2" } }, "sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw=="],
 
     "import-in-the-middle/es-module-lexer": ["es-module-lexer@2.3.1", "", {}, ""],
 
