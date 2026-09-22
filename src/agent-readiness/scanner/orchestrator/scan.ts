@@ -1,3 +1,4 @@
+import type { CacheProvider } from "@agentbadge/cache";
 import { resolveAndPin } from "../ssrf/dns-pin";
 import { resolveBundleIds, resourcesForBundles } from "../../rule-bundles";
 import { AGENT_READINESS_RULESET } from "../../ruleset";
@@ -14,6 +15,24 @@ import {
   type OperationalDiscoveryContext,
   type ScanOptions,
 } from "./types";
+
+/**
+ * Shared L2 cache provider for cross-scan resource caching (EPIC-144).
+ * Returns undefined when CACHE_ENABLED is off or when server env isn't
+ * initialized (CLI context) — SnapshotCache then runs L1-only, identical
+ * to pre-144 behavior.
+ */
+async function resolveSharedProvider(): Promise<CacheProvider | undefined> {
+  try {
+    // Lazy imports keep the scanner usable without server env loaded.
+    const { getConfig } = await import("../../../config/env");
+    if (!getConfig().cache?.enabled) return undefined;
+    const { getCache } = await import("../../../server/lib/cache");
+    return getCache();
+  } catch {
+    return undefined;
+  }
+}
 
 const PARALLEL_RESOURCES = [
   "robots", "sitemap", "llms", "content_negotiation", "x402", "openapi_standard",
@@ -43,7 +62,10 @@ export async function scanDomain(
   await resolveAndPin(domain);
 
   const rateLimiter = new ScannerRateLimiter();
-  const cache = opts?.noCache ? null : new SnapshotCache();
+  // EPIC-144: shared L2 provider — explicit override wins, else resolved
+  // from server env (CACHE_ENABLED). CLI without server env → L1 only.
+  const shared = opts?.cacheProvider ?? (await resolveSharedProvider());
+  const cache = opts?.noCache ? null : new SnapshotCache({}, shared);
   // EPIC-133: bundle-scoped fetch — explicit `resources` wins over `bundles`.
   let resources = opts?.resources ?? [...DEFAULT_RESOURCES];
   if (!opts?.resources?.length && opts?.bundles?.length) {

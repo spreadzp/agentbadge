@@ -1,8 +1,15 @@
 import type { ResponseSnapshot } from "../snapshot";
 import type { AuthProbeCredentials } from "../fetchers/auth-probe-fetcher";
+import type { CacheProvider } from "@agentbadge/cache";
 
 export interface ScanOptions {
   noCache?: boolean;
+  /**
+   * Shared cross-scan cache backend (EPIC-144). When absent, scan.ts
+   * resolves it from server env (CACHE_ENABLED); CLI/tests can inject
+   * explicitly. `noCache` bypasses both layers regardless.
+   */
+  cacheProvider?: CacheProvider;
   timeout?: number;
   resources?: string[];
   /**

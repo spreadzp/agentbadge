@@ -1,3 +1,4 @@
+import { logger } from "@agentbadge/passport";
 import type { ScannerRateLimiter } from "../rate-limiter";
 import type { SnapshotCache } from "../cache";
 import type { ResponseSnapshot } from "../snapshot";
@@ -31,15 +32,17 @@ export async function fetchResource(
   credentialSecurityContext?: CredentialSecurityContext,
 ): Promise<ResponseSnapshot | null> {
   const cacheKey = `${baseUrl}/${resource}`;
-  if (cache?.has(cacheKey)) {
-    return cache.get(cacheKey);
+  if (cache) {
+    const cached = await cache.get(cacheKey);
+    if (cached) return cached;
+  } else {
+    // --no-cache: bypass both layers entirely (EPIC-144).
+    logger.debug("scanner.cache", {
+      event: "bypass",
+      resource,
+      domain: new URL(baseUrl).hostname,
+    });
   }
-
-  const check = rateLimiter.checkDomain(new URL(baseUrl).hostname);
-  if (!check.allowed) {
-    await new Promise((r) => setTimeout(r, check.retryAfterMs));
-  }
-  rateLimiter.recordRequest(new URL(baseUrl).hostname);
 
   const handler = RESOURCE_HANDLERS[resource];
   const ctx: FetchContext = {
@@ -52,7 +55,7 @@ export async function fetchResource(
   const snapshot = handler ? await handler(ctx) : null;
 
   if (snapshot && cache) {
-    cache.set(cacheKey, snapshot);
+    await cache.set(cacheKey, snapshot, resource);
   }
 
   return snapshot;
