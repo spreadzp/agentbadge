@@ -78,7 +78,7 @@
     "@agentbadge/circle-payments": "^0.1.1",
     "@agentbadge/bstock-tracker": "file:../../packages/bstock-tracker",
     "@agentbadge/pass-auth": "file:../../packages/pass-auth",
-    "@agentbadge/database": "file:../../packages/database",
+    "@agentbadge/database": "^0.1.1",
     "@agentbadge/cache": "file:../../packages/cache"
   },
   "devDependencies": {
