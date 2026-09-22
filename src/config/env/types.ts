@@ -164,6 +164,16 @@ export interface BstockEnvConfig {
   rateLimitPerMin: number;
   /** Max concurrent SSE connections (default 20). */
   maxSseConnections: number;
+  /** Freemium (141-7): marketplace service id (bytes32). */
+  serviceId: `0x${string}`;
+  /** ServicePass price in USDC (default "5"). */
+  priceUsd: string;
+  /** Pass lifetime seconds (default 30d). */
+  durationSec: number;
+  /** Treasury address for x402 payments (X402_PAY_TO). */
+  payTo: string;
+  /** x402 facilitator URL (X402_FACILITATOR_URL) — empty disables payments. */
+  facilitatorUrl: string;
 }
 
 export interface AppConfig {

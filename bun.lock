@@ -12,6 +12,7 @@
         "@agentbadge/hedera-core": "^0.1.15",
         "@agentbadge/keeperhub": "^0.1.0",
         "@agentbadge/mcp": "file:../../packages/mcp",
+        "@agentbadge/pass-auth": "file:../../packages/pass-auth",
         "@agentbadge/passport": "^0.1.8",
         "@agentbadge/webmcp": "^0.3.0",
         "@hashgraph/sdk": "^2.55.0",
@@ -74,6 +75,8 @@
     "@agentbadge/keeperhub": ["@agentbadge/keeperhub@0.1.0", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-Iwr7iaWZWT+W8MlyX5NLJtu8OqULGApT5d0x8SMhB8lhT3OPEhLBL0fdFIyMKN2jTsLHAn7EPlnYeUAv0qzosA=="],
 
     "@agentbadge/mcp": ["@agentbadge/mcp@file:../../packages/mcp", { "dependencies": { "@agentbadge/hedera-core": "file:../hedera-core", "@agentbadge/passport": "file:../passport", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "devDependencies": { "bun-types": "^1.3.14", "esbuild": "^0.21.0", "typescript": "^5.9.0", "vitest": "^2.0.0" } }],
+
+    "@agentbadge/pass-auth": ["@agentbadge/pass-auth@file:../../packages/pass-auth", { "dependencies": { "viem": "^2.0.0" }, "devDependencies": { "bun-types": "^1.3.14", "hono": "^4.13.8", "typescript": "^5.9.0", "vitest": "^2.0.0" } }],
 
     "@agentbadge/passport": ["@agentbadge/passport@0.1.8", "", { "dependencies": { "@agentbadge/hedera-core": "^0.1.15", "@x402/hedera": "^2.19.0", "@x402/hono": "^2.19.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-T90XdBsnL3Lm/q2MvRynZeC7FxhlRMKoAaoVtbFPjDMaHlm++grnteUSPtU5X6fpNnE4xyHeAqN+UAdVd1B7KQ=="],
 
@@ -2148,6 +2151,8 @@
     "@agentbadge/mcp/@agentbadge/hedera-core": ["@agentbadge/hedera-core@file:../../packages/hedera-core", {}],
 
     "@agentbadge/mcp/@agentbadge/passport": ["@agentbadge/passport@file:../../packages/passport", {}],
+
+    "@agentbadge/pass-auth/hono": ["hono@4.13.8", "", {}, "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="],
 
     "@agentbadge/passport/@x402/hedera": ["@x402/hedera@2.19.0", "", { "dependencies": { "@hiero-ledger/proto": "2.31.0", "@hiero-ledger/sdk": "2.85.0", "@x402/core": "~2.19.0" } }, ""],
 

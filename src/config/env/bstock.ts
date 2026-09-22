@@ -6,11 +6,34 @@
  * for /mcp/bstock namespace auth.
  */
 
+import { keccak256, encodePacked, stringToHex } from "viem";
 import type { BstockEnvConfig } from "./types";
 import { booleanFlag } from "./validators";
 
 const DEFAULT_RATE_LIMIT_PER_MIN = 60;
 const DEFAULT_MAX_SSE = 20;
+
+// ─── Freemium constants (141-7) — live here so env stays a leaf ──────
+export const BSTOCK_SERVICE_NAME = "bstock-delta-realtime";
+export const BSTOCK_PRICE_USD = "5";
+export const BSTOCK_DURATION_DAYS = 30;
+export const BSTOCK_DURATION_SEC = BSTOCK_DURATION_DAYS * 86_400;
+
+/** Seller passport id — env override for the real on-chain registration. */
+export const BSTOCK_PASSPORT_ID = BigInt(
+  process.env.BSTOCK_SELLER_PASSPORT_ID ?? "0",
+);
+
+/** Deterministic serviceId — keccak256(passportId, bytes32(subId)). */
+export const BSTOCK_SERVICE_ID: `0x${string}` = keccak256(
+  encodePacked(
+    ["uint256", "bytes32"],
+    [
+      BSTOCK_PASSPORT_ID,
+      stringToHex(BSTOCK_SERVICE_NAME, { size: 32 }),
+    ],
+  ),
+);
 
 export function loadBstock(errors: string[]): BstockEnvConfig | undefined {
   if (!booleanFlag("BSTOCK_ENABLED")) return undefined;
@@ -58,5 +81,14 @@ export function loadBstock(errors: string[]): BstockEnvConfig | undefined {
     agentTokens,
     rateLimitPerMin,
     maxSseConnections,
+    serviceId: (process.env.BSTOCK_SERVICE_ID ??
+      BSTOCK_SERVICE_ID) as `0x${string}`,
+
+    priceUsd: process.env.BSTOCK_PRICE_USD ?? BSTOCK_PRICE_USD,
+    durationSec: Number(
+      process.env.BSTOCK_PASS_DURATION_SEC ?? BSTOCK_DURATION_SEC,
+    ),
+    payTo: process.env.X402_PAY_TO ?? "",
+    facilitatorUrl: process.env.X402_FACILITATOR_URL ?? "",
   };
 }
