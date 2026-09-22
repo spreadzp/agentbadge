@@ -1,10 +1,19 @@
-import { Registry, Counter, Histogram, Gauge } from "prom-client";
+import {
+  Registry,
+  Counter,
+  Histogram,
+  Gauge,
+  collectDefaultMetrics,
+} from "prom-client";
 
 export const registry = new Registry();
 
 registry.setDefaultLabels({
   service: "agentbadge",
 });
+
+// Process/runtime metrics: heap, event loop lag, GC, CPU, fds, uptime.
+collectDefaultMetrics({ register: registry });
 
 export const httpRequestTotal = new Counter({
   name: "agentbadge_http_requests_total",
@@ -44,6 +53,7 @@ export const activeScans = new Gauge({
 export const cacheHits = new Counter({
   name: "agentbadge_cache_hits_total",
   help: "Cache hits",
+  labelNames: ["layer"],
   registers: [registry],
 });
 

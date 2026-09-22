@@ -14,6 +14,7 @@
 
 import { logger } from "@agentbadge/passport";
 import type { CacheProvider } from "@agentbadge/cache";
+import { cacheHits, cacheMisses } from "../../server/metrics/metrics";
 
 import type { ResponseSnapshot } from "./snapshot";
 
@@ -182,6 +183,11 @@ export class SnapshotCache {
   ): void {
     const { domain, resource } = splitCacheKey(url);
     logger.debug("scanner.cache", { event, resource, domain, layer });
+    if (event === "hit") {
+      cacheHits.inc({ layer: layer ?? "l1" });
+    } else {
+      cacheMisses.inc();
+    }
   }
 
   private evictLRU(): void {

@@ -15,6 +15,11 @@ import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { invalidateDomain } from "../lib/cache";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 import { captureError } from "../lib/sentry";
+import {
+  activeScans,
+  scanDurationMs,
+  scansTotal,
+} from "../metrics/metrics";
 
 export const keeperhubApiRoutes = new Hono();
 
@@ -195,6 +200,8 @@ keeperhubApiRoutes.post(
 
     const quick = body.quick === true;
     let score: number, grade: string, rulesPassed: number, rulesTotal: number;
+    activeScans.inc();
+    const scanStart = Date.now();
     try {
       const sourceState = await scanDomain(normalizedUrl, quick ? { resources: [...QUICK_SCAN_RESOURCES] } : {});
       const result = RuleEngine.run(sourceState);
@@ -208,10 +215,15 @@ keeperhubApiRoutes.post(
       grade = report.grade;
       rulesPassed = report.verified;
       rulesTotal = report.total_rules;
+      scansTotal.inc({ result: "success" });
     } catch (err) {
+      scansTotal.inc({ result: "error" });
       const message = err instanceof Error ? err.message : "Unknown error";
       captureError(err instanceof Error ? err : new Error(message), { route: "scan", stage: "orchestrator", siteUrl: normalizedUrl });
       return c.json({ error: `Scan failed: ${message}` }, 500);
+    } finally {
+      activeScans.dec();
+      scanDurationMs.observe(Date.now() - scanStart);
     }
 
     const scan = { url: normalizedUrl, score, grade, rulesPassed, rulesTotal, depth: quick ? "quick" as const : "full" as const };
@@ -279,6 +291,8 @@ keeperhubApiRoutes.post(
     }
 
     let score: number, grade: string, rulesPassed: number, rulesTotal: number;
+    activeScans.inc();
+    const scanStart = Date.now();
     try {
       const sourceState = await scanDomain(normalizedUrl, {});
       const result = RuleEngine.run(sourceState);
@@ -287,12 +301,17 @@ keeperhubApiRoutes.post(
       grade = report.grade;
       rulesPassed = report.verified;
       rulesTotal = report.total_rules;
+      scansTotal.inc({ result: "success" });
       // EPIC-144: rescan completed — drop domain-tagged cache (badge etc).
       void invalidateDomain(hostname);
     } catch (err) {
+      scansTotal.inc({ result: "error" });
       const message = err instanceof Error ? err.message : "Unknown error";
       captureError(err instanceof Error ? err : new Error(message), { route: "scan/premium", stage: "orchestrator", siteUrl: normalizedUrl });
       return c.json({ error: `Scan failed: ${message}` }, 500);
+    } finally {
+      activeScans.dec();
+      scanDurationMs.observe(Date.now() - scanStart);
     }
 
     const scan = { url: normalizedUrl, score, grade, rulesPassed, rulesTotal };
