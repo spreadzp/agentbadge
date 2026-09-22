@@ -7,14 +7,14 @@
       "dependencies": {
         "@agentbadge/bstock-tracker": "^0.1.0",
         "@agentbadge/cache": "^0.1.1",
-        "@agentbadge/circle-payments": "^0.1.1",
+        "@agentbadge/circle-payments": "^0.1.3",
         "@agentbadge/database": "^0.1.1",
-        "@agentbadge/evm-core": "^0.1.1",
-        "@agentbadge/hedera-core": "^0.1.15",
-        "@agentbadge/keeperhub": "^0.1.0",
-        "@agentbadge/mcp": "^0.2.0",
-        "@agentbadge/pass-auth": "^0.1.0",
-        "@agentbadge/passport": "^0.2.1",
+        "@agentbadge/evm-core": "^0.1.2",
+        "@agentbadge/hedera-core": "^0.2.1",
+        "@agentbadge/keeperhub": "^0.1.1",
+        "@agentbadge/mcp": "^0.2.1",
+        "@agentbadge/pass-auth": "^0.1.1",
+        "@agentbadge/passport": "^0.2.2",
         "@agentbadge/webmcp": "^0.3.0",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/swagger-ui": "^0.6.1",
@@ -66,21 +66,21 @@
 
     "@agentbadge/cache": ["@agentbadge/cache@0.1.1", "", { "dependencies": { "@upstash/redis": "^1.39.0", "ioredis": "^6.0.0" } }, "sha512-eY6xo71i29TimztcqvOLOdOLeNdgq2mOVPaVWiQHIp2moPLYCj80uq1h4SAzbguLaBuYP2SQqF//kq7QW8oogA=="],
 
-    "@agentbadge/circle-payments": ["@agentbadge/circle-payments@0.1.2", "", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-Ljex68PcUvJJd3d2MIH/UTQ+IFeGcEnfStexPgcOb9zzxhgN4wQlMowgSEIFizivHYXcmUJ1TJ5hGDr2FCEGCA=="],
+    "@agentbadge/circle-payments": ["@agentbadge/circle-payments@0.1.3", "", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-FhR3QfHQ5hNbHfHMlWg5LkxFfH/zPaPjZ1qSsbnsAgazwOTnfMKBqAAJNtMmlP8wyR9zT4Zflz6p/IqFC6AxyQ=="],
 
     "@agentbadge/database": ["@agentbadge/database@0.1.1", "", { "dependencies": { "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-7guLHu9+0cCGjUyrySIMHu81M2GZxioknw3CRJ4CJsM8LaHJGwMbHa0DKTa8vDiny5UpohfALC8i38ll1kKd8g=="],
 
-    "@agentbadge/evm-core": ["@agentbadge/evm-core@0.1.1", "", { "dependencies": { "@agentbadge/hedera-core": "^0.1.14", "ethers": "^6.17.0" } }, "sha512-ry1xR/RNfQJDq8aAyYTr+V0yDnYS5Ooe9g/n9hj0HcpM6w4CwU0RXw4bLcX2LRyIcfX++BkYMYkWY9w/+ofoSg=="],
+    "@agentbadge/evm-core": ["@agentbadge/evm-core@0.1.2", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "ethers": "^6.17.0" } }, "sha512-qecaJWw+MLuFnpv8dMV3i+XmztSZpXAjbcBc0DfdfbrL7wHpw1Ilgk2UfImhQ99Tefz7HRpqF9pWWmNDSqAK3g=="],
 
-    "@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.1.15", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-JXCk9yETkiVeYvynFss5C4uLtsI93KXjmpXn/O0ajTvr47JzOLJRMU1hL4fvvB9Dt3ZFC9NylyLcOckKlfVgdg=="],
+    "@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.2.1", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-jc5WxaEnOYPVW7EMjV+tFGqUwqxtN1VcPaZ31LGi7GXPNhFNniRchzjG1H2olk7AQZK53R/TbRWeAYVcPeUbCA=="],
 
-    "@agentbadge/keeperhub": ["@agentbadge/keeperhub@0.1.0", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-Iwr7iaWZWT+W8MlyX5NLJtu8OqULGApT5d0x8SMhB8lhT3OPEhLBL0fdFIyMKN2jTsLHAn7EPlnYeUAv0qzosA=="],
+    "@agentbadge/keeperhub": ["@agentbadge/keeperhub@0.1.1", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GYFT9LUCNFUA/0qyH6iJStoVlqVz3WYxLzlTyPNGg0iLOOhPFPZNyTohRybZ+/t3EzkZMSkZTXgy6kAbKoH4Qw=="],
 
-    "@agentbadge/mcp": ["@agentbadge/mcp@0.2.0", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.0", "@agentbadge/passport": "^0.2.0", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-8fVMIlr9VkkhcgdaWi7u1YAHuQuN4EHJrhwXtPmdwj7QntQNu3sF0cah7EPGii7F0UPXbIUMegjaq7ZaMYZgkA=="],
+    "@agentbadge/mcp": ["@agentbadge/mcp@0.2.1", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "@agentbadge/passport": "^0.2.2", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-dl31EmWCrGg0vLAyXYL12RjhRXJgO+R9bl/iMjGAwhLRr+HUkTCkuQvj913SRikwHY9ZRH+cqCKr4V3v1IEzfQ=="],
 
-    "@agentbadge/pass-auth": ["@agentbadge/pass-auth@0.1.0", "", { "dependencies": { "viem": "^2.0.0" } }, "sha512-r7UJueNyHyvXFhnRo5EoSJKmTbgCFIgKIFMqjC3Mjzr8gqJEOO3KA3jZOUEYTtXecxWFln36g3keMH3Aenfzpw=="],
+    "@agentbadge/pass-auth": ["@agentbadge/pass-auth@0.1.1", "", { "dependencies": { "viem": "^2.0.0" } }, "sha512-NfDIFKHviNr0XH/9v18ozJnoJGcncG8NEMpSe3yrVhT2/yAZyM0XKWkC1czq+d4lghbHL9ufRtjJ3r9EaUNq1Q=="],
 
-    "@agentbadge/passport": ["@agentbadge/passport@0.2.1", "", { "dependencies": { "@agentbadge/hedera-core": "^0.1.15", "@x402/hedera": "^2.25.0", "@x402/hono": "^2.25.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-JRdLN61S6/H+0JNx5i19lfdkzUkXik4VtisL/JKa+SqzvrIVbimsdH/yQw+d2NFKYuKxyEL2dNtWh4G9MhSI+A=="],
+    "@agentbadge/passport": ["@agentbadge/passport@0.2.2", "", { "dependencies": { "@agentbadge/hedera-core": "file:../hedera-core", "@x402/hedera": "^2.25.0", "@x402/hono": "^2.25.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-AncIxtTGFh4zoGu5mh4bqzOF527JvZeB7VmoAVvkadV+nPH41h1Lq7adIlN2Xcfo3+QCGzHsuFPrc3BfDx3gag=="],
 
     "@agentbadge/webmcp": ["@agentbadge/webmcp@0.3.0", "", {}, "sha512-bNNDd8Cs3B2QdPidfB5CfAH9vV8Avwh2XEf9OZXE21iFG7BNx6WMOKUs9XcF1B/1n7Q86MMzO0LPgf7USCQfdA=="],
 
@@ -1654,9 +1654,7 @@
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
 
-    "@agentbadge/mcp/@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.2.0", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-ZJlWchg8Mo/kfnZIOE81iDR6eNfcuef22zrk8NhzmCjjiaT4pgavjoZGl7tFHIr3elPOrSzgJDalcBcwP40TxQ=="],
-
-    "@agentbadge/mcp/@agentbadge/passport": ["@agentbadge/passport@0.2.0", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.0", "@x402/hedera": "^2.19.0", "@x402/hono": "^2.19.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-nZBthaaXwHqpDmm/d+JQgiqRnn6cGGS4T76JHgTBn04j93hJOArT0dfsBQxw5UoR/vfKIcUlyu1B6Z5t+K1hog=="],
+    "@agentbadge/passport/@agentbadge/hedera-core": ["@agentbadge/hedera-core@file:../hedera-core", {}],
 
     "@apm-js-collab/code-transformer-bundler-plugins/es-module-lexer": ["es-module-lexer@2.3.1", "", {}, ""],
 
