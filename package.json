@@ -46,10 +46,15 @@
     "arch:graph:check": "bun scripts/arch-graph.mts && git diff --exit-code docs/architecture-graph.md"
   },
   "dependencies": {
+    "@agentbadge/bstock-tracker": "^0.1.0",
+    "@agentbadge/cache": "^0.1.1",
+    "@agentbadge/circle-payments": "^0.1.1",
+    "@agentbadge/database": "^0.1.1",
     "@agentbadge/evm-core": "^0.1.1",
     "@agentbadge/hedera-core": "^0.1.15",
     "@agentbadge/keeperhub": "^0.1.0",
-    "@agentbadge/mcp": "file:../../packages/mcp",
+    "@agentbadge/mcp": "^0.2.0",
+    "@agentbadge/pass-auth": "^0.1.0",
     "@agentbadge/passport": "^0.1.8",
     "@agentbadge/webmcp": "^0.3.0",
     "@hashgraph/sdk": "^2.55.0",
@@ -74,12 +79,7 @@
     "stripe": "^22.5.0",
     "viem": "^2.55.8",
     "yaml": "^2.9.0",
-    "zod": "^4.0.0",
-    "@agentbadge/circle-payments": "^0.1.1",
-    "@agentbadge/bstock-tracker": "file:../../packages/bstock-tracker",
-    "@agentbadge/pass-auth": "file:../../packages/pass-auth",
-    "@agentbadge/database": "^0.1.1",
-    "@agentbadge/cache": "file:../../packages/cache"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@circle-fin/x402-batching": "^3.5.0",
