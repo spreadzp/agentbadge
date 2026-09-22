@@ -12,6 +12,7 @@ import { AGENT_READINESS_RULESET } from "../../agent-readiness/ruleset";
 import { rulesForPacks, packMetadata } from "../../agent-readiness/rule-packs";
 import type { AgentReadinessRule } from "../../agent-readiness/rule.schema";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
+import { invalidateDomain } from "../lib/cache";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 import { captureError } from "../lib/sentry";
 
@@ -286,6 +287,8 @@ keeperhubApiRoutes.post(
       grade = report.grade;
       rulesPassed = report.verified;
       rulesTotal = report.total_rules;
+      // EPIC-144: rescan completed — drop domain-tagged cache (badge etc).
+      void invalidateDomain(hostname);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       captureError(err instanceof Error ? err : new Error(message), { route: "scan/premium", stage: "orchestrator", siteUrl: normalizedUrl });

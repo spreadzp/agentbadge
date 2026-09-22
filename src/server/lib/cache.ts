@@ -33,3 +33,12 @@ export function getCache(): CacheProvider {
 export function resetCacheForTests(): void {
   instance = null;
 }
+
+/**
+ * Drop all cache entries tagged `domain:{domain}` — badge SVGs and other
+ * per-domain artifacts go stale the moment a rescan completes.
+ * Fire-and-forget safe: the provider contract never throws.
+ */
+export async function invalidateDomain(domain: string): Promise<number> {
+  return getCache().invalidateTag(`domain:${domain}`);
+}

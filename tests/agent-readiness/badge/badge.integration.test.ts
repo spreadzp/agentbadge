@@ -110,8 +110,8 @@ describe("SLICE-38-7: Badge Integration Tests — E2E Route + Cache", () => {
     it("cache stores entry with reportId", async () => {
       reports.set("test-api", makeReport(85));
       await app.request("/badge/test-api.svg");
-      expect(cache.has("test-api")).toBe(true);
-      const entry = cache.get("test-api");
+      expect(await cache.has("test-api")).toBe(true);
+      const entry = await cache.get("test-api");
       expect(entry?.reportId).toBe("01HTEST0000000000000000001");
     });
 
@@ -120,7 +120,7 @@ describe("SLICE-38-7: Badge Integration Tests — E2E Route + Cache", () => {
       const res1 = await app.request("/badge/test-api.svg");
       const body1 = await res1.text();
 
-      cache.invalidate("test-api");
+      await cache.invalidate("test-api");
       reports.set("test-api", makeReport(90));
       const res2 = await app.request("/badge/test-api.svg");
       const body2 = await res2.text();
@@ -190,7 +190,7 @@ describe("SLICE-38-7: Badge Integration Tests — E2E Route + Cache", () => {
       const res1 = await app.request("/badge/test-api.svg");
       const body1 = await res1.text();
 
-      cache.invalidate("test-api");
+      await cache.invalidate("test-api");
       const res2 = await app.request("/badge/test-api.svg");
       const body2 = await res2.text();
 

@@ -28,7 +28,7 @@ export function createBadgeApp(env: BadgeRouteEnv): Hono {
     const scope = rawScope.replace(/\.svg$/, "");
 
     // Check cache first
-    const cached = cache.get(scope);
+    const cached = await cache.get(scope);
     if (cached) {
       const ttlResult = checkStaleness(
         new Date(cached.generatedAt).toISOString(),
@@ -70,7 +70,7 @@ export function createBadgeApp(env: BadgeRouteEnv): Hono {
       generatedAt: new Date().toISOString(),
       reportId,
     };
-    cache.set(scope, entry);
+    await cache.set(scope, entry);
 
     c.header("Content-Type", "image/svg+xml");
     c.header("Cache-Control", "public, max-age=3600");
