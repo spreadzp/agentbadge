@@ -41,7 +41,9 @@
     "lighthouse": "lhci autorun",
     "medical-agent": "bun src/agents/cli.ts",
     "medical-agent:task": "bun src/agents/cli.ts --task-id",
-    "x402:demo": "bun scripts/x402-pay-demo.mts"
+    "x402:demo": "bun scripts/x402-pay-demo.mts",
+    "arch:graph": "bun scripts/arch-graph.mts",
+    "arch:graph:check": "bun scripts/arch-graph.mts && git diff --exit-code docs/architecture-graph.md"
   },
   "dependencies": {
     "@agentbadge/evm-core": "^0.1.1",
