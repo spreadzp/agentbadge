@@ -550,3 +550,89 @@ describe("database env section (EPIC-143)", () => {
     expect(config.database?.directUrl).toContain("localhost:5335");
   });
 });
+
+describe("cache env section (EPIC-144)", () => {
+  const originalEnv = { ...process.env };
+
+  function setRequired() {
+    process.env.HEDERA_OPERATOR_ID = "0.0.5266613";
+    process.env.HEDERA_OPERATOR_KEY = "302e020100300506032b657004220420abcdef";
+    process.env.HEDERA_NETWORK = "testnet";
+    process.env.PASSPORT_TOKEN_ID = "0.0.1234567";
+    process.env.AUDIT_TOPIC_ID = "0.0.7654321";
+    process.env.DIRECTORY_TOPIC_ID = "0.0.8765432";
+    process.env.x402_FACILITATOR_URL = "https://api.testnet.blocky402.com";
+    process.env.x402_FEE_PAYER = "0.0.7162784";
+    process.env.x402_TREASURY = "0.0.8011510";
+    process.env.IPFS_API_KEY = "test-key";
+    process.env.IPFS_API_SECRET = "test-secret";
+  }
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    delete process.env.CACHE_ENABLED;
+    delete process.env.CACHE_BACKEND;
+    delete process.env.CACHE_URL;
+    delete process.env.CACHE_TOKEN;
+    resetConfigCache();
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("CACHE_ENABLED unset → section absent (InMemoryCache fallback)", () => {
+    setRequired();
+    const config = loadConfig();
+    expect(config.cache).toBeUndefined();
+  });
+
+  it("CACHE_ENABLED=false → section absent", () => {
+    setRequired();
+    process.env.CACHE_ENABLED = "false";
+    const config = loadConfig();
+    expect(config.cache).toBeUndefined();
+  });
+
+  it("CACHE_ENABLED=true, no backend → memory backend, no url needed", () => {
+    setRequired();
+    process.env.CACHE_ENABLED = "true";
+    const config = loadConfig();
+    expect(config.cache?.enabled).toBe(true);
+    expect(config.cache?.backend).toBe("memory");
+    expect(config.cache?.url).toBeUndefined();
+  });
+
+  it("CACHE_ENABLED=true + valkey without CACHE_URL → aggregated error", () => {
+    setRequired();
+    process.env.CACHE_ENABLED = "true";
+    process.env.CACHE_BACKEND = "valkey";
+    expect(() => loadConfig()).toThrow(/CACHE_URL/);
+  });
+
+  it("CACHE_ENABLED=true + upstash without token → aggregated error", () => {
+    setRequired();
+    process.env.CACHE_ENABLED = "true";
+    process.env.CACHE_BACKEND = "upstash";
+    process.env.CACHE_URL = "https://example.upstash.io";
+    expect(() => loadConfig()).toThrow(/CACHE_TOKEN/);
+  });
+
+  it("CACHE_ENABLED=true + invalid backend → aggregated error", () => {
+    setRequired();
+    process.env.CACHE_ENABLED = "true";
+    process.env.CACHE_BACKEND = "bogus";
+    expect(() => loadConfig()).toThrow(/CACHE_BACKEND/);
+  });
+
+  it("CACHE_ENABLED=true + valkey + url → section present", () => {
+    setRequired();
+    process.env.CACHE_ENABLED = "true";
+    process.env.CACHE_BACKEND = "valkey";
+    process.env.CACHE_URL = "valkey://localhost:6336";
+    const config = loadConfig();
+    expect(config.cache?.enabled).toBe(true);
+    expect(config.cache?.backend).toBe("valkey");
+    expect(config.cache?.url).toBe("valkey://localhost:6336");
+  });
+});

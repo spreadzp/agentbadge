@@ -176,6 +176,19 @@ export interface BstockEnvConfig {
   facilitatorUrl: string;
 }
 
+/**
+ * Cache layer config (EPIC-144, SLICE-144-2).
+ * Present only when CACHE_ENABLED=true; absent = InMemoryCache fallback.
+ */
+export interface CacheEnvConfig {
+  enabled: boolean;
+  backend: "memory" | "valkey" | "upstash";
+  /** CACHE_URL — valkey://host:port (dev) or Upstash REST URL (prod). */
+  url?: string;
+  /** CACHE_TOKEN — Upstash REST token (prod only). */
+  token?: string;
+}
+
 export interface AppConfig {
   chainMode: ChainMode;
   hederaOperatorId: string;
@@ -202,6 +215,7 @@ export interface AppConfig {
   circlePayments?: CirclePaymentsConfig;
   bstock?: BstockEnvConfig;
   database?: DatabaseEnvConfig;
+  cache?: CacheEnvConfig;
   scanPacks: ScanPacksConfig;
   marketplace?: MarketplaceConfig;
 }
