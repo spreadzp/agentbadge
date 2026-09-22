@@ -9,6 +9,8 @@ import { APP_VERSION, BUILD_DATE, GIT_COMMIT } from "../lib/build-info";
 import { isStripeConfigured } from "../lib/stripe-client";
 import { adminAuth } from "../middleware/adminAuth";
 import { getDatabase } from "../lib/database";
+import { getCache } from "../lib/cache";
+import { getConfig } from "../../config/env";
 
 export const opsRoutes = new Hono();
 
@@ -22,6 +24,14 @@ const healthHandler = async (c: Context) => {
       ? "up"
       : "down"
     : "disabled";
+  // EPIC-144: cache status — "disabled" when CACHE_ENABLED is unset/false,
+  // otherwise a live provider health probe (PING for Redis backends).
+  const cacheSection = getConfig().cache;
+  const cacheStatus = cacheSection?.enabled
+    ? (await getCache().health())
+      ? "up"
+      : "down"
+    : "disabled";
   return c.json({
     status: "healthy",
     version: APP_VERSION,
@@ -29,6 +39,10 @@ const healthHandler = async (c: Context) => {
     gitCommit: GIT_COMMIT,
     uptime: process.uptime(),
     db: dbStatus,
+    cache: {
+      status: cacheStatus,
+      backend: cacheSection?.enabled ? (cacheSection.backend ?? "memory") : null,
+    },
     mcp: {
       toolsCount: tools.length,
       tools: tools.map((t) => t.name),
