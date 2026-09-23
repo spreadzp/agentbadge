@@ -20,6 +20,17 @@ price and its underlying — is where the opportunities live. Humans
 cannot watch 20+ tokens around the clock. A machine can. So we built a
 tracker that computes the delta in real time and handed it to AI
 agents.</p>
+<figure>
+<img src="/images/blog/bstock-delta-tracker-case-d1.png"
+alt="Diagram: how the delta tracker works" />
+<figcaption aria-hidden="true">Diagram: how the delta tracker
+works</figcaption>
+</figure>
+<p><em>Binance streams token prices around the clock; Finnhub/Alpaca
+supply the equity prices. DeltaEngine computes the delta, the market
+phase (O/C/P) and the stale flag (15s without updates). The MCP server
+exposes it to the agent through five tools, and Telegram receives an
+alert the moment a delta crosses the 0.5% threshold.</em></p>
 <h2 id="what-the-tracker-computes">What the tracker computes</h2>
 <p>For every bStock the tracker keeps two prices:</p>
 <ul>
@@ -82,5 +93,15 @@ first captures the convergence. A person cannot monitor every token
 every second — an agent can, and it pays for its own data feed without a
 human in the loop.</p>
 <p><em>Next: inside the 402 paywall — how freemium works when the
-customer is a machine.</em></p>`,
+customer is a machine.</em></p>
+<hr />
+<p><strong>Links</strong></p>
+<ul>
+<li>Agent guide (endpoints, limits, examples): <a
+href="https://agentbadge.xyz/bstock-guide">agentbadge.xyz/bstock-guide</a></li>
+<li>All articles in the series: <a
+href="https://agentbadge.xyz/blog">agentbadge.xyz/blog</a></li>
+<li>MCP endpoint:
+<code>https://agentbadge.xyz/mcp/bstock/tools/get_delta</code></li>
+</ul>`,
 };

@@ -17,6 +17,17 @@ transaction on its behalf. Convenient — but an extra party to trust, an
 extra API to wait on, an extra point of failure.</p>
 <p>On Arc we skipped it. The scheme is called
 <strong>self-settle</strong> — “settle it yourself”.</p>
+<figure>
+<img src="/images/blog/bstock-arc-x402-payment-d1.png"
+alt="Diagram: paying on Arc in 6 steps" />
+<figcaption aria-hidden="true">Diagram: paying on Arc in 6
+steps</figcaption>
+</figure>
+<p><em>The agent receives the 402 invoice, signs an EIP-3009
+authorization (exactly 5 USDC to the treasury) and broadcasts on Arc
+itself — gas is paid in USDC. The server reads the receipt from the
+block: the Transfer event reached the treasury — access opens for 30
+days.</em></p>
 <h2 id="why-arc-makes-this-possible">Why Arc makes this possible</h2>
 <p>Arc is a blockchain built by Circle — the company behind USDC. Its
 signature feature: <strong>gas is paid in USDC</strong>, not in a
@@ -53,5 +64,15 @@ assumption. Any wallet holding USDC on Arc becomes a payment client: one
 asset, one signature, one RPC call. For agents, buying data becomes as
 routine as calling an API.</p>
 <p><em>Next: when the delta actually pays — free tier vs
-real-time.</em></p>`,
+real-time.</em></p>
+<hr />
+<p><strong>Links</strong></p>
+<ul>
+<li>Agent guide (endpoints, limits, examples): <a
+href="https://agentbadge.xyz/bstock-guide">agentbadge.xyz/bstock-guide</a></li>
+<li>All articles in the series: <a
+href="https://agentbadge.xyz/blog">agentbadge.xyz/blog</a></li>
+<li>MCP endpoint:
+<code>https://agentbadge.xyz/mcp/bstock/tools/get_delta</code></li>
+</ul>`,
 };

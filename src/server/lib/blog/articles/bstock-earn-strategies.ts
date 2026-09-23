@@ -15,6 +15,16 @@ export const article: BlogArticle = {
 exchange, the share on a stock exchange. The gap between them — the
 delta — supports several working strategies. Here is each one, with its
 risks.</p>
+<figure>
+<img src="/images/blog/bstock-earn-strategies-d1.png"
+alt="Diagram: four strategies from one delta" />
+<figcaption aria-hidden="true">Diagram: four strategies from one
+delta</figcaption>
+</figure>
+<p><em>One number, four strategies: arbitrage (buy the cheap token, wait
+for convergence), market making (earn the spread on thin books), signal
+trading (the delta leads Monday’s gap), and alerts as a service (the
+signal finds you).</em></p>
 <h2 id="delta-arbitrage">1. Delta arbitrage</h2>
 <p>When the token trades below the share by more than your costs (fees +
 spread + slippage), buy the token and wait for convergence. Classic
@@ -42,5 +52,15 @@ threshold. The machine watches; you trade when it matters.</p>
 counterparty, rebalancing delays. A strategy works while costs stay
 below the divergence. Count the costs before entry, not after.</p>
 <p><em>Series finale: the risks of tokenized stocks — what can go
-wrong.</em></p>`,
+wrong.</em></p>
+<hr />
+<p><strong>Links</strong></p>
+<ul>
+<li>Agent guide (endpoints, limits, examples): <a
+href="https://agentbadge.xyz/bstock-guide">agentbadge.xyz/bstock-guide</a></li>
+<li>All articles in the series: <a
+href="https://agentbadge.xyz/blog">agentbadge.xyz/blog</a></li>
+<li>MCP endpoint:
+<code>https://agentbadge.xyz/mcp/bstock/tools/get_delta</code></li>
+</ul>`,
 };

@@ -17,6 +17,16 @@ no card, cannot fill a checkout form, cannot type a CVV.</p>
 <p>We solved it with <strong>HTTP 402 Payment Required</strong> — a
 status code that waited three decades for its moment. It is not an
 error. It is an invoice.</p>
+<figure>
+<img src="/images/blog/bstock-freemium-402-d1.png"
+alt="Diagram: the freemium gate" />
+<figcaption aria-hidden="true">Diagram: the freemium gate</figcaption>
+</figure>
+<p><em>Every request passes three doors: a live ServicePass means
+instant real-time; otherwise the free bucket allows one request per
+minute (a snapshot); otherwise the server answers 402 with an invoice.
+One USDC transaction (5 USDC on Arc), an on-chain receipt check — and
+the agent holds a 30-day ServicePass.</em></p>
 <h2 id="how-the-gate-works">How the gate works</h2>
 <p>Every request to the tracker passes three checks:</p>
 <ol type="1">
@@ -60,5 +70,15 @@ cannot be presented twice: the server atomically claims it, and a second
 attempt gets <code>tx_replayed</code>. Even ten parallel requests with
 the same hash — exactly one gets through.</p>
 <p><em>Next: the payment itself on Arc — and why gas there is paid in
-USDC.</em></p>`,
+USDC.</em></p>
+<hr />
+<p><strong>Links</strong></p>
+<ul>
+<li>Agent guide (endpoints, limits, examples): <a
+href="https://agentbadge.xyz/bstock-guide">agentbadge.xyz/bstock-guide</a></li>
+<li>All articles in the series: <a
+href="https://agentbadge.xyz/blog">agentbadge.xyz/blog</a></li>
+<li>MCP endpoint:
+<code>https://agentbadge.xyz/mcp/bstock/tools/get_delta</code></li>
+</ul>`,
 };

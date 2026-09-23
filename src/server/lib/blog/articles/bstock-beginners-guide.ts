@@ -15,6 +15,16 @@ export const article: BlogArticle = {
 share. AAPLB mirrors Apple, TSLAB mirrors Tesla. Buy the token — get the
 same price exposure as the share, but on a crypto exchange, around the
 clock.</p>
+<figure>
+<img src="/images/blog/bstock-beginners-guide-d1.png"
+alt="Diagram: how a bStock works" />
+<figcaption aria-hidden="true">Diagram: how a bStock works</figcaption>
+</figure>
+<p><em>The issuer holds the real shares and issues tokens (AAPLB = Apple
+× 1.0006) that trade on Binance 24/7, settled in USDC. While the two
+markets agree, the delta is near zero; when they diverge — nights,
+weekends, news — the gap becomes an opportunity for some and a risk for
+others.</em></p>
 <h2 id="how-it-works-under-the-hood">How it works under the hood</h2>
 <p>The issuer holds the real shares (or an equivalent) and issues tokens
 that mirror their value. The token trades on an exchange (for bStocks —
@@ -48,5 +58,15 @@ hints at both opportunity (convergence trades) and risk (the gap can
 widen). Monitoring dozens of tokens around the clock is a job for a
 machine — which is exactly what delta trackers, including ours for AI
 agents, are for.</p>
-<p><em>Next: strategies people actually run on the delta.</em></p>`,
+<p><em>Next: strategies people actually run on the delta.</em></p>
+<hr />
+<p><strong>Links</strong></p>
+<ul>
+<li>Agent guide (endpoints, limits, examples): <a
+href="https://agentbadge.xyz/bstock-guide">agentbadge.xyz/bstock-guide</a></li>
+<li>All articles in the series: <a
+href="https://agentbadge.xyz/blog">agentbadge.xyz/blog</a></li>
+<li>MCP endpoint:
+<code>https://agentbadge.xyz/mcp/bstock/tools/get_delta</code></li>
+</ul>`,
 };

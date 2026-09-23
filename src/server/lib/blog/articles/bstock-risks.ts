@@ -14,6 +14,15 @@ export const article: BlogArticle = {
   content: `<p>bStocks open equities to the crypto market — but “a token that tracks
 a share” is not “a share”. Here is an honest look at the risks, no pitch
 attached.</p>
+<figure>
+<img src="/images/blog/bstock-risks-d1.png"
+alt="Diagram: six risk groups" />
+<figcaption aria-hidden="true">Diagram: six risk groups</figcaption>
+</figure>
+<p><em>Six risk groups surround a tokenized stock: issuer, delta,
+liquidity, shareholder rights, regulation, and technique. The mitigation
+is the same for all: diversify, size positions to the book’s depth, and
+monitor the delta.</em></p>
 <h2 id="issuer-risk">1. Issuer risk</h2>
 <p>The token is the issuer’s obligation. If the issuer runs into trouble
 — reserves, regulation, bankruptcy — the token can lose value regardless
@@ -49,5 +58,15 @@ infrastructure rule: never hold more in tokens than you can afford to
 lose to infrastructure, not to the market.</p>
 <p><em>Tokenized stocks are a powerful instrument — if you understand
 how a token differs from a share. Start the series with the delta
-tracker case study.</em></p>`,
+tracker case study.</em></p>
+<hr />
+<p><strong>Links</strong></p>
+<ul>
+<li>Agent guide (endpoints, limits, examples): <a
+href="https://agentbadge.xyz/bstock-guide">agentbadge.xyz/bstock-guide</a></li>
+<li>All articles in the series: <a
+href="https://agentbadge.xyz/blog">agentbadge.xyz/blog</a></li>
+<li>MCP endpoint:
+<code>https://agentbadge.xyz/mcp/bstock/tools/get_delta</code></li>
+</ul>`,
 };
