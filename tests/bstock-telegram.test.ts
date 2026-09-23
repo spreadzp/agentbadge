@@ -235,4 +235,54 @@ describe("webhook", () => {
     await postCmd(app, "hello");
     expect(sent).toHaveLength(0);
   });
+
+  it("/<TICKER> shorthand replies with that symbol's delta", async () => {
+    const { app, sent } = makeApp([view()]);
+    await postCmd(app, "/AAPLB");
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain("AAPLB");
+    expect(sent[0].text).toContain("+0.72%");
+  });
+
+  it("/<UNKNOWN> replies with help hint", async () => {
+    const { app, sent } = makeApp([view()]);
+    await postCmd(app, "/foobar");
+    expect(sent[0].text).toContain("/help");
+  });
+
+  it("stale view shows market closed flag", async () => {
+    const { app, sent } = makeApp([view({ stale: true })]);
+    await postCmd(app, "/AAPLB");
+    expect(sent[0].text).toContain("market closed");
+  });
+
+  it("/hourly opts chat into digestTick, toggles off", async () => {
+    const sent2: { chatId: number; text: string }[] = [];
+    const b = createBstockTelegramBot({
+      registry: new ChatRegistry(),
+      send: async (chatId, text) => {
+        sent2.push({ chatId, text });
+      },
+      engine: { listDeltas: () => [view()], getEvents: () => [] },
+    });
+    const app2 = new Hono();
+    app2.route("/", b.routes);
+
+    // no opt-in → digestTick silent
+    await b.digestTick();
+    expect(sent2).toHaveLength(0);
+
+    // opt in → digestTick delivers
+    await postCmd(app2, "/hourly");
+    expect(sent2[0].text).toContain("Hourly digest on");
+    await b.digestTick();
+    expect(sent2).toHaveLength(2);
+    expect(sent2[1].text).toContain("AAPLB");
+
+    // toggle off → silent again
+    await postCmd(app2, "/hourly");
+    expect(sent2[2].text).toContain("off");
+    await b.digestTick();
+    expect(sent2).toHaveLength(3);
+  });
 });

@@ -20,7 +20,9 @@ export function formatAlert(v: DeltaView): string {
   return (
     `⚡ ${v.symbol} ${fmtPrice(v.bStockPrice)} (Binance) vs ` +
     `${fmtPrice(v.underlyingPrice)} (NASDAQ) | ` +
-    `Delta: ${fmtDelta(v.deltaPct)} | phase: ${v.phase}`
+    `Delta: ${fmtDelta(v.deltaPct)}` +
+    (v.phase ? ` | phase: ${v.phase}` : "") +
+    (v.stale ? " | ⏸ market closed" : "")
   );
 }
 

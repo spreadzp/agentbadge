@@ -69,11 +69,15 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
 
   const routes = new Hono();
 
+  /** Chats that opted into the hourly digest via /hourly. */
+  const hourlyChats = new Set<number>();
+
   const HELP =
     "📈 bStock Delta Tracker — on-demand commands:\n" +
-    "/delta <SYM> — delta for one symbol (e.g. /delta AAPLB)\n" +
+    "/<SYM> — delta for a symbol (e.g. /AAPLB)\n" +
     "/deltas — symbols currently in alert\n" +
-    "/digest — all tracked symbols\n" +
+    "/digest — all tracked symbols now\n" +
+    "/hourly — toggle hourly digest on/off\n" +
     "/help — this message";
 
   routes.post("/telegram/bstock", async (c) => {
@@ -112,6 +116,21 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
       );
     } else if (cmd === "digest") {
       await send(chatId, buildDigest(engine.listDeltas()));
+    } else if (cmd === "hourly") {
+      if (hourlyChats.has(chatId)) {
+        hourlyChats.delete(chatId);
+        await send(chatId, "⏸ Hourly digest off.");
+      } else {
+        hourlyChats.add(chatId);
+        await send(chatId, "⏰ Hourly digest on — summary every hour.");
+      }
+    } else if (cmd) {
+      // /<TICKER> shorthand — e.g. /AAPLB shows that symbol's delta.
+      const v = engine
+        .listDeltas()
+        .find((d) => d.symbol === cmd.toUpperCase());
+      if (v) await send(chatId, formatAlert(v));
+      else await send(chatId, "Unknown command or symbol — try /help");
     }
     return c.json({ ok: true });
   });
@@ -135,10 +154,11 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
     }
   }
 
-  /** ~1h cron: digest of all tickers to every subscribed chat. */
+  /** ~1h cron: digest only to chats that opted in via /hourly. */
   async function digestTick(): Promise<void> {
+    if (hourlyChats.size === 0) return;
     const text = buildDigest(engine.listDeltas());
-    for (const chatId of targets()) {
+    for (const chatId of hourlyChats) {
       await send(chatId, text);
     }
   }
