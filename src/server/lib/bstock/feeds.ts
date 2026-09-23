@@ -32,6 +32,41 @@ export interface BstockFeeds {
   stop(): void;
 }
 
+interface QuoteProbe {
+  fetchQuote(
+    symbol: string,
+  ): Promise<import("@agentbadge/bstock-tracker").BinanceQuote | null>;
+}
+
+/**
+ * Keep only assets with a live Binance market — declared but quoteless
+ * assets (dead/absent books) are excluded from tracking AND from
+ * underlying subscriptions (no point polling Finnhub for an underlying
+ * whose bStock has no Binance market).
+ */
+export async function probeLiveAssets<
+  T extends { assetCode: string },
+>(client: QuoteProbe, assets: readonly T[]): Promise<T[]> {
+  const live: T[] = [];
+  const CHUNK = 10;
+  for (let i = 0; i < assets.length; i += CHUNK) {
+    const results = await Promise.all(
+      assets.slice(i, i + CHUNK).map(async (a) => {
+        try {
+          const q = await client.fetchQuote(a.assetCode);
+          return q && (q.bidPrice ?? 0) + (q.askPrice ?? 0) > 0
+            ? a
+            : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    for (const a of results) if (a) live.push(a);
+  }
+  return live;
+}
+
 export async function startBstockFeeds(
   engine: BstockEngineLike,
 ): Promise<BstockFeeds | null> {
@@ -40,11 +75,15 @@ export async function startBstockFeeds(
 
   // ── Binance side (bStock prices + asset map) ──────────────────────
   const binance = new BinanceClient({
-    apiKey: process.env.BINANCE_API_KEY ?? "",
+    apiKey: process.env.BINANCE_BSTOK_API_KEY ?? "",
   });
   try {
     const assets = await binance.fetchTokenizedAssets();
-    eng.setAssets(assets);
+    const live = await probeLiveAssets(binance, assets);
+    console.log(
+      `[bstock] ${live.length}/${assets.length} assets have live Binance markets`,
+    );
+    eng.setAssets(live);
   } catch (err) {
     console.error("[bstock] tokenized-assets fetch failed:", err);
     return null;
