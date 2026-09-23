@@ -133,6 +133,19 @@ BASE_URL=http://localhost:4021
 
 # Mock mode (skip Hedera SDK init for local dev)
 # MOCK_HEDERA=true
+
+# Database (EPIC-143/145) — off → in-memory stores; on → Postgres
+# persistence for scan results, telegram chat subscriptions, keeperhub
+# audit events. Dev PG: packages/database docker, host port 5335.
+# DATABASE_ENABLED=true
+# DATABASE_URL=postgres://postgres:postgres@localhost:5335/agentbadge
+
+# Cache (EPIC-144/145) — off → InMemoryCache; on → shared cache for
+# DID-auth nonces, Mirror Node keys, bstock free-tier buckets + passes.
+# CACHE_ENABLED=true
+# CACHE_BACKEND=valkey            # memory | valkey | upstash
+# CACHE_URL=valkey://localhost:6336
+# CACHE_TOKEN=                    # upstash only
 ```
 
 ## NPM Packages

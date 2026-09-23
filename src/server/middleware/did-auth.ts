@@ -16,95 +16,25 @@
  */
 
 import type { MiddlewareHandler, Context } from "hono";
-import { createHash, randomBytes } from "node:crypto";
 import { didToAccountId } from "@agentbadge/hedera-core";
 import { logger } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
-import { tryGetCache } from "../lib/cache";
+import { NonceStore } from "./did-nonce";
+import { buildChallenge } from "./did-challenge";
+import { defaultVerifySignature, type VerifySignatureFn } from "./did-verify";
 
-// ─── Challenge Builder ───────────────────────────────────────────
-
-export interface ChallengeParams {
-  did: string;
-  method: string;
-  path: string;
-  body: string;
-  timestamp: number;
-  nonce: string;
-}
-
-export function hashBody(body: string): string {
-  return createHash("sha256").update(body, "utf8").digest("hex");
-}
-
-export function buildChallenge(params: ChallengeParams): string {
-  return [
-    "agentbadge-action:v1",
-    `did:${params.did}`,
-    `method:${params.method}`,
-    `path:${params.path}`,
-    `body_sha256:${hashBody(params.body)}`,
-    `timestamp:${params.timestamp}`,
-    `nonce:${params.nonce}`,
-  ].join("\n");
-}
-
-// ─── Nonce Store ─────────────────────────────────────────────────
-
-export class NonceStore {
-  // Fallback Sets — used only when the cache provider itself is
-  // unavailable (getCache throws). CACHE_ENABLED=false still goes through
-  // InMemoryCache, which is already per-process + TTL'd.
-  private fallbackIssued = new Set<string>();
-  private fallbackConsumed = new Set<string>();
-  private ttlMs: number;
-
-  constructor(ttlMs = 600_000) {
-    this.ttlMs = ttlMs;
-  }
-
-  private get ttlSec(): number {
-    return Math.max(1, Math.ceil(this.ttlMs / 1000));
-  }
-
-  async issue(): Promise<string> {
-    const nonce = randomBytes(16).toString("hex");
-    const cache = tryGetCache();
-    if (cache) {
-      await cache.set(`nonce:${nonce}`, "1", { ttlSec: this.ttlSec });
-    } else {
-      this.fallbackIssued.add(nonce);
-      setTimeout(() => this.fallbackIssued.delete(nonce), this.ttlMs);
-    }
-    return nonce;
-  }
-
-  async consume(nonce: string): Promise<boolean> {
-    const cache = tryGetCache();
-    if (cache) {
-      const issued = await cache.get(`nonce:${nonce}`);
-      if (!issued) return false;
-      // Atomic single-use: INCR returns 1 only to the first consumer —
-      // safe across replicas. Backend error returns 0 → reject (fail-closed).
-      const n = await cache.incr(`nonce:consumed:${nonce}`, this.ttlSec);
-      return n === 1;
-    }
-    if (!this.fallbackIssued.has(nonce)) return false;
-    if (this.fallbackConsumed.has(nonce)) return false;
-    this.fallbackConsumed.add(nonce);
-    setTimeout(() => this.fallbackConsumed.delete(nonce), this.ttlMs);
-    return true;
-  }
-}
-
-// ─── Signature Verifier ──────────────────────────────────────────
-
-export type VerifySignatureFn = (
-  challenge: string,
-  signature: string,
-  accountId: string,
-) => Promise<boolean>;
+// Re-exports — consumers keep importing from "middleware/did-auth"
+// (split into did-nonce/did-challenge/did-verify in SLICE-145-6, max-lines).
+export { NonceStore } from "./did-nonce";
+export {
+  buildChallenge,
+  challengeHandler,
+  hashBody,
+  type ChallengeHandlerOptions,
+  type ChallengeParams,
+} from "./did-challenge";
+export { defaultVerifySignature, type VerifySignatureFn } from "./did-verify";
 
 // ─── Test Overrides ──────────────────────────────────────────────
 
@@ -210,7 +140,7 @@ export function requireDidSignature(
     }
 
     // Nonce single-use
-    if (!nonceStore.consume(nonce)) {
+    if (!(await nonceStore.consume(nonce))) {
       if (mode === "warn") {
         const warnDate = new Date();
         warnDate.setDate(warnDate.getDate() + 14);
@@ -334,137 +264,4 @@ export function assertSameActor(c: Context, actorDid: string | undefined): Respo
     return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH, `Actor DID does not match verified DID`);
   }
   return null;
-}
-
-// ─── Challenge Endpoint ──────────────────────────────────────────
-
-export interface ChallengeHandlerOptions {
-  nonceStore?: NonceStore;
-}
-
-export function challengeHandler(opts: ChallengeHandlerOptions = {}): MiddlewareHandler {
-  const nonceStore = opts.nonceStore ?? new NonceStore();
-
-  return async (c) => {
-    const did = c.req.query("did");
-    const method = c.req.query("method");
-    const path = c.req.query("path");
-
-    if (!did || !method || !path) {
-      return errorResponse(
-        c, 400, ErrorCodes.MISSING_FIELDS,
-        "Missing required query params: did, method, path",
-      );
-    }
-
-    const nonce = await nonceStore.issue();
-    const timestamp = Math.floor(Date.now() / 1000);
-
-    const challenge = buildChallenge({
-      did,
-      method,
-      path,
-      body: "",
-      timestamp,
-      nonce,
-    });
-
-    return c.json({
-      challenge,
-      nonce,
-      timestamp,
-      algorithm: "EIP-191",
-      instructions: "Sign the challenge string with your Hedera account key. Send the signature in X-AgentBadge-Signature header.",
-    }, 200, {
-      "Cache-Control": "no-store",
-    });
-  };
-}
-
-// ─── Default Verifier (Mirror Node key fetch) ────────────────────
-
-/**
- * Default signature verifier.
- *
- * Fetches the account's public key from the Hedera Mirror Node and verifies
- * the signature. Supports both ECDSA (via ethers) and ED25519 (via Hedera SDK).
- *
- * In production, this makes a Mirror Node API call to:
- *   GET {mirrorBase}/api/v1/accounts/{accountId}
- *
- * The signature is expected to be a hex-encoded Ed25519 or ECDSA signature
- * over the raw challenge bytes (NOT EIP-191 prefixed).
- */
-export async function defaultVerifySignature(
-  challenge: string,
-  signature: string,
-  accountId: string,
-): Promise<boolean> {
-  const mirrorBase = process.env.HEDERA_NETWORK === "mainnet"
-    ? "https://mainnet.mirrornode.hedera.com"
-    : "https://testnet.mirrornode.hedera.com";
-
-  try {
-    // Mirror Node key cache — a signed mutation shouldn't pay an external
-    // fetch every time. Keys rotate rarely; 5min staleness is acceptable.
-    const cacheKey = `hedera:acct:${accountId}`;
-    const cache = tryGetCache();
-    let keys: Array<{ _type: string; key: string }> | null = null;
-    if (cache) {
-      keys = await cache.get<Array<{ _type: string; key: string }>>(cacheKey);
-    }
-    if (!keys) {
-      const resp = await fetch(`${mirrorBase}/api/v1/accounts/${accountId}`);
-      if (!resp.ok) return false;
-
-      const data = await resp.json() as {
-        keys?: Array<{ _type: string; key: string }>;
-        key?: { _type: string; key: string };
-      };
-
-      // Mirror Node returns either a single key or an array of keys
-      keys = data.keys ?? (data.key ? [data.key] : []);
-      if (keys.length === 0) return false;
-      if (cache) await cache.set(cacheKey, keys, { ttlSec: 300 });
-    }
-
-    const challengeBytes = new TextEncoder().encode(challenge);
-    const sigHex = signature.startsWith("0x") ? signature.slice(2) : signature;
-    const sigBytes = Buffer.from(sigHex, "hex");
-
-    for (const keyInfo of keys) {
-      const keyType = keyInfo._type;
-      const pubKeyHex = keyInfo.key;
-
-      try {
-        if (keyType === "ED25519") {
-          // Use @hashgraph/sdk for ED25519 verification
-          const { PublicKey } = await import("@hashgraph/sdk");
-          const pubKey = PublicKey.fromString(`302a300506032b6570032100${pubKeyHex}`);
-          const verified = pubKey.verify(sigBytes, challengeBytes);
-          if (verified) return true;
-        } else if (keyType === "ECDSA_secp256k1") {
-          // Use ethers for ECDSA verification (EIP-191 personal Sign)
-          const { ethers } = await import("ethers");
-          // ethers expects 0x-prefixed signature and recovers address
-          const sig = `0x${sigHex}`;
-          const recovered = ethers.verifyMessage(
-            new TextEncoder().encode(challenge),
-            ethers.Signature.from(sig),
-          );
-          // Recover the address from the public key
-          const pubKey = `0x${pubKeyHex}`;
-          const expectedAddr = ethers.computeAddress(pubKey);
-          if (recovered.toLowerCase() === expectedAddr.toLowerCase()) return true;
-        }
-      } catch {
-        // Key type mismatch or verification error — try next key
-        continue;
-      }
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
 }
