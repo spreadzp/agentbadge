@@ -107,7 +107,7 @@ async function executeScanRecording(
 
   try {
     const exec = await client.pollExecution(triggerResult.executionId, { timeoutMs: 300_000, intervalMs: 3000 });
-    const txHashes = exec.transactionHashes?.map((r: { hash: string }) => r.hash) ?? [];
+    const txHashes = client.txHashes(exec);
     await auditStore.add({
       source: "agentbadge-record-scan",
       siteUrl: normalizedUrl,
