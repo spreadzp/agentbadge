@@ -31,7 +31,7 @@ const mockVerifier: VerifySignatureFn = vi.fn(async () => true);
 
 /** Nonce store that always accepts any nonce (for testing signed requests) */
 class AcceptAllNonceStore extends NonceStore {
-  consume(): boolean {
+  override async consume(): Promise<boolean> {
     return true;
   }
 }

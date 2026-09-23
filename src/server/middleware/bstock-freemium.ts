@@ -17,6 +17,7 @@
  */
 
 import type { Context, MiddlewareHandler } from "hono";
+import { tryGetCache } from "../lib/cache";
 
 export interface BstockPaymentRequirements {
   scheme: string;
@@ -167,22 +168,41 @@ export function bstockFreemium(
     }
 
     // 2. Live ServicePass → paid tier, skip the free bucket.
+    //    Positive results cached 60s — a pass lives 30d, so a minute of
+    //    staleness is safe and keeps the Arc RPC out of the hot path.
+    //    Negatives are never cached (a just-paid wallet must not wait).
     const wallet = c.req.header("X-Wallet");
-    if (wallet && (await cfg.hasAccess(wallet, cfg.serviceId))) {
-      await next();
-      return;
+    if (wallet) {
+      const passKey = `bstock:pass:${wallet}:${cfg.serviceId}`;
+      const cache = tryGetCache();
+      const cached = cache ? await cache.get<string>(passKey) : null;
+      if (cached === "1" || (await cfg.hasAccess(wallet, cfg.serviceId))) {
+        if (cached !== "1" && cache) {
+          await cache.set(passKey, "1", { ttlSec: 60 });
+        }
+        await next();
+        return;
+      }
     }
 
     // 3. Free tier: freePerMin req/min per agent token → 402 over.
+    //    cache.incr is atomic across replicas (INCR+EXPIRE); on backend
+    //    error it returns 0 → request passes (fail-open for rate limits).
     const key = (c.get("agentId") as string | undefined) ?? "anonymous";
-    const now = Date.now();
-    let b = buckets.get(key);
-    if (!b || now >= b.resetAt) {
-      b = { count: 0, resetAt: now + 60_000 };
-      buckets.set(key, b);
+    const cache = tryGetCache();
+    let count: number;
+    if (cache) {
+      count = await cache.incr(`bstock:free:${key}`, 60);
+    } else {
+      const now = Date.now();
+      let b = buckets.get(key);
+      if (!b || now >= b.resetAt) {
+        b = { count: 0, resetAt: now + 60_000 };
+        buckets.set(key, b);
+      }
+      count = ++b.count;
     }
-    b.count += 1;
-    if (b.count > freePerMin) {
+    if (count > freePerMin) {
       return paymentRequired(c, requirements);
     }
     await next();

@@ -35,6 +35,18 @@ export function resetCacheForTests(): void {
 }
 
 /**
+ * `getCache()` that never throws — returns null when config loading or
+ * provider construction fails, so callers can degrade to in-memory paths.
+ */
+export function tryGetCache(): CacheProvider | null {
+  try {
+    return getCache();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Drop all cache entries tagged `domain:{domain}` — badge SVGs and other
  * per-domain artifacts go stale the moment a rescan completes.
  * Fire-and-forget safe: the provider contract never throws.

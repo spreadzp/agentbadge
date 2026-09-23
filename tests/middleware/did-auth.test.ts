@@ -85,11 +85,11 @@ describe("SLICE-82-1: buildChallenge", () => {
 // ─── NonceStore ──────────────────────────────────────────────────
 
 describe("SLICE-82-1: NonceStore", () => {
-  it("issues unique 16-byte hex nonces (32 chars)", () => {
+  it("issues unique 16-byte hex nonces (32 chars)", async () => {
     const store = new NonceStore();
     const nonces = new Set<string>();
     for (let i = 0; i < 100; i++) {
-      nonces.add(store.issue());
+      nonces.add(await store.issue());
     }
     expect(nonces.size).toBe(100);
     for (const n of nonces) {
@@ -98,17 +98,17 @@ describe("SLICE-82-1: NonceStore", () => {
     }
   });
 
-  it("consume returns true first time, false on reuse", () => {
+  it("consume returns true first time, false on reuse", async () => {
     const store = new NonceStore();
-    const nonce = store.issue();
+    const nonce = await store.issue();
 
-    expect(store.consume(nonce)).toBe(true);
-    expect(store.consume(nonce)).toBe(false);
+    expect(await store.consume(nonce)).toBe(true);
+    expect(await store.consume(nonce)).toBe(false);
   });
 
-  it("consume returns false for unknown nonce", () => {
+  it("consume returns false for unknown nonce", async () => {
     const store = new NonceStore();
-    expect(store.consume("deadbeefdeadbeefdeadbeefdeadbeef")).toBe(false);
+    expect(await store.consume("deadbeefdeadbeefdeadbeefdeadbeef")).toBe(false);
   });
 });
 
@@ -157,7 +157,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
       headers: {
         "Content-Type": "application/json",
         "X-AgentBadge-Timestamp": String(Math.floor(Date.now() / 1000)),
-        "X-AgentBadge-Nonce": nonceStore.issue(),
+        "X-AgentBadge-Nonce": await nonceStore.issue(),
         "X-AgentBadge-Did": "did:hcs:0.0.123:1",
       },
       body: JSON.stringify({ posterDid: "did:hcs:0.0.123:1" }),
@@ -172,7 +172,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
       headers: {
         "Content-Type": "application/json",
         "X-AgentBadge-Signature": "0xfakesig",
-        "X-AgentBadge-Nonce": nonceStore.issue(),
+        "X-AgentBadge-Nonce": await nonceStore.issue(),
         "X-AgentBadge-Did": "did:hcs:0.0.123:1",
       },
       body: JSON.stringify({ posterDid: "did:hcs:0.0.123:1" }),
@@ -188,7 +188,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
         "Content-Type": "application/json",
         "X-AgentBadge-Signature": "0xfakesig",
         "X-AgentBadge-Timestamp": String(Math.floor(Date.now() / 1000)),
-        "X-AgentBadge-Nonce": nonceStore.issue(),
+        "X-AgentBadge-Nonce": await nonceStore.issue(),
       },
       body: JSON.stringify({ posterDid: "did:hcs:0.0.123:1" }),
     });
@@ -200,7 +200,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
     const oldTs = Math.floor(Date.now() / 1000) - 400;
     const did = "did:hcs:0.0.123:1";
     const body = JSON.stringify({ posterDid: did });
-    const nonce = nonceStore.issue();
+    const nonce = await nonceStore.issue();
 
     const challenge = buildChallenge({
       did,
@@ -232,7 +232,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
     const signingDid = "did:hcs:0.0.123:1";
     const bodyDid = "did:hcs:0.0.999:1";
     const body = JSON.stringify({ posterDid: bodyDid });
-    const nonce = nonceStore.issue();
+    const nonce = await nonceStore.issue();
 
     const challenge = buildChallenge({
       did: signingDid,
@@ -263,7 +263,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
     const ts = Math.floor(Date.now() / 1000);
     const did = "did:hcs:0.0.123:1";
     const body = JSON.stringify({ posterDid: did });
-    const nonce = nonceStore.issue();
+    const nonce = await nonceStore.issue();
 
     const challenge = buildChallenge({
       did,
@@ -297,7 +297,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
     const ts = Math.floor(Date.now() / 1000);
     const did = "did:hcs:0.0.123:1";
     const body = JSON.stringify({ posterDid: did });
-    const nonce = nonceStore.issue();
+    const nonce = await nonceStore.issue();
 
     const challenge = buildChallenge({
       did,
@@ -328,7 +328,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
     const ts = Math.floor(Date.now() / 1000);
     const did = "did:hcs:0.0.123:1";
     const body = JSON.stringify({ posterDid: did });
-    const nonce = nonceStore.issue();
+    const nonce = await nonceStore.issue();
 
     const challenge = buildChallenge({
       did,
@@ -367,7 +367,7 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
     const ts = Math.floor(Date.now() / 1000);
     const did = "did:hcs:0.0.999:1";
     const body = JSON.stringify({ posterDid: did });
-    const nonce = nonceStore.issue();
+    const nonce = await nonceStore.issue();
 
     const challenge = buildChallenge({
       did,
@@ -456,7 +456,7 @@ describe("SLICE-82-1: GET /auth/challenge endpoint", () => {
     const json = await res.json();
     const nonce = json.nonce as string;
 
-    expect(nonceStore.consume(nonce)).toBe(true);
-    expect(nonceStore.consume(nonce)).toBe(false);
+    expect(await nonceStore.consume(nonce)).toBe(true);
+    expect(await nonceStore.consume(nonce)).toBe(false);
   });
 });

@@ -21,6 +21,7 @@ import { didToAccountId } from "@agentbadge/hedera-core";
 import { logger } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { tryGetCache } from "../lib/cache";
 
 // ─── Challenge Builder ───────────────────────────────────────────
 
@@ -52,26 +53,47 @@ export function buildChallenge(params: ChallengeParams): string {
 // ─── Nonce Store ─────────────────────────────────────────────────
 
 export class NonceStore {
-  private issued = new Set<string>();
-  private consumed = new Set<string>();
+  // Fallback Sets — used only when the cache provider itself is
+  // unavailable (getCache throws). CACHE_ENABLED=false still goes through
+  // InMemoryCache, which is already per-process + TTL'd.
+  private fallbackIssued = new Set<string>();
+  private fallbackConsumed = new Set<string>();
   private ttlMs: number;
 
   constructor(ttlMs = 600_000) {
     this.ttlMs = ttlMs;
   }
 
-  issue(): string {
+  private get ttlSec(): number {
+    return Math.max(1, Math.ceil(this.ttlMs / 1000));
+  }
+
+  async issue(): Promise<string> {
     const nonce = randomBytes(16).toString("hex");
-    this.issued.add(nonce);
-    setTimeout(() => this.issued.delete(nonce), this.ttlMs);
+    const cache = tryGetCache();
+    if (cache) {
+      await cache.set(`nonce:${nonce}`, "1", { ttlSec: this.ttlSec });
+    } else {
+      this.fallbackIssued.add(nonce);
+      setTimeout(() => this.fallbackIssued.delete(nonce), this.ttlMs);
+    }
     return nonce;
   }
 
-  consume(nonce: string): boolean {
-    if (!this.issued.has(nonce)) return false;
-    if (this.consumed.has(nonce)) return false;
-    this.consumed.add(nonce);
-    setTimeout(() => this.consumed.delete(nonce), this.ttlMs);
+  async consume(nonce: string): Promise<boolean> {
+    const cache = tryGetCache();
+    if (cache) {
+      const issued = await cache.get(`nonce:${nonce}`);
+      if (!issued) return false;
+      // Atomic single-use: INCR returns 1 only to the first consumer —
+      // safe across replicas. Backend error returns 0 → reject (fail-closed).
+      const n = await cache.incr(`nonce:consumed:${nonce}`, this.ttlSec);
+      return n === 1;
+    }
+    if (!this.fallbackIssued.has(nonce)) return false;
+    if (this.fallbackConsumed.has(nonce)) return false;
+    this.fallbackConsumed.add(nonce);
+    setTimeout(() => this.fallbackConsumed.delete(nonce), this.ttlMs);
     return true;
   }
 }
@@ -335,7 +357,7 @@ export function challengeHandler(opts: ChallengeHandlerOptions = {}): Middleware
       );
     }
 
-    const nonce = nonceStore.issue();
+    const nonce = await nonceStore.issue();
     const timestamp = Math.floor(Date.now() / 1000);
 
     const challenge = buildChallenge({
@@ -373,7 +395,7 @@ export function challengeHandler(opts: ChallengeHandlerOptions = {}): Middleware
  * The signature is expected to be a hex-encoded Ed25519 or ECDSA signature
  * over the raw challenge bytes (NOT EIP-191 prefixed).
  */
-async function defaultVerifySignature(
+export async function defaultVerifySignature(
   challenge: string,
   signature: string,
   accountId: string,
@@ -383,17 +405,28 @@ async function defaultVerifySignature(
     : "https://testnet.mirrornode.hedera.com";
 
   try {
-    const resp = await fetch(`${mirrorBase}/api/v1/accounts/${accountId}`);
-    if (!resp.ok) return false;
+    // Mirror Node key cache — a signed mutation shouldn't pay an external
+    // fetch every time. Keys rotate rarely; 5min staleness is acceptable.
+    const cacheKey = `hedera:acct:${accountId}`;
+    const cache = tryGetCache();
+    let keys: Array<{ _type: string; key: string }> | null = null;
+    if (cache) {
+      keys = await cache.get<Array<{ _type: string; key: string }>>(cacheKey);
+    }
+    if (!keys) {
+      const resp = await fetch(`${mirrorBase}/api/v1/accounts/${accountId}`);
+      if (!resp.ok) return false;
 
-    const data = await resp.json() as {
-      keys?: Array<{ _type: string; key: string }>;
-      key?: { _type: string; key: string };
-    };
+      const data = await resp.json() as {
+        keys?: Array<{ _type: string; key: string }>;
+        key?: { _type: string; key: string };
+      };
 
-    // Mirror Node returns either a single key or an array of keys
-    const keys = data.keys ?? (data.key ? [data.key] : []);
-    if (keys.length === 0) return false;
+      // Mirror Node returns either a single key or an array of keys
+      keys = data.keys ?? (data.key ? [data.key] : []);
+      if (keys.length === 0) return false;
+      if (cache) await cache.set(cacheKey, keys, { ttlSec: 300 });
+    }
 
     const challengeBytes = new TextEncoder().encode(challenge);
     const sigHex = signature.startsWith("0x") ? signature.slice(2) : signature;

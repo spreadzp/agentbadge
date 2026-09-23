@@ -50,10 +50,10 @@ const mockedSubmit = vi.mocked(submitTaskMessage);
 const mockedVerify = vi.mocked(verifyA2ADid);
 const mockedDidToAccountId = vi.mocked(didToAccountId);
 const mockedGetTaskById = vi.mocked(getTaskById);
-const mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
-const mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
+const _mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
+const _mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
 const mockedCreateScheduledTransfer = vi.mocked(createScheduledTransfer);
-const mockedUpsert = vi.mocked(upsert);
+const _mockedUpsert = vi.mocked(upsert);
 
 const POSTER_DID = "did:hcs:0.0.123:1";
 const CLAIMER_DID = "did:hcs:0.0.456:2";
@@ -127,7 +127,7 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
     });
 
     it("returns 403 when verified DID does not match body posterDid", async () => {
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/market/tasks", {
         method: "POST",
         headers: makeAuthHeaders(OTHER_DID, nonce),
@@ -139,7 +139,7 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
     });
 
     it("succeeds with valid signature and matching DID", async () => {
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/market/tasks", {
         method: "POST",
         headers: makeAuthHeaders(POSTER_DID, nonce),
@@ -166,7 +166,7 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
 
     it("returns 403 when verified DID does not match body claimerDid", async () => {
       mockedGetTaskById.mockReturnValue(mockTask);
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/market/tasks/task-001/claim", {
         method: "POST",
         headers: makeAuthHeaders(OTHER_DID, nonce),
@@ -177,7 +177,7 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
 
     it("succeeds with valid signature and matching DID", async () => {
       mockedGetTaskById.mockReturnValue(mockTask);
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/market/tasks/task-001/claim", {
         method: "POST",
         headers: makeAuthHeaders(CLAIMER_DID, nonce),
@@ -202,7 +202,7 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
 
     it("returns 403 when verified DID does not match body posterDid", async () => {
       mockedGetTaskById.mockReturnValue(mockTask);
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/market/tasks/task-001/cancel", {
         method: "POST",
         headers: makeAuthHeaders(OTHER_DID, nonce),
@@ -213,7 +213,7 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
 
     it("succeeds with valid signature and matching DID", async () => {
       mockedGetTaskById.mockReturnValue(mockTask);
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/market/tasks/task-001/cancel", {
         method: "POST",
         headers: makeAuthHeaders(POSTER_DID, nonce),

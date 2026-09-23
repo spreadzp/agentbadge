@@ -3,7 +3,7 @@
  * → x402 payment → ServicePass → real-time access. Pass expiry → 402.
  */
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { Hono } from "hono";
 import { createNamespace, registerBstockTools } from "@agentbadge/mcp";
 import type { BstockEngineLike } from "@agentbadge/mcp";
@@ -17,6 +17,8 @@ import {
   ensureBstockService,
   BSTOCK_SERVICE_ID,
 } from "../src/server/lib/bstock/service";
+import { resetCacheForTests } from "../src/server/lib/cache";
+import { resetConfigCache } from "../src/config/env";
 import {
   useMemoryStoreForTesting,
   resetStoreForTesting,
@@ -25,6 +27,20 @@ import {
 
 const TOKENS = new Map([["tok-agent1", "agent1"]]);
 const WALLET = "0x1111111111111111111111111111111111111111";
+
+// The freemium middleware now counts via the shared cache singleton.
+// .env sets CACHE_ENABLED=true (Valkey) — stub it off so each test gets a
+// fresh InMemoryCache and bstock:free:* / bstock:pass:* keys can't leak.
+beforeEach(() => {
+  vi.stubEnv("CACHE_ENABLED", "false");
+  resetConfigCache();
+  resetCacheForTests();
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+  resetConfigCache();
+  resetCacheForTests();
+});
 
 function mockEngine(): BstockEngineLike {
   return {

@@ -37,7 +37,7 @@ import {
 const mockedSubmit = vi.mocked(submitA2AMessage);
 const mockedVerify = vi.mocked(verifyA2ADid);
 const mockedDidToAccountId = vi.mocked(didToAccountId);
-const mockedUpsert = vi.mocked(upsert);
+const _mockedUpsert = vi.mocked(upsert);
 
 const SENDER_DID = "did:hcs:0.0.123:1";
 const RECIPIENT_DID = "did:hcs:0.0.456:2";
@@ -91,7 +91,7 @@ describe("A2A DID auth enforcement (SLICE-82-2)", () => {
     });
 
     it("returns 403 when verified DID does not match body 'from'", async () => {
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/a2a/send", {
         method: "POST",
         headers: makeAuthHeaders(OTHER_DID, nonce),
@@ -103,7 +103,7 @@ describe("A2A DID auth enforcement (SLICE-82-2)", () => {
     });
 
     it("succeeds with valid signature and matching DID", async () => {
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/a2a/send", {
         method: "POST",
         headers: makeAuthHeaders(SENDER_DID, nonce),
@@ -137,7 +137,7 @@ describe("A2A DID auth enforcement (SLICE-82-2)", () => {
     });
 
     it("returns 403 when verified DID does not match body 'from'", async () => {
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/a2a/send-signed", {
         method: "POST",
         headers: makeAuthHeaders(OTHER_DID, nonce),
@@ -147,7 +147,7 @@ describe("A2A DID auth enforcement (SLICE-82-2)", () => {
     });
 
     it("succeeds with valid signature and matching DID", async () => {
-      const nonce = testNonceStore.issue();
+      const nonce = await testNonceStore.issue();
       const res = await app.request("/a2a/send-signed", {
         method: "POST",
         headers: makeAuthHeaders(SENDER_DID, nonce),
