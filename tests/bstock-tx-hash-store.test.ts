@@ -120,4 +120,35 @@ describe("CacheTxHashStore", () => {
     expect(second.valid).toBe(false);
     expect(second.error).toBe("tx_replayed");
   });
+
+  it("RPC failure in verify → invalid (402), not a thrown 500", async () => {
+    const facilitator = createArcBstockFacilitator({
+      sellerAddress: "0x2222222222222222222222222222222222222222",
+      txHashStore: new CacheTxHashStore(getCache()),
+      publicClient: {
+        getTransactionReceipt: async () => {
+          throw new Error("fetch failed");
+        },
+      },
+    });
+    const sig = Buffer.from(
+      JSON.stringify({ payload: { txHash: TX } }),
+    ).toString("base64");
+    const res = await facilitator.verify(sig, {
+      scheme: "eip3009-client-broadcast",
+      network: "eip155:5042002",
+      asset: "0x3600000000000000000000000000000000000000",
+      amount: "1000",
+      maxAmountRequired: "1000",
+      payTo: "0x2222222222222222222222222222222222222222",
+      resource: "POST /mcp/bstock",
+      description: "test",
+      mimeType: "application/json",
+    });
+    expect(res.valid).toBe(false);
+    expect(res.error).toContain("verify_failed");
+    // txHash must NOT be claimed — a retry after RPC recovery works.
+    const store = new CacheTxHashStore(getCache());
+    expect(await store.claim(TX)).toBe(true);
+  });
 });

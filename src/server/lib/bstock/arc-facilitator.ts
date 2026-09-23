@@ -87,17 +87,34 @@ export function createArcBstockFacilitator(
 
   return {
     async verify(paymentHeader, requirements) {
-      const res = await handle.verify(
-        decodePaymentHeader(paymentHeader),
-        toPaymentRequirements(requirements),
-      );
-      return { valid: res.isValid, error: res.invalidReason };
+      try {
+        const res = await handle.verify(
+          decodePaymentHeader(paymentHeader),
+          toPaymentRequirements(requirements),
+        );
+        return { valid: res.isValid, error: res.invalidReason };
+      } catch (err) {
+        // RPC/receipt fetch failure → 402, not 500: the client can retry
+        // (txHash is not claimed on inspect failure).
+        return {
+          valid: false,
+          error: `verify_failed: ${(err as Error).message}`,
+        };
+      }
     },
     async settle(paymentHeader, requirements) {
-      const res = await handle.settle(
-        decodePaymentHeader(paymentHeader),
-        toPaymentRequirements(requirements),
-      );
+      let res;
+      try {
+        res = await handle.settle(
+          decodePaymentHeader(paymentHeader),
+          toPaymentRequirements(requirements),
+        );
+      } catch (err) {
+        return {
+          success: false,
+          error: `settle_failed: ${(err as Error).message}`,
+        };
+      }
       if (res.success && res.transaction) {
         // Audit trail — fire-and-forget; a failed write must not block
         // the paid request (same as pass-mint in the middleware).
