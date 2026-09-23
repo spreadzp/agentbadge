@@ -101,6 +101,11 @@ OPTIONAL_SECRETS=(
   # .env keeps BSTOK-infix names; pushed under canonical names via SECRET_RENAME
   BINANCE_BSTOK_API_KEY
   BINANCE_BSTOK_API_SECRET
+  # ── Cache layer (EPIC-144/145) ──
+  CACHE_ENABLED
+  CACHE_BACKEND
+  CACHE_URL
+  CACHE_TOKEN
 )
 
 # .env name → Fly secret name (when they differ)
