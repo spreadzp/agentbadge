@@ -45,7 +45,7 @@ interface QuoteProbe {
  * whose bStock has no Binance market).
  */
 export async function probeLiveAssets<
-  T extends { assetCode: string },
+  T extends { underlyingSymbol: string },
 >(client: QuoteProbe, assets: readonly T[]): Promise<T[]> {
   const live: T[] = [];
   const CHUNK = 10;
@@ -53,7 +53,9 @@ export async function probeLiveAssets<
     const results = await Promise.all(
       assets.slice(i, i + CHUNK).map(async (a) => {
         try {
-          const q = await client.fetchQuote(a.assetCode);
+          // The equity market trades under the underlying ticker
+          // (AAPL), not the deposit assetCode (AAPLB).
+          const q = await client.fetchQuote(a.underlyingSymbol);
           return q && (q.bidPrice ?? 0) + (q.askPrice ?? 0) > 0
             ? a
             : null;
@@ -108,8 +110,10 @@ export async function startBstockFeeds(
   );
   eng.setAssets(live);
 
+  // Poll/probe by underlying ticker — that's the tradeable symbol on
+  // the Binance equity market (assetCode is a deposit code, not a market).
   const symbols = () =>
-    eng.listDeltas().map((d) => d.symbol);
+    eng.listDeltas().map((d) => d.underlying);
   const feed = new BinancePriceFeed({
     client: binance,
     symbols,
