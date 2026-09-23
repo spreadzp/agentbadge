@@ -46,7 +46,7 @@
     "arch:graph:check": "bun scripts/arch-graph.mts && git diff --exit-code docs/architecture-graph.md"
   },
   "dependencies": {
-    "@agentbadge/bstock-tracker": "0.1.6",
+    "@agentbadge/bstock-tracker": "0.1.7",
     "@agentbadge/cache": "^0.1.1",
     "@agentbadge/circle-payments": "^0.1.3",
     "@agentbadge/database": "^0.1.1",
