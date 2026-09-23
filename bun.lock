@@ -5,7 +5,7 @@
     "": {
       "name": "agentgate",
       "dependencies": {
-        "@agentbadge/bstock-tracker": "0.1.3",
+        "@agentbadge/bstock-tracker": "0.1.4",
         "@agentbadge/cache": "^0.1.1",
         "@agentbadge/circle-payments": "^0.1.3",
         "@agentbadge/database": "^0.1.1",
@@ -62,7 +62,7 @@
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, ""],
 
-    "@agentbadge/bstock-tracker": ["@agentbadge/bstock-tracker@0.1.3", "", {}, "sha512-ywu2XmxYjhp3ByyyBXkhPyJZbKoOpln1oyMJpFAC840PKrpuzgejSis0LA9oTiK9QA9LAR2XVBUH9fMVzcnLhw=="],
+    "@agentbadge/bstock-tracker": ["@agentbadge/bstock-tracker@0.1.4", "", {}, "sha512-gfnngNqmUDoGPSZJmtK/jkQyLYzJKIneIqvtVYQercijIizb3+ENy87RW9vMqDe6FBC+re4oIjcZJqPg4zihYQ=="],
 
     "@agentbadge/cache": ["@agentbadge/cache@0.1.1", "", { "dependencies": { "@upstash/redis": "^1.39.0", "ioredis": "^6.0.0" } }, "sha512-eY6xo71i29TimztcqvOLOdOLeNdgq2mOVPaVWiQHIp2moPLYCj80uq1h4SAzbguLaBuYP2SQqF//kq7QW8oogA=="],
 
