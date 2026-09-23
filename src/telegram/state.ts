@@ -33,8 +33,13 @@ export function getTelegramSubscriptions(): TelegramSubscriptions {
 export function getBstockTelegramBot(engine: BstockTelegramEngine) {
   const token = process.env.TELEGRAM_BOT_BSTOK_TOKEN;
   if (!token) return null;
+  const registry = getTelegramRegistry();
+  // Boot hydration (D11): restore persisted chat bindings. Fire-and-forget
+  // here (sync factory) — register() also awaits it internally, so the
+  // registry is deterministic even if a webhook arrives mid-hydration.
+  void registry.hydrate();
   return createBstockTelegramBot({
-    registry: getTelegramRegistry(),
+    registry,
     subscriptions: getTelegramSubscriptions(),
     engine,
     send: makeTelegramSender(token),

@@ -87,7 +87,7 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
     if (chatId === undefined) return c.json({ ok: true });
 
     const username = msg?.chat?.username ?? String(chatId);
-    registry.register(chatId, username);
+    await registry.register(chatId, username);
 
     // Pull model: data only on explicit command — no auto-push.
     const m = /^\/(\w+)(?:@\w+)?(?:\s+(\S+))?/.exec(msg?.text?.trim() ?? "");
