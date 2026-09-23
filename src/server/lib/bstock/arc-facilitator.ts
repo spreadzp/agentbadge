@@ -14,11 +14,16 @@ import {
   ARC_TESTNET,
   type ArcSelfSettleHandle,
   type PaymentRequirements,
+  type TxHashStore,
+  type ReceiptClient,
 } from "@agentbadge/circle-payments";
 import type {
   BstockFacilitator,
   BstockPaymentRequirements,
 } from "../../middleware/bstock-freemium";
+import { getCache } from "../cache";
+import { getDatabase } from "../database";
+import { CacheTxHashStore } from "./tx-hash-store";
 
 /** Decode PAYMENT-SIGNATURE header → payload object for the handle. */
 function decodePaymentHeader(header: string): unknown {
@@ -52,6 +57,14 @@ export interface ArcFacilitatorConfig {
   rpcUrl?: string;
   /** Injectable handle for tests. */
   handle?: ArcSelfSettleHandle;
+  /**
+   * Replay-protection store — default `CacheTxHashStore(getCache())`
+   * (atomic `incr`, restart-safe on Upstash; in-memory when
+   * `CACHE_ENABLED` is off). Ignored when `handle` is injected.
+   */
+  txHashStore?: TxHashStore;
+  /** Injectable receipt client for tests (default-path handle). */
+  publicClient?: ReceiptClient;
 }
 
 /**
@@ -68,6 +81,8 @@ export function createArcBstockFacilitator(
       sellerAddress: cfg.sellerAddress,
       chain: ARC_TESTNET,
       rpcUrl: cfg.rpcUrl ?? process.env.ARC_RPC_URL,
+      publicClient: cfg.publicClient,
+      txHashStore: cfg.txHashStore ?? new CacheTxHashStore(getCache()),
     });
 
   return {
@@ -83,6 +98,25 @@ export function createArcBstockFacilitator(
         decodePaymentHeader(paymentHeader),
         toPaymentRequirements(requirements),
       );
+      if (res.success && res.transaction) {
+        // Audit trail — fire-and-forget; a failed write must not block
+        // the paid request (same as pass-mint in the middleware).
+        void Promise.resolve()
+          .then(() =>
+            getDatabase().events.create({
+              type: "payment",
+              source: "arc-x402",
+              payload: {
+                txHash: res.transaction,
+                payer: res.payer ?? null,
+                amount: requirements.amount,
+                asset: requirements.asset,
+                network: requirements.network,
+              },
+            }),
+          )
+          .catch(() => {});
+      }
       return {
         success: res.success,
         transaction: res.transaction,

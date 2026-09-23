@@ -48,7 +48,7 @@
   "dependencies": {
     "@agentbadge/bstock-tracker": "0.1.7",
     "@agentbadge/cache": "^0.1.1",
-    "@agentbadge/circle-payments": "^0.1.4",
+    "@agentbadge/circle-payments": "^0.1.5",
     "@agentbadge/database": "^0.1.1",
     "@agentbadge/evm-core": "^0.1.2",
     "@agentbadge/hedera-core": "^0.2.1",
