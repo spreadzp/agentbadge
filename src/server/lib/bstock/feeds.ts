@@ -77,17 +77,31 @@ export async function startBstockFeeds(
   const binance = new BinanceClient({
     apiKey: process.env.BINANCE_BSTOK_API_KEY ?? "",
   });
-  try {
-    const assets = await binance.fetchTokenizedAssets();
-    const live = await probeLiveAssets(binance, assets);
-    console.log(
-      `[bstock] ${live.length}/${assets.length} assets have live Binance markets`,
-    );
-    eng.setAssets(live);
-  } catch (err) {
-    console.error("[bstock] tokenized-assets fetch failed:", err);
-    return null;
+  // Initial asset map is critical — retry transient Binance errors
+  // (HTTP 400/429/5xx at startup) instead of leaving the engine empty.
+  let assets:
+    | readonly import("@agentbadge/bstock-tracker").TokenizedAsset[]
+    | null = null;
+  for (let attempt = 0; attempt < 5 && !assets; attempt++) {
+    try {
+      assets = await binance.fetchTokenizedAssets(true);
+    } catch (err) {
+      console.error(
+        `[bstock] tokenized-assets fetch failed (attempt ${attempt + 1}/5):`,
+        err,
+      );
+      if (attempt < 4) {
+        await new Promise((r) => setTimeout(r, 5_000 * 2 ** attempt));
+      }
+    }
   }
+  if (!assets) return null;
+
+  const live = await probeLiveAssets(binance, assets);
+  console.log(
+    `[bstock] ${live.length}/${assets.length} assets have live Binance markets`,
+  );
+  eng.setAssets(live);
 
   const symbols = () =>
     eng.listDeltas().map((d) => d.symbol);
