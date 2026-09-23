@@ -11,6 +11,8 @@ export const article: BlogArticle = {
   tags: ["bstocks","tokenized-stocks","mcp","x402","ai-agents"],
   readingTime: "6 min",
   shortAnswer: "A delta tracker computes the price divergence between a tokenized stock and its underlying in real time and serves it to AI agents over MCP — free tier 1 req/min, then HTTP 402 with an x402 payment on Arc Testnet.",
+  heroImage: "/images/blog/bstock-delta-tracker-case-hero.png",
+  ogImage: "/images/blog/bstock-delta-tracker-case-hero.png",
   content: `<p>Picture this: Apple trades at $336.45 on Nasdaq. Tokenized Apple
 (AAPLB on Binance) trades at $336.44 at the same moment. A penny apart —
 noise. But on a Saturday night, with Nasdaq asleep, AAPLB can drift to
@@ -20,6 +22,9 @@ price and its underlying — is where the opportunities live. Humans
 cannot watch 20+ tokens around the clock. A machine can. So we built a
 tracker that computes the delta in real time and handed it to AI
 agents.</p>
+<p><img src="/images/blog/bstock-delta-tracker-case-hero.png"
+alt="Two price lines - AAPLB token vs AAPL underlying - with the -2% delta band highlighted" />
+<!-- production: /images/blog/bstock-delta-tracker-case-hero.png | also OG image (1200x630) | NanoBanana asset #1 DONE --></p>
 <figure>
 <img src="/images/blog/bstock-delta-tracker-case-d1.png"
 alt="Diagram: how the delta tracker works" />
@@ -55,6 +60,9 @@ threshold</strong> (configurable).</li>
 class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;symbol&quot;</span><span class="fu">:</span><span class="st">&quot;AAPLB&quot;</span><span class="fu">,</span><span class="dt">&quot;underlying&quot;</span><span class="fu">:</span><span class="st">&quot;AAPL&quot;</span><span class="fu">,</span><span class="dt">&quot;multiplier&quot;</span><span class="fu">:</span><span class="fl">1.0006</span><span class="fu">,</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a> <span class="dt">&quot;bStockPrice&quot;</span><span class="fu">:</span><span class="fl">336.44</span><span class="fu">,</span><span class="dt">&quot;underlyingPrice&quot;</span><span class="fu">:</span><span class="fl">336.45</span><span class="fu">,</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a> <span class="dt">&quot;deltaPct&quot;</span><span class="fu">:</span><span class="fl">-0.064</span><span class="fu">,</span><span class="dt">&quot;phase&quot;</span><span class="fu">:</span><span class="st">&quot;O&quot;</span><span class="fu">,</span><span class="dt">&quot;stale&quot;</span><span class="fu">:</span><span class="kw">false</span><span class="fu">,</span><span class="dt">&quot;inAlert&quot;</span><span class="fu">:</span><span class="kw">false</span><span class="fu">}</span></span></code></pre></div>
+<p><img src="/images/blog/bstock-delta-tracker-case-2.png"
+alt="get_delta JSON response with deltaPct and inAlert highlighted" />
+<!-- production: /images/blog/bstock-delta-tracker-case-2.png | NanoBanana asset #2 DONE --></p>
 <h2 id="how-an-agent-uses-it">How an agent uses it</h2>
 <p>An AI agent is a program — Claude, a GPT-based bot, your own script —
 that calls services on its own. Agents talk to services over
@@ -76,6 +84,9 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="
 <p>There is also Telegram: <code>subscribe_telegram</code> registers the
 agent’s operator, and the tracker pushes a message whenever a delta
 crosses 0.5%. No polling needed — the signal finds you.</p>
+<p><img src="/images/blog/bstock-delta-tracker-case-3.png"
+alt="AI agent connected to the MCP tracker (Binance + Finnhub feeds, five tools) with a Telegram alert" />
+<!-- production: /images/blog/bstock-delta-tracker-case-3.png | NanoBanana asset #3 DONE --></p>
 <h2 id="freemium-a-snapshot-for-free-the-stream-for-a-fee">Freemium: a
 snapshot for free, the stream for a fee</h2>
 <p>The first request each minute is free. After that the server answers
@@ -86,6 +97,9 @@ signup, no card, one on-chain transaction — gas paid in USDC too, an Arc
 specialty. The server verifies the transaction on-chain and opens the
 door. The same payment cannot be replayed — replay protection is built
 in.</p>
+<p><img src="/images/blog/bstock-delta-tracker-case-4.png"
+alt="402 paywall flow: request rejected, USDC payment to the Arc vault, 30-day access badge" />
+<!-- production: /images/blog/bstock-delta-tracker-case-4.png | NanoBanana asset #4 DONE --></p>
 <h2 id="why-a-trader-should-care">Why a trader should care</h2>
 <p>A −0.06% delta is noise. A −2% delta on a closed exchange means “the
 token was sold off and the equity has not woken up yet”. Whoever sees it
