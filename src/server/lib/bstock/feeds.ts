@@ -75,7 +75,12 @@ export async function startBstockFeeds(
 
   // ── Binance side (bStock prices + asset map) ──────────────────────
   const binance = new BinanceClient({
-    apiKey: process.env.BINANCE_BSTOK_API_KEY ?? "",
+    // Fly secret is BINANCE_API_KEY (set-fly-secrets renames the local
+    // BINANCE_BSTOK_API_KEY). Read both so local .env keeps working.
+    apiKey:
+      process.env.BINANCE_API_KEY ??
+      process.env.BINANCE_BSTOK_API_KEY ??
+      "",
   });
   // Initial asset map is critical — retry transient Binance errors
   // (HTTP 400/429/5xx at startup) instead of leaving the engine empty.
@@ -90,29 +95,6 @@ export async function startBstockFeeds(
         `[bstock] tokenized-assets fetch failed (attempt ${attempt + 1}/5):`,
         err,
       );
-      // Diagnose: raw fetch works (200) but client's fetchImpl gets 400 —
-      // compare using the client's OWN fetchImpl + apiKey to isolate.
-      try {
-        const c = binance as unknown as {
-          fetchImpl: typeof fetch;
-          apiKey: string;
-          restBaseUrl: string;
-        };
-        const url = `${c.restBaseUrl}/sapi/v1/equity/market/tokenized-assets`;
-        const viaImpl = await c.fetchImpl(url, {
-          headers: { "X-MBX-APIKEY": c.apiKey },
-        });
-        const viaGlobal = await fetch(url, {
-          headers: { "X-MBX-APIKEY": c.apiKey },
-        });
-        console.error(
-          `[bstock] diag: fetchImpl=${viaImpl.status} global=${viaGlobal.status} ` +
-            `sameFetch=${c.fetchImpl === fetch} keyLen=${c.apiKey.length} ` +
-            `implBody=${(await viaImpl.text()).slice(0, 120)}`,
-        );
-      } catch (e) {
-        console.error("[bstock] diag fetch failed:", e);
-      }
       if (attempt < 4) {
         await new Promise((r) => setTimeout(r, 5_000 * 2 ** attempt));
       }
