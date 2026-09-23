@@ -108,7 +108,7 @@ async function executeScanRecording(
   try {
     const exec = await client.pollExecution(triggerResult.executionId, { timeoutMs: 300_000, intervalMs: 3000 });
     const txHashes = exec.transactionHashes?.map((r: { hash: string }) => r.hash) ?? [];
-    auditStore.add({
+    await auditStore.add({
       source: "agentbadge-record-scan",
       siteUrl: normalizedUrl,
       score: scan.score,
@@ -119,7 +119,7 @@ async function executeScanRecording(
     return c.json({ mode: "executed", via: triggerResult.via, executionId: triggerResult.executionId, status: exec.status, txHashes, scan });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    auditStore.add({
+    await auditStore.add({
       source: "agentbadge-record-scan",
       siteUrl: normalizedUrl,
       score: scan.score,
@@ -362,7 +362,7 @@ keeperhubApiRoutes.post(
     const score = coerceNum(body.score);
     const executionId = body.executionId as string | undefined;
 
-    auditStore.add({
+    await auditStore.add({
       source,
       siteUrl,
       score,
@@ -392,7 +392,7 @@ keeperhubApiRoutes.get(
     const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 50 : rawLimit), 100);
     const onchainFlag = c.req.query("onchain") !== "false";
 
-    const events = auditStore.list({ limit, siteUrl });
+    const events = await auditStore.list({ limit, siteUrl });
 
     let onchain: { latest?: unknown; recent?: unknown; source: string | null } = {
       source: cfg.base?.trustRegistry ?? null,
@@ -444,26 +444,27 @@ keeperhubApiRoutes.get(
 
     c.header("X-Accel-Buffering", "no");
     return streamSSE(c, async (stream) => {
-      // Initial snapshot
-      const snapshot = auditStore.list({ limit: 20 });
-      await stream.writeSSE({ event: "snapshot", data: JSON.stringify({ events: snapshot }) });
-
-      // Subscribe to live events
+      // Subscribe + abort-cleanup FIRST — both must be registered before
+      // any await so a live event or a client cancel landing during the
+      // async snapshot read is never missed.
       const onAudit = async (event: AuditEvent) => {
         await stream.writeSSE({ event: "audit", data: JSON.stringify(event) });
       };
       auditStore.on("audit", onAudit);
-
-      // Heartbeat every 25s
-      const heartbeat = setInterval(() => {
-        stream.writeSSE({ data: "ping", event: "" }).catch(() => { });
-      }, 25_000);
-
-      // Wait for abort
+      let heartbeat: ReturnType<typeof setInterval> | undefined;
       stream.onAbort(() => {
         auditStore.off("audit", onAudit);
-        clearInterval(heartbeat);
+        if (heartbeat) clearInterval(heartbeat);
       });
+
+      // Initial snapshot
+      const snapshot = await auditStore.list({ limit: 20 });
+      await stream.writeSSE({ event: "snapshot", data: JSON.stringify({ events: snapshot }) });
+
+      // Heartbeat every 25s
+      heartbeat = setInterval(() => {
+        stream.writeSSE({ data: "ping", event: "" }).catch(() => { });
+      }, 25_000);
 
       // Keep stream open until aborted
       while (true) {

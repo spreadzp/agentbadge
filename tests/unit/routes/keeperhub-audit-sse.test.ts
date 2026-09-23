@@ -31,6 +31,10 @@ vi.mock("../../../src/server/lib/keeperhub-onchain.js", () => ({
 
 // Use real auditStore (not mocked) for SSE EventEmitter behavior
 import { auditStore } from "../../../src/server/lib/keeperhub-audit-store";
+import { resetConfigCache } from "../../../src/config/env";
+import { resetDatabaseForTests } from "../../../src/server/lib/database";
+
+const originalEnv = { ...process.env };
 import { keeperhubApiRoutes } from "../../../src/server/routes/keeperhub-api";
 
 async function readSSEChunk(reader: ReadableStreamDefaultReader<Uint8Array>, timeoutMs = 3000): Promise<string> {
@@ -48,8 +52,15 @@ async function readSSEChunk(reader: ReadableStreamDefaultReader<Uint8Array>, tim
 }
 
 describe("SLICE-126-11: GET /keeperhub/audit/stream (SSE)", () => {
-  beforeEach(() => {
-    auditStore.clear();
+  beforeEach(async () => {
+    process.env = { ...originalEnv };
+    // Isolate from .env DATABASE_ENABLED — audit writes must hit the
+    // in-memory fallback, not the real DB.
+    delete process.env.DATABASE_ENABLED;
+    delete process.env.DATABASE_URL;
+    resetConfigCache();
+    resetDatabaseForTests();
+    await auditStore.clear();
     mockConfig.keeperhub = {
       enabled: true,
       apiKey: "kh_test",
@@ -60,8 +71,11 @@ describe("SLICE-126-11: GET /keeperhub/audit/stream (SSE)", () => {
     };
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     auditStore.removeAllListeners("audit");
+    process.env = { ...originalEnv };
+    resetConfigCache();
+    resetDatabaseForTests();
   });
 
   it("406 without Accept: text/event-stream", async () => {
@@ -106,7 +120,7 @@ describe("SLICE-126-11: GET /keeperhub/audit/stream (SSE)", () => {
   });
 
   it("snapshot on connect: first chunk contains event: snapshot with seeded events", async () => {
-    auditStore.add({ source: "test", siteUrl: "https://example.com", status: "recorded", score: 85 });
+    await auditStore.add({ source: "test", siteUrl: "https://example.com", status: "recorded", score: 85 });
 
     const res = await keeperhubApiRoutes.request("/keeperhub/audit/stream", {
       headers: { Accept: "text/event-stream" },
@@ -133,7 +147,7 @@ describe("SLICE-126-11: GET /keeperhub/audit/stream (SSE)", () => {
     await readSSEChunk(reader);
 
     // Now emit a live event
-    auditStore.add({ source: "live-test", siteUrl: "https://live.com", status: "recorded", score: 90 });
+    await auditStore.add({ source: "live-test", siteUrl: "https://live.com", status: "recorded", score: 90 });
 
     const chunk = await readSSEChunk(reader);
     expect(chunk).toContain("event: audit");
