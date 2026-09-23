@@ -90,15 +90,25 @@ export async function startBstockFeeds(
         `[bstock] tokenized-assets fetch failed (attempt ${attempt + 1}/5):`,
         err,
       );
-      // Diagnose the real Binance error — status alone hides code/msg.
+      // Diagnose: raw fetch works (200) but client's fetchImpl gets 400 —
+      // compare using the client's OWN fetchImpl + apiKey to isolate.
       try {
-        const r = await fetch(
-          "https://api.binance.com/sapi/v1/equity/market/tokenized-assets",
-          { headers: { "X-MBX-APIKEY": process.env.BINANCE_API_KEY ?? "" } },
-        );
-        const body = await r.text();
+        const c = binance as unknown as {
+          fetchImpl: typeof fetch;
+          apiKey: string;
+          restBaseUrl: string;
+        };
+        const url = `${c.restBaseUrl}/sapi/v1/equity/market/tokenized-assets`;
+        const viaImpl = await c.fetchImpl(url, {
+          headers: { "X-MBX-APIKEY": c.apiKey },
+        });
+        const viaGlobal = await fetch(url, {
+          headers: { "X-MBX-APIKEY": c.apiKey },
+        });
         console.error(
-          `[bstock] diag: HTTP ${r.status} body=${body.slice(0, 300)}`,
+          `[bstock] diag: fetchImpl=${viaImpl.status} global=${viaGlobal.status} ` +
+            `sameFetch=${c.fetchImpl === fetch} keyLen=${c.apiKey.length} ` +
+            `implBody=${(await viaImpl.text()).slice(0, 120)}`,
         );
       } catch (e) {
         console.error("[bstock] diag fetch failed:", e);
