@@ -69,6 +69,13 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
 
   const routes = new Hono();
 
+  const HELP =
+    "📈 bStock Delta Tracker — on-demand commands:\n" +
+    "/delta <SYM> — delta for one symbol (e.g. /delta AAPLB)\n" +
+    "/deltas — symbols currently in alert\n" +
+    "/digest — all tracked symbols\n" +
+    "/help — this message";
+
   routes.post("/telegram/bstock", async (c) => {
     const update = (await c.req.json()) as TgUpdate;
     const msg = update.message;
@@ -78,7 +85,32 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
     const username = msg?.chat?.username ?? String(chatId);
     registry.register(chatId, username);
 
-    if (msg?.text?.trim() === "/digest") {
+    // Pull model: data only on explicit command — no auto-push.
+    const m = /^\/(\w+)(?:@\w+)?(?:\s+(\S+))?/.exec(msg?.text?.trim() ?? "");
+    const cmd = m?.[1]?.toLowerCase();
+    const arg = m?.[2]?.toUpperCase();
+
+    if (cmd === "start" || cmd === "help") {
+      await send(chatId, HELP);
+    } else if (cmd === "delta") {
+      if (!arg) {
+        await send(chatId, "Usage: /delta <SYM> — e.g. /delta AAPLB");
+      } else {
+        const v = engine.listDeltas().find((d) => d.symbol === arg);
+        await send(
+          chatId,
+          v ? formatAlert(v) : `Symbol ${arg} is not tracked.`,
+        );
+      }
+    } else if (cmd === "deltas") {
+      const hot = engine.listDeltas().filter((d) => d.inAlert);
+      await send(
+        chatId,
+        hot.length
+          ? hot.map(formatAlert).join("\n")
+          : "No symbols in alert right now.",
+      );
+    } else if (cmd === "digest") {
       await send(chatId, buildDigest(engine.listDeltas()));
     }
     return c.json({ ok: true });

@@ -158,4 +158,81 @@ describe("webhook", () => {
     expect(sent[0].chatId).toBe(777);
     expect(sent[0].text).toContain("AAPLB");
   });
+
+  const postCmd = (
+    app: Hono,
+    text: string,
+    chatId = 777,
+    username = "carol",
+  ) =>
+    app.request("/telegram/bstock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: { chat: { id: chatId, username }, text },
+      }),
+    });
+
+  const makeApp = (views: DeltaView[]) => {
+    const sent: { chatId: number; text: string }[] = [];
+    const bot = createBstockTelegramBot({
+      registry: new ChatRegistry(),
+      send: async (chatId, text) => {
+        sent.push({ chatId, text });
+      },
+      engine: { listDeltas: () => views, getEvents: () => [] },
+    });
+    const app = new Hono();
+    app.route("/", bot.routes);
+    return { app, sent };
+  };
+
+  it("/delta <SYM> replies with that symbol's delta", async () => {
+    const { app, sent } = makeApp([view()]);
+    await postCmd(app, "/delta AAPLB");
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain("AAPLB");
+    expect(sent[0].text).toContain("+0.72%");
+  });
+
+  it("/delta without arg replies with usage", async () => {
+    const { app, sent } = makeApp([view()]);
+    await postCmd(app, "/delta");
+    expect(sent[0].text).toContain("Usage: /delta");
+  });
+
+  it("/delta unknown symbol replies not tracked", async () => {
+    const { app, sent } = makeApp([view()]);
+    await postCmd(app, "/delta ZZZZ");
+    expect(sent[0].text).toContain("not tracked");
+  });
+
+  it("/deltas lists only in-alert symbols", async () => {
+    const { app, sent } = makeApp([
+      view(),
+      view({ symbol: "TSLAB", underlying: "TSLA", inAlert: false }),
+    ]);
+    await postCmd(app, "/deltas");
+    expect(sent[0].text).toContain("AAPLB");
+    expect(sent[0].text).not.toContain("TSLAB");
+  });
+
+  it("/deltas with no alerts says so", async () => {
+    const { app, sent } = makeApp([view({ inAlert: false })]);
+    await postCmd(app, "/deltas");
+    expect(sent[0].text).toContain("No symbols in alert");
+  });
+
+  it("/start replies with help", async () => {
+    const { app, sent } = makeApp([]);
+    await postCmd(app, "/start");
+    expect(sent[0].text).toContain("/delta");
+    expect(sent[0].text).toContain("/digest");
+  });
+
+  it("plain text sends nothing", async () => {
+    const { app, sent } = makeApp([view()]);
+    await postCmd(app, "hello");
+    expect(sent).toHaveLength(0);
+  });
 });

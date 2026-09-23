@@ -133,12 +133,16 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
       void startBstockFeeds(getBstockEngine());
     }
 
-    // 141-9/10: Telegram bot — webhook + 1/min alert batch + ~1h digest.
+    // 141-9/10: Telegram bot — webhook + on-demand commands.
+    // Push (1/min alerts + ~1h digest) is opt-in via BSTOCK_TG_PUSH_ENABLED —
+    // default off: users pull data via /delta, /deltas, /digest instead.
     const bot = getBstockTelegramBot(getBstockEngine());
     if (bot) {
       app.route("/", bot.routes);
-      setInterval(() => void bot.alertTick(), 60_000).unref();
-      setInterval(() => void bot.digestTick(), 3_600_000).unref();
+      if (process.env.BSTOCK_TG_PUSH_ENABLED === "true") {
+        setInterval(() => void bot.alertTick(), 60_000).unref();
+        setInterval(() => void bot.digestTick(), 3_600_000).unref();
+      }
     }
   }
 }
