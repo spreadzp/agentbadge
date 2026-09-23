@@ -25,9 +25,11 @@ export interface BstockPaymentRequirements {
   amount: string;
   payTo: string;
   maxAmountRequired: string;
+  maxTimeoutSeconds?: number;
   resource: string;
   description: string;
   mimeType: string;
+  extra?: Record<string, unknown>;
 }
 
 export interface BstockFacilitator {
@@ -59,6 +61,12 @@ export interface BstockFreemiumConfig {
   networkId: string;
   /** USDC contract address. */
   usdcAddress: string;
+  /** x402 scheme id — default "exact"; "eip3009-client-broadcast" for Arc self-settle. */
+  scheme?: string;
+  /** Extra fields merged into requirements (e.g. assetTransferMethod hint). */
+  extra?: Record<string, unknown>;
+  /** Payment validity window in seconds (default: omitted). */
+  maxTimeoutSeconds?: number;
   /** Free-tier requests per minute per agent token (default 1). */
   freePerMin?: number;
   /** Facilitator client — injectable for tests. */
@@ -86,15 +94,17 @@ function buildRequirements(
     BigInt(Math.round(Number(cfg.priceUsd) * 1_000_000))
   ).toString();
   return {
-    scheme: "exact",
+    scheme: cfg.scheme ?? "exact",
     network: cfg.networkId,
     asset: cfg.usdcAddress,
     amount: baseUnits,
     payTo: cfg.payTo,
     maxAmountRequired: baseUnits,
+    maxTimeoutSeconds: cfg.maxTimeoutSeconds,
     resource,
     description: "bstock-delta-realtime — 30d ServicePass",
     mimeType: "application/json",
+    extra: cfg.extra,
   };
 }
 

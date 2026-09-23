@@ -32,7 +32,11 @@ import {
 } from "../../telegram/state";
 import { getMarketplaceOps } from "../lib/marketplace";
 import { hasAccess } from "@agentbadge/pass-auth";
-import { HTTPFacilitator } from "../middleware/x402-base";
+import {
+  ARC_TESTNET,
+  ARC_SELF_SETTLE_SCHEME,
+} from "@agentbadge/circle-payments";
+import { createArcBstockFacilitator } from "../lib/bstock/arc-facilitator";
 import { bstockFreemium } from "../middleware/bstock-freemium";
 import {
   bstockAuth,
@@ -112,12 +116,17 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
         priceUsd: bstockCfg.priceUsd,
         durationSec: bstockCfg.durationSec,
         payTo: bstockCfg.payTo,
-        networkId: "eip155:84532",
-        usdcAddress:
-          process.env.X402_USDC_ADDRESS ??
-          "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        // SLICE-141-13: Arc self-settle rail — client broadcasts
+        // transferWithAuthorization on Arc, we verify the receipt.
+        networkId: ARC_TESTNET.caip2,
+        usdcAddress: ARC_TESTNET.usdc,
+        scheme: ARC_SELF_SETTLE_SCHEME,
+        maxTimeoutSeconds: 345600,
+        extra: { assetTransferMethod: ARC_SELF_SETTLE_SCHEME },
         freePerMin: 1,
-        facilitator: new HTTPFacilitator(bstockCfg.facilitatorUrl),
+        facilitator: createArcBstockFacilitator({
+          sellerAddress: bstockCfg.payTo,
+        }),
         hasAccess: (wallet, serviceId) =>
           hasAccess(wallet, serviceId as `0x${string}`),
         mintPass: (to, serviceId, durationSec) =>

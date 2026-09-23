@@ -135,6 +135,100 @@ describe("x402 payment → ServicePass mint", () => {
   });
 });
 
+describe("SLICE-141-13: Arc self-settle rail", () => {
+  const ARC_CFG: Partial<BstockFreemiumConfig> = {
+    networkId: "eip155:5042002",
+    usdcAddress: "0x3600000000000000000000000000000000000000",
+    scheme: "eip3009-client-broadcast",
+    maxTimeoutSeconds: 345600,
+    extra: { assetTransferMethod: "eip3009-client-broadcast" },
+  };
+
+  it("402 advertises eip3009-client-broadcast on eip155:5042002", async () => {
+    const { app } = makeApp(ARC_CFG);
+    await callTool(app); // consume free bucket
+    const res = await callTool(app);
+    expect(res.status).toBe(402);
+    const body = (await res.json()) as {
+      accepts: {
+        scheme: string;
+        network: string;
+        asset: string;
+        maxTimeoutSeconds?: number;
+        extra?: Record<string, unknown>;
+      };
+    };
+    expect(body.accepts.scheme).toBe("eip3009-client-broadcast");
+    expect(body.accepts.network).toBe("eip155:5042002");
+    expect(body.accepts.asset).toBe(
+      "0x3600000000000000000000000000000000000000",
+    );
+    expect(body.accepts.maxTimeoutSeconds).toBe(345600);
+    expect(body.accepts.extra?.assetTransferMethod).toBe(
+      "eip3009-client-broadcast",
+    );
+  });
+
+  it("arc facilitator: txHash payload → verify+settle → mint → 200", async () => {
+    const { createArcBstockFacilitator } = await import(
+      "../src/server/lib/bstock/arc-facilitator"
+    );
+    const TX =
+      "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const handle = {
+      network: "eip155:5042002",
+      publicClient: {} as never,
+      seenTxHashes: new Set<string>(),
+      verify: async () => ({ isValid: true, payer: WALLET }),
+      settle: async () => ({
+        success: true,
+        transaction: TX,
+        payer: WALLET,
+      }),
+    };
+    const facilitator = createArcBstockFacilitator({
+      sellerAddress: "0x2222222222222222222222222222222222222222",
+      handle,
+    });
+    const { app, mints } = makeApp({ ...ARC_CFG, facilitator });
+    const sig = Buffer.from(
+      JSON.stringify({ payload: { txHash: TX } }),
+    ).toString("base64");
+    const res = await callTool(app, { "PAYMENT-SIGNATURE": sig });
+    expect(res.status).toBe(200);
+    expect(mints).toHaveLength(1);
+    expect(mints[0].to).toBe(WALLET);
+    expect(res.headers.get("PAYMENT-RESPONSE")).toBe(TX);
+  });
+
+  it("arc facilitator: failed verify → 402 with reason", async () => {
+    const { createArcBstockFacilitator } = await import(
+      "../src/server/lib/bstock/arc-facilitator"
+    );
+    const handle = {
+      network: "eip155:5042002",
+      publicClient: {} as never,
+      seenTxHashes: new Set<string>(),
+      verify: async () => ({
+        isValid: false,
+        invalidReason: "tx_replayed",
+      }),
+      settle: async () => ({ success: false, errorReason: "tx_replayed" }),
+    };
+    const facilitator = createArcBstockFacilitator({
+      sellerAddress: "0x2222222222222222222222222222222222222222",
+      handle,
+    });
+    const { app, mints } = makeApp({ ...ARC_CFG, facilitator });
+    const sig = Buffer.from(
+      JSON.stringify({ payload: { txHash: "0xaaaa" } }),
+    ).toString("base64");
+    const res = await callTool(app, { "PAYMENT-SIGNATURE": sig });
+    expect(res.status).toBe(402);
+    expect(mints).toHaveLength(0);
+  });
+});
+
 describe("service registration", () => {
   afterEach(() => resetStoreForTesting());
 
