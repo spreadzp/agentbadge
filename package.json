@@ -46,14 +46,14 @@
     "arch:graph:check": "bun scripts/arch-graph.mts && git diff --exit-code docs/architecture-graph.md"
   },
   "dependencies": {
-    "@agentbadge/bstock-tracker": "0.1.5",
+    "@agentbadge/bstock-tracker": "0.1.6",
     "@agentbadge/cache": "^0.1.1",
     "@agentbadge/circle-payments": "^0.1.3",
     "@agentbadge/database": "^0.1.1",
     "@agentbadge/evm-core": "^0.1.2",
     "@agentbadge/hedera-core": "^0.2.1",
     "@agentbadge/keeperhub": "^0.1.1",
-    "@agentbadge/mcp": "^0.2.1",
+    "@agentbadge/mcp": "0.2.2",
     "@agentbadge/pass-auth": "^0.1.1",
     "@agentbadge/passport": "^0.2.2",
     "@agentbadge/webmcp": "^0.3.0",
