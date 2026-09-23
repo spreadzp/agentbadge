@@ -19,10 +19,10 @@ describe("Blog infrastructure (SLICE-52-1)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("GET /blog/:slug has Article JSON-LD", async () => {
+  it("GET /blog/:slug has BlogPosting JSON-LD", async () => {
     const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
     const html = await res.text();
-    expect(html).toContain('"@type":"Article"');
+    expect(html).toContain('"@type":"BlogPosting"');
   });
 
   it("GET /blog/rss.xml returns valid RSS XML", async () => {
@@ -96,7 +96,7 @@ describe("Blog agent-readiness (SLICE-60-1)", () => {
   });
 
   it("Article without externalLinks does not render Also published on", async () => {
-    const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
+    const res = await fetch(`${BASE}/blog/mcp-vs-api`);
     const html = await res.text();
     expect(html).not.toContain("Also published on");
   });
