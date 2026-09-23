@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { profileViewerRoutes } from "../../../src/server/routes/profile-viewer";
 import { cacheScanData, clearScanCache } from "../../../src/server/profile/profile-store";
+import { resetConfigCache } from "../../../src/config/env";
 import { makeFixtureScanReport, makeFixtureAssertions } from "../profile/fixtures/scan-report-fixture";
 
 /**
@@ -13,6 +14,9 @@ app.route("/", profileViewerRoutes);
 
 describe("SLICE-101-9: GET /profile/:domain", () => {
   beforeEach(() => {
+    delete process.env.DATABASE_ENABLED;
+    delete process.env.DATABASE_URL;
+    resetConfigCache();
     clearScanCache();
     cacheScanData("api.example.com", {
       scanReport: makeFixtureScanReport(),

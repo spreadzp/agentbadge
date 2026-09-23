@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { profileRoutes } from "../../src/server/routes/profile";
 import { profileViewerRoutes } from "../../src/server/routes/profile-viewer";
 import { cacheScanData, clearScanCache } from "../../src/server/profile/profile-store";
+import { resetConfigCache } from "../../src/config/env";
 import { buildProfile } from "../../src/agent-readiness/profile/profile-builder";
 import { renderProfileMarkdown } from "../../src/agent-readiness/profile/renderers/markdown-renderer";
 import { renderProfileYaml } from "../../src/agent-readiness/profile/renderers/yaml-renderer";
@@ -27,6 +28,9 @@ const GOLDEN_YAML = fs.readFileSync(path.join(GOLDEN_DIR, "golden-profile.yaml")
 
 describe("SLICE-101-10: E2E — scan → profile → endpoint → web UI", () => {
   beforeAll(() => {
+    delete process.env.DATABASE_ENABLED;
+    delete process.env.DATABASE_URL;
+    resetConfigCache();
     clearScanCache();
     cacheScanData("api.example.com", {
       scanReport: makeFixtureScanReport(),

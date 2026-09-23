@@ -11,6 +11,8 @@ import { AGENT_READINESS_RULESET } from "../../agent-readiness/ruleset";
 import { BUNDLE_IDS, resolveBundleIds } from "../../agent-readiness/rule-bundles";
 import { getConfig } from "../../config/env";
 import { hookScanToCorpus } from "../../agent-readiness/corpus/corpus-hook";
+import { invalidateDomain } from "../lib/cache";
+import { normalizeDomain, recordScanResult } from "../services/scan-store";
 import { FileCorpusStore } from "../../agent-readiness/corpus/corpus-store";
 
 export const totalScanRoutes = new Hono();
@@ -130,6 +132,18 @@ totalScanRoutes.post(
 
       await stream.write(`event: result\ndata: ${JSON.stringify(report)}\n\n`);
       await stream.write(`event: done\ndata: ${JSON.stringify({ completed: true })}\n\n`);
+
+      // EPIC-145 (SLICE-145-2): persist scan result — fire-and-forget,
+      // never blocks or breaks the streamed response.
+      const domain = normalizeDomain(hostname);
+      recordScanResult({
+        domain,
+        url: normalizedUrl,
+        score: report.score,
+        report: { scanReport: report, assertions: result.assertions },
+        rulesetVersion: AGENT_READINESS_RULESET.version,
+      });
+      void invalidateDomain(domain);
 
       // Fire-and-forget: hook scan result into corpus (SLICE-103-2)
       try {

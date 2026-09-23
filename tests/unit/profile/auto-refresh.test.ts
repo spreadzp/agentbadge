@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { refreshProfileForDomain, storeAndRefresh } from "../../../src/server/profile/auto-refresh";
 import { cacheScanData, clearScanCache } from "../../../src/server/profile/profile-store";
+import { resetConfigCache } from "../../../src/config/env";
 import { makeFixtureScanReport, makeFixtureAssertions } from "../profile/fixtures/scan-report-fixture";
 
 /**
@@ -9,6 +10,9 @@ import { makeFixtureScanReport, makeFixtureAssertions } from "../profile/fixture
 
 describe("SLICE-101-9: refreshProfileForDomain", () => {
   beforeEach(() => {
+    delete process.env.DATABASE_ENABLED;
+    delete process.env.DATABASE_URL;
+    resetConfigCache();
     clearScanCache();
   });
 
@@ -46,6 +50,9 @@ describe("SLICE-101-9: refreshProfileForDomain", () => {
 
 describe("SLICE-101-9: storeAndRefresh", () => {
   beforeEach(() => {
+    delete process.env.DATABASE_ENABLED;
+    delete process.env.DATABASE_URL;
+    resetConfigCache();
     clearScanCache();
   });
 

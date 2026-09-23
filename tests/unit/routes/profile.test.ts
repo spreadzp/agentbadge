@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { profileRoutes } from "../../../src/server/routes/profile";
-import { cacheScanData, normalizeDomain } from "../../../src/server/profile/profile-store";
+import { cacheScanData, clearScanCache, normalizeDomain } from "../../../src/server/profile/profile-store";
+import { resetConfigCache } from "../../../src/config/env";
 import { makeFixtureScanReport, makeFixtureAssertions } from "../profile/fixtures/scan-report-fixture";
 
 /**
@@ -33,6 +34,12 @@ describe("SLICE-101-7: normalizeDomain", () => {
 
 describe("SLICE-101-7: GET /api/profile/:domain", () => {
   beforeEach(() => {
+    // Isolate from .env DATABASE_ENABLED (vitest.setup loads .env) —
+    // profile-store must use the in-memory fallback here.
+    delete process.env.DATABASE_ENABLED;
+    delete process.env.DATABASE_URL;
+    resetConfigCache();
+    clearScanCache();
     // Cache scan data for the fixture domain
     cacheScanData("api.example.com", {
       scanReport: makeFixtureScanReport(),
