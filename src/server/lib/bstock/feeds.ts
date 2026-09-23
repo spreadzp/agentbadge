@@ -90,6 +90,19 @@ export async function startBstockFeeds(
         `[bstock] tokenized-assets fetch failed (attempt ${attempt + 1}/5):`,
         err,
       );
+      // Diagnose the real Binance error — status alone hides code/msg.
+      try {
+        const r = await fetch(
+          "https://api.binance.com/sapi/v1/equity/market/tokenized-assets",
+          { headers: { "X-MBX-APIKEY": process.env.BINANCE_API_KEY ?? "" } },
+        );
+        const body = await r.text();
+        console.error(
+          `[bstock] diag: HTTP ${r.status} body=${body.slice(0, 300)}`,
+        );
+      } catch (e) {
+        console.error("[bstock] diag fetch failed:", e);
+      }
       if (attempt < 4) {
         await new Promise((r) => setTimeout(r, 5_000 * 2 ** attempt));
       }
