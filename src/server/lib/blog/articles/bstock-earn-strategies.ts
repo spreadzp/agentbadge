@@ -11,6 +11,7 @@ export const article: BlogArticle = {
   tags: ["bstocks","arbitrage","market-making","trading-strategies","crypto"],
   readingTime: "5 min",
   shortAnswer: "The delta between a tokenized stock and its underlying enables four strategies: delta arbitrage, market making on thin pools, signal trading on weekend news, and alerts-as-a-service — profitable while costs stay below the divergence.",
+
   content: `<p>A tokenized stock lives on two markets at once: the token on a crypto
 exchange, the share on a stock exchange. The gap between them — the
 delta — supports several working strategies. Here is each one, with its

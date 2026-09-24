@@ -36,7 +36,10 @@ export function securityHeaders(): MiddlewareHandler {
     c.header("Permissions-Policy", PERMISSIONS_POLICY);
     c.header("Cross-Origin-Opener-Policy", "same-origin");
     c.header("Cross-Origin-Embedder-Policy", "credentialless");
-    c.header("Cross-Origin-Resource-Policy", "same-origin");
+    // Public assets under /images/ must be embeddable on external sites
+    // (Velog, Medium, dev.to syndication). Everything else stays same-origin.
+    const corp = c.req.path.startsWith("/images/") ? "cross-origin" : "same-origin";
+    c.header("Cross-Origin-Resource-Policy", corp);
     c.header("X-DNS-Prefetch-Control", "off");
     c.header("X-Permitted-Cross-Domain-Policies", "none");
   };

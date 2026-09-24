@@ -11,6 +11,7 @@ export const article: BlogArticle = {
   tags: ["bstocks","tokenized-stocks","guide","rwa","crypto"],
   readingTime: "5 min",
   shortAnswer: "bStocks are tokens tracking real share prices: they trade on-chain 24/7 with stablecoin settlement and fractional access, but grant no shareholder rights — and their price can drift from the underlying, creating the delta.",
+
   content: `<p>A tokenized stock is a blockchain token whose price follows a real
 share. AAPLB mirrors Apple, TSLAB mirrors Tesla. Buy the token — get the
 same price exposure as the share, but on a crypto exchange, around the

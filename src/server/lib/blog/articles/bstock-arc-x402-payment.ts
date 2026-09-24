@@ -11,6 +11,7 @@ export const article: BlogArticle = {
   tags: ["x402","arc","usdc","eip-3009","payments","ai-agents"],
   readingTime: "5 min",
   shortAnswer: "Arc self-settle lets an agent pay x402 invoices with no facilitator: it signs an EIP-3009 transferWithAuthorization, broadcasts it on Arc (gas in USDC), and sends the txHash — the server verifies the on-chain receipt.",
+
   content: `<p>In classic x402, a <strong>facilitator</strong> sits between the
 buyer and the seller: it takes the agent’s signature and broadcasts the
 transaction on its behalf. Convenient — but an extra party to trust, an

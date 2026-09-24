@@ -11,6 +11,7 @@ export const article: BlogArticle = {
   tags: ["bstocks","tokenized-stocks","risks","rwa","crypto"],
   readingTime: "5 min",
   shortAnswer: "Tokenized stocks carry issuer, delta, liquidity, regulatory, and technical risks, and grant no shareholder rights — mitigate with diversification, position sizing to liquidity, and delta monitoring.",
+
   content: `<p>bStocks open equities to the crypto market — but “a token that tracks
 a share” is not “a share”. Here is an honest look at the risks, no pitch
 attached.</p>

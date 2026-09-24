@@ -11,6 +11,7 @@ export const article: BlogArticle = {
   tags: ["bstocks","real-time-data","freemium","ai-agents","trading"],
   readingTime: "4 min",
   shortAnswer: "Free tier gives one snapshot per minute; the paid tier gives unlimited polling, Telegram alerts, and a 30-day ServicePass — for an agent that trades or alerts on tokenized-stock deltas, real-time data is infrastructure.",
+
   content: `<p>The bStock delta tracker has two tiers: free (1 request per minute)
 and paid (real-time, 5 USDC for 30 days). A fair question from any
 trader: why pay when free exists?</p>
