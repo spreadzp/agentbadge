@@ -13,30 +13,22 @@ import { createCirclePaymentsRuntime } from "../lib/circle-payments";
 import { createIdentityRoutes } from "../routes/identity";
 import { createDemoRoutes } from "../routes/demo";
 import { captureError } from "../lib/sentry";
+// EPIC-150: circle MCP tools live in @agentbadge/mcp (named exports,
+// not in registerAllTools — registered here into all + market ns).
 import {
   registerCirclePayTools,
   setCirclePayToolConfig,
-} from "../../mcp/circle-pay-tools";
-import {
   registerPaymentStatusTools,
   setPaymentStatusToolConfig,
-} from "../../mcp/payment-status-tools";
-import {
   registerAgentIdentityTools,
   setAgentIdentityToolConfig,
-} from "../../mcp/agent-identity-tools";
-import {
   registerCircleWalletBalanceTools,
   setCircleWalletBalanceToolConfig,
-} from "../../mcp/circle-wallet-balance-tools";
-import {
   registerSupportedNetworksTools,
   setSupportedNetworksToolConfig,
-} from "../../mcp/supported-networks-tools";
-import {
   registerPaymentHistoryTools,
   setPaymentHistoryToolConfig,
-} from "../../mcp/payment-history-tools";
+} from "@agentbadge/mcp";
 
 export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry }): void {
   const { marketNs } = ns;

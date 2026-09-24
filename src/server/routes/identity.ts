@@ -12,14 +12,13 @@ import type { Context, Next } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import { z } from "zod";
 
-/** Passport data resolved by the injected lookup (Hedera NFT + score). */
-export interface IdentityLookupResult {
-  passportTokenId: string;
-  readinessScore?: number;
-  mintTx?: string;
-  issuedAt?: string;
-  chain?: string;
-}
+/**
+ * Passport data resolved by the injected lookup (Hedera NFT + score).
+ * Canonical definition lives in @agentbadge/circle-payments (EPIC-150,
+ * D3) — re-exported here for back-compat with existing imports.
+ */
+export type { IdentityLookupResult } from "@agentbadge/circle-payments";
+import type { IdentityLookupResult } from "@agentbadge/circle-payments";
 
 /**
  * Structural middleware signature — avoids nominal mismatch between the
