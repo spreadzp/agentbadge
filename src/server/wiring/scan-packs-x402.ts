@@ -6,7 +6,7 @@ import type { Hono } from "hono";
 import { paymentMiddlewareFromHTTPServer, x402ResourceServer, x402HTTPResourceServer, type SchemeNetworkServer } from "@x402/hono";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
-import { declareDiscoveryExtension } from "@x402/extensions";
+import { declareDiscoveryExtension, bazaarResourceServerExtension, withBazaar } from "@x402/extensions";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
 import {
@@ -104,11 +104,16 @@ export function wireScanPacksX402(app: Hono): void {
     try {
       // EVM scheme on Base Sepolia → EVM facilitator + EVM treasury.
       // (x402FacilitatorUrl/x402Treasury are Hedera-scoped: blocky402 + 0.0.x account id.)
-      const facilitatorClient = new HTTPFacilitatorClient({
+      // SLICE-136-2: withBazaar adds discovery query methods (listResources/
+      // search) to the facilitator client — reference Bazaar setup (x402#2112).
+      const facilitatorClient = withBazaar(new HTTPFacilitatorClient({
         url: process.env.X402_FACILITATOR_URL ?? getConfig().x402FacilitatorUrl,
-      });
+      }));
       const resourceServer = new x402ResourceServer(facilitatorClient)
         .register("eip155:84532", new ExactEvmScheme() as unknown as SchemeNetworkServer)
+        // SLICE-136-2: enrichDeclaration hook — injects method into bazaar
+        // schema + routeTemplate/pathParams for dynamic routes (x402#2112).
+        .registerExtension(bazaarResourceServerExtension)
         // EPIC-137: mint/extend the payer's AccessPassNFT on Arc after settle.
         .onAfterSettle(createMintOnSettleHook());
       const payTo = process.env.X402_PAY_TO ?? getConfig().x402Treasury;
