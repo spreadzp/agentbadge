@@ -11,16 +11,8 @@ import { paymentMiddleware, x402ResourceServer, type SchemeNetworkServer } from 
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { totalScanRoutes } from "../src/server/routes/total-scan-api";
+import { buildTotalScanRouteConfig } from "../src/server/wiring/scan-packs-x402";
 import { resetConfigCache } from "../src/config/env";
-import {
-  BUNDLE_IDS,
-  FULL_SCAN_PRICE,
-  USDC,
-  bundleMetadata,
-  resolveBundleIds,
-  totalPrice,
-} from "../src/agent-readiness/rule-bundles";
-import { AGENT_READINESS_RULESET } from "../src/agent-readiness/ruleset";
 
 const mockResolve4 = vi.mocked(resolve4);
 const mockResolve6 = vi.mocked(resolve6);
@@ -45,39 +37,12 @@ function buildApp(pricingEnabled: boolean) {
       "eip155:84532",
       new ExactEvmScheme() as unknown as SchemeNetworkServer,
     );
-    a.use(paymentMiddleware({
-      "POST /api/total-scan": {
-        accepts: [{
-          scheme: "exact",
-          network: "eip155:84532",
-          payTo: "0x0000000000000000000000000000000000000001",
-          price: async (ctx) => {
-            const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
-            const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
-            const { ok } = resolveBundleIds(raw);
-            const amount = ok.length > 0 ? totalPrice(ok).amount : FULL_SCAN_PRICE;
-            return `$${amount}`;
-          },
-          extra: { paymentFlow: "upfront" },
-        }],
-        description: "AgentBadge agent-readiness scan — priced per selected rule bundle",
-        mimeType: "text/event-stream",
-        unpaidResponseBody: async (ctx) => {
-          const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
-          const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
-          const { ok } = resolveBundleIds(raw);
-          const catalog = bundleMetadata(AGENT_READINESS_RULESET.rules, ok.length ? ok : [...BUNDLE_IDS]);
-          return {
-            contentType: "application/json",
-            body: {
-              error: "Payment required",
-              packs: catalog.bundles.map((b) => ({ id: b.id, price: b.price, ruleCount: b.ruleCount })),
-              totalPrice: ok.length > 0 ? totalPrice(ok) : { amount: FULL_SCAN_PRICE, currency: USDC },
-            },
-          };
-        },
-      },
-    }, resourceServer));
+    // SLICE-136-1: reuse the production route config builder so tests cover
+    // the real resource/extensions/unpaidResponseBody wiring.
+    a.use(paymentMiddleware(
+      buildTotalScanRouteConfig("0x0000000000000000000000000000000000000001"),
+      resourceServer,
+    ));
   }
   a.route("/api", totalScanRoutes);
   return a;
@@ -156,5 +121,39 @@ describe("POST /api/total-scan x402 pricing (SLICE-133-16)", () => {
       body: JSON.stringify({ url: "https://example.com", packs: ["payments-x402"] }),
     });
     expect(res.status).toBe(200);
+  });
+});
+
+describe("SLICE-136-1: production readiness (resource url + discovery ext)", () => {
+  it("402 payload resource.url is https (not http behind Fly TLS termination)", async () => {
+    process.env.BASE_URL = "https://agentbadge.xyz";
+    app = buildApp(true);
+    const res = await app.request("/api/total-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com" }),
+    });
+    expect(res.status).toBe(402);
+    const pr = res.headers.get("payment-required");
+    expect(pr).toBeTruthy();
+    const payload = JSON.parse(Buffer.from(pr!, "base64").toString());
+    expect(payload.resource.url).toBe("https://agentbadge.xyz/api/total-scan");
+    expect(payload.resource.url.startsWith("https://")).toBe(true);
+  });
+
+  it("402 payload declares bazaar discovery extension via declareDiscoveryExtension", async () => {
+    app = buildApp(true);
+    const res = await app.request("/api/total-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com" }),
+    });
+    expect(res.status).toBe(402);
+    const pr = res.headers.get("payment-required");
+    const payload = JSON.parse(Buffer.from(pr!, "base64").toString());
+    // declareDiscoveryExtension emits extensions.bazaar with info+schema (D10)
+    expect(payload.extensions?.bazaar).toBeDefined();
+    expect(payload.extensions.bazaar.info).toBeDefined();
+    expect(payload.extensions.bazaar.schema).toBeDefined();
   });
 });

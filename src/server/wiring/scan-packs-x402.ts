@@ -6,6 +6,7 @@ import type { Hono } from "hono";
 import { paymentMiddlewareFromHTTPServer, x402ResourceServer, x402HTTPResourceServer, type SchemeNetworkServer } from "@x402/hono";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { declareDiscoveryExtension } from "@x402/extensions";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
 import {
@@ -20,6 +21,74 @@ import { AGENT_READINESS_RULESET } from "../../agent-readiness/ruleset";
 import { createMintOnSettleHook, packsToClassMask, CLASS_FULL } from "../lib/access-pass-minter";
 import { checkAccessPassRequest } from "../middleware/agent-auth";
 import { scanPacksApiRoutes } from "../routes/scan-packs-api";
+
+// SLICE-136-1: canonical public URL for the resource field — behind Fly TLS
+// termination adapter.getUrl() reports http://, which breaks Bazaar indexing.
+const resourceUrl = () =>
+  `${(process.env.BASE_URL ?? "https://agentbadge.xyz").replace(/\/$/, "")}/api/total-scan`;
+
+// SLICE-136-1: route config extracted for testability (tests reuse this
+// builder instead of duplicating the pricing/extension logic inline).
+export function buildTotalScanRouteConfig(payTo: string) {
+  return {
+    "POST /api/total-scan": {
+      accepts: [{
+        scheme: "exact",
+        network: "eip155:84532" as const,
+        payTo,
+        price: async (ctx: { adapter: { getBody?: () => unknown } }) => {
+          const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
+          const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
+          const { ok } = resolveBundleIds(raw);
+          const amount = ok.length > 0 ? totalPrice(ok).amount : FULL_SCAN_PRICE;
+          return `$${amount}`;
+        },
+        extra: { paymentFlow: "upfront" },
+      }],
+      resource: resourceUrl(),
+      description: "AgentBadge agent-readiness scan — priced per selected rule bundle",
+      mimeType: "text/event-stream",
+      // D10: declare Bazaar discovery extension as designed (input schema +
+      // output example) — bazaar-extension middleware stays as fallback.
+      extensions: declareDiscoveryExtension({
+        bodyType: "json",
+        input: { url: "https://example.com", packs: ["discovery-crawling"] },
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "Target site URL to scan" },
+            packs: {
+              type: "array",
+              items: { type: "string" },
+              description: "Optional rule bundle ids (see GET /api/scan-packs); omit for full scan",
+            },
+          },
+          required: ["url"],
+        },
+        output: {
+          example: {
+            event: "result",
+            data: { score: 72, bundles: { "discovery-crawling": { passed: 15, failed: 4 } } },
+          },
+        },
+      }),
+      unpaidResponseBody: async (ctx: { adapter: { getBody?: () => unknown } }) => {
+        const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
+        const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
+        const { ok } = resolveBundleIds(raw);
+        const catalog = bundleMetadata(AGENT_READINESS_RULESET.rules, ok.length ? ok : [...BUNDLE_IDS]);
+        return {
+          contentType: "application/json",
+          body: {
+            error: "Payment required",
+            packs: catalog.bundles.map((b) => ({ id: b.id, price: b.price, ruleCount: b.ruleCount })),
+            totalPrice: ok.length > 0 ? totalPrice(ok) : { amount: FULL_SCAN_PRICE, currency: USDC },
+          },
+        };
+      },
+    },
+  };
+}
 
 export function wireScanPacksX402(app: Hono): void {
   // EPIC-133: bundle catalog endpoint — gated by scanPacks.enabled (D4)
@@ -43,39 +112,7 @@ export function wireScanPacksX402(app: Hono): void {
         // EPIC-137: mint/extend the payer's AccessPassNFT on Arc after settle.
         .onAfterSettle(createMintOnSettleHook());
       const payTo = process.env.X402_PAY_TO ?? getConfig().x402Treasury;
-      const totalScanRoutes402 = {
-        "POST /api/total-scan": {
-          accepts: [{
-            scheme: "exact",
-            network: "eip155:84532" as const,
-            payTo,
-            price: async (ctx: { adapter: { getBody?: () => unknown } }) => {
-              const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
-              const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
-              const { ok } = resolveBundleIds(raw);
-              const amount = ok.length > 0 ? totalPrice(ok).amount : FULL_SCAN_PRICE;
-              return `$${amount}`;
-            },
-            extra: { paymentFlow: "upfront" },
-          }],
-          description: "AgentBadge agent-readiness scan — priced per selected rule bundle",
-          mimeType: "text/event-stream",
-          unpaidResponseBody: async (ctx: { adapter: { getBody?: () => unknown } }) => {
-            const body = (await ctx.adapter.getBody?.()) as { packs?: unknown } | undefined;
-            const raw = Array.isArray(body?.packs) ? (body.packs as string[]) : [];
-            const { ok } = resolveBundleIds(raw);
-            const catalog = bundleMetadata(AGENT_READINESS_RULESET.rules, ok.length ? ok : [...BUNDLE_IDS]);
-            return {
-              contentType: "application/json",
-              body: {
-                error: "Payment required",
-                packs: catalog.bundles.map((b) => ({ id: b.id, price: b.price, ruleCount: b.ruleCount })),
-                totalPrice: ok.length > 0 ? totalPrice(ok) : { amount: FULL_SCAN_PRICE, currency: USDC },
-              },
-            };
-          },
-        },
-      };
+      const totalScanRoutes402 = buildTotalScanRouteConfig(payTo);
       const httpServer = new x402HTTPResourceServer(resourceServer, totalScanRoutes402)
         // EPIC-137: access-pass holders skip payment — signed challenge + valid pass on Arc.
         .onProtectedRequest(async (ctx) => {

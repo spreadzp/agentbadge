@@ -53,7 +53,46 @@ totalScanRoutes.post(
       200: { description: "SSE stream of scan progress and results" },
       400: { description: "Missing or invalid URL, or unknown bundle ids" },
       401: { description: "Missing/invalid auth headers, stale timestamp, or signature verification failed" },
-      402: { description: "No valid access pass for this wallet+class — purchase via x402" },
+      402: {
+        description:
+          "Payment required (x402). PAYMENT-REQUIRED header carries base64-encoded payment requirements " +
+          "(accepts: scheme exact, network eip155:84532, USDC 0x036CbD53842c5426634e7929541eC2318f3dCF7e, atomic amount). " +
+          "Body lists per-bundle pricing.",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                error: { type: "string", example: "Payment required" },
+                packs: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", example: "discovery-crawling" },
+                      price: {
+                        type: "object",
+                        properties: {
+                          amount: { type: "string", example: "0.30" },
+                          currency: { type: "string", example: "USDC" },
+                        },
+                      },
+                      ruleCount: { type: "integer", example: 19 },
+                    },
+                  },
+                },
+                totalPrice: {
+                  type: "object",
+                  properties: {
+                    amount: { type: "string", example: "4.50" },
+                    currency: { type: "string", example: "USDC" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   }),
   async (c) => {
