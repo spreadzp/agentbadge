@@ -6,9 +6,9 @@
       "name": "agentgate",
       "dependencies": {
         "@agentbadge/bstock-tracker": "0.1.7",
-        "@agentbadge/cache": "^0.1.1",
+        "@agentbadge/cache": "^0.2.0",
         "@agentbadge/circle-payments": "^0.1.6",
-        "@agentbadge/database": "^0.1.1",
+        "@agentbadge/database": "^0.2.0",
         "@agentbadge/evm-core": "^0.1.2",
         "@agentbadge/hedera-core": "^0.2.1",
         "@agentbadge/keeperhub": "^0.1.1",
@@ -65,11 +65,11 @@
 
     "@agentbadge/bstock-tracker": ["@agentbadge/bstock-tracker@0.1.7", "", {}, "sha512-aQjHmiPH+gI+R30FL7Z2iw5D1UvRNdlv1IVF90jwaIBvtVBSfi1iNONrvkwTtAoie8CRUPEJ3y8kmaNXo4DIdQ=="],
 
-    "@agentbadge/cache": ["@agentbadge/cache@0.1.1", "", { "dependencies": { "@upstash/redis": "^1.39.0", "ioredis": "^6.0.0" } }, "sha512-eY6xo71i29TimztcqvOLOdOLeNdgq2mOVPaVWiQHIp2moPLYCj80uq1h4SAzbguLaBuYP2SQqF//kq7QW8oogA=="],
+    "@agentbadge/cache": ["@agentbadge/cache@0.2.0", "", { "dependencies": { "@upstash/redis": "^1.39.0", "ioredis": "^6.0.0" } }, "sha512-IvQPAfwgJSw0oZjvAL3MUvo87JgE4LkvJOkv8/K9e9mDSOma0eO9SOCAZfKMlV2ztMStu4ZfhILh8UrvMEneyw=="],
 
     "@agentbadge/circle-payments": ["@agentbadge/circle-payments@0.1.6", "", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-TYI+Y4wPM+LDQCkPCRv5M93URm7WzX+qHjkx5C88RRSiEJr5BaeTgI3gpY1Du/x3f0ezzWIynsa87MJLAQjJaw=="],
 
-    "@agentbadge/database": ["@agentbadge/database@0.1.1", "", { "dependencies": { "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-7guLHu9+0cCGjUyrySIMHu81M2GZxioknw3CRJ4CJsM8LaHJGwMbHa0DKTa8vDiny5UpohfALC8i38ll1kKd8g=="],
+    "@agentbadge/database": ["@agentbadge/database@0.2.0", "", { "dependencies": { "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-j1jnwIujORdbP0JIG7Dp1HWUwh9jRWJD13fHWVvyRgGKgDoDUIaA49klUZOCuVGeQfh1uyncXLOEnP5zT21wBA=="],
 
     "@agentbadge/evm-core": ["@agentbadge/evm-core@0.1.2", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "ethers": "^6.17.0" } }, "sha512-qecaJWw+MLuFnpv8dMV3i+XmztSZpXAjbcBc0DfdfbrL7wHpw1Ilgk2UfImhQ99Tefz7HRpqF9pWWmNDSqAK3g=="],
 

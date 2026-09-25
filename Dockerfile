@@ -36,10 +36,6 @@ COPY keeperhub-dist ./node_modules/@agentbadge/keeperhub/dist
 
 # Override @agentbadge/hedera-core with local build (SLICE-127-24: KeeperHub + Attestcoin tools)
 COPY hedera-core-dist ./node_modules/@agentbadge/hedera-core/dist
-# Override @agentbadge/database with local build (EPIC-145: scanResult/chatSubscription stores — npm 0.1.1 is stale)
-COPY database-dist ./node_modules/@agentbadge/database/dist
-# Override @agentbadge/cache with local build (EPIC-144: incr + UpstashCache — npm 0.1.1 is stale)
-COPY cache-dist ./node_modules/@agentbadge/cache/dist
 
 EXPOSE 4021
 CMD ["bun", "src/server/index.ts"]
