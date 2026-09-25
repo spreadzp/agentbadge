@@ -53,7 +53,7 @@
     "@agentbadge/evm-core": "^0.1.2",
     "@agentbadge/hedera-core": "^0.2.1",
     "@agentbadge/keeperhub": "^0.1.1",
-    "@agentbadge/mcp": "file:../../packages/mcp",
+    "@agentbadge/mcp": "0.3.0",
     "@agentbadge/pass-auth": "^0.1.1",
     "@agentbadge/passport": "^0.2.2",
     "@agentbadge/webmcp": "^0.3.0",
