@@ -11,8 +11,6 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
 
 import {
   registerTool,
-  listTools,
-  handleHttpToolCall,
   type ToolResult,
 } from "@agentbadge/mcp";
 import { Hono } from "hono";
@@ -211,7 +209,7 @@ describe("SLICE-72-10: Namespace JSON-RPC endpoints", () => {
     });
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.result.tools.length).toBe(29);
+    expect(data.result.tools.length).toBe(30);
   });
 
   it("POST /mcp (aggregator) — tools/list returns all tools", async () => {
