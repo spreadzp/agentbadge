@@ -12,7 +12,7 @@
         "@agentbadge/evm-core": "^0.1.2",
         "@agentbadge/hedera-core": "^0.2.1",
         "@agentbadge/keeperhub": "^0.1.1",
-        "@agentbadge/mcp": "0.3.0",
+        "@agentbadge/mcp": "0.3.1",
         "@agentbadge/pass-auth": "^0.1.1",
         "@agentbadge/passport": "^0.2.2",
         "@agentbadge/webmcp": "^0.3.0",
@@ -77,7 +77,7 @@
 
     "@agentbadge/keeperhub": ["@agentbadge/keeperhub@0.1.1", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GYFT9LUCNFUA/0qyH6iJStoVlqVz3WYxLzlTyPNGg0iLOOhPFPZNyTohRybZ+/t3EzkZMSkZTXgy6kAbKoH4Qw=="],
 
-    "@agentbadge/mcp": ["@agentbadge/mcp@0.3.0", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "@agentbadge/passport": "^0.2.2", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "bin": { "agentbadge-mcp": "dist/entry.js" } }, "sha512-USCIrqe+ZcbB+/1Jq8EU9hHWYZqRQUkIIe7oEePXaf1YBaLy8Et8FDTxHTwV73kf67gq7sVeB6p3fXZJCK+a3A=="],
+    "@agentbadge/mcp": ["@agentbadge/mcp@0.3.1", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "@agentbadge/passport": "^0.2.2", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "bin": { "agentbadge-mcp": "dist/entry.js" } }, "sha512-K4CN6VEa/yeGpzqqnqjvyn1+spvANwJO43gIGr3t0Es9xbV9nN77nxkYot4gk/pBSk8yMRGIl1Z8g7iSWiknYQ=="],
 
     "@agentbadge/pass-auth": ["@agentbadge/pass-auth@0.1.1", "", { "dependencies": { "viem": "^2.0.0" } }, "sha512-NfDIFKHviNr0XH/9v18ozJnoJGcncG8NEMpSe3yrVhT2/yAZyM0XKWkC1czq+d4lghbHL9ufRtjJ3r9EaUNq1Q=="],
 
