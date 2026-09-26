@@ -7,8 +7,10 @@ export const article: BlogArticle = {
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
-  dateModified: "2026-09-23",
-  tags: ["x402","arc","usdc","eip-3009","payments","ai-agents"],
+  dateModified: "2026-09-25",
+  heroImage: "/images/blog/bstock-arc-x402-payment-hero.png",
+  ogImage: "/images/blog/bstock-arc-x402-payment-hero.png",
+  tags: ["x402", "arc", "usdc", "eip-3009", "payments", "ai-agents"],
   readingTime: "5 min",
   shortAnswer: "Arc self-settle lets an agent pay x402 invoices with no facilitator: it signs an EIP-3009 transferWithAuthorization, broadcasts it on Arc (gas in USDC), and sends the txHash — the server verifies the on-chain receipt.",
 
@@ -50,6 +52,10 @@ no wallet access.</li>
 <li>The server reads the blockchain: is the tx in a block, did USDC
 reach the treasury, is the amount right → access for 30 days.</li>
 </ol>
+<figure>
+<img src="/images/blog/bstock-arc-x402-payment-2.png"
+alt="Six-step pipeline: request, 402 invoice, EIP-3009 signature, broadcast, on-chain receipt, access for 30 days" />
+</figure>
 <h2 id="what-the-server-actually-verifies">What the server actually
 verifies</h2>
 <p>Not a signature — a <strong>receipt</strong>. The server asks the
@@ -58,6 +64,10 @@ transaction is really in a block, it contains a <code>Transfer</code>
 event from the USDC contract to the treasury address, the amount covers
 the price. This cannot be forged: either the transaction is in a block
 or it does not exist.</p>
+<figure>
+<img src="/images/blog/bstock-arc-x402-payment-3.png"
+alt="A block on Arc with a highlighted Transfer log paying 5 USDC to the treasury, inspected by the server" />
+</figure>
 <h2 id="what-this-gives-the-ecosystem">What this gives the
 ecosystem</h2>
 <p>Removing the facilitator removes a point of failure and a trust

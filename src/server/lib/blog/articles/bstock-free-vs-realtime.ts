@@ -2,13 +2,15 @@ import type { BlogArticle } from "../../blog-data";
 
 export const article: BlogArticle = {
   slug: "bstock-free-vs-realtime",
-  title: "Free vs Real-Time: Why an Agent Should Pay for bStock Data",
+  title: "Free vs Real-Time: When the bStock Delta Actually Pays",
   description: "One request per minute is a snapshot; real-time is a signal. Why the paid tier of a bStock delta tracker is infrastructure, not an expense.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
-  dateModified: "2026-09-23",
-  tags: ["bstocks","real-time-data","freemium","ai-agents","trading"],
+  dateModified: "2026-09-26",
+  heroImage: "/images/blog/bstock-free-vs-realtime-hero.png",
+  ogImage: "/images/blog/bstock-free-vs-realtime-hero.png",
+  tags: ["bstocks", "real-time-data", "freemium", "ai-agents", "trading"],
   readingTime: "4 min",
   shortAnswer: "Free tier gives one snapshot per minute; the paid tier gives unlimited polling, Telegram alerts, and a 30-day ServicePass — for an agent that trades or alerts on tokenized-stock deltas, real-time data is infrastructure.",
 
@@ -57,11 +59,19 @@ itself.</li>
 </ul>
 <p>In all three, the edge is not “seeing it eventually” — it is seeing
 it <strong>first</strong>.</p>
+<figure>
+<img src="/images/blog/bstock-free-vs-realtime-2.png"
+alt="Timeline: the delta crosses the −0.5% threshold and a Telegram alert fires within seconds, versus a 60-minute free-tier gap" />
+</figure>
 <h2 id="agent-economics">Agent economics</h2>
 <p>5 USDC for 30 days of real-time is ~0.17 USDC a day. One caught
 arbitrage window on a tokenized stock pays for years of subscription.
 For an agent that trades or alerts on deltas, the paid tier is not an
 expense — it is infrastructure, like a market data feed.</p>
+<p>And the payment itself is on-chain: 5 USDC on Arc, receipt
+verified in a block, ServicePass issued for 30 days. The agent’s data
+budget is auditable on the same chain it trades on — no card statements,
+no billing portals, just transactions.</p>
 <p><em>Next — the educational block: what bStocks are, for people new to
 tokenized stocks.</em></p>
 <hr />
