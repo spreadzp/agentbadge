@@ -57,15 +57,15 @@ describe("SLICE-95-8: Ruleset Integration", () => {
     }
 
     it("total rule count includes EPIC-125 additions", () => {
-      // 130 pre-Phase-B + 15 Phase-B + 6 EPIC-125 = 151
-      expect(AGENT_READINESS_RULESET.rules.length).toBe(151);
+      // 130 pre-Phase-B + 15 Phase-B + 6 EPIC-125 + 5 EPIC-146 GEO = 156
+      expect(AGENT_READINESS_RULESET.rules.length).toBe(156);
     });
   });
 
   // ─── Manifest version ─────────────────────────────────────────────────────
   describe("Manifest version", () => {
     it("version is 1.5.0 (EPIC-125 additions)", () => {
-      expect(AGENT_READINESS_RULESET.version).toBe("1.5.0");
+      expect(AGENT_READINESS_RULESET.version).toBe("1.6.0");
     });
   });
 

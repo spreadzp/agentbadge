@@ -3,8 +3,8 @@ import { AGENT_READINESS_RULESET } from "../src/agent-readiness/ruleset";
 import { DEFAULT_RESOURCES } from "../src/agent-readiness/scanner/orchestrator";
 
 describe("Orchestrator integration", () => {
-  it("ruleset has 82 rules", () => {
-    expect(AGENT_READINESS_RULESET.rules.length).toBe(82);
+  it("ruleset has 156 rules", () => {
+    expect(AGENT_READINESS_RULESET.rules.length).toBe(156);
   });
 
   it("DEFAULT_RESOURCES includes all new fetcher keys", () => {

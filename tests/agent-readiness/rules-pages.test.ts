@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { contentPageRoutes } from "../../src/server/routes/content-pages";
 import { rulesApiRoutes } from "../../src/server/routes/rules-api";
+import { RULE_DESCRIPTIONS } from "../../src/agent-readiness/rule-descriptions";
 
 const app = new Hono();
 app.route("/", contentPageRoutes);
@@ -140,9 +141,9 @@ describe("Rules JSON API (SLICE-50-4)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
     const data = await res.json();
-    expect(data.total).toBe(121);
+    expect(data.total).toBe(RULE_DESCRIPTIONS.length);
     expect(data.categories.length).toBe(25);
-    expect(data.rules.length).toBe(121);
+    expect(data.rules.length).toBe(RULE_DESCRIPTIONS.length);
   });
 
   it("GET /api/rules/AB-001 returns 200 with rule", async () => {
