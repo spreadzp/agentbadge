@@ -5,7 +5,7 @@ import type { ResponseSnapshot } from "../../scanner/snapshot";
 export type Snapshots = Record<string, ResponseSnapshot | null>;
 
 export interface SemanticCheckResult {
-  outcome: "found" | "partial" | "absent" | "no_source";
+  outcome: "found" | "partial" | "absent" | "no_source" | "not_applicable";
   detail: string;
 }
 

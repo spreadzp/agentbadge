@@ -27,6 +27,14 @@ export { checkerSkillJsonLd } from "./skill-json-ld";
 export { checkerErrorCatalog } from "./error-catalog";
 export { checkerAgentFeeds } from "./agent-feeds";
 export { checkerNextCallPattern } from "./next-call-pattern";
+// EPIC-146: GEO citability checkers (ported from core package)
+export {
+  checkerAnswerFirst,
+  checkerEvidenceDensity,
+  checkerEntityClarity,
+  checkerServerRendered,
+  checkerAntiCitation,
+} from "./geo-citability";
 
 import type { SemanticChecker } from "./helpers";
 import { checkerOpenapiOperationDescriptions } from "./openapi-operation-descriptions";
@@ -50,6 +58,13 @@ import { checkerSkillJsonLd } from "./skill-json-ld";
 import { checkerErrorCatalog } from "./error-catalog";
 import { checkerAgentFeeds } from "./agent-feeds";
 import { checkerNextCallPattern } from "./next-call-pattern";
+import {
+  checkerAnswerFirst,
+  checkerEvidenceDensity,
+  checkerEntityClarity,
+  checkerServerRendered,
+  checkerAntiCitation,
+} from "./geo-citability";
 
 export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   openapi_operation_descriptions: checkerOpenapiOperationDescriptions,
@@ -73,4 +88,9 @@ export const SEMANTIC_CHECKERS: Record<string, SemanticChecker> = {
   error_catalog: checkerErrorCatalog,
   agent_feeds: checkerAgentFeeds,
   next_call_pattern: checkerNextCallPattern,
+  answer_first: checkerAnswerFirst,
+  evidence_density: checkerEvidenceDensity,
+  entity_clarity: checkerEntityClarity,
+  server_rendered: checkerServerRendered,
+  anti_citation: checkerAntiCitation,
 };

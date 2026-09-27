@@ -74,6 +74,8 @@ export const DEFAULT_RESOURCES = [
   "skill_json",
   "error_catalog",
   "agent_feeds",
+  // Raw homepage HTML — GEO citability rules (EPIC-146)
+  "html",
 ] as const;
 
 export interface AuthProbeContext {

@@ -40,7 +40,7 @@ const PARALLEL_RESOURCES = [
   "homepage_meta", "infrastructure", "a2a", "identity", "bot_auth", "favicon",
   "pricing", "link_headers", "api_catalog", "oauth_protected_resource",
   "auth_md", "agent_skills", "content_signals", "web_bot_auth", "dns_aid",
-  "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html",
+  "webmcp_runtime", "l402", "og_meta", "aeo_content", "semantic_html", "html",
   "accessibility", "content_depth", "agent_card", "ai_sitemap",
   "oauth_authorization_server", "llm_policy", "aauth", "heartbeat",
   "skill_json", "error_catalog", "agent_feeds",

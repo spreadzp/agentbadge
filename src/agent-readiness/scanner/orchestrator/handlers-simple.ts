@@ -26,6 +26,7 @@ import { fetchAgentCard } from "../fetchers/agent-card-fetcher";
 import { fetchAiSitemap } from "../fetchers/ai-sitemap-fetcher";
 import { fetchOauthAuthorizationServer } from "../fetchers/oauth-authorization-server-fetcher";
 import { fetchLlmPolicy } from "../fetchers/llm-policy-fetcher";
+import { fetchHomepageHtml } from "../fetchers/homepage-html-fetcher";
 import { snapOrNull } from "./snapshots";
 import type { ResourceHandler } from "./types";
 
@@ -36,6 +37,8 @@ import type { ResourceHandler } from "./types";
  */
 export const simpleHandlers: Record<string, ResourceHandler> = {
   robots: async ({ baseUrl }) => snapOrNull(await fetchRobotsTxt(baseUrl)),
+  // Raw homepage HTML — GEO citability rules (EPIC-146) need initial markup.
+  html: async ({ baseUrl }) => snapOrNull(await fetchHomepageHtml(baseUrl)),
   sitemap: async ({ baseUrl }) => snapOrNull(await fetchSitemapXml(baseUrl)),
   guide: async ({ baseUrl }) => snapOrNull(await fetchAgentGuide(baseUrl)),
   openapi: async ({ baseUrl }) => snapOrNull(await fetchOpenApi(baseUrl)),

@@ -137,10 +137,15 @@ import { AB163 } from "./rules/AB163";
 import { AB164 } from "./rules/AB164";
 import { AB165 } from "./rules/AB165";
 import { AB166 } from "./rules/AB166";
+import { AB183 } from "./rules/AB183";
+import { AB184 } from "./rules/AB184";
+import { AB185 } from "./rules/AB185";
+import { AB186 } from "./rules/AB186";
+import { AB187 } from "./rules/AB187";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
-  version: "1.5.0",
+  version: "1.6.0",
   scoring: {
     pillars: {
       weights: { discovery: 20, understandability: 25, executability: 30, verifiability: 25 },
@@ -301,6 +306,12 @@ export const AGENT_READINESS_RULESET = {
     AB164,
     AB165,
     AB166,
+    // GEO citability rules (EPIC-146)
+    AB183,
+    AB184,
+    AB185,
+    AB186,
+    AB187,
   ] as AgentReadinessRule[],
 } as const;
 
