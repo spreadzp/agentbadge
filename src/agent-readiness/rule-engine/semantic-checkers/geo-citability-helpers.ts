@@ -1,6 +1,7 @@
 // EPIC-146 (SLICE-146-7): shared helpers + regexes for GEO citability
 // checkers — ported from packages/agent-readiness-scanner.
 // Keep in sync with the core package implementation.
+// Methodology: Marketing OS GEO rules (MIT) — docs/MARKETING/MarketingOS/01-RESEARCH-marketing-os.md
 
 export const QUESTION_WORD_RE =
   /^(how|what|why|when|where|which|who|whom|whose|can|could|does|do|is|are|should|will|would)\b/i;

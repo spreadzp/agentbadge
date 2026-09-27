@@ -1,3 +1,4 @@
+// Methodology: Marketing OS GEO rules (MIT) — docs/MARKETING/MarketingOS/01-RESEARCH-marketing-os.md
 import type { AgentReadinessRule } from "../rule.schema";
 
 export const AB183: AgentReadinessRule = {
