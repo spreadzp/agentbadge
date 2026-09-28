@@ -2,13 +2,15 @@ import type { BlogArticle } from "../../blog-data";
 
 export const article: BlogArticle = {
   slug: "bstock-beginners-guide",
-  title: "bStocks for Beginners: What Tokenized Stocks Are and How They Work",
+  title: "bStocks for Beginners: Tokenized Stocks Without the Magic",
   description: "A tokenized stock is a blockchain token tracking a real share — 24/7 trading, stablecoin settlement, fractional access. How bStocks work and why prices diverge.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
-  dateModified: "2026-09-23",
-  tags: ["bstocks","tokenized-stocks","guide","rwa","crypto"],
+  dateModified: "2026-09-28",
+  heroImage: "/images/blog/bstock-beginners-guide-hero.png",
+  ogImage: "/images/blog/bstock-beginners-guide-hero.png",
+  tags: ["bstocks", "tokenized-stocks", "guide", "rwa", "crypto"],
   readingTime: "5 min",
   shortAnswer: "bStocks are tokens tracking real share prices: they trade on-chain 24/7 with stablecoin settlement and fractional access, but grant no shareholder rights — and their price can drift from the underlying, creating the delta.",
 
@@ -16,6 +18,11 @@ export const article: BlogArticle = {
 share. AAPLB mirrors Apple, TSLAB mirrors Tesla. Buy the token — get the
 same price exposure as the share, but on a crypto exchange, around the
 clock.</p>
+<p>This is not a niche experiment — it is a bridge between two
+markets. For the financial ecosystem, tokenized stocks mean equities
+that trade when Wall Street sleeps, in sizes that fit any wallet,
+settled in stablecoins. For traders, they mean a new class of
+instruments — and a new spread to understand before trading it.</p>
 <figure>
 <img src="/images/blog/bstock-beginners-guide-d1.png"
 alt="Diagram: how a bStock works" />
@@ -43,6 +50,10 @@ and no direct dividends — it is a price tracker, not equity in the
 company. Read the issuer’s terms.</li>
 <li><strong>Fractionality.</strong> You can hold 0.01 of a share.</li>
 </ul>
+<figure>
+<img src="/images/blog/bstock-beginners-guide-2.png"
+alt="Comparison: share versus token — trading hours, access, rights, fractionality" />
+</figure>
 <h2 id="why-prices-diverge-and-what-the-delta-is">Why prices diverge —
 and what the delta is</h2>
 <p>Token and share are two different markets with different liquidity.
@@ -59,6 +70,10 @@ hints at both opportunity (convergence trades) and risk (the gap can
 widen). Monitoring dozens of tokens around the clock is a job for a
 machine — which is exactly what delta trackers, including ours for AI
 agents, are for.</p>
+<p>Our tracker exposes the delta to AI agents over MCP, and its paid
+tier runs on <strong>Arc</strong> — Circle’s USDC-native chain — so an
+agent pays for real-time data the same way it holds collateral: in
+USDC, on-chain.</p>
 <p><em>Next: strategies people actually run on the delta.</em></p>
 <hr />
 <p><strong>Links</strong></p>
