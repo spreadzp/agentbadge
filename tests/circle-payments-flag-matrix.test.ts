@@ -21,6 +21,8 @@ function cfg(over: Partial<CirclePaymentsConfig>): CirclePaymentsConfig {
     gatewayApiUrl: "https://gateway-api-testnet.circle.com",
     arcRpcUrl: "https://rpc.testnet.arc.network",
     arcChainId: 5042002,
+    arcMainnet: false,
+    arcMainnetRpcUrl: "https://rpc.mainnet.arc.io",
     sellerAddress: SELLER,
     platformFeeBps: 0,
     ...over,

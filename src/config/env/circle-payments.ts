@@ -13,10 +13,15 @@ export function loadCirclePayments(
 
   const sellerAddress = requiredAddress("CIRCLE_SELLER_ADDRESS", errors);
   const arc = booleanFlag("CIRCLE_ARC_ENABLED");
+  const arcMainnet = booleanFlag("ARC_MAINNET_ENABLED");
   const escrow = booleanFlag("CIRCLE_ESCROW_ENABLED");
   let arcPrivateKey: string | undefined;
   if (arc || escrow) {
     arcPrivateKey = requiredString("ARC_PRIVATE_KEY", errors);
+  }
+  let arcEvaluatorKey: string | undefined;
+  if (arcMainnet) {
+    arcEvaluatorKey = requiredString("ARC_EVALUATOR_KEY", errors);
   }
   const circlePayments: CirclePaymentsConfig = {
     enabled: true,
@@ -29,6 +34,10 @@ export function loadCirclePayments(
       "https://gateway-api-testnet.circle.com",
     arcRpcUrl: process.env.ARC_RPC_URL ?? "https://rpc.testnet.arc.network",
     arcChainId: Number(process.env.ARC_CHAIN_ID ?? 5042002),
+    arcMainnet,
+    arcMainnetRpcUrl:
+      process.env.ARC_MAINNET_RPC_URL ?? "https://rpc.mainnet.arc.io",
+    arcEvaluatorKey,
     sellerAddress: sellerAddress ?? "",
     arcPrivateKey,
     platformFeeBps: Number(process.env.CIRCLE_PLATFORM_FEE_BPS ?? 0),

@@ -80,6 +80,13 @@ export interface CirclePaymentsConfig {
   gatewayApiUrl: string;
   arcRpcUrl: string;
   arcChainId: number;
+  /** Arc mainnet (eip155:5042) surface — EPIC-151 */
+  arcMainnet: boolean;
+  arcMainnetRpcUrl: string;
+  /** Evaluator EOA key for ERC-8004 feedback — required when arcMainnet
+   *  enabled. Must differ from agent owner key (self-deal ban) and
+   *  deploy operator key (D6-151). */
+  arcEvaluatorKey?: string;
   sellerAddress: string;
   /** Server EOA key — required when arc or escrow enabled */
   arcPrivateKey?: string;
