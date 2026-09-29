@@ -23,6 +23,7 @@ const CFG: CirclePaymentsConfig = {
   arcChainId: 5042002,
   arcMainnet: false,
   arcMainnetRpcUrl: "https://rpc.mainnet.arc.io",
+  attestation: false,
   sellerAddress: SELLER,
   platformFeeBps: 0,
 };

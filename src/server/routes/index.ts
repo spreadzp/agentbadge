@@ -65,6 +65,12 @@ import { agencyJsonRoutes } from "./agency-json";
 import { profileRoutes } from "./profile";
 import { profileViewerRoutes } from "./profile-viewer";
 import { attestcoinRoutes, setAttestcoinRouteConfig } from "./attestcoin";
+import {
+  attestationRoutes,
+  setAttestationRouteConfig,
+} from "./attestation-api";
+import { createArcAttestationWriter } from "../lib/arc-attestation";
+import { ARC_CONTRACTS, ARC_TESTNET } from "@agentbadge/circle-payments";
 
 import { metricsApp } from "./metrics";
 import { telemetryApp } from "./telemetry";
@@ -151,6 +157,33 @@ export function registerPostMarketplaceRoutes(app: Hono): void {
     });
     app.route("/", attestcoinRoutes);
     logger.info("Attestcoin routes registered");
+  }
+
+  // SLICE-151-3: readiness attestation routes — only when
+  // ARC_ATTESTATION_ENABLED=true (gate off → route absent, zero change).
+  const cp = getConfig().circlePayments;
+  if (cp?.attestation) {
+    setAttestationRouteConfig({
+      network: ARC_TESTNET.caip2,
+      explorerUrl: ARC_TESTNET.explorerUrl ?? "https://explorer.testnet.arc.io",
+      store: undefined, // default in-memory ring buffer
+      writeAttestation: cp.arcEvaluatorKey
+        ? createArcAttestationWriter({
+            chainId: ARC_TESTNET.chainId,
+            rpcUrl: cp.arcRpcUrl,
+            evaluatorKey: cp.arcEvaluatorKey as `0x${string}`,
+            oracleAgentId: cp.oracleAgentId
+              ? BigInt(cp.oracleAgentId)
+              : undefined,
+            usdc: ARC_TESTNET.usdc,
+            identityRegistry: ARC_CONTRACTS.identityRegistry,
+            reputationRegistry: ARC_CONTRACTS.reputationRegistry,
+            memoContract: ARC_CONTRACTS.memo,
+          }).write
+        : undefined,
+    });
+    app.route("/", attestationRoutes);
+    logger.info("Attestation routes registered");
   }
 }
 

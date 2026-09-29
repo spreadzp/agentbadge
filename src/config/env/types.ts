@@ -87,6 +87,12 @@ export interface CirclePaymentsConfig {
    *  enabled. Must differ from agent owner key (self-deal ban) and
    *  deploy operator key (D6-151). */
   arcEvaluatorKey?: string;
+  /** Readiness attestation route (POST /api/attestations + /attestations
+   *  page) — writes ERC-8004 feedback + memo via evaluator key (151-3). */
+  attestation: boolean;
+  /** Oracle agentId for site attestations (ARC_ORACLE_AGENT_ID) —
+   *  optional; clients may pass their own agentId per-request. */
+  oracleAgentId?: string;
   sellerAddress: string;
   /** Server EOA key — required when arc or escrow enabled */
   arcPrivateKey?: string;
