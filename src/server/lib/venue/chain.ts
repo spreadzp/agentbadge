@@ -1,0 +1,147 @@
+/**
+ * SLICE-151-9: venue chain layer — single active network via ARC_NETWORK
+ * (D13-151). Read-only: getJob status pull for the htmx poll + ERC-8004
+ * ownerOf for the provider gate (D5). No indexer — direct readContract.
+ */
+import { createPublicClient, http, parseAbi, type PublicClient } from "viem";
+import {
+  ARC_MAINNET,
+  ARC_TESTNET,
+  ARC_CONTRACTS,
+  ARC_MAINNET_CONTRACTS,
+  ERC8183_ACP_ABI,
+  ERC8183_ABI,
+  type SupportedChain,
+} from "@agentbadge/circle-payments";
+
+export type VenueNetworkName = "mainnet" | "testnet";
+
+export interface VenueNetwork {
+  name: VenueNetworkName;
+  chain: SupportedChain;
+  /** ACPCore (our deploy, acp ABI) on mainnet; Circle protocol deploy on testnet. */
+  agenticCommerce: `0x${string}`;
+  identityRegistry: `0x${string}`;
+  /** getJob tuple shape differs between deploys. */
+  variant: "circle" | "acp";
+  abi: typeof ERC8183_ACP_ABI | typeof ERC8183_ABI;
+  explorerTx: (hash: string) => string;
+  explorerAddr: (addr: string) => string;
+}
+
+const OWNER_OF_ABI = parseAbi([
+  "function ownerOf(uint256 tokenId) view returns (address)",
+]);
+
+const arcExplorers: Record<VenueNetworkName, string> = {
+  mainnet: "https://explorer.arc.io",
+  testnet: "https://testnet.arcscan.app",
+};
+
+export function resolveVenueNetwork(): VenueNetwork {
+  const name: VenueNetworkName =
+    process.env.ARC_NETWORK === "mainnet" ? "mainnet" : "testnet";
+  const base = arcExplorers[name];
+  if (name === "mainnet") {
+    return {
+      name,
+      chain: ARC_MAINNET,
+      agenticCommerce: ARC_MAINNET_CONTRACTS.agenticCommerce,
+      identityRegistry: ARC_MAINNET_CONTRACTS.identityRegistry,
+      variant: "acp",
+      abi: ERC8183_ACP_ABI,
+      explorerTx: (h) => `${base}/tx/${h}`,
+      explorerAddr: (a) => `${base}/address/${a}`,
+    };
+  }
+  return {
+    name,
+    chain: ARC_TESTNET,
+    agenticCommerce: ARC_CONTRACTS.agenticCommerce,
+    identityRegistry: ARC_CONTRACTS.identityRegistry,
+    variant: "circle",
+    abi: ERC8183_ABI,
+    explorerTx: (h) => `${base}/tx/${h}`,
+    explorerAddr: (a) => `${base}/address/${a}`,
+  };
+}
+
+let _client: { network: VenueNetworkName; pub: PublicClient } | null = null;
+
+function publicClient(net: VenueNetwork): PublicClient {
+  if (!_client || _client.network !== net.name) {
+    _client = {
+      network: net.name,
+      pub: createPublicClient({
+        transport: http(net.chain.rpcUrl, { timeout: 30_000 }),
+      }) as PublicClient,
+    };
+  }
+  return _client.pub;
+}
+
+// ─── getJob status pull (F1: readContract primary) ───────────────
+
+export interface OnchainJob {
+  client: `0x${string}`;
+  provider: `0x${string}`;
+  evaluator: `0x${string}`;
+  budget: bigint;
+  status: number;
+  expiredAt: bigint;
+}
+
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+/** Returns null when the job does not exist onchain or the call reverts. */
+export async function fetchOnchainJob(
+  onchainJobId: number,
+  net: VenueNetwork = resolveVenueNetwork(),
+): Promise<OnchainJob | null> {
+  try {
+    const pub = publicClient(net);
+    const raw = await pub.readContract({
+      address: net.agenticCommerce,
+      abi: net.abi,
+      functionName: "getJob",
+      args: [BigInt(onchainJobId)],
+    } as never);
+    // Both ABIs return a tuple {client, provider, evaluator, hook, token,
+    // budget, expiredAt, status} — field order identical across variants.
+    const j = raw as unknown as {
+      client: `0x${string}`;
+      provider: `0x${string}`;
+      evaluator: `0x${string}`;
+      budget: bigint;
+      expiredAt: bigint;
+      status: number;
+    };
+    if (j.client === ZERO_ADDR) return null;
+    return j;
+  } catch {
+    return null;
+  }
+}
+
+/** ERC-8004 provider gate (D5): agentId owner must equal the signer wallet. */
+export async function fetchAgentOwner(
+  agentId: number,
+  net: VenueNetwork = resolveVenueNetwork(),
+): Promise<`0x${string}` | null> {
+  try {
+    const pub = publicClient(net);
+    return (await pub.readContract({
+      address: net.identityRegistry,
+      abi: OWNER_OF_ABI,
+      functionName: "ownerOf",
+      args: [BigInt(agentId)],
+    })) as `0x${string}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Test hook: drop the cached client (e.g. after ARC_NETWORK change). */
+export function resetVenueClientForTesting(): void {
+  _client = null;
+}

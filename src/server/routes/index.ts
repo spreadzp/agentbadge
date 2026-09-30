@@ -76,6 +76,8 @@ import {
   ARC_MAINNET_CONTRACTS,
   ARC_TESTNET,
 } from "@agentbadge/circle-payments";
+import { venueApiRoutes } from "./venue-api";
+import { venuePageRoutes } from "./venue-pages";
 
 import { metricsApp } from "./metrics";
 import { telemetryApp } from "./telemetry";
@@ -197,6 +199,16 @@ export function registerPostMarketplaceRoutes(app: Hono): void {
     });
     app.route("/", attestationRoutes);
     logger.info("Attestation routes registered");
+  }
+
+  // SLICE-151-9: venue hub + API — only when ARC_VENUE_ENABLED=true.
+  // Gate off → /market stays the ops.ts 301, /api/venue/* absent, zero change.
+  if (process.env.ARC_VENUE_ENABLED === "true") {
+    app.route("/", venueApiRoutes);
+    app.route("/", venuePageRoutes);
+    logger.info("Venue routes registered", {
+      network: process.env.ARC_NETWORK ?? "testnet",
+    });
   }
 }
 

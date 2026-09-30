@@ -66,8 +66,12 @@ opsRoutes.get("/api/audit/:tokenId?/:serial?", (c) => {
   return c.redirect(path, 301);
 });
 opsRoutes.all("/api/passport/request", (c) => c.redirect("/passport/request", 301));
-// SLICE-131-2: /market landing moved to /services/marketplace (GSC BUG-2)
-opsRoutes.get("/market", (c) => c.redirect("/services/marketplace", 301));
+// SLICE-131-2: /market landing moved to /services/marketplace (GSC BUG-2).
+// SLICE-151-9: when ARC_VENUE_ENABLED=true the venue hub takes /market —
+// skip the redirect so venuePageRoutes handles it.
+if (process.env.ARC_VENUE_ENABLED !== "true") {
+  opsRoutes.get("/market", (c) => c.redirect("/services/marketplace", 301));
+}
 
 const INDEXNOW_KEY = "6abf90e7f0354fb09ac01108f46a17e7";
 const INDEXNOW_BASE = "https://agentbadge.xyz";

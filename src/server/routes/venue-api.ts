@@ -1,0 +1,292 @@
+/**
+ * SLICE-151-9: Venue API (D8-151 observer + entry points).
+ * Mounted only when ARC_VENUE_ENABLED=true (D15 gate).
+ * Attestations share the 151-3 store (D11-151); chain reads injected for tests.
+ */
+import { Hono, type Context } from "hono";
+import { describeRoute } from "hono-openapi";
+import { randomBytes } from "node:crypto";
+import { encodeFunctionData, getAddress, isAddress, parseUnits } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { logger } from "@agentbadge/passport";
+import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
+import { createVenueStore } from "../lib/attestation-store";
+import {
+  getJob,
+  listJobs,
+  listOffers,
+  upsertJob,
+  upsertOffer,
+  type VenueJob,
+} from "../lib/venue/store";
+import {
+  fetchAgentOwner,
+  fetchOnchainJob,
+  resolveVenueNetwork,
+  type VenueNetwork,
+} from "../lib/venue/chain";
+import { verifyWalletSigRequest } from "../middleware/agent-auth";
+import { errorResponse } from "../lib/error-response";
+import { ErrorCodes } from "../lib/error-codes";
+
+/** Injectable seam — tests stub onchain reads. */
+export interface VenueDeps {
+  network?: () => VenueNetwork;
+  onchainJob?: (id: number, net: VenueNetwork) => Promise<unknown>;
+  agentOwner?: (id: number, net: VenueNetwork) => Promise<`0x${string}` | null>;
+  attestations?: AttestationVenueStore;
+}
+
+const defaultAttestStore = createVenueStore();
+
+const ERC8183_STATUS: Record<number, string> = {
+  0: "open", 1: "funded", 2: "submitted",
+  3: "completed", 4: "rejected", 5: "expired",
+};
+
+const TX_PHASES = ["created", "funded", "submitted", "completed"] as const;
+
+/** Evaluator EOA for new jobs — derived from ARC_EVALUATOR_KEY. */
+function venueEvaluator(): `0x${string}` {
+  const key = process.env.ARC_EVALUATOR_KEY;
+  if (key && /^0x[0-9a-fA-F]{64}$/.test(key)) {
+    return privateKeyToAccount(key as `0x${string}`).address;
+  }
+  return (process.env.CIRCLE_TREASURY_ADDRESS ??
+    "0x0000000000000000000000000000000000000000") as `0x${string}`;
+}
+
+function str(v: unknown, max: number): string | null {
+  return typeof v === "string" && v.trim().length > 0 && v.length <= max
+    ? v.trim()
+    : null;
+}
+
+async function walletSig(
+  c: Context,
+): Promise<{ valid: true; wallet: `0x${string}` } | { valid: false }> {
+  const wallet = c.req.header("x-wallet");
+  const sig = await verifyWalletSigRequest({
+    wallet,
+    signature: c.req.header("x-sig"),
+    timestamp: c.req.header("x-timestamp"),
+    method: c.req.method,
+    path: c.req.path,
+  });
+  if (sig !== "valid" || !wallet || !isAddress(wallet)) return { valid: false };
+  return { valid: true, wallet: getAddress(wallet) };
+}
+
+async function signedJson(
+  c: Context,
+): Promise<{ wallet: `0x${string}`; body: Record<string, unknown> } | Response> {
+  const sig = await walletSig(c);
+  if (!sig.valid) {
+    return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
+      "valid X-Wallet/X-Sig/X-Timestamp required");
+  }
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body) {
+    return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "JSON body required");
+  }
+  return { wallet: sig.wallet, body };
+}
+
+const dr = (summary: string) =>
+  describeRoute({ tags: ["Venue"], summary, responses: { 200: { description: summary } } });
+
+export function createVenueApiRoutes(deps: VenueDeps = {}) {
+  const app = new Hono();
+  const net = deps.network ?? resolveVenueNetwork;
+  const onchainJob = deps.onchainJob ?? fetchOnchainJob;
+  const agentOwner = deps.agentOwner ?? fetchAgentOwner;
+  const attestStore = deps.attestations ?? defaultAttestStore;
+
+  app.get("/api/venue/jobs", dr("List venue jobs"), (c) => {
+    const jobs = listJobs({
+      status: c.req.query("status") || undefined,
+      category: c.req.query("category") || undefined,
+      limit: Number(c.req.query("limit") ?? 50) || 50,
+    });
+    return c.json({ jobs, count: jobs.length, network: net().name });
+  });
+
+  // POST /api/venue/jobs — record + prepared createJob calldata.
+  app.post("/api/venue/jobs", dr("Create job → prepared createJob tx"), async (c) => {
+    const s = await signedJson(c);
+    if (s instanceof Response) return s;
+    const { body } = s;
+    const title = str(body.title, 120);
+    const description = str(body.description, 2000);
+    const category = body.category == null ? undefined : str(body.category, 50);
+    const budgetUsdc = Number(body.budgetUsdc);
+    if (!title || !description) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS,
+        "title (≤120) + description (≤2000) required");
+    }
+    if (!Number.isFinite(budgetUsdc) || budgetUsdc <= 0 || budgetUsdc > 1_000_000) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+        "budgetUsdc must be a number in (0, 1000000]");
+    }
+    const provider = str(body.provider, 42);
+    if (provider != null && !isAddress(provider)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "provider must be 0x…");
+    }
+    const n = net();
+    const evaluator = venueEvaluator();
+    const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400);
+    const jobId = `vj_${randomBytes(8).toString("hex")}`;
+    const job: VenueJob = {
+      jobId, title, description, budgetUsdc,
+      status: "pending",
+      client: s.wallet,
+      provider: provider ? getAddress(provider) : undefined,
+      evaluator,
+      category: category ?? undefined,
+      createdAt: new Date().toISOString(),
+      chainTxs: {},
+    };
+    upsertJob(job);
+    const createData = encodeFunctionData({
+      abi: n.abi,
+      functionName: "createJob",
+      args: [
+        (provider ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+        evaluator, expiredAt,
+        `${title} — ${description}`.slice(0, 512),
+        "0x0000000000000000000000000000000000000000" as `0x${string}`,
+      ],
+    } as never);
+    const budgetBase = parseUnits(String(budgetUsdc), 6);
+    return c.json({
+      job,
+      network: n.name,
+      txs: {
+        createJob: {
+          to: n.agenticCommerce,
+          data: createData,
+          description:
+            `Broadcast this tx, then POST /api/venue/jobs/${jobId}/tx ` +
+            `{hash, phase:'created'} to attach it.`,
+        },
+        note:
+          `After createJob confirms: setBudget(jobId, ${budgetBase}, 0x), ` +
+          `then approve USDC + fund(jobId, ${budgetBase}, 0x).`,
+      },
+    });
+  });
+
+  // POST /api/venue/jobs/:id/tx — attach broadcast tx hash for a phase.
+  app.post("/api/venue/jobs/:id/tx", dr("Attach tx hash to job phase"), async (c) => {
+    const job = getJob(c.req.param("id"));
+    if (!job) {
+      return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "unknown jobId");
+    }
+    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+    const hash = str(body?.hash, 66);
+    const phase = str(body?.phase, 20);
+    if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "hash must be 0x<64hex>");
+    }
+    if (!phase || !(TX_PHASES as readonly string[]).includes(phase)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+        "phase ∈ {created,funded,submitted,completed}");
+    }
+    job.chainTxs[phase as keyof VenueJob["chainTxs"]] = hash;
+    if (phase === "created" && job.status === "pending") job.status = "open";
+    upsertJob(job);
+    return c.json({ job });
+  });
+
+  // GET /api/venue/jobs/:id/status — onchain pull (F1), syncs store.
+  app.get("/api/venue/jobs/:id/status", dr("Pull onchain job status"), async (c) => {
+    const job = getJob(c.req.param("id"));
+    if (!job) {
+      return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "unknown jobId");
+    }
+    if (job.onchainJobId == null) return c.json({ job, onchain: null });
+    const raw = (await onchainJob(job.onchainJobId, net())) as { status: number } | null;
+    if (raw) {
+      const mapped = ERC8183_STATUS[raw.status];
+      if (mapped && mapped !== job.status) {
+        job.status = mapped as VenueJob["status"];
+        upsertJob(job);
+      }
+    }
+    return c.json({ job, onchain: raw });
+  });
+
+  app.get("/api/venue/offers", dr("List provider offers"), (c) =>
+    c.json({ offers: listOffers({ limit: 50 }), network: net().name }),
+  );
+
+  // POST /api/venue/offers — signer must own ERC-8004 agentId (D5).
+  app.post("/api/venue/offers", dr("Register provider offer (ownerOf gate)"), async (c) => {
+    const s = await signedJson(c);
+    if (s instanceof Response) return s;
+    const { body } = s;
+    const agentId = Number(body.agentId);
+    const name = str(body.name, 100);
+    const description = str(body.description, 500);
+    const endpoint = str(body.endpoint, 500);
+    if (!Number.isInteger(agentId) || agentId < 0) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+        "agentId must be a non-negative integer");
+    }
+    if (!name || !description) {
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS,
+        "name (≤100) + description (≤500) required");
+    }
+    if (!endpoint || !/^https:\/\//.test(endpoint)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "endpoint must be https://");
+    }
+    const n = net();
+    const owner = await agentOwner(agentId, n);
+    if (!owner) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+        `agentId ${agentId} not found on ${n.name} identity registry`);
+    }
+    if (owner.toLowerCase() !== s.wallet.toLowerCase()) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH,
+        `agentId ${agentId} is owned by ${owner}, not the signer`);
+    }
+    const offer = {
+      providerAddress: s.wallet,
+      agentId, name, description, endpoint,
+      categories: Array.isArray(body.categories)
+        ? (body.categories as unknown[])
+            .map((x) => str(x, 50))
+            .filter((x): x is string => !!x)
+            .slice(0, 10)
+        : [],
+      createdAt: new Date().toISOString(),
+    };
+    upsertOffer(offer);
+    logger.info("venue: provider offer registered", { provider: s.wallet, agentId });
+    return c.json({ offer });
+  });
+
+  app.get("/api/venue/attestations", dr("Recent attestations"), (c) => {
+    const limit = Number(c.req.query("limit") ?? 50) || 50;
+    return c.json({
+      attestations: attestStore.list(limit),
+      count: Math.min(attestStore.size(), limit),
+    });
+  });
+
+  app.get("/api/venue/stats", dr("Venue header stats"), (c) => {
+    const jobs = listJobs();
+    return c.json({
+      network: net().name,
+      jobs: jobs.length,
+      jobsOpen: jobs.filter((j) => j.status === "open").length,
+      usdcVolume: jobs.reduce((s, j) => s + j.budgetUsdc, 0),
+      providers: listOffers().length,
+      attestations: attestStore.size(),
+    });
+  });
+
+  return app;
+}
+
+export const venueApiRoutes = createVenueApiRoutes();
