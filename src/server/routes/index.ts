@@ -70,7 +70,12 @@ import {
   setAttestationRouteConfig,
 } from "./attestation-api";
 import { createArcAttestationWriter } from "../lib/arc-attestation";
-import { ARC_CONTRACTS, ARC_TESTNET } from "@agentbadge/circle-payments";
+import {
+  ARC_CONTRACTS,
+  ARC_MAINNET,
+  ARC_MAINNET_CONTRACTS,
+  ARC_TESTNET,
+} from "@agentbadge/circle-payments";
 
 import { metricsApp } from "./metrics";
 import { telemetryApp } from "./telemetry";
@@ -163,23 +168,31 @@ export function registerPostMarketplaceRoutes(app: Hono): void {
   // ARC_ATTESTATION_ENABLED=true (gate off → route absent, zero change).
   const cp = getConfig().circlePayments;
   if (cp?.attestation) {
+    // SLICE-151-6: ARC_MAINNET_ENABLED flips attestations to mainnet —
+    // chain id, rpc, ERC-8004 registries and memo contract switch together.
+    const net = cp.arcMainnet ? ARC_MAINNET : ARC_TESTNET;
+    const contracts = cp.arcMainnet ? ARC_MAINNET_CONTRACTS : ARC_CONTRACTS;
     setAttestationRouteConfig({
-      network: ARC_TESTNET.caip2,
-      explorerUrl: ARC_TESTNET.explorerUrl ?? "https://explorer.testnet.arc.io",
+      network: net.caip2,
+      explorerUrl:
+        net.explorerUrl ??
+        (cp.arcMainnet
+          ? "https://explorer.arc.io"
+          : "https://explorer.testnet.arc.io"),
       store: undefined, // default in-memory ring buffer
       writeAttestation: cp.arcEvaluatorKey
         ? createArcAttestationWriter({
-            chainId: ARC_TESTNET.chainId,
-            rpcUrl: cp.arcRpcUrl,
-            evaluatorKey: cp.arcEvaluatorKey as `0x${string}`,
-            oracleAgentId: cp.oracleAgentId
-              ? BigInt(cp.oracleAgentId)
-              : undefined,
-            usdc: ARC_TESTNET.usdc,
-            identityRegistry: ARC_CONTRACTS.identityRegistry,
-            reputationRegistry: ARC_CONTRACTS.reputationRegistry,
-            memoContract: ARC_CONTRACTS.memo,
-          }).write
+          chainId: net.chainId,
+          rpcUrl: cp.arcMainnet ? cp.arcMainnetRpcUrl : cp.arcRpcUrl,
+          evaluatorKey: cp.arcEvaluatorKey as `0x${string}`,
+          oracleAgentId: cp.oracleAgentId
+            ? BigInt(cp.oracleAgentId)
+            : undefined,
+          usdc: net.usdc,
+          identityRegistry: contracts.identityRegistry,
+          reputationRegistry: contracts.reputationRegistry,
+          memoContract: contracts.memo,
+        }).write
         : undefined,
     });
     app.route("/", attestationRoutes);

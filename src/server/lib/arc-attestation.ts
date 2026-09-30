@@ -110,11 +110,13 @@ export function createArcAttestationWriter(
           "no agentId: set ARC_ORACLE_AGENT_ID or pass agentId in the request",
         );
       }
+      // Scanner scores can be fractional — int256 feedback needs an int.
+      const score = Math.round(input.score);
 
       // 1. ERC-8004 reputation feedback — evaluator key signs.
       const feedbackTx = await identity.giveFeedback(evaluator as never, {
         agentId,
-        value: BigInt(input.score),
+        value: BigInt(score),
         decimals: 0,
         tag1: "readiness",
         tag2: input.status,
