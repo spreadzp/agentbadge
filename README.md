@@ -97,7 +97,7 @@ Not a testnet demo — every link resolves on the live explorer.
 | bstock ServicePass mint | $0.05 USDC | [tx](https://explorer.arc.io/tx/0x463207d0bf2b548df129b58febd792f9323eacf446fcb26e8fe3f0c9f9c79e2f) |
 | ERC-8004 attestation write (prod) | — | [tx](https://explorer.arc.io/tx/0xd25ee6371ebb3846ff29b5d61435f15bb6469af739f7bdcc8799e0fb9f6c6796) |
 
-Full transaction log: [`packages/circle-payments/artifacts/mainnet-links.md`](../packages/circle-payments/artifacts/mainnet-links.md)
+Full transaction log: [`docs/arc-mainnet-links.md`](docs/arc-mainnet-links.md)
 
 ---
 
@@ -140,14 +140,17 @@ curl -X POST https://agentbadge.xyz/api/attestations \
 ## Repo layout
 
 ```text
-hackathon/server          ← this app (Hono + Bun + HTMX)
-packages/circle-payments  ← x402 facilitator, chains.ts, EIP-3009 handle
-packages/bstock-tracker   ← Binance market-data feed behind /mcp/bstock
-packages/agent-readiness-scanner ← 138-rule scanner engine
-contracts/                ← Solidity (MarketplacePassNFT, AgentPassportNFT, …)
+src/server/               ← Hono app: routes, middleware (bstock-freemium, x402 gate), SSR views
+src/agent-readiness/      ← 138-rule agent-readiness scanner engine
+src/mcp/                  ← MCP namespaces (/mcp/bstock, /mcp/*)
+src/verifiers/            ← payment + attestation verifiers
 docs/diagrams/            ← D2 → SVG animated diagrams
-docs/PAYMENTS/ARC/        ← Arc integration deep-dives
+docs/arc-mainnet-links.md ← live mainnet tx links (deploys, payments, attestations)
+public/                   ← static assets (icons, images, css)
+tests/                    ← vitest unit + e2e
 ```
+
+Related packages (published on npm as `@agentbadge/*`): `circle-payments` (x402 facilitator + EIP-3009 handle), `bstock-tracker` (market-data feed), `agent-readiness-scanner` (shared engine). Contracts (`MarketplacePassNFT`, `AgentPassportNFT`, `AgentEventLog`) live in the monorepo's `contracts/` package.
 
 ## Stack
 

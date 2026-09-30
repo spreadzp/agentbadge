@@ -1298,7 +1298,7 @@ AgentBadge is actively developed with EPICs tracked in `docs/EPICS/`. The projec
 
 EPICs 98–103 deliver Phase 3-5 capabilities: runtime agent simulation (EPIC-98), recurring scans with regression detection (EPIC-99), CI/CD GitHub App integration (EPIC-100), machine-readable Agent Knowledge Profile (EPIC-101), Passport V2 trust snapshots (EPIC-102), and cross-scan corpus benchmarks (EPIC-103).
 
-Full EPIC documents: [`docs/EPICS/`](../../docs/EPICS/)
+Full EPIC documents live in the monorepo under `docs/EPICS/` (outside this repo).
 
 ## Contact
 
