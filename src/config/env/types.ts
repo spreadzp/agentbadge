@@ -30,6 +30,8 @@ export interface BaseConfig {
 
 export interface UiConfig {
   chainDisplayName: string;
+  /** Optional icon URL shown inside the header chain badge (e.g. /icons/arc.png). */
+  chainBadgeIcon?: string;
   currencySymbol: string;
   currencyDecimals: number;
   explorerName: string;

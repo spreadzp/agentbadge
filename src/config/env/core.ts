@@ -151,6 +151,7 @@ function loadUiConfig(chainMode: ChainMode): UiConfig {
   const d = defaults[chainMode];
   return {
     chainDisplayName: process.env.CHAIN_DISPLAY_NAME ?? d.chainDisplayName,
+    chainBadgeIcon: process.env.CHAIN_BADGE_ICON,
     currencySymbol: process.env.CURRENCY_SYMBOL ?? d.currencySymbol,
     currencyDecimals: Number(
       process.env.CURRENCY_DECIMALS ?? d.currencyDecimals,

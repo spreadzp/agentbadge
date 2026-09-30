@@ -4,7 +4,7 @@ import { renderJsonLd, defaultCoreSchemas } from "../server/lib/json-ld";
 import { getPlausibleScript } from "../server/lib/plausible";
 import { getGA4Script } from "../server/lib/ga4-script";
 import { getGscVerificationMeta } from "../server/lib/gsc-verification";
-import { chainDisplayName, chainBadgeColor } from "../server/lib/chain-ui.js";
+import { chainDisplayName, chainBadgeColor, chainBadgeIcon } from "../server/lib/chain-ui.js";
 import { Footer } from "./footer";
 
 /**
@@ -143,7 +143,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
                 <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-7 w-7 rounded" /></picture>
                 ${SITE_NAME}
               </a>
-              ${chainDisplayName() ? raw(`<span class="chain-badge inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_COLORS[chainBadgeColor()] ?? BADGE_COLORS.purple}">${chainDisplayName()}</span>`) : ""}
+              ${chainDisplayName() ? raw(`<span class="chain-badge inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_COLORS[chainBadgeColor()] ?? BADGE_COLORS.purple}">${chainBadgeIcon() ? `<img src="${chainBadgeIcon()}" alt="" class="h-3.5 w-auto" loading="eager" decoding="async" />` : ""}${chainDisplayName()}</span>`) : ""}
 
               <!-- Hamburger toggle (mobile only) — pure CSS, no JS -->
               <input id="nav-toggle" type="checkbox" class="peer hidden" />

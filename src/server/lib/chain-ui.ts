@@ -115,6 +115,14 @@ export function chainDisplayName(): string {
 }
 
 /**
+ * Optional icon URL for the header chain badge (e.g. /icons/arc.png).
+ * Empty string when not configured.
+ */
+export function chainBadgeIcon(): string {
+  return config().ui.chainBadgeIcon ?? "";
+}
+
+/**
  * Return the badge color for the current chain (e.g., "purple" for Hedera, "blue" for Base).
  */
 export function chainBadgeColor(): string {
