@@ -1,16 +1,91 @@
+<p align="center">
+  <img src="docs/images/agentbadge-icon.png" width="120" alt="AgentBadge logo">
+</p>
+
 # AgentBadge — Agent Marketplace on Arc
+
+<p align="center">
+  <img src="docs/images/agentbadge-banner.png" width="600" alt="AgentBadge — on-chain identity for AI agents">
+</p>
 
 > **Trust & settlement layer for agentic economic activity.** Agents discover paid services, pay per-request in USDC via x402 on Arc Mainnet, receive NFT access passes, and earn publicly verifiable on-chain attestations.
 
-**Live:** [agentbadge.xyz](https://agentbadge.xyz/)
-**Article:** [We deployed AgentBadge to Arc Mainnet](https://agentbadge.xyz/blog/arc-c1-mainnet-deployment)
-**Full feature docs:** [FEATURES.md](FEATURES.md) — scanner rules, all 65 MCP tools, Hedera/Base rails, B2B layer
+**Live:** [agentbadge.xyz](https://agentbadge.xyz/) · **Article:** [We deployed AgentBadge to Arc Mainnet](https://agentbadge.xyz/blog/arc-c1-mainnet-deployment) · **Full feature docs:** [FEATURES.md](FEATURES.md)
+
+---
+
+## What is this?
+
+AgentBadge is a **marketplace where AI agents are the customers**. Sellers (services, APIs, data feeds) publish priced endpoints; buyers (agents, bots, humans) pay per request in USDC — no accounts, no API keys, no subscription forms. Payment *is* the authorization: settle a USDC transfer on Arc and an NFT access pass is minted to your wallet.
+
+**Who it's for:**
+
+- **Service/API owners** — monetize endpoints for agent consumers in minutes; set a USDC price, get a ServicePass-gated route.
+- **Agent builders** — pay per-request for market data, scans, and attestations without signup flows or credit cards.
+- **The agent economy** — every interaction leaves an on-chain receipt: payments, reputation feedback, attestations.
+
+**How the marketplace works:**
+
+1. A client hits a paid endpoint → gets `402 Payment Required` with payment requirements (amount, USDC asset, recipient, network `eip155:5042`).
+2. The client signs an EIP-3009 `transferWithAuthorization` — gasless, signature only.
+3. The server verifies and settles the authorization on Arc via the `eip3009-client-broadcast` scheme.
+4. On settlement, a **ServicePass NFT** is minted (time-boxed access) and the request is served. Subsequent calls check `hasAccess` on-chain.
+5. Readiness scans additionally write **ERC-8004 reputation feedback + memo** — a publicly verifiable attestation of what was scanned and scored.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Client agent / human] -->|HTTPS| B[Hono server<br/>agentbadge.xyz]
+    B --> C{bstock-freemium gate}
+    C -->|free tier / valid pass| D[API resource]
+    C -->|no access| E[402 + payment requirements]
+    E -->|PAYMENT-SIGNATURE| F[Arc facilitator]
+    F -->|verify + settle| G[Arc Mainnet<br/>USDC EIP-3009]
+    F -->|on success| H[MarketplacePassNFT<br/>mintServicePass]
+    H --> D
+    D -->|scan results| I[ERC-8004<br/>reputation + memo]
+```
+
+## Agent ↔ platform interaction
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Agent
+    participant S as Paid endpoint
+    participant G as x402 gate
+    participant F as Facilitator
+    participant C as Arc Mainnet
+    participant N as ServicePass NFT
+
+    A->>S: Request (no payment)
+    S->>G: Check free bucket / hasAccess
+    G-->>A: 402 + requirements ($5 USDC, eip155:5042)
+    A->>A: Sign EIP-3009 transferWithAuthorization
+    A->>S: Retry + PAYMENT-SIGNATURE
+    S->>F: verify + settle
+    F->>C: Broadcast authorization (gasless)
+    C-->>F: tx confirmed
+    F->>N: mintServicePass(payer, serviceId, 30d)
+    N-->>F: minted
+    S-->>A: 200 + PAYMENT-RESPONSE + data
+    Note over A,N: Next requests pass hasAccess —<br/>no payment until pass expires
+```
+
+<details>
+<summary>**Why EIP-3009 self-settle?**</summary>
+
+The client signs a `transferWithAuthorization` typed message (EIP-712) — no gas needed, no on-chain send from the client. Our facilitator broadcasts the authorization to USDC on Arc, waits for the receipt, then serves the request. Replay protection via a tx-hash store; mint failures are logged, not swallowed.
+</details>
 
 ---
 
 ## Live on Arc Mainnet (chainId 5042)
 
-Not a testnet demo — every link below resolves on the live explorer.
+Not a testnet demo — every link resolves on the live explorer.
 
 | Contract | Address | Deploy tx |
 | --- | --- | --- |
@@ -28,34 +103,6 @@ Full transaction log: [`packages/circle-payments/artifacts/mainnet-links.md`](..
 
 ---
 
-## What runs on Arc
-
-```text
-Agent / human client
-    │
-    ├── POST /api/attestations        ── free 1 req/min, then 402 ($0.25)
-    │      → verify + settle EIP-3009 on Arc
-    │      → ERC-8004 feedback + memo on-chain
-    │
-    ├── GET /mcp/bstock/tools         ── bearer + free tier, then 402 ($5)
-    │      → verify + settle EIP-3009 on Arc
-    │      → mintServicePass → ServicePass NFT (30d access)
-    │
-    └── MarketplacePassNFT            ── passports, services, passes
-           serviceIdFor(1, "bstock-delta-realtime")
-           = 0x2ef7218adb1e…b400ffff (registered, active, $5)
-```
-
-![x402 payment flow on Arc](docs/diagrams/14-arc-x402-payment.svg)
-
-<details>
-<summary>**Why EIP-3009 self-settle?**</summary>
-
-The client signs a `transferWithAuthorization` typed message (EIP-712) — no gas needed. Our facilitator broadcasts the authorization to USDC on Arc, waits for the receipt, then serves the request. Replay protection via a tx-hash store; mint failures are logged, not swallowed.
-</details>
-
----
-
 ## Try it
 
 ```bash
@@ -70,8 +117,6 @@ curl -X POST https://agentbadge.xyz/api/attestations \
 # 3) Pay: sign EIP-3009 transferWithAuthorization → retry with
 #    PAYMENT-SIGNATURE header → 200 + PAYMENT-RESPONSE + attestation on-chain
 ```
-
----
 
 ## Product surface
 
@@ -101,7 +146,6 @@ hackathon/server          ← this app (Hono + Bun + HTMX)
 packages/circle-payments  ← x402 facilitator, chains.ts, EIP-3009 handle
 packages/bstock-tracker   ← Binance market-data feed behind /mcp/bstock
 packages/agent-readiness-scanner ← 138-rule scanner engine
-packages/*                ← passport, mcp, database, cache, …
 contracts/                ← Solidity (MarketplacePassNFT, AgentPassportNFT, …)
 docs/diagrams/            ← D2 → SVG animated diagrams
 docs/PAYMENTS/ARC/        ← Arc integration deep-dives
