@@ -187,6 +187,12 @@ export interface BstockEnvConfig {
   payTo: string;
   /** x402 facilitator URL (X402_FACILITATOR_URL) — empty disables payments. */
   facilitatorUrl: string;
+  /** Arc network for x402 settlement + ServicePass — BSTOCK_ARC_NETWORK,
+   *  "eip155:5042002" (testnet, default) | "eip155:5042" (mainnet, 151-7). */
+  arcNetwork: string;
+  /** MarketplacePassNFT address on the selected Arc network — BSTOCK_NFT.
+   *  Falls back to marketplace.nftAddress when unset (testnet shared NFT). */
+  nftAddress?: string;
 }
 
 /**

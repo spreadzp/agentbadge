@@ -30,10 +30,12 @@ import {
   getTelegramSubscriptions,
   getBstockTelegramBot,
 } from "../../telegram/state";
-import { getMarketplaceOps } from "../lib/marketplace";
+import { getMarketplaceOps, getMarketplaceOpsFor, arcChainFor } from "../lib/marketplace";
 import { hasAccess } from "@agentbadge/pass-auth";
 import {
   ARC_TESTNET,
+  ARC_MAINNET,
+  ARC_MAINNET_AGENTBADGE_CONTRACTS,
   ARC_SELF_SETTLE_SCHEME,
 } from "@agentbadge/circle-payments";
 import { createArcBstockFacilitator } from "../lib/bstock/arc-facilitator";
@@ -107,7 +109,24 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
   const bstockCfg = getConfig().bstock;
   if (bstockCfg?.enabled) {
     ensureBstockService();
-    const ops = getMarketplaceOps();
+    // SLICE-151-7: settlement chain selected by BSTOCK_ARC_NETWORK.
+    // Mainnet (eip155:5042) → ARC_MAINNET rail + BSTOCK_NFT contract;
+    // default stays testnet (MARKETPLACE_NFT shared with marketplace).
+    const isMainnet = bstockCfg.arcNetwork === ARC_MAINNET.caip2;
+    const chain = isMainnet ? ARC_MAINNET : ARC_TESTNET;
+    const nftAddress = isMainnet
+      ? (bstockCfg.nftAddress ??
+        ARC_MAINNET_AGENTBADGE_CONTRACTS.marketplacePassNFT)
+      : undefined;
+    const ops = isMainnet
+      ? getMarketplaceOpsFor({
+          chain: arcChainFor(bstockCfg.arcNetwork),
+          nftAddress,
+        })
+      : getMarketplaceOps();
+    const rpcUrl = isMainnet
+      ? (process.env.ARC_MAINNET_RPC_URL ?? ARC_MAINNET.rpcUrl)
+      : (process.env.ARC_RPC_URL ?? ARC_TESTNET.rpcUrl);
     app.use(
       "/mcp/bstock/*",
       bstockAuth(bstockCfg.agentTokens),
@@ -118,17 +137,22 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
         payTo: bstockCfg.payTo,
         // SLICE-141-13: Arc self-settle rail — client broadcasts
         // transferWithAuthorization on Arc, we verify the receipt.
-        networkId: ARC_TESTNET.caip2,
-        usdcAddress: ARC_TESTNET.usdc,
+        networkId: chain.caip2,
+        usdcAddress: chain.usdc,
         scheme: ARC_SELF_SETTLE_SCHEME,
         maxTimeoutSeconds: 345600,
         extra: { assetTransferMethod: ARC_SELF_SETTLE_SCHEME },
         freePerMin: 1,
         facilitator: createArcBstockFacilitator({
           sellerAddress: bstockCfg.payTo,
+          chain,
+          rpcUrl,
         }),
         hasAccess: (wallet, serviceId) =>
-          hasAccess(wallet, serviceId as `0x${string}`),
+          hasAccess(wallet, serviceId as `0x${string}`, {
+            nftAddress: nftAddress as `0x${string}` | undefined,
+            rpcUrl,
+          }),
         mintPass: (to, serviceId, durationSec) =>
           ops.mintServicePass(to as `0x${string}`, serviceId, durationSec, 0n),
       }),

@@ -14,6 +14,7 @@ import {
   ARC_TESTNET,
   type ArcSelfSettleHandle,
   type PaymentRequirements,
+  type SupportedChain,
   type TxHashStore,
   type ReceiptClient,
 } from "@agentbadge/circle-payments";
@@ -53,6 +54,8 @@ function toPaymentRequirements(
 export interface ArcFacilitatorConfig {
   /** Treasury address receiving payments (payTo). */
   sellerAddress: string;
+  /** Settlement chain — default ARC_TESTNET; pass ARC_MAINNET for 5042 (151-7). */
+  chain?: SupportedChain;
   /** Arc RPC — default ARC_RPC_URL env or ARC_TESTNET.rpcUrl. */
   rpcUrl?: string;
   /** Injectable handle for tests. */
@@ -79,7 +82,7 @@ export function createArcBstockFacilitator(
     cfg.handle ??
     createArcSelfSettleHandle({
       sellerAddress: cfg.sellerAddress,
-      chain: ARC_TESTNET,
+      chain: cfg.chain ?? ARC_TESTNET,
       rpcUrl: cfg.rpcUrl ?? process.env.ARC_RPC_URL,
       publicClient: cfg.publicClient,
       txHashStore: cfg.txHashStore ?? new CacheTxHashStore(getCache()),

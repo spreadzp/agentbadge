@@ -19,6 +19,26 @@ export const arcTestnet = defineChain({
   },
 });
 
+/** Arc Mainnet (eip155:5042) — SLICE-151-7 bstock x402 surface. */
+export const arcMainnet = defineChain({
+  id: 5042,
+  name: "arc-mainnet",
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+  rpcUrls: {
+    default: {
+      http: [
+        process.env.ARC_MAINNET_RPC_URL ??
+          "https://rpc.blockdaemon.mainnet.arc.io",
+      ],
+    },
+  },
+});
+
+/** Resolve a marketplace chain by CAIP-2 network id. */
+export function arcChainFor(caip2: string) {
+  return caip2 === "eip155:5042" ? arcMainnet : arcTestnet;
+}
+
 export const NFT_ABI = [
   {
     name: "mintPassport",

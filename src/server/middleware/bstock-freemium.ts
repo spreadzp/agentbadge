@@ -1,21 +1,25 @@
 /**
- * bStock freemium gate (EPIC-141, SLICE-141-7).
+ * bStock freemium gate (EPIC-141, SLICE-141-7; generalized SLICE-151-7).
  *
- * Free tier: 1 req/min per agent token → over the limit returns
- * HTTP 402 with a PAYMENT-REQUIRED header (base64 x402 requirements),
- * so standard x402 clients can pay automatically.
+ * Free tier: 1 req/min per identity (X-Wallet → agentId → client IP)
+ * → over the limit returns HTTP 402 with a PAYMENT-REQUIRED header
+ * (base64 x402 requirements), so standard x402 clients can pay
+ * automatically.
  *
  * Paid tier: X-Wallet holding a live ServicePass (hasAccess on Arc)
- * bypasses the free bucket — real-time access.
+ * bypasses the free bucket — real-time access. Optional: omit
+ * hasAccess/serviceId for per-request paid gates (attestation).
  *
  * Payment: PAYMENT-SIGNATURE (EIP-3009) → facilitator verify → settle
- * → mintServicePass (mints or extends, 30d) → request proceeds.
+ * → mintServicePass (mints or extends, 30d; optional) → request
+ * proceeds.
  *
  * Patterns: x402-base.ts (402 + facilitator verify/settle),
  * marketplace hooks.ts (mintServicePass on settle),
  * agent-auth.ts (injectable hasAccess for tests).
  */
 
+import { logger } from "@agentbadge/passport";
 import type { Context, MiddlewareHandler } from "hono";
 import { tryGetCache } from "../lib/cache";
 
@@ -50,8 +54,10 @@ export interface BstockFacilitator {
 }
 
 export interface BstockFreemiumConfig {
-  /** bytes32 service id in the marketplace catalog. */
-  serviceId: `0x${string}`;
+  /** bytes32 service id in the marketplace catalog. Required only when
+   *  hasAccess/mintPass are used — per-request paid gates (attestation
+   *  x402, 151-7) don't register a service. */
+  serviceId?: `0x${string}`;
   /** USDC price, decimal string ("5"). */
   priceUsd: string;
   /** Pass lifetime in seconds (30d = 2592000). */
@@ -68,18 +74,22 @@ export interface BstockFreemiumConfig {
   extra?: Record<string, unknown>;
   /** Payment validity window in seconds (default: omitted). */
   maxTimeoutSeconds?: number;
-  /** Free-tier requests per minute per agent token (default 1). */
+  /** Free-tier requests per minute per identity (default 1). */
   freePerMin?: number;
   /** Facilitator client — injectable for tests. */
   facilitator: BstockFacilitator;
-  /** On-chain pass check — injectable for tests. */
-  hasAccess: (wallet: string, serviceId: string) => Promise<boolean>;
-  /** Pass mint/extend — injectable for tests. */
-  mintPass: (
+  /** On-chain pass check — injectable for tests. Omit to disable the
+   *  X-Wallet bypass (per-request paid gates, 151-7). */
+  hasAccess?: (wallet: string, serviceId: string) => Promise<boolean>;
+  /** Pass mint/extend — injectable for tests. Omit for per-request
+   *  paid access (payment grants this call, no pass minted, 151-7). */
+  mintPass?: (
     to: string,
     serviceId: `0x${string}`,
     durationSec: number,
   ) => Promise<string>;
+  /** 402 description (default: bstock ServicePass wording). */
+  description?: string;
 }
 
 interface Bucket {
@@ -103,7 +113,8 @@ function buildRequirements(
     maxAmountRequired: baseUnits,
     maxTimeoutSeconds: cfg.maxTimeoutSeconds,
     resource,
-    description: "bstock-delta-realtime — 30d ServicePass",
+    description:
+      cfg.description ?? "bstock-delta-realtime — 30d ServicePass",
     mimeType: "application/json",
     extra: cfg.extra,
   };
@@ -152,12 +163,19 @@ export function bstockFreemium(
           settle.error ?? "Payment settlement failed",
         );
       }
-      if (settle.payer) {
+      if (settle.payer && cfg.mintPass && cfg.serviceId) {
         try {
           await cfg.mintPass(settle.payer, cfg.serviceId, cfg.durationSec);
-        } catch {
+        } catch (err) {
           // Mint failure must not block the paid request — pass minting
           // is retried on the next call (same as marketplace hook, D10).
+          // But it MUST be logged: a silent UnknownService/role revert
+          // otherwise leaves the payer without a pass and no trace.
+          logger.error("bstock-freemium: mintServicePass failed", {
+            payer: settle.payer,
+            serviceId: cfg.serviceId,
+            err: String(err),
+          });
         }
       }
       if (settle.transaction) {
@@ -172,11 +190,14 @@ export function bstockFreemium(
     //    staleness is safe and keeps the Arc RPC out of the hot path.
     //    Negatives are never cached (a just-paid wallet must not wait).
     const wallet = c.req.header("X-Wallet");
-    if (wallet) {
+    if (wallet && cfg.hasAccess && cfg.serviceId) {
       const passKey = `bstock:pass:${wallet}:${cfg.serviceId}`;
       const cache = tryGetCache();
       const cached = cache ? await cache.get<string>(passKey) : null;
-      if (cached === "1" || (await cfg.hasAccess(wallet, cfg.serviceId))) {
+      if (
+        cached === "1" ||
+        (await cfg.hasAccess(wallet, cfg.serviceId))
+      ) {
         if (cached !== "1" && cache) {
           await cache.set(passKey, "1", { ttlSec: 60 });
         }
@@ -185,10 +206,19 @@ export function bstockFreemium(
       }
     }
 
-    // 3. Free tier: freePerMin req/min per agent token → 402 over.
+    // 3. Free tier: freePerMin req/min per identity → 402 over.
+    //    Identity = X-Wallet → agentId (bearer) → client IP, so the gate
+    //    also works for anonymous endpoints (attestation, 151-7).
     //    cache.incr is atomic across replicas (INCR+EXPIRE); on backend
     //    error it returns 0 → request passes (fail-open for rate limits).
-    const key = (c.get("agentId") as string | undefined) ?? "anonymous";
+    const ip =
+      c.req.header("cf-connecting-ip") ??
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+    const key =
+      wallet ??
+      (c.get("agentId") as string | undefined) ??
+      ip ??
+      "anonymous";
     const cache = tryGetCache();
     let count: number;
     if (cache) {

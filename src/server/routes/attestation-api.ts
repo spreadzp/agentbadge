@@ -19,6 +19,12 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { keccak256, toBytes } from "viem";
+import {
+  ARC_MAINNET,
+  ARC_SELF_SETTLE_SCHEME,
+} from "@agentbadge/circle-payments";
+import { bstockFreemium } from "../middleware/bstock-freemium";
+import { createArcBstockFacilitator } from "../lib/bstock/arc-facilitator";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
@@ -62,6 +68,45 @@ export const attestationRoutes = new Hono();
 
 const limiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
+// ─── SLICE-151-7: paid attestation gate (x402 on Arc mainnet) ──────
+// ATTESTATION_X402_ENABLED=true → free 1 req/min per wallet/IP, over
+// that: 402 + eip3009-client-broadcast on eip155:5042, price
+// ATTESTATION_X402_PRICE_USD (default $0.25) → payTo X402_PAY_TO.
+// Paid access is per-request (no ServicePass minted). GET routes and
+// the /attestations page stay free.
+let _attestationGate: ReturnType<typeof bstockFreemium> | undefined;
+function attestationPaidGate() {
+  return async (c: Parameters<ReturnType<typeof bstockFreemium>>[0], next: Parameters<ReturnType<typeof bstockFreemium>>[1]) => {
+    if (process.env.ATTESTATION_X402_ENABLED !== "true") return next();
+    if (!_attestationGate) {
+      _attestationGate = bstockFreemium({
+        priceUsd: process.env.ATTESTATION_X402_PRICE_USD ?? "0.25",
+        durationSec: 0,
+        payTo:
+          process.env.ATTESTATION_X402_PAY_TO ??
+          process.env.X402_PAY_TO ??
+          "",
+        networkId: ARC_MAINNET.caip2,
+        usdcAddress: ARC_MAINNET.usdc,
+        scheme: ARC_SELF_SETTLE_SCHEME,
+        maxTimeoutSeconds: 345600,
+        extra: { assetTransferMethod: ARC_SELF_SETTLE_SCHEME },
+        freePerMin: 1,
+        facilitator: createArcBstockFacilitator({
+          sellerAddress:
+            process.env.ATTESTATION_X402_PAY_TO ??
+            process.env.X402_PAY_TO ??
+            "",
+          chain: ARC_MAINNET,
+          rpcUrl: process.env.ARC_MAINNET_RPC_URL,
+        }),
+        description: "readiness attestation — per-scan access",
+      });
+    }
+    return _attestationGate(c, next);
+  };
+}
+
 /** Default scanner — wraps scanDomain + RuleEngine into the compact
  *  result the attestation needs (score, status, report hash). */
 async function defaultScan(url: string): Promise<AttestationScanResult> {
@@ -88,12 +133,14 @@ attestationRoutes.post(
     responses: {
       200: { description: "Attestation written" },
       400: { description: "Missing/invalid url or agentId" },
+      402: { description: "Payment required (ATTESTATION_X402_ENABLED)" },
       403: { description: "Private host (SSRF guard)" },
       429: { description: "Rate limited" },
       502: { description: "Scan or chain write failed" },
       503: { description: "ARC_ATTESTATION_ENABLED off" },
     },
   }),
+  attestationPaidGate(),
   async (c) => {
   const cfg = routeConfig;
   if (!cfg) return c.json({ error: "attestation feature disabled" }, 503);

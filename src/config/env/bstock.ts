@@ -90,5 +90,10 @@ export function loadBstock(errors: string[]): BstockEnvConfig | undefined {
     ),
     payTo: process.env.X402_PAY_TO ?? "",
     facilitatorUrl: process.env.X402_FACILITATOR_URL ?? "",
+    // SLICE-151-7: mainnet surface — BSTOCK_ARC_NETWORK=eip155:5042 +
+    // BSTOCK_NFT=<MarketplacePassNFT on 5042>. Default stays testnet so
+    // existing flows are unchanged without the envs.
+    arcNetwork: process.env.BSTOCK_ARC_NETWORK ?? "eip155:5042002",
+    nftAddress: process.env.BSTOCK_NFT || undefined,
   };
 }
