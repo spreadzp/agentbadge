@@ -16,6 +16,7 @@ import { article as bstockFreeVsRealtime } from "./bstock-free-vs-realtime";
 import { article as bstockBeginnersGuide } from "./bstock-beginners-guide";
 import { article as bstockEarnStrategies } from "./bstock-earn-strategies";
 import { article as bstockRisks } from "./bstock-risks";
+import { article as arcC1MainnetDeployment } from "./arc-c1-mainnet-deployment";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -35,4 +36,5 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   bstockBeginnersGuide,
   bstockEarnStrategies,
   bstockRisks,
+  arcC1MainnetDeployment,
 ];
