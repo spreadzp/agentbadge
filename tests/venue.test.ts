@@ -15,7 +15,7 @@ import {
   useMemoryStoreForTesting,
   type VenueJob,
 } from "../src/server/lib/venue/store";
-import { createVenueApiRoutes } from "../src/server/routes/venue-api";
+import { createVenueApiRoutes, type VenueDeps } from "../src/server/routes/venue-api";
 import { createVenuePageRoutes } from "../src/server/routes/venue-pages";
 import { resetVenueEventsForTests } from "../src/server/services/venue-events";
 import { resetDatabaseForTests } from "../src/server/lib/database";
@@ -126,7 +126,7 @@ describe("VenueStore (JSON impl, memStore override)", () => {
 
 // ─── API ─────────────────────────────────────────────────────────
 
-function apiApp(agentOwner?: (id: number) => Promise<`0x${string}` | null>) {
+function apiApp(agentOwner?: (id: number) => Promise<`0x${string}` | null>, txJobId?: VenueDeps["txJobId"]) {
   const app = new Hono();
   app.route(
     "/",
@@ -134,6 +134,7 @@ function apiApp(agentOwner?: (id: number) => Promise<`0x${string}` | null>) {
       network: () => testNet,
       onchainJob: async () => ({ status: 1 }),
       agentOwner: agentOwner ?? (async () => WALLET),
+      txJobId,
       attestations: createVenueStore(),
     }),
   );
@@ -204,6 +205,24 @@ describe("venue api", () => {
     expect(res.status).toBe(200);
     expect(getJob("vj_test1")?.chainTxs.created).toBe(hash);
     expect(getJob("vj_test1")?.status).toBe("open");
+  });
+
+  it("POST /api/venue/jobs/:id/tx phase=created resolves onchainJobId", async () => {
+    upsertJob(jobFixture());
+    const hash = `0x${"b".repeat(64)}` as `0x${string}`;
+    let seenTx: string | undefined;
+    const app = apiApp(undefined, async (h) => {
+      seenTx = h;
+      return 42;
+    });
+    const res = await app.request("/api/venue/jobs/vj_test1/tx", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ hash, phase: "created" }),
+    });
+    expect(res.status).toBe(200);
+    expect(seenTx).toBe(hash);
+    expect(getJob("vj_test1")?.onchainJobId).toBe(42);
   });
 
   it("GET /api/venue/jobs/:id/status syncs onchain status", async () => {

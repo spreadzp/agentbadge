@@ -19,6 +19,7 @@ import {
 } from "../lib/venue/store";
 import {
   fetchAgentOwner,
+  fetchCreatedJobId,
   fetchOnchainJob,
   resolveVenueNetwork,
   type VenueNetwork,
@@ -43,6 +44,8 @@ export interface VenueDeps {
   network?: () => VenueNetwork;
   onchainJob?: (id: number, net: VenueNetwork) => Promise<unknown>;
   agentOwner?: (id: number, net: VenueNetwork) => Promise<`0x${string}` | null>;
+  /** Resolve onchain jobId from a confirmed createJob tx receipt. */
+  txJobId?: (txHash: `0x${string}`, net: VenueNetwork) => Promise<number | null>;
   attestations?: AttestationVenueStore;
 }
 
@@ -53,6 +56,7 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   const net = deps.network ?? resolveVenueNetwork;
   const onchainJob = deps.onchainJob ?? fetchOnchainJob;
   const agentOwner = deps.agentOwner ?? fetchAgentOwner;
+  const txJobId = deps.txJobId ?? fetchCreatedJobId;
   const attestStore = deps.attestations ?? defaultAttestStore;
 
   app.get("/api/venue/jobs", dr("List venue jobs"), (c) => {
@@ -153,6 +157,10 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     }
     job.chainTxs[phase as keyof VenueJob["chainTxs"]] = hash;
     if (phase === "created" && job.status === "pending") job.status = "open";
+    if (phase === "created" && job.onchainJobId == null) {
+      const id = await txJobId(hash as `0x${string}`, net());
+      if (id != null) job.onchainJobId = id;
+    }
     upsertJob(job);
     recordVenueEvent({
       action: "job.tx",

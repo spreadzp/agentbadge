@@ -3,7 +3,13 @@
  * (D13-151). Read-only: getJob status pull for the htmx poll + ERC-8004
  * ownerOf for the provider gate (D5). No indexer — direct readContract.
  */
-import { createPublicClient, http, parseAbi, type PublicClient } from "viem";
+import {
+  createPublicClient,
+  decodeEventLog,
+  http,
+  parseAbi,
+  type PublicClient,
+} from "viem";
 import {
   ARC_MAINNET,
   ARC_TESTNET,
@@ -92,6 +98,39 @@ export interface OnchainJob {
 }
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+/**
+ * Extract onchain jobId from a confirmed createJob tx — decodes the
+ * JobCreated event (topics[1] is jobId in both ABI flavors). Returns
+ * null when the receipt is missing or the event is not found — callers
+ * treat it as non-fatal (status sync can retry later).
+ */
+export async function fetchCreatedJobId(
+  txHash: `0x${string}`,
+  net: VenueNetwork = resolveVenueNetwork(),
+): Promise<number | null> {
+  try {
+    const pub = publicClient(net);
+    const receipt = await pub.getTransactionReceipt({ hash: txHash });
+    for (const log of receipt.logs) {
+      try {
+        const decoded = decodeEventLog({
+          abi: net.abi,
+          data: log.data,
+          topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+        });
+        if (decoded.eventName === "JobCreated") {
+          return Number((decoded.args as { jobId: bigint }).jobId);
+        }
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /** Returns null when the job does not exist onchain or the call reverts. */
 export async function fetchOnchainJob(
