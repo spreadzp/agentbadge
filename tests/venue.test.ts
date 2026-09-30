@@ -17,6 +17,8 @@ import {
 } from "../src/server/lib/venue/store";
 import { createVenueApiRoutes } from "../src/server/routes/venue-api";
 import { createVenuePageRoutes } from "../src/server/routes/venue-pages";
+import { resetVenueEventsForTests } from "../src/server/services/venue-events";
+import { resetDatabaseForTests } from "../src/server/lib/database";
 import { createVenueStore } from "../src/server/lib/attestation-store";
 import type { VenueNetwork } from "../src/server/lib/venue/chain";
 import { ERC8183_ACP_ABI } from "@agentbadge/circle-payments";
@@ -61,10 +63,14 @@ function jobFixture(over: Partial<VenueJob> = {}): VenueJob {
 beforeEach(() => {
   useMemoryStoreForTesting();
   configureAgentAuthForTesting({ verifier: async () => true });
+  resetDatabaseForTests();
+  resetVenueEventsForTests();
 });
 afterEach(() => {
   resetStoreForTesting();
   resetAgentAuthForTesting();
+  resetVenueEventsForTests();
+  resetDatabaseForTests();
 });
 
 const signedHeaders = {
@@ -222,6 +228,40 @@ describe("venue api", () => {
     expect(getOffer(WALLET)?.name).toBe("svc");
   });
 
+  it("GET /api/venue/activity merges venue events + attestations (D-F9)", async () => {
+    const app = apiApp();
+    // trigger a job.created event (fire-and-forget write — settle via flush)
+    const res = await app.request("/api/venue/jobs", {
+      method: "POST",
+      headers: signedHeaders,
+      body: JSON.stringify({ title: "FeedJob", description: "d", budgetUsdc: 1 }),
+    });
+    expect(res.status).toBe(200);
+    const { job } = (await res.json()) as { job: VenueJob };
+    await new Promise((r) => setTimeout(r, 50)); // let fire-and-forget land
+    const feed = await app.request("/api/venue/activity");
+    expect(feed.status).toBe(200);
+    const body = (await feed.json()) as {
+      activity: { action: string; text: string; jobId?: string }[];
+    };
+    const created = body.activity.find((a) => a.action === "job.created");
+    expect(created?.jobId).toBe(job.jobId);
+    expect(created?.text).toContain("FeedJob");
+  });
+
+  it("job status sync writes job.status event once (dedupe)", async () => {
+    upsertJob(jobFixture({ onchainJobId: 3, status: "open" }));
+    const app = apiApp();
+    await app.request("/api/venue/jobs/vj_test1/status"); // open→funded
+    await app.request("/api/venue/jobs/vj_test1/status"); // repeat — no dup
+    await new Promise((r) => setTimeout(r, 50));
+    const feed = await app.request("/api/venue/activity");
+    const body = (await feed.json()) as { activity: { action: string }[] };
+    expect(
+      body.activity.filter((a) => a.action === "job.status"),
+    ).toHaveLength(1);
+  });
+
   it("GET /api/venue/stats returns totals", async () => {
     upsertJob(jobFixture({ status: "open", budgetUsdc: 8 }));
     const res = await apiApp().request("/api/venue/stats");
@@ -309,6 +349,26 @@ describe("venue pages", () => {
     expect((await p.text())).toContain("Providers");
     const a = await pageApp().request("/market/attestations");
     expect((await a.text()).toString()).toContain("Attestations");
+  });
+
+  it("GET /market/services + /market/passes render coming-soon stubs (D-F12)", async () => {
+    const s = await pageApp().request("/market/services");
+    expect(s.status).toBe(200);
+    const sh = await s.text();
+    expect(sh).toContain("Coming soon");
+    expect(sh).toContain("/market/jobs"); // tab shell intact
+    const p = await pageApp().request("/market/passes");
+    expect(p.status).toBe(200);
+    expect(await p.text()).toContain("Coming soon");
+  });
+
+  it("GET /market hub includes Recent activity block + fragment route", async () => {
+    const res = await pageApp().request("/market");
+    const html = await res.text();
+    expect(html).toContain("Recent activity");
+    expect(html).toContain("/ui/venue/activity-fragment");
+    const frag = await pageApp().request("/ui/venue/activity-fragment");
+    expect(frag.status).toBe(200);
   });
 
   it("routes absent without mount (gate-off = 404)", async () => {

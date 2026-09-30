@@ -25,6 +25,10 @@ import {
 import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
 import { createVenueStore } from "../lib/attestation-store";
 import {
+  venueActivityFragment,
+  venueStubPage,
+} from "../../views/venue-feed";
+import {
   venueHubPage,
   venueJobDetailPage,
   venueJobsFragment,
@@ -38,6 +42,11 @@ import {
 } from "../../views/venue-forms";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import {
+  listVenueActivity,
+  recordVenueEvent,
+  type VenueActivityItem,
+} from "../services/venue-events";
 
 const ERC8183_STATUS: Record<number, string> = {
   0: "open",
@@ -69,12 +78,35 @@ async function syncOnchainStatuses(
       if (raw) {
         const mapped = ERC8183_STATUS[raw.status];
         if (mapped && mapped !== job.status) {
+          recordVenueEvent({
+            action: "job.status",
+            text: `job ${job.jobId} — ${job.status} → ${mapped}`,
+            jobId: job.jobId,
+            dedupeKey: `job.status:${job.jobId}:${mapped}`,
+          });
           job.status = mapped as typeof job.status;
           upsertJob(job);
         }
       }
     }),
   );
+}
+
+/** Merged recent activity for the hub: venue events + attestations (D-F9). */
+async function hubActivity(
+  attestStore: AttestationVenueStore,
+  limit = 12,
+): Promise<VenueActivityItem[]> {
+  const events = await listVenueActivity(limit);
+  const attestations = attestStore.list(limit).map((a) => ({
+    action: "attestation.minted",
+    text: `attestation minted — ${a.domain} · score ${a.score}`,
+    at: a.createdAt,
+    tx: a.feedbackTx,
+  }));
+  return [...events, ...attestations]
+    .sort((x, y) => y.at.localeCompare(x.at))
+    .slice(0, limit);
 }
 
 export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
@@ -91,8 +123,9 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
       summary: "Venue hub landing",
       responses: { 200: { description: "HTML hub page" } },
     }),
-    (c) => {
+    async (c) => {
       const jobs = listJobs();
+      const activity = await hubActivity(attestStore);
       return c.html(
         venueHubPage(
           {
@@ -103,9 +136,21 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
             attestations: attestStore.size(),
           },
           net(),
+          activity,
         ),
       );
     },
+  );
+
+  // ── htmx activity fragment (D-F9) ───────────────────────────────
+  app.get(
+    "/ui/venue/activity-fragment",
+    describeRoute({
+      tags: ["Venue"],
+      summary: "Recent-activity htmx fragment (poll ~10s)",
+      responses: { 200: { description: "HTML fragment" } },
+    }),
+    async (c) => c.html(venueActivityFragment(await hubActivity(attestStore), net())),
   );
 
   // ── /market/jobs board ─────────────────────────────────────────
@@ -204,7 +249,28 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
     }),
     (c) => c.html(venueNewProviderPage(net())),
   );
+  // services + passes stubs (D-F12)
+  app.get(
+    "/market/services",
+    describeRoute({
+      tags: ["Venue"],
+      summary: "Services tab — coming soon stub",
+      responses: { 200: { description: "HTML stub page" } },
+    }),
+    (c) => c.html(venueStubPage("services", net())),
+  );
 
+  app.get(
+    "/market/passes",
+    describeRoute({
+      tags: ["Venue"],
+      summary: "Passes tab — coming soon stub",
+      responses: { 200: { description: "HTML stub page" } },
+    }),
+    (c) => c.html(venueStubPage("passes", net())),
+  );
+
+  // ── /market/
   // ── /market/attestations (D11-151) ─────────────────────────────
   app.get(
     "/market/attestations",

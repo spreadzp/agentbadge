@@ -3,11 +3,9 @@
  * Mounted only when ARC_VENUE_ENABLED=true (D15 gate).
  * Attestations share the 151-3 store (D11-151); chain reads injected for tests.
  */
-import { Hono, type Context } from "hono";
-import { describeRoute } from "hono-openapi";
+import { Hono } from "hono";
 import { randomBytes } from "node:crypto";
 import { encodeFunctionData, getAddress, isAddress, parseUnits } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { logger } from "@agentbadge/passport";
 import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
 import { createVenueStore } from "../lib/attestation-store";
@@ -25,9 +23,20 @@ import {
   resolveVenueNetwork,
   type VenueNetwork,
 } from "../lib/venue/chain";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import {
+  ERC8183_STATUS,
+  TX_PHASES,
+  dr,
+  signedJson,
+  str,
+  venueEvaluator,
+} from "./venue-api-helpers";
+import {
+  listVenueActivity,
+  recordVenueEvent,
+} from "../services/venue-events";
 
 /** Injectable seam — tests stub onchain reads. */
 export interface VenueDeps {
@@ -38,62 +47,6 @@ export interface VenueDeps {
 }
 
 const defaultAttestStore = createVenueStore();
-
-const ERC8183_STATUS: Record<number, string> = {
-  0: "open", 1: "funded", 2: "submitted",
-  3: "completed", 4: "rejected", 5: "expired",
-};
-
-const TX_PHASES = ["created", "funded", "submitted", "completed"] as const;
-
-/** Evaluator EOA for new jobs — derived from ARC_EVALUATOR_KEY. */
-function venueEvaluator(): `0x${string}` {
-  const key = process.env.ARC_EVALUATOR_KEY;
-  if (key && /^0x[0-9a-fA-F]{64}$/.test(key)) {
-    return privateKeyToAccount(key as `0x${string}`).address;
-  }
-  return (process.env.CIRCLE_TREASURY_ADDRESS ??
-    "0x0000000000000000000000000000000000000000") as `0x${string}`;
-}
-
-function str(v: unknown, max: number): string | null {
-  return typeof v === "string" && v.trim().length > 0 && v.length <= max
-    ? v.trim()
-    : null;
-}
-
-async function walletSig(
-  c: Context,
-): Promise<{ valid: true; wallet: `0x${string}` } | { valid: false }> {
-  const wallet = c.req.header("x-wallet");
-  const sig = await verifyWalletSigRequest({
-    wallet,
-    signature: c.req.header("x-sig"),
-    timestamp: c.req.header("x-timestamp"),
-    method: c.req.method,
-    path: c.req.path,
-  });
-  if (sig !== "valid" || !wallet || !isAddress(wallet)) return { valid: false };
-  return { valid: true, wallet: getAddress(wallet) };
-}
-
-async function signedJson(
-  c: Context,
-): Promise<{ wallet: `0x${string}`; body: Record<string, unknown> } | Response> {
-  const sig = await walletSig(c);
-  if (!sig.valid) {
-    return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
-      "valid X-Wallet/X-Sig/X-Timestamp required");
-  }
-  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body) {
-    return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "JSON body required");
-  }
-  return { wallet: sig.wallet, body };
-}
-
-const dr = (summary: string) =>
-  describeRoute({ tags: ["Venue"], summary, responses: { 200: { description: summary } } });
 
 export function createVenueApiRoutes(deps: VenueDeps = {}) {
   const app = new Hono();
@@ -147,6 +100,12 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       chainTxs: {},
     };
     upsertJob(job);
+    recordVenueEvent({
+      action: "job.created",
+      text: `job posted — “${title}” · $${budgetUsdc} USDC`,
+      jobId,
+      dedupeKey: `job.created:${jobId}`,
+    });
     const createData = encodeFunctionData({
       abi: n.abi,
       functionName: "createJob",
@@ -195,6 +154,13 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     job.chainTxs[phase as keyof VenueJob["chainTxs"]] = hash;
     if (phase === "created" && job.status === "pending") job.status = "open";
     upsertJob(job);
+    recordVenueEvent({
+      action: "job.tx",
+      text: `job ${job.jobId} — ${phase} tx confirmed`,
+      jobId: job.jobId,
+      tx: hash,
+      dedupeKey: `job.tx:${job.jobId}:${phase}`,
+    });
     return c.json({ job });
   });
 
@@ -209,6 +175,12 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     if (raw) {
       const mapped = ERC8183_STATUS[raw.status];
       if (mapped && mapped !== job.status) {
+        recordVenueEvent({
+          action: "job.status",
+          text: `job ${job.jobId} — ${job.status} → ${mapped}`,
+          jobId: job.jobId,
+          dedupeKey: `job.status:${job.jobId}:${mapped}`,
+        });
         job.status = mapped as VenueJob["status"];
         upsertJob(job);
       }
@@ -255,14 +227,19 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       agentId, name, description, endpoint,
       categories: Array.isArray(body.categories)
         ? (body.categories as unknown[])
-            .map((x) => str(x, 50))
-            .filter((x): x is string => !!x)
-            .slice(0, 10)
+          .map((x) => str(x, 50))
+          .filter((x): x is string => !!x)
+          .slice(0, 10)
         : [],
       createdAt: new Date().toISOString(),
     };
     upsertOffer(offer);
     logger.info("venue: provider offer registered", { provider: s.wallet, agentId });
+    recordVenueEvent({
+      action: "offer.registered",
+      text: `provider registered — “${name}” · agentId ${agentId}`,
+      dedupeKey: `offer:${s.wallet}:${agentId}`,
+    });
     return c.json({ offer });
   });
 
@@ -272,6 +249,22 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       attestations: attestStore.list(limit),
       count: Math.min(attestStore.size(), limit),
     });
+  });
+
+  // GET /api/venue/activity — merged recent venue events + attestations (D-F9).
+  app.get("/api/venue/activity", dr("Recent venue activity feed"), async (c) => {
+    const limit = Number(c.req.query("limit") ?? 20) || 20;
+    const events = await listVenueActivity(limit);
+    const attestations = attestStore.list(limit).map((a) => ({
+      action: "attestation.minted",
+      text: `attestation minted — ${a.domain} · score ${a.score}`,
+      at: a.createdAt,
+      tx: a.feedbackTx,
+    }));
+    const activity = [...events, ...attestations]
+      .sort((x, y) => y.at.localeCompare(x.at))
+      .slice(0, limit);
+    return c.json({ activity, count: activity.length, network: net().name });
   });
 
   app.get("/api/venue/stats", dr("Venue header stats"), (c) => {

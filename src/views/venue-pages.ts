@@ -14,72 +14,30 @@ import { Layout } from "./layout";
 import type { PageMeta } from "../server/lib/page-meta";
 import type { VenueJob } from "../server/lib/venue/store";
 import type { VenueNetwork } from "../server/lib/venue/chain";
+import {
+  CARD,
+  esc,
+  jobStatusBadge,
+  shortAddr,
+  shortHash,
+  venueTabs,
+} from "./venue-ui";
+import {
+  venueActivityFragment,
+  type VenueActivityViewItem,
+} from "./venue-feed";
 
-const CARD =
-  "rounded-xl border border-slate-700/50 bg-slate-900/30 p-6 hover:border-emerald-500/40 transition-colors";
-
-export function esc(s: string | number | undefined): string {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-export function shortAddr(addr?: string): string {
-  if (!addr) return "—";
-  return addr.length > 14 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
-}
-
-export function shortHash(hash?: string): string {
-  return hash ? `${hash.slice(0, 10)}…${hash.slice(-6)}` : "—";
-}
-
-export const VENUE_CARD = CARD;
-
-// ─── Tab shell (D9-151) ──────────────────────────────────────────
-
-export type VenueTab =
-  | "services"
-  | "jobs"
-  | "attestations"
-  | "providers"
-  | "passes";
-
-const TABS: { id: VenueTab; label: string; href: string }[] = [
-  { id: "services", label: "Services", href: "/market/services" },
-  { id: "jobs", label: "Jobs", href: "/market/jobs" },
-  { id: "attestations", label: "Attestations", href: "/market/attestations" },
-  { id: "providers", label: "Providers", href: "/market/providers" },
-  { id: "passes", label: "Passes", href: "/market/passes" },
-];
-
-export function venueTabs(active: VenueTab): string {
-  const links = TABS.map((t) => {
-    const on = t.id === active;
-    return `<a href="${t.href}" class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-      on
-        ? "bg-emerald-600/20 text-emerald-300 border border-emerald-700/50"
-        : "text-slate-400 hover:text-slate-200 border border-transparent"
-    }">${t.label}</a>`;
-  }).join("");
-  return `<nav class="mt-6 flex flex-wrap gap-2">${links}</nav>`;
-}
-
-// ─── Job status badge ────────────────────────────────────────────
-
-export function jobStatusBadge(status: VenueJob["status"]): string {
-  const colors: Record<string, string> = {
-    pending: "bg-slate-800 text-slate-300 border-slate-600",
-    open: "bg-emerald-900 text-emerald-300 border-emerald-700",
-    funded: "bg-amber-900 text-amber-300 border-amber-700",
-    submitted: "bg-blue-900 text-blue-300 border-blue-700",
-    completed: "bg-slate-700 text-slate-300 border-slate-600",
-    rejected: "bg-red-900 text-red-300 border-red-700",
-    expired: "bg-slate-800 text-slate-500 border-slate-700",
-  };
-  return `<span class="px-2 py-0.5 rounded text-xs font-medium border ${colors[status] ?? colors.pending}">${esc(status)}</span>`;
-}
+// Re-export shared primitives — venue-forms.ts imports them from here.
+export {
+  CARD,
+  esc,
+  jobStatusBadge,
+  shortAddr,
+  shortHash,
+  venueTabs,
+  VENUE_CARD,
+  type VenueTab,
+} from "./venue-ui";
 
 // ─── Job card / board fragment ───────────────────────────────────
 
@@ -135,6 +93,7 @@ export function venueHubPage(
     attestations: number;
   },
   net: VenueNetwork,
+  activity: VenueActivityViewItem[] = [],
 ): string {
   const stat = (label: string, value: string | number, href: string) => `
     <a href="${href}" class="${CARD} block text-center">
@@ -158,6 +117,14 @@ export function venueHubPage(
         ${raw(stat("USDC volume", `$${stats.usdcVolume}`, "/market/jobs"))}
         ${raw(stat("providers", stats.providers, "/market/providers"))}
         ${raw(stat("attestations", stats.attestations, "/market/attestations"))}
+      </div>
+      <div class="mt-10">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Recent activity</h2>
+        <div id="venue-activity" class="mt-3 ${CARD} !p-4"
+          hx-get="/ui/venue/activity-fragment"
+          hx-trigger="every 10s" hx-swap="innerHTML">
+          ${raw(venueActivityFragment(activity, net))}
+        </div>
       </div>
       <div class="mt-10 flex flex-wrap gap-3">
         <a href="/market/jobs/new" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Post a job</a>
@@ -217,13 +184,13 @@ export function venueJobsPage(
         <select name="status" class="w-full max-w-[160px] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none">
           <option value="">All statuses</option>
           ${raw(
-            statuses
-              .map(
-                (s) =>
-                  `<option value="${s}" ${s === filter.status ? "selected" : ""}>${s}</option>`,
-              )
-              .join(""),
-          )}
+    statuses
+      .map(
+        (s) =>
+          `<option value="${s}" ${s === filter.status ? "selected" : ""}>${s}</option>`,
+      )
+      .join(""),
+  )}
         </select>
         <input name="category" value="${esc(filter.category)}" placeholder="Category…" class="w-full max-w-[200px] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none" />
         <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Filter</button>
@@ -250,8 +217,8 @@ export function venueJobDetailPage(job: VenueJob, net: VenueNetwork): string {
     <li class="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
       <span class="w-24 text-xs text-slate-500">${label}</span>
       ${tx
-        ? `<a href="${net.explorerTx(tx)}" target="_blank" rel="noopener" class="font-mono text-xs text-sky-400 hover:underline">${shortHash(tx)}</a>`
-        : '<span class="text-xs text-slate-600 italic">pending</span>'}
+      ? `<a href="${net.explorerTx(tx)}" target="_blank" rel="noopener" class="font-mono text-xs text-sky-400 hover:underline">${shortHash(tx)}</a>`
+      : '<span class="text-xs text-slate-600 italic">pending</span>'}
     </li>`;
   const body = html`
     <main class="mx-auto max-w-3xl px-4 py-12">
