@@ -8,7 +8,7 @@ import { randomBytes } from "node:crypto";
 import { encodeFunctionData, getAddress, isAddress, parseUnits } from "viem";
 import { logger } from "@agentbadge/passport";
 import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
-import { createVenueStore } from "../lib/attestation-store";
+import { sharedVenueStore } from "../lib/attestation-store";
 import {
   getJob,
   listJobs,
@@ -49,7 +49,7 @@ export interface VenueDeps {
   attestations?: AttestationVenueStore;
 }
 
-const defaultAttestStore = createVenueStore();
+const defaultAttestStore = sharedVenueStore();
 
 export function createVenueApiRoutes(deps: VenueDeps = {}) {
   const app = new Hono();

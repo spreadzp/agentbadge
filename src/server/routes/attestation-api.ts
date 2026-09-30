@@ -31,7 +31,7 @@ import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
 import { formatScanReport } from "../../agent-readiness/report-formatter";
 import { createRateLimiter } from "../middleware/rate-limit";
 import {
-  createVenueStore,
+  sharedVenueStore,
   type AttestationEntry,
   type VenueStore,
 } from "../lib/attestation-store";
@@ -142,115 +142,115 @@ attestationRoutes.post(
   }),
   attestationPaidGate(),
   async (c) => {
-  const cfg = routeConfig;
-  if (!cfg) return c.json({ error: "attestation feature disabled" }, 503);
+    const cfg = routeConfig;
+    if (!cfg) return c.json({ error: "attestation feature disabled" }, 503);
 
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: "Invalid JSON body" }, 400);
-  }
-
-  const raw = (body as Record<string, unknown>)?.url;
-  if (!raw || typeof raw !== "string") {
-    return c.json({ error: "URL is required" }, 400);
-  }
-  let normalizedUrl = raw.trim();
-  if (!normalizedUrl.match(/^https?:\/\//)) {
-    normalizedUrl = "https://" + normalizedUrl;
-  }
-  let hostname: string;
-  try {
-    hostname = new URL(normalizedUrl).hostname;
-  } catch {
-    return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
-  }
-  try {
-    assertSafeTarget(hostname);
-  } catch {
-    return c.json({ error: "Private URLs are not allowed" }, 403);
-  }
-
-  const agentIdRaw = (body as Record<string, unknown>)?.agentId;
-  let agentId: bigint | undefined;
-  if (agentIdRaw !== undefined) {
+    let body: unknown;
     try {
-      agentId = BigInt(String(agentIdRaw));
+      body = await c.req.json();
     } catch {
-      return c.json({ error: "agentId must be a decimal integer" }, 400);
+      return c.json({ error: "Invalid JSON body" }, 400);
     }
-  }
 
-  const rl = await limiter(c, async () => {});
-  if (rl instanceof Response) return rl;
+    const raw = (body as Record<string, unknown>)?.url;
+    if (!raw || typeof raw !== "string") {
+      return c.json({ error: "URL is required" }, 400);
+    }
+    let normalizedUrl = raw.trim();
+    if (!normalizedUrl.match(/^https?:\/\//)) {
+      normalizedUrl = "https://" + normalizedUrl;
+    }
+    let hostname: string;
+    try {
+      hostname = new URL(normalizedUrl).hostname;
+    } catch {
+      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+    }
+    try {
+      assertSafeTarget(hostname);
+    } catch {
+      return c.json({ error: "Private URLs are not allowed" }, 403);
+    }
 
-  const scan = cfg.scan ?? defaultScan;
-  let scanResult: AttestationScanResult;
-  try {
-    scanResult = await scan(normalizedUrl);
-  } catch (e) {
-    return c.json(
-      { error: `scan failed: ${(e as Error).message}` },
-      502,
-    );
-  }
+    const agentIdRaw = (body as Record<string, unknown>)?.agentId;
+    let agentId: bigint | undefined;
+    if (agentIdRaw !== undefined) {
+      try {
+        agentId = BigInt(String(agentIdRaw));
+      } catch {
+        return c.json({ error: "agentId must be a decimal integer" }, 400);
+      }
+    }
 
-  const write = cfg.writeAttestation;
-  if (!write) {
-    return c.json({ error: "attestation writer not configured" }, 503);
-  }
-  let chainResult: Awaited<ReturnType<ArcAttestationWriter["write"]>>;
-  try {
-    chainResult = await write({
-      agentId,
+    const rl = await limiter(c, async () => { });
+    if (rl instanceof Response) return rl;
+
+    const scan = cfg.scan ?? defaultScan;
+    let scanResult: AttestationScanResult;
+    try {
+      scanResult = await scan(normalizedUrl);
+    } catch (e) {
+      return c.json(
+        { error: `scan failed: ${(e as Error).message}` },
+        502,
+      );
+    }
+
+    const write = cfg.writeAttestation;
+    if (!write) {
+      return c.json({ error: "attestation writer not configured" }, 503);
+    }
+    let chainResult: Awaited<ReturnType<ArcAttestationWriter["write"]>>;
+    try {
+      chainResult = await write({
+        agentId,
+        url: normalizedUrl,
+        domain: hostname,
+        score: scanResult.score,
+        status: scanResult.status,
+        reportHash: scanResult.reportHash,
+      });
+    } catch (e) {
+      return c.json(
+        { error: `onchain attestation failed: ${(e as Error).message}` },
+        502,
+      );
+    }
+
+    const store = cfg.store ?? defaultStore;
+    const entry: AttestationEntry = {
+      id: `${chainResult.memoTx.slice(0, 18)}-${Date.now().toString(36)}`,
       url: normalizedUrl,
       domain: hostname,
       score: scanResult.score,
       status: scanResult.status,
-      reportHash: scanResult.reportHash,
-    });
-  } catch (e) {
-    return c.json(
-      { error: `onchain attestation failed: ${(e as Error).message}` },
-      502,
+      agentId: chainResult.agentId.toString(),
+      feedbackTx: chainResult.feedbackTx,
+      memoTx: chainResult.memoTx,
+      network: cfg.network,
+      createdAt: new Date().toISOString(),
+    };
+    store.add(entry);
+
+    const explorerLinks = [chainResult.feedbackTx, chainResult.memoTx].map(
+      (h) => `${cfg.explorerUrl}/tx/${h}`,
     );
-  }
-
-  const store = cfg.store ?? defaultStore;
-  const entry: AttestationEntry = {
-    id: `${chainResult.memoTx.slice(0, 18)}-${Date.now().toString(36)}`,
-    url: normalizedUrl,
-    domain: hostname,
-    score: scanResult.score,
-    status: scanResult.status,
-    agentId: chainResult.agentId.toString(),
-    feedbackTx: chainResult.feedbackTx,
-    memoTx: chainResult.memoTx,
-    network: cfg.network,
-    createdAt: new Date().toISOString(),
-  };
-  store.add(entry);
-
-  const explorerLinks = [chainResult.feedbackTx, chainResult.memoTx].map(
-    (h) => `${cfg.explorerUrl}/tx/${h}`,
-  );
-  return c.json({
-    scanResult: {
-      url: normalizedUrl,
-      score: scanResult.score,
-      status: scanResult.status,
-      reportHash: scanResult.reportHash,
-    },
-    agentId: chainResult.agentId.toString(),
-    feedbackTx: chainResult.feedbackTx,
-    memoTx: chainResult.memoTx,
-    explorerLinks,
-  });
+    return c.json({
+      scanResult: {
+        url: normalizedUrl,
+        score: scanResult.score,
+        status: scanResult.status,
+        reportHash: scanResult.reportHash,
+      },
+      agentId: chainResult.agentId.toString(),
+      feedbackTx: chainResult.feedbackTx,
+      memoTx: chainResult.memoTx,
+      explorerLinks,
+    });
   },
 );
 
-const defaultStore = createVenueStore();
+const defaultStore = sharedVenueStore();
 
 attestationRoutes.get(
   "/api/attestations",
@@ -260,15 +260,15 @@ attestationRoutes.get(
     responses: { 200: { description: "Attestation entries" } },
   }),
   (c) => {
-  const cfg = routeConfig;
-  if (!cfg) return c.json({ error: "attestation feature disabled" }, 503);
-  const store = cfg.store ?? defaultStore;
-  const limit = Math.min(Number(c.req.query("limit") ?? 50) || 50, 200);
-  return c.json({
-    attestations: store.list(limit),
-    count: Math.min(store.size(), limit),
-    network: cfg.network,
-  });
+    const cfg = routeConfig;
+    if (!cfg) return c.json({ error: "attestation feature disabled" }, 503);
+    const store = cfg.store ?? defaultStore;
+    const limit = Math.min(Number(c.req.query("limit") ?? 50) || 50, 200);
+    return c.json({
+      attestations: store.list(limit),
+      count: Math.min(store.size(), limit),
+      network: cfg.network,
+    });
   },
 );
 

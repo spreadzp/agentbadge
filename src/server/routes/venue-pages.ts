@@ -23,7 +23,7 @@ import {
   type VenueNetwork,
 } from "../lib/venue/chain";
 import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
-import { createVenueStore } from "../lib/attestation-store";
+import { sharedVenueStore } from "../lib/attestation-store";
 import {
   venueActivityFragment,
   venueStubPage,
@@ -63,7 +63,7 @@ export interface VenuePageDeps {
   attestations?: AttestationVenueStore;
 }
 
-const defaultAttestStore = createVenueStore();
+const defaultAttestStore = sharedVenueStore();
 
 /** Sync store status for jobs that have an onchainJobId (bounded). */
 async function syncOnchainStatuses(

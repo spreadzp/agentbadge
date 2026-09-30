@@ -42,3 +42,14 @@ export function createVenueStore(capacity = 200): VenueStore {
     },
   };
 }
+
+/**
+ * Shared default instance — attestation-api writes, venue pages/API
+ * read. Without this each route file got its own private ring buffer
+ * and the venue feed never saw attestation entries.
+ */
+let _shared: VenueStore | undefined;
+export function sharedVenueStore(): VenueStore {
+  _shared ??= createVenueStore();
+  return _shared;
+}
