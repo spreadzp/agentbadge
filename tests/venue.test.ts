@@ -19,6 +19,7 @@ import { createVenueApiRoutes } from "../src/server/routes/venue-api";
 import { createVenuePageRoutes } from "../src/server/routes/venue-pages";
 import { resetVenueEventsForTests } from "../src/server/services/venue-events";
 import { resetDatabaseForTests } from "../src/server/lib/database";
+import { resetConfigCache } from "../src/config/env";
 import { createVenueStore } from "../src/server/lib/attestation-store";
 import type { VenueNetwork } from "../src/server/lib/venue/chain";
 import { ERC8183_ACP_ABI } from "@agentbadge/circle-payments";
@@ -60,10 +61,16 @@ function jobFixture(over: Partial<VenueJob> = {}): VenueJob {
   };
 }
 
+// Tests must never write to real Postgres (venue-events goes through
+// getDatabase() — .env has DATABASE_ENABLED=true locally).
+const SAVED_DB_ENABLED = process.env.DATABASE_ENABLED;
+
 beforeEach(() => {
+  process.env.DATABASE_ENABLED = "false";
+  resetConfigCache();
+  resetDatabaseForTests();
   useMemoryStoreForTesting();
   configureAgentAuthForTesting({ verifier: async () => true });
-  resetDatabaseForTests();
   resetVenueEventsForTests();
 });
 afterEach(() => {
@@ -71,6 +78,9 @@ afterEach(() => {
   resetAgentAuthForTesting();
   resetVenueEventsForTests();
   resetDatabaseForTests();
+  if (SAVED_DB_ENABLED === undefined) delete process.env.DATABASE_ENABLED;
+  else process.env.DATABASE_ENABLED = SAVED_DB_ENABLED;
+  resetConfigCache();
 });
 
 const signedHeaders = {
