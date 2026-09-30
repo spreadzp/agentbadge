@@ -2,19 +2,25 @@ import type { BlogArticle } from "../../blog-data";
 
 export const article: BlogArticle = {
   slug: "bstock-risks",
-  title: "The Risks of Tokenized Stocks: What to Know Before Buying bStocks",
+  title: "The Risks of Tokenized Stocks: What Can Go Wrong With bStocks",
   description: "A token tracking a share is not a share: issuer risk, delta risk, thin liquidity, no shareholder rights, regulatory and technical risk — and how to mitigate them.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
-  dateModified: "2026-09-23",
-  tags: ["bstocks","tokenized-stocks","risks","rwa","crypto"],
+  dateModified: "2026-09-30",
+  heroImage: "/images/blog/bstock-risks-hero.png",
+  ogImage: "/images/blog/bstock-risks-hero.png",
+  tags: ["bstocks", "tokenized-stocks", "risks", "rwa", "crypto"],
   readingTime: "5 min",
   shortAnswer: "Tokenized stocks carry issuer, delta, liquidity, regulatory, and technical risks, and grant no shareholder rights — mitigate with diversification, position sizing to liquidity, and delta monitoring.",
 
   content: `<p>bStocks open equities to the crypto market — but “a token that tracks
 a share” is not “a share”. Here is an honest look at the risks, no pitch
 attached.</p>
+<p>An honest risk map is not a deterrent — it is what grows a market.
+Tokenized stocks will scale only if participants understand what they
+actually hold, and the tools that make those risks visible are as
+important as the tokens themselves.</p>
 <figure>
 <img src="/images/blog/bstock-risks-d1.png"
 alt="Diagram: six risk groups" />
@@ -57,6 +63,16 @@ Monitor the delta — it is both an opportunity signal and an
 early-warning system (our tracker is one tool for this). And the
 infrastructure rule: never hold more in tokens than you can afford to
 lose to infrastructure, not to the market.</p>
+<figure>
+<img src="/images/blog/bstock-risks-2.png"
+alt="Six risk cards in a ring — issuer, delta, liquidity, rights, regulation, technique — around a mitigate shield" />
+</figure>
+<p>One structural mitigation is already built into the market’s
+plumbing: paying for data on-chain. A 402 invoice settled on
+<strong>Arc</strong> in USDC leaves an auditable trail — the agent’s
+data spend is as verifiable as its trades. Markets where both the
+trading layer and the information layer live on-chain are easier to
+trust.</p>
 <p><em>Tokenized stocks are a powerful instrument — if you understand
 how a token differs from a share. Start the series with the delta
 tracker case study.</em></p>
