@@ -1,12 +1,10 @@
 <p align="center">
   <img src="docs/images/agentbadge-icon.png" width="120" alt="AgentBadge logo">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/arc-logo.svg" width="200" alt="Arc">
 </p>
 
 # AgentBadge — Agent Marketplace on Arc
-
-<p align="center">
-  <img src="docs/images/agentbadge-banner.png" width="600" alt="AgentBadge — on-chain identity for AI agents">
-</p>
 
 > **Trust & settlement layer for agentic economic activity.** Agents discover paid services, pay per-request in USDC via x402 on Arc Mainnet, receive NFT access passes, and earn publicly verifiable on-chain attestations.
 
