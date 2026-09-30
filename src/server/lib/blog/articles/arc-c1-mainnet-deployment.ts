@@ -85,7 +85,7 @@ href="https://explorer.arc.io/tx/0xdc22b57ebb1e186fbe26456353432034a7b1e7b5d037b
 deploy tx</a>. The ledger of record:
 <code>contracts/deployments/arc-mainnet.json</code>.</p>
 <figure>
-<img src="/images/blog/arc-c1-mainnet-deployment-d1.png"
+<img src="/images/blog/arc-c1-mainnet-deployment-d1.png?v=2"
 alt="Diagram: the AgentBadge stack on Arc mainnet" />
 <figcaption aria-hidden="true">Diagram: the AgentBadge stack on Arc
 mainnet</figcaption>
