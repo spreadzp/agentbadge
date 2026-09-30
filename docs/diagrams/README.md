@@ -18,6 +18,7 @@ Animated SVG diagrams built with [D2](https://d2lang.com/). Open `.svg` files in
 | 10 | `10-full-agent-journey.svg` | End-to-end: passport → register → discover → message → marketplace → payment |
 | 12 | `12-datahub-verification.svg` | DataHub verification: assertions API, glossary check, lineage, escrow release |
 | 13 | `13-self-correcting-agent.svg` | Self-correcting agent loop: claim → analyze → deliver → verify → correct (max 3) |
+| 14 | `14-arc-x402-payment.svg` | Arc x402 payment (eip3009-client-broadcast): 402 challenge → EIP-3009 gasless sign → verify+settle → ServicePass mint (eip155:5042) |
 
 ## Viewing
 

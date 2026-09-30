@@ -1,0 +1,64 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+# ── Arc x402 Payment Flow (eip3009-client-broadcast) ──
+# Gasless USDC micropayment: client signs EIP-3009 authorization,
+# server verifies + broadcasts + settles on Arc Mainnet (chainId 5042)
+
+Client Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+API Endpoint: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+}
+
+bstock-freemium Gate: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FB8C00"
+}
+
+Arc Facilitator: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+MarketplacePassNFT: {
+  shape: rectangle
+  style.fill: "#FFFDE7"
+  style.stroke: "#FBC02D"
+}
+
+Arc Mainnet: {
+  shape: rectangle
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+# Phase 1: Free tier / 402 challenge
+Client Agent -> API Endpoint: "1. Request (no payment)" {style.animated: true}
+API Endpoint -> bstock-freemium Gate: "2. Check free bucket / ServicePass" {style.animated: true}
+bstock-freemium Gate --> Client Agent: "3. 402 PAYMENT-REQUIRED\n   {scheme, network=eip155:5042,\n    amount, payTo}" {style.animated: true; style.stroke-dash: 3}
+
+# Phase 2: Client signs + pays (gasless)
+Client Agent -> Client Agent: "4. Sign EIP-3009\n   transferWithAuthorization" {style.animated: true}
+Client Agent -> API Endpoint: "5. Retry + PAYMENT-SIGNATURE header" {style.animated: true}
+API Endpoint -> Arc Facilitator: "6. verify + settle" {style.animated: true}
+Arc Facilitator -> Arc Mainnet: "7. transferWithAuthorization\n   (USDC, gasless)" {style.animated: true}
+Arc Mainnet --> Arc Facilitator: "8. tx confirmed" {style.animated: true; style.stroke-dash: 3}
+
+# Phase 3: Access pass mint + response
+Arc Facilitator -> MarketplacePassNFT: "9. mintServicePass(payer,\n   serviceId, duration)" {style.animated: true}
+MarketplacePassNFT --> Arc Facilitator: "10. ServicePass minted\n    (hasAccess=true)" {style.animated: true; style.stroke-dash: 3}
+API Endpoint --> Client Agent: "11. 200 OK + PAYMENT-RESPONSE\n    + resource data" {style.animated: true; style.stroke-dash: 3}
