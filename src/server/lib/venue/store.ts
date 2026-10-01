@@ -40,9 +40,12 @@ export interface VenueJob {
   createdAt: string;
   chainTxs: {
     created?: string;
+    claimed?: string;
     funded?: string;
     submitted?: string;
     completed?: string;
+    rejected?: string;
+    refunded?: string;
   };
   /** Evaluator verdict once complete (pass/fail + reason). */
   verdict?: string;

@@ -5,7 +5,7 @@
  */
 import { Hono } from "hono";
 import { randomBytes } from "node:crypto";
-import { encodeFunctionData, getAddress, isAddress, parseUnits } from "viem";
+import { encodeFunctionData, getAddress, isAddress, parseUnits, type Hex } from "viem";
 import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
 import { sharedVenueStore } from "../lib/attestation-store";
 import {
@@ -16,6 +16,8 @@ import {
   type VenueJob,
 } from "../lib/venue/store";
 import { registerOfferRoutes } from "./venue-api-offers";
+import { registerLifecycleRoutes } from "./venue-api-lifecycle";
+import type { PreparedTx, VenueRole } from "../lib/venue/lifecycle";
 import {
   fetchAgentOwner,
   fetchCreatedJobId,
@@ -43,8 +45,10 @@ export interface VenueDeps {
   network?: () => VenueNetwork;
   onchainJob?: (id: number, net: VenueNetwork) => Promise<unknown>;
   agentOwner?: (id: number, net: VenueNetwork) => Promise<`0x${string}` | null>;
-  /** Resolve onchain jobId from a confirmed createJob tx receipt. */
+  /** Resolve onchainJobId from a confirmed createJob tx receipt. */
   txJobId?: (txHash: `0x${string}`, net: VenueNetwork) => Promise<number | null>;
+  /** Server-sign sender for lifecycle routes (152-2); null = not allowed. */
+  sendTx?: (role: VenueRole, txs: PreparedTx[], net: VenueNetwork) => Promise<Hex[] | null>;
   attestations?: AttestationVenueStore;
 }
 
@@ -197,6 +201,9 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
 
   // Offers catalog routes — SLICE-152-1, extracted to venue-api-offers.ts
   registerOfferRoutes(app, { network: net, agentOwner });
+
+  // Jobs lifecycle routes — SLICE-152-2, extracted to venue-api-lifecycle.ts
+  registerLifecycleRoutes(app, { network: net, onchainJob, sendTx: deps.sendTx });
 
   app.get("/api/venue/attestations", dr("Recent attestations"), (c) => {
     const limit = Number(c.req.query("limit") ?? 50) || 50;
