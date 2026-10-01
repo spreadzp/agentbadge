@@ -43,6 +43,11 @@ const OWNER_OF_ABI = parseAbi([
   "function ownerOf(uint256 tokenId) view returns (address)",
 ]);
 
+const IDENTITY_LOOKUP_ABI = parseAbi([
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function tokenURI(uint256 tokenId) view returns (string)",
+]);
+
 const arcExplorers: Record<VenueNetworkName, string> = {
   mainnet: "https://explorer.arc.io",
   testnet: "https://testnet.arcscan.app",
@@ -191,4 +196,42 @@ export async function fetchAgentOwner(
 /** Test hook: drop the cached client (e.g. after ARC_NETWORK change). */
 export function resetVenueClientForTesting(): void {
   _client = null;
+}
+
+export interface AgentLookup {
+  owner: `0x${string}` | null;
+  metadataURI: string | null;
+}
+
+/**
+ * SLICE-152-6: ERC-8004 identity read — ownerOf + tokenURI on
+ * IdentityRegistry. Both legs tolerate failure (unregistered agentId →
+ * nulls, not a throw) so profiles degrade to index-only data.
+ */
+export async function fetchAgentLookup(
+  agentId: number,
+  net: VenueNetwork = resolveVenueNetwork(),
+): Promise<AgentLookup> {
+  const pub = publicClient(net);
+  const [owner, metadataURI] = await Promise.all([
+    pub
+      .readContract({
+        address: net.identityRegistry,
+        abi: IDENTITY_LOOKUP_ABI,
+        functionName: "ownerOf",
+        args: [BigInt(agentId)],
+      })
+      .then((o) => o as `0x${string}`)
+      .catch(() => null),
+    pub
+      .readContract({
+        address: net.identityRegistry,
+        abi: IDENTITY_LOOKUP_ABI,
+        functionName: "tokenURI",
+        args: [BigInt(agentId)],
+      })
+      .then((u) => u as string)
+      .catch(() => null),
+  ]);
+  return { owner, metadataURI };
 }

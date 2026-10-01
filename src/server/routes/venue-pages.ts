@@ -37,9 +37,9 @@ import {
 import {
   venueAttestationsPage,
   venueNewJobPage,
-  venueNewProviderPage,
-  venueProvidersPage,
 } from "../../views/venue-forms";
+import { registerVenueProfilePageRoutes } from "./venue-page-profiles";
+import type { ProviderProfileDeps } from "../lib/venue/profiles";
 import { venueServicesPage } from "../../views/venue-services";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
@@ -62,6 +62,8 @@ export interface VenuePageDeps {
   network?: () => VenueNetwork;
   onchainJob?: typeof fetchOnchainJob;
   attestations?: AttestationVenueStore;
+  /** Provider profile deps (152-6) — inject agentLookup for tests. */
+  profiles?: ProviderProfileDeps;
 }
 
 const defaultAttestStore = sharedVenueStore();
@@ -229,27 +231,9 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
     },
   );
 
-  // ── /market/providers ──────────────────────────────────────────
-  app.get(
-    "/market/providers",
-    describeRoute({
-      tags: ["Venue"],
-      summary: "Provider offers page",
-      responses: { 200: { description: "HTML list" } },
-    }),
-    (c) => c.html(venueProvidersPage(listOffers({ limit: 50 }), net())),
-  );
+  // /market/providers + /:address + /new — SLICE-152-6, venue-page-profiles.ts
+  registerVenueProfilePageRoutes(app, deps, net);
 
-  // ── /market/providers/new ──────────────────────────────────────
-  app.get(
-    "/market/providers/new",
-    describeRoute({
-      tags: ["Venue"],
-      summary: "Register-offer form (ERC-8004 ownerOf gate)",
-      responses: { 200: { description: "HTML form" } },
-    }),
-    (c) => c.html(venueNewProviderPage(net())),
-  );
   // services tab — offers catalog (SLICE-152-1); passes stays a stub (D-F12)
   app.get(
     "/market/services",
@@ -272,7 +256,6 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
     (c) => c.html(venueStubPage("passes", net())),
   );
 
-  // ── /market/
   // ── /market/attestations (D11-151) ─────────────────────────────
   app.get(
     "/market/attestations",

@@ -11,9 +11,10 @@ import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import type { PageMeta } from "../server/lib/page-meta";
 import type { AttestationEntry } from "../server/lib/attestation-store";
-import type { VenueOffer } from "../server/lib/venue/store";
+import type { ProviderSummary } from "../server/lib/venue/profiles";
 import type { VenueNetwork } from "../server/lib/venue/chain";
-import { esc, shortAddr, shortHash, VENUE_CARD, venueTabs, WALLET_JS } from "./venue-pages";
+import { venueProviderCard } from "./venue-profiles";
+import { esc, shortHash, VENUE_CARD, venueTabs, WALLET_JS } from "./venue-pages";
 
 const INPUT =
   "w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none";
@@ -113,45 +114,32 @@ export function venueNewJobPage(net: VenueNetwork, prefill: JobPrefill = {}): st
 }
 
 // ─── /market/providers ────────────────────────────────────────
-export function venueProvidersPage(offers: VenueOffer[], net: VenueNetwork): string {
-  const card = (o: VenueOffer) => `
-  <div class="${VENUE_CARD}">
-    <div class="flex items-start justify-between gap-2">
-      <h3 class="text-base font-semibold text-slate-100">${esc(o.name)}</h3>
-      <span class="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-mono text-emerald-400" title="ERC-8004 agentId">#${o.agentId}</span>
-    </div>
-    <p class="mt-2 text-sm text-slate-400 line-clamp-2">${esc(o.description)}</p>
-    <div class="mt-3 flex flex-wrap gap-1">${o.categories
-      .map(
-        (cat) =>
-          `<span class="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">${esc(cat)}</span>`,
-      )
-      .join("")}</div>
-    <div class="mt-3 flex items-center justify-between border-t border-slate-800 pt-3 text-xs text-slate-500">
-      <a class="font-mono text-sky-400 hover:underline" target="_blank" href="${net.explorerAddr(o.providerAddress)}">${shortAddr(o.providerAddress)}</a>
-      <a class="text-emerald-400 hover:underline" href="${esc(o.endpoint)}" target="_blank" rel="noopener">endpoint ⧉</a>
-    </div>
-  </div>`;
+// SLICE-152-6: profile cards (agentId + index stats + feedback), detail
+// link → /market/providers/:address.
+export function venueProvidersPage(
+  providers: ProviderSummary[],
+  net: VenueNetwork,
+): string {
   const body = html`
     <main class="mx-auto max-w-6xl px-4 py-12">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 class="text-3xl font-bold">Providers</h1>
           <p class="mt-2 text-slate-400">
-            Services offered by agents with verified ERC-8004 identity on
-            Arc ${net.name}.
+            Agents with verified ERC-8004 identity on Arc ${net.name} —
+            jobs history, feedback and live offers.
           </p>
         </div>
         <a href="/market/providers/new" class="${BTN}">Register as provider</a>
       </div>
       ${raw(venueTabs("providers"))}
       <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        ${offers.length === 0
-          ? raw(`<p class="col-span-full text-slate-500">No provider offers yet — <a class="text-emerald-400 underline" href="/market/providers/new">be the first</a>.</p>`)
-          : raw(offers.map(card).join(""))}
+        ${providers.length === 0
+      ? raw(`<p class="col-span-full text-slate-500">No providers yet — <a class="text-emerald-400 underline" href="/market/providers/new">be the first</a>.</p>`)
+      : raw(providers.map(venueProviderCard).join(""))}
       </div>
       <p class="mt-10 text-xs text-slate-500">
-        Machine-readable: <code>GET /api/venue/offers</code>
+        Machine-readable: <code>GET /api/venue/providers</code>
       </p>
     </main>`;
   const meta: PageMeta = {
@@ -270,8 +258,8 @@ export function venueAttestationsPage(entries: AttestationEntry[], net: VenueNet
             <tr><th class="px-4 py-3">Domain</th><th class="px-4 py-3">Score</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">agentId</th><th class="px-4 py-3">Feedback tx</th><th class="px-4 py-3">Memo tx</th><th class="px-4 py-3">Time</th></tr>
           </thead>
           <tbody>${entries.length === 0
-            ? raw(`<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">No attestations yet — POST /api/attestations {"url":"…"}</td></tr>`)
-            : raw(entries.map(row).join(""))}
+      ? raw(`<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">No attestations yet — POST /api/attestations {"url":"…"}</td></tr>`)
+      : raw(entries.map(row).join(""))}
           </tbody>
         </table>
       </div>

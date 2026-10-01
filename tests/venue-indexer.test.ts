@@ -27,7 +27,7 @@ import type { VenueNetwork } from "../src/server/lib/venue/chain";
 
 const NET: VenueNetwork = {
   name: "testnet",
-  chain: { id: 999999, rpcUrl: "http://unused" } as VenueNetwork["chain"],
+  chain: { id: 999999, rpcUrl: "http://unused" } as unknown as VenueNetwork["chain"],
   agenticCommerce: "0x1000000000000000000000000000000000000001",
   identityRegistry: "0x5000000000000000000000000000000000000005",
   memo: "0x2000000000000000000000000000000000000002",

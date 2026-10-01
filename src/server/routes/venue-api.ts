@@ -34,7 +34,9 @@ import {
 } from "../lib/venue/economics";
 import type { VenueIndexerDeps } from "../lib/venue/indexer";
 import { venueStats } from "../lib/venue/indexer";
+import type { ProviderProfileDeps } from "../lib/venue/profiles";
 import { registerVenueIndexerRoutes } from "./venue-api-indexer";
+import { registerVenueProfileRoutes } from "./venue-api-profiles";
 import {
   ERC8183_STATUS,
   dr,
@@ -61,6 +63,8 @@ export interface VenueDeps {
   /** ERC-8004 agentId resolvers for the reputation loop (152-3). */
   providerAgentId?: (job: VenueJob, net: VenueNetwork) => Promise<number | null>;
   clientAgentId?: (job: VenueJob, net: VenueNetwork) => Promise<number | null>;
+  /** Provider profile deps (152-6) — agentLookup/reputationRead seams. */
+  profiles?: ProviderProfileDeps;
   /** Event indexer seam (152-5) — tests inject fake log sources. */
   indexer?: VenueIndexerDeps;
   attestations?: AttestationVenueStore;
@@ -211,6 +215,8 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
 
   // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
   registerVenueIndexerRoutes(app, { indexer: deps.indexer });
+  // Provider/client profiles — SLICE-152-6, venue-api-profiles.ts
+  registerVenueProfileRoutes(app, { profiles: deps.profiles });
 
   app.get("/api/venue/attestations", dr("Recent attestations"), (c) => {
     const limit = Number(c.req.query("limit") ?? 50) || 50;
