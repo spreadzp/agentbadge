@@ -13,7 +13,7 @@ import type { PageMeta } from "../server/lib/page-meta";
 import type { AttestationEntry } from "../server/lib/attestation-store";
 import type { VenueOffer } from "../server/lib/venue/store";
 import type { VenueNetwork } from "../server/lib/venue/chain";
-import { esc, shortAddr, shortHash, VENUE_CARD, venueTabs } from "./venue-pages";
+import { esc, shortAddr, shortHash, VENUE_CARD, venueTabs, WALLET_JS } from "./venue-pages";
 
 const INPUT =
   "w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none";
@@ -21,33 +21,17 @@ const BTN =
   "rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50";
 const LABEL = "block text-xs font-medium text-slate-400 mb-1";
 
-// Wallet JS shared by the two forms.
-const WALLET_JS = `
-async function venueConnect(chainIdHex) {
-  if (!window.ethereum) throw new Error("No wallet — install MetaMask or use the API flow");
-  const [from] = await ethereum.request({ method: "eth_requestAccounts" });
-  try {
-    await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chainIdHex }] });
-  } catch (e) {
-    if (e.code === 4902) throw new Error("Add Arc (chain " + chainIdHex + ") to your wallet first");
-    throw e;
-  }
-  return from;
-}
-async function venueSign(wallet, method, path) {
-  const ts = Math.floor(Date.now() / 1000);
-  const msg = ["agentbadge-access:v1", "wallet:" + wallet.toLowerCase(),
-    "method:" + method.toUpperCase(), "path:" + path, "timestamp:" + ts].join("\\n");
-  const sig = await ethereum.request({
-    method: "personal_sign",
-    params: ["0x" + Array.from(new TextEncoder().encode(msg)).map(b => b.toString(16).padStart(2, "0")).join(""), wallet]
-  });
-  return { "x-wallet": wallet, "x-sig": sig, "x-timestamp": String(ts) };
-}
-`;
 
 // ─── /market/jobs/new ─────────────────────────────────────────
-export function venueNewJobPage(net: VenueNetwork): string {
+export interface JobPrefill {
+  provider?: string;
+  budget?: string;
+  title?: string;
+  description?: string;
+  category?: string;
+}
+
+export function venueNewJobPage(net: VenueNetwork, prefill: JobPrefill = {}): string {
   const chainHex = `0x${net.chain.chainId.toString(16)}`;
   const body = html`
     <main class="mx-auto max-w-xl px-4 py-12">
@@ -59,13 +43,13 @@ export function venueNewJobPage(net: VenueNetwork): string {
         ACPCore contract — verify it on the explorer.
       </p>
       <form id="job-form" class="${VENUE_CARD} mt-6 space-y-4">
-        <div><label class="${LABEL}">Title</label><input name="title" required maxlength="120" class="${INPUT}" placeholder="e.g. Scan my API for agent-readiness" /></div>
-        <div><label class="${LABEL}">Description</label><textarea name="description" required maxlength="2000" rows="4" class="${INPUT}" placeholder="What should the agent deliver?"></textarea></div>
+        <div><label class="${LABEL}">Title</label><input name="title" required maxlength="120" class="${INPUT}" value="${esc(prefill.title ?? "")}" placeholder="e.g. Scan my API for agent-readiness" /></div>
+        <div><label class="${LABEL}">Description</label><textarea name="description" required maxlength="2000" rows="4" class="${INPUT}" placeholder="What should the agent deliver?">${esc(prefill.description ?? "")}</textarea></div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="${LABEL}">Budget (USDC)</label><input name="budgetUsdc" required type="number" min="0.5" step="0.01" class="${INPUT}" placeholder="10" /></div>
-          <div><label class="${LABEL}">Category</label><input name="category" maxlength="50" class="${INPUT}" placeholder="scanner / data / custom" /></div>
+          <div><label class="${LABEL}">Budget (USDC)</label><input name="budgetUsdc" required type="number" min="0.5" step="0.01" class="${INPUT}" value="${esc(prefill.budget ?? "")}" placeholder="10" /></div>
+          <div><label class="${LABEL}">Category</label><input name="category" maxlength="50" class="${INPUT}" value="${esc(prefill.category ?? "")}" placeholder="scanner / data / custom" /></div>
         </div>
-        <div><label class="${LABEL}">Provider (optional — leave empty for open board)</label><input name="provider" class="${INPUT}" placeholder="0x…" /></div>
+        <div><label class="${LABEL}">Provider (optional — leave empty for open board)</label><input name="provider" class="${INPUT}" value="${esc(prefill.provider ?? "")}" placeholder="0x…" /></div>
         <button type="submit" class="${BTN} w-full">Connect wallet &amp; create job</button>
         <p id="job-status" class="text-center text-sm text-slate-400"></p>
         <div id="job-result" class="hidden rounded-lg border border-emerald-700/50 bg-emerald-950/30 p-4 text-sm"></div>
@@ -192,11 +176,14 @@ export function venueNewProviderPage(net: VenueNetwork): string {
         onchain via <code>ownerOf</code> on the identity registry.
       </p>
       <form id="offer-form" class="${VENUE_CARD} mt-6 space-y-4">
-        <div><label class="${LABEL}">ERC-8004 agentId</label><input name="agentId" required type="number" min="0" step="1" class="${INPUT}" placeholder="tokenId you own" /></div>
+        <div><label class="${LABEL}">ERC-8004 agentId (optional unless provider gate is on)</label><input name="agentId" type="number" min="0" step="1" class="${INPUT}" placeholder="tokenId you own" /></div>
         <div><label class="${LABEL}">Service name</label><input name="name" required maxlength="100" class="${INPUT}" placeholder="e.g. bstock-delta-tracker" /></div>
         <div><label class="${LABEL}">Description</label><textarea name="description" required maxlength="500" rows="3" class="${INPUT}"></textarea></div>
-        <div><label class="${LABEL}">Endpoint (https)</label><input name="endpoint" required type="url" class="${INPUT}" placeholder="https://agentbadge.xyz/mcp/bstock" /></div>
-        <div><label class="${LABEL}">Categories (comma-separated)</label><input name="categories" class="${INPUT}" placeholder="market-data, mcp" /></div>
+        <div><label class="${LABEL}">Endpoint (https, optional — enables instant x402 buy)</label><input name="endpoint" type="url" class="${INPUT}" placeholder="https://agentbadge.xyz/mcp/bstock" /></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="${LABEL}">Price (USDC, optional)</label><input name="priceUsdc" type="number" min="0.01" step="0.01" class="${INPUT}" placeholder="5" /></div>
+          <div><label class="${LABEL}">Categories (comma-separated)</label><input name="categories" class="${INPUT}" placeholder="market-data, mcp" /></div>
+        </div>
         <button type="submit" class="${BTN} w-full">Connect wallet &amp; register</button>
         <p id="offer-status" class="text-center text-sm text-slate-400"></p>
         <div id="offer-result" class="hidden rounded-lg border border-emerald-700/50 bg-emerald-950/30 p-4 text-sm"></div>
@@ -226,8 +213,10 @@ export function venueNewProviderPage(net: VenueNetwork): string {
           const r = await fetch("/api/venue/offers", {
             method: "POST", headers,
             body: JSON.stringify({
-              agentId: Number(fd.get("agentId")), name: fd.get("name"),
-              description: fd.get("description"), endpoint: fd.get("endpoint"),
+              agentId: fd.get("agentId") === "" || fd.get("agentId") == null ? undefined : Number(fd.get("agentId")),
+              name: fd.get("name"),
+              description: fd.get("description"), endpoint: fd.get("endpoint") || undefined,
+              priceUsdc: fd.get("priceUsdc") ? Number(fd.get("priceUsdc")) : undefined,
               categories: String(fd.get("categories") || "").split(",").map(s => s.trim()).filter(Boolean) })});
           const out = await r.json();
           if (!r.ok) throw new Error(out.error ?? "HTTP " + r.status);

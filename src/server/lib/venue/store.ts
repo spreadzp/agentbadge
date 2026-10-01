@@ -6,6 +6,7 @@
  * attestation-store (D11-151).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import { logger } from "@agentbadge/passport";
 
@@ -48,13 +49,21 @@ export interface VenueJob {
 }
 
 export interface VenueOffer {
+  /** Unique offer id (vo_<hex>). Legacy records keyed by provider get one on load. */
+  id: string;
   providerAddress: string;
-  /** ERC-8004 agentId the provider owns (provider-gate D5). */
-  agentId: number;
+  /** ERC-8004 agentId the provider owns (provider-gate D5). Optional when gate off. */
+  agentId?: number;
   name: string;
   description: string;
-  /** Service endpoint agents call after buying a pass. */
-  endpoint: string;
+  /** Service endpoint agents call after buying a pass (x402 instant path). */
+  endpoint?: string;
+  /** Price in USDC (decimal). Absent = quote via Post-job flow. */
+  priceUsdc?: number;
+  /** Whether a job can be created directly from this offer. */
+  claimable: boolean;
+  /** false = deactivated via admin (soft delete, kept for audit). */
+  active: boolean;
   categories: string[];
   createdAt: string;
 }
@@ -130,22 +139,87 @@ export function listJobs(filter?: {
 }
 
 // ─── Offers ──────────────────────────────────────────────────────
+// SLICE-152-1: offers keyed by unique id (multiple per provider),
+// legacy provider-keyed records migrated on load.
+
+/** Normalize a possibly-legacy offer record (no id/active/claimable). */
+function normalizeOffer(o: VenueOffer): VenueOffer {
+  return {
+    ...o,
+    id: o.id ?? `vo_${randomBytes(8).toString("hex")}`,
+    claimable: o.claimable ?? true,
+    active: o.active ?? true,
+    categories: o.categories ?? [],
+  };
+}
 
 export function upsertOffer(offer: VenueOffer): void {
   const store = loadStore();
-  store.offers[offer.providerAddress.toLowerCase()] = offer;
+  const normalized = normalizeOffer(offer);
+  store.offers[normalized.id] = normalized;
   saveStore(store);
 }
 
-export function getOffer(providerAddress: string): VenueOffer | undefined {
-  return loadStore().offers[providerAddress.toLowerCase()];
+export function getOfferById(id: string): VenueOffer | undefined {
+  return loadStore().offers[id];
 }
 
-export function listOffers(filter?: { limit?: number }): VenueOffer[] {
-  const all = Object.values(loadStore().offers).sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
-  );
+/** Compat lookup: most recent offer by provider (active preferred). */
+export function getOffer(providerAddress: string): VenueOffer | undefined {
+  const byProvider = listOffers({ provider: providerAddress });
+  return byProvider.find((o) => o.active) ?? byProvider[0];
+}
+
+export function listOffers(filter?: {
+  provider?: string;
+  active?: boolean;
+  limit?: number;
+}): VenueOffer[] {
+  let all = Object.values(loadStore().offers).map(normalizeOffer);
+  if (filter?.provider) {
+    const p = filter.provider.toLowerCase();
+    all = all.filter((o) => o.providerAddress.toLowerCase() === p);
+  }
+  if (filter?.active !== undefined) {
+    all = all.filter((o) => o.active === filter.active);
+  }
+  all = all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return filter?.limit ? all.slice(0, filter.limit) : all;
+}
+
+/** Soft delete — record stays for audit trail. */
+export function deactivateOffer(id: string): boolean {
+  const store = loadStore();
+  const offer = store.offers[id];
+  if (!offer) return false;
+  store.offers[id] = { ...normalizeOffer(offer), active: false };
+  saveStore(store);
+  return true;
+}
+
+/**
+ * Dogfood seed — bstock service offer so the catalog is never empty
+ * on a fresh deploy (same role as the jobs seed from 151-9).
+ */
+export function seedVenueOffers(): void {
+  const id = "vo_bstock_dogfood";
+  if (getOfferById(id)) return;
+  upsertOffer({
+    id,
+    providerAddress:
+      process.env.ARC_VENUE_SEED_PROVIDER ??
+      "0xcdd23d104AA4C10DE65F4DD0571eDfeC0458699d",
+    name: "bstock-delta-realtime",
+    description:
+      "Real-time Binance spot delta feed — agent-callable market data " +
+      "(x402 instant-buy or escrow job).",
+    priceUsdc: 5,
+    endpoint: "https://agentbadge.xyz/mcp/bstock",
+    categories: ["market-data", "x402"],
+    claimable: true,
+    active: true,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 // ─── Test hooks ──────────────────────────────────────────────────

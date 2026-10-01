@@ -25,6 +25,31 @@ export function shortHash(hash?: string): string {
 
 export const VENUE_CARD = CARD;
 
+// Wallet JS shared by the venue entry forms (post-job, register-offer).
+export const WALLET_JS = `
+async function venueConnect(chainIdHex) {
+  if (!window.ethereum) throw new Error("No wallet — install MetaMask or use the API flow");
+  const [from] = await ethereum.request({ method: "eth_requestAccounts" });
+  try {
+    await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chainIdHex }] });
+  } catch (e) {
+    if (e.code === 4902) throw new Error("Add Arc (chain " + chainIdHex + ") to your wallet first");
+    throw e;
+  }
+  return from;
+}
+async function venueSign(wallet, method, path) {
+  const ts = Math.floor(Date.now() / 1000);
+  const msg = ["agentbadge-access:v1", "wallet:" + wallet.toLowerCase(),
+    "method:" + method.toUpperCase(), "path:" + path, "timestamp:" + ts].join("\\n");
+  const sig = await ethereum.request({
+    method: "personal_sign",
+    params: ["0x" + Array.from(new TextEncoder().encode(msg)).map(b => b.toString(16).padStart(2, "0")).join(""), wallet]
+  });
+  return { "x-wallet": wallet, "x-sig": sig, "x-timestamp": String(ts) };
+}
+`;
+
 // ─── Tab shell (D9-151) ──────────────────────────────────────────
 
 export type VenueTab =

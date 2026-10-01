@@ -40,6 +40,7 @@ import {
   venueNewProviderPage,
   venueProvidersPage,
 } from "../../views/venue-forms";
+import { venueServicesPage } from "../../views/venue-services";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import {
@@ -249,15 +250,16 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
     }),
     (c) => c.html(venueNewProviderPage(net())),
   );
-  // services + passes stubs (D-F12)
+  // services tab — offers catalog (SLICE-152-1); passes stays a stub (D-F12)
   app.get(
     "/market/services",
     describeRoute({
       tags: ["Venue"],
-      summary: "Services tab — coming soon stub",
-      responses: { 200: { description: "HTML stub page" } },
+      summary: "Services tab — active provider offers catalog",
+      responses: { 200: { description: "HTML catalog page" } },
     }),
-    (c) => c.html(venueStubPage("services", net())),
+    (c) =>
+      c.html(venueServicesPage(listOffers({ active: true, limit: 50 }), net())),
   );
 
   app.get(

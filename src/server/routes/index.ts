@@ -78,6 +78,7 @@ import {
 } from "@agentbadge/circle-payments";
 import { venueApiRoutes } from "./venue-api";
 import { venuePageRoutes } from "./venue-pages";
+import { seedVenueOffers } from "../lib/venue/store";
 
 import { metricsApp } from "./metrics";
 import { telemetryApp } from "./telemetry";
@@ -204,6 +205,7 @@ export function registerPostMarketplaceRoutes(app: Hono): void {
   // SLICE-151-9: venue hub + API — only when ARC_VENUE_ENABLED=true.
   // Gate off → /market stays the ops.ts 301, /api/venue/* absent, zero change.
   if (process.env.ARC_VENUE_ENABLED === "true") {
+    seedVenueOffers(); // SLICE-152-1: bstock dogfood offer, idempotent
     app.route("/", venueApiRoutes);
     app.route("/", venuePageRoutes);
     logger.info("Venue routes registered", {

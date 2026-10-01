@@ -36,6 +36,7 @@ export {
   shortHash,
   venueTabs,
   VENUE_CARD,
+  WALLET_JS,
   type VenueTab,
 } from "./venue-ui";
 

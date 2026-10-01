@@ -109,14 +109,17 @@ describe("VenueStore (JSON impl, memStore override)", () => {
     expect(getJob("a")?.title).toBe("Scan my API");
   });
 
-  it("upserts offers keyed by provider address (lowercase)", () => {
+  it("upserts offers keyed by id; provider lookup returns newest", () => {
     upsertOffer({
+      id: "vo_t1",
       providerAddress: WALLET,
       agentId: 7,
       name: "bstock",
       description: "market data",
       endpoint: "https://agentbadge.xyz/mcp/bstock",
       categories: ["market-data"],
+      claimable: true,
+      active: true,
       createdAt: "2026-09-30T12:00:00Z",
     });
     expect(getOffer(WALLET.toLowerCase())?.agentId).toBe(7);
@@ -380,11 +383,11 @@ describe("venue pages", () => {
     expect((await a.text()).toString()).toContain("Attestations");
   });
 
-  it("GET /market/services + /market/passes render coming-soon stubs (D-F12)", async () => {
+  it("GET /market/services renders offers catalog; /market/passes stays a stub (D-F12)", async () => {
     const s = await pageApp().request("/market/services");
     expect(s.status).toBe(200);
     const sh = await s.text();
-    expect(sh).toContain("Coming soon");
+    expect(sh).toContain("Services");
     expect(sh).toContain("/market/jobs"); // tab shell intact
     const p = await pageApp().request("/market/passes");
     expect(p.status).toBe(200);

@@ -6,7 +6,6 @@
 import { Hono } from "hono";
 import { randomBytes } from "node:crypto";
 import { encodeFunctionData, getAddress, isAddress, parseUnits } from "viem";
-import { logger } from "@agentbadge/passport";
 import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
 import { sharedVenueStore } from "../lib/attestation-store";
 import {
@@ -14,9 +13,9 @@ import {
   listJobs,
   listOffers,
   upsertJob,
-  upsertOffer,
   type VenueJob,
 } from "../lib/venue/store";
+import { registerOfferRoutes } from "./venue-api-offers";
 import {
   fetchAgentOwner,
   fetchCreatedJobId,
@@ -196,60 +195,8 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     return c.json({ job, onchain: raw });
   });
 
-  app.get("/api/venue/offers", dr("List provider offers"), (c) =>
-    c.json({ offers: listOffers({ limit: 50 }), network: net().name }),
-  );
-
-  // POST /api/venue/offers — signer must own ERC-8004 agentId (D5).
-  app.post("/api/venue/offers", dr("Register provider offer (ownerOf gate)"), async (c) => {
-    const s = await signedJson(c);
-    if (s instanceof Response) return s;
-    const { body } = s;
-    const agentId = Number(body.agentId);
-    const name = str(body.name, 100);
-    const description = str(body.description, 500);
-    const endpoint = str(body.endpoint, 500);
-    if (!Number.isInteger(agentId) || agentId < 0) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
-        "agentId must be a non-negative integer");
-    }
-    if (!name || !description) {
-      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS,
-        "name (≤100) + description (≤500) required");
-    }
-    if (!endpoint || !/^https:\/\//.test(endpoint)) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "endpoint must be https://");
-    }
-    const n = net();
-    const owner = await agentOwner(agentId, n);
-    if (!owner) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
-        `agentId ${agentId} not found on ${n.name} identity registry`);
-    }
-    if (owner.toLowerCase() !== s.wallet.toLowerCase()) {
-      return errorResponse(c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH,
-        `agentId ${agentId} is owned by ${owner}, not the signer`);
-    }
-    const offer = {
-      providerAddress: s.wallet,
-      agentId, name, description, endpoint,
-      categories: Array.isArray(body.categories)
-        ? (body.categories as unknown[])
-          .map((x) => str(x, 50))
-          .filter((x): x is string => !!x)
-          .slice(0, 10)
-        : [],
-      createdAt: new Date().toISOString(),
-    };
-    upsertOffer(offer);
-    logger.info("venue: provider offer registered", { provider: s.wallet, agentId });
-    recordVenueEvent({
-      action: "offer.registered",
-      text: `provider registered — “${name}” · agentId ${agentId}`,
-      dedupeKey: `offer:${s.wallet}:${agentId}`,
-    });
-    return c.json({ offer });
-  });
+  // Offers catalog routes — SLICE-152-1, extracted to venue-api-offers.ts
+  registerOfferRoutes(app, { network: net, agentOwner });
 
   app.get("/api/venue/attestations", dr("Recent attestations"), (c) => {
     const limit = Number(c.req.query("limit") ?? 50) || 50;
