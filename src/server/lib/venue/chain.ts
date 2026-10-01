@@ -28,6 +28,10 @@ export interface VenueNetwork {
   /** ACPCore (our deploy, acp ABI) on mainnet; Circle protocol deploy on testnet. */
   agenticCommerce: `0x${string}`;
   identityRegistry: `0x${string}`;
+  /** ERC-8004 reputation registry — giveFeedback target (152-3). */
+  reputationRegistry: `0x${string}`;
+  /** Memo wrapper contract — feedback+Memo in one tx (152-3). */
+  memo: `0x${string}`;
   /** getJob tuple shape differs between deploys. */
   variant: "circle" | "acp";
   abi: typeof ERC8183_ACP_ABI | typeof ERC8183_ABI;
@@ -54,6 +58,8 @@ export function resolveVenueNetwork(): VenueNetwork {
       chain: ARC_MAINNET,
       agenticCommerce: ARC_MAINNET_CONTRACTS.agenticCommerce,
       identityRegistry: ARC_MAINNET_CONTRACTS.identityRegistry,
+      reputationRegistry: ARC_MAINNET_CONTRACTS.reputationRegistry,
+      memo: ARC_MAINNET_CONTRACTS.memo,
       variant: "acp",
       abi: ERC8183_ACP_ABI,
       explorerTx: (h) => `${base}/tx/${h}`,
@@ -65,6 +71,8 @@ export function resolveVenueNetwork(): VenueNetwork {
     chain: ARC_TESTNET,
     agenticCommerce: ARC_CONTRACTS.agenticCommerce,
     identityRegistry: ARC_CONTRACTS.identityRegistry,
+    reputationRegistry: ARC_CONTRACTS.reputationRegistry,
+    memo: ARC_CONTRACTS.memo,
     variant: "circle",
     abi: ERC8183_ABI,
     explorerTx: (h) => `${base}/tx/${h}`,

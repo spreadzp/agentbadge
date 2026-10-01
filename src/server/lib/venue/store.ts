@@ -36,6 +36,18 @@ export interface VenueJob {
   provider?: string;
   /** Evaluator address — defaults to the venue oracle. */
   evaluator: string;
+  /** ERC-8004 agent ids when mirrored — needed for reputation feedback (152-3). */
+  providerAgentId?: number;
+  clientAgentId?: number;
+  /** bytes32 deliverable hash from submit (152-2). */
+  deliverableHash?: string;
+  /** Reputation feedback loop state (152-3). */
+  feedback?: {
+    status: "pending" | "sent" | "failed" | "skipped";
+    txHash?: string;
+    feedbackURI?: string;
+    reason?: string;
+  };
   category?: string;
   createdAt: string;
   chainTxs: {

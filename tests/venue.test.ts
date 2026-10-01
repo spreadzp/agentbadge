@@ -40,6 +40,8 @@ const testNet: VenueNetwork = {
   },
   agenticCommerce: "0x0747EEf0706327138c69792bF28Cd525089e4583",
   identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+  reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+  memo: "0x5294E9927c3306DcBaDb03fe70b92e01cCede505",
   variant: "acp",
   abi: ERC8183_ACP_ABI,
   explorerTx: (h) => `https://testnet.arcscan.app/tx/${h}`,

@@ -18,6 +18,7 @@ import {
 import { registerOfferRoutes } from "./venue-api-offers";
 import { registerLifecycleRoutes } from "./venue-api-lifecycle";
 import type { PreparedTx, VenueRole } from "../lib/venue/lifecycle";
+import type { FeedbackSender } from "../lib/venue/reputation-loop";
 import {
   fetchAgentOwner,
   fetchCreatedJobId,
@@ -49,6 +50,11 @@ export interface VenueDeps {
   txJobId?: (txHash: `0x${string}`, net: VenueNetwork) => Promise<number | null>;
   /** Server-sign sender for lifecycle routes (152-2); null = not allowed. */
   sendTx?: (role: VenueRole, txs: PreparedTx[], net: VenueNetwork) => Promise<Hex[] | null>;
+  /** Reputation feedback sender (152-3) — default: evaluator EOA via sendAsRole. */
+  sendFeedback?: FeedbackSender;
+  /** ERC-8004 agentId resolvers for the reputation loop (152-3). */
+  providerAgentId?: (job: VenueJob, net: VenueNetwork) => Promise<number | null>;
+  clientAgentId?: (job: VenueJob, net: VenueNetwork) => Promise<number | null>;
   attestations?: AttestationVenueStore;
 }
 
@@ -203,7 +209,14 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   registerOfferRoutes(app, { network: net, agentOwner });
 
   // Jobs lifecycle routes — SLICE-152-2, extracted to venue-api-lifecycle.ts
-  registerLifecycleRoutes(app, { network: net, onchainJob, sendTx: deps.sendTx });
+  registerLifecycleRoutes(app, {
+    network: net,
+    onchainJob,
+    sendTx: deps.sendTx,
+    sendFeedback: deps.sendFeedback,
+    providerAgentId: deps.providerAgentId,
+    clientAgentId: deps.clientAgentId,
+  });
 
   app.get("/api/venue/attestations", dr("Recent attestations"), (c) => {
     const limit = Number(c.req.query("limit") ?? 50) || 50;
