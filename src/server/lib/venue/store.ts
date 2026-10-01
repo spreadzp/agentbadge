@@ -1,14 +1,19 @@
 /**
  * SLICE-151-9: VenueStore (D12-151) — jobs + provider offers persistence.
- * JSON impl at .data/venue.json (pattern cloned from marketplace/catalog.ts).
- * DB adapter lands behind the same interface in EPIC-152 — no DATABASE_ENABLED
- * dependency. Attestations are NOT stored here — they share the 151-3
- * attestation-store (D11-151).
+ * SLICE-152-5: pluggable backend — ARC_VENUE_STORE=json (default,
+ * .data/venue.json) | prisma (Postgres via @agentbadge/database, mirror +
+ * write-behind in db-store.ts). Routes call the free functions below;
+ * switching backend needs zero route changes (D5-152 read path = our index).
+ * Attestations are NOT stored here — they share the 151-3 attestation-store.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { randomBytes } from "node:crypto";
-import { dirname, join } from "node:path";
 import { logger } from "@agentbadge/passport";
+import {
+  createJsonVenueStore,
+  normalizeOffer,
+  useMemoryStoreForTesting as memJsonStore,
+  resetStoreForTesting as resetJsonStore,
+} from "./json-store";
+import { createVenueDbStore } from "./db-store";
 
 // ─── Records ─────────────────────────────────────────────────────
 
@@ -107,57 +112,73 @@ export interface VenueOffer {
   createdAt: string;
 }
 
-interface VenueData {
+export interface VenueData {
   jobs: Record<string, VenueJob>;
   offers: Record<string, VenueOffer>;
+  /** Indexer watermark + misc state (152-5). */
+  meta?: Record<string, unknown>;
 }
 
-// ─── JSON persistence (catalog.ts clone) ─────────────────────────
+// ─── Backend interface ───────────────────────────────────────────
 
-const STORE_PATH = join(process.cwd(), ".data", "venue.json");
-let _memStore: VenueData | null = null; // test override
-
-function emptyStore(): VenueData {
-  return { jobs: {}, offers: {} };
+/**
+ * Synchronous store contract — the sync surface is load-bearing: all routes
+ * read/write inline. The prisma backend keeps an in-memory mirror hydrated at
+ * init and write-behind persists async (db-store.ts).
+ */
+export interface VenueStoreBackend {
+  name: "json" | "prisma";
+  /** Resolves when the backend finished hydration (json = immediately). */
+  ready(): Promise<void>;
+  upsertJob(job: VenueJob): void;
+  getJob(jobId: string): VenueJob | undefined;
+  listJobs(filter?: { status?: string; category?: string; limit?: number }): VenueJob[];
+  upsertOffer(offer: VenueOffer): void;
+  getOfferById(id: string): VenueOffer | undefined;
+  listOffers(filter?: { provider?: string; active?: boolean; limit?: number }): VenueOffer[];
+  deactivateOffer(id: string): boolean;
+  getMeta<T>(key: string): T | undefined;
+  setMeta(key: string, value: unknown): void;
 }
 
-function loadStore(): VenueData {
-  if (_memStore) return _memStore;
-  try {
-    if (existsSync(STORE_PATH)) {
-      return JSON.parse(readFileSync(STORE_PATH, "utf8")) as VenueData;
+let _backend: VenueStoreBackend | null = null;
+
+function resolveBackend(): VenueStoreBackend {
+  if (_backend) return _backend;
+  const mode = (process.env.ARC_VENUE_STORE ?? "json").toLowerCase();
+  if (mode === "db" || mode === "prisma" || mode === "sqlite") {
+    try {
+      const db = createVenueDbStore();
+      if (db) {
+        _backend = db;
+        logger.info("venue: store backend = prisma", {});
+        return _backend;
+      }
+      logger.warn("venue: ARC_VENUE_STORE=%s but DATABASE_ENABLED off — json fallback", {
+        mode,
+      });
+    } catch (err) {
+      logger.error("venue: db backend init failed — json fallback", {
+        err: String(err),
+      });
     }
-  } catch (err) {
-    logger.warn("venue: store read failed, starting empty", {
-      err: String(err),
-    });
   }
-  return emptyStore();
+  _backend = createJsonVenueStore();
+  return _backend;
 }
 
-function saveStore(store: VenueData): void {
-  if (_memStore) {
-    _memStore = store;
-    return;
-  }
-  try {
-    mkdirSync(dirname(STORE_PATH), { recursive: true });
-    writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
-  } catch (err) {
-    logger.error("venue: store write failed", { err: String(err) });
-  }
+export function venueStoreBackend(): VenueStoreBackend {
+  return resolveBackend();
 }
 
 // ─── Jobs ────────────────────────────────────────────────────────
 
 export function upsertJob(job: VenueJob): void {
-  const store = loadStore();
-  store.jobs[job.jobId] = job;
-  saveStore(store);
+  resolveBackend().upsertJob(job);
 }
 
 export function getJob(jobId: string): VenueJob | undefined {
-  return loadStore().jobs[jobId];
+  return resolveBackend().getJob(jobId);
 }
 
 export function listJobs(filter?: {
@@ -165,42 +186,17 @@ export function listJobs(filter?: {
   category?: string;
   limit?: number;
 }): VenueJob[] {
-  let all = Object.values(loadStore().jobs);
-  if (filter?.status) {
-    all = all.filter((j) => j.status === filter.status);
-  }
-  if (filter?.category) {
-    const cat = filter.category.toLowerCase();
-    all = all.filter((j) => j.category?.toLowerCase() === cat);
-  }
-  all = all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return filter?.limit ? all.slice(0, filter.limit) : all;
+  return resolveBackend().listJobs(filter);
 }
 
 // ─── Offers ──────────────────────────────────────────────────────
-// SLICE-152-1: offers keyed by unique id (multiple per provider),
-// legacy provider-keyed records migrated on load.
-
-/** Normalize a possibly-legacy offer record (no id/active/claimable). */
-function normalizeOffer(o: VenueOffer): VenueOffer {
-  return {
-    ...o,
-    id: o.id ?? `vo_${randomBytes(8).toString("hex")}`,
-    claimable: o.claimable ?? true,
-    active: o.active ?? true,
-    categories: o.categories ?? [],
-  };
-}
 
 export function upsertOffer(offer: VenueOffer): void {
-  const store = loadStore();
-  const normalized = normalizeOffer(offer);
-  store.offers[normalized.id] = normalized;
-  saveStore(store);
+  resolveBackend().upsertOffer(offer);
 }
 
 export function getOfferById(id: string): VenueOffer | undefined {
-  return loadStore().offers[id];
+  return resolveBackend().getOfferById(id);
 }
 
 /** Compat lookup: most recent offer by provider (active preferred). */
@@ -214,26 +210,27 @@ export function listOffers(filter?: {
   active?: boolean;
   limit?: number;
 }): VenueOffer[] {
-  let all = Object.values(loadStore().offers).map(normalizeOffer);
-  if (filter?.provider) {
-    const p = filter.provider.toLowerCase();
-    all = all.filter((o) => o.providerAddress.toLowerCase() === p);
-  }
-  if (filter?.active !== undefined) {
-    all = all.filter((o) => o.active === filter.active);
-  }
-  all = all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return filter?.limit ? all.slice(0, filter.limit) : all;
+  return resolveBackend().listOffers(filter);
 }
 
 /** Soft delete — record stays for audit trail. */
 export function deactivateOffer(id: string): boolean {
-  const store = loadStore();
-  const offer = store.offers[id];
-  if (!offer) return false;
-  store.offers[id] = { ...normalizeOffer(offer), active: false };
-  saveStore(store);
-  return true;
+  return resolveBackend().deactivateOffer(id);
+}
+
+// ─── Meta (indexer watermark, stats cache) ───────────────────────
+
+export function getVenueMeta<T = unknown>(key: string): T | undefined {
+  return resolveBackend().getMeta<T>(key);
+}
+
+export function setVenueMeta(key: string, value: unknown): void {
+  resolveBackend().setMeta(key, value);
+}
+
+/** Resolves when the active backend finished hydration. */
+export function venueStoreReady(): Promise<void> {
+  return resolveBackend().ready();
 }
 
 /**
@@ -264,9 +261,18 @@ export function seedVenueOffers(): void {
 // ─── Test hooks ──────────────────────────────────────────────────
 
 export function useMemoryStoreForTesting() {
-  _memStore = emptyStore();
+  memJsonStore();
+  _backend = createJsonVenueStore();
 }
 
 export function resetStoreForTesting() {
-  _memStore = null;
+  resetJsonStore();
+  _backend = null;
 }
+
+/** Swap the whole backend (tests inject a fake). */
+export function setVenueBackendForTesting(backend: VenueStoreBackend | null) {
+  _backend = backend;
+}
+
+export { normalizeOffer };

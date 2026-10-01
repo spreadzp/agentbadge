@@ -32,6 +32,9 @@ import {
   resolveFeeMode,
   venueEconomics,
 } from "../lib/venue/economics";
+import type { VenueIndexerDeps } from "../lib/venue/indexer";
+import { venueStats } from "../lib/venue/indexer";
+import { registerVenueIndexerRoutes } from "./venue-api-indexer";
 import {
   ERC8183_STATUS,
   dr,
@@ -58,6 +61,8 @@ export interface VenueDeps {
   /** ERC-8004 agentId resolvers for the reputation loop (152-3). */
   providerAgentId?: (job: VenueJob, net: VenueNetwork) => Promise<number | null>;
   clientAgentId?: (job: VenueJob, net: VenueNetwork) => Promise<number | null>;
+  /** Event indexer seam (152-5) — tests inject fake log sources. */
+  indexer?: VenueIndexerDeps;
   attestations?: AttestationVenueStore;
 }
 
@@ -204,6 +209,9 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     clientAgentId: deps.clientAgentId,
   });
 
+  // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
+  registerVenueIndexerRoutes(app, { indexer: deps.indexer });
+
   app.get("/api/venue/attestations", dr("Recent attestations"), (c) => {
     const limit = Number(c.req.query("limit") ?? 50) || 50;
     return c.json({
@@ -228,8 +236,10 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     return c.json({ activity, count: activity.length, network: net().name });
   });
 
+  // SLICE-152-5: header shape kept for compat + richer index aggregates.
   app.get("/api/venue/stats", dr("Venue header stats"), (c) => {
     const jobs = listJobs();
+    const agg = venueStats();
     return c.json({
       network: net().name,
       jobs: jobs.length,
@@ -237,6 +247,11 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       usdcVolume: jobs.reduce((s, j) => s + j.budgetUsdc, 0),
       providers: listOffers().length,
       attestations: attestStore.size(),
+      jobsTotal: agg.jobsTotal,
+      jobsByStatus: agg.jobsByStatus,
+      feedbackCount: agg.feedbackCount,
+      providersActive: agg.providersActive,
+      offersActive: agg.offersActive,
     });
   });
 
