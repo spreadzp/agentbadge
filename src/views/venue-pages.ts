@@ -61,6 +61,27 @@ export function venueJobCard(job: VenueJob, net: VenueNetwork): string {
       <span class="font-semibold text-emerald-400">$${job.budgetUsdc} USDC</span>
       ${job.category ? `<span class="text-xs text-slate-500">${esc(job.category)}</span>` : ""}
     </div>
+    ${(() => {
+      // 152-4: fee breakdown — atomic → USDC display + sweep tx link.
+      if (!job.feeMode || job.feeMode === "none") {
+        return job.feeMode === "none"
+          ? `<div class="mt-1 text-xs text-slate-600">no take rate · external provider</div>`
+          : "";
+      }
+      const feeUsdc = job.fee ? Number(job.fee.amountAtomic) / 1e6 : null;
+      const feeTx = job.fee?.tx
+        ? ` <a href="${net.explorerTx(job.fee.tx)}" target="_blank" rel="noopener" class="text-sky-400 hover:underline">fee tx ⧉</a>`
+        : "";
+      return `<div class="mt-1 text-xs text-slate-500">take ${job.fee?.bps ?? "—"}bps` +
+        (feeUsdc != null ? ` → $${feeUsdc.toFixed(4)} treasury` : "") +
+        ` · ${job.feeMode}${feeTx}</div>`;
+    })()}
+    ${job.evalFee?.required
+      ? `<div class="mt-1 text-xs text-slate-500">eval fee ${job.evalFee.paid
+        ? `paid${job.evalFee.tx ? ` <a href="${net.explorerTx(job.evalFee.tx)}" target="_blank" rel="noopener" class="text-sky-400 hover:underline">⧉</a>` : ""}`
+        : "required before evaluate"
+      }</div>`
+      : ""}
     <div class="mt-3 flex items-center justify-between border-t border-slate-800 pt-3 text-xs text-slate-500">
       <span class="font-mono" title="client">${shortAddr(job.client)}</span>
       <span class="flex gap-2">${txLinks || '<span class="italic">no tx yet</span>'}</span>
@@ -135,7 +156,8 @@ export function venueHubPage(
       <p class="mt-10 text-xs text-slate-500">
         Machine-readable: <code>GET /api/venue/jobs</code> ·
         <code>GET /api/venue/offers</code> ·
-        <code>GET /api/venue/stats</code>
+        <code>GET /api/venue/stats</code> ·
+        <a href="/api/venue/economics" class="text-sky-400 hover:underline"><code>/api/venue/economics</code></a>
       </p>
     </main>`;
   const meta: PageMeta = {

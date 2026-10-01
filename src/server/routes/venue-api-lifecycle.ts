@@ -9,7 +9,7 @@ import { getJob, upsertJob, type VenueJob } from "../lib/venue/store";
 import type { VenueNetwork } from "../lib/venue/chain";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { dr, str, ERC8183_STATUS } from "./venue-api-helpers";
+import { dr, str, ERC8183_STATUS, TX_PHASES } from "./venue-api-helpers";
 import {
   buildActionTxs,
   deliverableHash,
@@ -20,8 +20,13 @@ import {
 } from "../lib/venue/lifecycle";
 import { recordVenueEvent } from "../services/venue-events";
 import {
+  resolveFeeMode,
+  venueEconomics,
+} from "../lib/venue/economics";
+import {
   handleAction,
   maybeFeedback,
+  maybeFeeSweep,
   type ActionCtx,
   type LifecycleDeps,
 } from "./venue-api-lifecycle-core";
@@ -55,6 +60,9 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
         }),
         mutate: (job, wallet) => {
           job.provider = wallet;
+          // 152-4: provider now known — re-resolve take-rate mode
+          // (server EOA provider → "sweep", else "none"/"hook").
+          job.feeMode = resolveFeeMode(job, venueEconomics(), net());
           // 152-3: claimer may attach its ERC-8004 agentId for feedback.
           const agentId = Number(body.agentId);
           if (Number.isInteger(agentId) && agentId > 0) {
@@ -103,6 +111,13 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
   // POST /api/venue/jobs/:id/evaluate — evaluator verdict → complete|reject.
   app.post("/api/venue/jobs/:id/evaluate", dr("Evaluator verdict → complete|reject"), (c) =>
     handleAction(c, ctx, "complete", (body, g) => {
+      // 152-4: eval fee must be paid upfront — client attaches the USDC
+      // transfer tx via POST /jobs/:id/tx {phase:"evalFee"} first.
+      if (g.job.evalFee?.required && !g.job.evalFee.paid) {
+        return errorResponse(c, 402, ErrorCodes.PAYMENT_REQUIRED,
+          `evaluator fee unpaid — transfer ${g.job.evalFee.amountAtomic} USDC atomic to treasury, ` +
+          `then POST /api/venue/jobs/${g.job.jobId}/tx {hash, phase:"evalFee"}`);
+      }
       const verdict = str(body.verdict, 10);
       const reason = str(body.reason, 500);
       const reasonHex = reason ? keccak256(toBytes(reason)) : undefined;
@@ -153,6 +168,58 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
     })),
   );
 
+  // POST /api/venue/jobs/:id/tx — attach broadcast tx hash for a phase.
+  // Moved here from venue-api.ts (max-lines split); evalFee phase is
+  // 152-4: client's upfront USDC transfer to treasury gating evaluate.
+  app.post("/api/venue/jobs/:id/tx", dr("Attach tx hash to job phase"), async (c) => {
+    const job = getJob(c.req.param("id") ?? "");
+    if (!job) {
+      return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "unknown jobId");
+    }
+    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+    const hash = str(body?.hash, 66);
+    const phase = str(body?.phase, 20);
+    if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "hash must be 0x<64hex>");
+    }
+    if (phase === "evalFee") {
+      job.evalFee = {
+        required: true,
+        paid: true,
+        amountAtomic: job.evalFee?.amountAtomic,
+        tx: hash,
+      };
+      upsertJob(job);
+      recordVenueEvent({
+        action: "job.evalfee",
+        text: `job ${job.jobId} — evaluator fee paid`,
+        jobId: job.jobId,
+        tx: hash,
+        dedupeKey: `job.evalfee:${job.jobId}`,
+      });
+      return c.json({ job });
+    }
+    if (!phase || !(TX_PHASES as readonly string[]).includes(phase)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+        "phase ∈ {created,funded,submitted,completed,evalFee}");
+    }
+    job.chainTxs[phase as keyof VenueJob["chainTxs"]] = hash;
+    if (phase === "created" && job.status === "pending") job.status = "open";
+    if (phase === "created" && job.onchainJobId == null && deps.txJobId) {
+      const id = await deps.txJobId(hash as `0x${string}`, net());
+      if (id != null) job.onchainJobId = id;
+    }
+    upsertJob(job);
+    recordVenueEvent({
+      action: "job.tx",
+      text: `job ${job.jobId} — ${phase} tx confirmed`,
+      jobId: job.jobId,
+      tx: hash,
+      dedupeKey: `job.tx:${job.jobId}:${phase}`,
+    });
+    return c.json({ job });
+  });
+
   // GET /api/venue/jobs/:id — merged store + onchain tuple + verdict.
   app.get("/api/venue/jobs/:id", dr("Job detail (store + onchain merge)"), async (c) => {
     const job = getJob(c.req.param("id") ?? "");
@@ -173,6 +240,8 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
         job.status = mapped as VenueJob["status"];
         upsertJob(job);
       }
+      // 152-4: take-rate sweep on completed (idempotent store gate).
+      await maybeFeeSweep(job, ctx);
       // 152-3: calldata-mode evaluations land here — fire feedback on
       // first terminal-status observation (idempotent via store gate).
       await maybeFeedback(job, ctx);

@@ -26,6 +26,12 @@ import {
   ensureVenueFeedback,
   type FeedbackSender,
 } from "../lib/venue/reputation-loop";
+import {
+  buildFeeSweepTx,
+  feeQuote,
+  resolveFeeMode,
+  venueEconomics,
+} from "../lib/venue/economics";
 
 const PHASE_BY_ACTION: Partial<Record<LifecycleAction, keyof VenueJob["chainTxs"]>> = {
   claim: "claimed",
@@ -39,6 +45,8 @@ const PHASE_BY_ACTION: Partial<Record<LifecycleAction, keyof VenueJob["chainTxs"
 export interface LifecycleDeps {
   network: () => VenueNetwork;
   onchainJob: (id: number, net: VenueNetwork) => Promise<unknown>;
+  /** Resolve onchainJobId from a confirmed createJob tx receipt. */
+  txJobId?: (txHash: `0x${string}`, net: VenueNetwork) => Promise<number | null>;
   /**
    * Server-sign sender (tests inject). Returns tx hashes, or null when the
    * role is not allowed / no key. Default: lifecycle.sendAsRole.
@@ -116,6 +124,76 @@ export async function maybeFeedback(
 }
 
 /**
+ * 152-4: post-settlement take-rate sweep. Only for feeMode="sweep"
+ * (provider is a server EOA) — USDC transfer to treasury signed as
+ * provider. Idempotent via job.fee.status gate.
+ */
+export async function maybeFeeSweep(
+  job: VenueJob,
+  ctx: ActionCtx,
+): Promise<string | undefined> {
+  if (job.status !== "completed") return undefined;
+  const econ = venueEconomics();
+  if (!job.feeMode) {
+    job.feeMode = resolveFeeMode(job, econ, ctx.net());
+    upsertJob(job);
+  }
+  if (job.feeMode !== "sweep") {
+    if (job.feeMode === "none" && !job.fee) {
+      job.fee = {
+        bps: 0, amountAtomic: "0",
+        providerAtomic: "", treasury: "",
+        status: "skipped", reason: "feeMode=none (external provider, no hook)",
+      };
+      upsertJob(job);
+    }
+    return job.fee?.status;
+  }
+  if (job.fee?.status === "swept" || job.fee?.status === "failed") {
+    return job.fee.status;
+  }
+  const q = feeQuote(job.budgetUsdc, econ, "sweep");
+  const tx = buildFeeSweepTx(job, econ, ctx.net());
+  if (!tx || !econ.treasury) {
+    job.fee = {
+      bps: q.feeBps, amountAtomic: "0", providerAtomic: q.providerAtomic,
+      treasury: "", status: "skipped", reason: "no treasury configured",
+    };
+    upsertJob(job);
+    return "skipped";
+  }
+  job.fee = {
+    bps: q.feeBps, amountAtomic: q.feeAtomic, providerAtomic: q.providerAtomic,
+    treasury: econ.treasury, status: "pending",
+  };
+  upsertJob(job);
+  try {
+    const hashes = await ctx.sendTx("provider", [tx], ctx.net());
+    if (hashes?.[0]) {
+      job.fee.status = "swept";
+      job.fee.tx = hashes[0];
+      recordVenueEvent({
+        action: "job.fee",
+        text: `job ${job.jobId} — take rate ${q.feeBps}bps swept to treasury`,
+        jobId: job.jobId,
+        tx: hashes[0],
+        dedupeKey: `job.fee:${job.jobId}`,
+      });
+      logger.info("venue fee swept", { jobId: job.jobId, tx: hashes[0], feeBps: q.feeBps });
+    } else {
+      job.fee.status = "skipped";
+      job.fee.reason = "no provider server signer";
+    }
+  } catch (e) {
+    job.fee.status = "failed";
+    job.fee.reason = e instanceof Error ? e.message : String(e);
+    logger.warn("venue fee sweep failed", { jobId: job.jobId, error: job.fee.reason });
+  }
+  upsertJob(job);
+  return job.fee.status;
+}
+
+/**
  * Shared handler: sign → load onchain state → transition gate →
  * actor check → sign-mode dispatch → store sync + event.
  */
@@ -171,6 +249,8 @@ export async function handleAction(
       dedupeKey: `job.${action}:${g.job.jobId}`,
     });
     logger.info("venue lifecycle server-sign", { jobId: g.job.jobId, action, hashes });
+    // 152-4: take-rate sweep first (money), then the feedback loop.
+    const feeStatus = await maybeFeeSweep(g.job, ctx);
     // 152-3: terminal verdicts trigger the objective feedback loop.
     const feedbackStatus = await maybeFeedback(g.job, ctx);
     return c.json({
@@ -179,6 +259,7 @@ export async function handleAction(
       txHashes: hashes,
       onchain: g.status,
       feedbackStatus,
+      feeStatus,
     });
   }
   upsertJob(g.job);

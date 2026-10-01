@@ -48,6 +48,30 @@ export interface VenueJob {
     feedbackURI?: string;
     reason?: string;
   };
+  /**
+   * Take-rate mode (152-4): "hook" = onchain IACPHook on createJob,
+   * "sweep" = post-settlement USDC transfer from server provider EOA,
+   * "none" = external provider, no take rate.
+   */
+  feeMode?: "hook" | "sweep" | "none";
+  /** Take-rate record after completion (sweep path). */
+  fee?: {
+    bps: number;
+    /** Atomic USDC strings. */
+    amountAtomic: string;
+    providerAtomic: string;
+    treasury: string;
+    tx?: string;
+    status: "pending" | "swept" | "skipped" | "failed";
+    reason?: string;
+  };
+  /** Evaluator fee ledger (152-4): paid upfront before evaluate runs. */
+  evalFee?: {
+    required: boolean;
+    paid: boolean;
+    amountAtomic?: string;
+    tx?: string;
+  };
   category?: string;
   createdAt: string;
   chainTxs: {

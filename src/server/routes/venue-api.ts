@@ -29,8 +29,11 @@ import {
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import {
+  resolveFeeMode,
+  venueEconomics,
+} from "../lib/venue/economics";
+import {
   ERC8183_STATUS,
-  TX_PHASES,
   dr,
   signedJson,
   str,
@@ -99,6 +102,7 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "provider must be 0x…");
     }
     const n = net();
+    const econ = venueEconomics();
     const evaluator = venueEvaluator();
     const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400);
     const jobId = `vj_${randomBytes(8).toString("hex")}`;
@@ -112,6 +116,16 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       createdAt: new Date().toISOString(),
       chainTxs: {},
     };
+    // 152-4: resolve take-rate mode at creation (open jobs re-resolve at
+    // claim once provider is known) and arm the eval-fee ledger.
+    job.feeMode = resolveFeeMode(job, econ, n);
+    if (econ.evalFeeAtomic > 0n) {
+      job.evalFee = {
+        required: true,
+        paid: false,
+        amountAtomic: econ.evalFeeAtomic.toString(),
+      };
+    }
     upsertJob(job);
     recordVenueEvent({
       action: "job.created",
@@ -126,7 +140,9 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
         (provider ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
         evaluator, expiredAt,
         `${title} — ${description}`.slice(0, 512),
-        "0x0000000000000000000000000000000000000000" as `0x${string}`,
+        // 152-4: IACPHook address when hook fee mode is configured.
+        (econ.feeHook ??
+          "0x0000000000000000000000000000000000000000") as `0x${string}`,
       ],
     } as never);
     const budgetBase = parseUnits(String(budgetUsdc), 6);
@@ -148,38 +164,7 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     });
   });
 
-  // POST /api/venue/jobs/:id/tx — attach broadcast tx hash for a phase.
-  app.post("/api/venue/jobs/:id/tx", dr("Attach tx hash to job phase"), async (c) => {
-    const job = getJob(c.req.param("id"));
-    if (!job) {
-      return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "unknown jobId");
-    }
-    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
-    const hash = str(body?.hash, 66);
-    const phase = str(body?.phase, 20);
-    if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash)) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "hash must be 0x<64hex>");
-    }
-    if (!phase || !(TX_PHASES as readonly string[]).includes(phase)) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
-        "phase ∈ {created,funded,submitted,completed}");
-    }
-    job.chainTxs[phase as keyof VenueJob["chainTxs"]] = hash;
-    if (phase === "created" && job.status === "pending") job.status = "open";
-    if (phase === "created" && job.onchainJobId == null) {
-      const id = await txJobId(hash as `0x${string}`, net());
-      if (id != null) job.onchainJobId = id;
-    }
-    upsertJob(job);
-    recordVenueEvent({
-      action: "job.tx",
-      text: `job ${job.jobId} — ${phase} tx confirmed`,
-      jobId: job.jobId,
-      tx: hash,
-      dedupeKey: `job.tx:${job.jobId}:${phase}`,
-    });
-    return c.json({ job });
-  });
+  // POST /jobs/:id/tx (attach tx) lives in venue-api-lifecycle.ts — max-lines.
 
   // GET /api/venue/jobs/:id/status — onchain pull (F1), syncs store.
   app.get("/api/venue/jobs/:id/status", dr("Pull onchain job status"), async (c) => {
@@ -212,6 +197,7 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   registerLifecycleRoutes(app, {
     network: net,
     onchainJob,
+    txJobId,
     sendTx: deps.sendTx,
     sendFeedback: deps.sendFeedback,
     providerAgentId: deps.providerAgentId,
@@ -251,6 +237,26 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       usdcVolume: jobs.reduce((s, j) => s + j.budgetUsdc, 0),
       providers: listOffers().length,
       attestations: attestStore.size(),
+    });
+  });
+
+  // GET /api/venue/economics — public fee transparency (152-4).
+  app.get("/api/venue/economics", dr("Venue economics config"), (c) => {
+    const econ = venueEconomics();
+    const n = net();
+    const modes = {
+      hook: econ.feeHook != null,
+      sweep: econ.treasury != null && econ.takeRateBps > 0,
+      none: true,
+    };
+    return c.json({
+      network: n.name,
+      takeRateBps: econ.takeRateBps,
+      evalFeeAtomic: econ.evalFeeAtomic.toString(),
+      treasury: econ.treasury,
+      feeHook: econ.feeHook,
+      feeModes: modes,
+      docs: "hook=onchain IACPHook split · sweep=post-settlement transfer from server provider EOA · none=external provider",
     });
   });
 
