@@ -113,6 +113,8 @@ export function venueHubPage(
     usdcVolume: number;
     providers: number;
     attestations: number;
+    /** Onchain feedback sent — grant hero figure (152-7). */
+    feedback?: number;
   },
   net: VenueNetwork,
   activity: VenueActivityViewItem[] = [],
@@ -134,11 +136,12 @@ export function venueHubPage(
         ${net.name}.
       </p>
       ${raw(venueTabs("jobs"))}
-      <div class="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
-        ${raw(stat("open jobs", stats.jobsOpen, "/market/jobs?status=open"))}
+      <div class="mt-8 grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        ${raw(stat("jobs", stats.jobs, "/market/jobs"))}
+        ${raw(stat("open", stats.jobsOpen, "/market/jobs?status=open"))}
         ${raw(stat("USDC volume", `$${stats.usdcVolume}`, "/market/jobs"))}
         ${raw(stat("providers", stats.providers, "/market/providers"))}
-        ${raw(stat("attestations", stats.attestations, "/market/attestations"))}
+        ${raw(stat("feedback", stats.feedback ?? 0, "/market/jobs?status=completed"))}
       </div>
       <div class="mt-10">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Recent activity</h2>

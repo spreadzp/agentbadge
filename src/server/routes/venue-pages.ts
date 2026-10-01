@@ -137,6 +137,8 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
             usdcVolume: jobs.reduce((s, j) => s + j.budgetUsdc, 0),
             providers: listOffers().length,
             attestations: attestStore.size(),
+            feedback: jobs.filter((j) => j.feedback?.status === "sent")
+              .length,
           },
           net(),
           activity,

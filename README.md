@@ -125,7 +125,7 @@ curl -X POST https://agentbadge.xyz/api/attestations \
 | **ServicePass NFTs** | `MarketplacePassNFT` — time-boxed access, `hasAccess` gate | Live on mainnet |
 | **Passports** | `AgentPassportNFT` — ERC-8004-compatible agent identity | Live on mainnet |
 | **bstock feed** | Realtime market data namespace (`/mcp/bstock/*`) | Live |
-| **Venue / jobs board** | ERC-8183 escrow jobs, provider offers, attestations — [`/market`](https://agentbadge.xyz/market) hub | Live on mainnet |
+| **Venue / jobs board** | ERC-8183 escrow jobs, provider offers (ERC-8004 gated), reputation feedback, attestations — [`/market`](https://agentbadge.xyz/market) hub with live stats; [public API](#venue) `GET /api/venue/{stats,jobs,offers,providers}` | Live on mainnet |
 
 <details>
 <summary>**Roadmap**</summary>
