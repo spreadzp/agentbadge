@@ -215,6 +215,10 @@ export interface EaasEnvConfig {
   maxBytes: number;
   /** SLICE-154-2: per-consumer + global requests/min cap (ARC_EAAS_RATE_RPM). */
   rateRpm: number;
+  /** SLICE-154-3: fee per external-job evaluate (ARC_EAAS_EVAL_USD). */
+  evalUsd: string;
+  /** SLICE-154-3: settle tx aborts when estimateGas > cap (ARC_EAAS_GAS_CAP). */
+  gasCap: number;
 }
 
 /**

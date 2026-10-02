@@ -78,6 +78,10 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
   const maxBytes = intVar("ARC_EAAS_MAX_BYTES", 65_536, 1, errors);
   const rateRpm = intVar("ARC_EAAS_RATE_RPM", 60, 1, errors);
 
+  // SLICE-154-3: external job evaluation — $0.10 fee, 500k gas cap.
+  const evalUsd = atomicPrice("ARC_EAAS_EVAL_USD", "100000", errors);
+  const gasCap = intVar("ARC_EAAS_GAS_CAP", 500_000, 1, errors);
+
   if (!signerKey) return undefined;
   return {
     enabled: true,
@@ -87,5 +91,7 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
     scanUsd,
     maxBytes,
     rateRpm,
+    evalUsd,
+    gasCap,
   };
 }

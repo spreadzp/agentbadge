@@ -87,7 +87,7 @@ export function resolveVenueNetwork(): VenueNetwork {
 
 let _client: { network: VenueNetworkName; pub: PublicClient } | null = null;
 
-function publicClient(net: VenueNetwork): PublicClient {
+export function publicClient(net: VenueNetwork): PublicClient {
   if (!_client || _client.network !== net.name) {
     _client = {
       network: net.name,
