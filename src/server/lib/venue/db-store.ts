@@ -73,17 +73,19 @@ export class PrismaVenueStore implements VenueStoreBackend {
 
   /** Hydrate mirror from Postgres (schema arrives via `db migrate`). */
   private async init(): Promise<void> {
+    // json columns arrive driver-parsed (objects), so select them ::text
+    // with pg/text@1 and JSON.parse here — pg/json@1 would double-parse.
     const jobsPlan = this.db.raw
-      .sql`SELECT "payload" FROM "venueJob"`
-      .returnsRow({ payload: "pg/json@1" })
+      .sql`SELECT "payload"::text AS payload FROM "venueJob"`
+      .returnsRow({ payload: "pg/text@1" })
       .build();
     const offersPlan = this.db.raw
-      .sql`SELECT "id", "payload" FROM "venueOffer"`
-      .returnsRow({ id: "pg/text@1", payload: "pg/json@1" })
+      .sql`SELECT "id", "payload"::text AS payload FROM "venueOffer"`
+      .returnsRow({ id: "pg/text@1", payload: "pg/text@1" })
       .build();
     const metaPlan = this.db.raw
-      .sql`SELECT "key", "value" FROM "venueMeta"`
-      .returnsRow({ key: "pg/text@1", value: "pg/json@1" })
+      .sql`SELECT "key", "value"::text AS value FROM "venueMeta"`
+      .returnsRow({ key: "pg/text@1", value: "pg/text@1" })
       .build();
 
     const [jobs, offers, meta] = await Promise.all([
@@ -92,15 +94,18 @@ export class PrismaVenueStore implements VenueStoreBackend {
       this.db.runtime().query(metaPlan),
     ]);
 
-    for (const row of jobs as { payload: VenueJob }[]) {
-      const job = row.payload;
+    for (const row of jobs as { payload: string }[]) {
+      const job = JSON.parse(row.payload) as VenueJob;
       this.mirror.jobs.set(job.jobId, job);
     }
-    for (const row of offers as { id: string; payload: VenueOffer }[]) {
-      this.mirror.offers.set(String(row.id), normalizeOffer(row.payload));
+    for (const row of offers as { id: string; payload: string }[]) {
+      this.mirror.offers.set(
+        String(row.id),
+        normalizeOffer(JSON.parse(row.payload) as VenueOffer),
+      );
     }
-    for (const row of meta as { key: string; value: unknown }[]) {
-      this.mirror.meta.set(String(row.key), row.value);
+    for (const row of meta as { key: string; value: string }[]) {
+      this.mirror.meta.set(String(row.key), JSON.parse(row.value));
     }
     logger.info("venue: db-store hydrated", {
       jobs: this.mirror.jobs.size,
