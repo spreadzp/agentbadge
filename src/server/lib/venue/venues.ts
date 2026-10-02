@@ -21,6 +21,16 @@ import { getVenueMeta, setVenueMeta } from "./store";
 export const PUBLIC_VENUE_ID = "public";
 const REGISTRY_KEY = "venue:registry";
 
+/** 153-4: venue policies the owner/delegates can tune (D6-153). */
+export interface VenuePolicies {
+  /** Who verifies jobs — server EOA (default), owner wallet, or custom addr. */
+  evaluator?: "server" | "owner" | `custom:${string}`;
+  /** 153-5 placeholder: venue take-rate override (bps). */
+  takeRateBps?: number;
+  /** MVP branding fields for the landing page. */
+  branding?: { title?: string; color?: string; logoUrl?: string };
+}
+
 export interface VenueRecord {
   /** vn_<hex>; "public" is reserved for the platform venue. */
   id: string;
@@ -36,6 +46,8 @@ export interface VenueRecord {
   requiredClass?: number;
   /** 153-2: who may post jobs — "members" (default) or "open". */
   clientPolicy?: "members" | "open";
+  /** 153-4: evaluator/take-rate/branding policies (admin-patched). */
+  policies?: VenuePolicies;
   createdAt: number;
   active: boolean;
 }
@@ -158,6 +170,7 @@ export function updateVenue(
       | "active"
       | "requiredClass"
       | "clientPolicy"
+      | "policies"
     >
   >,
 ): VenueRecord | undefined {
@@ -173,4 +186,30 @@ export function updateVenue(
 /** Effective venueId of a record — legacy rows default to "public". */
 export function venueIdOf(rec: { venueId?: string }): string {
   return rec.venueId ?? PUBLIC_VENUE_ID;
+}
+
+// ─── 153-4: admin audit trail (meta lane) ────────────────────────
+
+export interface AdminAuditEntry {
+  ts: number;
+  actor: string;
+  field: string;
+  old?: unknown;
+  new?: unknown;
+}
+
+const auditKey = (venueId: string) => `venue:audit:${venueId}`;
+const AUDIT_CAP = 200;
+
+export function listAdminAudit(venueId: string): AdminAuditEntry[] {
+  return getVenueMeta<AdminAuditEntry[]>(auditKey(venueId)) ?? [];
+}
+
+/** Append {ts, actor, field, old, new} — oldest entries evicted past cap. */
+export function appendAdminAudit(
+  venueId: string,
+  entry: Omit<AdminAuditEntry, "ts">,
+): void {
+  const log = [...listAdminAudit(venueId), { ts: Date.now(), ...entry }];
+  setVenueMeta(auditKey(venueId), log.slice(-AUDIT_CAP));
 }

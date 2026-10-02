@@ -14,11 +14,14 @@ import type { VenueNetwork } from "../lib/venue/chain";
 import { resolveVenueNetwork } from "../lib/venue/chain";
 import {
   getVenue,
+  listAdminAudit,
   listVenues,
   PUBLIC_VENUE_ID,
 } from "../lib/venue/venues";
 import { venueInstancePage, venuePrivatePage } from "../../views/venue-instance";
-import { venueRole } from "../lib/venue/members";
+import { venueAdminPage } from "../../views/venue-admin";
+import { venueHasRole, listVenueMembers, venueRole } from "../lib/venue/members";
+import { venueEvaluator } from "./venue-api-helpers";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 
@@ -63,6 +66,40 @@ export function registerVenueInstancePageRoutes(
       return c.html(
         venueInstancePage(venue, jobs, offers, listVenues(), net()),
       );
+    },
+  );
+
+  // GET /market/v/:slug/admin — 153-4 admin console (admin+ only).
+  app.get(
+    "/market/v/:slug/admin",
+    describeRoute({
+      tags: ["Venue"],
+      summary: "Venue admin console (admin+ wallet)",
+      responses: {
+        200: { description: "HTML page" },
+        403: { description: "Not an admin" },
+        404: { description: "Unknown venue slug" }
+      },
+    }),
+    (c) => {
+      const venue = getVenue(c.req.param("slug"));
+      if (!venue || venue.kind !== "business") {
+        return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
+          "venue not found");
+      }
+      const viewer = c.req.header("x-wallet");
+      if (!viewer || !venueHasRole(venue, viewer, "admin")) {
+        return c.html(venuePrivatePage(venue, listVenues(), net()), 403);
+      }
+      return c.html(venueAdminPage(
+        venue,
+        listVenueMembers(venue.id, { includeRevoked: true }),
+        listJobs({ venueId: venue.id }),
+        listAdminAudit(venue.id),
+        listVenues(),
+        net(),
+        venueEvaluator(),
+      ));
     },
   );
 }

@@ -30,6 +30,26 @@ export function venueEvaluator(): `0x${string}` {
     "0x0000000000000000000000000000000000000000") as `0x${string}`;
 }
 
+/**
+ * 153-4: evaluator policy resolution (D6-153). Business venues pin the
+ * createJob evaluator to policies.evaluator — "server" (default → server
+ * EOA), "owner" → ownerWallet, "custom:<addr>" → that address. The stored
+ * job.evaluator is then enforced by actorAllowed on evaluate/reject, so a
+ * non-policy signer gets 403 (or calldata to broadcast from the policy addr).
+ */
+export function resolveVenueEvaluator(
+  venue: { policies?: { evaluator?: string }; ownerWallet: `0x${string}` } |
+    undefined,
+): `0x${string}` {
+  const p = venue?.policies?.evaluator ?? "server";
+  if (p === "owner" && venue) return venue.ownerWallet;
+  if (p.startsWith("custom:")) {
+    const addr = p.slice(7);
+    if (isAddress(addr)) return getAddress(addr);
+  }
+  return venueEvaluator();
+}
+
 export function str(v: unknown, max: number): string | null {
   return typeof v === "string" && v.trim().length > 0 && v.length <= max
     ? v.trim()

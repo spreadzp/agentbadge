@@ -34,7 +34,11 @@ import {
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { recordVenueEvent } from "../services/venue-events";
-import { signedJson, str, venueEvaluator } from "./venue-api-helpers";
+import {
+  resolveVenueEvaluator,
+  signedJson,
+  str,
+} from "./venue-api-helpers";
 import { venueScopeOr404 } from "./venue-api-instances";
 
 export async function createVenueJob(
@@ -71,7 +75,9 @@ export async function createVenueJob(
   const isBusiness = venue?.kind === "business";
 
   const n = net(), econ = venueEconomics();
-  const evaluator = venueEvaluator();
+  // 153-4: business venues pin the evaluator to policies.evaluator —
+  // evaluate/reject then requires that wallet (actorAllowed on job.evaluator).
+  const evaluator = resolveVenueEvaluator(isBusiness ? venue : undefined);
   const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400);
   const jobId = `vj_${randomBytes(8).toString("hex")}`;
   const job: VenueJob = {

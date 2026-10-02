@@ -38,6 +38,7 @@ import {
   venueScope,
 } from "./venue-api-instances";
 import { registerVenueInstancePrivateRoutes } from "./venue-api-instances-private";
+import { registerVenueAdminRoutes } from "./venue-api-admin";
 import { createVenueJob } from "./venue-job-create";
 import {
   ERC8183_STATUS,
@@ -139,6 +140,8 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   registerVenueInstanceRoutes(app);
   // 153-3: scoped private-job create + verify-commitment — venue-api-instances-private.ts
   registerVenueInstancePrivateRoutes(app, net);
+  // 153-4: admin console routes — PATCH :id, GET :id/admin, POST :id/delegates
+  registerVenueAdminRoutes(app);
 
   // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
   registerVenueIndexerRoutes(app, { indexer: deps.indexer });
