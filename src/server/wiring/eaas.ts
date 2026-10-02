@@ -11,10 +11,11 @@
 // key is configured — without it there is no settler EOA.
 
 import { createWalletClient, http } from "viem";
+import type { Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hono } from "hono";
 import { logger } from "@agentbadge/passport";
-import { createErc8183 } from "@agentbadge/circle-payments";
+import { createErc8183, MEMO_ABI } from "@agentbadge/circle-payments";
 import { getConfig } from "../../config/env";
 import { arcChainFor } from "../lib/marketplace/chain";
 import { createVerdictSigner } from "../lib/eaas/verdict";
@@ -25,6 +26,10 @@ import {
   createJsonContractStore,
 } from "../lib/eaas/contracts";
 import { createJsonEvalStore } from "../lib/eaas/eval";
+import {
+  createAnchorer,
+  createJsonAnchorStore,
+} from "../lib/eaas/anchor";
 import { createEaasRoutes } from "../routes/eaas-api";
 import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
@@ -60,6 +65,74 @@ export function wireEaas(
     return;
   }
 
+  // Chain pieces — needed by both the jobs evaluator and the anchorer.
+  const key = evaluatorKey();
+  const net = resolveVenueNetwork();
+  const chain = arcChainFor(getConfig().bstock?.arcNetwork ?? net.chain.caip2);
+  const read = publicClient(net);
+  const account = key ? privateKeyToAccount(key) : null;
+  const wallet =
+    key && account
+      ? createWalletClient({
+        account,
+        chain,
+        transport: http(net.chain.rpcUrl),
+      })
+      : null;
+
+  // ─── SLICE-154-4: onchain memo anchoring ───────────────────────
+  let anchorer: ReturnType<typeof createAnchorer> | undefined;
+  let anchorStore: ReturnType<typeof createJsonAnchorStore> | undefined;
+  if (cfg.memoAnchor && wallet && account) {
+    anchorStore = createJsonAnchorStore(".data/eaas-anchors.json");
+    anchorer = createAnchorer({
+      store: anchorStore,
+      verdicts: store,
+      memo: net.memo,
+      selfAddress: account.address,
+      send: async (tx) => {
+        const txHash = await wallet!.sendTransaction({
+          account: account!,
+          to: tx.to,
+          data: tx.data,
+          chain,
+        });
+        const receipt = await read.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+          throw new Error("anchor tx reverted");
+        }
+        return { txHash, blockNumber: receipt.blockNumber };
+      },
+      retries: cfg.anchorRetries,
+      backoffMs: 5_000,
+    });
+    anchorer.resumePending();
+  } else if (cfg.memoAnchor) {
+    logger.warn(
+      "EaaS memo anchoring ON but no evaluator key — anchors disabled",
+    );
+  }
+
+  // Public verify reads the memo by memoId: getLogs(Memo, memoId) → block time.
+  const findAnchor = async (memoId: Hex) => {
+    const logs = await read.getLogs({
+      address: net.memo,
+      event: MEMO_ABI[2],
+      args: { memoId },
+    });
+    const log = logs[0];
+    if (!log) return null;
+    const block = await read
+      .getBlock({ blockNumber: log.blockNumber })
+      .catch(() => null);
+    return {
+      txHash: log.transactionHash,
+      blockNumber: log.blockNumber,
+      memoData: (log.args as unknown as { memo: Hex }).memo,
+      ...(block ? { blockTime: Number(block.timestamp) } : {}),
+    };
+  };
+
   app.route(
     "/",
     createEaasRoutes({
@@ -70,25 +143,25 @@ export function wireEaas(
       rateRpm: cfg.rateRpm,
       signer,
       store,
+      ...(anchorer && anchorStore
+        ? {
+          anchor: {
+            anchorer,
+            store: anchorStore,
+            find: findAnchor,
+            explorerTx: net.explorerTx,
+          },
+        }
+        : {}),
     }),
   );
 
   // ─── SLICE-154-3: external job evaluation ──────────────────────
-  const key = evaluatorKey();
-  if (!key) {
+  if (!key || !wallet || !account) {
     logger.warn(
       "EaaS jobs API NOT mounted — ARC_EVALUATOR_KEY/DEPLOYER_PRIVATE_KEY missing",
     );
   } else {
-    const net = resolveVenueNetwork();
-    const chain = arcChainFor(getConfig().bstock?.arcNetwork ?? net.chain.caip2);
-    const read = publicClient(net);
-    const account = privateKeyToAccount(key);
-    const wallet = createWalletClient({
-      account,
-      chain,
-      transport: http(net.chain.rpcUrl),
-    });
 
     const contracts = createContractRegistry({
       store: createJsonContractStore(".data/eaas-contracts.json"),
@@ -124,6 +197,7 @@ export function wireEaas(
         policy: POLICY_REGISTRY,
         signer,
         verdictStore: store,
+        ...(anchorer ? { anchorer } : {}),
         reputation: {
           registry: net.reputationRegistry,
           memo: net.memo,
@@ -163,5 +237,6 @@ export function wireEaas(
     scanUsd: cfg.scanUsd,
     store: store.name,
     chainId,
+    memoAnchor: cfg.memoAnchor && !!anchorer,
   });
 }

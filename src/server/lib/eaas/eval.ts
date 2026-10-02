@@ -34,6 +34,7 @@ import {
   type VerdictSigner,
 } from "./verdict";
 import type { StoredVerdict, VerdictStoreBackend } from "./store";
+import type { VerdictAnchorer } from "./anchor";
 import type { EaasContract } from "./contracts";
 import {
   evalJobKey,
@@ -92,6 +93,8 @@ export interface EvaluateJobDeps {
   reputation?: { registry: `0x${string}`; memo: `0x${string}` };
   /** Sender for the feedback tx (evaluator EOA). */
   sendTx?: (tx: { to: `0x${string}`; data: Hex }) => Promise<Hex>;
+  /** SLICE-154-4: onchain memo anchor — absent = anchoring disabled. */
+  anchorer?: Pick<VerdictAnchorer, "enqueue">;
   now?: () => number;
 }
 
@@ -119,12 +122,12 @@ function makeVerify(input: EvaluateJobInput, deps: EvaluateJobDeps) {
       (input.deliverableUri
         ? { uri: input.deliverableUri }
         : {
-            data: {
-              contract: input.contract.address,
-              jobId: job.id.toString(),
-              description: job.description,
-            },
-          });
+          data: {
+            contract: input.contract.address,
+            jobId: job.id.toString(),
+            description: job.description,
+          },
+        });
     try {
       return await policy({
         deliverable,
@@ -201,11 +204,11 @@ export async function evaluateExternalJob(
   const wallet =
     deps.estimateGas && deps.gasCap > 0
       ? gasCappedWallet(
-          deps.wallet,
-          deps.settlerAddress,
-          deps.estimateGas,
-          BigInt(deps.gasCap),
-        )
+        deps.wallet,
+        deps.settlerAddress,
+        deps.estimateGas,
+        BigInt(deps.gasCap),
+      )
       : deps.wallet;
 
   const evaluator = createEvaluator({
@@ -289,6 +292,9 @@ export async function evaluateExternalJob(
     ...(feedbackTx ? { feedbackTx } : {}),
     ...(input.paymentTx ? { paymentTx: input.paymentTx } : {}),
   } satisfies EvalJobRecord);
+
+  // SLICE-154-4: fire-and-forget onchain anchor (async, retried).
+  deps.anchorer?.enqueue(stored);
 
   return { verdict, artifact, ...(feedbackTx ? { feedbackTx } : {}) };
 }

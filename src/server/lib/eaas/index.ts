@@ -21,6 +21,7 @@ import {
   type VerdictSigner,
 } from "./verdict";
 import type { StoredVerdict, VerdictStoreBackend } from "./store";
+import type { VerdictAnchorer } from "./anchor";
 
 export interface IssueVerdictRequest {
   /** POLICY_REGISTRY key — unknown names throw UnknownPolicyError. */
@@ -46,6 +47,8 @@ export interface EaasServiceDeps {
   registry?: Record<string, PolicyFn>;
   /** Clock override for deterministic tests. */
   now?: () => Date;
+  /** SLICE-154-4: onchain memo anchor — absent = anchoring disabled. */
+  anchorer?: Pick<VerdictAnchorer, "enqueue">;
 }
 
 export interface IssueVerdictResult {
@@ -110,6 +113,9 @@ export async function issueVerdict(
     evidence: result.evidence,
   };
   deps.store.put(stored);
+
+  // SLICE-154-4: fire-and-forget onchain anchor — never blocks the response.
+  deps.anchorer?.enqueue(stored);
 
   return { artifact, duplicate: false };
 }

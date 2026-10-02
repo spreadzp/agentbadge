@@ -219,6 +219,10 @@ export interface EaasEnvConfig {
   evalUsd: string;
   /** SLICE-154-3: settle tx aborts when estimateGas > cap (ARC_EAAS_GAS_CAP). */
   gasCap: number;
+  /** SLICE-154-4: anchor each verdict in an onchain memo (ARC_EAAS_MEMO_ANCHOR, default 1). */
+  memoAnchor: boolean;
+  /** SLICE-154-4: anchor retry attempts before status "failed" (ARC_EAAS_ANCHOR_RETRIES). */
+  anchorRetries: number;
 }
 
 /**

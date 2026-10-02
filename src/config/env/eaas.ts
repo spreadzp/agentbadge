@@ -13,6 +13,10 @@
  *     scan overrides the flat verdict price for the "readiness-scan" policy.
  *   ARC_EAAS_MAX_BYTES — deliverable.data cap (default 65536).
  *   ARC_EAAS_RATE_RPM — per-consumer AND global requests/min cap (default 60).
+ *
+ * SLICE-154-4 onchain anchoring:
+ *   ARC_EAAS_MEMO_ANCHOR — 0 disables memo anchoring (default enabled).
+ *   ARC_EAAS_ANCHOR_RETRIES — send attempts before status "failed" (default 3).
  */
 
 import type { EaasEnvConfig } from "./types";
@@ -82,6 +86,10 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
   const evalUsd = atomicPrice("ARC_EAAS_EVAL_USD", "100000", errors);
   const gasCap = intVar("ARC_EAAS_GAS_CAP", 500_000, 1, errors);
 
+  // SLICE-154-4: onchain memo anchoring — on by default; explicit "0" off.
+  const memoAnchor = (process.env.ARC_EAAS_MEMO_ANCHOR ?? "1") !== "0";
+  const anchorRetries = intVar("ARC_EAAS_ANCHOR_RETRIES", 3, 1, errors);
+
   if (!signerKey) return undefined;
   return {
     enabled: true,
@@ -93,5 +101,7 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
     rateRpm,
     evalUsd,
     gasCap,
+    memoAnchor,
+    anchorRetries,
   };
 }

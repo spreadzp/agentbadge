@@ -15,7 +15,7 @@
  *    VERDICT_DOMAIN + VERDICT_TYPES, см. lib/eaas/verdict.ts)
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import type { Hex } from "viem";
 import type { PolicyFn } from "../lib/eaas/policies";
@@ -24,6 +24,11 @@ import {
   verifyVerdictSignature,
   type VerdictSigner,
 } from "../lib/eaas/verdict";
+import type {
+  AnchorStore,
+  FindAnchorFn,
+  VerdictAnchorer,
+} from "../lib/eaas/anchor";
 import {
   issueVerdict,
   type EaasServiceDeps,
@@ -56,6 +61,17 @@ export interface EaasRoutesDeps {
   store: VerdictStoreBackend;
   registry?: Record<string, PolicyFn>;
   now?: () => Date;
+  /**
+   * SLICE-154-4: memo anchoring — absent = anchor fields omitted from
+   * verify responses (feature off). enqueue is forwarded into the
+   * verdict service so issued artifacts anchor asynchronously.
+   */
+  anchor?: {
+    anchorer: Pick<VerdictAnchorer, "enqueue">;
+    store: AnchorStore;
+    find: FindAnchorFn;
+    explorerTx?: (txHash: string) => string;
+  };
 }
 
 /* --------------------------------- routes --------------------------------- */
@@ -71,6 +87,7 @@ export function createEaasRoutes(
     store: deps.store,
     ...(deps.registry ? { registry: deps.registry } : {}),
     ...(deps.now ? { now: deps.now } : {}),
+    ...(deps.anchor ? { anchorer: deps.anchor.anchorer } : {}),
   };
 
   // Payment middleware per price tier — created lazily, cached.
@@ -156,28 +173,83 @@ export function createEaasRoutes(
     },
   );
 
+  // SLICE-154-4: public verify — offline signature + onchain memo anchor.
+  // Rate-limited: it's an unauthenticated "facade of trust" for third parties.
+  const verifyHandler = async (c: Context<{ Variables: EaasVariables }>) => {
+    if (!limiter.allow(`verify:${consumerKey(c)}`)) {
+      return c.json({ error: "rate limit exceeded" }, 429);
+    }
+    const id = c.req.param("verdictId") ?? "";
+    if (!HEX32_RE.test(id)) return bad(c, "invalid verdictId");
+    const stored = deps.store.get(id as Hex);
+    if (!stored) return c.json({ error: "verdict not found" }, 404);
+    const signatureValid = verifyVerdictSignature(stored.artifact);
+
+    const anchor: Record<string, unknown> = {
+      found: false,
+      contextMatches: false,
+      status: "none",
+    };
+    let explorerUrl: string | undefined;
+    if (deps.anchor) {
+      const rec = deps.anchor.store.get(id as Hex);
+      anchor.status = rec?.status ?? "none";
+      const txHash = rec?.txHash;
+      let hit = null;
+      if (rec) {
+        try {
+          hit = await deps.anchor.find(rec.memoId);
+        } catch {
+          hit = null; // RPC hiccup → report found:false, never 5xx
+        }
+      }
+      if (rec) anchor.memoId = rec.memoId;
+      if (hit || txHash) {
+        anchor.found = hit != null || rec?.status === "anchored";
+        anchor.txHash = hit?.txHash ?? txHash;
+        anchor.contextMatches = hit ? hit.memoData === rec?.artifactHash : false;
+        if (hit?.blockTime !== undefined) anchor.blockTime = hit.blockTime;
+        const tx = (hit?.txHash ?? txHash) as string | undefined;
+        if (tx && deps.anchor.explorerTx) explorerUrl = deps.anchor.explorerTx(tx);
+      }
+    }
+
+    return c.json({
+      valid: signatureValid,
+      signatureValid,
+      signer: stored.artifact.evaluator,
+      chainId: stored.artifact.chainId,
+      anchor,
+      ...(explorerUrl ? { explorerUrl } : {}),
+    });
+  };
+
   routes.get(
     "/api/eaas/verdicts/:verdictId/verify",
     describeRoute({
       description:
-        "Server-side signature check; artifact itself is self-verifiable offline via EIP-712",
+        "Verify a VerdictArtifact: offline EIP-712 signature check + onchain memo anchor lookup (public, rate-limited)",
       responses: {
-        200: { description: "{valid, signer, chainId}" },
+        200: { description: "{signatureValid, signer, chainId, anchor, explorerUrl?}" },
         404: { description: "Not found" },
+        429: { description: "Rate limit exceeded" },
       },
     }),
-    (c) => {
-      const id = c.req.param("verdictId");
-      if (!HEX32_RE.test(id)) return bad(c, "invalid verdictId");
-      const stored = deps.store.get(id as Hex);
-      if (!stored) return c.json({ error: "verdict not found" }, 404);
-      const valid = verifyVerdictSignature(stored.artifact);
-      return c.json({
-        valid,
-        signer: stored.artifact.evaluator,
-        chainId: stored.artifact.chainId,
-      });
-    },
+    verifyHandler,
+  );
+
+  // Spec-named alias — same handler.
+  routes.get(
+    "/api/eaas/verify/:verdictId",
+    describeRoute({
+      description: "Alias of /api/eaas/verdicts/:verdictId/verify",
+      responses: {
+        200: { description: "{signatureValid, signer, chainId, anchor, explorerUrl?}" },
+        404: { description: "Not found" },
+        429: { description: "Rate limit exceeded" },
+      },
+    }),
+    verifyHandler,
   );
 
   return routes;
