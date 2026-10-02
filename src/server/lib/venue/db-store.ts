@@ -1,5 +1,12 @@
 /**
  * SLICE-152-5: VenueStore prisma backend (D5-152 read path = our index).
+ * SLICE-152-9: fixed raw-lane usage — `db.raw.sql` is a tagged template:
+ * `${value}` interpolates as a bind parameter ($N), so whole-statement
+ * interpolation (`sql`${sql}``) produced `syntax error at or near "$1"`.
+ * All queries are now literal templates with per-value interpolation.
+ * Table DDL moved out of init — schema is owned by committed migrations
+ * (packages/database `prisma db migrate`, venue models landed in
+ * migrations/app/20261002T1019_add_venue_models).
  *
  * VenueStore API is synchronous — every route reads inline — so this backend
  * keeps an in-memory mirror hydrated from Postgres at init and write-behind
@@ -10,14 +17,11 @@
  * Requires DATABASE_ENABLED + DATABASE_URL — createVenueDbStore() returns
  * null when the database section is off and the caller falls back to json.
  *
- * Persistence goes through the prisma-orm raw SQL lane — the venue contract
- * models (VenueJob/VenueOffer/VenueMeta in @agentbadge/database) land with the
- * next package publish; the raw lane works against any DATABASE_URL today.
- * Table DDL is applied at init (CREATE TABLE IF NOT EXISTS) so a fresh env
- * boots without a migration run; `prisma db migrate` remains the canonical
- * path for schema evolution.
+ * Contract table names are camelCase (`venueJob`/`venueOffer`/`venueMeta`)
+ * per packages/database/src/prisma/contract.prisma.
  */
-import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
+import { randomUUID } from "node:crypto";
+import { param } from "@prisma/orm-postgres/relational-core/expression";
 import { logger } from "@agentbadge/passport";
 
 import { getDatabase } from "../database";
@@ -30,36 +34,6 @@ import type {
 
 type Db = NonNullable<ReturnType<typeof getDatabase>["db"]>;
 
-const DDL = `
-CREATE TABLE IF NOT EXISTS "VenueJob" (
-  "id"        TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "jobId"     TEXT NOT NULL UNIQUE,
-  "status"    TEXT NOT NULL,
-  "client"    TEXT NOT NULL,
-  "provider"  TEXT,
-  "payload"   JSONB NOT NULL,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
-  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS "VenueJob_status_createdAt_idx" ON "VenueJob" ("status", "createdAt");
-CREATE INDEX IF NOT EXISTS "VenueJob_client_idx" ON "VenueJob" ("client");
-CREATE TABLE IF NOT EXISTS "VenueOffer" (
-  "id"              TEXT PRIMARY KEY,
-  "providerAddress" TEXT NOT NULL,
-  "active"          BOOLEAN NOT NULL DEFAULT true,
-  "payload"         JSONB NOT NULL,
-  "createdAt"       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  "updatedAt"       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS "VenueOffer_providerAddress_active_idx"
-  ON "VenueOffer" ("providerAddress", "active");
-CREATE TABLE IF NOT EXISTS "VenueMeta" (
-  "key"       TEXT PRIMARY KEY,
-  "value"     JSONB NOT NULL,
-  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-`;
-
 interface Mirror {
   jobs: Map<string, VenueJob>;
   offers: Map<string, VenueOffer>;
@@ -67,30 +41,8 @@ interface Mirror {
 }
 
 /**
- * Raw SQL helpers — prisma-orm raw lane: sql-tag → returnsRow/affectedCount
- * → build() → runtime().query/execute(plan). Payload columns carry the full
- * record as jsonb; indexed columns power stats queries.
- */
-async function rawQuery(
-  db: Db,
-  sql: string,
-  cols: Record<string, string>,
-): Promise<Record<string, unknown>[]> {
-  const plan = db.raw.sql`${sql}`.returnsRow(cols).build();
-  const rows = await db.runtime().query(plan);
-  return rows as Record<string, unknown>[];
-}
-
-async function rawExec(db: Db, sql: string): Promise<void> {
-  const plan = db.raw.sql`${sql}`.affectedCount().build();
-  await db.runtime().execute(plan);
-}
-
-const esc = (v: string) => `'${v.replace(/'/g, "''")}'`;
-
-/**
  * Build the prisma-backed store, or null when DATABASE is disabled.
- * Hydration + DDL kick off in the background; reads serve the mirror.
+ * Hydration kicks off in the background; reads serve the mirror.
  */
 export function createVenueDbStore(): VenueStoreBackend | null {
   const db = getDatabase().db;
@@ -119,37 +71,35 @@ export class PrismaVenueStore implements VenueStoreBackend {
     return this.initPromise;
   }
 
-  /** Idempotent table DDL + hydrate mirror. */
+  /** Hydrate mirror from Postgres (schema arrives via `db migrate`). */
   private async init(): Promise<void> {
-    try {
-      await rawExec(this.db, DDL);
-    } catch (err) {
-      logger.warn("venue: db-store DDL failed (tables may already exist)", {
-        err: String(err),
-      });
-    }
+    const jobsPlan = this.db.raw
+      .sql`SELECT "payload" FROM "venueJob"`
+      .returnsRow({ payload: "pg/json@1" })
+      .build();
+    const offersPlan = this.db.raw
+      .sql`SELECT "id", "payload" FROM "venueOffer"`
+      .returnsRow({ id: "pg/text@1", payload: "pg/json@1" })
+      .build();
+    const metaPlan = this.db.raw
+      .sql`SELECT "key", "value" FROM "venueMeta"`
+      .returnsRow({ key: "pg/text@1", value: "pg/json@1" })
+      .build();
+
     const [jobs, offers, meta] = await Promise.all([
-      rawQuery(this.db, `SELECT "payload" FROM "VenueJob"`, { payload: "pg/jsonb@1" }),
-      rawQuery(this.db, `SELECT "id", "payload" FROM "VenueOffer"`, {
-        id: "pg/text@1",
-        payload: "pg/jsonb@1",
-      }),
-      rawQuery(this.db, `SELECT "key", "value" FROM "VenueMeta"`, {
-        key: "pg/text@1",
-        value: "pg/jsonb@1",
-      }),
+      this.db.runtime().query(jobsPlan),
+      this.db.runtime().query(offersPlan),
+      this.db.runtime().query(metaPlan),
     ]);
-    for (const row of jobs) {
-      const job = row.payload as VenueJob;
+
+    for (const row of jobs as { payload: VenueJob }[]) {
+      const job = row.payload;
       this.mirror.jobs.set(job.jobId, job);
     }
-    for (const row of offers) {
-      this.mirror.offers.set(
-        String(row.id),
-        normalizeOffer(row.payload as VenueOffer),
-      );
+    for (const row of offers as { id: string; payload: VenueOffer }[]) {
+      this.mirror.offers.set(String(row.id), normalizeOffer(row.payload));
     }
-    for (const row of meta) {
+    for (const row of meta as { key: string; value: unknown }[]) {
       this.mirror.meta.set(String(row.key), row.value);
     }
     logger.info("venue: db-store hydrated", {
@@ -180,15 +130,20 @@ export class PrismaVenueStore implements VenueStoreBackend {
 
   upsertJob(job: VenueJob): void {
     this.mirror.jobs.set(job.jobId, job);
-    const sql =
-      `INSERT INTO "VenueJob" ("jobId","status","client","provider","payload","updatedAt")` +
-      ` VALUES (${esc(job.jobId)},${esc(job.status)},${esc(job.client)},` +
-      `${job.provider ? esc(job.provider) : "NULL"},` +
-      `${esc(JSON.stringify(job))}::jsonb, now())` +
-      ` ON CONFLICT ("jobId") DO UPDATE SET "status"=EXCLUDED."status",` +
-      ` "client"=EXCLUDED."client", "provider"=EXCLUDED."provider",` +
-      ` "payload"=EXCLUDED."payload", "updatedAt"=now()`;
-    this.enqueue(() => rawExec(this.db, sql));
+    const payload = JSON.stringify(job);
+    const provider = param(job.provider ?? null, {
+      codecId: "pg/text@1",
+    });
+    const plan = this.db.raw
+      .sql`INSERT INTO "venueJob" ("id","jobId","status","client","provider","payload","updatedAt")
+        VALUES (${randomUUID()}, ${job.jobId}, ${job.status}, ${job.client},
+          ${provider}, ${payload}::json, now())
+        ON CONFLICT ("jobId") DO UPDATE SET "status" = EXCLUDED."status",
+          "client" = EXCLUDED."client", "provider" = EXCLUDED."provider",
+          "payload" = EXCLUDED."payload", "updatedAt" = now()`
+      .affectedCount()
+      .build();
+    this.enqueue(() => this.db.runtime().execute(plan));
   }
 
   getJob(jobId: string): VenueJob | undefined {
@@ -215,13 +170,16 @@ export class PrismaVenueStore implements VenueStoreBackend {
   upsertOffer(offer: VenueOffer): void {
     const o = normalizeOffer(offer);
     this.mirror.offers.set(o.id, o);
-    const sql =
-      `INSERT INTO "VenueOffer" ("id","providerAddress","active","payload","updatedAt")` +
-      ` VALUES (${esc(o.id)},${esc(o.providerAddress)},${o.active},` +
-      `${esc(JSON.stringify(o))}::jsonb, now())` +
-      ` ON CONFLICT ("id") DO UPDATE SET "providerAddress"=EXCLUDED."providerAddress",` +
-      ` "active"=EXCLUDED."active", "payload"=EXCLUDED."payload", "updatedAt"=now()`;
-    this.enqueue(() => rawExec(this.db, sql));
+    const payload = JSON.stringify(o);
+    const plan = this.db.raw
+      .sql`INSERT INTO "venueOffer" ("id","providerAddress","active","payload","updatedAt")
+        VALUES (${o.id}, ${o.providerAddress}, ${o.active}, ${payload}::json, now())
+        ON CONFLICT ("id") DO UPDATE SET "providerAddress" = EXCLUDED."providerAddress",
+          "active" = EXCLUDED."active", "payload" = EXCLUDED."payload",
+          "updatedAt" = now()`
+      .affectedCount()
+      .build();
+    this.enqueue(() => this.db.runtime().execute(plan));
   }
 
   getOfferById(id: string): VenueOffer | undefined {
@@ -260,13 +218,14 @@ export class PrismaVenueStore implements VenueStoreBackend {
 
   setMeta(key: string, value: unknown): void {
     this.mirror.meta.set(key, value);
-    const sql =
-      `INSERT INTO "VenueMeta" ("key","value","updatedAt")` +
-      ` VALUES (${esc(key)},${esc(JSON.stringify(value))}::jsonb, now())` +
-      ` ON CONFLICT ("key") DO UPDATE SET "value"=EXCLUDED."value",` +
-      ` "updatedAt"=now()`;
-    this.enqueue(() => rawExec(this.db, sql));
+    const payload = JSON.stringify(value ?? null);
+    const plan = this.db.raw
+      .sql`INSERT INTO "venueMeta" ("key","value","updatedAt")
+        VALUES (${key}, ${payload}::json, now())
+        ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value",
+          "updatedAt" = now()`
+      .affectedCount()
+      .build();
+    this.enqueue(() => this.db.runtime().execute(plan));
   }
 }
-
-export type { JsonValue };
