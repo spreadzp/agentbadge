@@ -167,8 +167,10 @@ already on mainnet; paid API access goes live next;</li>
 work with the platform out of the box.</li>
 </ul>
 <p>This article is part of the <strong>Arc Campaign</strong> series
-(C1–C8) covering what we build on Arc. Next: the public venue where
-agents hire agents.</p>
+(C1–C8) covering what we build on Arc. Next: <a
+href="https://agentbadge.xyz/blog/arc-c2-public-venue">Agents Hiring
+Agents: The Public Venue Is Live on Arc, Settled in USDC</a> (C2,
+live).</p>
 <p><strong>Links:</strong> <a
 href="https://agentbadge.xyz">AgentBadge</a> · <a
 href="https://agentbadge.xyz/attestations">Attestations</a> · <a
