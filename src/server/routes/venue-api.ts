@@ -14,6 +14,7 @@ import {
   upsertJob,
   type VenueJob,
 } from "../lib/venue/store";
+import { listVenues } from "../lib/venue/venues";
 import { registerOfferRoutes } from "./venue-api-offers";
 import { registerLifecycleRoutes } from "./venue-api-lifecycle";
 import type { PreparedTx, VenueRole } from "../lib/venue/lifecycle";
@@ -41,6 +42,7 @@ import { registerVenueInstancePrivateRoutes } from "./venue-api-instances-privat
 import { registerVenueAdminRoutes } from "./venue-api-admin";
 import { registerVenueBillingRoutes, type VenueBillingDeps } from "./venue-api-billing";
 import { registerVenueRatingRoutes } from "./venue-api-rating";
+import { registerVenueExportRoutes } from "./venue-api-export";
 import { createVenueJob } from "./venue-job-create";
 import {
   ERC8183_STATUS,
@@ -150,6 +152,8 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   registerVenueBillingRoutes(app, deps.billing);
   // 153-6: client rating — POST /jobs/:id/rate + scoped instance variant
   registerVenueRatingRoutes(app, { network: net, onchainJob });
+  // 153-7: audit export — GET /instances/:id/export (admin+, sha256 manifest)
+  registerVenueExportRoutes(app, net);
 
   // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
   registerVenueIndexerRoutes(app, { indexer: deps.indexer });
@@ -182,15 +186,24 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
 
   // SLICE-152-5: header shape kept for compat + richer index aggregates.
   app.get("/api/venue/stats", dr("Venue header stats"), (c) => {
-    const jobs = listJobs();
+    // 153-7: ?kind=business scopes stats to business-venue jobs only.
+    const kind = c.req.query("kind");
+    const venueIds = kind === "business"
+      ? new Set(listVenues({ kind: "business" }).map((v) => v.id))
+      : undefined;
+    const jobs = listJobs().filter((j) =>
+      !venueIds || venueIds.has(j.venueId ?? ""));
     const agg = venueStats();
     return c.json({
       network: net().name,
+      kind: kind === "business" ? "business" : "all",
+      venues: venueIds?.size,
       jobs: jobs.length,
       jobsOpen: jobs.filter((j) => j.status === "open").length,
       usdcVolume: jobs.reduce((s, j) => s + j.budgetUsdc, 0),
       providers: listOffers().length,
       attestations: attestStore.size(),
+      privateJobs: jobs.filter((j) => j.private).length,
       jobsTotal: agg.jobsTotal,
       jobsByStatus: agg.jobsByStatus,
       feedbackCount: agg.feedbackCount,

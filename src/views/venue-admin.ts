@@ -112,6 +112,24 @@ export function venueAdminPage(
       </nav>
       <p id="adm-status" class="mt-4 text-center text-sm text-slate-400"></p>
 
+      ${(() => {
+        // 153-7: welcome checklist — drives the tenant to a full cycle.
+        const checks: [string, boolean][] = [
+          ["Venue created", true],
+          ["Add members", members.some((m) => !m.revoked && m.role !== "owner")],
+          ["Post first job", jobs.length > 0],
+          ["Complete a cycle", jobs.some((j) => j.status === "completed")],
+        ];
+        if (checks.every(([, ok]) => ok)) return "";
+        return html`<section class="${CARD} mt-6">
+          <h2 class="text-sm font-semibold text-slate-200">Onboarding checklist</h2>
+          <ul class="mt-2 space-y-1 text-sm">
+            ${raw(checks.map(([label, ok]) =>
+              `<li class="${ok ? "text-emerald-400" : "text-slate-400"}">${ok ? "✓" : "○"} ${esc(label)}</li>`).join(""))}
+          </ul>
+        </section>`;
+      })()}
+
       <section id="general" class="${CARD} mt-6 space-y-4">
         <h2 class="text-sm font-semibold text-slate-200">General</h2>
         <div><label class="${LABEL}">Name</label><input id="f-name" class="${INPUT}" value="${esc(venue.name)}" maxlength="120" /></div>
@@ -282,6 +300,24 @@ export function venueAdminPage(
       document.getElementById("renew-sub").onclick = () => run(() =>
         call("POST", "/api/venue/instances/" + VID + "/subscribe",
           { amountAtomic: String(BigInt("${monthlyPriceAtomic}") * BigInt(Math.max(1, Number(val("f-sub-months")) || 1))) }));
+      // 153-7: signed audit export — manifest sha256 makes it self-verifying.
+      async function exportAudit(format) {
+        st.textContent = "Sign &amp; download…";
+        try {
+          const path = "/api/venue/instances/" + VID + "/export";
+          const wallet = await venueConnect("${chainHex}");
+          const headers = await venueSign(wallet, "GET", path);
+          const r = await fetch(path + (format ? "?format=" + format : ""), { headers });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(await r.blob());
+          a.download = "venue-" + VID + "-export." + (format === "csv" ? "csv" : "json");
+          a.click();
+          st.textContent = "Export downloaded";
+        } catch (e) { st.textContent = String(e.message || e); }
+      }
+      document.getElementById("export-json").onclick = () => exportAudit("");
+      document.getElementById("export-csv").onclick = () => exportAudit("csv");
     </script>`;
   return Layout(body as unknown as string, undefined, meta).toString();
 }

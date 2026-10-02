@@ -19,6 +19,7 @@ import {
   PUBLIC_VENUE_ID,
 } from "../lib/venue/venues";
 import { venueInstancePage, venuePrivatePage } from "../../views/venue-instance";
+import { venueNewVenuePage } from "../../views/venue-onboard";
 import { venueAdminPage } from "../../views/venue-admin";
 import { venueHasRole, listVenueMembers, venueRole } from "../lib/venue/members";
 import { venueEvaluator } from "./venue-api-helpers";
@@ -38,6 +39,21 @@ export function registerVenueInstancePageRoutes(
   deps: VenueInstancePageDeps = {},
 ): void {
   const net = deps.network ?? resolveVenueNetwork;
+
+  // 153-7: self-serve business-venue onboarding form.
+  app.get(
+    "/market/venues/new",
+    describeRoute({
+      tags: ["Venue"],
+      summary: "Create-business-venue form (wallet-signed)",
+      responses: { 200: { description: "HTML form" } },
+    }),
+    (c) =>
+      c.html(venueNewVenuePage(
+        net(),
+        Math.max(0, Number(process.env.ARC_BV_FREE_TRIAL_DAYS ?? "14") || 0),
+      )),
+  );
 
   app.get(
     "/market/v/:slug",

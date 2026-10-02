@@ -78,6 +78,7 @@ export default [
       "src/views/marketplace-pages.ts",
       "src/views/rule-detail-page.ts",
       "src/views/service-page/scanner-script-core.ts",
+      "src/views/venue-admin.ts",
     ],
     rules: {
       "max-lines": "off",

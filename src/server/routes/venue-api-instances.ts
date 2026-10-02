@@ -114,6 +114,21 @@ export function registerVenueInstanceRoutes(app: Hono): void {
           typeof d === "string" && isAddress(d),
       )
       : undefined;
+    const clientPolicy =
+      body.clientPolicy === "open" ? "open" : "members";
+    // 153-7: evaluator policy from the self-serve form.
+    const evaluator = str(body.evaluator, 80);
+    const takeRateBps = Number(body.takeRateBps);
+    const policies: VenueCreateInput["policies"] = {};
+    if (evaluator === "server" || evaluator === "owner" ||
+      (evaluator?.startsWith("custom:") && isAddress(evaluator.slice(7)))) {
+      policies.evaluator =
+        evaluator as NonNullable<VenueCreateInput["policies"]>["evaluator"];
+    }
+    if (Number.isInteger(takeRateBps) && takeRateBps >= 0 &&
+      takeRateBps <= 10_000) {
+      policies.takeRateBps = takeRateBps;
+    }
     const input: VenueCreateInput = {
       name,
       slug,
@@ -121,10 +136,12 @@ export function registerVenueInstanceRoutes(app: Hono): void {
       ownerWallet: c.req.header("x-wallet") as `0x${string}`,
       description: str(body.description, 500),
       delegates,
+      clientPolicy,
+      policies: Object.keys(policies).length ? policies : undefined,
     };
     try {
       const venue = createVenue(input);
-      return c.json({ venue }, 201);
+      return c.json({ venue, trial: venue.subscription?.plan === "trial" }, 201);
     } catch (err) {
       return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, String(err));
     }

@@ -39,7 +39,8 @@ export interface VenueSubscription {
   expiresAt: number;
   /** Last settled payment tx (x402 or manual). */
   lastPaymentTx?: `0x${string}`;
-  plan?: "monthly" | "annual";
+  /** 153-7: "trial" = free ARC_BV_FREE_TRIAL_DAYS grant on create. */
+  plan?: "monthly" | "annual" | "trial";
 }
 
 export interface VenueRecord {
@@ -76,6 +77,8 @@ export interface VenueCreateInput {
   requiredClass?: number;
   /** 153-2: job posting policy; default "members" (business) / n/a (public). */
   clientPolicy?: "members" | "open";
+  /** 153-7: initial policies from the self-serve form (evaluator/takeRate). */
+  policies?: VenuePolicies;
 }
 
 // ─── Registry persistence (meta lane) ────────────────────────────
@@ -144,6 +147,19 @@ export function createVenue(input: VenueCreateInput): VenueRecord {
   if (Object.keys(map).length >= max) {
     throw new Error(`venue limit reached (${max})`);
   }
+  // 153-7: business venues onboard in trial — subscription granted for
+  // ARC_BV_FREE_TRIAL_DAYS (default 14) so the venue is active day-0;
+  // trial 0 → draft (active=false) until the first subscribe payment.
+  const trialDays = input.kind === "business"
+    ? Math.max(0, Number(process.env.ARC_BV_FREE_TRIAL_DAYS ?? "14") || 0)
+    : 0;
+  const trial = trialDays > 0
+    ? {
+      status: "active" as const,
+      expiresAt: Math.floor(Date.now() / 1000) + trialDays * 86_400,
+      plan: "trial" as const,
+    }
+    : undefined;
   const venue: VenueRecord = {
     id: `vn_${randomBytes(8).toString("hex")}`,
     slug,
@@ -157,8 +173,10 @@ export function createVenue(input: VenueCreateInput): VenueRecord {
         Number(process.env.ARC_VENUE_DEFAULT_REQUIRED_CLASS ?? 0)) ||
       undefined,
     clientPolicy: input.clientPolicy ?? "members",
+    policies: input.policies,
+    subscription: trial,
     createdAt: Date.now(),
-    active: true,
+    active: input.kind !== "business" || trialDays > 0,
   };
   map[venue.id] = venue;
   saveRegistry(map);

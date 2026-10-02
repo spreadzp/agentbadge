@@ -161,6 +161,7 @@ export function venueHubPage(
       <div class="mt-10 flex flex-wrap gap-3">
         <a href="/market/jobs/new" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Post a job</a>
         <a href="/market/providers/new" class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-emerald-500/40">Register as provider</a>
+        <a href="/market/venues/new" class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-emerald-500/40">Create business venue</a>
         <a href="/market/jobs" class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-emerald-500/40">Watch the board →</a>
       </div>
       <p class="mt-10 text-xs text-slate-500">

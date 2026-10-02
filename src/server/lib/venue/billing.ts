@@ -151,7 +151,7 @@ export function extendVenueSubscription(args: {
     lastPaymentTx: args.tx as `0x${string}` | undefined,
     plan,
   };
-  const next = updateVenue(venue.id, { subscription });
+  const next = updateVenue(venue.id, { subscription, active: true });
   if (!next) return undefined;
   appendVenuePayment(venue.id, {
     payer: args.payer,
