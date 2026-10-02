@@ -232,6 +232,10 @@ export interface EaasEnvConfig {
    * policies: ["*"] = all; otherwise a POLICY_REGISTRY allowlist.
    */
   tierQuotas: Record<string, { quota: number; policies: string[] }>;
+  /** SLICE-154-6: HMAC secret for webhook signatures (ARC_EAAS_WEBHOOK_SECRET). */
+  webhookSecret?: string;
+  /** SLICE-154-6: async request timeout, seconds (ARC_EAAS_ASYNC_TIMEOUT_S, default 120). */
+  asyncTimeoutSec: number;
 }
 
 /**

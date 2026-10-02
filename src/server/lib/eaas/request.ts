@@ -7,6 +7,7 @@
 import type { Context } from "hono";
 import type { Hex } from "viem";
 import { getPolicy, UnknownPolicyError, type PolicyFn } from "./policies";
+import { assertWebhookUrl, WebhookSsrfError } from "./webhooks";
 
 export const HEX32_RE = /^0x[0-9a-fA-F]{64}$/;
 
@@ -52,6 +53,9 @@ interface VerdictRequestBody {
   deliverable?: { uri?: unknown; data?: unknown };
   expectedHash?: unknown;
   nonce?: unknown;
+  /** SLICE-154-6: async mode — 202 + statusUrl + optional webhook. */
+  async?: unknown;
+  webhookUrl?: unknown;
 }
 
 export interface ParsedVerdictRequest {
@@ -60,6 +64,9 @@ export interface ParsedVerdictRequest {
   deliverableUri?: string;
   expectedHash?: Hex;
   nonce?: string;
+  /** SLICE-154-6: async mode — 202 + statusUrl + optional webhook. */
+  async?: boolean;
+  webhookUrl?: string;
 }
 
 /** Hono context variables: parsed body + settled payment info. */
@@ -149,11 +156,31 @@ export async function parseBody(
     nonce = String(body.nonce);
   }
 
+  // SLICE-154-6: async flag + webhook SSRF check — 400 before payment.
+  const async_ = body.async === true;
+  let webhookUrl: string | undefined;
+  if (body.webhookUrl !== undefined) {
+    if (typeof body.webhookUrl !== "string") {
+      return bad(c, "webhookUrl must be a string");
+    }
+    try {
+      webhookUrl = assertWebhookUrl(body.webhookUrl).toString();
+    } catch (e) {
+      return bad(
+        c,
+        e instanceof WebhookSsrfError ? e.message : "invalid webhookUrl",
+      );
+    }
+    if (!async_) return bad(c, "webhookUrl requires async:true");
+  }
+
   return {
     policy: body.policy,
     deliverable: hasUri ? { uri: d.uri } : { data: d.data },
     deliverableUri: hasUri ? (d.uri as string) : undefined,
     expectedHash,
     nonce,
+    ...(async_ ? { async: true } : {}),
+    ...(webhookUrl ? { webhookUrl } : {}),
   };
 }

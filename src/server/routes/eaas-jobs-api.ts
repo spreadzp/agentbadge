@@ -16,7 +16,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
-import type { Hex } from "viem";
 import { EvaluatorError, Erc8183Error } from "@agentbadge/circle-payments";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
 import type { PaymentMiddleware } from "./identity";
@@ -34,22 +33,17 @@ import {
 import {
   consumerKey,
   createRateLimiter,
-  HEX32_RE,
   type EaasVariables,
 } from "../lib/eaas/request";
 import {
   eaasQuotaGate,
   type EaasQuotaDeps,
 } from "../lib/eaas/subscription";
-
-/** Parsed+validated evaluate request stashed for the post-payment handler. */
-interface EvalInput {
-  rec: EaasContract;
-  jobId: bigint;
-  policy?: string;
-  expectedHash?: Hex;
-  deliverableUri?: string;
-}
+import {
+  respondAsync,
+  type EaasAsyncDeps,
+} from "../lib/eaas/requests";
+import { validateEvaluate, type EvalInput } from "../lib/eaas/eval-request";
 
 interface EaasJobsVariables extends EaasVariables {
   evalInput?: EvalInput;
@@ -63,6 +57,8 @@ export interface EaasJobsRoutesDeps extends EvaluateJobDeps {
   paymentForPrice: (priceUsd: string) => PaymentMiddleware;
   /** SLICE-154-5: subscription quota gate — absent = x402-only. */
   quota?: EaasQuotaDeps;
+  /** SLICE-154-6: async request delivery — absent = async:true rejected. */
+  async_?: EaasAsyncDeps;
 }
 
 const dr = (summary: string) =>
@@ -91,55 +87,6 @@ async function signerWallet(c: {
   return ok === "valid" && wallet && isAddress(wallet)
     ? (wallet as `0x${string}`)
     : null;
-}
-
-function bad(c: { json: (o: unknown, s: number) => Response }, e: string) {
-  return c.json({ error: e }, 400);
-}
-
-/** Validate the evaluate body → EvalInput | Response(400). */
-function validateEvaluate(
-  body: unknown,
-  c: { json: (o: unknown, s: number) => Response },
-): { contract: string } & Omit<EvalInput, "rec"> | Response {
-  if (typeof body !== "object" || body === null) {
-    return bad(c, "invalid JSON body");
-  }
-  const b = body as Record<string, unknown>;
-  if (typeof b.contract !== "string" || !isAddress(b.contract)) {
-    return bad(c, "contract (0x…) required");
-  }
-  if (typeof b.jobId !== "string" && typeof b.jobId !== "number") {
-    return bad(c, "jobId required");
-  }
-  let jobId: bigint;
-  try {
-    jobId = BigInt(b.jobId);
-  } catch {
-    return bad(c, "jobId must be an integer");
-  }
-  if (b.policy !== undefined && typeof b.policy !== "string") {
-    return bad(c, "policy must be a POLICY_REGISTRY key");
-  }
-  if (b.expectedHash !== undefined) {
-    if (typeof b.expectedHash !== "string" || !HEX32_RE.test(b.expectedHash)) {
-      return bad(c, "expectedHash must be 0x + 64 hex");
-    }
-  }
-  if (b.deliverableUri !== undefined && typeof b.deliverableUri !== "string") {
-    return bad(c, "deliverableUri must be a string");
-  }
-  return {
-    contract: b.contract,
-    jobId,
-    ...(typeof b.policy === "string" ? { policy: b.policy } : {}),
-    ...(typeof b.expectedHash === "string"
-      ? { expectedHash: b.expectedHash as Hex }
-      : {}),
-    ...(typeof b.deliverableUri === "string"
-      ? { deliverableUri: b.deliverableUri }
-      : {}),
-  };
 }
 
 export function createEaasJobsRoutes(
@@ -258,11 +205,39 @@ export function createEaasJobsRoutes(
     eaasQuotaGate({
       quota: deps.quota,
       policy: (c) => (c.get("evalInput") as EvalInput).policy,
-      fallback: evalPay,
+      fallback: async (c, next) => evalPay(c, next),
     }),
     async (c) => {
       const input = c.get("evalInput") as EvalInput;
       const payment = c.get("payment");
+
+      // SLICE-154-6: async — payment settled, job runs in background.
+      const early = respondAsync(c, deps.async_, {
+        isAsync: input.async,
+        kind: "job-eval",
+        ...(payment?.payer ? { wallet: payment.payer } : {}),
+        ...(input.webhookUrl ? { webhookUrl: input.webhookUrl } : {}),
+        run: () =>
+          evaluateExternalJob(
+            {
+              contract: input.rec,
+              jobId: input.jobId,
+              policy: input.policy,
+              expectedHash: input.expectedHash,
+              deliverableUri: input.deliverableUri,
+              consumerWallet: payment?.payer,
+              paymentTx: payment?.transaction,
+            },
+            deps,
+          ).then((r) => {
+            if (!r.artifact) {
+              throw new Error("evaluation produced no artifact");
+            }
+            return r.artifact;
+          }),
+      });
+      if (early) return early;
+
       try {
         const result = await evaluateExternalJob(
           {

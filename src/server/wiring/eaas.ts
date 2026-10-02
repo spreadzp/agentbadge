@@ -1,14 +1,8 @@
-// EPIC-154, SLICE-154-2: EaaS verdict API wiring.
-// Mounted after wireCirclePayments — reuses its runtime for x402
-// pricing (paymentForPrice on env-driven "$x.xx" prices).
-// Gated on ARC_EAAS_ENABLED + circle payments being actually wired
-// (POST needs an x402 rail; GETs mount only when eaas is enabled).
-//
-// SLICE-154-3 adds external-job evaluation: POST /api/eaas/contracts
-// (wallet-sig + ABI probe) + POST /api/eaas/jobs/evaluate (x402-gated,
-// settles the allowlisted escrow via ARC_EVALUATOR_KEY, tag1=eaas-eval
-// feedback through the memo wrapper). Mounted only when an evaluator
-// key is configured — without it there is no settler EOA.
+// EPIC-154: EaaS wiring — verdict API (154-2 x402), external-job
+// evaluation (154-3, ARC_EVALUATOR_KEY settler + tag1=eaas-eval
+// feedback), memo anchoring (154-4), billing tiers (154-5), async
+// delivery + feeds (154-6). Mounted after wireCirclePayments; gated
+// on ARC_EAAS_ENABLED — no payment rail = nothing mounts (fail closed).
 
 import { createWalletClient, http } from "viem";
 import type { Hex } from "viem";
@@ -33,6 +27,9 @@ import {
 import { createEaasRoutes } from "../routes/eaas-api";
 import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../routes/eaas-billing-api";
+import { createEaasFeedsRoutes } from "../routes/eaas-feeds-api";
+import { createJsonRequestStore, type EaasAsyncDeps } from "../lib/eaas/requests";
+import { createEaasMetrics } from "../lib/eaas/metrics";
 import { checkAccess } from "../middleware/agent-auth";
 import { resolveAccessPassMinter } from "../lib/access-pass-minter";
 import {
@@ -148,6 +145,26 @@ export function wireEaas(
     hasAccess: checkAccess,
   };
 
+  // ─── SLICE-154-6: async delivery + feeds ───────────────────────
+  const requestStore = createJsonRequestStore();
+  const metrics = createEaasMetrics();
+  const asyncDeps: EaasAsyncDeps = {
+    store: requestStore,
+    metrics,
+    webhook: { secret: cfg.webhookSecret },
+    timeoutSec: cfg.asyncTimeoutSec,
+  };
+
+  app.route(
+    "/",
+    createEaasFeedsRoutes({
+      store,
+      requests: requestStore,
+      metrics,
+      rateRpm: cfg.rateRpm,
+    }),
+  );
+
   app.route(
     "/",
     createEaasRoutes({
@@ -159,6 +176,7 @@ export function wireEaas(
       signer,
       store,
       quota,
+      async_: asyncDeps,
       ...(anchorer && anchorStore
         ? {
           anchor: {
@@ -196,6 +214,7 @@ export function wireEaas(
         chainId,
         paymentForPrice: (price) => deps.circleRuntime!.paymentForPrice(price),
         quota,
+        async_: asyncDeps,
         escrowFor: (rec) =>
           createErc8183({
             read: read as never,

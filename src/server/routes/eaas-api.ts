@@ -6,13 +6,9 @@
  *   2. rate limit             → 429 до settle (платный спам не сжигает compute)
  *   3. payment middleware     → 402 → settle (per-policy цена)
  *   4. issueVerdict           → signed artifact + persist
- *   Policy throw → reject verdict "evaluation-error:<code>" (fail-closed,
- *   платёж честно засеттлен — услуга «проверили, не прошло» оказана).
- *
+ *   Policy throw → reject verdict "evaluation-error:<code>" (fail-closed).
  * GET /api/eaas/verdicts/:verdictId         — public artifact, free.
  * GET /api/eaas/verdicts/:verdictId/verify  — {valid, signer, chainId}, free.
- *   (артфакт самодостаточен: оффлайн-verify = ethers verifyTypedData over
- *    VERDICT_DOMAIN + VERDICT_TYPES, см. lib/eaas/verdict.ts)
  */
 
 import { Hono, type Context } from "hono";
@@ -33,6 +29,10 @@ import {
   eaasQuotaGate,
   type EaasQuotaDeps,
 } from "../lib/eaas/subscription";
+import {
+  respondAsync,
+  type EaasAsyncDeps,
+} from "../lib/eaas/requests";
 import {
   issueVerdict,
   type EaasServiceDeps,
@@ -81,6 +81,12 @@ export interface EaasRoutesDeps {
    * Valid wallet-sig + CLASS_EAAS pass + live sub → quota path, no payment.
    */
   quota?: EaasQuotaDeps;
+  /**
+   * SLICE-154-6: async request delivery — absent = async:true rejected 400.
+   * Requests ride the same quota/x402 gate; payment settles upfront, then
+   * the verdict runs in the background (202 + statusUrl + webhook).
+   */
+  async_?: EaasAsyncDeps;
 }
 
 /* --------------------------------- routes --------------------------------- */
@@ -146,6 +152,31 @@ export function createEaasRoutes(
     async (c) => {
       const req = c.get("eaasReq");
       const payment = c.get("payment");
+      const run = () =>
+        issueVerdict(
+          {
+            policy: req.policy,
+            deliverable: req.deliverable,
+            deliverableUri: req.deliverableUri,
+            expectedHash: req.expectedHash,
+            nonce: req.nonce,
+            consumerWallet: payment?.payer,
+            paymentTx: payment?.transaction,
+          },
+          serviceDeps,
+        ).then((r) => r.artifact);
+
+      // SLICE-154-6: async mode — payment already settled; run in bg.
+      const early = respondAsync(c, deps.async_, {
+        isAsync: req.async,
+        kind: "verdict",
+        ...(payment?.payer ? { wallet: payment.payer } : {}),
+        ...(req.webhookUrl ? { webhookUrl: req.webhookUrl } : {}),
+        run,
+      });
+      if (early) return early;
+
+      const t0 = Date.now();
       const result = await issueVerdict(
         {
           policy: req.policy,
@@ -158,6 +189,7 @@ export function createEaasRoutes(
         },
         serviceDeps,
       );
+      deps.async_?.metrics.observeVerdict(Date.now() - t0);
       return c.json({
         artifact: result.artifact,
         duplicate: result.duplicate,

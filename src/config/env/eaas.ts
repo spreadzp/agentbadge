@@ -23,6 +23,10 @@
  *   ARC_EAAS_TIER_QUOTAS — JSON tier→{quota,policies} map, e.g.
  *     {"basic":{"quota":100,"policies":["deliverable-present","hash-match"]},
  *      "pro":{"quota":1000,"policies":["*"]}}
+ *
+ * SLICE-154-6 async delivery + feeds:
+ *   ARC_EAAS_WEBHOOK_SECRET — HMAC key for X-Verdict-Signature on webhook POSTs.
+ *   ARC_EAAS_ASYNC_TIMEOUT_S — async verdict budget (default 120s).
  */
 
 import type { EaasEnvConfig } from "./types";
@@ -101,6 +105,10 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
   const tierProUsd = atomicPrice("ARC_EAAS_TIER_PRO_USD", "25000000", errors);
   const tierQuotas = parseTierQuotas(errors);
 
+  // SLICE-154-6: async delivery — optional webhook HMAC secret + timeout.
+  const webhookSecret = process.env.ARC_EAAS_WEBHOOK_SECRET || undefined;
+  const asyncTimeoutSec = intVar("ARC_EAAS_ASYNC_TIMEOUT_S", 120, 1, errors);
+
   if (!signerKey) return undefined;
   return {
     enabled: true,
@@ -117,6 +125,8 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
     tierBasicUsd,
     tierProUsd,
     tierQuotas,
+    webhookSecret,
+    asyncTimeoutSec,
   };
 }
 
