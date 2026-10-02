@@ -70,11 +70,10 @@ const TABS: { id: VenueTab; label: string; href: string }[] = [
 export function venueTabs(active: VenueTab): string {
   const links = TABS.map((t) => {
     const on = t.id === active;
-    return `<a href="${t.href}" class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-      on
+    return `<a href="${t.href}" class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${on
         ? "bg-emerald-600/20 text-emerald-300 border border-emerald-700/50"
         : "text-slate-400 hover:text-slate-200 border border-transparent"
-    }">${t.label}</a>`;
+      }">${t.label}</a>`;
   }).join("");
   return `<nav class="mt-6 flex flex-wrap gap-2">${links}</nav>`;
 }
@@ -101,4 +100,38 @@ export function relTime(iso: string): string {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
+}
+
+/** Minimal shape for selector chips — avoids a value import (type-only). */
+export interface VenueSelectorItem {
+  slug: string;
+  name: string;
+  kind: string;
+  active?: boolean;
+}
+
+/** Chip row on /market — pick a venue namespace (public + business venues). */
+export function venueSelector(
+  venues: VenueSelectorItem[],
+  active?: string,
+): string {
+  const chip = (v: { slug: string; name: string; kind: string; href: string }) => {
+    const on = v.slug === (active ?? "public");
+    return `<a href="${v.href}" class="rounded-full border px-3 py-1 text-xs ${on
+        ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+        : "border-slate-700 text-slate-400 hover:border-slate-500"
+      }">${esc(v.name)}${v.kind === "business" ? " · business" : ""}</a>`;
+  };
+  const all = [
+    { slug: "public", name: "Public", kind: "public", href: "/market" },
+    ...venues
+      .filter((v) => v.active !== false)
+      .map((v) => ({
+        slug: v.slug,
+        name: v.name,
+        kind: v.kind,
+        href: `/market/v/${v.slug}`,
+      })),
+  ];
+  return `<div class="mt-4 flex flex-wrap gap-2">${all.map(chip).join("")}</div>`;
 }

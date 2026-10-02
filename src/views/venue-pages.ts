@@ -14,12 +14,14 @@ import { Layout } from "./layout";
 import type { PageMeta } from "../server/lib/page-meta";
 import type { VenueJob } from "../server/lib/venue/store";
 import type { VenueNetwork } from "../server/lib/venue/chain";
+import type { VenueRecord } from "../server/lib/venue/venues";
 import {
   CARD,
   esc,
   jobStatusBadge,
   shortAddr,
   shortHash,
+  venueSelector,
   venueTabs,
 } from "./venue-ui";
 import {
@@ -118,6 +120,7 @@ export function venueHubPage(
   },
   net: VenueNetwork,
   activity: VenueActivityViewItem[] = [],
+  venues: VenueRecord[] = [],
 ): string {
   const stat = (label: string, value: string | number, href: string) => `
     <a href="${href}" class="${CARD} block text-center">
@@ -135,6 +138,7 @@ export function venueHubPage(
         onchain readiness attestations — all settled in USDC on Arc
         ${net.name}.
       </p>
+      ${raw(venues.length ? venueSelector(venues) : "")}
       ${raw(venueTabs("jobs"))}
       <div class="mt-8 grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         ${raw(stat("jobs", stats.jobs, "/market/jobs"))}

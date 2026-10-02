@@ -17,6 +17,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { listJobs, listOffers, getJob, upsertJob } from "../lib/venue/store";
+import { listVenues } from "../lib/venue/venues";
 import {
   fetchOnchainJob,
   resolveVenueNetwork,
@@ -39,6 +40,7 @@ import {
   venueNewJobPage,
 } from "../../views/venue-forms";
 import { registerVenueProfilePageRoutes } from "./venue-page-profiles";
+import { registerVenueInstancePageRoutes } from "./venue-page-instances";
 import type { ProviderProfileDeps } from "../lib/venue/profiles";
 import { venueServicesPage } from "../../views/venue-services";
 import { errorResponse } from "../lib/error-response";
@@ -142,6 +144,7 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
           },
           net(),
           activity,
+          listVenues(),
         ),
       );
     },
@@ -235,6 +238,8 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
 
   // /market/providers + /:address + /new — SLICE-152-6, venue-page-profiles.ts
   registerVenueProfilePageRoutes(app, deps, net);
+  // 153-1: /market/v/:slug venue instance landing.
+  registerVenueInstancePageRoutes(app, { network: net });
 
   // services tab — offers catalog (SLICE-152-1); passes stays a stub (D-F12)
   app.get(

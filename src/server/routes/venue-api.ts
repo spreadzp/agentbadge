@@ -38,6 +38,11 @@ import type { ProviderProfileDeps } from "../lib/venue/profiles";
 import { registerVenueIndexerRoutes } from "./venue-api-indexer";
 import { registerVenueProfileRoutes } from "./venue-api-profiles";
 import {
+  registerVenueInstanceRoutes,
+  venueScope,
+  venueScopeOr404,
+} from "./venue-api-instances";
+import {
   ERC8183_STATUS,
   dr,
   signedJson,
@@ -81,9 +86,11 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   const attestStore = deps.attestations ?? defaultAttestStore;
 
   app.get("/api/venue/jobs", dr("List venue jobs"), (c) => {
+    // 153-1: ?venue=<id|slug> scopes the listing to a venue instance.
     const jobs = listJobs({
       status: c.req.query("status") || undefined,
       category: c.req.query("category") || undefined,
+      venueId: venueScope(c.req.query("venue")),
       limit: Number(c.req.query("limit") ?? 50) || 50,
     });
     return c.json({ jobs, count: jobs.length, network: net().name });
@@ -110,8 +117,9 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     if (provider != null && !isAddress(provider)) {
       return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "provider must be 0x…");
     }
-    const n = net();
-    const econ = venueEconomics();
+    const jobVenueId = venueScopeOr404(c, str(body.venue, 64) ?? str(body.venueId, 64)); // 153-1
+    if (jobVenueId instanceof Response) return jobVenueId;
+    const n = net(), econ = venueEconomics();
     const evaluator = venueEvaluator();
     const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400);
     const jobId = `vj_${randomBytes(8).toString("hex")}`;
@@ -122,6 +130,7 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
       provider: provider ? getAddress(provider) : undefined,
       evaluator,
       category: category ?? undefined,
+      venueId: jobVenueId,
       createdAt: new Date().toISOString(),
       chainTxs: {},
     };
@@ -212,6 +221,9 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     providerAgentId: deps.providerAgentId,
     clientAgentId: deps.clientAgentId,
   });
+
+  // Venue instances (tenancy registry) — SLICE-153-1, venue-api-instances.ts
+  registerVenueInstanceRoutes(app);
 
   // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
   registerVenueIndexerRoutes(app, { indexer: deps.indexer });

@@ -90,6 +90,8 @@ export interface VenueJob {
   };
   /** Evaluator verdict once complete (pass/fail + reason). */
   verdict?: string;
+  /** Tenancy namespace (153-1). Absent on legacy rows = "public". */
+  venueId?: string;
 }
 
 export interface VenueOffer {
@@ -110,6 +112,8 @@ export interface VenueOffer {
   active: boolean;
   categories: string[];
   createdAt: string;
+  /** Tenancy namespace (153-1). Absent on legacy rows = "public". */
+  venueId?: string;
 }
 
 export interface VenueData {
@@ -132,10 +136,20 @@ export interface VenueStoreBackend {
   ready(): Promise<void>;
   upsertJob(job: VenueJob): void;
   getJob(jobId: string): VenueJob | undefined;
-  listJobs(filter?: { status?: string; category?: string; limit?: number }): VenueJob[];
+  listJobs(filter?: {
+    status?: string;
+    category?: string;
+    venueId?: string;
+    limit?: number;
+  }): VenueJob[];
   upsertOffer(offer: VenueOffer): void;
   getOfferById(id: string): VenueOffer | undefined;
-  listOffers(filter?: { provider?: string; active?: boolean; limit?: number }): VenueOffer[];
+  listOffers(filter?: {
+    provider?: string;
+    active?: boolean;
+    venueId?: string;
+    limit?: number;
+  }): VenueOffer[];
   deactivateOffer(id: string): boolean;
   getMeta<T>(key: string): T | undefined;
   setMeta(key: string, value: unknown): void;
@@ -184,6 +198,7 @@ export function getJob(jobId: string): VenueJob | undefined {
 export function listJobs(filter?: {
   status?: string;
   category?: string;
+  venueId?: string;
   limit?: number;
 }): VenueJob[] {
   return resolveBackend().listJobs(filter);
@@ -208,6 +223,7 @@ export function getOffer(providerAddress: string): VenueOffer | undefined {
 export function listOffers(filter?: {
   provider?: string;
   active?: boolean;
+  venueId?: string;
   limit?: number;
 }): VenueOffer[] {
   return resolveBackend().listOffers(filter);

@@ -158,9 +158,14 @@ export class PrismaVenueStore implements VenueStoreBackend {
   listJobs(filter?: {
     status?: string;
     category?: string;
+    venueId?: string;
     limit?: number;
   }): VenueJob[] {
     let all = [...this.mirror.jobs.values()];
+    if (filter?.venueId) {
+      const v = filter.venueId;
+      all = all.filter((j) => (j.venueId ?? "public") === v);
+    }
     if (filter?.status) all = all.filter((j) => j.status === filter.status);
     if (filter?.category) {
       const cat = filter.category.toLowerCase();
@@ -194,9 +199,14 @@ export class PrismaVenueStore implements VenueStoreBackend {
   listOffers(filter?: {
     provider?: string;
     active?: boolean;
+    venueId?: string;
     limit?: number;
   }): VenueOffer[] {
     let all = [...this.mirror.offers.values()].map(normalizeOffer);
+    if (filter?.venueId) {
+      const v = filter.venueId;
+      all = all.filter((o) => (o.venueId ?? "public") === v);
+    }
     if (filter?.provider) {
       const p = filter.provider.toLowerCase();
       all = all.filter((o) => o.providerAddress.toLowerCase() === p);
