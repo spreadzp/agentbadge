@@ -31,6 +31,17 @@ export interface VenuePolicies {
   branding?: { title?: string; color?: string; logoUrl?: string };
 }
 
+/** 153-5: subscription state — written by extendVenueSubscription + sweeper. */
+export interface VenueSubscription {
+  /** Derived status persisted for observability (recomputed on read too). */
+  status: "active" | "expired" | "grace";
+  /** Unix seconds — billing expiry boundary. */
+  expiresAt: number;
+  /** Last settled payment tx (x402 or manual). */
+  lastPaymentTx?: `0x${string}`;
+  plan?: "monthly" | "annual";
+}
+
 export interface VenueRecord {
   /** vn_<hex>; "public" is reserved for the platform venue. */
   id: string;
@@ -48,6 +59,8 @@ export interface VenueRecord {
   clientPolicy?: "members" | "open";
   /** 153-4: evaluator/take-rate/branding policies (admin-patched). */
   policies?: VenuePolicies;
+  /** 153-5: subscription billing — absent = never subscribed (unmetered). */
+  subscription?: VenueSubscription;
   createdAt: number;
   active: boolean;
 }
@@ -171,6 +184,7 @@ export function updateVenue(
       | "requiredClass"
       | "clientPolicy"
       | "policies"
+      | "subscription"
     >
   >,
 ): VenueRecord | undefined {

@@ -14,6 +14,10 @@ import type {
   AdminAuditEntry,
   VenueRecord,
 } from "../server/lib/venue/venues";
+import {
+  subscriptionStatus,
+  type VenuePayment,
+} from "../server/lib/venue/billing";
 import type { VenueMember } from "../server/lib/venue/members";
 import type { VenueJob } from "../server/lib/venue/store";
 import {
@@ -49,6 +53,8 @@ export function venueAdminPage(
   venues: VenueRecord[],
   net: VenueNetwork,
   serverEvaluator: string,
+  payments: VenuePayment[] = [],
+  monthlyPriceAtomic = "0",
 ): string {
   const chainHex = `0x${net.chain.chainId.toString(16)}`;
   const byStatus: Record<string, number> = {};
@@ -190,7 +196,44 @@ export function venueAdminPage(
 
       <section id="billing" class="${CARD} mt-6">
         <h2 class="text-sm font-semibold text-slate-200">Billing</h2>
-        <p class="mt-2 text-sm text-slate-500">Take-rate settlement and venue fees land in SLICE-153-5.</p>
+        ${(() => {
+          const st = subscriptionStatus(venue);
+          const exp = venue.subscription?.expiresAt;
+          const badge = st === "active"
+            ? '<span class="rounded-full border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-300">active</span>'
+            : st === "grace"
+              ? '<span class="rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs text-amber-300">grace</span>'
+              : st === "expired"
+                ? '<span class="rounded-full border border-red-500/50 bg-red-500/10 px-2.5 py-0.5 text-xs text-red-300">expired</span>'
+                : '<span class="rounded-full border border-slate-600 px-2.5 py-0.5 text-xs text-slate-400">unsubscribed</span>';
+          return html`
+        <div class="mt-3 flex items-center gap-3">
+          ${raw(badge)}
+          ${exp ? html`<span class="text-sm text-slate-400">expires ${esc(new Date(exp * 1000).toISOString().slice(0, 10))}</span>` : ""}
+          ${venue.subscription?.lastPaymentTx
+            ? html`<a class="text-xs text-slate-500 underline" href="${esc(net.explorerTx(venue.subscription.lastPaymentTx))}" target="_blank" rel="noopener">last payment tx</a>` : ""}
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+          <input id="f-sub-months" type="number" min="1" max="24" value="1" class="${INPUT} w-24" />
+          <button id="renew-sub" class="${BTN}">Renew subscription ($${(Number(monthlyPriceAtomic) / 1e6).toFixed(2)}/mo)</button>
+        </div>
+        ${st === "expired" || st === "grace"
+          ? html`<p class="mt-2 text-xs ${st === "expired" ? "text-red-400" : "text-amber-400"}">
+            ${st === "expired"
+              ? "Subscription lapsed — new jobs are blocked (402) until renewal. Lifecycle ops keep working."
+              : "Grace period — renew soon to keep posting jobs at the subscriber take rate."}
+          </p>` : ""}
+        <h3 class="mt-5 text-sm font-semibold text-slate-200">Payments</h3>
+        <div class="mt-2">
+          ${raw(payments.slice(-20).reverse().map((p) => html`
+            <div class="border-b border-slate-800 py-1.5 text-xs last:border-0">
+              <span class="text-slate-500">${esc(new Date(p.ts).toISOString().slice(0, 10))}</span>
+              <span class="mx-2 text-emerald-400">$${(Number(BigInt(p.amountAtomic)) / 1e6).toFixed(2)}</span>
+              <span class="text-slate-400">+${Math.round(p.durationSec / 86400)}d</span>
+              ${p.tx ? html`<a class="ml-2 font-mono text-slate-500 underline" href="${esc(net.explorerTx(p.tx as `0x${string}`))}" target="_blank" rel="noopener">${esc(p.tx.slice(0, 10))}…</a>` : ""}
+            </div>`).join("") || '<span class="text-xs text-slate-600">no payments yet</span>')}
+        </div>`;
+        })()}
       </section>
     </main>
     <script>${raw(WALLET_JS)}
@@ -234,6 +277,11 @@ export function venueAdminPage(
       for (const b of document.querySelectorAll("[data-deldelegate]"))
         b.onclick = () => run(() => call("POST",
           "/api/venue/instances/" + VID + "/delegates", { remove: b.dataset.deldelegate }));
+      // 153-5: renew — direct-subscribe path (ARC_BV_DIRECT_SUBSCRIBE=1);
+      // with x402 wiring the settle seam supplies payment instead.
+      document.getElementById("renew-sub").onclick = () => run(() =>
+        call("POST", "/api/venue/instances/" + VID + "/subscribe",
+          { amountAtomic: String(BigInt("${monthlyPriceAtomic}") * BigInt(Math.max(1, Number(val("f-sub-months")) || 1))) }));
     </script>`;
   return Layout(body as unknown as string, undefined, meta).toString();
 }

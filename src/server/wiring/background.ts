@@ -9,6 +9,7 @@ import {
   marketStartBackgroundRebuild as startMarketCacheRebuild,
 } from "@agentbadge/passport";
 import { startEscrowReconciler } from "../services/escrow-reconciler";
+import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { captureError } from "../lib/sentry";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
@@ -33,6 +34,12 @@ export function startBackgroundJobs(): void {
   }
 
   startEscrowReconciler();
+
+  // 153-5: daily venue subscription sweep (active→grace→expired) —
+  // env-gated with the venue feature flag + ARC_BV_SWEEPER_ENABLED.
+  if (process.env.ARC_VENUE_ENABLED === "true") {
+    startVenueBillingSweeper();
+  }
 }
 
 // Capture unhandled errors from routes

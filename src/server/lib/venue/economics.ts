@@ -19,9 +19,11 @@
 import { encodeFunctionData, getAddress, parseUnits } from "viem";
 import type { VenueNetwork } from "./chain";
 import type { VenueJob } from "./store";
+import type { VenueRecord } from "./venues";
 import type { PreparedTx } from "./lifecycle";
 import { splitPayout } from "@agentbadge/circle-payments";
 import { serverSigner } from "./lifecycle-sign";
+import { isSubscribed, subscriberTakeBps } from "./billing";
 
 export type VenueFeeMode = "hook" | "sweep" | "none";
 
@@ -38,10 +40,31 @@ export interface VenueEconomics {
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
 
+/**
+ * 153-5: per-venue take rate resolution —
+ *   1. venue.policies.takeRateBps explicit override (admin-patched)
+ *   2. ARC_BV_SUBSCRIBER_TAKE_BPS while the venue subscription is active
+ *   3. ARC_VENUE_TAKE_BPS platform default
+ */
+export function effectiveTakeRateBps(venue?: VenueRecord): {
+  bps: number;
+  source: "override" | "subscriber" | "default";
+} {
+  const ov = venue?.policies?.takeRateBps;
+  if (ov !== undefined && Number.isInteger(ov) && ov >= 0 && ov <= 10_000) {
+    return { bps: ov, source: "override" };
+  }
+  const def = Number(process.env.ARC_VENUE_TAKE_BPS ?? "250");
+  const fallback = Number.isInteger(def) && def >= 0 && def <= 10_000 ? def : 250;
+  if (venue?.kind === "business" && isSubscribed(venue)) {
+    return { bps: subscriberTakeBps(), source: "subscriber" };
+  }
+  return { bps: fallback, source: "default" };
+}
+
 /** Env-driven economics config — fresh read (env is cheap, tests mutate). */
-export function venueEconomics(): VenueEconomics {
-  const bps = Number(process.env.ARC_VENUE_TAKE_BPS ?? "250");
-  const takeRateBps = Number.isInteger(bps) && bps >= 0 && bps <= 10_000 ? bps : 250;
+export function venueEconomics(venue?: VenueRecord): VenueEconomics {
+  const takeRateBps = effectiveTakeRateBps(venue).bps;
   const feeRaw = process.env.ARC_EVAL_FEE_USDC ?? "0";
   const evalFeeAtomic = /^[0-9]+$/.test(feeRaw) ? BigInt(feeRaw) : 0n;
   const treasuryEnv =

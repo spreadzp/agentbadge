@@ -39,6 +39,7 @@ import {
 } from "./venue-api-instances";
 import { registerVenueInstancePrivateRoutes } from "./venue-api-instances-private";
 import { registerVenueAdminRoutes } from "./venue-api-admin";
+import { registerVenueBillingRoutes, type VenueBillingDeps } from "./venue-api-billing";
 import { createVenueJob } from "./venue-job-create";
 import {
   ERC8183_STATUS,
@@ -68,6 +69,8 @@ export interface VenueDeps {
   /** Event indexer seam (152-5) — tests inject fake log sources. */
   indexer?: VenueIndexerDeps;
   attestations?: AttestationVenueStore;
+  /** 153-5: subscription settle + optional pass-mint seams (x402 wiring). */
+  billing?: VenueBillingDeps;
 }
 
 const defaultAttestStore = sharedVenueStore();
@@ -142,6 +145,8 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   registerVenueInstancePrivateRoutes(app, net);
   // 153-4: admin console routes — PATCH :id, GET :id/admin, POST :id/delegates
   registerVenueAdminRoutes(app);
+  // 153-5: billing routes — POST :id/subscribe, GET :id/economics, GET :id/billing
+  registerVenueBillingRoutes(app, deps.billing);
 
   // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
   registerVenueIndexerRoutes(app, { indexer: deps.indexer });

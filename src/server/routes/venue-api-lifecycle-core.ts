@@ -135,7 +135,8 @@ export async function maybeFeeSweep(
   ctx: ActionCtx,
 ): Promise<string | undefined> {
   if (job.status !== "completed") return undefined;
-  const econ = venueEconomics();
+  // 153-5: venue-aware economics — per-venue override / subscriber rate.
+  const econ = venueEconomics(getVenue(venueIdOf(job)));
   if (!job.feeMode) {
     job.feeMode = resolveFeeMode(job, econ, ctx.net());
     upsertJob(job);

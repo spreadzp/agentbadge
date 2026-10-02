@@ -22,6 +22,7 @@ import type { VenueJob } from "../lib/venue/store";
 import { upsertJob } from "../lib/venue/store";
 import { getVenue } from "../lib/venue/venues";
 import { venueEconomics, resolveFeeMode } from "../lib/venue/economics";
+import { subscriptionBlocksWrites } from "../lib/venue/billing";
 import {
   buildPrivateJob,
   memoLinkEnabled,
@@ -74,7 +75,15 @@ export async function createVenueJob(
   const venue = jobVenueId ? getVenue(jobVenueId) : undefined;
   const isBusiness = venue?.kind === "business";
 
-  const n = net(), econ = venueEconomics();
+  // 153-5: subscription gate — expired business venues go read-only for
+  // new jobs (in-flight jobs are never blocked; reads/members/admin OK).
+  if (subscriptionBlocksWrites(venue)) {
+    return errorResponse(c, 402, ErrorCodes.PAYMENT_REQUIRED,
+      "venue subscription expired — renew via POST /api/venue/instances/" +
+      `${venue!.id}/subscribe`);
+  }
+
+  const n = net(), econ = venueEconomics(venue);
   // 153-4: business venues pin the evaluator to policies.evaluator —
   // evaluate/reject then requires that wallet (actorAllowed on job.evaluator).
   const evaluator = resolveVenueEvaluator(isBusiness ? venue : undefined);

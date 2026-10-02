@@ -22,6 +22,10 @@ import { venueInstancePage, venuePrivatePage } from "../../views/venue-instance"
 import { venueAdminPage } from "../../views/venue-admin";
 import { venueHasRole, listVenueMembers, venueRole } from "../lib/venue/members";
 import { venueEvaluator } from "./venue-api-helpers";
+import {
+  listVenuePayments,
+  venueMonthlyPriceAtomic,
+} from "../lib/venue/billing";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 
@@ -99,6 +103,8 @@ export function registerVenueInstancePageRoutes(
         listVenues(),
         net(),
         venueEvaluator(),
+        listVenuePayments(venue.id),
+        venueMonthlyPriceAtomic().toString(),
       ));
     },
   );

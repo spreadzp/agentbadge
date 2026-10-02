@@ -31,7 +31,7 @@ import {
   type LifecycleDeps,
 } from "./venue-api-lifecycle-core";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { getVenue } from "../lib/venue/venues";
+import { getVenue, venueIdOf } from "../lib/venue/venues";
 import { venueHasRole } from "../lib/venue/members";
 import {
   getPrivateJob,
@@ -69,14 +69,12 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
         }),
         mutate: (job, wallet) => {
           job.provider = wallet;
-          // 152-4: provider now known — re-resolve take-rate mode
+          // 152-4/153-5: per-venue take-rate re-resolve once provider known
           // (server EOA provider → "sweep", else "none"/"hook").
-          job.feeMode = resolveFeeMode(job, venueEconomics(), net());
-          // 152-3: claimer may attach its ERC-8004 agentId for feedback.
-          const agentId = Number(body.agentId);
-          if (Number.isInteger(agentId) && agentId > 0) {
-            job.providerAgentId = agentId;
-          }
+          job.feeMode = resolveFeeMode(
+            job, venueEconomics(getVenue(venueIdOf(job))), net());
+          const agentId = Number(body.agentId); // 152-3 ERC-8004 claimer
+          if (Number.isInteger(agentId) && agentId > 0) job.providerAgentId = agentId;
         },
       };
     }),
