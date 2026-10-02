@@ -31,6 +31,8 @@ import { errorResponse } from "../lib/error-response";
 export const CLASS_MEDIUM = 1;
 export const CLASS_HEAVY = 2;
 export const CLASS_FULL = 4;
+/** SLICE-154-5: EaaS subscription pass (mirror AccessPassNFT.sol). */
+export const CLASS_EAAS = 8;
 
 // ─── Challenge ─────────────────────────────────────────────────
 export interface AccessChallengeParams {

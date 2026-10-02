@@ -37,6 +37,10 @@ import {
   HEX32_RE,
   type EaasVariables,
 } from "../lib/eaas/request";
+import {
+  eaasQuotaGate,
+  type EaasQuotaDeps,
+} from "../lib/eaas/subscription";
 
 /** Parsed+validated evaluate request stashed for the post-payment handler. */
 interface EvalInput {
@@ -57,6 +61,8 @@ export interface EaasJobsRoutesDeps extends EvaluateJobDeps {
   rateRpm: number;
   chainId: number;
   paymentForPrice: (priceUsd: string) => PaymentMiddleware;
+  /** SLICE-154-5: subscription quota gate — absent = x402-only. */
+  quota?: EaasQuotaDeps;
 }
 
 const dr = (summary: string) =>
@@ -249,7 +255,11 @@ export function createEaasJobsRoutes(
       c.set("evalInput", { ...parsed, rec });
       return next();
     },
-    evalPay,
+    eaasQuotaGate({
+      quota: deps.quota,
+      policy: (c) => (c.get("evalInput") as EvalInput).policy,
+      fallback: evalPay,
+    }),
     async (c) => {
       const input = c.get("evalInput") as EvalInput;
       const payment = c.get("payment");

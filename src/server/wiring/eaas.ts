@@ -32,6 +32,13 @@ import {
 } from "../lib/eaas/anchor";
 import { createEaasRoutes } from "../routes/eaas-api";
 import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
+import { createEaasBillingRoutes } from "../routes/eaas-billing-api";
+import { checkAccess } from "../middleware/agent-auth";
+import { resolveAccessPassMinter } from "../lib/access-pass-minter";
+import {
+  createJsonSubscriptionStore,
+  type EaasQuotaDeps,
+} from "../lib/eaas/subscription";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 
@@ -133,6 +140,14 @@ export function wireEaas(
     };
   };
 
+  // ─── SLICE-154-5: billing tiers — CLASS_EAAS pass + quota store ─
+  const subStore = createJsonSubscriptionStore();
+  const quota: EaasQuotaDeps = {
+    store: subStore,
+    tiers: cfg.tierQuotas,
+    hasAccess: checkAccess,
+  };
+
   app.route(
     "/",
     createEaasRoutes({
@@ -143,6 +158,7 @@ export function wireEaas(
       rateRpm: cfg.rateRpm,
       signer,
       store,
+      quota,
       ...(anchorer && anchorStore
         ? {
           anchor: {
@@ -179,6 +195,7 @@ export function wireEaas(
         rateRpm: cfg.rateRpm,
         chainId,
         paymentForPrice: (price) => deps.circleRuntime!.paymentForPrice(price),
+        quota,
         escrowFor: (rec) =>
           createErc8183({
             read: read as never,
@@ -232,11 +249,30 @@ export function wireEaas(
     });
   }
 
+  // Subscribe + status routes — tier prices keyed to the quota map;
+  // custom tiers priced at the pro rate until they get their own env var.
+  const tierPrices: Record<string, string> = {};
+  for (const tier of Object.keys(cfg.tierQuotas)) {
+    tierPrices[tier] = tier === "basic" ? cfg.tierBasicUsd : cfg.tierProUsd;
+  }
+  app.route(
+    "/",
+    createEaasBillingRoutes({
+      tierPrices,
+      tiers: cfg.tierQuotas,
+      paymentForPrice: (price) => deps.circleRuntime!.paymentForPrice(price),
+      minter: resolveAccessPassMinter(),
+      store: subStore,
+      rateRpm: cfg.rateRpm,
+    }),
+  );
+
   logger.info("EaaS verdict API mounted", {
     verdictUsd: cfg.verdictUsd,
     scanUsd: cfg.scanUsd,
     store: store.name,
     chainId,
     memoAnchor: cfg.memoAnchor && !!anchorer,
+    tiers: Object.keys(cfg.tierQuotas),
   });
 }

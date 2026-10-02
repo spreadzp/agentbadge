@@ -242,13 +242,13 @@ export async function evaluateExternalJob(
     deps,
   );
 
-  deps.verdictStore.put({
+  const stored = {
     artifact,
     ...(input.consumerWallet ? { consumerWallet: input.consumerWallet } : {}),
     ...(input.paymentTx ? { paymentTx: input.paymentTx } : {}),
     evidence: verdict.evidence,
-  } satisfies StoredVerdict);
-
+  } satisfies StoredVerdict;
+  deps.verdictStore.put(stored);
   // Reputation write-back — best-effort, never fails the response.
   let feedbackTx: string | undefined;
   if (

@@ -66,7 +66,11 @@ export interface ParsedVerdictRequest {
 export interface EaasVariables {
   eaasReq: ParsedVerdictRequest;
   /** Set by requirePayment after successful settle. */
-  payment?: { payer?: string; transaction?: string };
+  payment?: { payer?: string; transaction?: string; amount?: string };
+  /** SLICE-154-5: chosen billing tier on POST /api/eaas/subscribe. */
+  eaasTier?: string;
+  /** SLICE-154-5: set when the call rode the subscription quota path. */
+  eaasQuota?: { wallet: string; tier: string; quotaLeft: number };
 }
 
 function bad(c: Context, error: string): Response {

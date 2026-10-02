@@ -30,6 +30,10 @@ import type {
   VerdictAnchorer,
 } from "../lib/eaas/anchor";
 import {
+  eaasQuotaGate,
+  type EaasQuotaDeps,
+} from "../lib/eaas/subscription";
+import {
   issueVerdict,
   type EaasServiceDeps,
 } from "../lib/eaas/index";
@@ -72,6 +76,11 @@ export interface EaasRoutesDeps {
     find: FindAnchorFn;
     explorerTx?: (txHash: string) => string;
   };
+  /**
+   * SLICE-154-5: subscription quota gate — absent = x402-only (feature off).
+   * Valid wallet-sig + CLASS_EAAS pass + live sub → quota path, no payment.
+   */
+  quota?: EaasQuotaDeps;
 }
 
 /* --------------------------------- routes --------------------------------- */
@@ -128,10 +137,12 @@ export function createEaasRoutes(
       }
       return next();
     },
-    async (c, next) => {
-      const req = c.get("eaasReq") as ParsedVerdictRequest;
-      return paymentFor(req.policy)(c, next);
-    },
+    eaasQuotaGate({
+      quota: deps.quota,
+      policy: (c) => (c.get("eaasReq") as ParsedVerdictRequest).policy,
+      fallback: async (c, next) =>
+        paymentFor((c.get("eaasReq") as ParsedVerdictRequest).policy)(c, next),
+    }),
     async (c) => {
       const req = c.get("eaasReq");
       const payment = c.get("payment");

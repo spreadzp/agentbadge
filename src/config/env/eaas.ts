@@ -17,6 +17,12 @@
  * SLICE-154-4 onchain anchoring:
  *   ARC_EAAS_MEMO_ANCHOR — 0 disables memo anchoring (default enabled).
  *   ARC_EAAS_ANCHOR_RETRIES — send attempts before status "failed" (default 3).
+ *
+ * SLICE-154-5 billing tiers (subscription + AccessPassNFT CLASS_EAAS=8):
+ *   ARC_EAAS_TIER_BASIC_USD / ARC_EAAS_TIER_PRO_USD — atomic USDC prices.
+ *   ARC_EAAS_TIER_QUOTAS — JSON tier→{quota,policies} map, e.g.
+ *     {"basic":{"quota":100,"policies":["deliverable-present","hash-match"]},
+ *      "pro":{"quota":1000,"policies":["*"]}}
  */
 
 import type { EaasEnvConfig } from "./types";
@@ -90,6 +96,11 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
   const memoAnchor = (process.env.ARC_EAAS_MEMO_ANCHOR ?? "1") !== "0";
   const anchorRetries = intVar("ARC_EAAS_ANCHOR_RETRIES", 3, 1, errors);
 
+  // SLICE-154-5: billing tiers — $5 basic / $25 pro monthly, quota JSON.
+  const tierBasicUsd = atomicPrice("ARC_EAAS_TIER_BASIC_USD", "5000000", errors);
+  const tierProUsd = atomicPrice("ARC_EAAS_TIER_PRO_USD", "25000000", errors);
+  const tierQuotas = parseTierQuotas(errors);
+
   if (!signerKey) return undefined;
   return {
     enabled: true,
@@ -103,5 +114,52 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
     gasCap,
     memoAnchor,
     anchorRetries,
+    tierBasicUsd,
+    tierProUsd,
+    tierQuotas,
   };
+}
+
+const DEFAULT_TIER_QUOTAS: Record<
+  string,
+  { quota: number; policies: string[] }
+> = {
+  basic: { quota: 100, policies: ["deliverable-present", "hash-match"] },
+  pro: { quota: 1000, policies: ["*"] },
+};
+
+/** Parse ARC_EAAS_TIER_QUOTAS JSON; falls back to defaults on bad input. */
+function parseTierQuotas(
+  errors: string[],
+): Record<string, { quota: number; policies: string[] }> {
+  const raw = process.env.ARC_EAAS_TIER_QUOTAS;
+  if (!raw) return DEFAULT_TIER_QUOTAS;
+  try {
+    const parsed = JSON.parse(raw) as Record<
+      string,
+      { quota?: unknown; policies?: unknown }
+    >;
+    const out: Record<string, { quota: number; policies: string[] }> = {};
+    for (const [tier, def] of Object.entries(parsed)) {
+      const quota = Number(def?.quota);
+      const policies = Array.isArray(def?.policies)
+        ? def.policies.filter((p): p is string => typeof p === "string")
+        : null;
+      if (!Number.isInteger(quota) || quota < 1 || !policies || !policies.length) {
+        errors.push(
+          `Invalid ARC_EAAS_TIER_QUOTAS entry "${tier}": needs integer quota >= 1 and non-empty policies[]`,
+        );
+        continue;
+      }
+      out[tier] = { quota, policies };
+    }
+    if (Object.keys(out).length === 0) {
+      errors.push("Invalid ARC_EAAS_TIER_QUOTAS: no usable tier entries");
+      return DEFAULT_TIER_QUOTAS;
+    }
+    return out;
+  } catch {
+    errors.push("Invalid ARC_EAAS_TIER_QUOTAS: not valid JSON");
+    return DEFAULT_TIER_QUOTAS;
+  }
 }

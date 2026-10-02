@@ -24,6 +24,8 @@ import { resolveBundleIds, RULE_BUNDLES } from "../../agent-readiness/rule-bundl
 export const CLASS_MEDIUM = 1;
 export const CLASS_HEAVY = 2;
 export const CLASS_FULL = 4;
+/** SLICE-154-5: EaaS subscription pass class bit. */
+export const CLASS_EAAS = 8;
 
 const COST_CLASS_BITS: Record<string, number> = {
   light: 0, // light stays free (D12) — no bit in contract
@@ -161,6 +163,15 @@ export function configureAccessPassMinterForTesting(config: {
 export function resetAccessPassMinterForTesting() {
   _overrideMinter = null;
   _minterClient = null;
+}
+
+/**
+ * Resolve the active minter (test override or default chain minter).
+ * Used by routes that mint outside the x402 afterSettle hook — e.g.
+ * SLICE-154-5 POST /api/eaas/subscribe mints CLASS_EAAS on settle.
+ */
+export function resolveAccessPassMinter(): MinterFn {
+  return _overrideMinter ?? defaultMinter;
 }
 
 // ─── x402 afterSettle hook ─────────────────────────────────────

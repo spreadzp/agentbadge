@@ -223,6 +223,15 @@ export interface EaasEnvConfig {
   memoAnchor: boolean;
   /** SLICE-154-4: anchor retry attempts before status "failed" (ARC_EAAS_ANCHOR_RETRIES). */
   anchorRetries: number;
+  /** SLICE-154-5: basic-tier subscription price, "$x.xx" (ARC_EAAS_TIER_BASIC_USD atomic). */
+  tierBasicUsd: string;
+  /** SLICE-154-5: pro-tier subscription price, "$x.xx" (ARC_EAAS_TIER_PRO_USD atomic). */
+  tierProUsd: string;
+  /**
+   * SLICE-154-5: tier → {quota, policies} map (ARC_EAAS_TIER_QUOTAS JSON).
+   * policies: ["*"] = all; otherwise a POLICY_REGISTRY allowlist.
+   */
+  tierQuotas: Record<string, { quota: number; policies: string[] }>;
 }
 
 /**
