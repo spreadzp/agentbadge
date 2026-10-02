@@ -5,7 +5,7 @@
  * /market/jobs          — jobs board (htmx poll fragment)
  * /market/jobs/:id      — job detail: lifecycle + tx links + verdict
  *
- * Forms/providers/attestations live in venue-forms.ts.
+ * Forms/providers/attestations → venue-forms.ts; rating card → venue-rating.ts.
  * One active network via ARC_NETWORK (D13-151) — no UI selector.
  */
 
@@ -29,6 +29,7 @@ import {
   venueActivityFragment,
   type VenueActivityViewItem,
 } from "./venue-feed";
+import { venueRateCard } from "./venue-rating";
 
 // Re-export shared primitives — venue-forms.ts imports them from here.
 export {
@@ -281,13 +282,12 @@ export function venueJobDetailPage(
       <div class="${CARD} mt-4">
         <h2 class="text-sm font-semibold text-slate-300">Lifecycle</h2>
         <ul class="mt-2">
-          ${raw(phase("created", job.chainTxs.created))}
-          ${raw(phase("funded", job.chainTxs.funded))}
-          ${raw(phase("submitted", job.chainTxs.submitted))}
-          ${raw(phase("completed", job.chainTxs.completed))}
+          ${raw((["created", "funded", "submitted", "completed", "rated"] as const)
+            .map((p) => phase(p, job.chainTxs[p])).join(""))}
         </ul>
         ${job.verdict ? html`<p class="mt-3 text-sm text-slate-300"><span class="text-slate-500">Evaluator verdict:</span> ${esc(job.verdict)}</p>` : ""}
       </div>
+      ${raw(venueRateCard(job, net))}
       <p class="mt-6 text-xs text-slate-500">Created ${esc(job.createdAt.slice(0, 19).replace("T", " "))} · record <code>${esc(job.jobId)}</code></p>
     </main>`;
   const meta: PageMeta = {

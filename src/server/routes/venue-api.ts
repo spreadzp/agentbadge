@@ -40,6 +40,7 @@ import {
 import { registerVenueInstancePrivateRoutes } from "./venue-api-instances-private";
 import { registerVenueAdminRoutes } from "./venue-api-admin";
 import { registerVenueBillingRoutes, type VenueBillingDeps } from "./venue-api-billing";
+import { registerVenueRatingRoutes } from "./venue-api-rating";
 import { createVenueJob } from "./venue-job-create";
 import {
   ERC8183_STATUS,
@@ -147,6 +148,8 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   registerVenueAdminRoutes(app);
   // 153-5: billing routes — POST :id/subscribe, GET :id/economics, GET :id/billing
   registerVenueBillingRoutes(app, deps.billing);
+  // 153-6: client rating — POST /jobs/:id/rate + scoped instance variant
+  registerVenueRatingRoutes(app, { network: net, onchainJob });
 
   // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
   registerVenueIndexerRoutes(app, { indexer: deps.indexer });

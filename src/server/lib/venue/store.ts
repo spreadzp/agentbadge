@@ -80,17 +80,18 @@ export interface VenueJob {
     amountAtomic?: string;
     tx?: string;
   };
+  /** 153-6: subjective client rating (ERC-8004, client-signed). */
+  rating?: { score: number; comment?: string; txHash?: string; at: string };
   category?: string;
   createdAt: string;
-  chainTxs: {
-    created?: string;
-    claimed?: string;
-    funded?: string;
-    submitted?: string;
-    completed?: string;
-    rejected?: string;
-    refunded?: string;
-  };
+  /** 153-6: "rated" = client giveFeedback tx (signed by client wallet). */
+  chainTxs: Partial<
+    Record<
+      "created" | "claimed" | "funded" | "submitted" | "completed" |
+        "rejected" | "refunded" | "rated",
+      string
+    >
+  >;
   /** Evaluator verdict once complete (pass/fail + reason). */
   verdict?: string;
   /** Tenancy namespace (153-1). Absent on legacy rows = "public". */

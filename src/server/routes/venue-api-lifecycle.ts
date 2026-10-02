@@ -231,6 +231,7 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
         "phase ∈ {created,funded,submitted,completed,evalFee}");
     }
     job.chainTxs[phase as keyof VenueJob["chainTxs"]] = hash;
+    if (phase === "rated" && job.rating) job.rating.txHash = hash; // 153-6
     if (phase === "created" && job.status === "pending") job.status = "open";
     if (phase === "created" && job.onchainJobId == null && deps.txJobId) {
       const id = await deps.txJobId(hash as `0x${string}`, net());

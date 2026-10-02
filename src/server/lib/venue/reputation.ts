@@ -88,6 +88,65 @@ export function composeFeedback(
  * one PreparedTx; memoId is deterministic per (jobId, tag) so a
  * duplicate send is a no-op onchain AND a tx for the explorer link.
  */
+export function composeClientRating(args: {
+  job: VenueJob;
+  agentId: bigint;
+  score: number;
+  comment?: string;
+}): ComposedFeedback {
+  const { job, score, comment } = args;
+  // tag2 = verifyMethod — "escrow-verdict" once the evaluator ruled.
+  const verifyMethod = job.verdict ? "escrow-verdict" : "manual";
+  const payload = {
+    schema: "agentbadge.venue-client-rating.v1",
+    jobId: job.jobId,
+    onchainJobId: job.onchainJobId ?? null,
+    score,
+    comment: comment ?? null,
+    budgetUsdc: job.budgetUsdc,
+    venueId: job.venueId ?? "public",
+  };
+  const feedbackURI =
+    `data:application/json;base64,${Buffer.from(JSON.stringify(payload)).toString("base64")}`;
+  return {
+    agentId: args.agentId,
+    value: BigInt(score),
+    decimals: 0,
+    tag1: "venue-client-rating",
+    tag2: verifyMethod,
+    endpoint: `/market/jobs/${job.jobId}`,
+    feedbackURI,
+    hash: job.deliverableHash && /^0x[0-9a-fA-F]{64}$/.test(job.deliverableHash)
+      ? (job.deliverableHash as Hex)
+      : keccak256(toBytes(JSON.stringify(payload))),
+  };
+}
+
+/**
+ * 153-6: client's giveFeedback — DIRECT ReputationRegistry call (no memo
+ * wrapper): the client wallet must be the msg.sender, so anti-farming
+ * keeps working and the self-feedback ban can't trigger (client ≠ owner).
+ */
+export function buildClientRatingTx(
+  net: VenueNetwork,
+  fb: ComposedFeedback,
+): PreparedTx {
+  return {
+    to: net.reputationRegistry,
+    data: encodeFunctionData({
+      abi: ERC8004_ABI,
+      functionName: "giveFeedback",
+      args: [
+        fb.agentId, fb.value, fb.decimals, fb.tag1, fb.tag2,
+        fb.endpoint, fb.feedbackURI, fb.hash ?? B32_ZERO,
+      ],
+    } as never),
+    description:
+      `giveFeedback(agentId=${fb.agentId}, value=${fb.value}, ` +
+      `tag=${fb.tag1}) — client rating`,
+  };
+}
+
 export function buildFeedbackTx(
   net: VenueNetwork,
   fb: ComposedFeedback,

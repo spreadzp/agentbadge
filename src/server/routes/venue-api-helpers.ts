@@ -17,7 +17,8 @@ export const ERC8183_STATUS: Record<number, string> = {
 };
 
 export const TX_PHASES = [
-  "created", "claimed", "funded", "submitted", "completed", "rejected", "refunded",
+  "created", "claimed", "funded", "submitted", "completed", "rejected",
+  "refunded", "rated",
 ] as const;
 
 /** Evaluator EOA for new jobs — derived from ARC_EVALUATOR_KEY. */

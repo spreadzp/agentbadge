@@ -42,6 +42,11 @@ export interface ProviderStats {
   feedbackScore: number;
   /** "onchain" | "index" — which source produced feedbackScore. */
   feedbackSource: "onchain" | "index";
+  /**
+   * 153-6: subjective client channel — avg of job.rating.score over
+   * rated completed jobs (D7). source "index" = our venue store.
+   */
+  clientRating?: { avg: number; count: number; source: "index" };
   lastActiveAt?: string;
 }
 
@@ -154,6 +159,16 @@ export async function getProviderProfile(
     network: deps.network ?? resolveVenueNetwork,
   });
 
+  // 153-6: subjective client ratings — avg over rated completed jobs.
+  const ratedJobs = done.filter((j) => j.rating != null);
+  const clientRating = ratedJobs.length > 0
+    ? {
+      avg: ratedJobs.reduce((s, j) => s + j.rating!.score, 0) / ratedJobs.length,
+      count: ratedJobs.length,
+      source: "index" as const,
+    }
+    : undefined;
+
   return {
     address,
     agentId,
@@ -164,6 +179,7 @@ export async function getProviderProfile(
       jobsActive: active.length,
       feedbackScore,
       feedbackSource,
+      clientRating,
       lastActiveAt,
     },
     offers: [...offers].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -181,6 +197,8 @@ export interface ProviderSummary {
   jobsDone: number;
   jobsActive: number;
   feedbackScore: number;
+  /** 153-6: client-rating avg on the list page (index source). */
+  clientRatingAvg?: number;
   offersActive: number;
   lastActiveAt?: string;
 }
@@ -192,6 +210,9 @@ export function listProviderSummaries(): ProviderSummary[] {
     );
     const jobs = listJobs().filter((j) => lc(j.provider) === addr);
     const agentId = resolveAgentId(addr, offers, jobs);
+    const rated = jobs.filter(
+      (j) => j.status === "completed" && j.rating != null,
+    );
     return {
       address: addr,
       agentId,
@@ -201,6 +222,9 @@ export function listProviderSummaries(): ProviderSummary[] {
         ["claimed", "funded", "submitted"].includes(j.status),
       ).length,
       feedbackScore: jobs.filter((j) => j.feedback?.status === "sent").length,
+      clientRatingAvg: rated.length > 0
+        ? rated.reduce((s, j) => s + j.rating!.score, 0) / rated.length
+        : undefined,
       offersActive: offers.filter((o) => o.active).length,
       lastActiveAt:
         [...jobs.map((j) => j.createdAt), ...offers.map((o) => o.createdAt)]
