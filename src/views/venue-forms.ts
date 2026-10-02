@@ -51,6 +51,14 @@ export function venueNewJobPage(net: VenueNetwork, prefill: JobPrefill = {}): st
           <div><label class="${LABEL}">Category</label><input name="category" maxlength="50" class="${INPUT}" value="${esc(prefill.category ?? "")}" placeholder="scanner / data / custom" /></div>
         </div>
         <div><label class="${LABEL}">Provider (optional — leave empty for open board)</label><input name="provider" class="${INPUT}" value="${esc(prefill.provider ?? "")}" placeholder="0x…" /></div>
+        <details class="rounded-lg border border-amber-400/20 bg-amber-950/10 p-3">
+          <summary class="cursor-pointer text-sm text-amber-200/80 hover:text-amber-200">Private details (business venues — members only)</summary>
+          <p class="mt-2 text-xs text-slate-500">Business-venue jobs post only a <code>bv:&lt;slug&gt;:&lt;tag&gt;</code> onchain; these fields stay off-chain, visible to venue members.</p>
+          <div class="mt-3 space-y-3">
+            <div><label class="${LABEL}">Full scope (private)</label><textarea name="privateDescription" maxlength="2000" rows="3" class="${INPUT}" placeholder="Confidential scope — never goes onchain"></textarea></div>
+            <div><label class="${LABEL}">Terms (private)</label><input name="privateTerms" maxlength="500" class="${INPUT}" placeholder="SLA / conditions" /></div>
+          </div>
+        </details>
         <button type="submit" class="${BTN} w-full">Connect wallet &amp; create job</button>
         <p id="job-status" class="text-center text-sm text-slate-400"></p>
         <div id="job-result" class="hidden rounded-lg border border-emerald-700/50 bg-emerald-950/30 p-4 text-sm"></div>
@@ -85,7 +93,11 @@ export function venueNewJobPage(net: VenueNetwork, prefill: JobPrefill = {}): st
               title: fd.get("title"), description: fd.get("description"),
               budgetUsdc: Number(fd.get("budgetUsdc")),
               category: fd.get("category") || undefined,
-              provider: fd.get("provider") || undefined })});
+              provider: fd.get("provider") || undefined,
+              privateDetails: (fd.get("privateDescription") || fd.get("privateTerms"))
+                ? { descriptionFull: fd.get("privateDescription") || undefined,
+                    terms: fd.get("privateTerms") || undefined }
+                : undefined })});
           if (!r.ok) throw new Error((await r.json()).error ?? "HTTP " + r.status);
           const out = await r.json();
           st.textContent = "Broadcasting createJob — confirm in wallet…";

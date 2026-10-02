@@ -17,7 +17,9 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { listJobs, listOffers, getJob, upsertJob } from "../lib/venue/store";
-import { listVenues } from "../lib/venue/venues";
+import { listVenues, getVenue } from "../lib/venue/venues";
+import { venueHasRole } from "../lib/venue/members";
+import { getPrivateJob } from "../lib/venue/private-jobs";
 import {
   fetchOnchainJob,
   resolveVenueNetwork,
@@ -232,7 +234,15 @@ export function createVenuePageRoutes(deps: VenuePageDeps = {}) {
       if (job.onchainJobId != null) {
         await syncOnchainStatuses([job], net(), onchainJob);
       }
-      return c.html(venueJobDetailPage(job, net()));
+      // 153-3: private section renders only for venue members (display-layer
+      // gate via x-wallet header; API remains signature-gated).
+      const venue = job.venueId ? getVenue(job.venueId) : undefined;
+      const viewer = c.req.header("x-wallet");
+      const priv = venue?.kind === "business" && viewer &&
+        venueHasRole(venue, viewer, "viewer")
+        ? getPrivateJob(job.jobId)
+        : undefined;
+      return c.html(venueJobDetailPage(job, net(), priv));
     },
   );
 

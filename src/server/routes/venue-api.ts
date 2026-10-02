@@ -4,8 +4,7 @@
  * Attestations share the 151-3 store (D11-151); chain reads injected for tests.
  */
 import { Hono } from "hono";
-import { randomBytes } from "node:crypto";
-import { encodeFunctionData, getAddress, isAddress, parseUnits, type Hex } from "viem";
+import type { Hex } from "viem";
 import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
 import { sharedVenueStore } from "../lib/attestation-store";
 import {
@@ -28,10 +27,7 @@ import {
 } from "../lib/venue/chain";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import {
-  resolveFeeMode,
-  venueEconomics,
-} from "../lib/venue/economics";
+import { venueEconomics } from "../lib/venue/economics";
 import type { VenueIndexerDeps } from "../lib/venue/indexer";
 import { venueStats } from "../lib/venue/indexer";
 import type { ProviderProfileDeps } from "../lib/venue/profiles";
@@ -40,14 +36,12 @@ import { registerVenueProfileRoutes } from "./venue-api-profiles";
 import {
   registerVenueInstanceRoutes,
   venueScope,
-  venueScopeOr404,
 } from "./venue-api-instances";
+import { registerVenueInstancePrivateRoutes } from "./venue-api-instances-private";
+import { createVenueJob } from "./venue-job-create";
 import {
   ERC8183_STATUS,
   dr,
-  signedJson,
-  str,
-  venueEvaluator,
 } from "./venue-api-helpers";
 import {
   listVenueActivity,
@@ -97,90 +91,9 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   });
 
   // POST /api/venue/jobs — record + prepared createJob calldata.
-  app.post("/api/venue/jobs", dr("Create job → prepared createJob tx"), async (c) => {
-    const s = await signedJson(c);
-    if (s instanceof Response) return s;
-    const { body } = s;
-    const title = str(body.title, 120);
-    const description = str(body.description, 2000);
-    const category = body.category == null ? undefined : str(body.category, 50);
-    const budgetUsdc = Number(body.budgetUsdc);
-    if (!title || !description) {
-      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS,
-        "title (≤120) + description (≤2000) required");
-    }
-    if (!Number.isFinite(budgetUsdc) || budgetUsdc <= 0 || budgetUsdc > 1_000_000) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
-        "budgetUsdc must be a number in (0, 1000000]");
-    }
-    const provider = str(body.provider, 42);
-    if (provider != null && !isAddress(provider)) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "provider must be 0x…");
-    }
-    const jobVenueId = venueScopeOr404(c, str(body.venue, 64) ?? str(body.venueId, 64), s.wallet); // 153-1/2
-    if (jobVenueId instanceof Response) return jobVenueId;
-    const n = net(), econ = venueEconomics();
-    const evaluator = venueEvaluator();
-    const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400);
-    const jobId = `vj_${randomBytes(8).toString("hex")}`;
-    const job: VenueJob = {
-      jobId, title, description, budgetUsdc,
-      status: "pending",
-      client: s.wallet,
-      provider: provider ? getAddress(provider) : undefined,
-      evaluator,
-      category: category ?? undefined,
-      venueId: jobVenueId,
-      createdAt: new Date().toISOString(),
-      chainTxs: {},
-    };
-    // 152-4: resolve take-rate mode at creation (open jobs re-resolve at
-    // claim once provider is known) and arm the eval-fee ledger.
-    job.feeMode = resolveFeeMode(job, econ, n);
-    if (econ.evalFeeAtomic > 0n) {
-      job.evalFee = {
-        required: true,
-        paid: false,
-        amountAtomic: econ.evalFeeAtomic.toString(),
-      };
-    }
-    upsertJob(job);
-    recordVenueEvent({
-      action: "job.created",
-      text: `job posted — “${title}” · $${budgetUsdc} USDC`,
-      jobId,
-      dedupeKey: `job.created:${jobId}`,
-    });
-    const createData = encodeFunctionData({
-      abi: n.abi,
-      functionName: "createJob",
-      args: [
-        (provider ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
-        evaluator, expiredAt,
-        `${title} — ${description}`.slice(0, 512),
-        // 152-4: IACPHook address when hook fee mode is configured.
-        (econ.feeHook ??
-          "0x0000000000000000000000000000000000000000") as `0x${string}`,
-      ],
-    } as never);
-    const budgetBase = parseUnits(String(budgetUsdc), 6);
-    return c.json({
-      job,
-      network: n.name,
-      txs: {
-        createJob: {
-          to: n.agenticCommerce,
-          data: createData,
-          description:
-            `Broadcast this tx, then POST /api/venue/jobs/${jobId}/tx ` +
-            `{hash, phase:'created'} to attach it.`,
-        },
-        note:
-          `After createJob confirms: setBudget(jobId, ${budgetBase}, 0x), ` +
-          `then approve USDC + fund(jobId, ${budgetBase}, 0x).`,
-      },
-    });
-  });
+  // 153-3: handler extracted to venue-job-create.ts (privateDetails wiring).
+  app.post("/api/venue/jobs", dr("Create job → prepared createJob tx"),
+    (c) => createVenueJob(c, net));
 
   // POST /jobs/:id/tx (attach tx) lives in venue-api-lifecycle.ts — max-lines.
 
@@ -224,6 +137,8 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
 
   // Venue instances (tenancy registry) — SLICE-153-1, venue-api-instances.ts
   registerVenueInstanceRoutes(app);
+  // 153-3: scoped private-job create + verify-commitment — venue-api-instances-private.ts
+  registerVenueInstancePrivateRoutes(app, net);
 
   // Indexer + stats routes — SLICE-152-5, venue-api-indexer.ts
   registerVenueIndexerRoutes(app, { indexer: deps.indexer });

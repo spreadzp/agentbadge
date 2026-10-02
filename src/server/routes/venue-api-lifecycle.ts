@@ -30,6 +30,15 @@ import {
   type ActionCtx,
   type LifecycleDeps,
 } from "./venue-api-lifecycle-core";
+import { verifyWalletSigRequest } from "../middleware/agent-auth";
+import { getVenue } from "../lib/venue/venues";
+import { venueHasRole } from "../lib/venue/members";
+import {
+  getPrivateJob,
+  updatePrivateJob,
+  privateLimit,
+  type PrivateJobPayload,
+} from "../lib/venue/private-jobs";
 
 export type { LifecycleDeps } from "./venue-api-lifecycle-core";
 
@@ -90,11 +99,24 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
   app.post("/api/venue/jobs/:id/submit", dr("Provider submits deliverable"), (c) =>
     handleAction(c, ctx, "submit", (body, g) => {
       const deliverable = str(body.deliverable, 2048);
-      if (!deliverable) {
-        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS,
-          "deliverable required — bytes32 hex or URI/text to hash");
+      // 153-3: deliverableData stays off-chain (venue private record);
+      // only keccak256(data) goes onchain via submit.
+      let deliverableData: string | undefined;
+      if (body.deliverableData != null) {
+        if (typeof body.deliverableData !== "string" ||
+          Buffer.byteLength(body.deliverableData) > privateLimit()) {
+          return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+            `deliverableData exceeds ${privateLimit()}B — use deliverableUri`);
+        }
+        deliverableData = body.deliverableData;
       }
-      const hash = deliverableHash(deliverable);
+      const deliverableUri = str(body.deliverableUri, 512);
+      const raw = deliverableData ?? deliverable;
+      if (!raw) {
+        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS,
+          "deliverable or deliverableData required — bytes32 hex, URI/text, or off-chain payload to hash");
+      }
+      const hash = deliverableHash(raw);
       return {
         txs: buildActionTxs(net(), "submit", {
           onchainJobId: g.onchainId,
@@ -103,6 +125,13 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
         extra: { deliverableHash: hash },
         mutate: (job) => {
           job.deliverableHash = hash;
+          // Private record exists for business-venue jobs — store payload.
+          if (deliverableData != null || deliverableUri != null) {
+            updatePrivateJob(job.jobId, {
+              deliverableData,
+              deliverableUri: deliverableUri ?? undefined,
+            });
+          }
         },
       };
     }),
@@ -226,7 +255,27 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
     if (!job) {
       return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "unknown jobId");
     }
-    if (job.onchainJobId == null) return c.json({ job, onchain: null });
+    // 153-3: privateDetails for members only (absent otherwise); "members" venues 403 strangers.
+    const venue = job.venueId ? getVenue(job.venueId) : undefined;
+    let privateDetails: PrivateJobPayload | undefined;
+    if (venue?.kind === "business") {
+      const sig = await verifyWalletSigRequest({
+        wallet: c.req.header("x-wallet"),
+        signature: c.req.header("x-sig"),
+        timestamp: c.req.header("x-timestamp"),
+        method: "GET",
+        path: c.req.path,
+      });
+      const wallet = sig === "valid" ? c.req.header("x-wallet") : undefined;
+      const member = !!wallet && venueHasRole(venue, wallet, "viewer");
+      if (!member && venue.clientPolicy !== "open") {
+        return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
+          "venue members only — join the venue to view this job");
+      }
+      if (member) privateDetails = getPrivateJob(job.jobId);
+    }
+    const jobOut = privateDetails ? { ...job, privateDetails } : job;
+    if (job.onchainJobId == null) return c.json({ job: jobOut, onchain: null });
     const raw = (await deps.onchainJob(job.onchainJobId, net())) as OnchainJobRaw | null;
     if (raw) {
       const mapped = ERC8183_STATUS[raw.status];
@@ -246,6 +295,6 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
       // first terminal-status observation (idempotent via store gate).
       await maybeFeedback(job, ctx);
     }
-    return c.json({ job, onchain: raw });
+    return c.json({ job: jobOut, onchain: raw });
   });
 }

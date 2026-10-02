@@ -46,6 +46,9 @@ export interface VenueJob {
   clientAgentId?: number;
   /** bytes32 deliverable hash from submit (152-2). */
   deliverableHash?: string;
+  /** 153-3: business-venue private job — details live in meta lane, onchain
+   * description is only the bv:<slug>:<commitment> tag. */
+  private?: boolean;
   /** Reputation feedback loop state (152-3). */
   feedback?: {
     status: "pending" | "sent" | "failed" | "skipped";

@@ -15,6 +15,7 @@ import type { PageMeta } from "../server/lib/page-meta";
 import type { VenueJob } from "../server/lib/venue/store";
 import type { VenueNetwork } from "../server/lib/venue/chain";
 import type { VenueRecord } from "../server/lib/venue/venues";
+import type { PrivateJobPayload } from "../server/lib/venue/private-jobs";
 import {
   CARD,
   esc,
@@ -56,6 +57,7 @@ export function venueJobCard(job: VenueJob, net: VenueNetwork): string {
   <a href="/market/jobs/${esc(job.jobId)}" class="${CARD} block">
     <div class="flex items-start justify-between gap-2">
       <h3 class="text-base font-semibold text-slate-100 truncate">${esc(job.title)}</h3>
+      ${job.private ? `<span class="text-[10px] uppercase tracking-wide text-amber-300/90 border border-amber-400/30 rounded px-1.5 py-0.5" title="Private venue job — details hidden">private</span>` : ""}
       ${jobStatusBadge(job.status)}
     </div>
     <p class="mt-2 text-sm text-slate-400 line-clamp-2">${esc(job.description)}</p>
@@ -240,9 +242,10 @@ export function venueJobsPage(
   return Layout(body as unknown as string, undefined, meta).toString();
 }
 
-// ─── /market/jobs/:id detail ─────────────────────────────────────
-
-export function venueJobDetailPage(job: VenueJob, net: VenueNetwork): string {
+// ─── /market/jobs/:id detail ───
+export function venueJobDetailPage(
+  job: VenueJob, net: VenueNetwork, priv?: PrivateJobPayload,
+): string {
   const phase = (label: string, tx?: string) => `
     <li class="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
       <span class="w-24 text-xs text-slate-500">${label}</span>
@@ -257,7 +260,14 @@ export function venueJobDetailPage(job: VenueJob, net: VenueNetwork): string {
         <h1 class="text-2xl font-bold">${esc(job.title)}</h1>
         ${raw(jobStatusBadge(job.status))}
       </div>
+      ${job.private ? `<span class="mt-2 inline-block text-[10px] uppercase tracking-wide text-amber-300/90 border border-amber-400/30 rounded px-1.5 py-0.5" title="Private venue job — details hidden">private venue job</span>` : ""}
       <p class="mt-4 whitespace-pre-wrap text-slate-300">${esc(job.description)}</p>
+      ${priv ? html`<div class="${CARD} mt-4 border-amber-400/30">
+          <h2 class="text-sm font-semibold text-amber-200">Private details · members only</h2><p class="mt-2 whitespace-pre-wrap text-sm text-slate-300">${esc(priv.descriptionFull)}</p>
+          ${priv.terms ? html`<p class="mt-2 text-sm text-slate-400"><span class="text-slate-500">Terms:</span> ${esc(priv.terms)}</p>` : ""}
+          ${priv.deliverableUri ? html`<p class="mt-2 text-sm"><a class="text-sky-400 hover:underline" target="_blank" rel="noopener" href="${esc(priv.deliverableUri)}">deliverable ⧉</a></p>` : ""}
+          ${priv.deliverableData ? html`<details class="mt-2"><summary class="text-sm text-slate-400 cursor-pointer">Deliverable data</summary><pre class="mt-2 whitespace-pre-wrap break-words text-xs text-slate-300">${esc(priv.deliverableData)}</pre></details>` : ""}
+        </div>` : job.private ? html`<div class="${CARD} mt-4 border-amber-400/20"><p class="text-sm text-amber-200/80">Private venue job — details hidden for non-members.</p></div>` : ""}
       <div class="${CARD} mt-8">
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div><span class="text-slate-500">Budget</span><div class="text-emerald-400 font-semibold">$${job.budgetUsdc} USDC</div></div>
