@@ -46,6 +46,11 @@ export interface CirclePaymentsRuntime {
     routeKey: string,
     opts?: { identity?: boolean },
   ): PaymentMiddleware;
+  /** requirePayment bound to runtime opts — explicit "$x.xx" price (env-driven, SLICE-154-2). */
+  paymentForPrice(
+    priceUsd: string,
+    opts?: { identity?: boolean },
+  ): PaymentMiddleware;
   /** Fulfillment-failure ledger (ops / MCP payment_history) */
   failureStore: FailureStore;
   /** 402 extensions builder — present only when identity flag on */
@@ -101,19 +106,19 @@ export function createCirclePaymentsRuntime(
       }),
       ...(cfg.gateway
         ? {
-            gateway: registerGatewayScheme(server, {
-              facilitatorUrl: cfg.gatewayApiUrl,
-              sellerAddress: cfg.sellerAddress,
-            }),
-          }
+          gateway: registerGatewayScheme(server, {
+            facilitatorUrl: cfg.gatewayApiUrl,
+            sellerAddress: cfg.sellerAddress,
+          }),
+        }
         : {}),
       ...(cfg.arc
         ? {
-            arcSelfSettle: registerArcSelfSettleScheme(server, {
-              rpcUrl: cfg.arcRpcUrl,
-              sellerAddress: cfg.sellerAddress,
-            }),
-          }
+          arcSelfSettle: registerArcSelfSettleScheme(server, {
+            rpcUrl: cfg.arcRpcUrl,
+            sellerAddress: cfg.sellerAddress,
+          }),
+        }
         : {}),
     };
   }
@@ -135,18 +140,18 @@ export function createCirclePaymentsRuntime(
   const statusLookup = createPaymentStatusLookup({
     ...(cfg.gateway
       ? {
-          gatewayTransfers: {
-            getTransferById: async (id: string) => {
-              const resp = await fetch(
-                `${cfg.gatewayApiUrl}/x402/transfers/${encodeURIComponent(id)}`,
-              );
-              if (!resp.ok) {
-                throw new Error(`gateway transfer lookup ${resp.status}`);
-              }
-              return resp.json();
-            },
+        gatewayTransfers: {
+          getTransferById: async (id: string) => {
+            const resp = await fetch(
+              `${cfg.gatewayApiUrl}/x402/transfers/${encodeURIComponent(id)}`,
+            );
+            if (!resp.ok) {
+              throw new Error(`gateway transfer lookup ${resp.status}`);
+            }
+            return resp.json();
           },
-        }
+        },
+      }
       : {}),
     ...(handles.arcSelfSettle
       ? { arcSelfSettle: handles.arcSelfSettle }
@@ -166,11 +171,11 @@ export function createCirclePaymentsRuntime(
     ...(cfg.gateway ? { gatewayApiUrl: cfg.gatewayApiUrl } : {}),
     ...(handles.arcSelfSettle
       ? {
-          publicClients: {
-            [ARC_TESTNET.caip2]:
-              handles.arcSelfSettle.publicClient as never,
-          },
-        }
+        publicClients: {
+          [ARC_TESTNET.caip2]:
+            handles.arcSelfSettle.publicClient as never,
+        },
+      }
       : {}),
   });
 
@@ -180,29 +185,29 @@ export function createCirclePaymentsRuntime(
     sellerAddress: cfg.sellerAddress,
     ...(cfg.gateway
       ? {
-          gatewayTransfers: {
-            searchTransfers: async (params: {
-              to?: string;
-              network?: string;
-              status?: string;
-              pageSize?: number;
-            }) => {
-              const q = new URLSearchParams();
-              if (params.to) q.set("to", params.to);
-              if (params.network) q.set("network", params.network);
-              if (params.status) q.set("status", params.status);
-              if (params.pageSize) q.set("pageSize", String(params.pageSize));
-              const qs = q.toString().replaceAll("%3A", ":");
-              const resp = await fetch(
-                `${cfg.gatewayApiUrl}/x402/transfers${qs ? `?${qs}` : ""}`,
-              );
-              if (!resp.ok) {
-                throw new Error(`gateway transfers search ${resp.status}`);
-              }
-              return resp.json();
-            },
+        gatewayTransfers: {
+          searchTransfers: async (params: {
+            to?: string;
+            network?: string;
+            status?: string;
+            pageSize?: number;
+          }) => {
+            const q = new URLSearchParams();
+            if (params.to) q.set("to", params.to);
+            if (params.network) q.set("network", params.network);
+            if (params.status) q.set("status", params.status);
+            if (params.pageSize) q.set("pageSize", String(params.pageSize));
+            const qs = q.toString().replaceAll("%3A", ":");
+            const resp = await fetch(
+              `${cfg.gatewayApiUrl}/x402/transfers${qs ? `?${qs}` : ""}`,
+            );
+            if (!resp.ok) {
+              throw new Error(`gateway transfers search ${resp.status}`);
+            }
+            return resp.json();
           },
-        }
+        },
+      }
       : {}),
   });
 
@@ -218,7 +223,12 @@ export function createCirclePaymentsRuntime(
       routeKey: string,
       opts?: { identity?: boolean },
     ): PaymentMiddleware {
-      const price = getPrice(routeKey);
+      return this.paymentForPrice(getPrice(routeKey), opts);
+    },
+    paymentForPrice(
+      price: string,
+      opts?: { identity?: boolean },
+    ): PaymentMiddleware {
       const withIdentity = opts?.identity !== false && identityExtension;
       return requirePayment(price, {
         sellerAddress: cfg.sellerAddress,

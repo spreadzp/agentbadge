@@ -8,6 +8,7 @@ import { wireScanPacksX402 } from "./wiring/scan-packs-x402";
 import { wireMarketplace } from "./wiring/marketplace-x402";
 import { registerMcpNamespaces, wireMcpNamespaceRoutes, registerDefaultMcpTools } from "./wiring/mcp-namespaces";
 import { wireCirclePayments } from "./wiring/circle-payments";
+import { wireEaas } from "./wiring/eaas";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
@@ -154,7 +155,11 @@ registerPostMarketplaceRoutes(app);
 // Circle nanopayments (EPIC-129) — only when CIRCLE_PAYMENTS_ENABLED=true.
 // Master flag off → zero behavior change (old x402 paths stay as-is).
 // EPIC-140: extracted to wiring/circle-payments.ts
-wireCirclePayments(app, { marketNs: namespaces.marketNs });
+const circleRuntime = wireCirclePayments(app, { marketNs: namespaces.marketNs });
+
+// EPIC-154 SLICE-154-2: EaaS verdict API (x402-gated POST + free GETs).
+// Requires circle payments runtime for pricing; no-op when either flag off.
+wireEaas(app, { circleRuntime });
 
 // EPIC-140: ops/monitoring routes extracted to routes/index.ts
 registerOpsRoutes(app);

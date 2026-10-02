@@ -35,6 +35,8 @@ export interface IssueVerdictRequest {
   nonce?: number | string;
   /** Requesting consumer wallet — billing/limits key. */
   consumerWallet?: string;
+  /** x402 settlement tx — recorded on the StoredVerdict (SLICE-154-2). */
+  paymentTx?: string;
 }
 
 export interface EaasServiceDeps {
@@ -65,12 +67,26 @@ export async function issueVerdict(
     return { artifact: existing.artifact, duplicate: true };
   }
 
-  const result = await policy({
-    deliverable: req.deliverable,
-    deliverableUri: req.deliverableUri,
-    expectedHash: req.expectedHash,
-    consumerWallet: req.consumerWallet,
-  });
+  // Fail-closed (SLICE-154-2): a policy throw is a paid rejection, not a 5xx —
+  // the consumer paid for an evaluation and gets a signed "reject" artifact.
+  let result: { pass: boolean; reason: string; evidence?: unknown };
+  try {
+    result = await policy({
+      deliverable: req.deliverable,
+      deliverableUri: req.deliverableUri,
+      expectedHash: req.expectedHash,
+      consumerWallet: req.consumerWallet,
+    });
+  } catch (e) {
+    const code = e instanceof Error ? e.name : "Error";
+    result = {
+      pass: false,
+      reason: `evaluation-error:${code}`,
+      evidence: {
+        error: e instanceof Error ? e.message : String(e),
+      },
+    };
+  }
 
   const unsigned: UnsignedVerdictArtifact = {
     verdictId,
@@ -90,6 +106,7 @@ export async function issueVerdict(
   const stored: StoredVerdict = {
     artifact,
     consumerWallet: req.consumerWallet,
+    paymentTx: req.paymentTx,
     evidence: result.evidence,
   };
   deps.store.put(stored);

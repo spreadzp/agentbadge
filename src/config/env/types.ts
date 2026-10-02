@@ -207,6 +207,14 @@ export interface EaasEnvConfig {
   signerKey: string;
   /** VerdictStore backend — json (default) | sqlite. */
   store: "json" | "sqlite";
+  /** SLICE-154-2: flat per-verdict price, "$x.xx" USDC (ARC_EAAS_VERDICT_USD atomic → dollar). */
+  verdictUsd: string;
+  /** SLICE-154-2: readiness-scan price override (ARC_EAAS_SCAN_USD). */
+  scanUsd: string;
+  /** SLICE-154-2: deliverable.data size cap in bytes (ARC_EAAS_MAX_BYTES). */
+  maxBytes: number;
+  /** SLICE-154-2: per-consumer + global requests/min cap (ARC_EAAS_RATE_RPM). */
+  rateRpm: number;
 }
 
 /**

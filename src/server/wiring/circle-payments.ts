@@ -9,7 +9,10 @@ import type { NamespaceRegistry } from "@agentbadge/mcp";
 import { getNftsForAccount } from "@agentbadge/hedera-core";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
-import { createCirclePaymentsRuntime } from "../lib/circle-payments";
+import {
+  createCirclePaymentsRuntime,
+  type CirclePaymentsRuntime,
+} from "../lib/circle-payments";
 import { createIdentityRoutes } from "../routes/identity";
 import { createDemoRoutes } from "../routes/demo";
 import { captureError } from "../lib/sentry";
@@ -30,7 +33,7 @@ import {
   setPaymentHistoryToolConfig,
 } from "@agentbadge/mcp";
 
-export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry }): void {
+export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry }): CirclePaymentsRuntime | undefined {
   const { marketNs } = ns;
   // Circle nanopayments (EPIC-129) — only when CIRCLE_PAYMENTS_ENABLED=true.
   // Master flag off → zero behavior change (old x402 paths stay as-is).
@@ -169,6 +172,9 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
         arc: circleCfg.arc,
         identity: circleCfg.identity,
       });
+      // SLICE-154-2: expose the runtime so downstream wiring (eaas x402)
+      // can reuse paymentForPrice without re-constructing rails.
+      return circleRuntime;
     } catch (e) {
       logger.error("Failed to wire circle payments — feature disabled", {
         error: e instanceof Error ? e.message : String(e),
@@ -178,4 +184,5 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
       });
     }
   }
+  return undefined;
 }

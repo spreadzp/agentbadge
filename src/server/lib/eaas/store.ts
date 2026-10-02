@@ -20,6 +20,8 @@ export interface StoredVerdict {
   artifact: VerdictArtifact;
   /** Requesting consumer wallet — billing/limits key (154-2/154-5). */
   consumerWallet?: string;
+  /** x402 settlement transaction hash (SLICE-154-2 afterSettle record). */
+  paymentTx?: string;
   /** Raw policy evidence kept for audit; only its hash is inside the artifact. */
   evidence?: unknown;
 }
@@ -180,15 +182,15 @@ export function createSqliteVerdictStore(
       const rows = (
         consumerWallet
           ? db
-              .query(
-                "SELECT payload FROM verdicts WHERE consumerWallet = ? ORDER BY issuedAt DESC LIMIT ?",
-              )
-              .all(consumerWallet, limit)
+            .query(
+              "SELECT payload FROM verdicts WHERE consumerWallet = ? ORDER BY issuedAt DESC LIMIT ?",
+            )
+            .all(consumerWallet, limit)
           : db
-              .query(
-                "SELECT payload FROM verdicts ORDER BY issuedAt DESC LIMIT ?",
-              )
-              .all(limit)
+            .query(
+              "SELECT payload FROM verdicts ORDER BY issuedAt DESC LIMIT ?",
+            )
+            .all(limit)
       ) as SqliteRow[];
       return rows.map((r) => JSON.parse(r.payload) as StoredVerdict);
     },
