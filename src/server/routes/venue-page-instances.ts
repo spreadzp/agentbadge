@@ -17,7 +17,8 @@ import {
   listVenues,
   PUBLIC_VENUE_ID,
 } from "../lib/venue/venues";
-import { venueInstancePage } from "../../views/venue-instance";
+import { venueInstancePage, venuePrivatePage } from "../../views/venue-instance";
+import { venueRole } from "../lib/venue/members";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 
@@ -36,8 +37,10 @@ export function registerVenueInstancePageRoutes(
     describeRoute({
       tags: ["Venue"],
       summary: "Venue instance landing (scoped jobs + offers)",
-      responses: { 200: { description: "HTML page" },
-        404: { description: "Unknown venue slug" } },
+      responses: {
+        200: { description: "HTML page" },
+        404: { description: "Unknown venue slug" }
+      },
     }),
     (c) => {
       const slug = c.req.param("slug");
@@ -46,6 +49,14 @@ export function registerVenueInstancePageRoutes(
       if (!venue) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "venue not found");
+      }
+      // 153-2: business venues render a "request access" screen unless
+      // the viewer's wallet (x-wallet header) is a venue member.
+      if (venue.kind === "business") {
+        const viewer = c.req.header("x-wallet");
+        if (!viewer || !venueRole(venue, viewer)) {
+          return c.html(venuePrivatePage(venue, listVenues(), net()));
+        }
       }
       const jobs = listJobs({ venueId: venue.id });
       const offers = listOffers({ venueId: venue.id });

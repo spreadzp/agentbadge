@@ -232,7 +232,9 @@ describe("/api/venue/instances", () => {
     const { venue } = (await res.json()) as { venue: { id: string } };
     upsertJob(jobFixture({ jobId: "j_scoped", venueId: venue.id }));
     upsertJob(jobFixture({ jobId: "j_other" }));
-    const scoped = await a.request(`/api/venue/instances/${venue.id}/jobs`);
+    const scoped = await a.request(`/api/venue/instances/${venue.id}/jobs`, {
+      headers: signedHeaders(OWNER), // 153-2: business-venue reads are member-gated
+    });
     const jobs = ((await scoped.json()) as { jobs: { jobId: string }[] }).jobs;
     expect(jobs.map((j) => j.jobId)).toEqual(["j_scoped"]);
   });
@@ -257,7 +259,9 @@ describe("/market/v/:slug page", () => {
     });
     upsertJob(jobFixture({ jobId: "j_in", venueId: venue.id }));
     upsertJob(jobFixture({ jobId: "j_out" }));
-    const res = await pageApp().request("/market/v/page-v");
+    const res = await pageApp().request("/market/v/page-v", {
+      headers: { "x-wallet": OWNER }, // 153-2: member wallet → full page
+    });
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("Page Venue");

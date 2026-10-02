@@ -32,6 +32,10 @@ export interface VenueRecord {
   ownerWallet: `0x${string}`;
   /** Admin-ops wallets acting on behalf of owner (D5-153). */
   delegates: `0x${string}`[];
+  /** 153-2: AccessPassNFT class members must hold; 0 = membership only. */
+  requiredClass?: number;
+  /** 153-2: who may post jobs — "members" (default) or "open". */
+  clientPolicy?: "members" | "open";
   createdAt: number;
   active: boolean;
 }
@@ -43,6 +47,10 @@ export interface VenueCreateInput {
   ownerWallet: `0x${string}`;
   description?: string;
   delegates?: `0x${string}`[];
+  /** 153-2: pass class gate; default ARC_VENUE_DEFAULT_REQUIRED_CLASS or 0. */
+  requiredClass?: number;
+  /** 153-2: job posting policy; default "members" (business) / n/a (public). */
+  clientPolicy?: "members" | "open";
 }
 
 // ─── Registry persistence (meta lane) ────────────────────────────
@@ -119,6 +127,11 @@ export function createVenue(input: VenueCreateInput): VenueRecord {
     description: input.description,
     ownerWallet: input.ownerWallet,
     delegates: input.delegates ?? [],
+    requiredClass:
+      (input.requiredClass ??
+        Number(process.env.ARC_VENUE_DEFAULT_REQUIRED_CLASS ?? 0)) ||
+      undefined,
+    clientPolicy: input.clientPolicy ?? "members",
     createdAt: Date.now(),
     active: true,
   };
@@ -137,7 +150,15 @@ export function createVenue(input: VenueCreateInput): VenueRecord {
 export function updateVenue(
   id: string,
   patch: Partial<
-    Pick<VenueRecord, "name" | "description" | "delegates" | "active">
+    Pick<
+      VenueRecord,
+      | "name"
+      | "description"
+      | "delegates"
+      | "active"
+      | "requiredClass"
+      | "clientPolicy"
+    >
   >,
 ): VenueRecord | undefined {
   const map = registry();

@@ -117,7 +117,7 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
     if (provider != null && !isAddress(provider)) {
       return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "provider must be 0x…");
     }
-    const jobVenueId = venueScopeOr404(c, str(body.venue, 64) ?? str(body.venueId, 64)); // 153-1
+    const jobVenueId = venueScopeOr404(c, str(body.venue, 64) ?? str(body.venueId, 64), s.wallet); // 153-1/2
     if (jobVenueId instanceof Response) return jobVenueId;
     const n = net(), econ = venueEconomics();
     const evaluator = venueEvaluator();

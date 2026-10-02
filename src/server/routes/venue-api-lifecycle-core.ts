@@ -22,6 +22,8 @@ import {
   type VenueRole,
 } from "../lib/venue/lifecycle";
 import { recordVenueEvent } from "../services/venue-events";
+import { getVenue, venueIdOf } from "../lib/venue/venues";
+import { venueHasRole } from "../lib/venue/members";
 import {
   ensureVenueFeedback,
   type FeedbackSender,
@@ -222,6 +224,15 @@ export async function handleAction(
   if (!actorAllowed(role, s.wallet, g.job, g.raw)) {
     return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
       `signer must be the job ${role}`);
+  }
+  // 153-2: business-venue jobs additionally require provider+ membership
+  // for claim/submit (job-scoped actions; posting uses clientPolicy).
+  if (action === "claim" || action === "submit") {
+    const v = getVenue(venueIdOf(g.job));
+    if (v?.kind === "business" && !venueHasRole(v, s.wallet, "provider")) {
+      return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
+        "signer is not a venue provider");
+    }
   }
   const built = build(body, g);
   if (built instanceof Response) return built;

@@ -155,7 +155,7 @@ export function resetAgentAuthForTesting() {
   _client = null;
 }
 
-async function checkAccess(wallet: string, cls: number): Promise<boolean> {
+export async function checkAccess(wallet: string, cls: number): Promise<boolean> {
   const key = cacheKey(wallet, cls);
   const hit = _accessCache.get(key);
   if (hit && hit.expiresAt > Date.now()) return hit.value;

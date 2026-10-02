@@ -12,6 +12,45 @@ import type { VenueJob, VenueOffer } from "../server/lib/venue/store";
 import { CARD, esc, venueSelector, venueTabs } from "./venue-ui";
 import { venueJobCard } from "./venue-pages";
 
+/**
+ * 153-2: private-venue screen for non-members. Membership for a page
+ * view is decided by the x-wallet header (display layer only — the API
+ * stays signature-gated; unsigned/anonymous viewers get this screen).
+ */
+export function venuePrivatePage(
+  venue: VenueRecord,
+  venues: VenueRecord[],
+  net: VenueNetwork,
+): string {
+  const meta: PageMeta = {
+    title: `${venue.name} — Private Venue`,
+    description: `Private venue "${venue.slug}" on Arc ${net.name} — membership required.`,
+    path: `/market/v/${venue.slug}`,
+  };
+  const body = html`
+    <main class="mx-auto max-w-3xl px-4 py-12">
+      <div class="flex items-center gap-3">
+        <h1 class="text-3xl font-bold">${esc(venue.name)}</h1>
+        <span class="rounded-full border border-violet-500/50 bg-violet-500/10 px-2.5 py-0.5 text-xs text-violet-300">private</span>
+      </div>
+      ${raw(venueSelector(venues, venue.slug))}
+      <div class="${CARD} mt-8">
+        <h2 class="text-lg font-semibold text-slate-100">Private venue — request access</h2>
+        <p class="mt-2 text-sm text-slate-400">
+          This business venue is members-only. Ask the venue owner to
+          whitelist your wallet —
+          <code class="text-xs text-slate-300">POST /api/venue/instances/${esc(venue.id)}/members</code>
+          — then reload with a signed request.
+        </p>
+        <p class="mt-3 text-xs text-slate-500">
+          Owner: ${esc(venue.ownerWallet)}
+          ${venue.requiredClass ? ` · requires AccessPass class ${venue.requiredClass}` : ""}
+        </p>
+      </div>
+    </main>`;
+  return Layout(body as unknown as string, undefined, meta).toString();
+}
+
 /** /market/v/:slug — venue landing: meta + scoped jobs/offers preview. */
 export function venueInstancePage(
   venue: VenueRecord,
