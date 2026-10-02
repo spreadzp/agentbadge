@@ -198,6 +198,18 @@ export interface BstockEnvConfig {
 }
 
 /**
+ * Evaluator-as-a-Service config (EPIC-154, SLICE-154-1).
+ * Present only when ARC_EAAS_ENABLED=true; absent = feature off.
+ */
+export interface EaasEnvConfig {
+  enabled: boolean;
+  /** EIP-712 verdict signer EOA private key — NOT ARC_EVALUATOR_KEY. */
+  signerKey: string;
+  /** VerdictStore backend — json (default) | sqlite. */
+  store: "json" | "sqlite";
+}
+
+/**
  * Cache layer config (EPIC-144, SLICE-144-2).
  * Present only when CACHE_ENABLED=true; absent = InMemoryCache fallback.
  */
@@ -235,6 +247,7 @@ export interface AppConfig {
   keeperhub?: KeeperHubEnvConfig;
   circlePayments?: CirclePaymentsConfig;
   bstock?: BstockEnvConfig;
+  eaas?: EaasEnvConfig;
   database?: DatabaseEnvConfig;
   cache?: CacheEnvConfig;
   scanPacks: ScanPacksConfig;
