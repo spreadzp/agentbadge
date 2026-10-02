@@ -15,6 +15,8 @@ import { describeRoute } from "hono-openapi";
 import type { VerdictStoreBackend } from "../lib/eaas/store";
 import type { EaasRequestStore } from "../lib/eaas/requests";
 import type { EaasMetrics } from "../lib/eaas/metrics";
+import type { EaasSubscriptionStore } from "../lib/eaas/subscription";
+import type { AnchorStore } from "../lib/eaas/anchor";
 import { consumerKey, createRateLimiter, bad } from "../lib/eaas/request";
 
 export interface EaasFeedsDeps {
@@ -22,6 +24,9 @@ export interface EaasFeedsDeps {
   requests: EaasRequestStore;
   metrics: EaasMetrics;
   rateRpm: number;
+  /** SLICE-154-7: stats — active subscriber + anchor counts. */
+  subscriptions?: EaasSubscriptionStore;
+  anchors?: AnchorStore;
 }
 
 const REQUEST_ID_RE = /^req_[0-9a-f]{16}$/;
@@ -119,6 +124,49 @@ export function createEaasFeedsRoutes(deps: EaasFeedsDeps): Hono {
         nextSince: newest
           ? Math.floor(Date.parse(newest) / 1000)
           : since,
+      });
+    },
+  );
+
+  // SLICE-154-7: grant-milestone stats — public aggregate, no wallets.
+  routes.get(
+    "/api/eaas/stats",
+    describeRoute({
+      description:
+        "Aggregate EaaS counters — verdicts by policy/kind, anchored count, active subscribers",
+      responses: { 200: { description: "Aggregate counters" } },
+    }),
+    (c) => {
+      const byPolicy: Record<string, number> = {};
+      const byKind: Record<string, number> = {};
+      let total = 0;
+      for (const v of deps.store.list(undefined, 10_000)) {
+        total++;
+        byPolicy[v.artifact.policy] = (byPolicy[v.artifact.policy] ?? 0) + 1;
+        byKind[v.artifact.kind] = (byKind[v.artifact.kind] ?? 0) + 1;
+      }
+      const anchors = deps.anchors?.list() ?? [];
+      const now = Math.floor(Date.now() / 1000);
+      const subs = deps.subscriptions?.list() ?? [];
+      const byTier: Record<string, number> = {};
+      let active = 0;
+      for (const s of subs) {
+        if (s.expiresAt > now) {
+          active++;
+          byTier[s.tier] = (byTier[s.tier] ?? 0) + 1;
+        }
+      }
+      return c.json({
+        ok: true,
+        verdicts: { total, byPolicy, byKind },
+        anchors: {
+          total: anchors.length,
+          anchored: anchors.filter((a) => a.status === "anchored").length,
+          pending: anchors.filter((a) => a.status === "pending").length,
+          failed: anchors.filter((a) => a.status === "failed").length,
+        },
+        subscriptions: { total: subs.length, active, byTier },
+        requests: deps.requests.counts(),
       });
     },
   );

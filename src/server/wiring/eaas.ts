@@ -162,6 +162,8 @@ export function wireEaas(
       requests: requestStore,
       metrics,
       rateRpm: cfg.rateRpm,
+      subscriptions: subStore,
+      ...(anchorStore ? { anchors: anchorStore } : {}),
     }),
   );
 
