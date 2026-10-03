@@ -32,9 +32,10 @@ async function load() {
   $("err").textContent = "";
   $("card").innerHTML = '<div class="p-4 text-slate-400 text-sm">Loading…</div>';
   try {
-    const [recRes, limRes] = await Promise.all([
+    const [recRes, limRes, balRes] = await Promise.all([
       fetch("/api/wallets/" + addr),
       fetch("/api/wallets/" + addr + "/limits"),
+      fetch("/api/wallets/" + addr + "/balance"),
     ]);
     if (recRes.status === 404 || limRes.status === 404) {
       $("card").innerHTML = '<div class="p-4 text-slate-400 text-sm">Wallet not registered — <a class="text-emerald-300 underline" href="/docs/agent-access">register via POST /api/wallets</a></div>';
@@ -42,7 +43,8 @@ async function load() {
     }
     const rec = await recRes.json();
     const lim = await limRes.json();
-    render(rec, lim);
+    const bal = balRes.ok ? await balRes.json() : null;
+    render(rec, lim, bal);
   } catch (e) { $("err").textContent = String(e.message || e); }
 }
 
@@ -69,7 +71,29 @@ function eff(capEnv, circle, k) {
   return "$" + fmt(m) + " <span class=\\"text-slate-500\\">(" + (a <= b ? "envelope" : "circle") + ")</span>";
 }
 
-function render(rec, lim) {
+function fundingHtml(bal) {
+  if (!bal || !bal.funding) return "";
+  const f = bal.funding;
+  const src = bal.source === "unavailable" ? '<span class="text-red-400">unavailable</span>' : bal.source;
+  const gw = bal.gateway ? '<div class="text-xs text-slate-400 mt-1">Gateway: $' + bal.gateway.available + ' available</div>' : "";
+  const nat = bal.nativeUsdc ? '<div class="text-xs text-slate-500 mt-1">native view: ' + fmt(bal.nativeUsdc) + ' USDC</div>' : "";
+  return '<div class="mt-5 border-t border-slate-800 pt-4"><h3 class="text-sm font-semibold text-slate-300 mb-2">Funding</h3>' +
+    '<div class="flex flex-wrap gap-4">' +
+      '<div><img src="' + f.transfer.qrSvgPath + '" width="120" height="120" class="rounded-lg border border-slate-700 bg-white p-1" alt="deposit QR"/>' +
+      '<div class="text-xs text-slate-500 mt-1">' + f.transfer.network + '</div></div>' +
+      '<div class="flex-1 min-w-56 text-sm">' +
+        '<div>Balance: <b class="font-mono text-emerald-300">$' + (bal.usdc ?? "—") + '</b> <span class="text-xs text-slate-500">(' + src + ")</span></div>" + nat + gw +
+        '<div class="mt-2 text-xs text-slate-500">' + f.transfer.note + '</div>' +
+        '<div class="mt-3 rounded-lg border border-slate-700 bg-slate-950 p-2">' +
+          '<div class="text-xs text-slate-500">Gateway deposit — run in your terminal:</div>' +
+          '<pre class="text-xs font-mono text-emerald-300 whitespace-pre-wrap">' + f.gatewayDeposit.commandLine + '</pre>' +
+          '<button class="mt-1 text-xs text-emerald-300 underline" onclick="navigator.clipboard.writeText(' + JSON.stringify('"') + ' + f.gatewayDeposit.commandLine + ' + JSON.stringify('"') + ')">copy</button>' +
+        '</div>' +
+        '<a class="mt-2 inline-block text-xs text-emerald-300 underline" href="' + f.fiatOnramp.url + '" target="_blank" rel="noopener">Fiat on-ramp →</a>' +
+      '</div></div></div>';
+}
+
+function render(rec, lim, bal) {
   const caps = lim.envelope.caps || {};
   const usage = lim.envelope.usage || {};
   const circle = lim.circle;
@@ -98,7 +122,8 @@ function render(rec, lim) {
     '<div class="text-xs text-slate-500">' + (rec.label || "") + ' · ' + (rec.kind || "") + (rec.balance !== undefined ? ' · balance ' + fmt(rec.balance) : "") + '</div></div>' +
     '<button class="${BTN}" onclick="saveCaps()">Save platform caps</button></div>' +
     '<table class="w-full mt-4"><thead><tr class="text-left text-xs uppercase text-slate-500"><th class="py-1">Cap (USD)</th><th class="py-1 px-3">Window usage</th><th class="py-1 text-right">Effective</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="mt-5 border-t border-slate-800 pt-4"><h3 class="text-sm font-semibold text-slate-300 mb-2">Circle policy mirror</h3>' + circleHtml + '<div id="cmd"></div></div>';
+    '<div class="mt-5 border-t border-slate-800 pt-4"><h3 class="text-sm font-semibold text-slate-300 mb-2">Circle policy mirror</h3>' + circleHtml + '<div id="cmd"></div></div>' +
+    fundingHtml(bal);
 }
 
 async function genCmd() {

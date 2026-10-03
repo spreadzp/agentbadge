@@ -14,6 +14,8 @@
  *   AGENT_WALLET_LEDGER_STORE     — sqlite (default) | json | memory
  *   AGENT_WALLET_REQUIRE_REGISTERED — 0/1 deny unregistered wallets (155-2)
  *   AGENT_WALLET_DEFAULT_CAPS     — JSON SpendCaps fallback envelope (155-2)
+ *   AGENT_WALLET_LOW_USD          — low-balance alert threshold (155-5, 1.0)
+ *   AGENT_WALLET_LOW_WEBHOOK_URL  — optional webhook on low-balance (155-5)
  */
 
 import type { AgentWalletEnvConfig } from "./types";
@@ -55,6 +57,11 @@ export function loadAgentWallet(
     rawLedger === "memory" || rawLedger === "json" ? rawLedger : "sqlite";
 
   const requireRegistered = booleanFlag("AGENT_WALLET_REQUIRE_REGISTERED");
+
+  // SLICE-155-5: low-balance signal.
+  const lowUsd = intVar("AGENT_WALLET_LOW_USD", 1, 0, errors);
+  const lowWebhookUrl =
+    (process.env.AGENT_WALLET_LOW_WEBHOOK_URL ?? "").trim() || undefined;
 
   let defaultCaps: AgentWalletEnvConfig["defaultCaps"];
   const rawCaps = process.env.AGENT_WALLET_DEFAULT_CAPS;
@@ -100,6 +107,8 @@ export function loadAgentWallet(
     store,
     ledgerStore,
     requireRegistered,
+    lowUsd,
+    ...(lowWebhookUrl ? { lowWebhookUrl } : {}),
     ...(defaultCaps ? { defaultCaps } : {}),
   };
 }

@@ -235,22 +235,10 @@ export interface EaasEnvConfig {
   asyncTimeoutSec: number;
 }
 
-/** Agent Wallet (EPIC-155); absent = feature off. */
-export interface AgentWalletEnvConfig {
-  enabled: boolean;
-  /** CIRCLE_CLI_PATH, AGENT_WALLET_CLI_TIMEOUT_MS, AGENT_WALLET_CHAIN. */
-  cliPath: string;
-  cliTimeoutMs: number;
-  chain: string;
-  /** AGENT_WALLET_STORE | AGENT_WALLET_LEDGER_STORE. */
-  store: "json" | "memory";
-  ledgerStore: "json" | "sqlite" | "memory";
-  /** AGENT_WALLET_REQUIRE_REGISTERED | AGENT_WALLET_DEFAULT_CAPS. */
-  requireRegistered: boolean;
-  defaultCaps?: Partial<
-    Record<"perTxUsd" | "dailyUsd" | "weeklyUsd" | "monthlyUsd", number>
-  >;
-}
+/** Agent Wallet (EPIC-155); absent = feature off.
+ *  Type lives in ./agent-wallet-types.ts (types.ts hit 300 lines). */
+export type { AgentWalletEnvConfig } from "./agent-wallet-types";
+import type { AgentWalletEnvConfig } from "./agent-wallet-types";
 
 /**
  * Cache layer config (EPIC-144, SLICE-144-2).

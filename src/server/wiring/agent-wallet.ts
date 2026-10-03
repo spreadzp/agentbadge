@@ -10,7 +10,11 @@
 
 import type { Hono } from "hono";
 import { logger } from "@agentbadge/passport";
-import { createCircleCliClient } from "@agentbadge/circle-payments";
+import {
+  createCircleCliClient,
+  ARC_MAINNET,
+  ARC_TESTNET,
+} from "@agentbadge/circle-payments";
 import { getConfig } from "../../config/env";
 import {
   createJsonAgentWalletStore,
@@ -25,6 +29,9 @@ import {
 import { createAgentWalletRoutes } from "../routes/agent-wallet-api";
 import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet-envelope-api";
 import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet-limits-api";
+import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet-balance-api";
+import { readWalletBalance } from "../lib/agent-wallet/balance";
+import { startLowBalanceSweeper } from "../lib/agent-wallet/funding";
 import { walletsPage } from "../../views/wallets-page";
 import { resolveVenueNetwork } from "../lib/venue/chain";
 import { venueMonthlyPriceAtomic } from "../lib/venue/billing";
@@ -103,6 +110,43 @@ export function wireAgentWallet(app: Hono): void {
       chain: cfg.chain,
     }),
   );
+
+  // SLICE-155-5: balance mirror (CLI→RPC fallback + gateway) +
+  // funding handoff (transfer QR, verbatim gateway deposit).
+  const arcChain =
+    cfg.chain.toUpperCase() === "ARC" ? ARC_MAINNET : ARC_TESTNET;
+  const gatewayApiUrl = getConfig().circlePayments?.gatewayApiUrl;
+  app.route(
+    "/",
+    createAgentWalletBalanceRoutes({
+      store,
+      chain: cfg.chain,
+      chainId: arcChain.chainId,
+      readBalance: (address) =>
+        readWalletBalance(address, {
+          cli,
+          chain: cfg.chain,
+          rpcUrl: arcChain.rpcUrl,
+          usdcAddress: arcChain.usdc,
+          gatewayApiUrl,
+          domain: arcChain.domain,
+        }),
+    }),
+  );
+
+  // Low-balance signal — daily sweep, audit + optional webhook.
+  startLowBalanceSweeper({
+    wallets: () => store.list().filter((w) => w.active),
+    readBalance: (address) =>
+      readWalletBalance(address, {
+        cli,
+        chain: cfg.chain,
+        rpcUrl: arcChain.rpcUrl,
+        usdcAddress: arcChain.usdc,
+      }),
+    thresholdUsd: cfg.lowUsd,
+    ...(cfg.lowWebhookUrl ? { webhookUrl: cfg.lowWebhookUrl } : {}),
+  });
 
   // SLICE-155-3: /wallets console — envelope caps/usage + Circle
   // policy mirror + verbatim command handoff (no OTP fields).
