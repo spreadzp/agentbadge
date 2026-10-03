@@ -28,4 +28,11 @@ export interface AgentWalletEnvConfig {
    *  for spend alert events (cap_denied/failed/release_late/
    *  low_balance), 154-6 retry backoff. */
   alertWebhookUrl?: string;
+  /** SLICE-156-6: AGENT_WALLET_DELEGATE_ENABLED (0/1) — mounts the
+   *  delegate register/revoke surface; requires ARC_DELEGATE_KEY. */
+  delegateEnabled: boolean;
+  /** SLICE-156-6: ARC_DELEGATE_KEY — server delegate EOA private key
+   *  (0x-prefixed). Scope: unified-balance SPEND ONLY — never used for
+   *  withdraw/removeFund. Absent ⇒ delegate feature off. */
+  delegateKey?: string;
 }

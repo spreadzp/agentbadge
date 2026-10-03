@@ -9,6 +9,7 @@
 //   change.
 
 import type { Hono } from "hono";
+import { privateKeyToAddress } from "viem/accounts";
 import { logger } from "@agentbadge/passport";
 import {
   createCircleCliClient,
@@ -31,6 +32,8 @@ import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet-envelope
 import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet-limits-api";
 import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet-balance-api";
 import { createSpendAuditRoutes } from "../routes/agent-wallet-audit-api";
+import { createAgentWalletDelegateRoutes } from "../routes/agent-wallet-delegate-api";
+import { createMemoryDelegateStore } from "../lib/agent-wallet/delegate";
 import { readWalletBalance } from "../lib/agent-wallet/balance";
 import { startLowBalanceSweeper } from "../lib/agent-wallet/funding";
 import {
@@ -141,6 +144,30 @@ export function wireAgentWallet(app: Hono): void {
         }),
     }),
   );
+
+  // SLICE-156-6: delegate register/revoke surface — server delegate
+  // EOA address derived from ARC_DELEGATE_KEY (never logged). Live
+  // kit adapter lands with the unified-balance-kit dep (spike note).
+  if (cfg.delegateEnabled && cfg.delegateKey) {
+    try {
+      const delegateAddress = privateKeyToAddress(
+        cfg.delegateKey as `0x${string}`,
+      );
+      app.route(
+        "/",
+        createAgentWalletDelegateRoutes({
+          delegateStore: createMemoryDelegateStore(),
+          delegateAddress,
+          walletStore: store,
+          requireRegistered: cfg.requireRegistered,
+        }),
+      );
+    } catch (e) {
+      logger.error("ARC_DELEGATE_KEY invalid — delegate rail off", {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
 
   // SLICE-155-6: spend audit — alert store + emit singleton +
   // feed/stats routes + stale-reserve sweep.

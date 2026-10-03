@@ -117,5 +117,13 @@ export function loadAgentWallet(
     ...(lowWebhookUrl ? { lowWebhookUrl } : {}),
     ...(alertWebhookUrl ? { alertWebhookUrl } : {}),
     ...(defaultCaps ? { defaultCaps } : {}),
+    // SLICE-156-6: unified-balance delegate rail — off unless both the
+    // flag and the isolated delegate key are present.
+    delegateEnabled:
+      booleanFlag("AGENT_WALLET_DELEGATE_ENABLED") &&
+      !!(process.env.ARC_DELEGATE_KEY ?? "").trim(),
+    ...((process.env.ARC_DELEGATE_KEY ?? "").trim()
+      ? { delegateKey: (process.env.ARC_DELEGATE_KEY as string).trim() }
+      : {}),
   };
 }
