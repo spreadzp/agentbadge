@@ -16,6 +16,11 @@ import {
   type SupportedChain,
 } from "@agentbadge/circle-payments";
 import type { CirclePaymentsConfig } from "../../config/env";
+import type {
+  CrosschainPaymentsStore,
+  CrosschainPaymentState,
+} from "../lib/crosschain-payments";
+import type { PaymentStatusLookup } from "@agentbadge/circle-payments";
 
 /** Router default: Base + Arc (mainnet flag swaps Arc testnet → mainnet). */
 export function gatewayChainsFor(
@@ -27,8 +32,21 @@ export function gatewayChainsFor(
   );
 }
 
+/** SLICE-156-5: optional deps enabling the buyer transfer-status route. */
+export interface GatewayRouteDeps {
+  store?: CrosschainPaymentsStore;
+  statusLookup?: PaymentStatusLookup;
+}
+
+const TERMINAL: ReadonlySet<string> = new Set<CrosschainPaymentState>([
+  "settled",
+  "expired",
+  "failed",
+]);
+
 export function createGatewayDepositRoutes(
   cfg: CirclePaymentsConfig,
+  deps?: GatewayRouteDeps,
 ): Hono {
   const routes = new Hono();
 
@@ -79,6 +97,55 @@ export function createGatewayDepositRoutes(
         "Content-Type": "image/svg+xml",
         "Cache-Control": "public, max-age=86400",
       });
+    },
+  );
+
+  // SLICE-156-5: buyer-facing transfer status — no auth (payer knows
+  // their own transfer id). Local store first, Gateway API fallback.
+  // Expired burn intents refund automatically on the source chain.
+  routes.get(
+    "/api/pay/gateway/transfers/:id",
+    describeRoute({
+      description:
+        "Gateway transfer status — settling/settled/expired/failed; " +
+        "expired burn intents refund the buyer automatically",
+      responses: {
+        200: {
+          description:
+            "{id,state,terminal,refund,sourceChain,scheme,amountUsd," +
+            "settleTx?,expiresAt?} or upstream {id,status,ref}",
+        },
+        404: { description: "Unknown transfer" },
+      },
+    }),
+    async (c) => {
+      const id = c.req.param("id");
+      const entry = deps?.store?.get(id);
+      if (entry) {
+        return c.json({
+          id: entry.id,
+          state: entry.state,
+          terminal: TERMINAL.has(entry.state),
+          refund:
+            entry.state === "expired"
+              ? "automatic-on-expiry"
+              : null,
+          sourceChain: entry.sourceChain,
+          scheme: entry.scheme,
+          amountUsd: entry.amountUsd,
+          ...(entry.settleTx ? { settleTx: entry.settleTx } : {}),
+          ...(entry.expiresAt ? { expiresAt: entry.expiresAt } : {}),
+        });
+      }
+      if (deps?.statusLookup) {
+        try {
+          const st = await deps.statusLookup(id);
+          return c.json({ id, status: st.status, ref: st.ref });
+        } catch {
+          /* fall through to 404 */
+        }
+      }
+      return c.json({ error: "unknown transfer" }, 404);
     },
   );
 

@@ -50,6 +50,14 @@ export const activeScans = new Gauge({
   registers: [registry],
 });
 
+/** SLICE-156-5: share of gateway payments that expired unpaid (rising
+ *  ⇒ buyers underfund their unified balance). Recomputed on terminal. */
+export const gatewayExpiryRate = new Gauge({
+  name: "agentbadge_gateway_expiry_rate",
+  help: "Expired / all terminal cross-chain gateway payments (0..1)",
+  registers: [registry],
+});
+
 export const cacheHits = new Counter({
   name: "agentbadge_cache_hits_total",
   help: "Cache hits",

@@ -11,7 +11,9 @@ import type { PaymentInfo, PaymentStatus } from "@agentbadge/circle-payments";
 import {
   createCrosschainPaymentsStore,
   createSettlePoller,
+  crosschainStats,
   recordPayment,
+  settleTerminalOutcome,
   type CrosschainPayment,
 } from "../src/server/lib/crosschain-payments";
 
@@ -193,5 +195,85 @@ describe("settle poller", () => {
     expect(await poller.tick()).toBe(0);
     expect(store.get(UUID)?.state).toBe("settling");
     expect(lookup).toHaveBeenCalledTimes(1); // settled entry skipped
+  });
+});
+
+describe("SLICE-156-5: expiry/refund + failure handling", () => {
+  const entry = (over: Partial<CrosschainPayment> = {}) => ({
+    id: UUID, payer: PAYER, sourceChain: "eip155:84532",
+    scheme: "gateway-batch", amountUsd: "5.00", payTo: PAYTO,
+    ref: { kind: "subscription" as const, id: "/api/venue/v1/subscribe" },
+    state: "settling" as const, transferId: UUID,
+    authorizedAt: Date.now(), expiresAt: Date.now() + 60_000,
+    ...over,
+  });
+
+  it("recordPayment is idempotent — same ref never duplicates or regresses", () => {
+    const store = createCrosschainPaymentsStore();
+    const p = pmt({ transaction: UUID });
+    recordPayment(store, p, "/x", PAYTO, 60_000);
+    store.update(UUID, { state: "settled", settleTx: TX });
+    const again = recordPayment(store, p, "/x", PAYTO, 60_000);
+    expect(store.list()).toHaveLength(1);
+    expect(again.state).toBe("settled");
+    expect(store.get(UUID)?.settleTx).toBe(TX);
+  });
+
+  it("settled → payment.settled, no churned mark", () => {
+    const store = createCrosschainPaymentsStore();
+    store.put(entry({ state: "settled" }));
+    expect(settleTerminalOutcome(store, store.get(UUID)!)).toBe(
+      "payment.settled",
+    );
+    expect(store.get(UUID)?.churned).toBeUndefined();
+  });
+
+  it("expired/failed → event name + churned mark (MVP mark+alert)", () => {
+    const store = createCrosschainPaymentsStore();
+    store.put(entry({ state: "expired" }));
+    store.put(entry({ id: "f1", state: "failed", transferId: undefined }));
+    expect(settleTerminalOutcome(store, store.get(UUID)!)).toBe(
+      "payment.expired",
+    );
+    expect(settleTerminalOutcome(store, store.get("f1")!)).toBe(
+      "payment.failed",
+    );
+    expect(store.get(UUID)?.churned).toBe(true);
+    expect(store.get("f1")?.churned).toBe(true);
+    // already churned → idempotent, still returns event name
+    expect(settleTerminalOutcome(store, store.get(UUID)!)).toBe(
+      "payment.expired",
+    );
+  });
+
+  it("non-terminal → null (no mark, no event)", () => {
+    const store = createCrosschainPaymentsStore();
+    store.put(entry({ state: "authorized" }));
+    expect(settleTerminalOutcome(store, store.get(UUID)!)).toBeNull();
+    expect(store.get(UUID)?.churned).toBeUndefined();
+  });
+
+  it("crosschainStats — counts + expiryRate over terminal entries", () => {
+    const store = createCrosschainPaymentsStore();
+    store.put(entry({ id: "s1", state: "settled" }));
+    store.put(entry({ id: "s2", state: "settled" }));
+    store.put(entry({ id: "e1", state: "expired" }));
+    store.put(entry({ id: "p1" })); // settling — non-terminal
+    const st = crosschainStats(store);
+    expect(st).toMatchObject({
+      total: 4, settled: 2, expired: 1, failed: 0, pending: 1,
+      expiryRate: 1 / 3,
+    });
+  });
+
+  it("no eternal pending — all expired entries leave pending()", async () => {
+    const store = createCrosschainPaymentsStore();
+    store.put(entry({ expiresAt: Date.now() - 1 }));
+    store.put(entry({ id: "e2", expiresAt: Date.now() - 2 }));
+    const poller = createSettlePoller({
+      store, statusLookup: async () => status("pending"), pollMs: 60_000,
+    });
+    expect(await poller.tick()).toBe(2);
+    expect(store.pending()).toHaveLength(0);
   });
 });

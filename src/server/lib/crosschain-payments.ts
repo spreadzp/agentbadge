@@ -44,6 +44,9 @@ export interface CrosschainPayment {
   authorizedAt: number;
   settledAt?: number;
   expiresAt?: number;
+  /** SLICE-156-5: unpaid debt — access was granted on authorize, money
+   *  never arrived. MVP: mark + alert; no auto-block on repeat payer. */
+  churned?: boolean;
 }
 
 const UUID_RE =
@@ -143,8 +146,56 @@ export function recordPayment(
     // PaymentInfo — use a conservative grace window from authorize time.
     ...(isUuid ? { expiresAt: now + expiryGraceMs } : {}),
   };
+  // Idempotent (SLICE-156-5): repeat settle/record for the same ref must
+  // not duplicate or regress a terminal entry.
+  const existing = store.get(entry.id);
+  if (existing) return existing;
   store.put(entry);
   return entry;
+}
+
+/**
+ * Terminal side-effects shared by wiring + tests (SLICE-156-5):
+ * non-settled terminal states mark the entry `churned` (business effect
+ * was granted at authorize, funds never arrived — MVP mark+alert, no
+ * auto-block). Returns the audit event name or null for non-terminal.
+ */
+export function settleTerminalOutcome(
+  store: CrosschainPaymentsStore,
+  entry: CrosschainPayment,
+): "payment.settled" | "payment.expired" | "payment.failed" | null {
+  if (entry.state === "settled") return "payment.settled";
+  if (entry.state === "expired" || entry.state === "failed") {
+    if (!entry.churned) store.update(entry.id, { churned: true });
+    return entry.state === "expired" ? "payment.expired" : "payment.failed";
+  }
+  return null;
+}
+
+/** Aggregate counters for the `gateway.expiry_rate` metric (156-5). */
+export function crosschainStats(store: CrosschainPaymentsStore): {
+  total: number;
+  pending: number;
+  settled: number;
+  expired: number;
+  failed: number;
+  /** expired / (all terminal) — rising ⇒ buyer UX problem (deposit). */
+  expiryRate: number;
+} {
+  const all = store.list();
+  const c = { settled: 0, expired: 0, failed: 0, pending: 0 };
+  for (const e of all) {
+    if (e.state === "settled") c.settled++;
+    else if (e.state === "expired") c.expired++;
+    else if (e.state === "failed") c.failed++;
+    else c.pending++;
+  }
+  const terminal = c.settled + c.expired + c.failed;
+  return {
+    total: all.length,
+    ...c,
+    expiryRate: terminal > 0 ? c.expired / terminal : 0,
+  };
 }
 
 export interface SettlePollerDeps {

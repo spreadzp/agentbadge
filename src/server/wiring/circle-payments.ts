@@ -19,8 +19,12 @@ import { createGatewayDepositRoutes } from "../routes/pay-gateway";
 import {
   createCrosschainPaymentsStore,
   createSettlePoller,
+  crosschainStats,
   recordPayment,
+  settleTerminalOutcome,
 } from "../lib/crosschain-payments";
+import { auditStore } from "../lib/keeperhub-audit-store";
+import { gatewayExpiryRate } from "../metrics/metrics";
 import { captureError } from "../lib/sentry";
 // EPIC-150: circle MCP tools live in @agentbadge/mcp (named exports,
 // not in registerAllTools — registered here into all + market ns).
@@ -112,9 +116,24 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
         statusLookup: (ref) => circleRuntimeRef.statusLookup(ref),
         pollMs: circleCfg.gatewaySettlePollMs ?? 30_000,
         onTerminal: (e) => {
+          // SLICE-156-5: mark churned on unpaid terminal states, emit
+          // payment.expired/payment.failed to audit, refresh expiry_rate.
+          const event = settleTerminalOutcome(crosschainStore, e);
+          if (event === "payment.expired" || event === "payment.failed") {
+            void auditStore.add({
+              source: "crosschain-payments",
+              siteUrl: e.ref.id,
+              status: "failed",
+              error: event,
+              executionId: e.id,
+              ...(e.settleTx ? { txHashes: [e.settleTx] } : {}),
+            });
+          }
+          gatewayExpiryRate.set(crosschainStats(crosschainStore).expiryRate);
           logger.info("crosschain payment terminal", {
             id: e.id, state: e.state, scheme: e.scheme,
             sourceChain: e.sourceChain, settleTx: e.settleTx,
+            churned: e.churned ?? false,
           });
         },
       });
@@ -177,7 +196,14 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
       // SLICE-156-2: buyer Gateway onboarding — deposit-info + deposit QR.
       // Mounted only when the gateway rail is offered.
       if (circleCfg.gateway) {
-        app.route("/", createGatewayDepositRoutes(circleCfg));
+        // SLICE-156-5: deps enable buyer transfer-status lookup.
+        app.route(
+          "/",
+          createGatewayDepositRoutes(circleCfg, {
+            store: crosschainStore,
+            statusLookup: (ref) => circleRuntimeRef.statusLookup(ref),
+          }),
+        );
       }
       // SLICE-129-15/16: circle MCP tools — "all" + market namespaces
       setCirclePayToolConfig({ router: circleRuntime.router });
