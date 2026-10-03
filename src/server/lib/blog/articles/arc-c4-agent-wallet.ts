@@ -52,9 +52,18 @@ enforce spending limits <em>on-chain</em> — let the payment tx hit the
 network and rely on wallet policy to reject it. We do the opposite:
 <strong>the envelope denies before a transaction is ever
 constructed.</strong></p>
-<p>An over-cap payment through our x402 rails gets:</p>
-<pre><code>{ "error": "spend_cap", "cap": "perTx",
-  "used": 0.5, "limit": 1, "resetAt": 1759536000000 }</code></pre>
+<p>An over-cap payment through our x402 rails gets — this one from a
+live dogfood run (daily window <code>used 0.01</code> + a new <code>$0.01</code>
+verdict call over <code>limit 0.015</code>):</p>
+<pre><code>{ "error": "spend_cap", "cap": "daily",
+  "used": 0.01, "limit": 0.015, "resetAt": 1791130600 }</code></pre>
+<p>The call that <em>did</em> fit the envelope settled for real — USDC
+<code>transferWithAuthorization</code> on Arc testnet, <a
+href="https://testnet.arcscan.app/tx/0x14d38c85fa114b929c414536ed98a5815b4eb2c8084c935bb5340096a9c43d60">tx
+0x14d38c85…43d60</a>, landed in the ledger as
+<code>state: settled</code> with its <code>txHash</code>. One cent
+later the same call hit the daily cap above — denied before a second
+transaction was ever constructed.</p>
 <p>No gas burned, no mempool, no reverted tx, no confused agent retrying
 a doomed payment. The same instant, a <code>spend.cap_denied</code> alert
 event lands in the audit feed and — if you configured a webhook — on your
