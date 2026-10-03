@@ -5,6 +5,13 @@
 // marketplaceApiRoutes/marketplacePageRoutes mounts (inside the enabled gate).
 // Order inside is security-relevant: arc self-settle handler → x402 middleware →
 // api routes → page routes (SLICE-138/139 comments preserved).
+//
+// SLICE-156-1 DEFERRED: marketplace is NOT migrated to the circle-payments
+// runtime in this slice. Its gate couples an onProtectedRequest access-pass
+// flow with an inline Arc self-settle pre-handler and its own payTo treasury;
+// migrating requires splitting those two paths onto the runtime router (per-
+// payTo routerFor + onBeforeChallenge seam). Keeperhub/scan-packs migrate
+// here; marketplace follows in a later slice once the defer is picked up.
 
 import type { Hono } from "hono";
 import { paymentMiddlewareFromHTTPServer, x402ResourceServer, x402HTTPResourceServer, type SchemeNetworkServer } from "@x402/hono";

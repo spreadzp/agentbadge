@@ -235,4 +235,23 @@ export function createVenueApiRoutes(deps: VenueDeps = {}) {
   return app;
 }
 
-export const venueApiRoutes = createVenueApiRoutes();
+/**
+ * SLICE-156-1: mutable billing deps shared with the module-level route
+ * singleton — configureVenueBilling() assigns the x402 settle seam once
+ * the Circle payments runtime exists (billing handlers read
+ * deps.subscriptionSettle per-request, so late assignment works).
+ */
+const liveBilling: VenueBillingDeps = {};
+
+export const venueApiRoutes = createVenueApiRoutes({ billing: liveBilling });
+
+/**
+ * SLICE-156-1: wire the x402 subscription settle seam after the Circle
+ * payments runtime exists (index.ts calls this when both venue and
+ * CIRCLE_PAYMENTS_ENABLED are on). Mutating the shared deps object is
+ * safe — registerVenueBillingRoutes reads deps.subscriptionSettle
+ * per-request inside the handler closure.
+ */
+export function configureVenueBilling(billing: VenueBillingDeps) {
+  Object.assign(liveBilling, billing);
+}

@@ -9,6 +9,9 @@ import { wireMarketplace } from "./wiring/marketplace-x402";
 import { registerMcpNamespaces, wireMcpNamespaceRoutes, registerDefaultMcpTools } from "./wiring/mcp-namespaces";
 import { wireCirclePayments } from "./wiring/circle-payments";
 import { wireEaas } from "./wiring/eaas";
+import { configureVenueBilling } from "./routes/venue-api";
+import { createSettleSeam } from "./lib/x402-settle-seam";
+import { venueMonthlyPriceAtomic } from "./lib/venue/billing";
 import { wireAgentWallet, wireSpendEnvelopeGates } from "./wiring/agent-wallet";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
@@ -143,15 +146,36 @@ wireMcpNamespaceRoutes(app);
 // EPIC-140: page routes extracted to routes/index.ts
 registerPageRoutes(app);
 
+// Circle nanopayments (EPIC-129/156) — only when CIRCLE_PAYMENTS_ENABLED=true.
+// Master flag off → zero behavior change (old x402 paths stay as-is).
+// SLICE-156-1: hoisted ABOVE the x402 gates so keeperhub/scan-packs migrate
+// onto the shared runtime (multi-chain accepts) when it exists.
+// EPIC-140: extracted to wiring/circle-payments.ts
+const circleRuntime = wireCirclePayments(app, { marketNs: namespaces.marketNs });
+
+// SLICE-156-1: venue subscribe seam — x402 settle via the shared router
+// (PAYMENT-REQUIRED header stamped on the route's own 402).
+if (circleRuntime && process.env.ARC_VENUE_ENABLED === "true") {
+  configureVenueBilling({
+    subscriptionSettle: createSettleSeam({
+      router: circleRuntime.router,
+      amountAtomic: () => venueMonthlyPriceAtomic().toString(),
+      description: "Venue subscription — monthly",
+      resourceUrl: `${(process.env.BASE_URL ?? "https://agentbadge.xyz").replace(/\/$/, "")}/api/venue`,
+    }),
+  });
+  logger.info("venue billing wired: subscriptionSettle via circle-payments runtime");
+}
+
 // x402 premium payment middleware — MUST be registered before keeperhubApiRoutes:
 // Hono composes handlers in registration order, so middleware added after the route never runs.
 // EPIC-140: extracted to wiring/keeperhub-x402.ts
-wireKeeperhubX402(app);
+wireKeeperhubX402(app, { runtime: circleRuntime });
 // EPIC-140: api routes extracted to routes/index.ts (webmcp moved here — disjoint paths)
 registerApiRoutes(app);
 // EPIC-140: scanPacks catalog mount + x402 dynamic-pricing gate extracted to
 // wiring/scan-packs-x402.ts — MUST stay before totalScanRoutes (Hono composes in order).
-wireScanPacksX402(app);
+wireScanPacksX402(app, { runtime: circleRuntime });
 
 // EPIC-138, SLICE-138-3: marketplace routes — gated by marketplace.enabled.
 // EPIC-140: extracted to wiring/marketplace-x402.ts — gate + mounts inside.
@@ -159,10 +183,8 @@ wireMarketplace(app);
 // EPIC-140: post-marketplace routes extracted to routes/index.ts
 registerPostMarketplaceRoutes(app);
 
-// Circle nanopayments (EPIC-129) — only when CIRCLE_PAYMENTS_ENABLED=true.
-// Master flag off → zero behavior change (old x402 paths stay as-is).
-// EPIC-140: extracted to wiring/circle-payments.ts
-const circleRuntime = wireCirclePayments(app, { marketNs: namespaces.marketNs });
+// EPIC-156: circlePayments hoisted above (line ~150) — runtime feeds the
+// x402 gates; this block intentionally left as the EAAS comment anchor.
 
 // EPIC-154 SLICE-154-2: EaaS verdict API (x402-gated POST + free GETs).
 // Requires circle payments runtime for pricing; no-op when either flag off.

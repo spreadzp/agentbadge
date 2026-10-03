@@ -3,6 +3,8 @@
  * All interfaces describing the shape of AppConfig and its sections.
  */
 
+import type { SupportedChain } from "@agentbadge/circle-payments";
+
 export type ChainMode = "hedera" | "evm" | "base";
 
 export interface EvmConfig {
@@ -95,7 +97,17 @@ export interface CirclePaymentsConfig {
   /** Oracle agentId for site attestations (ARC_ORACLE_AGENT_ID) —
    *  optional; clients may pass their own agentId per-request. */
   oracleAgentId?: string;
+  /** Seller wallet receiving payments */
   sellerAddress: string;
+  /** SLICE-156-1: Gateway-covered chains for the accepts[] —
+   *  `CIRCLE_GATEWAY_CHAINS` CSV of CAIP-2 ids or chain ids.
+   *  Default (unset): [Base Sepolia, Arc Testnet] (or Arc mainnet
+   *  when arcMainnet is on — resolved in the runtime). */
+  gatewayChains?: SupportedChain[];
+  /** Gateway facilitator probe interval — CIRCLE_GATEWAY_PROBE_MS */
+  gatewayProbeMs?: number;
+  /** How long a gateway failure marks the rail down — CIRCLE_GATEWAY_DOWN_MS */
+  gatewayDownMs?: number;
   /** Server EOA key — required when arc or escrow enabled */
   arcPrivateKey?: string;
   /** Platform fee in basis points on escrow settlement (D28, 0 = off) */

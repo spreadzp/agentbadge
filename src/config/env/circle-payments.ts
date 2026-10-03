@@ -5,6 +5,36 @@
 
 import type { CirclePaymentsConfig } from "./types";
 import { booleanFlag, requiredAddress, requiredString } from "./validators";
+import { getChain, type SupportedChain } from "@agentbadge/circle-payments";
+
+/**
+ * SLICE-156-1: `CIRCLE_GATEWAY_CHAINS` — CSV of CAIP-2 ids ("eip155:84532")
+ * or numeric chain ids. Unknown values fail boot so a typo never yields a
+ * silently-vanilla 402 surface.
+ */
+function loadGatewayChains(errors: string[]): SupportedChain[] | undefined {
+  const raw = process.env.CIRCLE_GATEWAY_CHAINS?.trim();
+  if (!raw) return undefined;
+  const chains: SupportedChain[] = [];
+  for (const item of raw.split(",")) {
+    const id = item.trim();
+    if (!id) continue;
+    const chain = getChain(id.startsWith("eip155:") ? id : Number(id));
+    if (!chain) {
+      errors.push(`CIRCLE_GATEWAY_CHAINS: unknown chain id "${id}"`);
+      continue;
+    }
+    if (!chain.gatewayWallet || !chain.facilitatorUrl) {
+      errors.push(
+        `CIRCLE_GATEWAY_CHAINS: "${id}" (${chain.name}) is not Gateway-covered`,
+      );
+      continue;
+    }
+    if (chains.some((c) => c.caip2 === chain.caip2)) continue;
+    chains.push(chain);
+  }
+  return chains.length > 0 ? chains : undefined;
+}
 
 export function loadCirclePayments(
   errors: string[],
@@ -27,6 +57,13 @@ export function loadCirclePayments(
   const circlePayments: CirclePaymentsConfig = {
     enabled: true,
     gateway: booleanFlag("CIRCLE_GATEWAY_ENABLED"),
+    gatewayChains: loadGatewayChains(errors),
+    gatewayProbeMs: process.env.CIRCLE_GATEWAY_PROBE_MS
+      ? Number(process.env.CIRCLE_GATEWAY_PROBE_MS)
+      : undefined,
+    gatewayDownMs: process.env.CIRCLE_GATEWAY_DOWN_MS
+      ? Number(process.env.CIRCLE_GATEWAY_DOWN_MS)
+      : undefined,
     arc,
     identity: booleanFlag("CIRCLE_IDENTITY_ENABLED"),
     escrow,

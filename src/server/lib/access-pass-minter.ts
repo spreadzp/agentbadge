@@ -10,12 +10,7 @@
  * expiresAt — pricing changes need no redeploy.
  */
 
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  defineChain,
-} from "viem";
+import { createPublicClient, createWalletClient, http, defineChain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { logger } from "@agentbadge/passport";
 import { resolveBundleIds, RULE_BUNDLES } from "../../agent-readiness/rule-bundles";
@@ -176,12 +171,8 @@ export function resolveAccessPassMinter(): MinterFn {
 
 // ─── x402 afterSettle hook ─────────────────────────────────────
 interface SettleResultLike {
-  success: boolean;
-  payer?: string;
-  amount?: string;
-  transaction?: string;
+  success: boolean; payer?: string; amount?: string; transaction?: string;
 }
-
 interface SettleContextLike {
   result: SettleResultLike;
   requirements?: { amount?: string };
@@ -201,6 +192,40 @@ async function packsFromContext(ctx: SettleContextLike): Promise<string[]> {
   }
 }
 
+/** Shared mint core — both settle adapters funnel here (D10: never rethrow). */
+async function mintAfterSettle(args: {
+  payer: string;
+  packs: string[];
+  amount: string;
+  paymentTx?: string;
+}): Promise<void> {
+  try {
+    const classMask = packsToClassMask(args.packs);
+    const durationSec = durationSecondsForAmount(args.amount, classMask);
+    const minter = _overrideMinter ?? defaultMinter;
+    const tx = await minter({
+      to: args.payer,
+      classMask,
+      durationSec,
+      agentId: 0n,
+      paymentTx: args.paymentTx,
+    });
+    logger.info("access-pass-mint: pass minted/extended", {
+      payer: args.payer,
+      classMask,
+      durationSec,
+      mintTx: tx,
+      paymentTx: args.paymentTx,
+    });
+  } catch (err) {
+    logger.error("access-pass-mint: mint failed after settle", {
+      payer: args.payer,
+      err: String(err),
+      paymentTx: args.paymentTx,
+    });
+  }
+}
+
 /**
  * AfterSettleHook for x402ResourceServer.onAfterSettle().
  * Mints/extends the payer's pass; failures are logged, never rethrown —
@@ -215,32 +240,57 @@ export function createMintOnSettleHook() {
       }
       return;
     }
-    try {
-      const packs = await packsFromContext(ctx);
-      const classMask = packsToClassMask(packs);
-      const amount = ctx.result.amount ?? ctx.requirements?.amount ?? "0";
-      const durationSec = durationSecondsForAmount(amount, classMask);
-      const minter = _overrideMinter ?? defaultMinter;
-      const tx = await minter({
-        to: payer,
-        classMask,
-        durationSec,
-        agentId: 0n,
-        paymentTx: ctx.result.transaction,
-      });
-      logger.info("access-pass-mint: pass minted/extended", {
-        payer,
-        classMask,
-        durationSec,
-        mintTx: tx,
-        paymentTx: ctx.result.transaction,
-      });
-    } catch (err) {
-      logger.error("access-pass-mint: mint failed after settle", {
-        payer,
-        err: String(err),
-        paymentTx: ctx.result.transaction,
-      });
+    await mintAfterSettle({
+      payer,
+      packs: await packsFromContext(ctx),
+      amount: ctx.result.amount ?? ctx.requirements?.amount ?? "0",
+      paymentTx: ctx.result.transaction,
+    });
+  };
+}
+
+/** Hono Context subset needed by the settle hook (avoids a hono type import). */
+interface HonoContextLike {
+  req: { raw: { clone: () => { json: () => Promise<unknown> } } };
+}
+
+/** Body read that never consumes the original request stream. */
+async function packsFromHono(c: HonoContextLike): Promise<string[]> {
+  try {
+    const body = (await c.req.raw.clone().json()) as
+      | { packs?: unknown }
+      | undefined;
+    return Array.isArray(body?.packs) ? (body!.packs as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * SLICE-156-1: onSettleResult-shaped mint hook for the circle-payments
+ * `requirePayment` middleware (scan-packs on the new runtime). Same
+ * semantics as createMintOnSettleHook: failures logged, never rethrown.
+ */
+export function createMintOnPaymentSettled() {
+  return async (args: {
+    c: HonoContextLike;
+    ok: boolean;
+    payment?: { payer?: string; amount?: string; transaction?: string };
+    error?: string;
+  }): Promise<void> => {
+    const { c, ok, payment } = args;
+    const payer = payment?.payer;
+    if (!ok || !payer) {
+      if (ok) {
+        logger.warn("access-pass-mint: settled but no payer in result — skipping");
+      }
+      return;
     }
+    await mintAfterSettle({
+      payer,
+      packs: await packsFromHono(c),
+      amount: payment?.amount ?? "0",
+      paymentTx: payment?.transaction,
+    });
   };
 }
