@@ -15,6 +15,7 @@ import {
 } from "../lib/circle-payments";
 import { createIdentityRoutes } from "../routes/identity";
 import { createDemoRoutes } from "../routes/demo";
+import { createGatewayDepositRoutes } from "../routes/pay-gateway";
 import { captureError } from "../lib/sentry";
 // EPIC-150: circle MCP tools live in @agentbadge/mcp (named exports,
 // not in registerAllTools — registered here into all + market ns).
@@ -133,6 +134,11 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
           }),
         }),
       );
+      // SLICE-156-2: buyer Gateway onboarding — deposit-info + deposit QR.
+      // Mounted only when the gateway rail is offered.
+      if (circleCfg.gateway) {
+        app.route("/", createGatewayDepositRoutes(circleCfg));
+      }
       // SLICE-129-15/16: circle MCP tools — "all" + market namespaces
       setCirclePayToolConfig({ router: circleRuntime.router });
       registerCirclePayTools();

@@ -99,15 +99,15 @@ export interface CirclePaymentsConfig {
   oracleAgentId?: string;
   /** Seller wallet receiving payments */
   sellerAddress: string;
-  /** SLICE-156-1: Gateway-covered chains for the accepts[] —
-   *  `CIRCLE_GATEWAY_CHAINS` CSV of CAIP-2 ids or chain ids.
-   *  Default (unset): [Base Sepolia, Arc Testnet] (or Arc mainnet
-   *  when arcMainnet is on — resolved in the runtime). */
+  /** SLICE-156-1: Gateway-covered chains for accepts[] —
+   *  `CIRCLE_GATEWAY_CHAINS` CSV of CAIP-2 ids or chain ids. */
   gatewayChains?: SupportedChain[];
   /** Gateway facilitator probe interval — CIRCLE_GATEWAY_PROBE_MS */
   gatewayProbeMs?: number;
   /** How long a gateway failure marks the rail down — CIRCLE_GATEWAY_DOWN_MS */
   gatewayDownMs?: number;
+  /** SLICE-156-2: min Gateway deposit USD — GATEWAY_MIN_DEPOSIT_USD (default "0.10") */
+  gatewayMinDepositUsd: string;
   /** Server EOA key — required when arc or escrow enabled */
   arcPrivateKey?: string;
   /** Platform fee in basis points on escrow settlement (D28, 0 = off) */

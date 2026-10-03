@@ -64,6 +64,8 @@ export function loadCirclePayments(
     gatewayDownMs: process.env.CIRCLE_GATEWAY_DOWN_MS
       ? Number(process.env.CIRCLE_GATEWAY_DOWN_MS)
       : undefined,
+    gatewayMinDepositUsd:
+      process.env.GATEWAY_MIN_DEPOSIT_USD?.trim() || "0.10",
     arc,
     identity: booleanFlag("CIRCLE_IDENTITY_ENABLED"),
     escrow,

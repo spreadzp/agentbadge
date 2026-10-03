@@ -41,6 +41,8 @@ export function createAgentWalletBalanceRoutes(
       commandLine:
         `circle gateway deposit --address ${addr} --chain ${deps.chain} ` +
         "--amount <USD>",
+      // SLICE-156-2: deposit instructions for every Gateway-covered chain.
+      depositInfoUrl: "/api/pay/gateway/deposit-info",
       note:
         "Run in your own terminal (owner CLI). Optional — for " +
         "sub-500ms cross-chain spends via Circle Gateway.",

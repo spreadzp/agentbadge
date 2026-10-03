@@ -151,15 +151,28 @@ deposit QR), spend history, and alerts in one place.</li>
 <p><img src="/images/blog/arc-c4-agent-wallet-5.png"
 alt="Audit feed dashboard: ledger rows with DENIED and LATE states plus alert badges for cap_denied, release_late, low_balance and failed" />
 <!-- production: /images/blog/arc-c4-agent-wallet-5.png | NanoBanana asset 5s --></p>
-<h2 id="whats-still-pending">What's still pending — honestly</h2>
+<h2 id="the-live-dogfood">The live dogfood — it ran on October 3</h2>
 <p>The ledger, enforcer, alerts, and APIs are tested and shipping (64
-agent-wallet tests green, 8 endpoints). What is <em>not</em> done yet: a
-live testnet dogfood — a funded Circle SCA wallet settling real payments
-under an envelope, so we can show a settled <code>txHash</code> next to a
-denied one. That needs an operator-side funded wallet; the runbook
-(<code>scripts/agent-wallet-dogfood.sh</code>) is ready and the demo
-agents already attribute spend via <code>AGENT_WALLET_ADDRESS</code>.
-When the run lands, the explorer links go into the evidence table.</p>
+agent-wallet tests green, 8 endpoints) — and as of today, <strong>proven
+against real money</strong>. We ran the runbook ourselves on Arc testnet:
+a freshly generated agent wallet (<code>0xA0597A21…ade34</code>, funded
+0.15 USDC, envelope <code>perTx $0.01 / daily $0.015</code>) paid for
+verdicts through the x402 rail — EIP-3009 signature,
+<code>transferWithAuthorization</code> broadcast, txHash as the payment
+proof, <code>x-wallet</code> attribution.</p>
+<p>First call settled: <a
+href="https://testnet.arcscan.app/tx/0x14d38c85fa114b929c414536ed98a5815b4eb2c8084c935bb5340096a9c43d60">tx
+0x14d38c85…43d60</a> (block 65312363) — ledger entry
+<code>sp_0c22321b9fd74bf1</code>, <code>state: settled</code>,
+<code>txHash</code> filled. The identical second call hit the daily cap
+and returned the <code>402 spend_cap</code> you saw above — plus a
+<code>spend.cap_denied</code> alert (<code>ev_ce8ced3d5de34683</code>) in
+the signed audit feed. Repro:
+<code>scripts/agent-wallet-x402-pay.mts</code> +
+<code>scripts/agent-wallet-dogfood.sh</code>.</p>
+<p>Still genuinely pending: a funded <strong>Circle SCA</strong> wallet
+settling under an envelope (our dogfood ran on a plain EOA), and mainnet
+Circle policy — which stays mainnet-only by design.</p>
 <h2 id="try-it">Try it</h2>
 <ul>
 <li>Docs: <code>docs/AGENT-WALLET/</code> — SETUP walks CLI → register →

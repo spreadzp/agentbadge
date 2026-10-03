@@ -269,6 +269,10 @@ export function marketCheckoutPage(svc: CatalogService): string {
         <p id="buy-status" class="mt-3 text-center text-sm text-slate-400"></p>
         <div id="buy-result" class="mt-4 hidden rounded-lg border border-emerald-700/50 bg-emerald-950/30 p-4 text-sm"></div>
       </div>
+      <details id="gw-deposit" class="mt-4 text-sm text-slate-500">
+        <summary class="cursor-pointer hover:text-slate-300">Pay from another chain (Circle Gateway)</summary>
+        <div id="gw-deposit-body" class="mt-3 text-xs text-slate-400">Loading deposit options…</div>
+      </details>
       <details class="mt-6 text-sm text-slate-500">
         <summary class="cursor-pointer hover:text-slate-300">Agent flow (no browser wallet)</summary>
         <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-300"># x402 client handles the 402 → pay → retry loop
@@ -279,6 +283,50 @@ curl https://agentbadge.xyz/api/market/passes/&lt;your-wallet&gt;</pre>
       </details>
     </main>
     <script>${raw(X402_JS)}
+      // SLICE-156-2: "pay from another chain" — fetch deposit-info once
+      // the buyer expands the panel, render the deposit card.
+      (function () {
+        const panel = document.getElementById("gw-deposit");
+        const body = document.getElementById("gw-deposit-body");
+        if (!panel || !body) return;
+        let loaded = false;
+        panel.addEventListener("toggle", async () => {
+          if (!panel.open || loaded) return;
+          loaded = true;
+          try {
+            const info = await fetch("/api/pay/gateway/deposit-info").then(r => r.json());
+            const chains = info.chains || [];
+            if (!chains.length) {
+              body.textContent = "Gateway deposits unavailable on this deployment.";
+              return;
+            }
+            body.innerHTML =
+              "<div class='rounded-lg border border-slate-700 bg-slate-900/40 p-3'>" +
+              "<div class='text-slate-300 font-medium'>Deposit USDC to Circle Gateway</div>" +
+              "<div class='mt-1'>Send USDC to the GatewayWallet on your chain — it lands as a unified balance spendable here in ~seconds.</div>" +
+              chains.map(ch =>
+                "<div class='mt-3 rounded border border-slate-700/60 p-2'>" +
+                "<div class='font-medium text-slate-200'>" + ch.chain + "</div>" +
+                "<div class='mt-1 flex items-center gap-2'>" +
+                  "<img src='/api/pay/gateway/deposit-qr.svg?chain=" + encodeURIComponent(ch.network) + "' " +
+                    "width='84' height='84' class='rounded border border-slate-700 bg-white p-1' alt='deposit QR'/>" +
+                  "<div class='min-w-0'>" +
+                    "<div class='text-slate-500'>GatewayWallet (transfer USDC here):</div>" +
+                    "<code class='block truncate text-emerald-300'>" + ch.gatewayWallet + "</code>" +
+                    "<button class='text-emerald-300 underline' onclick='navigator.clipboard.writeText(\"" + ch.gatewayWallet + "\")'>copy</button>" +
+                    "<div class='mt-1 text-slate-500'>min $" + ch.minDeposit + " · credit ~" + ch.creditEstimateSec + "s</div>" +
+                  "</div>" +
+                "</div>" +
+                "</div>"
+              ).join("") +
+              "<div class='mt-3 text-slate-500'>After the deposit credits, click <b>Connect wallet &amp; buy</b> — payment goes through as a gateway batch.</div>" +
+              "</div>";
+          } catch (e) {
+            body.textContent = "Could not load deposit info: " + (e.message || e);
+            loaded = false;
+          }
+        });
+      })();
       const btn = document.getElementById("buy-btn");
       const status = document.getElementById("buy-status");
       const result = document.getElementById("buy-result");
