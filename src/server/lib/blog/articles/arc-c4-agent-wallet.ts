@@ -175,10 +175,16 @@ settling under an envelope (our dogfood ran on a plain EOA), and mainnet
 Circle policy — which stays mainnet-only by design.</p>
 <h2 id="try-it">Try it</h2>
 <ul>
-<li>Docs: <code>docs/AGENT-WALLET/</code> — SETUP walks CLI → register →
-caps → fund → verbatim limits handoff.</li>
-<li>Runbook: <code>scripts/agent-wallet-dogfood.sh</code> — register →
-envelope → paid call → cap deny → audit.</li>
+<li>Docs: <code>docs/AGENT-WALLET/</code> in the <a
+href="https://github.com/spreadzp/agentbadge">agentbadge repo</a> —
+SETUP walks CLI → register → caps → fund → verbatim limits
+handoff.</li>
+<li>Runbook: <a
+href="https://github.com/spreadzp/agentbadge/blob/main/scripts/agent-wallet-dogfood.sh"><code>scripts/agent-wallet-dogfood.sh</code></a>
+— register → envelope → paid call → cap deny → audit.</li>
+<li>Pay client: <a
+href="https://github.com/spreadzp/agentbadge/blob/main/scripts/agent-wallet-x402-pay.mts"><code>scripts/agent-wallet-x402-pay.mts</code></a>
+— the exact script our dogfood run used.</li>
 <li>Console: <a
 href="https://agentbadge.xyz/wallets">agentbadge.xyz/wallets</a></li>
 </ul>
