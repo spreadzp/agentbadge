@@ -24,6 +24,9 @@ import {
 } from "../lib/agent-wallet/enforcer";
 import { createAgentWalletRoutes } from "../routes/agent-wallet-api";
 import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet-envelope-api";
+import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet-limits-api";
+import { walletsPage } from "../../views/wallets-page";
+import { resolveVenueNetwork } from "../lib/venue/chain";
 import { venueMonthlyPriceAtomic } from "../lib/venue/billing";
 
 const ATOMIC = 1e6;
@@ -120,6 +123,23 @@ export function wireAgentWallet(app: Hono): void {
     }),
   );
   app.route("/", createAgentWalletEnvelopeRoutes({ store, ledger }));
+  app.route(
+    "/",
+    createAgentWalletLimitsRoutes({
+      store,
+      ledger,
+      cli,
+      chain: cfg.chain,
+    }),
+  );
+
+  // SLICE-155-3: /wallets console — envelope caps/usage + Circle
+  // policy mirror + verbatim command handoff (no OTP fields).
+  app.get("/wallets", (c) => {
+    const net = resolveVenueNetwork();
+    const chainHex = `0x${net.chain.chainId.toString(16)}`;
+    return c.html(walletsPage(chainHex, cfg.chain));
+  });
 
   logger.info("agent-wallet: wired", {
     store: store.name,
