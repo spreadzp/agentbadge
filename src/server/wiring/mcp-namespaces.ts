@@ -39,6 +39,7 @@ import {
   ARC_SELF_SETTLE_SCHEME,
 } from "@agentbadge/circle-payments";
 import { createArcBstockFacilitator } from "../lib/bstock/arc-facilitator";
+import { getSpendEnforcer } from "../lib/agent-wallet/enforcer";
 import { bstockFreemium } from "../middleware/bstock-freemium";
 import {
   bstockAuth,
@@ -155,6 +156,8 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
           }),
         mintPass: (to, serviceId, durationSec) =>
           ops.mintServicePass(to as `0x${string}`, serviceId, durationSec, 0n),
+        // SLICE-155-2: spend envelope — lazy getter, off = pass-through.
+        spendEnvelope: getSpendEnforcer,
       }),
       bstockRateLimit(bstockCfg.rateLimitPerMin),
       bstockSseCap(new BstockSseCap(bstockCfg.maxSseConnections)),

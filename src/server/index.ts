@@ -9,7 +9,7 @@ import { wireMarketplace } from "./wiring/marketplace-x402";
 import { registerMcpNamespaces, wireMcpNamespaceRoutes, registerDefaultMcpTools } from "./wiring/mcp-namespaces";
 import { wireCirclePayments } from "./wiring/circle-payments";
 import { wireEaas } from "./wiring/eaas";
-import { wireAgentWallet } from "./wiring/agent-wallet";
+import { wireAgentWallet, wireSpendEnvelopeGates } from "./wiring/agent-wallet";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
@@ -77,6 +77,12 @@ app.use(bazaarExtensionMiddleware());
 
 // SLICE-130-7: GA4 pageview tracking — fire-and-forget for HTML 200 GET responses
 app.use(ga4Pageview);
+
+// EPIC-155 SLICE-155-2: spend-envelope path gates. MUST register before
+// the gated route mounts (eaas verdicts/evaluate, venue subscribe) —
+// Hono runs app.use in registration order. Enforcer resolved lazily
+// per request, so feature-off = pass-through.
+wireSpendEnvelopeGates(app);
 
 // Structured 404 handler — JSON for API clients, HTML for browsers
 app.notFound(structuredNotFoundHandler());

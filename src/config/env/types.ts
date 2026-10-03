@@ -227,10 +227,7 @@ export interface EaasEnvConfig {
   tierBasicUsd: string;
   /** SLICE-154-5: pro-tier subscription price, "$x.xx" (ARC_EAAS_TIER_PRO_USD atomic). */
   tierProUsd: string;
-  /**
-   * SLICE-154-5: tier → {quota, policies} map (ARC_EAAS_TIER_QUOTAS JSON).
-   * policies: ["*"] = all; otherwise a POLICY_REGISTRY allowlist.
-   */
+  /** SLICE-154-5: tier→{quota,policies} (ARC_EAAS_TIER_QUOTAS JSON); ["*"]=all. */
   tierQuotas: Record<string, { quota: number; policies: string[] }>;
   /** SLICE-154-6: HMAC secret for webhook signatures (ARC_EAAS_WEBHOOK_SECRET). */
   webhookSecret?: string;
@@ -238,17 +235,21 @@ export interface EaasEnvConfig {
   asyncTimeoutSec: number;
 }
 
-/** Agent Wallet (EPIC-155 SLICE-155-1); absent = feature off. */
+/** Agent Wallet (EPIC-155); absent = feature off. */
 export interface AgentWalletEnvConfig {
   enabled: boolean;
-  /** CIRCLE_CLI_PATH — binary name/path, default "circle". */
+  /** CIRCLE_CLI_PATH, AGENT_WALLET_CLI_TIMEOUT_MS, AGENT_WALLET_CHAIN. */
   cliPath: string;
-  /** AGENT_WALLET_CLI_TIMEOUT_MS — spawn timeout, default 15000. */
   cliTimeoutMs: number;
-  /** AGENT_WALLET_CHAIN — default chain for CLI mirror calls, "ARC". */
   chain: string;
-  /** AGENT_WALLET_STORE — json (default) | memory. */
+  /** AGENT_WALLET_STORE | AGENT_WALLET_LEDGER_STORE. */
   store: "json" | "memory";
+  ledgerStore: "json" | "sqlite" | "memory";
+  /** AGENT_WALLET_REQUIRE_REGISTERED | AGENT_WALLET_DEFAULT_CAPS. */
+  requireRegistered: boolean;
+  defaultCaps?: Partial<
+    Record<"perTxUsd" | "dailyUsd" | "weeklyUsd" | "monthlyUsd", number>
+  >;
 }
 
 /**

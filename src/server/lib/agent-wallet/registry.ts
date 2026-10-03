@@ -18,12 +18,13 @@ import { isAddress, getAddress } from "viem";
 
 /* --------------------------------- types ---------------------------------- */
 
-/** Platform-side spend caps (enforced in SLICE-155-2 envelope). */
+/** Platform-side spend caps — USD decimals, enforced in 155-2 envelope.
+ *  Monotonic invariant: perTx ≤ daily ≤ weekly ≤ monthly. */
 export interface SpendCaps {
-  perTxUsd?: string;
-  dailyUsd?: string;
-  weeklyUsd?: string;
-  monthlyUsd?: string;
+  perTxUsd?: number;
+  dailyUsd?: number;
+  weeklyUsd?: number;
+  monthlyUsd?: number;
 }
 
 export interface AgentWalletRecord {
@@ -62,6 +63,8 @@ export interface AgentWalletStore {
   list(venueId?: string): AgentWalletRecord[];
   /** Sets active=false. Returns false if unknown. */
   deactivate(address: string): boolean;
+  /** Replace envelope caps. Returns false if unknown/inactive. */
+  setEnvelope(address: string, caps: SpendCaps): boolean;
 }
 
 /* ------------------------------- validation ------------------------------- */
@@ -150,6 +153,14 @@ export function createJsonAgentWalletStore(
       writeJson(path, data);
       return true;
     },
+    setEnvelope(address, caps) {
+      const data = readJson(path);
+      const rec = data.wallets[address.toLowerCase()];
+      if (!rec || !rec.active) return false;
+      data.wallets[address.toLowerCase()] = { ...rec, envelope: caps };
+      writeJson(path, data);
+      return true;
+    },
   };
 }
 
@@ -173,6 +184,12 @@ export function createMemoryAgentWalletStore(): AgentWalletStore {
       const rec = map.get(address.toLowerCase());
       if (!rec) return false;
       map.set(address.toLowerCase(), { ...rec, active: false });
+      return true;
+    },
+    setEnvelope(address, caps) {
+      const rec = map.get(address.toLowerCase());
+      if (!rec || !rec.active) return false;
+      map.set(address.toLowerCase(), { ...rec, envelope: caps });
       return true;
     },
   };

@@ -11,6 +11,9 @@
  *   AGENT_WALLET_CLI_TIMEOUT_MS   — spawn timeout (default 15000)
  *   AGENT_WALLET_CHAIN            — default chain for mirror calls (ARC)
  *   AGENT_WALLET_STORE            — json (default) | memory
+ *   AGENT_WALLET_LEDGER_STORE     — sqlite (default) | json | memory
+ *   AGENT_WALLET_REQUIRE_REGISTERED — 0/1 deny unregistered wallets (155-2)
+ *   AGENT_WALLET_DEFAULT_CAPS     — JSON SpendCaps fallback envelope (155-2)
  */
 
 import type { AgentWalletEnvConfig } from "./types";
@@ -44,5 +47,59 @@ export function loadAgentWallet(
   const rawStore = (process.env.AGENT_WALLET_STORE ?? "json").toLowerCase();
   const store = rawStore === "memory" ? "memory" : "json";
 
-  return { enabled: true, cliPath, cliTimeoutMs, chain, store };
+  // SLICE-155-2: spend envelope config.
+  const rawLedger = (
+    process.env.AGENT_WALLET_LEDGER_STORE ?? "sqlite"
+  ).toLowerCase();
+  const ledgerStore =
+    rawLedger === "memory" || rawLedger === "json" ? rawLedger : "sqlite";
+
+  const requireRegistered = booleanFlag("AGENT_WALLET_REQUIRE_REGISTERED");
+
+  let defaultCaps: AgentWalletEnvConfig["defaultCaps"];
+  const rawCaps = process.env.AGENT_WALLET_DEFAULT_CAPS;
+  if (rawCaps) {
+    try {
+      const parsed = JSON.parse(rawCaps) as Record<string, unknown>;
+      const caps: NonNullable<AgentWalletEnvConfig["defaultCaps"]> = {};
+      for (const k of [
+        "perTxUsd",
+        "dailyUsd",
+        "weeklyUsd",
+        "monthlyUsd",
+      ] as const) {
+        const v = parsed[k];
+        if (v === undefined || v === null) continue;
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 0) {
+          throw new Error(`${k} must be a non-negative number`);
+        }
+        caps[k] = n;
+      }
+      const seq = (["perTxUsd", "dailyUsd", "weeklyUsd", "monthlyUsd"] as const)
+        .map((k) => caps[k])
+        .filter((v): v is number => v !== undefined);
+      for (let i = 1; i < seq.length; i++) {
+        if (seq[i] < seq[i - 1]) {
+          throw new Error("caps must be monotonic perTx≤daily≤weekly≤monthly");
+        }
+      }
+      if (Object.keys(caps).length > 0) defaultCaps = caps;
+    } catch (err) {
+      errors.push(
+        `Invalid AGENT_WALLET_DEFAULT_CAPS: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  return {
+    enabled: true,
+    cliPath,
+    cliTimeoutMs,
+    chain,
+    store,
+    ledgerStore,
+    requireRegistered,
+    ...(defaultCaps ? { defaultCaps } : {}),
+  };
 }

@@ -90,6 +90,9 @@ export interface BstockFreemiumConfig {
   ) => Promise<string>;
   /** 402 description (default: bstock ServicePass wording). */
   description?: string;
+  /** SLICE-155-2: spend envelope enforcer getter — resolved lazily per
+   *  request (init order-independent). Absent/null → pass-through. */
+  spendEnvelope?: () => import("../lib/agent-wallet/enforcer").SpendEnforcer | null;
 }
 
 interface Bucket {
@@ -155,12 +158,40 @@ export function bstockFreemium(
           verify.error ?? "Payment verification failed",
         );
       }
+      // SLICE-155-2: envelope check-then-settle — cap reservation before
+      // money moves; released if settle fails.
+      const enforcer = cfg.spendEnvelope?.();
+      let begun: Awaited<ReturnType<NonNullable<typeof enforcer>["begin"]>> | null = null;
+      if (enforcer) {
+        const res = await enforcer.begin(
+          c,
+          Number(cfg.priceUsd),
+          "x402",
+          `bstock:${cfg.serviceId ?? c.req.path}`,
+        );
+        if (res instanceof Response) return res;
+        begun = res;
+      }
       const settle = await cfg.facilitator.settle(paymentSig, requirements);
       if (!settle.success) {
+        if (enforcer && begun) {
+          enforcer.complete(begun, false, Number(cfg.priceUsd), "x402",
+            `bstock:${cfg.serviceId ?? c.req.path}`);
+        }
         return paymentRequired(
           c,
           requirements,
           settle.error ?? "Payment settlement failed",
+        );
+      }
+      if (enforcer && begun) {
+        enforcer.complete(
+          begun,
+          true,
+          Number(cfg.priceUsd),
+          "x402",
+          `bstock:${cfg.serviceId ?? c.req.path}`,
+          settle.transaction ?? undefined,
         );
       }
       if (settle.payer && cfg.mintPass && cfg.serviceId) {
