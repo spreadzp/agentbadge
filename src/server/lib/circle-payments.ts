@@ -200,7 +200,7 @@ export function createCirclePaymentsRuntime(
     let r = routers.get(key);
     if (!r) {
       r = createPaymentRouter({
-        sellerAddress: payTo,
+        sellerAddress: payTo, gatewayCrosschainTakeUsd: cfg.gatewayCrosschainTakeUsd,
         ...(perRailPayTo ? { railPayTo: perRailPayTo } : {}),
         ...(cfg.gatewayChains ? { gatewayChains: cfg.gatewayChains } : {}),
         ...routerFlags,

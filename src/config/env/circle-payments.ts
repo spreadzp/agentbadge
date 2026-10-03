@@ -72,6 +72,8 @@ export function loadCirclePayments(
     gatewayExpiryGraceMs: process.env.GATEWAY_EXPIRY_GRACE_MS
       ? Number(process.env.GATEWAY_EXPIRY_GRACE_MS)
       : undefined,
+    gatewayCrosschainTakeUsd:
+      process.env.GATEWAY_CROSSCHAIN_TAKE_USD?.trim() || "0",
     arc,
     identity: booleanFlag("CIRCLE_IDENTITY_ENABLED"),
     escrow,
