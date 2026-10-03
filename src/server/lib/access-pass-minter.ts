@@ -227,7 +227,7 @@ async function mintAfterSettle(args: {
 }
 
 /**
- * AfterSettleHook for x402ResourceServer.onAfterSettle().
+ * Legacy-shaped after-settle hook (legacy facilitator after-settle contract). * SLICE-157-5: kept for tests/eaas docs — new routes use createMintOnPaymentSettled.
  * Mints/extends the payer's pass; failures are logged, never rethrown —
  * the payment is already settled and the response already served (D10).
  */

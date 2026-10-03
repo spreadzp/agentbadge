@@ -9,7 +9,7 @@
 // Order is security-relevant: payment middleware → api routes → page routes
 // (Hono composes in registration order).
 
-import type { Context, Hono } from "hono";
+import type { Context, Hono, MiddlewareHandler } from "hono";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
@@ -93,7 +93,7 @@ export function wireMarketplace(
           "AgentBadge Business Passport — yearly marketplace access",
         mimeType: "application/json",
         onBeforeChallenge: passportPreCheck,
-      }) as never,
+      }) as MiddlewareHandler,
     );
 
     app.use(
@@ -110,7 +110,7 @@ export function wireMarketplace(
         // 5A: mint fold — arc (scheme eip3009-client-broadcast) mints to
         // payer without credit; base credits splitter + mints.
         onSettleResult: createMarketplaceMintOnPaymentSettled(),
-      }) as never,
+      }) as MiddlewareHandler,
     );
     logger.info(
       "x402 middleware wired for marketplace (passport mint + service buy) via circle-payments runtime",

@@ -6,7 +6,7 @@
 // only on the circle-payments runtime (multi-chain accepts[]: Gateway + exact
 // + Arc self-settle). No runtime → route unprotected (warn).
 
-import type { Hono } from "hono";
+import type { Hono, MiddlewareHandler } from "hono";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
@@ -36,7 +36,7 @@ export function wireKeeperhubX402(
       mimeType: "application/json",
       // 157-1: legacy accepts advertised extra.paymentFlow=upfront.
       extraRequirements: { paymentFlow: "upfront" },
-    }) as never,
+    }) as MiddlewareHandler,
   );
   logger.info(
     "x402 premium middleware wired for POST /api/keeperhub/scan/premium via circle-payments runtime",

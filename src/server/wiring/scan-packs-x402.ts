@@ -8,7 +8,7 @@
 // probe fallback. Without the runtime the legacy x402 stack stays in place
 // (zero behavior change for envs that never enabled circle payments).
 
-import type { Context, Hono } from "hono";
+import type { Context, Hono, MiddlewareHandler } from "hono";
 import { declareDiscoveryExtension } from "@x402/extensions";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
@@ -172,7 +172,7 @@ function wireScanPacksOnRuntime(app: Hono, runtime: CirclePaymentsRuntime): void
     runtime.paymentForPrice(
       scanPackPrice,
       buildTotalScanPaymentOpts(payTo),
-    ) as never,
+    ) as MiddlewareHandler,
   );
   logger.info(
     "x402 middleware wired for POST /api/total-scan via circle-payments runtime (multi-chain accepts)",
