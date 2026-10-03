@@ -37,6 +37,7 @@ import {
 } from "@agentbadge/circle-payments";
 import type { CirclePaymentsConfig } from "../../config/env";
 import type { PaymentMiddleware } from "../routes/identity";
+import { createSpendX402Hooks } from "./agent-wallet/x402-hooks";
 
 export interface CirclePaymentsRuntime {
   /** Router dispatching verify/settle to enabled rails */
@@ -230,6 +231,9 @@ export function createCirclePaymentsRuntime(
       opts?: { identity?: boolean },
     ): PaymentMiddleware {
       const withIdentity = opts?.identity !== false && identityExtension;
+      // SLICE-155-4: spend-envelope hooks — pre-settle reserve on the
+      // verified payer, settle/release after. Feature-off = no-ops.
+      const spendHooks = createSpendX402Hooks();
       return requirePayment(price, {
         sellerAddress: cfg.sellerAddress,
         gateway: cfg.gateway,
@@ -239,6 +243,7 @@ export function createCirclePaymentsRuntime(
         router,
         failureStore,
         onFailure: deps.onFailure,
+        ...spendHooks,
         ...(withIdentity
           ? { extensions: () => identityExtension!(cfg.sellerAddress) }
           : {}),

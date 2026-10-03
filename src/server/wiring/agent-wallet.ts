@@ -34,45 +34,16 @@ const atomicToUsd = (atomic: string | bigint) => Number(atomic) / ATOMIC;
 
 /**
  * Early-mount path gates — register BEFORE route mounts in index.ts.
- * Every gate: POST-only, resolves wallet (agentWallet ctx → X-Wallet →
- * x402 payer), registry lookup → caps → reserve → settle/release.
+ * POST-only, resolves wallet → caps → reserve → settle/release.
+ * SLICE-155-4 note: routes behind `requirePayment` (EaaS verdicts/
+ * evaluate, billing) are covered by the package-level onBeforeSettle
+ * hook (verified payer, pre-settle reserve) — do NOT gate them here
+ * or reservations would double-count. Only custom-seam endpoints
+ * (venue subscribe via deps.subscriptionSettle) need a path gate.
  */
 export function wireSpendEnvelopeGates(app: Hono): void {
-  // 154-2: EaaS verdicts — price depends on request policy.
-  app.use(
-    "/api/eaas/verdicts",
-    spendEnvelopeGate({
-      kind: "eaas",
-      amountUsdFor: async (c) => {
-        const eaas = getConfig().eaas;
-        if (!eaas) return 0;
-        try {
-          const body = (await c.req.json()) as { policy?: string };
-          const atomic =
-            body?.policy === "readiness-scan" ? eaas.scanUsd : eaas.verdictUsd;
-          return atomicToUsd(atomic);
-        } catch {
-          return 0;
-        }
-      },
-      refIdFor: () => `eaas-verdict:${crypto.randomUUID().slice(0, 12)}`,
-    }),
-  );
-
-  // 154-3: EaaS external job evaluate — fixed price.
-  app.use(
-    "/api/eaas/jobs/evaluate",
-    spendEnvelopeGate({
-      kind: "eaas",
-      amountUsdFor: () => {
-        const eaas = getConfig().eaas;
-        return eaas ? atomicToUsd(eaas.evalUsd) : 0;
-      },
-    }),
-  );
-
-  // 153-5: venue subscription — fixed monthly price. Path-suffix gate
-  // over the wildcard (Hono `*` doesn't match mid-path segments in use).
+  // 153-5: venue subscription — fixed monthly price over a custom
+  // x402 settle seam (not requirePayment → hooks don't fire).
   app.use(
     "/api/venue/instances/*",
     spendEnvelopeGate({

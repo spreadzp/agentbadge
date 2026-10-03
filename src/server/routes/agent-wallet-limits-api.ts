@@ -12,6 +12,8 @@ import { describeRoute } from "hono-openapi";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import { verifyWalletSigRequest } from "../middleware/agent-auth";
+import { requireVenueAccess } from "../middleware/venue-auth";
 import type { AgentWalletStore } from "../lib/agent-wallet/registry";
 import { validateCaps } from "../lib/agent-wallet/envelope";
 import { windowUsage, WINDOW_SEC, type SpendLedger } from "../lib/agent-wallet/ledger";
@@ -172,5 +174,89 @@ export function createAgentWalletLimitsRoutes(
     },
   );
 
+  // SLICE-155-4: spend receipt — ledger entries for the wallet.
+  // Auth: sig from the wallet itself, its registrant, or venue admin.
+  routes.get(
+    "/api/wallets/:address/spend",
+    describeRoute({
+      description:
+        "Spend ledger for the wallet — kind+refId+txHash per entry " +
+        "(owner/registrant/venue-admin sig required)",
+      responses: {
+        200: { description: "{address, spend:[entry], totals}" },
+        401: { description: "Signature required" },
+        403: { description: "Not owner / registrant / venue admin" },
+        404: { description: "Wallet not registered" },
+      },
+    }),
+    async (c) => {
+      const addr = c.req.param("address");
+      if (!ADDRESS_RE.test(addr)) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+          "invalid address");
+      }
+      const rec = deps.store.get(addr);
+      if (!rec || !rec.active) {
+        return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
+          "wallet not registered");
+      }
+      const caller = await sigWallet(c);
+      if (!caller) {
+        return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
+          "valid X-Wallet/X-Sig/X-Timestamp required");
+      }
+      const allowed =
+        caller === rec.address.toLowerCase() ||
+        caller === rec.registeredBy ||
+        (!!rec.venueId &&
+          !(await requireVenueAccess(c, rec.venueId, "admin") instanceof
+            Response));
+      if (!allowed) {
+        return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
+          "only wallet owner, registrant or venue admin can read spend");
+      }
+      const spend = deps.ledger.listByWallet(rec.address);
+      const state = c.req.query("state");
+      const entries = (
+        state ? spend.filter((e) => e.state === state) : spend
+      ).map((e) => ({
+        id: e.id,
+        amountUsd: e.amountUsd,
+        kind: e.kind,
+        refId: e.refId,
+        state: e.state,
+        txHash: e.txHash,
+        at: e.at,
+      }));
+      const settled = entries
+        .filter((e) => e.state === "settled")
+        .reduce((s, e) => s + e.amountUsd, 0);
+      return c.json({
+        address: rec.address,
+        spend: entries,
+        totals: { settledUsd: Math.round(settled * 1e6) / 1e6 },
+      });
+    },
+  );
+
   return routes;
+}
+
+/** Wallet-sig check — returns caller wallet or null (no error body). */
+async function sigWallet(c: {
+  req: {
+    header: (n: string) => string | undefined;
+    method: string;
+    path: string;
+  };
+}): Promise<string | null> {
+  const wallet = c.req.header("x-wallet");
+  const sig = await verifyWalletSigRequest({
+    wallet,
+    signature: c.req.header("x-sig"),
+    timestamp: c.req.header("x-timestamp"),
+    method: c.req.method,
+    path: c.req.path,
+  });
+  return sig === "valid" && wallet ? wallet.toLowerCase() : null;
 }
