@@ -121,3 +121,31 @@ describe("createCirclePaymentsRuntime", () => {
     expect(body.accepts[0].amount).toBe("1000"); // $0.001
   });
 });
+
+describe("routerFor per-rail payTo (SLICE-157-3, D6-157)", () => {
+  const SPLITTER = "0x4444444444444444444444444444444444444444";
+  const TREASURY = "0x3333333333333333333333333333333333333333";
+
+  it("arcSelfSettle entry carries per-rail payTo, exact keeps default", () => {
+    const rt = createCirclePaymentsRuntime({ ...BASE_CFG, arc: true }, {
+      handles: { exact: fakeHandle(), arcSelfSettle: fakeHandle() },
+    });
+    const accepts = rt
+      .routerFor(SPLITTER, { arcSelfSettle: TREASURY })
+      .acceptsFor("5000000");
+    const exact = accepts.find((a) => a.scheme === "exact");
+    const arc = accepts.find((a) => a.scheme === "eip3009-client-broadcast");
+    expect(exact?.payTo).toBe(SPLITTER);
+    expect(arc?.payTo).toBe(TREASURY);
+  });
+
+  it("same payTo without perRailPayTo reuses the cached router", () => {
+    const rt = createCirclePaymentsRuntime(BASE_CFG, {
+      handles: { exact: fakeHandle() },
+    });
+    expect(rt.routerFor(SPLITTER)).toBe(rt.routerFor(SPLITTER));
+    expect(rt.routerFor(SPLITTER, { exact: TREASURY })).not.toBe(
+      rt.routerFor(SPLITTER),
+    );
+  });
+});
