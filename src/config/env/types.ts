@@ -87,15 +87,12 @@ export interface CirclePaymentsConfig {
   /** Arc mainnet (eip155:5042) surface — EPIC-151 */
   arcMainnet: boolean;
   arcMainnetRpcUrl: string;
-  /** Evaluator EOA key for ERC-8004 feedback — required when arcMainnet
-   *  enabled. Must differ from agent owner key (self-deal ban) and
-   *  deploy operator key (D6-151). */
+  /** Evaluator EOA key for ERC-8004 feedback — required when arcMainnet enabled (D6-151). */
   arcEvaluatorKey?: string;
   /** Readiness attestation route (POST /api/attestations + /attestations
    *  page) — writes ERC-8004 feedback + memo via evaluator key (151-3). */
   attestation: boolean;
-  /** Oracle agentId for site attestations (ARC_ORACLE_AGENT_ID) —
-   *  optional; clients may pass their own agentId per-request. */
+  /** Oracle agentId for site attestations (ARC_ORACLE_AGENT_ID). */
   oracleAgentId?: string;
   /** Seller wallet receiving payments */
   sellerAddress: string;
@@ -108,6 +105,10 @@ export interface CirclePaymentsConfig {
   gatewayDownMs?: number;
   /** SLICE-156-2: min Gateway deposit USD — GATEWAY_MIN_DEPOSIT_USD (default "0.10") */
   gatewayMinDepositUsd: string;
+  /** SLICE-156-3: settle poller ms — GATEWAY_SETTLE_POLL_MS (default 30000) */
+  gatewaySettlePollMs?: number;
+  /** SLICE-156-3: settle grace before expired — GATEWAY_EXPIRY_GRACE_MS (default 600000) */
+  gatewayExpiryGraceMs?: number;
   /** Server EOA key — required when arc or escrow enabled */
   arcPrivateKey?: string;
   /** Platform fee in basis points on escrow settlement (D28, 0 = off) */

@@ -71,6 +71,7 @@ export function createSpendX402Hooks(): SpendX402Hooks {
         kindFor(c.req.path),
         refIdFor(c),
         payment?.transaction,
+        payment?.network,
       );
     },
   };

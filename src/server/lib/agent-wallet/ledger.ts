@@ -35,6 +35,8 @@ export interface SpendEntry {
   /** jobId/verdictId/subscriptionId — caller-provided correlation. */
   refId: string;
   txHash?: `0x${string}`;
+  /** SLICE-156-3: CAIP-2 source network for cross-chain attribution. */
+  sourceChain?: string;
   state: SpendState;
   /** Reserved-at epoch ms — window anchoring timestamp. */
   at: number;
@@ -45,7 +47,7 @@ export interface SpendLedger {
   /** Insert a new entry (id-unique, insert-or-ignore). */
   insert(entry: SpendEntry): void;
   /** Transition reserved → settled|released|failed. No-op otherwise. */
-  transition(id: string, to: Exclude<SpendState, "reserved">, txHash?: string): boolean;
+  transition(id: string, to: Exclude<SpendState, "reserved">, txHash?: string, sourceChain?: string): boolean;
   /** All entries for a wallet (any state), newest first. */
   listByWallet(wallet: string): SpendEntry[];
 }
@@ -112,7 +114,7 @@ export function createJsonSpendLedger(
       data.entries[entry.id] = entry;
       writeJson(path, data);
     },
-    transition(id, to, txHash) {
+    transition(id, to, txHash, sourceChain) {
       const data = readJson(path);
       const e = data.entries[id];
       if (!e || e.state !== "reserved") return false;
@@ -120,6 +122,7 @@ export function createJsonSpendLedger(
         ...e,
         state: to,
         ...(txHash ? { txHash: txHash as `0x${string}` } : {}),
+        ...(sourceChain ? { sourceChain } : {}),
       };
       writeJson(path, data);
       return true;
@@ -151,9 +154,15 @@ function openBunSqlite(path: string): SqliteDatabase | null {
       kind TEXT NOT NULL,
       refId TEXT NOT NULL,
       txHash TEXT,
+      sourceChain TEXT,
       state TEXT NOT NULL,
       at INTEGER NOT NULL
     )`);
+    // SLICE-156-3: sourceChain column for pre-existing DBs — guarded
+    // ALTER (duplicate column error is expected, ignored).
+    try {
+      db.run("ALTER TABLE spend_ledger ADD COLUMN sourceChain TEXT");
+    } catch { /* column already present */ }
     db.run("CREATE INDEX IF NOT EXISTS idx_spend_wallet ON spend_ledger(wallet)");
     return db;
   } catch {
@@ -168,6 +177,7 @@ interface SqliteRow {
   kind: string;
   refId: string;
   txHash: string | null;
+  sourceChain: string | null;
   state: string;
   at: number;
 }
@@ -182,6 +192,7 @@ function rowToEntry(r: SqliteRow): SpendEntry {
     state: r.state as SpendState,
     at: r.at,
     ...(r.txHash ? { txHash: r.txHash as `0x${string}` } : {}),
+    ...(r.sourceChain ? { sourceChain: r.sourceChain } : {}),
   };
 }
 
@@ -195,8 +206,8 @@ export function createSqliteSpendLedger(
     insert(entry) {
       db.run(
         `INSERT OR IGNORE INTO spend_ledger
-         (id, wallet, amountUsd, kind, refId, txHash, state, at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, wallet, amountUsd, kind, refId, txHash, sourceChain, state, at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           entry.id,
           entry.wallet,
@@ -204,16 +215,18 @@ export function createSqliteSpendLedger(
           entry.kind,
           entry.refId,
           entry.txHash ?? null,
+          entry.sourceChain ?? null,
           entry.state,
           entry.at,
         ],
       );
     },
-    transition(id, to, txHash) {
+    transition(id, to, txHash, sourceChain) {
       const res = db.run(
-        `UPDATE spend_ledger SET state = ?, txHash = COALESCE(?, txHash)
+        `UPDATE spend_ledger SET state = ?, txHash = COALESCE(?, txHash),
+         sourceChain = COALESCE(?, sourceChain)
          WHERE id = ? AND state = 'reserved'`,
-        [to, txHash ?? null, id],
+        [to, txHash ?? null, sourceChain ?? null, id],
       );
       return res.changes > 0;
     },
@@ -235,13 +248,14 @@ export function createMemorySpendLedger(): SpendLedger {
     insert(entry) {
       if (!map.has(entry.id)) map.set(entry.id, entry);
     },
-    transition(id, to, txHash) {
+    transition(id, to, txHash, sourceChain) {
       const e = map.get(id);
       if (!e || e.state !== "reserved") return false;
       map.set(id, {
         ...e,
         state: to,
         ...(txHash ? { txHash: txHash as `0x${string}` } : {}),
+        ...(sourceChain ? { sourceChain } : {}),
       });
       return true;
     },

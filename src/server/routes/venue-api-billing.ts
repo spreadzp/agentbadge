@@ -28,12 +28,16 @@ import {
   listVenuePayments,
   subscriptionStatus,
   venueMonthlyPriceAtomic,
+  venuePaymentsByChain,
 } from "../lib/venue/billing";
 
 export interface SubscriptionSettled {
   payer: `0x${string}`;
   amountAtomic: string;
   tx?: string;
+  /** SLICE-156-3: cross-chain attribution — CAIP-2 network + scheme. */
+  sourceChain?: string;
+  scheme?: string;
 }
 
 export interface VenueBillingDeps {
@@ -118,6 +122,8 @@ export function registerVenueBillingRoutes(
       payer: settled.payer,
       amountAtomic: settled.amountAtomic,
       tx: settled.tx,
+      sourceChain: settled.sourceChain,
+      scheme: settled.scheme,
       venue: access.venue,
     });
     if (!res) {
@@ -177,6 +183,7 @@ export function registerVenueBillingRoutes(
     return c.json({
       ...economicsPayload(access.venue),
       payments: listVenuePayments(access.venue.id),
+      paymentsByChain: venuePaymentsByChain(access.venue.id),
     });
   });
 }

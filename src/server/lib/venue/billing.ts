@@ -99,6 +99,9 @@ export interface VenuePayment {
   amountAtomic: string;
   durationSec: number;
   tx?: string;
+  /** SLICE-156-3: cross-chain attribution (CAIP-2 network + rail). */
+  sourceChain?: string;
+  scheme?: string;
   expiresAtAfter: number;
 }
 
@@ -107,6 +110,25 @@ const PAYMENTS_CAP = 100;
 
 export function listVenuePayments(venueId: string): VenuePayment[] {
   return getVenueMeta<VenuePayment[]>(paymentsKey(venueId)) ?? [];
+}
+
+/** SLICE-156-3: payments by source chain for grant reporting ("unknown" = unset). */
+export function venuePaymentsByChain(
+  venueId: string,
+): Record<string, { count: number; amountAtomic: string }> {
+  const out: Record<string, { count: number; amount: bigint }> = {};
+  for (const p of listVenuePayments(venueId)) {
+    const k = p.sourceChain ?? "unknown";
+    const acc = (out[k] ??= { count: 0, amount: 0n });
+    acc.count++;
+    acc.amount += BigInt(p.amountAtomic);
+  }
+  return Object.fromEntries(
+    Object.entries(out).map(([k, v]) => [
+      k,
+      { count: v.count, amountAtomic: v.amount.toString() },
+    ]),
+  );
 }
 
 function appendVenuePayment(
@@ -135,6 +157,9 @@ export function extendVenueSubscription(args: {
   payer: `0x${string}`;
   amountAtomic: string;
   tx?: string;
+  /** SLICE-156-3: cross-chain attribution (settle seam forwards). */
+  sourceChain?: string;
+  scheme?: string;
   venue?: VenueRecord;
 }): SubscribeResult | undefined {
   const venue = args.venue;
@@ -158,6 +183,8 @@ export function extendVenueSubscription(args: {
     amountAtomic: args.amountAtomic,
     durationSec,
     tx: args.tx,
+    ...(args.sourceChain ? { sourceChain: args.sourceChain } : {}),
+    ...(args.scheme ? { scheme: args.scheme } : {}),
     expiresAtAfter: expiresAt,
   });
   appendAdminAudit(venue.id, {

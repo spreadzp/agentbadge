@@ -120,6 +120,12 @@ export function createSettleSeam(
       stamp("Settled without payer");
       return null;
     }
-    return { payer, amountAtomic: requirements.amount, tx: settle.transaction };
+    return {
+      payer,
+      amountAtomic: requirements.amount,
+      tx: settle.transaction,
+      sourceChain: requirements.network,
+      scheme: requirements.scheme,
+    };
   };
 }

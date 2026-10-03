@@ -16,6 +16,11 @@ import {
 import { createIdentityRoutes } from "../routes/identity";
 import { createDemoRoutes } from "../routes/demo";
 import { createGatewayDepositRoutes } from "../routes/pay-gateway";
+import {
+  createCrosschainPaymentsStore,
+  createSettlePoller,
+  recordPayment,
+} from "../lib/crosschain-payments";
 import { captureError } from "../lib/sentry";
 // EPIC-150: circle MCP tools live in @agentbadge/mcp (named exports,
 // not in registerAllTools — registered here into all + market ns).
@@ -99,8 +104,39 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
 
   if (circleCfg?.enabled) {
     try {
+      // SLICE-156-3: settle-attribution store + poller — created per
+      // runtime so tests get isolated instances; gateway-gated poller.
+      const crosschainStore = createCrosschainPaymentsStore();
+      const crosschainPoller = createSettlePoller({
+        store: crosschainStore,
+        statusLookup: (ref) => circleRuntimeRef.statusLookup(ref),
+        pollMs: circleCfg.gatewaySettlePollMs ?? 30_000,
+        onTerminal: (e) => {
+          logger.info("crosschain payment terminal", {
+            id: e.id, state: e.state, scheme: e.scheme,
+            sourceChain: e.sourceChain, settleTx: e.settleTx,
+          });
+        },
+      });
+      // statusLookup lives on the runtime — resolved lazily per tick.
+      let circleRuntimeRef: CirclePaymentsRuntime;
       const circleRuntime = createCirclePaymentsRuntime(circleCfg, {
         identityLookup: circleIdentityLookup,
+        recordSettle: (payment, path, payTo) => {
+          try {
+            recordPayment(
+              crosschainStore,
+              payment,
+              path,
+              payTo,
+              circleCfg.gatewayExpiryGraceMs ?? 600_000,
+            );
+          } catch (e) {
+            logger.warn("crosschain payment record failed", {
+              error: e instanceof Error ? e.message : String(e),
+            });
+          }
+        },
         onFailure: (f) => {
           logger.error("Payment fulfillment failure after confirmed settle", {
             scheme: f.scheme,
@@ -115,6 +151,10 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
           });
         },
       });
+      circleRuntimeRef = circleRuntime;
+      // Poller only matters when the gateway rail can leave a payment in
+      // `settling` — exact/arc settle synchronously (straight to settled).
+      if (circleCfg.gateway) crosschainPoller.start();
       if (circleCfg.identity) {
         app.route(
           "/",

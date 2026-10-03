@@ -104,6 +104,7 @@ function baseCfg(over: Partial<CirclePaymentsConfig> = {}): CirclePaymentsConfig
     arcChainId: 5042002,
     arcMainnet: false,
     arcMainnetRpcUrl: "https://rpc.mainnet.arc.io",
+    gatewayMinDepositUsd: "0.10",
     attestation: false,
     sellerAddress: SELLER,
     platformFeeBps: 0,

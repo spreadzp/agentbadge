@@ -89,6 +89,7 @@ export interface SpendEnforcer {
     kind?: SpendKind,
     refId?: string,
     txHash?: string,
+    sourceChain?: string,
   ): void;
 }
 
@@ -160,12 +161,13 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
       return { wallet: wallet as `0x${string}`, entry: r.entry };
     },
 
-    complete(begun, ok, amountUsd, kind, refId, txHash) {
+    complete(begun, ok, amountUsd, kind, refId, txHash, sourceChain) {
       if (begun.entry) {
         deps.ledger.transition(
           begun.entry.id,
           ok ? "settled" : "released",
           txHash,
+          sourceChain,
         );
         // SLICE-155-6: settle tx failed after reserve — alertable.
         if (!ok && begun.wallet) {
@@ -189,6 +191,7 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
           state: "settled",
           at: Date.now(),
           ...(txHash ? { txHash: txHash as `0x${string}` } : {}),
+          ...(sourceChain ? { sourceChain } : {}),
         });
       }
     },
