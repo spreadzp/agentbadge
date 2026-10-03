@@ -1,227 +1,128 @@
 // EPIC-140 (SLICE-140-4): marketplace x402 wiring extracted from index.ts.
-// Covers: marketplaceCfg gate + facilitator check, marketResourceServer +
-// ExactEvmScheme + onAfterSettle, Arc self-settle scheme + inline pre-middleware,
-// marketRoutes402, onProtectedRequest, paymentMiddlewareFromHTTPServer, and the
-// marketplaceApiRoutes/marketplacePageRoutes mounts (inside the enabled gate).
-// Order inside is security-relevant: arc self-settle handler → x402 middleware →
-// api routes → page routes (SLICE-138/139 comments preserved).
-//
-// SLICE-156-1 DEFERRED: marketplace is NOT migrated to the circle-payments
-// runtime in this slice. Its gate couples an onProtectedRequest access-pass
-// flow with an inline Arc self-settle pre-handler and its own payTo treasury;
-// migrating requires splitting those two paths onto the runtime router (per-
-// payTo routerFor + onBeforeChallenge seam). Keeperhub/scan-packs migrate
-// here; marketplace follows in a later slice once the defer is picked up.
+// SLICE-157-3 (D1 + D6-157): legacy x402.org stack + inline Arc pre-middleware
+// removed — both paid routes run on the circle-payments runtime.
+//   - passport mint: static price, payTo → treasury, preFlight sig+meta check
+//     (don't charge for requests that can't mint).
+//   - service buy:   price resolver from path serviceId, per-rail payTo
+//     (base exact/gateway → splitter 90/10, arc self-settle → treasury),
+//     onSettleResult mints via the shared marketplace mint core.
+// Order is security-relevant: payment middleware → api routes → page routes
+// (Hono composes in registration order).
 
-import type { Hono } from "hono";
-import { paymentMiddlewareFromHTTPServer, x402ResourceServer, x402HTTPResourceServer, type SchemeNetworkServer } from "@x402/hono";
-import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
+import type { Context, Hono } from "hono";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
-import { registerArcSelfSettleScheme } from "@agentbadge/circle-payments";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
 import { marketplaceApiRoutes } from "../routes/marketplace-api";
 import { marketplacePageRoutes } from "../routes/marketplace-pages";
 import {
-  createMarketplaceMintOnSettleHook,
-  getMarketplaceOps,
+  createMarketplaceMintOnPaymentSettled,
   getService as getMarketService,
   validatePassportMeta,
 } from "../lib/marketplace";
+import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 
-export function wireMarketplace(app: Hono): void {
-  // EPIC-138, SLICE-138-3: marketplace routes — gated by marketplace.enabled.
-  // x402 gating (passport mint + service buy) activates only when a
-  // facilitator is configured; without it the endpoints run ungated
-  // (testnet/dev convenience, same pattern as scanPacks.pricingEnabled).
-  const marketplaceCfg = getConfig().marketplace;
-  if (marketplaceCfg?.enabled) {
-    const marketFacilitatorUrl =
-      process.env.X402_FACILITATOR_URL ?? getConfig().x402FacilitatorUrl;
-    if (marketFacilitatorUrl && marketplaceCfg.splitterAddress) {
-      try {
-        const marketFacilitator = new HTTPFacilitatorClient({
-          url: marketFacilitatorUrl,
-        });
-        const marketResourceServer = new x402ResourceServer(marketFacilitator)
-          .register(
-            "eip155:84532",
-            new ExactEvmScheme() as unknown as SchemeNetworkServer,
-          )
-          // Settled buy → credit splitter (90/10) + mint service pass.
-          .onAfterSettle(createMarketplaceMintOnSettleHook());
-        // SLICE-139-7: Arc self-settle rail — AA/SCA buyers pay on
-        // Arc (eip3009-client-broadcast). payer = Transfer.from = SCA.
-        // Registers the scheme AND returns the verify/settle handle used
-        // by the pre-middleware below. `as never` — server's @x402/core
-        // differs from circle-payments' (private facilitatorClients).
-        const arcSelfSettle = registerArcSelfSettleScheme(
-          marketResourceServer as never,
-          { sellerAddress: marketplaceCfg.treasury },
-        );
-        const marketRoutes402 = {
-          "POST /api/market/passport": {
-            accepts: [
-              {
-                scheme: "exact",
-                network: "eip155:84532" as const,
-                payTo: marketplaceCfg.treasury,
-                price: `$${marketplaceCfg.passportPriceUsd}`,
-              },
-            ],
-            description: "AgentBadge Business Passport — yearly marketplace access",
-            mimeType: "application/json",
-          },
-          "POST /api/market/buy/:serviceId": {
-            accepts: [
-              {
-                scheme: "exact",
-                network: "eip155:84532" as const,
-                // USDC lands on the splitter; afterSettle credits the service.
-                payTo: marketplaceCfg.splitterAddress,
-                price: async (ctx: { path: string }) => {
-                  const m = /\/api\/market\/buy\/(0x[0-9a-fA-F]{64})/.exec(
-                    ctx.path,
-                  );
-                  const svc = m ? getMarketService(m[1]) : undefined;
-                  return svc ? `$${svc.priceUsd}` : "$1";
-                },
-              },
-            ],
-            description: "Marketplace service access pass",
-            mimeType: "application/json",
-          },
-        };
-        const marketHttpServer = new x402HTTPResourceServer(
-          marketResourceServer,
-          marketRoutes402,
-        ).onProtectedRequest(async (ctx) => {
-          // Passport mint: require a valid wallet signature + valid metadata
-          // BEFORE payment — don't charge for requests that can't mint.
-          if (ctx.path === "/api/market/passport") {
-            const sig = await verifyWalletSigRequest({
-              wallet: ctx.adapter.getHeader("x-wallet"),
-              signature: ctx.adapter.getHeader("x-sig"),
-              timestamp: ctx.adapter.getHeader("x-timestamp"),
-              method: ctx.method,
-              path: ctx.path,
-            });
-            if (sig !== "valid") {
-              return {
-                abort: true,
-                reason: "valid X-Wallet/X-Sig/X-Timestamp required",
-              };
-            }
-            const body = (await ctx.adapter.getBody?.()) as unknown;
-            const v = validatePassportMeta(body);
-            if (!v.ok) return { abort: true, reason: v.error };
-          }
-          // Buy: service must exist in the catalog before we accept payment.
-          const buyMatch = /\/api\/market\/buy\/(0x[0-9a-fA-F]{64})/.exec(
-            ctx.path,
-          );
-          if (buyMatch && !getMarketService(buyMatch[1])) {
-            return { abort: true, reason: "unknown serviceId" };
-          }
-          return;
-        });
-        // SLICE-139-7: Arc self-settle path for AA/SCA buyers.
-        // Runs BEFORE the x402 middleware — intercepts POST buy
-        // requests carrying an Arc (eip155:5042002) payment
-        // signature, verifies the broadcast tx on-chain, and mints
-        // the pass to payer (= USDC Transfer.from = the SCA).
-        // Requests without an Arc payment signature fall through to
-        // the x402 middleware (Base exact rail / 402) unchanged.
-        app.use("/api/market/buy/:serviceId", async (c, next) => {
-          if (c.req.method !== "POST") return next();
-          const psc = c.req.header("payment-signature");
-          if (!psc) return next();
-          let decoded: {
-            accepted?: { network?: string };
-            payload?: { txHash?: string };
-          };
-          try {
-            decoded = JSON.parse(
-              Buffer.from(psc, "base64").toString("utf8"),
-            );
-          } catch {
-            return next();
-          }
-          if (decoded?.accepted?.network !== "eip155:5042002") {
-            return next(); // Base rail → x402 middleware
-          }
+const BUY_PATH_RE = /\/api\/market\/buy\/(0x[0-9a-fA-F]{64})/;
 
-          const serviceId = c.req.param("serviceId").toLowerCase();
-          const svc = getMarketService(serviceId);
-          if (!svc) return c.json({ error: "unknown serviceId" }, 404);
+function serviceIdFromPath(path: string): `0x${string}` | undefined {
+  const m = BUY_PATH_RE.exec(path);
+  return m ? (m[1].toLowerCase() as `0x${string}`) : undefined;
+}
 
-          // Server-side requirements — never trust client amounts.
-          const requirements = {
-            scheme: "eip3009-client-broadcast",
-            network: "eip155:5042002",
-            asset: "0x3600000000000000000000000000000000000000",
-            amount: String(Math.round(Number(svc.priceUsd) * 1e6)),
-            payTo: marketplaceCfg.treasury,
-            maxTimeoutSeconds: 345600,
-          };
-          const v = await arcSelfSettle.verify(decoded, requirements as never);
-          if (!v.isValid) {
-            return c.json({ error: v.invalidReason ?? "arc payment invalid" }, 402);
-          }
-          const r = await arcSelfSettle.settle(decoded, requirements as never);
-          if (!r.success) {
-            return c.json({ error: r.errorReason ?? "arc settle failed" }, 402);
-          }
+/** Buy price — resolved per request from the path's serviceId. Unknown
+ *  serviceIds are aborted by buyPreCheck before this resolver matters. */
+function buyPrice(c: Context): string {
+  const id = serviceIdFromPath(c.req.path);
+  const svc = id ? getMarketService(id) : undefined;
+  return svc ? `$${svc.priceUsd}` : "$1"; // sentinel — unreachable in practice
+}
 
-          const payer = r.payer as `0x${string}`;
-          const ops = getMarketplaceOps();
-          const durationSec = svc.durationSec ?? svc.durationDays * 86_400;
-          // Arc payment went to treasury (no Base splitter split) —
-          // skip creditPayment; mint the pass to payer (= SCA).
-          let mintTx: string | undefined;
-          try {
-            mintTx = await ops.mintServicePass(
-              payer,
-              serviceId as `0x${string}`,
-              durationSec,
-              0n,
-            );
-            logger.info("marketplace-mint: arc pass minted", {
-              payer, serviceId, mintTx, paymentTx: r.transaction,
-            });
-          } catch (err) {
-            logger.error("marketplace-mint: arc mint failed", {
-              payer, serviceId, err: String(err),
-            });
-          }
-          return c.json({
-            purchased: true,
-            serviceId,
-            service: svc.name,
-            price: { amount: svc.priceUsd, currency: "USDC" },
-            durationDays: svc.durationDays,
-            payer,
-            paymentTx: r.transaction,
-            mintTx,
-            note: "Service pass minted to the payer wallet on Arc Testnet (arc self-settle)",
-          });
-        });
-        app.use(paymentMiddlewareFromHTTPServer(marketHttpServer));
-        logger.info(
-          "x402 middleware wired for marketplace (passport mint + service buy)",
-        );
-      } catch (e) {
-        logger.error("Failed to wire marketplace x402 middleware", {
-          error: e instanceof Error ? e.message : String(e),
-        });
-      }
-    }
-
-    // Routes registered AFTER the x402 middleware — Hono runs
-    // handlers in registration order, so the payment gate must
-    // precede the route handlers or it never executes (139-3 fix).
-    app.route("/api", marketplaceApiRoutes);
-    app.route("/", marketplacePageRoutes); // SLICE-138-5: /market/* UI
+/** Passport preFlight — same checks as legacy onProtectedRequest:
+ *  valid wallet signature + valid passport metadata BEFORE the 402. */
+async function passportPreCheck(c: Context): Promise<Response | void> {
+  const sig = await verifyWalletSigRequest({
+    wallet: c.req.header("x-wallet"),
+    signature: c.req.header("x-sig"),
+    timestamp: c.req.header("x-timestamp"),
+    method: c.req.method,
+    path: c.req.path,
+  });
+  if (sig !== "valid") {
+    return c.json(
+      { error: "valid X-Wallet/X-Sig/X-Timestamp required", detail: sig },
+      400,
+    );
   }
+  let body: unknown;
+  try {
+    body = await c.req.raw.clone().json();
+  } catch {
+    body = undefined;
+  }
+  const v = validatePassportMeta(body);
+  if (!v.ok) return c.json({ error: v.error }, 400);
+}
+
+/** Buy preFlight — service must exist in the catalog before we accept
+ *  payment (was legacy onProtectedRequest "unknown serviceId" abort). */
+function buyPreCheck(c: Context): Response | void {
+  const id = serviceIdFromPath(c.req.path);
+  if (!id || !getMarketService(id)) {
+    return c.json({ error: "unknown serviceId" }, 404);
+  }
+}
+
+export function wireMarketplace(
+  app: Hono,
+  deps: { runtime?: CirclePaymentsRuntime } = {},
+): void {
+  const marketplaceCfg = getConfig().marketplace;
+  if (!marketplaceCfg?.enabled) return;
+
+  // Payment gate — runtime + splitter (buy accept). Off → ungated
+  // (testnet/dev convenience, same pattern as scanPacks.pricingEnabled).
+  if (deps.runtime && marketplaceCfg.splitterAddress) {
+    const runtime = deps.runtime;
+
+    app.use(
+      "/api/market/passport",
+      runtime.paymentForPrice(`$${marketplaceCfg.passportPriceUsd}`, {
+        payTo: marketplaceCfg.treasury,
+        methods: ["POST"],
+        description:
+          "AgentBadge Business Passport — yearly marketplace access",
+        mimeType: "application/json",
+        onBeforeChallenge: passportPreCheck,
+      }) as never,
+    );
+
+    app.use(
+      "/api/market/buy/:serviceId",
+      runtime.paymentForPrice(buyPrice, {
+        payTo: marketplaceCfg.splitterAddress,
+        // D6-157: arc self-settle pays treasury (no splitter split);
+        // base exact/gateway keep the splitter.
+        perRailPayTo: { arcSelfSettle: marketplaceCfg.treasury },
+        methods: ["POST"],
+        description: "Marketplace service access pass",
+        mimeType: "application/json",
+        onBeforeChallenge: buyPreCheck,
+        // 5A: mint fold — arc (scheme eip3009-client-broadcast) mints to
+        // payer without credit; base credits splitter + mints.
+        onSettleResult: createMarketplaceMintOnPaymentSettled(),
+      }) as never,
+    );
+    logger.info(
+      "x402 middleware wired for marketplace (passport mint + service buy) via circle-payments runtime",
+    );
+  } else {
+    logger.warn(
+      "marketplace: circle-payments runtime or splitter unavailable — /api/market paid routes unprotected",
+    );
+  }
+
+  // Routes registered AFTER the payment middleware — Hono runs handlers in
+  // registration order, so the gate must precede route handlers (139-3 fix).
+  app.route("/api", marketplaceApiRoutes);
+  app.route("/", marketplacePageRoutes); // SLICE-138-5: /market/* UI
 }

@@ -179,7 +179,7 @@ wireScanPacksX402(app, { runtime: circleRuntime });
 
 // EPIC-138, SLICE-138-3: marketplace routes — gated by marketplace.enabled.
 // EPIC-140: extracted to wiring/marketplace-x402.ts — gate + mounts inside.
-wireMarketplace(app);
+wireMarketplace(app, { runtime: circleRuntime });
 // EPIC-140: post-marketplace routes extracted to routes/index.ts
 registerPostMarketplaceRoutes(app);
 

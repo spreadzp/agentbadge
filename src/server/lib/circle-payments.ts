@@ -1,10 +1,7 @@
 /**
- * SLICE-129-14: Circle payments server adapter.
- *
- * Reads CirclePaymentsConfig (env flags, D19) and constructs the
- * runtime: x402ResourceServer + enabled scheme registrars, payment
- * router, failure store, optional identity extension. Master flag off
- * → this module is never instantiated (zero behavior change).
+ * SLICE-129-14: Circle payments server adapter — reads
+ * CirclePaymentsConfig and constructs the runtime (resource server +
+ * scheme registrars, router, failure store, identity extension).
  */
 
 import { x402ResourceServer } from "@x402/core/server";
@@ -33,6 +30,7 @@ import {
   type ArcSelfSettleHandle,
   type BalanceLookup,
   type PaymentHistory,
+  type PaymentInfo,
 } from "@agentbadge/circle-payments";
 import { logger } from "@agentbadge/passport";
 import type { CirclePaymentsConfig } from "../../config/env";
@@ -54,29 +52,32 @@ export interface PaymentForOpts {
   unpaidBody?: RequirePaymentOptions["unpaidBody"];
   /** Canonical resource URL behind TLS proxy */
   resourceUrl?: RequirePaymentOptions["resourceUrl"];
-  /** Settle hooks — composed after spend-envelope hooks */
+  /** Settle hooks — composed after spend-envelope hooks (155-4). */
   onBeforeSettle?: RequirePaymentOptions["onBeforeSettle"];
   onSettleResult?: RequirePaymentOptions["onSettleResult"];
   /** Resource description / MIME type in the 402 challenge */
   description?: string;
   mimeType?: string;
-  /** 402 extensions (bazaar declaration); `identity: false` disables identity. */
+  /** 402 extensions (bazaar); `identity: false` disables identity. */
   extensions?: RequirePaymentOptions["extensions"];
   /** SLICE-157-1: v1 `X-PAYMENT` header opt-in (x402-base migration routes). */
   legacyHeader?: boolean;
   /** SLICE-157-1: merged into every accepts[].extra (e.g. paymentFlow). */
   extraRequirements?: Record<string, unknown>;
+  /** SLICE-157-3: per-rail payTo override (unset rails keep payTo). */
+  perRailPayTo?: RailPayTo;
 }
+
+export type RailPayTo = Partial<Record<"gateway" | "exact" | "arcSelfSettle", string>>;
 
 export interface CirclePaymentsRuntime {
   /** Router dispatching verify/settle to enabled rails */
   router: PaymentRouter;
   /** Router for a non-default payTo (keeperhub/marketplace treasuries) */
-  routerFor(payTo: string): PaymentRouter;
+  routerFor(payTo: string, perRailPayTo?: RailPayTo): PaymentRouter;
   /** requirePayment bound to runtime opts — pass a PRICE_TABLE key */
   paymentFor(routeKey: string, opts?: PaymentForOpts): PaymentMiddleware;
-  /** requirePayment bound to runtime opts — "$x.xx" price or a per-request
-   *  resolver (scan-packs dynamic pack pricing, SLICE-156-1). */
+  /** requirePayment — "$x.xx" price or per-request resolver (156-1). */
   paymentForPrice(
     price: PriceResolver,
     opts?: PaymentForOpts,
@@ -104,6 +105,8 @@ export interface CirclePaymentsDeps {
   failureStore?: FailureStore;
   /** Alert hook — wire logger.error + Sentry captureError */
   onFailure?: FailureAlert;
+  /** SLICE-156-3: settle recorder — on every ok settle */
+  recordSettle?: (p: PaymentInfo, path: string, to: `0x${string}`) => void;
   /** Injectable resource server (tests) */
   resourceServer?: x402ResourceServer;
   /** Injectable handles (tests) — skips real facilitator construction */
@@ -140,26 +143,24 @@ export function createCirclePaymentsRuntime(
     })
     : undefined;
 
-  /** Wraps a scheme handle so transport failures feed the probe. */
+  /** Wrap scheme handle so transport failures feed the probe. */
   function withProbe<T extends SchemeHandle>(h: T): T {
     if (!gatewayProbe) return h;
-    const mark = (p: Promise<unknown>) =>
-      p.catch((err) => {
-        gatewayProbe.markFailure();
-        throw err;
-      });
+    const mark = (p: Promise<unknown>) => p.catch((err) => {
+      gatewayProbe.markFailure();
+      throw err;
+    });
     return {
       ...h,
-      verify: (payload: unknown, req: never) => mark(h.verify(payload, req)),
-      settle: (payload: unknown, req: never) => mark(h.settle(payload, req)),
+      verify: (p: unknown, req: never) => mark(h.verify(p, req)),
+      settle: (p: unknown, req: never) => mark(h.settle(p, req)),
     } as T;
   }
 
   let handles = deps.handles;
   if (!handles) {
-    // Dual @x402/core installs (file: dep) — the resource server is only
-    // used for register() side-effects; nominal type differs across the
-    // two copies, so cast once at the boundary.
+    // Dual @x402/core installs (file: dep) — resource server used only
+    // for register() side-effects; cast once at the boundary.
     const server = (deps.resourceServer ??
       new x402ResourceServer()) as never;
     handles = {
@@ -169,27 +170,24 @@ export function createCirclePaymentsRuntime(
       }),
       ...(cfg.gateway
         ? {
-          gateway: withProbe(
-            registerGatewayScheme(server, {
-              facilitatorUrl: cfg.gatewayApiUrl,
-              sellerAddress: cfg.sellerAddress,
-              ...(cfg.gatewayChains ? { chains: cfg.gatewayChains } : {}),
-            }),
-          ),
+          gateway: withProbe(registerGatewayScheme(server, {
+            facilitatorUrl: cfg.gatewayApiUrl,
+            sellerAddress: cfg.sellerAddress,
+            ...(cfg.gatewayChains ? { chains: cfg.gatewayChains } : {}),
+          })),
         }
         : {}),
       ...(cfg.arc
         ? {
           arcSelfSettle: registerArcSelfSettleScheme(server, {
-            rpcUrl: cfg.arcRpcUrl,
-            sellerAddress: cfg.sellerAddress,
+            rpcUrl: cfg.arcRpcUrl, sellerAddress: cfg.sellerAddress,
           }),
         }
         : {}),
     };
   }
 
-  /** Router flags — gateway resolves through the probe getter. */
+  /** Router flags — gateway resolves via the probe getter. */
   const routerFlags = {
     gateway: gatewayProbe ? () => gatewayProbe.isUp() : cfg.gateway,
     exact: true,
@@ -197,16 +195,18 @@ export function createCirclePaymentsRuntime(
   };
 
   const routers = new Map<string, PaymentRouter>();
-  const routerFor = (payTo: string): PaymentRouter => {
-    let r = routers.get(payTo);
+  const routerFor = (payTo: string, perRailPayTo?: RailPayTo): PaymentRouter => {
+    const key = perRailPayTo ? `${payTo}|${JSON.stringify(perRailPayTo)}` : payTo;
+    let r = routers.get(key);
     if (!r) {
       r = createPaymentRouter({
         sellerAddress: payTo,
+        ...(perRailPayTo ? { railPayTo: perRailPayTo } : {}),
         ...(cfg.gatewayChains ? { gatewayChains: cfg.gatewayChains } : {}),
         ...routerFlags,
         handles: handles!,
       });
-      routers.set(payTo, r);
+      routers.set(key, r);
     }
     return r;
   };
@@ -248,8 +248,11 @@ export function createCirclePaymentsRuntime(
       // Route hooks compose after spend-envelope hooks; first Response aborts.
       const { payTo, methods, onBeforeChallenge, unpaidBody,
         resourceUrl, onBeforeSettle, onSettleResult, description,
-        mimeType, extensions, legacyHeader, extraRequirements } = opts ?? {};
-      const targetRouter = payTo ? routerFor(payTo) : router;
+        mimeType, extensions, legacyHeader, extraRequirements,
+        perRailPayTo } = opts ?? {};
+      const targetRouter = payTo || perRailPayTo
+        ? routerFor(payTo ?? cfg.sellerAddress, perRailPayTo)
+        : router;
       return requirePayment(price, {
         sellerAddress: payTo ?? cfg.sellerAddress,
         ...routerFlags,
@@ -276,14 +279,13 @@ export function createCirclePaymentsRuntime(
             },
           }
           : {}),
-        ...(onSettleResult
-          ? {
-            onSettleResult: async (args) => {
-              await spendHooks.onSettleResult?.(args);
-              await onSettleResult(args);
-            },
-          }
-          : {}),
+        onSettleResult: async (args) => {
+          await spendHooks.onSettleResult?.(args);
+          if (args.ok && args.payment)
+            deps.recordSettle?.(args.payment, args.c.req.path,
+              (payTo ?? cfg.sellerAddress) as `0x${string}`);
+          await onSettleResult?.(args);
+        },
         ...(extensions !== undefined
           ? { extensions }
           : withIdentity

@@ -43,26 +43,47 @@ export function createMarketplaceMintOnSettleHook() {
       return;
     }
     const serviceId = serviceIdFromContext(ctx);
-    if (!serviceId) {
-      logger.error("marketplace-mint: no serviceId in request path", {
-        payer,
-        paymentTx: ctx.result.transaction,
-      });
-      return;
-    }
-    const svc = getService(serviceId);
-    if (!svc) {
-      logger.error("marketplace-mint: serviceId not in catalog", {
-        serviceId,
-        payer,
-        paymentTx: ctx.result.transaction,
-      });
-      return;
-    }
-    const ops = getMarketplaceOps();
-    const amount = ctx.result.amount ?? ctx.requirements?.amount ?? "0";
-    const durationSec = svc.durationSec ?? svc.durationDays * 86_400;
+    await runMarketplaceMint({
+      serviceId,
+      payer,
+      amount: ctx.result.amount ?? ctx.requirements?.amount ?? "0",
+      paymentTx: ctx.result.transaction,
+      credit: true,
+    });
+  };
+}
 
+/** Shared mint core — old hook and the 157-3 runtime adapter. */
+async function runMarketplaceMint(args: {
+  serviceId: `0x${string}` | null;
+  payer: string;
+  amount: string;
+  paymentTx?: string;
+  /** Base rail: USDC landed on the splitter → credit 90/10 bookkeeping.
+   *  Arc self-settle: payment went to treasury — no credit (5A). */
+  credit: boolean;
+}): Promise<void> {
+  const { serviceId, payer, amount, paymentTx, credit } = args;
+  if (!serviceId) {
+    logger.error("marketplace-mint: no serviceId in request path", {
+      payer,
+      paymentTx,
+    });
+    return;
+  }
+  const svc = getService(serviceId);
+  if (!svc) {
+    logger.error("marketplace-mint: serviceId not in catalog", {
+      serviceId,
+      payer,
+      paymentTx,
+    });
+    return;
+  }
+  const ops = getMarketplaceOps();
+  const durationSec = svc.durationSec ?? svc.durationDays * 86_400;
+
+  if (credit) {
     try {
       const creditTx = await ops.creditPayment(serviceId, BigInt(amount));
       logger.info("marketplace-mint: splitter credited", {
@@ -75,26 +96,71 @@ export function createMarketplaceMintOnSettleHook() {
         serviceId,
         amount,
         err: String(err),
-        paymentTx: ctx.result.transaction,
+        paymentTx,
       });
     }
+  }
 
-    try {
-      const mintTx = await ops.mintServicePass(payer, serviceId, durationSec, 0n);
-      logger.info("marketplace-mint: service pass minted/extended", {
-        payer,
-        serviceId,
-        durationSec,
-        mintTx,
-        paymentTx: ctx.result.transaction,
-      });
-    } catch (err) {
-      logger.error("marketplace-mint: mint failed after settle", {
-        payer,
-        serviceId,
-        err: String(err),
-        paymentTx: ctx.result.transaction,
-      });
+  try {
+    const mintTx = await ops.mintServicePass(payer, serviceId, durationSec, 0n);
+    logger.info("marketplace-mint: service pass minted/extended", {
+      payer,
+      serviceId,
+      durationSec,
+      mintTx,
+      paymentTx,
+    });
+  } catch (err) {
+    logger.error("marketplace-mint: mint failed after settle", {
+      payer,
+      serviceId,
+      err: String(err),
+      paymentTx,
+    });
+  }
+}
+
+/** Hono Context subset needed by the settle hook (path only). */
+interface PaymentContextLike {
+  req: { path: string };
+}
+
+/**
+ * SLICE-157-3 (D6-157): onSettleResult-shaped hook for the circle-payments
+ * `requirePayment` middleware (buy route on the new runtime). Branch on the
+ * settled rail: arc self-settle → mint only (payment went to treasury, no
+ * split); base exact/gateway → splitter credit + mint (legacy semantics).
+ */
+export function createMarketplaceMintOnPaymentSettled() {
+  return async (args: {
+    c: PaymentContextLike;
+    ok: boolean;
+    payment?: {
+      payer?: string;
+      amount?: string;
+      transaction?: string;
+      network?: string;
+      scheme?: string;
+    };
+    error?: string;
+  }): Promise<void> => {
+    const { c, ok, payment } = args;
+    const payer = payment?.payer;
+    if (!ok || !payer) {
+      if (ok) {
+        logger.warn("marketplace-mint: settled but no payer — skipping");
+      }
+      return;
     }
+    const m = BUY_PATH_RE.exec(c.req.path);
+    const serviceId = (m?.[1]?.toLowerCase() ?? null) as `0x${string}` | null;
+    const isArcSelfSettle = payment?.scheme === "eip3009-client-broadcast";
+    await runMarketplaceMint({
+      serviceId,
+      payer,
+      amount: payment?.amount ?? "0",
+      paymentTx: payment?.transaction,
+      credit: !isArcSelfSettle,
+    });
   };
 }
