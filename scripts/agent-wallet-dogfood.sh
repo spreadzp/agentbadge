@@ -68,18 +68,29 @@ step "3. envelope read-back"
 code=$(req GET "$p" "$OPERATOR")
 echo "  $code $(head -c 300 /tmp/aw-resp)"; [ "$code" = 200 ] || exit 1
 
-step "4. paid call (x402 settle via hooks → envelope reserve/settle)"
-echo "  → $PAY_URL  (payment signature via x402-client — see note)"
-cat <<'NOTE'
-  The platform settle path runs through x402 hooks — send a real
-  x402 payment here (shared/x402-pay.ts x402Fetch) with header
-  x-wallet: $AGENT_WALLET so the enforcer attributes the spend.
-  On success: ledger entry state=settled.
-NOTE
+step "4. paid call (Arc self-settle → envelope reserve/settle)"
+echo "  → $PAY_URL via scripts/agent-wallet-x402-pay.mts"
+if [ -n "${AGENT_WALLET_KEY:-}" ]; then
+  AGENT_WALLET_KEY="$AGENT_WALLET_KEY" ENDPOINT="$BASE" \
+    PAY_URL="$PAY_URL" \
+    bun run scripts/agent-wallet-x402-pay.mts || exit 1
+else
+  echo "  (skip — AGENT_WALLET_KEY not set; agent signs EIP-3009"
+  echo "   + broadcasts transferWithAuthorization on Arc testnet)"
+fi
 
-step "5. cap-deny check (envelope per-tx \$0.01 vs request > cap)"
-echo "  → trigger any x402 call whose price exceeds per-tx — expect"
-echo "    402 spend_cap {cap:perTx} + spend.cap_denied alert event"
+step "5. cap-deny check (envelope daily exhausted → 402 spend_cap)"
+echo "  → re-run the same call — envelope denies before tx #2:"
+if [ -n "${AGENT_WALLET_KEY:-}" ]; then
+  AGENT_WALLET_KEY="$AGENT_WALLET_KEY" ENDPOINT="$BASE" \
+    PAY_URL="$PAY_URL" \
+    bun run scripts/agent-wallet-x402-pay.mts || true
+  grep -q '"error":"spend_cap"' <<<"$(tail -5 /tmp/aw-pay.log 2>/dev/null)" \
+    && echo "  ✓ spend_cap deny captured"
+else
+  echo "  (skip — expect 402 spend_cap {cap,used,limit,resetAt}"
+  echo "   + spend.cap_denied alert event in audit feed)"
+fi
 
 step "6. audit feed (GET /api/wallets/:a/audit)"
 p="/api/wallets/$AGENT_WALLET/audit"
