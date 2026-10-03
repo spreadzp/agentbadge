@@ -25,6 +25,7 @@ import { ErrorCodes } from "../error-codes";
 import type { AgentWalletStore, SpendCaps } from "./registry";
 import { newSpendId, type SpendEntry, type SpendKind, type SpendLedger } from "./ledger";
 import { reserve } from "./envelope";
+import { emitSpendAlert } from "./audit";
 
 /* ------------------------------ wallet resolve ---------------------------- */
 
@@ -130,6 +131,21 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         refId,
       );
       if (!r.ok) {
+        // SLICE-155-6: cap_denied alert — venue sees every denied pay.
+        emitSpendAlert(
+          "spend.cap_denied",
+          rec.address,
+          {
+            cap: r.deny.cap,
+            used: r.deny.used,
+            limit: r.deny.limit,
+            resetAt: r.deny.resetAt,
+            amountUsd,
+            kind,
+            refId,
+          },
+          rec.venueId,
+        );
         return c.json(
           {
             error: "spend_cap",
@@ -151,6 +167,14 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
           ok ? "settled" : "released",
           txHash,
         );
+        // SLICE-155-6: settle tx failed after reserve — alertable.
+        if (!ok && begun.wallet) {
+          emitSpendAlert(
+            "spend.failed",
+            begun.wallet,
+            { entryId: begun.entry.id, amountUsd, kind, refId },
+          );
+        }
         return;
       }
       // No reservation (no caps) — still record settled spend so the

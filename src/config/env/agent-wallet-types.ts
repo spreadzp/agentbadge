@@ -21,4 +21,11 @@ export interface AgentWalletEnvConfig {
   /** SLICE-155-5: AGENT_WALLET_LOW_WEBHOOK_URL — optional webhook
    *  fired on low-balance events (ARC_BV_WEBHOOK_URL pattern). */
   lowWebhookUrl?: string;
+  /** SLICE-155-6: AGENT_WALLET_STALE_RESERVE_MIN — reserved-without-
+   *  settle alert threshold minutes (default 10). */
+  staleReserveMin: number;
+  /** SLICE-155-6: AGENT_WALLET_ALERT_WEBHOOK_URL — optional webhook
+   *  for spend alert events (cap_denied/failed/release_late/
+   *  low_balance), 154-6 retry backoff. */
+  alertWebhookUrl?: string;
 }

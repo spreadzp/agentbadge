@@ -44,7 +44,8 @@ async function load() {
     const rec = await recRes.json();
     const lim = await limRes.json();
     const bal = balRes.ok ? await balRes.json() : null;
-    render(rec, lim, bal);
+    const audit = await loadAudit();
+    render(rec, lim, bal, audit);
   } catch (e) { $("err").textContent = String(e.message || e); }
 }
 
@@ -93,7 +94,7 @@ function fundingHtml(bal) {
       '</div></div></div>';
 }
 
-function render(rec, lim, bal) {
+function render(rec, lim, bal, audit) {
   const caps = lim.envelope.caps || {};
   const usage = lim.envelope.usage || {};
   const circle = lim.circle;
@@ -123,7 +124,8 @@ function render(rec, lim, bal) {
     '<button class="${BTN}" onclick="saveCaps()">Save platform caps</button></div>' +
     '<table class="w-full mt-4"><thead><tr class="text-left text-xs uppercase text-slate-500"><th class="py-1">Cap (USD)</th><th class="py-1 px-3">Window usage</th><th class="py-1 text-right">Effective</th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<div class="mt-5 border-t border-slate-800 pt-4"><h3 class="text-sm font-semibold text-slate-300 mb-2">Circle policy mirror</h3>' + circleHtml + '<div id="cmd"></div></div>' +
-    fundingHtml(bal);
+    fundingHtml(bal) +
+    auditHtml(audit && audit.entries, audit && audit.alerts);
 }
 
 async function genCmd() {
@@ -140,6 +142,34 @@ async function genCmd() {
     '<pre class="text-xs font-mono text-emerald-300 whitespace-pre-wrap">' + j.command + '</pre>' +
     '<button class="mt-2 ' + '${BTN}'.replace(/'/g, "") + '" onclick="navigator.clipboard.writeText(j_command)">Copy</button></div>';
   window.j_command = j.commandLine;
+}
+
+function auditHtml(entries, alerts) {
+  const rows = (entries || []).map((e) =>
+    '<tr><td class="py-1 text-xs text-slate-500">' + new Date(e.at).toISOString().slice(0, 19).replace("T", " ") + "</td>" +
+    '<td class="py-1 text-sm">' + e.kind + '</td><td class="py-1 text-right font-mono text-sm">$' + fmt(e.amountUsd) + "</td>" +
+    '<td class="py-1 text-xs ' + (e.state === "settled" ? "text-emerald-400" : e.state === "reserved" ? "text-amber-400" : "text-slate-500") + '">' + e.state + "</td>" +
+    '<td class="py-1 text-xs font-mono text-slate-500">' + (e.txHash ? e.txHash.slice(0, 10) + "…" : "—") + "</td></tr>"
+  ).join("");
+  const evs = (alerts || []).map((a) =>
+    '<div class="text-xs ' + (a.type === "spend.cap_denied" ? "text-red-400" : a.type === "wallet.low_balance" ? "text-amber-400" : "text-orange-400") + '">' +
+    new Date(a.at).toISOString().slice(5, 19).replace("T", " ") + " " + a.type + " " + JSON.stringify(a.data).slice(0, 80) + "</div>"
+  ).join("");
+  if (!rows && !evs) return "";
+  return '<div class="mt-5 border-t border-slate-800 pt-4"><h3 class="text-sm font-semibold text-slate-300 mb-2">Spend history</h3>' +
+    '<table class="w-full">' + rows + '</table>' +
+    (evs ? '<div class="mt-3"><div class="text-xs font-semibold text-slate-400 mb-1">Alerts</div>' + evs + "</div>" : "") + "</div>";
+}
+
+async function loadAudit() {
+  const addr = wallet || $("addr").value.trim();
+  const path = "/api/wallets/" + addr + "/audit";
+  try {
+    const sig = await venueSign(addr, "GET", path);
+    const r = await fetch(path, { headers: sig });
+    if (!r.ok) return { entries: [], alerts: [] };
+    return await r.json();
+  } catch { return { entries: [], alerts: [] }; }
 }
 
 async function saveCaps() {

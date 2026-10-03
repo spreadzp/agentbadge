@@ -63,6 +63,11 @@ export function loadAgentWallet(
   const lowWebhookUrl =
     (process.env.AGENT_WALLET_LOW_WEBHOOK_URL ?? "").trim() || undefined;
 
+  // SLICE-155-6: spend audit alerts.
+  const staleReserveMin = intVar("AGENT_WALLET_STALE_RESERVE_MIN", 10, 1, errors);
+  const alertWebhookUrl =
+    (process.env.AGENT_WALLET_ALERT_WEBHOOK_URL ?? "").trim() || undefined;
+
   let defaultCaps: AgentWalletEnvConfig["defaultCaps"];
   const rawCaps = process.env.AGENT_WALLET_DEFAULT_CAPS;
   if (rawCaps) {
@@ -108,7 +113,9 @@ export function loadAgentWallet(
     ledgerStore,
     requireRegistered,
     lowUsd,
+    staleReserveMin,
     ...(lowWebhookUrl ? { lowWebhookUrl } : {}),
+    ...(alertWebhookUrl ? { alertWebhookUrl } : {}),
     ...(defaultCaps ? { defaultCaps } : {}),
   };
 }

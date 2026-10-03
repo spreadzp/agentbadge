@@ -30,8 +30,16 @@ import { createAgentWalletRoutes } from "../routes/agent-wallet-api";
 import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet-envelope-api";
 import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet-limits-api";
 import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet-balance-api";
+import { createSpendAuditRoutes } from "../routes/agent-wallet-audit-api";
 import { readWalletBalance } from "../lib/agent-wallet/balance";
 import { startLowBalanceSweeper } from "../lib/agent-wallet/funding";
+import {
+  createJsonSpendAlertStore,
+  detectStaleReserves,
+  emitSpendAlert,
+  getSpendAlertStore,
+  initSpendAlerts,
+} from "../lib/agent-wallet/audit";
 import { walletsPage } from "../../views/wallets-page";
 import { resolveVenueNetwork } from "../lib/venue/chain";
 import { venueMonthlyPriceAtomic } from "../lib/venue/billing";
@@ -134,7 +142,28 @@ export function wireAgentWallet(app: Hono): void {
     }),
   );
 
-  // Low-balance signal — daily sweep, audit + optional webhook.
+  // SLICE-155-6: spend audit — alert store + emit singleton +
+  // feed/stats routes + stale-reserve sweep.
+  initSpendAlerts({
+    store: createJsonSpendAlertStore(),
+    ...(cfg.alertWebhookUrl ? { webhookUrl: cfg.alertWebhookUrl } : {}),
+  });
+  app.route(
+    "/",
+    createSpendAuditRoutes({ store, ledger, alerts: getSpendAlertStore }),
+  );
+  const staleMs = cfg.staleReserveMin * 60_000;
+  setInterval(
+    () =>
+      detectStaleReserves({
+        ledger,
+        wallets: store.list(),
+        staleMs,
+      }),
+    60_000,
+  ).unref();
+
+  // Low-balance signal — daily sweep, alert event + optional webhook.
   startLowBalanceSweeper({
     wallets: () => store.list().filter((w) => w.active),
     readBalance: (address) =>
@@ -145,6 +174,14 @@ export function wireAgentWallet(app: Hono): void {
         usdcAddress: arcChain.usdc,
       }),
     thresholdUsd: cfg.lowUsd,
+    onAlert: (ev) => {
+      const rec = store.get(ev.address);
+      emitSpendAlert("wallet.low_balance", ev.address, {
+        usdc: ev.usdc,
+        thresholdUsd: ev.thresholdUsd,
+        source: ev.source,
+      }, rec?.venueId);
+    },
     ...(cfg.lowWebhookUrl ? { webhookUrl: cfg.lowWebhookUrl } : {}),
   });
 
