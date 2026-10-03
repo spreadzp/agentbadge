@@ -60,9 +60,12 @@ export interface PaymentForOpts {
   /** Resource description / MIME type in the 402 challenge */
   description?: string;
   mimeType?: string;
-  /** 402 extensions (bazaar declaration) — overrides identity extension;
-   *  pass `identity: false` to disable identity explicitly. */
+  /** 402 extensions (bazaar declaration); `identity: false` disables identity. */
   extensions?: RequirePaymentOptions["extensions"];
+  /** SLICE-157-1: v1 `X-PAYMENT` header opt-in (x402-base migration routes). */
+  legacyHeader?: boolean;
+  /** SLICE-157-1: merged into every accepts[].extra (e.g. paymentFlow). */
+  extraRequirements?: Record<string, unknown>;
 }
 
 export interface CirclePaymentsRuntime {
@@ -121,9 +124,8 @@ export function createCirclePaymentsRuntime(
   const failureStore = deps.failureStore ?? createMemoryFailureStore();
   const lookup = deps.identityLookup ?? (async () => undefined);
 
-  // SLICE-156-1: facilitator probe — background healthcheck + backoff.
-  // The router's gateway flag is a dynamic getter on probe.isUp(), so a
-  // dead facilitator degrades advertised accepts[] to vanilla rails.
+  // 156-1: facilitator probe — on failure the gateway flag degrades
+  // advertised accepts[] to vanilla rails.
   const gatewayProbe = cfg.gateway
     ? createGatewayProbe({
       apiUrl: cfg.gatewayApiUrl,
@@ -138,7 +140,7 @@ export function createCirclePaymentsRuntime(
     })
     : undefined;
 
-  /** Wrap a scheme handle so transport failures feed the probe. */
+  /** Wraps a scheme handle so transport failures feed the probe. */
   function withProbe<T extends SchemeHandle>(h: T): T {
     if (!gatewayProbe) return h;
     const mark = (p: Promise<unknown>) =>
@@ -241,14 +243,12 @@ export function createCirclePaymentsRuntime(
       opts?: PaymentForOpts,
     ): PaymentMiddleware {
       const withIdentity = opts?.identity !== false && identityExtension;
-      // SLICE-155-4: spend-envelope hooks — pre-settle reserve on the
-      // verified payer, settle/release after. Feature-off = no-ops.
+      // 155-4: spend-envelope hooks (feature-off = no-ops).
       const spendHooks = createSpendX402Hooks();
-      // Route-specific hooks compose after spend-envelope hooks (which
-      // may deny pre-settle); both run, first Response aborts.
+      // Route hooks compose after spend-envelope hooks; first Response aborts.
       const { payTo, methods, onBeforeChallenge, unpaidBody,
         resourceUrl, onBeforeSettle, onSettleResult, description,
-        mimeType, extensions } = opts ?? {};
+        mimeType, extensions, legacyHeader, extraRequirements } = opts ?? {};
       const targetRouter = payTo ? routerFor(payTo) : router;
       return requirePayment(price, {
         sellerAddress: payTo ?? cfg.sellerAddress,
@@ -265,6 +265,8 @@ export function createCirclePaymentsRuntime(
         ...(resourceUrl ? { resourceUrl } : {}),
         ...(description ? { description } : {}),
         ...(mimeType ? { mimeType } : {}),
+        ...(legacyHeader ? { legacyHeader } : {}),
+        ...(extraRequirements ? { extraRequirements } : {}),
         ...(onBeforeSettle || spendHooks.onBeforeSettle
           ? {
             onBeforeSettle: async (args) => {
