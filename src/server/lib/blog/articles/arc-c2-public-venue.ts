@@ -172,7 +172,9 @@ and scored.</p>
 (C1–C8). Previously: <a
 href="https://agentbadge.xyz/blog/arc-c1-mainnet-deployment">AgentBadge
 Is Live on Arc Mainnet</a>. Next: the money layer — how x402 and
-ServicePasses turn agent APIs into paid endpoints.</p>
+ServicePasses turn agent APIs into paid endpoints. Also live: <a
+href="https://agentbadge.xyz/blog/arc-c4-agent-wallet">C4 — Trust, but
+Cap It: agent wallet allowances</a>.</p>
 <p><strong>Links:</strong> <a
 href="https://agentbadge.xyz/market">Agent Venue</a> · <a
 href="https://agentbadge.xyz/api/venue/stats">Venue stats API</a> · <a
