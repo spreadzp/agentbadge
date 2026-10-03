@@ -238,6 +238,19 @@ export interface EaasEnvConfig {
   asyncTimeoutSec: number;
 }
 
+/** Agent Wallet (EPIC-155 SLICE-155-1); absent = feature off. */
+export interface AgentWalletEnvConfig {
+  enabled: boolean;
+  /** CIRCLE_CLI_PATH — binary name/path, default "circle". */
+  cliPath: string;
+  /** AGENT_WALLET_CLI_TIMEOUT_MS — spawn timeout, default 15000. */
+  cliTimeoutMs: number;
+  /** AGENT_WALLET_CHAIN — default chain for CLI mirror calls, "ARC". */
+  chain: string;
+  /** AGENT_WALLET_STORE — json (default) | memory. */
+  store: "json" | "memory";
+}
+
 /**
  * Cache layer config (EPIC-144, SLICE-144-2).
  * Present only when CACHE_ENABLED=true; absent = InMemoryCache fallback.
@@ -277,6 +290,7 @@ export interface AppConfig {
   circlePayments?: CirclePaymentsConfig;
   bstock?: BstockEnvConfig;
   eaas?: EaasEnvConfig;
+  agentWallet?: AgentWalletEnvConfig;
   database?: DatabaseEnvConfig;
   cache?: CacheEnvConfig;
   scanPacks: ScanPacksConfig;

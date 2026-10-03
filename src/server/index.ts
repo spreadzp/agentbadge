@@ -9,6 +9,7 @@ import { wireMarketplace } from "./wiring/marketplace-x402";
 import { registerMcpNamespaces, wireMcpNamespaceRoutes, registerDefaultMcpTools } from "./wiring/mcp-namespaces";
 import { wireCirclePayments } from "./wiring/circle-payments";
 import { wireEaas } from "./wiring/eaas";
+import { wireAgentWallet } from "./wiring/agent-wallet";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
@@ -160,6 +161,11 @@ const circleRuntime = wireCirclePayments(app, { marketNs: namespaces.marketNs })
 // EPIC-154 SLICE-154-2: EaaS verdict API (x402-gated POST + free GETs).
 // Requires circle payments runtime for pricing; no-op when either flag off.
 wireEaas(app, { circleRuntime });
+
+// EPIC-155 SLICE-155-1: agent wallet registry (wallet↔agentId↔venue) +
+// Circle CLI read mirror. Gated on AGENT_WALLET_ENABLED; CLI missing →
+// graceful "unavailable", registry works regardless.
+wireAgentWallet(app);
 
 // EPIC-140: ops/monitoring routes extracted to routes/index.ts
 registerOpsRoutes(app);
