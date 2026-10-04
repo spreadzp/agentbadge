@@ -4,8 +4,8 @@
 //   wireL402(app)        — called where the L402 block used to sit (before
 //                          signatureVerification / rateLimit / bazaar / ga4).
 //   wirePaymentGates(app) — called after notFound + config validation, before
-//                          route mounts (x402 Hedera + MPP/Stripe + Base x402).
-// Merging them into a single call would move x402/MPP/Base above
+//                          route mounts (x402 Hedera + MPP/Stripe).
+// Merging them into a single call would move x402/MPP above
 // signature+rateLimit and change request handling (see decisions.md D10).
 
 import type { Hono } from "hono";
@@ -13,10 +13,9 @@ import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
 import { HEDERA_TESTNET_CAIP2 } from "@x402/hedera";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
-import { getPrice, logger } from "@agentbadge/passport";
+import { getPrice } from "@agentbadge/passport";
 import { l402PaymentMiddleware } from "../middleware/l402";
 import { mppPaymentMiddleware } from "../middleware/mpp";
-import { baseX402PaymentMiddleware } from "../middleware/x402-base";
 
 // SLICE-49-19: L402 Lightning payment middleware (before signature verification)
 // Payment challenge must be returned before signature check — client pays first, then signs.
@@ -36,7 +35,7 @@ export function wireL402(app: Hono): void {
   );
 }
 
-// x402 Hedera + MPP/Stripe + Base x402 payment gates for POST /passport/request.
+// x402 Hedera + MPP/Stripe payment gates for POST /passport/request.
 // Each gate is env-gated: with no env configured nothing is registered.
 export function wirePaymentGates(app: Hono): void {
   const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "";
@@ -96,8 +95,8 @@ export function wirePaymentGates(app: Hono): void {
     );
   }
 
-  // SLICE-90-9: x402 Base Sepolia payment middleware (active when CHAIN_MODE=base)
-  // SLICE-90-11: Start event indexer when CHAIN_MODE=base
+  // SLICE-90-11: Start event indexer when CHAIN_MODE=base (base chain stack,
+  // separate subsystem — the x402 Base payment gate was retired in SLICE-157-4)
   const chainMode = process.env.CHAIN_MODE ?? "hedera";
 
   if (chainMode === "base") {
@@ -105,29 +104,6 @@ export function wirePaymentGates(app: Hono): void {
       startBaseEventIndexer();
     }).catch((e) => {
       console.warn("[Server] Failed to start base event indexer:", e);
-    });
-  }
-  const baseX402FacilitatorUrl = process.env.X402_FACILITATOR_URL ?? "";
-  const baseUsdcAddress = process.env.BASE_USDC_ADDRESS ?? "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-  const baseTreasury = process.env.BASE_TREASURY ?? "";
-  const baseX402Price = process.env.X402_BASE_PRICE ?? "1000000"; // 1 USDC
-
-  if (chainMode === "base" && baseX402FacilitatorUrl && baseTreasury) {
-    app.use(
-      "/passport/request",
-      baseX402PaymentMiddleware({
-        facilitatorUrl: baseX402FacilitatorUrl,
-        payTo: baseTreasury,
-        usdcAddress: baseUsdcAddress,
-        networkId: "eip155:84532",
-        price: baseX402Price,
-        description: "Agent Passport NFT issuance (Base Sepolia)",
-        mimeType: "application/json",
-      }),
-    );
-    logger.info("x402 Base Sepolia payment middleware active", {
-      facilitator: baseX402FacilitatorUrl,
-      usdc: baseUsdcAddress,
     });
   }
 }

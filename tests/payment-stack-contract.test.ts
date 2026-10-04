@@ -6,9 +6,9 @@ import { join } from "node:path";
  * SLICE-157-5: payment-stack contract test.
  *
  * Invariant: exactly ONE facilitator boundary — the circle-payments runtime
- * (`lib/circle-payments.ts`) and intentional leftovers (Hedera gate in
- * `wiring/payments.ts` per D1-157; `middleware/x402-base.ts` pending the
- * 157-4 retire/delegate decision). Any new legacy x402 stack wiring
+ * (`lib/circle-payments.ts`) and the intentional Hedera gate leftover in
+ * `wiring/payments.ts` (per D1-157; `middleware/x402-base.ts` was retired
+ * in SLICE-157-4). Any new legacy x402 stack wiring
  * (HTTPFacilitatorClient / x402ResourceServer / paymentMiddleware / the
  * @x402/hono adapter) outside the allowlist is a regression — this test fails.
  */
@@ -31,12 +31,10 @@ const FORBIDDEN: { name: string; re: RegExp }[] = [
 
 /** Files where legacy facilitator symbols are still intentional:
  *  - lib/circle-payments.ts: the runtime itself (the single boundary).
- *  - wiring/payments.ts: Hedera gate stays (D1-157) + x402-base call site (157-4 pending).
- *  - middleware/x402-base.ts: pending retire/delegate decision (157-4). */
+ *  - wiring/payments.ts: Hedera gate stays (D1-157). */
 const ALLOWLIST = new Set([
   "src/server/lib/circle-payments.ts",
   "src/server/wiring/payments.ts",
-  "src/server/middleware/x402-base.ts",
 ]);
 
 interface Violation {

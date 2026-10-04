@@ -14,7 +14,7 @@
  * → mintServicePass (mints or extends, 30d; optional) → request
  * proceeds.
  *
- * Patterns: x402-base.ts (402 + facilitator verify/settle),
+ * Patterns: circle-payments requirePayment (402 + facilitator verify/settle),
  * marketplace hooks.ts (mintServicePass on settle),
  * agent-auth.ts (injectable hasAccess for tests).
  */
