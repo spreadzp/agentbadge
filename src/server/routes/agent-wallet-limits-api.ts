@@ -102,7 +102,7 @@ export function createAgentWalletLimitsRoutes(
         ["monthly", caps.monthlyUsd, WINDOW_SEC.monthly],
       ];
       for (const [name, cap, windowSec] of windows) {
-        const { used, oldestAt } = windowUsage(
+        const { used, oldestAt } = await windowUsage(
           deps.ledger, rec.address, windowSec,
         );
         usage[name] = {
@@ -215,7 +215,7 @@ export function createAgentWalletLimitsRoutes(
         return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
           "only wallet owner, registrant or venue admin can read spend");
       }
-      const spend = deps.ledger.listByWallet(rec.address);
+      const spend = await deps.ledger.listByWallet(rec.address);
       const state = c.req.query("state");
       const entries = (
         state ? spend.filter((e) => e.state === state) : spend

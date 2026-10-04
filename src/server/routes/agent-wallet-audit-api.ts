@@ -138,7 +138,7 @@ export function createSpendAuditRoutes(deps: SpendAuditDeps): Hono {
           "only wallet owner, registrant or venue admin can read audit");
       }
       const q = parseQuery(c);
-      const result = feed(deps.ledger.listByWallet(rec.address), q);
+      const result = feed(await deps.ledger.listByWallet(rec.address), q);
       const alerts = deps.alerts()?.list({
         wallet: rec.address,
         limit: 50,
@@ -155,7 +155,9 @@ export function createSpendAuditRoutes(deps: SpendAuditDeps): Hono {
     const access = await requireVenueAccess(c, id, "admin");
     if (access instanceof Response) return access;
     const wallets = (await deps.store.list(id)).filter((w) => w.active);
-    const all = wallets.flatMap((w) => deps.ledger.listByWallet(w.address));
+    const all = (
+      await Promise.all(wallets.map((w) => deps.ledger.listByWallet(w.address)))
+    ).flat();
     if (statsOnly) {
       const q = parseQuery(c);
       const scoped = all.filter(

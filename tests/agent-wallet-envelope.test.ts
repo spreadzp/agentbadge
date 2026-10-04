@@ -119,18 +119,18 @@ describe("validateCaps", () => {
 /* ------------------------------- check/reserve ----------------------------- */
 
 describe("checkEnvelope + reserve/settle/release", () => {
-  it("per-tx cap deny: amount > cap → deny perTx", () => {
+  it("per-tx cap deny: amount > cap → deny perTx", async () => {
     const l = createMemorySpendLedger();
-    const v = checkEnvelope(l, { perTxUsd: 5 }, W, 10);
+    const v = await checkEnvelope(l, { perTxUsd: 5 }, W, 10);
     expect(v).toMatchObject({ allow: false });
     if (!v.allow) expect(v.deny.cap).toBe("perTx");
   });
 
-  it("rolling daily window sums settled+reserved; over → deny daily", () => {
+  it("rolling daily window sums settled+reserved; over → deny daily", async () => {
     const l = createMemorySpendLedger();
-    l.insert(entry({ amountUsd: 60, at: Date.now() - 3600_000 }));
-    l.insert(entry({ amountUsd: 30, state: "reserved" }));
-    const v = checkEnvelope(l, { dailyUsd: 100 }, W, 15);
+    await l.insert(entry({ amountUsd: 60, at: Date.now() - 3600_000 }));
+    await l.insert(entry({ amountUsd: 30, state: "reserved" }));
+    const v = await checkEnvelope(l, { dailyUsd: 100 }, W, 15);
     expect(v).toMatchObject({ allow: false });
     if (!v.allow) {
       expect(v.deny.cap).toBe("daily");
@@ -140,62 +140,62 @@ describe("checkEnvelope + reserve/settle/release", () => {
     }
   });
 
-  it("weekly/monthly caps enforce over rolling windows; old entries ignored", () => {
+  it("weekly/monthly caps enforce over rolling windows; old entries ignored", async () => {
     const l = createMemorySpendLedger();
     // 3 days ago — inside weekly, outside daily.
-    l.insert(entry({ amountUsd: 80, at: Date.now() - 3 * 86_400_000 }));
+    await l.insert(entry({ amountUsd: 80, at: Date.now() - 3 * 86_400_000 }));
     // 40 days ago — outside monthly.
-    l.insert(entry({ amountUsd: 500, at: Date.now() - 40 * 86_400_000 }));
-    expect(checkEnvelope(l, { dailyUsd: 100 }, W, 15).allow).toBe(true);
-    const w = checkEnvelope(l, { weeklyUsd: 100 }, W, 25);
+    await l.insert(entry({ amountUsd: 500, at: Date.now() - 40 * 86_400_000 }));
+    expect((await checkEnvelope(l, { dailyUsd: 100 }, W, 15)).allow).toBe(true);
+    const w = await checkEnvelope(l, { weeklyUsd: 100 }, W, 25);
     expect(w).toMatchObject({ allow: false });
     if (!w.allow) expect(w.deny.cap).toBe("weekly");
-    expect(checkEnvelope(l, { monthlyUsd: 400 }, W, 10).allow).toBe(true);
-    const m = checkEnvelope(l, { monthlyUsd: 90 }, W, 15);
+    expect((await checkEnvelope(l, { monthlyUsd: 400 }, W, 10)).allow).toBe(true);
+    const m = await checkEnvelope(l, { monthlyUsd: 90 }, W, 15);
     expect(m).toMatchObject({ allow: false });
     if (!m.allow) expect(m.deny.cap).toBe("monthly");
   });
 
-  it("reserve→settle keeps usage; release frees it (failed payment doesn't eat cap)", () => {
+  it("reserve→settle keeps usage; release frees it (failed payment doesn't eat cap)", async () => {
     const l = createMemorySpendLedger();
     const caps = { dailyUsd: 100 };
-    const r = reserve(l, caps, W, 60, "eaas", "v1");
+    const r = await reserve(l, caps, W, 60, "eaas", "v1");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     // 60 reserved — next 50 over cap
-    expect(checkEnvelope(l, caps, W, 50).allow).toBe(false);
+    expect((await checkEnvelope(l, caps, W, 50)).allow).toBe(false);
     // release → space freed
-    expect(l.transition(r.entry.id, "released")).toBe(true);
-    expect(checkEnvelope(l, caps, W, 50).allow).toBe(true);
+    expect(await l.transition(r.entry.id, "released")).toBe(true);
+    expect((await checkEnvelope(l, caps, W, 50)).allow).toBe(true);
     // settled stays counted; released does not transition again
-    const r2 = reserve(l, caps, W, 50, "eaas", "v2");
+    const r2 = await reserve(l, caps, W, 50, "eaas", "v2");
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
-    expect(l.transition(r2.entry.id, "settled", "0xtx")).toBe(true);
-    expect(l.transition(r2.entry.id, "released")).toBe(false);
-    expect(checkEnvelope(l, caps, W, 60).allow).toBe(false);
+    expect(await l.transition(r2.entry.id, "settled", "0xtx")).toBe(true);
+    expect(await l.transition(r2.entry.id, "released")).toBe(false);
+    expect((await checkEnvelope(l, caps, W, 60)).allow).toBe(false);
   });
 
-  it("race: two boundary reserves — first wins, second denied", () => {
+  it("race: two boundary reserves — first wins, second denied", async () => {
     const l = createMemorySpendLedger();
     const caps = { dailyUsd: 100 };
-    const a = reserve(l, caps, W, 90, "eaas", "a");
-    const b = reserve(l, caps, W, 90, "eaas", "b");
+    const a = await reserve(l, caps, W, 90, "eaas", "a");
+    const b = await reserve(l, caps, W, 90, "eaas", "b");
     expect(a.ok).toBe(true);
     expect(b.ok).toBe(false);
     if (!b.ok) expect(b.deny.cap).toBe("daily");
   });
 
-  it("json ledger survives restart (fresh instance, same path)", () => {
+  it("json ledger survives restart (fresh instance, same path)", async () => {
     const dir = mkdtempSync(join(tmpdir(), "awl-"));
     const path = join(dir, "ledger.json");
     const a = createJsonSpendLedger(path);
-    a.insert(entry({ id: "sp_persist1", state: "reserved" }));
+    await a.insert(entry({ id: "sp_persist1", state: "reserved" }));
     const b = createJsonSpendLedger(path);
-    expect(b.listByWallet(W)).toHaveLength(1);
-    expect(b.transition("sp_persist1", "settled", "0xtx")).toBe(true);
+    expect(await b.listByWallet(W)).toHaveLength(1);
+    expect(await b.transition("sp_persist1", "settled", "0xtx")).toBe(true);
     const c = createJsonSpendLedger(path);
-    expect(c.listByWallet(W)[0].state).toBe("settled");
+    expect((await c.listByWallet(W))[0].state).toBe("settled");
     rmSync(dir, { recursive: true, force: true });
   });
 });
@@ -268,8 +268,8 @@ describe("PATCH/GET /api/wallets/:address/envelope", () => {
   it("GET usage reflects settled spend within window", async () => {
     const { app, store, ledger } = await envApp();
     await store.setEnvelope(W, { dailyUsd: 100 });
-    ledger.insert(entry({ amountUsd: 40 }));
-    ledger.insert(entry({ amountUsd: 10, state: "released" }));
+    await ledger.insert(entry({ amountUsd: 40 }));
+    await ledger.insert(entry({ amountUsd: 10, state: "released" }));
     const res = await app.request(`/api/wallets/${W}/envelope`);
     const body = await res.json();
     expect(body.usage.daily.used).toBe(40); // released not counted
@@ -322,9 +322,10 @@ describe("SpendEnforcer + gate + payer resolution", () => {
     expect(body.used).toBe(25);
     expect(body.limit).toBe(40);
     expect(body.resetAt).toBeGreaterThan(0);
-    // ledger: 1 settled, 0 reserved
-    const entries = ledger.listByWallet(W);
-    expect(entries.map((e) => e.state)).toEqual(["settled"]);
+    // ledger: 1 settled, 1 denied (SLICE-155-11: cap denial is a durable entry)
+    const entries = await ledger.listByWallet(W);
+    expect(entries.map((e) => e.state).sort()).toEqual(["denied", "settled"]);
+    expect(entries.find((e) => e.state === "denied")?.denialReason).toBe("daily");
   });
 
   it("unregistered wallet → opt-in pass (no caps); requireRegistered → 402", async () => {
@@ -354,7 +355,7 @@ describe("SpendEnforcer + gate + payer resolution", () => {
       headers: { "payment-signature": sig },
     });
     expect(res.status).toBe(200);
-    expect(ledger.listByWallet(W).map((e) => e.state)).toEqual(["settled"]);
+    expect((await ledger.listByWallet(W)).map((e) => e.state)).toEqual(["settled"]);
     // second → 25+25 > 30 → deny
     const res2 = await app.request("/api/pay", {
       method: "POST",
@@ -408,7 +409,7 @@ describe("SpendEnforcer + gate + payer resolution", () => {
     });
     expect(res.status).toBe(500);
     // reservation released — cap space freed
-    const entries = ledger.listByWallet(W);
+    const entries = await ledger.listByWallet(W);
     expect(entries[0].state).toBe("released");
   });
 });

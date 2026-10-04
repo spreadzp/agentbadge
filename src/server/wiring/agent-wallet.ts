@@ -84,17 +84,17 @@ export function wireAgentWallet(app: Hono): void {
     return;
   }
 
-  // SLICE-155-10: Postgres backend when DATABASE_ENABLED + URL — the
+  // SLICE-155-10/-11: Postgres backend when DATABASE_ENABLED + URL — the
   // single flag governs (no per-domain toggle). "memory" stays an
   // explicit opt-out for tests; json is the dev/fallback path.
-  const dbWallets = getDatabase().agentWallets;
+  const db = getDatabase();
   const store =
     cfg.store === "memory"
       ? createMemoryAgentWalletStore()
-      : dbWallets
-        ? createDbAgentWalletStore(dbWallets)
+      : db.agentWallets
+        ? createDbAgentWalletStore(db.agentWallets)
         : createJsonAgentWalletStore();
-  const ledger = createSpendLedger(cfg.ledgerStore);
+  const ledger = createSpendLedger(cfg.ledgerStore, undefined, db.spendLedger);
 
   initSpendEnforcer(
     createSpendEnforcer({

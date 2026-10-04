@@ -68,13 +68,13 @@ export type EnvelopeVerdict =
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 
-export function checkEnvelope(
+export async function checkEnvelope(
   ledger: SpendLedger,
   caps: SpendCaps,
   wallet: string,
   amountUsd: number,
   now = Date.now(),
-): EnvelopeVerdict {
+): Promise<EnvelopeVerdict> {
   if (caps.perTxUsd !== undefined && amountUsd > caps.perTxUsd) {
     return {
       allow: false,
@@ -89,13 +89,13 @@ export function checkEnvelope(
   const windows: Array<
     [Exclude<EnvelopeDeny["cap"], "perTx">, number | undefined, number]
   > = [
-    ["daily", caps.dailyUsd, WINDOW_SEC.daily],
-    ["weekly", caps.weeklyUsd, WINDOW_SEC.weekly],
-    ["monthly", caps.monthlyUsd, WINDOW_SEC.monthly],
-  ];
+      ["daily", caps.dailyUsd, WINDOW_SEC.daily],
+      ["weekly", caps.weeklyUsd, WINDOW_SEC.weekly],
+      ["monthly", caps.monthlyUsd, WINDOW_SEC.monthly],
+    ];
   for (const [cap, limit, windowSec] of windows) {
     if (limit === undefined) continue;
-    const { used, oldestAt } = windowUsage(ledger, wallet, windowSec, now);
+    const { used, oldestAt } = await windowUsage(ledger, wallet, windowSec, now);
     if (round6(used + amountUsd) > limit) {
       return {
         allow: false,
@@ -114,19 +114,22 @@ export function checkEnvelope(
 }
 
 /**
- * Atomic-enough reserve: check + insert in one sync store op sequence.
- * JS runs handlers single-threaded per event loop turn — the check-then-
- * insert window can't interleave, so boundary races serialize correctly.
+ * Atomic-enough reserve: check + insert in one store op sequence.
+ * Sync backends can't interleave between the awaits (microtasks only);
+ * under the db backend a check-then-insert window exists — acceptable:
+ * the envelope is a self-imposed guardrail (enforcer.ts), over-reserve
+ * is bounded by perTx caps and self-corrects on release/expiry.
  */
-export function reserve(
+export async function reserve(
   ledger: SpendLedger,
   caps: SpendCaps,
   wallet: `0x${string}`,
   amountUsd: number,
   kind: SpendKind,
   refId: string,
-): { ok: true; entry: SpendEntry } | { ok: false; deny: EnvelopeDeny } {
-  const verdict = checkEnvelope(ledger, caps, wallet, amountUsd);
+  venueId?: string,
+): Promise<{ ok: true; entry: SpendEntry } | { ok: false; deny: EnvelopeDeny }> {
+  const verdict = await checkEnvelope(ledger, caps, wallet, amountUsd);
   if (!verdict.allow) return { ok: false, deny: verdict.deny };
   const entry: SpendEntry = {
     id: newSpendId(),
@@ -136,8 +139,9 @@ export function reserve(
     refId,
     state: "reserved",
     at: Date.now(),
+    ...(venueId ? { venueId } : {}),
   };
-  ledger.insert(entry);
+  await ledger.insert(entry);
   return { ok: true, entry };
 }
 
@@ -145,10 +149,10 @@ export function settleEntry(
   ledger: SpendLedger,
   id: string,
   txHash?: string,
-): boolean {
+): Promise<boolean> {
   return ledger.transition(id, "settled", txHash);
 }
-export const releaseEntry = (ledger: SpendLedger, id: string): boolean =>
+export const releaseEntry = (ledger: SpendLedger, id: string): Promise<boolean> =>
   ledger.transition(id, "released");
-export const failEntry = (ledger: SpendLedger, id: string): boolean =>
+export const failEntry = (ledger: SpendLedger, id: string): Promise<boolean> =>
   ledger.transition(id, "failed");

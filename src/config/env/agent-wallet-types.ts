@@ -9,7 +9,9 @@ export interface AgentWalletEnvConfig {
   chain: string;
   /** AGENT_WALLET_STORE | AGENT_WALLET_LEDGER_STORE. */
   store: "json" | "memory";
-  ledgerStore: "json" | "sqlite" | "memory";
+  /** "auto" (default) → db when DATABASE_ENABLED, else sqlite→json.
+   *  "db" → Postgres required (fails fast when disabled). */
+  ledgerStore: "auto" | "db" | "json" | "sqlite" | "memory";
   /** AGENT_WALLET_REQUIRE_REGISTERED | AGENT_WALLET_DEFAULT_CAPS. */
   requireRegistered: boolean;
   defaultCaps?: Partial<

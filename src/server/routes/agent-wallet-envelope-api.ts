@@ -128,7 +128,7 @@ export function createAgentWalletEnvelopeRoutes(
         ["monthly", caps.monthlyUsd, WINDOW_SEC.monthly],
       ];
       for (const [name, cap, windowSec] of windows) {
-        const { used, oldestAt } = windowUsage(
+        const { used, oldestAt } = await windowUsage(
           deps.ledger,
           rec.address,
           windowSec,

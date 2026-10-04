@@ -70,6 +70,8 @@ export interface EnforceBegin {
   entry?: SpendEntry;
   /** Resolved wallet — for post-settle accounting even without caps. */
   wallet?: `0x${string}`;
+  /** SLICE-155-11: venue of the wallet record (typed col on settled rows). */
+  venueId?: string;
 }
 
 export interface SpendEnforcer {
@@ -81,7 +83,8 @@ export interface SpendEnforcer {
     refId: string,
   ): Promise<Response | EnforceBegin>;
   /** Post-execution transition; also records settled spend when no
-   *  reservation existed (no caps configured — ledger completeness). */
+   *  reservation existed (no caps configured — ledger completeness).
+   *  Async since SLICE-155-11 — ledger writes must be awaited (fail-closed). */
   complete(
     begun: EnforceBegin,
     ok: boolean,
@@ -90,7 +93,7 @@ export interface SpendEnforcer {
     refId?: string,
     txHash?: string,
     sourceChain?: string,
-  ): void;
+  ): Promise<void>;
 }
 
 export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
@@ -122,16 +125,32 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
       }
       const caps =
         Object.keys(rec.envelope).length > 0 ? rec.envelope : deps.defaultCaps;
-      if (!caps) return { wallet: wallet as `0x${string}` };
-      const r = reserve(
+      if (!caps) {
+        return { wallet: wallet as `0x${string}`, ...(rec.venueId ? { venueId: rec.venueId } : {}) };
+      }
+      const r = await reserve(
         deps.ledger,
         caps,
         wallet as `0x${string}`,
         amountUsd,
         kind,
         refId,
+        rec.venueId,
       );
       if (!r.ok) {
+        // SLICE-155-11: durable denied entry — denialReason in the ledger,
+        // not just the alert store; write fails → request fails (fail-closed).
+        await deps.ledger.insert({
+          id: newSpendId(),
+          wallet: wallet as `0x${string}`,
+          amountUsd,
+          kind,
+          refId,
+          state: "denied",
+          denialReason: r.deny.cap,
+          at: Date.now(),
+          ...(rec.venueId ? { venueId: rec.venueId } : {}),
+        });
         // SLICE-155-6: cap_denied alert — venue sees every denied pay.
         emitSpendAlert(
           "spend.cap_denied",
@@ -161,9 +180,9 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
       return { wallet: wallet as `0x${string}`, entry: r.entry };
     },
 
-    complete(begun, ok, amountUsd, kind, refId, txHash, sourceChain) {
+    async complete(begun, ok, amountUsd, kind, refId, txHash, sourceChain) {
       if (begun.entry) {
-        deps.ledger.transition(
+        await deps.ledger.transition(
           begun.entry.id,
           ok ? "settled" : "released",
           txHash,
@@ -182,7 +201,7 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
       // No reservation (no caps) — still record settled spend so the
       // ledger reflects every platform payment.
       if (ok && begun.wallet && amountUsd !== undefined && kind && refId) {
-        deps.ledger.insert({
+        await deps.ledger.insert({
           id: newSpendId(),
           wallet: begun.wallet,
           amountUsd,
@@ -192,6 +211,7 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
           at: Date.now(),
           ...(txHash ? { txHash: txHash as `0x${string}` } : {}),
           ...(sourceChain ? { sourceChain } : {}),
+          ...(begun.venueId ? { venueId: begun.venueId } : {}),
         });
       }
     },
@@ -248,9 +268,9 @@ export function spendEnvelopeGate(opts: EnvelopeGateOpts): MiddlewareHandler {
       const tx = (
         c.get("payment") as { transaction?: string } | undefined
       )?.transaction;
-      enforcer.complete(begun, c.res.ok, amountUsd, opts.kind, refId, tx);
+      await enforcer.complete(begun, c.res.ok, amountUsd, opts.kind, refId, tx);
     } catch (err) {
-      enforcer.complete(begun, false, amountUsd, opts.kind, refId);
+      await enforcer.complete(begun, false, amountUsd, opts.kind, refId);
       throw err;
     }
   };
@@ -267,10 +287,10 @@ export async function withEnvelope<T>(
   if (begun instanceof Response) return { ok: false, res: begun };
   try {
     const result = await fn();
-    enforcer.complete(begun, true, args.amountUsd, args.kind, args.refId);
+    await enforcer.complete(begun, true, args.amountUsd, args.kind, args.refId);
     return { ok: true, result };
   } catch (err) {
-    enforcer.complete(begun, false, args.amountUsd, args.kind, args.refId);
+    await enforcer.complete(begun, false, args.amountUsd, args.kind, args.refId);
     throw err;
   }
 }

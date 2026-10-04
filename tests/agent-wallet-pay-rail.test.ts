@@ -150,7 +150,7 @@ describe("pay rail: envelope inside requirePayment", () => {
     const res = await pay(app, { "payment-signature": paySig(W) });
     expect(res.status).toBe(200);
     expect(calls.settle).toBe(1);
-    const entries = ledger.listByWallet(W);
+    const entries = await ledger.listByWallet(W);
     expect(entries).toHaveLength(1);
     expect(entries[0].state).toBe("settled");
     expect(entries[0].txHash).toBe("0xdeadbeef");
@@ -165,7 +165,7 @@ describe("pay rail: envelope inside requirePayment", () => {
     expect(calls.settle).toBe(1);
     // No caps → no reserve; but complete() still records settled spend
     // for ledger completeness (spec: every settle writes wallet+kind).
-    const entries = ledger.listByWallet(W2);
+    const entries = await ledger.listByWallet(W2);
     expect(entries).toHaveLength(1);
     expect(entries[0].state).toBe("settled");
   });
@@ -211,7 +211,7 @@ describe("GET /api/wallets/:a/spend", () => {
     const store = createMemoryAgentWalletStore();
     await store.put(rec(W));
     const ledger = createMemorySpendLedger();
-    ledger.insert({
+    await ledger.insert({
       id: "sp_1",
       wallet: W,
       amountUsd: 2.5,
@@ -221,7 +221,7 @@ describe("GET /api/wallets/:a/spend", () => {
       txHash: "0xabc" as `0x${string}`,
       at: Date.now(),
     });
-    ledger.insert({
+    await ledger.insert({
       id: "sp_2",
       wallet: W,
       amountUsd: 1,

@@ -11,7 +11,7 @@
  *   AGENT_WALLET_CLI_TIMEOUT_MS   — spawn timeout (default 15000)
  *   AGENT_WALLET_CHAIN            — default chain for mirror calls (ARC)
  *   AGENT_WALLET_STORE            — json (default) | memory
- *   AGENT_WALLET_LEDGER_STORE     — sqlite (default) | json | memory
+ *   AGENT_WALLET_LEDGER_STORE     — auto (default) | db | sqlite | json | memory
  *   AGENT_WALLET_REQUIRE_REGISTERED — 0/1 deny unregistered wallets (155-2)
  *   AGENT_WALLET_DEFAULT_CAPS     — JSON SpendCaps fallback envelope (155-2)
  *   AGENT_WALLET_LOW_USD          — low-balance alert threshold (155-5, 1.0)
@@ -49,12 +49,18 @@ export function loadAgentWallet(
   const rawStore = (process.env.AGENT_WALLET_STORE ?? "json").toLowerCase();
   const store = rawStore === "memory" ? "memory" : "json";
 
-  // SLICE-155-2: spend envelope config.
+  // SLICE-155-2/155-11: spend envelope config. Default "auto" → db
+  // when DATABASE_ENABLED, sqlite→json otherwise; "db" requires the db.
   const rawLedger = (
-    process.env.AGENT_WALLET_LEDGER_STORE ?? "sqlite"
+    process.env.AGENT_WALLET_LEDGER_STORE ?? "auto"
   ).toLowerCase();
   const ledgerStore =
-    rawLedger === "memory" || rawLedger === "json" ? rawLedger : "sqlite";
+    rawLedger === "memory" ||
+      rawLedger === "json" ||
+      rawLedger === "sqlite" ||
+      rawLedger === "db"
+      ? rawLedger
+      : "auto";
 
   const requireRegistered = booleanFlag("AGENT_WALLET_REQUIRE_REGISTERED");
 

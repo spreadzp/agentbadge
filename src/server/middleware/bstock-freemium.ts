@@ -175,7 +175,7 @@ export function bstockFreemium(
       const settle = await cfg.facilitator.settle(paymentSig, requirements);
       if (!settle.success) {
         if (enforcer && begun) {
-          enforcer.complete(begun, false, Number(cfg.priceUsd), "x402",
+          await enforcer.complete(begun, false, Number(cfg.priceUsd), "x402",
             `bstock:${cfg.serviceId ?? c.req.path}`);
         }
         return paymentRequired(
@@ -185,7 +185,7 @@ export function bstockFreemium(
         );
       }
       if (enforcer && begun) {
-        enforcer.complete(
+        await enforcer.complete(
           begun,
           true,
           Number(cfg.priceUsd),

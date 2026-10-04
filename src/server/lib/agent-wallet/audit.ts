@@ -178,14 +178,15 @@ export function emitSpendAlert(
 /* ------------------------- stale reserves -------------------- */
 
 /** Reserved entries older than `staleMs` → spend.release_late
- *  (deduped by data.entryId). Returns newly emitted events. */
-export function detectStaleReserves(opts: {
+ *  (deduped by data.entryId). Returns newly emitted events.
+ *  Async since SLICE-155-11 (db-backed ledger). */
+export async function detectStaleReserves(opts: {
   ledger: SpendLedger;
   wallets: AgentWalletRecord[];
   staleMs: number;
   store?: SpendAlertStore;
   now?: number;
-}): SpendAlertEvent[] {
+}): Promise<SpendAlertEvent[]> {
   const now = opts.now ?? Date.now();
   const store = opts.store ?? alerts?.store;
   if (!store) return [];
@@ -196,7 +197,7 @@ export function detectStaleReserves(opts: {
   const out: SpendAlertEvent[] = [];
   for (const rec of opts.wallets) {
     if (!rec.active) continue;
-    for (const e of opts.ledger.listByWallet(rec.address)) {
+    for (const e of await opts.ledger.listByWallet(rec.address)) {
       if (e.state !== "reserved") continue;
       if (now - e.at < opts.staleMs) continue;
       if (seen.has(e.id)) continue;

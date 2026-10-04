@@ -99,7 +99,7 @@ describe("spend alerts", () => {
     initSpendAlerts({
       store: createMemorySpendAlertStore(),
       webhookUrl: "https://hook.example/x",
-      sleep: async () => {},
+      sleep: async () => { },
       fetchFn: (async () => {
         calls++;
         if (calls < 3) throw new Error("down");
@@ -158,32 +158,32 @@ describe("spend alerts", () => {
     const begun = await enforcer.begin(c, 5, "eaas", "r2");
     if (begun instanceof Response) throw new Error("expected begin");
     expect(begun.entry).toBeDefined();
-    enforcer.complete(begun, false, 5, "eaas", "r2");
+    await enforcer.complete(begun, false, 5, "eaas", "r2");
     const evs = getSpendAlertStore()!.list({ type: "spend.failed" });
     expect(evs).toHaveLength(1);
     expect(evs[0].data.refId).toBe("r2");
   });
 
-  it("detectStaleReserves emits once per entry", () => {
+  it("detectStaleReserves emits once per entry", async () => {
     const ledger = createMemorySpendLedger();
     const e = entry({ state: "reserved", at: Date.now() - 20 * 60_000 });
-    ledger.insert(e);
+    await ledger.insert(e);
     const deps = {
       ledger,
       wallets: [rec(W, "v1")],
       staleMs: 10 * 60_000,
       store: getSpendAlertStore()!,
     };
-    const first = detectStaleReserves(deps);
-    const second = detectStaleReserves(deps);
+    const first = await detectStaleReserves(deps);
+    const second = await detectStaleReserves(deps);
     expect(first).toHaveLength(1);
     expect(first[0].type).toBe("spend.release_late");
     expect(first[0].data.entryId).toBe(e.id);
     expect(first[0].venueId).toBe("v1");
     expect(second).toHaveLength(0); // deduped
     // fresh reserved not flagged
-    ledger.insert(entry({ state: "reserved", at: Date.now() }));
-    expect(detectStaleReserves(deps)).toHaveLength(0);
+    await ledger.insert(entry({ state: "reserved", at: Date.now() }));
+    expect(await detectStaleReserves(deps)).toHaveLength(0);
   });
 });
 
@@ -192,9 +192,9 @@ describe("audit feed routes", () => {
     const store = createMemoryAgentWalletStore();
     await store.put(rec(W, "v-test"));
     const ledger = createMemorySpendLedger();
-    ledger.insert(entry({ kind: "eaas", amountUsd: 1, at: 1000 }));
-    ledger.insert(entry({ kind: "x402", amountUsd: 2, state: "reserved", at: 2000, txHash: undefined }));
-    ledger.insert(entry({ kind: "eaas", amountUsd: 3, state: "released", at: 3000 }));
+    await ledger.insert(entry({ kind: "eaas", amountUsd: 1, at: 1000 }));
+    await ledger.insert(entry({ kind: "x402", amountUsd: 2, state: "reserved", at: 2000, txHash: undefined }));
+    await ledger.insert(entry({ kind: "eaas", amountUsd: 3, state: "released", at: 3000 }));
     const app = new Hono();
     app.route(
       "/",

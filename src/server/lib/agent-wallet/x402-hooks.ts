@@ -60,11 +60,11 @@ export function createSpendX402Hooks(): SpendX402Hooks {
       c.set(CTX_KEY, res);
       return;
     },
-    onSettleResult: ({ c, ok, payment }) => {
+    onSettleResult: async ({ c, ok, payment }) => {
       const enforcer = getSpendEnforcer();
       const begun = c.get(CTX_KEY) as EnforceBegin | undefined;
       if (!enforcer || !begun) return;
-      enforcer.complete(
+      await enforcer.complete(
         begun,
         ok,
         payment ? Number(payment.amount) / ATOMIC : undefined,
