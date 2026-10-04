@@ -36,6 +36,8 @@ import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet-balance-a
 import { createSpendAuditRoutes } from "../routes/agent-wallet-audit-api";
 import { createAgentWalletDelegateRoutes } from "../routes/agent-wallet-delegate-api";
 import { createMemoryDelegateStore } from "../lib/agent-wallet/delegate";
+import { createDbDelegateStore } from "../lib/agent-wallet/delegate-db";
+import { createDbSpendAlertStore } from "../lib/agent-wallet/alert-db";
 import { readWalletBalance } from "../lib/agent-wallet/balance";
 import { startLowBalanceSweeper } from "../lib/agent-wallet/funding";
 import {
@@ -164,7 +166,9 @@ export function wireAgentWallet(app: Hono): void {
       app.route(
         "/",
         createAgentWalletDelegateRoutes({
-          delegateStore: createMemoryDelegateStore(),
+          delegateStore:
+            createDbDelegateStore(getDatabase().delegates) ??
+            createMemoryDelegateStore(),
           delegateAddress,
           walletStore: store,
           requireRegistered: cfg.requireRegistered,
@@ -180,7 +184,9 @@ export function wireAgentWallet(app: Hono): void {
   // SLICE-155-6: spend audit — alert store + emit singleton +
   // feed/stats routes + stale-reserve sweep.
   initSpendAlerts({
-    store: createJsonSpendAlertStore(),
+    store:
+      createDbSpendAlertStore(getDatabase().spendAlerts) ??
+      createJsonSpendAlertStore(),
     ...(cfg.alertWebhookUrl ? { webhookUrl: cfg.alertWebhookUrl } : {}),
   });
   app.route(

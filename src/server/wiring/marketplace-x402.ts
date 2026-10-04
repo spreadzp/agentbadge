@@ -12,6 +12,8 @@
 import type { Context, Hono, MiddlewareHandler } from "hono";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
+import { getDatabase } from "../lib/database";
+import { initMarketplaceDbBackend } from "../lib/marketplace/db-backend";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
 import { marketplaceApiRoutes } from "../routes/marketplace-api";
 import { marketplacePageRoutes } from "../routes/marketplace-pages";
@@ -78,6 +80,9 @@ export function wireMarketplace(
 ): void {
   const marketplaceCfg = getConfig().marketplace;
   if (!marketplaceCfg?.enabled) return;
+
+  // SLICE-155-12: Postgres catalog mirror — no-op when DATABASE_ENABLED off.
+  initMarketplaceDbBackend(getDatabase().marketplace);
 
   // Payment gate — runtime + splitter (buy accept). Off → ungated
   // (testnet/dev convenience, same pattern as scanPacks.pricingEnabled).

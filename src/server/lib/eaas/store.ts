@@ -14,6 +14,8 @@ import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import type { Hex } from "viem";
 import { logger } from "@agentbadge/passport";
+import { getDatabase } from "../database";
+import { createDbVerdictStore } from "./store-db";
 import type { VerdictArtifact } from "./verdict";
 
 export interface StoredVerdict {
@@ -27,7 +29,7 @@ export interface StoredVerdict {
 }
 
 export interface VerdictStoreBackend {
-  name: "json" | "sqlite";
+  name: "json" | "sqlite" | "db";
   ready(): Promise<void>;
   /** Idempotent by verdictId — same id is a no-op. */
   put(verdict: StoredVerdict): void;
@@ -202,12 +204,36 @@ export function createSqliteVerdictStore(
 let _store: VerdictStoreBackend | undefined;
 
 /**
- * Shared backend for the app — ARC_EAAS_STORE (json default | sqlite).
- * sqlite falling back to json mirrors the venue store's prisma fallback.
+ * Shared backend for the app — ARC_EAAS_STORE (auto | db | sqlite | json).
+ * Default "auto": Postgres when DATABASE_ENABLED supplies a repo, json
+ * otherwise. Explicit "db" with the flag off warns and falls back to
+ * json — mirrors the venue store's prisma fallback.
  */
 export function getVerdictStore(): VerdictStoreBackend {
   if (!_store) {
-    const kind = (process.env.ARC_EAAS_STORE ?? "json").toLowerCase();
+    const kind = (process.env.ARC_EAAS_STORE ?? "auto").toLowerCase();
+    if (kind === "auto" || kind === "db" || kind === "prisma") {
+      try {
+        const db = createDbVerdictStore(getDatabase().eaasVerdicts);
+        if (db) {
+          _store = db;
+          logger.info("eaas: verdict store backend = db", {});
+          return _store;
+        }
+        if (kind !== "auto") {
+          logger.warn(
+            "eaas: ARC_EAAS_STORE=%s but DATABASE_ENABLED off — json fallback",
+            { kind },
+          );
+        }
+      } catch (err) {
+        logger.error("eaas: db backend init failed — json fallback", {
+          err: String(err),
+        });
+      }
+      _store = createJsonVerdictStore();
+      return _store;
+    }
     if (kind === "sqlite") {
       const sqlite = createSqliteVerdictStore();
       if (sqlite) {

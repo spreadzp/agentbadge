@@ -59,7 +59,7 @@ export interface EaasSubscription {
 }
 
 export interface EaasSubscriptionStore {
-  name: "json" | "memory";
+  name: "json" | "memory" | "db";
   get(wallet: string): EaasSubscription | undefined;
   put(sub: EaasSubscription): void;
   list(): EaasSubscription[];

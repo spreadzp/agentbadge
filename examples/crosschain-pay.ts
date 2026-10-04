@@ -99,7 +99,13 @@ async function main() {
   // Server matches paymentPayload.accepted against its advertised
   // accepts (scheme+network+asset+extra.name) — echo the chosen entry.
   const sig = Buffer.from(
-    JSON.stringify({ x402Version, payload, accepted: accept }),
+    JSON.stringify({
+      x402Version,
+      payload,
+      accepted: accept,
+      // Circle facilitator requires paymentPayload.resource on verify.
+      resource: hdrJson.resource,
+    }),
   ).toString("base64");
   const paid = await fetch(ENDPOINT + PAY_URL, {
     method: METHOD,

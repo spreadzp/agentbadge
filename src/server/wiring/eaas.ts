@@ -14,6 +14,12 @@ import { getConfig } from "../../config/env";
 import { arcChainFor } from "../lib/marketplace/chain";
 import { createVerdictSigner } from "../lib/eaas/verdict";
 import { getVerdictStore } from "../lib/eaas/store";
+import { getDatabase } from "../lib/database";
+import { createDbAnchorStore } from "../lib/eaas/anchor-db";
+import { createDbRequestStore } from "../lib/eaas/requests-db";
+import { createDbSubscriptionStore } from "../lib/eaas/subscription-db";
+import { createDbContractStore } from "../lib/eaas/contracts-db";
+import { createDbEvalStore } from "../lib/eaas/eval-store-db";
 import { POLICY_REGISTRY } from "../lib/eaas/policies";
 import {
   createContractRegistry,
@@ -138,7 +144,9 @@ export function wireEaas(
   };
 
   // ─── SLICE-154-5: billing tiers — CLASS_EAAS pass + quota store ─
-  const subStore = createJsonSubscriptionStore();
+  const subStore =
+    createDbSubscriptionStore(getDatabase().eaasSubscriptions) ??
+    createJsonSubscriptionStore();
   const quota: EaasQuotaDeps = {
     store: subStore,
     tiers: cfg.tierQuotas,
@@ -146,7 +154,9 @@ export function wireEaas(
   };
 
   // ─── SLICE-154-6: async delivery + feeds ───────────────────────
-  const requestStore = createJsonRequestStore();
+  const requestStore =
+    createDbRequestStore(getDatabase().eaasRequests) ??
+    createJsonRequestStore();
   const metrics = createEaasMetrics();
   const asyncDeps: EaasAsyncDeps = {
     store: requestStore,
@@ -200,11 +210,15 @@ export function wireEaas(
   } else {
 
     const contracts = createContractRegistry({
-      store: createJsonContractStore(".data/eaas-contracts.json"),
+      store:
+        createDbContractStore(getDatabase().eaasContracts) ??
+        createJsonContractStore(".data/eaas-contracts.json"),
       read: read as never,
       chainId,
     });
-    const evalStore = createJsonEvalStore(".data/eaas-eval-jobs.json");
+    const evalStore =
+      createDbEvalStore(getDatabase().eaasEvalJobs) ??
+      createJsonEvalStore(".data/eaas-eval-jobs.json");
 
     app.route(
       "/",

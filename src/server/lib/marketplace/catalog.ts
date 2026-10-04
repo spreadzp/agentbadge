@@ -19,7 +19,10 @@ interface MarketplaceStore {
 }
 
 const STORE_PATH = join(process.cwd(), ".data", "marketplace.json");
-let _memStore: MarketplaceStore | null = null; // test override
+let _memStore: MarketplaceStore | null = null; // test override / db mirror
+/** SLICE-155-12: write-behind hook set by the DB backend — called
+ *  after every in-place mutation of the mirror store. */
+let _persistHook: ((store: MarketplaceStore) => void) | null = null;
 
 function emptyStore(): MarketplaceStore {
   return { services: {}, meta: {} };
@@ -42,6 +45,7 @@ function loadStore(): MarketplaceStore {
 function saveStore(store: MarketplaceStore): void {
   if (_memStore) {
     _memStore = store;
+    _persistHook?.(_memStore);
     return;
   }
   try {
@@ -101,8 +105,22 @@ export function useMemoryStoreForTesting() {
   _memStore = emptyStore();
 }
 
+/**
+ * SLICE-155-12: install a hydrated Postgres mirror as the store.
+ * `store` is served by loadStore; `persist` is invoked after every
+ * mutation (write-behind — must not throw).
+ */
+export function useDbBackend(
+  store: MarketplaceStore,
+  persist: (store: MarketplaceStore) => void,
+): void {
+  _memStore = store;
+  _persistHook = persist;
+}
+
 export function resetStoreForTesting() {
   _memStore = null;
+  _persistHook = null;
 }
 
 // ─── Metadata validation (D10) ─────────────────────────────────

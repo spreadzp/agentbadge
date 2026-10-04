@@ -27,7 +27,7 @@ export interface SpendAlertEvent {
 }
 
 export interface SpendAlertStore {
-  name: "memory" | "json";
+  name: "memory" | "json" | "db";
   add(ev: SpendAlertEvent): void;
   list(opts?: {
     type?: string;
