@@ -116,9 +116,9 @@ describe("spend alerts", () => {
     expect(evs[0].data.usdc).toBe("0.5");
   });
 
-  it("enforcer deny → spend.cap_denied with cap context", () => {
+  it("enforcer deny → spend.cap_denied with cap context", async () => {
     const store = createMemoryAgentWalletStore();
-    store.put({
+    await store.put({
       ...rec(W),
       envelope: { perTxUsd: 1 },
     });
@@ -143,7 +143,7 @@ describe("spend alerts", () => {
 
   it("settle fail after reserve → spend.failed", async () => {
     const store = createMemoryAgentWalletStore();
-    store.put({ ...rec(W), envelope: { perTxUsd: 10 } });
+    await store.put({ ...rec(W), envelope: { perTxUsd: 10 } });
     const ledger = createMemorySpendLedger();
     const enforcer = createSpendEnforcer({
       registry: store,
@@ -188,9 +188,9 @@ describe("spend alerts", () => {
 });
 
 describe("audit feed routes", () => {
-  function build() {
+  async function build() {
     const store = createMemoryAgentWalletStore();
-    store.put(rec(W, "v-test"));
+    await store.put(rec(W, "v-test"));
     const ledger = createMemorySpendLedger();
     ledger.insert(entry({ kind: "eaas", amountUsd: 1, at: 1000 }));
     ledger.insert(entry({ kind: "x402", amountUsd: 2, state: "reserved", at: 2000, txHash: undefined }));
@@ -204,7 +204,7 @@ describe("audit feed routes", () => {
   }
 
   it("401 without sig; owner gets entries + alerts (filters work)", async () => {
-    const { app } = build();
+    const { app } = await build();
     const noSig = await app.request(`/api/wallets/${W}/audit`);
     expect(noSig.status).toBe(401);
 
@@ -231,7 +231,7 @@ describe("audit feed routes", () => {
   });
 
   it("403 stranger; cursor paginates", async () => {
-    const { app } = build();
+    const { app } = await build();
     const denied = await app.request(`/api/wallets/${W}/audit`, {
       headers: await signedGet(`/api/wallets/${W}/audit`, STRANGER),
     });

@@ -65,7 +65,7 @@ export function createAgentWalletDelegateRoutes(
     async (c) => {
       const owner = await ownerOrNull(c);
       if (!owner) return c.json({ error: "wallet signature required" }, 401);
-      if (deps.requireRegistered && !deps.walletStore.get(owner)) {
+      if (deps.requireRegistered && !(await deps.walletStore.get(owner))) {
         return c.json({ error: "wallet not registered" }, 403);
       }
       let body: { chain?: string; spendCapUsd?: number };

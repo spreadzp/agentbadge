@@ -108,7 +108,7 @@ export function createSpendAuditRoutes(deps: SpendAuditDeps): Hono {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
           "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
@@ -154,7 +154,7 @@ export function createSpendAuditRoutes(deps: SpendAuditDeps): Hono {
     const id = c.req.param("id");
     const access = await requireVenueAccess(c, id, "admin");
     if (access instanceof Response) return access;
-    const wallets = deps.store.list(id).filter((w) => w.active);
+    const wallets = (await deps.store.list(id)).filter((w) => w.active);
     const all = wallets.flatMap((w) => deps.ledger.listByWallet(w.address));
     if (statsOnly) {
       const q = parseQuery(c);

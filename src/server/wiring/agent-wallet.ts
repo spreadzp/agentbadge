@@ -18,9 +18,11 @@ import {
 } from "@agentbadge/circle-payments";
 import { getConfig } from "../../config/env";
 import {
+  createDbAgentWalletStore,
   createJsonAgentWalletStore,
   createMemoryAgentWalletStore,
 } from "../lib/agent-wallet/registry";
+import { getDatabase } from "../lib/database";
 import { createSpendLedger } from "../lib/agent-wallet/ledger";
 import {
   createSpendEnforcer,
@@ -82,10 +84,16 @@ export function wireAgentWallet(app: Hono): void {
     return;
   }
 
+  // SLICE-155-10: Postgres backend when DATABASE_ENABLED + URL — the
+  // single flag governs (no per-domain toggle). "memory" stays an
+  // explicit opt-out for tests; json is the dev/fallback path.
+  const dbWallets = getDatabase().agentWallets;
   const store =
     cfg.store === "memory"
       ? createMemoryAgentWalletStore()
-      : createJsonAgentWalletStore();
+      : dbWallets
+        ? createDbAgentWalletStore(dbWallets)
+        : createJsonAgentWalletStore();
   const ledger = createSpendLedger(cfg.ledgerStore);
 
   initSpendEnforcer(
@@ -182,17 +190,20 @@ export function wireAgentWallet(app: Hono): void {
   const staleMs = cfg.staleReserveMin * 60_000;
   setInterval(
     () =>
-      detectStaleReserves({
-        ledger,
-        wallets: store.list(),
-        staleMs,
-      }),
+      store
+        .list()
+        .then((wallets) => detectStaleReserves({ ledger, wallets, staleMs }))
+        .catch((err) =>
+          logger.error("agent-wallet: stale-reserve sweep failed", {
+            err: err instanceof Error ? err.message : String(err),
+          }),
+        ),
     60_000,
   ).unref();
 
   // Low-balance signal — daily sweep, alert event + optional webhook.
   startLowBalanceSweeper({
-    wallets: () => store.list().filter((w) => w.active),
+    wallets: async () => (await store.list()).filter((w) => w.active),
     readBalance: (address) =>
       readWalletBalance(address, {
         cli,
@@ -201,8 +212,8 @@ export function wireAgentWallet(app: Hono): void {
         usdcAddress: arcChain.usdc,
       }),
     thresholdUsd: cfg.lowUsd,
-    onAlert: (ev) => {
-      const rec = store.get(ev.address);
+    onAlert: async (ev) => {
+      const rec = await store.get(ev.address);
       emitSpendAlert("wallet.low_balance", ev.address, {
         usdc: ev.usdc,
         thresholdUsd: ev.thresholdUsd,

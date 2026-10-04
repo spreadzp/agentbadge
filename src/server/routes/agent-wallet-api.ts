@@ -118,7 +118,7 @@ export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
         }
       }
 
-      const existing = deps.store.get(validated.address);
+      const existing = await deps.store.get(validated.address);
       if (existing && existing.active) {
         return errorResponse(c, 409, ErrorCodes.AGENTCARD_DID_CONFLICT,
           "wallet already registered");
@@ -129,7 +129,7 @@ export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
         createdAt: Date.now(),
         active: true,
       };
-      deps.store.put(rec);
+      await deps.store.put(rec);
       logger.info("agent-wallet: registered", {
         address: rec.address,
         venueId: rec.venueId,
@@ -154,7 +154,7 @@ export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
       if (!ADDRESS_RE.test(addr)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
@@ -202,9 +202,9 @@ export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
     async (c) => {
       const access = await requireVenueAccess(c, c.req.param("id"), "viewer");
       if (access instanceof Response) return access;
-      const wallets = deps.store
-        .list(access.venue.id)
-        .filter((w) => w.active);
+      const wallets = (await deps.store.list(access.venue.id)).filter(
+        (w) => w.active,
+      );
       return c.json({ venueId: access.venue.id, wallets });
     },
   );
@@ -225,7 +225,7 @@ export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
       if (!ADDRESS_RE.test(addr)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
@@ -250,7 +250,7 @@ export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
           "only registrant or venue admin can deactivate");
       }
 
-      deps.store.deactivate(rec.address);
+      await deps.store.deactivate(rec.address);
       logger.info("agent-wallet: deactivated", {
         address: rec.address,
         by: caller,

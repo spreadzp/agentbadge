@@ -15,6 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isAddress, getAddress } from "viem";
+import type { AgentWalletRepository } from "@agentbadge/database";
 
 /* --------------------------------- types ---------------------------------- */
 
@@ -55,16 +56,22 @@ export interface AgentWalletInput {
   registeredBy: string;
 }
 
+/**
+ * Async store interface (SLICE-155-10): write-through to the backend —
+ * Postgres for durable prod state, json/memory for dev & tests. Every
+ * mutation is persisted BEFORE the caller sees the result; the process
+ * holds no authoritative state so a restart loses nothing.
+ */
 export interface AgentWalletStore {
-  name: "json" | "memory";
-  put(rec: AgentWalletRecord): void;
-  get(address: string): AgentWalletRecord | undefined;
+  name: "json" | "memory" | "db";
+  put(rec: AgentWalletRecord): Promise<void>;
+  get(address: string): Promise<AgentWalletRecord | undefined>;
   /** Newest first. venueId filter when given. */
-  list(venueId?: string): AgentWalletRecord[];
+  list(venueId?: string): Promise<AgentWalletRecord[]>;
   /** Sets active=false. Returns false if unknown. */
-  deactivate(address: string): boolean;
+  deactivate(address: string): Promise<boolean>;
   /** Replace envelope caps. Returns false if unknown/inactive. */
-  setEnvelope(address: string, caps: SpendCaps): boolean;
+  setEnvelope(address: string, caps: SpendCaps): Promise<boolean>;
 }
 
 /* ------------------------------- validation ------------------------------- */
@@ -131,21 +138,21 @@ export function createJsonAgentWalletStore(
 ): AgentWalletStore {
   return {
     name: "json",
-    put(rec) {
+    async put(rec) {
       const data = readJson(path);
       data.wallets[rec.address.toLowerCase()] = rec;
       writeJson(path, data);
     },
-    get(address) {
+    async get(address) {
       return readJson(path).wallets[address.toLowerCase()];
     },
-    list(venueId) {
+    async list(venueId) {
       const all = Object.values(readJson(path).wallets);
       return newestFirst(
         venueId ? all.filter((w) => w.venueId === venueId) : all,
       );
     },
-    deactivate(address) {
+    async deactivate(address) {
       const data = readJson(path);
       const rec = data.wallets[address.toLowerCase()];
       if (!rec) return false;
@@ -153,7 +160,7 @@ export function createJsonAgentWalletStore(
       writeJson(path, data);
       return true;
     },
-    setEnvelope(address, caps) {
+    async setEnvelope(address, caps) {
       const data = readJson(path);
       const rec = data.wallets[address.toLowerCase()];
       if (!rec || !rec.active) return false;
@@ -168,28 +175,88 @@ export function createMemoryAgentWalletStore(): AgentWalletStore {
   const map = new Map<string, AgentWalletRecord>();
   return {
     name: "memory",
-    put(rec) {
+    async put(rec) {
       map.set(rec.address.toLowerCase(), rec);
     },
-    get(address) {
+    async get(address) {
       return map.get(address.toLowerCase());
     },
-    list(venueId) {
+    async list(venueId) {
       const all = [...map.values()];
       return newestFirst(
         venueId ? all.filter((w) => w.venueId === venueId) : all,
       );
     },
-    deactivate(address) {
+    async deactivate(address) {
       const rec = map.get(address.toLowerCase());
       if (!rec) return false;
       map.set(address.toLowerCase(), { ...rec, active: false });
       return true;
     },
-    setEnvelope(address, caps) {
+    async setEnvelope(address, caps) {
       const rec = map.get(address.toLowerCase());
       if (!rec || !rec.active) return false;
       map.set(address.toLowerCase(), { ...rec, envelope: caps });
+      return true;
+    },
+  };
+}
+
+/* ---------------------------------- Postgres ------------------------------ */
+
+/**
+ * SLICE-155-10: Postgres backend — write-through. The full record rides
+ * in `payload` Json; typed columns stay in sync for indexed queries
+ * (venue-scoped lists, active filter). `address` is stored lowercased —
+ * keys are case-insensitive across all backends.
+ */
+export function createDbAgentWalletStore(
+  repo: AgentWalletRepository,
+): AgentWalletStore {
+  const toRecord = (row: {
+    payload: unknown;
+  }): AgentWalletRecord => {
+    const p = row.payload;
+    return (typeof p === "string" ? JSON.parse(p) : p) as AgentWalletRecord;
+  };
+  const toRow = (rec: AgentWalletRecord) => ({
+    address: rec.address.toLowerCase(),
+    agentId: rec.agentId ?? null,
+    venueId: rec.venueId ?? null,
+    label: rec.label,
+    kind: rec.kind,
+    registeredBy: rec.registeredBy,
+    active: rec.active,
+    payload: rec as unknown as Parameters<
+      AgentWalletRepository["upsert"]
+    >[0]["payload"],
+  });
+  return {
+    name: "db",
+    async put(rec) {
+      await repo.upsert(toRow(rec));
+    },
+    async get(address) {
+      const row = await repo.getByAddress(address);
+      return row ? toRecord(row) : undefined;
+    },
+    async list(venueId) {
+      const rows = await repo.list(venueId ? { venueId } : undefined);
+      return newestFirst(rows.map(toRecord));
+    },
+    async deactivate(address) {
+      const row = await repo.getByAddress(address);
+      if (!row) return false;
+      const rec = { ...toRecord(row), active: false };
+      await repo.upsert(toRow(rec));
+      return true;
+    },
+    async setEnvelope(address, caps) {
+      const row = await repo.getByAddress(address);
+      if (!row) return false;
+      const rec = toRecord(row);
+      if (!rec.active) return false;
+      await repo.upsert(toRow({ ...rec, envelope: caps }));
       return true;
     },
   };

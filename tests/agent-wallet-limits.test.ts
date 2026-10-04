@@ -36,12 +36,12 @@ const cliStub = (limits: () => Promise<PolicyCaps>): CircleCliClient =>
     limits,
   }) as unknown as CircleCliClient;
 
-function appFor(opts: {
+async function appFor(opts: {
   chain?: string;
   cli?: CircleCliClient;
-}): Hono {
+}): Promise<Hono> {
   const store = createMemoryAgentWalletStore();
-  store.put(rec(W));
+  await store.put(rec(W));
   const ledger = createMemorySpendLedger();
   const app = new Hono();
   app.route(
@@ -61,7 +61,7 @@ afterEach(() => resetConfigCache());
 
 describe("GET /api/wallets/:a/limits", () => {
   it("mainnet chain + CLI ok → envelope + circle PolicyCaps", async () => {
-    const app = appFor({
+    const app = await appFor({
       cli: cliStub(async () => ({ perTx: "1", daily: "5", weekly: "20", monthly: "50" })),
     });
     const res = await app.request(`/api/wallets/${W}/limits`);
@@ -74,7 +74,7 @@ describe("GET /api/wallets/:a/limits", () => {
 
   it("non-mainnet chain → circle:'mainnet-only' without CLI call", async () => {
     let called = false;
-    const app = appFor({
+    const app = await appFor({
       chain: "ARC-TESTNET",
       cli: cliStub(async () => {
         called = true;
@@ -87,7 +87,7 @@ describe("GET /api/wallets/:a/limits", () => {
   });
 
   it("CLI throws CliUnavailableError → circle:'unavailable'", async () => {
-    const app = appFor({
+    const app = await appFor({
       cli: cliStub(async () => {
         throw new CliUnavailableError("no binary");
       }),
@@ -97,12 +97,12 @@ describe("GET /api/wallets/:a/limits", () => {
   });
 
   it("no CLI injected → 'unavailable'; 60s cache dedupes CLI calls", async () => {
-    const app = appFor({});
+    const app = await appFor({});
     expect((await (await app.request(`/api/wallets/${W}/limits`)).json()).circle)
       .toBe("unavailable");
 
     let calls = 0;
-    const app2 = appFor({
+    const app2 = await appFor({
       cli: cliStub(async () => {
         calls += 1;
         return { daily: "5" };
@@ -114,7 +114,7 @@ describe("GET /api/wallets/:a/limits", () => {
   });
 
   it("unknown wallet → 404", async () => {
-    const app = appFor({});
+    const app = await appFor({});
     const res = await app.request(
       "/api/wallets/0x00000000000000000000000000000000000000ff/limits",
     );
@@ -124,7 +124,7 @@ describe("GET /api/wallets/:a/limits", () => {
 
 describe("POST /api/wallets/:a/limits/command", () => {
   it("valid caps → verbatim circle wallet limit set command", async () => {
-    const app = appFor({});
+    const app = await appFor({});
     const res = await app.request(`/api/wallets/${W}/limits/command`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -134,13 +134,13 @@ describe("POST /api/wallets/:a/limits/command", () => {
     const body = await res.json();
     expect(body.commandLine).toBe(
       `circle wallet limit set --address ${W} --chain ARC ` +
-        "--policy-type stablecoin --per-tx 1 --daily 5 --weekly 20 --monthly 50",
+      "--policy-type stablecoin --per-tx 1 --daily 5 --weekly 20 --monthly 50",
     );
     expect(body.note).toMatch(/OTP/);
   });
 
   it("non-monotonic caps → 400", async () => {
-    const app = appFor({});
+    const app = await appFor({});
     const res = await app.request(`/api/wallets/${W}/limits/command`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -150,7 +150,7 @@ describe("POST /api/wallets/:a/limits/command", () => {
   });
 
   it("partial caps → only provided flags; unknown wallet → 404", async () => {
-    const app = appFor({});
+    const app = await appFor({});
     const res = await app.request(`/api/wallets/${W}/limits/command`, {
       method: "POST",
       headers: { "content-type": "application/json" },

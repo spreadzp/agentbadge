@@ -86,12 +86,12 @@ function mockRouter(calls: { settle: number }): PaymentRouter {
   } as unknown as PaymentRouter;
 }
 
-function appFor(opts: {
+async function appFor(opts: {
   envelope?: Record<string, number>;
   requireRegistered?: boolean;
 }) {
   const store = createMemoryAgentWalletStore();
-  store.put(rec(W, opts.envelope ?? {}));
+  await store.put(rec(W, opts.envelope ?? {}));
   const ledger = createMemorySpendLedger();
   initSpendEnforcer(
     createSpendEnforcer({
@@ -136,7 +136,7 @@ afterEach(() => {
 
 describe("pay rail: envelope inside requirePayment", () => {
   it("registered wallet over cap → 402 spend_cap, settle NEVER called", async () => {
-    const { app, calls } = appFor({ envelope: { perTxUsd: 0.1 } });
+    const { app, calls } = await appFor({ envelope: { perTxUsd: 0.1 } });
     const res = await pay(app, { "payment-signature": paySig(W) });
     expect(res.status).toBe(402);
     const body = await res.json();
@@ -146,7 +146,7 @@ describe("pay rail: envelope inside requirePayment", () => {
   });
 
   it("registered wallet under cap → 200, ledger settled + txHash", async () => {
-    const { app, ledger, calls } = appFor({ envelope: { dailyUsd: 1 } });
+    const { app, ledger, calls } = await appFor({ envelope: { dailyUsd: 1 } });
     const res = await pay(app, { "payment-signature": paySig(W) });
     expect(res.status).toBe(200);
     expect(calls.settle).toBe(1);
@@ -159,7 +159,7 @@ describe("pay rail: envelope inside requirePayment", () => {
   });
 
   it("unregistered wallet → pass-through settle (opt-in), settled entry recorded (attribution, no caps)", async () => {
-    const { app, ledger, calls } = appFor({});
+    const { app, ledger, calls } = await appFor({});
     const res = await pay(app, { "payment-signature": paySig(W2) });
     expect(res.status).toBe(200);
     expect(calls.settle).toBe(1);
@@ -171,14 +171,14 @@ describe("pay rail: envelope inside requirePayment", () => {
   });
 
   it("requireRegistered → unregistered denied 402, settle not called", async () => {
-    const { app, calls } = appFor({ requireRegistered: true });
+    const { app, calls } = await appFor({ requireRegistered: true });
     const res = await pay(app, { "payment-signature": paySig(W2) });
     expect(res.status).toBe(402);
     expect(calls.settle).toBe(0);
   });
 
   it("X-Max-Amount below price → 402 before verify/settle", async () => {
-    const { app, calls } = appFor({});
+    const { app, calls } = await appFor({});
     const res = await pay(app, {
       "payment-signature": paySig(W),
       "x-max-amount": "0.10",
@@ -190,7 +190,7 @@ describe("pay rail: envelope inside requirePayment", () => {
   });
 
   it("X-Max-Amount above price → normal settle", async () => {
-    const { app, calls } = appFor({});
+    const { app, calls } = await appFor({});
     const res = await pay(app, {
       "payment-signature": paySig(W),
       "x-max-amount": "1.00",
@@ -207,9 +207,9 @@ describe("GET /api/wallets/:a/spend", () => {
     "x-timestamp": String(Math.floor(Date.now() / 1000)),
   });
 
-  function spendApp() {
+  async function spendApp() {
     const store = createMemoryAgentWalletStore();
-    store.put(rec(W));
+    await store.put(rec(W));
     const ledger = createMemorySpendLedger();
     ledger.insert({
       id: "sp_1",
@@ -239,7 +239,7 @@ describe("GET /api/wallets/:a/spend", () => {
   }
 
   it("owner sig → 200 with entries incl txHash + settled total", async () => {
-    const res = await spendApp().request(`/api/wallets/${W}/spend`, {
+    const res = await (await spendApp()).request(`/api/wallets/${W}/spend`, {
       headers: signed(W),
     });
     expect(res.status).toBe(200);
@@ -250,7 +250,7 @@ describe("GET /api/wallets/:a/spend", () => {
   });
 
   it("no sig → 401; stranger sig → 403; ?state=settled filters", async () => {
-    const app = spendApp();
+    const app = await spendApp();
     expect(
       (await app.request(`/api/wallets/${W}/spend`)).status,
     ).toBe(401);

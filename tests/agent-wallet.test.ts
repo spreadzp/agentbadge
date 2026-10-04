@@ -191,7 +191,7 @@ describe("GET /api/wallets/:address", () => {
         limits: async () => ({ daily: "100" }),
       },
     });
-    store.put({
+    await store.put({
       address: W_AGENT,
       label: "x",
       kind: "circle-agent",
@@ -219,7 +219,7 @@ describe("GET /api/wallets/:address", () => {
         },
       },
     });
-    store.put({
+    await store.put({
       address: W_AGENT,
       label: "x",
       kind: "eoa",
@@ -264,14 +264,14 @@ describe("GET /api/venue/instances/:id/wallets + DELETE", () => {
       createdAt: Date.now(),
       active: true,
     };
-    store.put({
+    await store.put({
       ...base,
       address: W_AGENT,
       label: "venue-w",
       venueId: v.id,
       registeredBy: W_AGENT.toLowerCase() as `0x${string}`,
     });
-    store.put({
+    await store.put({
       ...base,
       address: W_AGENT2,
       label: "unscoped",
@@ -304,7 +304,7 @@ describe("GET /api/venue/instances/:id/wallets + DELETE", () => {
   it("DELETE: registrant ok; stranger → 403; venue admin ok", async () => {
     const v = await venueFixture();
     const { app, store } = makeAppWithStore();
-    store.put({
+    await store.put({
       address: W_AGENT,
       label: "x",
       kind: "circle-agent",
@@ -328,7 +328,7 @@ describe("GET /api/venue/instances/:id/wallets + DELETE", () => {
       headers: signedHeaders(W_AGENT),
     });
     expect(own.status).toBe(200);
-    expect(store.get(W_AGENT)?.active).toBe(false);
+    expect((await store.get(W_AGENT))!.active).toBe(false);
 
     // already inactive → 404
     const again = await app.request(`/api/wallets/${W_AGENT}`, {
@@ -338,7 +338,7 @@ describe("GET /api/venue/instances/:id/wallets + DELETE", () => {
     expect(again.status).toBe(404);
 
     // venue admin (owner) can deactivate a member's wallet
-    store.put({
+    await store.put({
       address: W_AGENT2,
       label: "x",
       kind: "eoa",
@@ -359,7 +359,7 @@ describe("GET /api/venue/instances/:id/wallets + DELETE", () => {
 /* --------------------------------- store ---------------------------------- */
 
 describe("agent-wallet store", () => {
-  it("json store round-trip + venue filter + newest first", () => {
+  it("json store round-trip + venue filter + newest first", async () => {
     const dir = mkdtempSync(join(tmpdir(), "aw-"));
     const path = join(dir, "wallets.json");
     const s = createJsonAgentWalletStore(path);
@@ -373,16 +373,16 @@ describe("agent-wallet store", () => {
       active: true,
       ...(venueId ? { venueId } : {}),
     });
-    s.put({ ...mk(W_AGENT, "vn_a"), createdAt: 1 });
-    s.put({ ...mk(W_AGENT2, "vn_a"), createdAt: 2 });
-    s.put(mk(W_MEMBER, "vn_b"));
-    const list = s.list("vn_a");
+    await s.put({ ...mk(W_AGENT, "vn_a"), createdAt: 1 });
+    await s.put({ ...mk(W_AGENT2, "vn_a"), createdAt: 2 });
+    await s.put(mk(W_MEMBER, "vn_b"));
+    const list = await s.list("vn_a");
     expect(list).toHaveLength(2);
     expect(list[0].createdAt).toBe(2); // newest first
-    expect(s.get(W_AGENT)?.venueId).toBe("vn_a");
-    expect(s.deactivate(W_AGENT)).toBe(true);
-    expect(s.get(W_AGENT)?.active).toBe(false);
-    expect(s.deactivate(W_STRANGER)).toBe(false);
+    expect((await s.get(W_AGENT))!.venueId).toBe("vn_a");
+    expect(await s.deactivate(W_AGENT)).toBe(true);
+    expect((await s.get(W_AGENT))!.active).toBe(false);
+    expect(await s.deactivate(W_STRANGER)).toBe(false);
     rmSync(dir, { recursive: true, force: true });
   });
 

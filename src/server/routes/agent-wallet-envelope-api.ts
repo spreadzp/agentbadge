@@ -57,7 +57,7 @@ export function createAgentWalletEnvelopeRoutes(
       if (!ADDRESS_RE.test(addr)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
@@ -84,7 +84,7 @@ export function createAgentWalletEnvelopeRoutes(
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
           err instanceof Error ? err.message : "invalid caps");
       }
-      if (!deps.store.setEnvelope(rec.address, caps)) {
+      if (!(await deps.store.setEnvelope(rec.address, caps))) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
       }
@@ -107,12 +107,12 @@ export function createAgentWalletEnvelopeRoutes(
         404: { description: "Wallet not found" },
       },
     }),
-    (c) => {
+    async (c) => {
       const addr = c.req.param("address");
       if (!ADDRESS_RE.test(addr)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");

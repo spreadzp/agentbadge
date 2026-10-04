@@ -130,9 +130,9 @@ describe("readWalletBalance", () => {
 });
 
 describe("balance + QR routes", () => {
-  function appFor() {
+  async function appFor() {
     const store = createMemoryAgentWalletStore();
-    store.put(rec(W));
+    await store.put(rec(W));
     const app = new Hono();
     app.route(
       "/",
@@ -152,7 +152,7 @@ describe("balance + QR routes", () => {
   }
 
   it("GET /balance → usdc + source + funding handoff", async () => {
-    const res = await appFor().request(`/api/wallets/${W}/balance`);
+    const res = await (await appFor()).request(`/api/wallets/${W}/balance`);
     expect(res.status).toBe(200);
     const j = await res.json();
     expect(j.usdc).toBe("9.99");
@@ -165,7 +165,7 @@ describe("balance + QR routes", () => {
   });
 
   it("GET /deposit-qr.svg → svg containing QR; 404/400 guards", async () => {
-    const app = appFor();
+    const app = await appFor();
     const res = await app.request(`/api/wallets/${W}/deposit-qr.svg`);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toMatch(/svg/);

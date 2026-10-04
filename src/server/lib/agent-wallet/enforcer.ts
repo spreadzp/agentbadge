@@ -108,7 +108,7 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         }
         return {};
       }
-      const rec = deps.registry.get(wallet);
+      const rec = await deps.registry.get(wallet);
       if (!rec || !rec.active) {
         if (deps.requireRegistered) {
           return errorResponse(

@@ -210,24 +210,24 @@ describe("PATCH/GET /api/wallets/:address/envelope", () => {
     "content-type": "application/json",
   });
 
-  function envApp() {
+  async function envApp() {
     const store = createMemoryAgentWalletStore();
     const ledger = createMemorySpendLedger();
     const app = new Hono();
     app.route("/", createAgentWalletEnvelopeRoutes({ store, ledger }));
-    store.put(rec(W));
+    await store.put(rec(W));
     return { app, store, ledger };
   }
 
   it("PATCH registrant → 200 caps saved; GET shows caps+usage", async () => {
-    const { app, store } = envApp();
+    const { app, store } = await envApp();
     const res = await app.request(`/api/wallets/${W}/envelope`, {
       method: "PATCH",
       headers: signed(W),
       body: JSON.stringify({ perTxUsd: 5, dailyUsd: 50 }),
     });
     expect(res.status).toBe(200);
-    expect(store.get(W)?.envelope).toEqual({ perTxUsd: 5, dailyUsd: 50 });
+    expect((await store.get(W))!.envelope).toEqual({ perTxUsd: 5, dailyUsd: 50 });
 
     const get = await app.request(`/api/wallets/${W}/envelope`);
     expect(get.status).toBe(200);
@@ -238,7 +238,7 @@ describe("PATCH/GET /api/wallets/:address/envelope", () => {
   });
 
   it("PATCH stranger → 403; no sig → 401; non-monotonic → 400; unknown → 404", async () => {
-    const { app } = envApp();
+    const { app } = await envApp();
     const deny = await app.request(`/api/wallets/${W}/envelope`, {
       method: "PATCH",
       headers: signed(W2),
@@ -266,8 +266,8 @@ describe("PATCH/GET /api/wallets/:address/envelope", () => {
   });
 
   it("GET usage reflects settled spend within window", async () => {
-    const { app, store, ledger } = envApp();
-    store.setEnvelope(W, { dailyUsd: 100 });
+    const { app, store, ledger } = await envApp();
+    await store.setEnvelope(W, { dailyUsd: 100 });
     ledger.insert(entry({ amountUsd: 40 }));
     ledger.insert(entry({ amountUsd: 10, state: "released" }));
     const res = await app.request(`/api/wallets/${W}/envelope`);
@@ -279,13 +279,13 @@ describe("PATCH/GET /api/wallets/:address/envelope", () => {
 /* --------------------------------- enforcer -------------------------------- */
 
 describe("SpendEnforcer + gate + payer resolution", () => {
-  function enforcerApp(opts: {
+  async function enforcerApp(opts: {
     requireRegistered?: boolean;
     defaultCaps?: Record<string, number>;
     envelope?: Record<string, number>;
   }) {
     const store = createMemoryAgentWalletStore();
-    store.put(rec(W, opts.envelope ?? {}));
+    await store.put(rec(W, opts.envelope ?? {}));
     const ledger = createMemorySpendLedger();
     const enforcer = createSpendEnforcer({
       ledger,
@@ -310,7 +310,7 @@ describe("SpendEnforcer + gate + payer resolution", () => {
     });
 
   it("over daily cap → 402 spend_cap before handler; under → 200 + settled", async () => {
-    const { app, ledger } = enforcerApp({ envelope: { dailyUsd: 40 } });
+    const { app, ledger } = await enforcerApp({ envelope: { dailyUsd: 40 } });
     const first = await pay(app, W);
     expect(first.status).toBe(200);
     // 25 used; next 25 → 50 > 40 → deny
@@ -328,16 +328,16 @@ describe("SpendEnforcer + gate + payer resolution", () => {
   });
 
   it("unregistered wallet → opt-in pass (no caps); requireRegistered → 402", async () => {
-    const { app } = enforcerApp({});
+    const { app } = await enforcerApp({});
     expect((await pay(app, W2)).status).toBe(200);
 
-    const strict = enforcerApp({ requireRegistered: true });
+    const strict = await enforcerApp({ requireRegistered: true });
     const res = await pay(strict.app, W2);
     expect(res.status).toBe(402);
   });
 
   it("registered + defaultCaps (no record envelope) → caps apply", async () => {
-    const { app } = enforcerApp({ defaultCaps: { perTxUsd: 10 } });
+    const { app } = await enforcerApp({ defaultCaps: { perTxUsd: 10 } });
     const res = await pay(app, W);
     expect(res.status).toBe(402);
     const body = await res.json();
@@ -345,7 +345,7 @@ describe("SpendEnforcer + gate + payer resolution", () => {
   });
 
   it("payer from PAYMENT-SIGNATURE authorization.from (no x-wallet)", async () => {
-    const { app, ledger } = enforcerApp({ envelope: { dailyUsd: 30 } });
+    const { app, ledger } = await enforcerApp({ envelope: { dailyUsd: 30 } });
     const sig = Buffer.from(
       JSON.stringify({ payload: { authorization: { from: W } } }),
     ).toString("base64");
@@ -380,7 +380,7 @@ describe("SpendEnforcer + gate + payer resolution", () => {
 
   it("withEnvelope: fn failure releases reservation", async () => {
     const store = createMemoryAgentWalletStore();
-    store.put(rec(W, { dailyUsd: 100 }));
+    await store.put(rec(W, { dailyUsd: 100 }));
     const ledger = createMemorySpendLedger();
     const enforcer = createSpendEnforcer({
       ledger,

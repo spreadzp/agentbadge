@@ -20,8 +20,8 @@ export interface LowBalanceEvent {
 }
 
 export interface LowBalanceDeps {
-  /** Active wallets to scan. */
-  wallets: () => AgentWalletRecord[];
+  /** Active wallets to scan — may be async (db backend, SLICE-155-10). */
+  wallets: () => AgentWalletRecord[] | Promise<AgentWalletRecord[]>;
   readBalance: (address: `0x${string}`) => Promise<WalletBalance>;
   thresholdUsd: number;
   /** Alert sink — logger+audit+webhook handled by wiring/tests. */
@@ -36,7 +36,7 @@ export async function checkLowBalances(
   deps: LowBalanceDeps,
 ): Promise<LowBalanceEvent[]> {
   const out: LowBalanceEvent[] = [];
-  for (const rec of deps.wallets()) {
+  for (const rec of await deps.wallets()) {
     if (!rec.active) continue;
     let bal: WalletBalance;
     try {
@@ -98,7 +98,7 @@ export function startLowBalanceSweeper(deps: LowBalanceDeps): void {
       const low = await checkLowBalances(deps);
       if (low.length > 0) {
         logger.info("agent-wallet: low-balance sweep", {
-          wallets: deps.wallets().length,
+          wallets: (await deps.wallets()).length,
           low: low.length,
         });
       }

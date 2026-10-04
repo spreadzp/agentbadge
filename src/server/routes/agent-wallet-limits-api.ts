@@ -86,7 +86,7 @@ export function createAgentWalletLimitsRoutes(
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
           "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
@@ -139,7 +139,7 @@ export function createAgentWalletLimitsRoutes(
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
           "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
@@ -195,7 +195,7 @@ export function createAgentWalletLimitsRoutes(
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
           "invalid address");
       }
-      const rec = deps.store.get(addr);
+      const rec = await deps.store.get(addr);
       if (!rec || !rec.active) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
           "wallet not registered");
