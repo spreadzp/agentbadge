@@ -76,10 +76,10 @@ export function venueProviderDetailPage(
       <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold">
-            ${esc(p.offers[0]?.name ?? shortAddr(p.address))}
-            ${p.agentId != null ? `<span class="${AGENT_CHIP} ml-2" title="ERC-8004 agentId">#${p.agentId}</span>` : ""}
+            ${p.offers[0]?.name ?? shortAddr(p.address)}
+            ${p.agentId != null ? raw(`<span class="${AGENT_CHIP} ml-2" title="ERC-8004 agentId">#${p.agentId}</span>`) : ""}
           </h1>
-          <a class="mt-1 block font-mono text-sm text-sky-400 hover:underline" target="_blank" href="${net.explorerAddr(p.address)}">${esc(p.address)}</a>
+          <a class="mt-1 block font-mono text-sm text-sky-400 hover:underline" target="_blank" href="${net.explorerAddr(p.address)}">${p.address}</a>
         </div>
         <span class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">
           reputation: ${p.stats.feedbackSource === "onchain" ? "onchain registry" : "venue index"}
@@ -87,14 +87,14 @@ export function venueProviderDetailPage(
       </div>
 
       ${p.owner || p.metadataURI
-        ? raw(`<div class="${VENUE_CARD} mt-6 text-sm">
+      ? raw(`<div class="${VENUE_CARD} mt-6 text-sm">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">ERC-8004 identity</h2>
             <dl class="mt-2 space-y-1 font-mono text-xs text-slate-400">
               ${p.owner ? `<div>owner&nbsp;<a class="text-sky-400 hover:underline" target="_blank" href="${net.explorerAddr(p.owner)}">${esc(p.owner)}</a></div>` : ""}
               ${p.metadataURI ? `<div>tokenURI&nbsp;<a class="text-sky-400 hover:underline" target="_blank" href="${esc(p.metadataURI)}">${esc(p.metadataURI)}</a></div>` : ""}
             </dl>
           </div>`)
-        : ""}
+      : ""}
 
       <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         ${raw(stat("jobs done", p.stats.jobsDone))}
@@ -108,8 +108,8 @@ export function venueProviderDetailPage(
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Recent jobs</h2>
         <div class="${VENUE_CARD} mt-3 px-4">
           ${p.recentJobs.length === 0
-            ? raw(`<p class="py-3 text-sm text-slate-500">No jobs yet.</p>`)
-            : raw(p.recentJobs.map(jobRow).join(""))}
+      ? raw(`<p class="py-3 text-sm text-slate-500">No jobs yet.</p>`)
+      : raw(p.recentJobs.map(jobRow).join(""))}
         </div>
       </section>
 
@@ -117,12 +117,12 @@ export function venueProviderDetailPage(
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Offers</h2>
         <div class="${VENUE_CARD} mt-3 px-4">
           ${p.offers.length === 0
-            ? raw(`<p class="py-3 text-sm text-slate-500">No offers published.</p>`)
-            : raw(p.offers.map(offerRow).join(""))}
+      ? raw(`<p class="py-3 text-sm text-slate-500">No offers published.</p>`)
+      : raw(p.offers.map(offerRow).join(""))}
         </div>
       </section>
       <p class="mt-10 text-xs text-slate-500">
-        Machine-readable: <code>GET /api/venue/providers/${esc(p.address)}</code>
+        Machine-readable: <code>GET /api/venue/providers/${p.address}</code>
       </p>
     </main>`;
   const meta: PageMeta = {

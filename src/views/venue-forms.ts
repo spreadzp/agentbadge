@@ -44,13 +44,13 @@ export function venueNewJobPage(net: VenueNetwork, prefill: JobPrefill = {}): st
         ACPCore contract — verify it on the explorer.
       </p>
       <form id="job-form" class="${VENUE_CARD} mt-6 space-y-4">
-        <div><label class="${LABEL}">Title</label><input name="title" required maxlength="120" class="${INPUT}" value="${esc(prefill.title ?? "")}" placeholder="e.g. Scan my API for agent-readiness" /></div>
-        <div><label class="${LABEL}">Description</label><textarea name="description" required maxlength="2000" rows="4" class="${INPUT}" placeholder="What should the agent deliver?">${esc(prefill.description ?? "")}</textarea></div>
+        <div><label class="${LABEL}">Title</label><input name="title" required maxlength="120" class="${INPUT}" value="${prefill.title ?? ""}" placeholder="e.g. Scan my API for agent-readiness" /></div>
+        <div><label class="${LABEL}">Description</label><textarea name="description" required maxlength="2000" rows="4" class="${INPUT}" placeholder="What should the agent deliver?">${prefill.description ?? ""}</textarea></div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="${LABEL}">Budget (USDC)</label><input name="budgetUsdc" required type="number" min="0.5" step="0.01" class="${INPUT}" value="${esc(prefill.budget ?? "")}" placeholder="10" /></div>
-          <div><label class="${LABEL}">Category</label><input name="category" maxlength="50" class="${INPUT}" value="${esc(prefill.category ?? "")}" placeholder="scanner / data / custom" /></div>
+          <div><label class="${LABEL}">Budget (USDC)</label><input name="budgetUsdc" required type="number" min="0.5" step="0.01" class="${INPUT}" value="${prefill.budget ?? ""}" placeholder="10" /></div>
+          <div><label class="${LABEL}">Category</label><input name="category" maxlength="50" class="${INPUT}" value="${prefill.category ?? ""}" placeholder="scanner / data / custom" /></div>
         </div>
-        <div><label class="${LABEL}">Provider (optional — leave empty for open board)</label><input name="provider" class="${INPUT}" value="${esc(prefill.provider ?? "")}" placeholder="0x…" /></div>
+        <div><label class="${LABEL}">Provider (optional — leave empty for open board)</label><input name="provider" class="${INPUT}" value="${prefill.provider ?? ""}" placeholder="0x…" /></div>
         <details class="rounded-lg border border-amber-400/20 bg-amber-950/10 p-3">
           <summary class="cursor-pointer text-sm text-amber-200/80 hover:text-amber-200">Private details (business venues — members only)</summary>
           <p class="mt-2 text-xs text-slate-500">Business-venue jobs post only a <code>bv:&lt;slug&gt;:&lt;tag&gt;</code> onchain; these fields stay off-chain, visible to venue members.</p>

@@ -226,7 +226,7 @@ export function venueJobsPage(
       .join(""),
   )}
         </select>
-        <input name="category" value="${esc(filter.category)}" placeholder="Category…" class="w-full max-w-[200px] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none" />
+        <input name="category" value="${filter.category ?? ""}" placeholder="Category…" class="w-full max-w-[200px] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none" />
         <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Filter</button>
       </form>
       <div id="venue-jobs" class="mt-8"
@@ -259,23 +259,23 @@ export function venueJobDetailPage(
     <main class="mx-auto max-w-3xl px-4 py-12">
       <a href="/market/jobs" class="text-sm text-slate-500 hover:text-slate-300">← jobs board</a>
       <div class="mt-4 flex items-start justify-between gap-3">
-        <h1 class="text-2xl font-bold">${esc(job.title)}</h1>
+        <h1 class="text-2xl font-bold">${job.title}</h1>
         ${raw(jobStatusBadge(job.status))}
       </div>
-      ${job.private ? `<span class="mt-2 inline-block text-[10px] uppercase tracking-wide text-amber-300/90 border border-amber-400/30 rounded px-1.5 py-0.5" title="Private venue job — details hidden">private venue job</span>` : ""}
-      <p class="mt-4 whitespace-pre-wrap text-slate-300">${esc(job.description)}</p>
+      ${job.private ? raw(`<span class="mt-2 inline-block text-[10px] uppercase tracking-wide text-amber-300/90 border border-amber-400/30 rounded px-1.5 py-0.5" title="Private venue job — details hidden">private venue job</span>`) : ""}
+      <p class="mt-4 whitespace-pre-wrap text-slate-300">${job.description}</p>
       ${priv ? html`<div class="${CARD} mt-4 border-amber-400/30">
-          <h2 class="text-sm font-semibold text-amber-200">Private details · members only</h2><p class="mt-2 whitespace-pre-wrap text-sm text-slate-300">${esc(priv.descriptionFull)}</p>
-          ${priv.terms ? html`<p class="mt-2 text-sm text-slate-400"><span class="text-slate-500">Terms:</span> ${esc(priv.terms)}</p>` : ""}
-          ${priv.deliverableUri ? html`<p class="mt-2 text-sm"><a class="text-sky-400 hover:underline" target="_blank" rel="noopener" href="${esc(priv.deliverableUri)}">deliverable ⧉</a></p>` : ""}
-          ${priv.deliverableData ? html`<details class="mt-2"><summary class="text-sm text-slate-400 cursor-pointer">Deliverable data</summary><pre class="mt-2 whitespace-pre-wrap break-words text-xs text-slate-300">${esc(priv.deliverableData)}</pre></details>` : ""}
+          <h2 class="text-sm font-semibold text-amber-200">Private details · members only</h2><p class="mt-2 whitespace-pre-wrap text-sm text-slate-300">${priv.descriptionFull}</p>
+          ${priv.terms ? html`<p class="mt-2 text-sm text-slate-400"><span class="text-slate-500">Terms:</span> ${priv.terms}</p>` : ""}
+          ${priv.deliverableUri ? html`<p class="mt-2 text-sm"><a class="text-sky-400 hover:underline" target="_blank" rel="noopener" href="${priv.deliverableUri}">deliverable ⧉</a></p>` : ""}
+          ${priv.deliverableData ? html`<details class="mt-2"><summary class="text-sm text-slate-400 cursor-pointer">Deliverable data</summary><pre class="mt-2 whitespace-pre-wrap break-words text-xs text-slate-300">${priv.deliverableData}</pre></details>` : ""}
         </div>` : job.private ? html`<div class="${CARD} mt-4 border-amber-400/20"><p class="text-sm text-amber-200/80">Private venue job — details hidden for non-members.</p></div>` : ""}
       <div class="${CARD} mt-8">
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div><span class="text-slate-500">Budget</span><div class="text-emerald-400 font-semibold">$${job.budgetUsdc} USDC</div></div>
-          <div><span class="text-slate-500">Category</span><div>${esc(job.category ?? "—")}</div></div>
+          <div><span class="text-slate-500">Category</span><div>${job.category ?? "—"}</div></div>
           <div><span class="text-slate-500">Client</span><div class="font-mono"><a class="text-sky-400 hover:underline" target="_blank" href="${net.explorerAddr(job.client)}">${shortAddr(job.client)}</a></div></div>
-          <div><span class="text-slate-500">Provider</span><div class="font-mono">${job.provider ? `<a class="text-sky-400 hover:underline" target="_blank" href="${net.explorerAddr(job.provider)}">${shortAddr(job.provider)}</a>` : "open — any agent"}</div></div>
+          <div><span class="text-slate-500">Provider</span><div class="font-mono">${job.provider ? raw(`<a class="text-sky-400 hover:underline" target="_blank" href="${net.explorerAddr(job.provider)}">${shortAddr(job.provider)}</a>`) : "open — any agent"}</div></div>
           <div><span class="text-slate-500">Evaluator</span><div class="font-mono">${shortAddr(job.evaluator)}</div></div>
           <div><span class="text-slate-500">Onchain job</span><div class="font-mono">${job.onchainJobId ?? "pending"}</div></div>
         </div>
@@ -284,12 +284,12 @@ export function venueJobDetailPage(
         <h2 class="text-sm font-semibold text-slate-300">Lifecycle</h2>
         <ul class="mt-2">
           ${raw((["created", "funded", "submitted", "completed", "rated"] as const)
-            .map((p) => phase(p, job.chainTxs[p])).join(""))}
+    .map((p) => phase(p, job.chainTxs[p])).join(""))}
         </ul>
-        ${job.verdict ? html`<p class="mt-3 text-sm text-slate-300"><span class="text-slate-500">Evaluator verdict:</span> ${esc(job.verdict)}</p>` : ""}
+        ${job.verdict ? html`<p class="mt-3 text-sm text-slate-300"><span class="text-slate-500">Evaluator verdict:</span> ${job.verdict}</p>` : ""}
       </div>
       ${raw(venueRateCard(job, net))}
-      <p class="mt-6 text-xs text-slate-500">Created ${esc(job.createdAt.slice(0, 19).replace("T", " "))} · record <code>${esc(job.jobId)}</code></p>
+      <p class="mt-6 text-xs text-slate-500">Created ${job.createdAt.slice(0, 19).replace("T", " ")} · record <code>${job.jobId}</code></p>
     </main>`;
   const meta: PageMeta = {
     title: `${job.title} — Venue Job`,

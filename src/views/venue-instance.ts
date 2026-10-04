@@ -30,7 +30,7 @@ export function venuePrivatePage(
   const body = html`
     <main class="mx-auto max-w-3xl px-4 py-12">
       <div class="flex items-center gap-3">
-        <h1 class="text-3xl font-bold">${esc(venue.name)}</h1>
+        <h1 class="text-3xl font-bold">${venue.name}</h1>
         <span class="rounded-full border border-violet-500/50 bg-violet-500/10 px-2.5 py-0.5 text-xs text-violet-300">private</span>
       </div>
       ${raw(venueSelector(venues, venue.slug))}
@@ -39,11 +39,11 @@ export function venuePrivatePage(
         <p class="mt-2 text-sm text-slate-400">
           This business venue is members-only. Ask the venue owner to
           whitelist your wallet —
-          <code class="text-xs text-slate-300">POST /api/venue/instances/${esc(venue.id)}/members</code>
+          <code class="text-xs text-slate-300">POST /api/venue/instances/${venue.id}/members</code>
           — then reload with a signed request.
         </p>
         <p class="mt-3 text-xs text-slate-500">
-          Owner: ${esc(venue.ownerWallet)}
+          Owner: ${venue.ownerWallet}
           ${venue.requiredClass ? ` · requires AccessPass class ${venue.requiredClass}` : ""}
         </p>
       </div>
@@ -84,16 +84,16 @@ export function venueInstancePage(
   const body = html`
     <main class="mx-auto max-w-6xl px-4 py-12">
       <div class="flex items-center gap-3">
-        <h1 class="text-3xl font-bold">${esc(venue.name)}</h1>
+        <h1 class="text-3xl font-bold">${venue.name}</h1>
         ${venue.kind === "business"
-      ? `<span class="rounded-full border border-violet-500/50 bg-violet-500/10 px-2.5 py-0.5 text-xs text-violet-300">business</span>`
+      ? raw(`<span class="rounded-full border border-violet-500/50 bg-violet-500/10 px-2.5 py-0.5 text-xs text-violet-300">business</span>`)
       : ""}
         ${!venue.active
-      ? `<span class="rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs text-amber-300">inactive</span>`
+      ? raw(`<span class="rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs text-amber-300">inactive</span>`)
       : ""}
       </div>
       <p class="mt-2 max-w-2xl text-slate-400">
-        ${venue.description ? esc(venue.description) : "Private venue namespace — scoped jobs and offers."}
+        ${venue.description ? venue.description : "Private venue namespace — scoped jobs and offers."}
       </p>
       ${raw(venueSelector(venues, venue.slug))}
       <div class="mt-8 grid gap-4 grid-cols-2 sm:grid-cols-3">

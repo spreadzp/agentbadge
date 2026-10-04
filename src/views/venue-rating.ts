@@ -10,7 +10,7 @@
 import { html, raw } from "hono/html";
 import type { VenueJob } from "../server/lib/venue/store";
 import type { VenueNetwork } from "../server/lib/venue/chain";
-import { CARD, esc, WALLET_JS } from "./venue-ui";
+import { CARD, WALLET_JS } from "./venue-ui";
 
 const RATE_SCRIPT = `
 (function () {
@@ -72,23 +72,23 @@ export function venueRateCard(job: VenueJob, net: VenueNetwork): string {
       "☆".repeat(5 - job.rating.score);
     return String(html`<div class="${CARD} mt-4" id="rate-card">
       <h2 class="text-sm font-semibold text-slate-300">Client rating</h2>
-      <p class="mt-2 text-lg text-amber-300">${esc(stars)}
+      <p class="mt-2 text-lg text-amber-300">${stars}
         <span class="ml-2 text-sm text-slate-400">${job.rating.score}/5 rated ✓</span></p>
       ${job.rating.comment
-        ? html`<p class="mt-1 text-sm text-slate-300">“${esc(job.rating.comment)}”</p>` : ""}
+        ? html`<p class="mt-1 text-sm text-slate-300">“${job.rating.comment}”</p>` : ""}
       ${job.rating.txHash
         ? html`<a class="mt-2 inline-block text-xs text-sky-400 hover:underline"
-            href="${esc(net.explorerTx(job.rating.txHash))}" target="_blank" rel="noopener">giveFeedback tx ⧉</a>` : ""}
+            href="${net.explorerTx(job.rating.txHash)}" target="_blank" rel="noopener">giveFeedback tx ⧉</a>` : ""}
     </div>`);
   }
   return String(html`<div class="${CARD} mt-4" id="rate-card"
-    data-client="${esc(job.client)}" data-job="${esc(job.jobId)}">
+    data-client="${job.client}" data-job="${job.jobId}">
     <h2 class="text-sm font-semibold text-slate-300">Rate this provider</h2>
     <p class="mt-1 text-xs text-slate-500">Subjective 1–5 score — written to ERC-8004 from your client wallet.</p>
     <div class="mt-3 flex items-center gap-1" id="rate-stars">
       ${raw([1, 2, 3, 4, 5].map((i) =>
-        `<button type="button" data-star="${i}" class="rate-star text-2xl text-slate-600 hover:text-amber-300">★</button>`,
-      ).join(""))}
+    `<button type="button" data-star="${i}" class="rate-star text-2xl text-slate-600 hover:text-amber-300">★</button>`,
+  ).join(""))}
     </div>
     <textarea id="rate-comment" rows="2" maxlength="500" placeholder="Comment (optional)"
       class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:outline-none"></textarea>
@@ -98,7 +98,7 @@ export function venueRateCard(job: VenueJob, net: VenueNetwork): string {
     </div>
   </div>
   <script>${raw(WALLET_JS)}
-    var CHAIN_ID_HEX = "${esc(chainIdHex)}";
+    var CHAIN_ID_HEX = "${chainIdHex}";
     ${raw(RATE_SCRIPT)}
   </script>`);
 }
