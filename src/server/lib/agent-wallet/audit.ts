@@ -13,6 +13,7 @@ import type { SpendLedger, SpendEntry } from "./ledger";
 
 export type SpendAlertType =
   | "spend.cap_denied"
+  | "spend.velocity_denied"
   | "spend.failed"
   | "spend.release_late"
   | "wallet.low_balance";

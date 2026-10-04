@@ -89,26 +89,16 @@ export function newSpendId(): string {
 
 /* ------------------------------- windows ---------------------------------- */
 
-export const WINDOW_SEC = { daily: 86_400, weekly: 604_800, monthly: 2_592_000 } as const;
+export const WINDOW_SEC = {
+  hourly: 3_600,
+  daily: 86_400,
+  weekly: 604_800,
+  monthly: 2_592_000,
+} as const;
 
-/** Sum of reserved+settled amounts for wallet within `windowSec` (rolling). */
-export async function windowUsage(
-  ledger: SpendLedger,
-  wallet: string,
-  windowSec: number,
-  now = Date.now(),
-): Promise<{ used: number; oldestAt?: number }> {
-  const cutoff = now - windowSec * 1000;
-  let used = 0;
-  let oldestAt: number | undefined;
-  for (const e of await ledger.listByWallet(wallet)) {
-    if (e.state !== "reserved" && e.state !== "settled") continue;
-    if (e.at < cutoff) continue;
-    used += e.amountUsd;
-    if (oldestAt === undefined || e.at < oldestAt) oldestAt = e.at;
-  }
-  return { used, ...(oldestAt !== undefined ? { oldestAt } : {}) };
-}
+// SLICE-176-2: window metrics moved to ./window (300-line guard) —
+// re-exported so ledger.ts stays the single import surface.
+export { windowUsage, windowCount } from "./window";
 
 /* ---------------------------------- JSON ---------------------------------- */
 

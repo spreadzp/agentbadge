@@ -25,6 +25,7 @@ import { ErrorCodes } from "../error-codes";
 import type { AgentWalletStore, SpendCaps } from "./registry";
 import { newSpendId, type SpendEntry, type SpendKind, type SpendLedger } from "./ledger";
 import { reserve } from "./envelope";
+import { emitSpendDeny } from "./deny";
 import { emitSpendAlert } from "./audit";
 
 /* ------------------------------ wallet resolve ---------------------------- */
@@ -138,44 +139,17 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         rec.venueId,
       );
       if (!r.ok) {
-        // SLICE-155-11: durable denied entry — denialReason in the ledger,
-        // not just the alert store; write fails → request fails (fail-closed).
-        await deps.ledger.insert({
-          id: newSpendId(),
+        // SLICE-176-2: deny side-effects (durable entry + alert + body)
+        // live in deny.ts — one place for every envelope deny.
+        const body = await emitSpendDeny(deps.ledger, r.deny, {
           wallet: wallet as `0x${string}`,
+          address: rec.address,
+          ...(rec.venueId ? { venueId: rec.venueId } : {}),
           amountUsd,
           kind,
           refId,
-          state: "denied",
-          denialReason: r.deny.cap,
-          at: Date.now(),
-          ...(rec.venueId ? { venueId: rec.venueId } : {}),
         });
-        // SLICE-155-6: cap_denied alert — venue sees every denied pay.
-        emitSpendAlert(
-          "spend.cap_denied",
-          rec.address,
-          {
-            cap: r.deny.cap,
-            used: r.deny.used,
-            limit: r.deny.limit,
-            resetAt: r.deny.resetAt,
-            amountUsd,
-            kind,
-            refId,
-          },
-          rec.venueId,
-        );
-        return c.json(
-          {
-            error: "spend_cap",
-            cap: r.deny.cap,
-            used: r.deny.used,
-            limit: r.deny.limit,
-            resetAt: r.deny.resetAt,
-          },
-          402,
-        );
+        return c.json(body, 402);
       }
       return { wallet: wallet as `0x${string}`, entry: r.entry };
     },

@@ -8,13 +8,13 @@
 import type { SpendCaps } from "./registry";
 import {
   newSpendId,
-  windowUsage,
   WINDOW_SEC,
   type SpendEntry,
   type SpendKind,
   type SpendLedger,
   SPEND_KINDS,
 } from "./ledger";
+import { windowUsage, windowCount } from "./window";
 
 /* ------------------------------ caps validate ----------------------------- */
 
@@ -93,7 +93,14 @@ export function validateCaps(raw: unknown): SpendCaps {
 /* ------------------------------ check/reserve ----------------------------- */
 
 export interface EnvelopeDeny {
-  cap: "perTx" | "daily" | "weekly" | "monthly";
+  cap:
+    | "perTx"
+    | "velocity_tx"
+    | "velocity_amount"
+    | "daily"
+    | "weekly"
+    | "monthly";
+  /** Current usage — USD for amount caps, entry count for velocity_tx. */
   used: number;
   limit: number;
   /** Epoch seconds when cap space starts freeing (rolling window). */
@@ -124,8 +131,41 @@ export async function checkEnvelope(
       },
     };
   }
+  // SLICE-176-2: hourly velocity caps — cheap count-check first, then
+  // amount. One windowCount scan feeds both. Boundary is exclusive.
+  if (caps.maxTxPerHour !== undefined || caps.maxAmountPerHour !== undefined) {
+    const { count, used, oldestAt } = await windowCount(
+      ledger,
+      wallet,
+      WINDOW_SEC.hourly,
+      now,
+    );
+    const resetAt = oldestAt
+      ? Math.floor((oldestAt + WINDOW_SEC.hourly * 1000) / 1000)
+      : Math.floor(now / 1000) + WINDOW_SEC.hourly;
+    if (caps.maxTxPerHour !== undefined && count + 1 > caps.maxTxPerHour) {
+      return {
+        allow: false,
+        deny: { cap: "velocity_tx", used: count, limit: caps.maxTxPerHour, resetAt },
+      };
+    }
+    if (
+      caps.maxAmountPerHour !== undefined &&
+      round6(used + amountUsd) > caps.maxAmountPerHour
+    ) {
+      return {
+        allow: false,
+        deny: {
+          cap: "velocity_amount",
+          used: round6(used),
+          limit: caps.maxAmountPerHour,
+          resetAt,
+        },
+      };
+    }
+  }
   const windows: Array<
-    [Exclude<EnvelopeDeny["cap"], "perTx">, number | undefined, number]
+    ["daily" | "weekly" | "monthly", number | undefined, number]
   > = [
       ["daily", caps.dailyUsd, WINDOW_SEC.daily],
       ["weekly", caps.weeklyUsd, WINDOW_SEC.weekly],
