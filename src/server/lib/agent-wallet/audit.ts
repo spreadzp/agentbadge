@@ -16,6 +16,8 @@ export type SpendAlertType =
   | "spend.velocity_denied"
   | "spend.kind_denied"
   | "wallet.suspended_deny"
+  | "wallet.suspended"
+  | "wallet.resumed"
   | "spend.failed"
   | "spend.release_late"
   | "wallet.low_balance";

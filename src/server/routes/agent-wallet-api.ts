@@ -3,6 +3,8 @@
 //  verifier) | GET /api/wallets/:addr (record + CLI balance mirror) |
 //  GET /api/venue/instances/:id/wallets (viewer+) | DELETE (registrant
 //  or venue admin). Non-custodial: addresses + metadata only.
+// SLICE-176-5: POST /:addr/suspend + /:addr/resume — owner kill-switch,
+//  same auth as DELETE (registrant or venue admin), idempotent.
 
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
@@ -32,10 +34,10 @@ export interface AgentWalletRoutesDeps {
   rateRpm: number;
 }
 
-const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+export const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
-/** Wallet-sig check shared by POST/DELETE; returns caller wallet or null. */
-async function sigWallet(c: Context): Promise<string | null> {
+/** Wallet-sig check shared by POST/DELETE/suspend; returns caller wallet or null. */
+export async function sigWallet(c: Context): Promise<string | null> {
   const wallet = c.req.header("x-wallet");
   const sig = await verifyWalletSigRequest({
     wallet,
@@ -45,6 +47,26 @@ async function sigWallet(c: Context): Promise<string | null> {
     path: c.req.path,
   });
   return sig === "valid" && wallet ? wallet.toLowerCase() : null;
+}
+
+/** Owner check shared by DELETE + suspend/resume: registrant or venue
+ *  admin/owner of the wallet's venue scope. Returns Response(403) on deny. */
+export async function ownerGate(
+  c: Context,
+  rec: AgentWalletRecord,
+  caller: string,
+): Promise<Response | null> {
+  const isRegistrant = caller === rec.registeredBy;
+  let isVenueAdmin = false;
+  if (!isRegistrant && rec.venueId) {
+    const access = await requireVenueAccess(c, rec.venueId, "admin");
+    isVenueAdmin = !(access instanceof Response);
+  }
+  if (!isRegistrant && !isVenueAdmin) {
+    return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
+      "only registrant or venue admin can control this wallet");
+  }
+  return null;
 }
 
 export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
@@ -236,19 +258,8 @@ export function createAgentWalletRoutes(deps: AgentWalletRoutesDeps): Hono {
         return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
           "valid X-Wallet/X-Sig/X-Timestamp required");
       }
-
-      // Allowed: registrant themselves, or venue admin/owner of the
-      // wallet's venue scope.
-      const isRegistrant = caller === rec.registeredBy;
-      let isVenueAdmin = false;
-      if (!isRegistrant && rec.venueId) {
-        const access = await requireVenueAccess(c, rec.venueId, "admin");
-        isVenueAdmin = !(access instanceof Response);
-      }
-      if (!isRegistrant && !isVenueAdmin) {
-        return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
-          "only registrant or venue admin can deactivate");
-      }
+      const authErr = await ownerGate(c, rec, caller);
+      if (authErr) return authErr;
 
       await deps.store.deactivate(rec.address);
       logger.info("agent-wallet: deactivated", {

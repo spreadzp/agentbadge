@@ -30,6 +30,7 @@ import {
   spendEnvelopeGate,
 } from "../lib/agent-wallet/enforcer";
 import { createAgentWalletRoutes } from "../routes/agent-wallet-api";
+import { createAgentWalletKillswitchRoutes } from "../routes/agent-wallet-killswitch-api";
 import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet-envelope-api";
 import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet-limits-api";
 import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet-balance-api";
@@ -120,6 +121,11 @@ export function wireAgentWallet(app: Hono): void {
       chain: cfg.chain,
       rateRpm: 60,
     }),
+  );
+  // SLICE-176-5: owner kill-switch surface
+  app.route(
+    "/",
+    createAgentWalletKillswitchRoutes({ store, ledger }),
   );
   app.route("/", createAgentWalletEnvelopeRoutes({ store, ledger }));
   app.route(
