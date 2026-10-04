@@ -4,6 +4,41 @@ All notable changes to AgentBadge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] — 2026-10-04
+
+### Added — Legacy x402 Consolidation (EPIC-157)
+
+- **`@agentbadge/circle-payments` as the single facilitator boundary** — scan-packs, marketplace, and keeperhub paid routes migrated onto `requirePayment`; per-rail `payTo` overrides (`RailPayTo`) for gateway / exact / arcSelfSettle rails
+- **Contract test** `tests/payment-stack-contract.test.ts` — fails if legacy facilitator symbols (`HTTPFacilitatorClient`, `x402ResourceServer`, `paymentMiddleware`, `@x402/hono` adapter) appear outside the allowlist (`lib/circle-payments.ts` + `wiring/payments.ts` Hedera gate per D1-157)
+- **`docs/PAYMENTS/x402-consolidation.md`** — route table, migration recipe, env-var taxonomy (live `CIRCLE_*` / legacy `X402_*` / retired `BASE_*`)
+
+### Removed — EPIC-157
+
+- **`middleware/x402-base.ts`** + call site + test — Base Sepolia x402 gate on `POST /passport/request` retired (operator decision: Arc-only); `BASE_TREASURY` / `X402_BASE_PRICE` no longer consumed (`BASE_USDC_ADDRESS` stays for `CHAIN_MODE=base` chain config — separate subsystem)
+
+### Added — accumulated since 0.15.0 (EPIC-136/141/143–145/150–152/155)
+
+- **Agent Wallet (EPIC-155)** — Postgres SpendLedger backend (`@agentbadge/database` 0.3.0), spend limits and audit trail for agent-owned wallets
+- **Public Venue marketplace (EPIC-152)** — offers catalog, jobs lifecycle (claim/fund/submit/evaluate/reject/refund), ERC-8004 reputation loop, take-rate + eval-fee economics, event indexer with Prisma backend, `/market` hub UI, provider profiles
+- **Arc Mainnet (EPIC-151)** — mainnet attestation wiring, `ARC_MAINNET_*` env, Arc x402 settlement for bstock freemium, chain badge UI
+- **bStock trading signals (EPIC-141)** — DeltaEngine on live Binance tokenized-asset feeds, `/mcp/bstock` namespace, freemium 402 + x402 + ServicePass, Telegram bot (pull model + batched digests), `/bstock-guide`, 7-article campaign
+- **Persistence (EPIC-143/145)** — `DATABASE_ENABLED` gate with in-memory fallback, ScanResult / ChatRegistry / AuditStore write-through to Postgres, cache tail (nonce, mirror keys)
+- **Cache layer (EPIC-144)** — `@agentbadge/cache` provider, CacheRateLimitStore, BadgeCache + SnapshotCache L2 with per-resource TTL and domain-tag invalidation, `CACHE_*` env, `/health` cache probe
+- **x402 production readiness (EPIC-136)** — https resource URL, `declareDiscoveryExtension`, OpenAPI 402 schema, Bazaar reference setup (`withBazaar`), weekly keep-alive cron + Better Stack heartbeat
+- **MCP (EPIC-150)** — circle tools imported from `@agentbadge/mcp` 0.3.x
+- **Agent readiness (EPIC-146)** — GEO citability rules AB-183..187 ported to server scanner (156 rules, v1.6.0), Marketing OS attribution
+
+### Changed
+
+- Payment middleware casts `as never` → `as MiddlewareHandler` in wiring files (Hono overload TS2769 workaround retained)
+- `did-auth.ts` split (470-line module refactored, env docs)
+- Deps moved from `file:` to published npm versions across `@agentbadge/*` packages
+
+### Backward Compatibility
+
+- Hedera gate + L402 + MPP payment rails untouched; route registration order preserved (decisions.md D10)
+- `CHAIN_MODE=base` chain stack (base-event-indexer, chain-config) unaffected — payment gate removal only
+
 ## [0.15.0] — 2026-09-22
 
 ### Added — Architecture Awareness Layer (EPIC-142)
