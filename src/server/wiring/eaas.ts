@@ -15,33 +15,19 @@ import { arcChainFor } from "../lib/marketplace/chain";
 import { createVerdictSigner } from "../lib/eaas/verdict";
 import { getVerdictStore } from "../lib/eaas/store";
 import { getDatabase } from "../lib/database";
-import { createDbAnchorStore } from "../lib/eaas/anchor-db";
-import { createDbRequestStore } from "../lib/eaas/requests-db";
-import { createDbSubscriptionStore } from "../lib/eaas/subscription-db";
-import { createDbContractStore } from "../lib/eaas/contracts-db";
-import { createDbEvalStore } from "../lib/eaas/eval-store-db";
+import { pickAnchorStore, pickContractStore, pickEvalStore, pickRequestStore, pickSubscriptionStore } from "../lib/eaas/db-stores";
 import { POLICY_REGISTRY } from "../lib/eaas/policies";
-import {
-  createContractRegistry,
-  createJsonContractStore,
-} from "../lib/eaas/contracts";
-import { createJsonEvalStore } from "../lib/eaas/eval";
-import {
-  createAnchorer,
-  createJsonAnchorStore,
-} from "../lib/eaas/anchor";
+import { createContractRegistry } from "../lib/eaas/contracts";
+import { createAnchorer, createJsonAnchorStore } from "../lib/eaas/anchor";
 import { createEaasRoutes } from "../routes/eaas-api";
 import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../routes/eaas-billing-api";
 import { createEaasFeedsRoutes } from "../routes/eaas-feeds-api";
-import { createJsonRequestStore, type EaasAsyncDeps } from "../lib/eaas/requests";
+import type { EaasAsyncDeps } from "../lib/eaas/requests";
 import { createEaasMetrics } from "../lib/eaas/metrics";
 import { checkAccess } from "../middleware/agent-auth";
 import { resolveAccessPassMinter } from "../lib/access-pass-minter";
-import {
-  createJsonSubscriptionStore,
-  type EaasQuotaDeps,
-} from "../lib/eaas/subscription";
+import type { EaasQuotaDeps } from "../lib/eaas/subscription";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 
@@ -59,6 +45,7 @@ export function wireEaas(
   deps: { circleRuntime?: CirclePaymentsRuntime },
 ): void {
   const cfg = getConfig().eaas;
+  const db = getDatabase();
   if (!cfg?.enabled) return;
 
   // bstock section optional — verdict chainId follows ARC network, default testnet.
@@ -94,7 +81,7 @@ export function wireEaas(
   let anchorer: ReturnType<typeof createAnchorer> | undefined;
   let anchorStore: ReturnType<typeof createJsonAnchorStore> | undefined;
   if (cfg.memoAnchor && wallet && account) {
-    anchorStore = createJsonAnchorStore(".data/eaas-anchors.json");
+    anchorStore = pickAnchorStore(db);
     anchorer = createAnchorer({
       store: anchorStore,
       verdicts: store,
@@ -144,9 +131,7 @@ export function wireEaas(
   };
 
   // ─── SLICE-154-5: billing tiers — CLASS_EAAS pass + quota store ─
-  const subStore =
-    createDbSubscriptionStore(getDatabase().eaasSubscriptions) ??
-    createJsonSubscriptionStore();
+  const subStore = pickSubscriptionStore(db);
   const quota: EaasQuotaDeps = {
     store: subStore,
     tiers: cfg.tierQuotas,
@@ -154,9 +139,7 @@ export function wireEaas(
   };
 
   // ─── SLICE-154-6: async delivery + feeds ───────────────────────
-  const requestStore =
-    createDbRequestStore(getDatabase().eaasRequests) ??
-    createJsonRequestStore();
+  const requestStore = pickRequestStore(db);
   const metrics = createEaasMetrics();
   const asyncDeps: EaasAsyncDeps = {
     store: requestStore,
@@ -210,15 +193,11 @@ export function wireEaas(
   } else {
 
     const contracts = createContractRegistry({
-      store:
-        createDbContractStore(getDatabase().eaasContracts) ??
-        createJsonContractStore(".data/eaas-contracts.json"),
+      store: pickContractStore(db),
       read: read as never,
       chainId,
     });
-    const evalStore =
-      createDbEvalStore(getDatabase().eaasEvalJobs) ??
-      createJsonEvalStore(".data/eaas-eval-jobs.json");
+    const evalStore = pickEvalStore(db);
 
     app.route(
       "/",

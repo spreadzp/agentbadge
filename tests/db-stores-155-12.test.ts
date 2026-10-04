@@ -100,7 +100,7 @@ describe.skipIf(!live)("db stores (live Postgres)", () => {
     await db1.ready();
     const ev: SpendAlertEvent = {
       id: `al_${runId}_1`,
-      type: "stale-reserve",
+      type: "spend.release_late",
       wallet: wallet(),
       venueId: `venue_${runId}`,
       at: Date.now(),
@@ -192,13 +192,13 @@ describe.skipIf(!live)("db stores (live Postgres)", () => {
     };
     mem.put(rec);
     db1.put(rec);
-    mem.patch(rec.verdictId, { status: "confirmed", attempts: 2 });
-    db1.patch(rec.verdictId, { status: "confirmed", attempts: 2 });
+    mem.patch(rec.verdictId, { status: "anchored", attempts: 2 });
+    db1.patch(rec.verdictId, { status: "anchored", attempts: 2 });
     await db1.flush();
     expect(db1.get(rec.verdictId)).toEqual(mem.get(rec.verdictId));
     const db2 = createDbAnchorStore(handle.eaasAnchors)!;
     await db2.ready();
-    expect(db2.get(rec.verdictId)?.status).toBe("confirmed");
+    expect(db2.get(rec.verdictId)?.status).toBe("anchored");
   });
 
   it("request store: put/update/counts parity + restart", async () => {
@@ -283,9 +283,9 @@ describe.skipIf(!live)("db stores (live Postgres)", () => {
       contract: wallet(),
       chainId: 5042002,
       jobId: `job_${runId}`,
-      verdict: "approve",
+      verdict: { verdict: "approve" },
       verdictId: hex("f1"),
-    } as EvalJobRecord;
+    } as unknown as EvalJobRecord;
     mem.put(rec);
     db1.put(rec);
     await db1.flush();
