@@ -1,6 +1,14 @@
 app = "agent-passport-hedera"
 primary_region = "ams"
 
+# Non-secret feature flags (secrets override [env] on conflict — see
+# scripts/set-fly-secrets.sh). SLICE-155-13: agent wallet on prod;
+# DATABASE_ENABLED/DATABASE_URL already live as secrets.
+[env]
+  AGENT_WALLET_ENABLED = "true"
+  AGENT_WALLET_CHAIN = "ARC"
+  AGENT_WALLET_LEDGER_STORE = "db"
+
 [http_service]
   internal_port = 4021
   force_https = true
