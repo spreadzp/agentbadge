@@ -186,6 +186,6 @@ export function agentCardAuthBlock(baseUrl: string) {
     canonical_format: CANONICAL_LINES.join("\n"),
     timestamp_window_seconds: 300,
     key_types: ["ED25519", "ECDSA_secp256k1"],
-    spec: "https://agentbadge.gitbook.io/agentbadge-docs/did-auth",
+    spec: "https://agentbadge.gitbook.io/agentbadge-docs/api-reference",
   };
 }
