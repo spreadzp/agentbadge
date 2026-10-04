@@ -1,0 +1,53 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+AI Agent / LLM Client: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Interfaces: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  "MCP (80+ tools, 6 namespaces)": {shape: text; style.font-size: 12}
+  "REST API (x402-gated)": {shape: text; style.font-size: 12}
+  "Web UI / CLI": {shape: text; style.font-size: 12}
+}
+
+Server: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "Hono on Bun :4021": {shape: text; style.font-size: 12}
+  "middleware -> routes -> services": {shape: text; style.font-size: 12}
+  "feature gates (env)": {shape: text; style.font-size: 12}
+}
+
+Rails: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "Hedera: HTS passports + HCS audit": {shape: text; style.font-size: 12}
+  "Arc: ERC-8004 + USDC + x402": {shape: text; style.font-size: 12}
+}
+
+State: {
+  shape: cylinder
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  "Postgres (Prisma)": {shape: text; style.font-size: 12}
+  "cache (Valkey) / in-memory": {shape: text; style.font-size: 12}
+  "IPFS (passport metadata)": {shape: text; style.font-size: 12}
+}
+
+AI Agent / LLM Client -> Interfaces
+Interfaces -> Server
+Server -> Rails
+Server -> State

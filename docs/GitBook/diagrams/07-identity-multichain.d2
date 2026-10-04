@@ -1,0 +1,53 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+Agent identity: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Hedera rail: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "HTS NFT passport": {shape: text; style.font-size: 12}
+  "did:hcs:{tokenId}:{serial}": {shape: text; style.font-size: 12}
+  "HCS audit topic": {shape: text; style.font-size: 12}
+}
+
+Arc rail: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "AgentPassportNFT (ERC)": {shape: text; style.font-size: 12}
+  "ERC-8004 registry": {shape: text; style.font-size: 12}
+  "USDC x402 issuance": {shape: text; style.font-size: 12}
+}
+
+IPFS: {
+  shape: cylinder
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  "metadata JSON (tier, caps, DID)": {shape: text; style.font-size: 12}
+}
+
+Verification: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  "Mirror Node (Hedera) / RPC (Arc)": {shape: text; style.font-size: 12}
+  "exists + owner + not revoked": {shape: text; style.font-size: 12}
+}
+
+Agent identity -> Hedera rail: "x402 HBAR"
+Agent identity -> Arc rail: "x402 USDC"
+Hedera rail -> IPFS: "metadata CID"
+Arc rail -> IPFS: "metadata CID"
+Hedera rail -> Verification
+Arc rail -> Verification

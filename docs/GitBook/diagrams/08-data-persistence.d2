@@ -1,0 +1,49 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+Domain data: {
+  shape: rectangle
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+  "venue / wallets / EaaS / spend ledger": {shape: text; style.font-size: 12}
+}
+
+Tier 1 in-memory: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  "default — zero deps, ephemeral": {shape: text; style.font-size: 12}
+}
+
+Tier 2 cache: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "CACHE_ENABLED -> Valkey/Upstash": {shape: text; style.font-size: 12}
+  "rate limits, nonces, hot reads": {shape: text; style.font-size: 12}
+}
+
+Tier 3 Postgres: {
+  shape: cylinder
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "DATABASE_ENABLED -> Prisma": {shape: text; style.font-size: 12}
+  "survives deploys": {shape: text; style.font-size: 12}
+}
+
+Chain + IPFS: {
+  shape: cylinder
+  style.fill: "#E3F2FD"
+  style.stroke: "#1976D2"
+  "public + immutable: HTS/HCS/ERC/memo/IPFS": {shape: text; style.font-size: 12}
+}
+
+Domain data -> Tier 1 in-memory: "flags off (dev)"
+Domain data -> Tier 2 cache
+Domain data -> Tier 3 Postgres: "flags on (prod)"
+Domain data -> Chain + IPFS: "what must be public"

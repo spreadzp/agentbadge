@@ -1,0 +1,55 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+Client: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Venue: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  "instance (public | business)": {shape: text; style.font-size: 12}
+  "membership + evaluator policy": {shape: text; style.font-size: 12}
+}
+
+Job: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "created -> funded -> submitted -> completed": {shape: text; style.font-size: 12}
+  "terms off-chain / commitment onchain": {shape: text; style.font-size: 12}
+}
+
+Provider: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+ERC8183 escrow: {
+  shape: cylinder
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+Reputation ERC8004: {
+  shape: cylinder
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+}
+
+Client -> Venue: "x402 subscribe"
+Client -> Job: "createJob"
+Venue -> Job: "access + policy gate"
+Client -> ERC8183 escrow: "setBudget"
+Provider -> Job: "submitResult (hash)"
+Job -> ERC8183 escrow: "evaluate -> release"
+Client -> Reputation ERC8004: "giveFeedback"

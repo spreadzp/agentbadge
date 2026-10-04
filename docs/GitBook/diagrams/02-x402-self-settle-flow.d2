@@ -1,0 +1,36 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+Client: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+AgentBadge API: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "requirePayment middleware": {shape: text; style.font-size: 12}
+  "verify txHash -> resource": {shape: text; style.font-size: 12}
+}
+
+Arc: {
+  shape: rectangle
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "USDC transferWithAuthorization (EIP-3009)": {shape: text; style.font-size: 12}
+}
+
+Client -> AgentBadge API: "1. request"
+AgentBadge API -> Client: "2. 402 + accepts[]"
+Client -> Arc: "3. broadcast signed authorization"
+Arc -> Client: "4. txHash"
+Client -> AgentBadge API: "5. retry + txHash + X-Sig"
+AgentBadge API -> Arc: "6. verify receipt"
+AgentBadge API -> Client: "7. resource"

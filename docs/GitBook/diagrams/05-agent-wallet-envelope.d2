@@ -1,0 +1,57 @@
+vars: {
+  d2-config: {
+    sketch: true
+  }
+}
+
+direction: right
+
+Agent: {
+  shape: person
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+
+Envelope: {
+  shape: rectangle
+  style.fill: "#FFF3E0"
+  style.stroke: "#FF9800"
+  "perTx / daily / weekly / monthly": {shape: text; style.font-size: 12}
+  "under cap -> reserve -> settle | release": {shape: text; style.font-size: 12}
+  "over cap -> 402 spend_cap (no tx)": {shape: text; style.font-size: 12}
+}
+
+Payment rails: {
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#4CAF50"
+  "x402 hooks + EaaS + venue": {shape: text; style.font-size: 12}
+}
+
+Spend ledger: {
+  shape: cylinder
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  "reserved / settled / released": {shape: text; style.font-size: 12}
+}
+
+Audit feed: {
+  shape: rectangle
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  "cap_denied / failed / release_late / low_balance": {shape: text; style.font-size: 12}
+}
+
+Circle SCA wallet: {
+  shape: cylinder
+  style.fill: "#E3F2FD"
+  style.stroke: "#1976D2"
+  "hard wall (mainnet policy)": {shape: text; style.font-size: 12}
+}
+
+Agent -> Envelope: "payment request"
+Envelope -> Agent: "deny -> 402 spend_cap"
+Envelope -> Payment rails: "settle"
+Payment rails -> Spend ledger
+Payment rails -> Audit feed
+Payment rails -> Circle SCA wallet: "tx (Circle limit also applies)"
