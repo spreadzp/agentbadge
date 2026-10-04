@@ -21,7 +21,7 @@
  * per packages/database/src/prisma/contract.prisma.
  */
 import { randomUUID } from "node:crypto";
-import { param } from "@prisma/orm-postgres/relational-core/expression";
+import { param } from "@agentbadge/database";
 import { logger } from "@agentbadge/passport";
 
 import { getDatabase } from "../database";
