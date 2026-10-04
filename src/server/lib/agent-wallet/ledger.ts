@@ -38,6 +38,14 @@ type RepoPayload = Parameters<SpendLedgerRepository["append"]>[0]["payload"];
 
 export type SpendKind = "venue-fee" | "subscription" | "eaas" | "x402";
 
+/** Runtime set of valid spend kinds — EPIC-176 allow-list validation. */
+export const SPEND_KINDS: ReadonlySet<SpendKind> = new Set<SpendKind>([
+  "venue-fee",
+  "subscription",
+  "eaas",
+  "x402",
+]);
+
 export type SpendState = "reserved" | "settled" | "released" | "failed" | "denied";
 
 export interface SpendEntry {

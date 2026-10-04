@@ -16,16 +16,30 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isAddress, getAddress } from "viem";
 import type { AgentWalletRepository } from "@agentbadge/database";
+import type { SpendKind } from "./ledger";
 
 /* --------------------------------- types ---------------------------------- */
 
 /** Platform-side spend caps — USD decimals, enforced in 155-2 envelope.
- *  Monotonic invariant: perTx ≤ daily ≤ weekly ≤ monthly. */
+ *  Monotonic invariant: perTx ≤ daily ≤ weekly ≤ monthly.
+ *  EPIC-176 owner controls: `approvalAboveUsd` is a hold threshold (NOT a
+ *  cap — excluded from the monotonic chain), `maxTxPerHour` /
+ *  `maxAmountPerHour` are rolling 3600s velocity limits, `allowedKinds`
+ *  is a spend-kind allow-list (unset = allow-all; empty array is
+ *  rejected by validateCaps). */
 export interface SpendCaps {
   perTxUsd?: number;
   dailyUsd?: number;
   weeklyUsd?: number;
   monthlyUsd?: number;
+  /** Park intents above this USD amount for owner approval (176-7). */
+  approvalAboveUsd?: number;
+  /** Max transactions per rolling hour (176-2). Integer ≥1. */
+  maxTxPerHour?: number;
+  /** Max USD per rolling hour (176-2). */
+  maxAmountPerHour?: number;
+  /** Allow-list of spend kinds (176-3). Unset = allow-all. */
+  allowedKinds?: SpendKind[];
 }
 
 export interface AgentWalletRecord {
@@ -43,6 +57,8 @@ export interface AgentWalletRecord {
   registeredBy: `0x${string}`;
   createdAt: number;
   active: boolean;
+  /** Owner kill-switch (EPIC-176-4) — instant deny for new intents. */
+  suspended?: boolean;
 }
 
 export interface AgentWalletInput {

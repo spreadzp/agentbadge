@@ -15,6 +15,15 @@ export const ErrorCodes = {
   PAYMENT_REQUIRED: "PAYMENT_REQUIRED",
   SESSION_BUDGET_EXCEEDED: "SESSION_BUDGET_EXCEEDED",
 
+  // 402 — agent wallet owner controls (EPIC-176; snake_case wire values
+  // matching the deny-JSON convention, e.g. "spend_cap")
+  APPROVAL_REQUIRED: "approval_required",
+  SPEND_SUSPENDED: "spend_suspended",
+  VELOCITY_TX: "velocity_tx",
+  VELOCITY_AMOUNT: "velocity_amount",
+  KIND_NOT_ALLOWED: "kind_not_allowed",
+  APPROVAL_QUEUE_FULL: "approval_queue_full",
+
   // 403 — passport/identity
   PASSPORT_NOT_FOUND: "PASSPORT_NOT_FOUND",
   PASSPORT_REVOKED: "PASSPORT_REVOKED",
