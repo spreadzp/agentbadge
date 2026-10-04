@@ -64,6 +64,23 @@ export function loadAgentWallet(
 
   const requireRegistered = booleanFlag("AGENT_WALLET_REQUIRE_REGISTERED");
 
+  // SLICE-176-6: approval store backend + pending-queue cap.
+  const rawApprovalStore = (
+    process.env.AGENT_WALLET_APPROVAL_STORE ?? "auto"
+  ).toLowerCase();
+  const approvalStore =
+    rawApprovalStore === "memory" ||
+      rawApprovalStore === "json" ||
+      rawApprovalStore === "sqlite"
+      ? rawApprovalStore
+      : "auto";
+  const maxPendingApprovals = intVar(
+    "AGENT_WALLET_MAX_PENDING_APPROVALS",
+    20,
+    1,
+    errors,
+  );
+
   // SLICE-155-5: low-balance signal.
   const lowUsd = intVar("AGENT_WALLET_LOW_USD", 1, 0, errors);
   const lowWebhookUrl =
@@ -118,6 +135,8 @@ export function loadAgentWallet(
     store,
     ledgerStore,
     requireRegistered,
+    approvalStore,
+    maxPendingApprovals,
     lowUsd,
     staleReserveMin,
     ...(lowWebhookUrl ? { lowWebhookUrl } : {}),

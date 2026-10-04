@@ -25,6 +25,11 @@ import {
 import { getDatabase } from "../lib/database";
 import { createSpendLedger } from "../lib/agent-wallet/ledger";
 import {
+  createApprovalStore,
+  initApprovalStore,
+  startApprovalSweeper,
+} from "../lib/agent-wallet/approvals";
+import {
   createSpendEnforcer,
   initSpendEnforcer,
   spendEnvelopeGate,
@@ -84,6 +89,7 @@ export function wireAgentWallet(app: Hono): void {
   const cfg = getConfig().agentWallet;
   if (!cfg?.enabled) {
     initSpendEnforcer(null);
+    initApprovalStore(null);
     return;
   }
 
@@ -98,7 +104,15 @@ export function wireAgentWallet(app: Hono): void {
         ? createDbAgentWalletStore(db.agentWallets)
         : createJsonAgentWalletStore();
   const ledger = createSpendLedger(cfg.ledgerStore, undefined, db.spendLedger);
-
+  // SLICE-176-6: parked-approval intents — own backend selector +
+  // queue cap; sweeper flips pending→expired + approval.expired alerts.
+  const approvals = createApprovalStore(
+    cfg.approvalStore,
+    undefined,
+    cfg.maxPendingApprovals,
+  );
+  initApprovalStore(approvals);
+  startApprovalSweeper({ store: approvals });
   initSpendEnforcer(
     createSpendEnforcer({
       ledger,

@@ -37,4 +37,10 @@ export interface AgentWalletEnvConfig {
    *  (0x-prefixed). Scope: unified-balance SPEND ONLY — never used for
    *  withdraw/removeFund. Absent ⇒ delegate feature off. */
   delegateKey?: string;
+  /** SLICE-176-6: AGENT_WALLET_APPROVAL_STORE — parked-intent backend
+   *  ("auto" → sqlite→json; db lands with the 176-11 repo). */
+  approvalStore: "auto" | "sqlite" | "json" | "memory";
+  /** SLICE-176-6: AGENT_WALLET_MAX_PENDING_APPROVALS — per-wallet
+   *  pending cap; park() above → approval_queue_full (default 20). */
+  maxPendingApprovals: number;
 }
