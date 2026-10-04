@@ -88,6 +88,10 @@ export function newApprovalId(): string {
   return `ap_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
 }
 
+/** Parked-intent TTL (APPROVAL_TTL_MS, default 1h per D-176-2) —
+ *  silence = denial: overdue pending is not decidable/consumable. */
+export const DEFAULT_APPROVAL_TTL_MS = 3_600_000;
+
 const isOverdue = (a: SpendApproval, now: number) =>
   a.state === "pending" && a.expiresAt <= now;
 

@@ -80,6 +80,8 @@ export function loadAgentWallet(
     1,
     errors,
   );
+  // SLICE-176-7: parked-intent TTL — silence = denial (D-176-2, 1h).
+  const approvalTtlMs = intVar("APPROVAL_TTL_MS", 3_600_000, 1_000, errors);
 
   // SLICE-155-5: low-balance signal.
   const lowUsd = intVar("AGENT_WALLET_LOW_USD", 1, 0, errors);
@@ -137,6 +139,7 @@ export function loadAgentWallet(
     requireRegistered,
     approvalStore,
     maxPendingApprovals,
+    approvalTtlMs,
     lowUsd,
     staleReserveMin,
     ...(lowWebhookUrl ? { lowWebhookUrl } : {}),

@@ -8,6 +8,7 @@
 
 import { newSpendId, type SpendKind, type SpendLedger } from "./ledger";
 import type { EnvelopeDeny } from "./envelope";
+import type { ApprovalStore } from "./approvals";
 import { emitSpendAlert } from "./audit";
 
 export interface SpendDenyCtx {
@@ -141,4 +142,63 @@ export async function emitSuspendedDeny(
     ctx.venueId,
   );
   return { error: "spend_suspended" };
+}
+
+/**
+ * SLICE-176-7: approval hold — платёж выше approvalAboveUsd паркуется
+ * как pending intent вместо reserve; silence = denial (TTL). Леджер
+ * не трогается: pending-заявки НЕ едят кап-пространство (D-176-7).
+ * Throws "approval_queue_full" над per-wallet cap — caller мапит в 402.
+ */
+export async function emitApprovalHold(
+  approvals: ApprovalStore,
+  ctx: SpendDenyCtx,
+  ttlMs: number,
+): Promise<Record<string, unknown>> {
+  const expiresAt = Date.now() + ttlMs;
+  const a = await approvals.park({
+    wallet: ctx.wallet,
+    amountUsd: ctx.amountUsd,
+    kind: ctx.kind,
+    refId: ctx.refId,
+    expiresAt,
+  });
+  emitSpendAlert(
+    "approval.requested",
+    ctx.address,
+    {
+      approvalId: a.id,
+      amountUsd: ctx.amountUsd,
+      kind: ctx.kind,
+      refId: ctx.refId,
+      expiresAt: a.expiresAt,
+    },
+    ctx.venueId,
+  );
+  return {
+    error: "approval_required",
+    action: "owner-approval-required",
+    approvalId: a.id,
+    expiresAt: a.expiresAt,
+    amountUsd: ctx.amountUsd,
+    kind: ctx.kind,
+  };
+}
+
+/** 176-7: hold or queue-full — both land as 402 bodies in deny-JSON
+ *  convention (`error` = wire code); park errors above cap surface
+ *  as `approval_queue_full` instead of a parked intent. */
+export async function tryApprovalHold(
+  approvals: ApprovalStore,
+  ctx: SpendDenyCtx,
+  ttlMs: number,
+): Promise<Record<string, unknown>> {
+  try {
+    return await emitApprovalHold(approvals, ctx, ttlMs);
+  } catch (e) {
+    if (e instanceof Error && e.message === "approval_queue_full") {
+      return { error: "approval_queue_full" };
+    }
+    throw e;
+  }
 }

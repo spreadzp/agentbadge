@@ -94,12 +94,12 @@ export function validateCaps(raw: unknown): SpendCaps {
 
 export interface EnvelopeDeny {
   cap:
-    | "perTx"
-    | "velocity_tx"
-    | "velocity_amount"
-    | "daily"
-    | "weekly"
-    | "monthly";
+  | "perTx"
+  | "velocity_tx"
+  | "velocity_amount"
+  | "daily"
+  | "weekly"
+  | "monthly";
   /** Current usage — USD for amount caps, entry count for velocity_tx. */
   used: number;
   limit: number;
@@ -209,6 +209,23 @@ export async function reserve(
 ): Promise<{ ok: true; entry: SpendEntry } | { ok: false; deny: EnvelopeDeny }> {
   const verdict = await checkEnvelope(ledger, caps, wallet, amountUsd);
   if (!verdict.allow) return { ok: false, deny: verdict.deny };
+  return {
+    ok: true,
+    entry: await insertReserved(ledger, wallet, amountUsd, kind, refId, venueId),
+  };
+}
+
+/** Insert the reserved entry — split from reserve() (176-7) so the
+ *  enforcer can interleave the approval-hold branch between
+ *  checkEnvelope and the insert without double-scanning windows. */
+export async function insertReserved(
+  ledger: SpendLedger,
+  wallet: `0x${string}`,
+  amountUsd: number,
+  kind: SpendKind,
+  refId: string,
+  venueId?: string,
+): Promise<SpendEntry> {
   const entry: SpendEntry = {
     id: newSpendId(),
     wallet,
@@ -220,7 +237,7 @@ export async function reserve(
     ...(venueId ? { venueId } : {}),
   };
   await ledger.insert(entry);
-  return { ok: true, entry };
+  return entry;
 }
 
 export function settleEntry(

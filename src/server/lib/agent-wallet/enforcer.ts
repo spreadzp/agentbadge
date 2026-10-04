@@ -17,43 +17,32 @@
 // Unregistered wallets pass opt-in unless requireRegistered (env
 // AGENT_WALLET_REQUIRE_REGISTERED=1).
 
-import type { Context, MiddlewareHandler } from "hono";
+import type { Context } from "hono";
 import { isAddress } from "viem";
 
 import { errorResponse } from "../error-response";
 import { ErrorCodes } from "../error-codes";
 import type { AgentWalletStore, SpendCaps } from "./registry";
 import { newSpendId, type SpendEntry, type SpendKind, type SpendLedger } from "./ledger";
-import { reserve } from "./envelope";
-import { emitSpendDeny, emitKindDeny, emitSuspendedDeny } from "./deny";
+import { checkEnvelope, insertReserved } from "./envelope";
+import {
+  emitSpendDeny,
+  emitKindDeny,
+  emitSuspendedDeny,
+  tryApprovalHold,
+} from "./deny";
 import { emitSpendAlert } from "./audit";
+import {
+  DEFAULT_APPROVAL_TTL_MS,
+  type ApprovalStore,
+} from "./approvals";
 
 /* ------------------------------ wallet resolve ---------------------------- */
 
-/** Best-effort x402 payer extraction from PAYMENT-SIGNATURE (EIP-3009). */
-function payerFromPaymentSig(c: Context): string | undefined {
-  const hdr = c.req.header("payment-signature");
-  if (!hdr) return undefined;
-  try {
-    const decoded = JSON.parse(
-      Buffer.from(hdr, "base64").toString("utf8"),
-    ) as Record<string, unknown>;
-    const payload = (decoded.payload ?? decoded) as Record<string, unknown>;
-    const auth = (payload.authorization ?? payload) as Record<string, unknown>;
-    const from = auth.from ?? decoded.from;
-    return typeof from === "string" && isAddress(from) ? from : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-export function resolveSpendWallet(c: Context): string | undefined {
-  const ctxWallet = c.get("agentWallet") as string | undefined;
-  if (ctxWallet && isAddress(ctxWallet)) return ctxWallet.toLowerCase();
-  const hdr = c.req.header("x-wallet");
-  if (hdr && isAddress(hdr)) return hdr.toLowerCase();
-  return payerFromPaymentSig(c)?.toLowerCase();
-}
+// Wallet resolution moved to wallet-resolve.ts (300-line guard) —
+// re-exported for existing import sites.
+export { resolveSpendWallet } from "./wallet-resolve";
+import { resolveSpendWallet } from "./wallet-resolve";
 
 /* ------------------------------- enforcer --------------------------------- */
 
@@ -64,6 +53,11 @@ export interface SpendEnforcerDeps {
   requireRegistered: boolean;
   /** AGENT_WALLET_DEFAULT_CAPS — applied when record has no envelope. */
   defaultCaps?: SpendCaps;
+  /** SLICE-176-7: parked-intent store for the approval hold-path;
+   *  absent → approvalAboveUsd is inert (feature-off pass-through). */
+  approvals?: ApprovalStore;
+  /** APPROVAL_TTL_MS — parked intent expiry (default 1h, D-176-2). */
+  approvalTtlMs?: number;
 }
 
 export interface EnforceBegin {
@@ -159,19 +153,16 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         );
         return c.json(body, 402);
       }
-      const r = await reserve(
+      const verdict = await checkEnvelope(
         deps.ledger,
         caps,
-        wallet as `0x${string}`,
+        wallet,
         amountUsd,
-        kind,
-        refId,
-        rec.venueId,
       );
-      if (!r.ok) {
+      if (!verdict.allow) {
         // SLICE-176-2: deny side-effects (durable entry + alert + body)
         // live in deny.ts — one place for every envelope deny.
-        const body = await emitSpendDeny(deps.ledger, r.deny, {
+        const body = await emitSpendDeny(deps.ledger, verdict.deny, {
           wallet: wallet as `0x${string}`,
           address: rec.address,
           ...(rec.venueId ? { venueId: rec.venueId } : {}),
@@ -181,7 +172,37 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         });
         return c.json(body, 402);
       }
-      return { wallet: wallet as `0x${string}`, entry: r.entry };
+      // SLICE-176-7: approval hold — amount > approvalAboveUsd parks a
+      // pending intent instead of reserving (pending не ест кап, D-176-7).
+      // Order per spec: suspended → kind → caps → hold → reserve.
+      if (
+        deps.approvals &&
+        caps.approvalAboveUsd !== undefined &&
+        amountUsd > caps.approvalAboveUsd
+      ) {
+        const body = await tryApprovalHold(
+          deps.approvals,
+          {
+            wallet: wallet as `0x${string}`,
+            address: rec.address,
+            ...(rec.venueId ? { venueId: rec.venueId } : {}),
+            amountUsd,
+            kind,
+            refId,
+          },
+          deps.approvalTtlMs ?? DEFAULT_APPROVAL_TTL_MS,
+        );
+        return c.json(body, 402);
+      }
+      const entry = await insertReserved(
+        deps.ledger,
+        wallet as `0x${string}`,
+        amountUsd,
+        kind,
+        refId,
+        rec.venueId,
+      );
+      return { wallet: wallet as `0x${string}`, entry };
     },
 
     async complete(begun, ok, amountUsd, kind, refId, txHash, sourceChain) {
@@ -234,67 +255,10 @@ export function getSpendEnforcer(): SpendEnforcer | null {
   return _enforcer;
 }
 
-export interface EnvelopeGateOpts {
-  kind: SpendKind;
-  /** Resolve payment amount (USD decimal); ≤0 → pass-through. */
-  amountUsdFor: (c: Context) => number | Promise<number>;
-  refIdFor?: (c: Context) => string;
-}
-
-/**
- * Path gate for `app.use(path, gate)` — registered BEFORE route mounts.
- * Enforcer resolved lazily per request so wiring order of store init
- * is irrelevant.
- */
-export function spendEnvelopeGate(opts: EnvelopeGateOpts): MiddlewareHandler {
-  return async (c, next) => {
-    if (c.req.method !== "POST") {
-      await next();
-      return;
-    }
-    const enforcer = _enforcer;
-    if (!enforcer) {
-      await next();
-      return;
-    }
-    const amountUsd = await opts.amountUsdFor(c);
-    if (!(amountUsd > 0)) {
-      await next();
-      return;
-    }
-    const refId =
-      opts.refIdFor?.(c) ??
-      `${opts.kind}:${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
-    const begun = await enforcer.begin(c, amountUsd, opts.kind, refId);
-    if (begun instanceof Response) return begun;
-    try {
-      await next();
-      const tx = (
-        c.get("payment") as { transaction?: string } | undefined
-      )?.transaction;
-      await enforcer.complete(begun, c.res.ok, amountUsd, opts.kind, refId, tx);
-    } catch (err) {
-      await enforcer.complete(begun, false, amountUsd, opts.kind, refId);
-      throw err;
-    }
-  };
-}
-
-/** `withEnvelope` per spec — direct call-site form for non-middleware code. */
-export async function withEnvelope<T>(
-  enforcer: SpendEnforcer,
-  c: Context,
-  args: { amountUsd: number; kind: SpendKind; refId: string },
-  fn: () => Promise<T>,
-): Promise<{ ok: true; result: T } | { ok: false; res: Response }> {
-  const begun = await enforcer.begin(c, args.amountUsd, args.kind, args.refId);
-  if (begun instanceof Response) return { ok: false, res: begun };
-  try {
-    const result = await fn();
-    await enforcer.complete(begun, true, args.amountUsd, args.kind, args.refId);
-    return { ok: true, result };
-  } catch (err) {
-    await enforcer.complete(begun, false, args.amountUsd, args.kind, args.refId);
-    throw err;
-  }
-}
+// Gate middleware + withEnvelope live in envelope-gate.ts
+// (300-line guard) — re-exported so enforcer.ts stays the surface.
+export {
+  spendEnvelopeGate,
+  withEnvelope,
+  type EnvelopeGateOpts,
+} from "./envelope-gate";

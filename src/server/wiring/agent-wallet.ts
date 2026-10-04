@@ -118,6 +118,8 @@ export function wireAgentWallet(app: Hono): void {
       ledger,
       registry: store,
       requireRegistered: cfg.requireRegistered,
+      approvals,
+      approvalTtlMs: cfg.approvalTtlMs,
       ...(cfg.defaultCaps ? { defaultCaps: cfg.defaultCaps } : {}),
     }),
   );

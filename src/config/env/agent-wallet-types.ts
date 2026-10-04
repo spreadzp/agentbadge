@@ -43,4 +43,7 @@ export interface AgentWalletEnvConfig {
   /** SLICE-176-6: AGENT_WALLET_MAX_PENDING_APPROVALS — per-wallet
    *  pending cap; park() above → approval_queue_full (default 20). */
   maxPendingApprovals: number;
+  /** SLICE-176-7: APPROVAL_TTL_MS — parked intent expiry in ms
+   *  (default 3600000 = 1h; silence = denial, D-176-2). */
+  approvalTtlMs: number;
 }
