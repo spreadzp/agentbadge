@@ -70,3 +70,42 @@ export async function emitSpendDeny(
     ...(isVelocity ? { windowSec: 3600 } : {}),
   };
 }
+
+/**
+ * SLICE-176-3: kind deny — allowedKinds задан и kind ∉ списка.
+ * Дешёвая ветка до reserve: denied entry durable, но caps не тратятся
+ * (denied-entries не считаются в window-метриках).
+ */
+export async function emitKindDeny(
+  ledger: SpendLedger,
+  ctx: SpendDenyCtx,
+  allowedKinds: readonly SpendKind[],
+): Promise<Record<string, unknown>> {
+  await ledger.insert({
+    id: newSpendId(),
+    wallet: ctx.wallet,
+    amountUsd: ctx.amountUsd,
+    kind: ctx.kind,
+    refId: ctx.refId,
+    state: "denied",
+    denialReason: "kind_not_allowed",
+    at: Date.now(),
+    ...(ctx.venueId ? { venueId: ctx.venueId } : {}),
+  });
+  emitSpendAlert(
+    "spend.kind_denied",
+    ctx.address,
+    {
+      kind: ctx.kind,
+      allowedKinds: [...allowedKinds],
+      amountUsd: ctx.amountUsd,
+      refId: ctx.refId,
+    },
+    ctx.venueId,
+  );
+  return {
+    error: "kind_not_allowed",
+    kind: ctx.kind,
+    allowedKinds: [...allowedKinds],
+  };
+}
