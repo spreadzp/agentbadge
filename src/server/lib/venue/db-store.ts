@@ -24,6 +24,7 @@ import { randomUUID } from "node:crypto";
 import { param } from "@agentbadge/database";
 import { logger } from "@agentbadge/passport";
 
+import { DbWriteBehind } from "../db-mirror";
 import { getDatabase } from "../database";
 import { normalizeOffer } from "./json-store";
 import type {
@@ -57,18 +58,14 @@ export class PrismaVenueStore implements VenueStoreBackend {
     offers: new Map(),
     meta: new Map(),
   };
-  /** Serialized write-behind queue — keeps row order per key. */
-  private writeChain: Promise<void> = Promise.resolve();
-  private readonly initPromise: Promise<void>;
+  private readonly wb: DbWriteBehind;
 
   constructor(private readonly db: Db) {
-    this.initPromise = this.init().catch((err) => {
-      logger.error("venue: db-store init failed", { err: String(err) });
-    });
+    this.wb = new DbWriteBehind("venue", () => this.init());
   }
 
   ready(): Promise<void> {
-    return this.initPromise;
+    return this.wb.ready();
   }
 
   /** Hydrate mirror from Postgres (schema arrives via `db migrate`). */
@@ -115,20 +112,12 @@ export class PrismaVenueStore implements VenueStoreBackend {
 
   /** Serialize a persistence op; failures are logged, never thrown. */
   private enqueue(op: () => Promise<unknown>): void {
-    this.writeChain = this.writeChain.then(() =>
-      op().then(
-        () => undefined,
-        (err) =>
-          logger.error("venue: db write-behind failed", {
-            err: String(err),
-          }),
-      ),
-    );
+    this.wb.enqueue(op);
   }
 
   /** Test/flush hook — resolves when all queued writes landed. */
   flush(): Promise<void> {
-    return this.writeChain;
+    return this.wb.flush();
   }
 
   // ─── jobs ────────────────────────────────────────────────────────

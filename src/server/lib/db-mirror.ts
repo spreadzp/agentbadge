@@ -13,10 +13,30 @@ export class DbWriteBehind {
   constructor(
     scope: string,
     hydrate: () => Promise<void>,
+    attempts = 5,
   ) {
-    this.initPromise = hydrate().catch((err) => {
-      logger.error(`${scope}: db-store init failed`, { err: String(err) });
-    });
+    this.initPromise = (async () => {
+      for (let i = 1; i <= attempts; i++) {
+        try {
+          await hydrate();
+          return;
+        } catch (err) {
+          if (i === attempts) {
+            logger.error(`${scope}: db-store init failed`, {
+              err: String(err),
+              attempts: i,
+            });
+            return;
+          }
+          logger.warn(`${scope}: db-store init retry`, {
+            err: String(err),
+            attempt: i,
+            attempts,
+          });
+          await new Promise((r) => setTimeout(r, 1000 * 2 ** (i - 1)));
+        }
+      }
+    })();
   }
 
   /** Resolves when mirror hydration finished (or logged-failed). */
