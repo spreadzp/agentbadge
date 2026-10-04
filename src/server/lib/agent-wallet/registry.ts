@@ -15,7 +15,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isAddress, getAddress } from "viem";
-import type { AgentWalletRepository } from "@agentbadge/database";
 import type { SpendKind } from "./ledger";
 
 /* --------------------------------- types ---------------------------------- */
@@ -59,6 +58,9 @@ export interface AgentWalletRecord {
   active: boolean;
   /** Owner kill-switch (EPIC-176-4) — instant deny for new intents. */
   suspended?: boolean;
+  /** Last suspend event (kept after resume — quarantine history). */
+  suspendedAt?: number;
+  suspendedBy?: string;
 }
 
 export interface AgentWalletInput {
@@ -88,6 +90,13 @@ export interface AgentWalletStore {
   deactivate(address: string): Promise<boolean>;
   /** Replace envelope caps. Returns false if unknown/inactive. */
   setEnvelope(address: string, caps: SpendCaps): Promise<boolean>;
+  /** SLICE-176-4 kill-switch: flip suspended (resumable quarantine).
+   *  Records suspendedAt/By on suspend. Returns false if unknown. */
+  setSuspended(
+    address: string,
+    flag: boolean,
+    actor?: string,
+  ): Promise<boolean>;
 }
 
 /* ------------------------------- validation ------------------------------- */
@@ -184,6 +193,18 @@ export function createJsonAgentWalletStore(
       writeJson(path, data);
       return true;
     },
+    async setSuspended(address, flag, actor) {
+      const data = readJson(path);
+      const rec = data.wallets[address.toLowerCase()];
+      if (!rec) return false;
+      data.wallets[address.toLowerCase()] = {
+        ...rec,
+        suspended: flag,
+        ...(flag ? { suspendedAt: Date.now(), ...(actor ? { suspendedBy: actor } : {}) } : {}),
+      };
+      writeJson(path, data);
+      return true;
+    },
   };
 }
 
@@ -215,65 +236,20 @@ export function createMemoryAgentWalletStore(): AgentWalletStore {
       map.set(address.toLowerCase(), { ...rec, envelope: caps });
       return true;
     },
-  };
-}
-
-/* ---------------------------------- Postgres ------------------------------ */
-
-/**
- * SLICE-155-10: Postgres backend — write-through. The full record rides
- * in `payload` Json; typed columns stay in sync for indexed queries
- * (venue-scoped lists, active filter). `address` is stored lowercased —
- * keys are case-insensitive across all backends.
- */
-export function createDbAgentWalletStore(
-  repo: AgentWalletRepository,
-): AgentWalletStore {
-  const toRecord = (row: {
-    payload: unknown;
-  }): AgentWalletRecord => {
-    const p = row.payload;
-    return (typeof p === "string" ? JSON.parse(p) : p) as AgentWalletRecord;
-  };
-  const toRow = (rec: AgentWalletRecord) => ({
-    address: rec.address.toLowerCase(),
-    agentId: rec.agentId ?? null,
-    venueId: rec.venueId ?? null,
-    label: rec.label,
-    kind: rec.kind,
-    registeredBy: rec.registeredBy,
-    active: rec.active,
-    payload: rec as unknown as Parameters<
-      AgentWalletRepository["upsert"]
-    >[0]["payload"],
-  });
-  return {
-    name: "db",
-    async put(rec) {
-      await repo.upsert(toRow(rec));
-    },
-    async get(address) {
-      const row = await repo.getByAddress(address);
-      return row ? toRecord(row) : undefined;
-    },
-    async list(venueId) {
-      const rows = await repo.list(venueId ? { venueId } : undefined);
-      return newestFirst(rows.map(toRecord));
-    },
-    async deactivate(address) {
-      const row = await repo.getByAddress(address);
-      if (!row) return false;
-      const rec = { ...toRecord(row), active: false };
-      await repo.upsert(toRow(rec));
-      return true;
-    },
-    async setEnvelope(address, caps) {
-      const row = await repo.getByAddress(address);
-      if (!row) return false;
-      const rec = toRecord(row);
-      if (!rec.active) return false;
-      await repo.upsert(toRow({ ...rec, envelope: caps }));
+    async setSuspended(address, flag, actor) {
+      const rec = map.get(address.toLowerCase());
+      if (!rec) return false;
+      map.set(address.toLowerCase(), {
+        ...rec,
+        suspended: flag,
+        ...(flag ? { suspendedAt: Date.now(), ...(actor ? { suspendedBy: actor } : {}) } : {}),
+      });
       return true;
     },
   };
 }
+
+// SLICE-176-4: Postgres store moved to ./registry-db (300-line guard) —
+// re-exported so registry.ts stays the single import surface.
+export { createDbAgentWalletStore } from "./registry-db";
+

@@ -25,7 +25,7 @@ import { ErrorCodes } from "../error-codes";
 import type { AgentWalletStore, SpendCaps } from "./registry";
 import { newSpendId, type SpendEntry, type SpendKind, type SpendLedger } from "./ledger";
 import { reserve } from "./envelope";
-import { emitSpendDeny, emitKindDeny } from "./deny";
+import { emitSpendDeny, emitKindDeny, emitSuspendedDeny } from "./deny";
 import { emitSpendAlert } from "./audit";
 
 /* ------------------------------ wallet resolve ---------------------------- */
@@ -124,14 +124,26 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         }
         return { wallet: wallet as `0x${string}` };
       }
+      // SLICE-176-4: kill-switch — suspended is the FIRST branch (order:
+      // suspended → kind → permit → caps → approval-hold → reserve);
+      // resume (store.setSuspended false) restores instantly.
+      if (rec.suspended) {
+        const body = await emitSuspendedDeny(deps.ledger, {
+          wallet: wallet as `0x${string}`,
+          address: rec.address,
+          ...(rec.venueId ? { venueId: rec.venueId } : {}),
+          amountUsd,
+          kind,
+          refId,
+        });
+        return c.json(body, 402);
+      }
       const caps =
         Object.keys(rec.envelope).length > 0 ? rec.envelope : deps.defaultCaps;
       if (!caps) {
         return { wallet: wallet as `0x${string}`, ...(rec.venueId ? { venueId: rec.venueId } : {}) };
       }
-      // SLICE-176-3: branch order is fixed — suspended (176-4) → kind →
-      // permit (176-8) → caps → approval-hold (176-7) → reserve. Kind is
-      // the cheapest gate: denied kinds never reach cap math or reserve.
+      // SLICE-176-3: kind gate — cheapest of the cap branches.
       if (caps.allowedKinds && !caps.allowedKinds.includes(kind)) {
         const body = await emitKindDeny(
           deps.ledger,

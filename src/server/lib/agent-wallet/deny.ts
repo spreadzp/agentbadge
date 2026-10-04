@@ -109,3 +109,36 @@ export async function emitKindDeny(
     allowedKinds: [...allowedKinds],
   };
 }
+
+/**
+ * SLICE-176-4: kill-switch deny — suspended wallet, first branch of
+ * enforcer.begin (before kind/permit/caps). Durable denied entry +
+ * wallet.suspended_deny alert for the owner.
+ */
+export async function emitSuspendedDeny(
+  ledger: SpendLedger,
+  ctx: SpendDenyCtx,
+): Promise<Record<string, unknown>> {
+  await ledger.insert({
+    id: newSpendId(),
+    wallet: ctx.wallet,
+    amountUsd: ctx.amountUsd,
+    kind: ctx.kind,
+    refId: ctx.refId,
+    state: "denied",
+    denialReason: "spend_suspended",
+    at: Date.now(),
+    ...(ctx.venueId ? { venueId: ctx.venueId } : {}),
+  });
+  emitSpendAlert(
+    "wallet.suspended_deny",
+    ctx.address,
+    {
+      kind: ctx.kind,
+      amountUsd: ctx.amountUsd,
+      refId: ctx.refId,
+    },
+    ctx.venueId,
+  );
+  return { error: "spend_suspended" };
+}
