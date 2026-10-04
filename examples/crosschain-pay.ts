@@ -50,11 +50,22 @@ async function main() {
     console.log(`no 402 (${res.status}) — route not paid or already paid`);
     return;
   }
-  const req = await res.json();
-  const accepts = (req.accepts ?? []) as PaymentRequirements[];
-  const accept = accepts.find(
+  const reqJson = await res.json().catch(() => ({}));
+  // x402 v2: accepts live in the base64 PAYMENT-REQUIRED header, not body.
+  const hdr = res.headers.get("payment-required");
+  const hdrJson = hdr
+    ? JSON.parse(Buffer.from(hdr, "base64").toString())
+    : {};
+  const accepts = (hdrJson.accepts ?? reqJson.accepts ??
+    []) as PaymentRequirements[];
+  // PAY_NETWORK pins the destination accept (e.g. eip155:5042002 →
+  // settle on Arc); default = first gateway accept.
+  const gw = accepts.filter(
     (a) => a.extra?.name === "GatewayWalletBatched",
   );
+  const accept = process.env.PAY_NETWORK
+    ? gw.find((a) => a.network === process.env.PAY_NETWORK)
+    : gw[0];
   if (!accept) {
     console.log("no gateway-batch accept — buyer rail unavailable");
     return;
@@ -85,8 +96,10 @@ async function main() {
     2,
     accept as never,
   );
+  // Server matches paymentPayload.accepted against its advertised
+  // accepts (scheme+network+asset+extra.name) — echo the chosen entry.
   const sig = Buffer.from(
-    JSON.stringify({ x402Version, payload }),
+    JSON.stringify({ x402Version, payload, accepted: accept }),
   ).toString("base64");
   const paid = await fetch(ENDPOINT + PAY_URL, {
     method: METHOD,
