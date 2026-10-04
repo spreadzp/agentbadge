@@ -19,6 +19,7 @@ import { article as bstockRisks } from "./bstock-risks";
 import { article as arcC1MainnetDeployment } from "./arc-c1-mainnet-deployment";
 import { article as arcC2PublicVenue } from "./arc-c2-public-venue";
 import { article as arcC4AgentWallet } from "./arc-c4-agent-wallet";
+import { article as arcC3MoneyLayer } from "./arc-c3-money-layer";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -39,6 +40,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   bstockEarnStrategies,
   bstockRisks,
   arcC2PublicVenue,
+  arcC3MoneyLayer,
   arcC4AgentWallet,
   arcC1MainnetDeployment,
 ];
