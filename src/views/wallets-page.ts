@@ -9,6 +9,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { WALLET_JS } from "./venue-ui";
+import { WALLETS_OWNER_JS } from "./wallets-owner";
 
 const CARD =
   "rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg";
@@ -46,6 +47,7 @@ async function load() {
     const bal = balRes.ok ? await balRes.json() : null;
     const audit = await loadAudit();
     render(rec, lim, bal, audit);
+    loadApprovals();
   } catch (e) { $("err").textContent = String(e.message || e); }
 }
 
@@ -118,11 +120,26 @@ function render(rec, lim, bal, audit) {
       '</td><td class="py-2 px-3">' + bar(u.used, u.cap) +
       '</td><td class="py-2 text-right font-mono text-sm">' + eff(caps, circle === "mainnet-only" || circle === "unavailable" ? null : circle, k) + '</td></tr>';
   }).join("");
+  const suspended = rec.suspended === true;
+  const suspendBtn = '<button class="rounded-lg px-3 py-2 text-sm font-semibold text-white ' +
+    (suspended ? "bg-emerald-700 hover:bg-emerald-600" : "bg-red-700/80 hover:bg-red-600") +
+    '" data-act="' + (suspended ? "/resume" : "/suspend") + '" onclick="toggleSuspend(this)">' +
+    (suspended ? "Resume" : "Suspend") + "</button>";
   $("card").innerHTML =
-    '<div class="flex items-center justify-between"><div><div class="font-mono text-emerald-300">' + rec.address + '</div>' +
+    '<div class="flex items-center justify-between"><div><div class="font-mono text-emerald-300">' + rec.address +
+    (suspended ? ' <span class="ml-1 rounded bg-red-500/20 px-2 py-0.5 text-xs font-bold text-red-400">SUSPENDED</span>' : "") + '</div>' +
     '<div class="text-xs text-slate-500">' + (rec.label || "") + ' · ' + (rec.kind || "") + (rec.balance !== undefined ? ' · balance ' + fmt(rec.balance) : "") + '</div></div>' +
-    '<button class="${BTN}" onclick="saveCaps()">Save platform caps</button></div>' +
+    '<div class="flex gap-2">' + suspendBtn + '<button class="${BTN}" onclick="saveCaps()">Save platform caps</button></div></div>' +
     '<table class="w-full mt-4"><thead><tr class="text-left text-xs uppercase text-slate-500"><th class="py-1">Cap (USD)</th><th class="py-1 px-3">Window usage</th><th class="py-1 text-right">Effective</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="mt-4 border-t border-slate-800 pt-3"><div class="text-xs font-semibold text-slate-500 mb-2">Owner controls</div>' +
+    '<div class="flex flex-wrap items-end gap-4">' +
+    [["approvalAboveUsd", "hold ≥ $"], ["maxTxPerHour", "max tx/h"], ["maxAmountPerHour", "max $/h"]]
+      .map(([k, l]) => '<label class="text-xs text-slate-500">' + l + '<input data-k="' + k + '" value="' + (caps[k] ?? "") + '" placeholder="∞" class="mt-0.5 block w-24 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-sm text-right font-mono"/></label>').join("") +
+    '<div><div class="text-xs text-slate-500 mb-1">allowedKinds</div>' +
+    ["venue-fee", "subscription", "eaas", "x402"].map((k) =>
+      '<label class="mr-3 text-xs text-slate-300"><input type="checkbox" class="kind-cb mr-1" value="' + k + '"' +
+      (!caps.allowedKinds || caps.allowedKinds.indexOf(k) >= 0 ? " checked" : "") + '/>' + k + "</label>").join("") +
+    '</div></div><div id="appr"></div></div>' +
     '<div class="mt-5 border-t border-slate-800 pt-4"><h3 class="text-sm font-semibold text-slate-300 mb-2">Circle policy mirror</h3>' + circleHtml + '<div id="cmd"></div></div>' +
     fundingHtml(bal) +
     auditHtml(audit && audit.entries, audit && audit.alerts);
@@ -131,7 +148,8 @@ function render(rec, lim, bal, audit) {
 async function genCmd() {
   const addr = wallet || $("addr").value.trim();
   const body = {};
-  document.querySelectorAll("#card input[data-k]").forEach((i) => { if (i.value.trim()) body[i.dataset.k] = Number(i.value); });
+  const winKeys = new Set(["perTxUsd", "dailyUsd", "weeklyUsd", "monthlyUsd"]);
+  document.querySelectorAll("#card input[data-k]").forEach((i) => { if (i.value.trim() && winKeys.has(i.dataset.k)) body[i.dataset.k] = Number(i.value); });
   const r = await fetch("/api/wallets/" + addr + "/limits/command", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
   });
@@ -152,7 +170,7 @@ function auditHtml(entries, alerts) {
     '<td class="py-1 text-xs font-mono text-slate-500">' + (e.txHash ? e.txHash.slice(0, 10) + "…" : "—") + "</td></tr>"
   ).join("");
   const evs = (alerts || []).map((a) =>
-    '<div class="text-xs ' + (a.type === "spend.cap_denied" ? "text-red-400" : a.type === "wallet.low_balance" ? "text-amber-400" : "text-orange-400") + '">' +
+    '<div class="text-xs ' + alertColor(a.type) + '">' +
     new Date(a.at).toISOString().slice(5, 19).replace("T", " ") + " " + a.type + " " + JSON.stringify(a.data).slice(0, 80) + "</div>"
   ).join("");
   if (!rows && !evs) return "";
@@ -176,6 +194,13 @@ async function saveCaps() {
   const addr = wallet || $("addr").value.trim();
   const body = {};
   document.querySelectorAll("#card input[data-k]").forEach((i) => { if (i.value.trim()) body[i.dataset.k] = Number(i.value); });
+  const cbs = document.querySelectorAll("#card .kind-cb");
+  if (cbs.length) {
+    const kinds = [];
+    cbs.forEach((i) => { if (i.checked) kinds.push(i.value); });
+    if (!kinds.length) { $("err").textContent = "allowedKinds: pick at least one kind"; return; }
+    body.allowedKinds = kinds;
+  }
   const path = "/api/wallets/" + addr + "/envelope";
   try {
     const sig = await venueSign(addr, "PATCH", path);
@@ -211,7 +236,7 @@ $("load").onclick = load;
           and the Circle policy mirror.
         </div>
       </div>
-      <script>${raw(WALLET_JS)}${raw(js)}</script>
+      <script>${raw(WALLET_JS)}${raw(js)}${raw(WALLETS_OWNER_JS)}</script>
     </main>`;
   return Layout(
     body as unknown as string,
