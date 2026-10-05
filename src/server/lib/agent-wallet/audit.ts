@@ -20,6 +20,7 @@ export type SpendAlertType =
   | "wallet.resumed"
   | "approval.requested"
   | "approval.consumed"
+  | "approval.decided"
   | "approval.expired"
   | "spend.failed"
   | "spend.release_late"

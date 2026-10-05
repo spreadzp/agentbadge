@@ -73,8 +73,14 @@ export interface ApprovalStore {
   get(id: string): Promise<SpendApproval | null>;
   /** Newest first; state filter is post-lazy-expiry. */
   listByWallet(wallet: string, state?: ApprovalState): Promise<SpendApproval[]>;
-  /** pending → approved|rejected; false on terminal/unknown/expired. */
-  decide(id: string, action: "approve" | "reject", actor: string): Promise<boolean>;
+  /** pending → approved|rejected; false on terminal/unknown/expired. expiresAt 
+   * (optional) refreshes the permit window on approve (176-9). */
+  decide(
+    id: string,
+    action: "approve" | "reject",
+    actor: string,
+    expiresAt?: number,
+  ): Promise<boolean>;
   /** Atomic approved→consumed; false when already terminal/pending. */
   consume(id: string): Promise<boolean>;
   /** Live pending only (expired-but-unswept excluded). */
@@ -182,7 +188,7 @@ function memoryLikeStore(
         )
         .sort((x, y) => y.createdAt - x.createdAt);
     },
-    async decide(id, action, actor) {
+    async decide(id, action, actor, expiresAt) {
       load();
       const now = Date.now();
       const a = map.get(id);
@@ -193,6 +199,7 @@ function memoryLikeStore(
         state: action === "approve" ? "approved" : "rejected",
         decidedBy: actor,
         decidedAt: now,
+        ...(expiresAt !== undefined ? { expiresAt } : {}),
       });
       save();
       return true;

@@ -159,14 +159,21 @@ export function createSqliteApprovalStore(
         .map((r) => expiredViewRow(rowToApproval(r), now))
         .filter((a) => !state || a.state === state);
     },
-    async decide(id, action, actor) {
+    async decide(id, action, actor, expiresAt) {
       const now = Date.now();
       // Atomic: pending AND not-expired → decided in one statement.
       const res = db.run(
         `UPDATE spend_approvals
-         SET state = ?, decidedBy = ?, decidedAt = ?
+         SET state = ?, decidedBy = ?, decidedAt = ?, expiresAt = COALESCE(?, expiresAt)
          WHERE id = ? AND state = 'pending' AND expiresAt > ?`,
-        [action === "approve" ? "approved" : "rejected", actor, now, id, now],
+        [
+          action === "approve" ? "approved" : "rejected",
+          actor,
+          now,
+          expiresAt ?? null,
+          id,
+          now,
+        ],
       );
       return res.changes > 0;
     },

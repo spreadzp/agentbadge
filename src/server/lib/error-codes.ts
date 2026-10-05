@@ -24,6 +24,10 @@ export const ErrorCodes = {
   KIND_NOT_ALLOWED: "kind_not_allowed",
   APPROVAL_QUEUE_FULL: "approval_queue_full",
 
+  // 409 — approval decide conflicts (EPIC-176-9)
+  APPROVAL_ALREADY_DECIDED: "approval_already_decided",
+  APPROVAL_EXPIRED: "approval_expired",
+
   // 403 — passport/identity
   PASSPORT_NOT_FOUND: "PASSPORT_NOT_FOUND",
   PASSPORT_REVOKED: "PASSPORT_REVOKED",

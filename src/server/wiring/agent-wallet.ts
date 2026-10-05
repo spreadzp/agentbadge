@@ -36,6 +36,7 @@ import {
 } from "../lib/agent-wallet/enforcer";
 import { createAgentWalletRoutes } from "../routes/agent-wallet-api";
 import { createAgentWalletKillswitchRoutes } from "../routes/agent-wallet-killswitch-api";
+import { createAgentWalletApprovalsRoutes } from "../routes/agent-wallet-approvals-api";
 import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet-envelope-api";
 import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet-limits-api";
 import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet-balance-api";
@@ -142,6 +143,15 @@ export function wireAgentWallet(app: Hono): void {
   app.route(
     "/",
     createAgentWalletKillswitchRoutes({ store, ledger }),
+  );
+  // SLICE-176-9: owner approval surface (list/approve/reject parked intents)
+  app.route(
+    "/",
+    createAgentWalletApprovalsRoutes({
+      store,
+      approvals,
+      approvalTtlMs: cfg.approvalTtlMs,
+    }),
   );
   app.route("/", createAgentWalletEnvelopeRoutes({ store, ledger }));
   app.route(
