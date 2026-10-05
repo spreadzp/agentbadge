@@ -122,7 +122,7 @@ export function createSqliteApprovalStore(
       const pending = db
         .query(
           `SELECT COUNT(*) AS n FROM spend_approvals
-           WHERE wallet = ? AND state = 'pending' AND expiresAt > ?`,
+           WHERE wallet = ? COLLATE NOCASE AND state = 'pending' AND expiresAt > ?`,
         )
         .get(inp.wallet, now) as { n: number };
       if (pending.n >= maxPending) throw new Error("approval_queue_full");
@@ -152,7 +152,7 @@ export function createSqliteApprovalStore(
       const now = Date.now();
       const rows = db
         .query(
-          "SELECT * FROM spend_approvals WHERE wallet = ? ORDER BY createdAt DESC",
+          "SELECT * FROM spend_approvals WHERE wallet = ? COLLATE NOCASE ORDER BY createdAt DESC",
         )
         .all(wallet) as SqliteRow[];
       return rows
@@ -192,7 +192,7 @@ export function createSqliteApprovalStore(
       const row = db
         .query(
           `SELECT COUNT(*) AS n FROM spend_approvals
-           WHERE wallet = ? AND state = 'pending' AND expiresAt > ?`,
+           WHERE wallet = ? COLLATE NOCASE AND state = 'pending' AND expiresAt > ?`,
         )
         .get(wallet, Date.now()) as { n: number };
       return row.n;
