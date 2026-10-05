@@ -26,11 +26,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import type { SpendKind } from "./ledger";
-import { createSqliteApprovalStore } from "./approvals-sqlite";
 
-// bun:sqlite backend lives in approvals-sqlite (300-line guard) —
-// re-exported so approvals.ts stays the single import surface.
+// bun:sqlite backend lives in approvals-sqlite; the backend factory
+// (incl. Postgres "db", 176-11) lives in approvals-factory — both
+// re-exported so approvals.ts stays the single import surface
+// (300-line guard).
 export { createSqliteApprovalStore } from "./approvals-sqlite";
+export { createApprovalStore } from "./approvals-factory";
+export type { ApprovalStoreBackend } from "./approvals-factory";
 
 /* --------------------------------- types ---------------------------------- */
 
@@ -243,32 +246,6 @@ export function createJsonApprovalStore(
   maxPending = 20,
 ): ApprovalStore {
   return memoryLikeStore("json", path, maxPending);
-}
-
-/* -------------------------------- factory --------------------------------- */
-
-export type ApprovalStoreBackend = "json" | "sqlite" | "memory" | "auto";
-
-/**
- *  - "auto"/"sqlite" → bun:sqlite under Bun, json fallback under
- *    node/vitest. "db" lands in 176-11 (Postgres repo + wiring branch).
- */
-export function createApprovalStore(
-  backend: ApprovalStoreBackend = "auto",
-  path?: string,
-  maxPending = 20,
-): ApprovalStore {
-  if (backend === "memory") return createMemoryApprovalStore(maxPending);
-  if (backend === "sqlite" || backend === "auto") {
-    return (
-      createSqliteApprovalStore(path, maxPending) ??
-      createJsonApprovalStore(
-        (path ?? "").replace(/\.db$/, ".json") || undefined,
-        maxPending,
-      )
-    );
-  }
-  return createJsonApprovalStore(path, maxPending);
 }
 
 /* -------------------------------- sweeper --------------------------------- */

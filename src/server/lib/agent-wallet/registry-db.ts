@@ -27,6 +27,14 @@ export function createDbAgentWalletStore(
     kind: rec.kind,
     registeredBy: rec.registeredBy,
     active: rec.active,
+    // 176-11: typed queryable mirrors (suspended + owner caps from envelope)
+    suspended: rec.suspended ?? false,
+    suspendedAt: rec.suspendedAt ?? null,
+    suspendedBy: rec.suspendedBy ?? null,
+    approvalAboveUsd: rec.envelope?.approvalAboveUsd ?? null,
+    maxTxPerHour: rec.envelope?.maxTxPerHour ?? null,
+    maxAmountPerHour: rec.envelope?.maxAmountPerHour ?? null,
+    allowedKinds: rec.envelope?.allowedKinds ?? null,
     payload: rec as unknown as Parameters<
       AgentWalletRepository["upsert"]
     >[0]["payload"],

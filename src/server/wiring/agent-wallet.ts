@@ -111,6 +111,7 @@ export function wireAgentWallet(app: Hono): void {
     cfg.approvalStore,
     undefined,
     cfg.maxPendingApprovals,
+    db.spendApprovals,
   );
   initApprovalStore(approvals);
   startApprovalSweeper({ store: approvals });
