@@ -18,7 +18,8 @@ export interface EnvelopeGateOpts {
   kind: SpendKind;
   /** Resolve payment amount (USD decimal); ≤0 → pass-through. */
   amountUsdFor: (c: Context) => number | Promise<number>;
-  refIdFor?: (c: Context) => string;
+  /** Caller correlation id; undefined/empty → random `kind:<hex>`. */
+  refIdFor?: (c: Context) => string | undefined;
 }
 
 export function spendEnvelopeGate(opts: EnvelopeGateOpts): MiddlewareHandler {
@@ -38,7 +39,7 @@ export function spendEnvelopeGate(opts: EnvelopeGateOpts): MiddlewareHandler {
       return;
     }
     const refId =
-      opts.refIdFor?.(c) ??
+      opts.refIdFor?.(c) ||
       `${opts.kind}:${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
     const begun = await enforcer.begin(c, amountUsd, opts.kind, refId);
     if (begun instanceof Response) return begun;

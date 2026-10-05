@@ -153,6 +153,22 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         );
         return c.json(body, 402);
       }
+      // SLICE-176-8: permit lookup — approved (wallet,amountUsd,kind,
+      // refId) match → atomic consume → платёж идёт нормально минуя
+      // hold-ветку. Consume-race: проигравший идёт обычным путём.
+      let consumedApproval: string | null = null;
+      if (deps.approvals) {
+        const approved = await deps.approvals.listByWallet(wallet, "approved");
+        const match = approved.find(
+          (a) =>
+            a.amountUsd === amountUsd &&
+            a.kind === kind &&
+            a.refId === refId,
+        );
+        if (match && (await deps.approvals.consume(match.id))) {
+          consumedApproval = match.id;
+        }
+      }
       const verdict = await checkEnvelope(
         deps.ledger,
         caps,
@@ -175,7 +191,9 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
       // SLICE-176-7: approval hold — amount > approvalAboveUsd parks a
       // pending intent instead of reserving (pending не ест кап, D-176-7).
       // Order per spec: suspended → kind → caps → hold → reserve.
+      // 176-8: consumed permit одноразово обходит hold — дальше reserve.
       if (
+        !consumedApproval &&
         deps.approvals &&
         caps.approvalAboveUsd !== undefined &&
         amountUsd > caps.approvalAboveUsd
@@ -202,6 +220,21 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
         refId,
         rec.venueId,
       );
+      // 176-8: emit only once the entry exists — alert links permit↔spendId.
+      if (consumedApproval) {
+        emitSpendAlert(
+          "approval.consumed",
+          rec.address,
+          {
+            approvalId: consumedApproval,
+            spendId: entry.id,
+            amountUsd,
+            kind,
+            refId,
+          },
+          rec.venueId,
+        );
+      }
       return { wallet: wallet as `0x${string}`, entry };
     },
 
