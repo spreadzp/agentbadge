@@ -52,6 +52,13 @@ export const ErrorCodes = {
   // 429 — rate limit
   RATE_LIMITED: "RATE_LIMITED",
 
+  // Refusal contract (EPIC-181; snake_case wire values matching
+  // REFUSAL_MATRIX in lib/refusal-contract.ts)
+  POLICY_REFUSAL: "policy_refusal",
+  INSUFFICIENT_SUBJECT: "insufficient_subject",
+  EXECUTION_FAILED: "execution_failed",
+  DATA_UNAVAILABLE: "data_unavailable",
+
   // 500 — server
   INTERNAL_ERROR: "INTERNAL_ERROR",
   INVALID_STATE: "INVALID_STATE",

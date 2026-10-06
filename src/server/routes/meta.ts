@@ -7,6 +7,7 @@ import { getFeeCatalog } from "../lib/fee-catalog";
 import { getTrustTiers } from "../lib/trust-tiers";
 import { getDeploymentDescriptor } from "../lib/deployment-descriptor";
 import { getJwks } from "../lib/jwks";
+import { getRefusalContract } from "../lib/refusal-contract";
 
 export const metaRoutes = new Hono();
 
@@ -26,6 +27,10 @@ const errorEntrySchema = z.object({
     "no_action",
     "escalate",
   ]).describe("Recommended recovery action for an AI agent"),
+  charge: z
+    .enum(["never", "conditional"])
+    .optional()
+    .describe("EPIC-181 refusal contract: 'never' = the caller is never billed for this outcome"),
 });
 
 metaRoutes.get(
@@ -135,6 +140,51 @@ metaRoutes.get(
   }),
   (c) => {
     return c.json(getTrustTiers(), 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  },
+);
+
+metaRoutes.get(
+  "/api/meta/refusal-contract",
+  describeRoute({
+    tags: ["Meta"],
+    summary: "Refusal contract — 'no charge on refusal' policy, machine-readable",
+    description:
+      "Public declaration that refused requests are never billed: policy_refusal (409), insufficient_subject (422), execution_failed (502, auto-refund when a self-settle payment already landed). Also declares the degraded/data_status marker convention and price-truth rule (402 accepts[].amount is canonical).",
+    responses: {
+      200: {
+        description: "Refusal contract manifest",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                version: z.literal("1.0"),
+                policy: z.literal("no-charge-on-refusal"),
+                refusals: z.array(
+                  z.object({
+                    code: z.string(),
+                    http: z.number().int(),
+                    charge: z.enum(["never", "conditional"]),
+                    refund: z.enum(["auto"]).optional(),
+                    reason: z.string(),
+                  }),
+                ),
+                degraded: z.object({
+                  field: z.literal("degraded"),
+                  marker: z.literal("data_status"),
+                }),
+                price_truth: z.string(),
+                disclosure: z.string(),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    return c.json(getRefusalContract(), 200, {
       "Cache-Control": "public, max-age=3600",
     });
   },
