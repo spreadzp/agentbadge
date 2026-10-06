@@ -139,12 +139,19 @@ the same dispatch, the same failure store, and the same spend ledger.
 ledger query, not a spreadsheet.</p>
 <p>Buyer-facing observability needs no auth: <code>GET
 /api/pay/gateway/transfers/:id</code> returns the transfer's terminal
-state and refund note. Operator-facing observability lives in
-<code>/metrics</code>: the expiry gauge, verify/settle counters per
-rail, and the HTTP layer that was already instrumented. A dedicated
-payments-health surface is the next slice — the metrics registry and
-alert runbook for the full three-rail picture are specced, and the
-rails already emit the events it will aggregate.</p>
+state and refund note. Operator-facing observability has since landed
+as one layer: <code>GET /api/payments/health</code> returns a single
+JSON rollup — per-rail ok flags, facilitator status and latency,
+pending gateway transfers, a 24-hour failure count — while
+<code>/metrics</code> exports <code>agentbadge_payments_*</code>
+counters and histograms for verify and settle per rail, failures
+bucketed by reason class, and a <code>facilitator_up</code> gauge. Six
+alert rules sit on top: a settle-failure rate above 5% pages, a dead
+facilitator pages, stuck transfers and failure bursts warn — and
+gateway batch lag deliberately does not, because lag is expected, not
+an incident. An optional webhook sink posts every recorded fulfillment
+failure, rate-limited once per reason class per five minutes, so the
+ops channel gets the signal without the noise.</p>
 <p><img src="/images/blog/arc-c3-money-layer-2.webp"
 alt="Operations dashboard: three payment lanes with status chips and an expiry-rate gauge" /></p>
 <h2 id="dev-log-appendix-how-many-payment-stacks-does-one-server-need">Dev-log
