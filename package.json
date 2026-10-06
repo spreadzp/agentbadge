@@ -43,7 +43,8 @@
     "medical-agent:task": "bun src/agents/cli.ts --task-id",
     "x402:demo": "bun scripts/x402-pay-demo.mts",
     "arch:graph": "bun scripts/arch-graph.mts",
-    "arch:graph:check": "bun scripts/arch-graph.mts && git diff --exit-code docs/architecture-graph.md"
+    "arch:graph:check": "bun scripts/arch-graph.mts && git diff --exit-code docs/architecture-graph.md",
+    "gen:discovery": "bun scripts/gen-discovery.ts"
   },
   "dependencies": {
     "@agentbadge/bstock-tracker": "0.1.7",

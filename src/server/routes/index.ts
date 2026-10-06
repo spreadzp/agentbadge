@@ -20,6 +20,7 @@ import { upgradeRoutes } from "./upgrade";
 import { auditRoutes } from "./audit";
 import { eventsRoutes } from "./events";
 import { catalogRoutes } from "./catalog";
+import { discoveryManifestRoutes } from "./discovery";
 import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
 import { feedRoutes } from "./feed";
@@ -97,6 +98,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", auditRoutes);
   app.route("/", eventsRoutes);
   app.route("/", catalogRoutes);
+  app.route("/", discoveryManifestRoutes);
   app.route("/", wellKnownRoutes);
   app.route("/", agentCardRoutes);
   app.route("/", feedRoutes);

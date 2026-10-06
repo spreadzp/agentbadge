@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { catalogRoutes } from "../src/server/routes/catalog";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery";
 
 describe("llms-full.txt", () => {
   let app: Hono;
 
   beforeAll(() => {
     app = new Hono();
-    app.route("/", catalogRoutes);
+    app.route("/", discoveryManifestRoutes);
   });
 
   it("serves /llms-full.txt with 200", async () => {

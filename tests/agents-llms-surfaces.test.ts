@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { catalogRoutes } from "../src/server/routes/catalog";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery";
 
 describe("SLICE-56-6: agents.txt and llms.txt surfaces", () => {
   let app: Hono;
@@ -9,7 +9,7 @@ describe("SLICE-56-6: agents.txt and llms.txt surfaces", () => {
   beforeEach(() => {
     app = new Hono();
     app.route("/", wellKnownRoutes);
-    app.route("/", catalogRoutes);
+    app.route("/", discoveryManifestRoutes);
   });
 
   // ─── AC-6.1: agents.txt lists agency profile, capabilities, contacts ───
@@ -74,10 +74,10 @@ describe("SLICE-56-6: agents.txt and llms.txt surfaces", () => {
   // ─── AC-6.2: llms.txt and llms-full.txt include all agent-facing endpoints ───
 
   describe("GET /llms.txt — AC-6.2", () => {
-    it("returns 200 with text/markdown content type", async () => {
+    it("returns 200 with text/plain content type", async () => {
       const res = await app.request("/llms.txt");
       expect(res.status).toBe(200);
-      expect(res.headers.get("Content-Type")).toContain("text/markdown");
+      expect(res.headers.get("Content-Type")).toContain("text/plain");
     });
 
     it("includes Engineering Capabilities section with team endpoints", async () => {

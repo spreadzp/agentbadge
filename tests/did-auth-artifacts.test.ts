@@ -9,6 +9,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { catalogRoutes } from "../src/server/routes/catalog";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery";
 import { marketGuideRoutes } from "../src/server/routes/market-guide";
 import { agentGuideRoutes } from "../src/server/routes/agent-guide";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
@@ -34,6 +35,7 @@ describe("SLICE-82-3: llms.txt mentions DID auth", () => {
   beforeEach(() => {
     app = new Hono();
     app.route("/", catalogRoutes);
+    app.route("/", discoveryManifestRoutes);
   });
 
   it("mentions the challenge endpoint path", async () => {

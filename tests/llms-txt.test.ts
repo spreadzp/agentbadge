@@ -13,6 +13,7 @@ import {
   registerDiscoveryTools,
 } from "@agentbadge/mcp";
 import { catalogRoutes } from "../src/server/routes/catalog";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery";
 
 describe("SLICE-18-8: llms.txt upgrade", () => {
   describe("Unit: getLlmsTxt()", () => {
@@ -91,12 +92,13 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
     beforeEach(() => {
       app = new Hono();
       app.route("/", catalogRoutes);
+      app.route("/", discoveryManifestRoutes);
     });
 
-    it("returns 200 with text/markdown content type", async () => {
+    it("returns 200 with text/plain content type", async () => {
       const res = await app.request("/llms.txt");
       expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toContain("text/markdown");
+      expect(res.headers.get("content-type")).toContain("text/plain");
     });
 
     it("response body contains new sections", async () => {

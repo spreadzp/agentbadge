@@ -39,6 +39,7 @@ import {
 import { loadConfig, getConfig } from "../config/env";
 import { initSentry } from "./lib/sentry";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
+import { setDiscoveryApp } from "./routes/discovery";
 
 // Initialize Sentry before anything else (no-op if SENTRY_DSN not set)
 initSentry();
@@ -212,6 +213,10 @@ startBackgroundJobs();
 // (openAPIRouteHandler introspects app at call time). EPIC-140: wiring/ops.ts
 wireOpenApi(app);
 
+// EPIC-178: wire app into discovery routes so /llms.txt enumerates the
+// full public route table (post-mount, lazy first-request generation).
+setDiscoveryApp(app);
+
 // Capture unhandled errors from routes — EPIC-140: extracted to wiring/background.ts
 wireErrorHandler(app);
 
@@ -219,6 +224,7 @@ export function createApp() {
   return app;
 }
 
+if (import.meta.main) {
 try {
   const server = Bun.serve({
     port,
@@ -244,4 +250,5 @@ try {
 } catch (e) {
   logger.error("SERVER: Bun.serve failed", { error: e });
   process.exit(1);
+}
 }

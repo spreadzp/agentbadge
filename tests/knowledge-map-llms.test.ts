@@ -4,6 +4,9 @@ import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 setupMockEnv();
 const app = makeTestApp();
 
+interface KmNode { id: string; label?: string; type?: string }
+interface KmEdge { from: string; to: string }
+
 describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
   describe("GET /agent-guide/knowledge-map.json", () => {
     it("returns 200 + application/json", async () => {
@@ -15,7 +18,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
     it("includes team node", async () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
-      const teamNode = data.nodes.find((n: any) => n.id === "team");
+      const teamNode = data.nodes.find((n: KmNode) => n.id === "team");
       expect(teamNode).toBeDefined();
       expect(teamNode.label).toContain("Team");
     });
@@ -23,28 +26,28 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
     it("includes capabilities node", async () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
-      const capNode = data.nodes.find((n: any) => n.id === "capabilities");
+      const capNode = data.nodes.find((n: KmNode) => n.id === "capabilities");
       expect(capNode).toBeDefined();
     });
 
     it("includes services node", async () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
-      const svcNode = data.nodes.find((n: any) => n.id === "services");
+      const svcNode = data.nodes.find((n: KmNode) => n.id === "services");
       expect(svcNode).toBeDefined();
     });
 
     it("includes people node", async () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
-      const peopleNode = data.nodes.find((n: any) => n.id === "people");
+      const peopleNode = data.nodes.find((n: KmNode) => n.id === "people");
       expect(peopleNode).toBeDefined();
     });
 
     it("includes person node paul", async () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
-      const paulNode = data.nodes.find((n: any) => n.id === "paul");
+      const paulNode = data.nodes.find((n: KmNode) => n.id === "paul");
       expect(paulNode).toBeDefined();
       expect(paulNode.type).toBe("person");
     });
@@ -52,7 +55,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
     it("includes capability nodes from registry", async () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
-      const mcpNode = data.nodes.find((n: any) => n.id === "mcp-development");
+      const mcpNode = data.nodes.find((n: KmNode) => n.id === "mcp-development");
       expect(mcpNode).toBeDefined();
       expect(mcpNode.type).toBe("capability");
     });
@@ -61,7 +64,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
       const edge = data.edges.find(
-        (e: any) => e.from === "agent-readiness" && e.to === "team",
+        (e: KmEdge) => e.from === "agent-readiness" && e.to === "team",
       );
       expect(edge).toBeDefined();
     });
@@ -70,7 +73,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
       const edge = data.edges.find(
-        (e: any) =>
+        (e: KmEdge) =>
           e.from === "mcp-development" && e.to === "services",
       );
       expect(edge).toBeDefined();
@@ -80,7 +83,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
       const edge = data.edges.find(
-        (e: any) => e.from === "mcp-development" && e.to === "paul",
+        (e: KmEdge) => e.from === "mcp-development" && e.to === "paul",
       );
       expect(edge).toBeDefined();
     });
@@ -89,7 +92,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
       const edge = data.edges.find(
-        (e: any) => e.from === "paul" && e.to === "contact",
+        (e: KmEdge) => e.from === "paul" && e.to === "contact",
       );
       expect(edge).toBeDefined();
     });
@@ -106,7 +109,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
         "cli",
       ];
       for (const id of existingIds) {
-        expect(data.nodes.find((n: any) => n.id === id)).toBeDefined();
+        expect(data.nodes.find((n: KmNode) => n.id === id)).toBeDefined();
       }
     });
 
@@ -114,7 +117,7 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const data = await res.json();
       const existingEdge = data.edges.find(
-        (e: any) =>
+        (e: KmEdge) =>
           e.from === "agent-readiness" && e.to === "scanner",
       );
       expect(existingEdge).toBeDefined();
@@ -122,10 +125,10 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
   });
 
   describe("GET /llms.txt", () => {
-    it("returns 200 + text/markdown", async () => {
+    it("returns 200 + text/plain", async () => {
       const res = await app.request("/llms.txt");
       expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toContain("text/markdown");
+      expect(res.headers.get("content-type")).toContain("text/plain");
     });
 
     it("includes Engineering Capabilities section", async () => {
