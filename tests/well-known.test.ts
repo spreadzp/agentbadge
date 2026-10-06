@@ -1,17 +1,42 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
+import { createDiscoveryRoutes } from "../src/server/routes/discovery";
+import type { DiscoverySources } from "../src/server/lib/agent-discovery";
+
+const TEST_SOURCES: DiscoverySources = {
+  baseUrl: "https://staging.agentbadge.xyz",
+  authSection: "",
+  llmsCore: "",
+  articles: [],
+  faqEntries: [],
+  tiers: [],
+  appRoutes: [],
+  wellKnownEnv: {
+    facilitatorUrl: "https://facilitator.payai.network",
+    hederaNetwork: "testnet",
+    evmChainId: "5042",
+    erc8004: {
+      chainId: 5042,
+      registry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      agentId: "0",
+    },
+  },
+};
 
 describe("Well-known routes", () => {
   let app: Hono;
 
   beforeEach(() => {
     app = new Hono();
+    app.route("/", createDiscoveryRoutes(() => TEST_SOURCES));
     app.route("/", wellKnownRoutes);
   });
 
   // ─── Agent Card (SLICE-17-1) ──────────────────────────────────
 
+  // SLICE-178-2: card is served by the manifest registry (A2A v1.0 shape);
+  // legacy AgentBadge fields live under the x-agentbadge vendor block.
   describe("GET /.well-known/agent-card.json", () => {
     it("returns 200 with correct fields", async () => {
       const res = await app.request("/.well-known/agent-card.json");
@@ -20,45 +45,47 @@ describe("Well-known routes", () => {
 
       expect(body.name).toBeDefined();
       expect(body.description).toBeDefined();
-      expect(body.url).toBeDefined();
+      expect(body.supportedInterfaces[0].url).toBeDefined();
       expect(body.version).toBeDefined();
-      expect(body.capabilities).toBeInstanceOf(Array);
-      expect(body.capabilities.length).toBeGreaterThan(0);
+      expect(body.capabilities).toBeDefined();
       expect(body.skills).toBeInstanceOf(Array);
       expect(body.skills.length).toBeGreaterThan(0);
+      expect(body["x-agentbadge"].capabilities.length).toBeGreaterThan(0);
     });
 
     it("includes all required endpoint fields", async () => {
       const res = await app.request("/.well-known/agent-card.json");
       const body = await res.json();
+      const endpoints = body["x-agentbadge"].endpoints;
 
-      expect(body.endpoints).toBeDefined();
-      expect(body.endpoints.api).toBeDefined();
-      expect(body.endpoints.docs).toBeDefined();
-      expect(body.endpoints.mcp).toBeDefined();
-      expect(body.endpoints.llms_txt).toBeDefined();
-      expect(body.endpoints.guides).toBeDefined();
-      expect(body.endpoints.did_resolver).toBeDefined();
+      expect(endpoints).toBeDefined();
+      expect(endpoints.api).toBeDefined();
+      expect(endpoints.docs).toBeDefined();
+      expect(endpoints.mcp).toBeDefined();
+      expect(endpoints.llms_txt).toBeDefined();
+      expect(endpoints.guides).toBeDefined();
+      expect(endpoints.did_resolver).toBeDefined();
     });
 
     it("includes payment configuration", async () => {
       const res = await app.request("/.well-known/agent-card.json");
       const body = await res.json();
+      const payment = body["x-agentbadge"]["ab:payment"];
 
-      expect(body.payment).toBeDefined();
-      expect(body.payment.protocol).toBe("x402");
-      expect(body.payment.scheme).toBe("exact");
-      expect(body.payment.network).toMatch(/^hedera:/);
-      expect(body.payment.asset).toBe("HBAR");
-      expect(body.payment.facilitator).toBeDefined();
+      expect(payment).toBeDefined();
+      expect(payment.protocol).toBe("x402");
+      expect(payment.scheme).toBe("exact");
+      expect(payment.network).toMatch(/^hedera:/);
+      expect(payment.asset).toBe("HBAR");
+      expect(payment.facilitator).toBeDefined();
     });
 
     it("includes blockchain configuration", async () => {
       const res = await app.request("/.well-known/agent-card.json");
       const body = await res.json();
 
-      expect(body.blockchain).toBeDefined();
-      expect(body.blockchain.network).toBeDefined();
+      expect(body["x-agentbadge"].blockchain).toBeDefined();
+      expect(body["x-agentbadge"].blockchain.network).toBeDefined();
     });
 
     it("sets Cache-Control header", async () => {
@@ -66,9 +93,9 @@ describe("Well-known routes", () => {
       expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
     });
 
-    it("returns application/json content type", async () => {
+    it("returns application/a2a+json content type", async () => {
       const res = await app.request("/.well-known/agent-card.json");
-      expect(res.headers.get("Content-Type")).toContain("application/json");
+      expect(res.headers.get("Content-Type")).toContain("application/a2a+json");
     });
   });
 

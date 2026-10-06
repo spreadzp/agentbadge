@@ -27,10 +27,8 @@ export function wireStaticOps(app: Hono): void {
     c.header("Cache-Control", "public, max-age=86400");
     return serveStatic({ root: "./public", path: "/manifest.json" })(c, () => Promise.resolve());
   });
-  app.use("/.well-known/security.txt", (c) => {
-    c.header("Cache-Control", "public, max-age=86400");
-    return serveStatic({ root: "./public", path: "/.well-known/security.txt" })(c, () => Promise.resolve());
-  });
+  // /.well-known/security.txt is generated at boot by discoveryManifestRoutes
+  // (SLICE-178-2) — fresh Expires on every deploy, no static file.
   app.use("/6abf90e7f0354fb09ac01108f46a17e7.txt", serveStatic({ root: "./public", path: "/6abf90e7f0354fb09ac01108f46a17e7.txt" }));
 
   app.use("/icons/*", (c, next) => {

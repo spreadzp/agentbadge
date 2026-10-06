@@ -85,26 +85,28 @@ describe("E2E: Agent Discovery Workflow", () => {
 
   describe("Phase 1: Discovery", () => {
     it("GET /.well-known/agent-card.json → 200 with name, capabilities, endpoints, payment", async () => {
+      // SLICE-178-2: A2A v1.0 shape — legacy fields under x-agentbadge.
       const res = await app.request("/.well-known/agent-card.json");
       expect(res.status).toBe(200);
       const card = await res.json();
+      const ab = card["x-agentbadge"];
       expect(card).toHaveProperty("name");
       expect(card).toHaveProperty("capabilities");
-      expect(card.capabilities).toBeInstanceOf(Array);
-      expect(card).toHaveProperty("endpoints");
-      expect(card).toHaveProperty("payment");
+      expect(ab.capabilities).toBeInstanceOf(Array);
+      expect(ab).toHaveProperty("endpoints");
+      expect(ab).toHaveProperty("ab:payment");
     });
 
-    it("Agent Card endpoints.llms_txt points to /llms.txt", async () => {
+    it("Agent Card x-agentbadge.endpoints.llms_txt points to /llms.txt", async () => {
       const res = await app.request("/.well-known/agent-card.json");
       const card = await res.json();
-      expect(card.endpoints.llms_txt).toContain("/llms.txt");
+      expect(card["x-agentbadge"].endpoints.llms_txt).toContain("/llms.txt");
     });
 
-    it("Agent Card payment.protocol is 'x402'", async () => {
+    it("Agent Card ab:payment.protocol is 'x402'", async () => {
       const res = await app.request("/.well-known/agent-card.json");
       const card = await res.json();
-      expect(card.payment.protocol).toBe("x402");
+      expect(card["x-agentbadge"]["ab:payment"].protocol).toBe("x402");
     });
 
     it("GET /ai-sitemap.xml → 200, valid XML with resources", async () => {

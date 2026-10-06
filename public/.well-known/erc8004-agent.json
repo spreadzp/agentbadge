@@ -1,0 +1,32 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "AgentBadge",
+  "description": "On-chain identity system for AI agents on Hedera Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
+  "services": [
+    {
+      "name": "web",
+      "endpoint": "https://agentbadge.xyz"
+    },
+    {
+      "name": "A2A",
+      "endpoint": "https://agentbadge.xyz/.well-known/agent-card.json",
+      "version": "1.0"
+    },
+    {
+      "name": "MCP",
+      "endpoint": "https://agentbadge.xyz/mcp",
+      "version": "2025-06-18"
+    }
+  ],
+  "x402Support": true,
+  "supportedTrust": [
+    "reputation",
+    "crypto-economic"
+  ],
+  "registrations": [
+    {
+      "agentId": "0",
+      "agentRegistry": "eip155:5042002:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ]
+}

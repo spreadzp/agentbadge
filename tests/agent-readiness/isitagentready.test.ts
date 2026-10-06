@@ -2,11 +2,27 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { landingRoutes } from "../../src/server/routes/landing";
+import { hackathonRoutes } from "../../src/server/routes/hackathon";
+import { createDiscoveryRoutes } from "../../src/server/routes/discovery";
+import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 
 let app: Hono;
 
+// SLICE-178-2: api-catalog / oauth-protected-resource moved to the manifest
+// registry — mount discovery routes alongside well-known.
+const TEST_SOURCES: DiscoverySources = {
+  baseUrl: "https://staging.agentbadge.xyz",
+  authSection: "",
+  llmsCore: "",
+  articles: [],
+  faqEntries: [],
+  tiers: [],
+  appRoutes: [],
+};
+
 beforeEach(() => {
   app = new Hono();
+  app.route("/", createDiscoveryRoutes(() => TEST_SOURCES));
   app.route("/", wellKnownRoutes);
   app.route("/", landingRoutes);
 });
@@ -58,7 +74,9 @@ describe("SLICE-49-2: API Catalog (RFC 9727)", () => {
   it("includes status relation for health endpoint", async () => {
     const res = await app.request("/.well-known/api-catalog");
     const body = await res.json();
-    const hasStatus = body.linkset.some((e: any) => e["status"]);
+    const hasStatus = body.linkset.some(
+      (e: Record<string, unknown>) => e["status"],
+    );
     expect(hasStatus).toBe(true);
   });
 });
@@ -187,15 +205,17 @@ describe("SLICE-49-7: Web Bot Auth directory", () => {
 // ── SLICE-49-9: WebMCP browser-side tools ────────────────────────
 
 describe("SLICE-49-9: WebMCP browser-side tools", () => {
-  it("homepage HTML includes navigator.modelContext.provideContext call", async () => {
-    const res = await app.request("/");
+  // WebMCP inject script moved to /hackathon/webmcp and now uses
+  // document.modelContext.registerTool() (spec migration, f62e648).
+  it("webmcp page HTML includes document.modelContext.registerTool call", async () => {
+    const res = await hackathonRoutes.request("/hackathon/webmcp");
     const html = await res.text();
-    expect(html).toContain("navigator.modelContext");
-    expect(html).toContain("provideContext");
+    expect(html).toContain("modelContext");
+    expect(html).toContain("registerTool");
   });
 
   it("includes at least one tool definition", async () => {
-    const res = await app.request("/");
+    const res = await hackathonRoutes.request("/hackathon/webmcp");
     const html = await res.text();
     expect(html).toContain("inputSchema");
     expect(html).toContain("execute");

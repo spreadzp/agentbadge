@@ -317,54 +317,6 @@ discoveryRoutes.get(
   },
 );
 
-// ─── SLICE-49-2: API Catalog (RFC 9727) ──────────────────────────
-
-discoveryRoutes.get(
-  "/.well-known/api-catalog",
-  describeRoute({
-    tags: ["Discovery"],
-    summary: "API Catalog — RFC 9727 compliant linkset for API discovery",
-    responses: {
-      200: {
-        description: "API catalog as application/linkset+json",
-        content: { "application/linkset+json": {} },
-      },
-    },
-  }),
-  (c) => {
-    const baseUrl = BASE_URL;
-    return c.json(
-      {
-        linkset: [
-          {
-            anchor: `${baseUrl}/`,
-            "service-desc": [
-              { href: `${baseUrl}/api/specs`, type: "application/json" },
-            ],
-            "service-doc": [
-              { href: `${baseUrl}/docs`, type: "text/html" },
-            ],
-            "status": [
-              { href: `${baseUrl}/health`, type: "application/json" },
-            ],
-          },
-          {
-            anchor: `${baseUrl}/mcp`,
-            "service-desc": [
-              { href: `${baseUrl}/.well-known/mcp.json`, type: "application/json" },
-            ],
-          },
-        ],
-      },
-      200,
-      {
-        "Content-Type": "application/linkset+json",
-        "Cache-Control": "public, max-age=3600",
-      },
-    );
-  },
-);
-
 // ─── SLICE-49-5: Agent Skills index ──────────────────────────────
 
 discoveryRoutes.get(

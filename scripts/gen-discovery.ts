@@ -27,8 +27,13 @@ async function main() {
 
   mkdirSync(PUBLIC_DIR, { recursive: true });
   for (const entry of MANIFEST_REGISTRY) {
-    const m = manifests.get(entry.path)!;
+    // publicPath="" → env-dependent or gated (security.txt Expires,
+    // did.json) — served live at boot, never snapshotted (D-178-11).
+    if (!entry.publicPath) continue;
+    const m = manifests.get(entry.path);
+    if (!m || m.redirectTo) continue;
     const file = join(PUBLIC_DIR, entry.publicPath);
+    mkdirSync(join(file, ".."), { recursive: true });
     writeFileSync(file, m.body, "utf-8");
     console.log(`wrote public/${entry.publicPath} (${m.body.length} bytes)`);
   }

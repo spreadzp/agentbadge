@@ -10,7 +10,10 @@ import { policyRoutes } from "./policy";
 import { agentDocsRoutes } from "./agent-docs";
 import { verificationDocsRoutes } from "./verification-docs";
 
-export { buildAgentCard } from "./agent-card";
+// buildAgentCard moved to lib/agent-discovery (SLICE-178-2) —
+// re-exported for the old import path; new signature takes DiscoverySources
+// and returns a JSON string.
+export { buildAgentCard } from "../../lib/agent-discovery";
 export { buildAiSitemap, buildSitemap } from "./sitemaps";
 
 export const wellKnownRoutes = new Hono();

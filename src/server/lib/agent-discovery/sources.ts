@@ -15,6 +15,17 @@ import { BLOG_ARTICLES, type BlogArticle } from "../blog-data";
 import { didAuthSectionCompact } from "../did-auth-docs";
 import { BASE_URL } from "../page-meta";
 import { getFaqEntries, type QaPair } from "../../../views/faq-page";
+import { openApiConfig } from "../../openapi";
+import { getNamespace, listTools } from "@agentbadge/mcp";
+
+/** MCP namespaces exposed on /mcp/<ns> — mirrors routes/well-known/agent-card.ts. */
+export const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
+const MCP_NAMESPACE_DESCRIPTIONS: Record<string, string> = {
+  passport: "Agent identity, signing, and escrow tools",
+  market: "Marketplace and dataset tools",
+  discovery: "Agent directory, guide, A2A messaging, and discovery tools",
+  audit: "Audit catalog, compliance checking, and OpenAPI parity tools",
+};
 
 /** Paid-service SKU — future EPIC-179 catalog entry (soft-dep). */
 export interface DiscoverySku {
@@ -47,6 +58,45 @@ export interface DiscoverySources {
   appRoutes: string[];
   /** EPIC-179 SKU registry; empty/absent → Paid Services degrades. */
   skus?: DiscoverySku[];
+
+  // ─── SLICE-178-2: .well-known sources ────────────────────────────
+
+  /** OpenAPI info block (title/version/description) — card metadata. */
+  apiInfo?: { title: string; version: string; description: string };
+  /** MCP server introspection (namespaces + tool listing). */
+  mcpServer?: {
+    name: string;
+    version: string;
+    namespaces: Array<{
+      name: string;
+      description: string;
+      tools: Array<{ name: string; description: string }>;
+    }>;
+    tools: Array<{ name: string; description: string }>;
+  };
+  /** Env-dependent values for .well-known manifests. */
+  wellKnownEnv?: {
+    facilitatorUrl: string;
+    hederaNetwork: string;
+    passportTokenId?: string;
+    directoryTopicId?: string;
+    auditTopicId?: string;
+    evmChainId: string;
+    erc8004: { chainId: number; registry: string; agentId: string };
+    /** Multi-chain contract addresses (agent-card x-agentbadge.blockchain). */
+    contracts?: {
+      trustRegistry: string;
+      trustBadge: string;
+      agentPassportBase: string;
+      taskEscrow: string;
+      taskMarketplaceAsc: string;
+      taskState: string;
+    };
+  };
+  /** did.json gate — publish DID document only when DID is live (D-178-9). */
+  didEnabled?: boolean;
+  /** Injected clock (security.txt Expires). Defaults to build time. */
+  now?: Date;
 }
 
 /** Path prefixes that belong in the public agent-facing API surface. */
@@ -89,5 +139,67 @@ export function collectSources(app?: Hono): DiscoverySources {
     tiers: getCatalog(),
     appRoutes: app ? enumeratePublicRoutes(app) : [],
     skus: [],
+    apiInfo: {
+      title: openApiConfig.info.title,
+      version: openApiConfig.info.version,
+      description: openApiConfig.info.description,
+    },
+    mcpServer: collectMcpServer(),
+    wellKnownEnv: collectWellKnownEnv(),
+    didEnabled: process.env.DID_ENABLED === "true" || process.env.DID_ENABLED === "1",
+    now: new Date(),
   };
+}
+
+/** EIP-8004 registries — canonical IdentityRegistry (mainnets). */
+export const ERC8004_REGISTRY_MAINNET = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
+
+/** Live env reads for .well-known manifests (impure edge). */
+function collectWellKnownEnv(): NonNullable<DiscoverySources["wellKnownEnv"]> {
+  return {
+    facilitatorUrl:
+      process.env.x402_FACILITATOR_URL ??
+      process.env.FACILITATOR_URL ??
+      "https://facilitator-agentbadge.fly.dev",
+    hederaNetwork: process.env.HEDERA_NETWORK ?? "testnet",
+    passportTokenId: process.env.PASSPORT_TOKEN_ID,
+    directoryTopicId: process.env.DIRECTORY_TOPIC_ID,
+    auditTopicId: process.env.AUDIT_TOPIC_ID,
+    evmChainId: process.env.ARC_CHAIN_ID ?? "5042",
+    erc8004: {
+      chainId: Number(process.env.ARC_CHAIN_ID ?? 5042),
+      registry: process.env.ERC8004_REGISTRY ?? ERC8004_REGISTRY_MAINNET,
+      agentId: process.env.ERC8004_AGENT_ID ?? "0",
+    },
+    contracts: {
+      trustRegistry: process.env.TRUST_REGISTRY_ADDRESS ?? "",
+      trustBadge: process.env.TRUST_BADGE_ADDRESS ?? "",
+      agentPassportBase: process.env.AGENT_PASSPORT_BASE_ADDRESS ?? "",
+      taskEscrow: process.env.TASK_ESCROW_ADDRESS ?? "",
+      taskMarketplaceAsc: process.env.TASK_MARKETPLACE_ASC_ADDRESS ?? "",
+      taskState: process.env.TASK_STATE_ADDRESS ?? "",
+    },
+  };
+}
+
+/** MCP introspection — namespaces + tool listings from the live registry. */
+function collectMcpServer(): DiscoverySources["mcpServer"] {
+  try {
+    const namespaces = MCP_NAMESPACES.map((nsName) => {
+      const ns = getNamespace(nsName);
+      return {
+        name: nsName,
+        description: MCP_NAMESPACE_DESCRIPTIONS[nsName] ?? `${nsName} MCP namespace`,
+        tools: (ns ? ns.listTools() : []).map((t) => ({ name: t.name, description: t.description })),
+      };
+    });
+    return {
+      name: "agentbadge",
+      version: openApiConfig.info.version,
+      namespaces,
+      tools: listTools().map((t) => ({ name: t.name, description: t.description })),
+    };
+  } catch {
+    return undefined;
+  }
 }

@@ -1,0 +1,15 @@
+{
+  "resource": "https://agentbadge.xyz",
+  "authorization_servers": [
+    "https://agentbadge.xyz/.well-known/oauth-authorization-server"
+  ],
+  "scopes_supported": [
+    "read",
+    "write",
+    "admin"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "resource_documentation": "https://agentbadge.xyz/auth.md"
+}

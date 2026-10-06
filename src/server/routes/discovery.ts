@@ -1,11 +1,16 @@
 /**
- * EPIC-178 (SLICE-178-1): generated discovery routes — /llms.txt,
- * /llms-full.txt (registry-driven; slices add manifests, not routes).
+ * EPIC-178 (SLICE-178-1/178-2): generated discovery routes — every
+ * MANIFEST_REGISTRY entry becomes a GET route. Slices add manifests to
+ * the registry, never routes here.
  *
  * Sources are collected lazily on first request (after index.ts wires
  * the app into `setDiscoveryApp`) and cached in memory. DISCOVERY_LIVE=1
  * rebuilds per request for dev. `createDiscoveryRoutes(fn)` injects a
  * custom source collector — used by tests (no app/env required).
+ *
+ * - redirectTo entries → 301 (agent.json → agent-card.json, D-178-4)
+ * - enabled() gates → 404 when disabled (did.json, D-178-9)
+ * - per-entry contentType + cacheMaxAge
  */
 
 import { Hono } from "hono";
@@ -35,7 +40,9 @@ function defaultCollect(): DiscoverySources {
  * `collect` defaults to `collectSources(wiredApp)`; lazy + memoized so
  * the route table is fully mounted before enumeration.
  */
-export function createDiscoveryRoutes(collect: () => DiscoverySources = defaultCollect): Hono {
+export function createDiscoveryRoutes(
+  collect: () => DiscoverySources = defaultCollect,
+): Hono {
   const routes = new Hono();
   let cache: Map<string, GeneratedManifest> | null = null;
 
@@ -46,49 +53,34 @@ export function createDiscoveryRoutes(collect: () => DiscoverySources = defaultC
     return cache;
   };
 
-  routes.get(
-    "/llms.txt",
-    describeRoute({
-      tags: ["Discovery"],
-      summary: "LLM-friendly catalog (llmstxt.org)",
-      description:
-        "Machine-readable entry point for LLM agents: services, auth, paid endpoints, and links to all discovery surfaces. Generated from live sources — regenerated via `bun run gen:discovery`.",
-      responses: {
-        200: {
-          description: "llms.txt per llmstxt.org convention",
-          content: { "text/plain": {} },
+  for (const entry of MANIFEST_REGISTRY) {
+    routes.get(
+      entry.path,
+      describeRoute({
+        tags: ["Discovery"],
+        summary: entry.summary ?? `Generated manifest ${entry.path}`,
+        hide: false,
+        responses: {
+          200: {
+            description: entry.summary ?? entry.path,
+            content: { [entry.contentType]: {} },
+          },
         },
+      }),
+      (c) => {
+        const m = manifests().get(entry.path);
+        if (!m) return c.notFound();
+        if (m.redirectTo) return c.redirect(m.redirectTo, 301);
+        return new Response(m.body, {
+          status: 200,
+          headers: {
+            "Content-Type": m.contentType,
+            "Cache-Control": `public, max-age=${m.cacheMaxAge}`,
+          },
+        });
       },
-    }),
-    (c) => {
-      const m = manifests().get("/llms.txt")!;
-      return c.text(m.body, 200, {
-        "Cache-Control": "public, max-age=300",
-      });
-    },
-  );
-
-  routes.get(
-    "/llms-full.txt",
-    describeRoute({
-      tags: ["Discovery"],
-      summary: "Full-text LLM context (concatenated site content)",
-      description:
-        "Full site content as plain text in a single request — services, FAQ, blog, guides. Enables RAG pipelines and embedded agents to ingest all content without browsing.",
-      responses: {
-        200: {
-          description: "Full-text content",
-          content: { "text/plain": {} },
-        },
-      },
-    }),
-    (c) => {
-      const m = manifests().get("/llms-full.txt")!;
-      return c.text(m.body, 200, {
-        "Cache-Control": "public, max-age=300",
-      });
-    },
-  );
+    );
+  }
 
   return routes;
 }

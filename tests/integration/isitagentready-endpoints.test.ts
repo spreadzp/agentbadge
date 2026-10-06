@@ -1,7 +1,27 @@
 import { describe, it, expect } from "vitest";
+import { Hono } from "hono";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { landingRoutes } from "../../src/server/routes/landing";
-import { catalogRoutes } from "../../src/server/routes/catalog";
+import { hackathonRoutes } from "../../src/server/routes/hackathon";
+import { createDiscoveryRoutes } from "../../src/server/routes/discovery";
+import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
+
+// SLICE-178-2: .well-known manifests (api-catalog, oauth-protected-resource,
+// agent-card) moved to the manifest registry — mount a combined app so both
+// route sets resolve.
+const TEST_SOURCES: DiscoverySources = {
+  baseUrl: "https://staging.agentbadge.xyz",
+  authSection: "",
+  llmsCore: "",
+  articles: [],
+  faqEntries: [],
+  tiers: [],
+  appRoutes: [],
+};
+
+const app = new Hono();
+app.route("/", createDiscoveryRoutes(() => TEST_SOURCES));
+app.route("/", wellKnownRoutes);
 
 /**
  * SLICE-49-12: Server integration tests for all isitagentready compliance endpoints.
@@ -39,19 +59,19 @@ describe("SLICE-49-12: isitagentready compliance endpoints (integration)", () =>
 
   describe("API Catalog (RFC 9727)", () => {
     it("GET /.well-known/api-catalog returns linkset+json", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/api-catalog");
+      const res = await app.request("/.well-known/api-catalog");
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("application/linkset+json");
     });
 
     it("api-catalog body has linkset array", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/api-catalog");
+      const res = await app.request("/.well-known/api-catalog");
       const body = await res.json();
       expect(body.linkset).toBeInstanceOf(Array);
     });
 
     it("api-catalog linkset entries have anchor and service-desc", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/api-catalog");
+      const res = await app.request("/.well-known/api-catalog");
       const body = await res.json();
       const first = body.linkset[0];
       expect(first).toHaveProperty("anchor");
@@ -61,20 +81,20 @@ describe("SLICE-49-12: isitagentready compliance endpoints (integration)", () =>
 
   describe("OAuth Protected Resource (RFC 9728)", () => {
     it("GET /.well-known/oauth-protected-resource returns JSON", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/oauth-protected-resource");
+      const res = await app.request("/.well-known/oauth-protected-resource");
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.resource).toBeDefined();
     });
 
     it("oauth-protected-resource has authorization_servers array", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/oauth-protected-resource");
+      const res = await app.request("/.well-known/oauth-protected-resource");
       const body = await res.json();
       expect(body.authorization_servers).toBeInstanceOf(Array);
     });
 
     it("oauth-protected-resource has bearer_methods_supported", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/oauth-protected-resource");
+      const res = await app.request("/.well-known/oauth-protected-resource");
       const body = await res.json();
       expect(body.bearer_methods_supported).toBeInstanceOf(Array);
     });
@@ -129,10 +149,11 @@ describe("SLICE-49-12: isitagentready compliance endpoints (integration)", () =>
   });
 
   describe("WebMCP", () => {
-    it("GET / HTML contains navigator.modelContext", async () => {
-      const res = await landingRoutes.request("/");
+    it("GET /hackathon/webmcp HTML contains document.modelContext", async () => {
+      const res = await hackathonRoutes.request("/hackathon/webmcp");
       const html = await res.text();
-      expect(html).toContain("navigator.modelContext");
+      expect(html).toContain("modelContext");
+      expect(html).toContain("registerTool");
     });
   });
 
@@ -158,16 +179,16 @@ describe("SLICE-49-12: isitagentready compliance endpoints (integration)", () =>
 
   describe("Agent Card", () => {
     it("GET /.well-known/agent-card.json returns JSON", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/agent-card.json");
+      const res = await app.request("/.well-known/agent-card.json");
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.name).toBeDefined();
     });
 
     it("agent-card has capabilities array", async () => {
-      const res = await wellKnownRoutes.request("/.well-known/agent-card.json");
+      const res = await app.request("/.well-known/agent-card.json");
       const body = await res.json();
-      expect(body.capabilities).toBeInstanceOf(Array);
+      expect(body["x-agentbadge"].capabilities).toBeInstanceOf(Array);
     });
   });
 
@@ -187,7 +208,7 @@ describe("SLICE-49-12: isitagentready compliance endpoints (integration)", () =>
 
   describe("LLMs.txt", () => {
     it("GET /llms.txt returns text", async () => {
-      const res = await catalogRoutes.request("/llms.txt");
+      const res = await app.request("/llms.txt");
       expect(res.status).toBe(200);
       const text = await res.text();
       expect(text.length).toBeGreaterThan(0);

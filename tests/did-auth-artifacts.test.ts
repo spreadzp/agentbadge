@@ -9,7 +9,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { catalogRoutes } from "../src/server/routes/catalog";
-import { discoveryManifestRoutes } from "../src/server/routes/discovery";
+import {
+  createDiscoveryRoutes,
+  discoveryManifestRoutes,
+} from "../src/server/routes/discovery";
 import { marketGuideRoutes } from "../src/server/routes/market-guide";
 import { agentGuideRoutes } from "../src/server/routes/agent-guide";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
@@ -160,39 +163,60 @@ describe("SLICE-82-3: agents.txt mentions DID auth", () => {
 
 // ─── 5. agent-card.json auth block ─────────────────────────────────
 
+// SLICE-178-2: agent-card.json moved to the manifest registry; the auth block
+// lives under the x-agentbadge vendor extension.
 describe("SLICE-82-3: agent-card.json has auth block", () => {
   let app: Hono;
 
   beforeEach(() => {
     app = new Hono();
+    app.route(
+      "/",
+      createDiscoveryRoutes(() => ({
+        baseUrl: "https://agentbadge.xyz",
+        authSection: "",
+        llmsCore: "",
+        articles: [],
+        faqEntries: [],
+        tiers: [],
+        appRoutes: [],
+      })),
+    );
     app.route("/", wellKnownRoutes);
   });
 
+  type Card = {
+    "x-agentbadge"?: {
+      auth?: {
+        challenge_endpoint?: string;
+        headers?: string[];
+        canonical_format?: string;
+      };
+    };
+  };
+  const getAuth = async () =>
+    (await (
+      await app.request("/.well-known/agent-card.json")
+    ).json() as Card)["x-agentbadge"]?.auth;
+
   it("response contains auth object", async () => {
-    const res = await app.request("/.well-known/agent-card.json");
-    const json = await res.json() as Record<string, unknown>;
-    expect(json.auth).toBeDefined();
+    expect(await getAuth()).toBeDefined();
   });
 
   it("auth block references challenge endpoint", async () => {
-    const res = await app.request("/.well-known/agent-card.json");
-    const json = await res.json() as { auth?: { challenge_endpoint?: string } };
-    expect(json.auth?.challenge_endpoint).toContain(CHALLENGE_PATH);
+    expect((await getAuth())?.challenge_endpoint).toContain(CHALLENGE_PATH);
   });
 
   it("auth block lists required headers", async () => {
-    const res = await app.request("/.well-known/agent-card.json");
-    const json = await res.json() as { auth?: { headers?: string[] } };
-    expect(json.auth?.headers).toBeDefined();
+    const auth = await getAuth();
+    expect(auth?.headers).toBeDefined();
     for (const header of AUTH_HEADERS) {
-      expect(json.auth?.headers).toContain(header);
+      expect(auth?.headers).toContain(header);
     }
   });
 
   it("auth block mentions canonical format", async () => {
-    const res = await app.request("/.well-known/agent-card.json");
-    const json = await res.json() as { auth?: { canonical_format?: string } };
-    expect(json.auth?.canonical_format).toContain(CANONICAL_PREFIX);
+    expect((await getAuth())?.canonical_format).toContain(CANONICAL_PREFIX);
   });
 });
 

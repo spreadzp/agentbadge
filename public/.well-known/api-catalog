@@ -1,0 +1,76 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://agentbadge.xyz/",
+      "service-desc": [
+        {
+          "href": "https://agentbadge.xyz/api/specs",
+          "type": "application/json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://agentbadge.xyz/docs",
+          "type": "text/html"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://agentbadge.xyz/health",
+          "type": "application/json"
+        }
+      ]
+    },
+    {
+      "anchor": "https://agentbadge.xyz/.well-known/api-catalog",
+      "item": [
+        {
+          "href": "https://agentbadge.xyz/api/specs"
+        },
+        {
+          "href": "https://agentbadge.xyz/openapi.yaml"
+        },
+        {
+          "href": "https://agentbadge.xyz/api/v1/services"
+        },
+        {
+          "href": "https://agentbadge.xyz/docs"
+        }
+      ]
+    },
+    {
+      "anchor": "https://agentbadge.xyz/api/specs",
+      "service-desc": [
+        {
+          "href": "https://agentbadge.xyz/api/specs",
+          "type": "application/vnd.oai.openapi+json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://agentbadge.xyz/docs",
+          "type": "text/html"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://agentbadge.xyz/api/health",
+          "type": "application/json"
+        }
+      ]
+    },
+    {
+      "anchor": "https://agentbadge.xyz/mcp",
+      "service-desc": [
+        {
+          "href": "https://agentbadge.xyz/.well-known/mcp.json",
+          "type": "application/json"
+        },
+        {
+          "href": "https://agentbadge.xyz/.well-known/mcp/server-card.json",
+          "type": "application/json"
+        }
+      ]
+    }
+  ]
+}
