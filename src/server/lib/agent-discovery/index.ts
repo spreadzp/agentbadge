@@ -16,6 +16,10 @@ export {
 export { buildLlmsTxt, buildLlmsFullTxt } from "./llms";
 export { buildAgentCard } from "./agent-card";
 export {
+  buildAgentEvaluation,
+  buildOwnerQuestions,
+} from "./evaluation";
+export {
   buildApiCatalog,
   buildErc8004Agent,
   buildMcpServerCard,

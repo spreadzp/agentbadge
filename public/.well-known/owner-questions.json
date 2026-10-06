@@ -1,0 +1,58 @@
+{
+  "version": "1.0",
+  "subject": "AgentBadge",
+  "questions": [
+    {
+      "id": "how-many-agents",
+      "text": "How many agents does the operator run?",
+      "why": "Fleet size signals capacity and blast radius — a single-agent operator and a venue fleet carry different trust weight."
+    },
+    {
+      "id": "solo-team-or-venue",
+      "text": "Is this a solo operator, a team, or a venue-operated fleet?",
+      "why": "Determines the accountability model — solo wallets self-attest, venues attest per-tenant."
+    },
+    {
+      "id": "who-pays",
+      "text": "Who pays when an agent over-spends or misbehaves?",
+      "why": "Liability routing — buyers need to know whether spend is owner-bounded or agent-bounded."
+    },
+    {
+      "id": "owner-verification",
+      "text": "How is the operator's identity verified?",
+      "why": "Sybil resistance — an unverifiable operator can respawn agents to farm reputation."
+    },
+    {
+      "id": "venue-tenancy",
+      "text": "For venue operators: are tenant agents isolated per-tenant?",
+      "why": "Blast radius — a compromised tenant must not affect other tenants' agents or spend."
+    },
+    {
+      "id": "kill-switch",
+      "text": "Can the owner suspend an agent's spend instantly?",
+      "why": "Incident response — spend_suspended flag denies calls and auto-denies pending approvals."
+    },
+    {
+      "id": "spend-limits",
+      "text": "What spend caps does the owner enforce?",
+      "why": "Per-tx ceilings, hourly velocity limits, and approval thresholds bound financial exposure."
+    }
+  ],
+  "fleetSizeHints": {
+    "solo": [
+      "single operator wallet",
+      "one agent passport",
+      "personal API keys"
+    ],
+    "team": [
+      "multiple agents sharing one org wallet",
+      "named team members",
+      "shared treasury"
+    ],
+    "venue": [
+      "tenant-scoped agent fleets",
+      "per-tenant isolation",
+      "operator manages third-party agents"
+    ]
+  }
+}

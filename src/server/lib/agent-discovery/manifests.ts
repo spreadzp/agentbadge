@@ -8,6 +8,10 @@ import type { DiscoverySources } from "./sources";
 import { buildLlmsTxt, buildLlmsFullTxt } from "./llms";
 import { buildAgentCard } from "./agent-card";
 import {
+  buildAgentEvaluation,
+  buildOwnerQuestions,
+} from "./evaluation";
+import {
   buildApiCatalog,
   buildErc8004Agent,
   buildMcpServerCard,
@@ -111,6 +115,22 @@ export const MANIFEST_REGISTRY: ManifestEntry[] = [
     cacheMaxAge: 3600,
     summary: "security.txt — RFC 9116",
     build: buildSecurityTxt,
+  },
+  {
+    path: "/.well-known/agent-evaluation.json",
+    publicPath: ".well-known/agent-evaluation.json",
+    contentType: "application/json",
+    cacheMaxAge: 3600,
+    summary: "Verification ladder — how external agents check our claims (5s→full)",
+    build: buildAgentEvaluation,
+  },
+  {
+    path: "/.well-known/owner-questions.json",
+    publicPath: ".well-known/owner-questions.json",
+    contentType: "application/json",
+    cacheMaxAge: 3600,
+    summary: "Operator/fleet FAQ for evaluator agents (solo/team/venue)",
+    build: buildOwnerQuestions,
   },
   {
     // did:web document — registered only when DID is live (D-178-9/178-7).

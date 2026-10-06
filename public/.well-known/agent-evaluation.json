@@ -1,0 +1,114 @@
+{
+  "version": "1.0",
+  "subject": "agentbadge.xyz",
+  "ladder": [
+    {
+      "depth": "5s",
+      "checks": [
+        {
+          "claim": "mainnet deployment — AgentEventLog contract on Arc",
+          "action": "open",
+          "ref": "https://explorer.arc.io/address/0x1bb6A87D18cbd4285b4d383F88f10a1Ed01B4700"
+        },
+        {
+          "claim": "agent card published (A2A v1.0)",
+          "action": "GET",
+          "ref": "https://agentbadge.xyz/.well-known/agent-card.json"
+        }
+      ]
+    },
+    {
+      "depth": "60s",
+      "checks": [
+        {
+          "claim": "manifest validity — agent card + ERC-8004 registration",
+          "action": "GET",
+          "ref": "https://agentbadge.xyz/.well-known/erc8004-agent.json"
+        },
+        {
+          "claim": "OpenAPI spec live",
+          "action": "GET",
+          "ref": "https://agentbadge.xyz/api/specs"
+        },
+        {
+          "claim": "honest-refusal contract published",
+          "action": "GET",
+          "ref": "https://agentbadge.xyz/api/meta/refusal-contract"
+        },
+        {
+          "claim": "liveness",
+          "action": "GET",
+          "ref": "https://agentbadge.xyz/health"
+        }
+      ]
+    },
+    {
+      "depth": "5min",
+      "checks": [
+        {
+          "claim": "paid surface catalog resolves (x402 SKUs)",
+          "action": "GET",
+          "ref": "https://agentbadge.xyz/api/scan-packs"
+        },
+        {
+          "claim": "verdict integrity anchored on-chain",
+          "action": "run",
+          "ref": "npx @agentbadge/verify-verdict <verdictId>"
+        }
+      ]
+    },
+    {
+      "depth": "full",
+      "checks": [
+        {
+          "claim": "end-to-end paid call",
+          "action": "run",
+          "ref": "https://agentbadge.xyz/llms.txt"
+        }
+      ]
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "agent-readiness scanning",
+      "evidence": "https://agentbadge.xyz/api/scan-packs",
+      "verify": "https://agentbadge.xyz/api/scan-packs"
+    },
+    {
+      "name": "agent passport NFT (ERC-8004)",
+      "evidence": "https://agentbadge.xyz/.well-known/erc8004-agent.json",
+      "verify": "https://explorer.arc.io/address/0xd226824e66e6aac7104579840506e268886a8169"
+    },
+    {
+      "name": "on-chain event logging (Arc mainnet)",
+      "evidence": "https://agentbadge.xyz/.well-known/agentbadge.json",
+      "verify": "https://explorer.arc.io/address/0x1bb6A87D18cbd4285b4d383F88f10a1Ed01B4700"
+    },
+    {
+      "name": "MCP server (namespaced tools)",
+      "evidence": "https://agentbadge.xyz/.well-known/mcp/server-card.json",
+      "verify": "https://agentbadge.xyz/.well-known/mcp/server-card.json"
+    },
+    {
+      "name": "honest refusals — refused calls never charged",
+      "evidence": "https://agentbadge.xyz/api/meta/refusal-contract",
+      "verify": "https://agentbadge.xyz/api/meta/refusal-contract"
+    },
+    {
+      "name": "paid services (x402 USDC on Arc)",
+      "evidence": "https://agentbadge.xyz/api/meta/fees",
+      "verify": "https://agentbadge.xyz/api/meta/fees"
+    }
+  ],
+  "selfEvaluation": [
+    "Operator class: venue-operator — multi-tenant marketplace + agency surfaces (see owner-questions.json).",
+    "Fleet size hint: venue — managed agents across tenant services.",
+    "Refusal policy: every refusal line is charge:never — /api/meta/refusal-contract."
+  ],
+  "sources": [
+    "https://agentbadge.xyz/.well-known/agentbadge.json",
+    "https://agentbadge.xyz/.well-known/agent-card.json",
+    "https://agentbadge.xyz/api/specs",
+    "https://agentbadge.gitbook.io/agentbadge-docs"
+  ]
+}

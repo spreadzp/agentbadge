@@ -73,6 +73,8 @@ We offer consulting and development services for the agentic web:
 
 - /.well-known/api-catalog — API Catalog (RFC 9727) — linkset of available API endpoints
 - /.well-known/oauth-protected-resource — OAuth Protected Resource metadata (RFC 9728)
+- /.well-known/agent-evaluation.json — Verification ladder for evaluator agents (5s→full depth checks with executable refs)
+- /.well-known/owner-questions.json — Operator/fleet FAQ (solo/team/venue operator context)
 - /auth.md — Agent authentication and registration instructions
 - /verification.md — Verification policy (passport, DID, marketplace, audit)
 - /reputation.md — Reputation specification (signal sources, Sybil resistance, anti-farming)

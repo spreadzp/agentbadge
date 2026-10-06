@@ -275,6 +275,7 @@ Read endpoints (GET) remain free — no authentication required.
 ## Public API (generated)
 
 - [GET /.well-known/agent-card.json](https://agentbadge.xyz/.well-known/agent-card.json)
+- [GET /.well-known/agent-evaluation.json](https://agentbadge.xyz/.well-known/agent-evaluation.json)
 - [GET /.well-known/agent-guide.json](https://agentbadge.xyz/.well-known/agent-guide.json)
 - [GET /.well-known/agent-skills/index.json](https://agentbadge.xyz/.well-known/agent-skills/index.json)
 - [GET /.well-known/agent.json](https://agentbadge.xyz/.well-known/agent.json)
@@ -293,6 +294,7 @@ Read endpoints (GET) remain free — no authentication required.
 - [GET /.well-known/mcp/server-card.json](https://agentbadge.xyz/.well-known/mcp/server-card.json)
 - [GET /.well-known/oauth-authorization-server](https://agentbadge.xyz/.well-known/oauth-authorization-server)
 - [GET /.well-known/oauth-protected-resource](https://agentbadge.xyz/.well-known/oauth-protected-resource)
+- [GET /.well-known/owner-questions.json](https://agentbadge.xyz/.well-known/owner-questions.json)
 - [GET /.well-known/passport-mcp.json](https://agentbadge.xyz/.well-known/passport-mcp.json)
 - [GET /.well-known/security.txt](https://agentbadge.xyz/.well-known/security.txt)
 - [GET /.well-known/webfinger](https://agentbadge.xyz/.well-known/webfinger)
@@ -459,6 +461,8 @@ We offer consulting and development services for the agentic web:
 
 - /.well-known/api-catalog — API Catalog (RFC 9727) — linkset of available API endpoints
 - /.well-known/oauth-protected-resource — OAuth Protected Resource metadata (RFC 9728)
+- /.well-known/agent-evaluation.json — Verification ladder for evaluator agents (5s→full depth checks with executable refs)
+- /.well-known/owner-questions.json — Operator/fleet FAQ (solo/team/venue operator context)
 - /auth.md — Agent authentication and registration instructions
 - /verification.md — Verification policy (passport, DID, marketplace, audit)
 - /reputation.md — Reputation specification (signal sources, Sybil resistance, anti-farming)
