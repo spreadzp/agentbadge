@@ -9,14 +9,18 @@
  * Guard order on evaluate: validate (400) → rate-limit (429) →
  * allowlist (403) → idempotent replay (free) → payment → evaluate.
  * Onchain status != Submitted/expired → 409; estimateGas over
- * ARC_EAAS_GAS_CAP aborts → 502. The fee stays settled on those paths —
- * the service ran the check.
+ * ARC_EAAS_GAS_CAP aborts → 502.
+ *
+ * SLICE-181-2: when deps.seamTwoPhase is wired the x402 path verifies
+ * first and settles only after a successful evaluation — the refusal
+ * paths above answer charged:false (and refund self-settled payments)
+ * instead of keeping the fee (D-181-3). Atomic middleware fallback
+ * remains when no seam is provided.
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
-import { EvaluatorError, Erc8183Error } from "@agentbadge/circle-payments";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
 import type { PaymentMiddleware } from "./identity";
 import {
@@ -24,29 +28,18 @@ import {
   type EaasContract,
   type EaasContractRegistry,
 } from "../lib/eaas/contracts";
-import {
-  evalJobKey,
-  evaluateExternalJob,
-  GasCapError,
-  type EvaluateJobDeps,
-} from "../lib/eaas/eval";
-import {
-  consumerKey,
-  createRateLimiter,
-  type EaasVariables,
-} from "../lib/eaas/request";
-import {
-  eaasQuotaGate,
-  type EaasQuotaDeps,
-} from "../lib/eaas/subscription";
-import {
-  respondAsync,
-  type EaasAsyncDeps,
-} from "../lib/eaas/requests";
-import { validateEvaluate, type EvalInput } from "../lib/eaas/eval-request";
+import type { EvaluateJobDeps } from "../lib/eaas/eval";
+import type { EaasVariables } from "../lib/eaas/request";
+import type { EaasQuotaDeps } from "../lib/eaas/subscription";
+import type { EaasAsyncDeps } from "../lib/eaas/requests";
+import type { EvalInput } from "../lib/eaas/eval-request";
+import type { PaymentHandle } from "../lib/x402-settle-seam";
+import { registerEvaluateRoute } from "./eaas-evaluate";
 
-interface EaasJobsVariables extends EaasVariables {
+export interface EaasJobsVariables extends EaasVariables {
   evalInput?: EvalInput;
+  /** SLICE-181-2: verified-not-settled payment on the two-phase path. */
+  paymentHandle?: PaymentHandle;
 }
 
 export interface EaasJobsRoutesDeps extends EvaluateJobDeps {
@@ -55,6 +48,9 @@ export interface EaasJobsRoutesDeps extends EvaluateJobDeps {
   rateRpm: number;
   chainId: number;
   paymentForPrice: (priceUsd: string) => PaymentMiddleware;
+  /** SLICE-181-2: verify-only payment seam — enables refuse-before-settle.
+   *  Absent → legacy atomic paymentForPrice middleware (charged on 4xx). */
+  seamTwoPhase?: (c: Context) => Promise<PaymentHandle | null>;
   /** SLICE-154-5: subscription quota gate — absent = x402-only. */
   quota?: EaasQuotaDeps;
   /** SLICE-154-6: async request delivery — absent = async:true rejected. */
@@ -93,8 +89,6 @@ export function createEaasJobsRoutes(
   deps: EaasJobsRoutesDeps,
 ): Hono<{ Variables: EaasJobsVariables }> {
   const routes = new Hono<{ Variables: EaasJobsVariables }>();
-  const limiter = createRateLimiter(deps.rateRpm);
-  const evalPay = deps.paymentForPrice(deps.evalUsd);
 
   /* ------------------------- contract registration ------------------------ */
 
@@ -165,111 +159,8 @@ export function createEaasJobsRoutes(
   );
 
   /* ------------------------------ job evaluate ---------------------------- */
-
-  routes.post(
-    "/api/eaas/jobs/evaluate",
-    dr("Evaluate + settle an allowlisted ERC-8183 job (x402-gated)"),
-    async (c, next) => {
-      const body = await c.req.json().catch(() => null);
-      const parsed = validateEvaluate(body, c);
-      if (parsed instanceof Response) return parsed;
-
-      // Rate limit before settle — never charge spam.
-      if (!limiter.allow(consumerKey(c))) {
-        return c.json({ error: "rate limit exceeded" }, 429);
-      }
-
-      // Allowlist guard (D7-154).
-      const rec = deps.contracts.get(parsed.contract, deps.chainId);
-      if (!rec || !rec.active) {
-        return c.json({ error: "contract not in EaaS allowlist" }, 403);
-      }
-
-      // Idempotent replay — free, no second payment.
-      const prior = deps.evalStore.get(
-        evalJobKey(rec.chainId, rec.address, parsed.jobId.toString()),
-      );
-      if (prior) {
-        const artifact = deps.verdictStore.get(prior.verdictId)?.artifact;
-        return c.json({
-          verdict: prior.verdict,
-          artifact: artifact ?? null,
-          duplicate: true,
-          ...(prior.feedbackTx ? { feedbackTx: prior.feedbackTx } : {}),
-        });
-      }
-
-      c.set("evalInput", { ...parsed, rec });
-      return next();
-    },
-    eaasQuotaGate({
-      quota: deps.quota,
-      policy: (c) => (c.get("evalInput") as EvalInput).policy,
-      fallback: async (c, next) => evalPay(c, next),
-    }),
-    async (c) => {
-      const input = c.get("evalInput") as EvalInput;
-      const payment = c.get("payment");
-
-      // SLICE-154-6: async — payment settled, job runs in background.
-      const early = respondAsync(c, deps.async_, {
-        isAsync: input.async,
-        kind: "job-eval",
-        ...(payment?.payer ? { wallet: payment.payer } : {}),
-        ...(input.webhookUrl ? { webhookUrl: input.webhookUrl } : {}),
-        run: () =>
-          evaluateExternalJob(
-            {
-              contract: input.rec,
-              jobId: input.jobId,
-              policy: input.policy,
-              expectedHash: input.expectedHash,
-              deliverableUri: input.deliverableUri,
-              consumerWallet: payment?.payer,
-              paymentTx: payment?.transaction,
-            },
-            deps,
-          ).then((r) => {
-            if (!r.artifact) {
-              throw new Error("evaluation produced no artifact");
-            }
-            return r.artifact;
-          }),
-      });
-      if (early) return early;
-
-      try {
-        const result = await evaluateExternalJob(
-          {
-            contract: input.rec,
-            jobId: input.jobId,
-            policy: input.policy,
-            expectedHash: input.expectedHash,
-            deliverableUri: input.deliverableUri,
-            consumerWallet: payment?.payer,
-            paymentTx: payment?.transaction,
-          },
-          deps,
-        );
-        return c.json({
-          verdict: result.verdict,
-          artifact: result.artifact,
-          ...(result.feedbackTx ? { feedbackTx: result.feedbackTx } : {}),
-        });
-      } catch (e) {
-        if (e instanceof EvaluatorError) {
-          return c.json({ error: e.message }, 409);
-        }
-        if (e instanceof GasCapError) {
-          return c.json({ error: e.message }, 502);
-        }
-        if (e instanceof Erc8183Error) {
-          return c.json({ error: `settlement failed: ${e.message}` }, 502);
-        }
-        throw e;
-      }
-    },
-  );
+  // Route lives in eaas-evaluate.ts (file-size cap; see header there).
+  registerEvaluateRoute(routes, deps);
 
   return routes;
 }

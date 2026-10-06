@@ -30,6 +30,7 @@ import { resolveAccessPassMinter } from "../lib/access-pass-minter";
 import type { EaasQuotaDeps } from "../lib/eaas/subscription";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
+import { createEaasRefundStack } from "../lib/eaas/refund";
 
 /** Evaluator/settler key — ARC_EVALUATOR_KEY, demo fallback DEPLOYER_PRIVATE_KEY. */
 function evaluatorKey(): `0x${string}` | null {
@@ -191,13 +192,19 @@ export function wireEaas(
       "EaaS jobs API NOT mounted — ARC_EVALUATOR_KEY/DEPLOYER_PRIVATE_KEY missing",
     );
   } else {
-
     const contracts = createContractRegistry({
       store: pickContractStore(db),
       read: read as never,
       chainId,
     });
     const evalStore = pickEvalStore(db);
+
+    const { seam: seamTwoPhase } = createEaasRefundStack({
+      router: deps.circleRuntime!.router,
+      evalUsd: cfg.evalUsd,
+      net,
+      chain,
+    });
 
     app.route(
       "/",
@@ -208,6 +215,7 @@ export function wireEaas(
         rateRpm: cfg.rateRpm,
         chainId,
         paymentForPrice: (price) => deps.circleRuntime!.paymentForPrice(price),
+        seamTwoPhase,
         quota,
         async_: asyncDeps,
         escrowFor: (rec) =>
