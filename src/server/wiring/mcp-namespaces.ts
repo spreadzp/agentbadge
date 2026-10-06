@@ -41,6 +41,8 @@ import {
 import { createArcBstockFacilitator } from "../lib/bstock/arc-facilitator";
 import { getSpendEnforcer } from "../lib/agent-wallet/enforcer";
 import { bstockFreemium } from "../middleware/bstock-freemium";
+import { bstockFeedHealth } from "../middleware/bstock-feed-health";
+import { wrapBstockEngine } from "../lib/data-status";
 import {
   bstockAuth,
   bstockRateLimit,
@@ -88,7 +90,8 @@ export function registerMcpNamespaces(): McpNamespaces {
   let bstockNs: NamespaceRegistry | undefined;
   if (bstockCfg?.enabled) {
     bstockNs = createNamespace("bstock");
-    registerBstockTools(getBstockEngine(), bstockNs);
+    // SLICE-181-3: views carry data_status/degraded markers (D-181-4).
+    registerBstockTools(wrapBstockEngine(getBstockEngine()), bstockNs);
     registerBstockTelegramTools(
       { subscriptions: getTelegramSubscriptions() },
       bstockNs,
@@ -121,15 +124,17 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
       : undefined;
     const ops = isMainnet
       ? getMarketplaceOpsFor({
-          chain: arcChainFor(bstockCfg.arcNetwork),
-          nftAddress,
-        })
+        chain: arcChainFor(bstockCfg.arcNetwork),
+        nftAddress,
+      })
       : getMarketplaceOps();
     const rpcUrl = isMainnet
       ? (process.env.ARC_MAINNET_RPC_URL ?? ARC_MAINNET.rpcUrl)
       : (process.env.ARC_RPC_URL ?? ARC_TESTNET.rpcUrl);
     app.use(
       "/mcp/bstock/*",
+      // SLICE-181-3: dead feed → 503 data_unavailable before payment.
+      bstockFeedHealth(getBstockEngine()),
       bstockAuth(bstockCfg.agentTokens),
       bstockFreemium({
         serviceId: bstockCfg.serviceId,

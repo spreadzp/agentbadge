@@ -45,7 +45,7 @@ export function refuse(
   opts?: { hint?: string; refund?: RefundNotice },
 ): Response {
   const entry = REFUSAL_CODES.get(code);
-  const status = (entry?.http ?? 500) as 400 | 401 | 402 | 403 | 404 | 409 | 422 | 429 | 500 | 502;
+  const status = (entry?.http ?? 500) as 400 | 401 | 402 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503;
   const body: ErrorBody = { error, code, charged: false };
   if (opts?.hint) body.hint = opts.hint;
   if (opts?.refund) body.refund = opts.refund;

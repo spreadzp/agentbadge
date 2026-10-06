@@ -18,6 +18,7 @@ import {
   generateReport,
   renderReportMarkdown,
   type ReportArchiveEntry,
+  type StateOfAgentReadinessReport,
 } from "../../agent-readiness/corpus/report-generator";
 import {
   computeOverallBenchmark,
@@ -116,7 +117,9 @@ reportRoutes.get(
     }
 
     if (format === "markdown") {
-      const md = renderReportMarkdown(entry.data as any);
+      const md = renderReportMarkdown(
+        entry.data as StateOfAgentReadinessReport,
+      );
       c.header("Content-Type", "text/markdown; charset=utf-8");
       return c.body(md);
     }
@@ -144,7 +147,10 @@ reportRoutes.post(
     const stats = await store.getStats();
 
     if (records.length === 0) {
-      return c.json({ error: "no_data", message: "Corpus is empty" }, 503);
+      return c.json(
+        { error: "no_data", note: "no_data", message: "Corpus is empty" },
+        503,
+      );
     }
 
     // Compute benchmark (may be null if insufficient data)

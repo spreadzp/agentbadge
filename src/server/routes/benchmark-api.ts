@@ -53,7 +53,7 @@ benchmarkRoutes.get(
     const result = computeOverallBenchmark(records, stats);
 
     if ("insufficient_data" in result) {
-      return c.json({ error: "insufficient_data", sample_count: result.sample_count }, 503);
+      return c.json({ error: "insufficient_data", sample_count: result.sample_count, note: "no_data" }, 503);
     }
 
     // Cache + return
@@ -89,7 +89,7 @@ benchmarkRoutes.get(
     const result = computeCategoryBenchmark(records, category);
 
     if ("insufficient_data" in result) {
-      return c.json({ error: "insufficient_data", sample_count: result.sample_count }, 503);
+      return c.json({ error: "insufficient_data", sample_count: result.sample_count, note: "no_data" }, 503);
     }
 
     cache.setCategory(category, result, CACHE_TTL);
@@ -116,7 +116,7 @@ benchmarkRoutes.get(
     const result = computePillarBenchmark(records, pillar);
 
     if ("insufficient_data" in result) {
-      return c.json({ error: "insufficient_data", sample_count: result.sample_count }, 503);
+      return c.json({ error: "insufficient_data", sample_count: result.sample_count, note: "no_data" }, 503);
     }
 
     c.header("Cache-Control", `public, max-age=${CACHE_TTL}`);

@@ -43,7 +43,10 @@ auditRoutes.get(
 
     try {
       const events = await getAuditTrail(tokenId, serial);
-      return c.json({ events });
+      return c.json({
+        events,
+        ...(events.length === 0 ? { note: "no_data" } : {}),
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to fetch audit trail";
       return errorResponse(c, 500, ErrorCodes.HCS_SUBMISSION_FAILED, message, { retryable: true });

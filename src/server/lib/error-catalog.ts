@@ -216,16 +216,6 @@ export const ERROR_CATALOG: ErrorEntry[] = [
     affected_routes: ["*"],
     recovery_action: "wait_and_retry",
   },
-  {
-    code: "data_unavailable",
-    http_status: 503,
-    agent_impact:
-      "The requested live-data feed is stale or unavailable. The response is refused instead of serving outdated data. No charge was applied.",
-    hint_template: "Retry after a short delay — feeds refresh continuously. A degraded free-tier response may carry data_status:'stale' instead.",
-    affected_routes: ["/api/bstock/*"],
-    recovery_action: "retry_immediately",
-    charge: "never",
-  },
 ];
 
 export function getErrorCatalog() {

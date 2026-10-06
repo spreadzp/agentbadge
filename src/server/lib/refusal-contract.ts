@@ -76,6 +76,19 @@ export const REFUSAL_MATRIX: RefusalMatrixEntry[] = [
     routes: ["*"],
     recovery: "retry_immediately",
   },
+  {
+    code: "data_unavailable",
+    http: 503,
+    charge: "never",
+    reason:
+      "The requested live-data feed is stale beyond its freshness window or fully unavailable. The request is refused instead of serving outdated data as fresh.",
+    agentImpact:
+      "The live-data feed could not serve honest data right now. The response was refused before settlement — no charge was applied.",
+    hint:
+      "Retry after a short delay — feeds refresh continuously. Free-tier responses may carry data_status:'stale' + stale_since instead of refusing.",
+    routes: ["/mcp/bstock", "/api/bstock/*"],
+    recovery: "retry_immediately",
+  },
 ];
 
 /** Refusal codes as a set — used by error-response refuse() for status lookup. */
@@ -115,6 +128,13 @@ export const refusalContractSchema = z.object({
   degraded: z.object({
     field: z.literal("degraded"),
     marker: z.literal("data_status"),
+    statuses: z.tuple([
+      z.literal("fresh"),
+      z.literal("stale"),
+      z.literal("unavailable"),
+    ]),
+    stale_since: z.literal("ISO-8601"),
+    charge_policy: z.string(),
   }),
   price_truth: z.string(),
   disclosure: z.string(),
@@ -133,7 +153,14 @@ export function getRefusalContract(): RefusalContract {
       ...(m.refund ? { refund: m.refund } : {}),
       reason: m.reason,
     })),
-    degraded: { field: "degraded", marker: "data_status" },
+    degraded: {
+      field: "degraded",
+      marker: "data_status",
+      statuses: ["fresh", "stale", "unavailable"],
+      stale_since: "ISO-8601",
+      charge_policy:
+        "paid requests on unavailable data are refused (charge: never); only free-tier responses may carry degraded markers",
+    },
     price_truth:
       "402 accept.amount is canonical; clients verify vs /api/v1/services",
     disclosure: "unilateral decisions carry a disclosure field",

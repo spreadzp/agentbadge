@@ -173,8 +173,15 @@ export function createSpendAuditRoutes(deps: SpendAuditDeps): Hono {
     }
     const q = parseQuery(c);
     const result = feed(all, q);
-    const alerts = deps.alerts()?.list({ venueId: id, limit: 50 });
-    return c.json({ venueId: id, ...result, alerts: alerts ?? [] });
+    const alerts = deps.alerts()?.list({ venueId: id, limit: 50 }) ?? [];
+    return c.json({
+      venueId: id,
+      ...result,
+      alerts,
+      ...(result.entries.length === 0 && alerts.length === 0
+        ? { note: "no_data" }
+        : {}),
+    });
   };
 
   routes.get(
