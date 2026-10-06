@@ -14,6 +14,7 @@ export const article: BlogArticle = {
   readingTime: "7 min",
   shortAnswer:
     "AgentBadge owner controls add four gates on top of the agent-wallet spending envelope: velocity caps (velocity_amount/velocity_tx denies with resetAt), an approvalAboveUsd threshold that parks a payment as 402 approval_required until a signed owner approve turns it into a single-use permit, a suspend/resume kill-switch evaluated before every other check, and allowedKinds categorical gates (kind_not_allowed). The control plane admits or denies settlement — it never signs or broadcasts, so a breached control plane can deny service but cannot spend.",
+  agentGuideSlug: "arc-c13-owner-controls",
   heroImage: "/images/blog/arc-c13-owner-controls-hero.png",
   ogImage: "/images/blog/arc-c13-owner-controls-og.png",
   content: `<p>It is 3 a.m. and your agent has decided that retrying a failed API call means calling it four hundred more times — at a cent each, then two cents, then whatever the endpoint charges. Or worse: the agent is fine, but the endpoint it found is not, and the spend looks exactly like the spend you authorized. The scenario writes itself because every agent with a funded wallet is one bad loop away from being your problem.</p>

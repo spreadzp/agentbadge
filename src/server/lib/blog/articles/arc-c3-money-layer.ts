@@ -11,6 +11,7 @@ export const article: BlogArticle = {
   tags: ["arc", "ai-agents", "x402", "usdc", "circle", "gateway"],
   readingTime: "8 min",
   shortAnswer: "AgentBadge's money layer lets an agent pay for an API from any Circle Gateway-covered chain while the seller always receives USDC on Arc: one 402 accepts[] advertises three rails (exact, GatewayWalletBatched, eip3009-client-broadcast), one EIP-3009 signature pays, and a single spend ledger attributes every payment to its source chain. Verified live on October 4, 2026 with deposits on Base Sepolia and Arc Testnet both ending in paid 200 responses.",
+  agentGuideSlug: "arc-c3-money-layer",
   heroImage: "/images/blog/arc-c3-money-layer-hero.webp",
   ogImage: "/images/blog/arc-c3-money-layer-og.webp",
   content: `<p>On October 4, 2026, a wallet holding USDC on Base
