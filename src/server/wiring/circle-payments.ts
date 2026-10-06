@@ -16,6 +16,9 @@ import {
 import { createIdentityRoutes } from "../routes/identity";
 import { createDemoRoutes } from "../routes/demo";
 import { createGatewayDepositRoutes } from "../routes/pay-gateway";
+import { createPaymentsHealthRoutes } from "../routes/payments-health";
+import { createFacilitatorProbe } from "../lib/circle-payments-probe";
+import { createPaymentAlertSink } from "../lib/payment-alerts";
 import {
   createCrosschainPaymentsStore,
   createSettlePoller,
@@ -139,6 +142,11 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
       });
       // statusLookup lives on the runtime — resolved lazily per tick.
       let circleRuntimeRef: CirclePaymentsRuntime;
+      // SLICE-160-3: env-gated webhook alert sink for fulfillment
+      // failures (composes with structured log + Sentry below).
+      const paymentAlertSink = createPaymentAlertSink({
+        webhookUrl: process.env.PAYMENT_ALERT_WEBHOOK_URL,
+      });
       const circleRuntime = createCirclePaymentsRuntime(circleCfg, {
         identityLookup: circleIdentityLookup,
         recordSettle: (payment, path, payTo) => {
@@ -168,9 +176,29 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
           captureError(new Error(`payment-fulfillment: ${f.reason}`), {
             tags: { scheme: f.scheme, network: f.network },
           });
+          // SLICE-160-3: optional webhook sink (PAYMENT_ALERT_WEBHOOK_URL),
+          // rate-limited per reason_class — alerting is best-effort.
+          paymentAlertSink(f);
         },
       });
       circleRuntimeRef = circleRuntime;
+      // SLICE-160-2: ops health rollup — rails/facilitator/gateway/
+      // failures in one gated endpoint (bearer = METRICS_BEARER_TOKEN).
+      // Facilitator probe is the cached in-band impl from *-probe.ts.
+      app.route(
+        "/",
+        createPaymentsHealthRoutes({
+          gatewayEnabled: circleCfg.gateway === true,
+          arcEnabled: circleCfg.arc === true,
+          gatewayProbeUp: () => circleRuntime.gatewayProbe?.isUp() ?? true,
+          crosschainStore,
+          failureStore: circleRuntime.failureStore,
+          facilitatorProbe: createFacilitatorProbe({
+            url: circleCfg.gatewayApiUrl,
+          }),
+          facilitatorTarget: new URL(circleCfg.gatewayApiUrl).host,
+        }),
+      );
       // Poller only matters when the gateway rail can leave a payment in
       // `settling` — exact/arc settle synchronously (straight to settled).
       if (circleCfg.gateway) crosschainPoller.start();

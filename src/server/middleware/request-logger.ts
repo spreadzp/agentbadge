@@ -31,6 +31,9 @@ export function requestLoggerMiddleware() {
   return async (c: Context, next: Next): Promise<Response | void> => {
     const requestId = randomUUID();
     c.header("X-Request-Id", requestId);
+    // SLICE-160-1: expose to downstream middleware (failure ledger
+    // links fulfillment failures to requestId for log correlation).
+    c.set("requestId", requestId);
 
     const start = Date.now();
     const method = c.req.method;

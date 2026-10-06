@@ -6,7 +6,6 @@
 
 import { x402ResourceServer } from "@x402/core/server";
 import {
-  createGatewayProbe,
   createIdentityExtension,
   createMemoryFailureStore,
   createPaymentRouter,
@@ -31,12 +30,20 @@ import {
   type BalanceLookup,
   type PaymentHistory,
   type PaymentInfo,
+  type PaymentMetricsHooks,
 } from "@agentbadge/circle-payments";
-import { logger } from "@agentbadge/passport";
 import type { CirclePaymentsConfig } from "../../config/env";
 import type { PaymentMiddleware } from "../routes/identity";
 import { createSpendX402Hooks } from "./agent-wallet/x402-hooks";
 import { buildCircleOpsLookups } from "./circle-payments-ops";
+import {
+  createGatewayProbeForCfg,
+  withProbe,
+} from "./circle-payments-probe";
+import {
+  resolvePaymentMetrics,
+  routePriceUsd,
+} from "../metrics/payments";
 
 /** Extra per-route options exposed to wiring code (SLICE-156-1). */
 export interface PaymentForOpts {
@@ -107,6 +114,10 @@ export interface CirclePaymentsDeps {
   onFailure?: FailureAlert;
   /** SLICE-156-3: settle recorder — on every ok settle */
   recordSettle?: (p: PaymentInfo, path: string, to: `0x${string}`) => void;
+  /** SLICE-160-1: metrics hooks injected into every router (verify/
+   *  settle counters + duration histograms). Pass
+   *  `createPaymentMetrics().hooks` or a test spy; default = none. */
+  metrics?: PaymentMetricsHooks;
   /** Injectable resource server (tests) */
   resourceServer?: x402ResourceServer;
   /** Injectable handles (tests) — skips real facilitator construction */
@@ -127,35 +138,15 @@ export function createCirclePaymentsRuntime(
   const failureStore = deps.failureStore ?? createMemoryFailureStore();
   const lookup = deps.identityLookup ?? (async () => undefined);
 
-  // 156-1: facilitator probe — on failure the gateway flag degrades
-  // advertised accepts[] to vanilla rails.
-  const gatewayProbe = cfg.gateway
-    ? createGatewayProbe({
-      apiUrl: cfg.gatewayApiUrl,
-      ...(cfg.gatewayProbeMs ? { intervalMs: cfg.gatewayProbeMs } : {}),
-      ...(cfg.gatewayDownMs ? { downMs: cfg.gatewayDownMs } : {}),
-      onChange: (up, reason) =>
-        up
-          ? logger.info("gateway probe: rail back up", { reason })
-          : logger.warn("gateway probe: rail down (vanilla accepts only)", {
-            reason,
-          }),
-    })
-    : undefined;
+  // SLICE-160-1: payment metrics — prom counters live server-side,
+  // package calls hooks only (D1-160). Metrics are always on when the
+  // runtime is on; tests may inject spies via deps.metrics.
+  const { hooks: metricsHooks, onFailure: onFailureAlert } =
+    resolvePaymentMetrics(deps.metrics, deps.onFailure);
 
-  /** Wrap scheme handle so transport failures feed the probe. */
-  function withProbe<T extends SchemeHandle>(h: T): T {
-    if (!gatewayProbe) return h;
-    const mark = (p: Promise<unknown>) => p.catch((err) => {
-      gatewayProbe.markFailure();
-      throw err;
-    });
-    return {
-      ...h,
-      verify: (p: unknown, req: never) => mark(h.verify(p, req)),
-      settle: (p: unknown, req: never) => mark(h.settle(p, req)),
-    } as T;
-  }
+  // 156-1: facilitator probe — on failure the gateway flag degrades
+  // advertised accepts[] to vanilla rails (extracted to *-probe.ts).
+  const gatewayProbe = createGatewayProbeForCfg(cfg);
 
   let handles = deps.handles;
   if (!handles) {
@@ -170,7 +161,7 @@ export function createCirclePaymentsRuntime(
       }),
       ...(cfg.gateway
         ? {
-          gateway: withProbe(registerGatewayScheme(server, {
+          gateway: withProbe(gatewayProbe, registerGatewayScheme(server, {
             facilitatorUrl: cfg.gatewayApiUrl,
             sellerAddress: cfg.sellerAddress,
             ...(cfg.gatewayChains ? { chains: cfg.gatewayChains } : {}),
@@ -205,6 +196,7 @@ export function createCirclePaymentsRuntime(
         ...(cfg.gatewayChains ? { gatewayChains: cfg.gatewayChains } : {}),
         ...routerFlags,
         handles: handles!,
+        metrics: metricsHooks,
       });
       routers.set(key, r);
     }
@@ -236,6 +228,13 @@ export function createCirclePaymentsRuntime(
     balanceLookup,
     paymentHistory,
     paymentFor(routeKey: string, opts?: PaymentForOpts): PaymentMiddleware {
+      // SLICE-160-1: route price gauge — low-cardinality PRICE_TABLE key.
+      const priceUsd = Number(
+        String(getPrice(routeKey)).replace(/^\$/, ""),
+      );
+      if (Number.isFinite(priceUsd)) {
+        routePriceUsd.set({ route_key: routeKey }, priceUsd);
+      }
       return this.paymentForPrice(getPrice(routeKey), opts);
     },
     paymentForPrice(
@@ -260,7 +259,7 @@ export function createCirclePaymentsRuntime(
         handles,
         router: targetRouter,
         failureStore,
-        onFailure: deps.onFailure,
+        onFailure: onFailureAlert,
         ...spendHooks,
         ...(methods ? { methods } : {}),
         ...(onBeforeChallenge ? { onBeforeChallenge } : {}),
