@@ -272,6 +272,7 @@ export async function handleAction(
       onchain: g.status,
       feedbackStatus,
       feeStatus,
+      ...built.extra,
     });
   }
   upsertJob(g.job);

@@ -10,6 +10,7 @@
  */
 
 import type { DiscoverySources, DiscoverySku } from "./sources";
+import { honestRefusalSection } from "./refusal-section";
 
 /** Public API section rendered from enumerated app routes. */
 function publicApiSection(src: DiscoverySources): string {
@@ -131,7 +132,7 @@ wallet signature — no API keys, no accounts.
  * llms.txt — compact discovery file (llmstxt.org).
  * Composition: core body (hedera-core; carries the H1 per llmstxt.org)
  * → DID auth → generated public API → paid services (EPIC-179,
- * degrades) → capability sections.
+ * degrades) → honest-refusal contract (EPIC-181) → capability sections.
  */
 export function buildLlmsTxt(src: DiscoverySources): string {
   return [
@@ -139,6 +140,7 @@ export function buildLlmsTxt(src: DiscoverySources): string {
     src.authSection.trimEnd(),
     publicApiSection(src),
     paidServicesSection(src),
+    honestRefusalSection(),
     capabilitiesSection(src),
   ]
     .filter((s) => s.length > 0)

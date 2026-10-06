@@ -163,9 +163,26 @@ Agents advance tiers by upgrading their passport NFT:
 
 Upgrades are immediate and recorded in the audit trail.
 
+## 9. Honest Refusal Contract
+
+Refused requests are never billed. The machine-readable contract lives at
+\`GET /api/meta/refusal-contract\` (zod \`version:"1.0"\`):
+
+| Code | HTTP | Charge |
+|------|------|--------|
+| \`policy_refusal\` | 409 | never |
+| \`insufficient_subject\` | 422 | never |
+| \`execution_failed\` | 502 | never — auto-refund if self-settle landed |
+| \`data_unavailable\` | 503 | never — upstream data down, no stale-as-fresh |
+
+Degraded responses carry \`degraded:true\` + \`data_status\` + \`stale_since\`;
+empty collections return \`[]\` + \`note:"no_data"\` (no synthetic data).
+Unilateral decisions carry \`disclosure:{decided_by, appeal, basis}\`.
+
 ## References
 
 - [Auth.md](${baseUrl}/auth.md) — Agent authentication instructions
+- [Refusal Contract](${baseUrl}/api/meta/refusal-contract) — No-charge-on-refusal policy (JSON manifest)
 - [Self-Audit Notes](${baseUrl}/notes) — Engineering transparency notes
 - [Reputation Spec](${baseUrl}/reputation.md) — Reputation and trust scoring
 - [Audit API](${baseUrl}/audit) — On-chain audit trail query
@@ -305,6 +322,7 @@ GET /reputation/{did}
 ## References
 
 - [Verification Policy](${baseUrl}/verification.md) — How verification works
+- [Refusal Contract](${baseUrl}/api/meta/refusal-contract) — No-charge-on-refusal policy (JSON manifest)
 - [Self-Audit Notes](${baseUrl}/notes) — Engineering transparency notes
 - [Audit API](${baseUrl}/audit) — On-chain audit trail query
 - [Passport API](${baseUrl}/passport) — Passport verification

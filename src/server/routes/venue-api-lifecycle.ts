@@ -9,6 +9,7 @@ import { getJob, upsertJob, type VenueJob } from "../lib/venue/store";
 import type { VenueNetwork } from "../lib/venue/chain";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import { disclosureExtra } from "../lib/disclosure";
 import { dr, str, ERC8183_STATUS, TX_PHASES } from "./venue-api-helpers";
 import {
   buildActionTxs,
@@ -136,7 +137,7 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
   );
 
   // POST /api/venue/jobs/:id/evaluate — evaluator verdict → complete|reject.
-  app.post("/api/venue/jobs/:id/evaluate", dr("Evaluator verdict → complete|reject"), (c) =>
+  app.post("/api/venue/jobs/:id/evaluate", dr("Evaluator verdict → complete|reject (reject carries disclosure{decided_by,appeal,basis})"), (c) =>
     handleAction(c, ctx, "complete", (body, g) => {
       // 152-4: eval fee must be paid upfront — client attaches the USDC
       // transfer tx via POST /jobs/:id/tx {phase:"evalFee"} first.
@@ -150,31 +151,23 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
       const reasonHex = reason ? keccak256(toBytes(reason)) : undefined;
       if (verdict === "reject") {
         return {
-          txs: buildActionTxs(net(), "reject", {
-            onchainJobId: g.onchainId,
-            reason: reasonHex,
-          }),
+          txs: buildActionTxs(net(), "reject", { onchainJobId: g.onchainId, reason: reasonHex }),
           status: "rejected",
           phase: "rejected",
-          mutate: (j) => {
-            j.verdict = `rejected${reason ? `: ${reason}` : ""}`;
-          },
+          mutate: (j) => { j.verdict = `rejected${reason ? `: ${reason}` : ""}`; },
+          // 181-4: evaluator reject — unilateral decision disclosure.
+          extra: disclosureExtra("evaluator", `evaluator verdict: reject${reason ? ` — ${reason}` : ""}`),
         };
       }
       return {
-        txs: buildActionTxs(net(), "complete", {
-          onchainJobId: g.onchainId,
-          reason: reasonHex,
-        }),
-        mutate: (j) => {
-          j.verdict = `approved${reason ? `: ${reason}` : ""}`;
-        },
+        txs: buildActionTxs(net(), "complete", { onchainJobId: g.onchainId, reason: reasonHex }),
+        mutate: (j) => { j.verdict = `approved${reason ? `: ${reason}` : ""}`; },
       };
     }),
   );
 
   // POST /api/venue/jobs/:id/reject — evaluator (funded/submitted) or client (open).
-  app.post("/api/venue/jobs/:id/reject", dr("Reject job → escrow refund"), (c) =>
+  app.post("/api/venue/jobs/:id/reject", dr("Reject job → escrow refund (response carries disclosure{decided_by,appeal,basis})"), (c) =>
     handleAction(c, ctx, "reject", (body, g) => {
       const reason = str(body.reason, 500);
       return {
@@ -182,6 +175,8 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
           onchainJobId: g.onchainId,
           reason: reason ? keccak256(toBytes(reason)) : undefined,
         }),
+        // 181-4: reject is unilateral — disclose decided_by + appeal.
+        extra: disclosureExtra(g.status === "open" ? "client" : "evaluator", `job reject${reason ? ` — ${reason}` : ""}`),
       };
     }),
   );
