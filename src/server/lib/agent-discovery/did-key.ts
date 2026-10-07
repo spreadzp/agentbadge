@@ -30,7 +30,7 @@ const ED25519_PKCS8_PREFIX = "302e020100300506032b657004220420";
 export interface DidKeyMaterial {
   /** Public JWK (OKP/Ed25519) — safe to publish. */
   publicJwk: { kty: "OKP"; crv: "Ed25519"; x: string; kid: string };
-  /** Original env value (PEM or base64 PKCS8) — for jose importPKCS8. */
+  /** PEM-normalized PKCS8 — jose importPKCS8 requires the BEGIN/END armor. */
   pkcs8: string;
 }
 
@@ -58,6 +58,9 @@ export function didKeyMaterialFromPkcs8(pkcs8: string): DidKeyMaterial | null {
     const seed = bytes.subarray(bytes.length - 32);
     if (seed.length !== 32) return null;
     const pub = ed25519.getPublicKey(seed);
+    // jose.importPKCS8 rejects raw base64 — always hand it PEM armor.
+    const pemBody = der.replace(/(.{64})/g, "$1\n");
+    const pem = `-----BEGIN PRIVATE KEY-----\n${pemBody}\n-----END PRIVATE KEY-----`;
     return {
       publicJwk: {
         kty: "OKP",
@@ -65,7 +68,7 @@ export function didKeyMaterialFromPkcs8(pkcs8: string): DidKeyMaterial | null {
         x: bytesToBase64Url(pub),
         kid: DID_JWKS_KID,
       },
-      pkcs8,
+      pkcs8: pem,
     };
   } catch {
     return null;

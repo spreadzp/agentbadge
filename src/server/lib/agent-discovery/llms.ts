@@ -23,15 +23,17 @@ function publicApiSection(src: DiscoverySources): string {
 }
 
 /**
- * Paid services section — EPIC-179 SKU registry (soft-dep).
- * Absent/empty → section omitted entirely (degrade, never empty header).
+ * Paid services section — generated from the EPIC-179 SKU registry
+ * (SLICE-179-4). Links anchor into /api/v1/services so the registry
+ * stays the single source of truth. Absent/empty → section omitted
+ * entirely (degrade, never empty header).
  */
 function paidServicesSection(src: DiscoverySources): string {
   const skus: DiscoverySku[] = src.skus ?? [];
   if (skus.length === 0) return "";
   const lines = skus.map(
     (s) =>
-      `- [${s.name}](${src.baseUrl}${s.endpoint}) — \`${s.id}\` — $${s.priceUsd} USDC (x402) — ${s.description ?? ""}`,
+      `- [${s.name}](${src.baseUrl}/api/v1/services#${s.id}) — \`${s.id}\` — $${s.priceUsd} USDC (x402) — ${s.description ?? ""}`,
   );
   return `\n## Paid Services\n\n${lines.join("\n")}\n`;
 }

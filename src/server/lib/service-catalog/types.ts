@@ -24,6 +24,18 @@ export type Pricing =
 
 export type SkuAuth = "x402" | "x402+pass" | "wallet-sig" | "none";
 
+/** Free endpoint advertised in the catalog `free[]` section
+ *  (SLICE-179-4, D-179-6). No payment, no auth — the agent's on-ramp. */
+export interface FreeEndpoint {
+  /** URL path, e.g. "/api/scan-packs". */
+  endpoint: string;
+  method: "GET" | "POST";
+  /** Quota/rate constraint ("unauthenticated", "1 req/min per identity"). */
+  limit: string;
+  /** What it does / how to call it. */
+  note: string;
+}
+
 export interface ServiceSku {
   /** "scan-pack:discovery-crawling" | "passport:gold" | … stable, kebab. */
   sku_id: string;

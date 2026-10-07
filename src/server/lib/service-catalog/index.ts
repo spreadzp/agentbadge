@@ -16,10 +16,12 @@ import { keeperhubSkus } from "./entries/keeperhub";
 import { eaasSkus } from "./entries/eaas";
 import { bstockSkus } from "./entries/bstock";
 import { venueSkus } from "./entries/venue";
+import { freeEntries } from "./entries/free";
 
-export type { ServiceSku, Surface, Pricing, SkuAuth } from "./types";
+export type { ServiceSku, Surface, Pricing, SkuAuth, FreeEndpoint } from "./types";
 export type { CatalogSources } from "./sources";
 export { defaultSources } from "./sources";
+export { freeEntries };
 
 /** Every paid surface, in stable order (golden-test safe). */
 export function allSkus(src: CatalogSources = defaultSources()): ServiceSku[] {

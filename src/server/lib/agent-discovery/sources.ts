@@ -17,6 +17,7 @@ import { BASE_URL } from "../page-meta";
 import { getFaqEntries, type QaPair } from "../../../views/faq-page";
 import { openApiConfig } from "../../openapi";
 import { getNamespace, listTools } from "@agentbadge/mcp";
+import { allSkus, defaultSources as catalogSources } from "../service-catalog";
 import { didKeyMaterialFromEnv, DID_VM_FRAGMENT } from "./did-key";
 
 /** MCP namespaces exposed on /mcp/<ns> — mirrors routes/well-known/agent-card.ts. */
@@ -150,7 +151,17 @@ export function collectSources(app?: Hono): DiscoverySources {
     faqEntries: getFaqEntries(),
     tiers: getCatalog(),
     appRoutes: app ? enumeratePublicRoutes(app) : [],
-    skus: [],
+    // SLICE-179-4: llms.txt Paid Services section is generated from the
+    // SKU registry — no manual service lists.
+    skus: allSkus(catalogSources())
+      .filter((s) => s.enabled !== false)
+      .map((s) => ({
+        id: s.sku_id,
+        name: s.name,
+        endpoint: s.endpoint.path,
+        priceUsd: s.price_usd ?? "dynamic",
+        description: s.description,
+      })),
     apiInfo: {
       title: openApiConfig.info.title,
       version: openApiConfig.info.version,
@@ -165,9 +176,9 @@ export function collectSources(app?: Hono): DiscoverySources {
       didKeyMaterial === null
         ? undefined
         : {
-            publicJwk: didKeyMaterial.publicJwk,
-            fragment: DID_VM_FRAGMENT,
-          },
+          publicJwk: didKeyMaterial.publicJwk,
+          fragment: DID_VM_FRAGMENT,
+        },
     now: new Date(),
   };
 }

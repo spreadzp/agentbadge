@@ -12,6 +12,7 @@ import { getConfig } from "../../config/env";
 import {
   allSkus,
   defaultSources,
+  freeEntries,
   type ServiceSku,
 } from "../lib/service-catalog";
 
@@ -52,6 +53,7 @@ const skuSchema = z.object({
 
 const freeEntrySchema = z.object({
   endpoint: z.string(),
+  method: z.enum(["GET", "POST"]),
   limit: z.string(),
   note: z.string(),
 });
@@ -62,6 +64,14 @@ const responseSchema = z.object({
   network: z.string(),
   services: z.array(skuSchema),
   free: z.array(freeEntrySchema),
+  next_call: z
+    .object({
+      method: z.string(),
+      path: z.string(),
+      authorization: z.string().optional(),
+      why: z.string(),
+    })
+    .optional(),
   links: z.object({
     openapi: z.string(),
     llms: z.string(),
@@ -79,16 +89,6 @@ function networkId(): string {
   return `eip155:${chainId}`;
 }
 
-/** Minimal free[] section — SLICE-179-4 fills this out. */
-function freeSection(): { endpoint: string; limit: string; note: string }[] {
-  return [
-    {
-      endpoint: "/api/health",
-      limit: "unauthenticated",
-      note: "Liveness/readiness probe",
-    },
-  ];
-}
 
 servicesCatalogRoutes.get(
   "/api/v1/services",
@@ -115,7 +115,8 @@ servicesCatalogRoutes.get(
     const surfaceParam = c.req.query("surface");
     const q = c.req.query("q")?.trim().toLowerCase();
 
-    let services: ServiceSku[] = allSkus(defaultSources());
+    const src = defaultSources();
+    let services: ServiceSku[] = allSkus(src);
     if (surfaceParam) {
       const surface = surfaceEnum.safeParse(surfaceParam);
       if (!surface.success) {
@@ -144,7 +145,14 @@ servicesCatalogRoutes.get(
         generated_at: new Date().toISOString(),
         network: networkId(),
         services,
-        free: freeSection(),
+        free: freeEntries(src),
+        // SLICE-179-4: first recommended step — free discovery before
+        // any paid call (pattern from GET /catalog next_call).
+        next_call: {
+          method: "GET",
+          path: "/api/scan-packs",
+          why: "Free rule-bundle catalog — pick a pack id, then buy it on POST /api/total-scan via x402",
+        },
         links: {
           openapi: `${base}/api/specs`,
           llms: `${base}/llms.txt`,

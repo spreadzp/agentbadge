@@ -133,6 +133,22 @@ describe("SLICE-178-7: did:web identity", () => {
     expect(decodeJwt(jwt).iss).toBe(DID);
   });
 
+  it("did-configuration.json works with raw base64 DID_SIGNING_KEY (gen-did-key output format)", async () => {
+    // Regression: gen-did-key.ts emits single-line base64, not PEM —
+    // importPKCS8 must still get valid armor (prod 500ed on this).
+    const pem = await makeKey();
+    process.env.DID_SIGNING_KEY = pem
+      .replace(/-----[A-Z ]+-----/g, "")
+      .replace(/\s+/g, "");
+    const app = makeDidApp();
+
+    const res = await app.request("/.well-known/did-configuration.json");
+    expect(res.status).toBe(200);
+    const cfg = (await res.json()) as { linked_dids: string[] };
+    expect(cfg.linked_dids).toHaveLength(1);
+    expect(decodeJwt(cfg.linked_dids[0]).iss).toBe(DID);
+  });
+
   it("GET /did/did:web:agentbadge.xyz → self-resolution (same document)", async () => {
     process.env.DID_SIGNING_KEY = await makeKey();
     const app = makeDidApp();
