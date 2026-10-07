@@ -74,6 +74,9 @@ const limiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 // ATTESTATION_X402_PRICE_USD (default $0.25) → payTo X402_PAY_TO.
 // Paid access is per-request (no ServicePass minted). GET routes and
 // the /attestations page stay free.
+// 179-3 DOCUMENTED EXCEPTION: no extensions passed to this gate — the
+// per-scan attestation paywall is not a SKU in the service catalog
+// (AC3: no extension without a SKU).
 let _attestationGate: ReturnType<typeof bstockFreemium> | undefined;
 function attestationPaidGate() {
   return async (c: Parameters<ReturnType<typeof bstockFreemium>>[0], next: Parameters<ReturnType<typeof bstockFreemium>>[1]) => {

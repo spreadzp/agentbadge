@@ -16,6 +16,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import { getPrice } from "@agentbadge/passport";
 import { l402PaymentMiddleware } from "../middleware/l402";
 import { mppPaymentMiddleware } from "../middleware/mpp";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 
 // SLICE-49-19: L402 Lightning payment middleware (before signature verification)
 // Payment challenge must be returned before signature check — client pays first, then signs.
@@ -71,6 +72,9 @@ export function wirePaymentGates(app: Hono): void {
             },
             description: "Agent Passport NFT issuance",
             mimeType: "application/json",
+            // 179-3: bazaar declaration — all passport tiers share the
+            // same input schema, bronze stands in as representative.
+            extensions: bazaarExtensionFor("passport:bronze"),
           },
         },
         resourceServer,

@@ -47,7 +47,10 @@ export interface EaasJobsRoutesDeps extends EvaluateJobDeps {
   evalUsd: string;
   rateRpm: number;
   chainId: number;
-  paymentForPrice: (priceUsd: string) => PaymentMiddleware;
+  paymentForPrice: (
+    priceUsd: string,
+    opts?: { extensions?: Record<string, unknown> },
+  ) => PaymentMiddleware;
   /** SLICE-181-2: verify-only payment seam — enables refuse-before-settle.
    *  Absent → legacy atomic paymentForPrice middleware (charged on 4xx). */
   seamTwoPhase?: (c: Context) => Promise<PaymentHandle | null>;

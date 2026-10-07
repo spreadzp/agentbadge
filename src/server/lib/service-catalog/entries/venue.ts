@@ -21,6 +21,18 @@ export function venueSkus(src: CatalogSources["venue"]): ServiceSku[] {
         method: "POST",
         path: "/api/venue/instances/:id/subscribe",
       },
+      // Body is unused when the x402 settle seam is wired; the venue id
+      // is the path parameter advertised to bazaar indexers.
+      input_schema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Venue instance id — path parameter",
+          },
+        },
+        required: ["id"],
+      },
       auth: "wallet-sig",
       enabled: src.enabled,
     },

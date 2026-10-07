@@ -35,6 +35,7 @@ import {
   type EaasTierMap,
 } from "../lib/eaas/subscription";
 import type { PaymentMiddleware } from "./identity";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 
 export interface EaasBillingDeps {
   /** tier → "$x.xx" price (built from cfg.tierBasicUsd/tierProUsd). */
@@ -42,7 +43,10 @@ export interface EaasBillingDeps {
   /** tier → {quota, policies} (cfg.tierQuotas). */
   tiers: EaasTierMap;
   /** Explicit-price x402 middleware factory. */
-  paymentForPrice: (priceUsd: string) => PaymentMiddleware;
+  paymentForPrice: (
+    priceUsd: string,
+    opts?: { extensions?: Record<string, unknown> },
+  ) => PaymentMiddleware;
   /** Mint/extend the CLASS_EAAS pass — resolveAccessPassMinter() in prod. */
   minter: MinterFn;
   store: EaasSubscriptionStore;
@@ -55,14 +59,17 @@ export function createEaasBillingRoutes(
   const routes = new Hono<{ Variables: EaasVariables }>();
   const limiter = createRateLimiter(deps.rateRpm);
 
+  // 179-3: keyed by tier — each tier has its own SKU/extension.
   const paymentCache = new Map<string, PaymentMiddleware>();
   const paymentFor = (tier: string): PaymentMiddleware | null => {
     const price = deps.tierPrices[tier];
     if (!price) return null;
-    let mw = paymentCache.get(price);
+    let mw = paymentCache.get(tier);
     if (!mw) {
-      mw = deps.paymentForPrice(price);
-      paymentCache.set(price, mw);
+      mw = deps.paymentForPrice(price, {
+        extensions: bazaarExtensionFor(`eaas:subscribe-${tier}`),
+      });
+      paymentCache.set(tier, mw);
     }
     return mw;
   };

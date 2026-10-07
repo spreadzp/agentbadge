@@ -17,6 +17,17 @@ export function bstockSkus(src: CatalogSources["bstock"]): ServiceSku[] {
       price_usd: src.pass_price_usd,
       pricing: "subscription",
       endpoint: { method: "POST", path: "/api/market/buy/:serviceId" },
+      input_schema: {
+        type: "object",
+        properties: {
+          serviceId: {
+            type: "string",
+            pattern: "^0x[0-9a-fA-F]{64}$",
+            description: "bytes32 service id — path parameter",
+          },
+        },
+        required: ["serviceId"],
+      },
       auth: "x402+pass",
       free_tier: {
         limit: "1 req/min per identity",

@@ -41,6 +41,7 @@ import {
 import { createArcBstockFacilitator } from "../lib/bstock/arc-facilitator";
 import { getSpendEnforcer } from "../lib/agent-wallet/enforcer";
 import { bstockFreemium } from "../middleware/bstock-freemium";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import { bstockFeedHealth } from "../middleware/bstock-feed-health";
 import { wrapBstockEngine } from "../lib/data-status";
 import {
@@ -148,6 +149,7 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
         scheme: ARC_SELF_SETTLE_SCHEME,
         maxTimeoutSeconds: 345600,
         extra: { assetTransferMethod: ARC_SELF_SETTLE_SCHEME },
+        extensions: bazaarExtensionFor("bstock:service-pass"),
         freePerMin: 1,
         facilitator: createArcBstockFacilitator({
           sellerAddress: bstockCfg.payTo,

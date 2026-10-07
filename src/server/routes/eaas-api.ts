@@ -48,10 +48,14 @@ import {
   type ParsedVerdictRequest,
 } from "../lib/eaas/request";
 import type { PaymentMiddleware } from "./identity";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 
 export interface EaasRoutesDeps {
-  /** Explicit-price payment middleware factory (CirclePaymentsRuntime.paymentForPrice). */
-  paymentForPrice: (priceUsd: string) => PaymentMiddleware;
+  /** Explicit-price payment middleware factory (CirclePaymentsRuntime.paymentForPrice); opts.extensions carries the per-SKU bazaar declaration (179-3). */
+  paymentForPrice: (
+    priceUsd: string,
+    opts?: { extensions?: Record<string, unknown> },
+  ) => PaymentMiddleware;
   /** Flat per-verdict price, "$x.xx" USDC. */
   verdictUsd: string;
   /** readiness-scan price override. */
@@ -65,27 +69,19 @@ export interface EaasRoutesDeps {
   store: VerdictStoreBackend;
   registry?: Record<string, PolicyFn>;
   now?: () => Date;
-  /**
-   * SLICE-154-4: memo anchoring — absent = anchor fields omitted from
-   * verify responses (feature off). enqueue is forwarded into the
-   * verdict service so issued artifacts anchor asynchronously.
-   */
+  /** SLICE-154-4: memo anchoring — absent = anchor fields omitted (feature
+   *  off). enqueue forwards into the verdict service for async anchoring. */
   anchor?: {
     anchorer: Pick<VerdictAnchorer, "enqueue">;
     store: AnchorStore;
     find: FindAnchorFn;
     explorerTx?: (txHash: string) => string;
   };
-  /**
-   * SLICE-154-5: subscription quota gate — absent = x402-only (feature off).
-   * Valid wallet-sig + CLASS_EAAS pass + live sub → quota path, no payment.
-   */
+  /** SLICE-154-5: subscription quota gate — absent = x402-only (feature
+   *  off). Valid wallet-sig + CLASS_EAAS pass + live sub → quota path. */
   quota?: EaasQuotaDeps;
-  /**
-   * SLICE-154-6: async request delivery — absent = async:true rejected 400.
-   * Requests ride the same quota/x402 gate; payment settles upfront, then
-   * the verdict runs in the background (202 + statusUrl + webhook).
-   */
+  /** SLICE-154-6: async request delivery — absent = async:true rejected 400.
+   *  Same quota/x402 gate; payment settles upfront, verdict runs in bg. */
   async_?: EaasAsyncDeps;
 }
 
@@ -105,16 +101,18 @@ export function createEaasRoutes(
     ...(deps.anchor ? { anchorer: deps.anchor.anchorer } : {}),
   };
 
-  // Payment middleware per price tier — created lazily, cached.
+  // Payment middleware per policy tier — keyed by SKU (179-3: the
+  // extension differs per SKU even when prices coincide).
   const paymentCache = new Map<string, PaymentMiddleware>();
   const paymentFor = (policy: string): PaymentMiddleware => {
-    const price = EXPENSIVE_POLICIES.has(policy)
-      ? deps.scanUsd
-      : deps.verdictUsd;
-    let mw = paymentCache.get(price);
+    const expensive = EXPENSIVE_POLICIES.has(policy);
+    const skuId = expensive ? "eaas:readiness-scan" : "eaas:verdict";
+    let mw = paymentCache.get(skuId);
     if (!mw) {
-      mw = deps.paymentForPrice(price);
-      paymentCache.set(price, mw);
+      mw = deps.paymentForPrice(expensive ? deps.scanUsd : deps.verdictUsd, {
+        extensions: bazaarExtensionFor(skuId),
+      });
+      paymentCache.set(skuId, mw);
     }
     return mw;
   };
@@ -240,13 +238,13 @@ export function createEaasRoutes(
       const txHash = rec?.txHash;
       let hit = null;
       if (rec) {
+        anchor.memoId = rec.memoId;
         try {
           hit = await deps.anchor.find(rec.memoId);
         } catch {
           hit = null; // RPC hiccup → report found:false, never 5xx
         }
       }
-      if (rec) anchor.memoId = rec.memoId;
       if (hit || txHash) {
         anchor.found = hit != null || rec?.status === "anchored";
         anchor.txHash = hit?.txHash ?? txHash;

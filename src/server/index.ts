@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "@agentbadge/passport";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { bazaarExtensionMiddleware } from "./middleware/bazaar-extension";
+import { bazaarExtensionFor } from "./lib/service-catalog/bazaar";
 import { wireL402, wirePaymentGates } from "./wiring/payments";
 import { wireKeeperhubX402 } from "./wiring/keeperhub-x402";
 import { wireScanPacksX402 } from "./wiring/scan-packs-x402";
@@ -170,6 +171,7 @@ if (circleRuntime && process.env.ARC_VENUE_ENABLED === "true") {
       amountAtomic: () => venueMonthlyPriceAtomic().toString(),
       description: "Venue subscription — monthly",
       resourceUrl: `${(process.env.BASE_URL ?? "https://agentbadge.xyz").replace(/\/$/, "")}/api/venue`,
+      extensions: bazaarExtensionFor("venue:instance-subscription"),
     }),
   });
   logger.info("venue billing wired: subscriptionSettle via circle-payments runtime");

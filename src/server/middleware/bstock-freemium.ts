@@ -90,6 +90,8 @@ export interface BstockFreemiumConfig {
   ) => Promise<string>;
   /** 402 description (default: bstock ServicePass wording). */
   description?: string;
+  /** 179-3: bazaar discovery extension merged into the 402 payload. */
+  extensions?: Record<string, unknown>;
   /** SLICE-155-2: spend envelope enforcer getter — resolved lazily per
    *  request (init order-independent). Absent/null → pass-through. */
   spendEnvelope?: () => import("../lib/agent-wallet/enforcer").SpendEnforcer | null;
@@ -126,12 +128,14 @@ function buildRequirements(
 function paymentRequired(
   c: Context,
   requirements: BstockPaymentRequirements,
+  cfg: BstockFreemiumConfig,
   error = "Payment required",
 ): Response {
   const payload = {
     x402Version: 2,
     error,
     accepts: requirements,
+    ...(cfg.extensions ? { extensions: cfg.extensions } : {}),
   };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
   return c.json(payload, 402, { "PAYMENT-REQUIRED": encoded });
@@ -155,6 +159,7 @@ export function bstockFreemium(
         return paymentRequired(
           c,
           requirements,
+          cfg,
           verify.error ?? "Payment verification failed",
         );
       }
@@ -181,6 +186,7 @@ export function bstockFreemium(
         return paymentRequired(
           c,
           requirements,
+          cfg,
           settle.error ?? "Payment settlement failed",
         );
       }
@@ -264,7 +270,7 @@ export function bstockFreemium(
       count = ++b.count;
     }
     if (count > freePerMin) {
-      return paymentRequired(c, requirements);
+      return paymentRequired(c, requirements, cfg);
     }
     await next();
   };

@@ -9,6 +9,7 @@
 import type { Hono, MiddlewareHandler } from "hono";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 
 export function wireKeeperhubX402(
@@ -34,6 +35,8 @@ export function wireKeeperhubX402(
       description:
         "AgentBadge onchain scan recording — executed through KeeperHub, recorded on TrustRegistry (Base Sepolia)",
       mimeType: "application/json",
+      // 179-3: bazaar declaration from the SKU registry (keeperhub:scan-premium).
+      extensions: bazaarExtensionFor("keeperhub:scan-premium"),
       // 157-1: legacy accepts advertised extra.paymentFlow=upfront.
       extraRequirements: { paymentFlow: "upfront" },
     }) as MiddlewareHandler,

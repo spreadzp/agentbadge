@@ -164,7 +164,7 @@ export function wireEaas(
   app.route(
     "/",
     createEaasRoutes({
-      paymentForPrice: (price) => deps.circleRuntime!.paymentForPrice(price),
+      paymentForPrice: (price, opts) => deps.circleRuntime!.paymentForPrice(price, opts),
       verdictUsd: cfg.verdictUsd,
       scanUsd: cfg.scanUsd,
       maxBytes: cfg.maxBytes,
@@ -214,7 +214,7 @@ export function wireEaas(
         evalUsd: cfg.evalUsd,
         rateRpm: cfg.rateRpm,
         chainId,
-        paymentForPrice: (price) => deps.circleRuntime!.paymentForPrice(price),
+        paymentForPrice: (price, opts) => deps.circleRuntime!.paymentForPrice(price, opts),
         seamTwoPhase,
         quota,
         async_: asyncDeps,
@@ -282,7 +282,7 @@ export function wireEaas(
     createEaasBillingRoutes({
       tierPrices,
       tiers: cfg.tierQuotas,
-      paymentForPrice: (price) => deps.circleRuntime!.paymentForPrice(price),
+      paymentForPrice: (price, opts) => deps.circleRuntime!.paymentForPrice(price, opts),
       minter: resolveAccessPassMinter(),
       store: subStore,
       rateRpm: cfg.rateRpm,

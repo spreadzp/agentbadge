@@ -12,6 +12,7 @@
 import type { Context, Hono, MiddlewareHandler } from "hono";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import { getDatabase } from "../lib/database";
 import { initMarketplaceDbBackend } from "../lib/marketplace/db-backend";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
@@ -97,6 +98,7 @@ export function wireMarketplace(
         description:
           "AgentBadge Business Passport — yearly marketplace access",
         mimeType: "application/json",
+        extensions: bazaarExtensionFor("marketplace:passport-mint"),
         onBeforeChallenge: passportPreCheck,
       }) as MiddlewareHandler,
     );
@@ -111,6 +113,7 @@ export function wireMarketplace(
         methods: ["POST"],
         description: "Marketplace service access pass",
         mimeType: "application/json",
+        extensions: bazaarExtensionFor("marketplace:service-buy"),
         onBeforeChallenge: buyPreCheck,
         // 5A: mint fold — arc (scheme eip3009-client-broadcast) mints to
         // payer without credit; base credits splitter + mints.

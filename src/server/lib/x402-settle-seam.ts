@@ -34,6 +34,9 @@ export interface SettleSeamOptions {
   amountAtomic: () => string;
   description?: string;
   resourceUrl?: string;
+  /** 179-3: bazaar discovery extension merged into the PAYMENT-REQUIRED
+   *  header JSON (pass `bazaarExtensionFor(skuId)`). */
+  extensions?: Record<string, unknown>;
 }
 
 /** SLICE-181-2 seam options — refund ledger for self-settled refusals. */
@@ -144,6 +147,7 @@ async function verifyPhase(
           mimeType: "application/json",
         },
         accepts,
+        ...(opts.extensions ? { extensions: opts.extensions } : {}),
       }),
     );
   };

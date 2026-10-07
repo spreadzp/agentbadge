@@ -29,6 +29,7 @@ import {
 import { eaasQuotaGate } from "../lib/eaas/subscription";
 import { respondAsync } from "../lib/eaas/requests";
 import { validateEvaluate, type EvalInput } from "../lib/eaas/eval-request";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type {
   EaasJobsRoutesDeps,
   EaasJobsVariables,
@@ -39,7 +40,9 @@ export function registerEvaluateRoute(
   deps: EaasJobsRoutesDeps,
 ): void {
   const limiter = createRateLimiter(deps.rateRpm);
-  const evalPay = deps.paymentForPrice(deps.evalUsd);
+  const evalPay = deps.paymentForPrice(deps.evalUsd, {
+    extensions: bazaarExtensionFor("eaas:jobs-evaluate"),
+  });
 
   routes.post(
     "/api/eaas/jobs/evaluate",

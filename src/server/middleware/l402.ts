@@ -15,6 +15,11 @@
  *
  * In development/test mode (no LND connection), generates mock macaroons
  * and test invoices. Any preimage is accepted in test mode.
+ *
+ * 179-3 DOCUMENTED EXCEPTION: no bazaar extension here. The L402 challenge
+ * is a macaroon+BOLT11 invoice in WWW-Authenticate, not an x402 JSON body —
+ * extensions.bazaar has no slot to live in. The endpoint behind this gate
+ * (/passport/request) declares bazaar via the x402 route config instead.
  */
 
 import type { MiddlewareHandler } from "hono";

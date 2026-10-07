@@ -13,6 +13,7 @@
  */
 
 import type { MiddlewareHandler } from "hono";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 
 export interface MppConfig {
   secretKey: string;
@@ -50,9 +51,12 @@ function buildX402Challenge(config: MppConfig) {
         maxTimeoutSeconds: 60,
       },
     ],
+    // 179-3: full bazaar discovery declaration from the passport SKU
+    // registry (same endpoint, one SKU family — bronze representative).
     extensions: {
       bazaar: {
         discoverable: true,
+        ...(bazaarExtensionFor("passport:bronze")?.bazaar ?? {}),
       },
     },
   };

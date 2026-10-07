@@ -9,7 +9,6 @@
 // (zero behavior change for envs that never enabled circle payments).
 
 import type { Context, Hono, MiddlewareHandler } from "hono";
-import { declareDiscoveryExtension } from "@x402/extensions";
 import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
 import {
@@ -28,6 +27,7 @@ import {
 } from "../lib/access-pass-minter";
 import { checkAccessPassRequest } from "../middleware/agent-auth";
 import { scanPacksApiRoutes } from "../routes/scan-packs-api";
+import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type { CirclePaymentsRuntime, PaymentForOpts } from "../lib/circle-payments";
 
 // SLICE-136-1: canonical public URL for the resource field — behind Fly TLS
@@ -107,34 +107,10 @@ async function packCatalogBody(c: Context) {
   };
 }
 
-/** D10: Bazaar discovery declaration — shared by both paths. */
+/** D10/D-179-4: Bazaar discovery declaration — derived from the
+ *  scan:full SKU so inputSchema === inputSchemaOf(sku) (single source). */
 const scanDiscoveryExtension = () =>
-  declareDiscoveryExtension({
-    bodyType: "json",
-    input: { url: "https://example.com", packs: ["discovery-crawling"] },
-    inputSchema: {
-      type: "object",
-      properties: {
-        url: { type: "string", description: "Target site URL to scan" },
-        packs: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Optional rule bundle ids (see GET /api/scan-packs); omit for full scan",
-        },
-      },
-      required: ["url"],
-    },
-    output: {
-      example: {
-        event: "result",
-        data: {
-          score: 72,
-          bundles: { "discovery-crawling": { passed: 15, failed: 4 } },
-        },
-      },
-    },
-  });
+  bazaarExtensionFor("scan:full");
 
 // SLICE-157-2 (1A): legacy x402.org stack removed — paid routes exist only
 // on the circle-payments runtime. This exported opts-builder is the single

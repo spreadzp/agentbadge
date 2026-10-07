@@ -16,6 +16,7 @@ import type { PaymentRouter } from "@agentbadge/circle-payments";
 import { createJsonRefundLog, createRefundService } from "../refund-log";
 import { createSettleSeamTwoPhase } from "../x402-settle-seam";
 import { usdToBaseUnits } from "../marketplace/chain";
+import { bazaarExtensionFor } from "../service-catalog/bazaar";
 
 const USDC_TRANSFER_ABI = [
   {
@@ -82,6 +83,7 @@ export function createEaasRefundStack(opts: EaasRefundStackOpts) {
     amountAtomic: () =>
       usdToBaseUnits(opts.evalUsd.replace(/^\$/, "")).toString(),
     description: "EaaS external job evaluation",
+    extensions: bazaarExtensionFor("eaas:jobs-evaluate"),
     refunds,
   });
   return { refunds, seam };

@@ -19,6 +19,21 @@ export function marketplaceSkus(
       price_usd: src.passport_price_usd,
       pricing: "per_call",
       endpoint: { method: "POST", path: "/api/market/passport" },
+      // Mirrors validatePassportMeta (lib/marketplace/catalog.ts).
+      input_schema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Business name (1-100 chars)" },
+          endpointUrl: {
+            type: "string",
+            description: "https:// service endpoint URL",
+          },
+          category: { type: "string" },
+          description: { type: "string", description: "≤500 chars" },
+          docsUrl: { type: "string", description: "https:// docs URL" },
+        },
+        required: ["name", "endpointUrl", "category", "description", "docsUrl"],
+      },
       auth: "x402",
       enabled: src.enabled,
     },
@@ -32,6 +47,17 @@ export function marketplaceSkus(
       price_usd: null,
       pricing: "dynamic",
       endpoint: { method: "POST", path: "/api/market/buy/:serviceId" },
+      input_schema: {
+        type: "object",
+        properties: {
+          serviceId: {
+            type: "string",
+            pattern: "^0x[0-9a-fA-F]{64}$",
+            description: "bytes32 service id — path parameter",
+          },
+        },
+        required: ["serviceId"],
+      },
       auth: "x402",
       enabled: src.enabled,
     },
