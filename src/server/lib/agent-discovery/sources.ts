@@ -17,6 +17,7 @@ import { BASE_URL } from "../page-meta";
 import { getFaqEntries, type QaPair } from "../../../views/faq-page";
 import { openApiConfig } from "../../openapi";
 import { getNamespace, listTools } from "@agentbadge/mcp";
+import { didKeyMaterialFromEnv, DID_VM_FRAGMENT } from "./did-key";
 
 /** MCP namespaces exposed on /mcp/<ns> — mirrors routes/well-known/agent-card.ts. */
 export const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
@@ -95,6 +96,16 @@ export interface DiscoverySources {
   };
   /** did.json gate — publish DID document only when DID is live (D-178-9). */
   didEnabled?: boolean;
+  /**
+   * SLICE-178-7: Ed25519 key material for the did:web document
+   * (verificationMethod + jwks). Injected by collectSources from
+   * DID_SIGNING_KEY; undefined → did.json is gated off (honest absence).
+   */
+  didKey?: {
+    publicJwk: { kty: "OKP"; crv: "Ed25519"; x: string; kid: string };
+    /** Verification-method fragment used in the DID document. */
+    fragment: string;
+  };
   /** Injected clock (security.txt Expires). Defaults to build time. */
   now?: Date;
 }
@@ -130,6 +141,7 @@ export function enumeratePublicRoutes(app: {
  * gen-discovery script passes createApp() result.
  */
 export function collectSources(app?: Hono): DiscoverySources {
+  const didKeyMaterial = didKeyMaterialFromEnv();
   return {
     baseUrl: BASE_URL,
     authSection: didAuthSectionCompact(),
@@ -146,7 +158,16 @@ export function collectSources(app?: Hono): DiscoverySources {
     },
     mcpServer: collectMcpServer(),
     wellKnownEnv: collectWellKnownEnv(),
-    didEnabled: process.env.DID_ENABLED === "true" || process.env.DID_ENABLED === "1",
+    didEnabled: didKeyMaterial !== null,
+    // SLICE-178-7: DID_SIGNING_KEY → public JWK for the did:web document.
+    // Garbage/absent key → undefined → did.json gated off (honest absence).
+    didKey:
+      didKeyMaterial === null
+        ? undefined
+        : {
+            publicJwk: didKeyMaterial.publicJwk,
+            fragment: DID_VM_FRAGMENT,
+          },
     now: new Date(),
   };
 }

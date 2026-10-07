@@ -17,8 +17,8 @@ import {
   buildMcpServerCard,
   buildOauthProtectedResource,
   buildSecurityTxt,
-  buildDidJson,
 } from "./wellknown";
+import { buildDidWebDocument } from "./did";
 
 export interface ManifestEntry {
   /** URL path the manifest is served at. */
@@ -133,13 +133,15 @@ export const MANIFEST_REGISTRY: ManifestEntry[] = [
     build: buildOwnerQuestions,
   },
   {
-    // did:web document — registered only when DID is live (D-178-9/178-7).
+    // did:web document — registered only when DID_SIGNING_KEY yields
+    // key material (D-178-9/178-7). publicPath "": env-dependent →
+    // boot-generated only, never snapshotted (D-178-11).
     path: "/.well-known/did.json",
     publicPath: "",
-    contentType: "application/json",
+    contentType: "application/did+json",
     cacheMaxAge: 3600,
-    summary: "DID document (did:web) — gated by DID_ENABLED",
-    enabled: (src) => src.didEnabled === true,
-    build: buildDidJson,
+    summary: "DID document (did:web) — gated by DID_SIGNING_KEY",
+    enabled: (src) => src.didEnabled === true && src.didKey !== undefined,
+    build: (src) => JSON.stringify(buildDidWebDocument(src), null, 2) + "\n",
   },
 ];

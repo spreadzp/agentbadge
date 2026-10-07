@@ -25,8 +25,16 @@ export {
   buildMcpServerCard,
   buildOauthProtectedResource,
   buildSecurityTxt,
-  buildDidJson,
 } from "./wellknown";
+export { buildDidWebDocument } from "./did";
+export { signDomainLinkageCredential } from "./did-config";
+export {
+  didKeyMaterialFromEnv,
+  didKeyMaterialFromPkcs8,
+  DID_JWKS_KID,
+  DID_VM_FRAGMENT,
+  type DidKeyMaterial,
+} from "./did-key";
 export { MANIFEST_REGISTRY, type ManifestEntry } from "./manifests";
 
 import type { DiscoverySources } from "./sources";

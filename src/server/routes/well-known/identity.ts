@@ -2,8 +2,66 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { BASE_URL } from "../../lib/page-meta";
+import { didKeyMaterialFromEnv } from "../../lib/agent-discovery/did-key";
+import { signDomainLinkageCredential } from "../../lib/agent-discovery/did-config";
 
 export const identityRoutes = new Hono();
+
+// ─── DID Configuration (DIF) — SLICE-178-7 ──────────────────────────
+// VC-JWT proving did:web:<host> controls this origin. Signed at first
+// request (boot-time semantics) with DID_SIGNING_KEY; iat/exp make the
+// JWT non-deterministic → served dynamically, never snapshotted.
+let didConfigCache: { key: string; jwt: string } | null = null;
+
+identityRoutes.get(
+  "/.well-known/did-configuration.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "DID Configuration — signed DomainLinkageCredential (DIF)",
+    description:
+      "Returns linked_dids with a VC-JWT (EdDSA) binding the platform " +
+      "did:web identifier to this origin. Requires DID_SIGNING_KEY; " +
+      "absent → 404 (absence beats an unsigned config).",
+    responses: {
+      200: {
+        description: "DID Configuration with linked_dids VC-JWT",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({ linked_dids: z.array(z.string()) }),
+            ),
+          },
+        },
+      },
+      404: { description: "DID identity not configured" },
+    },
+  }),
+  async (c) => {
+    const material = didKeyMaterialFromEnv();
+    if (!material) return c.notFound();
+
+    const host = new URL(BASE_URL).host;
+    if (!didConfigCache || didConfigCache.key !== material.pkcs8) {
+      didConfigCache = {
+        key: material.pkcs8,
+        jwt: await signDomainLinkageCredential({
+          pkcs8: material.pkcs8,
+          did: `did:web:${host}`,
+          origin: BASE_URL,
+        }),
+      };
+    }
+
+    return c.json(
+      { linked_dids: [didConfigCache.jwt] },
+      200,
+      {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
+  },
+);
 
 // ─── WebFinger (RFC 7033) ──────────────────────────────────────
 

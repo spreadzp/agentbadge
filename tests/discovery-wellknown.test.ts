@@ -251,7 +251,22 @@ describe("routes: content-types, redirects, gates", () => {
   });
 
   it("did.json gated on → 200 DID document", async () => {
-    const app2 = mkApp(mkSources({ didEnabled: true }));
+    // SLICE-178-7: gate requires key material (didKey) — injected here
+    // the same way collectSources injects it from DID_SIGNING_KEY.
+    const app2 = mkApp(
+      mkSources({
+        didEnabled: true,
+        didKey: {
+          publicJwk: {
+            kty: "OKP",
+            crv: "Ed25519",
+            x: "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+            kid: "agentbadge-2026-1",
+          },
+          fragment: "#key-1",
+        },
+      }),
+    );
     const res = await app2.request("/.well-known/did.json");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { id?: string };

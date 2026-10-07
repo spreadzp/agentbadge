@@ -11,6 +11,9 @@ import { describeRoute } from "hono-openapi";
 import { getPassportInfo, type PassportInfo } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { collectSources } from "../lib/agent-discovery/sources";
+import { buildDidWebDocument } from "../lib/agent-discovery/did";
+import { BASE_URL } from "../lib/page-meta";
 
 export const didRoutes = new Hono();
 
@@ -59,6 +62,23 @@ didRoutes.get(
   }),
   async (c) => {
     const did = c.req.param("did");
+
+    // SLICE-178-7: did:web self-resolution — the platform DID resolves
+    // to the same document served at /.well-known/did.json.
+    if (did.startsWith("did:web:")) {
+      const doc = buildDidWebDocument(collectSources());
+      const host = new URL(BASE_URL).host;
+      if (!doc || did !== `did:web:${host}`) {
+        return errorResponse(
+          c,
+          404,
+          ErrorCodes.PASSPORT_NOT_FOUND,
+          "DID not found or not this platform's did:web",
+        );
+      }
+      return c.json(doc, 200);
+    }
+
     const parsed = parseDid(did);
 
     if (!parsed) {

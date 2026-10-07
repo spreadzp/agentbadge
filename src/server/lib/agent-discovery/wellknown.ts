@@ -151,28 +151,6 @@ export function buildSecurityTxt(src: DiscoverySources): string {
   ].join("\n");
 }
 
-// ─── did.json (did:web document — gated by didEnabled) ───────────────────────
-
-/**
- * Minimal did:web:agentbadge.xyz DID document. Only generated when the DID
- * is live (DID_ENABLED); absence beats a stale/false doc (D-178-9 landmine).
- * Full signed DID Configuration lives in SLICE-178-7.
- */
-export function buildDidJson(src: DiscoverySources): string {
-  const b = src.baseUrl;
-  const host = new URL(b).host;
-  return json({
-    "@context": [
-      "https://www.w3.org/ns/did/v1",
-      "https://w3id.org/security/suites/ed25519-2020/v1",
-    ],
-    id: `did:web:${host}`,
-    service: [
-      { id: `did:web:${host}#agent`, type: "AgentService", serviceEndpoint: b },
-      { id: `did:web:${host}#mcp`, type: "MCPService", serviceEndpoint: `${b}/mcp` },
-    ],
-    alsoKnownAs: [
-      `eip155:${src.wellKnownEnv?.erc8004.chainId ?? 5042}:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`,
-    ],
-  });
-}
+// ─── did.json ────────────────────────────────────────────────────────────────
+// Moved to ./did.ts (SLICE-178-7): buildDidWebDocument produces the full
+// did:web document with verificationMethod/service[]/alsoKnownAs.
