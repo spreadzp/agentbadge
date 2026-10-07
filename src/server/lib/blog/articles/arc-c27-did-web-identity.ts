@@ -4,7 +4,7 @@ export const article: BlogArticle = {
   slug: "arc-c27-did-web-identity",
   title: "Who Are You, Agent? A DID Your Domain Can Prove — on Arc",
   description:
-    "AgentBadge now has a real platform identity: did:web:agentbadge.xyz — a W3C DID anchored to our domain, a signed DID Configuration (VC-JWT DomainLinkageCredential) any client can verify with ~20 lines of jose, and a real Ed25519 key behind jwks.json. Chain refs point at ERC-8004 on Arc (eip155:5042) through alsoKnownAs instead of being baked into the identifier.",
+    "AgentBadge now has a real platform identity: did:web:agentbadge.xyz — a W3C DID anchored to our domain, a signed DID Configuration (VC-JWT DomainLinkageCredential) any client can verify with ~20 lines of jose, and a real Ed25519 key behind jwks.json. Chain refs point at ERC-8004 on Arc (eip155:5042002) through alsoKnownAs instead of being baked into the identifier.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-10-07",
@@ -12,7 +12,7 @@ export const article: BlogArticle = {
   tags: ["did", "verifiable-credentials", "arc", "ai-agents", "x402", "identity"],
   readingTime: "6 min",
   shortAnswer:
-    "AgentBadge's platform identity is did:web:agentbadge.xyz — a domain-anchored W3C DID surviving chain migrations, with a signed DID Configuration verifiable via jose. One DID_SIGNING_KEY backs did.json and jwks.json; Arc ERC-8004 refs live in alsoKnownAs (eip155:5042).",
+    "AgentBadge's platform identity is did:web:agentbadge.xyz — a domain-anchored W3C DID surviving chain migrations, with a signed DID Configuration verifiable via jose. One DID_SIGNING_KEY backs did.json and jwks.json; Arc ERC-8004 refs live in alsoKnownAs (eip155:5042002).",
   agentGuideSlug: "arc-c27-did-web-identity",
   heroImage: "/images/blog/arc-c27-did-web-identity-hero.png",
   ogImage: "/images/blog/arc-c27-did-web-identity-og.png",
@@ -22,7 +22,7 @@ export const article: BlogArticle = {
 <h2 id="why-did-web">Why did:web and not a chain DID?</h2>
 <p>We had options. We had <em>history</em>: the platform previously advertised a <code>did:hcs</code> Hedera testnet passport and a <code>did:eip155</code> Base Sepolia passport in its <code>did.json</code>. Both told the truth about where our agents <em>were</em> registered — and both went stale the moment we moved chains.</p>
 <p>Our stack has already lived on three networks: Hedera (the passport prototype), Base Sepolia (the x402 experiments), and now Arc — where AgentBadge settled into production: ERC-8004 agent registry, USDC payments, verdict anchors. A DID that encodes <code>did:hcs</code> or <code>did:eip155:84532</code> in its identifier becomes a lie on the day you migrate. A <code>did:web</code> identifier encodes the one thing that <em>doesn't</em> move: <code>agentbadge.xyz</code>.</p>
-<p>So the platform DID is <code>did:web:agentbadge.xyz</code>. The chain identities aren't the DID — they're what the DID <em>points at</em>: <code>alsoKnownAs</code> carries our ERC-8004 references on Arc (<code>eip155:5042:0x8004A169…</code>), and the agent-card manifest carries per-agent <code>eip155</code> refs with passport IDs.</p>
+<p>So the platform DID is <code>did:web:agentbadge.xyz</code>. The chain identities aren't the DID — they're what the DID <em>points at</em>: <code>alsoKnownAs</code> carries our ERC-8004 references on Arc (<code>eip155:5042002:0x8004A169…</code>), and the agent-card manifest carries per-agent <code>eip155</code> refs with passport IDs.</p>
 <p><img src="/images/blog/arc-c27-did-web-identity-1.png" alt="did:web anchor vs stale chain DIDs" /></p>
 <h2 id="did-document">What a resolver actually gets</h2>
 <p><code>GET https://agentbadge.xyz/.well-known/did.json</code> returns a real DID document — not the mislabeled config that used to live there: <code>verificationMethod</code> carries a real Ed25519 public key (<code>JsonWebKey</code>, OKP/Ed25519 — the same key that backs <code>/.well-known/jwks.json</code>), and <code>service[]</code> is the agent's map to us: agent-card → capabilities, mcp → tool interface, x402 → paid endpoints on Arc, api-catalog → the full service surface.</p>
@@ -49,13 +49,13 @@ const { payload } = await jwtVerify(cfg.linked_dids[0], jwks);
 <p>And no key at all is better than a fake one: without <code>DID_SIGNING_KEY</code> set, <code>did.json</code> isn't generated and <code>jwks.json</code> returns an empty key set. Absence is honest; a forged-looking stub is not.</p>
 <p><img src="/images/blog/arc-c27-did-web-identity-2.png" alt="One Ed25519 key under did.json, did-configuration.json and jwks.json" /></p>
 <h2 id="arc-fit">Where Arc fits</h2>
-<p>The DID is chain-agnostic on purpose — but the <em>identity graph</em> isn't abstract. <code>alsoKnownAs</code> points at our ERC-8004 registry entry on <strong>Arc mainnet (chain 5042)</strong> — the chain where AgentBadge agents register passports, escrow verdicts, and settle in USDC.</p>
+<p>The DID is chain-agnostic on purpose — but the <em>identity graph</em> isn't abstract. <code>alsoKnownAs</code> points at our ERC-8004 registry entry on <strong>Arc testnet (chain 5042002)</strong> — the chain where AgentBadge agents register passports, escrow verdicts, and settle in USDC.</p>
 <p>The practical chain of trust for an agent evaluating us:</p>
 <ol>
 <li><code>GET /.well-known/did.json</code> → platform identity + service map</li>
 <li><code>agent-card.json</code> → capabilities and per-agent ERC-8004 refs on Arc</li>
 <li><code>GET /did/did:web:agentbadge.xyz</code> → self-resolution (same document)</li>
-<li>ERC-8004 <code>eip155:5042:0x8004A169…:agentId</code> → on-chain passport on Arc</li>
+<li>ERC-8004 <code>eip155:5042002:0x8004A169…:agentId</code> → on-chain passport on Arc</li>
 <li>x402 endpoints in <code>service[]</code> → paid calls, settled on Arc in USDC</li>
 </ol>
 <p>The domain proves the DID; the DID points at Arc; Arc holds the passports and the money. Each layer verifiable without asking us.</p>
