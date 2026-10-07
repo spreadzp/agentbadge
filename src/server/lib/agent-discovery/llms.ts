@@ -77,6 +77,8 @@ We offer consulting and development services for the agentic web:
 - /.well-known/owner-questions.json — Operator/fleet FAQ (solo/team/venue operator context)
 - /auth.md — Agent authentication and registration instructions
 - /verification.md — Verification policy (passport, DID, marketplace, audit)
+- /index.md — Markdown mirror of the homepage; append \`.md\` to any public page
+  URL or send Accept: text/markdown for content negotiation (Vary: Accept)
 - /reputation.md — Reputation specification (signal sources, Sybil resistance, anti-farming)
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)

@@ -49,6 +49,7 @@ export function LandingLayout(
         <title>${composedTitle}</title>
         <meta name="description" content="${description}" />
         <link rel="canonical" href="${canonicalUrl}" />
+        <link rel="alternate" type="text/markdown" title="Markdown version" href="${canonicalPath === "/" ? "/index.md" : `${canonicalPath}.md`}" />
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="${meta?.ogType ?? "website"}" />

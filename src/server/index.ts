@@ -21,6 +21,10 @@ import { getCache } from "./lib/cache";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { corsMiddleware } from "./middleware/cors";
 import { contentNegotiationMiddleware } from "./middleware/content-negotiation";
+import {
+  markdownNegotiation,
+  markdownMirrorRoutes,
+} from "./middleware/markdown-negotiation";
 import { cacheHeadersMiddleware } from "./middleware/cache-headers";
 import { hostNormalizationMiddleware, trailingSlashMiddleware } from "./middleware/canonical-redirects";
 import { structuredNotFoundHandler } from "./middleware/structured-error-handler";
@@ -64,6 +68,9 @@ app.use(requestLoggerMiddleware());
 app.use(corsMiddleware());
 app.use(securityHeaders());
 app.use(contentNegotiationMiddleware());
+// SLICE-178-4: Accept: text/markdown negotiation for public HTML pages
+// (post-response transform; homepage '/' is owned by content-negotiation).
+app.use(markdownNegotiation());
 app.use(cacheHeadersMiddleware());
 // SLICE-49-19: L402 Lightning payment middleware (before signature verification)
 // EPIC-140: extracted to wiring/payments.ts — must stay BEFORE signature/rateLimit.
@@ -217,6 +224,11 @@ wireOpenApi(app);
 // full public route table (post-mount, lazy first-request generation).
 setDiscoveryApp(app);
 
+// SLICE-178-4: `GET /<page>.md` mirrors — internal Accept: text/markdown
+// sub-request, so mirror content ≡ negotiated content. Registered LAST:
+// the `*` catch-all must not shadow any real route.
+app.route("/", markdownMirrorRoutes(app));
+
 // Capture unhandled errors from routes — EPIC-140: extracted to wiring/background.ts
 wireErrorHandler(app);
 
@@ -225,30 +237,30 @@ export function createApp() {
 }
 
 if (import.meta.main) {
-try {
-  const server = Bun.serve({
-    port,
-    hostname: "0.0.0.0",
-    fetch: app.fetch,
-    idleTimeout: 0,
-  });
-  logger.info("SERVER listening", { url: `http://${server.hostname}:${server.port}` });
+  try {
+    const server = Bun.serve({
+      port,
+      hostname: "0.0.0.0",
+      fetch: app.fetch,
+      idleTimeout: 0,
+    });
+    logger.info("SERVER listening", { url: `http://${server.hostname}:${server.port}` });
 
-  // EPIC-143: graceful shutdown — the ONLY place database.close() is called
-  // (shared pool; never close per-request).
-  const shutdown = async (signal: string) => {
-    logger.info("SERVER shutting down", { signal });
-    try {
-      await database.close();
-    } catch (e) {
-      logger.error("database: close failed", { error: e });
-    }
-    process.exit(0);
-  };
-  process.on("SIGTERM", () => void shutdown("SIGTERM"));
-  process.on("SIGINT", () => void shutdown("SIGINT"));
-} catch (e) {
-  logger.error("SERVER: Bun.serve failed", { error: e });
-  process.exit(1);
-}
+    // EPIC-143: graceful shutdown — the ONLY place database.close() is called
+    // (shared pool; never close per-request).
+    const shutdown = async (signal: string) => {
+      logger.info("SERVER shutting down", { signal });
+      try {
+        await database.close();
+      } catch (e) {
+        logger.error("database: close failed", { error: e });
+      }
+      process.exit(0);
+    };
+    process.on("SIGTERM", () => void shutdown("SIGTERM"));
+    process.on("SIGINT", () => void shutdown("SIGINT"));
+  } catch (e) {
+    logger.error("SERVER: Bun.serve failed", { error: e });
+    process.exit(1);
+  }
 }

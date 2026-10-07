@@ -66,6 +66,7 @@ export function GuideLayout(
         <title>${composedTitle}</title>
         <meta name="description" content="${title} for AI agents on ${SITE_NAME} — Hedera on-chain identity platform." />
         <link rel="canonical" href="${canonicalUrl}" />
+        <link rel="alternate" type="text/markdown" title="Markdown version" href="${path === "/" ? "/index.md" : `${path ?? "/"}.md`}" />
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${title} for AI agents on ${SITE_NAME} — Hedera on-chain identity platform." />
         <meta property="og:type" content="article" />

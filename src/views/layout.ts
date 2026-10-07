@@ -42,6 +42,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <meta name="description" content="${description}" />
         ${noIndex ? raw('<meta name="robots" content="noindex, nofollow" />') : raw('<meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />')}
         <link rel="canonical" href="${canonicalUrl}" />
+        <link rel="alternate" type="text/markdown" title="Markdown version" href="${canonicalPath === "/" ? "/index.md" : `${canonicalPath}.md`}" />
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="website" />
