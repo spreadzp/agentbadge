@@ -85,7 +85,7 @@ We offer consulting and development services for the agentic web:
 - /.well-known/agentbadge.json — Deployment descriptor (network, token IDs, API version, payment protocol)
 - /.well-known/jwks.json — JSON Web Key Set (RFC 7517) for verifying signed credentials
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
-- /api/meta/fees — Machine-readable fee/pricing catalog for all AgentBadge services
+- /api/v1/services — Canonical paid-services catalog (ServiceSku registry, USDC prices); supersedes /api/meta/fees
 - /api/meta/trust-tiers — Identity/trust ladder (6 tiers) with capabilities and requirements
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
 

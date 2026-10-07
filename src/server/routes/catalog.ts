@@ -10,7 +10,6 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import { getCatalog } from "@agentbadge/hedera-core";
 import { catalogTierSchema } from "../openapi";
-import { getServicesCatalog } from "../lib/services-catalog";
 import z from "zod";
 import type { NextCall } from "../lib/next-call";
 
@@ -67,75 +66,10 @@ catalogRoutes.get(
                     capabilities: z.array(z.string()),
                   }),
                 ),
-              }),
-            ),
-          },
-        },
-      },
-    },
-  }),
-  (c) => {
-    const tiers = getCatalog();
-    return c.json(
-      { currency: "HBAR", tiers },
-      200,
-      { "Cache-Control": "public, max-age=3600" },
-    );
-  },
-);
-
-/**
- * GET /api/v1/services — canonical paid-services catalog.
- * Referenced by agent-card, refusal-contract price_truth, llms.txt,
- * and blog/agent-guide articles. Prices come from the same config
- * sources the x402 middleware resolves at request time.
- */
-catalogRoutes.get(
-  "/api/v1/services",
-  describeRoute({
-    tags: ["Catalog"],
-    summary: "Canonical paid-services catalog (USDC)",
-    description:
-      "Machine-readable registry of paid surfaces: endpoint, method, canonical USDC price, unit, refusal codes, free-tier flag. " +
-      "402 accept.amount values are canonical — clients verify them against this catalog (price_truth).",
-    responses: {
-      200: {
-        description: "Services catalog",
-        content: {
-          "application/json": {
-            schema: resolver(
-              z.object({
-                version: z.string(),
-                currency: z.string(),
-                price_truth: z.string(),
-                refusal_contract: z.string(),
-                generated_at: z.string(),
-                services: z.array(
-                  z.object({
-                    id: z.string(),
-                    name: z.string(),
-                    path: z.string(),
-                    method: z.string(),
-                    price_usd: z.string().nullable(),
-                    unit: z.string(),
-                    settlement: z.string(),
-                    enabled: z.boolean(),
-                    free_tier: z.boolean(),
-                    refusal_codes: z.array(z.string()),
-                    notes: z.string().optional(),
-                  }),
-                ),
-                scan_packs: z
+                deprecated: z
                   .object({
-                    endpoint: z.string(),
-                    full_scan_usd: z.string(),
-                    bundles: z.array(
-                      z.object({
-                        id: z.string(),
-                        price_usd: z.string(),
-                        rule_count: z.number(),
-                      }),
-                    ),
+                    replaced_by: z.string(),
+                    note: z.string(),
                   })
                   .optional(),
               }),
@@ -146,8 +80,19 @@ catalogRoutes.get(
     },
   }),
   (c) => {
-    return c.json(getServicesCatalog(), 200, {
-      "Cache-Control": "public, max-age=300",
-    });
+    const tiers = getCatalog();
+    return c.json(
+      {
+        currency: "HBAR",
+        tiers,
+        deprecated: {
+          replaced_by: "/api/v1/services",
+          note: "HBAR-era pricing; use the canonical USDC services catalog.",
+        },
+      },
+      200,
+      { "Cache-Control": "public, max-age=3600" },
+    );
   },
 );
+

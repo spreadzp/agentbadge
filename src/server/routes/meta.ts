@@ -93,6 +93,12 @@ metaRoutes.get(
                 currency_note: z.string(),
                 network: z.string(),
                 fees: z.array(feeEntrySchema),
+                deprecated: z
+                  .object({
+                    replaced_by: z.string(),
+                    note: z.string(),
+                  })
+                  .optional(),
               }),
             ),
           },
@@ -101,9 +107,19 @@ metaRoutes.get(
     },
   }),
   (c) => {
-    return c.json(getFeeCatalog(), 200, {
-      "Cache-Control": "public, max-age=3600",
-    });
+    return c.json(
+      {
+        ...getFeeCatalog(),
+        deprecated: {
+          replaced_by: "/api/v1/services",
+          note: "HBAR-era fee list; use the canonical USDC services catalog.",
+        },
+      },
+      200,
+      {
+        "Cache-Control": "public, max-age=3600",
+      },
+    );
   },
 );
 

@@ -6,6 +6,7 @@ import { adminRoutes } from "../../src/server/routes/admin";
 import { upgradeRoutes } from "../../src/server/routes/upgrade";
 import { auditRoutes } from "../../src/server/routes/audit";
 import { catalogRoutes } from "../../src/server/routes/catalog";
+import { servicesCatalogRoutes } from "../../src/server/routes/services-catalog";
 import { discoveryManifestRoutes } from "../../src/server/routes/discovery";
 import { agentRoutes } from "../../src/server/routes/agents";
 import { a2aRoutes } from "../../src/server/routes/a2a";
@@ -66,6 +67,7 @@ export function makeTestApp(): Hono {
   app.route("/", upgradeRoutes);
   app.route("/", auditRoutes);
   app.route("/", catalogRoutes);
+  app.route("/", servicesCatalogRoutes);
   app.route("/", discoveryManifestRoutes);
   app.route("/", agentRoutes);
   app.route("/", a2aRoutes);
