@@ -21,6 +21,7 @@ import { article as arcC2PublicVenue } from "./arc-c2-public-venue";
 import { article as arcC4AgentWallet } from "./arc-c4-agent-wallet";
 import { article as arcC3MoneyLayer } from "./arc-c3-money-layer";
 import { article as arcC13OwnerControls } from "./arc-c13-owner-controls";
+import { article as arcC15X402Bazaar } from "./arc-c15-x402-bazaar";
 import { article as arcC17HonestRefusal } from "./arc-c17-honest-refusal";
 import { article as arcC27DidWebIdentity } from "./arc-c27-did-web-identity";
 
@@ -47,6 +48,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC4AgentWallet,
   arcC1MainnetDeployment,
   arcC13OwnerControls,
+  arcC15X402Bazaar,
   arcC17HonestRefusal,
   arcC27DidWebIdentity,
 ];
