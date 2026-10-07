@@ -10,15 +10,21 @@
  * app here is side-effect-light (module wiring only).
  */
 
-import { writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-const PUBLIC_DIR = join(import.meta.dir, "..", "public");
+// SLICE-178-5: GEN_DISCOVERY_OUT redirects output (CI drift-check
+// writes to a scratch dir and diffs, without touching public/).
+const PUBLIC_DIR =
+  process.env.GEN_DISCOVERY_OUT ?? join(import.meta.dir, "..", "public");
 
 async function main() {
   const { createApp } = await import("../src/server/index");
-  const { collectSources, generateAll, MANIFEST_REGISTRY } = await import(
+  const { collectSources, generateAll } = await import(
     "../src/server/lib/agent-discovery"
+  );
+  const { writeDiscoverySnapshots } = await import(
+    "../src/server/lib/agent-discovery/snapshot"
   );
 
   const app = createApp();
@@ -26,17 +32,9 @@ async function main() {
   const manifests = generateAll(sources);
 
   mkdirSync(PUBLIC_DIR, { recursive: true });
-  for (const entry of MANIFEST_REGISTRY) {
-    // publicPath="" → env-dependent or gated (security.txt Expires,
-    // did.json) — served live at boot, never snapshotted (D-178-11).
-    if (!entry.publicPath) continue;
-    const m = manifests.get(entry.path);
-    if (!m || m.redirectTo) continue;
-    const file = join(PUBLIC_DIR, entry.publicPath);
-    mkdirSync(join(file, ".."), { recursive: true });
-    writeFileSync(file, m.body, "utf-8");
-    console.log(`wrote public/${entry.publicPath} (${m.body.length} bytes)`);
-  }
+  const written = writeDiscoverySnapshots(manifests, PUBLIC_DIR);
+  for (const rel of written) console.log(`wrote ${rel}`);
+  console.log(`gen-discovery: ${written.length} files → ${PUBLIC_DIR}`);
   process.exit(0);
 }
 

@@ -23,6 +23,7 @@ import { Hono } from "hono";
 import type { Context, Next } from "hono";
 import { htmlToMarkdown } from "../lib/agent-discovery/markdown";
 import { BASE_URL } from "../lib/page-meta";
+import { recordSrcAttribution } from "./src-attribution";
 
 // ─── Accept parsing ──────────────────────────────────────────────────────────
 
@@ -149,6 +150,9 @@ export function markdownMirrorRoutes(app: Hono): Hono {
   routes.get("*", async (c) => {
     const path = new URL(c.req.url).pathname;
     if (!path.endsWith(".md")) return c.notFound();
+
+    // SLICE-178-5: ?src= attribution on .md entry points.
+    await recordSrcAttribution(c);
 
     const stripped = path.slice(0, -3);
     const target = stripped === "" || stripped === "/index" ? "/" : stripped;

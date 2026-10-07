@@ -15,6 +15,7 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+import { srcAttribution } from "../middleware/src-attribution";
 import {
   collectSources,
   enumeratePublicRoutes,
@@ -45,6 +46,9 @@ export function createDiscoveryRoutes(
 ): Hono {
   const routes = new Hono();
   let cache: Map<string, GeneratedManifest> | null = null;
+
+  // SLICE-178-5: ?src=<registry> attribution on every manifest endpoint.
+  routes.use(srcAttribution());
 
   const manifests = () => {
     if (process.env.DISCOVERY_LIVE === "1" || cache === null) {
