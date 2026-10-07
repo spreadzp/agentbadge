@@ -74,3 +74,29 @@ port and runs `scanDomain` + `RuleEngine` asserting AB-006 (MCP card),
 AB-014 (llms.txt), AB-015/016 (homepage meta), AB-017 (ai.txt) are all
 `VERIFIED`. It also contract-tests that no manifest path ever returns
 401/402/403.
+
+## Adding a SKU for a new paid route (SLICE-179-5)
+
+The paid-services catalog (`GET /api/v1/services`), the bazaar extension
+on every 402, and `llms.txt` are all generated from one registry —
+`lib/service-catalog`. To ship a new billable endpoint:
+
+1. **Register the SKU** — add an entry in
+   `lib/service-catalog/entries/<surface>.ts` (or a new entry file wired
+   in `entries/index.ts`). Set `sku_id` (`surface:slug`, immutable once
+   published), `endpoint {method,path}`, `price_usd`, and `input_schema`
+   — the same JSON schema your handler validates.
+2. **Declare bazaar in the gate** — pass
+   `bazaarExtensionFor("<sku_id>")` as `extensions` in the payment
+   middleware (`paymentForPrice` opts, `bstockFreemium` cfg,
+   `createSettleSeam` opts, or MPP `extra`). The emitted
+   `inputSchema` is `inputSchemaOf(sku)` verbatim — do not hand-write a
+   second schema (D-179-4 no-drift contract).
+3. **Register the gate in the coverage test** — add a row to
+   `GATE_TABLE` in `tests/e2e/catalog-coverage.test.ts`. The test fails
+   if the gate has no SKU or the SKU endpoint resolves to no route.
+   Gates that legitimately have no SKU belong in `GATE_EXCEPTIONS` with
+   a documented reason (current set: `l402`, `attestation-api`).
+
+Verify: `npx vitest run --config vitest.e2e.config.ts
+tests/e2e/catalog-coverage.test.ts tests/e2e/bazaar-shape.test.ts`.
