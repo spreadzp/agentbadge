@@ -66,7 +66,7 @@ const { payload } = await jwtVerify(cfg.linked_dids[0], jwks);
 <p><img src="/images/blog/arc-c27-did-web-identity-5.png" alt="Key role split: DID_SIGNING_KEY vs money and verdict keys" /></p>
 <h2 id="honest-status">Honest status</h2>
 <p>Shipped in <code>a710bac</code>: DID document, signed DID Configuration (VC-JWT, <code>iat</code> now / <code>exp</code> +1y, minted at boot — no hardcoded dates), jwks fix, self-resolution at <code>/did/did:web:agentbadge.xyz</code>, <code>gen-did-key.ts</code> for key provisioning. 9 new tests + 71 regression green; <code>did:hcs</code> and <code>did:eip155</code> purged from every manifest — they still resolve on their chains, we just no longer claim them as <em>platform</em> identity.</p>
-<p>Pending at publication: <code>DID_SIGNING_KEY</code> on production (agentbadge.xyz currently serves an empty key set — honest absence), then a <a href="https://check.identinet.io">check.identinet.io</a> pass for independent validation.</p>
+<p>Live on production: <code>DID_SIGNING_KEY</code> is set on agentbadge.xyz — all three endpoints serve and the VC-JWT verifies against the DID document key (the exact snippet above, run against prod). Remaining: a <a href="https://check.identinet.io">check.identinet.io</a> pass for independent third-party validation.</p>
 <h2 id="try-it">Try it</h2>
 <pre><code class="language-bash">curl -s https://agentbadge.xyz/.well-known/did.json | jq .
 curl -s https://agentbadge.xyz/.well-known/did-configuration.json | jq .
