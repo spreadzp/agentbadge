@@ -114,9 +114,10 @@ describe("SLICE-178-7: did:web identity", () => {
     expect(cfg.linked_dids).toHaveLength(1);
     const jwt = cfg.linked_dids[0];
 
-    // AC6: verify via jose createLocalJWKSet keyed by the DID document's key
+    // AC6: verify via jose createLocalJWKSet keyed by the DID document's key —
+    // served publicKeyJwk already carries kid = vmId, no injection needed
     const jwks = createLocalJWKSet({
-      keys: [{ ...doc.verificationMethod[0].publicKeyJwk, kid: VM_ID }],
+      keys: [doc.verificationMethod[0].publicKeyJwk],
     });
     const { payload } = await jwtVerify(jwt, jwks);
     expect(payload.iss).toBe(DID);

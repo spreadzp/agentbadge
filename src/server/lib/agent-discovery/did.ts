@@ -51,6 +51,9 @@ export function buildDidWebDocument(
           kty: key.publicJwk.kty,
           crv: key.publicJwk.crv,
           x: key.publicJwk.x,
+          // kid = verification-method id so jose jwtVerify against this
+          // JWK matches the VC-JWT header kid without manual injection.
+          kid: vmId,
         },
       },
     ],

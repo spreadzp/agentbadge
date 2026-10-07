@@ -1,4 +1,5 @@
-import { didKeyMaterialFromEnv } from "./agent-discovery/did-key";
+import { didKeyMaterialFromEnv, DID_VM_FRAGMENT } from "./agent-discovery/did-key";
+import { BASE_URL } from "./page-meta";
 
 export interface JwkKey {
   kty: string;
@@ -27,7 +28,10 @@ export function getJwks(): Jwks {
         kty: material.publicJwk.kty,
         use: "sig",
         alg: "EdDSA",
-        kid: material.publicJwk.kid,
+        // kid must equal the did:web verification-method id — that's the
+        // kid the DID Configuration VC-JWT header carries, and jose's
+        // createLocalJWKSet selects keys by exact kid match.
+        kid: `did:web:${new URL(BASE_URL).host}${DID_VM_FRAGMENT}`,
         crv: material.publicJwk.crv,
         x: material.publicJwk.x,
       },
