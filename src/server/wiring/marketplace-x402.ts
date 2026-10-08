@@ -24,6 +24,11 @@ import {
   validatePassportMeta,
 } from "../lib/marketplace";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
+import { payerBinding } from "../middleware/payer-binding";
+import {
+  createArcPayerPeek,
+  withPayerBindDecl,
+} from "../lib/payer-binding-arc";
 
 const BUY_PATH_RE = /\/api\/market\/buy\/(0x[0-9a-fA-F]{64})/;
 
@@ -89,10 +94,22 @@ export function wireMarketplace(
   // (testnet/dev convenience, same pattern as scanPacks.pricingEnabled).
   if (deps.runtime && marketplaceCfg.splitterAddress) {
     const runtime = deps.runtime;
+    // EPIC-171: arc rail payTo is the treasury on both routes
+    // (buy overrides via perRailPayTo) — peek resolves the on-chain
+    // payer there; binding runs before paymentForPrice so a foreign
+    // txHash never reaches verify/slot-claim.
+    const arcPayerPeek = createArcPayerPeek(
+      runtime.arcSelfSettle,
+      marketplaceCfg.treasury,
+    );
 
     app.use(
       "/api/market/passport",
-      runtime.paymentForPrice(`$${marketplaceCfg.passportPriceUsd}`, {
+      payerBinding({ group: "marketplace", resolvePayer: arcPayerPeek }),
+    );
+    app.use(
+      "/api/market/passport",
+      runtime.paymentForPrice(`$${marketplaceCfg.passportPriceUsd}`, withPayerBindDecl({
         payTo: marketplaceCfg.treasury,
         methods: ["POST"],
         description:
@@ -100,12 +117,16 @@ export function wireMarketplace(
         mimeType: "application/json",
         extensions: bazaarExtensionFor("marketplace:passport-mint"),
         onBeforeChallenge: passportPreCheck,
-      }) as MiddlewareHandler,
+      }, "marketplace")) as MiddlewareHandler,
     );
 
     app.use(
       "/api/market/buy/:serviceId",
-      runtime.paymentForPrice(buyPrice, {
+      payerBinding({ group: "marketplace", resolvePayer: arcPayerPeek }),
+    );
+    app.use(
+      "/api/market/buy/:serviceId",
+      runtime.paymentForPrice(buyPrice, withPayerBindDecl({
         payTo: marketplaceCfg.splitterAddress,
         // D6-157: arc self-settle pays treasury (no splitter split);
         // base exact/gateway keep the splitter.
@@ -118,7 +139,7 @@ export function wireMarketplace(
         // 5A: mint fold — arc (scheme eip3009-client-broadcast) mints to
         // payer without credit; base credits splitter + mints.
         onSettleResult: createMarketplaceMintOnPaymentSettled(),
-      }) as MiddlewareHandler,
+      }, "marketplace")) as MiddlewareHandler,
     );
     logger.info(
       "x402 middleware wired for marketplace (passport mint + service buy) via circle-payments runtime",

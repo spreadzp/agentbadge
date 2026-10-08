@@ -31,15 +31,8 @@ import type { EaasQuotaDeps } from "../lib/eaas/subscription";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 import { createEaasRefundStack } from "../lib/eaas/refund";
-
-/** Evaluator/settler key — ARC_EVALUATOR_KEY, demo fallback DEPLOYER_PRIVATE_KEY. */
-function evaluatorKey(): `0x${string}` | null {
-  for (const env of ["ARC_EVALUATOR_KEY", "DEPLOYER_PRIVATE_KEY"]) {
-    const k = process.env[env];
-    if (k && /^0x[0-9a-fA-F]{64}$/.test(k)) return k as `0x${string}`;
-  }
-  return null;
-}
+import { evaluatorKey } from "../lib/eaas/keys";
+import { mountEaasPayerBinding } from "../lib/eaas/payer-binding";
 
 export function wireEaas(
   app: Hono,
@@ -149,6 +142,10 @@ export function wireEaas(
     timeoutSec: cfg.asyncTimeoutSec,
   };
 
+  // EPIC-171: payer-binding on paid paths BEFORE route mounting.
+  const paymentFor = mountEaasPayerBinding(app, deps.circleRuntime,
+    getConfig().circlePayments?.sellerAddress ?? "");
+
   app.route(
     "/",
     createEaasFeedsRoutes({
@@ -164,7 +161,7 @@ export function wireEaas(
   app.route(
     "/",
     createEaasRoutes({
-      paymentForPrice: (price, opts) => deps.circleRuntime!.paymentForPrice(price, opts),
+      paymentForPrice: paymentFor,
       verdictUsd: cfg.verdictUsd,
       scanUsd: cfg.scanUsd,
       maxBytes: cfg.maxBytes,
@@ -214,7 +211,7 @@ export function wireEaas(
         evalUsd: cfg.evalUsd,
         rateRpm: cfg.rateRpm,
         chainId,
-        paymentForPrice: (price, opts) => deps.circleRuntime!.paymentForPrice(price, opts),
+        paymentForPrice: paymentFor,
         seamTwoPhase,
         quota,
         async_: asyncDeps,
@@ -282,7 +279,7 @@ export function wireEaas(
     createEaasBillingRoutes({
       tierPrices,
       tiers: cfg.tierQuotas,
-      paymentForPrice: (price, opts) => deps.circleRuntime!.paymentForPrice(price, opts),
+      paymentForPrice: paymentFor,
       minter: resolveAccessPassMinter(),
       store: subStore,
       rateRpm: cfg.rateRpm,

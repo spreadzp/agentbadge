@@ -103,6 +103,8 @@ export interface CirclePaymentsRuntime {
   balanceLookup: BalanceLookup;
   /** Settled + failed payment history (129-20, ops) */
   paymentHistory: PaymentHistory;
+  /** Arc self-settle handle — payer-binding `inspect` peek (EPIC-171). */
+  arcSelfSettle?: ArcSelfSettleHandle;
 }
 
 export interface CirclePaymentsDeps {
@@ -224,9 +226,8 @@ export function createCirclePaymentsRuntime(
     failureStore,
     identityExtension,
     lookup,
-    statusLookup,
-    balanceLookup,
-    paymentHistory,
+    statusLookup, balanceLookup,
+    paymentHistory, arcSelfSettle: handles.arcSelfSettle,
     paymentFor(routeKey: string, opts?: PaymentForOpts): PaymentMiddleware {
       // SLICE-160-1: route price gauge — low-cardinality PRICE_TABLE key.
       const priceUsd = Number(

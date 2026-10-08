@@ -35,6 +35,13 @@ function fakeHandle() {
     settle: vi
       .fn()
       .mockResolvedValue({ success: true, transaction: "0xtx", payer: AGENT }),
+    // ArcSelfSettleHandle fields (171-4): only needed on the arc rail.
+    publicClient: {} as never,
+    seenTxHashes: new Set<string>(),
+    network: "eip155:5042002",
+    inspect: vi
+      .fn()
+      .mockResolvedValue({ ok: true, txHash: "0xtx", payer: AGENT }),
   };
 }
 

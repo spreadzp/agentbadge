@@ -142,8 +142,10 @@ export function bstockFreemium(
       // EPIC-171 (D-171-4): payer-binding BEFORE verify — a foreign
       // txHash with missing/invalid binding never consumes the replay
       // slot. resolvePayer peeks on-chain payer without claiming.
-      if (payerBindingActive(cfg.payerBinding)) {
+      // Group "bstock" — kill-switch PAYER_BIND_DISABLED_GROUPS=bstock.
+      if (payerBindingActive({ group: "bstock", ...cfg.payerBinding })) {
         const bound = await checkPayerBinding(c, {
+          group: "bstock",
           ...cfg.payerBinding,
           resolvePayer: cfg.facilitator.peekPayer
             ? (header) => cfg.facilitator.peekPayer!(header, requirements)

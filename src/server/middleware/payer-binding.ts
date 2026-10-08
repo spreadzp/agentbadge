@@ -72,6 +72,10 @@ export type ResolvePayerFn = (
 export interface PayerBindingOptions {
   /** Gate getter — default reads PAYER_BIND_ENABLED env (live flip). */
   enabled?: () => boolean;
+  /** Surface group for the per-group kill-switch
+   *  PAYER_BIND_DISABLED_GROUPS (comma list, e.g. "eaas,bstock").
+   *  Binding stays off for listed groups while others keep working. */
+  group?: string;
   /** EIP-191 verifier — default viem verifyMessage (EOA local,
    *  ERC-1271/6492 via RPC, cached). Injectable for tests. */
   verifier?: VerifyPayerSigFn;
@@ -110,11 +114,20 @@ export function payerBindEnabled(): boolean {
   return process.env.PAYER_BIND_ENABLED === "true";
 }
 
-/** Resolved gate state for this request (test override > option > env). */
+/** Resolved gate state for this request (test override > option > env)
+ *  AND the group kill-switch (PAYER_BIND_DISABLED_GROUPS). */
 export function payerBindingActive(
-  opts?: Pick<PayerBindingOptions, "enabled">,
+  opts?: Pick<PayerBindingOptions, "enabled" | "group">,
 ): boolean {
-  return (resolveEnabled(opts?.enabled) ?? payerBindEnabled)();
+  const on = (resolveEnabled(opts?.enabled) ?? payerBindEnabled)();
+  if (!on || !opts?.group) return on;
+  const disabled = new Set(
+    (process.env.PAYER_BIND_DISABLED_GROUPS ?? "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return !disabled.has(opts.group.toLowerCase());
 }
 
 function payerBindingRequiredResponse(c: Context): Response {
@@ -152,7 +165,11 @@ export async function checkPayerBinding(
   const signature = c.req.header("x-sig");
   const timestampRaw = c.req.header("x-timestamp");
   const payRef = extractPayRef(paymentHeader);
-  if (!wallet || !signature || !timestampRaw || !payRef) {
+  // No txHash → the presented payment is NOT an arc-self-settle payload
+  // (gateway/exact rail on a multi-rail surface, or garbage that verify
+  // will reject anyway). Binding is a self-settle concern — skip.
+  if (!payRef) return { ok: true };
+  if (!wallet || !signature || !timestampRaw) {
     return { ok: false, response: payerBindingRequiredResponse(c) };
   }
 

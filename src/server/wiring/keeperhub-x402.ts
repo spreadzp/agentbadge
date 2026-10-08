@@ -11,6 +11,11 @@ import { logger } from "@agentbadge/passport";
 import { getConfig } from "../../config/env";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
+import { payerBinding } from "../middleware/payer-binding";
+import {
+  createArcPayerPeek,
+  withPayerBindDecl,
+} from "../lib/payer-binding-arc";
 
 export function wireKeeperhubX402(
   app: Hono,
@@ -27,9 +32,21 @@ export function wireKeeperhubX402(
     return;
   }
 
+  // EPIC-171: binding BEFORE the payment gate — rejects foreign txHash
+  // without claiming the replay slot (peek via handle.inspect).
   app.use(
     "/api/keeperhub/scan/premium",
-    deps.runtime.paymentForPrice(x402Cfg.price, {
+    payerBinding({
+      group: "keeperhub",
+      resolvePayer: createArcPayerPeek(
+        deps.runtime.arcSelfSettle,
+        x402Cfg.payTo,
+      ),
+    }),
+  );
+  app.use(
+    "/api/keeperhub/scan/premium",
+    deps.runtime.paymentForPrice(x402Cfg.price, withPayerBindDecl({
       payTo: x402Cfg.payTo,
       methods: ["POST"],
       description:
@@ -39,7 +56,7 @@ export function wireKeeperhubX402(
       extensions: bazaarExtensionFor("keeperhub:scan-premium"),
       // 157-1: legacy accepts advertised extra.paymentFlow=upfront.
       extraRequirements: { paymentFlow: "upfront" },
-    }) as MiddlewareHandler,
+    }, "keeperhub")) as MiddlewareHandler,
   );
   logger.info(
     "x402 premium middleware wired for POST /api/keeperhub/scan/premium via circle-payments runtime",

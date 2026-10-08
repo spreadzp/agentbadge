@@ -46,7 +46,7 @@ export function paymentRequired(
   cfg: BstockFreemiumConfig,
   error = "Payment required",
 ): Response {
-  const bind = payerBindingActive(cfg.payerBinding);
+  const bind = payerBindingActive({ group: "bstock", ...cfg.payerBinding });
   const accepts = bind
     ? {
         ...requirements,

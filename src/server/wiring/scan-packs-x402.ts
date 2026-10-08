@@ -29,6 +29,11 @@ import { checkAccessPassRequest } from "../middleware/agent-auth";
 import { scanPacksApiRoutes } from "../routes/scan-packs-api";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type { CirclePaymentsRuntime, PaymentForOpts } from "../lib/circle-payments";
+import { payerBinding } from "../middleware/payer-binding";
+import {
+  createArcPayerPeek,
+  withPayerBindDecl,
+} from "../lib/payer-binding-arc";
 
 // SLICE-136-1: canonical public URL for the resource field — behind Fly TLS
 // termination adapter.getUrl() reports http://, which breaks Bazaar indexing.
@@ -143,11 +148,19 @@ function wireScanPacksOnRuntime(app: Hono, runtime: CirclePaymentsRuntime): void
     logger.error("x402 scan-packs: no payTo (X402_PAY_TO / CIRCLE_SELLER_ADDRESS unset) — route unprotected");
     return;
   }
+  // EPIC-171: binding BEFORE the payment gate (peek via handle.inspect).
+  app.use(
+    "/api/total-scan",
+    payerBinding({
+      group: "scan-packs",
+      resolvePayer: createArcPayerPeek(runtime.arcSelfSettle, payTo),
+    }),
+  );
   app.use(
     "/api/total-scan",
     runtime.paymentForPrice(
       scanPackPrice,
-      buildTotalScanPaymentOpts(payTo),
+      withPayerBindDecl(buildTotalScanPaymentOpts(payTo), "scan-packs"),
     ) as MiddlewareHandler,
   );
   logger.info(
