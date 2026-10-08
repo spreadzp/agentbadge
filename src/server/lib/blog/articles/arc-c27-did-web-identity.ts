@@ -66,7 +66,24 @@ const { payload } = await jwtVerify(cfg.linked_dids[0], jwks);
 <p><img src="/images/blog/arc-c27-did-web-identity-5.png" alt="Key role split: DID_SIGNING_KEY vs money and verdict keys" /></p>
 <h2 id="honest-status">Honest status</h2>
 <p>Shipped in <code>a710bac</code>: DID document, signed DID Configuration (VC-JWT, <code>iat</code> now / <code>exp</code> +1y, minted at boot — no hardcoded dates), jwks fix, self-resolution at <code>/did/did:web:agentbadge.xyz</code>, <code>gen-did-key.ts</code> for key provisioning. 9 new tests + 71 regression green; <code>did:hcs</code> and <code>did:eip155</code> purged from every manifest — they still resolve on their chains, we just no longer claim them as <em>platform</em> identity.</p>
-<p>Live on production: <code>DID_SIGNING_KEY</code> is set on agentbadge.xyz — all three endpoints serve, the VC-JWT verifies against the DID document key (the exact snippet above, run against prod), and the <a href="https://dev.uniresolver.io/1.0/identifiers/did:web:agentbadge.xyz">Universal Resolver</a> already resolves <code>did:web:agentbadge.xyz</code> — third-party validation that needs nothing from us. A <a href="https://check.identinet.io">check.identinet.io</a> entry is a separate follow-up: it's a merchant registry (NGI Trustchain), so a pass there requires submitting the domain — it's not a live spec validator.</p>
+<p>Live on production: <code>DID_SIGNING_KEY</code> is set on agentbadge.xyz — all three endpoints serve, the VC-JWT verifies against the DID document key (the exact snippet above, run against prod), and the <a href="https://dev.uniresolver.io/#did:web:agentbadge.xyz">Universal Resolver</a> already resolves <code>did:web:agentbadge.xyz</code> — third-party validation that needs nothing from us. A <a href="https://check.identinet.io">check.identinet.io</a> entry is a separate follow-up: it's a merchant registry (NGI Trustchain), so a pass there requires submitting the domain — it's not a live spec validator.</p>
+<p>This is what the resolver sees — screenshots taken 2026-10-07 on dev.uniresolver.io, no login, no API key:</p>
+<figure>
+<img src="/images/blog/arc-c27-uniresolver-response.png" alt="Universal Resolver: Response tab — DID parsed into method web / id agentbadge.xyz; service map (agent-card, mcp, x402, api-catalog, jwks) and the Ed25519 verification method" />
+<figcaption>Response — the resolver parses <code>did:web:agentbadge.xyz</code>, lists our five service endpoints and the <code>JsonWebKey</code> verification method (<code>#key-1</code>).</figcaption>
+</figure>
+<figure>
+<img src="/images/blog/arc-c27-uniresolver-did-document.png" alt="Universal Resolver: DID Document tab — the full resolved DID document JSON" />
+<figcaption>DID Document — the resolved document, byte-identical to what <code>/.well-known/did.json</code> serves.</figcaption>
+</figure>
+<figure>
+<img src="/images/blog/arc-c27-uniresolver-document-metadata.png" alt="Universal Resolver: Document Metadata tab" />
+<figcaption>Document Metadata — what the resolver reports about the document itself.</figcaption>
+</figure>
+<figure>
+<img src="/images/blog/arc-c27-uniresolver-resolution-metadata.png" alt="Universal Resolver: Resolution Metadata tab — content type application/did+ld+json, driver web resolver" />
+<figcaption>Resolution Metadata — the proof trail: which driver resolved it, what content type came back, timing.</figcaption>
+</figure>
 <h2 id="try-it">Try it</h2>
 <pre><code class="language-bash">curl -s https://agentbadge.xyz/.well-known/did.json | jq .
 curl -s https://agentbadge.xyz/.well-known/did-configuration.json | jq .
