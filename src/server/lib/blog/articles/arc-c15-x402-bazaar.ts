@@ -13,7 +13,7 @@ export const article: BlogArticle = {
   tags: ["x402", "arc", "ai-agents", "usdc", "payments", "service-catalog", "api"],
   readingTime: "6 min",
   shortAnswer:
-    "GET https://agentbadge.xyz/api/v1/services returns the full paid surface as a SKU registry (14 SKUs, 8 surfaces): price_usd, endpoint, and input_schema per entry, plus a free[] section with next_call pointers. Every 402 carries a bazaar extension whose emitted inputSchema is byte-equal to the catalog's inputSchemaOf(sku) — one function, zero drift. A GATE_TABLE e2e test fails CI on any new paid route without a SKU.",
+    "GET https://agentbadge.xyz/api/v1/services returns the paid surface as a SKU registry: price_usd, endpoint, and input_schema per entry plus a free[] section with next_call pointers. Every 402 carries a bazaar extension whose inputSchema is byte-equal to the catalog's — one function, zero drift.",
   agentGuideSlug: "arc-c15-x402-bazaar",
   heroImage: "/images/blog/arc-c15-x402-bazaar-hero.png",
   ogImage: "/images/blog/arc-c15-x402-bazaar-og.png",
@@ -38,6 +38,7 @@ export const article: BlogArticle = {
   }
 }</code></pre>
 <p><code>sku_id</code> is <code>surface:slug</code> and immutable once published — it is the public contract agents bookmark and indexers key on. Our coverage test keeps a golden list of all fourteen ids; renaming one fails CI.</p>
+<p><img src="/images/blog/arc-c15-x402-bazaar-d1.png" alt="Diagram: live config sources feed one SKU registry, which feeds the catalog endpoint, the bazaar extension on every 402, and llms.txt — with the coverage e2e watching for drift" /></p>
 <p><img src="/images/blog/arc-c15-x402-bazaar-1.png" alt="Catalog fragment: services[] with sku_id, endpoint, price_usd and free[] section" /></p>
 <h2 id="every-402">Every 402 declares itself (bazaar)</h2>
 <p>An x402 "bazaar" extension is metadata inside the 402 response that tells indexers — and paying clients — what the call costs and what the input should look like. The rule we shipped: <strong>every 402 in the platform carries it</strong>, not just the happy-path REST endpoints.</p>
@@ -63,6 +64,7 @@ export const article: BlogArticle = {
 <h2 id="free-door">Free as the front door</h2>
 <p>A catalog that only lists prices is half a catalog. Agents evaluating a new provider want to <em>try before they trust</em>, so <code>/api/v1/services</code> carries a <code>free[]</code> section alongside <code>services[]</code> — health checks, the scan-packs catalog (<code>GET /api/scan-packs</code>), marketplace browsing — each with a <code>next_call</code> pointer to the natural paid follow-up.</p>
 <p>That made the free section an onboarding bridge rather than a footnote: an agent can hit <code>/api/health</code> and <code>next_call</code> points it at the free scan-packs listing; the scan-packs listing explains which paid bundles exist; the paid bundle declares its bazaar schema on the 402. Discovery → free trial → paid call, with zero documentation reading.</p>
+<p><img src="/images/blog/arc-c15-x402-bazaar-d2.png" alt="Diagram: the full agent journey — discovery surface to catalog to free endpoint to paid SKU, where the 402 itself carries the bazaar declaration" /></p>
 <p><img src="/images/blog/arc-c15-x402-bazaar-4.png" alt="free[] as the onboarding bridge into paid SKUs" /></p>
 <h2 id="coverage">No paid endpoint without a declaration</h2>
 <p>A registry only stays honest if adding a route without registering it <em>breaks the build</em>. <code>tests/e2e/catalog-coverage.test.ts</code> keeps an explicit <code>GATE_TABLE</code> — every payment gate in the codebase, mapped to the SKU ids that cover its endpoint. The test walks both directions: every gate row must resolve to real SKUs on that endpoint, and every SKU's endpoint must be claimed by a gate row. Then it mounts the real route modules and asserts each SKU endpoint resolves (a Hono bare-404 fails; a handler-level "unknown id" 404 doesn't — we learned that one the hard way with fixture <code>:param</code> values).</p>
