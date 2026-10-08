@@ -5,6 +5,7 @@
 // register its tools into the "market" namespace without re-creating it.
 
 import type { Hono } from "hono";
+import { keccak256, encodePacked, stringToHex } from "viem";
 import {
   createNamespace,
   registerPassportTools,
@@ -20,6 +21,9 @@ import {
   registerAllTools,
   registerBstockTools,
   registerBstockTelegramTools,
+  registerFxDeltaTools,
+  registerFxDeltaTelegramTools,
+  type FxDeltaEngineLike,
   type NamespaceRegistry,
 } from "@agentbadge/mcp";
 import { getConfig } from "../../config/env";
@@ -29,7 +33,16 @@ import { startBstockFeeds } from "../lib/bstock/feeds";
 import {
   getTelegramSubscriptions,
   getBstockTelegramBot,
+  getFxDeltaTelegramSubscriptions,
+  getFxDeltaTelegramBot,
 } from "../../telegram/state";
+import { getFxDeltaRuntime } from "../lib/fx-delta";
+import { getFxDeltaFacilitator } from "../lib/fx-delta/facilitator-env";
+import {
+  CELO_X402_ASSETS,
+  CELO_X402_NETWORK,
+  CELO_X402_SCHEME,
+} from "../lib/fx-delta/celo-assets";
 import { getMarketplaceOps, getMarketplaceOpsFor, arcChainFor } from "../lib/marketplace";
 import { hasAccess } from "@agentbadge/pass-auth";
 import {
@@ -61,6 +74,7 @@ export interface McpNamespaces {
   discoveryNs: NamespaceRegistry;
   auditNs: NamespaceRegistry;
   bstockNs?: NamespaceRegistry;
+  fxdeltaNs?: NamespaceRegistry;
 }
 
 // Register MCP namespace tools BEFORE mounting namespace routes
@@ -99,7 +113,22 @@ export function registerMcpNamespaces(): McpNamespaces {
     );
   }
 
-  return { passportNs, marketNs, discoveryNs, auditNs, bstockNs };
+  // EPIC-191 (SLICE-191-7): fxdelta namespace — only when
+  // FXDELTA_ENABLED + engine runtime injected at boot.
+  let fxdeltaNs: NamespaceRegistry | undefined;
+  if (process.env.FXDELTA_ENABLED === "true") {
+    const rt = getFxDeltaRuntime();
+    if (rt) {
+      fxdeltaNs = createNamespace("fxdelta");
+      registerFxDeltaTools(rt.engine as FxDeltaEngineLike, fxdeltaNs);
+      registerFxDeltaTelegramTools(
+        { subscriptions: getFxDeltaTelegramSubscriptions() },
+        fxdeltaNs,
+      );
+    }
+  }
+
+  return { passportNs, marketNs, discoveryNs, auditNs, bstockNs, fxdeltaNs };
 }
 
 // Namespace MCP routes — each serves only its namespace's tools
@@ -185,6 +214,68 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
       setInterval(() => void bot.digestTick(), 3_600_000).unref();
       if (process.env.BSTOCK_TG_PUSH_ENABLED === "true") {
         setInterval(() => void bot.alertTick(), 60_000).unref();
+      }
+    }
+  }
+
+  // EPIC-191 (SLICE-191-7): /mcp/fxdelta — bearer auth → freemium
+  // (free 1/min → 402 → Celo x402 self-settle) → rate limit → SSE cap.
+  // Namespace only exists when registerMcpNamespaces saw the runtime.
+  if (process.env.FXDELTA_ENABLED === "true" && getFxDeltaRuntime()) {
+    const rt = getFxDeltaRuntime()!;
+    const tokens = new Map<string, string>();
+    for (const pair of (
+      process.env.FXDELTA_AGENT_TOKENS ??
+      process.env.MCP_AGENT_TOKENS ??
+      ""
+    ).split(",")) {
+      const i = pair.indexOf(":");
+      if (i > 0) tokens.set(pair.slice(i + 1).trim(), pair.slice(0, i).trim());
+    }
+    const fac = getFxDeltaFacilitator();
+    app.use(
+      "/mcp/fxdelta/*",
+      bstockAuth(tokens),
+      ...(fac
+        ? [
+            bstockFreemium({
+              // Per-request paid gate (no pass minting) — serviceId is
+              // only a payer-binding attribution key here.
+              serviceId: keccak256(
+                encodePacked(
+                  ["bytes32"],
+                  [stringToHex("fxdelta-celo-premium", { size: 32 })],
+                ),
+              ),
+              priceUsd: process.env.FXDELTA_PRICE_USD ?? "0.005",
+              durationSec: 300,
+              payTo: process.env.FXDELTA_PAY_TO ?? "",
+              networkId: CELO_X402_NETWORK,
+              usdcAddress: CELO_X402_ASSETS.USDC.address,
+              scheme: CELO_X402_SCHEME,
+              freePerMin: 1,
+              facilitator: fac,
+            }),
+          ]
+        : []),
+      bstockRateLimit(
+        Number(process.env.FXDELTA_RATE_LIMIT_PER_MIN ?? 60),
+      ),
+      bstockSseCap(
+        new BstockSseCap(
+          Number(process.env.FXDELTA_MAX_SSE ?? 20),
+        ),
+      ),
+    );
+    app.route("/mcp/fxdelta", createNamespaceRoutes("fxdelta"));
+
+    // Telegram bot — webhook + on-demand commands (DM model).
+    const fxBot = getFxDeltaTelegramBot(rt.engine);
+    if (fxBot) {
+      app.route("/", fxBot.routes);
+      setInterval(() => void fxBot.digestTick(), 3_600_000).unref();
+      if (process.env.FXDELTA_TG_PUSH_ENABLED === "true") {
+        setInterval(() => void fxBot.alertTick(), 60_000).unref();
       }
     }
   }

@@ -39,12 +39,19 @@ export interface FxDeltaSourceStatus {
   lastTickMs: number;
 }
 
+export interface FxDeltaEvent {
+  type: string;
+  corridor: string;
+  msg?: string;
+  atMs: number;
+}
+
 export interface FxDeltaRuntime {
   engine: {
     getAll(): FxDeltaView[];
     getView(corridor: string): FxDeltaView | null;
     getHistory(corridor: string): { t: number; deltaPct: number }[];
-    getEvents(): { type: string; corridor: string; msg?: string; atMs: number }[];
+    getEvents(): FxDeltaEvent[];
   };
   corridors: readonly FxDeltaCorridorMeta[];
   /** Per-leg source health: uniswap / mento / fxRef. */
