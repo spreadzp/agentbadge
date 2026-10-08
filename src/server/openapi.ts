@@ -493,7 +493,7 @@ export const openApiConfig = {
     challenge: "agentbadge-pay:v1",
     requiredHeaders: ["X-Wallet", "X-Sig", "X-Timestamp"],
     canonical:
-      "agentbadge-pay:v1|wallet=<WALLET>|method=<METHOD>|path=<PATH>|payRef=<TXHASH>|timestamp=<TS>",
+      "agentbadge-pay:v1\\nwallet:<WALLET>\\nmethod:<METHOD>\\npath:<PATH>\\npayref:<TXHASH>\\ntimestamp:<TS>",
     signedWith: "EIP-191 personal_sign",
     appliesTo: "arc self-settle rail (eip3009-client-broadcast) payments only",
   },

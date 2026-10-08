@@ -309,8 +309,15 @@ Present alongside \`PAYMENT-SIGNATURE\` — only when the payload carries a
 
 ### Canonical Challenge String
 
+One field per line — exact format (sign this verbatim):
+
 \`\`\`
-agentbadge-pay:v1|wallet=<WALLET>|method=<METHOD>|path=<PATH>|payRef=<TXHASH>|timestamp=<TS>
+agentbadge-pay:v1
+wallet:<WALLET>
+method:<METHOD>
+path:<PATH>
+payref:<TXHASH>
+timestamp:<TS>
 \`\`\`
 
 - \`WALLET\` — your address, **lower-case**
@@ -318,6 +325,8 @@ agentbadge-pay:v1|wallet=<WALLET>|method=<METHOD>|path=<PATH>|payRef=<TXHASH>|ti
 - \`PATH\` — the route path you're paying (e.g. \`/api/eaas/verdicts\`)
 - \`TXHASH\` — the payment txHash, **lower-case**
 - \`TS\` — decimal unix seconds, same value as \`X-Timestamp\`
+
+Prefer \`buildPayerChallenge()\` over hand-assembling the string.
 
 Sign the string with \`personal_sign\` (EIP-191). The recovered address
 must equal \`X-Wallet\`, and the server additionally compares it against
