@@ -95,7 +95,7 @@ export function createArcBstockFacilitator(
           decodePaymentHeader(paymentHeader),
           toPaymentRequirements(requirements),
         );
-        return { valid: res.isValid, error: res.invalidReason };
+        return { valid: res.isValid, error: res.invalidReason, payer: res.payer };
       } catch (err) {
         // RPC/receipt fetch failure → 402, not 500: the client can retry
         // (txHash is not claimed on inspect failure).
@@ -103,6 +103,24 @@ export function createArcBstockFacilitator(
           valid: false,
           error: `verify_failed: ${(err as Error).message}`,
         };
+      }
+    },
+    /**
+     * EPIC-171: claim-free payer peek for payer-binding. Reads the
+     * receipt (30s handle-level cache — the verify that follows reuses
+     * it) and returns the USDC Transfer `from` without consuming the
+     * replay slot.
+     */
+    async peekPayer(paymentHeader, requirements) {
+      try {
+        const res = await handle.inspect(
+          decodePaymentHeader(paymentHeader),
+          toPaymentRequirements(requirements),
+        );
+        return res.ok ? res.payer : undefined;
+      } catch {
+        // Unresolvable (RPC down) → downstream verify rejects anyway.
+        return undefined;
       }
     },
     async settle(paymentHeader, requirements) {

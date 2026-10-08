@@ -1,5 +1,5 @@
 /**
- * Payer-binding middleware (EPIC-171, SLICE-171-2).
+ * Payer-binding middleware (EPIC-171, SLICE-171-2/3).
  *
  * Anti-sniping for self-settle x402 rails: the payment txHash is public
  * on-chain, so a request presenting `PAYMENT-SIGNATURE: {txHash}` must
@@ -15,15 +15,11 @@
  * X-Timestamp (unix seconds, ±300s skew — same as agent-auth).
  * Challenge format lives in @agentbadge/circle-payments payer-bind.ts.
  *
- * Flow:
- *   - PAYER_BIND_ENABLED unset → full passthrough (rollback = unset).
- *   - No PAYMENT-SIGNATURE → passthrough + `payerBindRequired` flag;
- *     the downstream 402 advertises `payerBinding` (declaration below).
- *   - Payment present, binding headers missing → 402 + declaration.
- *   - Stale timestamp / invalid signature → 403 (slot untouched).
- *   - Optional `resolvePayer` (wire to ArcSelfSettleHandle.inspect in
- *     171-3): X-Wallet != on-chain payer → 403 before verify.
- *   - Success → `payerBindWallet` ctx var for the post-verify compare.
+ * Two integration styles:
+ *   - `payerBinding()` middleware — mount before a payment gate
+ *     (PAYMENT-SIGNATURE absent → passthrough + `payerBindRequired`).
+ *   - `checkPayerBinding()` — composable core for gates that branch
+ *     internally (bstockFreemium calls it on its paid branch, 171-3).
  *
  * Bypass paths (151-7 pass bypass, free tier, health) never carry
  * PAYMENT-SIGNATURE, so binding never applies to them.
@@ -114,6 +110,13 @@ export function payerBindEnabled(): boolean {
   return process.env.PAYER_BIND_ENABLED === "true";
 }
 
+/** Resolved gate state for this request (test override > option > env). */
+export function payerBindingActive(
+  opts?: Pick<PayerBindingOptions, "enabled">,
+): boolean {
+  return (resolveEnabled(opts?.enabled) ?? payerBindEnabled)();
+}
+
 function payerBindingRequiredResponse(c: Context): Response {
   const payload = {
     x402Version: 2,
@@ -128,6 +131,99 @@ function payerBindingRequiredResponse(c: Context): Response {
 const deny403 = (c: Context, msg: string) =>
   errorResponse(c, 403, ErrorCodes.WRONG_SIGNER, msg);
 
+export type PayerBindingCheck =
+  | { ok: true }
+  | { ok: false; response: Response };
+
+/**
+ * Composable binding check — call ONLY when PAYMENT-SIGNATURE is
+ * present and the gate is on (see payerBindingActive). Every rejection
+ * is returned as a Response the caller must propagate; on success
+ * `payerBindWallet` is set on ctx for the post-verify payer compare.
+ */
+export async function checkPayerBinding(
+  c: Context,
+  opts: PayerBindingOptions = {},
+): Promise<PayerBindingCheck> {
+  const paymentHeader = c.req.header("payment-signature")!;
+  const extractPayRef = opts.extractPayRef ?? extractPayRefFromPaymentHeader;
+
+  const wallet = c.req.header("x-wallet");
+  const signature = c.req.header("x-sig");
+  const timestampRaw = c.req.header("x-timestamp");
+  const payRef = extractPayRef(paymentHeader);
+  if (!wallet || !signature || !timestampRaw || !payRef) {
+    return { ok: false, response: payerBindingRequiredResponse(c) };
+  }
+
+  if (!isAddress(wallet)) {
+    return { ok: false, response: deny403(c, "Invalid X-Wallet address") };
+  }
+
+  const timestamp = Number(timestampRaw);
+  if (!Number.isFinite(timestamp)) {
+    return { ok: false, response: deny403(c, "Invalid X-Timestamp") };
+  }
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (Math.abs(nowSec - timestamp) > MAX_SKEW_SECONDS) {
+    return {
+      ok: false,
+      response: deny403(c, "X-Timestamp outside ±300s skew window"),
+    };
+  }
+
+  const message = buildPayerChallenge({
+    wallet,
+    method: c.req.method,
+    path: c.req.path,
+    payRef: normalizeTxHash(payRef),
+    timestamp,
+  });
+
+  const valid = await verifyPayerSigCached(
+    resolveVerifier(opts.verifier),
+    wallet,
+    message,
+    signature,
+  );
+  if (!valid) {
+    logger.warn("payer-binding: signature verification failed", {
+      wallet,
+      path: c.req.path,
+    });
+    return {
+      ok: false,
+      response: deny403(c, "Payer-binding signature verification failed"),
+    };
+  }
+
+  // Pre-verify payer match: a valid signature from a wallet that is
+  // NOT the on-chain payer must not consume the dedup slot either.
+  if (opts.resolvePayer) {
+    let onChainPayer: string | undefined;
+    try {
+      onChainPayer = await opts.resolvePayer(paymentHeader);
+    } catch (err) {
+      logger.error("payer-binding: resolvePayer failed", {
+        err: String(err),
+      });
+      onChainPayer = undefined;
+    }
+    if (onChainPayer && onChainPayer.toLowerCase() !== wallet.toLowerCase()) {
+      return {
+        ok: false,
+        response: deny403(
+          c,
+          "Payer mismatch: X-Wallet is not the transaction sender",
+        ),
+      };
+    }
+  }
+
+  c.set("payerBindWallet", wallet.toLowerCase());
+  return { ok: true };
+}
+
 /**
  * payerBinding — apply to a paid route BEFORE the payment
  * middleware/facilitator call. See file header for the full contract.
@@ -135,11 +231,8 @@ const deny403 = (c: Context, msg: string) =>
 export function payerBinding(
   opts: PayerBindingOptions = {},
 ): MiddlewareHandler<{ Variables: PayerBindVariables }> {
-  const extractPayRef = opts.extractPayRef ?? extractPayRefFromPaymentHeader;
-
   return async (c, next) => {
-    const enabled = resolveEnabled(opts.enabled) ?? payerBindEnabled;
-    if (!enabled()) {
+    if (!payerBindingActive(opts)) {
       await next();
       return;
     }
@@ -155,67 +248,8 @@ export function payerBinding(
 
     // Payment presented — binding is mandatory; every rejection below
     // happens BEFORE facilitator.verify (dedup slot never burned).
-    const wallet = c.req.header("x-wallet");
-    const signature = c.req.header("x-sig");
-    const timestampRaw = c.req.header("x-timestamp");
-    const payRef = extractPayRef(paymentHeader);
-    if (!wallet || !signature || !timestampRaw || !payRef) {
-      return payerBindingRequiredResponse(c);
-    }
-
-    if (!isAddress(wallet)) {
-      return deny403(c, "Invalid X-Wallet address");
-    }
-
-    const timestamp = Number(timestampRaw);
-    if (!Number.isFinite(timestamp)) {
-      return deny403(c, "Invalid X-Timestamp");
-    }
-    const nowSec = Math.floor(Date.now() / 1000);
-    if (Math.abs(nowSec - timestamp) > MAX_SKEW_SECONDS) {
-      return deny403(c, "X-Timestamp outside ±300s skew window");
-    }
-
-    const message = buildPayerChallenge({
-      wallet,
-      method: c.req.method,
-      path: c.req.path,
-      payRef: normalizeTxHash(payRef),
-      timestamp,
-    });
-
-    const valid = await verifyPayerSigCached(
-      resolveVerifier(opts.verifier),
-      wallet,
-      message,
-      signature,
-    );
-    if (!valid) {
-      logger.warn("payer-binding: signature verification failed", {
-        wallet,
-        path: c.req.path,
-      });
-      return deny403(c, "Payer-binding signature verification failed");
-    }
-
-    // Pre-verify payer match: a valid signature from a wallet that is
-    // NOT the on-chain payer must not consume the dedup slot either.
-    if (opts.resolvePayer) {
-      let onChainPayer: string | undefined;
-      try {
-        onChainPayer = await opts.resolvePayer(paymentHeader);
-      } catch (err) {
-        logger.error("payer-binding: resolvePayer failed", {
-          err: String(err),
-        });
-        onChainPayer = undefined;
-      }
-      if (onChainPayer && onChainPayer.toLowerCase() !== wallet.toLowerCase()) {
-        return deny403(c, "Payer mismatch: X-Wallet is not the transaction sender");
-      }
-    }
-
-    c.set("payerBindWallet", wallet.toLowerCase());
+    const check = await checkPayerBinding(c, opts);
+    if (!check.ok) return check.response;
     await next();
   };
 }

@@ -20,8 +20,16 @@
  */
 
 import { logger } from "@agentbadge/passport";
-import type { Context, MiddlewareHandler } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { tryGetCache } from "../lib/cache";
+import { errorResponse } from "../lib/error-response";
+import { ErrorCodes } from "../lib/error-codes";
+import { buildRequirements, paymentRequired } from "../lib/bstock/payment-required";
+import {
+  checkPayerBinding,
+  payerBindingActive,
+  type PayerBindingOptions,
+} from "./payer-binding";
 
 export interface BstockPaymentRequirements {
   scheme: string;
@@ -41,7 +49,7 @@ export interface BstockFacilitator {
   verify(
     paymentHeader: string,
     requirements: BstockPaymentRequirements,
-  ): Promise<{ valid: boolean; error?: string }>;
+  ): Promise<{ valid: boolean; error?: string; payer?: string }>;
   settle(
     paymentHeader: string,
     requirements: BstockPaymentRequirements,
@@ -51,6 +59,15 @@ export interface BstockFacilitator {
     payer?: string;
     error?: string;
   }>;
+  /**
+   * EPIC-171: claim-free on-chain payer peek for the presented payment
+   * (ArcSelfSettleHandle.inspect). Lets payer-binding reject a
+   * mismatched X-Wallet BEFORE the replay slot is consumed.
+   */
+  peekPayer?(
+    paymentHeader: string,
+    requirements: BstockPaymentRequirements,
+  ): Promise<string | undefined>;
 }
 
 export interface BstockFreemiumConfig {
@@ -95,50 +112,18 @@ export interface BstockFreemiumConfig {
   /** SLICE-155-2: spend envelope enforcer getter — resolved lazily per
    *  request (init order-independent). Absent/null → pass-through. */
   spendEnvelope?: () => import("../lib/agent-wallet/enforcer").SpendEnforcer | null;
+  /**
+   * EPIC-171 (SLICE-171-3): payer-binding options — verifier/resolvePayer
+   * overrides; gate comes from PAYER_BIND_ENABLED env (or test
+   * override). Binding applies only on the paid branch
+   * (PAYMENT-SIGNATURE present); free tier and pass bypass untouched.
+   */
+  payerBinding?: PayerBindingOptions;
 }
 
 interface Bucket {
   count: number;
   resetAt: number;
-}
-
-function buildRequirements(
-  cfg: BstockFreemiumConfig,
-  resource: string,
-): BstockPaymentRequirements {
-  const baseUnits = (
-    BigInt(Math.round(Number(cfg.priceUsd) * 1_000_000))
-  ).toString();
-  return {
-    scheme: cfg.scheme ?? "exact",
-    network: cfg.networkId,
-    asset: cfg.usdcAddress,
-    amount: baseUnits,
-    payTo: cfg.payTo,
-    maxAmountRequired: baseUnits,
-    maxTimeoutSeconds: cfg.maxTimeoutSeconds,
-    resource,
-    description:
-      cfg.description ?? "bstock-delta-realtime — 30d ServicePass",
-    mimeType: "application/json",
-    extra: cfg.extra,
-  };
-}
-
-function paymentRequired(
-  c: Context,
-  requirements: BstockPaymentRequirements,
-  cfg: BstockFreemiumConfig,
-  error = "Payment required",
-): Response {
-  const payload = {
-    x402Version: 2,
-    error,
-    accepts: requirements,
-    ...(cfg.extensions ? { extensions: cfg.extensions } : {}),
-  };
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
-  return c.json(payload, 402, { "PAYMENT-REQUIRED": encoded });
 }
 
 export function bstockFreemium(
@@ -154,6 +139,18 @@ export function bstockFreemium(
     // 1. Payment present → verify + settle + mint pass → proceed.
     const paymentSig = c.req.header("PAYMENT-SIGNATURE");
     if (paymentSig) {
+      // EPIC-171 (D-171-4): payer-binding BEFORE verify — a foreign
+      // txHash with missing/invalid binding never consumes the replay
+      // slot. resolvePayer peeks on-chain payer without claiming.
+      if (payerBindingActive(cfg.payerBinding)) {
+        const bound = await checkPayerBinding(c, {
+          ...cfg.payerBinding,
+          resolvePayer: cfg.facilitator.peekPayer
+            ? (header) => cfg.facilitator.peekPayer!(header, requirements)
+            : cfg.payerBinding?.resolvePayer,
+        });
+        if (!bound.ok) return bound.response;
+      }
       const verify = await cfg.facilitator.verify(paymentSig, requirements);
       if (!verify.valid) {
         return paymentRequired(
@@ -161,6 +158,22 @@ export function bstockFreemium(
           requirements,
           cfg,
           verify.error ?? "Payment verification failed",
+        );
+      }
+      // Post-verify payer compare (defense-in-depth — with peekPayer
+      // wired the pre-verify check already ran). A bound wallet that is
+      // not the on-chain payer never gets the content.
+      const boundWallet = c.get("payerBindWallet") as string | undefined;
+      if (
+        boundWallet &&
+        verify.payer &&
+        verify.payer.toLowerCase() !== boundWallet
+      ) {
+        return errorResponse(
+          c,
+          403,
+          ErrorCodes.WRONG_SIGNER,
+          "Payer mismatch: X-Wallet is not the transaction sender",
         );
       }
       // SLICE-155-2: envelope check-then-settle — cap reservation before

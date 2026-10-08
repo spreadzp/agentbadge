@@ -195,6 +195,11 @@ describe("SLICE-141-13: Arc self-settle rail", () => {
       network: "eip155:5042002",
       publicClient: {} as never,
       seenTxHashes: new Set<string>(),
+      inspect: async () => ({
+        ok: true as const,
+        txHash: TX as `0x${string}`,
+        payer: WALLET,
+      }),
       verify: async () => ({ isValid: true, payer: WALLET }),
       settle: async () => ({
         success: true,
@@ -225,6 +230,10 @@ describe("SLICE-141-13: Arc self-settle rail", () => {
       network: "eip155:5042002",
       publicClient: {} as never,
       seenTxHashes: new Set<string>(),
+      inspect: async () => ({
+        ok: false as const,
+        reason: "tx_replayed",
+      }),
       verify: async () => ({
         isValid: false,
         invalidReason: "tx_replayed",
