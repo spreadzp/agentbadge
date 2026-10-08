@@ -66,3 +66,26 @@ export function getFxDeltaRuntime(): FxDeltaRuntime | null {
 export function resetFxDeltaRuntime(): void {
   runtime = null;
 }
+
+/** Audit a settled payment — fire-and-forget (191-12 placeholder:
+ *  events table until the payments schema lands). */
+export function auditFxDeltaPayment(payload: {
+  txHash: string;
+  payer: string;
+  amount: string;
+  asset: string;
+  network: string;
+  mode: string;
+}): void {
+  // Lazy import keeps startup light; a failed write must not block the
+  // paid request (same policy as arc-facilitator settle).
+  void import("../database")
+    .then(({ getDatabase }) =>
+      getDatabase().events.create({
+        type: "payment",
+        source: "fxdelta-celo-x402",
+        payload,
+      }),
+    )
+    .catch(() => {});
+}

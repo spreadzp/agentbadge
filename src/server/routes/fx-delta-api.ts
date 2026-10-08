@@ -21,6 +21,7 @@ import {
   getFxDeltaRuntime,
   type FxDeltaView,
 } from "../lib/fx-delta";
+import { fxDeltaPremiumGate } from "../lib/fx-delta/premium-gate";
 
 const FREE_WINDOW_MS = 60_000;
 const buckets = new Map<string, { count: number; resetAt: number }>();
@@ -29,6 +30,8 @@ const buckets = new Map<string, { count: number; resetAt: number }>();
 export function resetFxDeltaFreeTier(): void {
   buckets.clear();
 }
+
+// Premium gate (191-6) lives in ../lib/fx-delta/premium-gate.ts
 
 function identity(c: Context): string {
   return (
@@ -173,6 +176,85 @@ fxDeltaRoutes.get(
       corridors: snap.map(viewJson),
       events: rt.engine.getEvents().slice(-50),
       atMs: Date.now(),
+    });
+  },
+);
+
+// ─── GET /api/fx-delta/premium — full snapshot, paid (191-6) ──
+fxDeltaRoutes.get(
+  "/api/fx-delta/premium",
+  describeRoute({
+    tags: ["FX Delta"],
+    summary: "Premium snapshot — all corridors, no rate cap (x402)",
+    description:
+      "Pays FXDELTA_PRICE_USD per request in USDC/USDT on Celo. " +
+      "Self-settle: our tagged tx submits transferWithAuthorization (D-191-1).",
+    responses: {
+      200: { description: "Full snapshot" },
+      402: { description: "Payment required" },
+      503: { description: "Engine or premium rail not configured" },
+    },
+  }),
+  fxDeltaPremiumGate(),
+  (c) => {
+    const rt = getFxDeltaRuntime();
+    if (!rt) {
+      return errorResponse(c, 503, ErrorCodes.INTERNAL_ERROR, "engine not started");
+    }
+    const snap = rt.engine.getAll();
+    return c.json({
+      v: 1,
+      corridors: snap.map(viewJson),
+      events: rt.engine.getEvents().slice(-200),
+      history: Object.fromEntries(
+        snap.map((v) => [v.corridor, rt.engine.getHistory(v.corridor)]),
+      ),
+      atMs: Date.now(),
+    });
+  },
+);
+
+// ─── GET /api/fx-delta/stream — SSE live ticks, paid (191-6) ──
+fxDeltaRoutes.get(
+  "/api/fx-delta/stream",
+  describeRoute({
+    tags: ["FX Delta"],
+    summary: "Premium SSE stream — live delta ticks (x402)",
+    responses: {
+      200: { description: "text/event-stream" },
+      402: { description: "Payment required" },
+      503: { description: "Engine or premium rail not configured" },
+    },
+  }),
+  fxDeltaPremiumGate(),
+  (c) => {
+    const rt = getFxDeltaRuntime();
+    if (!rt) {
+      return errorResponse(c, 503, ErrorCodes.INTERNAL_ERROR, "engine not started");
+    }
+    const intervalMs = Number(process.env.CELO_POLL_MS ?? 5000);
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const push = () => {
+          const views = rt.engine.getAll().map(viewJson);
+          const frame = `data: ${JSON.stringify({ corridors: views, atMs: Date.now() })}\n\n`;
+          controller.enqueue(encoder.encode(frame));
+        };
+        push();
+        const timer = setInterval(push, Math.max(intervalMs, 1000));
+        c.req.raw.signal.addEventListener("abort", () => {
+          clearInterval(timer);
+          controller.close();
+        });
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+      },
     });
   },
 );
