@@ -15,6 +15,7 @@ import {
   makeFxDeltaTelegramSender,
   type FxDeltaTelegramEngine,
 } from "./fxdelta-bot";
+import { getFxDeltaAnchorQueue } from "../server/lib/fx-delta";
 
 let registry: ChatRegistry | null = null;
 let subscriptions: TelegramSubscriptions | null = null;
@@ -78,11 +79,18 @@ export function getFxDeltaTelegramBot(engine: FxDeltaTelegramEngine) {
   if (!token) return null;
   const registry = getFxDeltaTelegramRegistry();
   void registry.hydrate();
+  const base =
+    process.env.FXDELTA_PUBLIC_URL ?? "http://localhost:4021";
   return createFxDeltaTelegramBot({
     registry,
     subscriptions: getFxDeltaTelegramSubscriptions(),
     engine,
     send: makeFxDeltaTelegramSender(token),
+    // 191-9: verdict proof link in alert lines.
+    verifyUrlFor: (corridor) => {
+      const rec = getFxDeltaAnchorQueue()?.latestFor(corridor);
+      return rec ? `${base}/api/fx-delta/verify/${rec.id}` : undefined;
+    },
   });
 }
 

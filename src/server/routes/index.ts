@@ -80,6 +80,7 @@ import {
 } from "@agentbadge/circle-payments";
 import { venueApiRoutes } from "./venue-api";
 import { fxDeltaRoutes } from "./fx-delta-api";
+import { fxDeltaVerifyRoutes } from "./fx-delta-verify";
 import { venuePageRoutes } from "./venue-pages";
 import { seedVenueOffers } from "../lib/venue/store";
 
@@ -143,6 +144,7 @@ export function registerApiRoutes(app: Hono): void {
   app.route("/api", rulesApiRoutes);
   app.route("/api", scanRuleRoutes);
   app.route("/", fxDeltaRoutes); // 191-5: /api/fx-delta/*
+  app.route("/", fxDeltaVerifyRoutes); // 191-9: /api/fx-delta/verify/:id
 }
 
 // Mounted AFTER wireScanPacksX402 + wireMarketplace — totalScanRoutes is gated

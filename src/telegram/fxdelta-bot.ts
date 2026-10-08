@@ -39,6 +39,11 @@ export interface FxDeltaTelegramBotOptions {
    * them (test back-compat).
    */
   subscriptions?: TelegramSubscriptions;
+  /**
+   * 191-9: anchored verdict link — appended to alert lines when the
+   * corridor has an Arc anchor (verifyUrl → /api/fx-delta/verify/:id).
+   */
+  verifyUrlFor?: (corridor: string) => string | undefined;
 }
 
 interface TgMessage {
@@ -62,7 +67,7 @@ export function makeFxDeltaTelegramSender(botToken: string): TelegramSend {
 }
 
 export function createFxDeltaTelegramBot(opts: FxDeltaTelegramBotOptions) {
-  const { registry, engine, send, subscriptions } = opts;
+  const { registry, engine, send, subscriptions, verifyUrlFor } = opts;
   let lastEventCount = 0;
   /** Corridors pushed since last digestTick — digest skips them (AC3). */
   let alertedSinceDigest = new Set<string>();
@@ -142,7 +147,8 @@ export function createFxDeltaTelegramBot(opts: FxDeltaTelegramBotOptions) {
     const pushed = new Set<string>();
     for (const v of engine.getAll()) {
       if (v.inAlert) {
-        lines.push(formatAlert(v));
+        const url = verifyUrlFor?.(v.corridor);
+        lines.push(formatAlert(v) + (url ? `\n   🔗 verify: ${url}` : ""));
         pushed.add(v.corridor);
       }
     }

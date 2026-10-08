@@ -74,6 +74,28 @@ export function resetFxDeltaRuntime(): void {
   runtime = null;
 }
 
+// ─── Arc anchoring (191-9) ──────────────────────────────────────────
+// Anchor queue + alert watcher — singletons owned here so both the API
+// (/api/fx-delta/verify) and the TG bot (verifyUrl) share state.
+
+import type { AnchorQueue } from "./anchor";
+
+let anchorQueue: AnchorQueue | null = null;
+
+export function setFxDeltaAnchorQueue(q: AnchorQueue): void {
+  anchorQueue = q;
+}
+
+export function getFxDeltaAnchorQueue(): AnchorQueue | null {
+  return anchorQueue;
+}
+
+/** Test hook. */
+export function resetFxDeltaAnchor(): void {
+  anchorQueue?.stop();
+  anchorQueue = null;
+}
+
 /** Audit a settled payment — fire-and-forget (191-12 placeholder:
  *  events table until the payments schema lands). */
 export function auditFxDeltaPayment(payload: {

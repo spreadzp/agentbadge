@@ -14,60 +14,37 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import type { Context, Next } from "hono";
+
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import {
   getFxDeltaRuntime,
+  getFxDeltaAnchorQueue,
   type FxDeltaView,
 } from "../lib/fx-delta";
 import { fxDeltaPremiumGate } from "../lib/fx-delta/premium-gate";
+import { freeTierGate } from "../lib/fx-delta/free-tier";
 
-const FREE_WINDOW_MS = 60_000;
-const buckets = new Map<string, { count: number; resetAt: number }>();
+// Test-compat re-export (moved to lib/fx-delta/free-tier.ts, file cap).
+export { resetFxDeltaFreeTier } from "../lib/fx-delta/free-tier";
 
-/** Test hook — clears free-tier buckets. */
-export function resetFxDeltaFreeTier(): void {
-  buckets.clear();
-}
-
-// Premium gate (191-6) lives in ../lib/fx-delta/premium-gate.ts
-
-function identity(c: Context): string {
-  return (
-    c.req.header("x-wallet") ??
-    c.req.header("cf-connecting-ip") ??
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "anonymous"
-  );
-}
-
-/** Free-tier gate: 1 req/min per identity → 402 with premium link. */
-function freeTierGate(c: Context, next: Next) {
-  const key = identity(c);
-  const now = Date.now();
-  let b = buckets.get(key);
-  if (!b || now >= b.resetAt) {
-    b = { count: 0, resetAt: now + FREE_WINDOW_MS };
-    buckets.set(key, b);
-  }
-  if (++b.count > 1) {
-    return c.json(
-      {
-        code: ErrorCodes.PAYMENT_REQUIRED,
-        error: "Free tier: 1 req/min. Upgrade for real-time access.",
-        premium: "/api/fx-delta/premium/snapshot",
-        pricing: { amount: "0.005", currency: "USDC", network: "eip155:42220" },
-      },
-      402,
-    );
-  }
-  return next();
-}
+// Premium gate (191-6) in premium-gate.ts; free tier (191-5) in
+// lib/fx-delta/free-tier.ts.
 
 function viewJson(v: FxDeltaView) {
+  const anchor = getFxDeltaAnchorQueue()?.latestFor(v.corridor);
+  const base = process.env.FXDELTA_PUBLIC_URL ?? "http://localhost:4021";
   return {
     corridor: v.corridor,
+    // 191-9: proof link — buyers can verify the alert hash on Arc.
+    ...(anchor?.txHash
+      ? {
+          verifyUrl: `${base}/api/fx-delta/verify/${anchor.id}`,
+          anchorTx: anchor.txHash,
+        }
+      : anchor
+        ? { verifyUrl: `${base}/api/fx-delta/verify/${anchor.id}` }
+        : {}),
     onchainPrice: v.chainRate,
     fxRef: v.fxRefRate,
     deltaPct: v.deltaPct,
@@ -179,6 +156,9 @@ fxDeltaRoutes.get(
     });
   },
 );
+
+// GET /api/fx-delta/verify/:id lives in fx-delta-verify.ts (191-9,
+// file cap). Mounted via routes/index.ts.
 
 // ─── GET /api/fx-delta/premium — full snapshot, paid (191-6) ──
 fxDeltaRoutes.get(
