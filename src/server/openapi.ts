@@ -410,6 +410,40 @@ export const serverAgentCardSchema = z.object({
 
 // ─── OpenAPI documentation config ─────────────────────────────────
 
+// ─── Payer-binding (EPIC-171) ─────────────────────────────────────
+
+/** Agentbinding-pay:v1 signature headers — required on Arc self-settle
+ *  (txHash-carrying) payment requests when PAYER_BIND_ENABLED is on. */
+export const payerBindingHeaders: Record<
+  string,
+  { description: string; schema: { type: "string"; example: string } }
+> = {
+  "X-Wallet": {
+    description:
+      "Payer EOA address — must equal the txHash's USDC Transfer `from`",
+    schema: { type: "string", example: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00" },
+  },
+  "X-Sig": {
+    description:
+      "EIP-191 signature over the agentbadge-pay:v1 canonical challenge (see /payer-binding.md)",
+    schema: { type: "string", example: "0x1b2c…(65-byte hex)" },
+  },
+  "X-Timestamp": {
+    description: "Unix seconds when the challenge was signed (±300s drift)",
+    schema: { type: "string", example: "1760000000" },
+  },
+};
+
+/** 402 declaration shape — appears in `extensions.payerBinding` and
+ *  `accepts[].extra.payerBinding` while the gate is enabled. */
+export const payerBindingDeclarationSchema = z.object({
+  required: z.literal(true),
+  challenge: z.literal("agentbadge-pay:v1"),
+  headers: z
+    .array(z.enum(["x-wallet", "x-sig", "x-timestamp"]))
+    .length(3),
+});
+
 export const rateLimitHeaders: Record<string, { description: string; schema: { type: "integer"; example: number } }> = {
   "X-RateLimit-Limit": {
     description: "Maximum number of requests per window",
@@ -454,7 +488,16 @@ export const openApiConfig = {
     scope: "per-IP",
     headers: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
   },
+  "x-payer-binding": {
+    spec: "/payer-binding.md",
+    challenge: "agentbadge-pay:v1",
+    requiredHeaders: ["X-Wallet", "X-Sig", "X-Timestamp"],
+    canonical:
+      "agentbadge-pay:v1|wallet=<WALLET>|method=<METHOD>|path=<PATH>|payRef=<TXHASH>|timestamp=<TS>",
+    signedWith: "EIP-191 personal_sign",
+    appliesTo: "arc self-settle rail (eip3009-client-broadcast) payments only",
+  },
   components: {
-    headers: rateLimitHeaders,
+    headers: { ...rateLimitHeaders, ...payerBindingHeaders },
   },
 };

@@ -53,6 +53,7 @@ AgentBadge provides agent identity, verification, and marketplace tools on Heder
 | API Catalog | ${baseUrl}/.well-known/api-catalog | Linkset of available API endpoints |
 | OAuth Protected Resource | ${baseUrl}/.well-known/oauth-protected-resource | OAuth metadata |
 | Authentication | ${baseUrl}/auth.md | Agent authentication and registration instructions |
+| Payer Binding | ${baseUrl}/payer-binding.md | X-Sig payment binding spec for Arc self-settle (agentbadge-pay:v1) |
 | Verification Policy | ${baseUrl}/verification.md | How AgentBadge verifies agent identity and transactions |
 | Reputation Spec | ${baseUrl}/reputation.md | How AgentBadge builds and exposes agent reputation |
 | Agent Skills | ${baseUrl}/.well-known/agent-skills/index.json | Agent Skills discovery index |
@@ -251,6 +252,153 @@ If a heartbeat call fails:
 - [LLM Context](/llms.txt) — API summary for LLMs
 - [Agent Card](/.well-known/agent-card.json) — Machine-readable identity
 - [OpenAPI Spec](/api/specs) — Full API specification
+`;
+    return new Response(body, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  },
+);
+
+// ─── payer-binding.md (EPIC-171, SLICE-171-5) ────────────────────
+
+agentDocsRoutes.get(
+  "/payer-binding.md",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Payer-binding spec for Arc self-settle payments",
+    description:
+      "Markdown spec for the agentbadge-pay:v1 payer-binding protocol: required headers, canonical challenge string, EIP-191 signing (viem snippet), curl example, and error semantics.",
+    responses: {
+      200: {
+        description: "Payer-binding markdown spec",
+        content: { "text/markdown": {} },
+      },
+    },
+  }),
+  () => {
+    const baseUrl = BASE_URL;
+    const body = `---
+format: agentbadge-payer-binding-v1
+version: 1.0.0
+description: How to bind an Arc self-settle x402 payment to your wallet (anti-sniping)
+---
+
+## Payer Binding (agentbadge-pay:v1)
+
+When you pay a paid endpoint via the Arc self-settle rail
+(\`eip3009-client-broadcast\` — you broadcast the
+\`transferWithAuthorization\` tx yourself and pass its txHash in
+\`PAYMENT-SIGNATURE\`), the server requires proof that the txHash belongs
+to you. Without it, anyone could front-run your broadcast and present
+your txHash first, consuming its replay slot — the payment would be
+spent but *they* would get the content.
+
+### Required Headers (payment requests only)
+
+Present alongside \`PAYMENT-SIGNATURE\` — only when the payload carries a
+\`txHash\`. Gateway/exact rail payments need no binding.
+
+| Header | Value |
+|--------|-------|
+| \`X-Wallet\` | Your EIP-55/lower-case EOA address (the txHash's USDC Transfer \`from\`) |
+| \`X-Sig\` | EIP-191 signature over the canonical challenge |
+| \`X-Timestamp\` | Unix seconds when you signed (±300s drift allowed) |
+
+### Canonical Challenge String
+
+\`\`\`
+agentbadge-pay:v1|wallet=<WALLET>|method=<METHOD>|path=<PATH>|payRef=<TXHASH>|timestamp=<TS>
+\`\`\`
+
+- \`WALLET\` — your address, **lower-case**
+- \`METHOD\` — HTTP method in caps (\`POST\`)
+- \`PATH\` — the route path you're paying (e.g. \`/api/eaas/verdicts\`)
+- \`TXHASH\` — the payment txHash, **lower-case**
+- \`TS\` — decimal unix seconds, same value as \`X-Timestamp\`
+
+Sign the string with \`personal_sign\` (EIP-191). The recovered address
+must equal \`X-Wallet\`, and the server additionally compares it against
+the on-chain payer extracted from the txHash receipt — a valid signature
+over someone else's txHash is still rejected.
+
+### viem example
+
+\`\`\`ts
+import { privateKeyToAccount } from "viem/accounts";
+import { buildPayerChallenge } from "@agentbadge/circle-payments";
+
+const account = privateKeyToAccount(process.env.AGENT_KEY);
+const timestamp = Math.floor(Date.now() / 1000);
+const message = buildPayerChallenge({
+  wallet: account.address,
+  method: "POST",
+  path: "/api/eaas/verdicts",
+  payRef: txHash,      // your broadcast txHash
+  timestamp,
+});
+const signature = await account.signMessage({ message });
+
+const res = await fetch("${baseUrl}/api/eaas/verdicts", {
+  method: "POST",
+  headers: {
+    "payment-signature": paymentSignature, // base64 x402 payload w/ txHash
+    "x-wallet": account.address,
+    "x-sig": signature,
+    "x-timestamp": String(timestamp),
+  },
+  body: JSON.stringify(payload),
+});
+\`\`\`
+
+### curl example
+
+\`\`\`sh
+# 1. sign the challenge (any EIP-191 signer) then:
+curl -X POST "${baseUrl}/api/total-scan" \\
+  -H "payment-signature: <base64 x402 payload>" \\
+  -H "x-wallet: 0xYourWallet" \\
+  -H "x-sig: 0x<signature>" \\
+  -H "x-timestamp: 1760000000" \\
+  -d '{"url":"https://agent.example.com"}'
+\`\`\`
+
+### Discovery
+
+When the feature is on, every 402 challenge advertises it:
+
+\`\`\`json
+{
+  "payerBinding": {
+    "required": true,
+    "challenge": "agentbadge-pay:v1",
+    "headers": ["x-wallet", "x-sig", "x-timestamp"]
+  }
+}
+\`\`\`
+
+The same object appears in \`accepts[].extra.payerBinding\` and top-level
+\`extensions.payerBinding\`.
+
+### Error semantics
+
+| Case | Status | Slot consumed? |
+|------|--------|----------------|
+| Missing binding headers (arc txHash present) | 402 \`payer_binding_required\` | No |
+| Bad signature / expired timestamp | 403 \`WRONG_SIGNER\` | No |
+| Valid sig, wrong wallet for txHash | 403 \`WRONG_SIGNER\` | **No** — this is the anti-snipe case |
+| Non-self-settle payload (no txHash) | — | n/a — binding skipped |
+
+A rejected request NEVER consumes the txHash replay slot: the real payer
+can still present their own correctly-bound request afterwards.
+
+### Operator flags
+
+- \`PAYER_BIND_ENABLED\` — master gate (default off)
+- \`PAYER_BIND_DISABLED_GROUPS\` — csv kill-switch
+  (\`bstock\`, \`eaas\`, \`marketplace\`, \`scan-packs\`, \`keeperhub\`)
 `;
     return new Response(body, {
       headers: {
