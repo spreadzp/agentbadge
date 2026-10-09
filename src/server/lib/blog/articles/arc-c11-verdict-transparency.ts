@@ -23,11 +23,11 @@ export const article: BlogArticle = {
 <h2 id="gap">Why Isn't Per-Verdict Anchoring Enough?</h2>
 <p>Because it answers the wrong question. Each verdict gets a memo anchor — <code>memoId = keccak("eaas:verdictId")</code> with the artifact hash on-chain. Point at a verdict, check the anchor, done. But anchoring proves each entry <em>independently</em>. Delete entry 47 of 200 and every remaining anchor is still valid. The proof set has a hole shaped exactly like the verdict you deleted.</p>
 <p>This is the same gap certificate-transparency ran into: RFC 6962's original design proved inclusion, not consistency — Microsoft's ADR-0017 rewrite added signed tree heads precisely because "the log showed me the cert" is not "the log shows everyone the same history." An evaluator without consistency guarantees is a marketing claim, not an evidence source.</p>
-<p><img src="/images/blog/arc-c11-verdict-transparency-1.png" alt="A ledger page with three anchored rows and one silently deleted row" /></p>
+<p><img src="/images/blog/arc-c11-verdict-transparency-1.webp" alt="A ledger page with three anchored rows and one silently deleted row" /></p>
 <h2 id="chain">How Does a Linear Hash-Chain Fix Deletion?</h2>
 <p>Every verdict append writes a <code>ChainEntry</code>: <code>entryHash = keccak256(prevHash ‖ artifactHash)</code> — each entry cryptically married to its predecessor, pinned to a genesis hash. Edit an entry's content, its hash breaks. Delete an entry, the next one's <code>prevHash</code> dangles. Insert one, the sequence number and link both fail. The whole chain verifies in one O(n) fold, and <code>verifyChain</code> reports the exact first broken sequence — not just "invalid", but <em>where</em>.</p>
 <p>Our store is a JSON file, deliberately. The threat model isn't a hardened database — it's that any replay of history diverges from the anchored head. Mutability accepted; detection guaranteed.</p>
-<p><img src="/images/blog/arc-c11-verdict-transparency-d1.png" alt="Verdict to ChainEntry to ChainHead to Memo anchor to offline proof fold" /></p>
+<p><img src="/images/blog/arc-c11-verdict-transparency-d1.webp" alt="Verdict to ChainEntry to ChainHead to Memo anchor to offline proof fold" /></p>
 <h2 id="heartbeat">What's the Heartbeat Anchor For?</h2>
 <p>Liveness. A chain that only anchors when it has new work silently downgrades during quiet periods — no anchor means "unknown", not "unchanged". So <code>createChainFlusher</code> anchors the head every <code>ARC_CHAIN_FLUSH_MS</code> (default 24h), new entries or not:</p>
 <ul>
@@ -36,7 +36,7 @@ export const article: BlogArticle = {
 <li><strong>Restart after a missed window</strong> → immediate catch-up flush.</li>
 </ul>
 <p>Each anchor is one <code>memo(self, 0x, memoId, memoData)</code> call — <code>memoId = keccak("chain:eaas-verdicts:&lt;epoch&gt;")</code>, <code>memoData</code> the ABI-encoded <code>(headHash, count, prevAnchoredHeadHash)</code>. O(1) on-chain cost per window regardless of verdict volume. The memo namespace is deliberately split: <code>eaas:</code> per verdict, <code>chain:</code> per epoch — no collision, independently auditable.</p>
-<p><img src="/images/blog/arc-c11-verdict-transparency-2.png" alt="Chain flow: verdict entries converging to a head node anchored on-chain" /></p>
+<p><img src="/images/blog/arc-c11-verdict-transparency-2.webp" alt="Chain flow: verdict entries converging to a head node anchored on-chain" /></p>
 <h2 id="api">What Can a Third Party Verify Without Trusting Us?</h2>
 <p>Everything, via three free rate-limited endpoints — an RFC 9162-inspired proof surface:</p>
 <ul>
@@ -53,7 +53,7 @@ curl https://agentbadge.xyz/api/eaas/chain/proof/0x&lt;verdictId&gt;
 # 3. compare with the on-chain Memo event for
 #    memoId = keccak("chain:eaas-verdicts:&lt;epochSeq&gt;")</code></pre>
 <p>If your fold hits the anchored headHash, the verdict is provably inside the history the operator attested — at epoch time, on a public chain. If the operator serves you a rewritten store, the fold lands on a different hash than the anchor and the lie is arithmetic, not opinion.</p>
-<p><img src="/images/blog/arc-c11-verdict-transparency-3.png" alt="A terminal JSON proof compared to a blockchain explorer memo event" /></p>
+<p><img src="/images/blog/arc-c11-verdict-transparency-3.webp" alt="A terminal JSON proof compared to a blockchain explorer memo event" /></p>
 <h2 id="contrast">How Is This Different from Rekor or Predge?</h2>
 <p>Rekor-style transparency logs anchor <em>software supply chain</em> artifacts with Merkle trees — a general log for anyone's blobs. Predge-style agent chains attest <em>signed calls</em>: proof that a proxy relayed a request/response pair. Ours chains <strong>verdicts</strong> — the semantic evaluation artifact itself — inside the same API that issues them, and ships a public proof surface rather than a query console. Three differences that matter:</p>
 <ol>
