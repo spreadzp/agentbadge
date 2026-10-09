@@ -30,7 +30,7 @@ export interface EaasFeedsDeps {
   subscriptions?: EaasSubscriptionStore;
   anchors?: AnchorStore;
   /** SLICE-172-4: chain reads — absent = /api/eaas/chain* → 404. */
-  chain?: Pick<ChainService, "head" | "entries" | "proofFor">;
+  chain?: Pick<ChainService, "head" | "entries" | "proofFor" | "verify">;
   chainId?: number;
   explorerTx?: (txHash: string) => string;
 }
@@ -231,6 +231,7 @@ export function createEaasFeedsRoutes(deps: EaasFeedsDeps): Hono {
         domain: h.domain,
         headHash: h.headHash,
         count: h.count,
+        chainOk: deps.chain.verify().ok,
         ...(h.lastFlushAt ? { lastFlushAt: h.lastFlushAt } : {}),
         ...(anchor ? { anchor } : {}),
         ...(deps.chainId !== undefined ? { chainId: deps.chainId } : {}),
