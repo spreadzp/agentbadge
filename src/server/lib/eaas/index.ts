@@ -22,6 +22,7 @@ import {
 } from "./verdict";
 import type { StoredVerdict, VerdictStoreBackend } from "./store";
 import type { VerdictAnchorer } from "./anchor";
+import type { ChainService } from "./chain";
 
 export interface IssueVerdictRequest {
   /** POLICY_REGISTRY key — unknown names throw UnknownPolicyError. */
@@ -49,6 +50,8 @@ export interface EaasServiceDeps {
   now?: () => Date;
   /** SLICE-154-4: onchain memo anchor — absent = anchoring disabled. */
   anchorer?: Pick<VerdictAnchorer, "enqueue">;
+  /** SLICE-172-2: verdict hash-chain — absent = chain writes disabled. */
+  chain?: Pick<ChainService, "append">;
 }
 
 export interface IssueVerdictResult {
@@ -113,6 +116,11 @@ export async function issueVerdict(
     evidence: result.evidence,
   };
   deps.store.put(stored);
+
+  // SLICE-172-2: link the verdict into the domain chain — exactly once
+  // per verdictId (this line is only reached for non-duplicates, but the
+  // service re-checks by verdictId so a retried persist can't double-append).
+  deps.chain?.append(stored);
 
   // SLICE-154-4: fire-and-forget onchain anchor — never blocks the response.
   deps.anchorer?.enqueue(stored);

@@ -246,10 +246,10 @@ export interface EaasEnvConfig {
   webhookSecret?: string;
   /** SLICE-154-6: async request timeout, seconds (ARC_EAAS_ASYNC_TIMEOUT_S, default 120). */
   asyncTimeoutSec: number;
+  chainEnabled: boolean; // SLICE-172-2 (ARC_CHAIN_ENABLED, default 1)
 }
 
-/** Agent Wallet (EPIC-155); absent = feature off.
- *  Type lives in ./agent-wallet-types.ts (types.ts hit 300 lines). */
+/** Agent Wallet (EPIC-155); absent = off — type in ./agent-wallet-types.ts (300-line cap). */
 export type { AgentWalletEnvConfig } from "./agent-wallet-types";
 import type { AgentWalletEnvConfig } from "./agent-wallet-types";
 

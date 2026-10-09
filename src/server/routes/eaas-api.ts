@@ -83,6 +83,8 @@ export interface EaasRoutesDeps {
   /** SLICE-154-6: async request delivery — absent = async:true rejected 400.
    *  Same quota/x402 gate; payment settles upfront, verdict runs in bg. */
   async_?: EaasAsyncDeps;
+  /** SLICE-172-2: verdict hash-chain append — absent = chain off. */
+  chain?: Pick<import("../lib/eaas/chain").ChainService, "append">;
 }
 
 /* --------------------------------- routes --------------------------------- */
@@ -99,6 +101,7 @@ export function createEaasRoutes(
     ...(deps.registry ? { registry: deps.registry } : {}),
     ...(deps.now ? { now: deps.now } : {}),
     ...(deps.anchor ? { anchorer: deps.anchor.anchorer } : {}),
+    ...(deps.chain ? { chain: deps.chain } : {}),
   };
 
   // Payment middleware per policy tier — keyed by SKU (179-3: the

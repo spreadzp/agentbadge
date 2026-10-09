@@ -234,6 +234,7 @@ export function wireEaas(
         signer,
         verdictStore: store,
         ...(anchorer ? { anchorer } : {}),
+        ...(chainService ? { chain: chainService } : {}),
         reputation: {
           registry: net.reputationRegistry,
           memo: net.memo,

@@ -105,6 +105,10 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
   const tierProUsd = atomicPrice("ARC_EAAS_TIER_PRO_USD", "25000000", errors);
   const tierQuotas = parseTierQuotas(errors);
 
+  // SLICE-172-2: verdict hash-chain — on by default; explicit "0" off.
+  // Writes .data/eaas-chain.json; no onchain calls (anchoring is 172-3).
+  const chainEnabled = (process.env.ARC_CHAIN_ENABLED ?? "1") !== "0";
+
   // SLICE-154-6: async delivery — optional webhook HMAC secret + timeout.
   const webhookSecret = process.env.ARC_EAAS_WEBHOOK_SECRET || undefined;
   const asyncTimeoutSec = intVar("ARC_EAAS_ASYNC_TIMEOUT_S", 120, 1, errors);
@@ -122,6 +126,7 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
     gasCap,
     memoAnchor,
     anchorRetries,
+    chainEnabled,
     tierBasicUsd,
     tierProUsd,
     tierQuotas,

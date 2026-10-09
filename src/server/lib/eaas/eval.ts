@@ -1,18 +1,15 @@
 /**
- * SLICE-154-3: external-job evaluation service — settle a foreign
- * ERC-8183 job AND return a signed VerdictArtifact in one call.
- *
- * Pipeline (POST /api/eaas/jobs/evaluate after x402 settle):
- *   1. escrow.getJob(jobId)              — status gate (EvaluatorError → 409)
- *   2. expired → claimRefund             — verdict "expired"
- *   3. Submitted → POLICY_REGISTRY[policy] → complete/reject onchain
- *   4. sign VerdictArtifact (signer key; evaluator = settler EOA)
- *   5. persist eval record (idempotent per chainId:contract:jobId)
- *   6. giveFeedback(agentId, ±1, tag1="eaas-eval") — best-effort,
- *      skipped when contract.terms.noFeedback or no agentId resolver hit
- *
- * Gas-cap: the evaluator WriteClient is wrapped so every writeContract
- * is preceded by estimateGas — over ARC_EAAS_GAS_CAP aborts before send.
+ * SLICE-154-3: external-job evaluation — settle a foreign ERC-8183 job
+ * AND return a signed VerdictArtifact in one call (POST /api/eaas/jobs/evaluate
+ * after x402 settle):
+ *   1. escrow.getJob(jobId) — status gate (EvaluatorError → 409)
+ *   2. expired → claimRefund (verdict "expired")
+ *   3. Submitted → policy → complete/reject onchain
+ *   4. sign VerdictArtifact (evaluator = settler EOA) → persist (idempotent
+ *      per chainId:contract:jobId) → chain.append → giveFeedback(agentId, ±1,
+ *      "eaas-eval", best-effort; skipped on noFeedback / no agentId)
+ * Gas-cap: the evaluator WriteClient wraps every writeContract with
+ * estimateGas — over ARC_EAAS_GAS_CAP aborts before send.
  */
 
 import { logger } from "@agentbadge/passport";
@@ -35,6 +32,7 @@ import {
 } from "./verdict";
 import type { StoredVerdict, VerdictStoreBackend } from "./store";
 import type { VerdictAnchorer } from "./anchor";
+import type { ChainService } from "./chain";
 import type { EaasContract } from "./contracts";
 import {
   evalJobKey,
@@ -95,6 +93,7 @@ export interface EvaluateJobDeps {
   sendTx?: (tx: { to: `0x${string}`; data: Hex }) => Promise<Hex>;
   /** SLICE-154-4: onchain memo anchor — absent = anchoring disabled. */
   anchorer?: Pick<VerdictAnchorer, "enqueue">;
+  chain?: Pick<ChainService, "append">; // SLICE-172-2 (absent = off)
   now?: () => number;
 }
 
@@ -249,6 +248,7 @@ export async function evaluateExternalJob(
     evidence: verdict.evidence,
   } satisfies StoredVerdict;
   deps.verdictStore.put(stored);
+  deps.chain?.append(stored); // SLICE-172-2 (idempotent by verdictId)
   // Reputation write-back — best-effort, never fails the response.
   let feedbackTx: string | undefined;
   if (
