@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run eslint on staged files, block commit on errors
+# Installed at .git/hooks/pre-commit
+
+set -e
+
+# Get staged .ts/.tsx files (only in src/ and tests/)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' | grep -E '^(src|tests)/' || true)
+
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+echo "🔍 Linting staged files..."
+echo "$STAGED_FILES" | while read -r file; do
+  if [ -f "$file" ]; then
+    bunx eslint "$file" --max-warnings=0 || {
+      echo ""
+      echo "❌ Lint error in $file"
+      echo "Fix the errors above, then re-stage and commit."
+      echo "To bypass: git commit --no-verify (not recommended)"
+      exit 1
+    }
+  fi
+done
+
+echo "✅ Lint passed for staged files"
+
+# ─── Architecture graph auto-sync ────────────────────────────────
+# If staged changes touch src/ modules or the graph generator itself,
+# regenerate docs/architecture-graph.md and stage it so the commit
+# can't leave the graph stale (arch-guard CI does a diff check).
+GRAPH_TRIGGERS=$(git diff --cached --name-only --diff-filter=ACMD | grep -E '^(src/.*\.ts|scripts/arch-graph\.mts)$' || true)
+if [ -n "$GRAPH_TRIGGERS" ]; then
+  echo "🗺️  Syncing architecture graph..."
+  if bun run arch:graph > /dev/null 2>&1; then
+    if ! git diff --quiet docs/architecture-graph.md; then
+      git add docs/architecture-graph.md
+      echo "✅ docs/architecture-graph.md regenerated and staged"
+    fi
+  else
+    echo "⚠️  arch:graph failed — commit proceeds, arch-guard CI may flag it"
+  fi
+fi
