@@ -73,7 +73,6 @@ export function wireEaas(
   // Shared send seam — anchorer (154-4) and chain flusher (172-3).
   const eoaSend =
     wallet && account ? mkEoaSend({ wallet, account, read, chain }) : undefined;
-
   // ─── SLICE-154-4: onchain memo anchoring ───────────────────────
   let anchorer: ReturnType<typeof createAnchorer> | undefined;
   let anchorStore: ReturnType<typeof createJsonAnchorStore> | undefined;
@@ -94,7 +93,6 @@ export function wireEaas(
       "EaaS memo anchoring ON but no evaluator key — anchors disabled",
     );
   }
-
   // ─── SLICE-172-2/3: verdict hash-chain — appends + head-anchor flush ──
   const chainService = setupVerdictChain({
     enabled: cfg.chainEnabled,
@@ -104,7 +102,6 @@ export function wireEaas(
     send: eoaSend,
     selfAddress: account?.address,
   });
-
   // Public verify reads the memo by memoId: getLogs(Memo, memoId) → block time.
   const findAnchor = async (memoId: Hex) => {
     const logs = await read.getLogs({
@@ -156,6 +153,9 @@ export function wireEaas(
       rateRpm: cfg.rateRpm,
       subscriptions: subStore,
       ...(anchorStore ? { anchors: anchorStore } : {}),
+      ...(chainService
+        ? { chain: chainService, chainId, explorerTx: net.explorerTx }
+        : {}),
     }),
   );
 

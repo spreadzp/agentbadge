@@ -169,3 +169,18 @@ export function createChainService(deps: {
     },
   };
 }
+
+/**
+ * SLICE-172-4: compact chain-membership digest for the /verify response —
+ * `{included, seq?, headHash}` (field absent entirely when chain is off).
+ */
+export function chainProofOf(
+  chain: Pick<ChainService, "head" | "proofFor">,
+  verdictId: Hex,
+): { included: boolean; seq?: number; headHash: Hex } {
+  const p = chain.proofFor(verdictId);
+  const head = chain.head();
+  return p
+    ? { included: true, seq: p.entry.seq, headHash: head.headHash }
+    : { included: false, headHash: head.headHash };
+}

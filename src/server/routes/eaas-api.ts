@@ -25,6 +25,7 @@ import type {
   FindAnchorFn,
   VerdictAnchorer,
 } from "../lib/eaas/anchor";
+import { chainProofOf, type ChainService } from "../lib/eaas/chain";
 import {
   eaasQuotaGate,
   type EaasQuotaDeps,
@@ -84,7 +85,7 @@ export interface EaasRoutesDeps {
    *  Same quota/x402 gate; payment settles upfront, verdict runs in bg. */
   async_?: EaasAsyncDeps;
   /** SLICE-172-2: verdict hash-chain append — absent = chain off. */
-  chain?: Pick<import("../lib/eaas/chain").ChainService, "append">;
+  chain?: Pick<ChainService, "append" | "head" | "proofFor">;
 }
 
 /* --------------------------------- routes --------------------------------- */
@@ -198,7 +199,6 @@ export function createEaasRoutes(
       });
     },
   );
-
   routes.get(
     "/api/eaas/verdicts/:verdictId",
     describeRoute({
@@ -216,7 +216,6 @@ export function createEaasRoutes(
       return c.json(stored);
     },
   );
-
   // SLICE-154-4: public verify — offline signature + onchain memo anchor.
   // Rate-limited: it's an unauthenticated "facade of trust" for third parties.
   const verifyHandler = async (c: Context<{ Variables: EaasVariables }>) => {
@@ -257,13 +256,15 @@ export function createEaasRoutes(
         if (tx && deps.anchor.explorerTx) explorerUrl = deps.anchor.explorerTx(tx);
       }
     }
-
     return c.json({
       valid: signatureValid,
       signatureValid,
       signer: stored.artifact.evaluator,
       chainId: stored.artifact.chainId,
       anchor,
+      ...(deps.chain
+        ? { chain: chainProofOf(deps.chain, stored.artifact.verdictId) }
+        : {}),
       ...(explorerUrl ? { explorerUrl } : {}),
     });
   };
@@ -281,7 +282,6 @@ export function createEaasRoutes(
     }),
     verifyHandler,
   );
-
   // Spec-named alias — same handler.
   routes.get(
     "/api/eaas/verify/:verdictId",

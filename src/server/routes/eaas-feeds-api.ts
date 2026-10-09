@@ -17,7 +17,9 @@ import type { EaasRequestStore } from "../lib/eaas/requests";
 import type { EaasMetrics } from "../lib/eaas/metrics";
 import type { EaasSubscriptionStore } from "../lib/eaas/subscription";
 import type { AnchorStore } from "../lib/eaas/anchor";
-import { consumerKey, createRateLimiter, bad } from "../lib/eaas/request";
+import { consumerKey, createRateLimiter, bad, HEX32_RE } from "../lib/eaas/request";
+import type { ChainService } from "../lib/eaas/chain";
+import type { Hex } from "viem";
 
 export interface EaasFeedsDeps {
   store: VerdictStoreBackend;
@@ -27,6 +29,10 @@ export interface EaasFeedsDeps {
   /** SLICE-154-7: stats — active subscriber + anchor counts. */
   subscriptions?: EaasSubscriptionStore;
   anchors?: AnchorStore;
+  /** SLICE-172-4: chain reads — absent = /api/eaas/chain* → 404. */
+  chain?: Pick<ChainService, "head" | "entries" | "proofFor">;
+  chainId?: number;
+  explorerTx?: (txHash: string) => string;
 }
 
 const REQUEST_ID_RE = /^req_[0-9a-f]{16}$/;
@@ -186,6 +192,100 @@ export function createEaasFeedsRoutes(deps: EaasFeedsDeps): Hono {
         verdicts: snap.verdicts,
         webhooks: snap.webhooks,
         requests: deps.requests.counts(),
+      });
+    },
+  );
+
+  // ─── SLICE-172-4: verdict hash-chain reads (free, rate-limited) ──
+  const chainOff = (c: { json: (o: unknown, s?: number) => Response }) =>
+    c.json({ error: "chain disabled" }, 404);
+  const chainGate = (c: Parameters<typeof consumerKey>[0]) =>
+    limiter.allow(`chain:${consumerKey(c)}`);
+
+  routes.get(
+    "/api/eaas/chain",
+    describeRoute({
+      description:
+        "Verdict hash-chain head: {domain, headHash, count, lastFlushAt, anchor?, chainId} (free, rate-limited)",
+      responses: {
+        200: { description: "ChainHead + anchor meta" },
+        404: { description: "Chain disabled" },
+        429: { description: "Rate limit exceeded" },
+      },
+    }),
+    (c) => {
+      if (!chainGate(c)) return c.json({ error: "rate limit exceeded" }, 429);
+      if (!deps.chain) return chainOff(c);
+      const h = deps.chain.head();
+      const anchor = h.anchor
+        ? {
+            epochSeq: h.anchor.epochSeq,
+            txHash: h.anchor.txHash,
+            blockNumber: h.anchor.blockNumber,
+            ...(deps.explorerTx
+              ? { explorerUrl: deps.explorerTx(h.anchor.txHash) }
+              : {}),
+          }
+        : undefined;
+      return c.json({
+        domain: h.domain,
+        headHash: h.headHash,
+        count: h.count,
+        ...(h.lastFlushAt ? { lastFlushAt: h.lastFlushAt } : {}),
+        ...(anchor ? { anchor } : {}),
+        ...(deps.chainId !== undefined ? { chainId: deps.chainId } : {}),
+      });
+    },
+  );
+
+  routes.get(
+    "/api/eaas/chain/entries",
+    describeRoute({
+      description:
+        "Paged chain entries ?from&to&limit — limit capped at 100 (free, rate-limited)",
+      responses: {
+        200: { description: "{entries: ChainEntry[]}" },
+        404: { description: "Chain disabled" },
+        429: { description: "Rate limit exceeded" },
+      },
+    }),
+    (c) => {
+      if (!chainGate(c)) return c.json({ error: "rate limit exceeded" }, 429);
+      if (!deps.chain) return chainOff(c);
+      const q = c.req.query();
+      const from = Math.max(0, Number.parseInt(q.from ?? "0", 10) || 0);
+      const limit = Math.min(
+        100,
+        Math.max(1, Number.parseInt(q.limit ?? "100", 10) || 100),
+      );
+      const toRaw = q.to !== undefined ? Number.parseInt(q.to, 10) : NaN;
+      const to = Number.isNaN(toRaw) ? from + limit : Math.min(toRaw, from + limit);
+      return c.json({ entries: deps.chain.entries(from, to) });
+    },
+  );
+
+  routes.get(
+    "/api/eaas/chain/proof/:verdictId",
+    describeRoute({
+      description:
+        "Inclusion proof: entry + suffix to head — third party recomputes headHash offline (free, rate-limited)",
+      responses: {
+        200: { description: "{seq, path, head}" },
+        404: { description: "Verdict not in chain / chain disabled" },
+        429: { description: "Rate limit exceeded" },
+      },
+    }),
+    (c) => {
+      if (!chainGate(c)) return c.json({ error: "rate limit exceeded" }, 429);
+      if (!deps.chain) return chainOff(c);
+      const id = c.req.param("verdictId");
+      if (!HEX32_RE.test(id)) return bad(c, "invalid verdictId");
+      const proof = deps.chain.proofFor(id as Hex);
+      if (!proof) return c.json({ error: "verdict not in chain" }, 404);
+      return c.json({
+        seq: proof.entry.seq,
+        path: proof.path,
+        head: deps.chain.head(),
       });
     },
   );
