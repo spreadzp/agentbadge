@@ -11,7 +11,8 @@ import { logger } from "@agentbadge/passport";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { consumerKey } from "../lib/eaas/request";
+import { tryGetCache } from "../lib/cache";
+import type { CacheProvider } from "@agentbadge/cache";
 import {
   hashApiKey,
   isApiKeyFormat,
@@ -19,6 +20,7 @@ import {
   revokeApiKey,
 } from "../lib/agent-registration/api-keys";
 import { bustAgentKeyCache } from "../middleware/agent-key-auth";
+import { adminAuth } from "../middleware/adminAuth";
 import {
   createDailyLimiter,
   registerAgent,
@@ -41,8 +43,10 @@ export interface AgentRegisterRoutesDeps {
   registryAddress: `0x${string}`;
   /** Observer-tier keyed free limit advertised to callers (req/min). */
   keyRpm: number;
-  /** Max registrations per IP per rolling day. */
+  /** Max registrations per IP per UTC day (regcap:<ip>:<day> bucket). */
   dailyLimit: number;
+  /** Cache backend for the shared regcap counter — default tryGetCache(). */
+  cache?: CacheProvider | null;
 }
 
 const bearerKey = (c: Context): string | undefined => {
@@ -70,7 +74,10 @@ export function createAgentRegisterRoutes(
   deps: AgentRegisterRoutesDeps,
 ): Hono {
   const routes = new Hono();
-  const daily = createDailyLimiter(deps.dailyLimit);
+  const daily = createDailyLimiter(
+    deps.dailyLimit,
+    deps.cache === undefined ? tryGetCache() : deps.cache,
+  );
 
   routes.post(
     "/api/v1/agents/register",
@@ -88,16 +95,14 @@ export function createAgentRegisterRoutes(
       },
     }),
     async (c) => {
-      if (!deps.enabled || !deps.mint) {
-        return errorResponse(
-          c,
-          503,
-          ErrorCodes.EXECUTION_FAILED,
-          "agent registration is unavailable",
-          { retryable: true },
-        );
-      }
-      if (!daily.allow(consumerKey(c))) {
+      if (!deps.enabled || !deps.mint)
+        return errorResponse(c, 503, ErrorCodes.EXECUTION_FAILED, "agent registration is unavailable", { retryable: true });
+      // SLICE-184-4: per-IP daily cap regcap:<ip>:<day> (sybil guard).
+      const ip =
+        c.req.header("cf-connecting-ip") ??
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+        "anonymous";
+      if (!(await daily.allow(ip))) {
         return errorResponse(
           c,
           429,
@@ -189,32 +194,15 @@ export function createAgentRegisterRoutes(
     c: Context,
   ): Promise<AgentRegistration | Response> => {
     const key = bearerKey(c);
-    if (!key || !isApiKeyFormat(key)) {
-      return errorResponse(
-        c,
-        401,
-        ErrorCodes.AGENT_KEY_INVALID,
-        "Authorization: Bearer agb_<key> required",
-      );
-    }
+    if (!key || !isApiKeyFormat(key))
+      return errorResponse(c, 401, ErrorCodes.AGENT_KEY_INVALID, "Authorization: Bearer agb_<key> required");
     const rec = await lookupAgentByKey(deps.store, key);
     if (!rec) {
       // Unknown vs revoked — distinguish for the honest code.
       const stored = await deps.store.byKeyHash(hashApiKey(key));
-      if (stored?.status === "revoked") {
-        return errorResponse(
-          c,
-          401,
-          ErrorCodes.AGENT_KEY_REVOKED,
-          "api key revoked",
-        );
-      }
-      return errorResponse(
-        c,
-        401,
-        ErrorCodes.AGENT_KEY_INVALID,
-        "unknown api key",
-      );
+      if (stored?.status === "revoked")
+        return errorResponse(c, 401, ErrorCodes.AGENT_KEY_REVOKED, "api key revoked");
+      return errorResponse(c, 401, ErrorCodes.AGENT_KEY_INVALID, "unknown api key");
     }
     return rec;
   };
@@ -256,6 +244,35 @@ export function createAgentRegisterRoutes(
       if (rawKey) await bustAgentKeyCache(hashApiKey(rawKey));
       logger.info("agent key self-revoked", { agentId: rec.agentId });
       return c.json({ status: "revoked", agent_id: rec.agentId });
+    },
+  );
+
+  // SLICE-184-4: admin kill-switch — revoke agent + bust the 60s
+  // auth-cache so the key fails closed immediately. agentId is
+  // URL-encoded (eip155:chain:registry:token).
+  routes.delete(
+    "/api/v1/admin/agents/:agentId{.+}",
+    describeRoute({
+      description:
+        "Admin-revoke a registered agent — instant, auth-cache busted. " +
+        "Requires X-Admin-Key or Bearer ADMIN_API_KEY.",
+      responses: {
+        200: { description: "Agent revoked (idempotent)" },
+        401: { description: "Missing/invalid admin key" },
+        404: { description: "Unknown agentId" },
+        500: { description: "ADMIN_API_KEY not configured" },
+      },
+    }),
+    adminAuth,
+    async (c) => {
+      const agentId = decodeURIComponent(c.req.param("agentId"));
+      const rec = await deps.store.get(agentId);
+      if (!rec)
+        return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, "unknown agentId");
+      await deps.store.revoke(agentId, "admin");
+      await bustAgentKeyCache(rec.keyHash);
+      logger.info("agent admin-revoked", { agentId, previously: rec.status });
+      return c.json({ status: "revoked", agent_id: agentId });
     },
   );
 

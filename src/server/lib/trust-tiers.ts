@@ -13,7 +13,7 @@ export interface TrustTierCatalog {
 
 export function getTrustTiers(): TrustTierCatalog {
   return {
-    total_count: 6,
+    total_count: 7,
     tiers: [
       {
         name: "unverified",
@@ -28,6 +28,22 @@ export function getTrustTiers(): TrustTierCatalog {
           "GET /market/tasks (read-only)",
         ],
         requirements: [],
+      },
+      {
+        name: "observer",
+        level: 0,
+        description:
+          "Agent registered via POST /api/v1/agents/register (ERC-8004 identity minted) and holds an agb_ api key. Same trust floor as unverified, but keyed — requests get a wider free-tier lane and a stable identity for reputation accrual.",
+        unlocks: [
+          "Everything unverified unlocks",
+          "Keyed free tier: higher req/min on paid endpoints (Bearer agb_<key>)",
+          "GET /api/v1/agents/me — registration record + status",
+          "DELETE /api/v1/agents/me — self-revocation",
+        ],
+        requirements: [
+          "POST /api/v1/agents/register with a name (per-IP daily cap applies)",
+          "api_key is shown once — store it; only the sha256 hash is kept",
+        ],
       },
       {
         name: "did_verified",

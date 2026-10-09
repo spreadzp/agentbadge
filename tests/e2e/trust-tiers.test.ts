@@ -80,12 +80,13 @@ describe("SLICE-122-3: Trust tiers endpoint GET /api/meta/trust-tiers", () => {
     }
   });
 
-  it("levels are sequential (0, 1, 2, ...)", () => {
+  it("levels are non-decreasing (observer shares level 0)", () => {
     const catalog = getTrustTiers();
     const levels = catalog.tiers.map((t) => t.level);
-    for (let i = 0; i < levels.length; i++) {
-      expect(levels[i]).toBe(i);
+    for (let i = 1; i < levels.length; i++) {
+      expect(levels[i]).toBeGreaterThanOrEqual(levels[i - 1]);
     }
+    expect(levels[0]).toBe(0);
   });
 
   it("no duplicate tier names", () => {

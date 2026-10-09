@@ -25,6 +25,8 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     registryAddress: REGISTRY,
     keyRpm: 10,
     dailyLimit: 20,
+    // In-memory regcap — the real Valkey cache shares counters across runs.
+    cache: null,
     ...overrides,
   };
 }
@@ -115,12 +117,12 @@ describe("registerAgent", () => {
 });
 
 describe("createDailyLimiter", () => {
-  it("allows `limit` then blocks", () => {
+  it("allows `limit` then blocks", async () => {
     const l = createDailyLimiter(2);
-    expect(l.allow("ip1")).toBe(true);
-    expect(l.allow("ip1")).toBe(true);
-    expect(l.allow("ip1")).toBe(false);
-    expect(l.allow("ip2")).toBe(true);
+    expect(await l.allow("ip1")).toBe(true);
+    expect(await l.allow("ip1")).toBe(true);
+    expect(await l.allow("ip1")).toBe(false);
+    expect(await l.allow("ip2")).toBe(true);
   });
 });
 

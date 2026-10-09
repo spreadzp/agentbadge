@@ -137,7 +137,7 @@ metaRoutes.get(
     tags: ["Meta"],
     summary: "Trust tiers — identity/trust ladder for AI agents",
     description:
-      "Returns the trust tier ladder: unverified, did_verified, passport_holder, passport_verified, marketplace_participant, trusted_agent. Each tier lists unlocked capabilities and requirements.",
+      "Returns the trust tier ladder: unverified, observer, did_verified, passport_holder, passport_verified, marketplace_participant, trusted_agent. Each tier lists unlocked capabilities and requirements.",
     responses: {
       200: {
         description: "Trust tier catalog",

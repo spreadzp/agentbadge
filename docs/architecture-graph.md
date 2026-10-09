@@ -121,6 +121,7 @@ flowchart LR
   server_routes["server/routes"] --> agent_readiness_trust["agent-readiness/trust"]
   server_routes["server/routes"] --> components["components"]
   server_routes["server/routes"] --> config["config"]
+  server_routes["server/routes"] --> pkg_cache["pkg: cache"]
   server_routes["server/routes"] --> pkg_circle_payments["pkg: circle-payments"]
   server_routes["server/routes"] --> pkg_evm_core["pkg: evm-core"]
   server_routes["server/routes"] --> pkg_hedera_core["pkg: hedera-core"]

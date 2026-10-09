@@ -8,6 +8,7 @@
  * Mint failure throws RegistrationError("execution_failed") — NO record is
  * written, NO fake agentId (181 honest-refusal contract).
  */
+import type { CacheProvider } from "@agentbadge/cache";
 import { issueApiKey } from "./api-keys";
 import type { AgentRegistration, AgentRegistrationStore } from "./store";
 
@@ -147,24 +148,28 @@ export function buildAgentUri(input: RegisterInput): string {
 /* ------------------------- daily rate limiter --------------------------- */
 
 /**
- * Rolling-24h per-key counter (registration sybil guard, D-184-7).
- * In-memory on purpose — an ops-level throttle, not a hard security boundary
- * (honest-zero reputation is the real disincentive). Key = client IP.
+ * Per-IP daily registration cap (sybil guard, D-184-7).
+ * Cache bucket `regcap:<ip>:<day>` — shared across replicas, resets at UTC
+ * day boundary (48h TTL covers the trailing edge). In-memory fallback when
+ * no cache — an ops-level throttle, not a hard security boundary
+ * (honest-zero reputation is the real disincentive). Fail-open on backend
+ * error (incr returns 0 → allowed), per EPIC-144 passthrough contract.
  */
-export function createDailyLimiter(limit: number) {
-  const hits = new Map<string, number[]>();
-  const DAY = 86_400_000;
+export function createDailyLimiter(limit: number, cache?: CacheProvider | null) {
+  const fallback = new Map<string, number>();
+  const TTL_SEC = 48 * 3600;
+  const day = () => new Date().toISOString().slice(0, 10); // UTC yyyy-mm-dd
   return {
-    allow(key: string): boolean {
-      const now = Date.now();
-      const arr = (hits.get(key) ?? []).filter((t) => now - t < DAY);
-      if (arr.length >= limit) {
-        hits.set(key, arr);
-        return false;
+    async allow(ip: string): Promise<boolean> {
+      const key = `regcap:${ip}:${day()}`;
+      if (!cache) {
+        const n = (fallback.get(key) ?? 0) + 1;
+        fallback.set(key, n);
+        return n <= limit;
       }
-      arr.push(now);
-      hits.set(key, arr);
-      return true;
+      const n = await cache.incr(key, TTL_SEC).catch(() => 0);
+      if (n === 0) return true; // backend down → fail-open
+      return n <= limit;
     },
   };
 }
