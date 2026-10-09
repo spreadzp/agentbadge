@@ -444,6 +444,68 @@ export const payerBindingDeclarationSchema = z.object({
     .length(3),
 });
 
+// ─── x402 payment contract (SLICE-182-6) ─────────────────────────
+// Wire shape a buyer's validateAccepts must see: unknown scheme/network/
+// asset or extra.decimals !== 6 → the paying client refuses the entry.
+
+export const x402RequirementExtraSchema = z
+  .object({
+    name: z
+      .string()
+      .describe("EIP-712 domain name ('USDC' or 'GatewayWalletBatched')"),
+    version: z.string().describe("EIP-712 domain version ('2' / '1')"),
+    decimals: z
+      .literal(6)
+      .optional()
+      .describe("Asset decimals — always 6; clients must refuse anything else"),
+    payerBinding: payerBindingDeclarationSchema
+      .optional()
+      .describe("Payer-binding requirement on self-settle rails"),
+  })
+  .passthrough();
+
+export const x402PaymentRequirementSchema = z.object({
+  scheme: z
+    .enum(["exact", "eip3009-client-broadcast", "gateway-batch"])
+    .describe("Payment rail: facilitator exact, client-broadcast EIP-3009, or Circle Gateway batch"),
+  network: z.string().describe("CAIP-2 network id, e.g. eip155:5042002"),
+  asset: z.string().describe("USDC ERC-20 contract address on that network"),
+  amount: z
+    .string()
+    .describe("Atomic units as decimal string — never a float"),
+  payTo: z.string().describe("Seller/payee EOA"),
+  maxTimeoutSeconds: z.number().optional(),
+  extra: x402RequirementExtraSchema.optional(),
+});
+
+export const x402PaymentRequiredSchema = z.object({
+  x402Version: z.literal(2),
+  resource: z
+    .object({ url: z.string() })
+    .passthrough()
+    .optional(),
+  accepts: z
+    .array(x402PaymentRequirementSchema)
+    .describe("Buyer picks one entry — prefer exact, then gateway-batch"),
+  extensions: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe("e.g. extensions.payerBinding while PAYER_BIND_ENABLED"),
+});
+
+/** Refusal body contract: a refused paid call never settled on-chain. */
+export const x402HonestRefusalSchema = z.object({
+  charged: z
+    .literal(false)
+    .describe("Every refusal carries charged:false — the payment never settled"),
+  error: z.string(),
+  code: z.string(),
+  settlement_warning: z
+    .string()
+    .optional()
+    .describe("Present when a self-settled payment was refunded or pending reversal"),
+});
+
 export const rateLimitHeaders: Record<string, { description: string; schema: { type: "integer"; example: number } }> = {
   "X-RateLimit-Limit": {
     description: "Maximum number of requests per window",
@@ -499,5 +561,10 @@ export const openApiConfig = {
   },
   components: {
     headers: { ...rateLimitHeaders, ...payerBindingHeaders },
+    schemas: {
+      X402PaymentRequirement: z.toJSONSchema(x402PaymentRequirementSchema),
+      X402PaymentRequired: z.toJSONSchema(x402PaymentRequiredSchema),
+      X402HonestRefusal: z.toJSONSchema(x402HonestRefusalSchema),
+    },
   },
 };

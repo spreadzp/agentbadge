@@ -52,6 +52,10 @@ export interface ServiceSku {
   /** JSON Schema of the request body — mirrors the bazaar inputSchema
    *  of the same route (no drift, SLICE-179-2 asserts parity). */
   input_schema?: Record<string, unknown>;
+  /** Example input values (body for POST/PUT/PATCH, query params for
+   *  GET). The bazaar validator requires the example to satisfy the
+   *  required[] of input_schema. */
+  input_example?: Record<string, unknown>;
   output_example?: Record<string, unknown>;
   auth: SkuAuth;
   free_tier?: { limit: string; note: string };

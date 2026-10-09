@@ -27,6 +27,7 @@ export function bazaarExtensionOf(
   if (BODY_METHODS.has(sku.endpoint.method)) {
     return declareDiscoveryExtension({
       bodyType: "json",
+      ...(sku.input_example ? { input: sku.input_example } : {}),
       ...base,
       ...(sku.output_example
         ? { output: { example: sku.output_example } }

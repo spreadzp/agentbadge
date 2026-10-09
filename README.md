@@ -164,6 +164,22 @@ Related packages (published on npm as `@agentbadge/*`): `circle-payments` (x402 
 | Tests | Vitest (unit + e2e) |
 | Deploy | Fly.io → agentbadge.xyz |
 
+## Agent-first contract
+
+Paid surfaces are declared machine-readably — agents never scrape docs:
+
+- **`openapi/openapi.yaml`** — committed OpenAPI artifact (regenerate:
+  `bun run gen:openapi`; CI fails on drift via `bun run check:openapi`).
+  Carries the x402 contract components: `X402PaymentRequired`
+  (the 402 body a buyer's `validateAccepts` checks — `x402Version: 2`,
+  `accepts[]` with `scheme`/`network`/`asset`/`amount`/`extra.decimals: 6`),
+  `X402HonestRefusal` (`charged: false` on every refusal).
+- **`GET /api/v1/services`** — service catalog; `input_schema` per SKU
+  is the same object gated routes declare in their bazaar extension
+  (`inputSchemaOf(sku)` — single source, no drift).
+- **Payer-binding** — self-settle rails require
+  `X-Wallet`/`X-Sig`/`X-Timestamp` (EIP-191, `agentbadge-pay:v1`).
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).
