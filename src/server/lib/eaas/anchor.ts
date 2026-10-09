@@ -21,7 +21,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { encodeFunctionData } from "viem";
-import type { Hex } from "viem";
+import type { Account, Chain, Hex } from "viem";
 import { MEMO_ABI, memoIdFor } from "@agentbadge/circle-payments";
 import { logger } from "@agentbadge/passport";
 import type { StoredVerdict } from "./store";
@@ -109,6 +109,30 @@ export type SendAnchorFn = (tx: {
   to: `0x${string}`;
   data: Hex;
 }) => Promise<AnchorSendResult>;
+
+/**
+ * EOA-based SendAnchorFn — shared by the per-verdict anchorer (154-4) and
+ * the chain-head flusher (172-3). Throws on revert so callers retry.
+ */
+export function mkEoaSend(deps: {
+  wallet: {
+    sendTransaction: (a: {
+      account: Account; to: `0x${string}`; data: Hex; chain: Chain;
+    }) => Promise<Hex>
+  };
+  account: Account;
+  read: { waitForTransactionReceipt: (a: { hash: Hex }) => Promise<{ status: string; blockNumber: bigint }> };
+  chain: Chain;
+}): SendAnchorFn {
+  return async ({ to, data }) => {
+    const txHash = await deps.wallet.sendTransaction({
+      account: deps.account, to, data, chain: deps.chain,
+    });
+    const r = await deps.read.waitForTransactionReceipt({ hash: txHash });
+    if (r.status !== "success") throw new Error("anchor tx reverted");
+    return { txHash, blockNumber: r.blockNumber };
+  };
+}
 
 export interface AnchorerDeps {
   store: AnchorStore;

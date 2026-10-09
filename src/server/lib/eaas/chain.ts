@@ -76,7 +76,9 @@ export function createJsonChainStore(
     append: (e) => {
       const f = load();
       f.entries.push(e);
-      f.head = chainHeadOf(domain, f.entries);
+      // Spread order matters: keep flush/anchor metadata (172-3) while
+      // refreshing headHash+count from the entry list.
+      f.head = { ...f.head, ...chainHeadOf(domain, f.entries) };
       save(f);
     },
     head: () => load().head,
@@ -98,7 +100,7 @@ export function createMemoryChainStore(
     has: (id) => entries.some((e) => e.verdictId === id),
     append: (e) => {
       entries.push(e);
-      head = chainHeadOf(domain, entries);
+      head = { ...head, ...chainHeadOf(domain, entries) };
     },
     head: () => head,
     putHead: (h) => {

@@ -18,7 +18,8 @@ import { getDatabase } from "../lib/database";
 import { pickAnchorStore, pickContractStore, pickEvalStore, pickRequestStore, pickSubscriptionStore } from "../lib/eaas/db-stores";
 import { POLICY_REGISTRY } from "../lib/eaas/policies";
 import { createContractRegistry } from "../lib/eaas/contracts";
-import { createAnchorer, createJsonAnchorStore } from "../lib/eaas/anchor";
+import { createAnchorer, createJsonAnchorStore, mkEoaSend } from "../lib/eaas/anchor";
+import { setupVerdictChain } from "../lib/eaas/chain-wire";
 import { createEaasRoutes } from "../routes/eaas-api";
 import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../routes/eaas-billing-api";
@@ -62,14 +63,16 @@ export function wireEaas(
   const chain = arcChainFor(getConfig().bstock?.arcNetwork ?? net.chain.caip2);
   const read = publicClient(net);
   const account = key ? privateKeyToAccount(key) : null;
-  const wallet =
-    key && account
-      ? createWalletClient({
-        account,
-        chain,
-        transport: http(net.chain.rpcUrl),
-      })
-      : null;
+  const wallet = key && account
+    ? createWalletClient({
+      account,
+      chain,
+      transport: http(net.chain.rpcUrl),
+    })
+    : null;
+  // Shared send seam — anchorer (154-4) and chain flusher (172-3).
+  const eoaSend =
+    wallet && account ? mkEoaSend({ wallet, account, read, chain }) : undefined;
 
   // ─── SLICE-154-4: onchain memo anchoring ───────────────────────
   let anchorer: ReturnType<typeof createAnchorer> | undefined;
@@ -81,19 +84,7 @@ export function wireEaas(
       verdicts: store,
       memo: net.memo,
       selfAddress: account.address,
-      send: async (tx) => {
-        const txHash = await wallet!.sendTransaction({
-          account: account!,
-          to: tx.to,
-          data: tx.data,
-          chain,
-        });
-        const receipt = await read.waitForTransactionReceipt({ hash: txHash });
-        if (receipt.status !== "success") {
-          throw new Error("anchor tx reverted");
-        }
-        return { txHash, blockNumber: receipt.blockNumber };
-      },
+      send: eoaSend!,
       retries: cfg.anchorRetries,
       backoffMs: 5_000,
     });
@@ -103,6 +94,16 @@ export function wireEaas(
       "EaaS memo anchoring ON but no evaluator key — anchors disabled",
     );
   }
+
+  // ─── SLICE-172-2/3: verdict hash-chain — appends + head-anchor flush ──
+  const chainService = setupVerdictChain({
+    enabled: cfg.chainEnabled,
+    flushMs: cfg.chainFlushMs,
+    retries: cfg.anchorRetries,
+    memo: net.memo,
+    send: eoaSend,
+    selfAddress: account?.address,
+  });
 
   // Public verify reads the memo by memoId: getLogs(Memo, memoId) → block time.
   const findAnchor = async (memoId: Hex) => {
@@ -180,6 +181,7 @@ export function wireEaas(
           },
         }
         : {}),
+      ...(chainService ? { chain: chainService } : {}),
     }),
   );
 

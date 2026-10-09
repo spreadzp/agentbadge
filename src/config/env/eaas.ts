@@ -108,6 +108,12 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
   // SLICE-172-2: verdict hash-chain — on by default; explicit "0" off.
   // Writes .data/eaas-chain.json; no onchain calls (anchoring is 172-3).
   const chainEnabled = (process.env.ARC_CHAIN_ENABLED ?? "1") !== "0";
+  const chainFlushMs = intVar(
+    "ARC_CHAIN_FLUSH_MS",
+    24 * 60 * 60 * 1000,
+    1,
+    errors,
+  );
 
   // SLICE-154-6: async delivery — optional webhook HMAC secret + timeout.
   const webhookSecret = process.env.ARC_EAAS_WEBHOOK_SECRET || undefined;
@@ -127,6 +133,7 @@ export function loadEaas(errors: string[]): EaasEnvConfig | undefined {
     memoAnchor,
     anchorRetries,
     chainEnabled,
+    chainFlushMs,
     tierBasicUsd,
     tierProUsd,
     tierQuotas,

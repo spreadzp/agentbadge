@@ -247,12 +247,12 @@ export interface EaasEnvConfig {
   /** SLICE-154-6: async request timeout, seconds (ARC_EAAS_ASYNC_TIMEOUT_S, default 120). */
   asyncTimeoutSec: number;
   chainEnabled: boolean; // SLICE-172-2 (ARC_CHAIN_ENABLED, default 1)
+  chainFlushMs: number;  // SLICE-172-3 (ARC_CHAIN_FLUSH_MS, default 24h)
 }
 
 /** Agent Wallet (EPIC-155); absent = off — type in ./agent-wallet-types.ts (300-line cap). */
 export type { AgentWalletEnvConfig } from "./agent-wallet-types";
 import type { AgentWalletEnvConfig } from "./agent-wallet-types";
-
 /**
  * Cache layer config (EPIC-144, SLICE-144-2).
  * Present only when CACHE_ENABLED=true; absent = InMemoryCache fallback.
