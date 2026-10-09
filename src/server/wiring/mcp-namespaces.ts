@@ -173,6 +173,8 @@ export function wireMcpNamespaceRoutes(app: Hono): void {
         extra: { assetTransferMethod: ARC_SELF_SETTLE_SCHEME },
         extensions: bazaarExtensionFor("bstock:service-pass"),
         freePerMin: 1,
+        // EPIC-184: observer-tier keyed lane (Bearer agb_) — key:<agentId> bucket.
+        keyedPerMin: getConfig().agentRegistration?.keyRpm ?? 10,
         facilitator: createArcBstockFacilitator({
           sellerAddress: bstockCfg.payTo,
           chain,

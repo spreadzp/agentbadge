@@ -14,6 +14,8 @@ import {
   createJsonAgentRegistrationStore,
   createMemoryAgentRegistrationStore,
 } from "../lib/agent-registration/store";
+import { initAgentKeyAuth } from "../middleware/agent-key-auth";
+import { tryGetCache } from "../lib/cache";
 import { gasCappedWallet } from "../lib/eaas/settle";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import { createAgentRegisterRoutes } from "../routes/agents-register-api";
@@ -27,6 +29,10 @@ export function wireAgentRegistration(app: Hono): void {
     cfg?.store === "memory"
       ? createMemoryAgentRegistrationStore()
       : createJsonAgentRegistrationStore();
+
+  // SLICE-184-3: Bearer agb_ enrichment — shares this store instance so
+  // revocations are visible instantly; 60s cache busted on revoke.
+  initAgentKeyAuth({ store, cache: tryGetCache() });
 
   // Ops signer — ARC_OPS_KEY. Enabled-but-missing key: routes still mount,
   // POST answers 503 (fail honest, fail closed).

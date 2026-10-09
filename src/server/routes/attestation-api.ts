@@ -24,6 +24,7 @@ import {
   ARC_SELF_SETTLE_SCHEME,
 } from "@agentbadge/circle-payments";
 import { bstockFreemium } from "../middleware/bstock-freemium";
+import { getConfig } from "../../config/env";
 import { createArcBstockFacilitator } from "../lib/bstock/arc-facilitator";
 import { assertSafeTarget } from "../../agent-readiness/scanner/ssrf/ip-guard";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
@@ -95,6 +96,7 @@ function attestationPaidGate() {
         maxTimeoutSeconds: 345600,
         extra: { assetTransferMethod: ARC_SELF_SETTLE_SCHEME },
         freePerMin: 1,
+        keyedPerMin: getConfig().agentRegistration?.keyRpm ?? 10,
         facilitator: createArcBstockFacilitator({
           sellerAddress:
             process.env.ATTESTATION_X402_PAY_TO ??
@@ -119,7 +121,8 @@ async function defaultScan(url: string): Promise<AttestationScanResult> {
   const reportHash = keccak256(toBytes(JSON.stringify(report)));
   return {
     score: report.score,
-    status: report.status ?? (report.score >= 70 ? "ready" : "needs-work"),
+    // ScanReport has no top-level status — derive from score threshold.
+    status: report.score >= 70 ? "ready" : "needs-work",
     reportHash,
   };
 }

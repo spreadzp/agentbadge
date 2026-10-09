@@ -8,6 +8,7 @@ import type { Hono } from "hono";
 import { keccak256, encodePacked, stringToHex } from "viem";
 
 import { bstockFreemium } from "../middleware/bstock-freemium";
+import { getConfig } from "../../config/env";
 import {
   bstockAuth,
   bstockRateLimit,
@@ -49,23 +50,24 @@ export function wireFxDeltaNamespace(app: Hono): void {
     bstockAuth(tokens),
     ...(fac
       ? [
-          bstockFreemium({
-            serviceId: keccak256(
-              encodePacked(
-                ["bytes32"],
-                [stringToHex("fxdelta-celo-premium", { size: 32 })],
-              ),
+        bstockFreemium({
+          serviceId: keccak256(
+            encodePacked(
+              ["bytes32"],
+              [stringToHex("fxdelta-celo-premium", { size: 32 })],
             ),
-            priceUsd: process.env.FXDELTA_PRICE_USD ?? "0.005",
-            durationSec: 300,
-            payTo: process.env.FXDELTA_PAY_TO ?? "",
-            networkId: CELO_X402_NETWORK,
-            usdcAddress: CELO_X402_ASSETS.USDC.address,
-            scheme: CELO_X402_SCHEME,
-            freePerMin: 1,
-            facilitator: fac,
-          }),
-        ]
+          ),
+          priceUsd: process.env.FXDELTA_PRICE_USD ?? "0.005",
+          durationSec: 300,
+          payTo: process.env.FXDELTA_PAY_TO ?? "",
+          networkId: CELO_X402_NETWORK,
+          usdcAddress: CELO_X402_ASSETS.USDC.address,
+          scheme: CELO_X402_SCHEME,
+          freePerMin: 1,
+          keyedPerMin: getConfig().agentRegistration?.keyRpm ?? 10,
+          facilitator: fac,
+        }),
+      ]
       : []),
     bstockRateLimit(Number(process.env.FXDELTA_RATE_LIMIT_PER_MIN ?? 60)),
     bstockSseCap(

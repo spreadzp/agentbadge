@@ -18,6 +18,7 @@ import {
   lookupAgentByKey,
   revokeApiKey,
 } from "../lib/agent-registration/api-keys";
+import { bustAgentKeyCache } from "../middleware/agent-key-auth";
 import {
   createDailyLimiter,
   registerAgent,
@@ -250,6 +251,9 @@ export function createAgentRegisterRoutes(
       const rec = await meGate(c);
       if (rec instanceof Response) return rec;
       await revokeApiKey(deps.store, rec.agentId, "self");
+      // SLICE-184-3: kill the 60s auth-cache entry so revoke is instant.
+      const rawKey = bearerKey(c);
+      if (rawKey) await bustAgentKeyCache(hashApiKey(rawKey));
       logger.info("agent key self-revoked", { agentId: rec.agentId });
       return c.json({ status: "revoked", agent_id: rec.agentId });
     },

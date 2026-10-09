@@ -93,6 +93,9 @@ export interface BstockFreemiumConfig {
   maxTimeoutSeconds?: number;
   /** Free-tier requests per minute per identity (default 1). */
   freePerMin?: number;
+  /** SLICE-184-3: free rpm for observer-tier Bearer agb_ requests — own
+   *  `key:<agentId>` bucket instead of the anon limit. Absent → anon limit. */
+  keyedPerMin?: number;
   /** Facilitator client — injectable for tests. */
   facilitator: BstockFacilitator;
   /** On-chain pass check — injectable for tests. Omit to disable the
@@ -261,16 +264,20 @@ export function bstockFreemium(
     // 3. Free tier: freePerMin req/min per identity → 402 over.
     //    Identity = X-Wallet → agentId (bearer) → client IP, so the gate
     //    also works for anonymous endpoints (attestation, 151-7).
-    //    cache.incr is atomic across replicas (INCR+EXPIRE); on backend
-    //    error it returns 0 → request passes (fail-open for rate limits).
+    //    SLICE-184-3: observer tier (Bearer agb_ key) gets its own
+    //    `key:<agentId>` bucket at keyedPerMin — a wider free lane, not
+    //    a discount on paid. cache.incr is atomic across replicas
+    //    (INCR+EXPIRE); backend error returns 0 → pass (fail-open).
     const ip =
       c.req.header("cf-connecting-ip") ??
       c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
-    const key =
-      wallet ??
-      (c.get("agentId") as string | undefined) ??
-      ip ??
-      "anonymous";
+    const agentId = c.get("agentId") as string | undefined;
+    const keyed =
+      c.get("agentTier") === "observer" &&
+      !!agentId &&
+      cfg.keyedPerMin !== undefined;
+    const key = keyed ? `key:${agentId}` : (wallet ?? agentId ?? ip ?? "anonymous");
+    const limit = keyed ? cfg.keyedPerMin! : freePerMin;
     const cache = tryGetCache();
     let count: number;
     if (cache) {
@@ -284,7 +291,7 @@ export function bstockFreemium(
       }
       count = ++b.count;
     }
-    if (count > freePerMin) {
+    if (count > limit) {
       return paymentRequired(c, requirements, cfg);
     }
     await next();

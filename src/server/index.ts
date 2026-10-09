@@ -18,6 +18,7 @@ import { wireAgentRegistration } from "./wiring/agent-registration";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
+import { agentKeyAuth } from "./middleware/agent-key-auth";
 import { CacheRateLimitStore } from "./middleware/rate-limit-redis-store";
 import { getCache } from "./lib/cache";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
@@ -86,6 +87,9 @@ app.use(
       : undefined,
   ),
 );
+// EPIC-184 SLICE-184-3: optional Bearer agb_ enrichment — sets agentId/
+// agentTier for downstream free-tier gates; bad/revoked agb_ keys → 401.
+app.use(agentKeyAuth());
 app.use(bazaarExtensionMiddleware());
 
 // SLICE-130-7: GA4 pageview tracking — fire-and-forget for HTML 200 GET responses
