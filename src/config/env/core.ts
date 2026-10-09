@@ -13,6 +13,7 @@ import { loadCirclePayments } from "./circle-payments";
 import { loadDatabase } from "./database";
 import { loadEaas } from "./eaas";
 import { loadAgentWallet } from "./agent-wallet";
+import { loadAgentRegistration } from "./agent-registration";
 import { loadKeeperHub } from "./keeperhub";
 import { loadMarketplace } from "./marketplace";
 import { loadScanPacks } from "./scan-packs";
@@ -197,6 +198,7 @@ export function loadConfig(): AppConfig {
   const database = loadDatabase(errors);
   const cache = loadCache(errors);
   const eaas = loadEaas(errors);
+  const agentRegistration = loadAgentRegistration(errors);
   const agentWallet = loadAgentWallet(errors);
 
   const hederaNetwork = process.env.HEDERA_NETWORK ?? "testnet";
@@ -238,6 +240,7 @@ export function loadConfig(): AppConfig {
     bstock,
     eaas,
     agentWallet,
+    agentRegistration,
     database,
     cache,
     scanPacks,

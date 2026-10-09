@@ -191,6 +191,36 @@ export const ERROR_CATALOG: ErrorEntry[] = [
     recovery_action: "change_request",
   },
 
+  // ─── Agent api keys (EPIC-184) ───
+  {
+    code: "agent_key_invalid",
+    http_status: 401,
+    agent_impact: "The Bearer api key is missing or malformed.",
+    hint_template:
+      "Send Authorization: Bearer agb_<key> exactly as returned by POST /api/v1/agents/register. Keys are shown once.",
+    affected_routes: ["/api/v1/agents/me"],
+    recovery_action: "change_request",
+  },
+  {
+    code: "agent_key_revoked",
+    http_status: 401,
+    agent_impact: "The api key was revoked (self-revoke or admin action).",
+    hint_template:
+      "Revocation is instant. Register a fresh agent via POST /api/v1/agents/register to get a new key.",
+    affected_routes: ["/api/v1/agents/me"],
+    recovery_action: "choose_alternative",
+  },
+  {
+    code: "register_rate_limited",
+    http_status: 429,
+    agent_impact:
+      "The registration rate limit was exceeded (daily cap per IP).",
+    hint_template:
+      "Wait until the 24h window passes. Registration is free but throttled as a sybil guard.",
+    affected_routes: ["/api/v1/agents/register"],
+    recovery_action: "wait_and_retry",
+  },
+
   // ─── Rate limiting / server errors ───
   {
     code: "rate_limit_exceeded",

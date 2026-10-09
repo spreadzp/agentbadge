@@ -51,6 +51,11 @@ export const ErrorCodes = {
 
   // 429 — rate limit
   RATE_LIMITED: "RATE_LIMITED",
+  REGISTER_RATE_LIMITED: "register_rate_limited",
+
+  // 401 — agent api keys (EPIC-184; snake_case wire values)
+  AGENT_KEY_INVALID: "agent_key_invalid",
+  AGENT_KEY_REVOKED: "agent_key_revoked",
 
   // Refusal contract (EPIC-181; snake_case wire values matching
   // REFUSAL_MATRIX in lib/refusal-contract.ts)

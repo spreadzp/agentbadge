@@ -171,10 +171,7 @@ export interface KeeperHubEnvConfig {
   };
 }
 
-/**
- * Database persistence config (EPIC-143, SLICE-143-4).
- * Present only when DATABASE_ENABLED=true; absent = in-memory fallback.
- */
+/** Database persistence config (EPIC-143). DATABASE_ENABLED=true else in-memory. */
 export interface DatabaseEnvConfig {
   enabled: boolean;
   /** Pooled runtime URL (DATABASE_URL). */
@@ -253,10 +250,9 @@ export interface EaasEnvConfig {
 /** Agent Wallet (EPIC-155); absent = off — type in ./agent-wallet-types.ts (300-line cap). */
 export type { AgentWalletEnvConfig } from "./agent-wallet-types";
 import type { AgentWalletEnvConfig } from "./agent-wallet-types";
-/**
- * Cache layer config (EPIC-144, SLICE-144-2).
- * Present only when CACHE_ENABLED=true; absent = InMemoryCache fallback.
- */
+export type { AgentRegistrationEnvConfig } from "./agent-registration-types";
+import type { AgentRegistrationEnvConfig } from "./agent-registration-types";
+/** Cache layer config (EPIC-144). CACHE_ENABLED=true else InMemoryCache. */
 export interface CacheEnvConfig {
   enabled: boolean;
   backend: "memory" | "valkey" | "upstash";
@@ -293,6 +289,7 @@ export interface AppConfig {
   bstock?: BstockEnvConfig;
   eaas?: EaasEnvConfig;
   agentWallet?: AgentWalletEnvConfig;
+  agentRegistration?: AgentRegistrationEnvConfig;
   database?: DatabaseEnvConfig;
   cache?: CacheEnvConfig;
   scanPacks: ScanPacksConfig;

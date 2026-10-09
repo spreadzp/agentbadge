@@ -14,6 +14,7 @@ import { configureVenueBilling } from "./routes/venue-api";
 import { createSettleSeam } from "./lib/x402-settle-seam";
 import { venueMonthlyPriceAtomic } from "./lib/venue/billing";
 import { wireAgentWallet, wireSpendEnvelopeGates } from "./wiring/agent-wallet";
+import { wireAgentRegistration } from "./wiring/agent-registration";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
@@ -204,6 +205,11 @@ wireEaas(app, { circleRuntime });
 // Circle CLI read mirror. Gated on AGENT_WALLET_ENABLED; CLI missing →
 // graceful "unavailable", registry works regardless.
 wireAgentWallet(app);
+
+// EPIC-184 SLICE-184-2: self-serve agent registration (/api/v1/agents/*).
+// Routes always mount — handlers self-gate on AGENT_REGISTER_ENABLED +
+// ARC_OPS_KEY so a misconfig answers honest 503, not a silent 404.
+wireAgentRegistration(app);
 
 // EPIC-140: ops/monitoring routes extracted to routes/index.ts
 registerOpsRoutes(app);
