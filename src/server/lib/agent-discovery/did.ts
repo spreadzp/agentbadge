@@ -60,9 +60,14 @@ export function buildDidWebDocument(
     authentication: [vmId],
     assertionMethod: [vmId],
     // Arc-era identity anchors: ERC-8004 registry refs (not DIDs).
+    // EPIC-194-7 audit (H-3): agent-scoped ref only for a real registration —
+    // never claim `...:0` (token 0 is someone else's agent). Mirrors the
+    // registrations[] honest-absence guard in wellknown.ts.
     alsoKnownAs: [
       `eip155:${e.chainId}:${e.registry}`,
-      `eip155:${e.chainId}:${e.registry}:${e.agentId}`,
+      ...(e.agentId !== "" && e.agentId !== "0"
+        ? [`eip155:${e.chainId}:${e.registry}:${e.agentId}`]
+        : []),
     ],
     service: [
       {

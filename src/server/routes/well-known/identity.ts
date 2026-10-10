@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
@@ -41,9 +42,12 @@ identityRoutes.get(
     if (!material) return c.notFound();
 
     const host = new URL(BASE_URL).host;
-    if (!didConfigCache || didConfigCache.key !== material.pkcs8) {
+    // EPIC-194-7 audit (M-4): cache key is a fingerprint, not the key itself —
+    // raw pkcs8 bytes must not live in a long-lived cache object.
+    const keyFingerprint = createHash("sha256").update(material.pkcs8).digest("hex");
+    if (!didConfigCache || didConfigCache.key !== keyFingerprint) {
       didConfigCache = {
-        key: material.pkcs8,
+        key: keyFingerprint,
         jwt: await signDomainLinkageCredential({
           pkcs8: material.pkcs8,
           did: `did:web:${host}`,
@@ -96,10 +100,17 @@ identityRoutes.get(
   }),
   (c) => {
     const baseUrl = BASE_URL;
+    const host = new URL(baseUrl).host;
     const resource = c.req.query("resource") ?? `${baseUrl}/`;
 
-    // If querying for a DID, return links to DID resolver and agent card
-    if (resource.startsWith("did:hcs:") || resource.startsWith("did:")) {
+    // EPIC-194-7 audit (C-1): never reflect an arbitrary resource verbatim —
+    // a forged ?resource= would be served as `subject` under our domain
+    // authority (identity spoofing, publicly cacheable). Resolve only
+    // identities we actually own; everything else is a clean 404.
+    if (resource.startsWith("did:")) {
+      if (resource !== `did:web:${host}` && !resource.startsWith("did:hcs:")) {
+        return c.notFound();
+      }
       return c.json(
         {
           subject: resource,
@@ -129,7 +140,9 @@ identityRoutes.get(
       );
     }
 
-    // Default: return links for the service itself
+    // Default: JRD for the service itself — only for resources that ARE us
+    const ours = resource === baseUrl || resource === `${baseUrl}/` || resource === `acct:agentbadge@${host}`;
+    if (!ours) return c.notFound();
     return c.json(
       {
         subject: resource,

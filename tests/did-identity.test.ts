@@ -251,3 +251,94 @@ describe("SLICE-178-7: key plumbing", () => {
     delete process.env.DID_SIGNING_KEY;
   });
 });
+
+describe("SLICE-194-7 audit regressions", () => {
+  // C-1: WebFinger must not reflect arbitrary ?resource= as subject under our
+  // domain authority. Only our own did:web, HCS agent DIDs, our baseUrl, or
+  // acct:agentbadge@<host> resolve; everything else is a clean 404.
+  it("webfinger: foreign DID / arbitrary subject → 404", async () => {
+    const app = makeDidApp();
+    for (const r of [
+      "did:ion:EiCsiAttacker",
+      "did:web:evil.example.com",
+      "did:pkh:eip155:1:0x000000000000000000000000000000000000dead",
+      "https://evil.example.com/steal",
+      "acct:victim@bank.example",
+      "../../etc/passwd",
+    ]) {
+      const res = await app.request(
+        `/.well-known/webfinger?resource=${encodeURIComponent(r)}`,
+      );
+      expect(res.status, `resource=${r}`).toBe(404);
+    }
+  });
+
+  it("webfinger: own did:web + did:hcs + acct + baseUrl → 200 JRD", async () => {
+    const app = makeDidApp();
+    for (const r of [
+      "did:web:agentbadge.xyz",
+      "did:hcs:testnet_0.0.1234",
+      "acct:agentbadge@agentbadge.xyz",
+      "https://agentbadge.xyz",
+      "https://agentbadge.xyz/",
+    ]) {
+      const res = await app.request(
+        `/.well-known/webfinger?resource=${encodeURIComponent(r)}`,
+      );
+      expect(res.status, `resource=${r}`).toBe(200);
+      const jrd = (await res.json()) as { subject: string };
+      expect(jrd.subject).toBe(r);
+    }
+  });
+
+  // H-1/H-2: ERC-8004 env normalization at the impure edge.
+  it("collectSources: junk ERC8004_CHAIN_ID → 5042 fallback", () => {
+    const prev = process.env.ERC8004_CHAIN_ID;
+    process.env.ERC8004_CHAIN_ID = "garbage";
+    try {
+      const src = collectSources();
+      expect(src.wellKnownEnv?.erc8004.chainId).toBe(5042);
+    } finally {
+      if (prev === undefined) delete process.env.ERC8004_CHAIN_ID;
+      else process.env.ERC8004_CHAIN_ID = prev;
+    }
+  });
+
+  it("collectSources: ' 0' / '00' / junk ERC8004_AGENT_ID → '' (honest absence)", () => {
+    const prev = process.env.ERC8004_AGENT_ID;
+    try {
+      for (const bad of [" 0", "00", "0\n", "abc", "0x0"]) {
+        process.env.ERC8004_AGENT_ID = bad;
+        const src = collectSources();
+        expect(src.wellKnownEnv?.erc8004.agentId, `agentId="${bad}"`).toBe("");
+      }
+      process.env.ERC8004_AGENT_ID = "007";
+      expect(collectSources().wellKnownEnv?.erc8004.agentId).toBe("7");
+    } finally {
+      if (prev === undefined) delete process.env.ERC8004_AGENT_ID;
+      else process.env.ERC8004_AGENT_ID = prev;
+    }
+  });
+
+  // H-3: did.json never claims agentId 0 — agent-scoped eip155 ref only
+  // appears when a real registration exists.
+  it("did.json: absent agentId → alsoKnownAs has registry only, no ':0' tail", async () => {
+    process.env.DID_SIGNING_KEY = await makeKey();
+    const prev = process.env.ERC8004_AGENT_ID;
+    delete process.env.ERC8004_AGENT_ID;
+    try {
+      const doc = (await (
+        await makeDidApp().request("/.well-known/did.json")
+      ).json()) as { alsoKnownAs?: string[] };
+      const aka = doc.alsoKnownAs ?? [];
+      expect(aka.some((u) => /eip155:\d+:0x[0-9a-fA-F]+$/.test(u))).toBe(true);
+      expect(aka.some((u) => /eip155:\d+:0x[0-9a-fA-F]+:\d+$/.test(u))).toBe(
+        false,
+      );
+      expect(JSON.stringify(aka)).not.toContain(":0\"");
+    } finally {
+      if (prev === undefined) delete process.env.ERC8004_AGENT_ID;
+      else process.env.ERC8004_AGENT_ID = prev;
+    }
+  });
+});

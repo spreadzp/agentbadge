@@ -49,6 +49,11 @@ const bytesToBase64Url = (bytes: Uint8Array): string =>
  */
 export function didKeyMaterialFromPkcs8(pkcs8: string): DidKeyMaterial | null {
   try {
+    // EPIC-194-7 audit (N-6): accept only PKCS8 armor — a different PEM type
+    // must be rejected outright, not stripped and passed to the prefix check.
+    if (pkcs8.includes("-----") && !pkcs8.includes("-----BEGIN PRIVATE KEY-----")) {
+      return null;
+    }
     const der = pkcs8.includes("-----")
       ? pkcs8.replace(/-----[A-Z ]+-----/g, "").replace(/\s+/g, "")
       : pkcs8.trim();

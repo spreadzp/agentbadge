@@ -185,6 +185,37 @@ export function collectSources(app?: Hono): DiscoverySources {
 
 /** EIP-8004 registries — canonical IdentityRegistry (mainnets). */
 export const ERC8004_REGISTRY_MAINNET = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
+const ERC8004_CHAIN_MAINNET = 5042;
+const ERC8004_CHAIN_TESTNET = 5042002;
+
+/**
+ * EPIC-194 audit (194-7): normalize ERC-8004 env at the impure edge.
+ * chainId → positive int else fallback+warn (H-1: NaN/"0" would publish eip155:NaN);
+ * agentId → decimal digits, "0"/"" mean unregistered → "" honest absence
+ * (H-2: " 0"/"00"/junk no longer bypasses the registrations[] guard);
+ * registry → strict 0x-hex shape else fallback (M-1).
+ * M-5: warn when prod anchors identity to the testnet singleton.
+ */
+function collectErc8004Env(): {
+  chainId: number;
+  registry: string;
+  agentId: string;
+} {
+  const rawChain = process.env.ERC8004_CHAIN_ID;
+  const parsedChain = rawChain === undefined ? NaN : Number(rawChain);
+  const chainId = Number.isInteger(parsedChain) && parsedChain > 0 ? parsedChain : ERC8004_CHAIN_MAINNET;
+  if (rawChain !== undefined && chainId !== parsedChain) {
+    console.warn(`[discovery] invalid ERC8004_CHAIN_ID="${rawChain}" — falling back to ${ERC8004_CHAIN_MAINNET}`);
+  }
+  const rawRegistry = process.env.ERC8004_REGISTRY;
+  const registry = rawRegistry && /^0x[0-9a-fA-F]{40}$/.test(rawRegistry) ? rawRegistry : ERC8004_REGISTRY_MAINNET;
+  const rawAgent = (process.env.ERC8004_AGENT_ID ?? "").trim();
+  const agentId = /^\d+$/.test(rawAgent) && BigInt(rawAgent) > 0n ? String(BigInt(rawAgent)) : "";
+  if (process.env.NODE_ENV === "production" && chainId === ERC8004_CHAIN_TESTNET) {
+    console.warn("[discovery] ERC8004_CHAIN_ID=5042002 (Arc TESTNET) in production — identity anchors point at testnet");
+  }
+  return { chainId, registry, agentId };
+}
 
 /** Live env reads for .well-known manifests (impure edge). */
 function collectWellKnownEnv(): NonNullable<DiscoverySources["wellKnownEnv"]> {
@@ -198,13 +229,7 @@ function collectWellKnownEnv(): NonNullable<DiscoverySources["wellKnownEnv"]> {
     directoryTopicId: process.env.DIRECTORY_TOPIC_ID,
     auditTopicId: process.env.AUDIT_TOPIC_ID,
     evmChainId: process.env.ARC_CHAIN_ID ?? "5042",
-    erc8004: {
-      // EPIC-194-1: dedicated env — ARC_CHAIN_ID means "payments chain"
-      // (legitimately testnet in some envs); identity anchors are mainnet.
-      chainId: Number(process.env.ERC8004_CHAIN_ID ?? 5042),
-      registry: process.env.ERC8004_REGISTRY ?? ERC8004_REGISTRY_MAINNET,
-      agentId: process.env.ERC8004_AGENT_ID ?? "0",
-    },
+    erc8004: collectErc8004Env(),
     contracts: {
       trustRegistry: process.env.TRUST_REGISTRY_ADDRESS ?? "",
       trustBadge: process.env.TRUST_BADGE_ADDRESS ?? "",

@@ -154,8 +154,8 @@
     "ab:payment": {
       "protocol": "x402",
       "scheme": "exact",
-      "network": "hedera:testnet",
-      "asset": "HBAR",
+      "network": "eip155:5042002",
+      "asset": "USDC",
       "facilitator": "https://api.testnet.blocky402.com"
     },
     "blockchain": {

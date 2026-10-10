@@ -21,7 +21,7 @@ import {
   existsSync,
   statSync,
 } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 import { MANIFEST_REGISTRY } from "./manifests";
 import type { GeneratedManifest } from "./index";
@@ -41,6 +41,11 @@ export function writeDiscoverySnapshots(
     const m = manifests.get(entry.path);
     if (!m || m.redirectTo) continue;
     const file = join(outDir, entry.publicPath);
+    // EPIC-194-7 audit (N-4): refuse path escape — publicPath is code-owned
+    // today, but a future "../" entry must not write outside outDir.
+    if (!resolve(file).startsWith(resolve(outDir) + "/")) {
+      throw new Error(`snapshot publicPath escapes outDir: ${entry.publicPath}`);
+    }
     mkdirSync(join(file, ".."), { recursive: true });
     writeFileSync(file, m.body, "utf-8");
     written.push(entry.publicPath);

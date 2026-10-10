@@ -130,9 +130,10 @@ export function buildAgentCard(src: DiscoverySources): string {
       "ab:payment": {
         protocol: "x402",
         scheme: "exact",
-        network:
-          env?.hederaNetwork === "mainnet" ? "hedera:mainnet" : "hedera:testnet",
-        asset: "HBAR",
+        // EPIC-194-7 audit (M-6): payments run on Arc USDC, not Hedera HBAR —
+        // the hederaNetwork env describes HCS topics, not the payment rail.
+        network: `eip155:${env?.evmChainId ?? "5042"}`,
+        asset: "USDC",
         facilitator: env?.facilitatorUrl,
       },
       blockchain: {
