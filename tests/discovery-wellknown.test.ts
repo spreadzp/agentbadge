@@ -149,7 +149,12 @@ describe("buildErc8004Agent — registration-v1", () => {
     expect(names).toContain("web");
     expect(names).toContain("A2A");
     expect(names).toContain("MCP");
-    for (const s of services) expect(s.endpoint.startsWith("https://")).toBe(true);
+    expect(names).toContain("DID");
+    for (const s of services) {
+      // did:web:… is a URI anchor, not an http URL
+      if (!s.endpoint.startsWith("http")) continue;
+      expect(s.endpoint.startsWith("https://")).toBe(true);
+    }
   });
 
   it("registrations carry eip155 agentRegistry", () => {
@@ -275,10 +280,44 @@ describe("routes: content-types, redirects, gates", () => {
   });
 
   it("all URLs are absolute on the BASE_URL host", async () => {
-    const res = await app.request("/.well-known/erc8004-agent.json");
+    const res = await app.request("/.well-known/agent-registration.json");
     const body = (await res.json()) as { services: Array<{ endpoint: string }> };
     for (const s of body.services) {
+      // did:web:… is a URI anchor, not an http URL — skip non-http endpoints
+      if (!s.endpoint.startsWith("http")) continue;
       expect(s.endpoint.startsWith(BASE)).toBe(true);
     }
+  });
+
+  it("GET /.well-known/agent-registration.json → valid registration-v1 (EPIC-194-2)", async () => {
+    const res = await app.request("/.well-known/agent-registration.json");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      type: string;
+      name: string;
+      description: string;
+      image: string;
+      services: Array<{ name: string; endpoint: string }>;
+      x402Support: boolean;
+      active: boolean;
+      supportedTrust: string[];
+      registrations: Array<{ agentId: string; agentRegistry: string }>;
+    };
+    expect(body.type).toBe("https://eips.ethereum.org/EIPS/eip-8004#registration-v1");
+    expect(body.name).toBe("AgentBadge");
+    expect(body.description.length).toBeGreaterThan(0);
+    expect(body.image).toMatch(/^https:\/\/staging\.agentbadge\.xyz\//);
+    const names = body.services.map((s) => s.name);
+    expect(names).toEqual(expect.arrayContaining(["web", "A2A", "MCP", "DID"]));
+    expect(body.x402Support).toBe(true);
+    expect(body.active).toBe(true);
+    expect(body.supportedTrust).toEqual(["reputation"]);
+    expect(Array.isArray(body.registrations)).toBe(true);
+    // honest absence — no claim until 194-3 registers on-chain
+    // (test sources fixture has agentId "7" → entry present w/ Arc mainnet registry)
+    expect(body.registrations[0].agentId).toBe("7");
+    expect(body.registrations[0].agentRegistry).toBe(
+      "eip155:5042:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    );
   });
 });

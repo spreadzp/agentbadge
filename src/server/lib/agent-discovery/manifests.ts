@@ -83,11 +83,19 @@ export const MANIFEST_REGISTRY: ManifestEntry[] = [
     build: buildApiCatalog,
   },
   {
+    path: "/.well-known/agent-registration.json",
+    publicPath: ".well-known/agent-registration.json",
+    contentType: "application/json",
+    cacheMaxAge: 3600,
+    summary: "EIP-8004 agent registration (registration-v1) — canonical metadataURI (EPIC-194-2)",
+    build: buildErc8004Agent,
+  },
+  {
     path: "/.well-known/erc8004-agent.json",
     publicPath: ".well-known/erc8004-agent.json",
     contentType: "application/json",
     cacheMaxAge: 3600,
-    summary: "EIP-8004 agent registration (registration-v1)",
+    summary: "EIP-8004 agent registration (registration-v1) — legacy alias",
     build: buildErc8004Agent,
   },
   {

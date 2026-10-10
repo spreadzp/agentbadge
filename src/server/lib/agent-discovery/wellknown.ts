@@ -77,6 +77,7 @@ export function buildErc8004Agent(src: DiscoverySources): string {
     description:
       src.apiInfo?.description ??
       "Agent readiness scanner + x402 paid services on Arc",
+    image: `${b}/icons/og-image.png`,
     services: [
       { name: "web", endpoint: b },
       {
@@ -85,15 +86,22 @@ export function buildErc8004Agent(src: DiscoverySources): string {
         version: "1.0",
       },
       { name: "MCP", endpoint: `${b}/mcp`, version: "2025-06-18" },
+      { name: "DID", endpoint: "did:web:agentbadge.xyz" },
     ],
     x402Support: true,
-    supportedTrust: ["reputation", "crypto-economic"],
-    registrations: [
-      {
-        agentId: e.agentId,
-        agentRegistry: `eip155:${e.chainId}:${e.registry}`,
-      },
-    ],
+    active: true,
+    supportedTrust: ["reputation"],
+    // EPIC-194-2: honest absence — emit no registration claim until
+    // 194-3 registers on-chain and ERC8004_AGENT_ID is set to real id.
+    registrations:
+      e.agentId !== "0" && e.agentId !== ""
+        ? [
+          {
+            agentId: e.agentId,
+            agentRegistry: `eip155:${e.chainId}:${e.registry}`,
+          },
+        ]
+        : [],
   });
 }
 
