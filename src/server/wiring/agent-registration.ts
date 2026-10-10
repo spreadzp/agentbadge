@@ -3,14 +3,18 @@
 // missing flag/key answers honest 503, not a bare 404). Mint signer is the
 // dedicated ARC_OPS_KEY — never the evaluator/master key (D-184-6).
 
-import { createWalletClient, http } from "viem";
+import { createWalletClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hono } from "hono";
 import { logger } from "@agentbadge/passport";
-import {
-  createErc8004,
-  ERC8004_ABI,
-} from "@agentbadge/circle-payments";
+import { createErc8004 } from "@agentbadge/circle-payments";
+
+// Standard ERC-721 transferFrom. Published circle-payments@0.1.18
+// ERC8004_ABI lacks it (added post-publish in src) — keep it local
+// until a new version ships (SLICE-184-8 testnet finding).
+const ERC721_TRANSFER_FROM_ABI = parseAbi([
+  "function transferFrom(address from, address to, uint256 tokenId)",
+]);
 
 import { getConfig } from "../../config/env";
 import {
@@ -98,7 +102,7 @@ export function wireAgentRegistration(app: Hono): void {
         const minted = await erc8004.registerMirror(wallet, agentUri);
         const transferHash = await wallet.writeContract({
           address: net.identityRegistry,
-          abi: ERC8004_ABI,
+          abi: ERC721_TRANSFER_FROM_ABI,
           functionName: "transferFrom",
           args: [account.address, owner, minted.agentId],
         });

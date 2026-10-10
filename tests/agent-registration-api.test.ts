@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { createAgentRegisterRoutes } from "../src/server/routes/agents-register-api";
 import { createMemoryAgentRegistrationStore } from "../src/server/lib/agent-registration/store";
+import { createDailyLimiter } from "../src/server/lib/agent-registration/daily-bucket";
 import {
   buildAgentUri,
-  createDailyLimiter,
   registerAgent,
   RegistrationError,
 } from "../src/server/lib/agent-registration/register";
@@ -277,46 +277,64 @@ const okSponsoredMint: SponsoredMintFn = async (_uri, _owner) => ({
   ownerTxHash: "0xtransfer77" as `0x${string}`,
 });
 
-const signIntent = (name: string) =>
+const freshExpiry = () => Math.floor(Date.now() / 1000) + 300;
+const signIntent = (name: string, expiresAt: number) =>
   TEST_ACCOUNT.signMessage({
-    message: buildRegisterIntent(CHAIN_ID, REGISTRY, TEST_OWNER, name),
+    message: buildRegisterIntent({
+      chainId: CHAIN_ID,
+      registryAddress: REGISTRY,
+      owner: TEST_OWNER,
+      name,
+      expiresAt,
+    }),
   });
+/** Signs with a fresh expiry and returns everything a POST body needs. */
+const signed = async (name: string) => {
+  const expiresAt = freshExpiry();
+  return { signature: await signIntent(name, expiresAt), expiresAt };
+};
 
 describe("verifyRegisterIntent", () => {
   it("round-trip: correct signer+message verifies", async () => {
-    const signature = await signIntent("spon-agent");
+    const expiresAt = freshExpiry();
+    const signature = await signIntent("spon-agent", expiresAt);
     expect(
       await verifyRegisterIntent({
         chainId: CHAIN_ID,
         registryAddress: REGISTRY,
         owner: TEST_OWNER,
         name: "spon-agent",
+        expiresAt,
         signature,
       }),
     ).toBe(true);
   });
 
   it("rejects wrong name (bound field mismatch)", async () => {
-    const signature = await signIntent("spon-agent");
+    const expiresAt = freshExpiry();
+    const signature = await signIntent("spon-agent", expiresAt);
     expect(
       await verifyRegisterIntent({
         chainId: CHAIN_ID,
         registryAddress: REGISTRY,
         owner: TEST_OWNER,
         name: "other-agent",
+        expiresAt,
         signature,
       }),
     ).toBe(false);
   });
 
   it("rejects wrong owner + malformed inputs without throwing", async () => {
-    const signature = await signIntent("spon-agent");
+    const expiresAt = freshExpiry();
+    const signature = await signIntent("spon-agent", expiresAt);
     expect(
       await verifyRegisterIntent({
         chainId: CHAIN_ID,
         registryAddress: REGISTRY,
         owner: "0x0000000000000000000000000000000000000001",
         name: "spon-agent",
+        expiresAt,
         signature,
       }),
     ).toBe(false);
@@ -326,7 +344,21 @@ describe("verifyRegisterIntent", () => {
         registryAddress: REGISTRY,
         owner: "0x123" as `0x${string}`,
         name: "x",
+        expiresAt,
         signature: "0x00" as `0x${string}`,
+      }),
+    ).toBe(false);
+    // C-1: expired intent is rejected even with a valid signature.
+    const staleExpiry = Math.floor(Date.now() / 1000) - 10;
+    const staleSig = await signIntent("spon-agent", staleExpiry);
+    expect(
+      await verifyRegisterIntent({
+        chainId: CHAIN_ID,
+        registryAddress: REGISTRY,
+        owner: TEST_OWNER,
+        name: "spon-agent",
+        expiresAt: staleExpiry,
+        signature: staleSig,
       }),
     ).toBe(false);
   });
@@ -375,7 +407,7 @@ describe("POST /api/v1/agents/register — sponsored", () => {
     const res = await post(app(deps), {
       name: "spon",
       owner: TEST_OWNER,
-      signature: await signIntent("spon"),
+      ...(await signed("spon")),
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("not enabled");
@@ -392,7 +424,7 @@ describe("POST /api/v1/agents/register — sponsored", () => {
     const res = await post(app(deps), {
       name: "spon",
       owner: TEST_OWNER,
-      signature: await signIntent("different-name"),
+      ...(await signed("different-name")),
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("intent signature");
@@ -404,7 +436,7 @@ describe("POST /api/v1/agents/register — sponsored", () => {
     const res = await post(a, {
       name: "spon",
       owner: TEST_OWNER,
-      signature: await signIntent("spon"),
+      ...(await signed("spon")),
     });
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -431,14 +463,14 @@ describe("POST /api/v1/agents/register — sponsored", () => {
     const ip2 = { "x-forwarded-for": "10.5.0.2" };
     const first = await post(
       a,
-      { name: "s1", owner: TEST_OWNER, signature: await signIntent("s1") },
+      { name: "s1", owner: TEST_OWNER, ...(await signed("s1")) },
       ip1,
     );
     expect(first.status).toBe(201);
     // Second sponsored attempt — different IP (regcap passes) but global cap hit.
     const res = await post(
       a,
-      { name: "s2", owner: TEST_OWNER, signature: await signIntent("s2") },
+      { name: "s2", owner: TEST_OWNER, ...(await signed("s2")) },
       ip2,
     );
     expect(res.status).toBe(429);
@@ -458,7 +490,7 @@ describe("POST /api/v1/agents/register — sponsored", () => {
     ).toBe(201);
     const res = await post(
       a,
-      { name: "s", owner: TEST_OWNER, signature: await signIntent("s") },
+      { name: "s", owner: TEST_OWNER, ...(await signed("s")) },
       ip,
     );
     expect(res.status).toBe(429);

@@ -8,7 +8,7 @@
  * Mint failure throws RegistrationError("execution_failed") — NO record is
  * written, NO fake agentId (181 honest-refusal contract).
  */
-import type { CacheProvider } from "@agentbadge/cache";
+import { logger } from "@agentbadge/passport";
 import { getAddress } from "viem";
 import { issueApiKey } from "./api-keys";
 import type { AgentRegistration, AgentRegistrationStore } from "./store";
@@ -72,28 +72,41 @@ export class RegistrationError extends Error {
 
 const NAME_MAX = 80;
 const ENDPOINT_MAX = 200;
+const DESCRIPTION_MAX = 500;
 const CAP_MAX = 12;
 const CAP_ITEM_MAX = 40;
 const AGENT_URI_LIMIT = 2048;
 
 function validateInput(input: RegisterInput): RegisterInput {
   const name = (input.name ?? "").trim();
-  if (!name || name.length > NAME_MAX) {
+  // Printable ASCII only — blocks bidi overrides, homoglyph attacks
+  // (Cyrillic а), control chars (Arc Studio review M-2).
+  if (!name || name.length > NAME_MAX || !/^[\x20-\x7E]+$/.test(name)) {
     throw new RegistrationError(
-      `name required (1..${NAME_MAX} chars)`,
+      `name required (1..${NAME_MAX} printable ASCII chars)`,
       "invalid_input",
     );
   }
   let endpoint: string | undefined;
   if (input.endpoint !== undefined && input.endpoint !== "") {
     const ep = input.endpoint.trim();
-    if (ep.length > ENDPOINT_MAX || !/^https?:\/\//.test(ep)) {
+    let parsed: URL | undefined;
+    try {
+      parsed = new URL(ep);
+    } catch {
+      parsed = undefined;
+    }
+    if (
+      ep.length > ENDPOINT_MAX ||
+      !parsed ||
+      (parsed.protocol !== "https:" && parsed.protocol !== "http:")
+    ) {
       throw new RegistrationError(
-        `endpoint must be http(s) and <= ${ENDPOINT_MAX} chars`,
+        `endpoint must be an http(s) URL <= ${ENDPOINT_MAX} chars`,
         "invalid_input",
       );
     }
-    endpoint = ep;
+    endpoint = parsed.toString();
   }
   let capabilities: string[] | undefined;
   if (input.capabilities !== undefined) {
@@ -116,6 +129,12 @@ function validateInput(input: RegisterInput): RegisterInput {
     capabilities = clean.length ? clean : undefined;
   }
   const description = input.description?.trim() || undefined;
+  if (description && description.length > DESCRIPTION_MAX) {
+    throw new RegistrationError(
+      `description <= ${DESCRIPTION_MAX} chars`,
+      "invalid_input",
+    );
+  }
   let owner: `0x${string}` | undefined;
   if (input.owner !== undefined) {
     if (!/^0x[0-9a-fA-F]{40}$/.test(input.owner))
@@ -173,44 +192,6 @@ export function buildAgentUri(input: RegisterInput): string {
   return uri;
 }
 
-/* ------------------------- daily rate limiter --------------------------- */
-
-/**
- * Daily-UTC cap bucket `<prefix>:<tag>:<day>` — shared across replicas,
- * resets at UTC day boundary (48h TTL covers the trailing edge).
- * In-memory fallback when no cache — an ops-level throttle, not a hard
- * security boundary (honest-zero reputation is the real disincentive).
- * Fail-open on backend error (incr returns 0 → allowed), per EPIC-144
- * passthrough contract.
- */
-export function createDailyBucket(
-  prefix: string,
-  limit: number,
-  cache?: CacheProvider | null,
-) {
-  const fallback = new Map<string, number>();
-  const TTL_SEC = 48 * 3600;
-  const day = () => new Date().toISOString().slice(0, 10); // UTC yyyy-mm-dd
-  return {
-    async allow(tag: string): Promise<boolean> {
-      const key = `${prefix}:${tag}:${day()}`;
-      if (!cache) {
-        const n = (fallback.get(key) ?? 0) + 1;
-        fallback.set(key, n);
-        return n <= limit;
-      }
-      const n = await cache.incr(key, TTL_SEC).catch(() => 0);
-      if (n === 0) return true; // backend down → fail-open
-      return n <= limit;
-    },
-  };
-}
-
-/** Per-IP daily registration cap (sybil guard, D-184-7): regcap:<ip>:<day>. */
-export function createDailyLimiter(limit: number, cache?: CacheProvider | null) {
-  return createDailyBucket("regcap", limit, cache);
-}
-
 /* ------------------------------ pipeline -------------------------------- */
 
 export interface RegisterResult {
@@ -255,6 +236,14 @@ export async function registerAgent(
     });
   }
 
+  // H-3 (Arc Studio review): the mint is already committed on-chain.
+  // Log tx+agentId BEFORE persisting so a store.put failure leaves a
+  // reconcilable orphan record in logs instead of vanishing silently.
+  logger.info("agent mint committed", {
+    agentId: minted.agentId.toString(),
+    registryTx: minted.txHash,
+    ...(ownerTxHash ? { ownerTx: ownerTxHash } : {}),
+  });
   const { key, keyHash } = issueApiKey();
   const record: AgentRegistration = {
     agentId: `eip155:${deps.chainId}:${deps.registryAddress}:${minted.agentId}`,
@@ -270,6 +259,25 @@ export async function registerAgent(
       ? { owner: validated.owner, sponsored: true, ownerTx: ownerTxHash }
       : {}),
   };
-  await deps.store.put(record);
+  try {
+    await deps.store.put(record);
+  } catch (e) {
+    // Mint succeeded but persistence failed → caller gets 5xx and may
+    // retry into a SECOND mint. The orphan (NFT minted, no record/key)
+    // must be reconcilable from logs (H-3 interim fix; a pending-slot
+    // idempotency design is the follow-up).
+    logger.error("ORPHAN MINT — record persist failed", {
+      agentId: record.agentId,
+      registryTx: record.registryTx,
+      ownerTx: record.ownerTx,
+      keyHash,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    throw new RegistrationError(
+      "registration persistence failed — mint orphan logged",
+      "execution_failed",
+      e,
+    );
+  }
   return { record, apiKey: key, agentUri };
 }

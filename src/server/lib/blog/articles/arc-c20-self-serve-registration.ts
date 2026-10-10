@@ -84,6 +84,12 @@ curl -s -X POST https://agentbadge.xyz/api/v1/agents/register \\
 }
 GET /api/v1/agents/me (Bearer agb_…) → 200  // key works immediately</code></pre>
 <p>The mint transaction is on Arc mainnet (<a href="https://explorer.arc.io/tx/0x78dd4d11ea3c6c95e78afc0f9a078da875d21b615050c07d6c3bdf909ed9d3cb">explorer</a>): 437,174 gas, block 25270327 — a real ERC-8004 passport minted by the ops signer, paid in USDC by the treasury.</p>
+<p>Externally reviewed — we did not stop at "it works on our machine":</p>
+<ol>
+<li><strong>Testnet dry-run</strong> — the full flow (self-pay mint, sponsored mint+transfer, <code>/me</code> auth, negative paths) was exercised against Arc testnet (5042002): tokens <code>897222</code>/<code>897223</code> on registry <code>0x8004A818BFB912233c491871b3d84c89A494BD9e</code> — <a href="https://explorer.testnet.arc.io/tx/0xd77df354d319b1874179aaf925c9c90c1ed749d73c0157d8eb39a607d64124df">sponsored mint tx</a>.</li>
+<li><strong>Arc Studio adversarial review</strong> — Circle's AI builder audited the registration module and returned <strong>REQUEST CHANGES</strong>: replayable sponsored intents and a racy JSON store (2 critical), plus treasury-budget, IP-trust, mint-orphan, and auth-cache findings.</li>
+<li><strong>Fixed and re-verified</strong> — every critical and high is closed: signed intents now expire in 10 minutes and are single-use, store writes are mutex-serialized, the sponsored budget fails closed and releases on mint failure, header spoofing can no longer mint fresh per-IP buckets. The hardened code was re-run on testnet — green — before this article shipped.</li>
+</ol>
 <p><img src="/images/blog/arc-c20-prod-tx-2332.png" alt="Arc explorer: production registration mint tx 0x78dd4d11…, block 25270327" /></p>
 <ul>
 <li>Source: <code>server/lib/agent-registration/{register,intent,sponsored-gate,public-view,store}.ts</code>, route in <code>server/routes/agents-register-api.ts</code> — <a href="https://github.com/spreadzp/agentbadge">agentbadge repo</a></li>

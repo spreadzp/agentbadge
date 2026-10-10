@@ -193,10 +193,21 @@ const okSponsored: SponsoredMintFn = async (_uri, _owner) => ({
   ownerTxHash: `0xsponxfer${sponSeq.toString(16).padStart(4, "0")}` as `0x${string}`,
 });
 
-const signE2E = (name: string) =>
+const signE2E = (name: string, expiresAt: number) =>
   E2E_ACCOUNT.signMessage({
-    message: buildRegisterIntent(CHAIN_ID, REGISTRY, E2E_OWNER, name),
+    message: buildRegisterIntent({
+      chainId: CHAIN_ID,
+      registryAddress: REGISTRY,
+      owner: E2E_OWNER,
+      name,
+      expiresAt,
+    }),
   });
+/** Fresh-expiry signature + the fields the POST body needs (v2 intent). */
+const signedE2E = async (name: string) => {
+  const expiresAt = Math.floor(Date.now() / 1000) + 300;
+  return { signature: await signE2E(name, expiresAt), expiresAt };
+};
 
 const regSponsored = (
   app: Hono,
@@ -217,8 +228,7 @@ const regSponsored = (
 describe("sponsored registration e2e (SLICE-184-5)", () => {
   it("full cycle: intent-signed owner → mint+transfer; /me shows sponsored ownership", async () => {
     const { app } = makeApp({ sponsoredMint: okSponsored });
-    const signature = await signE2E("gasless-agent");
-    const r = await regSponsored(app, "gasless-agent", ipOf(90), { signature });
+    const r = await regSponsored(app, "gasless-agent", ipOf(90), await signedE2E("gasless-agent"));
     expect(r.status).toBe(201);
     const body = await r.json();
     expect(body.sponsored).toBe(true);
@@ -240,13 +250,11 @@ describe("sponsored registration e2e (SLICE-184-5)", () => {
       sponsoredDailyLimit: 1,
       dailyLimit: 20,
     });
-    const sig1 = await signE2E("s1");
     expect(
-      (await regSponsored(app, "s1", ipOf(91), { signature: sig1 })).status,
+      (await regSponsored(app, "s1", ipOf(91), await signedE2E("s1"))).status,
     ).toBe(201);
 
-    const sig2 = await signE2E("s2");
-    const res = await regSponsored(app, "s2", ipOf(92), { signature: sig2 });
+    const res = await regSponsored(app, "s2", ipOf(92), await signedE2E("s2"));
     expect(res.status).toBe(429);
     expect((await res.json()).code).toBe("sponsored_quota_exceeded");
 
@@ -256,8 +264,7 @@ describe("sponsored registration e2e (SLICE-184-5)", () => {
 
   it("sponsored off: owner+signature → 400, legacy register unaffected", async () => {
     const { app } = makeApp(); // no sponsoredMint
-    const signature = await signE2E("nope");
-    const res = await regSponsored(app, "nope", ipOf(94), { signature });
+    const res = await regSponsored(app, "nope", ipOf(94), await signedE2E("nope"));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("not enabled");
     expect((await reg(app, "plain", ipOf(95))).status).toBe(201);
@@ -266,9 +273,17 @@ describe("sponsored registration e2e (SLICE-184-5)", () => {
   it("missing/mismatched signature → 400, nothing minted", async () => {
     const { app, store } = makeApp({ sponsoredMint: okSponsored });
     expect((await regSponsored(app, "nosig", ipOf(96))).status).toBe(400);
-    const wrong = await signE2E("other-name");
+    const wrong = await signedE2E("other-name");
     expect(
-      (await regSponsored(app, "nosig", ipOf(97), { signature: wrong })).status,
+      (await regSponsored(app, "nosig", ipOf(97), wrong)).status,
+    ).toBe(400);
+    // C-1: replaying a consumed signature is rejected (single-use).
+    const replay = await signedE2E("once");
+    expect(
+      (await regSponsored(app, "once", ipOf(98), replay)).status,
+    ).toBe(201);
+    expect(
+      (await regSponsored(app, "once", ipOf(99), replay)).status,
     ).toBe(400);
     expect((await store.list()).filter((r) => r.sponsored)).toEqual([]);
   });

@@ -16,7 +16,6 @@ import type { CacheProvider } from "@agentbadge/cache";
 import {
   hashApiKey,
   isApiKeyFormat,
-  lookupAgentByKey,
   revokeApiKey,
 } from "../lib/agent-registration/api-keys";
 import { bustAgentKeyCache } from "../middleware/agent-key-auth";
@@ -24,6 +23,8 @@ import { adminAuth } from "../middleware/adminAuth";
 import {
   createDailyBucket,
   createDailyLimiter,
+} from "../lib/agent-registration/daily-bucket";
+import {
   registerAgent,
   RegistrationError,
   type MintFn,
@@ -73,10 +74,13 @@ export function createAgentRegisterRoutes(
     deps.dailyLimit,
     deps.cache === undefined ? tryGetCache() : deps.cache,
   );
+  // Financial boundary → strict: cache backend down = deny, not
+  // unlimited treasury spend (Arc Studio review H-1).
   const sponcap = createDailyBucket(
     "sponcap",
     deps.sponsoredDailyLimit ?? 50,
     deps.cache === undefined ? tryGetCache() : deps.cache,
+    { strict: true },
   );
 
   routes.post(
@@ -98,8 +102,14 @@ export function createAgentRegisterRoutes(
       if (!deps.enabled || !deps.mint)
         return errorResponse(c, 503, ErrorCodes.EXECUTION_FAILED, "agent registration is unavailable", { retryable: true });
       // SLICE-184-4: per-IP daily cap regcap:<ip>:<day> (sybil guard).
+      // H-2 (Arc Studio review): first XFF element is attacker-set.
+      // Trust only headers our proxies own (CF → fly edge); else the
+      // LAST XFF hop (closest proxy appended it); else a shared
+      // "anonymous" bucket — spoofing degrades to the tightest pool.
+      const xff = c.req.header("x-forwarded-for");
       const ip = c.req.header("cf-connecting-ip") ??
-        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+        c.req.header("fly-client-ip") ??
+        xff?.split(",").at(-1)?.trim() ??
         "anonymous";
       if (!(await daily.allow(ip))) {
         return errorResponse(
@@ -126,8 +136,11 @@ export function createAgentRegisterRoutes(
           registryAddress: deps.registryAddress,
           owner: body.owner,
           signature: body.signature,
+          expiresAt: body.expiresAt,
           name: String(body.name ?? ""),
           allowSponsored: () => sponcap.allow("global"),
+          releaseSponsored: () => sponcap.release("global"),
+          consumeSignature: (h) => deps.store.consumeSignature(h),
         });
         if (gate)
           return errorResponse(c, gate.status, gate.code, gate.message, { retryable: true });
@@ -196,6 +209,9 @@ export function createAgentRegisterRoutes(
               e.message,
             );
           }
+          // H-1: the gate reserved a sponsored slot — give it back so
+          // failed mints can't drain the daily treasury budget.
+          if (body.owner) await sponcap.release("global").catch(() => {});
           return errorResponse(
             c,
             502,
@@ -216,15 +232,14 @@ export function createAgentRegisterRoutes(
     const key = bearerKey(c);
     if (!key || !isApiKeyFormat(key))
       return errorResponse(c, 401, ErrorCodes.AGENT_KEY_INVALID, "Authorization: Bearer agb_<key> required");
-    const rec = await lookupAgentByKey(deps.store, key);
-    if (!rec) {
-      // Unknown vs revoked — distinguish for the honest code.
-      const stored = await deps.store.byKeyHash(hashApiKey(key));
-      if (stored?.status === "revoked")
-        return errorResponse(c, 401, ErrorCodes.AGENT_KEY_REVOKED, "api key revoked");
+    // Single byKeyHash scan (M-6): lookupAgentByKey collapses
+    // revoked→unknown, so resolve the record once and branch here.
+    const stored = await deps.store.byKeyHash(hashApiKey(key));
+    if (stored?.status === "revoked")
+      return errorResponse(c, 401, ErrorCodes.AGENT_KEY_REVOKED, "api key revoked");
+    if (!stored || stored.status !== "active")
       return errorResponse(c, 401, ErrorCodes.AGENT_KEY_INVALID, "unknown api key");
-    }
-    return rec;
+    return stored;
   };
 
   routes.get(

@@ -24,7 +24,7 @@ export function isApiKeyFormat(key: string): boolean {
 
 /** Deterministic sha256 hex of the api key. */
 export function hashApiKey(key: string): string {
-  return createHash("sha256").update(key, "utf8").digest("hex");
+  return createHash("sha256").update(key, "ascii").digest("hex");
 }
 
 /** Issues a fresh key. Caller shows `key` once, persists only `keyHash`. */

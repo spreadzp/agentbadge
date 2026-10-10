@@ -38,9 +38,21 @@ export const agentKeyCacheKey = (keyHash: string) => `agentkey:${keyHash}`;
 
 let deps: AgentKeyAuthDeps | null = null;
 
+/**
+ * H-4 (Arc Studio review): process-local revocation tombstone. When the
+ * Valkey cache-bust fails, a stale "active" record would keep a revoked
+ * key authenticating for up to ttlSec. The tombstone survives cache
+ * outages (single-process coverage; multi-replica deployments still
+ * inherit up to ttlSec of staleness — documented limitation until the
+ * db backend lands).
+ */
+const revokedKeyHashes = new Set<string>();
+const REVOKED_SET_MAX = 10_000;
+
 /** Called once from wiring — null resets to pass-through (tests). */
 export function initAgentKeyAuth(d: AgentKeyAuthDeps | null): void {
   deps = d;
+  revokedKeyHashes.clear();
 }
 
 /**
@@ -48,10 +60,12 @@ export function initAgentKeyAuth(d: AgentKeyAuthDeps | null): void {
  * path (self DELETE, admin) so cached records die instantly, not on TTL.
  */
 export async function bustAgentKeyCache(keyHash: string): Promise<void> {
+  if (revokedKeyHashes.size >= REVOKED_SET_MAX) revokedKeyHashes.clear();
+  revokedKeyHashes.add(keyHash);
   try {
     await deps?.cache?.delete(agentKeyCacheKey(keyHash));
   } catch {
-    /* cache bust is best-effort; the record is already revoked in-store */
+    /* cache bust is best-effort; tombstone above still blocks the key */
   }
 }
 
@@ -60,9 +74,14 @@ async function resolve(
   keyHash: string,
 ): Promise<AgentRegistration | undefined> {
   const ck = agentKeyCacheKey(keyHash);
-  if (d.cache) {
+  // Tombstone wins over any cached "active" snapshot (H-4) — the store
+  // is authoritative and will return the revoked record.
+  if (!revokedKeyHashes.has(keyHash) && d.cache) {
     try {
       const cached = await d.cache.get<AgentRegistration>(ck);
+      // Only honor cache entries that are still terminal-safe: a cached
+      // revoked record is fine (revocation is irreversible); a cached
+      // active record is only trusted when no tombstone exists.
       if (cached) return cached;
     } catch {
       /* fall through to store */
