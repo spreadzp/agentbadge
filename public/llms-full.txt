@@ -282,12 +282,14 @@ Read endpoints (GET) remain free — no authentication required.
 - [GET /.well-known/agent-card.json](https://agentbadge.xyz/.well-known/agent-card.json)
 - [GET /.well-known/agent-evaluation.json](https://agentbadge.xyz/.well-known/agent-evaluation.json)
 - [GET /.well-known/agent-guide.json](https://agentbadge.xyz/.well-known/agent-guide.json)
+- [GET /.well-known/agent-registration.json](https://agentbadge.xyz/.well-known/agent-registration.json)
 - [GET /.well-known/agent-skills/index.json](https://agentbadge.xyz/.well-known/agent-skills/index.json)
 - [GET /.well-known/agent.json](https://agentbadge.xyz/.well-known/agent.json)
 - [GET /.well-known/agentbadge.json](https://agentbadge.xyz/.well-known/agentbadge.json)
 - [GET /.well-known/ai-sitemap.xml](https://agentbadge.xyz/.well-known/ai-sitemap.xml)
 - [GET /.well-known/api-catalog](https://agentbadge.xyz/.well-known/api-catalog)
 - [GET /.well-known/audit-mcp.json](https://agentbadge.xyz/.well-known/audit-mcp.json)
+- [GET /.well-known/did-configuration.json](https://agentbadge.xyz/.well-known/did-configuration.json)
 - [GET /.well-known/did.json](https://agentbadge.xyz/.well-known/did.json)
 - [GET /.well-known/discovery-mcp.json](https://agentbadge.xyz/.well-known/discovery-mcp.json)
 - [GET /.well-known/erc8004-agent.json](https://agentbadge.xyz/.well-known/erc8004-agent.json)
@@ -319,6 +321,13 @@ Read endpoints (GET) remain free — no authentication required.
 - [GET /api/corpus/stats](https://agentbadge.xyz/api/corpus/stats)
 - [GET /api/demo/raw-data](https://agentbadge.xyz/api/demo/raw-data)
 - [GET /api/demo/verified-data](https://agentbadge.xyz/api/demo/verified-data)
+- [GET /api/fx-delta/:corridor](https://agentbadge.xyz/api/fx-delta/:corridor)
+- [GET /api/fx-delta/corridors](https://agentbadge.xyz/api/fx-delta/corridors)
+- [GET /api/fx-delta/health](https://agentbadge.xyz/api/fx-delta/health)
+- [GET /api/fx-delta/premium](https://agentbadge.xyz/api/fx-delta/premium)
+- [GET /api/fx-delta/snapshot](https://agentbadge.xyz/api/fx-delta/snapshot)
+- [GET /api/fx-delta/stream](https://agentbadge.xyz/api/fx-delta/stream)
+- [GET /api/fx-delta/verify/:id](https://agentbadge.xyz/api/fx-delta/verify/:id)
 - [GET /api/health](https://agentbadge.xyz/api/health)
 - [GET /api/keeperhub/audit](https://agentbadge.xyz/api/keeperhub/audit)
 - [GET /api/keeperhub/audit/stream](https://agentbadge.xyz/api/keeperhub/audit/stream)
@@ -352,6 +361,8 @@ Read endpoints (GET) remain free — no authentication required.
 - [GET /api/total-scan](https://agentbadge.xyz/api/total-scan)
 - [GET /api/trust/:domain](https://agentbadge.xyz/api/trust/:domain)
 - [GET /api/trust/:domain/challenge](https://agentbadge.xyz/api/trust/:domain/challenge)
+- [GET /api/v1/agents/me](https://agentbadge.xyz/api/v1/agents/me)
+- [GET /api/v1/services](https://agentbadge.xyz/api/v1/services)
 - [GET /api/venue/activity](https://agentbadge.xyz/api/venue/activity)
 - [GET /api/venue/attestations](https://agentbadge.xyz/api/venue/attestations)
 - [GET /api/venue/clients/:address](https://agentbadge.xyz/api/venue/clients/:address)
@@ -394,6 +405,7 @@ Read endpoints (GET) remain free — no authentication required.
 - [POST /api/total-scan](https://agentbadge.xyz/api/total-scan)
 - [POST /api/trust/:domain/attest](https://agentbadge.xyz/api/trust/:domain/attest)
 - [POST /api/trust/:domain/verify-ownership](https://agentbadge.xyz/api/trust/:domain/verify-ownership)
+- [POST /api/v1/agents/register](https://agentbadge.xyz/api/v1/agents/register)
 - [POST /api/venue/instances](https://agentbadge.xyz/api/venue/instances)
 - [POST /api/venue/instances/:id/delegates](https://agentbadge.xyz/api/venue/instances/:id/delegates)
 - [POST /api/venue/instances/:id/jobs](https://agentbadge.xyz/api/venue/instances/:id/jobs)
@@ -412,6 +424,31 @@ Read endpoints (GET) remain free — no authentication required.
 - [POST /api/venue/jobs/:id/tx](https://agentbadge.xyz/api/venue/jobs/:id/tx)
 - [POST /api/venue/offers](https://agentbadge.xyz/api/venue/offers)
 - [POST /api/work-requests](https://agentbadge.xyz/api/work-requests)
+
+
+
+## Paid Services
+
+- [Agent readiness scan — discovery-crawling bundle](https://agentbadge.xyz/api/v1/services#scan:discovery-crawling) — `scan:discovery-crawling` — $0.30 USDC (x402) — 19 rules
+- [Agent readiness scan — page-meta-seo bundle](https://agentbadge.xyz/api/v1/services#scan:page-meta-seo) — `scan:page-meta-seo` — $0.30 USDC (x402) — 14 rules
+- [Agent readiness scan — skills-agent-ux bundle](https://agentbadge.xyz/api/v1/services#scan:skills-agent-ux) — `scan:skills-agent-ux` — $0.30 USDC (x402) — 6 rules
+- [Agent readiness scan — content-negotiation bundle](https://agentbadge.xyz/api/v1/services#scan:content-negotiation) — `scan:content-negotiation` — $0.50 USDC (x402) — 14 rules
+- [Agent readiness scan — openapi-docs bundle](https://agentbadge.xyz/api/v1/services#scan:openapi-docs) — `scan:openapi-docs` — $0.50 USDC (x402) — 18 rules
+- [Agent readiness scan — mcp-webmcp bundle](https://agentbadge.xyz/api/v1/services#scan:mcp-webmcp) — `scan:mcp-webmcp` — $0.50 USDC (x402) — 15 rules
+- [Agent readiness scan — payments-x402 bundle](https://agentbadge.xyz/api/v1/services#scan:payments-x402) — `scan:payments-x402` — $0.50 USDC (x402) — 16 rules
+- [Agent readiness scan — auth-identity bundle](https://agentbadge.xyz/api/v1/services#scan:auth-identity) — `scan:auth-identity` — $0.50 USDC (x402) — 28 rules
+- [Agent readiness scan — semantic-policy bundle](https://agentbadge.xyz/api/v1/services#scan:semantic-policy) — `scan:semantic-policy` — $0.90 USDC (x402) — 12 rules
+- [Agent readiness scan — live-verification bundle](https://agentbadge.xyz/api/v1/services#scan:live-verification) — `scan:live-verification` — $0.90 USDC (x402) — 10 rules
+- [Agent readiness scan — full ruleset](https://agentbadge.xyz/api/v1/services#scan:full) — `scan:full` — $4.50 USDC (x402) — All bundles at the flat full-scan price (cheaper than summing packs).
+- [Agent passport — bronze tier](https://agentbadge.xyz/api/v1/services#passport:bronze) — `passport:bronze` — $dynamic USDC (x402) — bronze passport mint (10 HBAR).
+- [Agent passport — silver tier](https://agentbadge.xyz/api/v1/services#passport:silver) — `passport:silver` — $dynamic USDC (x402) — silver passport mint (50 HBAR).
+- [Agent passport — gold tier](https://agentbadge.xyz/api/v1/services#passport:gold) — `passport:gold` — $dynamic USDC (x402) — gold passport mint (200 HBAR).
+- [Agent passport — platinum tier](https://agentbadge.xyz/api/v1/services#passport:platinum) — `passport:platinum` — $dynamic USDC (x402) — platinum passport mint (500 HBAR).
+- [Business passport mint](https://agentbadge.xyz/api/v1/services#marketplace:passport-mint) — `marketplace:passport-mint` — $10 USDC (x402) — Mints a business passport NFT to the payer wallet via x402 payment.
+- [Marketplace service purchase](https://agentbadge.xyz/api/v1/services#marketplace:service-buy) — `marketplace:service-buy` — $dynamic USDC (x402) — Buys a tenant-listed service pass. Price resolves per serviceId — see GET /api/market/services for the live catalog.
+- [KeeperHub premium scan recording](https://agentbadge.xyz/api/v1/services#keeperhub:scan-premium) — `keeperhub:scan-premium` — $0.01 USDC (x402) — POST /api/keeperhub/scan with confirm:true, gated behind x402 (EIP-3009 USDC). Identical scan result as the free confirm mode.
+- [bStock delta feed — 30d ServicePass](https://agentbadge.xyz/api/v1/services#bstock:service-pass) — `bstock:service-pass` — $5 USDC (x402) — ServicePass unlocking realtime deltas on the bstock feed; minted via marketplace buy of the bstock service id.
+- [Venue instance subscription](https://agentbadge.xyz/api/v1/services#venue:instance-subscription) — `venue:instance-subscription` — $10 USDC (x402) — 30d subscription per paid month; attested by the venue indexer. auth: wallet-sig — see EPIC-179 O1.
 
 
 
@@ -470,14 +507,18 @@ We offer consulting and development services for the agentic web:
 - /.well-known/owner-questions.json — Operator/fleet FAQ (solo/team/venue operator context)
 - /auth.md — Agent authentication and registration instructions
 - /verification.md — Verification policy (passport, DID, marketplace, audit)
+- /index.md — Markdown mirror of the homepage; append `.md` to any public page
+  URL or send Accept: text/markdown for content negotiation (Vary: Accept)
 - /reputation.md — Reputation specification (signal sources, Sybil resistance, anti-farming)
 - /.well-known/agent-skills/index.json — Agent Skills discovery index
 - /.well-known/http-message-signatures-directory — Web Bot Auth directory (JWKS)
 - /.well-known/agentbadge.json — Deployment descriptor (network, token IDs, API version, payment protocol)
 - /.well-known/jwks.json — JSON Web Key Set (RFC 7517) for verifying signed credentials
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
-- /api/meta/fees — Machine-readable fee/pricing catalog for all AgentBadge services
-- /api/meta/trust-tiers — Identity/trust ladder (6 tiers) with capabilities and requirements
+- /api/v1/services — Canonical paid-services catalog (ServiceSku registry, USDC prices); supersedes /api/meta/fees
+- /api/meta/trust-tiers — Identity/trust ladder (7 tiers, incl. keyed observer) with capabilities and requirements
+- POST /api/v1/agents/register — Self-serve ERC-8004 registration (free, observer tier, agb_ key once);
+  sponsored mode: {owner, signature} with EIP-191 intent — treasury pays mint+transfer, no USDC needed
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
 
 ## Demand & Work Requests
@@ -989,12 +1030,61 @@ Reading time: 7 min
 
 Owner controls for agent wallets on Arc: approval holds that park a payment for a human signature, a kill-switch that evaluates before every other check, rolling velocity caps, and per-kind allowlists — a control plane that can veto a payment but can never sign one. Live Arc testnet dogfood with real USDC.
 
+### Your Agent Shouldn't Have to Guess the Price — One Catalog, Declared on Every 402
+URL: https://agentbadge.xyz/blog/arc-c15-x402-bazaar
+Date: 2026-10-08
+Reading time: 6 min
+
+AgentBadge now serves a machine-readable paid-services catalog at GET /api/v1/services, and every 402 response across the platform carries an x402 bazaar extension — price, input schema, and free alternatives declared before a single cent moves. One SKU registry feeds the catalog, the wire declarations, and llms.txt; an explicit gate-coverage e2e test fails CI on any new paid route without a SKU.
+
 ### Never Charged for a No: A Machine-Checkable Refusal Contract for Paid Agent APIs
 URL: https://agentbadge.xyz/blog/arc-c17-honest-refusal
 Date: 2026-10-06
 Reading time: 6 min
 
 Refused agent-API requests should never be billed. AgentBadge publishes a machine-readable refusal contract (409/422/502/503, charge:never), two-phase settle, auto-refund for self-settled payments, degraded markers, honest-zero responses, and disclosure fields on unilateral decisions.
+
+### A Paying Client That Cannot Overspend: Mandatory Caps for x402 Buyer Agents
+URL: https://agentbadge.xyz/blog/arc-c18-sdk-caps
+Date: 2026-10-10
+Reading time: 6 min
+
+An x402 buyer SDK that refuses to construct without PaymentCaps: per-call cap, session budget, strict accepts[] validation (never guess decimals), anti-loop guard, payer-binding headers, and an agentbadge pay CLI with --print-only.
+
+### Who Are You, Agent? A DID Your Domain Can Prove — on Arc
+URL: https://agentbadge.xyz/blog/arc-c27-did-web-identity
+Date: 2026-10-07
+Reading time: 6 min
+
+AgentBadge now has a real platform identity: did:web:agentbadge.xyz — a W3C DID anchored to our domain, a signed DID Configuration (VC-JWT DomainLinkageCredential) any client can verify with ~20 lines of jose, and a real Ed25519 key behind jwks.json. Chain refs point at ERC-8004 on Arc (eip155:5042002) through alsoKnownAs instead of being baked into the identifier.
+
+### One POST Gets Your Agent an On-Chain Passport — No Wallet, No USDC, No Waiting
+URL: https://agentbadge.xyz/blog/arc-c20-self-serve-registration
+Date: 2026-10-10
+Reading time: 6 min
+
+Self-serve ERC-8004 registration is live: one POST to /api/v1/agents/register mints an NFT passport in the canonical IdentityRegistry on Arc (eip155:5042) and returns an agb_ API key in the same response. Observer tier, per-IP sybil caps, instant revocation — and a sponsored path where the treasury pays gas against an EIP-191 intent signature.
+
+### An Agent Lands on Your Homepage — What Can It Actually Read?
+URL: https://agentbadge.xyz/blog/arc-c14-agent-discovery
+Date: 2026-10-09
+Reading time: 6 min
+
+Eleven machine-readable manifests under /.well-known plus a generated llms.txt — the full AgentBadge discovery surface is built from live sources (openapi, route config, SKU catalog), never hand-edited, CI-gated on drift, and dogfooded by our own 142-rule readiness scanner.
+
+### Proving a Verdict Exists Is Easy. Proving Nothing Was Deleted Is Not.
+URL: https://agentbadge.xyz/blog/arc-c11-verdict-transparency
+Date: 2026-10-09
+Reading time: 6 min
+
+Existence proofs don't cover completeness. AgentBadge now chains every verdict (keccak256(prev ‖ artifactHash)) and anchors the head to the Arc Memo contract on a heartbeat — with a public proof API any third party can fold offline.
+
+### A txHash Is a Bearer Token — We Bound Ours to the Wallet That Paid
+URL: https://agentbadge.xyz/blog/arc-c10-payer-binding
+Date: 2026-10-08
+Reading time: 6 min
+
+On Arc's self-settle x402 rail the txHash is a bearer credential — public in the mempool, spendable by whoever presents it first (Attack I-B). agentbadge-pay:v1 binds the payment to the payer's wallet: an EIP-191 signature over wallet/method/path/payref/timestamp, checked against the on-chain Transfer.from before the replay slot is ever touched.
 
 ## About AgentBadge
 
