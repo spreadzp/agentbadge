@@ -25,6 +25,7 @@ import { article as arcC15X402Bazaar } from "./arc-c15-x402-bazaar";
 import { article as arcC17HonestRefusal } from "./arc-c17-honest-refusal";
 import { article as arcC18SdkCaps } from "./arc-c18-sdk-caps";
 import { article as arcC27DidWebIdentity } from "./arc-c27-did-web-identity";
+import { article as arcC20SelfServeRegistration } from "./arc-c20-self-serve-registration";
 import { article as arcC10PayerBinding } from "./arc-c10-payer-binding";
 import { article as arcC11VerdictTransparency } from "./arc-c11-verdict-transparency";
 import { article as arcC14AgentDiscovery } from "./arc-c14-agent-discovery";
@@ -56,6 +57,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC17HonestRefusal,
   arcC18SdkCaps,
   arcC27DidWebIdentity,
+  arcC20SelfServeRegistration,
   arcC14AgentDiscovery,
   arcC11VerdictTransparency,
   arcC10PayerBinding,
