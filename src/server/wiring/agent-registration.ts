@@ -21,6 +21,7 @@ import { initAgentKeyAuth } from "../middleware/agent-key-auth";
 import { tryGetCache } from "../lib/cache";
 import { gasCappedWallet } from "../lib/eaas/settle";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
+import { arcMainnet, arcTestnet } from "../lib/marketplace/chain";
 import { createAgentRegisterRoutes } from "../routes/agents-register-api";
 
 export function wireAgentRegistration(app: Hono): void {
@@ -53,10 +54,13 @@ export function wireAgentRegistration(app: Hono): void {
     }>)
     | undefined;
   if (cfg?.enabled && cfg.opsKey) {
+    // viem needs a real Chain (id/nativeCurrency/rpcUrls) — SupportedChain
+    // is a descriptor, passing it made signing throw ToBigInt(undefined).
+    const viemChain = net.name === "mainnet" ? arcMainnet : arcTestnet;
     const account = privateKeyToAccount(cfg.opsKey);
     const rawWallet = createWalletClient({
       account,
-      chain: net.chain as never,
+      chain: viemChain,
       transport: http(net.chain.rpcUrl),
     });
     // Gas-cap decorator (settle.ts pattern) — refuse mints over the cap.
