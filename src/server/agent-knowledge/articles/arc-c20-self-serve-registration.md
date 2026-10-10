@@ -55,7 +55,7 @@ identity, not a discount. `GET /api/v1/agents/me` returns the public record;
 ## Sponsored Registration
 
 `POST {name, owner, signature}` — `signature` = owner's EIP-191 intent over
-`agentbadge-register:v1\nchainId:<id>\nregistry:<addr>\nowner:<eoa>\nname:<name>`.
+`agentbadge:register:v1\neip155:<chainId>\n<registry>\n<owner>\n<name>`.
 Server verifies, ops wallet does `register()` + `transferFrom(ops→owner)` —
 NFT lands in user's EOA, treasury pays gas. `sponcap:<day>` global budget
 (`REGISTER_SPONSORED_DAILY`, default 50) → `429 sponsored_quota_exceeded`.

@@ -24,8 +24,7 @@ export const article: BlogArticle = {
 <p>This is article 20 in the Arc Campaign series. <a href="https://agentbadge.xyz/blog/arc-c14-agent-discovery">C14</a> was about how agents <em>find</em> each other; <a href="https://agentbadge.xyz/blog/arc-c27-did-web-identity">C27</a> covered how a platform proves <em>its own</em> identity. C20 is the missing middle: how a third-party agent gets an identity at all — and how we kept the door open without letting the bots walk through it.</p>
 <p><img src="/images/blog/arc-c20-self-serve-registration-hero.png" alt="One curl POST arrow entering a mint press, an ERC-8004 passport card and an API key falling out the other side" /></p>
 
-<p><img src="/images/blog/arc-c20-self-serve-registration-d1.png" alt="Diagram: registration flow — POST, per-IP regcap, mint via ops wallet, record, 201 with agent_id and agb_ key; admin revoke busts the auth cache instantly" /></p>
-<p><em>The whole path in one picture: the IP cap trips before any chain work, a mint revert persists nothing, and a revoked key dies on its next request.</em></p>
+
 
 <p><img src="/images/blog/arc-c20-self-serve-registration-d1.png" alt="Diagram: registration flow — POST, per-IP regcap, mint via ops wallet, record, 201 with agent_id and agb_ key; admin revoke busts the auth cache instantly" /></p>
 <p><em>The whole path in one picture: the IP cap trips before any chain work, a mint revert persists nothing, and a revoked key dies on its next request.</em></p>
@@ -36,7 +35,7 @@ export const article: BlogArticle = {
 <p><img src="/images/blog/arc-c20-self-serve-registration-1.png" alt="Request/response panel: curl on the left, the 201 JSON shape on the right" /></p>
 
 <h2 id="observer-tier">What do you get with the observer tier?</h2>
-<p>The <code>agb_</code> key lands you on rung zero of a seven-level trust ladder — <code>observer</code> in <code>/api/meta/trust-tiers</code>. It's keyed rate limits, not a discount: anonymous callers get 1 request/minute on the free-tier surface, a bearer key gets 10. Paid surfaces still run through x402 for everyone — observer is identity, not a coupon.</p>
+<p>The <code>agb_</code> key lands you on the first keyed rung of a seven-level trust ladder — <code>observer</code> in <code>/api/meta/trust-tiers</code>. It's keyed rate limits, not a discount: anonymous callers get 1 request/minute on the free-tier surface, a bearer key gets 10. Paid surfaces still run through x402 for everyone — observer is identity, not a coupon.</p>
 <p>The key itself is deliberately boring: <code>agb_</code> plus 32 bytes of base64url, hashed with SHA-256 before it touches a store. <code>GET /api/v1/agents/me</code> returns the public record — <code>agent_id</code>, registry tx, tier, limits, registration timestamp, and for sponsored registrations the owner address — and <code>DELETE /api/v1/agents/me</code> self-revokes, busting the 60-second auth cache on the spot. If the key leaks, the key dies; the passport on-chain is unmoved because the key was never the passport — it's just a rate-limit handle pointed at it.</p>
 <p><img src="/images/blog/arc-c20-self-serve-registration-2.png" alt="A seven-rung trust ladder with the bottom rung highlighted as observer: keyed rate limits" /></p>
 
@@ -49,7 +48,7 @@ export const article: BlogArticle = {
 
 <h2 id="sponsored-gasless">Can an agent register without USDC for gas?</h2>
 <p>Yes — that's the part of this launch we expect to matter most. Send <code>{name, owner, signature}</code> instead of plain <code>{name}</code>: <code>owner</code> is the EOA that should own the passport, <code>signature</code> is the owner's EIP-191 signature over a registration intent binding the chain id, registry address, owner, and agent name. The server verifies the signature, then its ops wallet does two calls — <code>register()</code> to mint, <code>transferFrom(ops → owner)</code> to hand the NFT over. The passport lands in the owner's wallet and the treasury pays the gas. The requester never needs USDC, never needs a funded key — only the ability to sign a message.</p>
-<p><p><img src="/images/blog/arc-c20-self-serve-registration-d2.png" alt="Diagram: sponsored flow — EIP-191 intent, three gates (regcap, signature verify, sponsored budget), ops wallet mints then transferFroms the NFT into the user wallet" /></p>
+<p><img src="/images/blog/arc-c20-self-serve-registration-d2.png" alt="Diagram: sponsored flow — EIP-191 intent, three gates (regcap, signature verify, sponsored budget), ops wallet mints then transferFroms the NFT into the user wallet" /></p>
 <p><em>Two transactions from the ops wallet, one signature from the user — the passport lands in the owner EOA and the treasury pays.</em></p>
 
 The sponsored path has its own budget — a global <code>sponcap:&lt;day&gt;</code> bucket (<code>REGISTER_SPONSORED_DAILY</code>, default 50/day) returning <code>429 sponsored_quota_exceeded</code> — and the check order is deliberate: per-IP regcap first, signature verification second, sponsored budget last. Farming signatures is pointless if you can't get past the same IP cap everyone else answers to, and burning our daily sponsored budget still leaves the free self-pay path open. Registration records stamped <code>sponsored:true</code> carry <code>owner</code> and <code>ownerTx</code> in <code>/me</code>, so the handoff is auditable after the fact.</p>
@@ -57,7 +56,7 @@ The sponsored path has its own budget — a global <code>sponcap:&lt;day&gt;</co
 
 <h2 id="honest-status">Honest status</h2>
 <p>Shipped across five slices over four days, all against the canonical IdentityRegistry <code>0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</code> on Arc (<code>eip155:5042</code>): the store + key model; the route with real ERC-8004 mint; bearer-key auth middleware with observer-tier enrichment; the sybil guards and admin revoke with instant cache-bust; and the sponsored relayer with EIP-191 intent verification and its own daily budget. Test coverage: 30/30 unit tests and 9/9 e2e green on the registration surface — including signature round-trips with real <code>viem</code> accounts, the 429 cap ordering, and the revoke-before-next-request timing.</p>
-<p>Two honest limits to name. The self-pay path still needs the server to pay mint gas — it does; "self-serve" means <em>you</em> don't sign a transaction, the treasury eats a ~80k-gas mint per registration at current Arc fees, which is why the caps exist. And the legacy <code>POST /agents/register</code> from the Hedera-directory era still exists under its own name — the new route lives at <code>/api/v1/</code> precisely so the two never collide.</p>
+<p>Three honest limits to name. In the plain path the passport is minted to the ops wallet — custodial until you claim it through a sponsored re-registration or a transfer; the sponsored path exists precisely to put the NFT in <em>your</em> EOA from the start. The self-pay path still needs the server to pay mint gas — it does; "self-serve" means <em>you</em> don't sign a transaction, the treasury eats a ~80k-gas mint per registration at current Arc fees, which is why the caps exist. And the legacy <code>POST /agents/register</code> from the Hedera-directory era still exists under its own name — the new route lives at <code>/api/v1/</code> precisely so the two never collide.</p>
 
 <h2 id="try-it">Try it</h2>
 <pre><code class="language-bash"># Register (self-pay path — treasury pays your mint gas)
@@ -70,7 +69,7 @@ curl -s https://agentbadge.xyz/api/v1/agents/me \\
   -H "authorization: Bearer agb_&lt;your-key&gt;" | jq .
 
 # Sponsored path (owner = your EOA, signature = EIP-191 intent over
-# "agentbadge-register:v1\\nchainId:&lt;id&gt;\\nregistry:&lt;addr&gt;\\nowner:&lt;you&gt;\\nname:&lt;name&gt;")
+# "agentbadge:register:v1\neip155:&lt;chainId&gt;\n&lt;registry&gt;\n&lt;owner&gt;\n&lt;name&gt;")
 curl -s -X POST https://agentbadge.xyz/api/v1/agents/register \\
   -H "content-type: application/json" \\
   -d '{"name":"gasless-agent","owner":"0x&lt;your-eoa&gt;","signature":"0x&lt;sig&gt;"}' | jq .</code></pre>
