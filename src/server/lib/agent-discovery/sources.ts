@@ -199,7 +199,9 @@ function collectWellKnownEnv(): NonNullable<DiscoverySources["wellKnownEnv"]> {
     auditTopicId: process.env.AUDIT_TOPIC_ID,
     evmChainId: process.env.ARC_CHAIN_ID ?? "5042",
     erc8004: {
-      chainId: Number(process.env.ARC_CHAIN_ID ?? 5042),
+      // EPIC-194-1: dedicated env — ARC_CHAIN_ID means "payments chain"
+      // (legitimately testnet in some envs); identity anchors are mainnet.
+      chainId: Number(process.env.ERC8004_CHAIN_ID ?? 5042),
       registry: process.env.ERC8004_REGISTRY ?? ERC8004_REGISTRY_MAINNET,
       agentId: process.env.ERC8004_AGENT_ID ?? "0",
     },

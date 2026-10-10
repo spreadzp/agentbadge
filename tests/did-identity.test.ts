@@ -81,8 +81,10 @@ describe("SLICE-178-7: did:web identity", () => {
     expect(doc.authentication).toContain(VM_ID);
 
     // Arc ERC-8004 reference — chain-agnostic anchor is the domain itself.
-    // Chain id follows ARC_CHAIN_ID (5042 mainnet / 5042002 testnet).
-    const chainId = process.env.ARC_CHAIN_ID ?? "5042";
+    // EPIC-194-1: follows ERC8004_CHAIN_ID, decoupled from ARC_CHAIN_ID
+    // (payments chain may legitimately be testnet — prod bug: did.json
+    // served eip155:5042002).
+    const chainId = process.env.ERC8004_CHAIN_ID ?? "5042";
     expect(
       doc.alsoKnownAs?.some((u) => u.startsWith(`eip155:${chainId}:`)),
     ).toBe(true);
@@ -96,6 +98,32 @@ describe("SLICE-178-7: did:web identity", () => {
     const raw = JSON.stringify(doc);
     expect(raw).not.toContain("did:hcs");
     expect(raw).not.toContain("did:eip155");
+  });
+
+  it("did.json → ERC-8004 anchor ignores ARC_CHAIN_ID (testnet payments chain)", async () => {
+    // EPIC-194-1 regression: prod had ARC_CHAIN_ID=5042002 (testnet
+    // payments chain) and did.json served eip155:5042002 — wrong anchor.
+    process.env.DID_SIGNING_KEY = await makeKey();
+    const prevArc = process.env.ARC_CHAIN_ID;
+    const prev8004 = process.env.ERC8004_CHAIN_ID;
+    process.env.ARC_CHAIN_ID = "5042002";
+    delete process.env.ERC8004_CHAIN_ID;
+    try {
+      const doc = (await (
+        await makeDidApp().request("/.well-known/did.json")
+      ).json()) as { alsoKnownAs?: string[] };
+      expect(
+        doc.alsoKnownAs?.some((u) => u.startsWith("eip155:5042:")),
+      ).toBe(true);
+      expect(
+        doc.alsoKnownAs?.some((u) => u.startsWith("eip155:5042002:")),
+      ).toBe(false);
+    } finally {
+      if (prevArc === undefined) delete process.env.ARC_CHAIN_ID;
+      else process.env.ARC_CHAIN_ID = prevArc;
+      if (prev8004 === undefined) delete process.env.ERC8004_CHAIN_ID;
+      else process.env.ERC8004_CHAIN_ID = prev8004;
+    }
   });
 
   it("did-configuration.json → VC-JWT verifies against the DID document key", async () => {
