@@ -17,7 +17,10 @@ import {
   initAgentKeyAuth,
 } from "../../src/server/middleware/agent-key-auth";
 import { createMemoryAgentRegistrationStore } from "../../src/server/lib/agent-registration/store";
-import type { MintFn } from "../../src/server/lib/agent-registration/register";
+import type {
+  MintFn,
+  SponsoredMintFn,
+} from "../../src/server/lib/agent-registration/register";
 
 const REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" as const;
 const CHAIN_ID = 5042;
@@ -32,7 +35,14 @@ const okMint: MintFn = async () => ({
   txHash: `0xmint${tokenSeq.toString(16).padStart(8, "0")}` as `0x${string}`,
 });
 
-function makeApp(opts: { dailyLimit?: number; mint?: MintFn } = {}) {
+function makeApp(
+  opts: {
+    dailyLimit?: number;
+    mint?: MintFn;
+    sponsoredMint?: SponsoredMintFn;
+    sponsoredDailyLimit?: number;
+  } = {},
+) {
   const store = createMemoryAgentRegistrationStore();
   const cache = new InMemoryCache();
   initAgentKeyAuth({ store, cache, ttlSec: 60 });
@@ -50,6 +60,8 @@ function makeApp(opts: { dailyLimit?: number; mint?: MintFn } = {}) {
       keyRpm: 10,
       dailyLimit: opts.dailyLimit ?? 20,
       cache,
+      ...(opts.sponsoredMint ? { sponsoredMint: opts.sponsoredMint } : {}),
+      sponsoredDailyLimit: opts.sponsoredDailyLimit ?? 50,
     }),
   );
   return { app, store, cache };
@@ -161,5 +173,103 @@ describe("SLICE-184-4 e2e: agent registration cycle", () => {
     expect((await adminDel(app, agent_id)).status).toBe(200);
     // Second revoke — already revoked, still 200 (idempotent).
     expect((await adminDel(app, agent_id)).status).toBe(200);
+  });
+});
+
+/* ------------------- sponsored registration (SLICE-184-5) ------------------- */
+
+import { privateKeyToAccount } from "viem/accounts";
+import { buildRegisterIntent } from "../../src/server/lib/agent-registration/intent";
+
+const E2E_KEY =
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const;
+const E2E_ACCOUNT = privateKeyToAccount(E2E_KEY);
+const E2E_OWNER = E2E_ACCOUNT.address;
+
+let sponSeq = 0n;
+const okSponsored: SponsoredMintFn = async (_uri, _owner) => ({
+  agentId: 900n + ++sponSeq,
+  txHash: `0xsponmint${sponSeq.toString(16).padStart(4, "0")}` as `0x${string}`,
+  ownerTxHash: `0xsponxfer${sponSeq.toString(16).padStart(4, "0")}` as `0x${string}`,
+});
+
+const signE2E = (name: string) =>
+  E2E_ACCOUNT.signMessage({
+    message: buildRegisterIntent(CHAIN_ID, REGISTRY, E2E_OWNER, name),
+  });
+
+const regSponsored = (
+  app: Hono,
+  name: string,
+  headers: Record<string, string> = {},
+  extra: Record<string, unknown> = {},
+) =>
+  app.request("/api/v1/agents/register", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify({
+      name,
+      owner: E2E_OWNER,
+      ...extra,
+    }),
+  });
+
+describe("sponsored registration e2e (SLICE-184-5)", () => {
+  it("full cycle: intent-signed owner → mint+transfer; /me shows sponsored ownership", async () => {
+    const { app } = makeApp({ sponsoredMint: okSponsored });
+    const signature = await signE2E("gasless-agent");
+    const r = await regSponsored(app, "gasless-agent", ipOf(90), { signature });
+    expect(r.status).toBe(201);
+    const body = await r.json();
+    expect(body.sponsored).toBe(true);
+    expect(body.owner).toBe(E2E_OWNER);
+    expect(body.owner_tx).toMatch(/^0xsponxfer/);
+
+    const me = await app.request("/api/v1/agents/me", {
+      headers: { authorization: `Bearer ${body.api_key}` },
+    });
+    const rec = await me.json();
+    expect(rec.owner).toBe(E2E_OWNER);
+    expect(rec.sponsored).toBe(true);
+    expect(rec.owner_tx).toBe(body.owner_tx);
+  });
+
+  it("sponsored quota exhausted → 429 sponsored_quota_exceeded; legacy path still works", async () => {
+    const { app } = makeApp({
+      sponsoredMint: okSponsored,
+      sponsoredDailyLimit: 1,
+      dailyLimit: 20,
+    });
+    const sig1 = await signE2E("s1");
+    expect(
+      (await regSponsored(app, "s1", ipOf(91), { signature: sig1 })).status,
+    ).toBe(201);
+
+    const sig2 = await signE2E("s2");
+    const res = await regSponsored(app, "s2", ipOf(92), { signature: sig2 });
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe("sponsored_quota_exceeded");
+
+    // Legacy (non-sponsored) registration unaffected by the sponsored budget.
+    expect((await reg(app, "legacy", ipOf(93))).status).toBe(201);
+  });
+
+  it("sponsored off: owner+signature → 400, legacy register unaffected", async () => {
+    const { app } = makeApp(); // no sponsoredMint
+    const signature = await signE2E("nope");
+    const res = await regSponsored(app, "nope", ipOf(94), { signature });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("not enabled");
+    expect((await reg(app, "plain", ipOf(95))).status).toBe(201);
+  });
+
+  it("missing/mismatched signature → 400, nothing minted", async () => {
+    const { app, store } = makeApp({ sponsoredMint: okSponsored });
+    expect((await regSponsored(app, "nosig", ipOf(96))).status).toBe(400);
+    const wrong = await signE2E("other-name");
+    expect(
+      (await regSponsored(app, "nosig", ipOf(97), { signature: wrong })).status,
+    ).toBe(400);
+    expect((await store.list()).filter((r) => r.sponsored)).toEqual([]);
   });
 });

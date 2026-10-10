@@ -220,6 +220,16 @@ export const ERROR_CATALOG: ErrorEntry[] = [
     affected_routes: ["/api/v1/agents/register"],
     recovery_action: "wait_and_retry",
   },
+  {
+    code: "sponsored_quota_exceeded",
+    http_status: 429,
+    agent_impact:
+      "The daily sponsored-mint budget is exhausted — treasury-paid gasless registration is paused today.",
+    hint_template:
+      "Retry tomorrow (UTC day reset) or register without the owner field — the legacy path has no sponsored quota.",
+    affected_routes: ["/api/v1/agents/register"],
+    recovery_action: "wait_and_retry",
+  },
 
   // ─── Rate limiting / server errors ───
   {

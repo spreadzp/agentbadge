@@ -9,6 +9,7 @@
  * written, NO fake agentId (181 honest-refusal contract).
  */
 import type { CacheProvider } from "@agentbadge/cache";
+import { getAddress } from "viem";
 import { issueApiKey } from "./api-keys";
 import type { AgentRegistration, AgentRegistrationStore } from "./store";
 
@@ -17,6 +18,11 @@ export interface RegisterInput {
   endpoint?: string;
   capabilities?: string[];
   description?: string;
+  /**
+   * SLICE-184-5: user EOA that will own the ERC-8004 NFT (sponsored
+   * mint+transfer path). Absent = treasury custody (legacy behavior).
+   */
+  owner?: `0x${string}`;
 }
 
 /** `registerMirror` result — injected so tests can stub the chain mint. */
@@ -24,9 +30,25 @@ export type MintFn = (
   agentUri: string,
 ) => Promise<{ agentId: bigint; txHash: `0x${string}` }>;
 
+/**
+ * SLICE-184-5 sponsored relayer: mint via treasury signer then
+ * transferFrom(ops → owner) — user needs no USDC. Both tx hashes
+ * are returned for the record + cost audit.
+ */
+export type SponsoredMintFn = (
+  agentUri: string,
+  owner: `0x${string}`,
+) => Promise<{
+  agentId: bigint;
+  txHash: `0x${string}`;
+  ownerTxHash: `0x${string}`;
+}>;
+
 export interface RegisterDeps {
   store: AgentRegistrationStore;
   mint: MintFn;
+  /** Required to honor input.owner; wired when REGISTER_SPONSORED=1. */
+  sponsoredMint?: SponsoredMintFn;
   /** Chain id embedded in the CAIP-style agentId (eip155:<id>:registry:token). */
   chainId: number;
   registryAddress: `0x${string}`;
@@ -94,7 +116,13 @@ function validateInput(input: RegisterInput): RegisterInput {
     capabilities = clean.length ? clean : undefined;
   }
   const description = input.description?.trim() || undefined;
-  return { name, endpoint, capabilities, description };
+  let owner: `0x${string}` | undefined;
+  if (input.owner !== undefined) {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(input.owner))
+      throw new RegistrationError("owner must be a 0x EOA address", "invalid_input");
+    owner = getAddress(input.owner);
+  }
+  return { name, endpoint, capabilities, description, owner };
 }
 
 /* --------------------------- agentURI builder -------------------------- */
@@ -148,20 +176,24 @@ export function buildAgentUri(input: RegisterInput): string {
 /* ------------------------- daily rate limiter --------------------------- */
 
 /**
- * Per-IP daily registration cap (sybil guard, D-184-7).
- * Cache bucket `regcap:<ip>:<day>` — shared across replicas, resets at UTC
- * day boundary (48h TTL covers the trailing edge). In-memory fallback when
- * no cache — an ops-level throttle, not a hard security boundary
- * (honest-zero reputation is the real disincentive). Fail-open on backend
- * error (incr returns 0 → allowed), per EPIC-144 passthrough contract.
+ * Daily-UTC cap bucket `<prefix>:<tag>:<day>` — shared across replicas,
+ * resets at UTC day boundary (48h TTL covers the trailing edge).
+ * In-memory fallback when no cache — an ops-level throttle, not a hard
+ * security boundary (honest-zero reputation is the real disincentive).
+ * Fail-open on backend error (incr returns 0 → allowed), per EPIC-144
+ * passthrough contract.
  */
-export function createDailyLimiter(limit: number, cache?: CacheProvider | null) {
+export function createDailyBucket(
+  prefix: string,
+  limit: number,
+  cache?: CacheProvider | null,
+) {
   const fallback = new Map<string, number>();
   const TTL_SEC = 48 * 3600;
   const day = () => new Date().toISOString().slice(0, 10); // UTC yyyy-mm-dd
   return {
-    async allow(ip: string): Promise<boolean> {
-      const key = `regcap:${ip}:${day()}`;
+    async allow(tag: string): Promise<boolean> {
+      const key = `${prefix}:${tag}:${day()}`;
       if (!cache) {
         const n = (fallback.get(key) ?? 0) + 1;
         fallback.set(key, n);
@@ -172,6 +204,11 @@ export function createDailyLimiter(limit: number, cache?: CacheProvider | null) 
       return n <= limit;
     },
   };
+}
+
+/** Per-IP daily registration cap (sybil guard, D-184-7): regcap:<ip>:<day>. */
+export function createDailyLimiter(limit: number, cache?: CacheProvider | null) {
+  return createDailyBucket("regcap", limit, cache);
 }
 
 /* ------------------------------ pipeline -------------------------------- */
@@ -190,13 +227,33 @@ export async function registerAgent(
   const validated = validateInput(input);
   const agentUri = buildAgentUri(validated);
 
-  const minted = await deps.mint(agentUri).catch((e) => {
-    throw new RegistrationError(
-      "ERC-8004 mint failed",
-      "execution_failed",
-      e,
-    );
-  });
+  // SLICE-184-5: owner present → treasury-paid mint+transfer relayer.
+  // Callers must guarantee deps.sponsoredMint exists before allowing
+  // owner through (route rejects 400 when sponsored is off).
+  if (validated.owner && !deps.sponsoredMint)
+    throw new RegistrationError("sponsored registration unavailable", "execution_failed");
+
+  let minted: { agentId: bigint; txHash: `0x${string}` };
+  let ownerTxHash: `0x${string}` | undefined;
+  if (validated.owner) {
+    const m = await deps.sponsoredMint!(agentUri, validated.owner).catch((e) => {
+      throw new RegistrationError(
+        "ERC-8004 sponsored mint failed",
+        "execution_failed",
+        e,
+      );
+    });
+    minted = m;
+    ownerTxHash = m.ownerTxHash;
+  } else {
+    minted = await deps.mint(agentUri).catch((e) => {
+      throw new RegistrationError(
+        "ERC-8004 mint failed",
+        "execution_failed",
+        e,
+      );
+    });
+  }
 
   const { key, keyHash } = issueApiKey();
   const record: AgentRegistration = {
@@ -209,6 +266,9 @@ export async function registerAgent(
     tier: "observer",
     status: "active",
     createdAt: Date.now(),
+    ...(validated.owner
+      ? { owner: validated.owner, sponsored: true, ownerTx: ownerTxHash }
+      : {}),
   };
   await deps.store.put(record);
   return { record, apiKey: key, agentUri };

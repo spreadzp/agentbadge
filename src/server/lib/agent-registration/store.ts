@@ -26,6 +26,16 @@ export interface AgentRegistration {
   createdAt: number;
   revokedAt?: number;
   revokedBy?: string;
+  /**
+   * SLICE-184-5: user wallet that owns the ERC-8004 NFT after the
+   * mint+transfer relayer path. Absent on legacy records = treasury
+   * custody (ops wallet is the on-chain owner).
+   */
+  owner?: `0x${string}`;
+  /** True when the mint was paid by treasury on the user's behalf. */
+  sponsored?: boolean;
+  /** transferFrom(ops→owner) tx hash — second leg of the sponsored mint. */
+  ownerTx?: `0x${string}`;
 }
 
 export interface AgentRegistrationStore {

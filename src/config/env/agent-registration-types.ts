@@ -14,4 +14,12 @@ export interface AgentRegistrationEnvConfig {
    * Absent when enabled → misconfig; routes must answer 503.
    */
   opsKey?: `0x${string}`;
+  /**
+   * SLICE-184-5: sponsored (gasless) registration — REGISTER_SPONSORED.
+   * When true, POST with {owner, signature} mints to the user's EOA
+   * via treasury-paid mint+transfer relayer (D-184-10).
+   */
+  sponsored: boolean;
+  /** Daily treasury-budget cap for sponsored mints (sponcap:<day>). */
+  sponsoredDaily: number;
 }

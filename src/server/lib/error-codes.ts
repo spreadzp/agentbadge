@@ -52,6 +52,7 @@ export const ErrorCodes = {
   // 429 — rate limit
   RATE_LIMITED: "RATE_LIMITED",
   REGISTER_RATE_LIMITED: "register_rate_limited",
+  SPONSORED_QUOTA_EXCEEDED: "sponsored_quota_exceeded",
 
   // 401 — agent api keys (EPIC-184; snake_case wire values)
   AGENT_KEY_INVALID: "agent_key_invalid",

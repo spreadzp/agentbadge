@@ -89,6 +89,8 @@ We offer consulting and development services for the agentic web:
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
 - /api/v1/services — Canonical paid-services catalog (ServiceSku registry, USDC prices); supersedes /api/meta/fees
 - /api/meta/trust-tiers — Identity/trust ladder (7 tiers, incl. keyed observer) with capabilities and requirements
+- POST /api/v1/agents/register — Self-serve ERC-8004 registration (free, observer tier, agb_ key once);
+  sponsored mode: {owner, signature} with EIP-191 intent — treasury pays mint+transfer, no USDC needed
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
 
 ## Demand & Work Requests

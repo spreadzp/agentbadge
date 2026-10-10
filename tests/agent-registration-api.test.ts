@@ -255,3 +255,213 @@ describe("GET/DELETE /api/v1/agents/me", () => {
     expect(me.status).toBe(200);
   });
 });
+
+/* ---------------------- sponsored registration (SLICE-184-5) ---------------------- */
+
+import { privateKeyToAccount } from "viem/accounts";
+import {
+  buildRegisterIntent,
+  verifyRegisterIntent,
+} from "../src/server/lib/agent-registration/intent";
+import type { SponsoredMintFn } from "../src/server/lib/agent-registration/register";
+
+// Anvil #0 key — public test key, address 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266.
+const TEST_KEY =
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const;
+const TEST_ACCOUNT = privateKeyToAccount(TEST_KEY);
+const TEST_OWNER = TEST_ACCOUNT.address;
+
+const okSponsoredMint: SponsoredMintFn = async (_uri, _owner) => ({
+  agentId: 77n,
+  txHash: "0xmint77" as `0x${string}`,
+  ownerTxHash: "0xtransfer77" as `0x${string}`,
+});
+
+const signIntent = (name: string) =>
+  TEST_ACCOUNT.signMessage({
+    message: buildRegisterIntent(CHAIN_ID, REGISTRY, TEST_OWNER, name),
+  });
+
+describe("verifyRegisterIntent", () => {
+  it("round-trip: correct signer+message verifies", async () => {
+    const signature = await signIntent("spon-agent");
+    expect(
+      await verifyRegisterIntent({
+        chainId: CHAIN_ID,
+        registryAddress: REGISTRY,
+        owner: TEST_OWNER,
+        name: "spon-agent",
+        signature,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects wrong name (bound field mismatch)", async () => {
+    const signature = await signIntent("spon-agent");
+    expect(
+      await verifyRegisterIntent({
+        chainId: CHAIN_ID,
+        registryAddress: REGISTRY,
+        owner: TEST_OWNER,
+        name: "other-agent",
+        signature,
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects wrong owner + malformed inputs without throwing", async () => {
+    const signature = await signIntent("spon-agent");
+    expect(
+      await verifyRegisterIntent({
+        chainId: CHAIN_ID,
+        registryAddress: REGISTRY,
+        owner: "0x0000000000000000000000000000000000000001",
+        name: "spon-agent",
+        signature,
+      }),
+    ).toBe(false);
+    expect(
+      await verifyRegisterIntent({
+        chainId: CHAIN_ID,
+        registryAddress: REGISTRY,
+        owner: "0x123" as `0x${string}`,
+        name: "x",
+        signature: "0x00" as `0x${string}`,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("registerAgent — sponsored path", () => {
+  it("owner → calls sponsoredMint, record has owner/sponsored/ownerTx", async () => {
+    const deps = makeDeps();
+    let called = false;
+    const sponsoredMint: SponsoredMintFn = async (uri, owner) => {
+      called = true;
+      expect(uri).toContain("data:application/json");
+      expect(owner).toBe(TEST_OWNER);
+      return okSponsoredMint(uri, owner);
+    };
+    const { record } = await registerAgent(
+      { ...deps, sponsoredMint },
+      { name: "spon", owner: TEST_OWNER },
+    );
+    expect(called).toBe(true);
+    expect(record.owner).toBe(TEST_OWNER);
+    expect(record.sponsored).toBe(true);
+    expect(record.ownerTx).toBe("0xtransfer77");
+    expect(record.agentId).toBe(`eip155:${CHAIN_ID}:${REGISTRY}:77`);
+  });
+
+  it("owner without sponsoredMint → execution_failed (no silent fallback)", async () => {
+    const deps = makeDeps();
+    await expect(
+      registerAgent(deps, { name: "spon", owner: TEST_OWNER }),
+    ).rejects.toMatchObject({ code: "execution_failed" });
+    expect(await deps.store.list()).toEqual([]);
+  });
+
+  it("bad owner address → invalid_input before mint", async () => {
+    const deps = makeDeps({ sponsoredMint: okSponsoredMint });
+    await expect(
+      registerAgent(deps, { name: "s", owner: "0x123" as `0x${string}` }),
+    ).rejects.toMatchObject({ code: "invalid_input" });
+  });
+});
+
+describe("POST /api/v1/agents/register — sponsored", () => {
+  it("owner+signature with sponsored off → 400", async () => {
+    const deps = makeDeps(); // no sponsoredMint → sponsored disabled
+    const res = await post(app(deps), {
+      name: "spon",
+      owner: TEST_OWNER,
+      signature: await signIntent("spon"),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("not enabled");
+  });
+
+  it("owner without signature → 400", async () => {
+    const deps = makeDeps({ sponsoredMint: okSponsoredMint });
+    const res = await post(app(deps), { name: "spon", owner: TEST_OWNER });
+    expect(res.status).toBe(400);
+  });
+
+  it("bad signature → 400 invalid intent", async () => {
+    const deps = makeDeps({ sponsoredMint: okSponsoredMint });
+    const res = await post(app(deps), {
+      name: "spon",
+      owner: TEST_OWNER,
+      signature: await signIntent("different-name"),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("intent signature");
+  });
+
+  it("valid intent → 201 with sponsored fields; /me exposes owner", async () => {
+    const deps = makeDeps({ sponsoredMint: okSponsoredMint });
+    const a = app(deps);
+    const res = await post(a, {
+      name: "spon",
+      owner: TEST_OWNER,
+      signature: await signIntent("spon"),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.sponsored).toBe(true);
+    expect(body.owner).toBe(TEST_OWNER);
+    expect(body.owner_tx).toBe("0xtransfer77");
+    expect(body.agent_id).toBe(`eip155:${CHAIN_ID}:${REGISTRY}:77`);
+    const me = await a.request("/api/v1/agents/me", {
+      headers: { authorization: `Bearer ${body.api_key}` },
+    });
+    const rec = await me.json();
+    expect(rec.owner).toBe(TEST_OWNER);
+    expect(rec.sponsored).toBe(true);
+  });
+
+  it("sponcap → second sponsored mint 429 sponsored_quota_exceeded", async () => {
+    const deps = makeDeps({
+      sponsoredMint: okSponsoredMint,
+      sponsoredDailyLimit: 1,
+      dailyLimit: 99,
+    });
+    const a = app(deps);
+    const ip1 = { "x-forwarded-for": "10.5.0.1" };
+    const ip2 = { "x-forwarded-for": "10.5.0.2" };
+    const first = await post(
+      a,
+      { name: "s1", owner: TEST_OWNER, signature: await signIntent("s1") },
+      ip1,
+    );
+    expect(first.status).toBe(201);
+    // Second sponsored attempt — different IP (regcap passes) but global cap hit.
+    const res = await post(
+      a,
+      { name: "s2", owner: TEST_OWNER, signature: await signIntent("s2") },
+      ip2,
+    );
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe("sponsored_quota_exceeded");
+  });
+
+  it("per-IP regcap fires BEFORE sponcap (sybil order)", async () => {
+    const deps = makeDeps({
+      sponsoredMint: okSponsoredMint,
+      sponsoredDailyLimit: 50,
+      dailyLimit: 1,
+    });
+    const a = app(deps);
+    const ip = { "x-forwarded-for": "10.5.9.9" };
+    expect(
+      (await post(a, { name: "x" }, ip)).status,
+    ).toBe(201);
+    const res = await post(
+      a,
+      { name: "s", owner: TEST_OWNER, signature: await signIntent("s") },
+      ip,
+    );
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe("register_rate_limited");
+  });
+});

@@ -13,6 +13,9 @@
  *   AGENT_REGISTER_KEY_RPM  — keyed free-tier limit advertised to callers
  *                             (default 10 req/min vs anon 1/min — O1)
  *   AGENT_REGISTER_GAS_CAP  — gas ceiling for the mint tx (default 500000)
+ *   REGISTER_SPONSORED      — 0/1: treasury-paid mint+transfer to user EOA
+ *                             (default off; needs user EIP-191 intent)
+ *   REGISTER_SPONSORED_DAILY— sponsored-mint budget per UTC day (default 50)
  */
 import type { AgentRegistrationEnvConfig } from "./agent-registration-types";
 import { booleanFlag } from "./validators";
@@ -55,12 +58,18 @@ export function loadAgentRegistration(
   const keyRpm = intVar("AGENT_REGISTER_KEY_RPM", 10, 1, errors);
   const gasCap = intVar("AGENT_REGISTER_GAS_CAP", 500_000, 1, errors);
 
+  // SLICE-184-5: treasury-paid gasless onboarding (D-184-10).
+  const sponsored = booleanFlag("REGISTER_SPONSORED");
+  const sponsoredDaily = intVar("REGISTER_SPONSORED_DAILY", 50, 1, errors);
+
   return {
     enabled: true,
     store,
     dailyLimit,
     keyRpm,
     gasCap,
+    sponsored,
+    sponsoredDaily,
     ...(opsKey ? { opsKey } : {}),
   };
 }

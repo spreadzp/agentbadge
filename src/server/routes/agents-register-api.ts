@@ -22,12 +22,18 @@ import {
 import { bustAgentKeyCache } from "../middleware/agent-key-auth";
 import { adminAuth } from "../middleware/adminAuth";
 import {
+  createDailyBucket,
   createDailyLimiter,
   registerAgent,
   RegistrationError,
   type MintFn,
-  type RegisterInput,
+  type SponsoredMintFn,
 } from "../lib/agent-registration/register";
+import {
+  gateSponsoredRequest,
+  type SponsoredBody,
+} from "../lib/agent-registration/sponsored-gate";
+import { publicRecord } from "../lib/agent-registration/public-view";
 import type {
   AgentRegistration,
   AgentRegistrationStore,
@@ -47,6 +53,10 @@ export interface AgentRegisterRoutesDeps {
   dailyLimit: number;
   /** Cache backend for the shared regcap counter — default tryGetCache(). */
   cache?: CacheProvider | null;
+  /** SLICE-184-5: sponsored relayer — wired only when REGISTER_SPONSORED=1; {owner, signature} requests 400 when absent. */
+  sponsoredMint?: SponsoredMintFn;
+  /** Treasury-budget cap for sponsored mints per UTC day (sponcap:<day>). */
+  sponsoredDailyLimit?: number;
 }
 
 const bearerKey = (c: Context): string | undefined => {
@@ -55,27 +65,17 @@ const bearerKey = (c: Context): string | undefined => {
   return h.slice(7).trim();
 };
 
-/** Public view of a record — keyHash never leaves the server. */
-const publicRecord = (rec: AgentRegistration) => ({
-  agent_id: rec.agentId,
-  registry: "erc-8004",
-  registry_address: rec.registryAddress,
-  registry_tx: rec.registryTx,
-  name: rec.name,
-  ...(rec.endpoint ? { endpoint: rec.endpoint } : {}),
-  tier: rec.tier,
-  status: rec.status,
-  reputation: null as null,
-  reputation_note: "no_data",
-  created_at: rec.createdAt,
-});
-
 export function createAgentRegisterRoutes(
   deps: AgentRegisterRoutesDeps,
 ): Hono {
   const routes = new Hono();
   const daily = createDailyLimiter(
     deps.dailyLimit,
+    deps.cache === undefined ? tryGetCache() : deps.cache,
+  );
+  const sponcap = createDailyBucket(
+    "sponcap",
+    deps.sponsoredDailyLimit ?? 50,
     deps.cache === undefined ? tryGetCache() : deps.cache,
   );
 
@@ -98,8 +98,7 @@ export function createAgentRegisterRoutes(
       if (!deps.enabled || !deps.mint)
         return errorResponse(c, 503, ErrorCodes.EXECUTION_FAILED, "agent registration is unavailable", { retryable: true });
       // SLICE-184-4: per-IP daily cap regcap:<ip>:<day> (sybil guard).
-      const ip =
-        c.req.header("cf-connecting-ip") ??
+      const ip = c.req.header("cf-connecting-ip") ??
         c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
         "anonymous";
       if (!(await daily.allow(ip))) {
@@ -112,11 +111,26 @@ export function createAgentRegisterRoutes(
         );
       }
 
-      let body: RegisterInput;
+      let body: SponsoredBody;
       try {
-        body = (await c.req.json()) as RegisterInput;
+        body = await c.req.json();
       } catch {
         return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "invalid JSON");
+      }
+
+      // SLICE-184-5: sponsored path — EIP-191 intent + sponcap budget gate.
+      if (body.owner) {
+        const gate = await gateSponsoredRequest({
+          sponsoredEnabled: Boolean(deps.sponsoredMint),
+          chainId: deps.chainId,
+          registryAddress: deps.registryAddress,
+          owner: body.owner,
+          signature: body.signature,
+          name: String(body.name ?? ""),
+          allowSponsored: () => sponcap.allow("global"),
+        });
+        if (gate)
+          return errorResponse(c, gate.status, gate.code, gate.message, { retryable: true });
       }
 
       try {
@@ -124,6 +138,7 @@ export function createAgentRegisterRoutes(
           {
             store: deps.store,
             mint: deps.mint,
+            sponsoredMint: deps.sponsoredMint,
             chainId: deps.chainId,
             registryAddress: deps.registryAddress,
           },
@@ -132,17 +147,22 @@ export function createAgentRegisterRoutes(
             endpoint: body.endpoint,
             capabilities: body.capabilities,
             description: body.description,
+            ...(body.owner ? { owner: body.owner } : {}),
           },
         );
         logger.info("agent registered", {
           agentId: record.agentId,
           tx: record.registryTx,
+          ...(record.sponsored ? { sponsored: true, owner: record.owner } : {}),
         });
         return c.json(
           {
             agent_id: record.agentId,
             registry: "erc-8004",
             registry_tx: record.registryTx,
+            ...(record.sponsored
+              ? { sponsored: true, owner: record.owner, owner_tx: record.ownerTx }
+              : {}),
             agent_uri: agentUri,
             api_key: apiKey,
             tier: record.tier,
