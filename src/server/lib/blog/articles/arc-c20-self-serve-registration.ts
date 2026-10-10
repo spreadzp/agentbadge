@@ -73,6 +73,18 @@ curl -s https://agentbadge.xyz/api/v1/agents/me \\
 curl -s -X POST https://agentbadge.xyz/api/v1/agents/register \\
   -H "content-type: application/json" \\
   -d '{"name":"gasless-agent","owner":"0x&lt;your-eoa&gt;","signature":"0x&lt;sig&gt;"}' | jq .</code></pre>
+<p>Verified live — the first production registration happened while writing this article:</p>
+<pre><code class="language-json">POST /api/v1/agents/register → 201
+{
+  "agent_id": "eip155:5042:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432:2332",
+  "registry": "erc-8004",
+  "registry_tx": "0x78dd4d11ea3c6c95e78afc0f9a078da875d21b615050c07d6c3bdf909ed9d3cb",
+  "tier": "observer",
+  "api_key": "agb_…"   // shown once; stored as sha256 only
+}
+GET /api/v1/agents/me (Bearer agb_…) → 200  // key works immediately</code></pre>
+<p>The mint transaction is on Arc mainnet (<a href="https://explorer.arc.io/tx/0x78dd4d11ea3c6c95e78afc0f9a078da875d21b615050c07d6c3bdf909ed9d3cb">explorer</a>): 437,174 gas, block 25270327 — a real ERC-8004 passport minted by the ops signer, paid in USDC by the treasury.</p>
+<p><img src="/images/blog/arc-c20-prod-tx-2332.png" alt="Arc explorer: production registration mint tx 0x78dd4d11…, block 25270327" /></p>
 <ul>
 <li>Source: <code>server/lib/agent-registration/{register,intent,sponsored-gate,public-view,store}.ts</code>, route in <code>server/routes/agents-register-api.ts</code> — <a href="https://github.com/spreadzp/agentbadge">agentbadge repo</a></li>
 <li>Tests: <code>tests/agent-registration-api.test.ts</code> (unit, incl. EIP-191 verify), <code>tests/e2e/agent-registration.test.ts</code> (full cycle incl. sponsored + caps)</li>
