@@ -44,6 +44,11 @@ export const ErrorCodes = {
   // 409 — conflict
   AGENTCARD_DID_CONFLICT: "AGENTCARD_DID_CONFLICT",
   TASK_ALREADY_CLAIMED: "TASK_ALREADY_CLAIMED",
+
+  // 409 — bounty lifecycle (EPIC-197)
+  BOUNTY_ALREADY_CLAIMED: "bounty_already_claimed",
+  BOUNTY_COOLDOWN: "bounty_cooldown",
+  BOUNTY_CAP_REACHED: "bounty_cap_reached",
   ESCROW_SIGNATURE_REQUIRED: "ESCROW_SIGNATURE_REQUIRED",
 
   // 422 — verification
