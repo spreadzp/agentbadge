@@ -15,6 +15,7 @@ import type {
   BountyRecord,
   BountyStoreBackend,
   BountyTransitionRecord,
+  PassportOwnerRecord,
 } from "./store";
 import { claimKey } from "./store";
 
@@ -22,7 +23,14 @@ const STORE_PATH = join(process.cwd(), ".data", "bounties.json");
 let _memStore: BountyData | null = null; // test override
 
 export function emptyBountyData(): BountyData {
-  return { bounties: {}, claims: {}, transitions: {}, outcomes: {}, meta: {} };
+  return {
+    bounties: {},
+    claims: {},
+    transitions: {},
+    outcomes: {},
+    owners: {},
+    meta: {},
+  };
 }
 
 function loadStore(): BountyData {
@@ -33,6 +41,7 @@ function loadStore(): BountyData {
       data.claims ??= {};
       data.transitions ??= {};
       data.outcomes ??= {};
+      data.owners ??= {};
       data.meta ??= {};
       return data;
     }
@@ -157,6 +166,40 @@ export function createJsonBountyStore(): BountyStoreBackend {
       return Object.values(loadStore().outcomes)
         .filter((o) => o.passportId === passportId)
         .sort((a, b) => b.bountyId.localeCompare(a.bountyId));
+    },
+
+    upsertPassportOwner(rec: PassportOwnerRecord): void {
+      const store = loadStore();
+      const prev = store.owners[rec.passportId];
+      // Monotonic by block — replay/older log never regresses owner.
+      if (
+        prev &&
+        (prev.blockNumber > rec.blockNumber ||
+          (prev.blockNumber === rec.blockNumber &&
+            (prev.logIndex ?? 0) >= (rec.logIndex ?? 0)))
+      ) {
+        return;
+      }
+      store.owners[rec.passportId] = rec;
+      saveStore(store);
+    },
+
+    getPassportOwner(passportId: string): PassportOwnerRecord | undefined {
+      return loadStore().owners[passportId];
+    },
+
+    listPassportsByOwner(owner: string): PassportOwnerRecord[] {
+      const o = owner.toLowerCase();
+      return Object.values(loadStore().owners)
+        .filter((r) => r.owner.toLowerCase() === o)
+        .sort((a, b) => a.passportId.localeCompare(b.passportId));
+    },
+
+    maxPassportOwnerBlock(): number {
+      return Object.values(loadStore().owners).reduce(
+        (m, r) => Math.max(m, r.blockNumber),
+        0,
+      );
     },
 
     getMeta<T>(key: string): T | undefined {

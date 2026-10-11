@@ -3,30 +3,38 @@
  * Pattern cloned from venue/db-store.ts: `db.raw.sql` tagged templates
  * on `getDatabase().db` (the raw lane bypasses the published contract —
  * no BountyRepository dependency on @agentbadge/database dist).
+ * SLICE-197-04: + "passportOwner" mirror (indexer resume + /me/agents).
  *
  * Tables (camelCase, owned by packages/database migrations
  * app/20261011T1642_add_bounty_models): "bounty", "bountyClaim",
- * "bountyTransition", "bountyOutcome". Whole record goes into `payload`
- * (hydration = JSON.parse); queryable columns kept in sync for
- * sweeper/index reads.
+ * "bountyTransition", "bountyOutcome", "passportOwner". SQL builders
+ * live in db-sql.ts (max-lines). `meta` stays in-memory (sweeper
+ * watermark is derivable from claims/transitions/owners).
  *
  * Selected via ARC_BOUNTY_STORE=prisma|db. Requires DATABASE_ENABLED +
  * DATABASE_URL — createBountyDbStore() returns null when off and the
- * caller falls back to json. `meta` stays in-memory here (sweeper
- * watermark is derivable from claims/transitions).
+ * caller falls back to json.
  */
 import { randomUUID } from "node:crypto";
-import { param } from "@agentbadge/database";
 import { logger } from "@agentbadge/passport";
 
 import { DbWriteBehind } from "../db-mirror";
 import { getDatabase } from "../database";
+import {
+  hydrationPlans,
+  insertOutcomePlan,
+  insertTransitionPlan,
+  upsertBountyPlan,
+  upsertClaimPlan,
+  upsertOwnerPlan,
+} from "./db-sql";
 import type {
   BountyClaimRecord,
   BountyOutcomeRecord,
   BountyRecord,
   BountyStoreBackend,
   BountyTransitionRecord,
+  PassportOwnerRecord,
 } from "./store";
 import { claimKey } from "./store";
 
@@ -37,6 +45,7 @@ interface Mirror {
   claims: Map<string, BountyClaimRecord>;
   transitions: Map<string, BountyTransitionRecord>;
   outcomes: Map<string, BountyOutcomeRecord>;
+  owners: Map<string, PassportOwnerRecord>;
   meta: Map<string, unknown>;
 }
 
@@ -57,6 +66,7 @@ export class PrismaBountyStore implements BountyStoreBackend {
     claims: new Map(),
     transitions: new Map(),
     outcomes: new Map(),
+    owners: new Map(),
     meta: new Map(),
   };
   private readonly wb: DbWriteBehind;
@@ -76,32 +86,15 @@ export class PrismaBountyStore implements BountyStoreBackend {
 
   /** Hydrate mirror from Postgres — payload carries the whole record. */
   private async init(): Promise<void> {
-    const [bounties, claims, transitions, outcomes] = await Promise.all([
-      this.db.runtime().query(
-        this.db.raw
-          .sql`SELECT "payload"::text AS payload FROM "bounty"`
-          .returnsRow({ payload: "pg/text@1" })
-          .build(),
-      ),
-      this.db.runtime().query(
-        this.db.raw
-          .sql`SELECT "payload"::text AS payload FROM "bountyClaim"`
-          .returnsRow({ payload: "pg/text@1" })
-          .build(),
-      ),
-      this.db.runtime().query(
-        this.db.raw
-          .sql`SELECT "payload"::text AS payload FROM "bountyTransition"`
-          .returnsRow({ payload: "pg/text@1" })
-          .build(),
-      ),
-      this.db.runtime().query(
-        this.db.raw
-          .sql`SELECT "payload"::text AS payload FROM "bountyOutcome"`
-          .returnsRow({ payload: "pg/text@1" })
-          .build(),
-      ),
-    ]);
+    const plans = hydrationPlans(this.db);
+    const [bounties, claims, transitions, outcomes, owners] =
+      await Promise.all([
+        this.db.runtime().query(plans.bounties),
+        this.db.runtime().query(plans.claims),
+        this.db.runtime().query(plans.transitions),
+        this.db.runtime().query(plans.outcomes),
+        this.db.runtime().query(plans.owners),
+      ]);
 
     for (const row of bounties as { payload: string }[]) {
       const b = JSON.parse(row.payload) as BountyRecord;
@@ -119,9 +112,14 @@ export class PrismaBountyStore implements BountyStoreBackend {
       const o = JSON.parse(row.payload) as BountyOutcomeRecord;
       this.mirror.outcomes.set(claimKey(o.bountyId, o.jobAttempt), o);
     }
+    for (const row of owners as { payload: string }[]) {
+      const r = JSON.parse(row.payload) as PassportOwnerRecord;
+      this.mirror.owners.set(r.passportId, r);
+    }
     logger.info("bounties: db-store hydrated", {
       bounties: this.mirror.bounties.size,
       claims: this.mirror.claims.size,
+      owners: this.mirror.owners.size,
     });
   }
 
@@ -133,26 +131,7 @@ export class PrismaBountyStore implements BountyStoreBackend {
 
   upsertBounty(bounty: BountyRecord): void {
     this.mirror.bounties.set(bounty.bountyId, bounty);
-    const payload = JSON.stringify(bounty);
-    const onchainJobId = param(bounty.onchainJobId ?? null, {
-      codecId: "pg/text@1",
-    });
-    const createdBy = param(bounty.createdBy ?? null, {
-      codecId: "pg/text@1",
-    });
-    const plan = this.db.raw
-      .sql`INSERT INTO "bounty" ("bountyId","status","onchainJobId","jobAttempt","budgetUsdc","createdBy","payload","updatedAt")
-        VALUES (${bounty.bountyId}, ${bounty.status}, ${onchainJobId},
-          ${bounty.jobAttempt}, ${bounty.budgetUsdc}::numeric, ${createdBy},
-          ${payload}::json, now())
-        ON CONFLICT ("bountyId") DO UPDATE SET "status" = EXCLUDED."status",
-          "onchainJobId" = EXCLUDED."onchainJobId",
-          "jobAttempt" = EXCLUDED."jobAttempt",
-          "budgetUsdc" = EXCLUDED."budgetUsdc",
-          "createdBy" = EXCLUDED."createdBy",
-          "payload" = EXCLUDED."payload", "updatedAt" = now()`
-      .affectedCount()
-      .build();
+    const plan = upsertBountyPlan(this.db, bounty);
     this.enqueue(() => this.db.runtime().execute(plan));
   }
 
@@ -173,19 +152,8 @@ export class PrismaBountyStore implements BountyStoreBackend {
   // ─── claims ────────────────────────────────────────────────────
 
   upsertClaim(claim: BountyClaimRecord): void {
-    const key = claimKey(claim.bountyId, claim.jobAttempt);
-    this.mirror.claims.set(key, claim);
-    const payload = JSON.stringify(claim);
-    const plan = this.db.raw
-      .sql`INSERT INTO "bountyClaim" ("id","bountyId","jobAttempt","passportId","payoutWallet","state","claimedAtMs","leaseUntilMs","payload","updatedAt")
-        VALUES (${claim.id}, ${claim.bountyId}, ${claim.jobAttempt},
-          ${claim.passportId}, ${claim.payoutWallet}, ${claim.state},
-          ${claim.claimedAtMs}, ${claim.leaseUntilMs}, ${payload}::json, now())
-        ON CONFLICT ("bountyId","jobAttempt") DO UPDATE SET
-          "state" = EXCLUDED."state", "payload" = EXCLUDED."payload",
-          "updatedAt" = now()`
-      .affectedCount()
-      .build();
+    this.mirror.claims.set(claimKey(claim.bountyId, claim.jobAttempt), claim);
+    const plan = upsertClaimPlan(this.db, claim);
     this.enqueue(() => this.db.runtime().execute(plan));
   }
 
@@ -212,15 +180,7 @@ export class PrismaBountyStore implements BountyStoreBackend {
 
   appendTransition(t: BountyTransitionRecord): void {
     this.mirror.transitions.set(t.id, t);
-    const payload = JSON.stringify(t);
-    const reason = param(t.reason ?? null, { codecId: "pg/text@1" });
-    const plan = this.db.raw
-      .sql`INSERT INTO "bountyTransition" ("id","bountyId","actor","from","to","reason","atMs","payload","updatedAt")
-        VALUES (${randomUUID()}, ${t.bountyId}, ${t.actor}, ${t.from},
-          ${t.to}, ${reason}, ${t.atMs}, ${payload}::json, now())
-        ON CONFLICT ("id") DO NOTHING`
-      .affectedCount()
-      .build();
+    const plan = insertTransitionPlan(this.db, t, randomUUID());
     this.enqueue(() => this.db.runtime().execute(plan));
   }
 
@@ -243,32 +203,7 @@ export class PrismaBountyStore implements BountyStoreBackend {
       return;
     }
     this.mirror.outcomes.set(key, outcome);
-    const payload = JSON.stringify(outcome);
-    const passportId = param(outcome.passportId ?? null, {
-      codecId: "pg/text@1",
-    });
-    const reasonCodes = param(
-      outcome.reasonCodes ? JSON.stringify(outcome.reasonCodes) : null,
-      { codecId: "pg/text@1" },
-    );
-    const verdictMemoTx = param(outcome.verdictMemoTx ?? null, {
-      codecId: "pg/text@1",
-    });
-    const verdictRejectTx = param(outcome.verdictRejectTx ?? null, {
-      codecId: "pg/text@1",
-    });
-    const commitSha = param(outcome.commitSha ?? null, {
-      codecId: "pg/text@1",
-    });
-    const plan = this.db.raw
-      .sql`INSERT INTO "bountyOutcome" ("id","bountyId","jobAttempt","passportId","verdict","reasonCodes","verdictMemoTx","verdictRejectTx","commitSha","payload","updatedAt")
-        VALUES (${outcome.id}, ${outcome.bountyId}, ${outcome.jobAttempt},
-          ${passportId}, ${outcome.verdict}, ${reasonCodes}::json,
-          ${verdictMemoTx}, ${verdictRejectTx}, ${commitSha},
-          ${payload}::json, now())
-        ON CONFLICT ("bountyId","jobAttempt") DO NOTHING`
-      .affectedCount()
-      .build();
+    const plan = insertOutcomePlan(this.db, outcome);
     this.enqueue(() => this.db.runtime().execute(plan));
   }
 
@@ -282,6 +217,42 @@ export class PrismaBountyStore implements BountyStoreBackend {
   listOutcomesByPassport(passportId: string): BountyOutcomeRecord[] {
     return [...this.mirror.outcomes.values()].filter(
       (o) => o.passportId === passportId,
+    );
+  }
+
+  // ─── passport owners (197-04 indexer mirror) ───────────────────
+
+  upsertPassportOwner(rec: PassportOwnerRecord): void {
+    const prev = this.mirror.owners.get(rec.passportId);
+    // Monotonic by (block,log) — replay/older log never regresses owner.
+    if (
+      prev &&
+      (prev.blockNumber > rec.blockNumber ||
+        (prev.blockNumber === rec.blockNumber &&
+          (prev.logIndex ?? 0) >= (rec.logIndex ?? 0)))
+    ) {
+      return;
+    }
+    this.mirror.owners.set(rec.passportId, rec);
+    const plan = upsertOwnerPlan(this.db, rec);
+    this.enqueue(() => this.db.runtime().execute(plan));
+  }
+
+  getPassportOwner(passportId: string): PassportOwnerRecord | undefined {
+    return this.mirror.owners.get(passportId);
+  }
+
+  listPassportsByOwner(owner: string): PassportOwnerRecord[] {
+    const o = owner.toLowerCase();
+    return [...this.mirror.owners.values()]
+      .filter((r) => r.owner.toLowerCase() === o)
+      .sort((a, b) => a.passportId.localeCompare(b.passportId));
+  }
+
+  maxPassportOwnerBlock(): number {
+    return [...this.mirror.owners.values()].reduce(
+      (m, r) => Math.max(m, r.blockNumber),
+      0,
     );
   }
 

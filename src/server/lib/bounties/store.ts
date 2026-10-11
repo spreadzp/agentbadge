@@ -18,96 +18,24 @@ import {
 } from "./json-store";
 import { createBountyDbStore } from "./db-store";
 
-// ─── Records ─────────────────────────────────────────────────────
+// ─── Records (types.ts — shared JSON/prisma shape) ──────────────
 
-export interface BountyRecord {
-  bountyId: string;
-  title: string;
-  /** Pre-claim structured brief (Q33): criteria, deliverable, steps, verify. */
-  brief: {
-    criteria: string[];
-    deliverableType: "pr" | "url" | "post" | "report";
-    steps?: string[];
-    verify?: string;
-  };
-  description?: string;
-  /** Decimal USDC string (matches Prisma Decimal codec). */
-  budgetUsdc: string;
-  status: BountyStatus;
-  /** Active ERC-8183 onchain jobId; provider=0x0 until claim. */
-  onchainJobId?: string;
-  /** One job = one attempt (Q37/Q38-A); increments on reopen. */
-  jobAttempt: number;
-  /** Created by ops passport/wallet (Q4 client role). */
-  createdBy?: string;
-  /** Passport id of the agent that created the bounty (self-posted). */
-  createdByPassportId?: string;
-  /** Onchain tx hashes keyed by lifecycle step. */
-  chainTxs?: Partial<
-    Record<
-      "created" | "funded" | "submitted" | "completed" | "rejected",
-      string
-    >
-  >;
-  /** Latest verdict memo anchor (197-10). */
-  verdictMemoTx?: string;
-  /** Extensible metadata (deliverable ref, tags…). */
-  payload?: Record<string, unknown>;
-  createdAt: string;
-}
-
-export interface BountyClaimRecord {
-  /** Composite key `${bountyId}:${jobAttempt}` — one claim per attempt. */
-  id: string;
-  bountyId: string;
-  jobAttempt: number;
-  passportId: string;
-  payoutWallet: string;
-  /** open = active lease; expired = sweeper fired; consumed = submitted. */
-  state: "open" | "expired" | "consumed";
-  claimedAtMs: number;
-  leaseUntilMs: number;
-  payload?: Record<string, unknown>;
-}
-
-export interface BountyTransitionRecord {
-  id: string;
-  bountyId: string;
-  actor: string;
-  from: string;
-  to: string;
-  reason?: string;
-  atMs: number;
-  payload?: Record<string, unknown>;
-}
-
-export interface BountyOutcomeRecord {
-  /** Composite key `${bountyId}:${jobAttempt}` — one verdict per attempt. */
-  id: string;
-  bountyId: string;
-  jobAttempt: number;
-  passportId?: string;
-  verdict: "pass" | "fail" | "timeout";
-  reasonCodes?: string[];
-  verdictMemoTx?: string;
-  verdictRejectTx?: string;
-  commitSha?: string;
-  payload?: Record<string, unknown>;
-}
-
-export interface BountyData {
-  bounties: Record<string, BountyRecord>;
-  claims: Record<string, BountyClaimRecord>;
-  /** Append-only audit — keyed by transition id. */
-  transitions: Record<string, BountyTransitionRecord>;
-  outcomes: Record<string, BountyOutcomeRecord>;
-  /** Sweeper watermark + misc state. */
-  meta?: Record<string, unknown>;
-}
-
-export function claimKey(bountyId: string, jobAttempt: number): string {
-  return `${bountyId}:${jobAttempt}`;
-}
+export type {
+  BountyClaimRecord,
+  BountyData,
+  BountyOutcomeRecord,
+  BountyRecord,
+  BountyTransitionRecord,
+  PassportOwnerRecord,
+} from "./types";
+export { claimKey } from "./types";
+import type {
+  BountyClaimRecord,
+  BountyOutcomeRecord,
+  BountyRecord,
+  BountyTransitionRecord,
+  PassportOwnerRecord,
+} from "./types";
 
 // ─── Backend interface ───────────────────────────────────────────
 
@@ -139,6 +67,16 @@ export interface BountyStoreBackend {
     jobAttempt: number,
   ): BountyOutcomeRecord | undefined;
   listOutcomesByPassport(passportId: string): BountyOutcomeRecord[];
+
+  /**
+   * Upsert a passport owner — monotonic by blockNumber: a row with an
+   * older block is ignored (indexer replay/out-of-order safety, 197-04).
+   */
+  upsertPassportOwner(rec: PassportOwnerRecord): void;
+  getPassportOwner(passportId: string): PassportOwnerRecord | undefined;
+  listPassportsByOwner(owner: string): PassportOwnerRecord[];
+  /** Highest indexed owner block — resume hint for the indexer. */
+  maxPassportOwnerBlock(): number;
 
   getMeta<T>(key: string): T | undefined;
   setMeta(key: string, value: unknown): void;
@@ -244,6 +182,28 @@ export function listOutcomesByPassport(
   passportId: string,
 ): BountyOutcomeRecord[] {
   return resolveBackend().listOutcomesByPassport(passportId);
+}
+
+// ─── Passport owners (indexer mirror, 197-04) ────────────────────
+
+export function upsertPassportOwner(rec: PassportOwnerRecord): void {
+  resolveBackend().upsertPassportOwner(rec);
+}
+
+export function getPassportOwner(
+  passportId: string,
+): PassportOwnerRecord | undefined {
+  return resolveBackend().getPassportOwner(passportId);
+}
+
+export function listPassportsByOwner(
+  owner: string,
+): PassportOwnerRecord[] {
+  return resolveBackend().listPassportsByOwner(owner);
+}
+
+export function maxPassportOwnerBlock(): number {
+  return resolveBackend().maxPassportOwnerBlock();
 }
 
 // ─── Meta ────────────────────────────────────────────────────────
