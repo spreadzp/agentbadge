@@ -29,6 +29,7 @@ import { article as arcC20SelfServeRegistration } from "./arc-c20-self-serve-reg
 import { article as arcC10PayerBinding } from "./arc-c10-payer-binding";
 import { article as arcC11VerdictTransparency } from "./arc-c11-verdict-transparency";
 import { article as arcC14AgentDiscovery } from "./arc-c14-agent-discovery";
+import { article as arcC28ContractHardening } from "./arc-c28-contract-hardening";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -61,4 +62,5 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC14AgentDiscovery,
   arcC11VerdictTransparency,
   arcC10PayerBinding,
+  arcC28ContractHardening,
 ];
