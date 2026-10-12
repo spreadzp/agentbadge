@@ -9,6 +9,7 @@ import {
   marketStartBackgroundRebuild as startMarketCacheRebuild,
 } from "@agentbadge/passport";
 import { startEscrowReconciler } from "../services/escrow-reconciler";
+import { startBountyLeaseSweeper } from "../services/bounty-lease-sweeper";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { captureError } from "../lib/sentry";
 import { ErrorCodes } from "../lib/error-codes";
@@ -34,6 +35,9 @@ export function startBackgroundJobs(): void {
   }
 
   startEscrowReconciler();
+  // 197-7: bounty lease sweeper (expired lease → reject → reopen).
+  // Self-gates on BOUNTY_SWEEPER_ENABLED (default on).
+  startBountyLeaseSweeper();
 
   // 153-5: daily venue subscription sweep (active→grace→expired) —
   // env-gated with the venue feature flag + ARC_BV_SWEEPER_ENABLED.
