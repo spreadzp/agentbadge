@@ -16,16 +16,17 @@
  * re-anchored (repeat QA never duplicates tx).
  */
 import {
-  encodeAbiParameters,
   encodeFunctionData,
   keccak256,
+  parseUnits,
   toBytes,
   type Hex,
 } from "viem";
-import { MEMO_ABI, memoIdFor } from "@agentbadge/circle-payments";
+import { MEMO_ABI } from "@agentbadge/circle-payments";
 import { logger } from "@agentbadge/passport";
 
 import {
+  getClaim,
   getOutcome,
   listBounties,
   patchOutcome,
@@ -34,68 +35,30 @@ import {
 } from "./store";
 import { buildActionTxs, type PreparedTx } from "../venue/lifecycle";
 import { sendAsRole } from "../venue/lifecycle-sign";
-import { resolveVenueNetwork, type VenueNetwork } from "../venue/chain";
+import {
+  fetchOnchainJob,
+  resolveVenueNetwork,
+  type OnchainJob,
+  type VenueNetwork,
+} from "../venue/chain";
 
-/** Minimal ERC-721 name() — the wrapped no-op target call. */
-const NAME_ABI = [
-  {
-    type: "function",
-    name: "name",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "string" }],
-  },
-] as const;
-
-/** Deterministic memoId — indexed in the Memo event; IS the pointer. */
-export function verdictMemoId(
-  bountyId: string,
-  jobAttempt: number,
-  commitSha: string,
-): Hex {
-  return memoIdFor(
-    "agentbadge",
-    "bounty-verdict",
-    bountyId,
-    BigInt(jobAttempt),
-    commitSha,
-  );
-}
-
-/** ABI-encoded verdict fields carried in the Memo event. */
-export function encodeVerdictMemo(f: {
-  bountyId: string;
-  jobId: bigint;
-  verdict: string;
-  commitSha: string;
-  reasonCodes: string[];
-  runnerLogHash: Hex;
-}): Hex {
-  return encodeAbiParameters(
-    [
-      { name: "bountyId", type: "string" },
-      { name: "jobId", type: "uint256" },
-      { name: "verdict", type: "string" },
-      { name: "commitSha", type: "string" },
-      { name: "reasonCodes", type: "string" },
-      { name: "runnerLogHash", type: "bytes32" },
-    ],
-    [
-      f.bountyId,
-      f.jobId,
-      f.verdict,
-      f.commitSha,
-      f.reasonCodes.join(","),
-      f.runnerLogHash,
-    ],
-  );
-}
+export {
+  encodeVerdictMemo,
+  verdictMemoId,
+} from "./anchor-memo";
+import {
+  encodeVerdictMemo,
+  NAME_ABI,
+  verdictMemoId,
+} from "./anchor-memo";
 
 export interface AnchorDeps {
   network?: () => VenueNetwork;
   now?: () => number;
   /** Sender for a PreparedTx batch — default evaluator signer. */
   send?: (txs: PreparedTx[]) => Promise<Hex[] | null>;
+  /** Onchain job read for solvency/provider guard (197-12). */
+  readJob?: (jobId: bigint, net: VenueNetwork) => Promise<OnchainJob | null>;
   rpcUrl?: string;
   enabled?: boolean;
 }
@@ -131,20 +94,46 @@ function anchorTx(
 }
 
 /**
+ * Solvency + provider guard before `complete` (VULN-11 lesson,
+ * EPIC-196): never release more than the funded deposit, and only
+ * to the bound payout wallet. null = pass; string = abort reason.
+ */
+export async function solvencyBlock(
+  bounty: BountyRecord,
+  net: VenueNetwork,
+  readJob: (id: bigint, n: VenueNetwork) => Promise<OnchainJob | null>,
+): Promise<string | null> {
+  if (!bounty.onchainJobId) return null;
+  const job = await readJob(BigInt(bounty.onchainJobId), net);
+  if (!job) return null; // unreadable chain → let the tx decide
+  const deposit = parseUnits(bounty.budgetUsdc || "0", 6);
+  if (job.budget > deposit) {
+    return `onchain budget ${job.budget} exceeds deposit ${deposit}`;
+  }
+  const payout = getClaim(bounty.bountyId, bounty.jobAttempt)
+    ?.payoutWallet?.toLowerCase();
+  if (payout && job.provider.toLowerCase() !== payout) {
+    return `onchain provider ${job.provider} != payout ${payout}`;
+  }
+  return null;
+}
+
+/**
  * Anchor a recorded outcome: memo tx → complete|reject(reason=memoId).
- * Returns existing hashes when already anchored.
+ * Idempotent: verdictMemoTx present → memo never re-sent; a missing
+ * verdictRejectTx is retried on its own (crash between the two txs).
  */
 export async function anchorBountyOutcome(
   bounty: BountyRecord,
   outcome: BountyOutcomeRecord,
   deps: AnchorDeps = {},
 ): Promise<AnchorResult> {
-  if (outcome.verdictMemoTx) {
+  if (outcome.verdictMemoTx && outcome.verdictRejectTx) {
     return {
       ok: true,
       skipped: true,
       memoTxHash: outcome.verdictMemoTx as Hex,
-      actionTxHash: outcome.verdictRejectTx as Hex | undefined,
+      actionTxHash: outcome.verdictRejectTx as Hex,
     };
   }
   const net = (deps.network ?? resolveVenueNetwork)();
@@ -157,13 +146,47 @@ export async function anchorBountyOutcome(
     deps.send ??
     ((txs: PreparedTx[]) => sendAsRole("evaluator", txs, rpc));
   const jobId = BigInt(bounty.onchainJobId ?? "0");
-  const runnerLogHash = keccak256(
-    toBytes(JSON.stringify(outcome.payload?.checks ?? [])),
-  );
   const memoId = verdictMemoId(
     bounty.bountyId,
     bounty.jobAttempt,
     outcome.commitSha ?? "",
+  );
+
+  // 197-12: memo already anchored → retry only the lifecycle tx.
+  if (outcome.verdictMemoTx) {
+    const actionHash = await sendAction(
+      send, net, bounty, outcome, jobId, memoId,
+    );
+    if (actionHash) {
+      patchOutcome(bounty.bountyId, bounty.jobAttempt, {
+        verdictRejectTx: actionHash,
+      });
+    }
+    return {
+      ok: !!actionHash,
+      skipped: true,
+      memoTxHash: outcome.verdictMemoTx as Hex,
+      actionTxHash: actionHash,
+      ...(actionHash ? {} : { error: "action tx send failed" }),
+    };
+  }
+
+  // 197-12 solvency: release path only — reject refunds the deposit.
+  if (outcome.verdict === "pass") {
+    const readJob =
+      deps.readJob ?? ((id, n) => fetchOnchainJob(Number(id), n));
+    const blocked = await solvencyBlock(bounty, net, readJob);
+    if (blocked) {
+      logger.warn("bounty-anchor: solvency guard blocked release", {
+        bountyId: bounty.bountyId,
+        reason: blocked,
+      });
+      return { ok: false, error: `solvency guard: ${blocked}` };
+    }
+  }
+
+  const runnerLogHash = keccak256(
+    toBytes(JSON.stringify(outcome.payload?.checks ?? [])),
   );
   const memoData = encodeVerdictMemo({
     bountyId: bounty.bountyId,
@@ -179,23 +202,9 @@ export async function anchorBountyOutcome(
     return { ok: false, error: "anchor send unavailable/reverted" };
   }
 
-  // Lifecycle tx — reason = memoId (verifiable pointer to the Memo
-  // event; indexed field, resolvable by any third party).
-  let actionHash: Hex | undefined;
-  if (bounty.onchainJobId) {
-    const action = outcome.verdict === "pass" ? "complete" : "reject";
-    const txs = buildActionTxs(net, action, {
-      onchainJobId: jobId,
-      reason: memoId,
-    });
-    actionHash = (await send(txs))?.[0];
-    if (!actionHash) {
-      logger.warn("bounty-anchor: lifecycle tx failed after anchor", {
-        bountyId: bounty.bountyId,
-        memoTxHash: memoHash,
-      });
-    }
-  }
+  const actionHash = await sendAction(
+    send, net, bounty, outcome, jobId, memoId,
+  );
 
   patchOutcome(bounty.bountyId, bounty.jobAttempt, {
     verdictMemoTx: memoHash,
@@ -210,6 +219,30 @@ export async function anchorBountyOutcome(
     },
   });
   return { ok: true, memoTxHash: memoHash, actionTxHash: actionHash };
+}
+
+/** complete|reject with reason = memoId — verifiable Memo pointer. */
+async function sendAction(
+  send: (txs: PreparedTx[]) => Promise<Hex[] | null>,
+  net: VenueNetwork,
+  bounty: BountyRecord,
+  outcome: BountyOutcomeRecord,
+  jobId: bigint,
+  memoId: Hex,
+): Promise<Hex | undefined> {
+  if (!bounty.onchainJobId) return undefined;
+  const action = outcome.verdict === "pass" ? "complete" : "reject";
+  const txs = buildActionTxs(net, action, {
+    onchainJobId: jobId,
+    reason: memoId,
+  });
+  const hash = (await send(txs))?.[0];
+  if (!hash) {
+    logger.warn("bounty-anchor: lifecycle tx failed after anchor", {
+      bountyId: bounty.bountyId,
+    });
+  }
+  return hash;
 }
 
 export interface AnchorSweepResult {
@@ -239,7 +272,12 @@ export async function anchorSweep(
   ];
   for (const b of pending) {
     const outcome = getOutcome(b.bountyId, b.jobAttempt);
-    if (!outcome || outcome.verdictMemoTx) continue;
+    // Fully anchored = memo + action tx. A memo-only outcome is a
+    // crash-window retry; no jobId → memo alone is final.
+    const done =
+      outcome?.verdictMemoTx &&
+      (outcome.verdictRejectTx || !b.onchainJobId);
+    if (!outcome || done) continue;
     try {
       const r = await anchorBountyOutcome(b, outcome, deps);
       if (r.ok) res.anchored++;

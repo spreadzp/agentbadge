@@ -18,13 +18,16 @@
  * still holds a live lease on it. Re-claim cap (Q38-A): max
  * BOUNTY_MAX_JOB_ATTEMPTS (2) jobs per bounty.
  */
-import { encodeFunctionData, parseUnits, type Hex } from "viem";
 import { logger } from "@agentbadge/passport";
 
 import { ErrorCodes, type ErrorCode } from "../error-codes";
 import { publicClient, resolveVenueNetwork } from "../venue/chain";
 import type { VenueNetwork } from "../venue/chain";
-import { sendAsRole, type PreparedTx } from "../venue/lifecycle";
+import {
+  buildActionTxs,
+  sendAsRole,
+  type PreparedTx,
+} from "../venue/lifecycle";
 import { assertBountyTransition } from "./lifecycle";
 import {
   appendTransition,
@@ -86,9 +89,7 @@ async function defaultVerifyPayoutSig(
   }
 }
 
-const EMPTY_PARAMS = "0x" as Hex;
-
-/** Provider-bind tx per variant (D-197-6). */
+/** Provider-bind tx per variant (D-197-6) — built in lifecycle.ts. */
 function providerBindTx(
   net: VenueNetwork,
   bounty: BountyRecord,
@@ -96,28 +97,12 @@ function providerBindTx(
 ): PreparedTx | null {
   if (!bounty.onchainJobId) return null;
   const jobId = BigInt(bounty.onchainJobId);
-  if (net.variant === "acp") {
-    return {
-      to: net.agenticCommerce,
-      data: encodeFunctionData({
-        abi: net.abi,
-        functionName: "setProvider",
-        args: [jobId, payoutWallet, EMPTY_PARAMS],
-      } as never),
-      description: `setProvider(${jobId}, ${payoutWallet}) — ops binds payout`,
-    };
-  }
-  // circle: payout wallet self-assigns via setBudget.
-  const amount = parseUnits(String(bounty.budgetUsdc), 6);
-  return {
-    to: net.agenticCommerce,
-    data: encodeFunctionData({
-      abi: net.abi,
-      functionName: "setBudget",
-      args: [jobId, amount, EMPTY_PARAMS],
-    } as never),
-    description: `setBudget(${jobId}, ${amount}) — sign from payout wallet`,
-  };
+  const txs = buildActionTxs(net, "claim", {
+    onchainJobId: jobId,
+    provider: payoutWallet,
+    amountUsdc: Number(bounty.budgetUsdc),
+  });
+  return txs[0] ?? null;
 }
 
 // ─── Claim ─────────────────────────────────────────────────────

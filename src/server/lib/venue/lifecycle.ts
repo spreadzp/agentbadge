@@ -129,7 +129,7 @@ export function deliverableHash(input: string): Hex {
 export function buildActionTxs(
   net: VenueNetwork,
   action: LifecycleAction,
-  args: { onchainJobId: bigint; amountUsdc?: number; deliverable?: Hex; reason?: Hex },
+  args: { onchainJobId: bigint; amountUsdc?: number; deliverable?: Hex; reason?: Hex; provider?: `0x${string}` },
 ): PreparedTx[] {
   const to = net.agenticCommerce;
   const abi = net.abi;
@@ -139,6 +139,15 @@ export function buildActionTxs(
 
   switch (action) {
     case "claim": {
+      // Provider bind (D-197-6): acp — client ops calls setProvider
+      // (Open only); circle — provider self-assigns via setBudget.
+      if (isAcp && args.provider) {
+        return [{
+          to,
+          data: enc("setProvider", [args.onchainJobId, args.provider, EMPTY_PARAMS]),
+          description: `setProvider(${args.onchainJobId}, ${args.provider}) — ops binds payout`,
+        }];
+      }
       if (args.amountUsdc == null) return [];
       const amount = parseUnits(String(args.amountUsdc), 6);
       return [{

@@ -4,13 +4,18 @@
  * Memo event), idempotent (no duplicate tx), verify route shape.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { decodeFunctionData, keccak256, toBytes } from "viem";
-import { MEMO_ABI, ERC8183_ABI } from "@agentbadge/circle-payments";
+import { decodeFunctionData, keccak256, parseUnits, toBytes } from "viem";
+import {
+  MEMO_ABI,
+  ERC8183_ABI,
+  ERC8183_ACP_ABI,
+} from "@agentbadge/circle-payments";
 
 import {
   anchorBountyOutcome,
   anchorSweep,
   encodeVerdictMemo,
+  solvencyBlock,
   verdictMemoId,
   type AnchorDeps,
 } from "../src/server/lib/bounties/anchor";
@@ -18,12 +23,17 @@ import {
   getOutcome,
   resetBountyStoreForTesting,
   upsertBounty,
+  upsertClaim,
   putOutcome,
   useMemoryBountyStoreForTesting,
   type BountyOutcomeRecord,
   type BountyRecord,
 } from "../src/server/lib/bounties/store";
-import type { PreparedTx } from "../src/server/lib/venue/lifecycle";
+import {
+  buildActionTxs,
+  type PreparedTx,
+} from "../src/server/lib/venue/lifecycle";
+import type { OnchainJob } from "../src/server/lib/venue/chain";
 import type { VenueNetwork } from "../src/server/lib/venue/chain";
 import { ARC_TESTNET } from "@agentbadge/circle-payments";
 
@@ -142,9 +152,10 @@ describe("anchorBountyOutcome", () => {
     expect(rejDec.args[1]).toBe(verdictMemoId("b1", 1, SHA));
   });
 
-  it("idempotent: outcome with verdictMemoTx → skipped, zero txs", async () => {
+  it("idempotent: fully anchored outcome → skipped, zero txs", async () => {
     upsertBounty(bounty());
-    const anchored = outcome({ verdictMemoTx: "0xmemotx" });
+    const anchored = outcome({ verdictMemoTx: "0xmemotx",
+      verdictRejectTx: "0xaction" });
     putOutcome(anchored);
     const d = deps();
     const r = await anchorBountyOutcome(bounty(), anchored, d);
@@ -217,5 +228,143 @@ describe("encodeVerdictMemo / verdictMemoId", () => {
       reasonCodes: ["qa_test_failed"], runnerLogHash: `0x${"0".repeat(64)}`,
     });
     expect(data.startsWith("0x")).toBe(true);
+  });
+});
+
+// ─── SLICE-197-12: release guard + provider-bind + retry ─────────
+
+const PAYOUT = "0x1111111111111111111111111111111111111111";
+
+function job(over: Partial<OnchainJob> = {}): OnchainJob {
+  return {
+    client: "0x2222222222222222222222222222222222222222",
+    provider: PAYOUT,
+    evaluator: "0x3333333333333333333333333333333333333333",
+    budget: parseUnits("5", 6),
+    status: 2, // submitted
+    expiredAt: 999_999_999n,
+    ...over,
+  };
+}
+
+describe("solvencyBlock (197-12)", () => {
+  beforeEach(() => {
+    upsertBounty(bounty());
+    upsertClaim({
+      id: "b1:1", bountyId: "b1", jobAttempt: 1, passportId: "p1",
+      payoutWallet: PAYOUT, state: "open", claimedAtMs: 1,
+      leaseUntilMs: 2,
+    });
+  });
+
+  it("budget > deposit → blocked", async () => {
+    const r = await solvencyBlock(bounty(), net(),
+      () => Promise.resolve(job({ budget: parseUnits("99", 6) })));
+    expect(r).toContain("exceeds deposit");
+  });
+
+  it("provider != payoutWallet → blocked", async () => {
+    const r = await solvencyBlock(bounty(), net(),
+      () => Promise.resolve(job({
+        provider: "0x4444444444444444444444444444444444444444" })));
+    expect(r).toContain("!= payout");
+  });
+
+  it("budget == deposit + provider match → pass", async () => {
+    const r = await solvencyBlock(bounty(), net(),
+      () => Promise.resolve(job()));
+    expect(r).toBeNull();
+  });
+
+  it("job unreadable → pass (tx decides)", async () => {
+    const r = await solvencyBlock(bounty(), net(),
+      () => Promise.resolve(null));
+    expect(r).toBeNull();
+  });
+});
+
+describe("release guard integration (197-12)", () => {
+  it("PASS blocked when onchain budget exceeds deposit — zero txs", async () => {
+    upsertBounty(bounty());
+    upsertClaim({
+      id: "b1:1", bountyId: "b1", jobAttempt: 1, passportId: "p1",
+      payoutWallet: PAYOUT, state: "open", claimedAtMs: 1,
+      leaseUntilMs: 2,
+    });
+    putOutcome(outcome());
+    const d = deps();
+    const r = await anchorBountyOutcome(bounty(), outcome(), {
+      ...d,
+      readJob: () => Promise.resolve(job({ budget: parseUnits("50", 6) })),
+    });
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain("solvency guard");
+    expect(d.sent).toHaveLength(0);
+    expect(getOutcome("b1", 1)!.verdictMemoTx).toBeUndefined();
+  });
+
+  it("FAIL verdict skips solvency guard (reject refunds)", async () => {
+    upsertBounty(bounty({ status: "failed" }));
+    putOutcome(outcome({ verdict: "fail" }));
+    const d = deps();
+    let jobReads = 0;
+    const r = await anchorBountyOutcome(
+      bounty({ status: "failed" }),
+      outcome({ verdict: "fail" }),
+      { ...d, readJob: () => { jobReads++; return Promise.resolve(
+        job({ budget: parseUnits("999", 6) })); } },
+    );
+    expect(r.ok).toBe(true);
+    expect(jobReads).toBe(0);
+  });
+
+  it("retry: memo anchored, action missing → sends only action", async () => {
+    upsertBounty(bounty());
+    upsertClaim({
+      id: "b1:1", bountyId: "b1", jobAttempt: 1, passportId: "p1",
+      payoutWallet: PAYOUT, state: "open", claimedAtMs: 1,
+      leaseUntilMs: 2,
+    });
+    const anchored = outcome({ verdictMemoTx: "0xmemotx" });
+    putOutcome(anchored);
+    const d = deps();
+    const r = await anchorBountyOutcome(bounty(), anchored, d);
+    expect(r.ok).toBe(true);
+    expect(r.memoTxHash).toBe("0xmemotx");
+    // Only the complete tx — no second memo.
+    expect(d.sent).toHaveLength(1);
+    const dec = decodeFunctionData({ abi: ERC8183_ABI,
+      data: d.sent[0].data });
+    expect(dec.functionName).toBe("complete");
+    expect(getOutcome("b1", 1)!.verdictRejectTx).toBeTruthy();
+  });
+});
+
+describe("buildActionTxs claim — acp setProvider (197-12)", () => {
+  it("acp + provider → setProvider(jobId, wallet, 0x)", () => {
+    const acpNet = { ...net(), variant: "acp" as const,
+      abi: ERC8183_ACP_ABI };
+    const txs = buildActionTxs(acpNet, "claim", {
+      onchainJobId: 42n,
+      provider: PAYOUT as `0x${string}`,
+      amountUsdc: 5,
+    });
+    expect(txs).toHaveLength(1);
+    const dec = decodeFunctionData({ abi: ERC8183_ACP_ABI,
+      data: txs[0].data });
+    expect(dec.functionName).toBe("setProvider");
+    expect(dec.args[0]).toBe(42n);
+    expect(dec.args[1]).toBe(PAYOUT);
+  });
+
+  it("circle ignores provider → setBudget (self-assign)", () => {
+    const txs = buildActionTxs(net(), "claim", {
+      onchainJobId: 42n,
+      provider: PAYOUT as `0x${string}`,
+      amountUsdc: 5,
+    });
+    const dec = decodeFunctionData({ abi: ERC8183_ABI,
+      data: txs[0].data });
+    expect(dec.functionName).toBe("setBudget");
   });
 });
