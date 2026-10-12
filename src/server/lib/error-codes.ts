@@ -45,6 +45,10 @@ export const ErrorCodes = {
   AGENTCARD_DID_CONFLICT: "AGENTCARD_DID_CONFLICT",
   TASK_ALREADY_CLAIMED: "TASK_ALREADY_CLAIMED",
 
+  // 402/503 — bounty funding (EPIC-197-11)
+  SPEND_CAP: "spend_cap",
+  BOUNTY_DISABLED: "bounty_disabled",
+
   // 409 — bounty lifecycle (EPIC-197)
   BOUNTY_ALREADY_CLAIMED: "bounty_already_claimed",
   BOUNTY_COOLDOWN: "bounty_cooldown",

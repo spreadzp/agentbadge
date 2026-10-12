@@ -30,6 +30,10 @@ import {
 import type { BountyStatus } from "../lib/bounties/lifecycle";
 import { getBounty, getOutcome } from "../lib/bounties/store";
 import { resolveVenueNetwork } from "../lib/venue/chain";
+import {
+  fundBounty,
+  type FundDeps,
+} from "../lib/bounties/fund";
 
 interface AgentCtx {
   agentId: string;
@@ -38,7 +42,7 @@ interface AgentCtx {
 }
 
 export interface BountyRouteDeps
-  extends ClaimDeps, BriefAccessDeps, SubmitDeps {
+  extends ClaimDeps, BriefAccessDeps, SubmitDeps, FundDeps {
   newBountyId?: () => string;
 }
 
@@ -194,6 +198,33 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
       deliverable: result.deliverable,
       submission: result.submission,
       ...(result.submitTx ? { submitTx: result.submitTx } : {}),
+      ...(result.idempotent ? { idempotent: true } : {}),
+    });
+  });
+
+  // 197-11: fund the onchain escrow — ops-signer (client role) sends
+  // approve+fund; lazy createJob when onchainJobId is missing. Caps
+  // evaluated off-chain before any tx (402 spend_cap).
+  app.post("/bounties/:id/fund",
+    dr("Fund bounty escrow (197-11, caps + createJob)"), async (c) => {
+    const agent = c.get("agent");
+    if (!agent?.agentId) {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND,
+        "passport required — fund is ops-only");
+    }
+    const result = await fundBounty(c.req.param("id") ?? "", deps);
+    if (!result.ok) {
+      return errorResponse(
+        c,
+        result.status as 402 | 404 | 409 | 502 | 503,
+        result.code,
+        result.message,
+      );
+    }
+    return c.json({
+      bounty: result.bounty,
+      ...(result.txs ? { txs: result.txs } : {}),
+      ...(result.txHashes ? { txHashes: result.txHashes } : {}),
       ...(result.idempotent ? { idempotent: true } : {}),
     });
   });
