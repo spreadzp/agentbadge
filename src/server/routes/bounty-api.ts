@@ -4,6 +4,8 @@
  * GET  /api/bounties          — public feed, no brief/budget (Q20)
  * GET  /api/bounties/:id      — brief, passport + owner-sig gate (Q35)
  * POST /api/bounties/:id/claim — lease + EIP-191 payout bind (197-06)
+ * POST /api/bounties/:id/submit — deliver {prUrl, commitSha, models?, tokens?}
+ *                                 on a live lease; onchain submit calldata (197-08)
  */
 import { Hono } from "hono";
 import { isAddress } from "viem";
@@ -12,6 +14,11 @@ import { dr, str } from "./venue-api-helpers";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { claimBounty, type ClaimDeps } from "../lib/bounties/claim";
+import {
+  submitBounty,
+  type SubmitDeps,
+  type SubmitRequest,
+} from "../lib/bounties/submit";
 import {
   checkBriefAccess,
   createBounty,
@@ -28,7 +35,8 @@ interface AgentCtx {
   name?: string;
 }
 
-export interface BountyRouteDeps extends ClaimDeps, BriefAccessDeps {
+export interface BountyRouteDeps
+  extends ClaimDeps, BriefAccessDeps, SubmitDeps {
   newBountyId?: () => string;
 }
 
@@ -141,6 +149,50 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
       providerBind: result.providerBind,
       ...(result.providerTx ? { providerTx: result.providerTx } : {}),
       ...(result.txHash ? { txHash: result.txHash } : {}),
+    });
+  });
+
+  app.post("/bounties/:id/submit",
+    dr("Submit deliverable (lease holder, 197-08)"), async (c) => {
+    const agent = c.get("agent");
+    if (!agent?.agentId) {
+      return errorResponse(
+        c,
+        403,
+        ErrorCodes.PASSPORT_NOT_FOUND,
+        "passport required — authenticate with Bearer agb_ key (Q35)",
+        { hint: "Register a passport via POST /api/v1/agents/register" },
+      );
+    }
+    const body = (await c.req
+      .json()
+      .catch(() => null)) as Record<string, unknown> | null;
+    const req: SubmitRequest = {
+      bountyId: c.req.param("id") ?? "",
+      passportId: String(agent.agentId),
+      prUrl: str(body?.prUrl, 512) ?? "",
+      commitSha: str(body?.commitSha, 80) ?? "",
+      models: Array.isArray(body?.models)
+        ? body.models.map((m) => String(m))
+        : undefined,
+      tokens: typeof body?.tokens === "number" ? body.tokens : undefined,
+    };
+    const result = await submitBounty(req, deps);
+    if (!result.ok) {
+      return errorResponse(
+        c,
+        result.status as 400 | 404 | 409,
+        result.code,
+        result.message,
+      );
+    }
+    return c.json({
+      bounty: result.bounty,
+      claim: result.claim,
+      deliverable: result.deliverable,
+      submission: result.submission,
+      ...(result.submitTx ? { submitTx: result.submitTx } : {}),
+      ...(result.idempotent ? { idempotent: true } : {}),
     });
   });
 

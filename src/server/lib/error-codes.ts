@@ -49,6 +49,8 @@ export const ErrorCodes = {
   BOUNTY_ALREADY_CLAIMED: "bounty_already_claimed",
   BOUNTY_COOLDOWN: "bounty_cooldown",
   BOUNTY_CAP_REACHED: "bounty_cap_reached",
+  BOUNTY_NOT_HOLDER: "bounty_not_holder",
+  BOUNTY_LEASE_EXPIRED: "bounty_lease_expired",
   ESCROW_SIGNATURE_REQUIRED: "ESCROW_SIGNATURE_REQUIRED",
 
   // 422 — verification
