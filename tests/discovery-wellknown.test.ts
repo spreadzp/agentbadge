@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import {
   buildAgentCard,
+  buildAgentCanonical,
   buildApiCatalog,
   buildErc8004Agent,
   buildMcpServerCard,
@@ -160,6 +161,71 @@ describe("buildErc8004Agent — registration-v1", () => {
   it("registrations carry eip155 agentRegistry", () => {
     const regs = reg.registrations as Array<{ agentRegistry: string }>;
     expect(regs[0].agentRegistry).toBe("eip155:5042:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432");
+  });
+
+  // ─── 194-4: canonical agentId ↔ passport cross-ref ─────────────
+  const V2_PASSPORT = "0x1f2426b102f57ecfeac2ab75c3fd853493f00a76";
+  const withPassport = () =>
+    mkSources({
+      wellKnownEnv: {
+        ...mkSources().wellKnownEnv!,
+        erc8004: {
+          chainId: 5042,
+          registry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+          agentId: "2329",
+          passport: V2_PASSPORT,
+          passportTokenId: "1",
+        },
+      },
+    });
+
+  it("reg file carries xAgentBadge link when passport configured", () => {
+    const body = JSON.parse(buildErc8004Agent(withPassport())) as Record<string, unknown>;
+    const x = body.xAgentBadge as Record<string, unknown>;
+    expect(x.canonical).toBe(`${BASE}/api/agent/canonical`);
+    expect(x.passportContract).toBe(`eip155:5042:${V2_PASSPORT}`);
+    expect(x.passportTokenId).toBe("1");
+  });
+
+  it("reg file omits xAgentBadge when passport unset", () => {
+    const body = JSON.parse(buildErc8004Agent(mkSources())) as Record<string, unknown>;
+    expect(body.xAgentBadge).toBeUndefined();
+  });
+});
+
+describe("buildAgentCanonical — 194-4 cross-ref endpoint", () => {
+  const V2_PASSPORT = "0x1f2426b102f57ecfeac2ab75c3fd853493f00a76";
+
+  it("maps canonical agentId ↔ v2 passport", () => {
+    const body = JSON.parse(
+      buildAgentCanonical(
+        mkSources({
+          wellKnownEnv: {
+            ...mkSources().wellKnownEnv!,
+            erc8004: {
+              chainId: 5042,
+              registry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+              agentId: "2329",
+              passport: V2_PASSPORT,
+              passportTokenId: "1",
+            },
+          },
+        }),
+      ),
+    ) as Record<string, unknown>;
+    expect(body.chain).toBe("eip155:5042");
+    expect(body.registry).toBe("0x8004A169FB4a3325136EB29fA0ceB6D2e539a432");
+    expect(body.agentId).toBe("2329");
+    expect(body.passport).toBe(V2_PASSPORT);
+    expect(body.passportTokenId).toBe("1");
+  });
+
+  it("nulls unset fields (honest absence)", () => {
+    const body = JSON.parse(buildAgentCanonical(mkSources())) as Record<string, unknown>;
+    expect(body.chain).toBe("eip155:5042");
+    expect(body.agentId).toBeTruthy(); // mkSources agentId=7 → present
+    expect(body.passport).toBeNull();
+    expect(body.passportTokenId).toBeNull();
   });
 });
 

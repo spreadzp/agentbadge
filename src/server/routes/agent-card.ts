@@ -11,6 +11,7 @@ import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { isEvmDid, parseEvmDid, passportToAgentCard } from "@agentbadge/evm-core";
 import { getChainAdapter } from "../lib/chain-adapter-factory";
+import { buildAgentCanonical, collectSources } from "../lib/agent-discovery";
 
 const agentCardResponseSchema = z.object({
   id: z.string(),
@@ -75,5 +76,41 @@ agentCardRoutes.get(
       const message = err instanceof Error ? err.message : "Unknown error";
       return c.json({ error: "Failed to fetch passport", detail: message }, 500);
     }
+  },
+);
+
+/**
+ * 194-4 (D-194-7): off-chain cross-ref — canonical ERC-8004 agentId
+ * ↔ our AgentPassportNFT (extended trust layer) on Arc.
+ * GET /api/agent/canonical → { chain, registry, agentId, passport, passportTokenId }
+ */
+const canonicalResponseSchema = z.object({
+  chain: z.string(),
+  registry: z.string(),
+  agentId: z.string().nullable(),
+  passport: z.string().nullable(),
+  passportTokenId: z.string().nullable(),
+});
+
+agentCardRoutes.get(
+  "/api/agent/canonical",
+  describeRoute({
+    description:
+      "Canonical ERC-8004 agentId ↔ AgentBadge passport cross-ref (EPIC-194-4)",
+    responses: {
+      200: {
+        description: "Canonical identity mapping",
+        content: {
+          "application/json": { schema: resolver(canonicalResponseSchema) },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const body = buildAgentCanonical(collectSources());
+    return c.json(JSON.parse(body), 200, {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=300",
+    });
   },
 );

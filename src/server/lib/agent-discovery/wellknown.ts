@@ -70,6 +70,8 @@ export function buildErc8004Agent(src: DiscoverySources): string {
     chainId: 5042,
     registry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
     agentId: "0",
+    passport: "",
+    passportTokenId: "",
   };
   return json({
     type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
@@ -102,6 +104,36 @@ export function buildErc8004Agent(src: DiscoverySources): string {
           },
         ]
         : [],
+    // 194-4 (D-194-7): off-chain cross-ref — canonical agentId ↔ our AgentPassportNFT
+    // (extended trust layer). Emitted only when the v2 passport env is configured.
+    ...(e.passport
+      ? {
+          xAgentBadge: {
+            canonical: `${b}/api/agent/canonical`,
+            passportContract: `eip155:${e.chainId}:${e.passport}`,
+            ...(e.passportTokenId ? { passportTokenId: e.passportTokenId } : {}),
+          },
+        }
+      : {}),
+  });
+}
+
+// ─── /api/agent/canonical (194-4 cross-ref endpoint) ─────────────
+/** Canonical ERC-8004 agentId ↔ AgentBadge passport mapping (D-194-7 off-chain form). */
+export function buildAgentCanonical(src: DiscoverySources): string {
+  const e = src.wellKnownEnv?.erc8004 ?? {
+    chainId: 5042,
+    registry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    agentId: "",
+    passport: "",
+    passportTokenId: "",
+  };
+  return json({
+    chain: `eip155:${e.chainId}`,
+    registry: e.registry,
+    agentId: e.agentId && e.agentId !== "0" ? e.agentId : null,
+    passport: e.passport || null,
+    passportTokenId: e.passportTokenId || null,
   });
 }
 

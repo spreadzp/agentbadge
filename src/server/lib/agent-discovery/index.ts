@@ -22,6 +22,7 @@ export {
 export {
   buildApiCatalog,
   buildErc8004Agent,
+  buildAgentCanonical,
   buildMcpServerCard,
   buildOauthProtectedResource,
   buildSecurityTxt,

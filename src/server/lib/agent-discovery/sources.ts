@@ -84,7 +84,15 @@ export interface DiscoverySources {
     directoryTopicId?: string;
     auditTopicId?: string;
     evmChainId: string;
-    erc8004: { chainId: number; registry: string; agentId: string };
+    erc8004: {
+      chainId: number;
+      registry: string;
+      agentId: string;
+      /** 194-4: our AgentPassportNFT v2 proxy on Arc (extended trust layer). "" when unset. */
+      passport?: string;
+      /** 194-4: our own passport tokenId (operator passport). "" when unset. */
+      passportTokenId?: string;
+    };
     /** Multi-chain contract addresses (agent-card x-agentbadge.blockchain). */
     contracts?: {
       trustRegistry: string;
@@ -200,6 +208,8 @@ function collectErc8004Env(): {
   chainId: number;
   registry: string;
   agentId: string;
+  passport: string;
+  passportTokenId: string;
 } {
   const rawChain = process.env.ERC8004_CHAIN_ID;
   const parsedChain = rawChain === undefined ? NaN : Number(rawChain);
@@ -214,7 +224,12 @@ function collectErc8004Env(): {
   if (process.env.NODE_ENV === "production" && chainId === ERC8004_CHAIN_TESTNET) {
     console.warn("[discovery] ERC8004_CHAIN_ID=5042002 (Arc TESTNET) in production — identity anchors point at testnet");
   }
-  return { chainId, registry, agentId };
+  // 194-4: passport cross-ref — v2 proxy address (strict 0x-hex, else honest ""), own tokenId digits.
+  const rawPassport = (process.env.EVM_PASSPORT_NFT_ADDRESS ?? "").trim();
+  const passport = /^0x[0-9a-fA-F]{40}$/.test(rawPassport) ? rawPassport : "";
+  const rawToken = (process.env.AGENTBADGE_PASSPORT_ID ?? process.env.BSTOCK_SELLER_PASSPORT_ID ?? "").trim();
+  const passportTokenId = /^\d+$/.test(rawToken) ? String(BigInt(rawToken)) : "";
+  return { chainId, registry, agentId, passport, passportTokenId };
 }
 
 /** Live env reads for .well-known manifests (impure edge). */

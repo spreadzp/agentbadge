@@ -17,15 +17,17 @@ const json = (v: unknown): string => JSON.stringify(v, null, 2) + "\n";
 
 /**
  * Arc mainnet deployment facts — source of truth:
- * contracts/deployments/arc-mainnet.json (kept as constants here because
- * the server bundle does not ship the contracts/ directory).
+ * contracts/deployments/arc-mainnet-v2.json (EPIC-196 UUPS proxies,
+ * deployed 2026-10-11; v1 addresses are frozen read-only history).
+ * Kept as constants here because the server bundle does not ship
+ * the contracts/ directory.
  */
 const ARC_EXPLORER = "https://explorer.arc.io";
 const ARC_CONTRACTS = {
-  agentEventLog: "0x1bb6A87D18cbd4285b4d383F88f10a1Ed01B4700",
-  agentPassportNft: "0xd226824e66e6aac7104579840506e268886a8169",
-  accessPassNft: "0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5",
-  marketplacePassNft: "0xf8756ce4400c76f1c31b72216c391e1c46cc2c03",
+  agentEventLog: "0x20387070057178e9629dd6c9037c52487f090a90",
+  agentPassportNft: "0x1f2426b102f57ecfeac2ab75c3fd853493f00a76",
+  accessPassNft: "0x8e254abfd8e4691b11f8553fb9a9f180a248982f",
+  marketplacePassNft: "0x6e408672e56001dc24a5db68107f9abf900f87e5",
 } as const;
 
 const explorerAddr = (addr: string) => `${ARC_EXPLORER}/address/${addr}`;
