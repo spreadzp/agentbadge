@@ -10,6 +10,7 @@ import {
 } from "@agentbadge/passport";
 import { startEscrowReconciler } from "../services/escrow-reconciler";
 import { startBountyLeaseSweeper } from "../services/bounty-lease-sweeper";
+import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { captureError } from "../lib/sentry";
 import { ErrorCodes } from "../lib/error-codes";
@@ -38,6 +39,9 @@ export function startBackgroundJobs(): void {
   // 197-7: bounty lease sweeper (expired lease → reject → reopen).
   // Self-gates on BOUNTY_SWEEPER_ENABLED (default on).
   startBountyLeaseSweeper();
+  // 197-9: QA runner (untrusted sha → isolated build/test/lint).
+  // Explicit opt-in only: BOUNTY_QA_RUNNER_ENABLED=true.
+  startBountyQaRunner();
 
   // 153-5: daily venue subscription sweep (active→grace→expired) —
   // env-gated with the venue feature flag + ARC_BV_SWEEPER_ENABLED.
