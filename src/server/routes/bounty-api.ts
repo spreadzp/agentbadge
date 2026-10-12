@@ -6,6 +6,7 @@
  * POST /api/bounties/:id/claim — lease + EIP-191 payout bind (197-06)
  * POST /api/bounties/:id/submit — deliver {prUrl, commitSha, models?, tokens?}
  *                                 on a live lease; onchain submit calldata (197-08)
+ * GET  /api/verify/:id          — public verdict + memo anchor + explorer (197-10)
  */
 import { Hono } from "hono";
 import { isAddress } from "viem";
@@ -27,7 +28,8 @@ import {
   type CreateBountyInput,
 } from "../lib/bounties/brief";
 import type { BountyStatus } from "../lib/bounties/lifecycle";
-import { getBounty } from "../lib/bounties/store";
+import { getBounty, getOutcome } from "../lib/bounties/store";
+import { resolveVenueNetwork } from "../lib/venue/chain";
 
 interface AgentCtx {
   agentId: string;
@@ -195,6 +197,37 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
       ...(result.idempotent ? { idempotent: true } : {}),
     });
   });
+
+  // 197-10: public verdict verification — verdict + memo txHash +
+  // explorer links. No gate: the whole point is third-party proof.
+  app.get("/verify/:id", dr("Verify bounty verdict (memo anchor)"),
+    async (c) => {
+      const bounty = getBounty(c.req.param("id") ?? "");
+      if (!bounty) {
+        return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND,
+          "unknown bountyId");
+      }
+      const outcome = getOutcome(bounty.bountyId, bounty.jobAttempt);
+      const net = (deps.network ?? resolveVenueNetwork)();
+      return c.json({
+        bountyId: bounty.bountyId,
+        jobAttempt: bounty.jobAttempt,
+        status: bounty.status,
+        verdict: outcome?.verdict ?? null,
+        reasonCodes: outcome?.reasonCodes ?? [],
+        commitSha: outcome?.commitSha ?? null,
+        memoTxHash: outcome?.verdictMemoTx ?? null,
+        actionTxHash: outcome?.verdictRejectTx ?? null,
+        explorer: {
+          memo: outcome?.verdictMemoTx
+            ? net.explorerTx(outcome.verdictMemoTx as `0x${string}`)
+            : null,
+          action: outcome?.verdictRejectTx
+            ? net.explorerTx(outcome.verdictRejectTx as `0x${string}`)
+            : null,
+        },
+      });
+    });
 
   return app;
 }

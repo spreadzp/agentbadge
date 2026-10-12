@@ -62,6 +62,12 @@ export interface BountyStoreBackend {
   listTransitions(bountyId: string): BountyTransitionRecord[];
 
   putOutcome(outcome: BountyOutcomeRecord): void;
+  /** Merge memo/anchor fields onto an existing outcome (197-10). */
+  patchOutcome(
+    bountyId: string,
+    jobAttempt: number,
+    patch: Partial<BountyOutcomeRecord>,
+  ): BountyOutcomeRecord | undefined;
   getOutcome(
     bountyId: string,
     jobAttempt: number,
@@ -169,6 +175,14 @@ export function listTransitions(
 
 export function putOutcome(outcome: BountyOutcomeRecord): void {
   resolveBackend().putOutcome(outcome);
+}
+
+export function patchOutcome(
+  bountyId: string,
+  jobAttempt: number,
+  patch: Partial<BountyOutcomeRecord>,
+): BountyOutcomeRecord | undefined {
+  return resolveBackend().patchOutcome(bountyId, jobAttempt, patch);
 }
 
 export function getOutcome(

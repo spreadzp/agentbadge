@@ -23,6 +23,7 @@ import { getDatabase } from "../database";
 import {
   hydrationPlans,
   insertOutcomePlan,
+  updateOutcomePlan,
   insertTransitionPlan,
   upsertBountyPlan,
   upsertClaimPlan,
@@ -205,6 +206,21 @@ export class PrismaBountyStore implements BountyStoreBackend {
     this.mirror.outcomes.set(key, outcome);
     const plan = insertOutcomePlan(this.db, outcome);
     this.enqueue(() => this.db.runtime().execute(plan));
+  }
+
+  patchOutcome(
+    bountyId: string,
+    jobAttempt: number,
+    patch: Partial<BountyOutcomeRecord>,
+  ): BountyOutcomeRecord | undefined {
+    const key = claimKey(bountyId, jobAttempt);
+    const prev = this.mirror.outcomes.get(key);
+    if (!prev) return undefined;
+    const next = { ...prev, ...patch, id: prev.id };
+    this.mirror.outcomes.set(key, next);
+    const plan = updateOutcomePlan(this.db, next);
+    this.enqueue(() => this.db.runtime().execute(plan));
+    return next;
   }
 
   getOutcome(

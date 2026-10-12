@@ -155,6 +155,21 @@ export function createJsonBountyStore(): BountyStoreBackend {
       saveStore(store);
     },
 
+    patchOutcome(
+      bountyId: string,
+      jobAttempt: number,
+      patch: Partial<BountyOutcomeRecord>,
+    ): BountyOutcomeRecord | undefined {
+      const store = loadStore();
+      const key = claimKey(bountyId, jobAttempt);
+      const prev = store.outcomes[key];
+      if (!prev) return undefined;
+      const next = { ...prev, ...patch, id: prev.id };
+      store.outcomes[key] = next;
+      saveStore(store);
+      return next;
+    },
+
     getOutcome(
       bountyId: string,
       jobAttempt: number,

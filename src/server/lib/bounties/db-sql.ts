@@ -119,6 +119,24 @@ export function insertOutcomePlan(db: Db, o: BountyOutcomeRecord): Plan {
     .build();
 }
 
+/** Anchor patch (197-10): memo/reject tx hashes merge onto outcome. */
+export function updateOutcomePlan(db: Db, o: BountyOutcomeRecord): Plan {
+  const payload = JSON.stringify(o);
+  const reasonCodes = param(
+    o.reasonCodes ? JSON.stringify(o.reasonCodes) : null,
+    { codecId: "pg/text@1" },
+  );
+  return db.raw
+    .sql`UPDATE "bountyOutcome" SET
+        "verdictMemoTx" = ${txt(o.verdictMemoTx)},
+        "verdictRejectTx" = ${txt(o.verdictRejectTx)},
+        "reasonCodes" = ${reasonCodes}::json,
+        "payload" = ${payload}::json, "updatedAt" = now()
+      WHERE "bountyId" = ${o.bountyId} AND "jobAttempt" = ${o.jobAttempt}`
+    .affectedCount()
+    .build();
+}
+
 export function upsertOwnerPlan(db: Db, r: PassportOwnerRecord): Plan {
   const payload = JSON.stringify(r);
   return db.raw

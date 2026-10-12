@@ -15,6 +15,7 @@
 import { logger } from "@agentbadge/passport";
 
 import { qaSweep } from "../lib/bounties/qa";
+import { anchorSweep } from "../lib/bounties/anchor";
 
 export {
   evaluateBountyQa,
@@ -25,6 +26,7 @@ export {
   type QaVerdict,
 } from "../lib/bounties/qa";
 export { runnerEnv } from "../lib/bounties/qa-run";
+export { anchorSweep } from "../lib/bounties/anchor";
 
 // ─── Timer ───────────────────────────────────────────────────────
 
@@ -52,12 +54,19 @@ export function startBountyQaRunner(opts?: { intervalMs?: number }): void {
     inFlight = true;
     try {
       const result = await qaSweep();
-      if (result.evaluated > 0 || result.errors.length > 0) {
+      // 197-10: anchor freshly recorded + previously unanchored
+      // verdicts (memo tx → complete|reject reason=memoId).
+      const anchored = await anchorSweep();
+      if (
+        result.evaluated > 0 || result.errors.length > 0 ||
+        anchored.anchored > 0 || anchored.errors.length > 0
+      ) {
         logger.info("Bounty QA runner tick", {
           evaluated: result.evaluated,
           passed: result.passed,
           failed: result.failed,
-          errors: result.errors.length,
+          anchored: anchored.anchored,
+          errors: result.errors.length + anchored.errors.length,
         });
       }
     } catch (err) {
