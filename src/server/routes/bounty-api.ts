@@ -124,6 +124,9 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
       .catch(() => null)) as Record<string, unknown> | null;
     const payoutWallet = str(body?.payoutWallet, 64);
     const claimSig = str(body?.claimSig, 1024);
+    // 197-18: forward EIP-191 expiry — required since 197-16 C-1.
+    const sigExpiresAt = typeof body?.sigExpiresAt === "number"
+      ? body.sigExpiresAt : undefined;
     if (!payoutWallet || !isAddress(payoutWallet) || !claimSig) {
       return errorResponse(
         c,
@@ -138,6 +141,7 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
         passportId: String(agent.agentId),
         payoutWallet: payoutWallet as `0x${string}`,
         claimSig,
+        sigExpiresAt,
       },
       deps,
     );
@@ -237,7 +241,10 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
 
   // 197-10: public verdict verification — verdict + memo txHash +
   // explorer links. No gate: the whole point is third-party proof.
-  app.get("/verify/:id", dr("Verify bounty verdict (memo anchor)"),
+  // Param constrained to the bountyId shape (brief.ts: ^[A-Za-z0-9_-]{1,64}$)
+  // — 180-1's /api/verify/:verdictId (0x+64hex, 66 chars) must fall through
+  // to the verdict route mounted later in wiring order.
+  app.get("/verify/:id{[A-Za-z0-9_-]{1,64}}", dr("Verify bounty verdict (memo anchor)"),
     async (c) => {
       const bounty = getBounty(c.req.param("id") ?? "");
       if (!bounty) {

@@ -27,6 +27,7 @@ import {
   createMemoryChainStore,
 } from "../src/server/lib/eaas/chain";
 import { createVerifyRoutes } from "../src/server/routes/verify-api";
+import { createBountyRoutes } from "../src/server/routes/bounty-api";
 
 const CHAIN_ID = 5042002;
 const signer = createVerdictSigner(Wallet.createRandom().privateKey, CHAIN_ID);
@@ -164,5 +165,42 @@ describe("GET /api/verify/:verdictId", () => {
     const body = await r.json();
     expect(body.chain.status).toBe("disabled");
     expect(body.chain.head_ref).toBeUndefined();
+  });
+});
+
+describe("route disambiguation vs bounty /api/verify/:id", () => {
+  // Production order: registerApiRoutes mounts bountyApiRoutes on /api
+  // BEFORE wireEaas mounts verify-api. The bounty param is constrained
+  // to its id shape (≤64, no 0x) so 66-char verdictIds fall through.
+  it("66-char verdictId reaches the verdict route, not bounty", async () => {
+    const s = await seeded();
+    const app = new Hono()
+      .route("/api", createBountyRoutes({}))
+      .route("/", createVerifyRoutes({ store: s.store, rateRpm: 60 }));
+    const r = await app.request(`/api/verify/${s.verdictId}`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.verdictId).toBe(s.verdictId);
+  });
+
+  it("unknown 66-char id → verdict_not_found, not 'unknown bountyId'", async () => {
+    const s = await seeded();
+    const app = new Hono()
+      .route("/api", createBountyRoutes({}))
+      .route("/", createVerifyRoutes({ store: s.store, rateRpm: 60 }));
+    const bogus = `0x${"cd".repeat(32)}`;
+    const r = await app.request(`/api/verify/${bogus}`);
+    expect(r.status).toBe(404);
+    const body = await r.json();
+    expect(body.error).toBe("verdict_not_found");
+  });
+
+  it("bounty-shaped id still reaches the bounty handler", async () => {
+    const app = new Hono().route("/api", createBountyRoutes({}));
+    const r = await app.request("/api/verify/bounty_abc123");
+    expect(r.status).toBe(404);
+    const body = await r.json();
+    // bounty handler responds, not the verdict route
+    expect(JSON.stringify(body)).toContain("bounty");
   });
 });
