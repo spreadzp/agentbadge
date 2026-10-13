@@ -127,11 +127,7 @@ export async function anchorBountyOutcome(
     };
   }
   const net = (deps.network ?? resolveVenueNetwork)();
-  const rpc =
-    deps.rpcUrl ??
-    (net.chain as { rpcUrls?: { default?: { http?: string[] } } })
-      .rpcUrls?.default?.http?.[0] ??
-    "";
+  const rpc = deps.rpcUrl ?? net.chain.rpcUrl;
   const send =
     deps.send ??
     ((txs: PreparedTx[]) => sendAsRole("evaluator", txs, rpc));
@@ -161,8 +157,10 @@ export async function anchorBountyOutcome(
       if (!patched) {
         logger.error(
           "bounty-anchor: action tx sent but outcome row missing",
-          { bountyId: bounty.bountyId, jobAttempt: bounty.jobAttempt,
-            actionTxHash: actionHash },
+          {
+            bountyId: bounty.bountyId, jobAttempt: bounty.jobAttempt,
+            actionTxHash: actionHash
+          },
         );
       }
     }

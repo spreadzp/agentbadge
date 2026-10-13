@@ -17,6 +17,7 @@ import {
 import {
   resetBountyStoreForTesting,
   upsertBounty,
+  upsertClaim,
   appendTransition,
   useMemoryBountyStoreForTesting,
   type BountyRecord,
@@ -145,8 +146,10 @@ describe("fundBounty", () => {
     expect(r.ok).toBe(true);
     expect(d.sent).toHaveLength(2);
     // Tx1 = ERC20 approve, Tx2 = fund(jobId).
-    const fundDec = decodeFunctionData({ abi: ERC8183_ABI,
-      data: d.sent[1].data });
+    const fundDec = decodeFunctionData({
+      abi: ERC8183_ABI,
+      data: d.sent[1].data
+    });
     expect(d.sent[0].to).toBe(USDC);
     expect(fundDec.functionName).toBe("fund");
     // Transition logged for cap accounting.
@@ -159,36 +162,60 @@ describe("fundBounty", () => {
     upsertBounty(bounty());
     const d = { ...deps(), network: () => net("acp") };
     const sent: PreparedTx[] = [];
-    const r = await fundBounty("b1", { ...d,
-      send: async (txs) => { sent.push(...txs);
-        return txs.map((t, i) => keccak256(toBytes(`${t.to}:${i}`))); } });
+    const r = await fundBounty("b1", {
+      ...d,
+      send: async (txs) => {
+        sent.push(...txs);
+        return txs.map((t, i) => keccak256(toBytes(`${t.to}:${i}`)));
+      }
+    });
     expect(r.ok).toBe(true);
-    const dec = decodeFunctionData({ abi: ERC8183_ACP_ABI,
-      data: sent[1].data });
+    const dec = decodeFunctionData({
+      abi: ERC8183_ACP_ABI,
+      data: sent[1].data
+    });
     expect(dec.functionName).toBe("fund");
     expect(dec.args[0]).toBe(42n);
   });
 
   it("lazy createJob: no onchainJobId → createJob first, jobId from decode", async () => {
     upsertBounty(bounty({ onchainJobId: undefined }));
+    // 197-19 e2e: circle binds provider at createJob — fund resolves it
+    // from the attempt's claim (payoutWallet).
+    upsertClaim({
+      id: "b1:1",
+      bountyId: "b1",
+      jobAttempt: 1,
+      passportId: "p1",
+      payoutWallet: "0x1111111111111111111111111111111111111111",
+      state: "open",
+      claimedAtMs: 1,
+      leaseUntilMs: 20_000_000,
+    });
     const sent: PreparedTx[] = [];
     const r = await fundBounty("b1", {
       network: () => net(),
       enabled: true,
       now: () => 10_000_000,
-      send: async (txs) => { sent.push(...txs);
-        return txs.map((t, i) => keccak256(toBytes(`${t.to}:${i}`))); },
+      send: async (txs) => {
+        sent.push(...txs);
+        return txs.map((t, i) => keccak256(toBytes(`${t.to}:${i}`)));
+      },
       fetchJobId: () => Promise.resolve(77),
       readJob: () => Promise.resolve(null),
     });
     expect(r.ok).toBe(true);
     // createJob + approve + fund = 3 txs.
     expect(sent).toHaveLength(3);
-    const cjDec = decodeFunctionData({ abi: ERC8183_ABI,
-      data: sent[0].data });
+    const cjDec = decodeFunctionData({
+      abi: ERC8183_ABI,
+      data: sent[0].data
+    });
     expect(cjDec.functionName).toBe("createJob");
-    const fundDec = decodeFunctionData({ abi: ERC8183_ABI,
-      data: sent[2].data });
+    const fundDec = decodeFunctionData({
+      abi: ERC8183_ABI,
+      data: sent[2].data
+    });
     expect(fundDec.args[0]).toBe(77n);
   });
 
@@ -204,10 +231,12 @@ describe("fundBounty", () => {
   it("idempotent: onchain status ≥ Funded → no txs", async () => {
     upsertBounty(bounty());
     const d = deps();
-    const r = await fundBounty("b1", { ...d,
+    const r = await fundBounty("b1", {
+      ...d,
       readJob: () => Promise.resolve({
         status: 1, budget: 5_000_000n,
-      } as OnchainJob) });
+      } as OnchainJob)
+    });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.idempotent).toBe(true);
     expect(d.sent).toHaveLength(0);

@@ -18,17 +18,15 @@
  * still holds a live lease on it. Re-claim cap (Q38-A): max
  * BOUNTY_MAX_JOB_ATTEMPTS (2) jobs per bounty.
  */
-import { logger } from "@agentbadge/passport";
-
 import { ErrorCodes, type ErrorCode } from "../error-codes";
-import { publicClient, resolveVenueNetwork } from "../venue/chain";
-import type { VenueNetwork } from "../venue/chain";
 import {
-  buildActionTxs,
-  sendAsRole,
-  type PreparedTx,
-} from "../venue/lifecycle";
+  publicClient,
+  resolveVenueNetwork,
+} from "../venue/chain";
+import type { VenueNetwork } from "../venue/chain";
+import type { PreparedTx } from "../venue/lifecycle";
 import { assertBountyTransition } from "./lifecycle";
+import { finalizeClaimJob } from "./sweep-chain";
 import {
   appendTransition,
   bountyStoreReady,
@@ -52,6 +50,12 @@ export const MAX_JOB_ATTEMPTS = () =>
 /** Signature freshness window for the payout bind (197-16 C-1). */
 export const CLAIM_SIG_TTL_MS = () =>
   Number(process.env.BOUNTY_CLAIM_SIG_TTL_MS ?? 600_000); // 10 min
+
+// 197-19 e2e: onchain job expiry ≠ offchain claim lease — the contract
+// rejects too-near expiredAt, so a short BOUNTY_CLAIM_TTL_MS (expiry
+// tests) must not shrink the onchain deadline.
+export const JOB_EXPIRY_MS = () =>
+  Number(process.env.BOUNTY_JOB_EXPIRY_MS ?? 2 * 60 * 60 * 1000); // 2h
 
 /**
  * Canonical EIP-191 message for payout bind.
@@ -84,6 +88,16 @@ export interface ClaimDeps {
     txs: PreparedTx[],
     net: VenueNetwork,
   ) => Promise<`0x${string}`[] | null>;
+  /** Client-role send for the lazy createJob at claim (197-19). */
+  sendTx?: (
+    txs: PreparedTx[],
+    net: VenueNetwork,
+  ) => Promise<`0x${string}`[] | null>;
+  /** jobId decode after createJob (197-19, H-3 retry seam). */
+  fetchJobId?: (
+    txHash: `0x${string}`,
+    net: VenueNetwork,
+  ) => Promise<number | null>;
   now?: () => number;
 }
 
@@ -104,22 +118,6 @@ async function defaultVerifyPayoutSig(
   }
 }
 
-/** Provider-bind tx per variant (D-197-6) — built in lifecycle.ts. */
-function providerBindTx(
-  net: VenueNetwork,
-  bounty: BountyRecord,
-  payoutWallet: `0x${string}`,
-): PreparedTx | null {
-  if (!bounty.onchainJobId) return null;
-  const jobId = BigInt(bounty.onchainJobId);
-  const txs = buildActionTxs(net, "claim", {
-    onchainJobId: jobId,
-    provider: payoutWallet,
-    amountUsdc: Number(bounty.budgetUsdc),
-  });
-  return txs[0] ?? null;
-}
-
 // ─── Claim ─────────────────────────────────────────────────────
 
 export interface ClaimRequest {
@@ -134,13 +132,13 @@ export interface ClaimRequest {
 
 export type ClaimResult =
   | {
-      ok: true;
-      claim: BountyClaimRecord;
-      bounty: BountyRecord;
-      providerTx?: PreparedTx;
-      providerBind: "ops_sent" | "ops_calldata" | "agent_selfsign" | "none";
-      txHash?: `0x${string}`;
-    }
+    ok: true;
+    claim: BountyClaimRecord;
+    bounty: BountyRecord;
+    providerTx?: PreparedTx;
+    providerBind: "ops_sent" | "ops_calldata" | "agent_selfsign" | "none";
+    txHash?: `0x${string}`;
+  }
   | { ok: false; status: number; code: ErrorCode; message: string };
 
 export async function claimBounty(
@@ -153,36 +151,60 @@ export async function claimBounty(
 
   const bounty = getBounty(req.bountyId);
   if (!bounty) {
-    return { ok: false, status: 404, code: ErrorCodes.RESOURCE_NOT_FOUND,
-      message: "unknown bountyId" };
+    return {
+      ok: false, status: 404, code: ErrorCodes.RESOURCE_NOT_FOUND,
+      message: "unknown bountyId"
+    };
   }
 
-  const check = assertBountyTransition(bounty.status, "claim");
-  if (!check.ok) {
-    return { ok: false, status: 409, code: ErrorCodes.INVALID_STATE,
-      message: check.reason ?? "cannot claim" };
-  }
-  if (bounty.jobAttempt > MAX_JOB_ATTEMPTS()) {
-    return { ok: false, status: 409, code: ErrorCodes.BOUNTY_CAP_REACHED,
-      message: `re-claim cap exhausted (${MAX_JOB_ATTEMPTS()} jobs)` };
-  }
+  // 197-19 e2e: resume — the claim row is written BEFORE the lazy
+  // createJob send, so a transient send failure leaves claimed-without-
+  // job and an un-claimable bounty. Same passport + open lease + missing
+  // jobId → retry the createJob leg with the existing row.
+  const existingClaim = getClaim(req.bountyId, bounty.jobAttempt);
+  const resume =
+    !!existingClaim &&
+    existingClaim.passportId === req.passportId &&
+    existingClaim.state === "open" &&
+    existingClaim.leaseUntilMs > now &&
+    !bounty.onchainJobId;
 
-  // Double claim: an attempt can carry exactly one claim row.
-  if (getClaim(req.bountyId, bounty.jobAttempt)) {
-    return { ok: false, status: 409, code: ErrorCodes.BOUNTY_ALREADY_CLAIMED,
-      message: "bounty already claimed for this attempt" };
-  }
+  if (!resume) {
+    const check = assertBountyTransition(bounty.status, "claim");
+    if (!check.ok) {
+      return {
+        ok: false, status: 409, code: ErrorCodes.INVALID_STATE,
+        message: check.reason ?? "cannot claim"
+      };
+    }
+    if (bounty.jobAttempt > MAX_JOB_ATTEMPTS()) {
+      return {
+        ok: false, status: 409, code: ErrorCodes.BOUNTY_CAP_REACHED,
+        message: `re-claim cap exhausted (${MAX_JOB_ATTEMPTS()} jobs)`
+      };
+    }
 
-  // Cooldown (Q28): same passport holds a live lease on this bounty.
-  const live = listClaimsByPassport(req.passportId).find(
-    (c) =>
-      c.bountyId === req.bountyId &&
-      c.state === "open" &&
-      c.leaseUntilMs > now,
-  );
-  if (live) {
-    return { ok: false, status: 409, code: ErrorCodes.BOUNTY_COOLDOWN,
-      message: "passport holds a live lease on this bounty" };
+    // Double claim: an attempt can carry exactly one claim row.
+    if (existingClaim) {
+      return {
+        ok: false, status: 409, code: ErrorCodes.BOUNTY_ALREADY_CLAIMED,
+        message: "bounty already claimed for this attempt"
+      };
+    }
+
+    // Cooldown (Q28): same passport holds a live lease on this bounty.
+    const live = listClaimsByPassport(req.passportId).find(
+      (c) =>
+        c.bountyId === req.bountyId &&
+        c.state === "open" &&
+        c.leaseUntilMs > now,
+    );
+    if (live) {
+      return {
+        ok: false, status: 409, code: ErrorCodes.BOUNTY_COOLDOWN,
+        message: "passport holds a live lease on this bounty"
+      };
+    }
   }
 
   // 197-16 C-1: signature must carry an in-window expiry bound to
@@ -194,8 +216,10 @@ export async function claimBounty(
     expiresAt <= now ||
     expiresAt - now > CLAIM_SIG_TTL_MS()
   ) {
-    return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
-      message: `sigExpiresAt must be within ${CLAIM_SIG_TTL_MS()}ms` };
+    return {
+      ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
+      message: `sigExpiresAt must be within ${CLAIM_SIG_TTL_MS()}ms`
+    };
   }
 
   const verify =
@@ -213,11 +237,13 @@ export async function claimBounty(
     req.claimSig,
   );
   if (!sigOk) {
-    return { ok: false, status: 403, code: ErrorCodes.WRONG_SIGNER,
-      message: "payout wallet signature verification failed" };
+    return {
+      ok: false, status: 403, code: ErrorCodes.WRONG_SIGNER,
+      message: "payout wallet signature verification failed"
+    };
   }
 
-  const claim: BountyClaimRecord = {
+  const claim: BountyClaimRecord = existingClaim ?? {
     id: claimKey(req.bountyId, bounty.jobAttempt),
     bountyId: req.bountyId,
     jobAttempt: bounty.jobAttempt,
@@ -227,42 +253,37 @@ export async function claimBounty(
     claimedAtMs: now,
     leaseUntilMs: now + CLAIM_TTL_MS(),
   };
-  upsertClaim(claim);
   const claimed: BountyRecord = { ...bounty, status: "claimed" };
-  upsertBounty(claimed);
-  appendTransition({
-    id: `${req.bountyId}:${bounty.jobAttempt}:claim:${now}`,
-    bountyId: req.bountyId,
-    actor: req.passportId,
-    from: "open",
-    to: "claimed",
-    atMs: now,
-    payload: { payoutWallet: req.payoutWallet.toLowerCase() },
-  });
-
-  // Provider bind (D-197-6).
-  const tx = providerBindTx(net, claimed, req.payoutWallet);
-  if (!tx) {
-    return { ok: true, claim, bounty: claimed, providerBind: "none" };
-  }
-  if (net.variant === "acp") {
-    const send =
-      deps.sendProviderTx ??
-      ((txs, n) => sendAsRole("client", txs, n.chain.rpcUrl));
-    const hashes = await send([tx], net).catch((err) => {
-      logger.warn("bounty claim: setProvider send failed", {
-        bountyId: req.bountyId,
-        err: String(err).slice(0, 200),
-      });
-      return null;
+  if (!existingClaim) {
+    upsertClaim(claim);
+    upsertBounty(claimed);
+    appendTransition({
+      id: `${req.bountyId}:${bounty.jobAttempt}:claim:${now}`,
+      bountyId: req.bountyId,
+      actor: req.passportId,
+      from: "open",
+      to: "claimed",
+      atMs: now,
+      payload: { payoutWallet: req.payoutWallet.toLowerCase() },
     });
-    if (hashes?.length) {
-      return { ok: true, claim, bounty: claimed,
-        providerBind: "ops_sent", txHash: hashes[0] };
-    }
-    return { ok: true, claim, bounty: claimed,
-      providerBind: "ops_calldata", providerTx: tx };
   }
-  return { ok: true, claim, bounty: claimed,
-    providerBind: "agent_selfsign", providerTx: tx };
+
+  // 197-19 e2e: chain leg (lazy createJob + provider bind) lives in
+  // sweep-chain.ts — extracted for the 300-line file cap.
+  const fin = await finalizeClaimJob(net, claimed, req.payoutWallet, {
+    sendTx: deps.sendTx,
+    fetchJobId: deps.fetchJobId,
+    sendProviderTx: deps.sendProviderTx,
+    jobExpiryMs: JOB_EXPIRY_MS(),
+    now,
+  });
+  if (!fin.ok) return fin;
+  return {
+    ok: true,
+    claim,
+    bounty: fin.bounty,
+    providerTx: fin.providerTx,
+    providerBind: fin.providerBind,
+    txHash: fin.txHash,
+  };
 }

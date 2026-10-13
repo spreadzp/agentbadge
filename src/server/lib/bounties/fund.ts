@@ -36,109 +36,27 @@ import {
 import {
   appendTransition,
   getBounty,
-  listBounties,
-  listTransitions,
+  getClaim,
   upsertBounty,
   type BountyRecord,
 } from "./store";
+import { JOB_EXPIRY_MS } from "./claim";
 import { createJobTx } from "./sweep-chain";
+import { checkFundCaps } from "./fund-caps";
 
-// ─── Config / caps ─────────────────────────────────────────────
+// Caps + CapBlock live in fund-caps.ts (300-line file cap) — re-export
+// keeps the public surface of this module unchanged.
+export {
+  BOUNTY_MIN_USDC,
+  BOUNTY_MAX_USDC,
+  BOUNTY_DAILY_CAP_USDC,
+  BOUNTY_WEEKLY_CAP_USDC,
+  fundedSince,
+  checkFundCaps,
+  type CapBlock,
+} from "./fund-caps";
 
 export const BOUNTY_ENABLED = () => process.env.BOUNTY_ENABLED === "true";
-export const BOUNTY_MIN_USDC = () =>
-  Number(process.env.BOUNTY_MIN_USDC ?? 1);
-export const BOUNTY_MAX_USDC = () =>
-  Number(process.env.BOUNTY_MAX_USDC ?? 5);
-export const BOUNTY_DAILY_CAP_USDC = () =>
-  Number(process.env.BOUNTY_DAILY_CAP_USDC ?? 25);
-export const BOUNTY_WEEKLY_CAP_USDC = () =>
-  Number(process.env.BOUNTY_WEEKLY_CAP_USDC ?? 100);
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const WEEK_MS = 7 * DAY_MS;
-
-/** Funded USDC inside a rolling window, from the transition log. */
-export function fundedSince(fromMs: number, now: number): number {
-  let sum = 0;
-  for (const b of listAllFunded()) {
-    if (b.atMs >= fromMs && b.atMs <= now) sum += b.amount;
-  }
-  return sum;
-}
-
-function listAllFunded(): { atMs: number; amount: number }[] {
-  const out: { atMs: number; amount: number }[] = [];
-  for (const b of listBountiesAll()) {
-    for (const t of listTransitions(b.bountyId)) {
-      if (t.reason === "funded") {
-        const amount = Number(
-          (t.payload as { amount?: unknown })?.amount ?? 0,
-        );
-        if (Number.isFinite(amount) && amount > 0) {
-          out.push({ atMs: t.atMs, amount });
-        }
-      }
-    }
-  }
-  return out;
-}
-
-function listBountiesAll(): BountyRecord[] {
-  return [
-    ...listBounties({ status: "open" }),
-    ...listBounties({ status: "claimed" }),
-    ...listBounties({ status: "submitted" }),
-    ...listBounties({ status: "passed" }),
-    ...listBounties({ status: "failed" }),
-    ...listBounties({ status: "rejected" }),
-    ...listBounties({ status: "expired" }),
-  ];
-}
-
-export type CapBlock =
-  | { ok: true }
-  | {
-      ok: false;
-      code: "spend_cap";
-      cap: "single" | "daily" | "weekly";
-      limit: number;
-      used?: number;
-      message: string;
-    };
-
-/** Caps evaluated before any contract call. */
-export function checkFundCaps(
-  amountUsdc: number,
-  now: number,
-): CapBlock {
-  if (amountUsdc < BOUNTY_MIN_USDC() || amountUsdc > BOUNTY_MAX_USDC()) {
-    return {
-      ok: false, code: "spend_cap" as const, cap: "single",
-      limit: BOUNTY_MAX_USDC(),
-      message:
-        `bounty budget ${amountUsdc} outside ` +
-        `[${BOUNTY_MIN_USDC()}, ${BOUNTY_MAX_USDC()}] USDC`,
-    };
-  }
-  const daily = fundedSince(now - DAY_MS, now);
-  if (daily + amountUsdc > BOUNTY_DAILY_CAP_USDC()) {
-    return {
-      ok: false, code: "spend_cap" as const, cap: "daily",
-      limit: BOUNTY_DAILY_CAP_USDC(), used: daily,
-      message: `daily fund cap: ${daily} + ${amountUsdc} > ${BOUNTY_DAILY_CAP_USDC()}`,
-    };
-  }
-  const weekly = fundedSince(now - WEEK_MS, now);
-  if (weekly + amountUsdc > BOUNTY_WEEKLY_CAP_USDC()) {
-    return {
-      ok: false, code: "spend_cap" as const, cap: "weekly",
-      limit: BOUNTY_WEEKLY_CAP_USDC(), used: weekly,
-      message: `weekly fund cap: ${weekly} + ${amountUsdc} > ${BOUNTY_WEEKLY_CAP_USDC()}`,
-    };
-  }
-  return { ok: true };
-}
 
 // ─── Fund ──────────────────────────────────────────────────────
 
@@ -146,7 +64,7 @@ export function checkFundCaps(
 let _fundTail: Promise<unknown> = Promise.resolve();
 function withFundLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = _fundTail.then(fn);
-  _fundTail = run.catch(() => {});
+  _fundTail = run.catch(() => { });
   return run;
 }
 
@@ -162,12 +80,12 @@ export interface FundDeps {
 
 export type FundResult =
   | {
-      ok: true;
-      bounty: BountyRecord;
-      txs?: PreparedTx[];
-      txHashes?: Hex[];
-      idempotent?: boolean;
-    }
+    ok: true;
+    bounty: BountyRecord;
+    txs?: PreparedTx[];
+    txHashes?: Hex[];
+    idempotent?: boolean;
+  }
   | { ok: false; status: number; code: ErrorCode | "spend_cap"; message: string };
 
 export async function fundBounty(
@@ -183,26 +101,38 @@ async function fundBountyLocked(
 ): Promise<FundResult> {
   const enabled = deps.enabled ?? BOUNTY_ENABLED();
   if (!enabled) {
-    return { ok: false, status: 503, code: "bounty_disabled" as ErrorCode,
-      message: "bounty funding disabled (BOUNTY_ENABLED)" };
+    return {
+      ok: false, status: 503, code: "bounty_disabled" as ErrorCode,
+      message: "bounty funding disabled (BOUNTY_ENABLED)"
+    };
   }
   const net = (deps.network ?? resolveVenueNetwork)();
   const now = (deps.now ?? Date.now)();
 
   const bounty = getBounty(bountyId);
   if (!bounty) {
-    return { ok: false, status: 404, code: ErrorCodes.RESOURCE_NOT_FOUND,
-      message: "unknown bountyId" };
+    return {
+      ok: false, status: 404, code: ErrorCodes.RESOURCE_NOT_FOUND,
+      message: "unknown bountyId"
+    };
   }
-  if (bounty.status !== "open") {
-    return { ok: false, status: 409, code: ErrorCodes.INVALID_STATE,
-      message: `cannot fund bounty in status "${bounty.status}"` };
+  // 197-19 e2e: circle ordering is claim-first — provider is bound at
+  // createJob inside claim, then the client funds the escrow while the
+  // bounty is already "claimed". Funding is not a lifecycle transition,
+  // it only marks chainTxs.funded — allow open|claimed.
+  if (bounty.status !== "open" && bounty.status !== "claimed") {
+    return {
+      ok: false, status: 409, code: ErrorCodes.INVALID_STATE,
+      message: `cannot fund bounty in status "${bounty.status}"`
+    };
   }
   const amount = Number(bounty.budgetUsdc);
   const caps = checkFundCaps(amount, now);
   if (!caps.ok) {
-    return { ok: false, status: 402, code: ErrorCodes.SPEND_CAP,
-      message: caps.message };
+    return {
+      ok: false, status: 402, code: ErrorCodes.SPEND_CAP,
+      message: caps.message
+    };
   }
 
   const send =
@@ -215,17 +145,37 @@ async function fundBountyLocked(
   if (!record.onchainJobId) {
     let txHash = record.chainTxs?.created;
     if (!txHash) {
-      const createTx = createJobTx(net, record, 0, now);
+      // 197-19 e2e: circle's createJob requires provider != 0x0 — take it
+      // from the attempt's claim (payoutWallet). For an unclaimed open
+      // bounty there is no provider to bind → fund cannot create a job.
+      const provider =
+        net.variant === "circle"
+          ? (getClaim(record.bountyId, record.jobAttempt)
+            ?.payoutWallet as `0x${string}` | undefined)
+          : undefined;
+      if (net.variant === "circle" && !provider) {
+        return {
+          ok: false, status: 409,
+          code: ErrorCodes.INVALID_STATE,
+          message: "job must be created at claim (provider binding)"
+        };
+      }
+      const createTx = createJobTx(net, record, JOB_EXPIRY_MS(), now,
+        undefined, provider);
       const hashes = await send([createTx]);
       txHash = hashes?.[0];
       if (!txHash) {
-        return { ok: false, status: 502,
+        return {
+          ok: false, status: 502,
           code: ErrorCodes.INVALID_STATE,
-          message: "createJob send failed" };
+          message: "createJob send failed"
+        };
       }
       // Committed onchain — persist before the decode can fail.
-      record = { ...record,
-        chainTxs: { ...record.chainTxs, created: txHash } };
+      record = {
+        ...record,
+        chainTxs: { ...record.chainTxs, created: txHash }
+      };
       upsertBounty(record);
     }
     const fetchId =
@@ -233,9 +183,11 @@ async function fundBountyLocked(
       ((h: Hex, n: VenueNetwork) => fetchCreatedJobId(h, n));
     const jobId = await fetchId(txHash as Hex, net);
     if (jobId == null) {
-      return { ok: false, status: 502,
+      return {
+        ok: false, status: 502,
         code: ErrorCodes.INVALID_STATE,
-        message: "JobCreated not found in createJob receipt" };
+        message: "JobCreated not found in createJob receipt"
+      };
     }
     record = { ...record, onchainJobId: String(jobId) };
     upsertBounty(record);
@@ -258,8 +210,10 @@ async function fundBountyLocked(
 
   const jobIdStr = record.onchainJobId;
   if (!jobIdStr) {
-    return { ok: false, status: 502, code: ErrorCodes.INVALID_STATE,
-      message: "onchainJobId missing after createJob" };
+    return {
+      ok: false, status: 502, code: ErrorCodes.INVALID_STATE,
+      message: "onchainJobId missing after createJob"
+    };
   }
   const txs = buildActionTxs(net, "fund", {
     onchainJobId: BigInt(jobIdStr),
@@ -267,8 +221,10 @@ async function fundBountyLocked(
   });
   const hashes = await send(txs);
   if (!hashes?.length) {
-    return { ok: false, status: 502, code: ErrorCodes.INVALID_STATE,
-      message: "fund send failed" };
+    return {
+      ok: false, status: 502, code: ErrorCodes.INVALID_STATE,
+      message: "fund send failed"
+    };
   }
   const fundedTx = hashes[hashes.length - 1];
   record = {

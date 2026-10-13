@@ -24,21 +24,20 @@ import {
 } from "../venue/chain";
 import type { PreparedTx } from "../venue/lifecycle";
 import { ERC8183_STATUS } from "../../routes/venue-api-helpers";
-import { assertBountyTransition } from "./lifecycle";
-import { CLAIM_TTL_MS, MAX_JOB_ATTEMPTS } from "./claim";
+import { CLAIM_TTL_MS } from "./claim";
 import {
-  createJobTx,
-  decodeJobId,
   defaultSweepAlert,
   readJob,
   rejectJobTx,
   rejectRole,
 } from "./sweep-chain";
+import { reopenBountyAttempt } from "./sweep-reopen";
 import {
   appendTransition,
   bountyStoreReady,
   getBounty,
   getBountyMeta,
+  getOutcome,
   listBounties,
   listExpiredClaims,
   putOutcome,
@@ -147,61 +146,18 @@ async function sweepClaim(
     upsertBounty({ ...bounty, status: "expired" });
     await deps.alert(
       `Bounty ${bounty.bountyId} lease expired but onchain reject ` +
-        `failed for job ${jobId} — reopen blocked, needs manual ` +
-        `resolution (escrow may still be locked)`,
+      `failed for job ${jobId} — reopen blocked, needs manual ` +
+      `resolution (escrow may still be locked)`,
     );
     return true;
   }
 
   // Reopen on a new job — gated by the re-claim cap (Q38-A).
-  const attemptsLeft = MAX_JOB_ATTEMPTS() - claim.jobAttempt;
-  const reopen = assertBountyTransition("expired", "reopen", attemptsLeft);
-  if (!reopen.ok) {
-    upsertBounty({ ...bounty, status: "expired" });
-    await deps.alert(
-      `Bounty ${bounty.bountyId} lease expired — cap exhausted, ` +
-        `bounty stays expired (attempt ${claim.jobAttempt}/${MAX_JOB_ATTEMPTS()})`,
-    );
-    return true;
-  }
-
-  const nextAttempt = claim.jobAttempt + 1;
-  let newJobId: string | undefined;
-  const send = deps.sendRole ?? sendAsRole;
-  const createHashes = await send(
-    "client",
-    [createJobTx(net, bounty, CLAIM_TTL_MS(), now)],
-    net.chain.rpcUrl,
-  );
-  if (createHashes?.[0]) {
-    const id = await (deps.fetchJobId ?? decodeJobId)(createHashes[0], net);
-    newJobId = id != null ? String(id) : undefined;
-    if (!newJobId) {
-      errors.push(`${claim.id}: JobCreated not decoded — jobId attach deferred`);
-    }
-  }
-
-  upsertBounty({
-    ...bounty,
-    status: "open",
-    jobAttempt: nextAttempt,
-    onchainJobId: newJobId,
-  });
-  appendTransition({
-    id: `${bounty.bountyId}:${nextAttempt}:reopen:${now}`,
-    bountyId: bounty.bountyId,
-    actor: "system",
-    from: "expired",
-    to: "open",
-    atMs: now,
-    payload: { onchainJobId: newJobId, createTx: createHashes?.[0] },
-  });
-  await deps.alert(
-    `Bounty ${bounty.bountyId} lease expired — job ${jobId ?? "?"} ` +
-      `rejected${rejectTx ? ` (${rejectTx.slice(0, 10)}…)` : ""}, ` +
-      `reopened on attempt ${nextAttempt}/${MAX_JOB_ATTEMPTS()}`,
-  );
-  return true;
+  return reopenBountyAttempt(bounty, "expired", claim.jobAttempt, net,
+    deps, errors,
+    `lease expired — job ${jobId ?? "?"} ` +
+    `rejected${rejectTx ? ` (${rejectTx.slice(0, 10)}…)` : ""}`,
+    `${claim.id}`);
 }
 
 // ─── Sweep ───────────────────────────────────────────────────────
@@ -220,8 +176,10 @@ export async function sweepBountyLeases(
   const enabled =
     deps.enabled ?? process.env.BOUNTY_SWEEPER_ENABLED !== "false";
   if (!enabled) {
-    return { expired: 0, reopened: 0, noClaimAlerts: 0,
-      skipped: true, errors: [] };
+    return {
+      expired: 0, reopened: 0, noClaimAlerts: 0,
+      skipped: true, errors: []
+    };
   }
   await bountyStoreReady();
   const net = (deps.network ?? resolveVenueNetwork)();
@@ -244,6 +202,25 @@ export async function sweepBountyLeases(
     }
   }
 
+  // 197-19 run-2 (Q38-A): a QA-failed attempt is attempt-terminal too —
+  // once the anchor reject tx is recorded, reopen on a fresh job so the
+  // fix → submit → PASS path runs. M-3 guard: no reopen without the
+  // reject tx hash (old escrow may still be locked).
+  for (const b of listBounties({ status: "failed" })) {
+    const outcome = getOutcome(b.bountyId, b.jobAttempt);
+    if (!outcome || outcome.verdict !== "fail") continue;
+    if (!outcome.verdictRejectTx) continue; // reject not anchored yet
+    try {
+      const did = await reopenBountyAttempt(b, "failed", b.jobAttempt,
+        net, { now, alert, ...deps }, res.errors,
+        `QA verdict fail — job ${b.onchainJobId ?? "?"} rejected`,
+        b.bountyId);
+      if (did) res.reopened++;
+    } catch (err) {
+      res.errors.push(`${b.bountyId}: ${String(err).slice(0, 120)}`);
+    }
+  }
+
   // "open without claim > TTL" — alert only, once per attempt (Q29).
   const staleMs = CLAIM_TTL_MS();
   for (const b of listBounties({ status: "open" })) {
@@ -255,7 +232,7 @@ export async function sweepBountyLeases(
     const ageH = Math.round((now() - Date.parse(b.createdAt)) / 3_600_000);
     await alert(
       `Bounty ${b.bountyId} open ${ageH}h without claim ` +
-        `(attempt ${b.jobAttempt})`,
+      `(attempt ${b.jobAttempt})`,
     );
   }
 

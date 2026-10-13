@@ -90,35 +90,47 @@ export function createBounty(
 ): CreateBountyResult {
   const title = asStr(input.title, 200);
   if (!title) {
-    return { ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
-      message: "title is required" };
+    return {
+      ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
+      message: "title is required"
+    };
   }
   const budgetRaw = asStr(input.budgetUsdc, 40);
   const budget = Number(budgetRaw);
   if (!budgetRaw || !Number.isFinite(budget) || budget <= 0) {
-    return { ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
-      message: "budgetUsdc must be a positive decimal string" };
+    return {
+      ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
+      message: "budgetUsdc must be a positive decimal string"
+    };
   }
   if (!isStrList(input.criteria)) {
-    return { ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
-      message: "criteria must be a non-empty string[] (Q33)" };
+    return {
+      ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
+      message: "criteria must be a non-empty string[] (Q33)"
+    };
   }
   const dtRaw = asStr(input.deliverableType ?? input.deliverable_type, 20);
   if (!DELIVERABLE_TYPES.includes(dtRaw as DeliverableType)) {
-    return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
-      message: `deliverable_type must be one of ${DELIVERABLE_TYPES.join("|")}` };
+    return {
+      ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
+      message: `deliverable_type must be one of ${DELIVERABLE_TYPES.join("|")}`
+    };
   }
   const deliverableType = dtRaw as DeliverableType;
   const verify = asStr(input.verify, 500);
   if (!verify) {
-    return { ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
-      message: "verify is required — how QA checks the deliverable (Q33)" };
+    return {
+      ok: false, status: 400, code: ErrorCodes.MISSING_FIELDS,
+      message: "verify is required — how QA checks the deliverable (Q33)"
+    };
   }
   let steps: string[] | undefined;
   if (input.steps !== undefined) {
     if (!isStrList(input.steps)) {
-      return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
-        message: "steps must be a non-empty string[]" };
+      return {
+        ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
+        message: "steps must be a non-empty string[]"
+      };
     }
     steps = (input.steps as string[]).map((s) => s.trim()).filter(Boolean);
   }
@@ -129,8 +141,10 @@ export function createBounty(
   const bountyId = (deps.newId ??
     (() => `bty_${randomBytes(8).toString("hex")}`))();
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(bountyId)) {
-    return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
-      message: "bountyId must match ^[A-Za-z0-9_-]{1,64}$" };
+    return {
+      ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
+      message: "bountyId must match ^[A-Za-z0-9_-]{1,64}$"
+    };
   }
   const bounty: BountyRecord = {
     bountyId,
@@ -201,9 +215,11 @@ export interface BriefAccessDeps {
 }
 
 async function defaultFetchOwner(passportId: string): Promise<string | null> {
-  const agentId = Number(passportId);
-  if (!Number.isFinite(agentId)) return null;
-  return fetchAgentOwner(agentId, resolveVenueNetwork());
+  // agentId is a full ERC-8004 DID (eip155:chain:registry:tokenId) —
+  // the onchain ownerOf() key is the trailing numeric tokenId.
+  const tokenId = Number(passportId.split(":").pop());
+  if (!Number.isFinite(tokenId)) return null;
+  return fetchAgentOwner(tokenId, resolveVenueNetwork());
 }
 
 /**
@@ -224,8 +240,10 @@ export async function checkBriefAccess(args: {
   message: string;
 } | null> {
   if (!args.passportId) {
-    return { status: 403, code: ErrorCodes.PASSPORT_NOT_FOUND,
-      message: "passport required — authenticate with Bearer agb_ key (Q35)" };
+    return {
+      status: 403, code: ErrorCodes.PASSPORT_NOT_FOUND,
+      message: "passport required — authenticate with Bearer agb_ key (Q35)"
+    };
   }
   const verify = deps.verify ?? verifyWalletSigRequest;
   const sig = await verify({
@@ -236,18 +254,24 @@ export async function checkBriefAccess(args: {
     path: args.path,
   });
   if (sig === "no-headers") {
-    return { status: 401, code: ErrorCodes.MISSING_FIELDS,
-      message: "Missing required headers: X-Wallet, X-Sig, X-Timestamp" };
+    return {
+      status: 401, code: ErrorCodes.MISSING_FIELDS,
+      message: "Missing required headers: X-Wallet, X-Sig, X-Timestamp"
+    };
   }
   if (sig !== "valid") {
-    return { status: 401, code: ErrorCodes.INVALID_INPUT,
-      message: "Signature verification failed" };
+    return {
+      status: 401, code: ErrorCodes.INVALID_INPUT,
+      message: "Signature verification failed"
+    };
   }
   const fetchOwner = deps.fetchOwner ?? defaultFetchOwner;
   const owner = await fetchOwner(args.passportId);
   if (!owner || owner.toLowerCase() !== args.wallet!.toLowerCase()) {
-    return { status: 403, code: ErrorCodes.WRONG_SIGNER,
-      message: "signer wallet is not the passport owner" };
+    return {
+      status: 403, code: ErrorCodes.WRONG_SIGNER,
+      message: "signer wallet is not the passport owner"
+    };
   }
   return null;
 }

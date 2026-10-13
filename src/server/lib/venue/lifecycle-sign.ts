@@ -8,7 +8,12 @@
  * Role→key mapping is MVP: client/provider/evaluator envs fall back to
  * DEPLOYER_PRIVATE_KEY for the demo wallet.
  */
-import { createWalletClient, http, type Hex } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  type Hex,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { PreparedTx } from "./lifecycle";
 
@@ -43,14 +48,13 @@ function roleKey(role: VenueRole): `0x${string}` | null {
 }
 
 /**
- * Resolve a server signer for role. Returns null when no key or the
- * derived address is not in the ARC_VENUE_SERVER_WALLETS allowlist
- * (allowlist unset = key presence is enough).
+ * Role EOA without a wallet client — same key + allowlist resolution
+ * as serverSigner (returns null when no key or the derived address is
+ * not in the ARC_VENUE_SERVER_WALLETS allowlist). 197-19: needed to
+ * put a real evaluator address into createJob — the circle deploy
+ * reverts on evaluator=0x0.
  */
-export function serverSigner(
-  role: VenueRole,
-  rpcUrl: string,
-): { address: `0x${string}`; send: (tx: PreparedTx) => Promise<Hex> } | null {
+export function serverRoleAddress(role: VenueRole): `0x${string}` | null {
   const key = roleKey(role);
   if (!key) return null;
   const account = privateKeyToAccount(key);
@@ -58,6 +62,17 @@ export function serverSigner(
   if (Object.keys(allow).length > 0 && allow[role] !== account.address.toLowerCase()) {
     return null;
   }
+  return account.address;
+}
+
+export function serverSigner(
+  role: VenueRole,
+  rpcUrl: string,
+): { address: `0x${string}`; send: (tx: PreparedTx) => Promise<Hex> } | null {
+  const address = serverRoleAddress(role);
+  if (!address) return null;
+  const key = roleKey(role);
+  const account = privateKeyToAccount(key as `0x${string}`);
   const wallet = createWalletClient({ account, transport: http(rpcUrl) });
   return {
     address: account.address,
@@ -71,7 +86,10 @@ export function serverSigner(
   };
 }
 
-/** Default server-sign sender — sends each tx sequentially as `role`. */
+/** Default server-sign sender — sends each tx sequentially as `role`.
+ * Waits for each receipt before broadcasting the next: multi-tx batches
+ * (approve→fund, createJob→setBudget) need onchain ordering — some RPCs
+ * simulate the follow-up tx before its predecessor is mined and revert. */
 export async function sendAsRole(
   role: VenueRole,
   txs: PreparedTx[],
@@ -79,7 +97,12 @@ export async function sendAsRole(
 ): Promise<Hex[] | null> {
   const signer = serverSigner(role, rpcUrl);
   if (!signer) return null;
+  const publicClient = createPublicClient({ transport: http(rpcUrl) });
   const hashes: Hex[] = [];
-  for (const tx of txs) hashes.push(await signer.send(tx));
+  for (const tx of txs) {
+    const hash = await signer.send(tx);
+    await publicClient.waitForTransactionReceipt({ hash });
+    hashes.push(hash);
+  }
   return hashes;
 }

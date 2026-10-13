@@ -14,6 +14,7 @@ import {
   getClaim,
   getOutcome,
   listTransitions,
+  putOutcome,
   resetBountyStoreForTesting,
   upsertBounty,
   upsertClaim,
@@ -111,13 +112,49 @@ describe("sweepBountyLeases", () => {
     const b = getBounty("b1")!;
     expect(b.status).toBe("open");
     expect(b.jobAttempt).toBe(2);
-    expect(b.onchainJobId).toBe("77"); // decoded from createJob receipt
+    // 197-19 e2e: circle createJob needs provider!=0x0 — job is created
+    // lazily on the next claim, so reopen leaves onchainJobId unset.
+    expect(b.onchainJobId).toBeUndefined();
     expect(getClaim("b1", 1)?.state).toBe("expired");
     expect(getOutcome("b1", 1)?.verdict).toBe("timeout");
     const txs = listTransitions("b1").map((t) => t.to);
     expect(txs).toEqual(["expired", "open"]);
-    // reject (evaluator for funded) + createJob (client)
-    expect(roles).toEqual(["evaluator", "client"]);
+    // reject only (evaluator for funded) — no eager createJob on circle
+    expect(roles).toEqual(["evaluator"]);
+  });
+
+  it("QA-failed bounty + anchored reject → reopen on new job", async () => {
+    upsertBounty(bounty({ status: "failed" }));
+    putOutcome({
+      id: "b1:1", bountyId: "b1", jobAttempt: 1, passportId: PASSPORT,
+      verdict: "fail", reasonCodes: ["qa_fail"],
+      verdictMemoTx: "0x" + "aa".repeat(32) as `0x${string}`,
+      verdictRejectTx: "0x" + "bb".repeat(32) as `0x${string}`,
+    });
+    const sends: VenueRole[] = [];
+    const r = await sweepBountyLeases(deps({
+      sendRole: (role) => {
+        sends.push(role);
+        return Promise.resolve([`0x${"cd".repeat(32)}`]);
+      },
+    }));
+    expect(r.reopened).toBe(1);
+    const b = getBounty("b1")!;
+    expect(b.status).toBe("open");
+    expect(b.jobAttempt).toBe(2);
+    expect(b.onchainJobId).toBeUndefined(); // circle: lazy createJob at claim
+    expect(sends).toHaveLength(0); // no reject (already anchored), no createJob
+  });
+
+  it("QA-failed bounty WITHOUT anchored reject → stays failed (M-3)", async () => {
+    upsertBounty(bounty({ status: "failed" }));
+    putOutcome({
+      id: "b1:1", bountyId: "b1", jobAttempt: 1, passportId: PASSPORT,
+      verdict: "fail", reasonCodes: ["qa_fail"],
+    });
+    const r = await sweepBountyLeases(deps());
+    expect(r.reopened).toBe(0);
+    expect(getBounty("b1")!.status).toBe("failed");
   });
 
   it("edge: onchain Open → client rejects, not evaluator", async () => {
@@ -149,8 +186,8 @@ describe("sweepBountyLeases", () => {
     await sweepBountyLeases(d);
     const r2 = await sweepBountyLeases(d);
     expect(r2.expired).toBe(0);
-    // only first tick sent txs (reject + createJob)
-    expect(sends).toHaveLength(2);
+    // only first tick sent txs (reject; circle: no eager createJob)
+    expect(sends).toHaveLength(1);
   });
 
   it("BOUNTY_SWEEPER_ENABLED=false → skipped", async () => {
