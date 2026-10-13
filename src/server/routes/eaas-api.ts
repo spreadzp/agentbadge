@@ -25,6 +25,7 @@ import type {
   FindAnchorFn,
   VerdictAnchorer,
 } from "../lib/eaas/anchor";
+import { verifyReceipt } from "../lib/verify/receipt";
 import { chainProofOf, type ChainService } from "../lib/eaas/chain";
 import {
   eaasQuotaGate,
@@ -87,8 +88,6 @@ export interface EaasRoutesDeps {
   /** SLICE-172-2: verdict hash-chain append — absent = chain off. */
   chain?: Pick<ChainService, "append" | "head" | "proofFor">;
 }
-
-/* --------------------------------- routes --------------------------------- */
 
 export function createEaasRoutes(
   deps: EaasRoutesDeps,
@@ -195,7 +194,7 @@ export function createEaasRoutes(
       return c.json({
         artifact: result.artifact,
         duplicate: result.duplicate,
-        verifyUrl: `/api/eaas/verdicts/${result.artifact.verdictId}/verify`,
+        ...verifyReceipt(result.artifact.verdictId), // 180-4 inline receipt
       });
     },
   );

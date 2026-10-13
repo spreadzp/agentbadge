@@ -16,6 +16,7 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import type { Hex } from "viem";
 import { lookupVerdict } from "../lib/verify/lookup";
+import { assertProofKind, proofKindsSummary } from "../lib/verify/proof-kinds";
 import {
   bad,
   consumerKey,
@@ -46,7 +47,7 @@ export function createVerifyRoutes(deps: VerifyRoutesDeps): Hono {
           description:
             "{verdictId,verdict,reason_codes,anchor,chain,verified_at}",
         },
-        400: { description: "Invalid verdictId" },
+        400: { description: "Invalid verdictId or unknown ?kind=" },
         404: { description: "verdict_not_found" },
         429: { description: "Rate limit exceeded" },
       },
@@ -55,11 +56,38 @@ export function createVerifyRoutes(deps: VerifyRoutesDeps): Hono {
       if (!limiter.allow(`verify:${consumerKey(c)}`)) {
         return c.json({ error: "rate limit exceeded" }, 429);
       }
+      // SLICE-180-4: optional ?kind= narrows the response to one proof
+      // layer — unknown kind → typed unknown_proof_kind (400).
+      const kind = c.req.query("kind");
+      if (kind !== undefined) {
+        try {
+          assertProofKind(kind);
+        } catch (e) {
+          const err = e as { code?: string; kind?: string; known?: string[] };
+          return c.json(
+            {
+              error: "unknown_proof_kind",
+              kind: err.kind ?? kind,
+              known: err.known ?? [],
+            },
+            400,
+          );
+        }
+      }
       const id = c.req.param("verdictId");
       if (!HEX32_RE.test(id)) return bad(c, "invalid verdictId");
       const result = lookupVerdict(id as Hex, deps);
       if (!result) return c.json({ error: "verdict_not_found" }, 404);
-      return c.json(result);
+      const body = { ...result, proof_kinds: proofKindsSummary() };
+      if (kind === undefined) return c.json(body);
+      // Focused view: only the requested layer's data.
+      const proof =
+        kind === "verdict"
+          ? { verdict: result.verdict, reason_codes: result.reason_codes, anchor: result.anchor }
+          : kind === "anchor-head"
+            ? { chain: result.chain }
+            : { witness: null, implemented: false };
+      return c.json({ verdictId: id, kind, proof, verified_at: result.verified_at });
     },
   );
 

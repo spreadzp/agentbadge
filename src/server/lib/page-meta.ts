@@ -351,6 +351,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/changelog", changefreq: "weekly", priority: "0.8" },
   { path: "/pricing", changefreq: "weekly", priority: "0.8" },
   { path: "/about", changefreq: "monthly", priority: "0.7" },
+  { path: "/verify", changefreq: "weekly", priority: "0.7" },
   { path: "/what-is-agent-readiness", changefreq: "weekly", priority: "0.9" },
   { path: "/agent-readiness-checklist", changefreq: "weekly", priority: "0.8" },
   { path: "/comparisons", changefreq: "monthly", priority: "0.8" },

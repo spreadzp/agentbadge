@@ -168,6 +168,60 @@ describe("GET /api/verify/:verdictId", () => {
   });
 });
 
+describe("?kind= — proof-kind registry (180-4)", () => {
+  it("default response carries proof_kinds summary", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    const body = await r.json();
+    expect(body.proof_kinds).toMatchObject({
+      verdict: { specVersion: 1 },
+      witness: { specVersion: 1 },
+      "anchor-head": { specVersion: 1 },
+    });
+  });
+
+  it("?kind=verdict narrows to the verdict layer", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}?kind=verdict`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.kind).toBe("verdict");
+    expect(body.proof.verdict).toBeTruthy();
+    expect(body.proof.anchor).toBeTruthy();
+    expect(body.proof.chain).toBeUndefined();
+  });
+
+  it("?kind=anchor-head narrows to the chain layer", async () => {
+    const s = await seeded({ withChain: true });
+    const r = await s.app.request(
+      `/api/verify/${s.verdictId}?kind=anchor-head`,
+    );
+    const body = await r.json();
+    expect(body.kind).toBe("anchor-head");
+    expect(body.proof.chain.status).toBe("pending");
+  });
+
+  it("?kind=witness → declared but unimplemented", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}?kind=witness`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.proof.implemented).toBe(false);
+  });
+
+  it("?kind=bogus → 400 unknown_proof_kind + known list", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}?kind=nope`);
+    expect(r.status).toBe(400);
+    const body = await r.json();
+    expect(body.error).toBe("unknown_proof_kind");
+    expect(body.kind).toBe("nope");
+    expect(body.known).toContain("verdict");
+    expect(body.known).toContain("anchor-head");
+    expect(body.known).toContain("witness");
+  });
+});
+
 describe("route disambiguation vs bounty /api/verify/:id", () => {
   // Production order: registerApiRoutes mounts bountyApiRoutes on /api
   // BEFORE wireEaas mounts verify-api. The bounty param is constrained
@@ -202,5 +256,61 @@ describe("route disambiguation vs bounty /api/verify/:id", () => {
     const body = await r.json();
     // bounty handler responds, not the verdict route
     expect(JSON.stringify(body)).toContain("bounty");
+  });
+});
+
+describe("SLICE-180-4: ?kind= proof-kind registry", () => {
+  it("?kind=verdict returns focused verdict-layer proof", async () => {
+    const s = await seeded({ withAnchors: true, anchorStatus: "anchored" });
+    const r = await s.app.request(`/api/verify/${s.verdictId}?kind=verdict`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.kind).toBe("verdict");
+    expect(body.proof.anchor.txHash).toBe(ANCHOR_TX);
+    expect(body.proof.verdict.verdictId).toBe(s.verdictId);
+    expect(body.chain).toBeUndefined(); // narrowed — only the layer asked for
+  });
+
+  it("?kind=anchor-head returns the chain layer only", async () => {
+    const s = await seeded({
+      withChain: true,
+      headAnchor: { epochSeq: 0, txHash: ANCHOR_TX, blockNumber: "55" },
+    });
+    const r = await s.app.request(
+      `/api/verify/${s.verdictId}?kind=anchor-head`,
+    );
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.kind).toBe("anchor-head");
+    expect(body.proof.chain.status).toBe("anchored");
+    expect(body.proof.verdict).toBeUndefined();
+  });
+
+  it("?kind=witness → declared but unimplemented (implemented:false)", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}?kind=witness`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.kind).toBe("witness");
+    expect(body.proof.implemented).toBe(false);
+  });
+
+  it("?kind=bogus → 400 unknown_proof_kind + known list", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}?kind=bogus`);
+    expect(r.status).toBe(400);
+    const body = await r.json();
+    expect(body.error).toBe("unknown_proof_kind");
+    expect(body.kind).toBe("bogus");
+    expect(body.known).toContain("verdict");
+    expect(body.known).toContain("anchor-head");
+  });
+
+  it("full response carries proof_kinds registry summary", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    const body = await r.json();
+    expect(body.proof_kinds.verdict.specVersion).toBe(1);
+    expect(body.proof_kinds["anchor-head"].specVersion).toBe(1);
   });
 });
