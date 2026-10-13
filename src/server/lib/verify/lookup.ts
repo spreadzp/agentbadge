@@ -131,3 +131,40 @@ export function lookupVerdict(
     verified_at: (deps.now?.() ?? new Date()).toISOString(),
   };
 }
+
+/* --------------------------- input resolution ----------------------------- */
+
+export type ResolveVia = "verdictId" | "txHash" | "memoId";
+
+export type ResolveOutcome =
+  | { ok: true; verdictId: Hex; via: ResolveVia }
+  | { ok: false; reason: "malformed" | "not_found" };
+
+const HEX32_INPUT_RE = /^0x[0-9a-fA-F]{64}$/;
+
+/**
+ * SLICE-180-2: human-facing input resolution for /verify — one field
+ * accepts a verdictId, an anchor txHash, or a memoId; all 0x+64hex, so
+ * we resolve in order: verdict store → anchors.txHash → anchors.memoId.
+ * Malformed input is reported as such, not as a not-found verdict.
+ */
+export function resolveVerdictInput(
+  raw: string,
+  deps: VerifyLookupDeps,
+): ResolveOutcome {
+  const input = raw.trim().toLowerCase();
+  if (!HEX32_INPUT_RE.test(input)) return { ok: false, reason: "malformed" };
+  const hex = input as Hex;
+  if (deps.store.get(hex)) return { ok: true, verdictId: hex, via: "verdictId" };
+  if (deps.anchors) {
+    for (const rec of deps.anchors.list()) {
+      if (rec.txHash?.toLowerCase() === input) {
+        return { ok: true, verdictId: rec.verdictId, via: "txHash" };
+      }
+      if (rec.memoId.toLowerCase() === input) {
+        return { ok: true, verdictId: rec.verdictId, via: "memoId" };
+      }
+    }
+  }
+  return { ok: false, reason: "not_found" };
+}

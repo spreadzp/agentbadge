@@ -195,6 +195,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "Guide for AI agents to work with medical data tasks on AgentBadge: fetch patient data, process, deliver reports, settle payments.",
     path: "/medical-guide",
   },
+  "/verify": {
+    title: "Verify a Verdict",
+    description:
+      "Independently verify an AgentBadge verdict — EIP-712 signature, on-chain memo anchor, and hash-chain inclusion. Paste a verdict ID, tx hash, or memo id.",
+    path: "/verify",
+  },
   "/faq": {
     title: "FAQ — Frequently Asked Questions",
     description:

@@ -24,6 +24,7 @@ import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../routes/eaas-billing-api";
 import { createEaasFeedsRoutes } from "../routes/eaas-feeds-api";
 import { createVerifyRoutes } from "../routes/verify-api";
+import { createVerifyPageRoutes } from "../routes/verify-page";
 import type { EaasAsyncDeps } from "../lib/eaas/requests";
 import { createEaasMetrics } from "../lib/eaas/metrics";
 import { checkAccess } from "../middleware/agent-auth";
@@ -145,17 +146,16 @@ export function wireEaas(
     }),
   );
 
-  // ─── SLICE-180-1: Level-1 public verify facade — /api/verify/:id ──
-  app.route(
-    "/",
-    createVerifyRoutes({
-      store,
-      rateRpm: cfg.rateRpm,
-      ...(anchorStore ? { anchors: anchorStore } : {}),
-      explorerTx: net.explorerTx,
-      ...(chainService ? { chain: chainService, chainId } : {}),
-    }),
-  );
+  // ─── SLICE-180-1/2: verify facade — /api/verify/:id + /verify page ──
+  const verifyDeps = {
+    store,
+    rateRpm: cfg.rateRpm,
+    ...(anchorStore ? { anchors: anchorStore } : {}),
+    explorerTx: net.explorerTx,
+    ...(chainService ? { chain: chainService, chainId } : {}),
+  };
+  app.route("/", createVerifyRoutes(verifyDeps));
+  app.route("/", createVerifyPageRoutes(verifyDeps));
 
   app.route(
     "/",

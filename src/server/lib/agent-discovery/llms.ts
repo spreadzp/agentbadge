@@ -265,7 +265,12 @@ We offer consulting and development services. Each service has a problem stateme
 
 - [POST /passport/request](${b}/passport/request) — Issue a new passport NFT
 - [GET /passport/:tokenId/:serial](${b}/passport) — Get passport metadata
-- [GET /verify/:tokenId/:serial](${b}/verify) — Verify passport on-chain
+
+## Verdict Verification
+
+- [GET /verify](${b}/verify) — Human-facing verdict verification page; accepts verdictId, anchor txHash, or memoId (?q=)
+- [GET /api/verify/:verdictId](${b}/api/verify) — JSON verify facade: verdict + reason_codes + anchor status + hash-chain head_ref
+- [GET /api/eaas/chain/proof/:verdictId](${b}/api/eaas/chain/proof) — Inclusion proof for offline headHash recomputation
 
 ## Guides
 
