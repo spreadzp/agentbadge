@@ -80,8 +80,9 @@ export function createJobTx(
   net: VenueNetwork,
   bounty: BountyRecord,
   leaseTtlMs: number,
+  nowMs: number = Date.now(), // 197-17 M-8
 ): PreparedTx {
-  const expiredAt = BigInt(Math.floor((Date.now() + leaseTtlMs) / 1000));
+  const expiredAt = BigInt(Math.floor((nowMs + leaseTtlMs) / 1000));
   return {
     to: net.agenticCommerce,
     data: encodeFunctionData({

@@ -1,19 +1,9 @@
 /**
- * SLICE-197-10: verdict memo-anchor (EPIC-172 pattern).
- *
- * Anchor = memo tx carrying
- *   {bountyId, jobId, verdict, commitSha, reason_codes, runnerLogHash}
- * emitted by the Arc Memo contract — FAIL is anchored exactly like
- * PASS (the negative is a provable fact too).
- *
- * Q37-A: FAIL is the terminal evaluator reject — the anchor is sent
- * BEFORE the reject-tx and the onchain reason field carries the
- * deterministic memoId, so anyone can resolve the Memo event by its
- * indexed memoId and verify the verdict. PASS: anchor → complete with
- * the same reason=memoId pointer.
- *
- * Idempotent: an outcome that already has verdictMemoTx is never
- * re-anchored (repeat QA never duplicates tx).
+ * SLICE-197-10: verdict memo-anchor (EPIC-172 pattern). Memo tx
+ * carries {bountyId, jobId, verdict, commitSha, reason_codes,
+ * runnerLogHash}; FAIL anchored like PASS — before reject tx,
+ * reason=memoId lets anyone resolve the Memo event and verify.
+ * Idempotent: existing verdictMemoTx is never re-anchored.
  */
 import {
   encodeFunctionData,
@@ -158,9 +148,23 @@ export async function anchorBountyOutcome(
       send, net, bounty, outcome, jobId, memoId,
     );
     if (actionHash) {
-      patchOutcome(bounty.bountyId, bounty.jobAttempt, {
+      // 197-17 M-2: log when the outcome row is gone — action tx is
+      // committed onchain but the store will never see its hash.
+      const patched = patchOutcome(bounty.bountyId, bounty.jobAttempt, {
         verdictRejectTx: actionHash,
+        payload: {
+          ...outcome.payload,
+          memoId,
+          explorerTxs: { action: net.explorerTx(actionHash) },
+        },
       });
+      if (!patched) {
+        logger.error(
+          "bounty-anchor: action tx sent but outcome row missing",
+          { bountyId: bounty.bountyId, jobAttempt: bounty.jobAttempt,
+            actionTxHash: actionHash },
+        );
+      }
     }
     return {
       ok: !!actionHash,

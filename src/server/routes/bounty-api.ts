@@ -245,10 +245,26 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
           "unknown bountyId");
       }
       const outcome = getOutcome(bounty.bountyId, bounty.jobAttempt);
+      // 197-17 M-5: expose every attempt''s verdict, not just the
+      // current one — a reopened bounty otherwise hides a prior fail.
+      const attempts: Record<number, unknown> = {};
+      for (let a = 1; a <= bounty.jobAttempt; a++) {
+        const o = getOutcome(bounty.bountyId, a);
+        if (o) {
+          attempts[a] = {
+            verdict: o.verdict,
+            reasonCodes: o.reasonCodes ?? [],
+            commitSha: o.commitSha ?? null,
+            memoTxHash: o.verdictMemoTx ?? null,
+            actionTxHash: o.verdictRejectTx ?? null,
+          };
+        }
+      }
       const net = (deps.network ?? resolveVenueNetwork)();
       return c.json({
         bountyId: bounty.bountyId,
         jobAttempt: bounty.jobAttempt,
+        attempts,
         status: bounty.status,
         verdict: outcome?.verdict ?? null,
         reasonCodes: outcome?.reasonCodes ?? [],

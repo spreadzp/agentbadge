@@ -95,6 +95,7 @@ async function sweepClaim(
 
   const jobId = bounty.onchainJobId ? Number(bounty.onchainJobId) : null;
   let rejectTx: `0x${string}` | undefined;
+  let rejectFailed = false; // 197-17 M-3
   if (jobId != null) {
     const job = await (deps.fetchJob ?? readJob)(jobId, net);
     const status = job?.status;
@@ -106,6 +107,9 @@ async function sweepClaim(
         net.chain.rpcUrl);
       rejectTx = hashes?.[0];
       if (!rejectTx) {
+        // 197-17 M-3: alive onchain job without a reject — opening a
+        // fresh job would leave the old escrow locked, double-funding.
+        rejectFailed = true;
         errors.push(`${claim.id}: no ${role} signer — reject skipped`);
       }
     } else {
@@ -137,6 +141,18 @@ async function sweepClaim(
     payload: { rejectTx, leaseUntilMs: claim.leaseUntilMs },
   });
 
+  // 197-17 M-3: never reopen while the prior job reject is
+  // unconfirmed — alert ops and keep the bounty expired instead.
+  if (rejectFailed) {
+    upsertBounty({ ...bounty, status: "expired" });
+    await deps.alert(
+      `Bounty ${bounty.bountyId} lease expired but onchain reject ` +
+        `failed for job ${jobId} — reopen blocked, needs manual ` +
+        `resolution (escrow may still be locked)`,
+    );
+    return true;
+  }
+
   // Reopen on a new job — gated by the re-claim cap (Q38-A).
   const attemptsLeft = MAX_JOB_ATTEMPTS() - claim.jobAttempt;
   const reopen = assertBountyTransition("expired", "reopen", attemptsLeft);
@@ -154,7 +170,7 @@ async function sweepClaim(
   const send = deps.sendRole ?? sendAsRole;
   const createHashes = await send(
     "client",
-    [createJobTx(net, bounty, CLAIM_TTL_MS())],
+    [createJobTx(net, bounty, CLAIM_TTL_MS(), now)],
     net.chain.rpcUrl,
   );
   if (createHashes?.[0]) {

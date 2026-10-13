@@ -107,12 +107,12 @@ export async function submitBounty(
     return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
       message: "commitSha must be hex (4–64 chars, optional 0x)" };
   }
-  const models = req.models?.slice(0, MAX_MODELS).map((m) =>
-    String(m).slice(0, 64));
+  // 197-17 M-6: length check BEFORE slicing — never silently drop.
   if (req.models && req.models.length > MAX_MODELS) {
     return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
       message: `models[] capped at ${MAX_MODELS}` };
   }
+  const models = req.models?.map((m) => String(m).slice(0, 64));
   const tokens =
     req.tokens != null &&
     Number.isInteger(req.tokens) &&

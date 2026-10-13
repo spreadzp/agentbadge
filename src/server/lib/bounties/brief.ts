@@ -124,8 +124,16 @@ export function createBounty(
   }
 
   const now = (deps.now ?? Date.now)();
+  // 197-17 M-4: claimKey = \`${bountyId}:${attempt}\` — a colon in
+  // an id collides with a real claim key. Whitelist charset+length.
+  const bountyId = (deps.newId ??
+    (() => `bty_${randomBytes(8).toString("hex")}`))();
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(bountyId)) {
+    return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
+      message: "bountyId must match ^[A-Za-z0-9_-]{1,64}$" };
+  }
   const bounty: BountyRecord = {
-    bountyId: (deps.newId ?? (() => `bty_${randomBytes(8).toString("hex")}`))(),
+    bountyId,
     title,
     description: asStr(input.description, 2000) || undefined,
     budgetUsdc: budgetRaw,

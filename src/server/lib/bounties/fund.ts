@@ -215,7 +215,7 @@ async function fundBountyLocked(
   if (!record.onchainJobId) {
     let txHash = record.chainTxs?.created;
     if (!txHash) {
-      const createTx = createJobTx(net, record, 0);
+      const createTx = createJobTx(net, record, 0, now);
       const hashes = await send([createTx]);
       txHash = hashes?.[0];
       if (!txHash) {
