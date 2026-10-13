@@ -35,6 +35,7 @@ import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 import { createEaasRefundStack } from "../lib/eaas/refund";
 import { evaluatorKey } from "../lib/eaas/keys";
 import { mountEaasPayerBinding } from "../lib/eaas/payer-binding";
+import { mountVerifySurface } from "./eaas-verify";
 
 export function wireEaas(
   app: Hono,
@@ -42,7 +43,8 @@ export function wireEaas(
 ): void {
   const cfg = getConfig().eaas;
   const db = getDatabase();
-  if (!cfg?.enabled) return;
+  // 180-5: read-only verify surface is public regardless of the paid-issue flag.
+  if (!cfg?.enabled) return mountVerifySurface(app);
 
   // bstock section optional — verdict chainId follows ARC network, default testnet.
   const chainId = arcChainFor(
