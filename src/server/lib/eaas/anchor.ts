@@ -244,29 +244,11 @@ export function createAnchorer(deps: AnchorerDeps): VerdictAnchorer {
 
 /* ------------------------------ verify lookup ----------------------------- */
 
-/** Onchain memo hit — event fields needed by the public verify endpoint. */
-export interface AnchorLookupResult {
-  txHash: Hex;
-  blockNumber: bigint;
-  /** Memo event `memo` bytes — must equal AnchorRecord.artifactHash. */
-  memoData: Hex;
-  blockTime?: number;
-}
-
-export type FindAnchorFn = (
-  memoId: Hex,
-) => Promise<AnchorLookupResult | null>;
-
-export interface AnchorVerifyResult {
-  signatureValid: boolean;
-  signer: Hex;
-  chainId: number;
-  anchor: {
-    status: AnchorStatus | "none";
-    found: boolean;
-    memoId?: Hex;
-    txHash?: Hex;
-    contextMatches: boolean;
-    blockTime?: number;
-  };
-}
+// Verify-side anchor reads live in lib/verify/find-anchor.ts (180-1);
+// re-exported here so existing imports keep working.
+export type {
+  AnchorLookupResult,
+  AnchorVerifyResult,
+  FindAnchorFn,
+} from "../verify/find-anchor";
+export { createFindAnchor } from "../verify/find-anchor";

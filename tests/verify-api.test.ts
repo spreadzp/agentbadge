@@ -1,0 +1,168 @@
+/**
+ * SLICE-180-1: public Level-1 verify facade — GET /api/verify/:verdictId.
+ *
+ * "Don't trust us — check it yourself": one endpoint that returns the
+ * stored verdict + machine reason codes + per-verdict memo anchor state +
+ * hash-chain status (anchored|pending) + a head_ref pointer for offline
+ * recomputation. Unknown id → honest 404 verdict_not_found; never a
+ * fake-valid.
+ */
+import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Wallet } from "ethers";
+import type { Hex } from "viem";
+
+import { createVerdictSigner } from "../src/server/lib/eaas/verdict";
+import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
+import { issueVerdict } from "../src/server/lib/eaas/index";
+import {
+  createMemoryAnchorStore,
+  verdictMemoId,
+} from "../src/server/lib/eaas/anchor";
+import {
+  createChainService,
+  createMemoryChainStore,
+} from "../src/server/lib/eaas/chain";
+import { createVerifyRoutes } from "../src/server/routes/verify-api";
+
+const CHAIN_ID = 5042002;
+const signer = createVerdictSigner(Wallet.createRandom().privateKey, CHAIN_ID);
+const REQ = { policy: "deliverable-present", deliverable: { x: 1 } };
+const EXPLORER = (tx: string) => `https://arc.test/tx/${tx}`;
+const ANCHOR_TX =
+  "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hex;
+
+interface SeedOpts {
+  withAnchors?: boolean;
+  anchorStatus?: "pending" | "anchored" | "failed";
+  withChain?: boolean;
+  headAnchor?: { epochSeq: number; txHash: Hex; blockNumber: string };
+}
+
+async function seeded(opts: SeedOpts = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "verify-api-"));
+  const store = createJsonVerdictStore(join(dir, "v.json"));
+  const chainStore = opts.withChain ? createMemoryChainStore() : undefined;
+  const chain = chainStore
+    ? createChainService({ store: chainStore })
+    : undefined;
+  const issued = await issueVerdict(
+    { ...REQ, nonce: 7 },
+    { signer, store, chain },
+  );
+  const verdictId = issued.artifact.verdictId;
+  if (opts.headAnchor && chainStore) {
+    // Simulate the 172-3 flusher having anchored the current head.
+    chainStore.putHead({ ...chainStore.head()!, anchor: opts.headAnchor });
+  }
+
+  const anchors = opts.withAnchors ? createMemoryAnchorStore() : undefined;
+  if (anchors) {
+    anchors.put({
+      verdictId,
+      memoId: verdictMemoId(verdictId),
+      artifactHash: "0x" as Hex,
+      status: opts.anchorStatus ?? "pending",
+      attempts: 0,
+      ...(opts.anchorStatus === "anchored"
+        ? { txHash: ANCHOR_TX, blockNumber: "123" }
+        : {}),
+    });
+  }
+
+  const app = new Hono().route(
+    "/",
+    createVerifyRoutes({
+      store,
+      rateRpm: 60,
+      ...(anchors ? { anchors } : {}),
+      ...(anchors || chain ? { explorerTx: EXPLORER } : {}),
+      ...(chain ? { chain, chainId: CHAIN_ID } : {}),
+    }),
+  );
+  return { app, store, chain, anchors, verdictId };
+}
+
+describe("GET /api/verify/:verdictId", () => {
+  it("returns verdict + reason_codes + verified_at for a known verdict", async () => {
+    const s = await seeded();
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.verdictId).toBe(s.verdictId);
+    expect(body.verdict.kind).toBe("approve");
+    expect(body.verdict.policy).toBe("deliverable-present");
+    expect(body.verdict.signature).toMatch(/^0x[0-9a-f]+$/);
+    expect(body.reason_codes).toContain("policy:deliverable-present");
+    expect(body.reason_codes).toContain("kind:approve");
+    expect(body.verified_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("unknown id → 404 verdict_not_found (honest, not fake-valid)", async () => {
+    const s = await seeded();
+    const bogus = `0x${"ab".repeat(32)}`;
+    const r = await s.app.request(`/api/verify/${bogus}`);
+    expect(r.status).toBe(404);
+    const body = await r.json();
+    expect(body.error).toBe("verdict_not_found");
+  });
+
+  it("malformed id → 400", async () => {
+    const s = await seeded();
+    const r = await s.app.request("/api/verify/not-a-hash");
+    expect(r.status).toBe(400);
+  });
+
+  it("pending anchor → anchor.status:'pending' explicitly", async () => {
+    const s = await seeded({ withAnchors: true, anchorStatus: "pending" });
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.anchor.status).toBe("pending");
+    expect(body.anchor.txHash).toBeUndefined();
+  });
+
+  it("anchored anchor → txHash + memoId + explorerUrl", async () => {
+    const s = await seeded({ withAnchors: true, anchorStatus: "anchored" });
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    const body = await r.json();
+    expect(body.anchor.status).toBe("anchored");
+    expect(body.anchor.txHash).toBe(ANCHOR_TX);
+    expect(body.anchor.memoId).toBe(verdictMemoId(s.verdictId));
+    expect(body.anchor.explorerUrl).toBe(EXPLORER(ANCHOR_TX));
+  });
+
+  it("chain included, head not yet anchored → chain.status:'pending'", async () => {
+    const s = await seeded({ withChain: true });
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.chain.status).toBe("pending");
+    expect(body.chain.head_ref.headHash).toBe(s.chain!.head().headHash);
+    expect(body.chain.head_ref.seq).toBe(0);
+  });
+
+  it("chain included + head anchored → status:'anchored' + anchored_at", async () => {
+    const s = await seeded({
+      withChain: true,
+      headAnchor: { epochSeq: 1, txHash: ANCHOR_TX, blockNumber: "456" },
+    });
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    const body = await r.json();
+    expect(body.chain.status).toBe("anchored");
+    expect(body.chain.head_ref.headHash).toBe(s.chain!.head().headHash);
+    expect(body.chain.anchored_at).toBeDefined();
+    expect(body.chain.head_ref.anchor.txHash).toBe(ANCHOR_TX);
+  });
+
+  it("chain off → chain.status 'disabled' honest", async () => {
+    const s = await seeded({ withChain: false });
+    const r = await s.app.request(`/api/verify/${s.verdictId}`);
+    const body = await r.json();
+    expect(body.chain.status).toBe("disabled");
+    expect(body.chain.head_ref).toBeUndefined();
+  });
+});

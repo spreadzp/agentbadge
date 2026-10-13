@@ -191,6 +191,21 @@ export const ERROR_CATALOG: ErrorEntry[] = [
     recovery_action: "change_request",
   },
 
+  // ─── Verdict verification (EPIC-180) ───
+  {
+    code: "verdict_not_found",
+    http_status: 404,
+    agent_impact:
+      "No stored verdict matches the given verdictId. Nothing was " +
+      "charged; the id is simply unknown to this deployment.",
+    hint_template:
+      "Check the verdictId format (0x + 64 hex). List a consumer's " +
+      "verdicts via GET /api/eaas/feed?wallet=<0x…>.",
+    affected_routes: ["/api/verify/:verdictId"],
+    recovery_action: "change_request",
+    charge: "never",
+  },
+
   // ─── Agent api keys (EPIC-184) ───
   {
     code: "agent_key_invalid",

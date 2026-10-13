@@ -5,11 +5,10 @@
 // on ARC_EAAS_ENABLED — no payment rail = nothing mounts (fail closed).
 
 import { createWalletClient, http } from "viem";
-import type { Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hono } from "hono";
 import { logger } from "@agentbadge/passport";
-import { createErc8183, MEMO_ABI } from "@agentbadge/circle-payments";
+import { createErc8183 } from "@agentbadge/circle-payments";
 import { getConfig } from "../../config/env";
 import { arcChainFor } from "../lib/marketplace/chain";
 import { createVerdictSigner } from "../lib/eaas/verdict";
@@ -18,12 +17,13 @@ import { getDatabase } from "../lib/database";
 import { pickAnchorStore, pickContractStore, pickEvalStore, pickRequestStore, pickSubscriptionStore } from "../lib/eaas/db-stores";
 import { POLICY_REGISTRY } from "../lib/eaas/policies";
 import { createContractRegistry } from "../lib/eaas/contracts";
-import { createAnchorer, createJsonAnchorStore, mkEoaSend } from "../lib/eaas/anchor";
+import { createAnchorer, createFindAnchor, createJsonAnchorStore, mkEoaSend } from "../lib/eaas/anchor";
 import { setupVerdictChain } from "../lib/eaas/chain-wire";
 import { createEaasRoutes } from "../routes/eaas-api";
 import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../routes/eaas-billing-api";
 import { createEaasFeedsRoutes } from "../routes/eaas-feeds-api";
+import { createVerifyRoutes } from "../routes/verify-api";
 import type { EaasAsyncDeps } from "../lib/eaas/requests";
 import { createEaasMetrics } from "../lib/eaas/metrics";
 import { checkAccess } from "../middleware/agent-auth";
@@ -103,24 +103,10 @@ export function wireEaas(
     selfAddress: account?.address,
   });
   // Public verify reads the memo by memoId: getLogs(Memo, memoId) → block time.
-  const findAnchor = async (memoId: Hex) => {
-    const logs = await read.getLogs({
-      address: net.memo,
-      event: MEMO_ABI[2],
-      args: { memoId },
-    });
-    const log = logs[0];
-    if (!log) return null;
-    const block = await read
-      .getBlock({ blockNumber: log.blockNumber })
-      .catch(() => null);
-    return {
-      txHash: log.transactionHash,
-      blockNumber: log.blockNumber,
-      memoData: (log.args as unknown as { memo: Hex }).memo,
-      ...(block ? { blockTime: Number(block.timestamp) } : {}),
-    };
-  };
+  const findAnchor = createFindAnchor({
+    read: read as never,
+    memo: net.memo,
+  });
 
   // ─── SLICE-154-5: billing tiers — CLASS_EAAS pass + quota store ─
   const subStore = pickSubscriptionStore(db);
@@ -156,6 +142,18 @@ export function wireEaas(
       ...(chainService
         ? { chain: chainService, chainId, explorerTx: net.explorerTx }
         : {}),
+    }),
+  );
+
+  // ─── SLICE-180-1: Level-1 public verify facade — /api/verify/:id ──
+  app.route(
+    "/",
+    createVerifyRoutes({
+      store,
+      rateRpm: cfg.rateRpm,
+      ...(anchorStore ? { anchors: anchorStore } : {}),
+      explorerTx: net.explorerTx,
+      ...(chainService ? { chain: chainService, chainId } : {}),
     }),
   );
 
