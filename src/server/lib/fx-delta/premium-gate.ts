@@ -10,10 +10,11 @@ import type { Context, MiddlewareHandler } from "hono";
 import { ErrorCodes } from "../error-codes";
 import { errorResponse } from "../error-response";
 import {
-  CELO_X402_ASSETS,
-  CELO_X402_NETWORK,
+  celoX402Assets,
+  celoX402ChainId,
+  celoX402Network,
   CELO_X402_SCHEME,
-} from "./celo-settle";
+} from "./celo-assets";
 import { getFxDeltaFacilitator } from "./facilitator-env";
 import type { BstockPaymentRequirements } from "../../middleware/bstock-freemium";
 import { checkPayerBinding } from "../../middleware/payer-binding";
@@ -31,7 +32,7 @@ export function premiumRequirements(
   const amount = priceBaseUnits();
   return {
     scheme: CELO_X402_SCHEME,
-    network: CELO_X402_NETWORK,
+    network: celoX402Network(celoX402ChainId()),
     asset,
     amount,
     maxAmountRequired: amount,
@@ -45,7 +46,7 @@ export function premiumRequirements(
 }
 
 function premium402(c: Context, error = "Payment required"): Response {
-  const accepts = Object.values(CELO_X402_ASSETS).map((a) =>
+  const accepts = Object.values(celoX402Assets(celoX402ChainId())).map((a) =>
     premiumRequirements(c, a.address as `0x${string}`, {
       name: a.name,
       version: a.version,
@@ -81,15 +82,18 @@ export function fxDeltaPremiumGate(): MiddlewareHandler {
         resolvePayer: (h) =>
           fac.peekPayer!(
             h,
-            premiumRequirements(c, CELO_X402_ASSETS.USDC.address),
+            premiumRequirements(
+              c,
+              celoX402Assets(celoX402ChainId()).USDC
+                .address as `0x${string}`,
+            ),
           ),
       });
       if (!bound.ok) return bound.response;
     }
-
     const req = premiumRequirements(
       c,
-      CELO_X402_ASSETS.USDC.address as `0x${string}`,
+      celoX402Assets(celoX402ChainId()).USDC.address as `0x${string}`,
     );
     const verify = await fac.verify(paymentSig, req);
     if (!verify.valid) {

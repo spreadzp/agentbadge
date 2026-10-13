@@ -213,6 +213,7 @@ describe("/api/fx-delta premium gate", () => {
     delete process.env.FXDELTA_PAY_TO;
     delete process.env.SELLER_PRIVATE_KEY;
     delete process.env.X402_MODE;
+    delete process.env.CELO_CHAIN_ID;
   });
 
   it("no payment → 402 with USDC+USDT accepts", async () => {
@@ -243,5 +244,45 @@ describe("/api/fx-delta premium gate", () => {
     expect(addrs).toContain(CELO_X402_ASSETS.USDC.address.toLowerCase());
     expect(addrs).toContain(CELO_X402_ASSETS.USDT.address.toLowerCase());
     expect(body.accepts[0].network).toBe("eip155:42220");
+  });
+
+  it("CELO_CHAIN_ID=11142220 → 402 advertises sepolia USDC (191-6 e2e)", async () => {
+    process.env.CELO_CHAIN_ID = "11142220";
+    process.env.FXDELTA_PAY_TO = PAY_TO;
+    process.env.SELLER_PRIVATE_KEY = "0x" + "01".repeat(32);
+    process.env.CELO_RPC_URL = "http://localhost:1";
+    setFxDeltaRuntime({
+      engine: {
+        getAll: () => [],
+        getView: () => null,
+        getHistory: () => [],
+        getEvents: () => [],
+      },
+      corridors: [],
+      sources: () => ({
+        uniswap: { connected: false, lastTickMs: 0 },
+        mento: { connected: false, lastTickMs: 0 },
+        fxRef: { connected: false, lastTickMs: 0 },
+      }),
+      startedAtMs: Date.now(),
+    });
+    const app = new Hono();
+    app.route("/", fxDeltaRoutes);
+    const r = await app.request("/api/fx-delta/premium");
+    expect(r.status).toBe(402);
+    const body = await r.json();
+    const { CELO_SEPOLIA_X402_ASSETS } =
+      await import("../src/server/lib/fx-delta/celo-assets");
+    const addrs = body.accepts.map((a: { asset: string }) =>
+      a.asset.toLowerCase(),
+    );
+    expect(addrs).toEqual([
+      CELO_SEPOLIA_X402_ASSETS.USDC.address.toLowerCase(),
+    ]);
+    expect(body.accepts[0].network).toBe("eip155:11142220");
+    expect(body.accepts[0].extra).toMatchObject({
+      name: "USDC",
+      version: "2",
+    });
   });
 });

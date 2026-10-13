@@ -6,7 +6,23 @@
 import { parseAbi, type Hex } from "viem";
 
 export const CELO_X402_NETWORK = "eip155:42220";
+export const CELO_X402_NETWORK_SEPOLIA = "eip155:11142220";
 export const CELO_X402_SCHEME = "exact";
+
+export const CELO_MAINNET_CHAIN_ID = 42220;
+export const CELO_SEPOLIA_CHAIN_ID = 11142220;
+
+/** Chain id for this deployment — CELO_CHAIN_ID env, default mainnet. */
+export function celoX402ChainId(): number {
+  return process.env.CELO_CHAIN_ID
+    ? Number(process.env.CELO_CHAIN_ID)
+    : CELO_MAINNET_CHAIN_ID;
+}
+
+/** eip155 network string for a Celo chain id (mainnet | sepolia). */
+export function celoX402Network(chainId: number): string {
+  return `eip155:${chainId}`;
+}
 
 /** EIP-3009 TransferWithAuthorization domain per accepted asset (191-0
  *  spike verified name/version onchain). */
@@ -26,6 +42,34 @@ export const CELO_X402_ASSETS = {
   // USA₮ 0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771 ("Tether America
   // USD"/"1") — track 2b reverse: uncomment to accept.
 } as const;
+
+/** Celo Sepolia accepts — Circle testnet USDC (faucet.circle.com).
+ *  name()/version() verified onchain 2026-10-13: "USDC"/"2". */
+export const CELO_SEPOLIA_X402_ASSETS = {
+  USDC: {
+    address: "0x01C5C0122039549AD1493B8220cABEdD739BC44E",
+    name: "USDC",
+    version: "2",
+    decimals: 6,
+  },
+} as const;
+
+export interface CeloX402Asset {
+  address: string;
+  name: string;
+  version: string;
+  decimals: number;
+}
+
+/** Accepted assets for a chain id — mainnet table for 42220,
+ *  sepolia table otherwise. */
+export function celoX402Assets(
+  chainId: number,
+): Record<string, CeloX402Asset> {
+  return chainId === CELO_MAINNET_CHAIN_ID
+    ? CELO_X402_ASSETS
+    : CELO_SEPOLIA_X402_ASSETS;
+}
 
 export const TWITH_AUTH_ABI = parseAbi([
   "function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s)",
@@ -83,8 +127,11 @@ export function extractAuth(p: PaymentPayload): {
   return { auth, signature: sig as Hex };
 }
 
-export function assetByAddress(addr: string) {
-  return Object.values(CELO_X402_ASSETS).find(
+export function assetByAddress(
+  addr: string,
+  chainId: number = CELO_MAINNET_CHAIN_ID,
+) {
+  return Object.values(celoX402Assets(chainId)).find(
     (a) => a.address.toLowerCase() === addr.toLowerCase(),
   );
 }
@@ -162,8 +209,11 @@ export async function checkAuthorization(
   }
 
   // EIP-712 verify against the asset's own domain (USDC "USDC"/"2",
-  // USDT "Tether USD"/"1" — see 191-0 domain spike).
-  const dom = assetByAddress(requirements.asset) ?? CELO_X402_ASSETS.USDC;
+  // USDT "Tether USD"/"1" — see 191-0 domain spike). Chain-aware:
+  // sepolia settles Circle testnet USDC 0x01C5…44E ("USDC"/"2").
+  const dom =
+    assetByAddress(requirements.asset, chainId) ??
+    Object.values(celoX402Assets(chainId))[0];
   try {
     const ok = await pc.verifyTypedData({
       address: auth.from as `0x${string}`,

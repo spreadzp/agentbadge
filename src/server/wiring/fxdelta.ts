@@ -21,8 +21,9 @@ import {
 } from "../lib/fx-delta";
 import { getFxDeltaFacilitator } from "../lib/fx-delta/facilitator-env";
 import {
-  CELO_X402_ASSETS,
-  CELO_X402_NETWORK,
+  celoX402Assets,
+  celoX402ChainId,
+  celoX402Network,
   CELO_X402_SCHEME,
 } from "../lib/fx-delta/celo-assets";
 import { getFxDeltaTelegramBot } from "../../telegram/state";
@@ -60,8 +61,9 @@ export function wireFxDeltaNamespace(app: Hono): void {
           priceUsd: process.env.FXDELTA_PRICE_USD ?? "0.005",
           durationSec: 300,
           payTo: process.env.FXDELTA_PAY_TO ?? "",
-          networkId: CELO_X402_NETWORK,
-          usdcAddress: CELO_X402_ASSETS.USDC.address,
+          networkId: celoX402Network(celoX402ChainId()),
+          usdcAddress:
+            celoX402Assets(celoX402ChainId()).USDC.address,
           scheme: CELO_X402_SCHEME,
           freePerMin: 1,
           keyedPerMin: getConfig().agentRegistration?.keyRpm ?? 10,

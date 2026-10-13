@@ -103,16 +103,16 @@ export function createCeloX402Facilitator(
     cfg.walletClient ??
     (cfg.privateKey
       ? createWalletClient({
-          account: privateKeyToAccount(cfg.privateKey),
-          chain,
-          transport: http(rpcUrl),
-        })
+        account: privateKeyToAccount(cfg.privateKey),
+        chain,
+        transport: http(rpcUrl),
+      })
       : undefined);
 
   const tagSuffix: Hex | undefined = cfg.attributionCode
     ? (Attribution.toDataSuffix({
-        codes: [cfg.attributionCode],
-      }) as Hex)
+      codes: [cfg.attributionCode],
+    }) as Hex)
     : undefined;
 
   /** Static checks + signature — returns payer or reason. No nonce claim. */
@@ -210,7 +210,7 @@ export function createCeloX402Facilitator(
           error: "attribution_code_missing: settle tx must carry ERC-8021 tag",
         };
       }
-      const asset = assetByAddress(requirements.asset);
+      const asset = assetByAddress(requirements.asset, chainId);
       if (!asset) {
         return { success: false, error: "asset_not_accepted" };
       }
