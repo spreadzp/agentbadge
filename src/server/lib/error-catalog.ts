@@ -1,4 +1,7 @@
 import { refusalErrorEntries } from "./refusal-contract";
+import { VERIFY_ERROR_ENTRIES } from "./error-catalog-verify";
+import { GENERIC_ERROR_ENTRIES } from "./error-catalog-generic";
+import { WITNESS_ERROR_ENTRIES } from "./error-catalog-witness";
 
 export type RecoveryAction =
   | "retry_immediately"
@@ -191,20 +194,8 @@ export const ERROR_CATALOG: ErrorEntry[] = [
     recovery_action: "change_request",
   },
 
-  // ─── Verdict verification (EPIC-180) ───
-  {
-    code: "verdict_not_found",
-    http_status: 404,
-    agent_impact:
-      "No stored verdict matches the given verdictId. Nothing was " +
-      "charged; the id is simply unknown to this deployment.",
-    hint_template:
-      "Check the verdictId format (0x + 64 hex). List a consumer's " +
-      "verdicts via GET /api/eaas/feed?wallet=<0x…>.",
-    affected_routes: ["/api/verify/:verdictId"],
-    recovery_action: "change_request",
-    charge: "never",
-  },
+  // ─── Verdict verification (EPIC-180) — lib/error-catalog-verify.ts ───
+  ...VERIFY_ERROR_ENTRIES,
 
   // ─── Agent api keys (EPIC-184) ───
   {
@@ -246,31 +237,8 @@ export const ERROR_CATALOG: ErrorEntry[] = [
     recovery_action: "wait_and_retry",
   },
 
-  // ─── Rate limiting / server errors ───
-  {
-    code: "rate_limit_exceeded",
-    http_status: 429,
-    agent_impact: "The agent has exceeded the rate limit (60 requests/minute per IP).",
-    hint_template: "Check the X-RateLimit-Reset header for when the window resets. Implement exponential backoff. Reduce request frequency.",
-    affected_routes: ["*"],
-    recovery_action: "wait_and_retry",
-  },
-  {
-    code: "internal_server_error",
-    http_status: 500,
-    agent_impact: "An unexpected server error occurred. The request was not processed.",
-    hint_template: "Retry the request after a brief delay. If the error persists, report via GET /contact.",
-    affected_routes: ["*"],
-    recovery_action: "retry_immediately",
-  },
-  {
-    code: "service_unavailable",
-    http_status: 503,
-    agent_impact: "The service is temporarily unavailable, possibly due to maintenance or Hedera network issues.",
-    hint_template: "Check GET /health for service status. Retry after 30 seconds. If persistent, await resolution.",
-    affected_routes: ["*"],
-    recovery_action: "wait_and_retry",
-  },
+  ...WITNESS_ERROR_ENTRIES,
+  ...GENERIC_ERROR_ENTRIES,
 ];
 
 export function getErrorCatalog() {

@@ -22,11 +22,12 @@ export function errorResponse(
   status: 400 | 401 | 402 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503,
   code: ErrorCode,
   error: string,
-  opts?: { retryable?: boolean; hint?: string },
+  opts?: { retryable?: boolean; hint?: string; charged?: boolean },
 ): Response {
   const body: ErrorBody = { error, code };
   if (opts?.retryable !== undefined) body.retryable = opts.retryable;
   if (opts?.hint) body.hint = opts.hint;
+  if (opts?.charged !== undefined) body.charged = opts.charged;
   return c.json(body, status);
 }
 

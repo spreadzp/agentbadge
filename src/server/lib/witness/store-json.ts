@@ -143,5 +143,8 @@ export function createJsonWitnessStore(
         return n;
       });
     },
+    async getDailyCredits(agentId, dayKey) {
+      return readJson(path).credits[`${agentId}:${dayKey}`] ?? 0;
+    },
   };
 }

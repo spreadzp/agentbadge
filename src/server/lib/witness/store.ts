@@ -81,6 +81,8 @@ export interface WitnessStore {
    * WITNESS_DAILY_CAP (D-185-5).
    */
   incrDailyCredits(agentId: string, dayKey: string): Promise<number>;
+  /** Read-only view of the day-bucket for GET /me — does NOT consume. */
+  getDailyCredits(agentId: string, dayKey: string): Promise<number>;
 }
 
 /**
@@ -177,6 +179,9 @@ export function createMemoryWitnessStore(): WitnessStore {
       const n = (credits.get(key) ?? 0) + 1;
       credits.set(key, n);
       return n;
+    },
+    async getDailyCredits(agentId, dayKey) {
+      return credits.get(`${agentId}:${dayKey}`) ?? 0;
     },
   };
 }

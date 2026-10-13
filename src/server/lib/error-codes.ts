@@ -69,6 +69,24 @@ export const ErrorCodes = {
   AGENT_KEY_INVALID: "agent_key_invalid",
   AGENT_KEY_REVOKED: "agent_key_revoked",
 
+  // 4xx — witness layer (EPIC-185; snake_case wire values,
+  // charge:never in the catalog — endpoints are free)
+  WITNESS_DISABLED: "witness_disabled",
+  WITNESS_NOT_ENROLLED: "witness_not_enrolled",
+  WITNESS_ALREADY_ENROLLED: "witness_already_enrolled",
+  WITNESS_INVALID_DOMAINS: "witness_invalid_domains",
+  WITNESS_INVALID_WALLET: "witness_invalid_wallet",
+  WITNESS_SUSPENDED: "witness_suspended",
+  WITNESS_JOB_NOT_FOUND: "witness_job_not_found",
+  WITNESS_NOT_DELIVERED: "witness_not_delivered",
+  WITNESS_OPT_OUT: "witness_opt_out",
+  WITNESS_CONFLICT: "witness_conflict",
+  WITNESS_NO_SEATS: "witness_no_seats",
+  WITNESS_WINDOW_CLOSED: "witness_window_closed",
+  WITNESS_BAD_SIGNATURE: "witness_bad_signature",
+  WITNESS_DUPLICATE: "witness_duplicate",
+  WITNESS_DAILY_CAP: "witness_daily_cap",
+
   // Refusal contract (EPIC-181; snake_case wire values matching
   // REFUSAL_MATRIX in lib/refusal-contract.ts)
   POLICY_REFUSAL: "policy_refusal",
