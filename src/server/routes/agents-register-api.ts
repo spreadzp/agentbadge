@@ -15,7 +15,6 @@ import { tryGetCache } from "../lib/cache";
 import type { CacheProvider } from "@agentbadge/cache";
 import {
   hashApiKey,
-  isApiKeyFormat,
   revokeApiKey,
 } from "../lib/agent-registration/api-keys";
 import { bustAgentKeyCache } from "../middleware/agent-key-auth";
@@ -35,10 +34,8 @@ import {
   type SponsoredBody,
 } from "../lib/agent-registration/sponsored-gate";
 import { publicRecord } from "../lib/agent-registration/public-view";
-import type {
-  AgentRegistration,
-  AgentRegistrationStore,
-} from "../lib/agent-registration/store";
+import { meGate } from "../lib/agent-registration/me-gate";
+import type { AgentRegistrationStore } from "../lib/agent-registration/store";
 
 export interface AgentRegisterRoutesDeps {
   /** Feature gate — AGENT_REGISTER_ENABLED (off → 503 on POST). */
@@ -225,23 +222,6 @@ export function createAgentRegisterRoutes(
     },
   );
 
-  /** Shared bearer→record gate for /me; null = response already sent. */
-  const meGate = async (
-    c: Context,
-  ): Promise<AgentRegistration | Response> => {
-    const key = bearerKey(c);
-    if (!key || !isApiKeyFormat(key))
-      return errorResponse(c, 401, ErrorCodes.AGENT_KEY_INVALID, "Authorization: Bearer agb_<key> required");
-    // Single byKeyHash scan (M-6): lookupAgentByKey collapses
-    // revoked→unknown, so resolve the record once and branch here.
-    const stored = await deps.store.byKeyHash(hashApiKey(key));
-    if (stored?.status === "revoked")
-      return errorResponse(c, 401, ErrorCodes.AGENT_KEY_REVOKED, "api key revoked");
-    if (!stored || stored.status !== "active")
-      return errorResponse(c, 401, ErrorCodes.AGENT_KEY_INVALID, "unknown api key");
-    return stored;
-  };
-
   routes.get(
     "/api/v1/agents/me",
     describeRoute({
@@ -254,7 +234,7 @@ export function createAgentRegisterRoutes(
       },
     }),
     async (c) => {
-      const rec = await meGate(c);
+      const rec = await meGate(c, deps.store);
       if (rec instanceof Response) return rec;
       return c.json(publicRecord(rec));
     },
@@ -271,7 +251,7 @@ export function createAgentRegisterRoutes(
       },
     }),
     async (c) => {
-      const rec = await meGate(c);
+      const rec = await meGate(c, deps.store);
       if (rec instanceof Response) return rec;
       await revokeApiKey(deps.store, rec.agentId, "self");
       // SLICE-184-3: kill the 60s auth-cache entry so revoke is instant.

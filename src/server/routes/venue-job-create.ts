@@ -35,6 +35,7 @@ import {
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { recordVenueEvent } from "../services/venue-events";
+import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../lib/witness/jobs";
 import {
   resolveVenueEvaluator,
   signedJson,
@@ -87,6 +88,13 @@ export async function createVenueJob(
   // 153-4: business venues pin the evaluator to policies.evaluator —
   // evaluate/reject then requires that wallet (actorAllowed on job.evaluator).
   const evaluator = resolveVenueEvaluator(isBusiness ? venue : undefined);
+  // SLICE-185-3: buyer opt-out — only an explicit false opts the job out of
+  // witness attestations (seat claim → 409 witness_opt_out, D-185-5).
+  if (body.witnessAllowed !== undefined && typeof body.witnessAllowed !== "boolean") {
+    return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
+      "witnessAllowed must be a boolean");
+  }
+  const witnessAllowed = body.witnessAllowed !== false;
   const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400);
   const jobId = `vj_${randomBytes(8).toString("hex")}`;
   const job: VenueJob = {
@@ -97,6 +105,7 @@ export async function createVenueJob(
     evaluator,
     category: category ?? undefined,
     venueId: jobVenueId,
+    witnessAllowed,
     createdAt: new Date().toISOString(),
     chainTxs: {},
   };
@@ -142,6 +151,15 @@ export async function createVenueJob(
     };
   }
   upsertJob(job);
+  // SLICE-185-3: producer feed — project COI + opt-out into the witness
+  // registry (write-only; settle never reads it, D-185-4). Fire-and-forget:
+  // projection failures must never break job creation.
+  void upsertWitnessJob(WITNESS_JOBS_PATH, {
+    jobId,
+    requesterWallet: s.wallet,
+    evaluatorWallet: evaluator,
+    witnessAllowed,
+  }).catch(() => {});
   recordVenueEvent({
     action: "job.created",
     text: `job posted — “${title}” · $${budgetUsdc} USDC`,

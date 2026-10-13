@@ -11,6 +11,7 @@ import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { disclosureExtra } from "../lib/disclosure";
 import { dr, str, ERC8183_STATUS, TX_PHASES } from "./venue-api-helpers";
+import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../lib/witness/jobs";
 import {
   buildActionTxs,
   deliverableHash,
@@ -124,6 +125,11 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
         extra: { deliverableHash: hash },
         mutate: (job) => {
           job.deliverableHash = hash;
+          // 185-3: delivery opens the witness attest window (write-only feed).
+          void upsertWitnessJob(WITNESS_JOBS_PATH, {
+            jobId: job.jobId,
+            deliveredAt: Date.now(),
+          }).catch(() => {});
           // Private record exists for business-venue jobs — store payload.
           if (deliverableData != null || deliverableUri != null) {
             updatePrivateJob(job.jobId, {

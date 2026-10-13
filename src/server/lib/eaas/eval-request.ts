@@ -20,6 +20,8 @@ export interface EvalInput {
   /** SLICE-154-6: async delivery — 202 + statusUrl + optional webhook. */
   async?: boolean;
   webhookUrl?: string;
+  /** SLICE-185-3: buyer opt-out — false blocks witness seat claims. */
+  witnessAllowed?: boolean;
 }
 
 /** Validate the evaluate body → parsed input | Response(400). */
@@ -71,6 +73,10 @@ export function validateEvaluate(
     }
     if (!async_) return bad(c, "webhookUrl requires async:true");
   }
+  // SLICE-185-3: buyer opt-out — only an explicit false opts out.
+  if (b.witnessAllowed !== undefined && typeof b.witnessAllowed !== "boolean") {
+    return bad(c, "witnessAllowed must be a boolean");
+  }
   return {
     contract: b.contract,
     jobId,
@@ -83,5 +89,6 @@ export function validateEvaluate(
       : {}),
     ...(async_ ? { async: true } : {}),
     ...(webhookUrl ? { webhookUrl } : {}),
+    ...(b.witnessAllowed === false ? { witnessAllowed: false } : {}),
   };
 }

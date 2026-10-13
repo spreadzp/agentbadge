@@ -49,6 +49,8 @@ export interface VenueJob {
   /** 153-3: business-venue private job — details live in meta lane, onchain
    * description is only the bv:<slug>:<commitment> tag. */
   private?: boolean;
+  /** 185-3: buyer opt-out — false → seat claim 409 witness_opt_out. */
+  witnessAllowed?: boolean;
   /** Reputation feedback loop state (152-3). */
   feedback?: {
     status: "pending" | "sent" | "failed" | "skipped";

@@ -16,6 +16,7 @@ import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { enrollWitness } from "../lib/witness/enroll";
 import { utcDayKey } from "../lib/witness/attest";
+import { buildWitnessAdvisory } from "../lib/witness/advisory";
 import {
   enrolledWitness,
   jobGate,
@@ -147,6 +148,47 @@ export function createWitnessRoutes(deps: WitnessRoutesDeps): Hono {
   /* -------------------------------- attest ------------------------------ */
 
   registerWitnessAttestRoute(routes, deps);
+
+  /* ------------------------ public job advisory read --------------------- */
+
+  routes.get(
+    "/api/v1/witness/jobs/:jobId",
+    describeRoute({
+      description:
+        "Public advisory read for a job: evaluator verdict + witness block " +
+        "(witness_policy:'advisory', witness_agreement). witnesses[] reveal " +
+        "only after the attest window closes — pending submissions stay " +
+        "hidden to preserve witness independence (D-185-8).",
+      responses: {
+        200: { description: "Job + advisory witness block" },
+        404: { description: "Unknown jobId (witness_job_not_found)" },
+      },
+    }),
+    async (c) => {
+      const jobId = c.req.param("jobId");
+      const job = await deps.getJob(jobId);
+      if (!job)
+        return errorResponse(
+          c,
+          404,
+          ErrorCodes.WITNESS_JOB_NOT_FOUND,
+          "job not found",
+          { charged: false },
+        );
+      const atts = await deps.store.listAttestations(jobId);
+      return c.json(
+        {
+          jobId,
+          ...(job.evaluatorVerdict !== undefined
+            ? { evaluatorVerdict: job.evaluatorVerdict }
+            : { evaluatorVerdict: null }),
+          witnessAllowed: job.witnessAllowed !== false,
+          ...buildWitnessAdvisory(job, atts, deps.windowSec),
+        },
+        200,
+      );
+    },
+  );
 
   /* --------------------------------- me --------------------------------- */
 

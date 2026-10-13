@@ -29,6 +29,7 @@ import {
 import { eaasQuotaGate } from "../lib/eaas/subscription";
 import { respondAsync } from "../lib/eaas/requests";
 import { validateEvaluate, type EvalInput } from "../lib/eaas/eval-request";
+import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../lib/witness/jobs";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type {
   EaasJobsRoutesDeps,
@@ -137,6 +138,21 @@ export function registerEvaluateRoute(
         ...(input.webhookUrl ? { webhookUrl: input.webhookUrl } : {}),
         run: () =>
           evaluateExternalJob(mkInput(), deps).then((r) => {
+            // SLICE-185-3: witness projection feed (see sync path below).
+            void upsertWitnessJob(WITNESS_JOBS_PATH, {
+              jobId: evalJobKey(
+                input.rec.chainId,
+                input.rec.address,
+                String(input.jobId),
+              ),
+              requesterWallet: payer,
+              evaluatorWallet: deps.settlerAddress,
+              deliveredAt: Date.now(),
+              evaluatorVerdict: r.verdict.verdict,
+              ...(input.witnessAllowed === false
+                ? { witnessAllowed: false }
+                : {}),
+            }).catch(() => {});
             if (!r.artifact) {
               throw new Error("evaluation produced no artifact");
             }
@@ -155,9 +171,27 @@ export function registerEvaluateRoute(
             return c.json({ error: "payment required" }, 402);
           }
         }
+        // SLICE-185-3: write-only witness projection feed — evaluator
+        // verdict observed ⇒ deliverable exists ⇒ attest window opens.
+        // Advisory only; settle never reads it back (D-185-4 drift-gate).
+        void upsertWitnessJob(WITNESS_JOBS_PATH, {
+          jobId: evalJobKey(
+            input.rec.chainId,
+            input.rec.address,
+            String(input.jobId),
+          ),
+          requesterWallet: payer,
+          evaluatorWallet: deps.settlerAddress,
+          deliveredAt: Date.now(),
+          evaluatorVerdict: result.verdict.verdict,
+          ...(input.witnessAllowed === false
+            ? { witnessAllowed: false }
+            : {}),
+        }).catch(() => {});
         return c.json({
           verdict: result.verdict,
           artifact: result.artifact,
+          witnessAllowed: input.witnessAllowed !== false,
           ...(result.feedbackTx ? { feedbackTx: result.feedbackTx } : {}),
         });
       } catch (e) {

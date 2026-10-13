@@ -23,7 +23,16 @@ export interface WitnessJobRef {
   deliveredAt?: number;
   /** Buyer opt-out: false blocks seat claims (D-185-5 → witness_opt_out). */
   witnessAllowed?: boolean;
+  /** SLICE-185-3: evaluator verdict echoed on the public advisory read. */
+  evaluatorVerdict?: string;
 }
+
+/** Canonical projection path — producers + wiring share this default. */
+export const WITNESS_JOBS_PATH = join(
+  process.cwd(),
+  ".data",
+  "witness-jobs.json",
+);
 
 export interface WitnessJobSource {
   getJob(jobId: string): Promise<WitnessJobRef | undefined>;
@@ -43,7 +52,7 @@ function readJobs(path: string): Record<string, WitnessJobRef> {
 
 /** Read-through source over .data/witness-jobs.json. */
 export function createJsonWitnessJobSource(
-  path = join(process.cwd(), ".data", "witness-jobs.json"),
+  path = WITNESS_JOBS_PATH,
 ): WitnessJobSource {
   return {
     async getJob(jobId) {
