@@ -61,12 +61,17 @@ function net(variant: "circle" | "acp"): VenueNetwork {
 const sigOk: ClaimDeps["verifyPayoutSig"] = () => Promise.resolve(true);
 const sigBad: ClaimDeps["verifyPayoutSig"] = () => Promise.resolve(false);
 
-function req(over: Partial<Parameters<typeof claimBounty>[0]> = {}) {
+function req(
+  over: Partial<Parameters<typeof claimBounty>[0]> = {},
+  now: number = Date.now(),
+) {
   return {
     bountyId: "b1",
     passportId: PASSPORT,
     payoutWallet: PAYOUT,
     claimSig: "0x" + "ab".repeat(65),
+    // 197-16 C-1: signature expiry must be in-window for deps.now.
+    sigExpiresAt: now + 60_000,
     ...over,
   } as Parameters<typeof claimBounty>[0];
 }
@@ -148,9 +153,10 @@ describe("claimBounty", () => {
       now: () => 1_000_000,
     };
     upsertBounty(bounty({ jobAttempt: 1 }));
-    await claimBounty(req(), deps);
+    await claimBounty(req({}, 1_000_000), deps);
     upsertBounty(bounty({ jobAttempt: 2 }));
-    const r = await claimBounty(req({ payoutWallet: PAYOUT_B }), deps);
+    const r = await claimBounty(
+      req({ payoutWallet: PAYOUT_B }, 1_000_000), deps);
     expect(!r.ok && r.status === 409 && r.code === "bounty_cooldown").toBe(true);
   });
 
@@ -163,9 +169,26 @@ describe("claimBounty", () => {
     expect(!r.ok && r.status === 403 && r.code === "WRONG_SIGNER").toBe(true);
   });
 
-  it("claimMessage format is stable", () => {
-    expect(claimMessage("b1", PAYOUT)).toBe(
-      `bounty-claim:b1:${PAYOUT.toLowerCase()}`,
+  it("C-1: expired sig → 400; sig beyond TTL → 400; missing → 400", async () => {
+    upsertBounty(bounty());
+    const deps: ClaimDeps = {
+      network: () => net("circle"), verifyPayoutSig: sigOk,
+      now: () => 10_000_000,
+    };
+    const expired = await claimBounty(
+      req({ sigExpiresAt: 9_000_000 }), deps);
+    expect(!expired.ok && expired.status === 400).toBe(true);
+    const far = await claimBounty(
+      req({ sigExpiresAt: 10_000_000 + 601_000 }), deps);
+    expect(!far.ok && far.status === 400).toBe(true);
+    const missing = await claimBounty(
+      req({ sigExpiresAt: undefined }), deps);
+    expect(!missing.ok && missing.status === 400).toBe(true);
+  });
+
+  it("claimMessage binds chainId + attempt + expiry", () => {
+    expect(claimMessage("b1", PAYOUT, 5042002n, 2, 123456)).toBe(
+      `bounty-claim:5042002:b1:2:${PAYOUT.toLowerCase()}:123456`,
     );
   });
 });

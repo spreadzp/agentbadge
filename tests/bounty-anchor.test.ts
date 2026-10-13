@@ -37,7 +37,7 @@ import type { OnchainJob } from "../src/server/lib/venue/chain";
 import type { VenueNetwork } from "../src/server/lib/venue/chain";
 import { ARC_TESTNET } from "@agentbadge/circle-payments";
 
-const SHA = "abc1234";
+const SHA = "a".repeat(40);
 const JOB = "0x80040000000000000000000000000000000000ff" as const;
 const MEMO = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505" as const;
 
@@ -303,7 +303,7 @@ describe("release guard integration (197-12)", () => {
     expect(getOutcome("b1", 1)!.verdictMemoTx).toBeUndefined();
   });
 
-  it("FAIL verdict skips solvency guard (reject refunds)", async () => {
+  it("FAIL verdict: solvency read warns but never blocks reject", async () => {
     upsertBounty(bounty({ status: "failed" }));
     putOutcome(outcome({ verdict: "fail" }));
     const d = deps();
@@ -314,8 +314,10 @@ describe("release guard integration (197-12)", () => {
       { ...d, readJob: () => { jobReads++; return Promise.resolve(
         job({ budget: parseUnits("999", 6) })); } },
     );
+    // 197-16 H-1: provider/budget read runs on the reject path too —
+    // warn-only, the refund to the client must still proceed.
     expect(r.ok).toBe(true);
-    expect(jobReads).toBe(0);
+    expect(jobReads).toBe(1);
   });
 
   it("retry: memo anchored, action missing → sends only action", async () => {

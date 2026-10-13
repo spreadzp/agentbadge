@@ -78,7 +78,9 @@ export interface SubmitDeps {
   now?: () => number;
 }
 
-const SHA_RE = /^(0x)?[0-9a-fA-F]{4,64}$/;
+// 197-16 H-5: a sha used as a git refspec must be unambiguous —
+// accept only a full 40-char commit hash (or 64-char extended hash).
+const SHA_RE = /^(0x)?([0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
 const MAX_MODELS = 16;
 
 // ─── Submit ────────────────────────────────────────────────────

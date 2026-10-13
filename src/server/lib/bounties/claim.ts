@@ -49,9 +49,24 @@ export const CLAIM_TTL_MS = () =>
 export const MAX_JOB_ATTEMPTS = () =>
   Number(process.env.BOUNTY_MAX_JOB_ATTEMPTS ?? 2); // Q38-A
 
-/** Canonical EIP-191 message for payout bind (slice spec). */
-export function claimMessage(bountyId: string, wallet: string): string {
-  return `bounty-claim:${bountyId}:${wallet.toLowerCase()}`;
+/** Signature freshness window for the payout bind (197-16 C-1). */
+export const CLAIM_SIG_TTL_MS = () =>
+  Number(process.env.BOUNTY_CLAIM_SIG_TTL_MS ?? 600_000); // 10 min
+
+/**
+ * Canonical EIP-191 message for payout bind.
+ * 197-16 C-1: bound to chainId + jobAttempt + expiry so a captured
+ * signature cannot be replayed across chains, attempts, or time.
+ */
+export function claimMessage(
+  bountyId: string,
+  wallet: string,
+  chainId: number | bigint,
+  jobAttempt: number,
+  expiresAtMs: number,
+): string {
+  return `bounty-claim:${chainId}:${bountyId}:${jobAttempt}:` +
+    `${wallet.toLowerCase()}:${expiresAtMs}`;
 }
 
 // ─── Deps (injectable for tests) ───────────────────────────────
@@ -111,8 +126,10 @@ export interface ClaimRequest {
   bountyId: string;
   passportId: string;
   payoutWallet: `0x${string}`;
-  /** EIP-191 signature over claimMessage(bountyId, payoutWallet). */
+  /** EIP-191 signature over claimMessage(bountyId, wallet, chainId, attempt, sigExpiresAt). */
   claimSig: string;
+  /** Client-declared signature expiry (ms); bounded by CLAIM_SIG_TTL_MS. */
+  sigExpiresAt?: number;
 }
 
 export type ClaimResult =
@@ -168,12 +185,31 @@ export async function claimBounty(
       message: "passport holds a live lease on this bounty" };
   }
 
+  // 197-16 C-1: signature must carry an in-window expiry bound to
+  // this chain + attempt — a leaked sig is useless elsewhere/later.
+  const expiresAt = req.sigExpiresAt;
+  if (
+    typeof expiresAt !== "number" ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= now ||
+    expiresAt - now > CLAIM_SIG_TTL_MS()
+  ) {
+    return { ok: false, status: 400, code: ErrorCodes.INVALID_INPUT,
+      message: `sigExpiresAt must be within ${CLAIM_SIG_TTL_MS()}ms` };
+  }
+
   const verify =
     deps.verifyPayoutSig ??
     ((w, m, s) => defaultVerifyPayoutSig(net, w, m, s));
   const sigOk = await verify(
     req.payoutWallet,
-    claimMessage(req.bountyId, req.payoutWallet),
+    claimMessage(
+      req.bountyId,
+      req.payoutWallet,
+      net.chain.chainId,
+      bounty.jobAttempt,
+      expiresAt,
+    ),
     req.claimSig,
   );
   if (!sigOk) {

@@ -137,13 +137,17 @@ export function detectPm(dir: string): "pnpm" | "yarn" | "bun" | "npm" {
 }
 
 export function pmInstallCmd(pm: string): [string, string[]] {
+  // 197-16 H-4: suppress lifecycle scripts on every package manager —
+  // a malicious repo's postinstall must not run inside the runner.
   switch (pm) {
     case "pnpm":
-      return ["pnpm", ["install", "--frozen-lockfile"]];
+      return ["pnpm", ["install", "--frozen-lockfile",
+        "--ignore-scripts"]];
     case "yarn":
-      return ["yarn", ["install", "--frozen-lockfile"]];
+      return ["yarn", ["install", "--frozen-lockfile",
+        "--ignore-scripts"]];
     case "bun":
-      return ["bun", ["install"]];
+      return ["bun", ["install", "--ignore-scripts"]];
     default:
       return ["npm", ["ci", "--ignore-scripts"]];
   }

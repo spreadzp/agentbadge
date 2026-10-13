@@ -24,7 +24,7 @@ import {
 
 const PASSPORT = "897230";
 const NOW = 10_000_000;
-const SHA = "abc1234";
+const SHA = "a".repeat(40);
 const PR = "https://github.com/acme/widget/pull/7";
 
 function bounty(over: Partial<BountyRecord> = {}): BountyRecord {

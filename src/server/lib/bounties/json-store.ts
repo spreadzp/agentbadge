@@ -21,6 +21,11 @@ import { claimKey } from "./store";
 
 const STORE_PATH = join(process.cwd(), ".data", "bounties.json");
 let _memStore: BountyData | null = null; // test override
+// 197-16 C-3: single in-memory primary copy — mutations apply to
+// the shared object then persist, so concurrent requests can never
+// overwrite each other's committed writes (read-modify-write on
+// fresh file bytes was a lost-update window).
+let _fileCache: BountyData | null = null;
 
 export function emptyBountyData(): BountyData {
   return {
@@ -35,6 +40,7 @@ export function emptyBountyData(): BountyData {
 
 function loadStore(): BountyData {
   if (_memStore) return _memStore;
+  if (_fileCache) return _fileCache;
   try {
     if (existsSync(STORE_PATH)) {
       const data = JSON.parse(readFileSync(STORE_PATH, "utf8")) as BountyData;
@@ -43,6 +49,7 @@ function loadStore(): BountyData {
       data.outcomes ??= {};
       data.owners ??= {};
       data.meta ??= {};
+      _fileCache = data;
       return data;
     }
   } catch (err) {
@@ -50,7 +57,8 @@ function loadStore(): BountyData {
       err: String(err),
     });
   }
-  return emptyBountyData();
+  _fileCache = emptyBountyData();
+  return _fileCache;
 }
 
 function saveStore(store: BountyData): void {
@@ -58,6 +66,7 @@ function saveStore(store: BountyData): void {
     _memStore = store;
     return;
   }
+  _fileCache = store; // shared object — later readers see the write
   try {
     mkdirSync(dirname(STORE_PATH), { recursive: true });
     writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));

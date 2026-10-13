@@ -171,18 +171,23 @@ export async function anchorBountyOutcome(
     };
   }
 
-  // 197-12 solvency: release path only — reject refunds the deposit.
-  if (outcome.verdict === "pass") {
-    const readJob =
-      deps.readJob ?? ((id, n) => fetchOnchainJob(Number(id), n));
-    const blocked = await solvencyBlock(bounty, net, readJob);
-    if (blocked) {
-      logger.warn("bounty-anchor: solvency guard blocked release", {
-        bountyId: bounty.bountyId,
-        reason: blocked,
-      });
-      return { ok: false, error: `solvency guard: ${blocked}` };
-    }
+  // 197-12 solvency: release path BLOCKS; 197-16 H-1 — reject path
+  // must proceed (refund) but provider mismatch gets a structured warn.
+  const readJob =
+    deps.readJob ?? ((id, n) => fetchOnchainJob(Number(id), n));
+  const solvency = await solvencyBlock(bounty, net, readJob);
+  if (outcome.verdict === "pass" && solvency) {
+    logger.warn("bounty-anchor: solvency guard blocked release", {
+      bountyId: bounty.bountyId,
+      reason: solvency,
+    });
+    return { ok: false, error: `solvency guard: ${solvency}` };
+  }
+  if (solvency?.includes("provider")) {
+    logger.warn("bounty-anchor: provider mismatch on reject path", {
+      bountyId: bounty.bountyId,
+      reason: solvency,
+    });
   }
 
   const runnerLogHash = keccak256(

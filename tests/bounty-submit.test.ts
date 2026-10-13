@@ -22,7 +22,7 @@ import { ARC_TESTNET, ERC8183_ABI } from "@agentbadge/circle-payments";
 const PASSPORT = "897230";
 const OTHER = "111111";
 const NOW = 10_000_000;
-const SHA = "abc1234";
+const SHA = "a".repeat(40);
 const JOB = "0x80040000000000000000000000000000000000ff" as const;
 
 function bounty(over: Partial<BountyRecord> = {}): BountyRecord {
@@ -181,7 +181,7 @@ describe("submitBounty", () => {
     upsertBounty(bounty());
     upsertClaim(claim());
     await submitBounty(req(), deps());
-    const r = await submitBounty(req({ commitSha: "beef00d" }), deps());
+    const r = await submitBounty(req({ commitSha: "b".repeat(40) }), deps());
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.status).toBe(409);

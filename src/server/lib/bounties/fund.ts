@@ -142,6 +142,14 @@ export function checkFundCaps(
 
 // ─── Fund ──────────────────────────────────────────────────────
 
+// 197-16 C-2: serialize cap-check → tx → transition-log (cap race fix).
+let _fundTail: Promise<unknown> = Promise.resolve();
+function withFundLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = _fundTail.then(fn);
+  _fundTail = run.catch(() => {});
+  return run;
+}
+
 export interface FundDeps {
   network?: () => VenueNetwork;
   now?: () => number;
@@ -163,6 +171,13 @@ export type FundResult =
   | { ok: false; status: number; code: ErrorCode | "spend_cap"; message: string };
 
 export async function fundBounty(
+  bountyId: string,
+  deps: FundDeps = {},
+): Promise<FundResult> {
+  return withFundLock(() => fundBountyLocked(bountyId, deps));
+}
+
+async function fundBountyLocked(
   bountyId: string,
   deps: FundDeps = {},
 ): Promise<FundResult> {
@@ -195,30 +210,34 @@ export async function fundBounty(
     ((txs) => sendAsRole("client", txs, net.chain.rpcUrl));
   let record = bounty;
 
-  // Lazy job creation: no onchainJobId → createJob, decode JobCreated.
+  // Lazy job creation; 197-16 H-3: persist createTx BEFORE decode —
+  // a retry after an RPC hiccup re-decodes instead of re-sending.
   if (!record.onchainJobId) {
-    const createTx = createJobTx(net, record, 0);
-    const hashes = await send([createTx]);
-    const txHash = hashes?.[0];
+    let txHash = record.chainTxs?.created;
     if (!txHash) {
-      return { ok: false, status: 502,
-        code: ErrorCodes.INVALID_STATE,
-        message: "createJob send failed" };
+      const createTx = createJobTx(net, record, 0);
+      const hashes = await send([createTx]);
+      txHash = hashes?.[0];
+      if (!txHash) {
+        return { ok: false, status: 502,
+          code: ErrorCodes.INVALID_STATE,
+          message: "createJob send failed" };
+      }
+      // Committed onchain — persist before the decode can fail.
+      record = { ...record,
+        chainTxs: { ...record.chainTxs, created: txHash } };
+      upsertBounty(record);
     }
     const fetchId =
       deps.fetchJobId ??
       ((h: Hex, n: VenueNetwork) => fetchCreatedJobId(h, n));
-    const jobId = await fetchId(txHash, net);
+    const jobId = await fetchId(txHash as Hex, net);
     if (jobId == null) {
       return { ok: false, status: 502,
         code: ErrorCodes.INVALID_STATE,
         message: "JobCreated not found in createJob receipt" };
     }
-    record = {
-      ...record,
-      onchainJobId: String(jobId),
-      chainTxs: { ...record.chainTxs, created: txHash },
-    };
+    record = { ...record, onchainJobId: String(jobId) };
     upsertBounty(record);
   }
 

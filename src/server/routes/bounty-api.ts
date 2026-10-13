@@ -212,6 +212,12 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
       return errorResponse(c, 403, ErrorCodes.PASSPORT_NOT_FOUND,
         "passport required — fund is ops-only");
     }
+    // 197-16 M-7: ops tier only — any registered agent must not be
+    // able to trigger treasury spend.
+    if (agent.tier !== "ops") {
+      return errorResponse(c, 403, ErrorCodes.PASSPORT_TYPE_MISMATCH,
+        "fund requires an ops-tier passport");
+    }
     const result = await fundBounty(c.req.param("id") ?? "", deps);
     if (!result.ok) {
       return errorResponse(
