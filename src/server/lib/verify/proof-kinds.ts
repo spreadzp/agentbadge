@@ -24,6 +24,8 @@ export interface ProofKindSpec {
   verifierRule: string;
   /** Registry schema version — bump on any rule/memoFormat change. */
   specVersion: 1;
+  /** false = declared for feature-detection, not yet verifiable. */
+  implemented: boolean;
 }
 
 export const PROOF_KINDS_V1: Record<ProofKindName, ProofKindSpec> = {
@@ -34,6 +36,7 @@ export const PROOF_KINDS_V1: Record<ProofKindName, ProofKindSpec> = {
       "Memo event exists for memoIdFor('eaas', verdictId); memoData " +
       "=== keccak256(canonicalJson(artifact)) when artifact supplied",
     specVersion: 1,
+    implemented: true,
   },
   witness: {
     memoFormat:
@@ -97,11 +100,14 @@ export function assertProofKind(kind: string): asserts kind is ProofKindName {
 }
 
 /** Registry view for API output — kinds + spec versions, no rules text. */
-export function proofKindsSummary(): Record<ProofKindName, { specVersion: number }> {
+export function proofKindsSummary(): Record<
+  ProofKindName,
+  { specVersion: number; implemented: boolean }
+> {
   return Object.fromEntries(
     Object.entries(PROOF_KINDS_V1).map(([k, v]) => [
       k,
-      { specVersion: v.specVersion },
+      { specVersion: v.specVersion, implemented: v.implemented },
     ]),
-  ) as Record<ProofKindName, { specVersion: number }>;
+  ) as Record<ProofKindName, { specVersion: number; implemented: boolean }>;
 }

@@ -134,7 +134,7 @@ describe("e2e: issue → anchor → level-1 → level-2", () => {
     const l1 = await r.json();
     expect(l1.anchor.status).toBe("anchored");
     expect(l1.anchor.txHash).toBe(ANCHOR_TX);
-    expect(l1.chain.status).toBe("anchored");
+    expect(l1.chain.status).toBe("server-reported");
 
     // Level-2: independent package, mock-RPC seeded from same data.
     const l2 = await verifyVerdict({

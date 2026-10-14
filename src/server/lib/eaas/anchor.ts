@@ -58,6 +58,13 @@ export interface AnchorStore {
   /** merge patch — the only mutable update path. */
   patch(verdictId: Hex, patch: Partial<AnchorRecord>): void;
   list(): AnchorRecord[];
+  /**
+   * 180-6 H-2: indexed single-record lookups for the /verify reverse
+   * resolver — stores without an index may omit these; callers then
+   * fall back to a list() scan.
+   */
+  getByTxHash?(txHash: string): AnchorRecord | undefined;
+  getByMemoId?(memoId: Hex): AnchorRecord | undefined;
 }
 
 export function createJsonAnchorStore(
@@ -81,6 +88,14 @@ export function createJsonAnchorStore(
     patch: (id, patch) =>
       save(load().map((r) => (r.verdictId === id ? { ...r, ...patch } : r))),
     list: load,
+    getByTxHash: (txHash) => {
+      const h = txHash.toLowerCase();
+      return load().find((r) => r.txHash?.toLowerCase() === h);
+    },
+    getByMemoId: (memoId) => {
+      const h = memoId.toLowerCase();
+      return load().find((r) => r.memoId.toLowerCase() === h);
+    },
   };
 }
 
@@ -94,6 +109,20 @@ export function createMemoryAnchorStore(): AnchorStore {
       if (r) map.set(id, { ...r, ...p });
     },
     list: () => [...map.values()],
+    getByTxHash: (txHash) => {
+      const h = txHash.toLowerCase();
+      for (const r of map.values()) {
+        if (r.txHash?.toLowerCase() === h) return r;
+      }
+      return undefined;
+    },
+    getByMemoId: (memoId) => {
+      const h = memoId.toLowerCase();
+      for (const r of map.values()) {
+        if (r.memoId.toLowerCase() === h) return r;
+      }
+      return undefined;
+    },
   };
 }
 

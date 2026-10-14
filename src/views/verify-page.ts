@@ -27,11 +27,15 @@ function statusBadge(status: string): string {
   const tone =
     status === "anchored"
       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-      : status === "failed"
-        ? "border-red-500/40 bg-red-500/10 text-red-300"
-        : status === "pending"
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-          : "border-slate-600 bg-slate-800 text-slate-300";
+      // 180-6 C-1: server-reported is a server-side claim, not an
+      // on-chain read — render informational cyan, never verified-green.
+      : status === "server-reported"
+        ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+        : status === "failed"
+          ? "border-red-500/40 bg-red-500/10 text-red-300"
+          : status === "pending"
+            ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+            : "border-slate-600 bg-slate-800 text-slate-300";
   return `<span class="inline-block rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider ${tone}">${status}</span>`;
 }
 

@@ -40,8 +40,10 @@ export function createVerifyRoutes(deps: VerifyRoutesDeps): Hono {
       description:
         "Public verdict verification (Level 1): stored VerdictArtifact " +
         "+ reason_codes + memo anchor {txHash,memoId,status} + hash-chain " +
-        "{status:anchored|pending|disabled,head_ref}. Honest statuses — " +
-        "unanchored is 'pending', never 'valid'.",
+        "{status:server-reported|pending|disabled,head_ref}. Honest " +
+        "statuses — unanchored is 'pending', never 'valid'. " +
+        "'server-reported' is server-side state, not an on-chain read; " +
+        "verify independently via @agentbadge/verify-verdict.",
       responses: {
         200: {
           description:
@@ -86,7 +88,10 @@ export function createVerifyRoutes(deps: VerifyRoutesDeps): Hono {
           ? { verdict: result.verdict, reason_codes: result.reason_codes, anchor: result.anchor }
           : kind === "anchor-head"
             ? { chain: result.chain }
-            : { witness: null, implemented: false };
+            // 180-6 M-3/N-1: declared-but-unimplemented kinds answer a
+            // consistent shape — explicit ok:false, never a 200 that
+            // reads as a passed proof.
+            : { ok: false, implemented: false, reason: "not_implemented" };
       return c.json({ verdictId: id, kind, proof, verified_at: result.verified_at });
     },
   );

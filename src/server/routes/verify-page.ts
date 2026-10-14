@@ -24,10 +24,12 @@ export function createVerifyPageRoutes(deps: VerifyPageDeps): Hono {
   const routes = new Hono();
   const limiter = createRateLimiter(deps.rateRpm);
 
-  const render = (c: Context, query: string | undefined) => {
-    if (!limiter.allow(`verify-page:${consumerKey(c)}`)) {
-      return c.text("rate limit exceeded", 429);
-    }
+  // Rate-limit check split from render so POST can gate before the
+  // body parse (180-6 M-6) without double-counting a request.
+  const rateLimited = (c: Context) =>
+    !limiter.allow(`verify-page:${consumerKey(c)}`);
+
+  const renderBody = (c: Context, query: string | undefined) => {
     if (!query) return c.html(VerifyPage({}));
     const resolved = resolveVerdictInput(query, deps);
     if (!resolved.ok) {
@@ -60,7 +62,10 @@ export function createVerifyPageRoutes(deps: VerifyPageDeps): Hono {
         429: { description: "Rate limit exceeded" },
       },
     }),
-    (c) => render(c, c.req.query("q")),
+    (c) =>
+      rateLimited(c)
+        ? c.text("rate limit exceeded", 429)
+        : renderBody(c, c.req.query("q")),
   );
 
   routes.get(
@@ -73,15 +78,21 @@ export function createVerifyPageRoutes(deps: VerifyPageDeps): Hono {
         429: { description: "Rate limit exceeded" },
       },
     }),
-    (c) => render(c, c.req.param("id")),
+    (c) =>
+      rateLimited(c)
+        ? c.text("rate limit exceeded", 429)
+        : renderBody(c, c.req.param("id")),
   );
 
   routes.post("/verify", async (c) => {
+    // 180-6 M-6: gate BEFORE parseBody — an oversized urlencoded body
+    // must not be read into memory past the rate-limit check.
+    if (rateLimited(c)) return c.text("rate limit exceeded", 429);
     const body = (await c.req.parseBody().catch(() => ({}))) as {
       q?: unknown;
     };
     const q = typeof body.q === "string" ? body.q : undefined;
-    return render(c, q);
+    return renderBody(c, q);
   });
 
   return routes;

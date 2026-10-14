@@ -38,10 +38,17 @@ export function createRateLimiter(rpm: number) {
 }
 
 export function consumerKey(c: Context): string {
+  // 180-6 H-1: rate-limit keys must be trustworthy. Only headers
+  // injected by the platform/edge — never client-supplied identity
+  // (x-wallet) or the client-writable leftmost XFF hop. Without a
+  // trusted edge header every caller shares the "anon" bucket — that
+  // is the honest default: a deployment needs fly-client-ip,
+  // cf-connecting-ip, or x-real-ip from its reverse proxy for per-IP
+  // bucketing.
   return (
-    c.req.header("x-wallet") ??
+    c.req.header("fly-client-ip") ??
     c.req.header("cf-connecting-ip") ??
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+    c.req.header("x-real-ip") ??
     "anon"
   );
 }

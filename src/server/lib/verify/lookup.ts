@@ -13,8 +13,10 @@
  *                    (154-4): {status, memoId, txHash?} — honest
  *                    "pending"/"none"/"failed", never fake "valid"
  *   - chain        — hash-chain inclusion + head-anchor state (172):
- *                    status "anchored" only when the verdict is in the
- *                    chain AND the head was anchored on-chain; "pending"
+ *                    status "server-reported" only when the verdict is
+ *                    in the chain AND the store records a head anchor —
+ *                    this is the server's own record, NOT an on-chain
+ *                    read (180-6 C-1); Level-2 verifies it. "pending"
  *                    while included but unanchored; "disabled" when the
  *                    chain feature is off
  *
@@ -28,7 +30,12 @@ import type { AnchorStatus, AnchorStore } from "../eaas/anchor";
 import type { ChainService } from "../eaas/chain";
 import type { VerdictArtifact } from "../eaas/verdict";
 
-export type VerifyChainStatus = "anchored" | "pending" | "disabled";
+/**
+ * "server-reported" = the server's chain store records a head anchor —
+ * NOT verified on-chain by this read (180-6 C-1); only the Level-2
+ * package proves it against the chain. Never rendered as "anchored".
+ */
+export type VerifyChainStatus = "server-reported" | "pending" | "disabled";
 
 export interface VerifyLookup {
   verdictId: Hex;
@@ -55,8 +62,8 @@ export interface VerifyLookup {
       /** Public proof endpoint — fold suffix via computeEntryHash. */
       proofUrl?: string;
     };
-    /** Head-anchor info when status "anchored". */
-    anchored_at?: { epochSeq: number; txHash: Hex; blockNumber: string };
+    /** Server-recorded head-anchor info when status "server-reported". */
+    reported_anchor?: { epochSeq: number; txHash: Hex; blockNumber: string };
   };
   /** ISO timestamp of this response assembly. */
   verified_at: string;
@@ -109,16 +116,20 @@ export function lookupVerdict(
   if (deps.chain) {
     const head = deps.chain.head();
     const proof = deps.chain.proofFor(verdictId);
-    chain.status = head.anchor && proof ? "anchored" : "pending";
+    chain.status = head.anchor && proof ? "server-reported" : "pending";
     chain.head_ref = {
       headHash: head.headHash,
       count: head.count,
       ...(proof ? { seq: proof.entry.seq } : {}),
       ...(head.anchor ? { anchor: head.anchor } : {}),
-      proofUrl: `${deps.proofBaseUrl ?? "/api/eaas/chain"}/proof/${verdictId}`,
+      // N-2: the proof endpoint only has a row when the verdict is
+      // actually in the chain — don't point at a guaranteed 404.
+      ...(proof
+        ? { proofUrl: `${deps.proofBaseUrl ?? "/api/eaas/chain"}/proof/${verdictId}` }
+        : {}),
     };
     if (head.anchor && proof) {
-      chain.anchored_at = head.anchor;
+      chain.reported_anchor = head.anchor;
     }
   }
 
@@ -157,13 +168,19 @@ export function resolveVerdictInput(
   const hex = input as Hex;
   if (deps.store.get(hex)) return { ok: true, verdictId: hex, via: "verdictId" };
   if (deps.anchors) {
-    for (const rec of deps.anchors.list()) {
-      if (rec.txHash?.toLowerCase() === input) {
-        return { ok: true, verdictId: rec.verdictId, via: "txHash" };
-      }
-      if (rec.memoId.toLowerCase() === input) {
-        return { ok: true, verdictId: rec.verdictId, via: "memoId" };
-      }
+    // 180-6 H-2: prefer indexed single-record lookups; fall back to a
+    // full scan only when the store lacks the index accessors.
+    const byTx =
+      deps.anchors.getByTxHash?.(input) ??
+      deps.anchors
+        .list()
+        .find((rec) => rec.txHash?.toLowerCase() === input);
+    if (byTx) return { ok: true, verdictId: byTx.verdictId, via: "txHash" };
+    const byMemo =
+      deps.anchors.getByMemoId?.(hex) ??
+      deps.anchors.list().find((rec) => rec.memoId.toLowerCase() === input);
+    if (byMemo) {
+      return { ok: true, verdictId: byMemo.verdictId, via: "memoId" };
     }
   }
   return { ok: false, reason: "not_found" };

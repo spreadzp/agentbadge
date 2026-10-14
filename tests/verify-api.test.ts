@@ -3,7 +3,7 @@
  *
  * "Don't trust us — check it yourself": one endpoint that returns the
  * stored verdict + machine reason codes + per-verdict memo anchor state +
- * hash-chain status (anchored|pending) + a head_ref pointer for offline
+ * hash-chain status (server-reported|pending) + a head_ref pointer for offline
  * recomputation. Unknown id → honest 404 verdict_not_found; never a
  * fake-valid.
  */
@@ -146,16 +146,16 @@ describe("GET /api/verify/:verdictId", () => {
     expect(body.chain.head_ref.seq).toBe(0);
   });
 
-  it("chain included + head anchored → status:'anchored' + anchored_at", async () => {
+  it("chain included + head anchored → status:'server-reported' + reported_anchor", async () => {
     const s = await seeded({
       withChain: true,
       headAnchor: { epochSeq: 1, txHash: ANCHOR_TX, blockNumber: "456" },
     });
     const r = await s.app.request(`/api/verify/${s.verdictId}`);
     const body = await r.json();
-    expect(body.chain.status).toBe("anchored");
+    expect(body.chain.status).toBe("server-reported");
     expect(body.chain.head_ref.headHash).toBe(s.chain!.head().headHash);
-    expect(body.chain.anchored_at).toBeDefined();
+    expect(body.chain.reported_anchor).toBeDefined();
     expect(body.chain.head_ref.anchor.txHash).toBe(ANCHOR_TX);
   });
 
@@ -282,7 +282,7 @@ describe("SLICE-180-4: ?kind= proof-kind registry", () => {
     expect(r.status).toBe(200);
     const body = await r.json();
     expect(body.kind).toBe("anchor-head");
-    expect(body.proof.chain.status).toBe("anchored");
+    expect(body.proof.chain.status).toBe("server-reported");
     expect(body.proof.verdict).toBeUndefined();
   });
 

@@ -62,5 +62,19 @@ export function createDbAnchorStore(
       persist(merged);
     },
     list: () => [...map.values()],
+    getByTxHash(txHash: string) {
+      const h = txHash.toLowerCase();
+      for (const r of map.values()) {
+        if (r.txHash?.toLowerCase() === h) return r;
+      }
+      return undefined;
+    },
+    getByMemoId(memoId: Hex) {
+      const h = memoId.toLowerCase();
+      for (const r of map.values()) {
+        if (r.memoId.toLowerCase() === h) return r;
+      }
+      return undefined;
+    },
   };
 }
