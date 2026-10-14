@@ -45,6 +45,7 @@ export const PROOF_KINDS_V1: Record<ProofKindName, ProofKindSpec> = {
     verifierRule:
       "Not yet implemented — declared so verifiers can feature-detect",
     specVersion: 1,
+    implemented: false,
   },
   "anchor-head": {
     memoFormat:
@@ -54,6 +55,7 @@ export const PROOF_KINDS_V1: Record<ProofKindName, ProofKindSpec> = {
       "epochs contiguous from 0; recomputed headHash over supplied " +
       "entries === anchored headHash; prevAnchored links epoch chain",
     specVersion: 1,
+    implemented: true,
   },
 };
 
