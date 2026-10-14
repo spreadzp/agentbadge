@@ -35,6 +35,13 @@ export interface PublicWitnessAttestation {
   agentId: string;
   verdict: WitnessAttestation["verdict"];
   contentSha256: `0x${string}`;
+  /**
+   * M-1: does the witness-signed contentSha256 equal the on-chain
+   * deliverableHash? null when the job has no projected hash (EaaS
+   * evaluates or pre-submit reads) — consumers treat null as
+   * "unverifiable", not "mismatch".
+   */
+  hashMatchesDeliverable: boolean | null;
   reason: string;
   signature: `0x${string}`;
   attestedAt: string;
@@ -42,11 +49,16 @@ export interface PublicWitnessAttestation {
 
 export function publicAttestation(
   a: WitnessAttestation,
+  deliverableHash?: `0x${string}`,
 ): PublicWitnessAttestation {
   return {
     agentId: a.agentId,
     verdict: a.verdict,
     contentSha256: a.contentSha256,
+    hashMatchesDeliverable:
+      deliverableHash !== undefined
+        ? a.contentSha256.toLowerCase() === deliverableHash.toLowerCase()
+        : null,
     reason: a.reason,
     signature: a.signature,
     attestedAt: a.attestedAt,
@@ -77,7 +89,9 @@ export function buildWitnessAdvisory(
   const revealed =
     job.deliveredAt !== undefined &&
     now >= job.deliveredAt + windowSec * 1000;
-  const publicAtts = revealed ? attestations.map(publicAttestation) : [];
+  const publicAtts = revealed
+    ? attestations.map((a) => publicAttestation(a, job.deliverableHash))
+    : [];
   return {
     witness_policy: "advisory",
     witness_agreement: revealed ? computeWitnessAgreement(attestations) : null,

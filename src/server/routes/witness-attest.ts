@@ -14,6 +14,7 @@ import { ErrorCodes } from "../lib/error-codes";
 import {
   buildWitnessPayload,
   checkDailyCap,
+  utcDayKey,
   validateAttestWindow,
   verifyWitnessSignature,
 } from "../lib/witness/attest";
@@ -29,8 +30,13 @@ import {
 } from "../lib/witness/store";
 
 const SHA256_RE = /^0x[0-9a-fA-F]{64}$/;
+// EOA-only: EIP-191 personal_sign is 65 bytes. Contract-wallet
+// (EIP-1271) signatures can be longer — they'd need a different check.
 const SIG_RE = /^0x[0-9a-fA-F]{130}$/;
 const VERDICTS = new Set(["pass", "fail", "inconclusive"]);
+// M-2: reasons are stored verbatim and later rendered — reject C0/C1
+// control chars and bidi-override sequences (display injection).
+const REASON_CTRL_RE = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/;
 
 export function registerWitnessAttestRoute(
   routes: Hono,
@@ -78,14 +84,16 @@ export function registerWitnessAttestRoute(
       if (
         !VERDICTS.has(verdict) ||
         !SHA256_RE.test(contentSha256) ||
+        reason.trim().length === 0 ||
         reason.length > WITNESS_REASON_MAX ||
+        REASON_CTRL_RE.test(reason) ||
         !SIG_RE.test(signature)
       ) {
         return errorResponse(
           c,
           400,
           ErrorCodes.INVALID_INPUT,
-          "verdict∈{pass,fail,inconclusive}; contentSha256=0x+64hex; reason≤280ch; signature=0x+130hex",
+          "verdict∈{pass,fail,inconclusive}; contentSha256=0x+64hex; reason=1-280ch printable; signature=0x+130hex",
           { charged: false },
         );
       }
@@ -107,7 +115,10 @@ export function registerWitnessAttestRoute(
         return errorResponse(c, 409, ErrorCodes.WITNESS_NOT_DELIVERED, "job has no delivered artifact yet", { charged: false });
       if (window === "closed")
         return errorResponse(c, 409, ErrorCodes.WITNESS_WINDOW_CLOSED, "attest window is closed", { charged: false });
-      if (!(await checkDailyCap(deps.store, reg.agentId, deps.dailyCap)))
+      // N-5: capture the day key once — a request straddling UTC midnight
+      // must credit one bucket, not split across two days.
+      const dayKey = utcDayKey();
+      if (!(await checkDailyCap(deps.store, reg.agentId, deps.dailyCap, dayKey)))
         return errorResponse(c, 429, ErrorCodes.WITNESS_DAILY_CAP, "daily witness attest cap reached", {
           charged: false,
           retryable: true,
@@ -133,13 +144,24 @@ export function registerWitnessAttestRoute(
         jobId,
         agentId: reg.agentId,
         verdict,
-        contentSha256: contentSha256 as `0x${string}`,
+        // N-3: normalize at rest — the signed payload lowercases, so the
+        // stored form matches what a verifier rebuilds.
+        contentSha256: contentSha256.toLowerCase() as `0x${string}`,
         reason,
         attestedAt: new Date().toISOString(),
         signature: signature as `0x${string}`,
       };
-      if (!(await deps.store.putAttestation(attestation)))
+      // H-2: the window deadline is re-enforced inside the store's atomic
+      // region — a request that started inside the window can't land an
+      // attestation after it closes.
+      const notAfterMs = (job.deliveredAt ?? 0) + deps.windowSec * 1000;
+      if (
+        !(await deps.store.putAttestation(attestation, { notAfterMs }))
+      ) {
+        if (Date.now() >= notAfterMs)
+          return errorResponse(c, 409, ErrorCodes.WITNESS_WINDOW_CLOSED, "attest window is closed", { charged: false });
         return errorResponse(c, 409, ErrorCodes.WITNESS_DUPLICATE, "job already attested by this witness", { charged: false });
+      }
       return c.json({ attestation }, 201);
     },
   );

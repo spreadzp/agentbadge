@@ -76,6 +76,7 @@ export function createWitnessRoutes(deps: WitnessRoutesDeps): Hono {
       });
       if (!res.ok) {
         const map = {
+          witness_invalid_agent_id: [400, ErrorCodes.WITNESS_INVALID_AGENT_ID, "agentId is required — re-register the agent"],
           witness_invalid_domains: [400, ErrorCodes.WITNESS_INVALID_DOMAINS, "domains must be 1-8 of scan|code|data|generic"],
           witness_invalid_wallet: [400, ErrorCodes.WITNESS_INVALID_WALLET, "wallet must be a valid EVM address"],
           witness_already_enrolled: [409, ErrorCodes.WITNESS_ALREADY_ENROLLED, "agent is already enrolled; wallet is immutable"],
@@ -125,6 +126,27 @@ export function createWitnessRoutes(deps: WitnessRoutesDeps): Hono {
           { charged: false },
         );
       const expiresAt = job.deliveredAt + deps.windowSec * 1000;
+      // H-1: seat claims are attempt-budgeted too — open enrollment + 2
+      // free seats/job otherwise lets two sybil accounts monopolize every
+      // job's witness seats. Separate day-bucket (":seat" suffix) so seat
+      // spam can't drain the attest credit counter.
+      const seatCap = deps.seatDailyCap ?? deps.dailyCap;
+      const usedSeats = await deps.store.incrDailyCredits(
+        reg.agentId,
+        `${utcDayKey()}:seat`,
+      );
+      if (usedSeats > seatCap)
+        return errorResponse(
+          c,
+          429,
+          ErrorCodes.WITNESS_DAILY_CAP,
+          "daily witness seat cap reached",
+          {
+            charged: false,
+            retryable: true,
+            hint: "Credits reset at UTC midnight — retry tomorrow.",
+          },
+        );
       const res = await deps.store.claimSeat(jobId, reg.agentId, expiresAt);
       switch (res) {
         case "claimed": {
@@ -176,14 +198,18 @@ export function createWitnessRoutes(deps: WitnessRoutesDeps): Hono {
           { charged: false },
         );
       const atts = await deps.store.listAttestations(jobId);
+      const advisory = buildWitnessAdvisory(job, atts, deps.windowSec);
       return c.json(
         {
           jobId,
-          ...(job.evaluatorVerdict !== undefined
-            ? { evaluatorVerdict: job.evaluatorVerdict }
-            : { evaluatorVerdict: null }),
+          // C-1: evaluatorVerdict sits behind the SAME reveal gate as
+          // witnesses[] — a seated witness must not shade their
+          // attestation on the evaluator's answer (independence, D-185-8).
+          evaluatorVerdict: advisory.witnessesRevealed
+            ? (job.evaluatorVerdict ?? null)
+            : null,
           witnessAllowed: job.witnessAllowed !== false,
-          ...buildWitnessAdvisory(job, atts, deps.windowSec),
+          ...advisory,
         },
         200,
       );

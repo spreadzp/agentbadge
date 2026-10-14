@@ -76,7 +76,10 @@ function makeJob(overrides: Partial<WitnessJobRef> = {}): WitnessJobRef {
   };
 }
 
-function harness(jobOverrides: Partial<WitnessJobRef> = {}) {
+function harness(
+  jobOverrides: Partial<WitnessJobRef> = {},
+  depsExtra: Partial<Parameters<typeof createWitnessRoutes>[0]> = {},
+) {
   const store = createMemoryWitnessStore();
   const reg = createMemoryAgentRegistrationStore();
   const jobs = new Map<string, WitnessJobRef>();
@@ -92,6 +95,7 @@ function harness(jobOverrides: Partial<WitnessJobRef> = {}) {
       getJob: (id) => jobs.get(id),
       windowSec: 3600,
       dailyCap: 20,
+      ...depsExtra,
     }),
   );
   return { app, store, reg, jobs, keys };
@@ -102,6 +106,9 @@ async function keyFor(h: ReturnType<typeof harness>, agentId: string) {
   h.keys.set(agentId, key);
   await h.reg.put({
     agentId,
+    registryAddress: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    registryTx: "0xabc" as `0x${string}`,
+    name: agentId,
     keyHash,
     tier: "observer",
     status: "active",
@@ -110,7 +117,7 @@ async function keyFor(h: ReturnType<typeof harness>, agentId: string) {
   return key;
 }
 
-const bearer = (key?: string) =>
+const bearer = (key?: string): Record<string, string> =>
   key ? { authorization: `Bearer ${key}` } : {};
 
 /** Full pipeline: register → enroll → seat → attest (verdict). */
@@ -120,6 +127,7 @@ async function attestAs(
   account: typeof WITNESS,
   verdict: "pass" | "fail" | "inconclusive",
   jobId = "job-1",
+  reason = "advisory check",
 ) {
   const key = await keyFor(h, agentId);
   await h.app.request("/api/v1/witness/enroll", {
@@ -136,7 +144,7 @@ async function attestAs(
     agentId,
     verdict,
     contentSha256: SHA,
-    reason: "advisory check",
+    reason,
   });
   const signature = await account.signMessage({ message: payload });
   return h.app.request(`/api/v1/witness/jobs/${jobId}/attest`, {
@@ -145,7 +153,7 @@ async function attestAs(
     body: JSON.stringify({
       verdict,
       contentSha256: SHA,
-      reason: "advisory check",
+      reason,
       signature,
     }),
   });
@@ -190,6 +198,7 @@ describe("publicAttestation", () => {
         "agentId",
         "attestedAt",
         "contentSha256",
+        "hashMatchesDeliverable",
         "reason",
         "signature",
         "verdict",
@@ -216,7 +225,8 @@ describe("GET /api/v1/witness/jobs/:jobId", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.jobId).toBe("job-1");
-    expect(body.evaluatorVerdict).toBe("pass");
+    // C-1: window still open → evaluatorVerdict withheld like witnesses[].
+    expect(body.evaluatorVerdict).toBeNull();
     expect(body.witness_policy).toBe("advisory");
     expect(body.witnessAllowed).toBe(true);
     expect(body).toHaveProperty("witness_agreement");
@@ -242,6 +252,8 @@ describe("GET /api/v1/witness/jobs/:jobId", () => {
     const res = await h.app.request("/api/v1/witness/jobs/job-1");
     const body = await res.json();
     expect(body.witnessesRevealed).toBe(true);
+    // C-1: post-reveal the evaluator verdict becomes visible too.
+    expect(body.evaluatorVerdict).toBe("pass");
     expect(body.witnesses).toHaveLength(2);
     expect(body.witnesses[0].agentId).toBe(AGENT_1);
     expect(body.witnesses[0].verdict).toBe("pass");
@@ -276,6 +288,126 @@ describe("GET /api/v1/witness/jobs/:jobId", () => {
     const body = await res.json();
     expect(body.witnessAllowed).toBe(false);
     expect(body.witnesses).toEqual([]);
+  });
+});
+
+/* ---------------------- 185-6 audit regressions ------------------------ */
+
+describe("audit fixes (185-6)", () => {
+  it("C-1: seated witness cannot read evaluatorVerdict mid-window", async () => {
+    const h = harness();
+    const key = await keyFor(h, AGENT_1);
+    await h.app.request("/api/v1/witness/enroll", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...bearer(key) },
+      body: JSON.stringify({ domains: ["scan"], wallet: WITNESS.address }),
+    });
+    await h.app.request("/api/v1/witness/jobs/job-1/seat", {
+      method: "POST",
+      headers: bearer(key),
+    });
+    const res = await h.app.request("/api/v1/witness/jobs/job-1");
+    expect((await res.json()).evaluatorVerdict).toBeNull();
+  });
+
+  it("C-2: concurrent upserts preserve both job records", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "wj-"));
+    const path = join(dir, "witness-jobs.json");
+    await Promise.all([
+      upsertWitnessJob(path, { jobId: "a", witnessAllowed: false }),
+      upsertWitnessJob(path, { jobId: "b", deliveredAt: 123 }),
+    ]);
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    expect(raw.jobs.a.witnessAllowed).toBe(false);
+    expect(raw.jobs.b.deliveredAt).toBe(123);
+  });
+
+  it("M-4: patch with explicit undefined does not clobber witnessAllowed", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "wj-"));
+    const path = join(dir, "witness-jobs.json");
+    await upsertWitnessJob(path, { jobId: "j1", witnessAllowed: false });
+    await upsertWitnessJob(path, {
+      jobId: "j1",
+      deliveredAt: 5,
+      witnessAllowed: undefined,
+    });
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    expect(raw.jobs.j1.witnessAllowed).toBe(false);
+    expect(raw.jobs.j1.deliveredAt).toBe(5);
+  });
+
+  it("H-1: seat claims capped per agent per day", async () => {
+    const h = harness({}, { seatDailyCap: 1 });
+    h.jobs.set("job-2", makeJob({ jobId: "job-2" }));
+    const key = await keyFor(h, AGENT_1);
+    await h.app.request("/api/v1/witness/enroll", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...bearer(key) },
+      body: JSON.stringify({ domains: ["scan"], wallet: WITNESS.address }),
+    });
+    const first = await h.app.request("/api/v1/witness/jobs/job-1/seat", {
+      method: "POST",
+      headers: bearer(key),
+    });
+    expect(first.status).toBe(201);
+    const second = await h.app.request("/api/v1/witness/jobs/job-2/seat", {
+      method: "POST",
+      headers: bearer(key),
+    });
+    expect(second.status).toBe(429);
+    expect((await second.json()).code).toBe("witness_daily_cap");
+    // Seat spend must NOT drain the attest credit bucket.
+    const me = await (
+      await h.app.request("/api/v1/witness/me", { headers: bearer(key) })
+    ).json();
+    expect(me.credits.used).toBe(0);
+  });
+
+  it("M-2: empty or control-char reason → 400 invalid_input", async () => {
+    const h = harness();
+    expect(
+      (await attestAs(h, AGENT_1, WITNESS, "pass", "job-1", "")).status,
+    ).toBe(400);
+    const h2 = harness();
+    expect(
+      (
+        await attestAs(h2, AGENT_1, WITNESS, "pass", "job-1", "ok\u0000bad")
+      ).status,
+    ).toBe(400);
+  });
+
+  it("H-2: putAttestation rejects a write past its deadline", async () => {
+    const store = createMemoryWitnessStore();
+    const a = att(AGENT_1, "pass");
+    expect(
+      await store.putAttestation(a, { notAfterMs: Date.now() - 1 }),
+    ).toBe(false);
+    expect(
+      await store.putAttestation(a, { notAfterMs: Date.now() + 60_000 }),
+    ).toBe(true);
+  });
+
+  it("M-1: hashMatchesDeliverable flags mismatch vs projected hash", async () => {
+    const h = harness({
+      deliveredAt: Date.now() - 7200_000, // window closed → revealed
+      deliverableHash: SHA,
+    });
+    // Window already closed — seed the attestation directly (route would 410).
+    await h.store.putAttestation(att(AGENT_1, "pass"));
+    const body = await (
+      await h.app.request("/api/v1/witness/jobs/job-1")
+    ).json();
+    expect(body.witnessesRevealed).toBe(true);
+    expect(body.witnesses[0].hashMatchesDeliverable).toBe(true);
+
+    // Fabricated hash → false; no projected hash → null.
+    expect(
+      publicAttestation(att(AGENT_1, "pass"), `0x${"f".repeat(64)}`)
+        .hashMatchesDeliverable,
+    ).toBe(false);
+    expect(
+      publicAttestation(att(AGENT_1, "pass")).hashMatchesDeliverable,
+    ).toBeNull();
   });
 });
 

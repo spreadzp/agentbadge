@@ -6,6 +6,7 @@
  *                        readable; off → honest 503 witness_disabled).
  *   WITNESS_WINDOW_SEC — attest window after delivery (default 3600).
  *   WITNESS_DAILY_CAP  — attest credits per agent per UTC day (default 20).
+ *   WITNESS_SEAT_DAILY_CAP — seat claims per agent per UTC day (default 10).
  *   WITNESS_STORE      — "memory" | "json" (default "json").
  *
  * Stores: json backends in .data/ (witness.json, witness-jobs.json).
@@ -43,6 +44,7 @@ export function wireWitness(app: Hono): void {
       getJob: (jobId) => jobs.getJob(jobId),
       windowSec: envInt("WITNESS_WINDOW_SEC", 3600),
       dailyCap: envInt("WITNESS_DAILY_CAP", 20),
+      seatDailyCap: envInt("WITNESS_SEAT_DAILY_CAP", 10),
     }),
   );
 }

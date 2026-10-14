@@ -19,6 +19,7 @@ import {
 } from "./types";
 
 export type EnrollError =
+  | "witness_invalid_agent_id"
   | "witness_invalid_domains"
   | "witness_invalid_wallet"
   | "witness_already_enrolled";
@@ -34,7 +35,9 @@ export async function enrollWitness(
   input: { agentId: string; domains: string[]; wallet: string },
 ): Promise<EnrollResult> {
   const agentId = (input.agentId ?? "").trim();
-  if (!agentId) return { ok: false, code: "witness_invalid_domains" };
+  // H-3: blank agentId gets its own code — masking it under
+  // witness_invalid_domains hid a key-collision risk (enrollments[""]).
+  if (!agentId) return { ok: false, code: "witness_invalid_agent_id" };
 
   const raw = Array.isArray(input.domains) ? input.domains : [];
   // Raw length is bounded BEFORE dedupe — the API contract is ≤8

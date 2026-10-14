@@ -8,6 +8,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { mutexFor } from "./mutex";
 
 export interface WitnessJobRef {
   jobId: string;
@@ -25,6 +26,9 @@ export interface WitnessJobRef {
   witnessAllowed?: boolean;
   /** SLICE-185-3: evaluator verdict echoed on the public advisory read. */
   evaluatorVerdict?: string;
+  /** On-chain deliverableHash (keccak or client-supplied 0x64hex) —
+   *  projected at submit time; used to flag witness hash mismatches (M-1). */
+  deliverableHash?: `0x${string}`;
 }
 
 /** Canonical projection path — producers + wiring share this default. */
@@ -62,16 +66,46 @@ export function createJsonWitnessJobSource(
 }
 
 /**
+ * Delivery-time projection (venue submit hook): opens the attest window
+ * and projects the on-chain hash for the M-1 mismatch flag.
+ * witnessAllowed is re-echoed when set (M-4) — belt-and-suspenders
+ * alongside the undefined-strip inside upsertWitnessJob.
+ */
+export async function projectWitnessDelivery(
+  jobId: string,
+  deliverableHash: `0x${string}`,
+  witnessAllowed?: boolean,
+  path = WITNESS_JOBS_PATH,
+): Promise<void> {
+  return upsertWitnessJob(path, {
+    jobId,
+    deliveredAt: Date.now(),
+    deliverableHash,
+    ...(witnessAllowed === false ? { witnessAllowed: false } : {}),
+  });
+}
+
+/**
  * Producer-side write hook (185-3 / job delivery). Read-modify-write is
- * process-serialized by a module mutex per path — same pattern as the
- * store backends.
+ * process-serialized by a per-path mutex (mutex.ts) — same pattern as
+ * the store backends. Without it, two concurrent deliveries can
+ * last-write-wins and silently drop a whole WitnessJobRef including
+ * witnessAllowed:false (audit C-2).
  */
 export async function upsertWitnessJob(
   path: string,
   job: WitnessJobRef,
 ): Promise<void> {
-  const jobs = readJobs(path);
-  jobs[job.jobId] = { ...(jobs[job.jobId] ?? {}), ...job };
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify({ jobs }, null, 2));
+  return mutexFor(path)(async () => {
+    // M-4: drop undefined-valued keys from the patch — a partial upsert
+    // (deliveredAt-only at submit) must not clobber a stored
+    // witnessAllowed:false back to undefined and reopen the opt-out gate.
+    const patch = Object.fromEntries(
+      Object.entries(job).filter(([, v]) => v !== undefined),
+    ) as WitnessJobRef;
+    const jobs = readJobs(path);
+    jobs[job.jobId] = { ...(jobs[job.jobId] ?? {}), ...patch };
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, JSON.stringify({ jobs }, null, 2));
+  });
 }

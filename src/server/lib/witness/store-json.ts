@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { WitnessAttestation, WitnessEnroll, WitnessSeat } from "./types";
 import { claimSeatIn, type WitnessStore } from "./store";
+import { createMutex } from "./mutex";
 
 interface WitnessJsonFile {
   enrollments: Record<string, WitnessEnroll>;
@@ -39,7 +40,14 @@ function readJson(path: string): WitnessJsonFile {
       attestations: raw.attestations ?? {},
       credits: raw.credits ?? {},
     };
-  } catch {
+  } catch (e) {
+    // N-6: a corrupt file (power-loss mid-write) silently wiped every
+    // enrollment/seat/attestation before this log existed — never
+    // swallow it quietly again.
+    console.error(
+      `[witness-store] corrupt JSON at ${path} — starting empty:`,
+      e instanceof Error ? e.message : e,
+    );
     return emptyFile();
   }
 }
@@ -47,16 +55,6 @@ function readJson(path: string): WitnessJsonFile {
 function writeJson(path: string, data: WitnessJsonFile): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(data, null, 2));
-}
-
-/** Serializes async mutations per path — plain promise chain, no deps. */
-function createMutex(): <T>(fn: () => Promise<T>) => Promise<T> {
-  let tail: Promise<unknown> = Promise.resolve();
-  return <T>(fn: () => Promise<T>): Promise<T> => {
-    const next = tail.then(fn);
-    tail = next.catch(() => {});
-    return next;
-  };
 }
 
 export function createJsonWitnessStore(
@@ -113,8 +111,12 @@ export function createJsonWitnessStore(
       return [...(readJson(path).seats[jobId] ?? [])];
     },
 
-    async putAttestation(att) {
+    async putAttestation(att, opts) {
       return locked(async () => {
+        // H-2: window-close race — the deadline is enforced INSIDE the
+        // mutex so an attestation can't land after reveal.
+        if (opts?.notAfterMs !== undefined && Date.now() >= opts.notAfterMs)
+          return false;
         const data = readJson(path);
         const list = data.attestations[att.jobId] ?? [];
         if (list.some((a) => a.agentId === att.agentId)) return false;

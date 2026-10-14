@@ -75,6 +75,7 @@ export const ErrorCodes = {
   WITNESS_NOT_ENROLLED: "witness_not_enrolled",
   WITNESS_ALREADY_ENROLLED: "witness_already_enrolled",
   WITNESS_INVALID_DOMAINS: "witness_invalid_domains",
+  WITNESS_INVALID_AGENT_ID: "witness_invalid_agent_id",
   WITNESS_INVALID_WALLET: "witness_invalid_wallet",
   WITNESS_SUSPENDED: "witness_suspended",
   WITNESS_JOB_NOT_FOUND: "witness_job_not_found",

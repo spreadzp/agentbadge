@@ -73,6 +73,9 @@ function harness(jobOverrides: Partial<WitnessJobRef> = {}): Harness {
       getJob: (id) => jobs.get(id),
       windowSec: 3600,
       dailyCap: 3,
+      // Seat-claim cap (H-1) defaults to dailyCap — this suite tests the
+      // ATTEST cap, so keep seat budget out of the way.
+      seatDailyCap: 10,
     }),
   );
   return { app, store, reg, jobs, keys: new Map() };
@@ -84,6 +87,9 @@ async function regKey(h: Harness, agentId: string): Promise<string> {
   h.keys.set(agentId, key);
   await h.reg.put({
     agentId,
+    registryAddress: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    registryTx: "0xabc" as `0x${string}`,
+    name: agentId,
     keyHash,
     tier: "observer",
     status: "active",
@@ -92,7 +98,7 @@ async function regKey(h: Harness, agentId: string): Promise<string> {
   return key;
 }
 
-const bearer = (key?: string) =>
+const bearer = (key?: string): Record<string, string> =>
   key ? { authorization: `Bearer ${key}` } : {};
 
 async function enroll(h: Harness, agentId: string, wallet: string) {

@@ -34,6 +34,12 @@ export interface WitnessRoutesDeps {
   windowSec: number;
   /** WITNESS_DAILY_CAP — attest credits per agent per UTC day. */
   dailyCap: number;
+  /**
+   * WITNESS_SEAT_DAILY_CAP — successful seat claims per agent per UTC
+   * day (185-6 audit H-1: open enrollment + 2 free seats/job lets two
+   * sybils monopolize every job). Defaults to dailyCap when unset.
+   */
+  seatDailyCap?: number;
 }
 
 /** Bearer agb_ → active registration; Response means already sent 401. */

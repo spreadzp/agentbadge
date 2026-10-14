@@ -34,6 +34,15 @@ export const WITNESS_ERROR_ENTRIES: ErrorEntry[] = [
     charge: "never",
   },
   {
+    code: "witness_invalid_agent_id",
+    http_status: 400,
+    agent_impact: "The witness enrollment agentId is blank or missing.",
+    hint_template: "Authenticate with a registered agent api_key — the agentId comes from the registration, not the request body.",
+    affected_routes: ["/api/v1/witness/enroll"],
+    recovery_action: "change_request",
+    charge: "never",
+  },
+  {
     code: "witness_invalid_domains",
     http_status: 400,
     agent_impact: "Enroll domains are empty, oversized, or not in the v1 enum.",

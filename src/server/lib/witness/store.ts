@@ -66,8 +66,14 @@ export interface WitnessStore {
   /**
    * Persists an attestation. Atomic duplicate guard: returns false when
    * (jobId, agentId) already attested — one opinion per witness per job.
+   * `opts.notAfterMs` (185-6 audit H-2): the deadline is enforced INSIDE
+   * the backend's atomic region so an attestation can't land after the
+   * attest window closes between the route check and the write.
    */
-  putAttestation(att: WitnessAttestation): Promise<boolean>;
+  putAttestation(
+    att: WitnessAttestation,
+    opts?: { notAfterMs?: number },
+  ): Promise<boolean>;
   getAttestation(
     jobId: string,
     agentId: string,
@@ -158,7 +164,10 @@ export function createMemoryWitnessStore(): WitnessStore {
       return [...(seats.get(jobId) ?? [])];
     },
 
-    async putAttestation(att) {
+    async putAttestation(att, opts) {
+      // H-2: deadline enforced inside the sync (atomic) claim body.
+      if (opts?.notAfterMs !== undefined && Date.now() >= opts.notAfterMs)
+        return false;
       const list = attestations.get(att.jobId) ?? [];
       if (list.some((a) => a.agentId === att.agentId)) return false;
       list.push(att);
