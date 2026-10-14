@@ -86,8 +86,10 @@ export function buildWitnessAdvisory(
   windowSec: number,
   now = Date.now(),
 ): WitnessAdvisoryBlock {
+  // deliveredAt > 0 — a zeroed stamp must not reveal early (N-v3-1).
   const revealed =
     job.deliveredAt !== undefined &&
+    job.deliveredAt > 0 &&
     now >= job.deliveredAt + windowSec * 1000;
   const publicAtts = revealed
     ? attestations.map((a) => publicAttestation(a, job.deliverableHash))

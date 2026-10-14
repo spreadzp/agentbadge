@@ -87,6 +87,12 @@ export interface WitnessStore {
    * WITNESS_DAILY_CAP (D-185-5).
    */
   incrDailyCredits(agentId: string, dayKey: string): Promise<number>;
+  /**
+   * Compensating decrement — refunds one credit when a concurrent
+   * claim raced the listSeats pre-check and claimSeat returned
+   * already_seated (FM-1: net burn stays 1 per physical claim).
+   */
+  decrDailyCredits(agentId: string, dayKey: string): Promise<void>;
   /** Read-only view of the day-bucket for GET /me — does NOT consume. */
   getDailyCredits(agentId: string, dayKey: string): Promise<number>;
 }
@@ -188,6 +194,10 @@ export function createMemoryWitnessStore(): WitnessStore {
       const n = (credits.get(key) ?? 0) + 1;
       credits.set(key, n);
       return n;
+    },
+    async decrDailyCredits(agentId, dayKey) {
+      const key = `${agentId}:${dayKey}`;
+      credits.set(key, Math.max(0, (credits.get(key) ?? 0) - 1));
     },
     async getDailyCredits(agentId, dayKey) {
       return credits.get(`${agentId}:${dayKey}`) ?? 0;

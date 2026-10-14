@@ -159,19 +159,16 @@ export function registerEvaluateRoute(
         run: () =>
           evaluateExternalJob(mkInput(), deps).then((r) => {
             // SLICE-185-3: witness projection feed (see sync path below).
+            // Completion step (NM-3/N-v3-3): window-open fields only —
+            // COI fields already landed in the dispatch-time upsert.
             void upsertWitnessJob(WITNESS_JOBS_PATH, {
               jobId: evalJobKey(
                 input.rec.chainId,
                 input.rec.address,
                 String(input.jobId),
               ),
-              requesterWallet: payer,
-              evaluatorWallet: deps.settlerAddress,
               deliveredAt: Date.now(),
               evaluatorVerdict: r.verdict.verdict,
-              ...(input.witnessAllowed === false
-                ? { witnessAllowed: false }
-                : {}),
             }).catch(() => {});
             if (!r.artifact) {
               throw new Error("evaluation produced no artifact");

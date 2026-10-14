@@ -145,6 +145,14 @@ export function createJsonWitnessStore(
         return n;
       });
     },
+    async decrDailyCredits(agentId, dayKey) {
+      return locked(async () => {
+        const data = readJson(path);
+        const key = `${agentId}:${dayKey}`;
+        data.credits[key] = Math.max(0, (data.credits[key] ?? 0) - 1);
+        writeJson(path, data);
+      });
+    },
     async getDailyCredits(agentId, dayKey) {
       return readJson(path).credits[`${agentId}:${dayKey}`] ?? 0;
     },

@@ -138,6 +138,8 @@ export function createWitnessRoutes(deps: WitnessRoutesDeps): Hono {
       // free seats/job otherwise lets two sybil accounts monopolize every
       // job's witness seats. Separate day-bucket (":seat" suffix) so seat
       // spam can't drain the attest credit counter.
+      // N-v3-4: ?? dailyCap fallback is for test harnesses that omit
+      // seatDailyCap — production wiring always sets it (env default 10).
       const seatCap = deps.seatDailyCap ?? deps.dailyCap;
       const usedSeats = await deps.store.incrDailyCredits(
         reg.agentId,
@@ -162,6 +164,12 @@ export function createWitnessRoutes(deps: WitnessRoutesDeps): Hono {
           return c.json({ seat: seats.find((s) => s.agentId === reg.agentId) }, 201);
         }
         case "already_seated": {
+          // FM-1: the increment above raced a concurrent first-claim —
+          // refund so the net burn is exactly 1 per physical seat.
+          await deps.store.decrDailyCredits(
+            reg.agentId,
+            `${utcDayKey()}:seat`,
+          );
           const seats = await deps.store.listSeats(jobId);
           return c.json({ seat: seats.find((s) => s.agentId === reg.agentId) }, 200);
         }
