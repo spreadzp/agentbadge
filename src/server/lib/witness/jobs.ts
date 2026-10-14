@@ -49,7 +49,12 @@ function readJobs(path: string): Record<string, WitnessJobRef> {
       jobs?: Record<string, WitnessJobRef>;
     };
     return raw.jobs ?? {};
-  } catch {
+  } catch (e) {
+    // N-6/N-3-v2: surface corruption — a silently-empty registry would
+    // 404 every jobGate while looking like "no projections yet".
+    console.error(
+      `witness-jobs: failed to parse ${path}: ${e instanceof Error ? e.message : e}`,
+    );
     return {};
   }
 }

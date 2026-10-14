@@ -131,6 +131,26 @@ export function registerEvaluateRoute(
         }
       }
 
+      // NM-3 (185-7): two-step witness projection on the async path —
+      // the job record lands at DISPATCH without deliveredAt (attest
+      // window stays closed); deliveredAt + evaluatorVerdict are only
+      // written when the eval resolves below, opening the window at the
+      // true delivery instant instead of a deferred-callback timestamp.
+      if (input.async) {
+        void upsertWitnessJob(WITNESS_JOBS_PATH, {
+          jobId: evalJobKey(
+            input.rec.chainId,
+            input.rec.address,
+            String(input.jobId),
+          ),
+          requesterWallet: payer,
+          evaluatorWallet: deps.settlerAddress,
+          ...(input.witnessAllowed === false
+            ? { witnessAllowed: false }
+            : {}),
+        }).catch(() => {});
+      }
+
       const early = respondAsync(c, deps.async_, {
         isAsync: input.async,
         kind: "job-eval",

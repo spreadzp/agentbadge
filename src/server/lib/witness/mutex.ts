@@ -19,6 +19,11 @@ export function createMutex(): <T>(fn: () => Promise<T>) => Promise<T> {
 /**
  * Mutex keyed by file path — shared for every writer touching the
  * same JSON registry (jobs.ts upserts run under this).
+ *
+ * The key set is a closed constant today (WITNESS_JOBS_PATH). The map
+ * is unbounded by design only because paths are never derived from
+ * request input — do NOT pass untrusted/per-tenant paths here
+ * (N-1-v2 audit nit).
  */
 const locks = new Map<string, ReturnType<typeof createMutex>>();
 

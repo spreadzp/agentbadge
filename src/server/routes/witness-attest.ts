@@ -151,10 +151,15 @@ export function registerWitnessAttestRoute(
         attestedAt: new Date().toISOString(),
         signature: signature as `0x${string}`,
       };
+      // NM-2: deliveredAt is guaranteed by the window check above — a
+      // falsy fallback would fabricate a 1970 deadline and mis-report a
+      // not-delivered job as window_closed. Guard explicitly.
+      if (job.deliveredAt === undefined)
+        return errorResponse(c, 409, ErrorCodes.WITNESS_NOT_DELIVERED, "job has no delivered artifact yet", { charged: false });
       // H-2: the window deadline is re-enforced inside the store's atomic
       // region — a request that started inside the window can't land an
       // attestation after it closes.
-      const notAfterMs = (job.deliveredAt ?? 0) + deps.windowSec * 1000;
+      const notAfterMs = job.deliveredAt + deps.windowSec * 1000;
       if (
         !(await deps.store.putAttestation(attestation, { notAfterMs }))
       ) {

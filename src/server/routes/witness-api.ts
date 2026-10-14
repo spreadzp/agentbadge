@@ -126,6 +126,14 @@ export function createWitnessRoutes(deps: WitnessRoutesDeps): Hono {
           { charged: false },
         );
       const expiresAt = job.deliveredAt + deps.windowSec * 1000;
+      // NM-1: idempotent replay short-circuits BEFORE the cap increment —
+      // re-claiming a seat the agent already holds must not burn budget
+      // (200 = free replay; claimSeats's already_seated stays as a race
+      // fallback for claims concurrent with the first claim).
+      const held = (await deps.store.listSeats(jobId)).find(
+        (s) => s.agentId === reg.agentId && s.claimed,
+      );
+      if (held) return c.json({ seat: held }, 200);
       // H-1: seat claims are attempt-budgeted too — open enrollment + 2
       // free seats/job otherwise lets two sybil accounts monopolize every
       // job's witness seats. Separate day-bucket (":seat" suffix) so seat

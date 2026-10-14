@@ -19,7 +19,7 @@ import {
   type AgentRegistrationStore,
 } from "../src/server/lib/agent-registration/store";
 import { issueApiKey } from "../src/server/lib/agent-registration/api-keys";
-import { buildWitnessPayload } from "../src/server/lib/witness/attest";
+import { buildWitnessPayload, utcDayKey } from "../src/server/lib/witness/attest";
 import type { WitnessJobRef } from "../src/server/lib/witness/jobs";
 
 const WITNESS = privateKeyToAccount(
@@ -314,6 +314,20 @@ describe("POST /api/v1/witness/jobs/:jobId/seat", () => {
     expect(third.status).toBe(409);
     expect((await third.json()).code).toBe("witness_no_seats");
   });
+
+  it("NM-1: idempotent seat replay does not consume the seat day-bucket", async () => {
+    await regKey(h, AGENT_1);
+    await enroll(h, AGENT_1, WITNESS.address);
+    expect((await seat(h, AGENT_1)).status).toBe(201);
+    // Replay the same claim several times — each is a free idempotent
+    // 200, not a charged attempt.
+    for (let i = 0; i < 3; i++) {
+      const replay = await seat(h, AGENT_1);
+      expect(replay.status).toBe(200);
+    }
+    const used = await h.store.getDailyCredits(AGENT_1, `${utcDayKey()}:seat`);
+    expect(used).toBe(1);
+  });
 });
 
 /* --------------------------------- attest -------------------------------- */
@@ -374,6 +388,18 @@ describe("POST /api/v1/witness/jobs/:jobId/attest", () => {
     const res = await attest(h, AGENT_1, WITNESS);
     expect(res.status).toBe(409);
     expect((await res.json()).code).toBe("witness_window_closed");
+  });
+
+  it("NM-2: deliveredAt=0 → witness_not_delivered, never window_closed", async () => {
+    h = harness({ deliveredAt: 0 });
+    await regKey(h, AGENT_1);
+    await enroll(h, AGENT_1, WITNESS.address);
+    // Seed the seat directly — claimSeat would refuse on the dead window.
+    await h.store.claimSeat("job-1", AGENT_1, Date.now() + 60_000);
+    const res = await attest(h, AGENT_1, WITNESS);
+    expect(res.status).toBe(409);
+    // falsy deliveredAt must not fabricate a 1970 notAfterMs deadline.
+    expect((await res.json()).code).toBe("witness_not_delivered");
   });
 
   it("daily cap exceeded → 429 witness_daily_cap with hint", async () => {
