@@ -20,6 +20,8 @@ import type {
 import { checkCoi } from "./attest";
 import type { WitnessJobRef } from "./jobs";
 import type { WitnessEnroll, WitnessStore } from "./store";
+import type { WitnessAnchorer } from "./anchor";
+import type { WitnessRepSink } from "./rep-bridge";
 
 export interface WitnessRoutesDeps {
   /** WITNESS_ENABLED — POSTs answer 503 when off (fail honest). */
@@ -40,6 +42,16 @@ export interface WitnessRoutesDeps {
    * sybils monopolize every job). Defaults to dailyCap when unset.
    */
   seatDailyCap?: number;
+  /**
+   * SLICE-185-4: rep emit sink (188 seam). Undefined → no-op. Failures
+   * are logged, never break the 201 (fire-and-forget, D-185-6).
+   */
+  repSink?: WitnessRepSink;
+  /**
+   * SLICE-185-4: memo anchorer (WITNESS_ANCHOR_ENABLED, D-185-7).
+   * Undefined → zero memo calls.
+   */
+  anchorer?: WitnessAnchorer;
 }
 
 /** Bearer agb_ → active registration; Response means already sent 401. */

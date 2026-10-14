@@ -1701,6 +1701,40 @@ paths:
           in: path
           name: did
           required: true
+  /api/agent/canonical:
+    get:
+      operationId: getApiAgentCanonical
+      description: Canonical ERC-8004 agentId ↔ AgentBadge passport cross-ref (EPIC-194-4)
+      responses:
+        "200":
+          description: Canonical identity mapping
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chain:
+                    type: string
+                  registry:
+                    type: string
+                  agentId:
+                    anyOf:
+                      - type: string
+                      - type: "null"
+                  passport:
+                    anyOf:
+                      - type: string
+                      - type: "null"
+                  passportTokenId:
+                    anyOf:
+                      - type: string
+                      - type: "null"
+                required:
+                  - chain
+                  - registry
+                  - agentId
+                  - passport
+                  - passportTokenId
   /feed:
     get:
       operationId: getFeed
@@ -2920,7 +2954,7 @@ paths:
       tags:
         - Meta
       summary: Trust tiers — identity/trust ladder for AI agents
-      description: "Returns the trust tier ladder: unverified, did_verified,
+      description: "Returns the trust tier ladder: unverified, observer, did_verified,
         passport_holder, passport_verified, marketplace_participant,
         trusted_agent. Each tier lists unlocked capabilities and requirements."
       responses:
@@ -3772,6 +3806,98 @@ paths:
           description: Verdict status + hash
         "404":
           description: Unknown verdict id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/bounties:
+    post:
+      operationId: postApiBounties
+      tags:
+        - Venue
+      summary: Create bounty (operator passport)
+      responses:
+        "200":
+          description: Create bounty (operator passport)
+    get:
+      operationId: getApiBounties
+      tags:
+        - Venue
+      summary: Public bounty feed (status only, Q20)
+      responses:
+        "200":
+          description: Public bounty feed (status only, Q20)
+  /api/bounties/{id}:
+    get:
+      operationId: getApiBountiesById
+      tags:
+        - Venue
+      summary: Bounty brief (passport owner only)
+      responses:
+        "200":
+          description: Bounty brief (passport owner only)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/bounties/{id}/claim:
+    post:
+      operationId: postApiBountiesByIdClaim
+      tags:
+        - Venue
+      summary: Claim bounty (passport + payout bind)
+      responses:
+        "200":
+          description: Claim bounty (passport + payout bind)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/bounties/{id}/submit:
+    post:
+      operationId: postApiBountiesByIdSubmit
+      tags:
+        - Venue
+      summary: Submit deliverable (lease holder, 197-08)
+      responses:
+        "200":
+          description: Submit deliverable (lease holder, 197-08)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/bounties/{id}/fund:
+    post:
+      operationId: postApiBountiesByIdFund
+      tags:
+        - Venue
+      summary: Fund bounty escrow (197-11, caps + createJob)
+      responses:
+        "200":
+          description: Fund bounty escrow (197-11, caps + createJob)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/verify/{id}:
+    get:
+      operationId: getApiVerifyById
+      tags:
+        - Venue
+      summary: Verify bounty verdict (memo anchor)
+      responses:
+        "200":
+          description: Verify bounty verdict (memo anchor)
       parameters:
         - schema:
             type: string
@@ -5207,6 +5333,59 @@ paths:
       responses:
         "200":
           description: HTML page
+  /api/verify/{verdictId}:
+    get:
+      operationId: getApiVerifyByVerdictId
+      description: "Public verdict verification (Level 1): stored VerdictArtifact +
+        reason_codes + memo anchor {txHash,memoId,status} + hash-chain
+        {status:server-reported|pending|disabled,head_ref}. Honest statuses —
+        unanchored is 'pending', never 'valid'. 'server-reported' is server-side
+        state, not an on-chain read; verify independently via
+        @agentbadge/verify-verdict."
+      responses:
+        "200":
+          description: "{verdictId,verdict,reason_codes,anchor,chain,verified_at}"
+        "400":
+          description: Invalid verdictId or unknown ?kind=
+        "404":
+          description: verdict_not_found
+        "429":
+          description: Rate limit exceeded
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: verdictId
+          required: true
+  /verify:
+    get:
+      operationId: getVerify
+      description: Verdict verification page — SSR form + result. Accepts ?q= of
+        verdictId / anchor txHash / memoId; POST urlencoded for non-JS.
+      responses:
+        "200":
+          description: HTML page (form, result, or malformed hint)
+        "404":
+          description: Honest not-found view
+        "429":
+          description: Rate limit exceeded
+  /verify/{id}:
+    get:
+      operationId: getVerifyById
+      description: Deep link to a verdict verification result.
+      responses:
+        "200":
+          description: HTML result
+        "404":
+          description: Honest not-found view
+        "429":
+          description: Rate limit exceeded
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /api/v1/agents/register:
     post:
       operationId: postApiV1AgentsRegister
@@ -5242,6 +5421,119 @@ paths:
           description: Key revoked
         "401":
           description: Missing/malformed/revoked api key
+  /api/v1/admin/agents/{agentId}:
+    delete:
+      operationId: deleteApiV1AdminAgentsByAgentId
+      description: Admin-revoke a registered agent — instant, auth-cache busted.
+        Requires X-Admin-Key or Bearer ADMIN_API_KEY.
+      responses:
+        "200":
+          description: Agent revoked (idempotent)
+        "401":
+          description: Missing/invalid admin key
+        "404":
+          description: Unknown agentId
+        "500":
+          description: ADMIN_API_KEY not configured
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: agentId
+          required: true
+  /api/v1/witness/enroll:
+    post:
+      operationId: postApiV1WitnessEnroll
+      description: Enroll the authenticated agent as a witness — declares domains and
+        the EIP-191 signing wallet (immutable afterwards).
+      responses:
+        "201":
+          description: Witness enrollment record
+        "400":
+          description: Invalid domains or wallet
+        "401":
+          description: Missing/invalid agb_ key
+        "409":
+          description: Already enrolled
+        "503":
+          description: Witness layer disabled
+  /api/v1/witness/jobs/{jobId}/seat:
+    post:
+      operationId: postApiV1WitnessJobsByJobIdSeat
+      description: Claim a witness seat for a delivered job (≤2/job, attest window
+        opens at delivery + WITNESS_WINDOW_SEC). Idempotent per agent.
+      responses:
+        "200":
+          description: Seat already held (idempotent replay)
+        "201":
+          description: Seat claimed
+        "401":
+          description: Missing/invalid agb_ key
+        "404":
+          description: Job not found
+        "409":
+          description: opt-out / COI / not delivered / window closed / no seats
+        "503":
+          description: Witness layer disabled
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: jobId
+          required: true
+  /api/v1/witness/jobs/{jobId}/attest:
+    post:
+      operationId: postApiV1WitnessJobsByJobIdAttest
+      description: "Submit an EIP-191 signed witness attestation for a seated job.
+        Pipeline: COI → seat → duplicate → window → daily cap → sig → store."
+      responses:
+        "201":
+          description: Attestation recorded (own record only — D-185-8)
+        "400":
+          description: Bad signature or malformed body
+        "401":
+          description: Missing/invalid agb_ key
+        "404":
+          description: Job not found
+        "409":
+          description: COI / no seat / duplicate / window closed / not delivered
+        "429":
+          description: Daily attest cap reached
+        "503":
+          description: Witness layer disabled
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: jobId
+          required: true
+  /api/v1/witness/jobs/{jobId}:
+    get:
+      operationId: getApiV1WitnessJobsByJobId
+      description: "Public advisory read for a job: evaluator verdict + witness block
+        (witness_policy:'advisory', witness_agreement). witnesses[] reveal only
+        after the attest window closes — pending submissions stay hidden to
+        preserve witness independence (D-185-8)."
+      responses:
+        "200":
+          description: Job + advisory witness block
+        "404":
+          description: Unknown jobId (witness_job_not_found)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: jobId
+          required: true
+  /api/v1/witness/me:
+    get:
+      operationId: getApiV1WitnessMe
+      description: Witness enrollment + today's attestation credit usage.
+      responses:
+        "200":
+          description: Enrollment state (enrolled:false when absent)
+        "401":
+          description: Missing/invalid agb_ key
   /api/payment/products:
     get:
       operationId: getApiPaymentProducts

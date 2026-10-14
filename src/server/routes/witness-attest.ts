@@ -28,6 +28,7 @@ import {
   WITNESS_REASON_MAX,
   type WitnessAttestation,
 } from "../lib/witness/store";
+import { emitAttestRep } from "../lib/witness/rep-bridge";
 
 const SHA256_RE = /^0x[0-9a-fA-F]{64}$/;
 // EOA-only: EIP-191 personal_sign is 65 bytes. Contract-wallet
@@ -167,6 +168,18 @@ export function registerWitnessAttestRoute(
           return errorResponse(c, 409, ErrorCodes.WITNESS_WINDOW_CLOSED, "attest window is closed", { charged: false });
         return errorResponse(c, 409, ErrorCodes.WITNESS_DUPLICATE, "job already attested by this witness", { charged: false });
       }
+      // SLICE-185-4 (D-185-6/7): rep emit + memo anchor — both
+      // fire-and-forget AFTER the durable write. A sink/anchor failure
+      // is logged internally and must never break the 201.
+      emitAttestRep(deps.repSink, {
+        agentId: reg.agentId,
+        jobId,
+        verdict,
+        ...(job.evaluatorVerdict !== undefined
+          ? { evaluatorVerdict: job.evaluatorVerdict }
+          : {}),
+      });
+      deps.anchorer?.enqueue(attestation);
       return c.json({ attestation }, 201);
     },
   );
