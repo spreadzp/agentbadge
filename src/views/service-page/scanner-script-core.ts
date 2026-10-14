@@ -25,6 +25,15 @@ export const SCANNER_SCRIPT_CORE = `
                   body: JSON.stringify({ url: url })
                 });
 
+                if (!response.ok) {
+                  var errText = '';
+                  try {
+                    var errBody = await response.json();
+                    errText = errBody.error || '';
+                  } catch (_) { errText = ''; }
+                  throw new Error(errText || 'Scan request failed (HTTP ' + response.status + ')');
+                }
+
                 var reader = response.body.getReader();
                 var decoder = new TextDecoder();
                 var buffer = '';
@@ -173,7 +182,7 @@ export const SCANNER_SCRIPT_CORE = `
                 // Related rules (fold-out)
                 if (gap.related_rules && gap.related_rules.length > 0) {
                   html += '<div class="mt-1">';
-                  html += '<button class="text-xs text-indigo-400 hover:text-indigo-300" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">Related rules (' + gap.related_rules.length + ')</button>';
+                  html += '<button class="text-xs text-indigo-400 hover:text-indigo-300" onclick="this.nextElementSibling.classList.toggle(\\'hidden\\')">Related rules (' + gap.related_rules.length + ')</button>';
                   html += '<div class="hidden mt-1 space-y-0.5">';
                   for (var r = 0; r < gap.related_rules.length; r++) {
                     html += '<div class="text-xs text-slate-500 font-mono">' + gap.related_rules[r] + '</div>';
@@ -191,7 +200,7 @@ export const SCANNER_SCRIPT_CORE = `
                 // Priority reason (expandable)
                 if (gap.priority_reason) {
                   html += '<div class="mt-1">';
-                  html += '<button class="text-xs text-slate-600 hover:text-slate-400" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">why?</button>';
+                  html += '<button class="text-xs text-slate-600 hover:text-slate-400" onclick="this.nextElementSibling.classList.toggle(\\'hidden\\')">why?</button>';
                   html += '<div class="hidden mt-1 text-xs text-slate-600 font-mono">' + gap.priority_reason + '</div>';
                   html += '</div>';
                 }
