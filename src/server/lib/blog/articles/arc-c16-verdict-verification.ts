@@ -30,19 +30,24 @@ export const article: BlogArticle = {
 <h2 id="level-2">How do you verify without trusting AgentBadge at all?</h2>
 <p>Run the standalone package. <code>@agentbadge/verify-verdict</code> re-checks everything against the chain itself — the memo contract at <code>0x5294E9927c3306DcBaDb03fe70b92e01cCede505</code> on Arc, no call to our API, no account, no key:</p>
 <pre><code>npx @agentbadge/verify-verdict 0x&lt;verdictId-or-txHash&gt;
-# exit 0 — every proof passed
-# exit 1 — invalid, unanchored, or a typed error (rpc_unavailable)</code></pre>
+# exit 0 — every executed proof passed
+# exit 1 — invalid, unanchored, or a typed error (rpc_unavailable)</code></pre><p>Exit 0 is not the same as full coverage. If a check ran in a weaker mode — for example <code>verdict</code> without <code>--artifact</code>, which proves only that a memo exists, not what it says — the run still exits 0 but prints <code>VALID (partial)</code> and sets <code>partial: true</code> in the JSON. Treat <code>partial</code> as "not tamper-proven" and pass <code>--artifact</code> to close the gap.</p>
 <p>Each run produces a <code>proofs[]</code> report — one entry per layer, each <code>ok:true/false</code> plus detail:</p>
 <ul>
 <li><strong>verdict</strong> — the per-verdict memo anchor exists at <code>memoIdFor("eaas", verdictId)</code> and its memo data equals <code>keccak256</code> of the canonical artifact JSON (pass the artifact via <code>--artifact</code> for the tamper check).</li>
-<li><strong>anchor-tx</strong> — the memo event lives inside the transaction you supplied.</li>
+<li><strong>anchor-tx</strong> — a memo event for <em>this</em> verdict lives inside the transaction you supplied. A bare txHash without a verdictId cannot bind anything, so the proof is <code>ok:false</code> with reason <code>no verdictId supplied</code>. A transaction that carries other memos does not prove this verdict; the bound event's memo is reported as <code>artifactHash</code>.</li>
 <li><strong>anchor-head</strong> — the periodic epoch anchor at <code>memoIdFor("chain", "eaas-verdicts", epochSeq)</code> binds <code>(headHash, count, prevAnchoredHeadHash)</code>, chaining epochs.</li>
 <li><strong>chain-recompute</strong> — feed it the chain entries (<code>--entries</code>) and it folds them locally: a broken entry fails with <code>firstBrokenSeq</code>, a verdict absent from the entries fails honest-invalid.</li>
 </ul>
 <p>Every verdict we sign lands in that hash chain at issue time, and the head flushes on-chain per epoch — so the Level-2 verifier answers the only question that matters: <em>is the thing the server showed me the thing the chain holds?</em></p>
 <pre><code>verify-verdict 0x4af3… --artifact verdict.json --entries chain.json
 # proofs: verdict ok | anchor-head ok | chain-recompute ok
-# valid: true — exit 0</code></pre>
+# valid: true — exit 0
+# without --artifact the same run prints:
+# VALID (partial)
+#   coverage: partial — see proof warnings above
+#   ✓ verdict  … warning: artifact not supplied — only memo existence checked
+# exit 0</code></pre>
 <p><img src="/images/blog/arc-c16-verdict-verification-3.png" alt="Terminal output: three proofs ok with a VALID badge; a second frame shows firstBrokenSeq under an INVALID badge" /></p>
 <h2 id="proof-kinds">What is the proof-kind registry?</h2>
 <p>A versioned enum of every on-chain proof the verification surface understands. <code>PROOF_KINDS_V1</code> declares three kinds — <code>verdict</code>, <code>witness</code>, <code>anchor-head</code> — each with its memo format, the verifier rule for <code>ok:true</code>, and a <code>specVersion</code> for negotiation. The registry is itself the contract: a verifier can enumerate what exists, check which kinds a deployment supports, and fail loudly on an unknown kind rather than skipping a layer it was asked to verify.</p>
