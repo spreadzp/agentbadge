@@ -70,12 +70,12 @@ export interface BoardClaimRequest {
 
 export type BoardClaimResult =
   | {
-      ok: true;
-      claim: BountyClaimRecord;
-      card: BoardCardRecord;
-      /** Always "deferred" — provider binds at ops fund-time. */
-      providerBind: "deferred";
-    }
+    ok: true;
+    claim: BountyClaimRecord;
+    card: BoardCardRecord;
+    /** Always "deferred" — provider binds at ops fund-time. */
+    providerBind: "deferred";
+  }
   | { ok: false; status: number; code: ErrorCode; message: string };
 
 function fail(
@@ -199,15 +199,6 @@ export async function claimBoardCard(
       "payout wallet signature verification failed",
     );
   }
-  if (cache) {
-    await cache
-      .set(replayKey, req.cardId, {
-        ttlSec: Math.ceil(BOARD_CLAIM_SIG_TTL_MS() / 1000),
-        tags: ["board", "sig"],
-      })
-      .catch(() => undefined);
-  }
-
   // Store backstops: one claim row per attempt + Q28 cooldown.
   const existing = getClaim(bounty.bountyId, bounty.jobAttempt);
   if (existing) {
@@ -232,6 +223,16 @@ export async function claimBoardCard(
   }
 
   // ─── writes (all off-chain) ──────────────────────────────────
+  // Re-check synchronously: a concurrent claim could have landed during
+  // the awaited sig verify above (audit C-2). Single-thread re-check with
+  // no await between it and upsertClaim closes the interleaving window.
+  if (getClaim(bounty.bountyId, bounty.jobAttempt)) {
+    return fail(
+      409,
+      ErrorCodes.BOUNTY_ALREADY_CLAIMED,
+      "bounty already claimed for this attempt",
+    );
+  }
   const claim: BountyClaimRecord = {
     id: claimKey(bounty.bountyId, bounty.jobAttempt),
     bountyId: bounty.bountyId,
@@ -271,6 +272,18 @@ export async function claimBoardCard(
       providerBind: "deferred",
     },
   });
+
+  // Replay-set AFTER the store writes (audit H-5): on failure the sig
+  // stays usable for a retry instead of being burned for its TTL.
+  // Second concurrent claims are stopped by the claim-row re-check above.
+  if (cache) {
+    await cache
+      .set(replayKey, req.cardId, {
+        ttlSec: Math.ceil(BOARD_CLAIM_SIG_TTL_MS() / 1000),
+        tags: ["board", "sig"],
+      })
+      .catch(() => undefined);
+  }
 
   return {
     ok: true,

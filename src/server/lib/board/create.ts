@@ -60,6 +60,19 @@ export async function createBoardCard(
       message: "title required (≤200 chars)",
     };
   }
+  // Audit M-7: budgetUsdc flows into the createJob outbox payload —
+  // reject NaN / negative / oversized values here, not onchain.
+  if (req.budgetUsdc !== undefined) {
+    const b = Number(req.budgetUsdc);
+    if (!req.budgetUsdc.trim() || !Number.isFinite(b) || b < 0 || b > 1e9) {
+      return {
+        ok: false,
+        status: 400,
+        code: ErrorCodes.INVALID_INPUT,
+        message: "budgetUsdc must be a numeric string in [0, 1e9]",
+      };
+    }
+  }
 
   const cardId = (deps.newCardId ?? newCardId)();
   const bountyId = (deps.newBountyId ?? newBountyId)();

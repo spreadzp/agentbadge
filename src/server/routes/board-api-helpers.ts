@@ -85,8 +85,38 @@ export async function writeIdem(
 ): Promise<void> {
   if (!cache || !key) return;
   await cache
-    .set(`board:idem:${key}`, rec, { ttlSec: IDEM_TTL_SEC, tags: ["board"] })
+    // Tag "idem" (not "board") — mutations invalidateTag("board") to drop
+    // snap caches; idem records must survive that flush (C-1 audit).
+    .set(`board:idem:${key}`, rec, { ttlSec: IDEM_TTL_SEC, tags: ["idem"] })
     .catch(() => undefined);
+}
+
+/**
+ * Audit H-1: every successful mutation enqueues an ops-signer tx — an
+ * unbounded caller could drain treasury gas. Cap mutations per passport
+ * per rolling minute. Fail-open on cache outage (Q10: cache is an
+ * optimization, degraded mode must not break the board).
+ */
+const BOARD_RATE_PER_MIN = 30;
+export async function boardRateLimited(
+  cache: CacheProvider | null,
+  passportId: string,
+): Promise<boolean> {
+  if (!cache) return false;
+  const minute = Math.floor(Date.now() / 60_000);
+  const n = await cache
+    .incr(`board:rate:${passportId}:${minute}`, 70)
+    .catch(() => 0);
+  return n > BOARD_RATE_PER_MIN;
+}
+
+export function denyRate(c: Context) {
+  return errorResponse(
+    c,
+    429,
+    ErrorCodes.RATE_LIMITED,
+    "too many board mutations — retry next minute",
+  );
 }
 
 export function err(r: { code: string; message: string }) {

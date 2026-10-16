@@ -417,3 +417,74 @@ describe("POST /api/board/cards/:id/qa", () => {
     ).toBe(409);
   });
 });
+
+describe("audit fixes (199-14)", () => {
+  async function doClaim(cardId: string, idem?: string) {
+    return post(
+      `/api/board/cards/${cardId}/claim`,
+      { payoutWallet: PAYOUT, claimSig: "0x1", sigExpiresAt: NOW + 60_000 },
+      PROVIDER,
+      idem ? { "idempotency-key": idem } : {},
+    );
+  }
+
+  it("C-1: idem replay survives invalidateTag('board') bump", async () => {
+    const cardId = await createCard();
+    expect((await doClaim(cardId, "e2e-c1")).status).toBe(200);
+    const before = boardStore().listEntries(cardId).length;
+    // Same key must replay — the bump after the first claim must not
+    // have wiped the board:idem record (tag "idem", not "board").
+    const res = await doClaim(cardId, "e2e-c1");
+    expect(res.status).toBe(200);
+    expect(boardStore().listEntries(cardId).length).toBe(before);
+  });
+
+  it("H-2: journal strips wallet/sigHash for anonymous callers", async () => {
+    const cardId = await createCard();
+    await doClaim(cardId);
+    const anon = await (await get(`/api/board/cards/${cardId}/journal`)).json();
+    const claimEntry = anon.entries.find(
+      (e: { kind: string }) => e.kind === "claim",
+    );
+    expect(claimEntry.payload.payoutWallet).toBeUndefined();
+    const opsRes = await get(`/api/board/cards/${cardId}/journal`, OPS);
+    const opsJson = await opsRes.json();
+    expect(
+      opsJson.entries.find((e: { kind: string }) => e.kind === "claim").payload
+        .payoutWallet,
+    ).toBe(PAYOUT.toLowerCase());
+  });
+
+  it("H-1: 31st mutation in a minute → 429", async () => {
+    for (let i = 0; i < 30; i++) {
+      await post("/api/board/cards", { title: `r${i}`, spec: "s" }, OPS);
+    }
+    const res = await post(
+      "/api/board/cards",
+      { title: "r31", spec: "s" },
+      OPS,
+    );
+    expect(res.status).toBe(429);
+  });
+
+  it("M-7: budgetUsdc NaN/negative → 400", async () => {
+    expect(
+      (
+        await post(
+          "/api/board/cards",
+          { title: "b", spec: "s", budgetUsdc: "NaN" },
+          OPS,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await post(
+          "/api/board/cards",
+          { title: "b", spec: "s", budgetUsdc: "-5" },
+          OPS,
+        )
+      ).status,
+    ).toBe(400);
+  });
+});

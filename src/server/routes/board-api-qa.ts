@@ -12,7 +12,9 @@ import { ErrorCodes } from "../lib/error-codes";
 import { tryGetCache } from "../lib/cache";
 import { recordBoardQaVerdict } from "../lib/board/qa";
 import {
+  boardRateLimited,
   denyPassport,
+  denyRate,
   denyTier,
   type AgentCtx,
 } from "./board-api-helpers";
@@ -31,6 +33,8 @@ export function createBoardQaRoutes(deps: {
       const agent = c.get("agent");
       if (!agent?.agentId) return denyPassport(c);
       if (agent.tier !== "ops") return denyTier(c, "qa verdict");
+      const passportId = String(agent.agentId);
+      if (await boardRateLimited(cache, passportId)) return denyRate(c);
       const body = (await c.req.json().catch(() => null)) as Record<
         string,
         unknown
@@ -50,8 +54,8 @@ export function createBoardQaRoutes(deps: {
           verdict,
           reasonCodes: Array.isArray(body?.reasonCodes)
             ? body.reasonCodes
-                .map((x) => str(x, 60))
-                .filter((x): x is string => !!x)
+              .map((x) => str(x, 60))
+              .filter((x): x is string => !!x)
             : undefined,
           actor: String(agent.agentId),
         },

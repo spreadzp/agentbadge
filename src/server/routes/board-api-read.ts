@@ -64,7 +64,26 @@ export function createBoardReadRoutes(deps: { cache?: CacheProvider | null } = {
           "unknown cardId",
         );
       }
-      return c.json({ entries: st.listEntries(card.cardId) });
+      // Audit H-2: journal payloads carry payoutWallet/reviewerWallet/
+      // sigHash — only spec-privileged viewers (ops/reviewer/holder)
+      // may see them; everyone else gets the sanitized projection.
+      const privileged = canSeeSpec(card, c.get("agent"));
+      const SENSITIVE = new Set([
+        "payoutWallet",
+        "reviewerWallet",
+        "sigHash",
+      ]);
+      const entries = st.listEntries(card.cardId).map((e) =>
+        privileged || !e.payload
+          ? e
+          : {
+            ...e,
+            payload: Object.fromEntries(
+              Object.entries(e.payload).filter(([k]) => !SENSITIVE.has(k)),
+            ),
+          },
+      );
+      return c.json({ entries });
     },
   );
 

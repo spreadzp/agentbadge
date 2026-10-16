@@ -29,7 +29,9 @@ import { submitBoardWork } from "../lib/board/submit";
 import { cancelBoardCard } from "../lib/board/cancel";
 import {
   denyPassport,
+  denyRate,
   denyTier,
+  boardRateLimited,
   err,
   readIdem,
   writeIdem,
@@ -67,6 +69,8 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
     const agent = c.get("agent");
     if (!agent?.agentId) return denyPassport(c);
     if (agent.tier !== "ops") return denyTier(c, "create");
+    if (await boardRateLimited(cache, String(agent.agentId)))
+      return denyRate(c);
     const body = (await c.req.json().catch(() => null)) as Record<
       string,
       unknown
@@ -99,6 +103,8 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
     async (c) => {
       const agent = c.get("agent");
       if (!agent?.agentId) return denyPassport(c);
+      if (await boardRateLimited(cache, String(agent.agentId)))
+        return denyRate(c);
       const body = (await c.req.json().catch(() => null)) as Record<
         string,
         unknown
@@ -144,6 +150,8 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
     async (c) => {
       const agent = c.get("agent");
       if (!agent?.agentId) return denyPassport(c);
+      if (await boardRateLimited(cache, String(agent.agentId)))
+        return denyRate(c);
       const body = (await c.req.json().catch(() => null)) as Record<
         string,
         unknown
@@ -175,6 +183,8 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
     async (c) => {
       const agent = c.get("agent");
       if (!agent?.agentId) return denyPassport(c);
+      if (await boardRateLimited(cache, String(agent.agentId)))
+        return denyRate(c);
       const body = (await c.req.json().catch(() => null)) as Record<
         string,
         unknown
@@ -210,7 +220,15 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
             reviewSig,
             sigExpiresAt,
           },
-          deps,
+          {
+            ...deps,
+            // Audit H-3: never fall back to `() => false` — the caller's
+            // own passport must carry reviewer tier when no dep is wired.
+            isReviewer:
+              deps.isReviewer ??
+              ((p: string) =>
+                p === String(agent.agentId) && agent.tier === "reviewer"),
+          },
         );
         if (!result.ok) {
           return { status: result.status as HttpStatus, body: err(result) };
@@ -227,6 +245,8 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
     async (c) => {
       const agent = c.get("agent");
       if (!agent?.agentId) return denyPassport(c);
+      if (await boardRateLimited(cache, String(agent.agentId)))
+        return denyRate(c);
       if (agent.tier !== "ops") return denyTier(c, "cancel");
       const result = await cancelBoardCard(
         c.req.param("id") ?? "",

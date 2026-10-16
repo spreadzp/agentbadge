@@ -19,7 +19,6 @@
 import type { CacheProvider } from "@agentbadge/cache";
 
 import { ErrorCodes, type ErrorCode } from "../error-codes";
-import { tryGetCache } from "../cache";
 import { assertBountyTransition } from "../bounties/lifecycle";
 import {
   bountyStoreReady,
@@ -30,7 +29,7 @@ import {
   upsertClaim,
   type BountyClaimRecord,
 } from "../bounties/store";
-import { boardStore, type BoardStoreBackend } from "./store";
+import { boardStore } from "./store";
 import { assertColumnTransition } from "./columns";
 import {
   boardIdempotencyKey,
@@ -42,9 +41,6 @@ import { BOARD_MAX_ATTEMPTS } from "./claim-sig";
 
 export { BOARD_FIX_TTL_MS } from "./review";
 export { BOARD_MAX_ATTEMPTS } from "./claim-sig";
-
-/** Lock TTL for the fix-deadline sweeper tick. */
-const SWEEP_LOCK_TTL_SEC = 60;
 
 export interface BugLoopDeps {
   cache?: CacheProvider | null;
@@ -142,10 +138,57 @@ export async function resubmitBoardFix(
     return fail(409, ErrorCodes.INVALID_STATE, "no lease for this attempt");
   }
 
+  // Audit C-3: the payout wallet is carried forward unsigned — verify it
+  // against the append-only claim journal entry so a tampered lease row
+  // cannot redirect funds.
+  const claimEntry = st
+    .listEntries(card.cardId)
+    .find(
+      (e) => e.kind === "claim" && e.attempt === bounty.jobAttempt,
+    );
+  const journaledWallet =
+    typeof claimEntry?.payload?.payoutWallet === "string"
+      ? claimEntry.payload.payoutWallet
+      : undefined;
+  if (
+    journaledWallet !== undefined &&
+    journaledWallet !== lease.payoutWallet.toLowerCase()
+  ) {
+    return fail(
+      409,
+      ErrorCodes.INVALID_STATE,
+      "lease payout wallet diverges from the claim journal entry",
+    );
+  }
+
   // New attempt: same passport + payout carry the lease forward; the
   // provider binds onchain via the ops setProvider outbox row.
   const attempt = bounty.jobAttempt + 1;
-  upsertBounty({ ...bounty, status: "submitted", jobAttempt: attempt });
+  // Audit H-4: a chain-rejected attempt (bounty "failed") must walk the
+  // lifecycle open→claimed→submitted rather than jumping straight to
+  // submitted. A QA-failed attempt stays "submitted" (no chain verdict),
+  // so there is nothing to replay — just bump the attempt.
+  if (bounty.status === "failed") {
+    const open = assertBountyTransition(bounty.status, "reopen");
+    if (!open.ok) {
+      return fail(
+        409,
+        ErrorCodes.INVALID_STATE,
+        open.reason ?? "cannot reopen failed attempt",
+      );
+    }
+    upsertBounty({ ...bounty, status: "open", jobAttempt: attempt });
+    upsertBounty({ ...bounty, status: "claimed", jobAttempt: attempt });
+    upsertBounty({ ...bounty, status: "submitted", jobAttempt: attempt });
+  } else if (bounty.status === "submitted") {
+    upsertBounty({ ...bounty, status: "submitted", jobAttempt: attempt });
+  } else {
+    return fail(
+      409,
+      ErrorCodes.INVALID_STATE,
+      `fix resubmit expects failed|submitted bounty, got ${bounty.status}`,
+    );
+  }
   const claim: BountyClaimRecord = {
     id: claimKey(bounty.bountyId, attempt),
     bountyId: bounty.bountyId,
@@ -195,93 +238,4 @@ export interface SweepResult {
   skipped?: boolean;
 }
 
-/**
- * One tick over the expired fix deadlines. Reopen keeps the card on
- * the board (todo, attempt+1); exhausting BOARD_MAX_ATTEMPTS cancels
- * the card and enqueues claimRefund so the client recovers the escrow.
- */
-export async function sweepBoardFixLoop(
-  deps: BugLoopDeps = {},
-): Promise<SweepResult> {
-  const st = boardStore();
-  await st.ready();
-  await bountyStoreReady();
-  const now = (deps.now ?? Date.now)();
-  const cache = deps.cache === null ? null : (deps.cache ?? tryGetCache());
-
-  if (cache) {
-    const n = await cache
-      .incr("board:sweep:lock", SWEEP_LOCK_TTL_SEC)
-      .catch(() => 0);
-    if (n > 1) return { swept: [], skipped: true };
-  }
-
-  const swept: string[] = [];
-  for (const card of st.listExpiredFix(now)) {
-    const bounty = getBounty(card.bountyId);
-    if (!bounty) continue;
-    if (sweepCardExpired(st, card, bounty, now)) swept.push(card.cardId);
-  }
-  return { swept };
-}
-
-function sweepCardExpired(
-  st: BoardStoreBackend,
-  card: BoardCardRecord,
-  bounty: NonNullable<ReturnType<typeof getBounty>>,
-  now: number,
-): boolean {
-  const attempt = bounty.jobAttempt;
-  if (attempt >= BOARD_MAX_ATTEMPTS()) {
-    // Cap exhausted — cancel the card and refund the client escrow.
-    upsertBounty({ ...bounty, status: "rejected" });
-    st.patchCard(card.cardId, { column: "cancelled", fixDeadlineMs: null });
-    st.enqueueOutbox({
-      id: newOutboxId(),
-      kind: "claimRefund",
-      cardId: card.cardId,
-      jobAttempt: attempt,
-      idempotencyKey: boardIdempotencyKey(card.cardId, attempt, "claimRefund"),
-      status: "pending",
-      attempts: 0,
-      payload: { jobId: bounty.onchainJobId, reason: "fix_deadline_exceeded" },
-      createdAt: new Date(now).toISOString(),
-    });
-    st.appendEntry({
-      id: newEntryId(),
-      cardId: card.cardId,
-      attempt,
-      seq: st.nextEntrySeq(card.cardId),
-      kind: "cancel",
-      actor: "sweeper",
-      atMs: now,
-      payload: { reason: "fix_deadline_exceeded", attempt },
-    });
-    return true;
-  }
-
-  // Reopen: bounty open on a fresh attempt, card back to todo.
-  const next = attempt + 1;
-  const lc = assertBountyTransition(bounty.status, "reopen");
-  upsertBounty({
-    ...bounty,
-    status: lc.ok ? "open" : "open",
-    jobAttempt: next,
-  });
-  st.patchCard(card.cardId, {
-    column: "todo",
-    fixDeadlineMs: null,
-    currentPassportId: "",
-  });
-  st.appendEntry({
-    id: newEntryId(),
-    cardId: card.cardId,
-    attempt: next,
-    seq: st.nextEntrySeq(card.cardId),
-    kind: "reopen",
-    actor: "sweeper",
-    atMs: now,
-    payload: { reason: "fix_deadline_expired", attempt: next },
-  });
-  return true;
-}
+export { sweepBoardFixLoop } from "./bug-sweep";
