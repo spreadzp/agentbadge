@@ -82,6 +82,8 @@ import { venueApiRoutes } from "./venue-api";
 import { fxDeltaRoutes } from "./fx-delta-api";
 import { fxDeltaVerifyRoutes } from "./fx-delta-verify";
 import { bountyApiRoutes } from "./bounty-api";
+import { boardApiRoutes } from "./board-api";
+import { createBoardReadRoutes } from "./board-api-read";
 import { venuePageRoutes } from "./venue-pages";
 import { seedVenueOffers } from "../lib/venue/store";
 
@@ -145,6 +147,8 @@ export function registerApiRoutes(app: Hono): void {
   app.route("/api", rulesApiRoutes);
   app.route("/api", scanRuleRoutes);
   app.route("/", fxDeltaRoutes); // 191-5: /api/fx-delta/*
+  app.route("/", createBoardReadRoutes()); // 199-11: /api/board/cards reads
+  app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations
   app.route("/", fxDeltaVerifyRoutes); // 191-9: /api/fx-delta/verify/:id
   app.route("/api", bountyApiRoutes); // 197-6: /api/bounties/:id/claim
 }
