@@ -74,7 +74,12 @@ export function resolveVenueNetwork(): VenueNetwork {
   return {
     name,
     chain: ARC_TESTNET,
-    agenticCommerce: ARC_CONTRACTS.agenticCommerce,
+    // ERC8183_REF_ADDRESS (EPIC-199): our vendored ERC-8183 proxy deploy;
+    // falls back to Circle's protocol deploy when unset.
+    // Ledger: contracts/deployments/arc-testnet-erc8183.json
+    agenticCommerce:
+      (process.env.ERC8183_REF_ADDRESS as `0x${string}` | undefined) ??
+      ARC_CONTRACTS.agenticCommerce,
     identityRegistry: ARC_CONTRACTS.identityRegistry,
     reputationRegistry: ARC_CONTRACTS.reputationRegistry,
     memo: ARC_CONTRACTS.memo,
