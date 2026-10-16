@@ -14,7 +14,7 @@
  * alerts (dedupe via meta key per attempt).
  */
 import type { Hex } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { sendAsRole, type VenueRole } from "../venue/lifecycle-sign";
 import {
@@ -173,8 +173,14 @@ export interface BountySweepResult {
   reopened: number;
   noClaimAlerts: number;
   skipped?: boolean;
+  /** Claims deferred to the board sweeper (skipClaim) this tick. */
+  deferred?: number;
   errors: string[];
 }
+
+/** arc-audit H-2: cap claims processed per tick — an unbounded backlog
+ * after an outage would stall the event loop and starve later claims. */
+const MAX_SWEEP_PER_TICK = 50;
 
 export async function sweepBountyLeases(
   deps: SweepDeps = {},
@@ -195,8 +201,23 @@ export async function sweepBountyLeases(
     expired: 0, reopened: 0, noClaimAlerts: 0, errors: [],
   };
 
-  for (const claim of listExpiredClaims(now())) {
+  const expired = listExpiredClaims(now());
+  if (expired.length > MAX_SWEEP_PER_TICK) {
+    res.errors.push(
+      `sweep backlog: ${expired.length} expired claims, capped at ` +
+      `${MAX_SWEEP_PER_TICK}/tick`,
+    );
+  }
+  for (const claim of expired.slice(0, MAX_SWEEP_PER_TICK)) {
     try {
+      // arc-audit C-1: board-deferred claims must not be silent —
+      // count them; if the board sweeper dies, the deferred backlog
+      // keeps surfacing here every tick instead of locking escrow
+      // unnoticed.
+      if (deps.skipClaim?.(claim)) {
+        res.deferred = (res.deferred ?? 0) + 1;
+        continue;
+      }
       const did = await sweepClaim(claim, net, { now, alert, ...deps },
         res.errors);
       if (did) {
@@ -206,6 +227,11 @@ export async function sweepBountyLeases(
     } catch (err) {
       res.errors.push(`${claim.id}: ${String(err).slice(0, 120)}`);
     }
+  }
+  if (res.deferred) {
+    res.errors.push(
+      `${res.deferred} claim(s) deferred to sweepBoardClaimLeases`,
+    );
   }
 
   // 197-19 run-2 (Q38-A): a QA-failed attempt is attempt-terminal too —

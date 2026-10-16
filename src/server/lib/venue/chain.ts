@@ -7,6 +7,7 @@ import {
   createPublicClient,
   decodeEventLog,
   http,
+  isAddress,
   parseAbi,
   type PublicClient,
 } from "viem";
@@ -53,6 +54,42 @@ const arcExplorers: Record<VenueNetworkName, string> = {
   testnet: "https://testnet.arcscan.app",
 };
 
+/** arc-audit C-2: every signed tx goes through this URL — a poisoned env
+ * must not silently redirect signing to an attacker-controlled node. */
+const ARC_RPC_HOST_SUFFIXES = [".arc.io", ".blockdaemon.com"];
+const ARC_RPC_LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+
+function validateArcRpcUrl(raw: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`ARC_RPC_URL is not a valid URL: ${raw}`);
+  }
+  const local = ARC_RPC_LOCAL_HOSTS.has(url.hostname);
+  const ok = local
+    ? url.protocol === "http:" || url.protocol === "https:"
+    : url.protocol === "https:";
+  if (!ok) throw new Error(`ARC_RPC_URL must be https${local ? "(s)" : ""}: ${raw}`);
+  if (!local && !ARC_RPC_HOST_SUFFIXES.some((s) => url.hostname.endsWith(s))) {
+    throw new Error(
+      `ARC_RPC_URL hostname not in allowlist (${ARC_RPC_HOST_SUFFIXES.join(", ")}): ${url.hostname}`,
+    );
+  }
+  return raw;
+}
+
+/** arc-audit M-2: malformed ERC8183_REF_ADDRESS silently redirects all
+ * escrow ops — fall back to the known protocol deploy instead. */
+function validateRefAddress(raw: string | undefined): `0x${string}` | undefined {
+  if (!raw) return undefined;
+  if (!isAddress(raw)) {
+    console.warn(`[venue] ERC8183_REF_ADDRESS invalid, using default: ${raw}`);
+    return undefined;
+  }
+  return raw as `0x${string}`;
+}
+
 export function resolveVenueNetwork(): VenueNetwork {
   const name: VenueNetworkName =
     process.env.ARC_NETWORK === "mainnet" ? "mainnet" : "testnet";
@@ -75,18 +112,21 @@ export function resolveVenueNetwork(): VenueNetwork {
     name,
     // rpc.testnet.arc.network is geo-blocked (CF 1009) — ARC_RPC_URL
     // override, blockdaemon testnet fallback (contracts/.env convention).
+    // Validated: this URL receives every signed tx — a poisoned env
+    // could exfiltrate raw payloads (arc-audit C-2).
     chain: {
       ...ARC_TESTNET,
-      rpcUrl:
+      rpcUrl: validateArcRpcUrl(
         process.env.ARC_RPC_URL ??
         "https://rpc.blockdaemon.testnet.arc.io",
+      ),
     },
     // ERC8183_REF_ADDRESS (EPIC-199): our vendored ERC-8183 proxy deploy;
     // falls back to Circle's protocol deploy when unset.
     // Ledger: contracts/deployments/arc-testnet-erc8183.json
-    agenticCommerce:
-      (process.env.ERC8183_REF_ADDRESS as `0x${string}` | undefined) ??
-      ARC_CONTRACTS.agenticCommerce,
+    agenticCommerce: validateRefAddress(
+      process.env.ERC8183_REF_ADDRESS,
+    ) ?? ARC_CONTRACTS.agenticCommerce,
     identityRegistry: ARC_CONTRACTS.identityRegistry,
     reputationRegistry: ARC_CONTRACTS.reputationRegistry,
     memo: ARC_CONTRACTS.memo,
@@ -97,12 +137,23 @@ export function resolveVenueNetwork(): VenueNetwork {
   };
 }
 
-let _client: { network: VenueNetworkName; pub: PublicClient } | null = null;
+let _client: {
+  network: VenueNetworkName;
+  rpcUrl: string;
+  pub: PublicClient;
+} | null = null;
 
 export function publicClient(net: VenueNetwork): PublicClient {
-  if (!_client || _client.network !== net.name) {
+  // Keyed by name AND rpcUrl — an env change must not leave reads
+  // pointed at the stale endpoint (arc-audit H-1).
+  if (
+    !_client ||
+    _client.network !== net.name ||
+    _client.rpcUrl !== net.chain.rpcUrl
+  ) {
     _client = {
       network: net.name,
+      rpcUrl: net.chain.rpcUrl,
       pub: createPublicClient({
         transport: http(net.chain.rpcUrl, { timeout: 30_000 }),
       }) as PublicClient,
