@@ -101,7 +101,10 @@ export async function sendAsRole(
   const hashes: Hex[] = [];
   for (const tx of txs) {
     const hash = await signer.send(tx);
-    await publicClient.waitForTransactionReceipt({ hash });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    // A mined-but-reverted tx still has a hash — treating it as success
+    // would confirm outbox legs that never executed onchain.
+    if (receipt.status !== "success") return null;
     hashes.push(hash);
   }
   return hashes;

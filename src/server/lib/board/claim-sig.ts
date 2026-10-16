@@ -17,9 +17,11 @@ import {
 export const BOARD_CLAIM_TTL_MS = () =>
   Number(process.env.BOUNTY_CLAIM_TTL_MS ?? 2 * 60 * 60 * 1000);
 
-/** Board attempt cap — BOARD_MAX_ATTEMPTS=4 (D-199-11). */
+/** Board attempt cap — BOARD_MAX_ATTEMPTS=4 (D-199-11). Absolute ceiling
+ * 10: each attempt can burn budgetUsdc of deployer escrow — an unbounded
+ * env is a treasury drain vector (arc-audit H-1). */
 export const BOARD_MAX_ATTEMPTS = () =>
-  Number(process.env.BOARD_MAX_ATTEMPTS ?? 4);
+  Math.min(Number(process.env.BOARD_MAX_ATTEMPTS ?? 4), 10);
 
 /** Freshness window for the payout-bind signature. */
 export const BOARD_CLAIM_SIG_TTL_MS = () =>

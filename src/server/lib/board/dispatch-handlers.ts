@@ -1,9 +1,8 @@
 /**
  * SLICE-199-13: per-kind leg handlers for the ChainTxOutbox dispatcher
  * (split out of dispatch.ts for the 300-line cap). Each handler
- * pre-flights onchain state and composes only the MISSING legs — a
- * resend after crash between broadcast and patch is a no-op on the
- * already-executed legs (D-199-7 reconciler duty).
+ * pre-flights onchain state, composes only the MISSING legs — resend
+ * after crash is a no-op on executed legs (D-199-7 reconciler duty).
  */
 import { parseUnits, type Hex } from "viem";
 
@@ -159,9 +158,9 @@ export async function handleBindOrFund(
   const job = await readJob(deps, BigInt(bounty.onchainJobId!), net);
   if (!job) return fail(`getJob(${bounty.onchainJobId}) failed`);
   if (job.status >= REF_STATUS.Submitted) return noop(); // already past bind+fund
+  // Payout authoritative from claim — payload wallet must never override.
   const claim = getClaim(bounty.bountyId, bounty.jobAttempt);
-  const payout = (row.payload?.payoutWallet as `0x${string}` | undefined) ??
-    (claim?.payoutWallet as `0x${string}` | undefined);
+  const payout = claim?.payoutWallet as `0x${string}` | undefined;
   if (!payout) return fail("no payoutWallet (claim missing)");
   const providerEoa = serverRoleAddress("provider") as `0x${string}` | null;
   if (!providerEoa) return fail(ERR_NO_SIGNER + ": provider");
@@ -188,8 +187,7 @@ export async function handleSubmit(
     // Job unbound/unfunded → the submit row carries the whole leg
     // (spec: "ops setProvider+fund → agent submit (ops-signed)").
     const claim = getClaim(bounty.bountyId, bounty.jobAttempt);
-    const payout = (row.payload?.payoutWallet as `0x${string}` | undefined) ??
-      (claim?.payoutWallet as `0x${string}` | undefined);
+    const payout = claim?.payoutWallet as `0x${string}` | undefined;
     if (!payout) return fail("no payoutWallet (claim missing)");
     const providerEoa = serverRoleAddress("provider") as `0x${string}` | null;
     if (!providerEoa) return fail(ERR_NO_SIGNER + ": provider");
@@ -214,7 +212,9 @@ export async function handleReviewTx(
   const jobId = row.payload?.jobId ?? bounty?.onchainJobId;
   if (!jobId) return fail("no jobId");
   const job = await readJob(deps, BigInt(String(jobId)), net);
-  if (job && job.status >= REF_STATUS.Completed) return noop();
+  // Degraded-RPC guard — broadcasting to unknown state burns revert gas.
+  if (!job) return fail(`getJob(${jobId}) unavailable`);
+  if (job.status >= REF_STATUS.Completed) return noop();
   const reason = (row.payload?.reasonHash as Hex) ??
     (("0x" + "00".repeat(32)) as Hex);
   const tx =
