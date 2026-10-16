@@ -82,7 +82,8 @@ export interface BoardCardRecord {
 export interface BoardCardPatch {
   column?: BoardColumn;
   currentPassportId?: string;
-  fixDeadlineMs?: number;
+  /** `null` clears the field (fix resubmitted / card reopened). */
+  fixDeadlineMs?: number | null;
   payload?: Record<string, unknown>;
 }
 

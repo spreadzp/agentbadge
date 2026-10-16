@@ -34,7 +34,11 @@ export function applyCardPatch(
     next.currentPassportId = patch.currentPassportId;
   }
   if (patch.fixDeadlineMs !== undefined) {
-    next.fixDeadlineMs = patch.fixDeadlineMs;
+    if (patch.fixDeadlineMs === null) {
+      delete next.fixDeadlineMs;
+    } else {
+      next.fixDeadlineMs = patch.fixDeadlineMs;
+    }
   }
   if (patch.payload !== undefined) {
     next.payload = { ...card.payload, ...patch.payload };
