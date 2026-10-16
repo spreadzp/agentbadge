@@ -154,6 +154,7 @@ flowchart LR
   server_wiring["server/wiring"] --> pkg_pass_auth["pkg: pass-auth"]
   server_wiring["server/wiring"] --> pkg_passport["pkg: passport"]
   server_wiring["server/wiring"] --> pkg_passport_logger["pkg: passport/logger"]
+  server_wiring["server/wiring"] --> pkg_passport_payment["pkg: passport/payment"]
   server_wiring["server/wiring"] --> server["server"]
   server_wiring["server/wiring"] --> server_lib["server/lib"]
   server_wiring["server/wiring"] --> server_metrics["server/metrics"]
