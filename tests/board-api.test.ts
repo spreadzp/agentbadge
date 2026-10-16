@@ -17,6 +17,7 @@ import { InMemoryCache } from "@agentbadge/cache";
 
 import { createBoardRoutes } from "../src/server/routes/board-api";
 import { createBoardReadRoutes } from "../src/server/routes/board-api-read";
+import { createBoardQaRoutes } from "../src/server/routes/board-api-qa";
 import { boardStore } from "../src/server/lib/board/store";
 import { useMemoryBoardStoreForTesting } from "../src/server/lib/board/json-store";
 import {
@@ -40,6 +41,7 @@ function makeApp() {
     if (currentAgent) c.set("agent", currentAgent);
     await next();
   });
+  app.route("/", createBoardQaRoutes({ cache, now: () => NOW }));
   app.route("/", createBoardReadRoutes({ cache }));
   app.route(
     "/",
@@ -363,5 +365,55 @@ describe("idempotency + snapshot cache", () => {
       cards: { column: string }[];
     };
     expect(l2.cards[0].column).toBe("in_progress");
+  });
+});
+
+describe("POST /api/board/cards/:id/qa", () => {
+  function seedTesting() {
+    return createCard().then((cardId) => {
+      const card = boardStore().getCard(cardId)!;
+      upsertBounty({ ...getBounty(card.bountyId)!, status: "submitted" });
+      boardStore().patchCard(cardId, {
+        column: "testing",
+        currentPassportId: "ps_provider",
+      });
+      return cardId;
+    });
+  }
+
+  it("ops qaPass → review + journal qa", async () => {
+    const cardId = await seedTesting();
+    const res = await post(`/api/board/cards/${cardId}/qa`, { verdict: "pass" }, OPS);
+    expect(res.status).toBe(200);
+    expect(boardStore().getCard(cardId)?.column).toBe("review");
+    expect(boardStore().listEntries(cardId).at(-1)?.kind).toBe("qa");
+  });
+
+  it("ops qaFail → bug + fixDeadline + journal bug", async () => {
+    const cardId = await seedTesting();
+    const res = await post(
+      `/api/board/cards/${cardId}/qa`,
+      { verdict: "fail", reasonCodes: ["lint_broken"] },
+      OPS,
+    );
+    expect(res.status).toBe(200);
+    const card = boardStore().getCard(cardId)!;
+    expect(card.column).toBe("bug");
+    expect(card.fixDeadlineMs).toBeGreaterThan(NOW);
+    expect(boardStore().listEntries(cardId).at(-1)?.kind).toBe("bug");
+  });
+
+  it("non-ops → 403; wrong column → 409; bad verdict → 400", async () => {
+    const cardId = await seedTesting();
+    expect(
+      (await post(`/api/board/cards/${cardId}/qa`, { verdict: "pass" }, PROVIDER)).status,
+    ).toBe(403);
+    expect(
+      (await post(`/api/board/cards/${cardId}/qa`, { verdict: "meh" }, OPS)).status,
+    ).toBe(400);
+    const todoId = await createCard();
+    expect(
+      (await post(`/api/board/cards/${todoId}/qa`, { verdict: "pass" }, OPS)).status,
+    ).toBe(409);
   });
 });

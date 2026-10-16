@@ -40,7 +40,7 @@ import {
 
 export interface BoardRouteDeps
   extends BoardClaimDeps,
-    BoardReviewDeps {
+  BoardReviewDeps {
   now?: () => number;
 }
 
@@ -220,7 +220,6 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
       });
     },
   );
-
   // ─── cancel (ops tier) ──────────────────────────────────────
   app.post(
     "/api/board/cards/:id/cancel",
