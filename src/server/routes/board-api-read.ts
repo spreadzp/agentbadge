@@ -73,16 +73,28 @@ export function createBoardReadRoutes(deps: { cache?: CacheProvider | null } = {
         "reviewerWallet",
         "sigHash",
       ]);
-      const entries = st.listEntries(card.cardId).map((e) =>
-        privileged || !e.payload
-          ? e
-          : {
-            ...e,
-            payload: Object.fromEntries(
-              Object.entries(e.payload).filter(([k]) => !SENSITIVE.has(k)),
-            ),
-          },
+      // 199-13 D-199-7: chain txHash joins at read — entries stay
+      // append-only; each mutation's chain leg writes its hash to the
+      // outbox row the entry links to via payload.outboxId.
+      const outboxById = new Map(
+        st.listOutbox({ cardId: card.cardId }).map((o) => [o.id, o.txHash]),
       );
+      const entries = st.listEntries(card.cardId).map((e) => {
+        const txHash =
+          e.txHash ??
+          (e.payload?.outboxId
+            ? outboxById.get(e.payload.outboxId as string)
+            : undefined);
+        const withTx = txHash ? { ...e, txHash } : e;
+        return privileged || !withTx.payload
+          ? withTx
+          : {
+            ...withTx,
+            payload: Object.fromEntries(
+              Object.entries(withTx.payload).filter(([k]) => !SENSITIVE.has(k)),
+            ),
+          };
+      });
       return c.json({ entries });
     },
   );

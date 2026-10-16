@@ -10,6 +10,9 @@
 import { logger } from "@agentbadge/passport";
 
 import { sweepBountyLeases } from "../lib/bounties/sweep";
+import { sweepBoardClaimLeases } from "../lib/board/claim-sweep";
+import { sweepBoardFixLoop } from "../lib/board/bug-sweep";
+import { boardStore } from "../lib/board/store";
 
 export {
   sweepBountyLeases,
@@ -36,10 +39,42 @@ export function startBountyLeaseSweeper(opts?: {
     logger.warn("Bounty lease sweeper already running");
     return;
   }
-  const baseInterval = opts?.intervalMs ?? DEFAULT_INTERVAL_MS;
+  const baseInterval =
+    opts?.intervalMs ??
+    (Number(process.env.BOUNTY_SWEEPER_INTERVAL_MS) || DEFAULT_INTERVAL_MS);
   const tick = async () => {
     try {
-      const result = await sweepBountyLeases();
+      // 199-13 D-199-7: board paths run first, sequentially — the
+      // generic sweep's inline Circle-ABI reject leg would revert on
+      // the ref deploy. Board claims expire through the outbox instead.
+      const board = await sweepBoardClaimLeases().catch((e) => {
+        logger.error("Board claim sweep error", {
+          error: e instanceof Error ? e.message : String(e),
+        });
+        return null;
+      });
+      const fixes = await sweepBoardFixLoop().catch((e) => {
+        logger.error("Board fix sweep error", {
+          error: e instanceof Error ? e.message : String(e),
+        });
+        return null;
+      });
+      if (board && (board.expired > 0 || board.errors.length > 0)) {
+        logger.info("Board claim sweeper tick", {
+          expired: board.expired,
+          reopened: board.reopened,
+          cancelled: board.cancelled,
+          errors: board.errors.length,
+        });
+      }
+      if (fixes && fixes.swept.length > 0) {
+        logger.info("Board fix sweeper tick", { swept: fixes.swept.length });
+      }
+      const st = boardStore();
+      const result = await sweepBountyLeases({
+        skipClaim: (claim) =>
+          !!st.getCardByBounty(claim.bountyId),
+      });
       if (result.expired > 0 || result.errors.length > 0) {
         logger.info("Bounty lease sweeper tick", {
           expired: result.expired,
@@ -53,7 +88,9 @@ export function startBountyLeaseSweeper(opts?: {
       });
     }
     const jitter = Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2;
-    sweeperTimer = setTimeout(tick, baseInterval + jitter);
+    // Jitter can exceed a short env interval → negative delay clamps to
+    // 1ms and spins; floor at 1s.
+    sweeperTimer = setTimeout(tick, Math.max(1000, baseInterval + jitter));
   };
   // First tick +30s after boot (pattern: escrow-reconciler).
   sweeperTimer = setTimeout(tick, 30_000);

@@ -12,6 +12,7 @@ import { startEscrowReconciler } from "../services/escrow-reconciler";
 import { startBountyLeaseSweeper } from "../services/bounty-lease-sweeper";
 import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
+import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { captureError } from "../lib/sentry";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
@@ -42,6 +43,12 @@ export function startBackgroundJobs(): void {
   // 197-9: QA runner (untrusted sha → isolated build/test/lint).
   // Explicit opt-in only: BOUNTY_QA_RUNNER_ENABLED=true.
   startBountyQaRunner();
+
+  // 199-13 D-199-7: ChainTxOutbox dispatcher — drains pending rows and
+  // ships the chain leg (createJob/setProvider+fund/submit/complete/
+  // reject/claimRefund/giveFeedback) as the ops signer. Self-gates on
+  // ERC8183_REF_ADDRESS + BOARD_DISPATCHER_ENABLED (default on).
+  startBoardOutboxDispatcher();
 
   // 153-5: daily venue subscription sweep (active→grace→expired) —
   // env-gated with the venue feature flag + ARC_BV_SWEEPER_ENABLED.

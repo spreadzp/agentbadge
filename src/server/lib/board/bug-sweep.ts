@@ -24,7 +24,10 @@ import {
 import { BOARD_MAX_ATTEMPTS } from "./claim-sig";
 import type { BugLoopDeps } from "./bug-loop";
 
-const SWEEP_LOCK_TTL_SEC = 60;
+// Covers one tick's work (<2s), not the interval — a 60s hold skipped
+// ~6 ticks and delayed expired-fix reopens past the deadline window.
+// Cross-replica doubles are still deduped by the outbox idempotencyKey.
+const SWEEP_LOCK_TTL_SEC = 5;
 
 export interface SweepDeps {
   now?: () => number;
@@ -105,17 +108,58 @@ function sweepCardExpired(
 
   // Reopen: bounty open on a fresh attempt, card back to todo.
   const next = attempt + 1;
-  const lc = assertBountyTransition(bounty.status, "reopen");
+  // A QA-failed attempt keeps the bounty "submitted" for the whole fix
+  // window (bug-loop H-4) — the lapsed deadline IS the terminal verdict,
+  // so walk the lifecycle submitted→failed before failed|expired→reopen.
+  const effective =
+    bounty.status === "submitted"
+      ? assertBountyTransition(bounty.status, "fail").ok
+        ? "failed"
+        : bounty.status
+      : bounty.status;
+  const lc = assertBountyTransition(effective, "reopen");
   // Audit C-4: a dead `lc.ok ? open : open` ternary previously let a
   // second tick resurrect a cancelled/rejected bounty. Skip the reopen
   // when the lifecycle refuses it.
   if (!lc.ok) {
     return false;
   }
+  const oldJobId = bounty.onchainJobId ?? null;
+  // 199-13 D-199-7: the previous attempt's job is Funded+Submitted with
+  // escrow locked — reject releases it before the new job gets funded.
+  // Both legs go through the outbox; the dispatcher ships them on the
+  // ref ABI (no direct sends).
+  if (oldJobId) {
+    st.enqueueOutbox({
+      id: newOutboxId(),
+      kind: "reject",
+      cardId: card.cardId,
+      jobAttempt: attempt,
+      idempotencyKey: boardIdempotencyKey(card.cardId, attempt, "reject"),
+      status: "pending",
+      attempts: 0,
+      payload: { jobId: oldJobId, reason: "fix_deadline_expired" },
+      createdAt: new Date(now).toISOString(),
+    });
+  }
   upsertBounty({
     ...bounty,
     status: "open",
     jobAttempt: next,
+    // Attempt-scoped — a stale id would make the dispatcher's
+    // lazy-create leg noop and the next submit land on the dead job.
+    onchainJobId: undefined,
+  });
+  st.enqueueOutbox({
+    id: newOutboxId(),
+    kind: "createJob",
+    cardId: card.cardId,
+    jobAttempt: next,
+    idempotencyKey: boardIdempotencyKey(card.cardId, next, "createJob"),
+    status: "pending",
+    attempts: 0,
+    payload: { bountyId: bounty.bountyId, provider: null },
+    createdAt: new Date(now).toISOString(),
   });
   st.patchCard(card.cardId, {
     column: "todo",

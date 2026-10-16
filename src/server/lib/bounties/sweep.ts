@@ -65,6 +65,11 @@ export interface SweepDeps {
     net: VenueNetwork,
   ) => Promise<number | null>;
   alert?: (message: string) => Promise<void>;
+  /** 199-13 D-199-7: board claims expire via sweepBoardClaimLeases —
+   *  this sweeper's inline reject leg encodes the Circle/ACP ABI which
+   *  reverts on the ref deploy. Return true to leave a claim to the
+   *  board-aware path (the claim row itself is NOT closed here). */
+  skipClaim?: (claim: BountyClaimRecord) => boolean;
 }
 
 // ─── Per-claim sweep ─────────────────────────────────────────────
@@ -76,6 +81,7 @@ async function sweepClaim(
   errors: string[],
 ): Promise<boolean> {
   const now = deps.now();
+  if (deps.skipClaim?.(claim)) return false;
   const bounty = getBounty(claim.bountyId);
   if (!bounty) {
     claim.state = "expired";

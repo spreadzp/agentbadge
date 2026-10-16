@@ -73,7 +73,14 @@ export function resolveVenueNetwork(): VenueNetwork {
   }
   return {
     name,
-    chain: ARC_TESTNET,
+    // rpc.testnet.arc.network is geo-blocked (CF 1009) — ARC_RPC_URL
+    // override, blockdaemon testnet fallback (contracts/.env convention).
+    chain: {
+      ...ARC_TESTNET,
+      rpcUrl:
+        process.env.ARC_RPC_URL ??
+        "https://rpc.blockdaemon.testnet.arc.io",
+    },
     // ERC8183_REF_ADDRESS (EPIC-199): our vendored ERC-8183 proxy deploy;
     // falls back to Circle's protocol deploy when unset.
     // Ledger: contracts/deployments/arc-testnet-erc8183.json

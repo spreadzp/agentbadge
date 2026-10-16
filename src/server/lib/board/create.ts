@@ -106,7 +106,7 @@ export async function createBoardCard(
     createdByPassportId: req.createdByPassportId,
     createdAt: card.createdAt,
   });
-  st.enqueueOutbox({
+  const outbox = st.enqueueOutbox({
     id: newOutboxId(),
     kind: "createJob",
     cardId,
@@ -125,7 +125,7 @@ export async function createBoardCard(
     kind: "create",
     actor: req.createdByPassportId ?? "ops",
     atMs: now,
-    payload: { specHash: card.specHash },
+    payload: { specHash: card.specHash, outboxId: outbox.id },
   });
   return { ok: true, card };
 }
