@@ -4,6 +4,7 @@ import { LandingLayout } from "../../views/landing/layout";
 import { BlogListPage } from "../../views/blog-list";
 import { BlogArticlePage } from "../../views/blog-article";
 import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles, getRelatedArticles, getTagCounts, filterByTag } from "../lib/blog-data";
+import { toKnowledgeObject } from "../lib/blog/knowledge-object";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { pageCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../lib/json-ld";
 import { BASE_URL } from "../lib/page-meta";
@@ -132,6 +133,30 @@ blogRoutes.get(
     }
     c.header("Content-Type", "text/markdown; charset=UTF-8");
     return c.body(article.markdown);
+  },
+);
+
+// SLICE-201-5 (EPIC-201): Content Knowledge Object v1 — the agent-readable
+// JSON twin of an article, validatable against /schemas/content/v1.json.
+blogRoutes.get(
+  "/blog/:slug{[^.]+\\.json$}",
+  describeRoute({
+    tags: ["Blog"],
+    summary: "Blog article as Knowledge Object",
+    description:
+      "Machine-readable Content Knowledge Object v1 for a blog article (status, topics, concepts, rules, capabilities, actions, qa, claims, canonical, dates, markdownUrl). Schema: /schemas/content/v1.json",
+    responses: {
+      200: { description: "Content Knowledge Object" },
+      404: { description: "Not found" },
+    },
+  }),
+  (c) => {
+    const slug = c.req.param("slug").replace(/\.json$/, "");
+    const article = BLOG_ARTICLES.find((a) => a.slug === slug);
+    if (!article) {
+      return c.json({ error: "Article not found" }, 404);
+    }
+    return c.json(toKnowledgeObject(article));
   },
 );
 

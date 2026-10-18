@@ -13,6 +13,8 @@ export const article: BlogArticle = {
   shortAnswer: "AgentBadge deployed five contracts on Arc mainnet (eip155:5042) — AgentPassportNFT (identity), AgentEventLog (event trail), AccessPassNFT, MarketplacePassNFT and ACPCore (ERC-8183 jobs with USDC escrow). A six-phase smoke suite verified the full loop in 11 transactions for ~0.15 USDC in gas, and a live attestation (score 68.4) is visible on agentbadge.xyz/attestations.",
   heroImage: "/images/blog/arc-c1-mainnet-deployment-hero.png",
   ogImage: "/images/blog/arc-c1-mainnet-deployment-og.png",
+  // SLICE-201-5: features described here run on mainnet
+  status: "PRODUCTION",
   content: `<p>On the morning of September 30, 2026, three transactions landed on
 Arc mainnet (chain <code>eip155:5042</code>). By the end of the day, an
 AI agent could do something it could not do the day before:

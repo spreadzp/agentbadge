@@ -109,7 +109,8 @@ describe("Agent Knowledge Layer Routes", () => {
       const json = await res.json();
       const nodeWithArticles = json.nodes.find((n: { id: string }) => n.id === "agent-readiness");
       expect(Array.isArray(nodeWithArticles.articles)).toBe(true);
-      expect(nodeWithArticles.articles).toContain(1);
+      // v1.3.0 (SLICE-201-5): articles are resolvable blog slugs, not plan numbers
+      expect(nodeWithArticles.articles).toContain("what-is-agent-readiness");
     });
 
     it("knowledge map has new concept nodes (SLICE-59-8)", async () => {
@@ -129,7 +130,8 @@ describe("Agent Knowledge Layer Routes", () => {
     it("knowledge map version bumped to 1.2.0 (SLICE-59-8)", async () => {
       const res = await app.request("/agent-guide/knowledge-map.json");
       const json = await res.json();
-      expect(json.version).toBe("1.2.0");
+      // v1.3.0 (SLICE-201-5): articles → resolvable slugs
+      expect(json.version).toBe("1.3.0");
     });
   });
 

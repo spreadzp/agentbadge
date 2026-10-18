@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbadge.xyz/schemas/content/v1.json",
+  "title": "AgentBadge Content Knowledge Object",
+  "description": "Machine-readable knowledge object for a published content item (EPIC-201, SLICE-201-5). Vocabularies are controlled: status, claims[].status, claims[].evidence[].type, actions[].type, relatedResources[].type.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "type",
+    "slug",
+    "title",
+    "description",
+    "status",
+    "topics",
+    "concepts",
+    "rules",
+    "capabilities",
+    "actions",
+    "qa",
+    "claims",
+    "canonical",
+    "dates",
+    "markdownUrl"
+  ],
+  "properties": {
+    "type": { "const": "article" },
+    "schemaVersion": { "const": "1" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "shortAnswer": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["IDEA", "EXPERIMENT", "PROTOTYPE", "LIVE", "PRODUCTION", "ARCHIVED"]
+    },
+    "topics": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "concepts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "rules": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "capabilities": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "technologies": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "entities": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "label", "url"],
+        "properties": {
+          "type": { "type": "string", "enum": ["read", "view-demo", "view-code", "contact"] },
+          "label": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "qa": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["question", "answer"],
+        "properties": {
+          "question": { "type": "string", "minLength": 1 },
+          "answer": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "status"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "text": { "type": "string", "minLength": 1 },
+          "status": {
+            "type": "string",
+            "enum": ["VERIFIED", "INFERRED", "EXPERIMENTAL", "UNVERIFIED", "CONFLICT"]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "url"],
+              "properties": {
+                "type": { "type": "string", "enum": ["github", "demo", "transaction", "test"] },
+                "url": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "canonical": { "type": "string", "minLength": 1 },
+    "dates": {
+      "type": "object",
+      "required": ["published", "modified"],
+      "properties": {
+        "published": { "type": "string", "minLength": 1 },
+        "modified": { "type": "string", "minLength": 1 }
+      }
+    },
+    "markdownUrl": { "type": "string", "minLength": 1 },
+    "jsonUrl": { "type": "string" },
+    "economicContext": {
+      "type": "object",
+      "properties": {
+        "endpoints": { "type": "object", "additionalProperties": { "type": "string" } },
+        "payment": {
+          "type": "object",
+          "properties": {
+            "supported": { "type": "boolean" },
+            "currency": { "type": "string" }
+          }
+        }
+      }
+    },
+    "relatedResources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "label", "url"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["project", "guide", "github", "task-board", "team-profile"]
+          },
+          "label": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -35,6 +35,28 @@ export interface BlogArticle {
   shortAnswer?: string;
   externalLinks?: BlogExternalLink[];
   relatedLinks?: RelatedLinkItem[];
+  // SLICE-201-5 (EPIC-201 track B): Knowledge Object v1 metadata.
+  // All optional — toKnowledgeObject derives values when absent
+  // (status defaults to LIVE; topics/concepts from tags; qa from
+  // question-style H2s; claims from shortAnswer as UNVERIFIED draft).
+  status?:
+  | "IDEA"
+  | "EXPERIMENT"
+  | "PROTOTYPE"
+  | "LIVE"
+  | "PRODUCTION"
+  | "ARCHIVED";
+  topics?: string[];
+  concepts?: string[];
+  rules?: string[];
+  capabilities?: string[];
+  technologies?: string[];
+  entities?: string[];
+  actions?: import("./blog/knowledge-object").KnowledgeAction[];
+  qa?: import("./blog/knowledge-object").KnowledgeQa[];
+  claims?: import("./blog/knowledge-object").KnowledgeClaim[];
+  economicContext?: import("./blog/knowledge-object").EconomicContext;
+  relatedResources?: import("./blog/knowledge-object").RelatedResource[];
 }
 
 import { RelatedLinkItem } from "../../views/related-links";

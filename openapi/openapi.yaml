@@ -3793,6 +3793,167 @@ paths:
           in: path
           name: corridor
           required: true
+  /api/board/cards:
+    get:
+      operationId: getApiBoardCards
+      tags:
+        - Venue
+      summary: Public board (no spec internals)
+      responses:
+        "200":
+          description: Public board (no spec internals)
+    post:
+      operationId: postApiBoardCards
+      tags:
+        - Venue
+      summary: Create board card (ops)
+      responses:
+        "200":
+          description: Create board card (ops)
+  /api/board/cards/{id}/journal:
+    get:
+      operationId: getApiBoardCardsByIdJournal
+      tags:
+        - Venue
+      summary: Card journal
+      responses:
+        "200":
+          description: Card journal
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/board/cards/{id}:
+    get:
+      operationId: getApiBoardCardsById
+      tags:
+        - Venue
+      summary: Card detail (spec gated)
+      responses:
+        "200":
+          description: Card detail (spec gated)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/board/cards/{id}/receipt:
+    get:
+      operationId: getApiBoardCardsByIdReceipt
+      tags:
+        - Venue
+      summary: EIP-712-signed task receipt (DONE cards only)
+      responses:
+        "200":
+          description: EIP-712-signed task receipt (DONE cards only)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/board/cards/{id}/claim:
+    post:
+      operationId: postApiBoardCardsByIdClaim
+      tags:
+        - Venue
+      summary: Off-chain board claim
+      responses:
+        "200":
+          description: Off-chain board claim
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/board/cards/{id}/submit:
+    post:
+      operationId: postApiBoardCardsByIdSubmit
+      tags:
+        - Venue
+      summary: Submit deliverable
+      responses:
+        "200":
+          description: Submit deliverable
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/board/cards/{id}/review:
+    post:
+      operationId: postApiBoardCardsByIdReview
+      tags:
+        - Venue
+      summary: Reviewer verdict
+      responses:
+        "200":
+          description: Reviewer verdict
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/board/cards/{id}/cancel:
+    post:
+      operationId: postApiBoardCardsByIdCancel
+      tags:
+        - Venue
+      summary: Ops cancel
+      responses:
+        "200":
+          description: Ops cancel
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/board/cards/{id}/qa:
+    post:
+      operationId: postApiBoardCardsByIdQa
+      tags:
+        - Venue
+      summary: QA verdict (ops)
+      responses:
+        "200":
+          description: QA verdict (ops)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /board:
+    get:
+      operationId: getBoard
+      tags:
+        - Venue
+      summary: Task board kanban
+      responses:
+        "200":
+          description: Task board kanban
+  /board/cards/{id}:
+    get:
+      operationId: getBoardCardsById
+      tags:
+        - Venue
+      summary: Board card detail
+      responses:
+        "200":
+          description: Board card detail
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /api/fx-delta/verify/{id}:
     get:
       operationId: getApiFxDeltaVerifyById

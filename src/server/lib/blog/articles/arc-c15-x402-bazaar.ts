@@ -17,6 +17,15 @@ export const article: BlogArticle = {
   agentGuideSlug: "arc-c15-x402-bazaar",
   heroImage: "/images/blog/arc-c15-x402-bazaar-hero.png",
   ogImage: "/images/blog/arc-c15-x402-bazaar-og.png",
+  // SLICE-201-5: Knowledge Object v1 — agent-economy article (x402 bazaar)
+  status: "LIVE",
+  economicContext: {
+    endpoints: {
+      services: "https://agentbadge.xyz/api/v1/services",
+      marketplace: "https://agentbadge.xyz/marketplace",
+    },
+    payment: { supported: true, currency: "USDC" },
+  },
   content: `<p>An agent that wants to buy from an API answers three questions before it pays: <em>what does it cost, what do I send, and is there a free way to try it first?</em> Most payment-gated APIs make the agent guess all three — the price lives in a marketing page, the input schema lives in a wiki, and "free tier" is a sales call. This week AgentBadge closed that loop: <code>GET /api/v1/services</code> returns the full machine-readable catalog, and every HTTP 402 response across the platform declares itself for x402 indexers — price, input schema, and free alternatives, before a single cent moves.</p>
 <p>This is article 15 in the Arc Campaign series. It builds directly on <a href="https://agentbadge.xyz/blog/arc-c14-agent-discovery">C14</a> (the <code>.well-known</code> discovery surface that helps agents <em>find</em> us) — C15 is what an agent reads once it found us and wants to <em>buy</em> something.</p>
 <p><img src="/images/blog/arc-c15-x402-bazaar-hero.png" alt="Catalog JSON and a 402 coin — price before payment" /></p>
