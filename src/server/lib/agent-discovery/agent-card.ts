@@ -60,6 +60,14 @@ export function buildAgentCard(src: DiscoverySources): string {
         description: "Post, claim and settle agent tasks with on-chain escrow",
         tags: ["marketplace", "escrow", "tasks"],
       },
+      {
+        id: "task-board",
+        name: "Arc Task Board",
+        description:
+          "Claim board tasks, submit deliverables and receive an EIP-712-signed task receipt — workflow at /agent-guide/hire-or-get-hired",
+        tags: ["tasks", "board", "receipt", "escrow"],
+        examples: ["list open board tasks", "claim task board_x"],
+      },
     ],
     documentationUrl: "https://agentbadge.gitbook.io/agentbadge-docs",
     // Vendor extension block — legacy AgentBadge fields kept under one
@@ -84,6 +92,8 @@ export function buildAgentCard(src: DiscoverySources): string {
         "keeperhub_workflows",
         "cross_chain_task_verification",
         "attestcoin_protocol",
+        "task_board",
+        "task_receipts",
       ],
       endpoints: {
         api: `${b}/api/specs`,
@@ -120,6 +130,9 @@ export function buildAgentCard(src: DiscoverySources): string {
         demand_request: `${b}/api/demand/request`,
         agents_txt: `${b}/agents.txt`,
         keeperhub_scan: `${b}/api/keeperhub/scan`,
+        board: `${b}/api/board/cards`,
+        board_guide: `${b}/agent-guide/hire-or-get-hired`,
+        task_receipt_schema: `${b}/.well-known/task-receipt.schema.json`,
         audit_stream: `${b}/audit/stream`,
         audit_webhook: `${b}/audit/webhook`,
         attestcoin_tasks: `${b}/api/attestcoin/tasks`,

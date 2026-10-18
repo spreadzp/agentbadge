@@ -65,6 +65,7 @@ flowchart LR
   mcp["mcp"] --> pkg_keeperhub["pkg: keeperhub"]
   mcp["mcp"] --> pkg_mcp["pkg: mcp"]
   mcp["mcp"] --> server_lib["server/lib"]
+  mcp["mcp"] --> server_routes["server/routes"]
   scripts["scripts"] --> agent_readiness["agent-readiness"]
   server["server"] --> config["config"]
   server["server"] --> pkg_passport_logger["pkg: passport/logger"]

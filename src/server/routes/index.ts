@@ -87,6 +87,7 @@ import { createBoardReadRoutes } from "./board-api-read";
 import { createBoardQaRoutes } from "./board-api-qa";
 import { createReceiptRoutes } from "./board-api-receipt";
 import { createReceiptSigner } from "../lib/board/task-receipt";
+import { createBoardGuideRoutes } from "./agent-guide-hire";
 import { createBoardPageRoutes } from "./board-page";
 import { venuePageRoutes } from "./venue-pages";
 import { seedVenueOffers } from "../lib/venue/store";
@@ -174,6 +175,7 @@ export function registerApiRoutes(app: Hono): void {
     );
   }
   app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations
+  app.route("/", createBoardGuideRoutes()); // 201-3: /agent-guide/hire-or-get-hired
   app.route("/", createBoardQaRoutes()); // 199-13: /api/board/cards/:id/qa
   app.route("/", createBoardPageRoutes()); // 199-12: /board kanban UI
   app.route("/", fxDeltaVerifyRoutes); // 191-9: /api/fx-delta/verify/:id

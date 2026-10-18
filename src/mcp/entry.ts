@@ -15,7 +15,6 @@ import {
 } from "@agentbadge/mcp";
 import { registerComplianceTools } from "./compliance-tools";
 import { registerParityTools } from "./parity-tools";
-import { registerAttestcoinTools, setAttestcoinToolConfig } from "./attestcoin-tools";
 import { registerCirclePayTools, setCirclePayToolConfig } from "./circle-pay-tools";
 import { registerPaymentStatusTools, setPaymentStatusToolConfig } from "./payment-status-tools";
 import { registerAgentIdentityTools, setAgentIdentityToolConfig } from "./agent-identity-tools";
@@ -75,6 +74,7 @@ function registerServerAllTools(ns?: NamespaceRegistry): void {
   registerAuditCatalogTools(ns);
   registerComplianceTools(ns);
   registerParityTools(ns);
+  registerBoardTools(ns);
 
   // Attestcoin tools (EPIC-127) — only when ATTESTCOIN_ENABLED=true
   if (process.env.ATTESTCOIN_ENABLED === "true") {
@@ -115,6 +115,7 @@ if (namespace === "all") {
       registerDirectoryTools(ns);
       registerGuideTools(ns);
       registerA2ATools(ns);
+      registerBoardTools(ns);
       break;
     case "audit":
       registerAuditCatalogTools(ns);
