@@ -9,6 +9,7 @@ import { identityRoutes } from "./identity";
 import { policyRoutes } from "./policy";
 import { agentDocsRoutes } from "./agent-docs";
 import { verificationDocsRoutes } from "./verification-docs";
+import { taskReceiptSchemaRoutes } from "./task-receipt-schema";
 
 // buildAgentCard moved to lib/agent-discovery (SLICE-178-2) —
 // re-exported for the old import path; new signature takes DiscoverySources
@@ -24,4 +25,5 @@ wellKnownRoutes.route("/", discoveryRoutes);
 wellKnownRoutes.route("/", identityRoutes);
 wellKnownRoutes.route("/", policyRoutes);
 wellKnownRoutes.route("/", agentDocsRoutes);
+wellKnownRoutes.route("/", taskReceiptSchemaRoutes);
 wellKnownRoutes.route("/", verificationDocsRoutes);

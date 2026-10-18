@@ -9,7 +9,7 @@
 
 import type { Hono } from "hono";
 import { getConfig } from "../../config/env";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { passportRoutes } from "./passport";
 import { verifyRoutes } from "./verify";
@@ -85,6 +85,8 @@ import { bountyApiRoutes } from "./bounty-api";
 import { boardApiRoutes } from "./board-api";
 import { createBoardReadRoutes } from "./board-api-read";
 import { createBoardQaRoutes } from "./board-api-qa";
+import { createReceiptRoutes } from "./board-api-receipt";
+import { createReceiptSigner } from "../lib/board/task-receipt";
 import { createBoardPageRoutes } from "./board-page";
 import { venuePageRoutes } from "./venue-pages";
 import { seedVenueOffers } from "../lib/venue/store";
@@ -150,6 +152,27 @@ export function registerApiRoutes(app: Hono): void {
   app.route("/api", scanRuleRoutes);
   app.route("/", fxDeltaRoutes); // 191-5: /api/fx-delta/*
   app.route("/", createBoardReadRoutes()); // 199-11: /api/board/cards reads
+  // 201-2: /api/board/cards/:id/receipt — signer key absent → mounted but 503s
+  {
+    const evm = getConfig().evm;
+    const receiptKey =
+      process.env.ARC_RECEIPT_SIGNER_KEY ?? process.env.ARC_OPS_KEY;
+    app.route(
+      "/",
+      createReceiptRoutes(
+        receiptKey && evm
+          ? {
+            signer: createReceiptSigner(receiptKey, evm.chainId),
+            chainId: evm.chainId,
+            agentRegistry:
+              process.env.ERC8004_REGISTRY ??
+              "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+            escrowAddress: evm.escrow,
+          }
+          : {},
+      ),
+    );
+  }
   app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations
   app.route("/", createBoardQaRoutes()); // 199-13: /api/board/cards/:id/qa
   app.route("/", createBoardPageRoutes()); // 199-12: /board kanban UI
