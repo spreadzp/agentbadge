@@ -1,0 +1,54 @@
+name: Board Conformance (SLICE-201-4)
+
+# External-agent deal-cycle conformance on Arc testnet.
+# Manual + scheduled only — never a PR gate (testnet latency/flakiness
+# must not block merges). Failure = conformance regression signal,
+# triaged from the uploaded report artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: "Server base URL (default: production)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Skip onchain payment legs"
+        required: false
+        default: "false"
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install deps
+        working-directory: hackathon/server
+        run: bun install --frozen-lockfile
+
+      - name: Run conformance script
+        working-directory: hackathon/server
+        env:
+          CONF_ENDPOINT: >-
+            ${{ inputs.endpoint != '' && inputs.endpoint || vars.CONF_ENDPOINT }}
+          DRY_RUN: ${{ inputs.dry_run == 'true' && '1' || '0' }}
+          CONF_OPS_KEY: ${{ secrets.BOARD_E2E_OPS_KEY }}
+          CONF_REVIEWER_KEY: ${{ secrets.BOARD_E2E_REVIEWER_KEY }}
+          CONF_REVIEWER_PRIVKEY: ${{ secrets.BOARD_E2E_REVIEWER_PRIVKEY }}
+          ARC_RPC_URL: ${{ vars.ARC_RPC_URL }}
+        run: bun scripts/board-conformance.mts
+
+      - name: Upload conformance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-report-${{ github.run_number }}
+          path: |
+            docs/EPICS/201-agent-economy-interface/CONFORMANCE-REPORT.md
+            out/conformance-run.json
+          if-no-files-found: warn
