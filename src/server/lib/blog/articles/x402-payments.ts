@@ -1,19 +1,34 @@
 import type { BlogArticle } from "../../blog-data";
 
-export const article: BlogArticle = 
-  {
-    slug: "x402-payments",
-    title: "x402: Machine-to-Machine Payments for the Agentic Web",
-    description:
-      "The x402 protocol enables AI agents to pay for API calls autonomously using HTTP 402 Payment Required. Learn how machine-to-machine payments work with HBAR on Hedera.",
-    author: "AgentBadge Team",
-    authorRole: "Agency for the Agentic Web",
-    date: "2026-08-10",
-    agentGuideSlug: "hedera-blockchain-for-agents",
-    shortAnswer: "x402 enables AI agents to pay for API calls autonomously using HTTP 402 Payment Required. Agents receive a payment challenge, complete it with HBAR on Hedera, and retry the request — all without human intervention. It's machine-to-machine commerce for the agentic web.",
-    tags: ["x402", "payments", "hbar", "hedera", "machine-to-machine"],
-    readingTime: "9 min",
-    content: `<p><strong>x402</strong> is a payment protocol that enables machine-to-machine payments over HTTP. It uses the <code>402 Payment Required</code> HTTP status code — which has been part of the HTTP specification since 1991 but was never used — to signal that an API request requires payment. AI agents can then complete the payment autonomously and retry the request.</p>
+export const article: BlogArticle =
+{
+  slug: "x402-payments",
+  title: "x402: Machine-to-Machine Payments for the Agentic Web",
+  description:
+    "The x402 protocol enables AI agents to pay for API calls autonomously using HTTP 402 Payment Required. Learn how machine-to-machine payments work with HBAR on Hedera.",
+  author: "AgentBadge Team",
+  authorRole: "Agency for the Agentic Web",
+  date: "2026-08-10",
+  agentGuideSlug: "hedera-blockchain-for-agents",
+  shortAnswer: "x402 enables AI agents to pay for API calls autonomously using HTTP 402 Payment Required. Agents receive a payment challenge, complete it with HBAR on Hedera, and retry the request — all without human intervention. It's machine-to-machine commerce for the agentic web.",
+  tags: ["x402", "payments", "hbar", "hedera", "machine-to-machine"],
+  readingTime: "9 min",
+  // SLICE-201-9: KO v1 metadata (article-knowledge-sync run)
+  status: "LIVE",
+  technologies: ["x402", "HTTP-402", "HBAR", "Hedera", "USDC"],
+  concepts: ["machine-payments", "pay-per-request", "agentic-commerce"],
+  capabilities: ["x402-payment", "paid-api-access"],
+  entities: ["x402-protocol", "hedera", "hbar"],
+  rules: ["AB-030", "AB-031", "AB-032"],
+  claims: [
+    {
+      id: "claim-1",
+      text: "x402 enables AI agents to pay for API calls autonomously using HTTP 402 Payment Required.",
+      status: "VERIFIED",
+      evidence: [{ type: "demo", url: "https://agentbadge.xyz/.well-known/x402.json" }],
+    },
+  ],
+  content: `<p><strong>x402</strong> is a payment protocol that enables machine-to-machine payments over HTTP. It uses the <code>402 Payment Required</code> HTTP status code — which has been part of the HTTP specification since 1991 but was never used — to signal that an API request requires payment. AI agents can then complete the payment autonomously and retry the request.</p>
 
 <p>For the agentic web, x402 is essential. Without it, AI agents hit a paywall and stop — they can't pull out a credit card or enter billing details. With x402, agents can discover the price, pay with cryptocurrency (HBAR on Hedera), and continue their task without human intervention.</p>
 
@@ -198,4 +213,4 @@ Content-Type: application/json
   <li><a href="/services/marketplace">AgentBadge Marketplace</a> — see x402 in action</li>
   <li><a href="/services/scanner">AgentBadge Scanner</a> — check your API's x402 support</li>
 </ul>`,
-  };
+};

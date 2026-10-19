@@ -1,19 +1,33 @@
 import type { BlogArticle } from "../../blog-data";
 
-export const article: BlogArticle = 
-  {
-    slug: "mcp-vs-api",
-    title: "MCP vs API: Agent Tools 2026",
-    description:
-      "Model Context Protocol (MCP) is replacing REST APIs as the primary way AI agents interact with services. Compare MCP vs REST API, when to use each, and how to make your API agent-ready.",
-    author: "AgentBadge Team",
-    authorRole: "Agency for the Agentic Web",
-    date: "2026-08-10",
-    agentGuideSlug: "building-mcp-servers",
-    shortAnswer: "MCP (Model Context Protocol) is not a replacement for REST APIs — it's a layer on top that makes APIs agent-native. In 2026, the question isn't MCP vs REST, but how to make both work together so AI agents can discover, understand, and use your service.",
-    tags: ["mcp", "api", "agent-tools", "model-context-protocol"],
-    readingTime: "9 min",
-    content: `<p><strong>Model Context Protocol (MCP)</strong> is a new standard that defines how AI agents interact with external tools and services. It's not a replacement for REST APIs — it's a layer on top of them that makes APIs agent-native. But in 2026, the question isn't whether to use MCP or REST. It's how to make both work together for the agentic web.</p>
+export const article: BlogArticle =
+{
+  slug: "mcp-vs-api",
+  title: "MCP vs API: Agent Tools 2026",
+  description:
+    "Model Context Protocol (MCP) is replacing REST APIs as the primary way AI agents interact with services. Compare MCP vs REST API, when to use each, and how to make your API agent-ready.",
+  author: "AgentBadge Team",
+  authorRole: "Agency for the Agentic Web",
+  date: "2026-08-10",
+  agentGuideSlug: "building-mcp-servers",
+  shortAnswer: "MCP (Model Context Protocol) is not a replacement for REST APIs — it's a layer on top that makes APIs agent-native. In 2026, the question isn't MCP vs REST, but how to make both work together so AI agents can discover, understand, and use your service.",
+  tags: ["mcp", "api", "agent-tools", "model-context-protocol"],
+  readingTime: "9 min",
+  // SLICE-201-9: KO v1 metadata (article-knowledge-sync run)
+  status: "LIVE",
+  technologies: ["MCP", "REST", "JSON-RPC", "JSON-Schema"],
+  concepts: ["agent-tools", "tool-definitions", "protocol-layer"],
+  capabilities: ["mcp-server", "tool-discovery"],
+  entities: ["model-context-protocol", "mcp-server", "mcp-client"],
+  rules: ["AB-006", "AB-020", "AB-085"],
+  claims: [
+    {
+      id: "claim-1",
+      text: "MCP is a layer on top of REST APIs that makes them agent-native, not a replacement.",
+      status: "UNVERIFIED",
+    },
+  ],
+  content: `<p><strong>Model Context Protocol (MCP)</strong> is a new standard that defines how AI agents interact with external tools and services. It's not a replacement for REST APIs — it's a layer on top of them that makes APIs agent-native. But in 2026, the question isn't whether to use MCP or REST. It's how to make both work together for the agentic web.</p>
 
 <p>If you're building an API that AI agents will use, you need to understand MCP. This article explains what MCP is, how it differs from traditional REST APIs, when to use each, and how to make your API agent-ready with both.</p>
 
@@ -185,4 +199,4 @@ server.run({ transportType: "stdio" });</code></pre>
   <li><a href="https://modelcontextprotocol.io">MCP specification</a> — official protocol docs</li>
   <li><a href="/services/scanner">AgentBadge Scanner</a> — check your API's agent readiness</li>
 </ul>`,
-  };
+};
