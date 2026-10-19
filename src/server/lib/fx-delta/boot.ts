@@ -45,8 +45,15 @@ export function startFxDeltaEngine(): void {
   if (process.env.FXDELTA_ENABLED !== "true") return;
   if (getFxDeltaRuntime()) return; // idempotent — tests may inject first
 
-  const rpcUrl = process.env.CELO_RPC_URL ?? "https://forno.celo.org";
-  const chainId = Number(process.env.CELO_CHAIN_ID ?? 42220);
+  // Data chain (pool reads) may differ from the pay chain (CELO_CHAIN_ID
+  // drives the x402 settle). Prod pattern: mainnet data + Sepolia rail.
+  const rpcUrl =
+    process.env.FXDELTA_DATA_RPC_URL ??
+    process.env.CELO_RPC_URL ??
+    "https://forno.celo.org";
+  const chainId = Number(
+    process.env.FXDELTA_DATA_CHAIN_ID ?? process.env.CELO_CHAIN_ID ?? 42220,
+  );
   const pollMs = Number(process.env.CELO_POLL_MS ?? 5_000);
   const fxTtlMs = Number(process.env.FX_TTL_MS ?? 300_000);
 
