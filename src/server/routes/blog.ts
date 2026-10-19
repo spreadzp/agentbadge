@@ -185,14 +185,16 @@ blogRoutes.get(
       articleModifiedTime: article.dateModified ?? article.date,
       ...(article.ogImage ? { ogImage: `${BASE_URL}${article.ogImage}` } : {}),
       ...(article.markdown ? { markdownUrl: `/blog/${article.slug}.md` } : {}),
+      jsonUrl: `/blog/${article.slug}.json`,
     };
     const schemas = [
       ...pageCoreSchemas(),
       {
         "@context": "https://schema.org",
-        "@type": "BlogPosting",
+        "@type": "TechArticle",
         headline: article.title,
         description: article.shortAnswer ?? article.description,
+        url: `${BASE_URL}/blog/${article.slug}`,
         datePublished: article.date,
         dateModified: article.dateModified ?? article.date,
         author: {
