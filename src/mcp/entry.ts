@@ -15,6 +15,8 @@ import {
 } from "@agentbadge/mcp";
 import { registerComplianceTools } from "./compliance-tools";
 import { registerParityTools } from "./parity-tools";
+import { registerBoardTools } from "./board-tools";
+import { registerKnowledgeTools } from "./knowledge-tools";
 import { registerCirclePayTools, setCirclePayToolConfig } from "./circle-pay-tools";
 import { registerPaymentStatusTools, setPaymentStatusToolConfig } from "./payment-status-tools";
 import { registerAgentIdentityTools, setAgentIdentityToolConfig } from "./agent-identity-tools";
@@ -115,6 +117,7 @@ if (namespace === "all") {
       registerDirectoryTools(ns);
       registerGuideTools(ns);
       registerA2ATools(ns);
+      registerKnowledgeTools(ns);
       registerBoardTools(ns);
       break;
     case "audit":

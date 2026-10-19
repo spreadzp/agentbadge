@@ -59,6 +59,7 @@ import {
 import { registerComplianceTools } from "../../mcp/compliance-tools";
 import { registerParityTools } from "../../mcp/parity-tools";
 import { registerBoardTools } from "../../mcp/board-tools";
+import { registerKnowledgeTools } from "../../mcp/knowledge-tools";
 import { registerKeeperhubTools } from "../../mcp/keeperhub-tools";
 import { createNamespaceRoutes } from "../routes/mcp-namespace";
 
@@ -88,6 +89,7 @@ export function registerMcpNamespaces(): McpNamespaces {
   registerDirectoryTools(discoveryNs);
   registerGuideTools(discoveryNs);
   registerA2ATools(discoveryNs);
+  registerKnowledgeTools(discoveryNs); // 201-8: search_knowledge/get_knowledge_object
   registerBoardTools(discoveryNs); // 201-3: board_list/get/claim_status
 
   const auditNs = createNamespace("audit");
