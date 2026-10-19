@@ -19,6 +19,16 @@ export const article: BlogArticle = {
   concepts: ["tokenized-stocks", "rwa", "delta-tracking"],
   capabilities: ["price-tracking", "delta-monitoring"],
   entities: ["aaplb", "tslab", "bstock"],
+  claims: [
+    {
+      id: "claim-1",
+      text: "AgentBadge runs a live bStock delta tracker service — free digest and x402-paid tiers — documented in a machine-readable agent guide.",
+      status: "VERIFIED",
+      evidence: [
+        { type: "demo", url: "https://agentbadge.xyz/bstock-guide" },
+      ],
+    },
+  ],
 
   content: `<p>A tokenized stock is a blockchain token whose price follows a real
 share. AAPLB mirrors Apple, TSLAB mirrors Tesla. Buy the token — get the

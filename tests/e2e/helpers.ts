@@ -33,6 +33,8 @@ import { agencyJsonRoutes } from "../../src/server/routes/agency-json";
 import { servicesRoutes } from "../../src/server/routes/services";
 import { createBoardPageRoutes } from "../../src/server/routes/board-page";
 import { createBoardGuideRoutes } from "../../src/server/routes/agent-guide-hire";
+import { bstockGuideRoutes } from "../../src/server/routes/bstock-guide";
+import { createShowcaseRoutes } from "../../src/server/routes/agent-readiness-showcase";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { paymentRoutes } from "../../src/server/routes/payment";
 import { keeperhubApiRoutes } from "../../src/server/routes/keeperhub-api";
@@ -131,6 +133,17 @@ export function makeTestApp(): Hono {
   app.route("/", servicesRoutes);
   app.route("/", createBoardPageRoutes());
   app.route("/", createBoardGuideRoutes());
+  app.route("/", bstockGuideRoutes);
+  app.route(
+    "/",
+    createShowcaseRoutes({
+      // tests must not trigger a real self-scan — the route still
+      // answers 200 with status "unavailable", which is all the
+      // conformance evidence check needs.
+      scanFn: () =>
+        Promise.reject(new Error("self-scan disabled in tests")),
+    }),
+  );
   app.route("/", demandGuideRoutes);
   app.route("/", agencyJsonRoutes);
   app.route("/", wellKnownRoutes);

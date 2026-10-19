@@ -1,23 +1,33 @@
 import type { BlogArticle } from "../../blog-data";
 
-export const article: BlogArticle = 
-  {
-    slug: "what-is-agent-readiness",
-    title: "What Is Agent Readiness?",
-    description:
-      "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent — without a human intervening. SEO for the agentic web.",
-    author: "AgentBadge Team",
-    authorRole: "Agency for the Agentic Web",
-    date: "2026-08-14",
-    dateModified: "2026-08-14",
-    agentGuideSlug: "what-is-agent-readiness",
-    heroImage: "/images/blog/what-is-agent-readiness-hero.png",
-    ogImage: "/images/blog/what-is-agent-readiness-og.png",
-    shortAnswer: "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces — OpenAPI, MCP, llms.txt, and structured discovery layers that let agents navigate your service autonomously.",
-    tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
-    rules: ["AB-004"],
-    readingTime: "15 min",
-    content: `<h2>Why a good API can be invisible to AI agents</h2>
+export const article: BlogArticle =
+{
+  slug: "what-is-agent-readiness",
+  title: "What Is Agent Readiness?",
+  description:
+    "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent — without a human intervening. SEO for the agentic web.",
+  author: "AgentBadge Team",
+  authorRole: "Agency for the Agentic Web",
+  date: "2026-08-14",
+  dateModified: "2026-08-14",
+  agentGuideSlug: "what-is-agent-readiness",
+  heroImage: "/images/blog/what-is-agent-readiness-hero.png",
+  ogImage: "/images/blog/what-is-agent-readiness-og.png",
+  shortAnswer: "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces — OpenAPI, MCP, llms.txt, and structured discovery layers that let agents navigate your service autonomously.",
+  tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
+  rules: ["AB-004"],
+  claims: [
+    {
+      id: "claim-1",
+      text: "AgentBadge runs a live agent-readiness scanner that measures these dimensions on this site — results published at /agent-readiness.",
+      status: "VERIFIED",
+      evidence: [
+        { type: "demo", url: "https://agentbadge.xyz/agent-readiness.json" },
+      ],
+    },
+  ],
+  readingTime: "15 min",
+  content: `<h2>Why a good API can be invisible to AI agents</h2>
 
 <p>Imagine this scenario.</p>
 
@@ -779,43 +789,43 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 <p><strong>Related:</strong> <a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — SEO made websites discoverable. Agent Readiness makes APIs usable by AI agents. See the 10 differences.</p>
 
 <p><strong>Related:</strong> <a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — the evolution from website optimization to content optimization to API optimization for the agentic web.</p>`,
-    externalLinks: [
-      {
-        platform: "devto",
-        url: "https://dev.to/spread2009/what-is-agent-readiness-1b59",
-      },
-      {
-        platform: "medium",
-        url: "https://paulspread-99907.medium.com/what-is-agent-readiness-agentbadge-blog-agentbadge-6661bd18750a",
-      },
-      {
-        platform: "linkedin",
-        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-aiagents-share-7494045030396039169-QbUp/",
-      },
-      {
-        platform: "hackernews",
-        url: "https://news.ycombinator.com/item?id=49361630",
-      },
-      {
-        platform: "twitter",
-        url: "https://x.com/paul_spread/status/2088268170003907062",
-      },
-      {
-        platform: "qiita",
-        url: "https://qiita.com/buidl25/items/071c755727117a117c30",
-      },
-      {
-        platform: "velog",
-        url: "https://velog.io/@buidl_25/What-Is-Agent-Readiness-エージェント対応度とは",
-      },
-      {
-        platform: "hsoub",
-        url: "https://io.hsoub.com/artificial_intelligence/185154-ما-هي-جاهزية-الوكلاء-agent-readiness",
-      },
-    ],
-    relatedLinks: [
-      { label: "FAQ", href: "/faq", description: "Common questions about agent readiness" },
-      { label: "Agent Guide", href: "/agent-guide/articles/what-is-agent-readiness", description: "Step-by-step guide to becoming agent-ready" },
-      { label: "Run a Scan", href: "/services/scanner", description: "Check your API's agent readiness score" },
-    ],
-  };
+  externalLinks: [
+    {
+      platform: "devto",
+      url: "https://dev.to/spread2009/what-is-agent-readiness-1b59",
+    },
+    {
+      platform: "medium",
+      url: "https://paulspread-99907.medium.com/what-is-agent-readiness-agentbadge-blog-agentbadge-6661bd18750a",
+    },
+    {
+      platform: "linkedin",
+      url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-aiagents-share-7494045030396039169-QbUp/",
+    },
+    {
+      platform: "hackernews",
+      url: "https://news.ycombinator.com/item?id=49361630",
+    },
+    {
+      platform: "twitter",
+      url: "https://x.com/paul_spread/status/2088268170003907062",
+    },
+    {
+      platform: "qiita",
+      url: "https://qiita.com/buidl25/items/071c755727117a117c30",
+    },
+    {
+      platform: "velog",
+      url: "https://velog.io/@buidl_25/What-Is-Agent-Readiness-エージェント対応度とは",
+    },
+    {
+      platform: "hsoub",
+      url: "https://io.hsoub.com/artificial_intelligence/185154-ما-هي-جاهزية-الوكلاء-agent-readiness",
+    },
+  ],
+  relatedLinks: [
+    { label: "FAQ", href: "/faq", description: "Common questions about agent readiness" },
+    { label: "Agent Guide", href: "/agent-guide/articles/what-is-agent-readiness", description: "Step-by-step guide to becoming agent-ready" },
+    { label: "Run a Scan", href: "/services/scanner", description: "Check your API's agent readiness score" },
+  ],
+};
