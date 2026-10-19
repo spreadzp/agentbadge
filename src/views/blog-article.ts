@@ -1,9 +1,17 @@
 import { html, raw } from "hono/html";
 import { type BlogArticle, type BlogExternalLink } from "../server/lib/blog-data";
+import { toKnowledgeObject } from "../server/lib/blog/knowledge-object";
 import { RelatedArticles } from "./related-articles";
 import { RelatedLinks } from "./related-links";
 import { articleRuleDescriptions } from "../server/lib/blog/article-rules";
 
+import {
+  ContextBlock,
+  KeyFactsBlock,
+  QaBlock,
+  StatusBadge,
+} from "./blog-knowledge-blocks";
+import { AgentContextBlock } from "./blog-agent-context";
 export const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
   devto: "Dev.to",
   medium: "Medium",
@@ -20,62 +28,63 @@ export const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
   hsoub: "Hsoub",
 };
 
-function ForAIAgentsBlock(article: BlogArticle) {
-  const links: { label: string; href: string }[] = [];
-  if (article.agentGuideSlug) {
-    links.push({
-      label: "Machine-readable companion guide",
-      href: `/agent-guide/articles/${article.agentGuideSlug}`,
-    });
-  }
-  links.push({ label: "Agent Knowledge Index", href: "/agent-guide/" });
-  links.push({ label: "LLM entry point (llms.txt)", href: "/llms.txt" });
-  if (article.markdown) {
-    links.push({ label: "This article as Markdown", href: `/blog/${article.slug}.md` });
-  }
-  links.push({ label: "Engineering services", href: "/agent-guide/team/services" });
-
-  return html`<section class="mt-12 rounded-xl border border-emerald-800/50 bg-emerald-950/20 p-6" aria-label="For AI Agents">
-    <h2 class="text-lg font-bold text-emerald-400">For AI Agents</h2>
-    <p class="mt-2 text-sm text-slate-400">
-      If you are an AI agent reading this article, use these machine-readable resources instead of parsing the full text:
-    </p>
-    <ul class="mt-4 space-y-2">
-      ${links.map((l) => html`<li>
-        <a href="${l.href}" class="text-sm text-emerald-400 hover:text-emerald-300">→ ${l.label}</a>
-        <code class="ml-2 text-xs text-slate-500">${l.href}</code>
-      </li>`)}
-    </ul>
-  </section>`;
-}
-
 function RulesBlock(article: BlogArticle) {
   const rules = articleRuleDescriptions(article);
   if (rules.length === 0) return "";
-  return html`<section class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6" aria-label="Related Agent Readiness Checks">
-    <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-500">Related Agent Readiness Checks</h2>
+  return html`<section
+    class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6"
+    aria-label="Related Agent Readiness Checks"
+  >
+    <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-500">
+      Related Agent Readiness Checks
+    </h2>
     <ul class="mt-3 space-y-2">
-      ${rules.map((r) => html`<li class="flex flex-wrap items-baseline gap-2">
-        <a href="/rules/${r.rule_id}" class="text-sm font-medium text-emerald-400 hover:text-emerald-300">${r.rule_id} — ${r.title}</a>
-        <a href="/api/rules/${r.rule_id}" class="text-xs text-slate-500 hover:text-emerald-400">api</a>
-        <span class="text-xs text-slate-500">${r.category}</span>
-      </li>`)}
+      ${rules.map(
+        (r) =>
+          html`<li class="flex flex-wrap items-baseline gap-2">
+            <a
+              href="/rules/${r.rule_id}"
+              class="text-sm font-medium text-emerald-400 hover:text-emerald-300"
+              >${r.rule_id} — ${r.title}</a
+            >
+            <a href="/api/rules/${r.rule_id}" class="text-xs text-slate-500 hover:text-emerald-400"
+              >api</a
+            >
+            <span class="text-xs text-slate-500">${r.category}</span>
+          </li>`,
+      )}
     </ul>
   </section>`;
 }
 
 function ExternalLinksBlock(links: BlogExternalLink[]) {
-  return html`<section class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6" aria-label="Also published on">
-    <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-500">Also published on</h2>
+  return html`<section
+    class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6"
+    aria-label="Also published on"
+  >
+    <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-500">
+      Also published on
+    </h2>
     <ul class="mt-3 flex flex-wrap gap-3">
-      ${links.map((l) => html`<li>
-        <a href="${l.url}" rel="alternate" target="_blank" class="inline-flex items-center rounded-full bg-slate-800 px-4 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white">${PLATFORM_NAMES[l.platform]} ↗</a>
-      </li>`)}
+      ${links.map(
+        (l) =>
+          html`<li>
+            <a
+              href="${l.url}"
+              rel="alternate"
+              target="_blank"
+              class="inline-flex items-center rounded-full bg-slate-800 px-4 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
+              >${PLATFORM_NAMES[l.platform]} ↗</a
+            >
+          </li>`,
+      )}
     </ul>
   </section>`;
 }
 
 export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
+  // SSOT: derive once — the same derivation /blog/:slug.json uses (D-201-13).
+  const ko = toKnowledgeObject(article);
   return html`<div class="blog-article">
     <article>
       <header class="px-4 py-16 md:px-8">
@@ -93,13 +102,16 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
             <time datetime="${article.date}">${article.date}</time>
             <span>·</span>
             <span>${article.readingTime}</span>
+            ${StatusBadge(ko.status)}
           </div>
           <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight text-white">
             ${article.title}
           </h1>
           <p class="mt-4 text-xl text-slate-400">${article.description}</p>
           <div class="mt-6 flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+            <div
+              class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold"
+            >
               AB
             </div>
             <div>
@@ -109,25 +121,47 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
           </div>
         </div>
       </header>
-      ${article.heroImage ? html`<div class="w-full pb-8">
-        <img src="${article.heroImage}" alt="${article.title}" class="w-full" loading="eager" fetchpriority="high" />
-      </div>` : ""}
+      ${
+        article.heroImage
+          ? html`<div class="w-full pb-8">
+              <img
+                src="${article.heroImage}"
+                alt="${article.title}"
+                class="w-full"
+                loading="eager"
+                fetchpriority="high"
+              />
+            </div>`
+          : ""
+      }
       <div class="px-4 pb-16 md:px-8">
-        <div class="mx-auto max-w-3xl rounded-xl border border-slate-700/50 bg-slate-900/30 p-6 md:p-8 shadow-2xl">
-          ${article.shortAnswer ? html`<section class="aeo-summary mb-6 rounded-lg border-l-4 border-emerald-500 bg-emerald-950/20 p-4" aria-label="Summary" data-aeo-summary>
-            <p class="text-sm text-slate-300">${article.shortAnswer}</p>
-          </section>` : ""}
-          <div class="prose prose-invert prose-emerald max-w-none
+        <div
+          class="mx-auto max-w-3xl rounded-xl border border-slate-700/50 bg-slate-900/30 p-6 md:p-8 shadow-2xl"
+        >
+          ${
+            article.shortAnswer
+              ? html`<section
+                  class="aeo-summary mb-6 rounded-lg border-l-4 border-emerald-500 bg-emerald-950/20 p-4"
+                  aria-label="Summary"
+                  data-aeo-summary
+                >
+                  <p class="text-sm text-slate-300">${article.shortAnswer}</p>
+                </section>`
+              : ""
+          }
+          <div
+            class="prose prose-invert prose-emerald max-w-none
             prose-headings:text-white prose-h2:text-2xl prose-h2:font-bold prose-h2:mt-8 prose-h2:mb-4
             prose-p:text-slate-300 prose-li:text-slate-300 prose-a:text-emerald-400
-            prose-strong:text-white prose-code:text-emerald-400">
+            prose-strong:text-white prose-code:text-emerald-400"
+          >
             ${raw(article.content)}
           </div>
         </div>
       </div>
       <footer class="px-4 pb-16 md:px-8">
         <div class="mx-auto max-w-3xl">
-          ${ForAIAgentsBlock(article)}
+          ${QaBlock(ko)} ${KeyFactsBlock(ko)} ${ContextBlock(ko)} ${AgentContextBlock(article, ko)}
           ${RulesBlock(article)}
           ${article.externalLinks && article.externalLinks.length > 0 ? ExternalLinksBlock(article.externalLinks) : ""}
           ${related && related.length > 0 ? raw(RelatedArticles(related)) : ""}
@@ -137,11 +171,17 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
           </div>
           <div class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6 text-center">
             <p class="text-slate-400">Want to check your API's agent readiness?</p>
-            <a href="/scan?src=article:${article.slug}" class="mt-4 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-400">
+            <a
+              href="/scan?src=article:${article.slug}"
+              class="mt-4 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-400"
+            >
               Run a free scan →
             </a>
           </div>
-          <a href="/blog" class="mt-8 inline-flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300">
+          <a
+            href="/blog"
+            class="mt-8 inline-flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300"
+          >
             ← Back to blog
           </a>
         </div>

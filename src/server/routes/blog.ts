@@ -3,7 +3,14 @@ import { describeRoute } from "hono-openapi";
 import { LandingLayout } from "../../views/landing/layout";
 import { BlogListPage } from "../../views/blog-list";
 import { BlogArticlePage } from "../../views/blog-article";
-import { BLOG_ARTICLES, generateBlogIndexMarkdown, paginateArticles, getRelatedArticles, getTagCounts, filterByTag } from "../lib/blog-data";
+import {
+  BLOG_ARTICLES,
+  generateBlogIndexMarkdown,
+  paginateArticles,
+  getRelatedArticles,
+  getTagCounts,
+  filterByTag,
+} from "../lib/blog-data";
 import { toKnowledgeObject } from "../lib/blog/knowledge-object";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { pageCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../lib/json-ld";
@@ -44,7 +51,10 @@ blogRoutes.get(
       itemListLd(items),
       breadcrumbFor("/blog", "Blog"),
     ];
-    const content = BlogListPage(items, paginationMeta, { tagCounts, activeTag: tagParam }).toString();
+    const content = BlogListPage(items, paginationMeta, {
+      tagCounts,
+      activeTag: tagParam,
+    }).toString();
     const canonicalPath = tagParam
       ? `/blog?tag=${encodeURIComponent(tagParam)}`
       : paginationMeta.currentPage > 1
@@ -56,14 +66,19 @@ blogRoutes.get(
     const nextRel = paginationMeta.hasNext
       ? `${BASE_URL}/blog?page=${paginationMeta.currentPage + 1}`
       : undefined;
-    const pageHtml = LandingLayout(content, undefined, {
-      ...meta,
-      path: canonicalPath,
-      rssUrl: "/blog/rss.xml",
-      markdownUrl: "/blog/index.md",
-      prevRel,
-      nextRel,
-    }, schemas);
+    const pageHtml = LandingLayout(
+      content,
+      undefined,
+      {
+        ...meta,
+        path: canonicalPath,
+        rssUrl: "/blog/rss.xml",
+        markdownUrl: "/blog/index.md",
+        prevRel,
+        nextRel,
+      },
+      schemas,
+    );
     return c.html(pageHtml);
   },
 );
@@ -173,7 +188,10 @@ blogRoutes.get(
     tags: ["Blog"],
     summary: "Blog article page",
     description: "Individual blog article by slug.",
-    responses: { 200: { description: "HTML article page" }, 404: { description: "Article not found" } },
+    responses: {
+      200: { description: "HTML article page" },
+      404: { description: "Article not found" },
+    },
   }),
   (c) => {
     const slug = c.req.param("slug");
@@ -223,6 +241,16 @@ blogRoutes.get(
           "@id": `${BASE_URL}/blog/${article.slug}`,
         },
       },
+      // SLICE-201-11: FAQPage from the same qa[] as the visible Q&A block (SSOT).
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: toKnowledgeObject(article).qa.map((q) => ({
+          "@type": "Question",
+          name: q.question,
+          acceptedAnswer: { "@type": "Answer", text: q.answer },
+        })),
+      },
       breadcrumbFor(`/blog/${article.slug}`, article.title),
     ];
     const relatedArticles = getRelatedArticles(article, BLOG_ARTICLES);
@@ -231,4 +259,3 @@ blogRoutes.get(
     return c.html(pageHtml);
   },
 );
-
