@@ -5,7 +5,7 @@ import { getConfig } from "../../config/env";
 import { getKeeperHubClient, keeperhubDisabledResponse } from "../lib/keeperhub";
 import { triggerWorkflow } from "../lib/keeperhub-trigger";
 import { auditStore, type AuditEvent } from "../lib/keeperhub-audit-store";
-import { recordScanAttribution } from "../lib/src-attribution";
+import { parseSrc, recordScanAttribution } from "../lib/src-attribution";
 import { readLatestScoreFor, readRecentRecords } from "../lib/keeperhub-onchain";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
@@ -200,9 +200,16 @@ keeperhubApiRoutes.post(
     }
 
     // SLICE-201-7: src attribution — article/guide/mcp → scan.
+    const rawSrc = c.req.query("src") ?? body.src;
+    if (rawSrc != null && parseSrc(rawSrc) === null) {
+      return c.json(
+        { error: "Invalid src format", expected: "^[a-z]+:[a-z0-9-]+$" },
+        400,
+      );
+    }
     const scanId = crypto.randomUUID();
     const attribution = await recordScanAttribution(
-      c.req.query("src") ?? body.src,
+      rawSrc,
       normalizedUrl,
       scanId,
     );

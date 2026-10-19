@@ -1,12 +1,12 @@
 /**
  * SLICE-201-7: ?src= attribution — article/guide/mcp → scan → audit.
  * Format: `^<channel>:<slug>$` e.g. `article:arc-c14-agent-discovery`,
- * `guide:hire-or-get-hired`, `mcp:board_get`. Shared by scan routes and
+ * `guide:hire-or-get-hired`, `mcp:board-get`. Shared by scan routes and
  * future surfaces (same scheme as 178-5 planning).
  */
 import { auditStore } from "./keeperhub-audit-store";
 
-const SRC_RE = /^[a-z]+:[a-z0-9_-]+$/;
+const SRC_RE = /^[a-z]+:[a-z0-9-]+$/;
 
 /** Validated src value or null (never throws). */
 export function parseSrc(raw: unknown): string | null {

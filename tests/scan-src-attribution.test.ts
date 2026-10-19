@@ -20,10 +20,10 @@ describe("parseSrc (201-7)", () => {
       "article:arc-c14-agent-discovery",
     );
     expect(parseSrc("guide:hire-or-get-hired")).toBe("guide:hire-or-get-hired");
-    expect(parseSrc("mcp:board_get")).toBe("mcp:board_get");
+    expect(parseSrc("mcp:board-get")).toBe("mcp:board-get");
   });
   it("rejects malformed values", () => {
-    for (const bad of ["", "x", "ARTICLE:x", "a b:c", ":x", "a:", "a_b:c", 1, null, undefined, {}]) {
+    for (const bad of ["", "x", "ARTICLE:x", "a b:c", ":x", "a:", "a_b:c", "mcp:board_get", 1, null, undefined, {}]) {
       expect(parseSrc(bad)).toBeNull();
     }
   });

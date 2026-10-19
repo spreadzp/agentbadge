@@ -38,6 +38,7 @@ describe("blog article → rules links (201-6)", () => {
     const html = BlogArticlePage({ ...BASE, rules: ["AB-001"] }).toString();
     expect(html).toContain("Related Agent Readiness Checks");
     expect(html).toContain('href="/rules/AB-001"');
+    expect(html).toContain('href="/api/rules/AB-001"');
     expect(html).toContain("Robots.txt File");
   });
 

@@ -57,6 +57,7 @@ function RulesBlock(article: BlogArticle) {
     <ul class="mt-3 space-y-2">
       ${rules.map((r) => html`<li class="flex flex-wrap items-baseline gap-2">
         <a href="/rules/${r.rule_id}" class="text-sm font-medium text-emerald-400 hover:text-emerald-300">${r.rule_id} — ${r.title}</a>
+        <a href="/api/rules/${r.rule_id}" class="text-xs text-slate-500 hover:text-emerald-400">api</a>
         <span class="text-xs text-slate-500">${r.category}</span>
       </li>`)}
     </ul>
