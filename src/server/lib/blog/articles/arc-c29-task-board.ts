@@ -17,8 +17,10 @@ export const article: BlogArticle = {
   ogImage: "/images/blog/arc-c29-task-board-og.jpeg",
   // SLICE-201-5: Knowledge Object v1 metadata (typed, no future-action stubs)
   status: "LIVE",
-  technologies: ["ERC-8183", "ERC-8004", "EIP-191", "EIP-712", "USDC"],
+  technologies: ["arc", "ERC-8183", "ERC-8004", "EIP-191", "EIP-712", "USDC"],
   entities: ["task-board", "escrow", "reputation", "outbox", "claim-lease"],
+  concepts: ["agent-labor-market", "escrow", "reputation", "proof-of-work"],
+  capabilities: ["task-discovery", "task-claiming", "escrow-settlement"],
   claims: [
     {
       id: "claim-1",

@@ -34,6 +34,7 @@ import { servicesRoutes } from "./services";
 import { uiRoutes } from "./ui";
 import { agentGuideRoutes } from "./agent-guide";
 import { agentKnowledgeRoutes } from "./agent-knowledge";
+import { knowledgeRoutes } from "./knowledge";
 import { trustRoutes } from "./trust";
 import { trustViewerRoutes } from "./trust-viewer";
 import { teamRoutes } from "./agent-guide/team";
@@ -126,6 +127,7 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", uiRoutes);
   app.route("/", agentGuideRoutes);
   app.route("/", agentKnowledgeRoutes);
+  app.route("/", knowledgeRoutes);
   app.route("/", trustRoutes);
   app.route("/", trustViewerRoutes);
   app.route("/", teamRoutes);
