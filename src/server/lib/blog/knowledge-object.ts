@@ -163,6 +163,11 @@ function deriveActions(article: BlogArticle, canonical: string): KnowledgeAction
       label: "Read article (Markdown)",
       url: `${canonical}.md`,
     },
+    {
+      type: "view-demo",
+      label: "Run Agent Readiness scan",
+      url: `${BASE_URL}/scan?src=article:${article.slug}`,
+    },
   ];
   const seen = new Set<string>();
   const push = (type: ActionType, label: string, url: string) => {
@@ -215,30 +220,30 @@ export function toKnowledgeObject(article: BlogArticle): KnowledgeObject {
     article.qa && article.qa.length > 0
       ? article.qa
       : (() => {
-          const extracted = extractQaFromContent(article.content);
-          return extracted.length > 0
-            ? extracted
-            : [
-                {
-                  question: `What is "${article.title}" about?`,
-                  answer: truncate(
-                    article.shortAnswer ?? article.description,
-                    300,
-                  ),
-                },
-              ];
-        })();
+        const extracted = extractQaFromContent(article.content);
+        return extracted.length > 0
+          ? extracted
+          : [
+            {
+              question: `What is "${article.title}" about?`,
+              answer: truncate(
+                article.shortAnswer ?? article.description,
+                300,
+              ),
+            },
+          ];
+      })();
   const claims: KnowledgeClaim[] =
     article.claims && article.claims.length > 0
       ? article.claims
       : [
-          {
-            id: "claim-1",
-            text: article.shortAnswer ?? article.description,
-            status: "UNVERIFIED",
-            evidence: deriveEvidence(article),
-          },
-        ];
+        {
+          id: "claim-1",
+          text: article.shortAnswer ?? article.description,
+          status: "UNVERIFIED",
+          evidence: deriveEvidence(article),
+        },
+      ];
 
   const obj: KnowledgeObject = {
     type: "article",

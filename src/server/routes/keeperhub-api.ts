@@ -5,6 +5,7 @@ import { getConfig } from "../../config/env";
 import { getKeeperHubClient, keeperhubDisabledResponse } from "../lib/keeperhub";
 import { triggerWorkflow } from "../lib/keeperhub-trigger";
 import { auditStore, type AuditEvent } from "../lib/keeperhub-audit-store";
+import { recordScanAttribution } from "../lib/src-attribution";
 import { readLatestScoreFor, readRecentRecords } from "../lib/keeperhub-onchain";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
@@ -172,7 +173,7 @@ keeperhubApiRoutes.post(
     const cfg = getConfig();
     if (!cfg.keeperhub?.enabled) return c.json(keeperhubDisabledResponse(), 503);
 
-    let body: { url?: string; confirm?: boolean; quick?: boolean; packs?: string[] };
+    let body: { url?: string; confirm?: boolean; quick?: boolean; packs?: string[]; src?: string };
     try {
       body = await c.req.json();
     } catch {
@@ -197,6 +198,14 @@ keeperhubApiRoutes.post(
     } catch {
       return c.json({ error: "Private URLs are not allowed" }, 403);
     }
+
+    // SLICE-201-7: src attribution — article/guide/mcp → scan.
+    const scanId = crypto.randomUUID();
+    const attribution = await recordScanAttribution(
+      c.req.query("src") ?? body.src,
+      normalizedUrl,
+      scanId,
+    );
 
     const quick = body.quick === true;
     let score: number, grade: string, rulesPassed: number, rulesTotal: number;
@@ -232,6 +241,8 @@ keeperhubApiRoutes.post(
     if (body.confirm !== true) {
       return c.json({
         mode: "dry-run",
+        scanId,
+        ...(attribution ? { src: attribution.source } : {}),
         scan,
         wouldExecute: {
           workflow: "agentbadge-record-scan",

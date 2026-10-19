@@ -136,7 +136,7 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
           </div>
           <div class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6 text-center">
             <p class="text-slate-400">Want to check your API's agent readiness?</p>
-            <a href="/services/scanner" class="mt-4 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-400">
+            <a href="/scan?src=article:${article.slug}" class="mt-4 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-400">
               Run a free scan →
             </a>
           </div>

@@ -15,6 +15,11 @@ export const landingRoutes = new Hono();
 
 // SLICE-51-11: Redirects from old paths → new /services/* paths
 landingRoutes.get("/scanner", (c) => c.redirect("/services/scanner", 301));
+// SLICE-201-7: /scan short link — CTA target carrying ?src= attribution
+landingRoutes.get("/scan", (c) => {
+  const query = new URL(c.req.url).search;
+  return c.redirect(`/services/scanner${query}`, 301);
+});
 landingRoutes.get("/marketplace", (c) => c.redirect("/services/marketplace", 301));
 
 /**
