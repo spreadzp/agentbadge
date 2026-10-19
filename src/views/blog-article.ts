@@ -2,6 +2,7 @@ import { html, raw } from "hono/html";
 import { type BlogArticle, type BlogExternalLink } from "../server/lib/blog-data";
 import { RelatedArticles } from "./related-articles";
 import { RelatedLinks } from "./related-links";
+import { articleRuleDescriptions } from "../server/lib/blog/article-rules";
 
 export const PLATFORM_NAMES: Record<BlogExternalLink["platform"], string> = {
   devto: "Dev.to",
@@ -43,6 +44,20 @@ function ForAIAgentsBlock(article: BlogArticle) {
       ${links.map((l) => html`<li>
         <a href="${l.href}" class="text-sm text-emerald-400 hover:text-emerald-300">→ ${l.label}</a>
         <code class="ml-2 text-xs text-slate-500">${l.href}</code>
+      </li>`)}
+    </ul>
+  </section>`;
+}
+
+function RulesBlock(article: BlogArticle) {
+  const rules = articleRuleDescriptions(article);
+  if (rules.length === 0) return "";
+  return html`<section class="mt-8 rounded-xl border border-slate-700 bg-slate-900/50 p-6" aria-label="Related Agent Readiness Checks">
+    <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-500">Related Agent Readiness Checks</h2>
+    <ul class="mt-3 space-y-2">
+      ${rules.map((r) => html`<li class="flex flex-wrap items-baseline gap-2">
+        <a href="/rules/${r.rule_id}" class="text-sm font-medium text-emerald-400 hover:text-emerald-300">${r.rule_id} — ${r.title}</a>
+        <span class="text-xs text-slate-500">${r.category}</span>
       </li>`)}
     </ul>
   </section>`;
@@ -112,6 +127,7 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
       <footer class="px-4 pb-16 md:px-8">
         <div class="mx-auto max-w-3xl">
           ${ForAIAgentsBlock(article)}
+          ${RulesBlock(article)}
           ${article.externalLinks && article.externalLinks.length > 0 ? ExternalLinksBlock(article.externalLinks) : ""}
           ${related && related.length > 0 ? raw(RelatedArticles(related)) : ""}
           ${article.relatedLinks && article.relatedLinks.length > 0 ? raw(RelatedLinks("Learn More", article.relatedLinks)) : ""}

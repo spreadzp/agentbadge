@@ -10,6 +10,7 @@ export const article: BlogArticle = {
   date: "2026-10-09",
   dateModified: "2026-10-09",
   tags: ["agents", "discovery", "a2a", "mcp", "x402", "arc", "web3", "ai-agents"],
+  rules: ["AB-006", "AB-014", "AB-015", "AB-016", "AB-017"],
   readingTime: "6 min",
   shortAnswer:
     "An AI agent that lands on agentbadge.xyz now finds eleven live .well-known manifests (agent-card, api-catalog, ERC-8004, MCP server card, evaluation ladder, DID/JWKS, security.txt) plus a generated llms.txt — all projected from live code sources, CI-checked for drift, and verified by our own scanner at 100% pass.",

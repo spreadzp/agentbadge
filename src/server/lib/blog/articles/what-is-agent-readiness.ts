@@ -15,6 +15,7 @@ export const article: BlogArticle =
     ogImage: "/images/blog/what-is-agent-readiness-og.png",
     shortAnswer: "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces — OpenAPI, MCP, llms.txt, and structured discovery layers that let agents navigate your service autonomously.",
     tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
+    rules: ["AB-004"],
     readingTime: "15 min",
     content: `<h2>Why a good API can be invisible to AI agents</h2>
 

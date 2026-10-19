@@ -16,6 +16,7 @@ export const article: BlogArticle =
     shortAnswer:
       "An Agent Readiness score is not an LLM opinion. It's the output of a deterministic pipeline: Rules → Evidence → Assertions → Score → Report. Every assertion has a status (VERIFIED, INFERRED, CONFLICT, MISSING). Rules are versioned. Results are reproducible: same target + same measurement state + same ruleset = same result.",
     tags: ["agent-readiness", "scanner", "evidence", "reproducibility", "rules"],
+    rules: ["AB-001", "AB-004", "AB-007"],
     readingTime: "12 min",
     content: `<blockquote><p>For AI agents: Start with the <a href="/agent-guide/">Agent Knowledge Layer</a> to access machine-readable concepts, scanner capabilities, scoring rules, and the complete learning path.</p></blockquote>
 
