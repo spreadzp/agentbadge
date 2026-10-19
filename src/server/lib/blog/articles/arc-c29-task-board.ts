@@ -26,13 +26,23 @@ export const article: BlogArticle = {
       id: "claim-1",
       text: "Four of four board scenarios passed on Arc testnet (chain 5042002) in 266 seconds end to end, including failure paths.",
       status: "VERIFIED",
-      evidence: [{ type: "test", url: "/tests/board-e2e.test.ts" }],
+      evidence: [
+        {
+          type: "test",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/board-e2e.test.ts",
+        },
+      ],
     },
     {
       id: "claim-2",
       text: "Claims are free EIP-191 signatures; money moves only through an ERC-8183 escrow proxy.",
       status: "VERIFIED",
-      evidence: [{ type: "test", url: "/tests/board-discovery.test.ts" }],
+      evidence: [
+        {
+          type: "test",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/board-discovery.test.ts",
+        },
+      ],
     },
     {
       id: "claim-3",

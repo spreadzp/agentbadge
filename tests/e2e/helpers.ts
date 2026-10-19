@@ -30,6 +30,9 @@ import { workRequestUiRoutes } from "../../src/server/routes/work-request-ui";
 import { demandRoutes } from "../../src/server/routes/api/demand";
 import { demandGuideRoutes } from "../../src/server/routes/agent-guide/demand";
 import { agencyJsonRoutes } from "../../src/server/routes/agency-json";
+import { servicesRoutes } from "../../src/server/routes/services";
+import { createBoardPageRoutes } from "../../src/server/routes/board-page";
+import { createBoardGuideRoutes } from "../../src/server/routes/agent-guide-hire";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { paymentRoutes } from "../../src/server/routes/payment";
 import { keeperhubApiRoutes } from "../../src/server/routes/keeperhub-api";
@@ -59,7 +62,12 @@ import { isStripeConfigured } from "../../src/server/lib/stripe-client";
 export function makeTestApp(): Hono {
   const app = new Hono();
   app.use(corsMiddleware());
-  app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));
+  app.use((c, next) =>
+    signatureVerificationMiddleware(
+      c as unknown as Parameters<typeof signatureVerificationMiddleware>[0],
+      next,
+    ),
+  );
   app.use(rateLimitMiddleware());
   app.route("/", passportRoutes);
   app.route("/", verifyRoutes);
@@ -119,6 +127,10 @@ export function makeTestApp(): Hono {
   app.route("/", workRequestRoutes);
   app.route("/", workRequestUiRoutes);
   app.route("/", demandRoutes);
+  // SLICE-201-16: page routes the agent path hits
+  app.route("/", servicesRoutes);
+  app.route("/", createBoardPageRoutes());
+  app.route("/", createBoardGuideRoutes());
   app.route("/", demandGuideRoutes);
   app.route("/", agencyJsonRoutes);
   app.route("/", wellKnownRoutes);
