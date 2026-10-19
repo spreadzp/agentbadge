@@ -140,6 +140,26 @@ OPTIONAL_SECRETS=(
   # .env keeps BSTOK-infix names; pushed under canonical names via SECRET_RENAME
   BINANCE_BSTOK_API_KEY
   BINANCE_BSTOK_API_SECRET
+  # ── FX Delta engine + premium x402 gate (EPIC-191) ──
+  FXDELTA_ENABLED
+  FXDELTA_PAY_TO
+  FXDELTA_PRICE_USD
+  FXDELTA_RATE_LIMIT_PER_MIN
+  FXDELTA_MAX_SSE
+  FXDELTA_TG_PUSH_ENABLED
+  FXDELTA_ANCHOR_RETRY_MS
+  FXDELTA_AGENT_TOKENS
+  FXDELTA_PUBLIC_URL
+  SELLER_PRIVATE_KEY
+  SELLER_ADDRESS
+  ATTRIBUTION_CODE
+  CELO_RPC_URL
+  CELO_CHAIN_ID
+  CELO_POLL_MS
+  X402_MODE
+  FX_PROVIDERS
+  FX_TTL_MS
+  TELEGRAM_BOT_FXDELTA_TOKEN
   # ── Cache layer (EPIC-144/145) ──
   CACHE_ENABLED
   CACHE_BACKEND
@@ -201,6 +221,14 @@ parse_env() {
 
 info "Parsing .env..."
 parse_env "$ENV_FILE"
+
+# Secondary source: the fx-delta engine/seller keys live in the sibling
+# celo-fx-delta repo (.env, chmod 600). Optional — only merged when present.
+FXDELTA_ENV_FILE="${SCRIPT_DIR}/../../../celo-fx-delta/.env"
+if [ -f "$FXDELTA_ENV_FILE" ]; then
+  info "Merging fx-delta env: $FXDELTA_ENV_FILE"
+  parse_env "$FXDELTA_ENV_FILE"
+fi
 
 # ── Validate all required keys are present ────────────────────────────
 

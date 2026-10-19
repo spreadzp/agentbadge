@@ -1,9 +1,10 @@
 import { Hono } from "hono";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { signatureVerificationMiddleware } from "./middleware/signature-verification";
 import { bazaarExtensionMiddleware } from "./middleware/bazaar-extension";
 import { bazaarExtensionFor } from "./lib/service-catalog/bazaar";
 import { wireL402, wirePaymentGates } from "./wiring/payments";
+import { passportChainEnabled } from "./lib/passport-chain-gate";
 import { wireKeeperhubX402 } from "./wiring/keeperhub-x402";
 import { wireScanPacksX402 } from "./wiring/scan-packs-x402";
 import { wireMarketplace } from "./wiring/marketplace-x402";
@@ -18,6 +19,7 @@ import { wireAgentRegistration } from "./wiring/agent-registration";
 import { wireWitness } from "./wiring/witness";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
+import { startFxDeltaEngine } from "./lib/fx-delta/boot";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { agentKeyAuth } from "./middleware/agent-key-auth";
 import { CacheRateLimitStore } from "./middleware/rate-limit-redis-store";
@@ -79,7 +81,9 @@ app.use(cacheHeadersMiddleware());
 // SLICE-49-19: L402 Lightning payment middleware (before signature verification)
 // EPIC-140: extracted to wiring/payments.ts — must stay BEFORE signature/rateLimit.
 wireL402(app);
-app.use((c, next) => signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next));
+// SLICE-169-9: signature check hits Mirror Node for Hedera account IDs —
+// chain call, skipped when the flag is off (the gated route 503s anyway).
+app.use((c, next) => (passportChainEnabled() ? signatureVerificationMiddleware(c as unknown as Parameters<typeof signatureVerificationMiddleware>[0], next) : next()));
 // EPIC-144: shared cache-backed counters when CACHE_ENABLED, else MemoryStore.
 app.use(
   rateLimitMiddleware(
@@ -139,7 +143,9 @@ if (database.db) {
 
 // EPIC-140: x402 Hedera + MPP/Stripe + Base x402 gates extracted to
 // wiring/payments.ts — must stay AFTER notFound + config validation, BEFORE routes.
-wirePaymentGates(app);
+// SLICE-169-9: async (lazy x402 imports) — awaited so the x402/MPP
+// middlewares still register before any route mounts.
+await wirePaymentGates(app);
 
 app.route("/", linkedinRoutes);
 
@@ -152,6 +158,11 @@ wireStaticOps(app);
 
 // EPIC-140: core routes extracted to routes/index.ts
 registerCoreRoutes(app);
+
+// EPIC-191: start the fx-delta engine (Celo onchain + FX-ref sources
+// wired into DeltaEngine -> setFxDeltaRuntime) BEFORE namespace wiring
+// reads getFxDeltaRuntime(). No-op unless FXDELTA_ENABLED=true.
+startFxDeltaEngine();
 
 // Register MCP namespace tools BEFORE mounting namespace routes
 // (createNamespaceRoutes calls getNamespace at mount time)

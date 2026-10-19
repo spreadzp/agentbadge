@@ -16,6 +16,7 @@ import {
   CELO_X402_SCHEME,
 } from "./celo-assets";
 import { getFxDeltaFacilitator } from "./facilitator-env";
+import { getFxDeltaRuntime } from "./index";
 import type { BstockPaymentRequirements } from "../../middleware/bstock-freemium";
 import { checkPayerBinding } from "../../middleware/payer-binding";
 
@@ -70,6 +71,16 @@ export function fxDeltaPremiumGate(): MiddlewareHandler {
         503,
         ErrorCodes.INTERNAL_ERROR,
         "premium not configured",
+      );
+    }
+    // Engine check BEFORE any 402/settle: a paid request must never
+    // settle onchain and then die on a missing runtime (buyer pays → 503).
+    if (!getFxDeltaRuntime()) {
+      return errorResponse(
+        c,
+        503,
+        ErrorCodes.INTERNAL_ERROR,
+        "engine not started",
       );
     }
     const paymentSig = c.req.header("PAYMENT-SIGNATURE");

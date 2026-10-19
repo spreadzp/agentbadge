@@ -12,9 +12,9 @@
         "@agentbadge/evm-core": "^0.1.2",
         "@agentbadge/hedera-core": "^0.2.1",
         "@agentbadge/keeperhub": "^0.1.1",
-        "@agentbadge/mcp": "0.3.4",
+        "@agentbadge/mcp": "0.3.5",
         "@agentbadge/pass-auth": "^0.1.1",
-        "@agentbadge/passport": "^0.2.2",
+        "@agentbadge/passport": "^0.3.0",
         "@agentbadge/webmcp": "^0.3.0",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/swagger-ui": "^0.6.1",
@@ -25,9 +25,8 @@
         "@types/qrcode": "^1.5.6",
         "@x402/evm": "^2.25.0",
         "@x402/extensions": "^2.25.0",
-        "@x402/hedera": "^2.25.0",
-        "@x402/hono": "^2.25.0",
         "ethers": "^6.17.0",
+        "fxdelta-tracker": "0.1.0",
         "hono": "^4.7.0",
         "hono-openapi": "^1.3.3",
         "jose": "^6.2.12",
@@ -63,6 +62,10 @@
         "typescript": "^5.9.0",
         "vitest": "^2.0.0",
       },
+      "optionalDependencies": {
+        "@x402/hedera": "^2.25.0",
+        "@x402/hono": "^2.25.0",
+      },
     },
   },
   "packages": {
@@ -82,11 +85,11 @@
 
     "@agentbadge/keeperhub": ["@agentbadge/keeperhub@0.1.1", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GYFT9LUCNFUA/0qyH6iJStoVlqVz3WYxLzlTyPNGg0iLOOhPFPZNyTohRybZ+/t3EzkZMSkZTXgy6kAbKoH4Qw=="],
 
-    "@agentbadge/mcp": ["@agentbadge/mcp@0.3.4", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "@agentbadge/passport": "^0.2.2", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "bin": { "agentbadge-mcp": "dist/entry.js" } }, "sha512-nxIf/GOjd75eG3z0SbpS8g6m3hm8SbGOM6R+g/EvqCAWLhrDHTyGNcmRbAShSciBGyGOkCc9/19nG3go5zAAUA=="],
+    "@agentbadge/mcp": ["@agentbadge/mcp@0.3.5", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "@agentbadge/passport": "^0.3.0", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "bin": { "agentbadge-mcp": "dist/entry.js" } }, "sha512-aME5emYlTXHcvUkqltbpPaHnss+ZC+xTv/FxIW0gk3x/iT9mMOYv35cWRQqYSNhlw+kXj6eNL3wdwORtFAx0bA=="],
 
     "@agentbadge/pass-auth": ["@agentbadge/pass-auth@0.1.1", "", { "dependencies": { "viem": "^2.0.0" } }, "sha512-NfDIFKHviNr0XH/9v18ozJnoJGcncG8NEMpSe3yrVhT2/yAZyM0XKWkC1czq+d4lghbHL9ufRtjJ3r9EaUNq1Q=="],
 
-    "@agentbadge/passport": ["@agentbadge/passport@0.2.2", "", { "dependencies": { "@agentbadge/hedera-core": "file:../hedera-core", "@x402/hedera": "^2.25.0", "@x402/hono": "^2.25.0", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-AncIxtTGFh4zoGu5mh4bqzOF527JvZeB7VmoAVvkadV+nPH41h1Lq7adIlN2Xcfo3+QCGzHsuFPrc3BfDx3gag=="],
+    "@agentbadge/passport": ["@agentbadge/passport@0.3.0", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "ethers": "^6.17.0" }, "peerDependencies": { "hono": "^4.7.0" } }, "sha512-/hgBk38kNgEMmycSEi7qCwg4lVYAF6Dd8+ZgbzFLHPgd4JMcpMsQwgAvdrVH7JLFYpebRIjK3jQstqTNpjvWhQ=="],
 
     "@agentbadge/webmcp": ["@agentbadge/webmcp@0.3.0", "", {}, "sha512-bNNDd8Cs3B2QdPidfB5CfAH9vV8Avwh2XEf9OZXE21iFG7BNx6WMOKUs9XcF1B/1n7Q86MMzO0LPgf7USCQfdA=="],
 
@@ -244,7 +247,7 @@
 
     "@hiero-ledger/cryptography": ["@hashgraph/cryptography@1.17.0", "", { "dependencies": { "@noble/curves": "1.8.1", "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "asn1js": "3.0.6", "bignumber.js": "9.1.1", "bn.js": "5.2.3", "buffer": "6.0.3", "crypto-js": "4.2.0", "debug": "4.4.1", "forge-light": "1.1.4", "js-base64": "3.7.7", "react-native-get-random-values": "2.0.0", "spark-md5": "3.0.2", "strip-ansi": "7.1.2", "tweetnacl": "1.0.3", "utf8": "3.0.0" } }, ""],
 
-    "@hiero-ledger/proto": ["@hashgraph/proto@2.26.0-beta.3", "", { "dependencies": { "long": "5.3.1" }, "peerDependencies": { "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "debug": "4.4.1", "protobufjs": "7.5.4", "strip-ansi": "7.1.2" } }, ""],
+    "@hiero-ledger/proto": ["@hiero-ledger/proto@2.31.0", "", { "dependencies": { "long": "5.3.1" }, "peerDependencies": { "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "debug": "4.4.1", "protobufjs": "8.0.1", "strip-ansi": "7.1.2" } }, ""],
 
     "@hiero-ledger/sdk": ["@hiero-ledger/sdk@2.85.0", "", { "dependencies": { "@grpc/grpc-js": "1.12.6", "@hiero-ledger/cryptography": "1.19.0", "@hiero-ledger/proto": "2.31.0", "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "bignumber.js": "11.1.2", "bn.js": "5.2.3", "crypto-js": "4.2.0", "debug": "4.4.1", "ethers": "6.16.0", "js-base64": "3.7.4", "long": "5.3.1", "pino": "10.1.0", "pino-pretty": "13.0.0", "protobufjs": "8.2.0", "rfc4648": "1.5.3", "strip-ansi": "7.1.2", "utf8": "3.0.0" }, "peerDependencies": { "bn.js": "5.2.3" } }, ""],
 
@@ -945,6 +948,8 @@
     "fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
     "function-bind": ["function-bind@1.1.2", "", {}, ""],
+
+    "fxdelta-tracker": ["fxdelta-tracker@0.1.0", "", { "dependencies": { "viem": "^2.55.8" } }, "sha512-p3wzpR+/msqhJaiCbzNRg6P/SSVQ1kpXrJRUJH616HnuDGNDk2bWRAzt1zIbRC0UhFSgwLzH+Gei4eo3Th7kDA=="],
 
     "get-caller-file": ["get-caller-file@2.0.5", "", {}, ""],
 
@@ -1684,8 +1689,6 @@
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
 
-    "@agentbadge/passport/@agentbadge/hedera-core": ["@agentbadge/hedera-core@file:../hedera-core", {}],
-
     "@apm-js-collab/code-transformer-bundler-plugins/es-module-lexer": ["es-module-lexer@2.3.1", "", {}, ""],
 
     "@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, ""],
@@ -1708,6 +1711,8 @@
 
     "@grpc/proto-loader/yargs": ["yargs@17.7.3", "", { "dependencies": { "cliui": "^8.0.1", "escalade": "^3.1.1", "get-caller-file": "^2.0.5", "require-directory": "^2.1.1", "string-width": "^4.2.3", "y18n": "^5.0.5", "yargs-parser": "^21.1.1" } }, ""],
 
+    "@hashgraph/sdk/@hiero-ledger/proto": ["@hashgraph/proto@2.26.0-beta.3", "", { "dependencies": { "long": "5.3.1" }, "peerDependencies": { "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "debug": "4.4.1", "protobufjs": "7.5.4", "strip-ansi": "7.1.2" } }, ""],
+
     "@hashgraph/sdk/debug": ["debug@4.4.1", "", { "dependencies": { "ms": "^2.1.3" } }, ""],
 
     "@hashgraph/sdk/long": ["long@5.3.1", "", {}, ""],
@@ -1723,8 +1728,6 @@
     "@hiero-ledger/proto/long": ["long@5.3.1", "", {}, ""],
 
     "@hiero-ledger/sdk/@hiero-ledger/cryptography": ["@hiero-ledger/cryptography@1.19.0", "", { "dependencies": { "@noble/curves": "1.8.1", "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "asn1js": "3.0.6", "bignumber.js": "11.1.2", "bn.js": "5.2.3", "buffer": "6.0.3", "crypto-js": "4.2.0", "debug": "4.4.1", "forge-light": "1.1.4", "js-base64": "3.7.7", "react-native-get-random-values": "2.0.0", "spark-md5": "3.0.2", "strip-ansi": "7.1.2", "tweetnacl": "1.0.3", "utf8": "3.0.0" } }, ""],
-
-    "@hiero-ledger/sdk/@hiero-ledger/proto": ["@hiero-ledger/proto@2.31.0", "", { "dependencies": { "long": "5.3.1" }, "peerDependencies": { "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "debug": "4.4.1", "protobufjs": "8.0.1", "strip-ansi": "7.1.2" } }, ""],
 
     "@hiero-ledger/sdk/bignumber.js": ["bignumber.js@11.1.2", "", {}, ""],
 
@@ -1877,8 +1880,6 @@
     "@x402/extensions/jose": ["jose@5.10.0", "", {}, ""],
 
     "@x402/extensions/zod": ["zod@3.25.76", "", {}, ""],
-
-    "@x402/hedera/@hiero-ledger/proto": ["@hiero-ledger/proto@2.31.0", "", { "dependencies": { "long": "5.3.1" }, "peerDependencies": { "ansi-regex": "6.2.2", "ansi-styles": "6.2.3", "debug": "4.4.1", "protobufjs": "8.0.1", "strip-ansi": "7.1.2" } }, ""],
 
     "accepts/mime-types": ["mime-types@2.1.35", "", { "dependencies": { "mime-db": "1.52.0" } }, "sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw=="],
 
@@ -2056,6 +2057,8 @@
 
     "@grpc/proto-loader/yargs/yargs-parser": ["yargs-parser@21.1.1", "", {}, ""],
 
+    "@hashgraph/sdk/@hiero-ledger/proto/protobufjs": ["protobufjs@7.6.5", "", { "dependencies": { "@protobufjs/aspromise": "^1.1.2", "@protobufjs/base64": "^1.1.2", "@protobufjs/codegen": "^2.0.5", "@protobufjs/eventemitter": "^1.1.1", "@protobufjs/fetch": "^1.1.1", "@protobufjs/float": "^1.0.2", "@protobufjs/path": "^1.1.2", "@protobufjs/pool": "^1.1.0", "@protobufjs/utf8": "^1.1.1", "@types/node": ">=13.7.0", "long": "^5.3.2" } }, ""],
+
     "@hashgraph/sdk/protobufjs/long": ["long@5.3.2", "", {}, ""],
 
     "@hiero-ledger/cryptography/@noble/curves/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, ""],
@@ -2063,8 +2066,6 @@
     "@hiero-ledger/sdk/@hiero-ledger/cryptography/@noble/curves": ["@noble/curves@1.8.1", "", { "dependencies": { "@noble/hashes": "1.7.1" } }, ""],
 
     "@hiero-ledger/sdk/@hiero-ledger/cryptography/js-base64": ["js-base64@3.7.7", "", {}, ""],
-
-    "@hiero-ledger/sdk/@hiero-ledger/proto/protobufjs": ["protobufjs@7.6.5", "", { "dependencies": { "@protobufjs/aspromise": "^1.1.2", "@protobufjs/base64": "^1.1.2", "@protobufjs/codegen": "^2.0.5", "@protobufjs/eventemitter": "^1.1.1", "@protobufjs/fetch": "^1.1.1", "@protobufjs/float": "^1.0.2", "@protobufjs/path": "^1.1.2", "@protobufjs/pool": "^1.1.0", "@protobufjs/utf8": "^1.1.1", "@types/node": ">=13.7.0", "long": "^5.3.2" } }, ""],
 
     "@hiero-ledger/sdk/ethers/@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.10.1", "", {}, ""],
 
@@ -2362,8 +2363,6 @@
 
     "@x402/extensions/@noble/curves/@noble/hashes": ["@noble/hashes@1.8.0", "", {}, ""],
 
-    "@x402/hedera/@hiero-ledger/proto/long": ["long@5.3.1", "", {}, ""],
-
     "accepts/mime-types/mime-db": ["mime-db@1.52.0", "", {}, "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg=="],
 
     "body-parser/debug/ms": ["ms@2.0.0", "", {}, "sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A=="],
@@ -2452,9 +2451,9 @@
 
     "@grpc/proto-loader/yargs/string-width/strip-ansi": ["strip-ansi@6.0.1", "", { "dependencies": { "ansi-regex": "^5.0.1" } }, ""],
 
-    "@hiero-ledger/sdk/@hiero-ledger/cryptography/@noble/curves/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, ""],
+    "@hashgraph/sdk/@hiero-ledger/proto/protobufjs/long": ["long@5.3.2", "", {}, ""],
 
-    "@hiero-ledger/sdk/@hiero-ledger/proto/protobufjs/long": ["long@5.3.2", "", {}, ""],
+    "@hiero-ledger/sdk/@hiero-ledger/cryptography/@noble/curves/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, ""],
 
     "@lhci/cli/lighthouse/@sentry/node/@sentry/core": ["@sentry/core@6.19.7", "", { "dependencies": { "@sentry/hub": "6.19.7", "@sentry/minimal": "6.19.7", "@sentry/types": "6.19.7", "@sentry/utils": "6.19.7", "tslib": "^1.9.3" } }, "sha512-tOfZ/umqB2AcHPGbIrsFLcvApdTm9ggpi/kQZFkej7kMphjT+SGBiQfYtjyg9jcRW+ilAR4JXC9BGKsdEQ+8Vw=="],
 
