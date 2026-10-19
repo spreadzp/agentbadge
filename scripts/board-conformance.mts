@@ -68,12 +68,13 @@ const RPC_URL = process.env.ARC_RPC_URL ?? process.env.BOARD_E2E_RPC ?? ARC_TEST
 const ESCROW = (process.env.ERC8183_REF_ADDRESS ??
   "0x0049e5362736c933055e502b3cf3ba90cc0bf6a0") as Hex;
 const USDC = (process.env.BOARD_E2E_USDC ?? ARC_TESTNET.usdc) as Hex;
-const REPORT_MD = new URL(
-  "../../docs/EPICS/201-agent-economy-interface/CONFORMANCE-REPORT.md",
-  import.meta.url,
-).pathname;
-const REPORT_JSON = new URL(
-  "../../out/conformance-run.json",
+const OUT_MD = new URL("../out/CONFORMANCE-REPORT.md", import.meta.url)
+  .pathname;
+const REPORT_JSON = new URL("../out/conformance-run.json", import.meta.url)
+  .pathname;
+// Epic-docs copy (local workspace only — docs/EPICS lives outside the repo).
+const EPIC_MD = new URL(
+  "../../../docs/EPICS/201-agent-economy-interface/CONFORMANCE-REPORT.md",
   import.meta.url,
 ).pathname;
 
@@ -313,10 +314,11 @@ async function writeReport(extra: Record<string, unknown>): Promise<void> {
     `- \`GET /api/board/cards/:id/terms\` advertised by the agent guide does not`,
     `  exist as a route — card terms are served by \`GET /api/board/cards/:id\`.`,
   ].join("\n");
-  await Bun.write(REPORT_MD, md);
-  const { mkdirSync } = await import("node:fs");
+  const { mkdirSync, existsSync } = await import("node:fs");
   const { dirname } = await import("node:path");
   mkdirSync(dirname(REPORT_JSON), { recursive: true });
+  await Bun.write(OUT_MD, md);
+  if (existsSync(dirname(EPIC_MD))) await Bun.write(EPIC_MD, md);
   await Bun.write(
     REPORT_JSON,
     JSON.stringify(
@@ -325,7 +327,7 @@ async function writeReport(extra: Record<string, unknown>): Promise<void> {
       2,
     ),
   );
-  log(`report → ${REPORT_MD}`);
+  log(`report → ${OUT_MD}`);
 }
 
 // ─── main ──────────────────────────────────────────────────────────────────
@@ -483,7 +485,7 @@ async function main() {
       return { detail: `tx=${tx} jobId=${jobId} status=${job.status}` };
     });
     settleTx = await step("settle tx (payment leg)", async () => {
-      const tx = await waitTxHash(cardId, "complete", 60);
+      const tx = await waitTxHash(cardId, "review", 90);
       return { detail: `tx=${tx}`, value: tx };
     });
     await step("USDC payout received", async () => {
