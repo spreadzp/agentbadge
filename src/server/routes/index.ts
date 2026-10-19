@@ -48,6 +48,8 @@ import { bstockGuideRoutes } from "./bstock-guide";
 import { contactRoutes } from "./contact";
 import { contentPageRoutes } from "./content-pages";
 import { blogRoutes } from "./blog";
+import { createShowcaseRoutes } from "./agent-readiness-showcase";
+import { BASE_URL } from "../lib/page-meta";
 
 import { webmcpApiRoutes } from "./webmcp-api";
 import { keeperhubApiRoutes } from "./keeperhub-api";
@@ -68,10 +70,7 @@ import { agencyJsonRoutes } from "./agency-json";
 import { profileRoutes } from "./profile";
 import { profileViewerRoutes } from "./profile-viewer";
 import { attestcoinRoutes, setAttestcoinRouteConfig } from "./attestcoin";
-import {
-  attestationRoutes,
-  setAttestationRouteConfig,
-} from "./attestation-api";
+import { attestationRoutes, setAttestationRouteConfig } from "./attestation-api";
 import { createArcAttestationWriter } from "../lib/arc-attestation";
 import {
   ARC_CONTRACTS,
@@ -141,6 +140,21 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", contactRoutes);
   app.route("/", contentPageRoutes);
   app.route("/", blogRoutes);
+
+  // SLICE-201-15: /agent-readiness dogfooding showcase — self-scan via the
+  // local scanner orchestrator (import, not an HTTP call), cached ≥1h.
+  app.route(
+    "/",
+    createShowcaseRoutes({
+      scanFn: async () => {
+        const { scanDomain } = await import("../../agent-readiness/scanner/orchestrator");
+        const { RuleEngine } = await import("../../agent-readiness/rule-engine/rule-engine");
+        const { formatScanReport } = await import("../../agent-readiness/report-formatter");
+        const sourceState = await scanDomain(BASE_URL);
+        return formatScanReport(BASE_URL, RuleEngine.run(sourceState));
+      },
+    }),
+  );
 }
 
 // API routes — MUST be called AFTER wireKeeperhubX402 (its paymentMiddleware
@@ -158,20 +172,18 @@ export function registerApiRoutes(app: Hono): void {
   // 201-2: /api/board/cards/:id/receipt — signer key absent → mounted but 503s
   {
     const evm = getConfig().evm;
-    const receiptKey =
-      process.env.ARC_RECEIPT_SIGNER_KEY ?? process.env.ARC_OPS_KEY;
+    const receiptKey = process.env.ARC_RECEIPT_SIGNER_KEY ?? process.env.ARC_OPS_KEY;
     app.route(
       "/",
       createReceiptRoutes(
         receiptKey && evm
           ? {
-            signer: createReceiptSigner(receiptKey, evm.chainId),
-            chainId: evm.chainId,
-            agentRegistry:
-              process.env.ERC8004_REGISTRY ??
-              "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-            escrowAddress: evm.escrow,
-          }
+              signer: createReceiptSigner(receiptKey, evm.chainId),
+              chainId: evm.chainId,
+              agentRegistry:
+                process.env.ERC8004_REGISTRY ?? "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+              escrowAddress: evm.escrow,
+            }
           : {},
       ),
     );
@@ -224,23 +236,19 @@ export function registerPostMarketplaceRoutes(app: Hono): void {
       network: net.caip2,
       explorerUrl:
         net.explorerUrl ??
-        (cp.arcMainnet
-          ? "https://explorer.arc.io"
-          : "https://explorer.testnet.arc.io"),
+        (cp.arcMainnet ? "https://explorer.arc.io" : "https://explorer.testnet.arc.io"),
       store: undefined, // default in-memory ring buffer
       writeAttestation: cp.arcEvaluatorKey
         ? createArcAttestationWriter({
-          chainId: net.chainId,
-          rpcUrl: cp.arcMainnet ? cp.arcMainnetRpcUrl : cp.arcRpcUrl,
-          evaluatorKey: cp.arcEvaluatorKey as `0x${string}`,
-          oracleAgentId: cp.oracleAgentId
-            ? BigInt(cp.oracleAgentId)
-            : undefined,
-          usdc: net.usdc,
-          identityRegistry: contracts.identityRegistry,
-          reputationRegistry: contracts.reputationRegistry,
-          memoContract: contracts.memo,
-        }).write
+            chainId: net.chainId,
+            rpcUrl: cp.arcMainnet ? cp.arcMainnetRpcUrl : cp.arcRpcUrl,
+            evaluatorKey: cp.arcEvaluatorKey as `0x${string}`,
+            oracleAgentId: cp.oracleAgentId ? BigInt(cp.oracleAgentId) : undefined,
+            usdc: net.usdc,
+            identityRegistry: contracts.identityRegistry,
+            reputationRegistry: contracts.reputationRegistry,
+            memoContract: contracts.memo,
+          }).write
         : undefined,
     });
     app.route("/", attestationRoutes);
