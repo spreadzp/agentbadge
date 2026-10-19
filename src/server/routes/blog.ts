@@ -8,6 +8,8 @@ import { toKnowledgeObject } from "../lib/blog/knowledge-object";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { pageCoreSchemas, blogLd, itemListLd, breadcrumbFor } from "../lib/json-ld";
 import { BASE_URL } from "../lib/page-meta";
+import { agentJsonRequests } from "../metrics/metrics";
+import { classifyUserAgent } from "../lib/ua-classify";
 
 export const blogRoutes = new Hono();
 
@@ -156,6 +158,11 @@ blogRoutes.get(
     if (!article) {
       return c.json({ error: "Article not found" }, 404);
     }
+    // SLICE-201-13: consumption signal — D-201-19, never report as "agents used".
+    agentJsonRequests.inc({
+      slug,
+      ua_class: classifyUserAgent(c.req.header("user-agent")),
+    });
     return c.json(toKnowledgeObject(article));
   },
 );

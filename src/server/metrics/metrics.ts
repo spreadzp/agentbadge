@@ -44,6 +44,20 @@ export const scanDurationMs = new Histogram({
   registers: [registry],
 });
 
+/**
+ * SLICE-201-13: Knowledge Object consumption signals.
+ * agent_json_request{slug, ua_class} — requests to /blog/:slug.json.
+ * ua_class: crawl (AI crawler bots) | fetch (curl/browsers/API) | unknown.
+ * NOTE (D-201-19): signals, not proof of real agent usage — report as
+ * "agent_json_requests", never "agents used".
+ */
+export const agentJsonRequests = new Counter({
+  name: "agent_json_requests_total",
+  help: "Requests to /blog/:slug.json Knowledge Objects (signal, not proof of agent usage)",
+  labelNames: ["slug", "ua_class"],
+  registers: [registry],
+});
+
 export const activeScans = new Gauge({
   name: "agentbadge_active_scans",
   help: "Currently running scans",
