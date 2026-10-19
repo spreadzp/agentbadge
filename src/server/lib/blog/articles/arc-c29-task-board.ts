@@ -29,7 +29,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "test",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/board-e2e.test.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/board-e2e.test.ts",
         },
       ],
     },
@@ -40,7 +40,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "test",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/board-discovery.test.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/board-discovery.test.ts",
         },
       ],
     },
