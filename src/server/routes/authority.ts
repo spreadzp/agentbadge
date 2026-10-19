@@ -59,10 +59,9 @@ function AuthorityPage(body: string, frontmatter: Record<string, unknown>): stri
 
 export const authorityRoutes = new Hono();
 
-// GET /agent-readiness → 301 redirect to /what-is-agent-readiness
-authorityRoutes.get("/agent-readiness", (c) => {
-  return c.redirect("/what-is-agent-readiness", 301);
-});
+// NOTE: /agent-readiness is owned by the EPIC-201-15 showcase
+// (see agent-readiness-showcase.ts) — the former 301 to
+// /what-is-agent-readiness was removed to avoid shadowing it.
 
 // GET /what-is-agent-readiness — canonical authority page
 authorityRoutes.get(
