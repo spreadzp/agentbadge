@@ -11,18 +11,28 @@ import {
   registerGuideTools,
   registerA2ATools,
   registerAuditCatalogTools,
+  registerCirclePayTools,
+  setCirclePayToolConfig,
+  registerCircleWalletBalanceTools,
+  setCircleWalletBalanceToolConfig,
+  registerPaymentStatusTools,
+  setPaymentStatusToolConfig,
+  registerPaymentHistoryTools,
+  setPaymentHistoryToolConfig,
+  registerSupportedNetworksTools,
+  setSupportedNetworksToolConfig,
+  registerAgentIdentityTools,
+  setAgentIdentityToolConfig,
   type NamespaceRegistry,
 } from "@agentbadge/mcp";
 import { registerComplianceTools } from "./compliance-tools";
 import { registerParityTools } from "./parity-tools";
 import { registerBoardTools } from "./board-tools";
 import { registerKnowledgeTools } from "./knowledge-tools";
-import { registerCirclePayTools, setCirclePayToolConfig } from "./circle-pay-tools";
-import { registerPaymentStatusTools, setPaymentStatusToolConfig } from "./payment-status-tools";
-import { registerAgentIdentityTools, setAgentIdentityToolConfig } from "./agent-identity-tools";
-import { registerCircleWalletBalanceTools, setCircleWalletBalanceToolConfig } from "./circle-wallet-balance-tools";
-import { registerSupportedNetworksTools, setSupportedNetworksToolConfig } from "./supported-networks-tools";
-import { registerPaymentHistoryTools, setPaymentHistoryToolConfig } from "./payment-history-tools";
+import {
+  setAttestcoinToolConfig,
+  registerAttestcoinTools,
+} from "./attestcoin-tools";
 import { loadConfig, getConfig } from "../config/env";
 import { createCirclePaymentsRuntime } from "../server/lib/circle-payments";
 
@@ -49,7 +59,7 @@ function initCircleTools(ns?: NamespaceRegistry): void {
         const c = getConfig().circlePayments;
         return {
           gateway: c?.gateway ?? false,
-          arc: c?.arc ?? false,
+          arc: (c?.arc ?? false) || Boolean(rt.arcSelfSettle),
           identity: c?.identity ?? false,
           escrow: c?.escrow ?? false,
         };
