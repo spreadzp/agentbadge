@@ -17,7 +17,7 @@
 
 import type { MiddlewareHandler, Context } from "hono";
 import { didToAccountId } from "@agentbadge/hedera-core";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { NonceStore } from "./did-nonce";
