@@ -66,7 +66,7 @@ interface RateLimitOptions {
 
 // ─── MemoryStore ─────────────────────────────────────────
 
-class MemoryStore implements RateLimitStore {
+export class MemoryStore implements RateLimitStore {
   private map = new Map<string, RateLimitEntry>();
 
   get(key: string): RateLimitEntry | undefined {
@@ -111,7 +111,7 @@ const DEFAULT_MAX_ENTRIES = 10_000;
  *
  * NEVER uses leftmost XFF — it's client-controlled and spoofable.
  */
-function resolveClientIp(c: Context): string {
+export function resolveClientIp(c: Context): string {
   const flyIp = c.req.header("fly-client-ip");
   if (flyIp) return flyIp.trim();
 
