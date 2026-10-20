@@ -6,6 +6,7 @@ FX Delta is a paid x402 API for AI agents. It compares live stablecoin prices on
 - **Network:** Celo mainnet, chainId `42220`
 - **Price:** 5000 base units = 0.005 USDC (USDT accepted at the same price)
 - **Status:** production, mainnet payment verified on-chain (section 1)
+- **Demo video:** [FX Delta Agent — paid x402 API on Celo mainnet](https://youtu.be/XVlZYe79jQI)
 
 ---
 
