@@ -22,6 +22,7 @@ import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
 import { startFxDeltaEngine } from "./lib/fx-delta/boot";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { agentKeyAuth } from "./middleware/agent-key-auth";
+import { wireMcpAbuseGuard, armMcpHeavyGate } from "./wiring/mcp-abuse";
 import { CacheRateLimitStore } from "./middleware/rate-limit-redis-store";
 import { getCache } from "./lib/cache";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
@@ -95,6 +96,8 @@ app.use(
 // EPIC-184 SLICE-184-3: optional Bearer agb_ enrichment — sets agentId/
 // agentTier for downstream free-tier gates; bad/revoked agb_ keys → 401.
 app.use(agentKeyAuth());
+// EPIC-200 SLICE-200-08: MCP abuse-guard — after agentKeyAuth for agentTier/agentId.
+wireMcpAbuseGuard(app);
 app.use(bazaarExtensionMiddleware());
 
 // SLICE-130-7: GA4 pageview tracking — fire-and-forget for HTML 200 GET responses
@@ -178,6 +181,9 @@ registerPageRoutes(app);
 // onto the shared runtime (multi-chain accepts) when it exists.
 // EPIC-140: extracted to wiring/circle-payments.ts
 const circleRuntime = wireCirclePayments(app, { marketNs: namespaces.marketNs });
+
+// SLICE-200-08: arm the heavy-op x402 seam (price+payTo configured only).
+armMcpHeavyGate(circleRuntime);
 
 // SLICE-156-1: venue subscribe seam — x402 settle via the shared router
 // (PAYMENT-REQUIRED header stamped on the route's own 402).
