@@ -549,6 +549,10 @@ export const openApiConfig = {
     windowSeconds: 60,
     scope: "per-IP",
     headers: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    mcpAbuseGuardNote:
+      "SLICE-200-08: /mcp + /mcp/:ns (incl. JSON-RPC roots) — per-IP base bucket anon=60/min; Bearer agb_ keyed lane agent:<id>=120/min; heavy-ops list gets a dedicated 10/min bucket; MCP_HEAVY_X402_PRICE+PAYTO arms an x402 gate on heavy tools.",
+    mcpAbuseGuardEnv:
+      "MCP_ABUSE_ENABLED, MCP_ABUSE_ANON_RPM, MCP_ABUSE_KEYED_RPM, MCP_ABUSE_HEAVY_RPM, MCP_ABUSE_HEAVY_OPS, MCP_HEAVY_X402_PRICE, MCP_HEAVY_X402_PAYTO",
   },
   "x-payer-binding": {
     spec: "/payer-binding.md",
