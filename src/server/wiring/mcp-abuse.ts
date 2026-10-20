@@ -57,6 +57,9 @@ export function wireMcpAbuseGuard(app: Hono): void {
       ? new CacheRateLimitStore(getCache())
       : undefined,
   });
+  // IMPORTANT: pass the SAME instance to both mounts — the per-request
+  // dedup key compares the instance's flag value; two mcpAbuseGuard()
+  // calls here would double-count every request (arc-audit N-4).
   app.use("/mcp", guard);
   app.use("/mcp/*", guard);
 }
