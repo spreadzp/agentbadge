@@ -475,6 +475,22 @@ describe("arc-audit regressions — heavy-op detection hardening", () => {
     ).toBe(429);
   });
 
+  it("NEW-M-1: gate that discards next()'s return still delivers 429", async () => {
+    // Idiomatic Hono middleware: await next() and drop the return — the
+    // adapter must still surface the 429 through c.res (re-audit NEW-M-1).
+    const drop: MiddlewareHandler = async (c, next) => {
+      await next();
+    };
+    setMcpHeavyGate(drop);
+    const app = buildApp({ anonMax: 100, heavyMax: 1 });
+    expect(
+      (await app.request(postJson("/mcp/tools/arc_send_raw_tx", "{}"))).status,
+    ).toBe(200);
+    const res = await app.request(postJson("/mcp/tools/arc_send_raw_tx", "{}"));
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBeTruthy();
+  });
+
   it("M-1: a second guard instance still enforces its own limits", async () => {
     const app = new Hono();
     app.use("/mcp", mcpAbuseGuard({ anonMax: 100 }));
