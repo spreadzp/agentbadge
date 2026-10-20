@@ -12,7 +12,7 @@ export function Footer(): ReturnType<typeof html> {
       <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex items-center gap-2 text-sm text-slate-400">
           <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-5 w-5 rounded" /></picture>
-          <span>AgentBadge · Agency for the agentic web — agent-ready infrastructure on Hedera</span>
+          <span>AgentBadge · Agency for the agentic web — agent-ready infrastructure on Arc &amp; Hedera</span>
         </div>
         <div class="flex items-center gap-4">
           <a href="/contact" class="footer-pop inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400" aria-label="Discord">
@@ -155,8 +155,22 @@ export function Footer(): ReturnType<typeof html> {
       </div>
     </div>
     <div class="border-t border-slate-800 py-4 text-center text-xs text-slate-400">
-      © 2026 AgentBadge. MIT License. Built on Hedera.
+      © 2026 AgentBadge. MIT License. Built on Arc &amp; Hedera.
       <span class="ml-2 text-slate-500">v${APP_VERSION} · ${GIT_COMMIT.slice(0, 7)}</span>
+      <span class="mt-3 flex flex-wrap items-center justify-center gap-2">
+        <a href="https://www.npmjs.com/package/@agentbadge/mcp" target="_blank" rel="noopener" title="@agentbadge/mcp on npm">
+          <img src="https://img.shields.io/npm/v/@agentbadge/mcp?style=flat-square&label=npm&color=334155" alt="npm version" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
+        <a href="https://saasbrowser.com/en/saas/1618369/agentbadge" target="_blank" rel="noopener" title="Verified on SaaS Browser">
+          <img src="https://files.saasbrowser.com/h05pfd6qctu4jsnymq6q06maaf2t" alt="Verified on SaaS Browser" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
+        <a href="https://hol.org/registry/plugins/spreadzp/agentbadge-mcp" target="_blank" rel="noopener" title="Owner-verified on HOL Registry (trust 75)">
+          <img src="https://img.shields.io/badge/HOL%20Registry-owner--verified%20%C2%B7%20trust%2075-334155?style=flat-square" alt="HOL Registry: owner-verified, trust 75" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
+        <a href="https://mcprush.com/spreadzp/agentbadge-mcp" target="_blank" rel="noopener" title="mcprush grade A, trust 95/100">
+          <img src="https://img.shields.io/badge/mcprush-A%20%C2%B7%2095%2F100-334155?style=flat-square" alt="mcprush grade A, trust 95/100" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
+      </span>
     </div>
   </footer>`;
 }
