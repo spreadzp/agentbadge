@@ -13,27 +13,54 @@ import { ErrorCodes, type ErrorCode } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import { workRequestStore } from "../../services/work-request-store";
 import { notifyWorkRequest } from "../../services/work-request-notification";
-import { createRateLimiter } from "../../middleware/rate-limit";
-import { logger } from "@agentbadge/passport";
+import {
+  createRateLimiter,
+  type RateLimitStore,
+  type RateLimitEntry,
+} from "../../middleware/rate-limit";
+import { logger } from "@agentbadge/passport/logger";
 
 export const workRequestRoutes = new Hono();
 
 // ─── Rate limiting (unified, SLICE-86-3) ─────────────────
 
+/** In-memory store kept as a handle so resetRateLimits() can clear it (tests). */
+function mapStore(): RateLimitStore {
+  const map = new Map<string, RateLimitEntry>();
+  return {
+    get: (key) => map.get(key),
+    set: (key, entry) => void map.set(key, entry),
+    delete: (key) => void map.delete(key),
+    sweep: (now) => {
+      for (const [key, entry] of map) {
+        if (entry.resetAt <= now) map.delete(key);
+      }
+    },
+    size: () => map.size,
+  };
+}
+
+const postStore = mapStore();
+const getStore = mapStore();
+
 const postLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
   routes: ["/api/work-requests"],
+  store: postStore,
 });
 
 const getLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 min
   max: 100,
   routes: ["/api/work-requests/:id"],
+  store: getStore,
 });
 
+/** Test hook: drop every bucket — sweep with a far-future now clears all entries. */
 export function resetRateLimits(): void {
-  // No-op — unified limiter handles its own store
+  postStore.sweep(Number.MAX_SAFE_INTEGER);
+  getStore.sweep(Number.MAX_SAFE_INTEGER);
 }
 
 // ─── Validation ───────────────────────────────────────────
@@ -170,6 +197,60 @@ workRequestRoutes.post(
         status_url: `/api/work-requests/${record.id}`,
       },
       202,
+    );
+  },
+);
+
+// ─── GET /api/work-requests ───────────────────────────────
+// SLICE-200-01 F1: list endpoint for list_work_requests MCP tool.
+// Public projection strips preferred_contact and summary (user-submitted PII).
+
+const listLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 min
+  max: 60,
+  routes: ["/api/work-requests"],
+});
+
+const MAX_LIST_LIMIT = 100;
+
+workRequestRoutes.get(
+  "/api/work-requests",
+  describeRoute({
+    tags: ["Work Requests"],
+    summary: "List work requests",
+    description: "Paginated list of submitted work requests (public projection — no contact details).",
+    responses: {
+      200: { description: "Paginated list" },
+      429: { description: "Rate limit exceeded" },
+    },
+  }),
+  async (c) => {
+    const rlResult = await listLimiter(c, async () => { });
+    if (rlResult instanceof Response) {
+      return rlResult;
+    }
+
+    const rawLimit = Number(c.req.query("limit")) || 20;
+    const rawOffset = Number(c.req.query("offset")) || 0;
+    const limit = Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_LIST_LIMIT);
+    const offset = Math.max(Math.trunc(rawOffset), 0);
+
+    const { items, total } = workRequestStore.list(limit, offset);
+
+    return c.json(
+      {
+        requests: items.map((r) => ({
+          id: r.id,
+          status: r.status,
+          title: r.request.title,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        })),
+        total,
+        limit,
+        offset,
+      },
+      200,
     );
   },
 );

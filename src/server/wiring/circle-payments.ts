@@ -7,7 +7,7 @@
 import type { Hono } from "hono";
 import type { NamespaceRegistry } from "@agentbadge/mcp";
 import { getNftsForAccount } from "@agentbadge/hedera-core";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getConfig } from "../../config/env";
 import {
   createCirclePaymentsRuntime,
@@ -254,7 +254,7 @@ export function wireCirclePayments(app: Hono, ns: { marketNs: NamespaceRegistry 
           const c = getConfig().circlePayments;
           return {
             gateway: c?.gateway ?? false,
-            arc: c?.arc ?? false,
+            arc: (c?.arc ?? false) || Boolean(circleRuntime.arcSelfSettle),
             identity: c?.identity ?? false,
             escrow: c?.escrow ?? false,
           };

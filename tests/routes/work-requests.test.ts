@@ -205,4 +205,45 @@ describe("SLICE-46-9: Work Request API", () => {
       expect(body.created_at).toBeDefined();
     });
   });
+
+  describe("GET /api/work-requests (list — SLICE-200-01 F1)", () => {
+    const seed = (title: string) =>
+      workRequestStore.create({ title, summary: "Summary text" }, { channel: "telegram" });
+
+    it("returns 200 with paginated list (not 404)", async () => {
+      const app = makeApp();
+      seed("First");
+      seed("Second");
+      seed("Third");
+
+      const res = await app.request("/api/work-requests?limit=2&offset=0");
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.total).toBe(3);
+      expect(body.requests).toHaveLength(2);
+      expect(body.limit).toBe(2);
+      expect(body.offset).toBe(0);
+    });
+
+    it("public projection strips preferred_contact and summary", async () => {
+      const app = makeApp();
+      seed("Private contact");
+
+      const res = await app.request("/api/work-requests");
+      const body = await res.json();
+      const item = body.requests[0];
+      expect(item.title).toBe("Private contact");
+      expect(item.id).toBeDefined();
+      expect(item).not.toHaveProperty("preferred_contact");
+      expect(item).not.toHaveProperty("summary");
+    });
+
+    it("clamps limit to 100 and offset to >= 0", async () => {
+      const app = makeApp();
+      const res = await app.request("/api/work-requests?limit=99999&offset=-5");
+      const body = await res.json();
+      expect(body.limit).toBe(100);
+      expect(body.offset).toBe(0);
+    });
+  });
 });
