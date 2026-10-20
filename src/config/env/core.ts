@@ -16,6 +16,7 @@ import { loadAgentWallet } from "./agent-wallet";
 import { loadAgentRegistration } from "./agent-registration";
 import { loadKeeperHub } from "./keeperhub";
 import { loadMarketplace } from "./marketplace";
+import { loadMcpAbuse } from "./mcp-abuse";
 import { loadScanPacks } from "./scan-packs";
 import type {
   AnalyticsConfig,
@@ -208,6 +209,7 @@ export function loadConfig(): AppConfig {
 
   const attestcoin = loadAttestcoin();
   const analytics = loadAnalytics();
+  const mcpAbuse = loadMcpAbuse();
   const scanPacks = loadScanPacks();
   // Marketplace validation errors accumulate but are not thrown (matches
   // original ordering — the throw above precedes this section).
@@ -245,5 +247,6 @@ export function loadConfig(): AppConfig {
     cache,
     scanPacks,
     marketplace,
+    mcpAbuse,
   };
 }
