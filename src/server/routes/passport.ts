@@ -17,6 +17,7 @@ import { passportResponseSchema, errorSchema } from "../openapi";
 import { issuePassport, type IssuePassportResult } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { chainDisabled, passportChainEnabled } from "../lib/passport-chain-gate";
 import { passportLinks } from "../lib/hateoas";
 import type { NextCall } from "../lib/next-call";
 
@@ -85,6 +86,8 @@ passportRoutes.post(
     },
   }),
   async (c) => {
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     let body: PassportRequestBody;
     try {
       body = await c.req.json();

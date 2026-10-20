@@ -2,7 +2,8 @@
 // Handler implementations; routes/market.ts registers them against paths + describeRoute.
 import type { Context } from "hono";
 import { submitTaskMessage, transferHbarWithKey, transferHbarWithSignature, isValidA2ADid, didToAccountId, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentbadge/hedera-core";
-import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, logger, reserveTask, transitionTask } from "@agentbadge/passport";
+import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, reserveTask, transitionTask } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { ErrorCodes } from "./error-codes";
 import { errorResponse } from "./error-response";
 import { taskLinks } from "./hateoas";

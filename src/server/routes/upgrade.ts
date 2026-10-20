@@ -9,10 +9,11 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import type { Tier } from "@agentbadge/hedera-core";
-import { upgradeTier, calculateUpgradePrice } from "@agentbadge/passport";
-import { upgradeRequestSchema, errorSchema } from "../openapi";
+import { upgradeTier } from "@agentbadge/passport";
+import { errorSchema } from "../openapi";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { chainDisabled, passportChainEnabled } from "../lib/passport-chain-gate";
 
 export const upgradeRoutes = new Hono();
 
@@ -50,6 +51,8 @@ upgradeRoutes.post(
     },
   }),
   async (c) => {
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     const tokenId = c.req.param("tokenId");
     const serialStr = c.req.param("serial");
     const serial = Number(serialStr);

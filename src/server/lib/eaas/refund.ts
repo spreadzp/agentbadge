@@ -11,7 +11,7 @@
 
 import { createWalletClient, http, type Chain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { PaymentRouter } from "@agentbadge/circle-payments";
 import { createJsonRefundLog, createRefundService } from "../refund-log";
 import { createSettleSeamTwoPhase } from "../x402-settle-seam";

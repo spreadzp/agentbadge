@@ -8,7 +8,7 @@
  * Mint failure throws RegistrationError("execution_failed") — NO record is
  * written, NO fake agentId (181 honest-refusal contract).
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getAddress } from "viem";
 import { issueApiKey } from "./api-keys";
 import type { AgentRegistration, AgentRegistrationStore } from "./store";

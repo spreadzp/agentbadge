@@ -8,7 +8,7 @@
  * route changes. Sync surface is load-bearing (venue/store.ts precedent):
  * the prisma backend serves an in-memory mirror and persists async.
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import type { BountyStatus } from "./lifecycle";
 import {

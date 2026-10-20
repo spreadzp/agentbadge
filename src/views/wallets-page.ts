@@ -136,7 +136,7 @@ function render(rec, lim, bal, audit) {
     [["approvalAboveUsd", "hold ≥ $"], ["maxTxPerHour", "max tx/h"], ["maxAmountPerHour", "max $/h"]]
       .map(([k, l]) => '<label class="text-xs text-slate-500">' + l + '<input data-k="' + k + '" value="' + (caps[k] ?? "") + '" placeholder="∞" class="mt-0.5 block w-24 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-sm text-right font-mono"/></label>').join("") +
     '<div><div class="text-xs text-slate-500 mb-1">allowedKinds</div>' +
-    ["venue-fee", "subscription", "eaas", "x402"].map((k) =>
+    ["venue-fee", "subscription", "eaas", "x402", "buy-gateway"].map((k) =>
       '<label class="mr-3 text-xs text-slate-300"><input type="checkbox" class="kind-cb mr-1" value="' + k + '"' +
       (!caps.allowedKinds || caps.allowedKinds.indexOf(k) >= 0 ? " checked" : "") + '/>' + k + "</label>").join("") +
     '</div></div><div id="appr"></div></div>' +

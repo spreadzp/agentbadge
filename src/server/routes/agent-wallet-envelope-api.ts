@@ -5,7 +5,7 @@
 
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";

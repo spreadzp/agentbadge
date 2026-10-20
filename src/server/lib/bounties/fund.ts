@@ -18,7 +18,7 @@
  * result, no duplicate approve.
  */
 import { parseUnits, type Hex } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { ErrorCodes, type ErrorCode } from "../error-codes";
 import {

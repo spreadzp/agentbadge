@@ -24,7 +24,7 @@
 
 import type { MiddlewareHandler } from "hono";
 import { createHash, randomBytes, createHmac } from "node:crypto";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 export interface L402Config {
   /** Root key for macaroon generation */

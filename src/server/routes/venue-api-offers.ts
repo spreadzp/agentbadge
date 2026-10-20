@@ -4,7 +4,7 @@
  */
 import { randomBytes } from "node:crypto";
 import type { Hono } from "hono";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import {
   deactivateOffer,
   listOffers,

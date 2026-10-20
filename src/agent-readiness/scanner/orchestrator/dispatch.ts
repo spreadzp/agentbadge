@@ -1,4 +1,4 @@
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { ScannerRateLimiter } from "../rate-limiter";
 import type { SnapshotCache } from "../cache";
 import type { ResponseSnapshot } from "../snapshot";

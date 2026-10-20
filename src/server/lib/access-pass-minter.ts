@@ -12,7 +12,7 @@
 
 import { createPublicClient, createWalletClient, http, defineChain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { resolveBundleIds, RULE_BUNDLES } from "../../agent-readiness/rule-bundles";
 
 // ─── Class bits (mirror AccessPassNFT.sol / agent-auth.ts) ─────

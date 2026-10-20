@@ -8,7 +8,7 @@
 import { listTasks, setEscrowStatus } from "@agentbadge/passport";
 import { deleteScheduledTransaction, submitTaskMessage } from "@agentbadge/hedera-core";
 import type { TaskMessage } from "@agentbadge/hedera-core";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 export interface SweepResult {
   reclaimed: number;

@@ -15,6 +15,7 @@ import { loadEaas } from "./eaas";
 import { loadAgentWallet } from "./agent-wallet";
 import { loadAgentRegistration } from "./agent-registration";
 import { loadKeeperHub } from "./keeperhub";
+import { loadPassportChain } from "./passport-chain";
 import { loadMarketplace } from "./marketplace";
 import { loadMcpAbuse } from "./mcp-abuse";
 import { loadScanPacks } from "./scan-packs";
@@ -194,6 +195,7 @@ export function loadConfig(): AppConfig {
 
   // Optional feature sections — accumulate errors.
   const keeperhub = loadKeeperHub(errors);
+  const passportChain = loadPassportChain(errors);
   const circlePayments = loadCirclePayments(errors);
   const bstock = loadBstock(errors);
   const database = loadDatabase(errors);
@@ -238,6 +240,7 @@ export function loadConfig(): AppConfig {
     ui: loadUiConfig(chainMode),
     analytics,
     keeperhub,
+    passportChain,
     circlePayments,
     bstock,
     eaas,

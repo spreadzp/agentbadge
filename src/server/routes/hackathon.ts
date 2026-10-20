@@ -5,6 +5,7 @@ import { WebMcpHackathonPage } from "../../views/landing/webmcp-hackathon-page";
 import { AttestcoinHackathonPage } from "../../views/landing/attestcoin-hackathon-page";
 import { KeeperHubHackathonPage } from "../../views/landing/keeperhub-hackathon-page";
 import { AIBuildersHackathonPage } from "../../views/landing/ai-builders-hackathon-page";
+import { FxDeltaHackathonPage } from "../../views/landing/hackathon/fxdelta";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
 import { pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../lib/json-ld";
 import { getConfig } from "../../config/env";
@@ -23,7 +24,7 @@ export const hackathonRoutes = new Hono();
 const NAME_PATTERN = /^[a-z0-9-]+$/;
 
 // Known hackathon names (extended in subsequent slices)
-const KNOWN_HACKATHONS = new Set(["webmcp", "datahub", "attestcoin", "ctc", "keeperhub", "ai-builders"]);
+const KNOWN_HACKATHONS = new Set(["webmcp", "datahub", "attestcoin", "ctc", "keeperhub", "ai-builders", "fxdelta"]);
 
 hackathonRoutes.get("/hackathon/:name", async (c) => {
   const name = c.req.param("name");
@@ -56,6 +57,8 @@ hackathonRoutes.get("/hackathon/:name", async (c) => {
       registryAddress: cfg.keeperhub?.registryAddress,
       badgeAddress: cfg.keeperhub?.badgeAddress,
     }).toString();
+  } else if (name === "fxdelta") {
+    content = FxDeltaHackathonPage().toString();
   } else {
     content = '<main><section class="hero"><h1>Hackathon</h1><p>Page not found.</p></section></main>';
   }

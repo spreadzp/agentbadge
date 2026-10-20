@@ -9,7 +9,7 @@
  */
 
 import type { Hex } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { createChainService, createJsonChainStore } from "./chain";
 import type { ChainService } from "./chain";
 import { createChainFlusher } from "./chain-flush";

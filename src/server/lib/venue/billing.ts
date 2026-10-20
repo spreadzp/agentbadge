@@ -17,7 +17,7 @@
  * persistence semantics as the venue registry + admin audit.
  */
 import { isAddress } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { getVenueMeta, setVenueMeta } from "./store";
 import {

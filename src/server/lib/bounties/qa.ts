@@ -14,7 +14,7 @@
  *
  * Onchain anchoring is 197-10; payout release is 197-12.
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import {
   appendTransition,

@@ -3,7 +3,8 @@
 import type { Context } from "hono";
 import { submitTaskMessage, verifyA2ADid, prepareTransferTransaction, transferHbarWithSignature, isValidA2ADid, didToAccountId, signTransactionBytes, prepareTopicMessageTransaction, submitSignedTopicMessage, createScheduledTransfer, signScheduledTransaction, deleteScheduledTransaction } from "@agentbadge/hedera-core";
 import { generateReportId as generateUlid } from "../../agent-readiness/integrity/ulid";
-import { marketUpsert as upsert, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, logger } from "@agentbadge/passport";
+import { marketUpsert as upsert, getTaskById, updateTaskStatus, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { ErrorCodes } from "./error-codes";
 import { errorResponse } from "./error-response";
 import { runVerification } from "../../verifiers";

@@ -5,7 +5,7 @@
 // (AGENT_WALLET_LOW_WEBHOOK_URL — ARC_BV_WEBHOOK_URL pattern).
 // Best-effort: unavailable balance is skipped, never throws.
 
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { AgentWalletRecord } from "./registry";
 import type { WalletBalance } from "./balance";
 

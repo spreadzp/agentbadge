@@ -11,6 +11,7 @@ import { describeRoute } from "hono-openapi";
 import { getPassportInfo, type PassportInfo } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { chainDisabled, passportChainEnabled } from "../lib/passport-chain-gate";
 import { collectSources } from "../lib/agent-discovery/sources";
 import { buildDidWebDocument } from "../lib/agent-discovery/did";
 import { BASE_URL } from "../lib/page-meta";
@@ -78,6 +79,10 @@ didRoutes.get(
       }
       return c.json(doc, 200);
     }
+
+    // did:hcs resolution is Hedera-chain — gated by PASSPORT_CHAIN_ENABLED
+    // (SLICE-169-9). did:web above stays available without the flag.
+    if (!passportChainEnabled()) return chainDisabled(c);
 
     const parsed = parseDid(did);
 

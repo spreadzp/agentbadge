@@ -12,7 +12,7 @@
  * Timer pattern mirrors escrow-reconciler: first tick +30s after
  * boot, interval ±30s jitter.
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { qaSweep } from "../lib/bounties/qa";
 import { anchorSweep } from "../lib/bounties/anchor";

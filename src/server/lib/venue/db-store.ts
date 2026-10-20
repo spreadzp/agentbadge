@@ -22,7 +22,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { param } from "@agentbadge/database";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { DbWriteBehind } from "../db-mirror";
 import { getDatabase } from "../database";

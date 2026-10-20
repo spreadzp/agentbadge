@@ -48,6 +48,7 @@ export const ErrorCodes = {
   // 402/503 — bounty funding (EPIC-197-11)
   SPEND_CAP: "spend_cap",
   BOUNTY_DISABLED: "bounty_disabled",
+  PASSPORT_CHAIN_DISABLED: "passport_chain_disabled",
 
   // 409 — bounty lifecycle (EPIC-197)
   BOUNTY_ALREADY_CLAIMED: "bounty_already_claimed",

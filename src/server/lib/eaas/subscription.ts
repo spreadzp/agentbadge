@@ -25,7 +25,7 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { verifyWalletSigRequest, CLASS_EAAS } from "../../middleware/agent-auth";
 
 export const EAAS_QUOTA_WINDOW_SEC = 30 * 86_400;

@@ -1,5 +1,5 @@
 // ─── x402 afterSettle hook: credit splitter + mint pass ────────
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getService } from "./catalog";
 import { getMarketplaceOps } from "./ops";
 

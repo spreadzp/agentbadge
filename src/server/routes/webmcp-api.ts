@@ -17,6 +17,7 @@ import { isEvmDid, parseEvmDid } from "@agentbadge/evm-core";
 import { parseDid } from "./did";
 import { getChainAdapter } from "../lib/chain-adapter-factory";
 import { getConfig } from "../../config/env";
+import { passportChainEnabled } from "../lib/passport-chain-gate";
 import { RULE_DESCRIPTIONS } from "../../agent-readiness/rule-descriptions";
 import { scanDomain } from "../../agent-readiness/scanner/orchestrator";
 import { RuleEngine } from "../../agent-readiness/rule-engine/rule-engine";
@@ -83,6 +84,15 @@ webmcpApiRoutes.get(
         }
         resolvedTokenId = parsed.tokenId;
         serial = parsed.serial;
+      }
+
+      // Hedera-chain read — gated (SLICE-169-9). The did:web/EVM
+      // adapter paths above stay available without the flag.
+      if (!passportChainEnabled()) {
+        return c.json(
+          { valid: false, error: "Hedera chain features are disabled (set PASSPORT_CHAIN_ENABLED=true)" },
+          503,
+        );
       }
 
       const info = await getPassportInfo(resolvedTokenId!, serial);

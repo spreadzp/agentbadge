@@ -24,6 +24,7 @@ import {
 } from "../lib/fx-delta";
 import { fxDeltaPremiumGate } from "../lib/fx-delta/premium-gate";
 import { freeTierGate } from "../lib/fx-delta/free-tier";
+import { signalJson } from "../lib/fx-delta/signal";
 
 // Test-compat re-export (moved to lib/fx-delta/free-tier.ts, file cap).
 export { resetFxDeltaFreeTier } from "../lib/fx-delta/free-tier";
@@ -39,9 +40,9 @@ function viewJson(v: FxDeltaView) {
     // 191-9: proof link — buyers can verify the alert hash on Arc.
     ...(anchor?.txHash
       ? {
-          verifyUrl: `${base}/api/fx-delta/verify/${anchor.id}`,
-          anchorTx: anchor.txHash,
-        }
+        verifyUrl: `${base}/api/fx-delta/verify/${anchor.id}`,
+        anchorTx: anchor.txHash,
+      }
       : anchor
         ? { verifyUrl: `${base}/api/fx-delta/verify/${anchor.id}` }
         : {}),
@@ -56,6 +57,7 @@ function viewJson(v: FxDeltaView) {
     oracleLagPct: v.oracleLagPct,
     tvlUsd: v.tvlUsd,
     tsMs: v.lastUpdateMs,
+    signal: signalJson(v),
   };
 }
 

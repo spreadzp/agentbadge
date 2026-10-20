@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import type { Hex } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getDatabase } from "../database";
 import { createDbVerdictStore } from "./store-db";
 import type { VerdictArtifact } from "./verdict";

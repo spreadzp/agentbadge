@@ -9,14 +9,11 @@
 // signature+rateLimit and change request handling (see decisions.md D10).
 
 import type { Hono } from "hono";
-import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
-import { HEDERA_TESTNET_CAIP2 } from "@x402/hedera";
-import { ExactHederaScheme } from "@x402/hedera/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
-import { getPrice } from "@agentbadge/passport";
+import { getPrice } from "@agentbadge/passport/payment";
 import { l402PaymentMiddleware } from "../middleware/l402";
 import { mppPaymentMiddleware } from "../middleware/mpp";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
+import { passportChainEnabled } from "../lib/passport-chain-gate";
 
 // SLICE-49-19: L402 Lightning payment middleware (before signature verification)
 // Payment challenge must be returned before signature check — client pays first, then signs.
@@ -38,48 +35,71 @@ export function wireL402(app: Hono): void {
 
 // x402 Hedera + MPP/Stripe payment gates for POST /passport/request.
 // Each gate is env-gated: with no env configured nothing is registered.
-export function wirePaymentGates(app: Hono): void {
+// SLICE-169-9: the Hedera x402 stack (@x402/hedera → @hiero-ledger,
+// ~357MB disk) is lazy-imported only when the gate actually activates —
+// and never when PASSPORT_CHAIN_ENABLED is off. Async because of the
+// dynamic imports; index.ts awaits it before route mounts so middleware
+// ordering is unchanged.
+export async function wirePaymentGates(app: Hono): Promise<void> {
   const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "";
   const payTo = process.env.x402_TREASURY ?? process.env.HEDERA_OPERATOR_ID ?? "";
   const network = process.env.HEDERA_NETWORK ?? "testnet";
-  const networkId = network === "mainnet" ? "hedera:mainnet" : HEDERA_TESTNET_CAIP2;
 
-  if (facilitatorUrl && payTo) {
-    const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
-    const resourceServer = new x402ResourceServer(facilitatorClient).register(
-      networkId,
-      new ExactHederaScheme(),
-    );
+  if (facilitatorUrl && payTo && passportChainEnabled()) {
+    // optionalDependencies — diet images (`--omit=optional`) ship without
+    // them; warn + skip the gate instead of crashing on import.
+    try {
+      const [{ paymentMiddleware, x402ResourceServer }, { HEDERA_TESTNET_CAIP2 }, { ExactHederaScheme }, { HTTPFacilitatorClient }] =
+        await Promise.all([
+          import("@x402/hono"),
+          import("@x402/hedera"),
+          import("@x402/hedera/exact/server"),
+          import("@x402/core/server"),
+        ]);
+      const networkId =
+        network === "mainnet" ? "hedera:mainnet" : HEDERA_TESTNET_CAIP2;
 
-    app.use(
-      paymentMiddleware(
-        {
-          "POST /passport/request": {
-            accepts: {
-              scheme: "exact",
-              price: (ctx) => {
-                const body = ctx.adapter.getBody?.() as Record<string, unknown> | undefined;
-                const tier = (body?.tier as string) ?? "bronze";
-                const tinybars = getPrice(tier);
-                return { amount: String(tinybars), asset: "0.0.0" };
+      const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+      const resourceServer = new x402ResourceServer(facilitatorClient).register(
+        networkId,
+        new ExactHederaScheme(),
+      );
+
+      app.use(
+        paymentMiddleware(
+          {
+            "POST /passport/request": {
+              accepts: {
+                scheme: "exact",
+                price: (ctx) => {
+                  const body = ctx.adapter.getBody?.() as Record<string, unknown> | undefined;
+                  const tier = (body?.tier as string) ?? "bronze";
+                  const tinybars = getPrice(tier);
+                  return { amount: String(tinybars), asset: "0.0.0" };
+                },
+                network: networkId,
+                payTo,
+                extra: {
+                  asset: "0.0.0",
+                  feePayer: process.env.x402_FEE_PAYER ?? payTo,
+                },
               },
-              network: networkId,
-              payTo,
-              extra: {
-                asset: "0.0.0",
-                feePayer: process.env.x402_FEE_PAYER ?? payTo,
-              },
+              description: "Agent Passport NFT issuance",
+              mimeType: "application/json",
+              // 179-3: bazaar declaration — all passport tiers share the
+              // same input schema, bronze stands in as representative.
+              extensions: bazaarExtensionFor("passport:bronze"),
             },
-            description: "Agent Passport NFT issuance",
-            mimeType: "application/json",
-            // 179-3: bazaar declaration — all passport tiers share the
-            // same input schema, bronze stands in as representative.
-            extensions: bazaarExtensionFor("passport:bronze"),
           },
-        },
-        resourceServer,
-      ),
-    );
+          resourceServer,
+        ),
+      );
+    } catch (e) {
+      console.warn(
+        "[Server] x402 Hedera gate skipped — @x402/hedera/@x402/hono not installed (optional deps omitted):",
+        e,
+      );
+    }
   }
 
   const mppSecretKey = process.env.MPP_SECRET_KEY ?? "";

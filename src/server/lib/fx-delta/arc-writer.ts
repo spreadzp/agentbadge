@@ -18,6 +18,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arcTestnet } from "viem/chains";
+import { Attribution } from "ox/erc8021";
 
 export const ARC_EVENT_LOG =
   "0x1bb6A87D18cbd4285b4d383F88f10a1Ed01B4700" as const;
@@ -28,12 +29,13 @@ const EVENT_LOG_ABI = parseAbi([
   "function writer() view returns (address)",
 ]);
 
-let cached: { writer: (payloadJson: string) => Promise<string> } | null =
-  null;
+let cached: {
+  writer: (payloadJson: string, topic?: string) => Promise<string>;
+} | null = null;
 
 /** Lazy singleton — null when no writer key configured. */
 export function getArcEventLogWriter(): {
-  writer: (payloadJson: string) => Promise<string>;
+  writer: (payloadJson: string, topic?: string) => Promise<string>;
 } | null {
   if (cached) return cached;
   const key =
@@ -53,13 +55,22 @@ export function getArcEventLogWriter(): {
     transport: http(rpcUrl),
   });
 
+  // SLICE-191-10: ERC-8021 attribution suffix on every emitted tx —
+  // our own tx → loops.house leaderboard. Same env as celo-settle.
+  const dataSuffix = process.env.ATTRIBUTION_CODE
+    ? (Attribution.toDataSuffix({
+        codes: [process.env.ATTRIBUTION_CODE],
+      }) as Hex)
+    : undefined;
+
   cached = {
-    async writer(payloadJson: string) {
+    async writer(payloadJson: string, topic = "fxdelta-verdict") {
       const tx = await wallet.writeContract({
         address: ARC_EVENT_LOG,
         abi: EVENT_LOG_ABI,
         functionName: "emitTopic",
-        args: ["fxdelta-verdict", bytesToHex(stringToBytes(payloadJson))],
+        args: [topic, bytesToHex(stringToBytes(payloadJson))],
+        ...(dataSuffix ? { dataSuffix } : {}),
       });
       await pub.waitForTransactionReceipt({ hash: tx });
       return tx;

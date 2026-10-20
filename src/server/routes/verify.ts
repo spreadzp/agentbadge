@@ -19,6 +19,7 @@ import {
 } from "@agentbadge/passport";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { chainDisabled, passportChainEnabled } from "../lib/passport-chain-gate";
 import { passportLinks } from "../lib/hateoas";
 
 export const verifyRoutes = new Hono();
@@ -43,6 +44,8 @@ verifyRoutes.get(
     },
   }),
   async (c) => {
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     const address = c.req.param("address");
 
     if (!address) {
@@ -87,6 +90,8 @@ verifyRoutes.get(
     },
   }),
   async (c) => {
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     const tokenId = c.req.param("tokenId");
     const serialStr = c.req.param("serial");
     const serial = Number(serialStr);
@@ -126,6 +131,8 @@ verifyRoutes.get(
     },
   }),
   async (c) => {
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     const tokenId = c.req.query("tokenId") ?? process.env.PASSPORT_TOKEN_ID;
 
     if (!tokenId) {

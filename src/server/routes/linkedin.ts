@@ -6,7 +6,7 @@
  */
 
 import { Hono } from "hono";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 export const linkedinRoutes = new Hono();
 

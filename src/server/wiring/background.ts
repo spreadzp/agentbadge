@@ -14,6 +14,7 @@ import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { captureError } from "../lib/sentry";
+import { passportChainEnabled } from "../lib/passport-chain-gate";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 
@@ -21,19 +22,23 @@ import { errorResponse } from "../lib/error-response";
 // graceful degradation — server starts immediately with empty cache, rebuilds
 // in background with retries). Escrow reconciler sweeper is config-gated (SLICE-84-2).
 export function startBackgroundJobs(): void {
-  const directoryTopicId = process.env.DIRECTORY_TOPIC_ID;
-  if (directoryTopicId) {
-    startBackgroundRebuild(directoryTopicId, { incremental: true });
-  }
+  // SLICE-169-9: HCS cache rebuilds are Hedera-chain — skip entirely when
+  // PASSPORT_CHAIN_ENABLED is off so no chain module is ever imported.
+  if (passportChainEnabled()) {
+    const directoryTopicId = process.env.DIRECTORY_TOPIC_ID;
+    if (directoryTopicId) {
+      startBackgroundRebuild(directoryTopicId, { incremental: true });
+    }
 
-  const a2aTopicId = process.env.A2A_TOPIC_ID;
-  if (a2aTopicId) {
-    startA2ACacheRebuild(a2aTopicId, { incremental: true });
-  }
+    const a2aTopicId = process.env.A2A_TOPIC_ID;
+    if (a2aTopicId) {
+      startA2ACacheRebuild(a2aTopicId, { incremental: true });
+    }
 
-  const marketTopicId = process.env.MARKET_TOPIC_ID;
-  if (marketTopicId) {
-    startMarketCacheRebuild(marketTopicId, { incremental: true });
+    const marketTopicId = process.env.MARKET_TOPIC_ID;
+    if (marketTopicId) {
+      startMarketCacheRebuild(marketTopicId, { incremental: true });
+    }
   }
 
   startEscrowReconciler();

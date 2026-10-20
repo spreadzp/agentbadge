@@ -4,6 +4,12 @@
 // Re-enable per-suite when testing auth behavior specifically
 process.env.DID_AUTH_MODE = "off";
 process.env.ALLOW_KEY_ENDPOINTS = "true";
+// SLICE-169-9: most suites exercise Hedera chain features — default the
+// gate ON for tests. Suites asserting disabled behavior unset it and
+// call resetConfigCache() (see tests/admin-revoke.test.ts).
+if (process.env.PASSPORT_CHAIN_ENABLED === undefined) {
+  process.env.PASSPORT_CHAIN_ENABLED = "true";
+}
 
 // Load .env file for test environment (no dotenv dependency)
 import { readFileSync } from "node:fs";

@@ -8,7 +8,7 @@ import { AssertionBuilder, type Assertion } from "./assertion-builder";
 import { collectEvidence, enrichEvidence, getSourceUrl, targetToSnapshotKey } from "./evidence-collector";
 import { BUNDLE_IDS, resolveBundleIds, rulesForBundles } from "../rule-bundles";
 import type { BundleId } from "../rule-bundles";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 export interface RuleEngineResult {
   assertions: Assertion[];

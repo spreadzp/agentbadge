@@ -10,7 +10,7 @@
  * send via evaluator server signer (≤3 attempts) → store outcome.
  * ARC_VENUE_RATE_CLIENTS=1 additionally rates the client (tag1=venue-client).
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getJob, upsertJob, type VenueJob } from "./store";
 import type { VenueNetwork } from "./chain";
 import type { PreparedTx } from "./lifecycle";

@@ -9,8 +9,10 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import { adminAuth } from "../middleware/adminAuth";
-import { revokePassport, rebuildFromHcs, logger } from "@agentbadge/passport";
-import { revokeRequestSchema, errorSchema } from "../openapi";
+import { revokePassport, rebuildFromHcs } from "@agentbadge/passport";
+import { chainDisabled, passportChainEnabled } from "../lib/passport-chain-gate";
+import { logger } from "@agentbadge/passport/logger";
+import { errorSchema } from "../openapi";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 
@@ -51,6 +53,8 @@ adminRoutes.post(
   }),
   adminAuth,
   async (c) => {
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     let body: RevokeRequestBody;
     try {
       body = await c.req.json();
@@ -95,6 +99,8 @@ adminRoutes.post(
   }),
   adminAuth,
   async (c) => {
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     const topicId = process.env.DIRECTORY_TOPIC_ID;
     if (!topicId) {
       return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, "DIRECTORY_TOPIC_ID not configured");

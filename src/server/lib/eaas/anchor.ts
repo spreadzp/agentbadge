@@ -23,7 +23,7 @@ import { dirname } from "node:path";
 import { encodeFunctionData } from "viem";
 import type { Account, Chain, Hex } from "viem";
 import { MEMO_ABI, memoIdFor } from "@agentbadge/circle-payments";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { StoredVerdict } from "./store";
 import { hashCanonical, type VerdictArtifact } from "./verdict";
 

@@ -8,7 +8,7 @@ import {
   createGatewayProbe,
   type SchemeHandle,
 } from "@agentbadge/circle-payments";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { CirclePaymentsConfig } from "../../config/env";
 
 /** Build the probe from cfg, or undefined when gateway rail is off. */

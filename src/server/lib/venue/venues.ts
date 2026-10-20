@@ -12,7 +12,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { isAddress } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { getVenueMeta, setVenueMeta } from "./store";
 

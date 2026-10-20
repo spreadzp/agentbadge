@@ -5,7 +5,7 @@
  */
 import type { Context } from "hono";
 import type { Hex } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getJob, upsertJob, type VenueJob } from "../lib/venue/store";
 import type { VenueNetwork } from "../lib/venue/chain";
 import { errorResponse } from "../lib/error-response";

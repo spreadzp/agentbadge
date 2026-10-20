@@ -117,6 +117,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge scans any site for agent-readiness with 40+ deterministic rules, records results onchain on Base Sepolia, and mints soulbound trust badges. MCP-native, x402 payments, live audit trail.",
     path: "/hackathon/ai-builders",
   },
+  "/hackathon/fxdelta": {
+    title: "FX Delta Agent — Paid FX Signals for AI Agents on Celo",
+    description:
+      "A paid x402 API for AI agents: compares live token prices on Celo with official FX rates and returns buy / sell / watch signals per currency pair. USDC on Celo mainnet, no gas for the buyer.",
+    path: "/hackathon/fxdelta",
+  },
   "/dashboard": {
     title: "Dashboard",
     description:
@@ -341,6 +347,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/hackathon/webmcp", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/attestcoin", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/keeperhub", changefreq: "weekly", priority: "0.8" },
+  { path: "/hackathon/fxdelta", changefreq: "weekly", priority: "0.8" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/agent-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/market-guide", changefreq: "weekly", priority: "0.8" },

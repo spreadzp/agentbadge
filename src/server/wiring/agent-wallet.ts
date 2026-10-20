@@ -10,7 +10,7 @@
 
 import type { Hono } from "hono";
 import { privateKeyToAddress } from "viem/accounts";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import {
   createCircleCliClient,
   ARC_MAINNET,
@@ -34,6 +34,7 @@ import {
   initSpendEnforcer,
   spendEnvelopeGate,
 } from "../lib/agent-wallet/enforcer";
+import { initBuyGate } from "../lib/buy/gateway";
 import { createAgentWalletRoutes } from "../routes/agent-wallet-api";
 import { createAgentWalletKillswitchRoutes } from "../routes/agent-wallet-killswitch-api";
 import { createAgentWalletApprovalsRoutes } from "../routes/agent-wallet-approvals-api";
@@ -91,6 +92,7 @@ export function wireAgentWallet(app: Hono): void {
   if (!cfg?.enabled) {
     initSpendEnforcer(null);
     initApprovalStore(null);
+    initBuyGate(null);
     return;
   }
 
@@ -125,6 +127,16 @@ export function wireAgentWallet(app: Hono): void {
       ...(cfg.defaultCaps ? { defaultCaps: cfg.defaultCaps } : {}),
     }),
   );
+
+  // SLICE-191-10: buyer gate — the same registry+ledger+approvals guard
+  // the buy-gateway (agent spends USDC via @celo/buy CLI; caps enforce
+  // before spawn). Kill-switch: BUY_GATEWAY_ENABLED env.
+  initBuyGate({
+    registry: store,
+    ledger,
+    approvals,
+    approvalTtlMs: cfg.approvalTtlMs,
+  });
 
   const cli = createCircleCliClient({
     cliPath: cfg.cliPath,

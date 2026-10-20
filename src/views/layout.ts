@@ -18,6 +18,19 @@ const BADGE_COLORS: Record<string, string> = {
   purple: "bg-purple-500/10 text-purple-300 border border-purple-500/40",
 };
 
+const OPS_BOARD_ICON =
+  '<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m6 10V7m6 10V7M3 17V7m0 10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10z" /></svg>';
+
+// Ops board link renders only when the route is mounted (OPS_BOARD_DIR set).
+function opsBoardNavMobile() {
+  if (!process.env.OPS_BOARD_DIR) return "";
+  return `<a href="/ops/board" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">${OPS_BOARD_ICON}Ops Board</a>`;
+}
+function opsBoardNavDesktop() {
+  if (!process.env.OPS_BOARD_DIR) return "";
+  return `<a href="/ops/board" title="Ops Board" class="nav-item-pop flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">${OPS_BOARD_ICON}<span class="nav-text">Ops Board</span></a>`;
+}
+
 export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd?: object[], noIndex?: boolean) {
   const composedTitle = title
     ? pageTitle(title)
@@ -176,6 +189,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10" /></svg>
                   Dashboard
                 </a>
+                ${raw(opsBoardNavMobile())}
                 <a href="/hackathon/datahub" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
                   DataHub
@@ -216,6 +230,11 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                   Marketplace
                 </a>
+                ${process.env.OPS_BOARD_DIR ? html`
+                <a href="/ops/board" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
+                  <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" /></svg>
+                  Ops Board
+                </a>` : ""}
                 <a href="/ui/help" class="nav-item-pop flex items-center gap-2 py-2 text-slate-300">
                   <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   Help
@@ -300,6 +319,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
                 <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10" /></svg>
                 <span class="nav-text">Dashboard</span>
               </a>
+              ${raw(opsBoardNavDesktop())}
               <a href="/passport" title="Passport" class="nav-item-pop flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">
                 <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 <span class="nav-text">Passport</span>
@@ -319,6 +339,11 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
               <a href="/ui/a2a" title="A2A Inbox" class="nav-item-pop flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">
                 <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                 <span class="nav-text">A2A Inbox</span>
+              ${process.env.OPS_BOARD_DIR ? html`
+              <a href="/ops/board" title="Ops Board" class="nav-item-pop flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">
+                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" /></svg>
+                <span class="nav-text">Ops Board</span>
+              </a>` : ""}
               </a>
               <a href="/ui/market/tasks" title="Marketplace" class="nav-item-pop flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">
                 <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>

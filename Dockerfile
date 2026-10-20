@@ -16,7 +16,17 @@ FROM oven/bun:1.3-slim
 WORKDIR /app
 
 COPY package.json bun.lock ./
-RUN bun install --production
+# SLICE-169-9: @x402/hedera + @x402/hono are optionalDependencies — a diet
+# image (Hedera chain off, PASSPORT_CHAIN_ENABLED unset) can drop
+# ~357MB via: docker build --build-arg OMIT_OPTIONAL_DEPS=true .
+# Warning: this also omits optional deps of other packages; only use for
+# deployments that never enable chain features.
+ARG OMIT_OPTIONAL_DEPS=false
+RUN if [ "$OMIT_OPTIONAL_DEPS" = "true" ]; then \
+      bun install --omit=dev --omit=optional; \
+    else \
+      bun install --production; \
+    fi
 
 ARG APP_VERSION
 ARG GIT_COMMIT

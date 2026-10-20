@@ -19,7 +19,7 @@
  * agent-auth.ts (injectable hasAccess for tests).
  */
 
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { MiddlewareHandler } from "hono";
 import { tryGetCache } from "../lib/cache";
 import { errorResponse } from "../lib/error-response";

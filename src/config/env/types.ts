@@ -171,6 +171,8 @@ export interface KeeperHubEnvConfig {
   };
 }
 
+/** Passport chain gate (EPIC-169-9). PASSPORT_CHAIN_ENABLED=true else 501 on chain routes. */
+export interface PassportChainEnvConfig { enabled: boolean }
 /** Database persistence config (EPIC-143). DATABASE_ENABLED=true else in-memory. */
 export interface DatabaseEnvConfig {
   enabled: boolean;
@@ -285,6 +287,7 @@ export interface AppConfig {
   ui: UiConfig;
   analytics: AnalyticsConfig;
   keeperhub?: KeeperHubEnvConfig;
+  passportChain?: PassportChainEnvConfig;
   circlePayments?: CirclePaymentsConfig;
   bstock?: BstockEnvConfig;
   eaas?: EaasEnvConfig;

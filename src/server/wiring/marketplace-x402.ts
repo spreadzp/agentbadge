@@ -10,7 +10,7 @@
 // (Hono composes in registration order).
 
 import type { Context, Hono, MiddlewareHandler } from "hono";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getConfig } from "../../config/env";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import { getDatabase } from "../lib/database";

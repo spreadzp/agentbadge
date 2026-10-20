@@ -6,7 +6,7 @@
 import { createWalletClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hono } from "hono";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { createErc8004 } from "@agentbadge/circle-payments";
 
 // Standard ERC-721 transferFrom. Published circle-payments@0.1.18

@@ -13,7 +13,7 @@ import {
   type Hex,
 } from "viem";
 import { MEMO_ABI } from "@agentbadge/circle-payments";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import {
   getClaim,

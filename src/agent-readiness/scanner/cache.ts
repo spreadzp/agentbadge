@@ -12,7 +12,7 @@
  * so a backend outage degrades to L1-only behavior (cache misses).
  */
 
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { CacheProvider } from "@agentbadge/cache";
 import { cacheHits, cacheMisses } from "../../server/metrics/metrics";
 

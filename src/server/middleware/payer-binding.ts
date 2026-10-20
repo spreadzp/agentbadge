@@ -28,7 +28,7 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { isAddress } from "viem";
 import { buildPayerChallenge } from "@agentbadge/circle-payments";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import {

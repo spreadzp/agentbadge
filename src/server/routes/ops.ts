@@ -4,7 +4,7 @@
 
 import { Hono, type Context } from "hono";
 import { listTools } from "@agentbadge/mcp";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { APP_VERSION, BUILD_DATE, GIT_COMMIT } from "../lib/build-info";
 import { isStripeConfigured } from "../lib/stripe-client";
 import { adminAuth } from "../middleware/adminAuth";
@@ -57,6 +57,19 @@ const healthHandler = async (c: Context) => {
 opsRoutes.get("/health", healthHandler);
 // SLICE-121-2: API alias routes — mirror root endpoints under /api/ for AI-agent convention
 opsRoutes.get("/api/health", healthHandler);
+
+// SLICE-198-1: ops taskboard — mounted only when OPS_BOARD_DIR points at a
+// Backlog.md root. Unset → 404 (prod has no backlog dir — safe default).
+if (process.env.OPS_BOARD_DIR) {
+  const { createOpsBoardRoutes } = await import("./ops-board");
+  opsRoutes.route(
+    "/",
+    createOpsBoardRoutes({
+      dir: process.env.OPS_BOARD_DIR,
+      cacheMs: Number(process.env.OPS_BOARD_CACHE_MS ?? 30_000),
+    }),
+  );
+}
 
 opsRoutes.get("/api/catalog", (c) => c.redirect("/catalog", 301));
 opsRoutes.get("/api/audit/:tokenId?/:serial?", (c) => {

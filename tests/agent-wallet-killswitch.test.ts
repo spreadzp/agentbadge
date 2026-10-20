@@ -26,6 +26,7 @@ import {
   SPEND_KINDS,
   windowUsage,
   type SpendEntry,
+  type SpendKind,
 } from "../src/server/lib/agent-wallet/ledger";
 import {
   createSpendEnforcer,
@@ -109,7 +110,7 @@ describe("registry.setSuspended", () => {
 });
 
 describe("enforcer suspended deny path", () => {
-  function mkApp(kind: "eaas" | "x402" | "subscription" | "venue-fee") {
+  function mkApp(kind: SpendKind) {
     const store = createMemoryAgentWalletStore();
     const ledger = createMemorySpendLedger();
     const alertStore = createMemorySpendAlertStore();

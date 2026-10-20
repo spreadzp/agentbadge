@@ -4,7 +4,7 @@
 // writes update the mirror synchronously and enqueue a serialized
 // persist op that never throws (failures are logged).
 
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 export class DbWriteBehind {
   private writeChain: Promise<void> = Promise.resolve();

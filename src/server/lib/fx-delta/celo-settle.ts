@@ -26,7 +26,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { celo, celoSepolia } from "viem/chains";
 import { Attribution } from "ox/erc8021";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { auditFxDeltaPayment } from "./index";
 import type {
   BstockFacilitator,

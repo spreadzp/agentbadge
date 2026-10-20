@@ -23,7 +23,7 @@
 
 import type { MiddlewareHandler } from "hono";
 import { createPublicClient, http, isAddress } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 

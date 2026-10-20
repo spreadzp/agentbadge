@@ -10,9 +10,14 @@ export function Footer(): ReturnType<typeof html> {
   return html`<footer class="border-t border-slate-800 bg-slate-900">
     <div class="mx-auto max-w-5xl px-4 py-8">
       <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-        <div class="flex items-center gap-2 text-sm text-slate-400">
-          <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-5 w-5 rounded" /></picture>
-          <span>AgentBadge · Agency for the agentic web — agent-ready infrastructure on Arc &amp; Hedera</span>
+        <div class="flex flex-col gap-3 text-sm text-slate-400">
+          <div class="flex items-center gap-2">
+            <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-5 w-5 rounded" /></picture>
+            <span>AgentBadge · Agency for the agentic web — agent-ready infrastructure on Arc &amp; Hedera</span>
+          </div>
+          <a href="https://mcprush.com/spreadzp/agentbadge-mcp" target="_blank" rel="noopener" title="AgentBadge MCP — grade A on mcprush">
+            <img src="https://mcprush.com/badge/agentbadge-mcp/card.svg" alt="AgentBadge MCP on mcprush — grade A" width="152" height="80" loading="lazy" decoding="async" class="h-16 w-auto rounded-lg" />
+          </a>
         </div>
         <div class="flex items-center gap-4">
           <a href="/contact" class="footer-pop inline-flex min-h-6 min-w-6 items-center justify-center p-1 text-slate-400 hover:text-emerald-400" aria-label="Discord">

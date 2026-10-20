@@ -7,7 +7,7 @@
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hono } from "hono";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { createErc8183 } from "@agentbadge/circle-payments";
 import { getConfig } from "../../config/env";
 import { arcChainFor } from "../lib/marketplace/chain";

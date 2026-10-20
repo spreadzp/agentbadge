@@ -11,7 +11,7 @@
  * Scoring policy (bronze cap, honest-zero) belongs to 188 — this module
  * is deliberately policy-free transport.
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 /** Rep events the witness layer can emit (D-185-6). */
 export type WitnessRepEvent =

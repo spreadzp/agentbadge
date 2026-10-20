@@ -23,7 +23,7 @@ import { dirname, join } from "node:path";
 import { encodeFunctionData, keccak256, toBytes } from "viem";
 import type { Hex } from "viem";
 import { MEMO_ABI, memoIdFor } from "@agentbadge/circle-payments";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { WitnessAttestation, WitnessStore } from "./store";
 import { buildWitnessPayload } from "./attest";
 import type { SendAnchorFn } from "../eaas/anchor";

@@ -16,7 +16,7 @@
  * caller falls back to json.
  */
 import { randomUUID } from "node:crypto";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { DbWriteBehind } from "../db-mirror";
 import { getDatabase } from "../database";

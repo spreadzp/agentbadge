@@ -7,7 +7,7 @@
  * Returns null when premium is not configured.
  */
 
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { BstockFacilitator } from "../../middleware/bstock-freemium";
 import { createCeloX402Facilitator } from "./celo-settle";
 

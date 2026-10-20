@@ -6,7 +6,7 @@
  * switching backend needs zero route changes (D5-152 read path = our index).
  * Attestations are NOT stored here — they share the 151-3 attestation-store.
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import {
   createJsonVenueStore,
   normalizeOffer,

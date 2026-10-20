@@ -1,0 +1,20 @@
+// IDE-only config: scripts/*.mts run under `bun` directly and are not
+// part of the app build. Root tsconfig.json `include` covers only
+// src/** and tests/** — without this file the editor type-checks
+// scripts in an "inferred project" with wrong defaults (commonjs +
+// node10 → TS1378 on top-level await, viem exports not resolvable).
+// `bun run typecheck` is unaffected (it uses the root tsconfig).
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["bun-types"]
+  },
+  "include": ["**/*.ts", "**/*.mts"]
+}

@@ -12,7 +12,7 @@
  * estimateGas — over ARC_EAAS_GAS_CAP aborts before send.
  */
 
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { createEvaluator } from "@agentbadge/circle-payments";
 import type {
   EvaluationVerdict,

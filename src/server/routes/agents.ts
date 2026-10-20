@@ -17,9 +17,11 @@ import { describeRoute, resolver } from "hono-openapi";
 import type { Capability, Tier, DirectoryMessage } from "@agentbadge/hedera-core";
 import { getNftInfo, submitAuditMessage, submitDirectoryMessage } from "@agentbadge/hedera-core";
 import { listAgentsResponseSchema, errorSchema } from "../openapi";
-import { upsert, getAll, get as getEntry, type DirectoryEntry, logger } from "@agentbadge/passport";
+import { upsert, getAll, get as getEntry, type DirectoryEntry } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { chainDisabled, passportChainEnabled } from "../lib/passport-chain-gate";
 import { agentLinks } from "../lib/hateoas";
 import type { NextCall } from "../lib/next-call";
 
@@ -246,6 +248,10 @@ agentRoutes.post(
     },
   }),
   async (c) => {
+    // SLICE-169-9: registration verifies passport ownership + writes HCS —
+    // Hedera-chain calls, gated by PASSPORT_CHAIN_ENABLED.
+    if (!passportChainEnabled()) return chainDisabled(c);
+
     let body: RegisterAgentBody;
     try {
       body = await c.req.json();

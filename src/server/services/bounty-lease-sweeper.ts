@@ -7,7 +7,7 @@
  * Timer pattern mirrors escrow-reconciler.ts: BOUNTY_SWEEPER_ENABLED
  * env gate, first tick +30s after boot, interval ±30s jitter.
  */
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { sweepBountyLeases } from "../lib/bounties/sweep";
 import { sweepBoardClaimLeases } from "../lib/board/claim-sweep";

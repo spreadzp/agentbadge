@@ -12,7 +12,7 @@ import type { Context } from "hono";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import type { VerdictArtifact } from "./verdict";
 import type { EaasMetrics } from "./metrics";
 import type { WebhookDeliverDeps } from "./webhooks";

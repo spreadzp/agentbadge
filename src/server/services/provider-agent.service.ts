@@ -16,8 +16,8 @@ import {
   marketGet as getTask,
   listTasks,
   updateTaskStatus,
-  logger,
 } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { submitTaskMessage, verifyA2ADid } from "@agentbadge/hedera-core";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
 

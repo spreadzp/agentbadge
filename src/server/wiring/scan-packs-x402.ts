@@ -9,7 +9,7 @@
 // (zero behavior change for envs that never enabled circle payments).
 
 import type { Context, Hono, MiddlewareHandler } from "hono";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getConfig } from "../../config/env";
 import {
   BUNDLE_IDS,

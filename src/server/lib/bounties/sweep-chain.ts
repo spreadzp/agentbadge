@@ -3,7 +3,7 @@
  * kept separate from sweep.ts to satisfy the 300-line file cap.
  */
 import { encodeFunctionData, keccak256, toBytes, type Hex } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { sendTelegramMessage } from "../../services/contact.service";
 import {

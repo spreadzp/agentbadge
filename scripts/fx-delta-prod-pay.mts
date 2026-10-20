@@ -1,9 +1,9 @@
 /**
  * Prod payment probe (EPIC-191): hits the DEPLOYED premium endpoint —
  * real HTTP 402 → EIP-3009 sign → PAYMENT-SIGNATURE → server verifies +
- * self-settles on Celo Sepolia → 200 + PAYMENT-RESPONSE tx hash.
+ * self-settles on Celo mainnet → 200 + PAYMENT-RESPONSE tx hash.
  *
- * Buyer = seller wallet (self-pay, same as e2e) — it holds Sepolia USDC
+ * Buyer = seller wallet (self-pay, same as e2e) — it holds mainnet USDC
  * and gas. Keys come from ../../celo-fx-delta/.env; never printed.
  *
  * Usage:  bun run scripts/fx-delta-prod-pay.mts [url]
@@ -15,7 +15,7 @@ import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { createPublicClient, http, toHex, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { celoSepolia } from "viem/chains";
+import { celo } from "viem/chains";
 
 const envFile = resolve(import.meta.dir, "../../../celo-fx-delta/.env");
 const env: Record<string, string> = {};
@@ -30,9 +30,9 @@ const tag = env.ATTRIBUTION_CODE ?? "";
 
 const URL_ =
   process.argv[2] ?? "https://agentbadge.xyz/api/fx-delta/premium";
-const RPC = "https://forno.celo-sepolia.celo-testnet.org";
+const RPC = "https://forno.celo.org";
 
-const pc = createPublicClient({ chain: celoSepolia, transport: http(RPC) });
+const pc = createPublicClient({ chain: celo, transport: http(RPC) });
 const account = privateKeyToAccount(sellerKey);
 
 // ─── 1. 402 challenge ─────────────────────────────────────────────
@@ -52,7 +52,7 @@ const body402 = (await r402.json()) as {
   }[];
 };
 const accept = body402.accepts[0]!;
-if (accept.network !== "eip155:11142220") {
+if (accept.network !== "eip155:42220") {
   throw new Error(`unexpected network ${accept.network} — refusing to pay`);
 }
 console.log(
@@ -75,7 +75,7 @@ const signature = await account.signTypedData({
   domain: {
     name: accept.extra?.name ?? "USDC",
     version: accept.extra?.version ?? "2",
-    chainId: celoSepolia.id,
+    chainId: celo.id,
     verifyingContract: accept.asset as `0x${string}`,
   },
   types: {
@@ -130,8 +130,14 @@ if (r200.status !== 200) {
 }
 const data = (await r200.json()) as { v: number; atMs: number };
 console.log(`200 OK — v=${data.v} atMs=${data.atMs}`);
+const outFile = process.env.FXDELTA_BODY_OUT;
+if (outFile) {
+  const { writeFileSync } = await import("node:fs");
+  writeFileSync(outFile, JSON.stringify(data, null, 2));
+  console.log(`body → ${outFile}`);
+}
 console.log(`settle tx: ${txHash}`);
-console.log(`https://celo-sepolia.blockscout.com/tx/${txHash}`);
+console.log(`https://celo.blockscout.com/tx/${txHash}`);
 
 // ─── 4. Onchain proof: input carries the ERC-8021 attribution tag ─
 if (!txHash) throw new Error("no PAYMENT-RESPONSE tx hash returned");
@@ -149,5 +155,5 @@ if (!selectorOk || !markerOk) {
   console.warn("WARN: ERC-8021 tag verification failed on tx input");
 }
 console.log(
-  "PROD PASS: 402 → sign → prod self-settle (tagged) → 200 on Celo Sepolia",
+  "PROD PASS: 402 → sign → prod self-settle (tagged) → 200 on Celo mainnet",
 );

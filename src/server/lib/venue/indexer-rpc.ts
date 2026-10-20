@@ -4,7 +4,7 @@
  * net.chain.rpcUrl). Split out of indexer.ts (max-lines).
  */
 import { createPublicClient, http } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import type { VenueNetwork } from "./chain";
 

@@ -21,7 +21,7 @@
 
 import { encodeAbiParameters, encodeFunctionData } from "viem";
 import type { Hex } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { MEMO_ABI, memoIdFor } from "@agentbadge/circle-payments";
 import type { ChainHead } from "@agentbadge/circle-payments";
 import type { ChainService, ChainStore } from "./chain";

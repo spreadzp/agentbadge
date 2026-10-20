@@ -15,7 +15,7 @@ import { AGENT_READINESS_RULESET } from "../../../agent-readiness/ruleset";
 import {
   TIER_PRICES_TINYBARS,
   TINYBAR_PER_HBAR,
-} from "@agentbadge/passport";
+} from "@agentbadge/passport/payment";
 import { venueMonthlyPriceAtomic } from "../venue/billing";
 
 export interface BundleSource {

@@ -8,8 +8,10 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 
 import { revokePassport } from "@agentbadge/passport";
 import { adminRoutes } from "../src/server/routes/admin";
+import { resetConfigCache } from "../src/config/env";
 
 const ORIGINAL_API_KEY = process.env.ADMIN_API_KEY;
+const ORIGINAL_CHAIN_FLAG = process.env.PASSPORT_CHAIN_ENABLED;
 
 function makeApp(): Hono {
   const app = new Hono();
@@ -21,10 +23,16 @@ describe("POST /admin/revoke", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_API_KEY = "test-secret-key";
+    // SLICE-169-9: revoke is a Hedera-chain call — enable the gate
+    // so the handler proceeds (flag off would 503 before validation).
+    process.env.PASSPORT_CHAIN_ENABLED = "true";
+    resetConfigCache();
   });
 
   afterEach(() => {
     process.env.ADMIN_API_KEY = ORIGINAL_API_KEY;
+    process.env.PASSPORT_CHAIN_ENABLED = ORIGINAL_CHAIN_FLAG;
+    resetConfigCache();
   });
 
   it("returns 401 when X-Admin-Key header is missing", async () => {
@@ -99,5 +107,20 @@ describe("POST /admin/revoke", () => {
       body: JSON.stringify({ reason: "fraud" }),
     });
     expect(res.status).toBe(400);
+  });
+
+  it("returns 503 when PASSPORT_CHAIN_ENABLED is off (SLICE-169-9)", async () => {
+    process.env.PASSPORT_CHAIN_ENABLED = "";
+    resetConfigCache();
+    const app = makeApp();
+    const res = await app.request("/admin/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Key": "test-secret-key" },
+      body: JSON.stringify({ tokenId: "0.0.123", serial: 1, reason: "fraud" }),
+    });
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.code).toBe("passport_chain_disabled");
+    expect(revokePassport).not.toHaveBeenCalled();
   });
 });

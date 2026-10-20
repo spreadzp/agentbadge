@@ -18,7 +18,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import {
   CLASS_EAAS,
   durationSecondsForAmount,

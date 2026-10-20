@@ -8,7 +8,9 @@
 
 import type Stripe from "stripe";
 import type { Tier, Capability } from "@agentbadge/hedera-core";
-import { issuePassport, logger } from "@agentbadge/passport";
+import { issuePassport } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
+import { passportChainEnabled } from "./passport-chain-gate";
 import { sendDiscordMessage } from "../services/contact.service";
 
 const processedSessions = new Set<string>();
@@ -65,6 +67,12 @@ async function fulfillDirectoryListing(session: Stripe.Checkout.Session): Promis
 }
 
 async function fulfillPassportMint(session: Stripe.Checkout.Session): Promise<void> {
+  // SLICE-169-9: minting needs the Hedera chain — skip when gated off.
+  if (!passportChainEnabled()) {
+    logger.error("fulfillPassportMint: PASSPORT_CHAIN_ENABLED is off, mint skipped", { sessionId: session.id });
+    return;
+  }
+
   const tier = session.metadata?.tier as Tier;
   const name = session.metadata?.name ?? "Stripe-paid agent";
   const accountId = session.metadata?.accountId;

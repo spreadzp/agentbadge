@@ -20,7 +20,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { getConfig } from "../../config/env";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";

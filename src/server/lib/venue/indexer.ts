@@ -14,7 +14,7 @@
  */
 import { decodeEventLog, keccak256, toBytes } from "viem";
 import type { Abi } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 import { MEMO_ABI } from "@agentbadge/circle-payments";
 
 import {

@@ -13,7 +13,7 @@
  */
 import { decodeEventLog, parseAbi } from "viem";
 import type { Abi } from "viem";
-import { logger } from "@agentbadge/passport";
+import { logger } from "@agentbadge/passport/logger";
 
 import { resolveVenueNetwork, type VenueNetwork } from "../venue/chain";
 import {

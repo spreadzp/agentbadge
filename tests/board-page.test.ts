@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
-import { createBoardPageRoutes } from "../src/server/routes/board-page";
+
 import { boardStore } from "../src/server/lib/board/store";
 import { useMemoryBoardStoreForTesting } from "../src/server/lib/board/json-store";
 import {
@@ -17,6 +17,7 @@ import {
 } from "../src/server/lib/bounties/store";
 import { computeSpecHash } from "../src/server/lib/board/types";
 import type { BoardCardRecord } from "../src/server/lib/board/types";
+import { createBoardPageRoutes } from "../src/server/routes/board-page";
 
 const COLUMNS = [
   "todo",
