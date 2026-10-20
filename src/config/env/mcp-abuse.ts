@@ -12,7 +12,25 @@ function intEnv(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) return fallback;
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+  if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  console.warn(
+    `[mcp-abuse] invalid ${name}="${raw}" — falling back to ${fallback}`,
+  );
+  return fallback;
+}
+
+// USDC-style amount: optional $ prefix, >0, ≤6 decimals (arc-audit M-5).
+const PRICE_RE = /^\$?\d+(\.\d{1,6})?$/;
+
+function validPrice(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  if (!PRICE_RE.test(raw) || Number.parseFloat(raw.replace("$", "")) <= 0) {
+    console.warn(
+      `[mcp-abuse] invalid MCP_HEAVY_X402_PRICE="${raw}" — x402 gate disarmed`,
+    );
+    return undefined;
+  }
+  return raw;
 }
 
 export function loadMcpAbuse(): McpAbuseEnvConfig | undefined {
@@ -26,7 +44,7 @@ export function loadMcpAbuse(): McpAbuseEnvConfig | undefined {
       .filter(Boolean)
     : undefined;
 
-  const heavyX402Price = process.env.MCP_HEAVY_X402_PRICE;
+  const heavyX402Price = validPrice(process.env.MCP_HEAVY_X402_PRICE);
   const heavyX402PayTo = process.env.MCP_HEAVY_X402_PAYTO;
   // Arm the x402 seam only when BOTH are set — a price without a payee
   // (or vice versa) is a misconfig, not a partial gate.
