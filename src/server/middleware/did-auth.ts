@@ -63,10 +63,27 @@ const ACTOR_FIELDS = ["posterDid", "claimerDid", "from"] as const;
 
 export type DidAuthMode = "off" | "warn" | "enforce";
 
+let _warnedProdWarnMode = false;
+
 export function getDidAuthMode(): DidAuthMode {
   const mode = process.env.DID_AUTH_MODE ?? "enforce";
-  if (mode === "off" || mode === "warn" || mode === "enforce") return mode;
-  return "enforce";
+  const resolved =
+    mode === "off" || mode === "warn" || mode === "enforce"
+      ? mode
+      : "enforce";
+  // Prod foot-gun (arc-audit H-1): warn silently disables DID-auth
+  // entirely; refuse it under NODE_ENV=production so a staging env
+  // var can't leak through unnoticed.
+  if (resolved === "warn" && process.env.NODE_ENV === "production") {
+    if (!_warnedProdWarnMode) {
+      _warnedProdWarnMode = true;
+      logger.warn(
+        "DID_AUTH_MODE=warn ignored in production — forcing enforce",
+      );
+    }
+    return "enforce";
+  }
+  return resolved;
 }
 
 export function requireDidSignature(
@@ -75,6 +92,12 @@ export function requireDidSignature(
   const maxSkew = opts.maxSkewSeconds ?? 300;
 
   return async (c, next) => {
+    // verifiedDid is a trusted-identity channel for downstream (e.g.
+    // the MCP abuse-guard tier lanes). Reset it unconditionally so no
+    // earlier middleware can pre-seed a DID we haven't verified
+    // (arc-audit C-3 — ordering invariant made explicit).
+    c.set("verifiedDid", undefined);
+
     // Skip non-mutation methods
     if (c.req.method === "GET" || c.req.method === "HEAD") {
       await next();
