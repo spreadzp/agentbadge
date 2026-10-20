@@ -26,6 +26,10 @@ import { resetConfigCache } from "../src/config/env";
 import type { CirclePaymentsRuntime } from "../src/server/lib/circle-payments";
 
 const IP = "203.0.113.7";
+// Tests run as a Fly deployment — fly-client-ip is the trusted IP
+// source only when FLY_APP_NAME is set (arc-audit C-2). The C-2
+// describe below deletes/restores it explicitly.
+process.env.FLY_APP_NAME ||= "agentbadge-test";
 const rpcBody = (name?: string) =>
   JSON.stringify({
     jsonrpc: "2.0",
@@ -34,10 +38,18 @@ const rpcBody = (name?: string) =>
     params: name ? { name, arguments: {} } : {},
   });
 
-function postJson(url: string, body: string, ip = IP) {
+function postJson(
+  url: string,
+  body: string,
+  ipOrHeaders: string | Record<string, string> = IP,
+) {
+  const extra =
+    typeof ipOrHeaders === "string"
+      ? { "fly-client-ip": ipOrHeaders }
+      : ipOrHeaders;
   return new Request(`http://t${url}`, {
     method: "POST",
-    headers: { "content-type": "application/json", "fly-client-ip": ip },
+    headers: { "content-type": "application/json", ...extra },
     body,
   });
 }
@@ -395,6 +407,124 @@ function stubRuntime(gate: MiddlewareHandler): CirclePaymentsRuntime {
     paymentForPrice: vi.fn(() => gate),
   } as unknown as CirclePaymentsRuntime;
 }
+
+// ─── Arc-audit regressions (200-audit-mcp-abuse) ────────
+
+describe("arc-audit regressions — heavy-op detection hardening", () => {
+  it("H-4/M-6: case + null-byte variants still hit the heavy bucket", async () => {
+    const app = buildApp({ anonMax: 100, heavyMax: 1 });
+    // mixed-case path segment → normalized → heavy
+    expect(
+      (await app.request(postJson("/mcp/tools/Arc_Send_Raw_Tx", "{}"))).status,
+    ).toBe(200);
+    // null-byte suffix → stripped → same heavy lane → 429
+    expect(
+      (
+        await app.request(
+          postJson("/mcp/tools/arc_send_raw_tx%00extra", "{}"),
+        )
+      ).status,
+    ).toBe(429);
+  });
+
+  it("H-3: single-element JSON-RPC batch wrapping a heavy op is caught", async () => {
+    const app = buildApp({ anonMax: 100, heavyMax: 1 });
+    const batch = JSON.stringify([
+      { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "arc_send_raw_tx" } },
+    ]);
+    expect((await app.request(postJson("/mcp", batch))).status).toBe(200);
+    expect((await app.request(postJson("/mcp", batch))).status).toBe(429);
+  });
+
+  it("H-3: batch with only light tools stays out of the heavy bucket", async () => {
+    const app = buildApp({ anonMax: 100, heavyMax: 1 });
+    const batch = JSON.stringify([
+      { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_guide" } },
+      { jsonrpc: "2.0", id: 2, method: "tools/list" },
+    ]);
+    expect((await app.request(postJson("/mcp", batch))).status).toBe(200);
+    expect((await app.request(postJson("/mcp", batch))).status).toBe(200);
+  });
+
+  it("H-2: gate rejection does NOT consume the heavy bucket", async () => {
+    const reject: MiddlewareHandler = async (c) =>
+      c.json({ error: "payment required" }, 402);
+    setMcpHeavyGate(reject);
+    const app = buildApp({ anonMax: 100, heavyMax: 1 });
+    // every request gets a fresh 402 — never a 429, bucket stays unused
+    for (let i = 0; i < 3; i++) {
+      expect(
+        (await app.request(postJson("/mcp/tools/arc_send_raw_tx", "{}")))
+          .status,
+      ).toBe(402);
+    }
+  });
+
+  it("H-2: gate pass → bucket charges → 429 after heavyMax", async () => {
+    // Real requirePayment returns next()'s result — the inner Response
+    // (429 or downstream handler) propagates through the gate.
+    const pass: MiddlewareHandler = async (c, next) =>
+      (await next()) as unknown as Response | undefined;
+    setMcpHeavyGate(pass);
+    const app = buildApp({ anonMax: 100, heavyMax: 1 });
+    expect(
+      (await app.request(postJson("/mcp/tools/arc_send_raw_tx", "{}"))).status,
+    ).toBe(200);
+    expect(
+      (await app.request(postJson("/mcp/tools/arc_send_raw_tx", "{}"))).status,
+    ).toBe(429);
+  });
+
+  it("M-1: a second guard instance still enforces its own limits", async () => {
+    const app = new Hono();
+    app.use("/mcp", mcpAbuseGuard({ anonMax: 100 }));
+    // Different instance — must NOT be short-circuited by the first
+    app.use("/mcp", mcpAbuseGuard({ anonMax: 1 }));
+    app.post("/mcp", (c) => c.json({ ok: true }));
+    expect((await app.request(postJson("/mcp", rpcBody("ping")))).status).toBe(200);
+    expect((await app.request(postJson("/mcp", rpcBody("ping")))).status).toBe(429);
+  });
+});
+
+describe("arc-audit regressions — IP trust (C-2)", () => {
+  const FLY_KEYS = ["FLY_APP_NAME", "FLY_MACHINE_ID"] as const;
+  const bak: Record<string, string | undefined> = {};
+  afterEach(() => {
+    for (const k of FLY_KEYS) {
+      if (bak[k] === undefined) delete process.env[k];
+      else process.env[k] = bak[k];
+      delete bak[k];
+    }
+  });
+
+  it("fly-client-ip is ignored when NOT running on Fly", async () => {
+    for (const k of FLY_KEYS) {
+      bak[k] = process.env[k];
+      delete process.env[k];
+    }
+    const app = buildApp({ anonMax: 1 });
+    // spoofed fly-client-ip differs per request but should collapse
+    // into the same fallback lane (x-forwarded-for)
+    const mk = (flyIp: string) =>
+      postJson("/mcp", rpcBody("ping"), {
+        "fly-client-ip": flyIp,
+        "x-forwarded-for": IP,
+      });
+    expect((await app.request(mk("1.1.1.1"))).status).toBe(200);
+    expect((await app.request(mk("2.2.2.2"))).status).toBe(429);
+  });
+
+  it("fly-client-ip IS trusted on Fly (FLY_APP_NAME set)", async () => {
+    for (const k of FLY_KEYS) bak[k] = process.env[k];
+    process.env.FLY_APP_NAME = "agentbadge";
+    const app = buildApp({ anonMax: 1 });
+    const mk = (flyIp: string) =>
+      postJson("/mcp", rpcBody("ping"), { "fly-client-ip": flyIp });
+    expect((await app.request(mk("1.1.1.1"))).status).toBe(200);
+    // different fly IP → different lane → passes (Fly proxies the real IP)
+    expect((await app.request(mk("2.2.2.2"))).status).toBe(200);
+  });
+});
 
 describe("armMcpHeavyGate — x402 heavy-op gate", () => {
   it("arms paymentForPrice with configured price/payTo → heavy op returns 402", async () => {
