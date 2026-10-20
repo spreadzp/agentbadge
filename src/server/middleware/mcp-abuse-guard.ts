@@ -99,6 +99,7 @@ const DEFAULT_HEAVY_MAX = 10;
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_ENTRIES = 10_000;
 const MCP_ABUSE_HIT_FLAG = "mcpAbuseHit";
+let _guardInstanceSeq = 0;
 
 // ─── x402 seam (layer 3b) ────────────────────────────────
 // circleRuntime is created after the guard mounts — resolved lazily
@@ -117,20 +118,50 @@ const REST_TOOL_RE = /^\/mcp(?:\/[^/?]+)?\/tools\/([^/?]+)/;
 
 function toolNameFromPath(path: string): string | undefined {
   const m = REST_TOOL_RE.exec(path);
-  return m ? decodeURIComponent(m[1]) : undefined;
+  try {
+    return m ? decodeURIComponent(m[1]) : undefined;
+  } catch {
+    return undefined; // malformed %-encoding — treat as non-heavy
+  }
+}
+
+/** Arc-audit H-4/M-6: normalise before the heavySet lookup — strip
+ *  anything after a null byte (arc_send_raw_tx%00extra bypass) and
+ *  lower-case (Arc_Send_Raw_Tx bypass). */
+function normalizeToolName(raw: string): string {
+  const nul = raw.indexOf("\0");
+  return (nul >= 0 ? raw.slice(0, nul) : raw).toLowerCase();
+}
+
+type RpcItem = { method?: string; params?: { name?: string } };
+
+function nameFromRpcItem(item: RpcItem | undefined): string | undefined {
+  return item?.method === "tools/call" ? item.params?.name : undefined;
 }
 
 /** Read JSON-RPC tools/call name from a cloned request — the clone keeps
- *  the downstream handler's body intact. */
-async function toolNameFromBody(c: Context): Promise<string | undefined> {
+ *  the downstream handler's body intact.
+ *  Arc-audit H-3: JSON-RPC 2.0 allows batch arrays. A single-element
+ *  batch wrapping a heavy op used to slip past detection entirely —
+ *  arrays are scanned and the first HEAVY member name is returned so
+ *  the bucket/gate applies. */
+async function toolNameFromBody(
+  c: Context,
+  heavySet: ReadonlySet<string>,
+): Promise<string | undefined> {
   if (c.req.method !== "POST") return undefined;
   try {
     const clone = c.req.raw.clone();
-    const body = (await clone.json()) as {
-      method?: string;
-      params?: { name?: string };
-    };
-    if (body?.method === "tools/call") return body.params?.name;
+    const body = (await clone.json()) as RpcItem | RpcItem[];
+    if (Array.isArray(body)) {
+      const names = body.map((item) => nameFromRpcItem(item));
+      const heavyName = names.find(
+        (n): n is string =>
+          typeof n === "string" && heavySet.has(normalizeToolName(n)),
+      );
+      return heavyName ?? names.find((n) => typeof n === "string");
+    }
+    return nameFromRpcItem(body);
   } catch {
     /* non-JSON body — nothing to inspect */
   }
@@ -166,10 +197,18 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
   const heavyMax = options.heavyMax ?? DEFAULT_HEAVY_MAX;
   const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
   const tierMax = options.tierMax ?? {};
-  const heavySet = new Set(options.heavyOps ?? DEFAULT_HEAVY_OPS);
+  // Lower-cased entries — lookup normalises the same way (arc-audit M-6).
+  const heavySet = new Set(
+    (options.heavyOps ?? DEFAULT_HEAVY_OPS).map((s) => s.toLowerCase()),
+  );
   const store = options.store ?? new MemoryStore();
   const resolveTier = options.resolveTier ?? ((c: Context) => (c.get("agentTier") as string | undefined) ?? "anon");
 
+  // Arc-audit M-1: per-instance dedup marker. The wiring mounts THIS
+  // SAME instance on /mcp and /mcp/* — the flag value matches → skip.
+  // A second, independently configured guard has a different value and
+  // still runs its own logic.
+  const flagValue = `guard:${++_guardInstanceSeq}`;
   let lastSweep = Date.now();
   function maybeSweep(now: number): void {
     if (now - lastSweep >= windowMs) {
@@ -186,9 +225,10 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
 
   return async (c: Context, next: Next): Promise<Response | void> => {
     // Idempotent per request — Hono's "/mcp/*" also matches "/mcp", so a
-    // guard mounted on both patterns would otherwise double-count.
-    if (c.get(MCP_ABUSE_HIT_FLAG)) return next();
-    c.set(MCP_ABUSE_HIT_FLAG, true);
+    // guard mounted on both patterns would otherwise double-count. The
+    // flag VALUE is per-instance: another guard's flag doesn't block us.
+    if (c.get(MCP_ABUSE_HIT_FLAG) === flagValue) return next();
+    c.set(MCP_ABUSE_HIT_FLAG, flagValue);
 
     const now = Date.now();
     maybeSweep(now);
@@ -221,15 +261,23 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
     }
 
     // Layer 3: heavy-op bucket + optional x402 gate.
-    const toolName = toolNameFromPath(c.req.path) ?? (await toolNameFromBody(c));
+    const rawName =
+      toolNameFromPath(c.req.path) ?? (await toolNameFromBody(c, heavySet));
+    const toolName = rawName ? normalizeToolName(rawName) : undefined;
     if (toolName && heavySet.has(toolName)) {
-      const heavy = await hit(store, `mcp:heavy:${lane}`, windowMs, now);
-      if (heavy.count > heavyMax) {
-        return limited(c, heavy, heavyMax, now);
-      }
+      const chargeHeavy = async (): Promise<Response | void> => {
+        const heavy = await hit(store, `mcp:heavy:${lane}`, windowMs, now);
+        if (heavy.count > heavyMax) {
+          return limited(c, heavy, heavyMax, now);
+        }
+        return next();
+      };
+      // Arc-audit H-2: payment check BEFORE consuming the bucket — a
+      // rejected payment must not burn the caller's heavy-op quota.
       if (heavyGate) {
-        return heavyGate(c, next);
+        return heavyGate(c, chargeHeavy as unknown as Next);
       }
+      return chargeHeavy();
     }
 
     return next();
