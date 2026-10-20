@@ -110,10 +110,22 @@ const DEFAULT_MAX_ENTRIES = 10_000;
  * 4. "unknown" fallback
  *
  * NEVER uses leftmost XFF — it's client-controlled and spoofable.
+ *
+ * Deployment contract: Fly-Client-IP is trusted ONLY when the process
+ * runs on Fly.io — FLY_APP_NAME/FLY_MACHINE_ID are injected by the
+ * platform and can't be spoofed by a client header. On any other host
+ * (direct connection, dev, TLS passthrough LB) the header is ignored:
+ * it is a plain HTTP header a client can set to arbitrary values
+ * (arc-audit C-2). XFF/X-Real-IP remain best-effort fallbacks.
  */
 export function resolveClientIp(c: Context): string {
-  const flyIp = c.req.header("fly-client-ip");
-  if (flyIp) return flyIp.trim();
+  const onFly = Boolean(
+    process.env.FLY_APP_NAME || process.env.FLY_MACHINE_ID,
+  );
+  if (onFly) {
+    const flyIp = c.req.header("fly-client-ip");
+    if (flyIp) return flyIp.trim();
+  }
 
   const xff = c.req.header("x-forwarded-for");
   if (xff) {
