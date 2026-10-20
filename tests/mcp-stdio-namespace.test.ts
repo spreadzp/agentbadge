@@ -27,13 +27,13 @@ describe("SLICE-72-9: Stdio namespace selection + registerAllTools", () => {
     expect(after).toBeGreaterThanOrEqual(before);
   });
 
-  it("registerAllTools + compliance + parity = 65 total (full server set)", () => {
+  it("registerAllTools + compliance + parity = 66 total (full server set)", () => {
     const ns = createNamespace("test-full-server");
     registerAllTools(ns);
     registerComplianceTools(ns);
     registerParityTools(ns);
-    // 38 package + 1 compliance + 26 parity = 65
-    expect(ns.listTools().length).toBe(65);
+    // 38 package + 1 compliance + 27 parity = 66
+    expect(ns.listTools().length).toBe(66);
   });
 
   it("namespace selection: passport only has 16 tools", () => {
@@ -50,9 +50,9 @@ describe("SLICE-72-9: Stdio namespace selection + registerAllTools", () => {
     registerAllTools(allNs);
     registerComplianceTools(allNs);
     registerParityTools(allNs);
-    expect(allNs.listTools().length).toBe(65);
+    expect(allNs.listTools().length).toBe(66);
     const ns = getNamespace("all");
     expect(ns).toBeDefined();
-    expect(ns!.listTools().length).toBe(65);
+    expect(ns!.listTools().length).toBe(66);
   });
 });
