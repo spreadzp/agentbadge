@@ -6,13 +6,24 @@
  *   3. heavy-ops — dedicated stricter bucket + optional x402 gate seam
  */
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { Hono, type Context, type Next, type MiddlewareHandler } from "hono";
 import {
   mcpAbuseGuard,
   setMcpHeavyGate,
   DEFAULT_HEAVY_OPS,
 } from "../src/server/middleware/mcp-abuse-guard";
+import {
+  armMcpHeavyGate,
+  MCP_TIER_RPM,
+  resolveMcpAbuseTier,
+} from "../src/server/wiring/mcp-abuse";
+import {
+  upsert as dirUpsert,
+  clear as dirClear,
+} from "@agentbadge/passport";
+import { resetConfigCache } from "../src/config/env";
+import type { CirclePaymentsRuntime } from "../src/server/lib/circle-payments";
 
 const IP = "203.0.113.7";
 const rpcBody = (name?: string) =>
@@ -236,5 +247,200 @@ describe("mcpAbuseGuard — layer 3: heavy-ops", () => {
     expect((await app.request(postJson("/mcp/tools/request_passport", "{}"))).status).toBe(200);
     expect((await app.request(postJson("/mcp/tools/get_guide", "{}"))).status).toBe(200);
     expect((await app.request(postJson("/mcp/tools/get_guide", "{}"))).status).toBe(429);
+  });
+});
+
+// ─── Layer 2b: verified-DID passport-tier lanes ──────────
+// verifiedDid is set ONLY by did-auth's signature check — this is the
+// trusted channel that elevates a request to its passport tier lane.
+
+const DID_A = "did:hedera:testnet:0.0.71001";
+const DID_B = "did:hedera:testnet:0.0.71002";
+
+function seedDir(did: string, tier: "bronze" | "silver" | "gold" | "platinum") {
+  dirUpsert({
+    did,
+    tokenId: "0.0.999",
+    serial: 1,
+    accountId: did.split(":").pop() ?? "0.0.0",
+    name: "test-agent",
+    capabilities: [],
+    endpoint: "",
+    tier,
+    timestamp: Date.now(),
+  });
+}
+
+function buildDidApp(opts: {
+  verifiedDid?: string;
+  keyedMax?: number;
+  tierMax?: Record<string, number>;
+} = {}) {
+  const app = new Hono();
+  const setDid = async (c: Context, next: Next) => {
+    if (opts.verifiedDid) c.set("verifiedDid", opts.verifiedDid);
+    await next();
+  };
+  app.use("/mcp", setDid);
+  app.use("/mcp/*", setDid);
+  app.use(
+    "/mcp",
+    mcpAbuseGuard({
+      anonMax: 2,
+      keyedMax: opts.keyedMax ?? 3,
+      tierMax: opts.tierMax ?? MCP_TIER_RPM,
+      resolveTier: resolveMcpAbuseTier,
+    }),
+  );
+  app.use(
+    "/mcp/*",
+    mcpAbuseGuard({
+      anonMax: 2,
+      keyedMax: opts.keyedMax ?? 3,
+      tierMax: opts.tierMax ?? MCP_TIER_RPM,
+      resolveTier: resolveMcpAbuseTier,
+    }),
+  );
+  app.post("/mcp", (c) => c.json({ ok: true }));
+  app.get("/mcp", (c) => c.json({ ok: true }));
+  return app;
+}
+
+afterEach(() => dirClear());
+
+describe("mcpAbuseGuard — layer 2b: verified-DID passport tiers", () => {
+  it("resolveMcpAbuseTier returns directory tier for a known DID", async () => {
+    seedDir(DID_A, "platinum");
+    const app = buildDidApp({ verifiedDid: DID_A });
+    const res = await app.request(postJson("/mcp", rpcBody("ping")));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-RateLimit-Limit")).toBe(String(MCP_TIER_RPM.platinum));
+  });
+
+  it("verified DID unknown to the directory falls back to keyedMax", async () => {
+    const app = buildDidApp({ verifiedDid: DID_A, keyedMax: 3 });
+    for (let i = 0; i < 3; i++) {
+      expect((await app.request(postJson("/mcp", rpcBody("ping")))).status).toBe(200);
+    }
+    expect((await app.request(postJson("/mcp", rpcBody("ping")))).status).toBe(429);
+  });
+
+  it("did:<did> lanes are isolated — same IP, two DIDs, own buckets", async () => {
+    seedDir(DID_A, "bronze");
+    seedDir(DID_B, "bronze");
+    const appA = buildDidApp({ verifiedDid: DID_A, keyedMax: 1 });
+    const appB = buildDidApp({ verifiedDid: DID_B, keyedMax: 1 });
+    // Note: two apps = two stores; assert lane keys differ via shared app instead
+    const shared = new Hono();
+    const pickDid = async (c: Context, next: Next) => {
+      const did = c.req.header("x-test-did");
+      if (did) c.set("verifiedDid", did);
+      await next();
+    };
+    shared.use("/mcp", pickDid);
+    shared.use("/mcp/*", pickDid);
+    const guard = mcpAbuseGuard({
+      anonMax: 1,
+      keyedMax: 1,
+      // tiny tier caps so 429 arrives quickly — tierMax legitimately
+      // overrides keyedMax for tier-resolved DID lanes
+      tierMax: { bronze: 1 },
+      resolveTier: resolveMcpAbuseTier,
+    });
+    shared.use("/mcp", guard);
+    shared.use("/mcp/*", guard);
+    shared.post("/mcp", (c) => c.json({ ok: true }));
+    void appA;
+    void appB;
+    const withDid = (did: string) =>
+      new Request("http://t/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "fly-client-ip": IP,
+          "x-test-did": did,
+        },
+        body: rpcBody("ping"),
+      });
+    expect((await shared.request(withDid(DID_A))).status).toBe(200);
+    expect((await shared.request(withDid(DID_A))).status).toBe(429);
+    // Different DID — own lane, still allowed on the same IP
+    expect((await shared.request(withDid(DID_B))).status).toBe(200);
+  });
+
+  it("no verifiedDid → anonymous IP lane even when the DID exists in the directory", async () => {
+    seedDir(DID_A, "platinum");
+    const app = buildDidApp(); // verifiedDid never set
+    const res = await app.request(postJson("/mcp", rpcBody("ping")));
+    expect(res.headers.get("X-RateLimit-Limit")).toBe("2"); // anonMax, not platinum
+  });
+});
+
+// ─── armMcpHeavyGate — x402 seam e2e ─────────────────────
+
+const ENV_KEYS = ["MCP_HEAVY_X402_PRICE", "MCP_HEAVY_X402_PAYTO"] as const;
+const envBak: Record<string, string | undefined> = {};
+
+afterEach(() => {
+  for (const k of ENV_KEYS) {
+    if (envBak[k] === undefined) delete process.env[k];
+    else process.env[k] = envBak[k];
+    delete envBak[k];
+  }
+  resetConfigCache();
+});
+
+function stubRuntime(gate: MiddlewareHandler): CirclePaymentsRuntime {
+  return {
+    paymentForPrice: vi.fn(() => gate),
+  } as unknown as CirclePaymentsRuntime;
+}
+
+describe("armMcpHeavyGate — x402 heavy-op gate", () => {
+  it("arms paymentForPrice with configured price/payTo → heavy op returns 402", async () => {
+    envBak.MCP_HEAVY_X402_PRICE = process.env.MCP_HEAVY_X402_PRICE;
+    envBak.MCP_HEAVY_X402_PAYTO = process.env.MCP_HEAVY_X402_PAYTO;
+    process.env.MCP_HEAVY_X402_PRICE = "$0.05";
+    process.env.MCP_HEAVY_X402_PAYTO = "0xDEADBEEF";
+    resetConfigCache();
+
+    const gate: MiddlewareHandler = async (c) =>
+      c.json({ x402Version: 1, error: "payment required" }, 402);
+    const runtime = stubRuntime(gate);
+    armMcpHeavyGate(runtime);
+
+    expect(runtime.paymentForPrice).toHaveBeenCalledWith(
+      "$0.05",
+      expect.objectContaining({ payTo: "0xDEADBEEF", methods: ["POST"] }),
+    );
+
+    const app = buildApp({ anonMax: 100, heavyMax: 100 });
+    expect((await app.request(postJson("/mcp/tools/arc_send_raw_tx", "{}"))).status).toBe(402);
+    // light tools bypass the armed gate
+    expect((await app.request(postJson("/mcp/tools/get_guide", "{}"))).status).toBe(200);
+  });
+
+  it("no-ops when price/payTo are unset — guard stays free", async () => {
+    envBak.MCP_HEAVY_X402_PRICE = process.env.MCP_HEAVY_X402_PRICE;
+    envBak.MCP_HEAVY_X402_PAYTO = process.env.MCP_HEAVY_X402_PAYTO;
+    delete process.env.MCP_HEAVY_X402_PRICE;
+    delete process.env.MCP_HEAVY_X402_PAYTO;
+    resetConfigCache();
+
+    const runtime = stubRuntime(async (c) => c.json({ err: 1 }, 402));
+    armMcpHeavyGate(runtime);
+    expect(runtime.paymentForPrice).not.toHaveBeenCalled();
+
+    const app = buildApp({ anonMax: 100, heavyMax: 100 });
+    expect((await app.request(postJson("/mcp/tools/arc_send_raw_tx", "{}"))).status).toBe(200);
+  });
+
+  it("no-ops when circle runtime is undefined", () => {
+    envBak.MCP_HEAVY_X402_PRICE = process.env.MCP_HEAVY_X402_PRICE;
+    envBak.MCP_HEAVY_X402_PAYTO = process.env.MCP_HEAVY_X402_PAYTO;
+    process.env.MCP_HEAVY_X402_PRICE = "$0.05";
+    process.env.MCP_HEAVY_X402_PAYTO = "0xDEADBEEF";
+    resetConfigCache();
+    expect(() => armMcpHeavyGate(undefined)).not.toThrow();
   });
 });
