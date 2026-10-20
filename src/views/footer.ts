@@ -164,8 +164,8 @@ export function Footer(): ReturnType<typeof html> {
         <a href="https://saasbrowser.com/en/saas/1618369/agentbadge" target="_blank" rel="noopener" title="Verified on SaaS Browser">
           <img src="https://files.saasbrowser.com/h05pfd6qctu4jsnymq6q06maaf2t" alt="Verified on SaaS Browser" loading="lazy" decoding="async" class="h-5 w-auto" />
         </a>
-        <a href="https://hol.org/registry/plugins/spreadzp/agentbadge-mcp" target="_blank" rel="noopener" title="Owner-verified on HOL Registry (trust 75)">
-          <img src="https://img.shields.io/badge/HOL%20Registry-owner--verified%20%C2%B7%20trust%2075-334155?style=flat-square" alt="HOL Registry: owner-verified, trust 75" loading="lazy" decoding="async" class="h-5 w-auto" />
+        <a href="https://hol.org/registry/plugins/agentbadge%2Fagentbadge-mcp" target="_blank" rel="noopener" title="Owner-verified on HOL Registry (trust 77)">
+          <img src="https://img.shields.io/badge/HOL%20Registry-owner--verified%20%C2%B7%20trust%2077-334155?style=flat-square" alt="HOL Registry: owner-verified, trust 77" loading="lazy" decoding="async" class="h-5 w-auto" />
         </a>
         <a href="https://mcprush.com/spreadzp/agentbadge-mcp" target="_blank" rel="noopener" title="mcprush grade A, trust 95/100">
           <img src="https://img.shields.io/badge/mcprush-A%20%C2%B7%2095%2F100-334155?style=flat-square" alt="mcprush grade A, trust 95/100" loading="lazy" decoding="async" class="h-5 w-auto" />
