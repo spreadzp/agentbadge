@@ -164,6 +164,36 @@ Related packages (published on npm as `@agentbadge/*`): `circle-payments` (x402 
 | Tests | Vitest (unit + e2e) |
 | Deploy | Fly.io → agentbadge.xyz |
 
+## MCP abuse guard
+
+`/mcp` and `/mcp/*` run behind a layered rate limiter (default ON —
+protective infrastructure, not a feature flag). Lanes: signature-verified
+DID → `did:<did>` (passport-tier RPM), keyed agent → `agent:<id>`
+(`keyedRpm` floor), otherwise per-IP (`anonRpm`). Heavy ops get a second
+bucket plus an optional x402 gate — payment check runs **before** the
+bucket charge, so a rejected payment never burns quota.
+
+| Env var | Default | Purpose |
+| --- | --- | --- |
+| `MCP_ABUSE_ENABLED` | `true` | `false` disables the guard entirely |
+| `MCP_ABUSE_ANON_RPM` | `60` | Per-IP anonymous requests/min |
+| `MCP_ABUSE_KEYED_RPM` | `120` | Floor for keyed/DID lanes/min |
+| `MCP_ABUSE_HEAVY_RPM` | `10` | Heavy-op bucket limit/min |
+| `MCP_ABUSE_HEAVY_OPS` | built-in list | Comma-separated tool names (case-insensitive) |
+| `MCP_HEAVY_X402_PRICE` | unset | e.g. `$0.05` — arms gate only with PAYTO |
+| `MCP_HEAVY_X402_PAYTO` | unset | Payee address — arms gate only with PRICE |
+
+Passport-tier RPM (bronze 240 / silver 480 / gold 960 / platinum 1920)
+applies only to signature-verified DIDs; self-declared or absent DID
+headers never elevate.
+
+**Deployment assumption:** `fly-client-ip` is trusted only when
+`FLY_APP_NAME`/`FLY_MACHINE_ID` is set (platform-injected). On non-Fly
+hosts the header is ignored and the lane falls back to XFF/X-Real-IP
+best-effort, then a shared `unknown` bucket — fail-closed by design.
+`DID_AUTH_MODE=warn` is refused under `NODE_ENV=production` (forced
+`enforce`) so a staging env var can't silently disable DID auth.
+
 ## Agent-first contract
 
 Paid surfaces are declared machine-readably — agents never scrape docs:
