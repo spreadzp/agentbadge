@@ -274,8 +274,14 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
       };
       // Arc-audit H-2: payment check BEFORE consuming the bucket — a
       // rejected payment must not burn the caller's heavy-op quota.
+      // Arc-audit NEW-M-1: a gate may await next() yet discard the returned
+      // Response — the adapter writes it to c.res so the context is
+      // finalized either way (429 can't be dropped through the Next seam).
       if (heavyGate) {
-        return heavyGate(c, chargeHeavy as unknown as Next);
+        return heavyGate(c, async () => {
+          const result = await chargeHeavy();
+          if (result instanceof Response) c.res = result;
+        });
       }
       return chargeHeavy();
     }
