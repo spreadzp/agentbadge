@@ -17,13 +17,48 @@ function getRegistry(ns?: NamespaceRegistry) {
 
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 4021}`;
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"',
+  "&#39;": "'", "&apos;": "'", "&nbsp;": " ", "&mdash;": "—",
+  "&ndash;": "–", "&hellip;": "…", "&middot;": "·", "&laquo;": "«",
+  "&raquo;": "»", "&copy;": "©", "&trade;": "™",
+};
+
 /**
- * Generic GET wrapper — fetches a REST endpoint and returns JSON as text.
+ * SLICE-200-01 F3: HTML → readable text for tool outputs.
+ * Strips script/style, converts block tags to newlines, decodes entities.
+ */
+function htmlToText(html: string): string {
+  let t = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<\/(p|div|li|ul|ol|h[1-6]|tr|table|section|article|header|footer|nav|main|blockquote|pre)>/gi, "\n")
+    .replace(/<(br|hr)\s*\/?>/gi, "\n")
+    .replace(/<li[\s>]/gi, "\n- ")
+    .replace(/<[^>]+>/g, "");
+  for (const [entity, ch] of Object.entries(HTML_ENTITIES)) {
+    t = t.split(entity).join(ch);
+  }
+  t = t.replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+  return t
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Generic GET wrapper — fetches a REST endpoint and returns text.
+ * HTML responses are converted to readable text (F3); JSON passes through.
  */
 async function getEndpoint(path: string): Promise<ToolResult> {
   try {
     const resp = await fetch(`${BASE_URL}${path}`);
-    const text = await resp.text();
+    const raw = await resp.text();
+    const isHtml = (resp.headers.get("content-type") ?? "").includes("text/html");
+    const text = isHtml ? htmlToText(raw) : raw;
     return {
       content: [{ type: "text", text }],
       isError: !resp.ok,
@@ -129,7 +164,7 @@ async function getServicesHandler(): Promise<ToolResult> {
 }
 
 async function getTeamHandler(): Promise<ToolResult> {
-  return getEndpoint("/team");
+  return getEndpoint("/agent-guide/team");
 }
 
 async function getUseCasesHandler(): Promise<ToolResult> {
@@ -310,7 +345,7 @@ export function registerParityTools(ns?: NamespaceRegistry): void {
 
   r.registerTool(
     "get_team",
-    "Fetch the Team page (/team) — team members and roles.",
+    "Fetch the Team page (/agent-guide/team) — team members and roles.",
     {},
     getTeamHandler,
   );
