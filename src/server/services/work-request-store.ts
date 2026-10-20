@@ -37,6 +37,13 @@ class WorkRequestStore {
     return this.records.get(id) ?? null;
   }
 
+  list(limit = 20, offset = 0): { items: WorkRequestRecord[]; total: number } {
+    const all = [...this.records.values()].sort((a, b) =>
+      b.created_at.localeCompare(a.created_at),
+    );
+    return { items: all.slice(offset, offset + limit), total: all.length };
+  }
+
   updateStatus(id: string, status: WorkRequestStatus): WorkRequestRecord | null {
     const record = this.records.get(id);
     if (!record) return null;
