@@ -9,6 +9,7 @@ import { ArchitectureSection } from "./architecture";
 import { PricingPreviewSection } from "./pricing-preview";
 import { CtaFooterSection } from "./cta-footer";
 import { EngineeringCtaSection } from "./engineering-cta";
+import { ScrollNavButtons } from "./scroll-nav";
 
 /**
  * LandingPage — assembler that composes all 9 sections in order.
@@ -47,25 +48,5 @@ export function LandingPage(props: {
     CtaFooterSection().toString(),
   ];
 
-  return html`<div class="relative">
-    ${raw(sections.join(""))}
-    <button
-      type="button"
-      onclick="window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'})"
-      aria-label="Scroll to bottom"
-      title="Scroll to bottom"
-      class="absolute right-4 top-24 z-10 hidden h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-800/80 text-slate-300 shadow-lg backdrop-blur transition hover:border-emerald-500 hover:text-emerald-400 md:flex"
-    >
-      <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-    </button>
-    <button
-      type="button"
-      onclick="window.scrollTo({top:0,behavior:'smooth'})"
-      aria-label="Scroll to top"
-      title="Scroll to top"
-      class="absolute bottom-24 right-4 z-10 hidden h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-800/80 text-slate-300 shadow-lg backdrop-blur transition hover:border-emerald-500 hover:text-emerald-400 md:flex"
-    >
-      <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-    </button>
-  </div>`;
+  return html`<div>${raw(sections.join(""))}${ScrollNavButtons()}</div>`;
 }
