@@ -8,11 +8,13 @@
  *    paths; the JSON-RPC roots (/mcp, /mcp/:ns/) were unlimited. This
  *    guard covers all MCP traffic.
  *
- * 2. Keyed tier lanes — when agentKeyAuth resolves a Bearer agb_ key it
- *    sets agentId + agentTier; keyed callers get their own bucket
- *    (agent:<id>) with a wider cap, so one busy agent does not eat the
- *    shared IP pool (and vice versa). Passport tiers (bronze→platinum)
- *    plug in later via resolveTier — no signature change.
+ * 2. Keyed tier lanes — Bearer agb_ (agentKeyAuth → agentId) gives an
+ *    agent:<id> bucket; a DID-verified request (did-auth → verifiedDid)
+ *    gives a did:<did> bucket resolved to its passport tier
+ *    (bronze→platinum via directoryCache, wiring/mcp-abuse.ts). Both
+ *    lanes get their own wider cap, so one busy agent does not eat the
+ *    shared IP pool (and vice versa). Self-declared DID headers are NOT
+ *    trusted — only signature-verified verifiedDid.
  *
  * 3. Heavy-ops — mutating/big-index tools (see DEFAULT_HEAVY_OPS,
  *    overridable) get a dedicated stricter bucket per lane, plus an
@@ -192,13 +194,21 @@ export function mcpAbuseGuard(options: McpAbuseGuardOptions = {}): MiddlewareHan
     maybeSweep(now);
     if (store.size() > DEFAULT_MAX_ENTRIES) store.sweep(now);
 
-    // Lane: keyed agent (agentKeyAuth) → own bucket; anonymous → per-IP.
+    // Lane: verified DID → did:<did>; keyed agent (agentKeyAuth) →
+    // agent:<id>; anonymous → per-IP. Tier-aware lanes use tierMax with
+    // keyedMax as floor (verified identity = accountability); anonymous
+    // falls back to anonMax. Unverified/self-declared DIDs never elevate.
+    const verifiedDid = c.get("verifiedDid") as string | undefined;
     const agentId = c.get("agentId") as string | undefined;
     const tier = resolveTier(c);
-    const lane = agentId ? `agent:${agentId}` : `ip:${resolveClientIp(c)}`;
-    const max = agentId
-      ? (tierMax[tier] ?? keyedMax)
-      : (tierMax[tier] ?? anonMax);
+    const lane = verifiedDid
+      ? `did:${verifiedDid}`
+      : agentId
+        ? `agent:${agentId}`
+        : `ip:${resolveClientIp(c)}`;
+    const max =
+      verifiedDid || agentId ? (tierMax[tier] ?? keyedMax) : anonMax;
+
 
     // Layer 1+2: base lane bucket.
     const base = await hit(store, `mcp:base:${lane}`, windowMs, now);
