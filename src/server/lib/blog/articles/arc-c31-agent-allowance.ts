@@ -14,7 +14,7 @@ export const article: BlogArticle = {
   shortAnswer:
     "Agent Allowance is a USDC budget vault on Arc mainnet (chainId 5042). The owner deposits once, funds vest linearly, and the agent can only claim already-vested amounts to allowlisted payees within a per-transaction cap — plus owner pause and cancel with clawback of unvested funds. Three real claims moved the vendor balance 99,020 to 99,135 units; every lifecycle step is a verifiable transaction on explorer.arc.io.",
   heroImage: "/images/blog/arc-c31-agent-allowance-hero.jpeg",
-  ogImage: "/images/blog/arc-c31-agent-allowance-hero.jpeg",
+  ogImage: "/images/blog/arc-c31-agent-allowance-og.jpeg",
   agentGuideSlug: "arc-c31-agent-allowance",
   status: "LIVE",
   technologies: ["arc", "USDC", "ERC-8004", "ERC-20", "Solidity", "Foundry", "x402"],
