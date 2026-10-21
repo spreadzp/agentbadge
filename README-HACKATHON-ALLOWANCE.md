@@ -7,7 +7,7 @@ Agent Allowance is an onchain USDC budget vault for AI agents. x402 lets an agen
 - **Network:** Arc mainnet, chainId `5042`
 - **Repo:** [github.com/spreadzp/agent-budget-vault](https://github.com/spreadzp/agent-budget-vault)
 - **Status:** production, full lifecycle verified on-chain (section 1)
-- **Demo video:** narrated EN/RU slide videos ship in the submission repo (`docs/video/agent-allowance-demo/`)
+- **Demo video:** [youtu.be/6hybJ9UdWKI](https://youtu.be/6hybJ9UdWKI) — narrated EN/RU slide videos also ship in the submission repo (`docs/video/agent-allowance-demo/`)
 
 ---
 
