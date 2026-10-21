@@ -123,6 +123,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "A paid x402 API for AI agents: compares live token prices on Celo with official FX rates and returns buy / sell / watch signals per currency pair. USDC on Celo mainnet, no gas for the buyer.",
     path: "/hackathon/fxdelta",
   },
+  "/hackathon/agent-allowance": {
+    title: "Agent Allowance — Onchain USDC Budget Vaults for AI Agents on Arc",
+    description:
+      "Owner funds a USDC vault once on Arc mainnet; funds vest linearly Sablier-style, and the agent can only claim vested amounts to allowlisted payees within a per-transaction cap. Live verified claims on Arc mainnet (chainId 5042), ERC-8004 agentId, full audit on explorer.arc.io.",
+    path: "/hackathon/agent-allowance",
+  },
   "/dashboard": {
     title: "Dashboard",
     description:
@@ -342,6 +348,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/services/scanner", changefreq: "weekly", priority: "0.9" },
   { path: "/services/passports", changefreq: "weekly", priority: "0.9" },
   { path: "/services/marketplace", changefreq: "weekly", priority: "0.9" },
+  { path: "/hackathon/agent-allowance", changefreq: "weekly", priority: "0.8" },
   { path: "/passport", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/datahub", changefreq: "weekly", priority: "0.8" },
   { path: "/hackathon/webmcp", changefreq: "weekly", priority: "0.8" },
