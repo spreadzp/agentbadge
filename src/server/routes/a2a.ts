@@ -30,17 +30,33 @@ import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 
 export const a2aRoutes = new Hono();
 
+/**
+ * HCS mailbox paths (legacy + /a2a/hcs/* aliases — SLICE-203-5).
+ * Scoped explicitly so the new A2A v1.0 spec routes (/a2a/message:send,
+ * /a2a/tasks*, /a2a/challenge, POST /a2a JSON-RPC) bypass this
+ * mailbox-only middleware (keyEndpointGate + requireDidSignature).
+ */
+const MAILBOX_PATHS = [
+  "/a2a/send",
+  "/a2a/send-with-key",
+  "/a2a/send-signed",
+  "/a2a/inbox",
+  "/a2a/conversation",
+  "/a2a/hcs/*",
+];
+
 // EPIC-83 SLICE-83-2: Gate key-accepting endpoints (410 Gone unless ALLOW_KEY_ENDPOINTS=true)
-a2aRoutes.use("/a2a/*", keyEndpointGate());
-
 // Apply DID signature verification to mutation POST routes (except -with-key endpoints, EPIC-83)
-// Middleware self-skips GET/HEAD and -with-key paths
-a2aRoutes.use("/a2a/*", requireDidSignature());
-
-a2aRoutes.use("/a2a/*", async (c, next) => {
-  await next();
-  c.header("X-Robots-Tag", "noindex, nofollow");
-});
+// Middleware self-skips GET/HEAD and -with-key paths.
+// `use` doesn't take path arrays — register per path.
+for (const p of MAILBOX_PATHS) {
+  a2aRoutes.use(p, keyEndpointGate());
+  a2aRoutes.use(p, requireDidSignature());
+  a2aRoutes.use(p, async (c, next) => {
+    await next();
+    c.header("X-Robots-Tag", "noindex, nofollow");
+  });
+}
 
 const MAX_BODY_BYTES = 4096;
 
@@ -411,3 +427,25 @@ a2aRoutes.get(
     }
   },
 );
+
+// ─── SLICE-203-5: /a2a/hcs/* aliases ─────────────────────────────────────────
+// Legacy HCS mailbox paths stay canonical under /a2a/* (deprecated); the
+// /a2a/hcs/* aliases self-forward to the same handlers so both work.
+// MAILBOX_PATHS above includes "/a2a/hcs/*" so gate + DID-sig + robots-tag
+// middleware all apply at the alias layer too.
+a2aRoutes.all("/a2a/hcs/*", async (c) => {
+  const url = new URL(c.req.url);
+  const inner =
+    url.pathname.replace(/^\/a2a\/hcs/, "/a2a") + url.search;
+  const req = new Request(`${url.origin}${inner}`, {
+    method: c.req.raw.method,
+    headers: c.req.raw.headers,
+    body: ["GET", "HEAD"].includes(c.req.raw.method)
+      ? undefined
+      : c.req.raw.body,
+    // @ts-expect-error undici requires duplex for streaming request bodies
+    duplex: "half",
+  });
+  return a2aRoutes.fetch(req);
+});
+

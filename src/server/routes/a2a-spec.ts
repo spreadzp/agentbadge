@@ -1,0 +1,235 @@
+/**
+ * A2A v1.0 protocol surface (EPIC-203, SLICE-203-5).
+ *
+ * Mounted at /a2a (routes/index.ts):
+ *   GET  /a2a/challenge              — issue one-shot nonce for EIP-191 sign
+ *   POST /a2a                        — JSON-RPC 2.0 (SendMessage, GetTask, …)
+ *   POST /a2a/message:send           — REST binding
+ *   GET  /a2a/tasks  /a2a/tasks/{id} — list / get (caller-scoped)
+ *   POST /a2a/tasks/{id}:cancel      — cancel
+ *   POST /a2a/tasks/{id}:subscribe   — SSE resubscribe
+ *
+ * Legacy HCS mailbox keeps old paths + /a2a/hcs/* aliases (a2a.ts).
+ *
+ * Auth: EIP-191 `agentbadge-action:v1` challenge (X-Agent-Id/X-Wallet/
+ * X-Sig/X-Timestamp/X-Nonce). Verified passport-tier → durable
+ * PostgresTaskStore; unverified → anonymous tier (RedisTaskStore, TTL,
+ * stricter rate limit). This file wires server deps only — all protocol
+ * logic lives in packages/a2a.
+ */
+
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { describeRoute } from "hono-openapi";
+import {
+  InMemoryTaskStore,
+  createA2AHonoApp,
+  FallbackExecutor,
+  PostgresTaskStore,
+  RedisNonceStore,
+  RedisTaskStore,
+  RoutingAgentExecutor,
+  ScanAgentExecutor,
+  type A2AHonoApp,
+  type AgentCard,
+} from "@agentbadge/a2a";
+import { logger } from "@agentbadge/passport/logger";
+
+import { getCache } from "../lib/cache";
+import { getDatabase } from "../lib/database";
+
+const A2A_SPEC_TAGS = ["A2A v1.0"];
+
+const NONCE_TTL_SEC = 300;
+const ANON_TTL_SEC = 3600;
+
+const envInt = (name: string, fallback: number): number => {
+  const raw = process.env[name];
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+const agentCard = (): AgentCard =>
+  ({
+    name: "agentbadge",
+    version: "1.0.0",
+    protocolVersion: "1.0",
+    description:
+      "AgentBadge A2A agent — agent-readiness scans over the A2A protocol.",
+    url: `${process.env.BASE_URL ?? ""}/a2a`,
+    provider: {
+      organization: "AgentBadge",
+      url: "https://agentbadge.xyz",
+    },
+    preferredTransport: "JSONRPC",
+    additionalInterfaces: [],
+    iconUrl: "",
+    documentationUrl: "https://agentbadge.xyz/.well-known/agent-card.json",
+    capabilities: { streaming: true, pushNotifications: false },
+    securitySchemes: {},
+    security: [],
+    defaultInputModes: ["text"],
+    defaultOutputModes: ["text", "data"],
+    skills: [
+      {
+        id: "agent-scan",
+        name: "agent-scan",
+        description:
+          "Agent-readiness scan for a domain — send e.g. 'scan example.com'.",
+        tags: ["scan", "agent-readiness"],
+        examples: ["scan example.com"],
+        inputModes: ["text"],
+        outputModes: ["data"],
+      },
+    ],
+    supportsAuthenticatedExtendedCard: false,
+    signatures: [],
+  }) as unknown as AgentCard;
+
+let app: A2AHonoApp | null = null;
+
+/** Lazy singleton — builds stores/executor on first request. */
+export function getA2ASpecApp(): A2AHonoApp {
+  if (!app) {
+    const cache = getCache();
+    const db = getDatabase().db;
+
+    // Passport tier requires Postgres; degrade to in-memory when DB off
+    // (dev without DATABASE_ENABLED) — anonymous tier is always Redis-backed.
+    if (!db) {
+      logger.warn(
+        "a2a-spec: DATABASE disabled — passport tier degrades to in-memory store",
+      );
+    }
+    const passportStore = db
+      ? new PostgresTaskStore(db)
+      : new InMemoryTaskStore();
+    const anonymousStore = new RedisTaskStore(cache, {
+      ttlSec: ANON_TTL_SEC,
+    });
+
+    const executor = new RoutingAgentExecutor(
+      new ScanAgentExecutor({
+        scan: async (domain: string) => {
+          const { scanDomain } = await import(
+            "../../agent-readiness/scanner/orchestrator"
+          );
+          return scanDomain(`https://${domain}`);
+        },
+      }),
+      new FallbackExecutor(),
+    );
+
+    app = createA2AHonoApp({
+      agentCard: agentCard(),
+      executor,
+      passportStore,
+      anonymousStore,
+      cache,
+      nonceStore: new RedisNonceStore(cache, { ttlSec: NONCE_TTL_SEC }),
+      anonLimit: envInt("A2A_ANON_LIMIT", 1),
+      authLimit: envInt("A2A_AUTH_LIMIT", 60),
+    });
+  }
+  return app;
+}
+
+/**
+ * Hono sub-app mounting the spec surface + OpenAPI descriptions.
+ * `describeRoute` documents each path; `forward` delegates the raw request
+ * into the adapter sub-app with the `/a2a` mount prefix stripped.
+ */
+export const a2aSpecRoutes = new Hono();
+
+const forward = async (c: Context) => {
+  const url = new URL(c.req.url);
+  const innerPath = url.pathname.replace(/^\/a2a/, "") || "/";
+  const forwarded = new Request(`${url.origin}${innerPath}${url.search}`, {
+    method: c.req.raw.method,
+    headers: c.req.raw.headers,
+    body: ["GET", "HEAD"].includes(c.req.raw.method)
+      ? undefined
+      : c.req.raw.body,
+    // @ts-expect-error undici requires duplex for streaming request bodies
+    duplex: "half",
+  });
+  return getA2ASpecApp().hono.fetch(forwarded);
+};
+
+const restDoc = (summary: string, description: string) =>
+  describeRoute({
+    tags: A2A_SPEC_TAGS,
+    summary,
+    description,
+    responses: {
+      200: { description: "Success — `application/a2a+json`" },
+      404: { description: "Task not found or not accessible to caller" },
+      429: { description: "Rate limit exceeded (tier-scoped)" },
+    },
+  });
+
+a2aSpecRoutes.get(
+  "/challenge",
+  describeRoute({
+    tags: A2A_SPEC_TAGS,
+    summary: "Issue one-shot A2A auth nonce",
+    description:
+      "Returns a nonce + unix timestamp. The client builds the canonical " +
+      "`agentbadge-action:v1` challenge itself (agentId/method/path/" +
+      "body_sha256/timestamp/nonce), signs it EIP-191, and sends the " +
+      "X-Agent-Id/X-Wallet/X-Sig/X-Timestamp/X-Nonce headers.",
+    responses: { 200: { description: "Nonce + timestamp issued" } },
+  }),
+  forward,
+);
+
+a2aSpecRoutes.post(
+  "/",
+  describeRoute({
+    tags: A2A_SPEC_TAGS,
+    summary: "A2A JSON-RPC 2.0 endpoint",
+    description:
+      "Spec methods: SendMessage, GetTask, ListTasks, CancelTask, " +
+      "task resubscribe (SSE), push-notification config. " +
+      "`A2A-Version: 1.0` header on responses.",
+    responses: { 200: { description: "JSON-RPC result" } },
+  }),
+  forward,
+);
+
+a2aSpecRoutes.post(
+  "/message:send",
+  restDoc(
+    "Send message (REST binding)",
+    "Equivalent of JSON-RPC SendMessage. Signed requests (EIP-191 headers + " +
+      "ERC-8004 owner match) run at passport tier with durable Postgres " +
+      "tasks; unsigned/invalid → anonymous tier, Redis-only TTL tasks.",
+  ),
+  forward,
+);
+
+a2aSpecRoutes.get(
+  "/tasks",
+  restDoc(
+    "List tasks",
+    "Caller-scoped list: ?contextId&status&pageSize&pageToken filters. " +
+      "Passport and anonymous tiers see only their own scope.",
+  ),
+  forward,
+);
+
+a2aSpecRoutes.get(
+  "/tasks/:id",
+  restDoc("Get task", "Single task by id within the caller's scope."),
+  forward,
+);
+
+a2aSpecRoutes.post(
+  "/tasks/:id",
+  restDoc(
+    "Task verb: :cancel / :subscribe",
+    "POST /a2a/tasks/{id}:cancel → canceled task. " +
+      "POST /a2a/tasks/{id}:subscribe → SSE stream of task events.",
+  ),
+  forward,
+);

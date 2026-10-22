@@ -124,6 +124,7 @@ flowchart LR
   server_routes["server/routes"] --> agent_readiness_trust["agent-readiness/trust"]
   server_routes["server/routes"] --> components["components"]
   server_routes["server/routes"] --> config["config"]
+  server_routes["server/routes"] --> pkg_a2a["pkg: a2a"]
   server_routes["server/routes"] --> pkg_cache["pkg: cache"]
   server_routes["server/routes"] --> pkg_circle_payments["pkg: circle-payments"]
   server_routes["server/routes"] --> pkg_evm_core["pkg: evm-core"]
@@ -185,4 +186,4 @@ flowchart LR
 - Nodes are top-level modules (`server/routes`, `views`, `agent-readiness/*`, ...).
 - `pkg:*` nodes are `@agentbadge/*` packages — dependency direction is
   always server → package, never the reverse.
-- 33 modules import across boundaries; 13 packages consumed.
+- 33 modules import across boundaries; 14 packages consumed.

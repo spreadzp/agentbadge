@@ -39,6 +39,7 @@ import { trustRoutes } from "./trust";
 import { trustViewerRoutes } from "./trust-viewer";
 import { teamRoutes } from "./agent-guide/team";
 import { a2aRoutes } from "./a2a";
+import { a2aSpecRoutes } from "./a2a-spec";
 import { marketRoutes } from "./market";
 import { metaRoutes } from "./meta";
 import { searchRoutes } from "./search";
@@ -130,6 +131,7 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", trustRoutes);
   app.route("/", trustViewerRoutes);
   app.route("/", teamRoutes);
+  app.route("/a2a", a2aSpecRoutes);
   app.route("/", a2aRoutes);
   app.route("/", marketRoutes);
   app.route("/", metaRoutes);
