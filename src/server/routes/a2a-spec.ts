@@ -22,7 +22,9 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import {
+  ArcAnchorWriter,
   InMemoryTaskStore,
+  PostgresAnchorStore,
   createA2AHonoApp,
   FallbackExecutor,
   PostgresTaskStore,
@@ -37,6 +39,7 @@ import { logger } from "@agentbadge/passport/logger";
 
 import { getCache } from "../lib/cache";
 import { getDatabase } from "../lib/database";
+import { getArcEventLogWriter } from "../lib/fx-delta/arc-writer";
 
 const A2A_SPEC_TAGS = ["A2A v1.0"];
 
@@ -130,8 +133,42 @@ export function getA2ASpecApp(): A2AHonoApp {
       anonLimit: envInt("A2A_ANON_LIMIT", 1),
       authLimit: envInt("A2A_AUTH_LIMIT", 60),
     });
+
+    // SLICE-203-6: Arc anchor — Merkle-batch emitTopic("a2a", manifest).
+    // Env-gated A2A_ANCHOR_ENABLED (default off); needs DATABASE + a writer
+    // key (ARC_PRIVATE_KEY/FXDELTA_ANCHOR_KEY). Best-effort: emit failure
+    // leaves rows pending and retries on the next flush — never fails tasks.
+    anchorWriter =
+      db && process.env.A2A_ANCHOR_ENABLED === "true"
+        ? new ArcAnchorWriter({
+            store: new PostgresAnchorStore(db),
+            emit: async (topic, manifestJson) => {
+              const w = getArcEventLogWriter();
+              if (!w) throw new Error("no Arc writer key configured");
+              return w.writer(manifestJson, topic);
+            },
+            enabled: true,
+            batchSize: envInt("A2A_ANCHOR_BATCH_SIZE", 20),
+            maxAgeMs: envInt("A2A_ANCHOR_MAX_AGE", 600) * 1000,
+            warn: (msg, meta) => logger.warn(msg, meta),
+          })
+        : null;
+    if (anchorWriter) {
+      // Age-path flush trigger (N-path also fired post-request below).
+      setInterval(() => anchorWriter?.maybeFlush(), 60_000).unref();
+      logger.info("a2a-spec: Arc anchor enabled", {
+        batchSize: envInt("A2A_ANCHOR_BATCH_SIZE", 20),
+      });
+    }
   }
   return app;
+}
+
+let anchorWriter: ArcAnchorWriter | null = null;
+
+/** Read-side accessor for tests/ops. */
+export function getA2AAnchorWriter(): ArcAnchorWriter | null {
+  return anchorWriter;
 }
 
 /**
@@ -140,6 +177,13 @@ export function getA2ASpecApp(): A2AHonoApp {
  * into the adapter sub-app with the `/a2a` mount prefix stripped.
  */
 export const a2aSpecRoutes = new Hono();
+
+// SLICE-203-6 N-threshold trigger: after every spec request, best-effort
+// anchor flush (no-op when gated off / below thresholds / no writer).
+a2aSpecRoutes.use("*", async (c, next) => {
+  await next();
+  anchorWriter?.maybeFlush();
+});
 
 const forward = async (c: Context) => {
   const url = new URL(c.req.url);
