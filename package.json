@@ -49,6 +49,7 @@
     "gen:discovery": "bun scripts/gen-discovery.ts"
   },
   "dependencies": {
+    "@agentbadge/a2a": "file:../../packages/a2a",
     "@agentbadge/bstock-tracker": "0.1.7",
     "@agentbadge/cache": "^0.2.0",
     "@agentbadge/circle-payments": "0.1.18",
