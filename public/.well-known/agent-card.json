@@ -9,7 +9,14 @@
   "supportedInterfaces": [
     {
       "url": "https://agentbadge.xyz/a2a",
+      "protocolBinding": "JSONRPC",
+      "tenant": "",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "https://agentbadge.xyz/a2a",
       "protocolBinding": "HTTP+JSON",
+      "tenant": "",
       "protocolVersion": "1.0"
     }
   ],
@@ -19,21 +26,42 @@
     "extendedAgentCard": true
   },
   "securitySchemes": {
+    "eip191": {
+      "apiKeySecurityScheme": {
+        "location": "header",
+        "name": "X-Sig",
+        "description": "EIP-191 personal_sign over the agentbadge-action:v1 canonical challenge. Required headers: X-Agent-Id, X-Wallet, X-Sig, X-Timestamp, X-Nonce (nonce via GET /a2a/challenge). Unsigned or invalid requests downgrade to the anonymous tier."
+      }
+    },
     "x402": {
-      "type": "http",
-      "scheme": "x402",
-      "description": "x402 exact on Arc USDC"
+      "apiKeySecurityScheme": {
+        "location": "header",
+        "name": "X-PAYMENT",
+        "description": "x402 payment payload (EIP-3009 USDC authorization, exact on Arc) for paid execution tiers."
+      }
     }
   },
-  "security": [
+  "securityRequirements": [
     {
-      "x402": []
+      "schemes": {
+        "eip191": {
+          "list": []
+        }
+      }
+    },
+    {
+      "schemes": {
+        "x402": {
+          "list": []
+        }
+      }
     }
   ],
   "defaultInputModes": [
-    "application/json"
+    "text/plain"
   ],
   "defaultOutputModes": [
+    "text/plain",
     "application/json"
   ],
   "skills": [
@@ -69,6 +97,33 @@
         "escrow",
         "tasks"
       ]
+    },
+    {
+      "id": "task-board",
+      "name": "Arc Task Board",
+      "description": "Claim board tasks, submit deliverables and receive an EIP-712-signed task receipt — workflow at /agent-guide/hire-or-get-hired",
+      "tags": [
+        "tasks",
+        "board",
+        "receipt",
+        "escrow"
+      ],
+      "examples": [
+        "list open board tasks",
+        "claim task board_x"
+      ]
+    },
+    {
+      "id": "generic",
+      "name": "Generic Fallback",
+      "description": "Fallback responder on the A2A interface — acknowledges any message and returns a data artifact.",
+      "tags": [
+        "fallback",
+        "a2a"
+      ],
+      "examples": [
+        "hello"
+      ]
     }
   ],
   "documentationUrl": "https://agentbadge.gitbook.io/agentbadge-docs",
@@ -91,7 +146,9 @@
       "trust_badge_minting",
       "keeperhub_workflows",
       "cross_chain_task_verification",
-      "attestcoin_protocol"
+      "attestcoin_protocol",
+      "task_board",
+      "task_receipts"
     ],
     "endpoints": {
       "api": "https://agentbadge.xyz/api/specs",
@@ -127,6 +184,9 @@
       "demand_request": "https://agentbadge.xyz/api/demand/request",
       "agents_txt": "https://agentbadge.xyz/agents.txt",
       "keeperhub_scan": "https://agentbadge.xyz/api/keeperhub/scan",
+      "board": "https://agentbadge.xyz/api/board/cards",
+      "board_guide": "https://agentbadge.xyz/agent-guide/hire-or-get-hired",
+      "task_receipt_schema": "https://agentbadge.xyz/.well-known/task-receipt.schema.json",
       "audit_stream": "https://agentbadge.xyz/audit/stream",
       "audit_webhook": "https://agentbadge.xyz/audit/webhook",
       "attestcoin_tasks": "https://agentbadge.xyz/api/attestcoin/tasks",

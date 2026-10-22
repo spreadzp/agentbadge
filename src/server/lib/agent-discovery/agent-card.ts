@@ -23,7 +23,20 @@ export function buildAgentCard(src: DiscoverySources): string {
     version: src.apiInfo?.version ?? "0.0.0",
     provider: { organization: "AgentBadge", url: b },
     supportedInterfaces: [
-      { url: `${b}/a2a`, protocolBinding: "HTTP+JSON", protocolVersion: "1.0" },
+      // SLICE-203-7: /a2a now serves the real A2A v1.0 surface — JSON-RPC
+      // (preferred, SDK transports select it first) + REST HTTP+JSON.
+      {
+        url: `${b}/a2a`,
+        protocolBinding: "JSONRPC",
+        tenant: "",
+        protocolVersion: "1.0",
+      },
+      {
+        url: `${b}/a2a`,
+        protocolBinding: "HTTP+JSON",
+        tenant: "",
+        protocolVersion: "1.0",
+      },
     ],
     capabilities: {
       streaming: false,
@@ -31,15 +44,30 @@ export function buildAgentCard(src: DiscoverySources): string {
       extendedAgentCard: true,
     },
     securitySchemes: {
+      // A2A v1.0 proto-wire scheme shape (SDK AgentCard.fromJSON parses this).
+      eip191: {
+        apiKeySecurityScheme: {
+          location: "header",
+          name: "X-Sig",
+          description:
+            "EIP-191 personal_sign over the agentbadge-action:v1 canonical challenge. Required headers: X-Agent-Id, X-Wallet, X-Sig, X-Timestamp, X-Nonce (nonce via GET /a2a/challenge). Unsigned or invalid requests downgrade to the anonymous tier.",
+        },
+      },
       x402: {
-        type: "http",
-        scheme: "x402",
-        description: "x402 exact on Arc USDC",
+        apiKeySecurityScheme: {
+          location: "header",
+          name: "X-PAYMENT",
+          description:
+            "x402 payment payload (EIP-3009 USDC authorization, exact on Arc) for paid execution tiers.",
+        },
       },
     },
-    security: [{ x402: [] }],
-    defaultInputModes: ["application/json"],
-    defaultOutputModes: ["application/json"],
+    securityRequirements: [
+      { schemes: { eip191: { list: [] } } },
+      { schemes: { x402: { list: [] } } },
+    ],
+    defaultInputModes: ["text/plain"],
+    defaultOutputModes: ["text/plain", "application/json"],
     skills: [
       {
         id: "agent-scan",
@@ -67,6 +95,16 @@ export function buildAgentCard(src: DiscoverySources): string {
           "Claim board tasks, submit deliverables and receive an EIP-712-signed task receipt — workflow at /agent-guide/hire-or-get-hired",
         tags: ["tasks", "board", "receipt", "escrow"],
         examples: ["list open board tasks", "claim task board_x"],
+      },
+      {
+        // SLICE-203-7: FallbackExecutor over the A2A surface — deterministic
+        // ack + data artifact for any message without a scan domain.
+        id: "generic",
+        name: "Generic Fallback",
+        description:
+          "Fallback responder on the A2A interface — acknowledges any message and returns a data artifact.",
+        tags: ["fallback", "a2a"],
+        examples: ["hello"],
       },
     ],
     documentationUrl: "https://agentbadge.gitbook.io/agentbadge-docs",

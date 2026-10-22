@@ -33,12 +33,12 @@ import {
   RoutingAgentExecutor,
   ScanAgentExecutor,
   type A2AHonoApp,
-  type AgentCard,
 } from "@agentbadge/a2a";
 import { logger } from "@agentbadge/passport/logger";
 
 import { getCache } from "../lib/cache";
 import { getDatabase } from "../lib/database";
+import { agentCard } from "../lib/a2a-spec-card";
 import { getArcEventLogWriter } from "../lib/fx-delta/arc-writer";
 
 const A2A_SPEC_TAGS = ["A2A v1.0"];
@@ -52,42 +52,10 @@ const envInt = (name: string, fallback: number): number => {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
-const agentCard = (): AgentCard =>
-  ({
-    name: "agentbadge",
-    version: "1.0.0",
-    protocolVersion: "1.0",
-    description:
-      "AgentBadge A2A agent — agent-readiness scans over the A2A protocol.",
-    url: `${process.env.BASE_URL ?? ""}/a2a`,
-    provider: {
-      organization: "AgentBadge",
-      url: "https://agentbadge.xyz",
-    },
-    preferredTransport: "JSONRPC",
-    additionalInterfaces: [],
-    iconUrl: "",
-    documentationUrl: "https://agentbadge.xyz/.well-known/agent-card.json",
-    capabilities: { streaming: true, pushNotifications: false },
-    securitySchemes: {},
-    security: [],
-    defaultInputModes: ["text"],
-    defaultOutputModes: ["text", "data"],
-    skills: [
-      {
-        id: "agent-scan",
-        name: "agent-scan",
-        description:
-          "Agent-readiness scan for a domain — send e.g. 'scan example.com'.",
-        tags: ["scan", "agent-readiness"],
-        examples: ["scan example.com"],
-        inputModes: ["text"],
-        outputModes: ["data"],
-      },
-    ],
-    supportsAuthenticatedExtendedCard: false,
-    signatures: [],
-  }) as unknown as AgentCard;
+// AgentCard shape moved to lib/a2a-spec-card.ts (SLICE-203-7, max-lines).
+// /.well-known/agent-card.json is served by the discovery-manifest
+// pipeline (agent-discovery/agent-card.ts → generated static) — keep the
+// handler card and the public card consistent.
 
 let app: A2AHonoApp | null = null;
 
