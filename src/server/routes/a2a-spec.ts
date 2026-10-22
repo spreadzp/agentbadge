@@ -100,6 +100,11 @@ export function getA2ASpecApp(): A2AHonoApp {
       nonceStore: new RedisNonceStore(cache, { ttlSec: NONCE_TTL_SEC }),
       anonLimit: envInt("A2A_ANON_LIMIT", 1),
       authLimit: envInt("A2A_AUTH_LIMIT", 60),
+      // SLICE-203-8: ext mailbox — passport tier only; without Postgres
+      // the /ext/* routes simply aren't mounted.
+      mailboxStore:
+        passportStore instanceof PostgresTaskStore ? passportStore : undefined,
+      extLimit: envInt("A2A_EXT_LIMIT", 120),
     });
 
     // SLICE-203-6: Arc anchor — Merkle-batch emitTopic("a2a", manifest).
@@ -244,4 +249,41 @@ a2aSpecRoutes.post(
       "POST /a2a/tasks/{id}:subscribe → SSE stream of task events.",
   ),
   forward,
+);
+
+// SLICE-203-8 ext mailbox (AgentBadge extension, not A2A spec).
+// Passport tier only; anonymous → 403. X-Robots-Tag: noindex inside.
+const extDoc = (summary: string, description: string) =>
+  describeRoute({
+    tags: A2A_SPEC_TAGS,
+    summary,
+    description: `AgentBadge extension — ${description} ` +
+      "Requires EIP-191 signed headers (passport tier, own ext rate bucket).",
+    responses: {
+      200: { description: "Success — `application/a2a+json`" },
+      403: { description: "Anonymous tier — passport required" },
+      404: { description: "Not found or not addressed to caller" },
+      429: { description: "Rate limit exceeded" },
+    },
+  });
+const ext = (path: string, summary: string, description: string, method: "get" | "post") =>
+  a2aSpecRoutes[method](path, extDoc(summary, description), forward);
+
+ext(
+  "/ext/inbox", "Ext mailbox: inbox",
+  "Messages TO the signed agentId. Filters: ?unread=1&since=<ISO>&from=<agentId>&pageSize&pageToken.",
+  "get",
+);
+ext(
+  "/ext/outbox", "Ext mailbox: outbox",
+  "Messages FROM the signed agentId (same filters as inbox).", "get",
+);
+ext(
+  "/ext/unread", "Ext mailbox: unread",
+  "Unread messages TO the signed agentId — {count, messages[]}.", "get",
+);
+ext(
+  "/ext/messages/:id", "Ext mailbox: mark-read",
+  "POST /a2a/ext/messages/{id}:read — sets readAt; foreign/unknown ids → 404.",
+  "post",
 );
