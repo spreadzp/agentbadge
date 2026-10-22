@@ -11,8 +11,8 @@ export const article: BlogArticle =
     date: "2026-08-19",
     dateModified: "2026-08-19",
     agentGuideSlug: "seo-geo-agent-readiness",
-    heroImage: "/images/blog/from-seo-to-geo-to-agent-readiness-hero.png",
-    ogImage: "/images/blog/from-seo-to-geo-to-agent-readiness-og.png",
+    heroImage: "/images/blog/from-seo-to-geo-to-agent-readiness-hero.webp",
+    ogImage: "/images/blog/from-seo-to-geo-to-agent-readiness-og.jpeg",
     shortAnswer: "Optimization targets are shifting: SEO optimizes websites for search engines, GEO optimizes content for generative AI, and Agent Readiness optimizes APIs for autonomous agents. Each layer builds on the previous — and the agentic web requires all three.",
     tags: ["agent-readiness", "seo", "geo", "agentic-web", "api"],
     readingTime: "12 min",
@@ -22,7 +22,7 @@ export const article: BlogArticle =
 
 <p>The object of optimization is changing — from websites (SEO) to content (GEO) to APIs/services (Agent Readiness).</p>
 
-<img src="/images/blog/from-seo-to-geo-to-agent-readiness-hero.png" alt="Hero — Three-era evolution timeline: SEO to GEO to Agent Readiness" />
+<img src="/images/blog/from-seo-to-geo-to-agent-readiness-hero.webp" alt="Hero — Three-era evolution timeline: SEO to GEO to Agent Readiness" />
 
 <hr />
 
@@ -52,7 +52,7 @@ export const article: BlogArticle =
 
 <p>A whole industry formed around one question: <strong>how do you make your website findable by a machine that decides what to show a human?</strong></p>
 
-<img src="/images/blog/from-seo-to-geo-to-agent-readiness-2.png" alt="SEO era — Website to Search Engine to Human diagram" />
+<img src="/images/blog/from-seo-to-geo-to-agent-readiness-2.webp" alt="SEO era — Website to Search Engine to Human diagram" />
 
 <hr />
 
@@ -82,7 +82,7 @@ Human</code></pre>
 
 <blockquote><p>How do you make your information understandable and useful to generative systems?</p></blockquote>
 
-<img src="/images/blog/from-seo-to-geo-to-agent-readiness-3.png" alt="GEO era — Content to LLM to AI Answer to Human diagram" />
+<img src="/images/blog/from-seo-to-geo-to-agent-readiness-3.webp" alt="GEO era — Content to LLM to AI Answer to Human diagram" />
 
 <hr />
 
@@ -118,7 +118,7 @@ complete transaction</code></pre>
 
 <p><strong>AI must not only understand the company. It must be able to work with its interface.</strong></p>
 
-<img src="/images/blog/from-seo-to-geo-to-agent-readiness-4.png" alt="Action gap — GEO stops before the 7-step agent pipeline" />
+<img src="/images/blog/from-seo-to-geo-to-agent-readiness-4.webp" alt="Action gap — GEO stops before the 7-step agent pipeline" />
 
 <hr />
 
@@ -150,7 +150,7 @@ Optimize services for autonomous agents</code></pre>
 
 <p>When we first introduced <a href="https://agentbadge.xyz/blog/what-is-agent-readiness">Agent Readiness</a>, we defined it as a measurable property of an API or service. <a href="https://agentbadge.xyz/blog/api-has-seo-agent-readiness">Article 2</a> showed why SEO optimization isn't enough. <a href="https://agentbadge.xyz/blog/web-becoming-agentic-api-discovery">Article 3</a> raised the problem to the architectural level — discovery for agents. This article shows the evolution: SEO → GEO → Agent Readiness.</p>
 
-<img src="/images/blog/from-seo-to-geo-to-agent-readiness-5.png" alt="Comparison table — SEO vs GEO vs Agent Readiness" />
+<img src="/images/blog/from-seo-to-geo-to-agent-readiness-5.webp" alt="Comparison table — SEO vs GEO vs Agent Readiness" />
 
 <hr />
 
@@ -221,7 +221,7 @@ Which API can perform this action?"</code></pre>
                            │
                  Measure → Evidence → Fix</code></pre>
 
-<img src="/images/blog/from-seo-to-geo-to-agent-readiness-6.png" alt="Architecture — Full stack diagram with AgentBadge as measurement layer" />
+<img src="/images/blog/from-seo-to-geo-to-agent-readiness-6.webp" alt="Architecture — Full stack diagram with AgentBadge as measurement layer" />
 
 <hr />
 

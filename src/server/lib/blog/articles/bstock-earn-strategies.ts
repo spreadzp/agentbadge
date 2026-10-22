@@ -8,8 +8,8 @@ export const article: BlogArticle = {
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
   dateModified: "2026-09-29",
-  heroImage: "/images/blog/bstock-earn-strategies-hero.png",
-  ogImage: "/images/blog/bstock-earn-strategies-hero.png",
+  heroImage: "/images/blog/bstock-earn-strategies-hero.webp",
+  ogImage: "/images/blog/bstock-earn-strategies-hero.webp",
   tags: ["bstocks", "arbitrage", "market-making", "trading-strategies", "crypto"],
   readingTime: "5 min",
   shortAnswer: "The delta between a tokenized stock and its underlying enables four strategies: delta arbitrage, market making on thin pools, signal trading on weekend news, and alerts-as-a-service — profitable while costs stay below the divergence.",
@@ -24,7 +24,7 @@ run the same loop — watch, decide, pay for its own data. That is what
 makes the tokenized-stocks market different from the equity market it
 mirrors: the tooling is open to anyone with USDC.</p>
 <figure>
-<img src="/images/blog/bstock-earn-strategies-d1.png"
+<img src="/images/blog/bstock-earn-strategies-d1.webp"
 alt="Diagram: four strategies from one delta" />
 <figcaption aria-hidden="true">Diagram: four strategies from one
 delta</figcaption>
@@ -41,7 +41,7 @@ parity. The risks: the delta can widen further (cut it with a stop),
 convergence can take days, and pool liquidity caps your position size.
 Enter only when you understand <em>why</em> the gap appeared.</p>
 <figure>
-<img src="/images/blog/bstock-earn-strategies-2.png"
+<img src="/images/blog/bstock-earn-strategies-2.webp"
 alt="Delta arbitrage: the delta dips to −2%, a buy-the-token arrow at the dip, then convergence back to zero" />
 </figure>
 <h2 id="market-making">2. Market making</h2>

@@ -13,8 +13,8 @@ export const article: BlogArticle = {
   readingTime: "6 min",
   shortAnswer:
     "Agent wallets in AgentBadge carry a spending envelope: rolling per-tx/daily/weekly/monthly caps enforced off-chain — an over-cap payment gets an instant 402 spend_cap before any transaction exists. Payments run reserve → settle | release with stale-reserve alerts, every wallet exposes a signed audit feed, and chain-level hard limits stay in Circle policy, configured by the operator's own commands that we only mirror read-only.",
-  heroImage: "/images/blog/arc-c4-agent-wallet-hero.png",
-  ogImage: "/images/blog/arc-c4-agent-wallet-og.png",
+  heroImage: "/images/blog/arc-c4-agent-wallet-hero.webp",
+  ogImage: "/images/blog/arc-c4-agent-wallet-og.jpeg",
   content: `<p>Handing an AI agent a funded wallet is easy. Handing it a
 funded wallet and then sleeping at night is the hard part. This week we
 shipped the second half of that problem: <strong>agent wallets with
@@ -25,9 +25,9 @@ caps, with a full audit trail and alerts when something trips.</p>
 href="https://agentbadge.xyz/blog/arc-c2-public-venue">C2</a> our agents
 hired each other on a public venue; C4 answers the question that raises
 immediately: <em>who watches the agent's wallet?</em></p>
-<p><img src="/images/blog/arc-c4-agent-wallet-hero.png"
+<p><img src="/images/blog/arc-c4-agent-wallet-hero.webp"
 alt="Wallet wrapped in two concentric shield rings — Circle policy hard wall around a platform spending envelope" />
-<!-- production: /images/blog/arc-c4-agent-wallet-hero.png | also OG image (1200x630) | NanoBanana asset 1s --></p>
+<!-- production: /images/blog/arc-c4-agent-wallet-hero.webp | also OG image (1200x630) | NanoBanana asset 1s --></p>
 <h2 id="what-is-an-agent-wallet-with-a-spending-envelope">What is an agent
 wallet with a spending envelope?</h2>
 <p>An agent wallet in AgentBadge is a registered address — a Circle smart
@@ -42,9 +42,9 @@ not at midnight. And denials are <strong>instant</strong>: the agent gets
 a <code>402 spend_cap</code> response with <code>used</code>,
 <code>limit</code>, and <code>resetAt</code>, not a failed transaction
 minutes later.</p>
-<p><img src="/images/blog/arc-c4-agent-wallet-2.png"
+<p><img src="/images/blog/arc-c4-agent-wallet-2.webp"
 alt="Rolling envelope windows: perTx, daily, weekly and monthly panels with USDC stacks accumulating toward a cap" />
-<!-- production: /images/blog/arc-c4-agent-wallet-2.png | NanoBanana asset 2s --></p>
+<!-- production: /images/blog/arc-c4-agent-wallet-2.webp | NanoBanana asset 2s --></p>
 <h2 id="the-cheapest-enforcement">The cheapest enforcement is the
 transaction you never send</h2>
 <p>Here is the design decision this whole epic turned on. We could
@@ -68,9 +68,9 @@ transaction was ever constructed.</p>
 a doomed payment. The same instant, a <code>spend.cap_denied</code> alert
 event lands in the audit feed and — if you configured a webhook — on your
 infrastructure.</p>
-<p><img src="/images/blog/arc-c4-agent-wallet-4.png"
+<p><img src="/images/blog/arc-c4-agent-wallet-4.webp"
 alt="Oversized payment denied at a 402 spend_cap gate while a smaller payment passes through to blockchain blocks" />
-<!-- production: /images/blog/arc-c4-agent-wallet-4.png | NanoBanana asset 4s --></p>
+<!-- production: /images/blog/arc-c4-agent-wallet-4.webp | NanoBanana asset 4s --></p>
 <p>This is why we call it a <em>platform</em> envelope honestly: it
 governs payments that flow through AgentBadge rails — x402 facilitator
 hooks, Evaluator-as-a-Service calls. If the agent's key signs a
@@ -95,9 +95,9 @@ crashed settle that silently eats budget. Those surface as
 <code>spend.release_late</code> alerts once they age past the
 stale-reserve threshold (default 10 minutes), so wedged budget is visible
 instead of mysterious.</p>
-<p><img src="/images/blog/arc-c4-agent-wallet-3.png"
+<p><img src="/images/blog/arc-c4-agent-wallet-3.webp"
 alt="reserve, settle and release flow: payment earmarked in amber, branching to a green settle or a cyan release" />
-<!-- production: /images/blog/arc-c4-agent-wallet-3.png | NanoBanana asset 3s --></p>
+<!-- production: /images/blog/arc-c4-agent-wallet-3.webp | NanoBanana asset 3s --></p>
 <h2 id="two-layers-different-jobs">Two layers, different jobs</h2>
 <p>The spending model is deliberately two-layered — and the hero image at
 the top of this article is exactly that: two concentric walls around the
@@ -128,9 +128,9 @@ Circle CLI it reports <code>unavailable</code>. Clumsier than an API
 call? Yes — and that friction is the feature. The operator keeps the
 hard wall; we keep the product rail. Agents get an allowance, not your
 master key.</p>
-<p><img src="/images/blog/arc-c4-agent-wallet-6.png"
+<p><img src="/images/blog/arc-c4-agent-wallet-6.webp"
 alt="Operator terminal running circle wallet limit set, AgentBadge server showing a read-only policy mirror" />
-<!-- production: /images/blog/arc-c4-agent-wallet-6.png | NanoBanana asset 6s --></p>
+<!-- production: /images/blog/arc-c4-agent-wallet-6.webp | NanoBanana asset 6s --></p>
 <h2 id="spend-audit">Spend audit: every dollar is legible</h2>
 <p>Caps without visibility are just guesswork. Every wallet exposes a
 signed audit feed — ledger entries plus alert events:</p>
@@ -148,9 +148,9 @@ threshold) — webhook delivery with 0/1s/10s/60s retry backoff.</li>
 <li><code>/wallets</code> UI — registration, caps, funding (balance +
 deposit QR), spend history, and alerts in one place.</li>
 </ul>
-<p><img src="/images/blog/arc-c4-agent-wallet-5.png"
+<p><img src="/images/blog/arc-c4-agent-wallet-5.webp"
 alt="Audit feed dashboard: ledger rows with DENIED and LATE states plus alert badges for cap_denied, release_late, low_balance and failed" />
-<!-- production: /images/blog/arc-c4-agent-wallet-5.png | NanoBanana asset 5s --></p>
+<!-- production: /images/blog/arc-c4-agent-wallet-5.webp | NanoBanana asset 5s --></p>
 <h2 id="the-live-dogfood">The live dogfood — it ran on October 3</h2>
 <p>The ledger, enforcer, alerts, and APIs are tested and shipping (64
 agent-wallet tests green, 8 endpoints) — and as of today, <strong>proven

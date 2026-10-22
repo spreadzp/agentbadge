@@ -12,7 +12,7 @@ export const article: BlogArticle =
     dateModified: "2026-08-25",
     agentGuideSlug: "why-openapi-isnt-enough",
     heroImage: "/images/blog/why-openapi-isnt-enough/1s.webp",
-    ogImage: "/images/blog/why-openapi-isnt-enough/og.png",
+    ogImage: "/images/blog/why-openapi-isnt-enough/og.webp",
     shortAnswer:
       "OpenAPI describes an API (endpoints, schemas, auth). Agent Readiness describes whether an agent can actually use it. The gap is structural: agents need discovery, semantics, errors, examples, and evidence — cumulative layers beyond OpenAPI that make an API machine-understandable and verifiable.",
     tags: ["agent-readiness", "api", "openapi", "ai-agents", "evidence"],

@@ -15,11 +15,11 @@ export const article: BlogArticle = {
   shortAnswer:
     "An AI agent that lands on agentbadge.xyz now finds eleven live .well-known manifests (agent-card, api-catalog, ERC-8004, MCP server card, evaluation ladder, DID/JWKS, security.txt) plus a generated llms.txt — all projected from live code sources, CI-checked for drift, and verified by our own scanner at 100% pass.",
   agentGuideSlug: "arc-c14-agent-discovery",
-  heroImage: "/images/blog/arc-c14-agent-discovery-hero.png",
-  ogImage: "/images/blog/arc-c14-agent-discovery-og.png",
+  heroImage: "/images/blog/arc-c14-agent-discovery-hero.webp",
+  ogImage: "/images/blog/arc-c14-agent-discovery-og.jpeg",
   content: `<p>An AI agent evaluating a vendor does what a human does: it opens the site and looks for proof. The difference is speed and format — the agent gives you seconds, not minutes, and it wants JSON, not hero banners. Until recently, an agent landing on agentbadge.xyz found a page built for humans and nothing else — while our own readiness scanner was out there grading <em>other</em> sites on exactly the signals we lacked. The cobbler had no shoes. This week we fixed that: the entire discovery surface is now <strong>generated from live sources</strong>, served free with no auth, and verified by our own scanner in CI.</p>
 <p>This is article C14 in the Arc Campaign series. It sits directly under <a href="https://agentbadge.xyz/blog/arc-c15-x402-bazaar">C15</a> — C14 is how an agent <em>finds</em> us; C15 is what it reads once it wants to <em>buy</em>.</p>
-<p><img src="/images/blog/arc-c14-agent-discovery-hero.png" alt="An agent arriving at a site that opens into a machine-readable JSON interior" /></p>
+<p><img src="/images/blog/arc-c14-agent-discovery-hero.webp" alt="An agent arriving at a site that opens into a machine-readable JSON interior" /></p>
 <h2 id="manifests">What does an agent find in 200 milliseconds?</h2>
 <p>Eleven machine-readable manifests, all <code>200 OK</code>, all free, all generated — not hand-maintained:</p>
 <pre><code class="language-text">/.well-known/agent-card.json        A2A v1.0 — who we are, skills[]

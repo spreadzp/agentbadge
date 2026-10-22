@@ -11,8 +11,8 @@ export const article: BlogArticle = {
   tags: ["arc", "mainnet", "ai-agents", "erc-8004", "erc-8183", "x402", "usdc"],
   readingTime: "5 min",
   shortAnswer: "AgentBadge deployed five contracts on Arc mainnet (eip155:5042) — AgentPassportNFT (identity), AgentEventLog (event trail), AccessPassNFT, MarketplacePassNFT and ACPCore (ERC-8183 jobs with USDC escrow). A six-phase smoke suite verified the full loop in 11 transactions for ~0.15 USDC in gas, and a live attestation (score 68.4) is visible on agentbadge.xyz/attestations.",
-  heroImage: "/images/blog/arc-c1-mainnet-deployment-hero.png",
-  ogImage: "/images/blog/arc-c1-mainnet-deployment-og.png",
+  heroImage: "/images/blog/arc-c1-mainnet-deployment-hero.webp",
+  ogImage: "/images/blog/arc-c1-mainnet-deployment-og.jpeg",
   // SLICE-201-5: features described here run on mainnet
   status: "PRODUCTION",
   content: `<p>On the morning of September 30, 2026, three transactions landed on
@@ -25,9 +25,9 @@ marketplace to work in. Until now all of it lived on testnets. Today the
 identity and commerce stack is deployed on Arc — Circle’s blockchain
 built for stablecoin payments — and we have the transaction links to
 prove every step.</p>
-<p><img src="/images/blog/arc-c1-mainnet-deployment-hero.png"
+<p><img src="/images/blog/arc-c1-mainnet-deployment-hero.webp"
 alt="Three contract cards landing on an Arc mainnet network map, USDC rails glowing" />
-<!-- production: /images/blog/arc-c1-mainnet-deployment-hero.png | also OG image (1200x630) | NanoBanana asset #1 DONE --></p>
+<!-- production: /images/blog/arc-c1-mainnet-deployment-hero.webp | also OG image (1200x630) | NanoBanana asset #1 DONE --></p>
 <h2 id="what-went-live">What went live</h2>
 <p>Five contracts now run on Arc mainnet, all deployed from the
 AgentBadge deployer <code>0xcdd2…699d</code>:</p>
@@ -87,7 +87,7 @@ href="https://explorer.arc.io/tx/0xdc22b57ebb1e186fbe26456353432034a7b1e7b5d037b
 deploy tx</a>. The ledger of record:
 <code>contracts/deployments/arc-mainnet.json</code>.</p>
 <figure>
-<img src="/images/blog/arc-c1-mainnet-deployment-d1.png?v=2"
+<img src="/images/blog/arc-c1-mainnet-deployment-d1.webp?v=2"
 alt="Diagram: the AgentBadge stack on Arc mainnet" />
 <figcaption aria-hidden="true">Diagram: the AgentBadge stack on Arc
 mainnet</figcaption>
@@ -103,9 +103,9 @@ run</h2>
 same six-phase smoke suite that went green on testnet — this time
 against mainnet, with real USDC. <strong>Six phases, eleven
 transactions, all green.</strong></p>
-<p><img src="/images/blog/arc-c1-mainnet-deployment-2.png"
+<p><img src="/images/blog/arc-c1-mainnet-deployment-2.webp"
 alt="Terminal window with the smoke suite output - six phases, green checkmarks, tx hashes" />
-<!-- production: /images/blog/arc-c1-mainnet-deployment-2.png | NanoBanana asset #2 DONE --></p>
+<!-- production: /images/blog/arc-c1-mainnet-deployment-2.webp | NanoBanana asset #2 DONE --></p>
 <p>The phases, with real transactions:</p>
 <ul>
 <li><strong>x402 self-settle</strong> — a client paid 0.01 USDC for an
@@ -130,9 +130,9 @@ href="https://explorer.arc.io/tx/0x69a728c4270e821526a59c26517fbda33640333bf3c39
 the operator, <code>ownerOf(bogus)</code> reverts. Identity checks work
 both ways.</li>
 </ul>
-<p><img src="/images/blog/arc-c1-mainnet-deployment-3.png"
+<p><img src="/images/blog/arc-c1-mainnet-deployment-3.webp"
 alt="Job lifecycle: create, fund, submit, complete - USDC escrow releasing on evaluator verdict" />
-<!-- production: /images/blog/arc-c1-mainnet-deployment-3.png | NanoBanana asset #3 DONE --></p>
+<!-- production: /images/blog/arc-c1-mainnet-deployment-3.webp | NanoBanana asset #3 DONE --></p>
 <h2 id="the-first-live-attestation">The first live attestation</h2>
 <p>The stack is not just deployed — it is already working. We pointed
 the AgentBadge scanner at <code>agentbadge.xyz</code> itself and
@@ -149,9 +149,9 @@ href="https://explorer.arc.io/tx/0x15adca302bc73c11a6a234801a91b4cdd2995618f7914
 <p>The attestation is public on <a
 href="https://agentbadge.xyz/attestations">agentbadge.xyz/attestations</a>
 — score, agent ID, network <code>eip155:5042</code>, explorer links.</p>
-<p><img src="/images/blog/arc-c1-mainnet-deployment-4.png"
+<p><img src="/images/blog/arc-c1-mainnet-deployment-4.webp"
 alt="Attestations dashboard showing a live score of 68.4 with an on-chain verification badge" />
-<!-- production: /images/blog/arc-c1-mainnet-deployment-4.png | NanoBanana asset #4 DONE --></p>
+<!-- production: /images/blog/arc-c1-mainnet-deployment-4.webp | NanoBanana asset #4 DONE --></p>
 <h2 id="what-it-cost">What it cost</h2>
 <p>Thirteen transactions, roughly <strong>0.15 USDC in gas</strong>.
 Arc’s fees are low enough that a full deployment-and-verification cycle

@@ -69,6 +69,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC10PayerBinding,
   arcC28ContractHardening,
   arcC30AgentEconomy,
-  arcC29TaskBoard,
   arcC31AgentAllowance,
+  arcC29TaskBoard,
 ];

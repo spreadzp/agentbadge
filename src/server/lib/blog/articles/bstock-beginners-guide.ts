@@ -8,8 +8,8 @@ export const article: BlogArticle = {
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
   dateModified: "2026-09-28",
-  heroImage: "/images/blog/bstock-beginners-guide-hero.png",
-  ogImage: "/images/blog/bstock-beginners-guide-hero.png",
+  heroImage: "/images/blog/bstock-beginners-guide-hero.webp",
+  ogImage: "/images/blog/bstock-beginners-guide-hero.webp",
   tags: ["bstocks", "tokenized-stocks", "guide", "rwa", "crypto"],
   readingTime: "5 min",
   shortAnswer: "bStocks are tokens tracking real share prices: they trade on-chain 24/7 with stablecoin settlement and fractional access, but grant no shareholder rights — and their price can drift from the underlying, creating the delta.",
@@ -40,7 +40,7 @@ that trade when Wall Street sleeps, in sizes that fit any wallet,
 settled in stablecoins. For traders, they mean a new class of
 instruments — and a new spread to understand before trading it.</p>
 <figure>
-<img src="/images/blog/bstock-beginners-guide-d1.png"
+<img src="/images/blog/bstock-beginners-guide-d1.webp"
 alt="Diagram: how a bStock works" />
 <figcaption aria-hidden="true">Diagram: how a bStock works</figcaption>
 </figure>
@@ -67,7 +67,7 @@ company. Read the issuer’s terms.</li>
 <li><strong>Fractionality.</strong> You can hold 0.01 of a share.</li>
 </ul>
 <figure>
-<img src="/images/blog/bstock-beginners-guide-2.png"
+<img src="/images/blog/bstock-beginners-guide-2.webp"
 alt="Comparison: share versus token — trading hours, access, rights, fractionality" />
 </figure>
 <h2 id="why-prices-diverge-and-what-the-delta-is">Why prices diverge —

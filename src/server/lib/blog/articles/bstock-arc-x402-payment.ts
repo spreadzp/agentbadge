@@ -8,8 +8,8 @@ export const article: BlogArticle = {
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
   dateModified: "2026-09-25",
-  heroImage: "/images/blog/bstock-arc-x402-payment-hero.png",
-  ogImage: "/images/blog/bstock-arc-x402-payment-hero.png",
+  heroImage: "/images/blog/bstock-arc-x402-payment-hero.webp",
+  ogImage: "/images/blog/bstock-arc-x402-payment-hero.webp",
   tags: ["x402", "arc", "usdc", "eip-3009", "payments", "ai-agents"],
   readingTime: "5 min",
   shortAnswer: "Arc self-settle lets an agent pay x402 invoices with no facilitator: it signs an EIP-3009 transferWithAuthorization, broadcasts it on Arc (gas in USDC), and sends the txHash — the server verifies the on-chain receipt.",
@@ -21,7 +21,7 @@ extra API to wait on, an extra point of failure.</p>
 <p>On Arc we skipped it. The scheme is called
 <strong>self-settle</strong> — “settle it yourself”.</p>
 <figure>
-<img src="/images/blog/bstock-arc-x402-payment-d1.png"
+<img src="/images/blog/bstock-arc-x402-payment-d1.webp"
 alt="Diagram: paying on Arc in 6 steps" />
 <figcaption aria-hidden="true">Diagram: paying on Arc in 6
 steps</figcaption>
@@ -53,7 +53,7 @@ no wallet access.</li>
 reach the treasury, is the amount right → access for 30 days.</li>
 </ol>
 <figure>
-<img src="/images/blog/bstock-arc-x402-payment-2.png"
+<img src="/images/blog/bstock-arc-x402-payment-2.webp"
 alt="Six-step pipeline: request, 402 invoice, EIP-3009 signature, broadcast, on-chain receipt, access for 30 days" />
 </figure>
 <h2 id="what-the-server-actually-verifies">What the server actually
@@ -65,7 +65,7 @@ event from the USDC contract to the treasury address, the amount covers
 the price. This cannot be forged: either the transaction is in a block
 or it does not exist.</p>
 <figure>
-<img src="/images/blog/bstock-arc-x402-payment-3.png"
+<img src="/images/blog/bstock-arc-x402-payment-3.webp"
 alt="A block on Arc with a highlighted Transfer log paying 5 USDC to the treasury, inspected by the server" />
 </figure>
 <h2 id="what-this-gives-the-ecosystem">What this gives the

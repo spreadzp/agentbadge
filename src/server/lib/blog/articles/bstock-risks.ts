@@ -8,8 +8,8 @@ export const article: BlogArticle = {
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
   dateModified: "2026-09-30",
-  heroImage: "/images/blog/bstock-risks-hero.png",
-  ogImage: "/images/blog/bstock-risks-hero.png",
+  heroImage: "/images/blog/bstock-risks-hero.webp",
+  ogImage: "/images/blog/bstock-risks-hero.webp",
   tags: ["bstocks", "tokenized-stocks", "risks", "rwa", "crypto"],
   readingTime: "5 min",
   shortAnswer: "Tokenized stocks carry issuer, delta, liquidity, regulatory, and technical risks, and grant no shareholder rights — mitigate with diversification, position sizing to liquidity, and delta monitoring.",
@@ -22,7 +22,7 @@ Tokenized stocks will scale only if participants understand what they
 actually hold, and the tools that make those risks visible are as
 important as the tokens themselves.</p>
 <figure>
-<img src="/images/blog/bstock-risks-d1.png"
+<img src="/images/blog/bstock-risks-d1.webp"
 alt="Diagram: six risk groups" />
 <figcaption aria-hidden="true">Diagram: six risk groups</figcaption>
 </figure>
@@ -64,7 +64,7 @@ early-warning system (our tracker is one tool for this). And the
 infrastructure rule: never hold more in tokens than you can afford to
 lose to infrastructure, not to the market.</p>
 <figure>
-<img src="/images/blog/bstock-risks-2.png"
+<img src="/images/blog/bstock-risks-2.webp"
 alt="Six risk cards in a ring — issuer, delta, liquidity, rights, regulation, technique — around a mitigate shield" />
 </figure>
 <p>One structural mitigation is already built into the market’s

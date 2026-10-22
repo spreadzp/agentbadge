@@ -13,7 +13,7 @@ export const article: BlogArticle = {
   readingTime: "7 min",
   shortAnswer:
     "Agent Allowance is a USDC budget vault on Arc mainnet (chainId 5042). The owner deposits once, funds vest linearly, and the agent can only claim already-vested amounts to allowlisted payees within a per-transaction cap — plus owner pause and cancel with clawback of unvested funds. Three real claims moved the vendor balance 99,020 to 99,135 units; every lifecycle step is a verifiable transaction on explorer.arc.io.",
-  heroImage: "/images/blog/arc-c31-agent-allowance-hero.jpeg",
+  heroImage: "/images/blog/arc-c31-agent-allowance-hero.webp",
   ogImage: "/images/blog/arc-c31-agent-allowance-og.jpeg",
   agentGuideSlug: "arc-c31-agent-allowance",
   status: "LIVE",
@@ -130,7 +130,7 @@ export const article: BlogArticle = {
   content: `<p>x402 lets an AI agent pay for things in USDC. That part works. The part nobody ships is the one that matters to whoever holds the keys: if the agent holds a funded key, the only thing standing between your balance and a bad prompt, a bug or a compromised model is the agent itself. A funded key is not a budget. It is just money with a chatbot attached.</p>
 <p>We built Agent Allowance to close that gap: an onchain USDC budget vault on Arc mainnet where the owner funds once, funds vest linearly Sablier-style, and the agent can only claim what has already vested, to allowlisted payees, inside a per-transaction cap. Every guard lives in the contract, not in a promise. The full lifecycle — deploy, deposit, allowlist, cap, claim — is a chain of real transactions you can open right now on explorer.arc.io.</p>
 <p>This is C31 of the Arc Campaign series. <a href="/blog/arc-c30-agent-economy">C30</a> was about making our own docs machine-operable. This one is about the money side: how an agent's spending power gets encoded instead of hoped for.</p>
-<p><img src="/images/blog/arc-c31-agent-allowance-hero.jpeg" alt="A glowing key dropping coins into a vault framed by four gate posts, a small robot avatar reaching for the exit gate" /></p>
+<p><img src="/images/blog/arc-c31-agent-allowance-hero.webp" alt="A glowing key dropping coins into a vault framed by four gate posts, a small robot avatar reaching for the exit gate" /></p>
 
 <h2 id="what-is-allowance">What does "allowance" mean for an agent?</h2>
 <p>Give a human assistant a company card and the card network carries the policy: limits, categories, revocation. Give an AI agent a private key with USDC on it and none of that exists. The key can sign anything, pay anyone, any amount, forever. Most agent-payment setups today stop exactly there — the agent gets a funded wallet and an API key.</p>
@@ -144,7 +144,7 @@ export const article: BlogArticle = {
 <li><strong>vested − claimed</strong> — unvested USDC is unreachable even with a valid signature;</li>
 <li><strong>pause flag</strong> — the owner can freeze claims instantly, and <code>cancel()</code> returns all unvested funds, the standard Sablier clawback semantics.</li>
 </ul>
-<p><img src="/images/blog/arc-c31-agent-allowance-2.jpeg" alt="A USDC token stream flowing through four gate posts — checklist, cap, lock and stop-hand icons — each partially dimming the stream" /></p>
+<p><img src="/images/blog/arc-c31-agent-allowance-2.webp" alt="A USDC token stream flowing through four gate posts — checklist, cap, lock and stop-hand icons — each partially dimming the stream" /></p>
 
 <h2 id="lifecycle-mainnet">The lifecycle on Arc mainnet, transaction by transaction</h2>
 <p>Talk is cheap; the explorer is not. The demo vault went through its full lifecycle on Arc mainnet (chainId 5042). Each step is a real transaction — open them and verify the calls yourself:</p>
@@ -161,7 +161,7 @@ export const article: BlogArticle = {
 </tbody>
 </table>
 <p>The vendor's USDC balance moved 99,020 → 99,135 units over the three claims — +115 total, all onchain, all explainable line by line. The vault sits at <code>0x2860258CAf3e21c65517233aBa1e876D16D4Ff52</code>, deployed through the factory at <code>0x5D1a014e1FFE3b777F0946C2dd75A7d3aecdacA4</code>. 46 of 46 Foundry tests pass.</p>
-<p><img src="/images/blog/arc-c31-agent-allowance-d1.png" alt="Vault lifecycle sequence: owner deploys via factory, deposits USDC which starts linear vesting, allowlists the payee, sets the cap; the agent claims vested funds to the vendor" /></p>
+<p><img src="/images/blog/arc-c31-agent-allowance-d1.webp" alt="Vault lifecycle sequence: owner deploys via factory, deposits USDC which starts linear vesting, allowlists the payee, sets the cap; the agent claims vested funds to the vendor" /></p>
 
 <h2 id="vs-existing-primitives">How is this different from existing allowance primitives?</h2>
 <p>We checked the obvious alternatives before writing a contract:</p>
@@ -176,7 +176,7 @@ export const article: BlogArticle = {
 <h2 id="three-role-ui">Three roles, one honest UI</h2>
 <p>The demo interface is not a mockup — it is a three-role board wired to the live vault. The owner view shows funding, payee management, the cap, pause and cancel. The agent view shows vested and claimable amounts ticking in real time, the vesting schedule and the ERC-8004 agent identity (id 2, <code>0xcdd23d…869d</code>) bound to the vault. The vendor view scans its own payee address and finds incoming payments with block numbers — no trust in the agent required.</p>
 <p>The whole walkthrough is recorded: a 3-minute EN/RU demo video runs the loop end to end, and the hackathon landing at <a href="/hackathon/agent-allowance">agentbadge.xyz/hackathon/agent-allowance</a> carries the animated architecture diagram and every explorer link from the table above.</p>
-<p><img src="/images/blog/arc-c31-agent-allowance-3.jpeg" alt="Three panels — a crowned owner at a control board, a robot under a rising vesting bar, a vendor scanning a checklist with a magnifier" /></p>
+<p><img src="/images/blog/arc-c31-agent-allowance-3.webp" alt="Three panels — a crowned owner at a control board, a robot under a rising vesting bar, a vendor scanning a checklist with a magnifier" /></p>
 
 <h2 id="not-claiming">What we are not claiming</h2>
 <ul>

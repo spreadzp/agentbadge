@@ -8,8 +8,8 @@ export const article: BlogArticle = {
   authorRole: "Agency for the Agentic Web",
   date: "2026-09-23",
   dateModified: "2026-09-26",
-  heroImage: "/images/blog/bstock-free-vs-realtime-hero.png",
-  ogImage: "/images/blog/bstock-free-vs-realtime-hero.png",
+  heroImage: "/images/blog/bstock-free-vs-realtime-hero.webp",
+  ogImage: "/images/blog/bstock-free-vs-realtime-hero.webp",
   tags: ["bstocks", "real-time-data", "freemium", "ai-agents", "trading"],
   readingTime: "4 min",
   shortAnswer: "Free tier gives one snapshot per minute; the paid tier gives unlimited polling, Telegram alerts, and a 30-day ServicePass — for an agent that trades or alerts on tokenized-stock deltas, real-time data is infrastructure.",
@@ -18,7 +18,7 @@ export const article: BlogArticle = {
 and paid (real-time, 5 USDC for 30 days). A fair question from any
 trader: why pay when free exists?</p>
 <figure>
-<img src="/images/blog/bstock-free-vs-realtime-d1.png"
+<img src="/images/blog/bstock-free-vs-realtime-d1.webp"
 alt="Diagram: free vs paid" />
 <figcaption aria-hidden="true">Diagram: free vs paid</figcaption>
 </figure>
@@ -60,7 +60,7 @@ itself.</li>
 <p>In all three, the edge is not “seeing it eventually” — it is seeing
 it <strong>first</strong>.</p>
 <figure>
-<img src="/images/blog/bstock-free-vs-realtime-2.png"
+<img src="/images/blog/bstock-free-vs-realtime-2.webp"
 alt="Timeline: the delta crosses the −0.5% threshold and a Telegram alert fires within seconds, versus a 60-minute free-tier gap" />
 </figure>
 <h2 id="agent-economics">Agent economics</h2>

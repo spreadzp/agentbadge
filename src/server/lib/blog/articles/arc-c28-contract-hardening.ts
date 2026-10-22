@@ -13,11 +13,11 @@ export const article: BlogArticle = {
   readingTime: "7 min",
   shortAnswer:
     "AgentBadge ran an adversarial AI audit (Arc Studio, max preset, forge PoC per finding) over its identity and escrow contracts — 37 findings, all closed or disproved. The hardened pack redeployed to Arc mainnet on 2026-10-11 as eight UUPS proxies with role-based access, a platformBps timelock, and a documented EOA→multisig+timelock upgrade-governance path. Total gas: ~0.9 USDC across testnet and mainnet.",
-  heroImage: "/images/blog/arc-c28-contract-hardening-hero.png",
-  ogImage: "/images/blog/arc-c28-contract-hardening-og.png",
+  heroImage: "/images/blog/arc-c28-contract-hardening-hero.webp",
+  ogImage: "/images/blog/arc-c28-contract-hardening-og.jpeg",
   content: `<p>On October 10, 2026 we pointed an AI auditor at the AgentBadge contract pack and told it to be mean. It found <strong>37 findings</strong> across identity and escrow — seven of them High, including a fully transferable "soulbound" passport and an escrow operator who could rotate themselves into the payout seat. On October 11, all eight contracts went live on Arc mainnet as hardened UUPS proxies with <strong>zero open findings</strong>.</p>
 <p>This is C28 of the Arc Campaign series. <a href="https://agentbadge.xyz/blog/arc-c1-mainnet-deployment">C1</a> was the first deployment story; this one is about what happened when we stopped trusting it.</p>
-<p><img src="/images/blog/arc-c28-contract-hardening-hero.png" alt="Contract fleet behind a shield on an Arc mainnet network map" /></p>
+<p><img src="/images/blog/arc-c28-contract-hardening-hero.webp" alt="Contract fleet behind a shield on an Arc mainnet network map" /></p>
 <h2 id="audit-without-a-security-firm">How do you audit contracts without a security firm?</h2>
 <p>We used <a href="https://studio.arc.io">Arc Studio</a> — Circle's server-side AI builder — as an adversarial auditor. Not a linter, not a checklist: a max-preset adversarial prompt that required <strong>a runnable forge PoC for every finding</strong> before it counted as a finding at all.</p>
 <p>The prompt discipline mattered more than the model. Three rules did the heavy lifting: hunt specific bug classes (access-control bypasses, role confusion between cross-referencing contracts, upgrade/rotation gaps), produce an executable proof-of-concept test for each claim, and <em>don't touch the source</em> — audit only, recommended fixes as diff sketches. Two packs, two reports: identity/passport contracts (<code>VULN-01..21</code>) and escrow/marketplace (<code>VULN-1..16</code>).</p>
@@ -27,7 +27,7 @@ export const article: BlogArticle = {
 <li><strong>Escrow pack</strong>: 16 findings — including 3 Critical-class (operator rotation, poster self-release, global platform fee)</li>
 <li>Every finding shipped with a forge PoC that compiled and demonstrated the behavior — no "might be exploitable" hand-waving</li>
 </ul>
-<p><img src="/images/blog/arc-c28-contract-hardening-2.png" alt="AI auditor red-teaming a contract, findings falling into a report" /></p>
+<p><img src="/images/blog/arc-c28-contract-hardening-2.webp" alt="AI auditor red-teaming a contract, findings falling into a report" /></p>
 <h2 id="worst-findings">What were the worst things it found?</h2>
 <p>The kind of bugs that don't show up in unit tests because the tests were written by the same happy-path brain that wrote the code.</p>
 <p>The top of the report, paraphrased:</p>
@@ -38,7 +38,7 @@ export const article: BlogArticle = {
 <li><strong>Zero-address log DoS (High)</strong> — constructing with <code>log_ == address(0)</code> silently bricked every mint, revoke and attest call forever. <code>initialize</code> now reverts on zero.</li>
 <li><strong>Revoked-slot lockout (High)</strong> — revoking a pass poisoned its <code>passOf</code> slot; a subsequent mint took the renewal branch on a dead token. Irrecoverable — until we made the renewal branch check <code>!revoked[id]</code>.</li>
 </ul>
-<p><img src="/images/blog/arc-c28-contract-hardening-d1.png" alt="Audit → fix → re-audit → deploy pipeline, bottom-up" /></p>
+<p><img src="/images/blog/arc-c28-contract-hardening-d1.webp" alt="Audit → fix → re-audit → deploy pipeline, bottom-up" /></p>
 <p>Three findings were <em>rejected with disproof PoCs</em> — the auditor flagged "NFT owner race" and "pay() shrinks release window," and the same PoC discipline showed the invariants hold. A good audit closes bugs; a great one also kills false alarms.</p>
 <h2 id="what-hardened-means">What does "hardened" actually mean on-chain?</h2>
 <p>Same eight contracts, rewritten underneath. Every contract is now a UUPS upgradeable proxy (<code>ERC1967Proxy</code> subclass <code>AgentBadgeProxy</code>), with <code>_authorizeUpgrade</code> gated behind <code>UPGRADER_ROLE</code>, <code>_disableInitializers()</code> in every constructor, and 50-slot storage gaps for future layout.</p>
@@ -53,7 +53,7 @@ export const article: BlogArticle = {
 <li><code>_emitLog</code> in try/catch — a dead event log can't DoS escrow settlement</li>
 </ul>
 <p>The full list is 33 fixes across Critical/High/Medium/Low — every one with a regression test. Final suite: <strong>197 tests green</strong>.</p>
-<p><img src="/images/blog/arc-c28-contract-hardening-d2.png" alt="UUPS proxy stack: roles → storage → implementation → proxy → callers, bottom-up" /></p>
+<p><img src="/images/blog/arc-c28-contract-hardening-d2.webp" alt="UUPS proxy stack: roles → storage → implementation → proxy → callers, bottom-up" /></p>
 <h2 id="arc-studio-experience">What's it like auditing with Arc Studio?</h2>
 <p>Practically useful, with sharp edges worth documenting.</p>
 <p><strong>What worked.</strong> One well-specified prompt per run beat iterative chatting — the agent wrote PoCs, ran forge tests, and assembled the report itself inside the sandbox. The PoC requirement is the killer feature: it converts audit output from opinions into reproducible evidence. Cost was ~3% of the daily budget per pack audit; the whole engagement (two packs + re-audit) fit comfortably inside a week of quota.</p>
@@ -81,12 +81,12 @@ export const article: BlogArticle = {
 </tbody>
 </table>
 <p>We checked the v1 contracts first (decision D-196-5): two marketplace passports and nothing else, all owned by our deployer — no external holders — so v2 is a clean restart, not a state migration. The v1 addresses stay frozen as read-only history.</p>
-<p><img src="/images/blog/arc-c28-contract-hardening-3.png" alt="Eight proxy contracts landing on an Arc mainnet map" /></p>
+<p><img src="/images/blog/arc-c28-contract-hardening-3.webp" alt="Eight proxy contracts landing on an Arc mainnet map" /></p>
 <h2 id="upgrade-governance">Who can upgrade these contracts?</h2>
 <p>Today, the deployer EOA — with a documented exit. <code>UPGRADE-GOVERNANCE.md</code> lays out the migration: when the first real USDC lands in <code>TaskEscrow</code>, <code>UPGRADER_ROLE</code> moves to an OZ <code>TimelockController</code> (≥24h delay) whose proposer/executor is a multisig. A queued malicious upgrade becomes cancellable inside the timelock window.</p>
 <p>The reasoning is simple: an upgrader key is god — one compromised key swaps in a hostile implementation and repoints every reference. Day-to-day roles (<code>MINTER</code>, <code>RECORDER</code>, <code>REVOKER</code>, <code>OPERATOR</code>) deliberately carry no upgrade power.</p>
-<p><img src="/images/blog/arc-c28-contract-hardening-d3.png" alt="EOA key → trigger → 24h timelock queue → execute → multisig upgrade path, bottom-up" /></p>
-<p><img src="/images/blog/arc-c28-contract-hardening-4.png" alt="Timelock hourglass between a deployer key and an upgrade call" /></p>
+<p><img src="/images/blog/arc-c28-contract-hardening-d3.webp" alt="EOA key → trigger → 24h timelock queue → execute → multisig upgrade path, bottom-up" /></p>
+<p><img src="/images/blog/arc-c28-contract-hardening-4.webp" alt="Timelock hourglass between a deployer key and an upgrade call" /></p>
 <h2 id="for-ai-agents">For AI Agents</h2>
 <p>Programmatic endpoints for everything in this article:</p>
 <ul>

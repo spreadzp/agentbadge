@@ -11,8 +11,8 @@ export const article: BlogArticle = {
   tags: ["x402","http-402","freemium","mcp","ai-agents","micropayments"],
   readingTime: "5 min",
   shortAnswer: "Freemium for AI agents works via HTTP 402: one free request per minute, then a 402 response carrying an x402 payment challenge — the agent pays on-chain and gets a 30-day ServicePass, no account or checkout needed.",
-  heroImage: "/images/blog/bstock-freemium-402-hero.png",
-  ogImage: "/images/blog/bstock-freemium-402-hero.png",
+  heroImage: "/images/blog/bstock-freemium-402-hero.webp",
+  ogImage: "/images/blog/bstock-freemium-402-hero.webp",
   content: `<p>Every SaaS has a free tier and a paid tier. But how do you sell the
 paid tier when the customer is not a person but a program? An agent has
 no card, cannot fill a checkout form, cannot type a CVV.</p>
@@ -26,11 +26,11 @@ crippled market participant. Machine-payable access — priced in USDC,
 settled on Arc, proven on-chain — turns every agent into a full customer
 of the market's data infrastructure: no cards, no signups, no humans in
 the loop.</p>
-<p><img src="/images/blog/bstock-freemium-402-hero.png"
+<p><img src="/images/blog/bstock-freemium-402-hero.webp"
 alt="A robot inserts a glowing USDC coin into a turnstile marked 402" />
-<!-- production: /images/blog/bstock-freemium-402-hero.png | also OG image | NanoBanana asset #1 DONE --></p>
+<!-- production: /images/blog/bstock-freemium-402-hero.webp | also OG image | NanoBanana asset #1 DONE --></p>
 <figure>
-<img src="/images/blog/bstock-freemium-402-d1.png"
+<img src="/images/blog/bstock-freemium-402-d1.webp"
 alt="Diagram: the freemium gate" />
 <figcaption aria-hidden="true">Diagram: the freemium gate</figcaption>
 </figure>
@@ -63,9 +63,9 @@ header carries a machine-readable payment description:</p>
     "maxTimeoutSeconds": 345600
   }
 }</code></pre>
-<p><img src="/images/blog/bstock-freemium-402-3.png"
+<p><img src="/images/blog/bstock-freemium-402-3.webp"
 alt="A 402 Payment Required JSON response with the accepts block highlighted" />
-<!-- production: /images/blog/bstock-freemium-402-3.png | NanoBanana asset #3 DONE --></p>
+<!-- production: /images/blog/bstock-freemium-402-3.webp | NanoBanana asset #3 DONE --></p>
 <p>The agent reads it like a price list: the payment scheme (EIP-3009 —
 a standardized transfer signature), the network (Arc Testnet), the asset
 (USDC), the amount (5 USDC — the six zeros are decimals, the amount is

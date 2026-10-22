@@ -14,12 +14,12 @@ export const article: BlogArticle = {
   shortAnswer:
     "Per-verdict anchoring proves each verdict exists — but not that the history is complete. AgentBadge adds a linear verdict hash-chain plus a heartbeat head-anchor on the Arc Memo contract: edit/delete/insert all break the fold, empty windows still re-anchor (epochSeq+1), and anyone can verify inclusion offline via /api/eaas/chain/proof/:verdictId — no trust in our API required.",
   agentGuideSlug: "arc-c11-verdict-transparency",
-  heroImage: "/images/blog/arc-c11-verdict-transparency-hero.png",
-  ogImage: "/images/blog/arc-c11-verdict-transparency-og.png",
+  heroImage: "/images/blog/arc-c11-verdict-transparency-hero.webp",
+  ogImage: "/images/blog/arc-c11-verdict-transparency-og.jpeg",
   content: `<p>A signed verdict lands in a hash, the hash lands on-chain — and a week later that same verdict still verifies. That's the easy part. The question nobody asks a paid evaluator is the uncomfortable one: <strong>how do you prove you didn't quietly drop the verdicts that made your score look bad?</strong> Existence proofs don't cover completeness. An archive can be honest about everything it shows you while lying about what it removed.</p>
 <p>This week we closed that hole on AgentBadge's evaluation layer: every verdict now extends a linear hash-chain, and the chain's head is anchored to the Arc Memo contract on a heartbeat — even when nothing new ships. Anyone with a <code>curl</code> can recompute the head themselves and compare it to what's on-chain. No trust in our API required.</p>
 <p>This is article 11 in the Arc Campaign series — the transparency counterpart to <a href="/blog/arc-c10-payer-binding">C10</a>, which proved <em>who paid</em>. This one proves <em>what was said</em>.</p>
-<p><img src="/images/blog/arc-c11-verdict-transparency-hero.png" alt="A hash chain of verdict links landing its head into a blockchain block" /></p>
+<p><img src="/images/blog/arc-c11-verdict-transparency-hero.webp" alt="A hash chain of verdict links landing its head into a blockchain block" /></p>
 <h2 id="gap">Why Isn't Per-Verdict Anchoring Enough?</h2>
 <p>Because it answers the wrong question. Each verdict gets a memo anchor — <code>memoId = keccak("eaas:verdictId")</code> with the artifact hash on-chain. Point at a verdict, check the anchor, done. But anchoring proves each entry <em>independently</em>. Delete entry 47 of 200 and every remaining anchor is still valid. The proof set has a hole shaped exactly like the verdict you deleted.</p>
 <p>This is the same gap certificate-transparency ran into: RFC 6962's original design proved inclusion, not consistency — Microsoft's ADR-0017 rewrite added signed tree heads precisely because "the log showed me the cert" is not "the log shows everyone the same history." An evaluator without consistency guarantees is a marketing claim, not an evidence source.</p>

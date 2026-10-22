@@ -11,8 +11,8 @@ export const article: BlogArticle =
   date: "2026-08-14",
   dateModified: "2026-08-14",
   agentGuideSlug: "what-is-agent-readiness",
-  heroImage: "/images/blog/what-is-agent-readiness-hero.png",
-  ogImage: "/images/blog/what-is-agent-readiness-og.png",
+  heroImage: "/images/blog/what-is-agent-readiness-hero.webp",
+  ogImage: "/images/blog/what-is-agent-readiness-og.jpeg",
   shortAnswer: "Agent Readiness is the ability of your API to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces — OpenAPI, MCP, llms.txt, and structured discovery layers that let agents navigate your service autonomously.",
   tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
   rules: ["AB-004"],
@@ -51,7 +51,7 @@ export const article: BlogArticle =
 
 <p>That problem is what we call <strong>Agent Readiness</strong>.</p>
 
-<img src="/images/blog/what-is-agent-readiness-hero.png" alt="Hero — a human developer walks into API Docs while an AI agent faces a featureless wall" />
+<img src="/images/blog/what-is-agent-readiness-hero.webp" alt="Hero — a human developer walks into API Docs while an AI agent faces a featureless wall" />
 
 <hr />
 
@@ -125,7 +125,7 @@ export const article: BlogArticle =
 
 <p>And that's why the requirements for APIs are quietly changing.</p>
 
-<img src="/images/blog/what-is-agent-readiness-2.png" alt="Web vs Agentic Web — two parallel flows: robots.txt/sitemap/search vs machine-readable docs/capabilities/action" />
+<img src="/images/blog/what-is-agent-readiness-2.webp" alt="Web vs Agentic Web — two parallel flows: robots.txt/sitemap/search vs machine-readable docs/capabilities/action" />
 
 <hr />
 
@@ -273,7 +273,7 @@ Required: yes</code></pre>
 
 <p>Now the agent can make a decision.</p>
 
-<img src="/images/blog/what-is-agent-readiness-3.png" alt="Four layers of Agent Readiness — Discovery, Understanding, Authentication, Machine-readable responses" />
+<img src="/images/blog/what-is-agent-readiness-3.webp" alt="Four layers of Agent Readiness — Discovery, Understanding, Authentication, Machine-readable responses" />
 
 <hr />
 
@@ -377,7 +377,7 @@ Confidence: 1.0</code></pre>
 
 <p><strong>It shows you where the number came from.</strong></p>
 
-<img src="/images/blog/what-is-agent-readiness-4.png" alt="Evidence card — rule AB-004 VERIFIED, HTTP 200, confidence 1.0" />
+<img src="/images/blog/what-is-agent-readiness-4.webp" alt="Evidence card — rule AB-004 VERIFIED, HTTP 200, confidence 1.0" />
 
 <hr />
 
@@ -501,7 +501,7 @@ Machine-readable   22 / 30</code></pre>
 
 <p>The system must explain the <strong>delta</strong>.</p>
 
-<img src="/images/blog/what-is-agent-readiness-5.png" alt="Score delta — 76/100 ring, category bars, delta card '76 → 84, +8 Guide added'" />
+<img src="/images/blog/what-is-agent-readiness-5.webp" alt="Score delta — 76/100 ring, category bars, delta card '76 → 84, +8 Guide added'" />
 
 <hr />
 
@@ -553,7 +553,7 @@ Machine-readable   22 / 30</code></pre>
 
 <p>It's an improvement loop.</p>
 
-<img src="/images/blog/what-is-agent-readiness-6.png" alt="Measure → Prove → Improve cycle with Measure again return arrow" />
+<img src="/images/blog/what-is-agent-readiness-6.webp" alt="Measure → Prove → Improve cycle with Measure again return arrow" />
 
 <hr />
 

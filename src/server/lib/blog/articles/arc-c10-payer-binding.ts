@@ -14,11 +14,11 @@ export const article: BlogArticle = {
   shortAnswer:
     "Payer binding (agentbadge-pay:v1) prevents payment sniping on self-settle x402: the payer signs a canonical challenge naming their wallet and the txHash; the server recovers the signer and compares it to the on-chain Transfer.from BEFORE claiming the replay slot — so a sniper's rejection never consumes the victim's payment.",
   agentGuideSlug: "arc-c10-payer-binding",
-  heroImage: "/images/blog/arc-c10-payer-binding-hero.png",
-  ogImage: "/images/blog/arc-c10-payer-binding-og.png",
+  heroImage: "/images/blog/arc-c10-payer-binding-hero.webp",
+  ogImage: "/images/blog/arc-c10-payer-binding-og.jpeg",
   content: `<p>On Arc's self-settle payment rail the buyer broadcasts the USDC <code>transferWithAuthorization</code> themselves and hands the server the <strong>transaction hash</strong> as proof. Convenient — and a bearer credential: the txHash sits in the public mempool before it confirms, and whoever presents it to the paid endpoint <em>first</em> gets the content. This week we closed that hole on every AgentBadge paid surface with <code>agentbadge-pay:v1</code> — a one-line signature that binds a payment transaction to the wallet that made it, verified <em>before</em> the replay slot is ever touched.</p>
 <p>This is article C10 in the Arc Campaign series. It completes the payment-hardening arc started by <a href="https://agentbadge.xyz/blog/arc-c4-agent-wallet">C4</a> (wallet allowances) and <a href="https://agentbadge.xyz/blog/arc-c13-owner-controls">C13</a> (owner controls): those decide <em>what a wallet may spend</em> — this one decides <em>who is allowed to present a payment</em>.</p>
-<p><img src="/images/blog/arc-c10-payer-binding-hero.png" alt="A transaction hash being pulled out of a public mempool by a second bot — the paid request that wasn't yours" /></p>
+<p><img src="/images/blog/arc-c10-payer-binding-hero.webp" alt="A transaction hash being pulled out of a public mempool by a second bot — the paid request that wasn't yours" /></p>
 <h2 id="attack">Can someone else spend your agent's payment?</h2>
 <p>On the self-settle rail, yes — if the endpoint only looks at the txHash. The attack is Attack I-B from the x402 threat analysis (arXiv:2605.11781) and it's mechanical:</p>
 <ol>

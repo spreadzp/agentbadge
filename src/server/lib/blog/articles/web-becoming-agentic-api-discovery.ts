@@ -11,8 +11,8 @@ export const article: BlogArticle =
     date: "2026-08-15",
     dateModified: "2026-08-15",
     agentGuideSlug: "web-becoming-agentic-api-discovery",
-    heroImage: "/images/blog/web-becoming-agentic-api-discovery-hero.png",
-    ogImage: "/images/blog/web-becoming-agentic-api-discovery-hero.png",
+    heroImage: "/images/blog/web-becoming-agentic-api-discovery-hero.webp",
+    ogImage: "/images/blog/web-becoming-agentic-api-discovery-hero.webp",
     shortAnswer: "As AI agents replace humans as API consumers, discovery shifts from search engines to machine-readable layers like llms.txt, MCP, and A2A protocols. These are not competitors to search — they are a new discovery stack built for software, not humans.",
     tags: ["agent-readiness", "api-discovery", "agentic-web", "llms-txt", "mcp"],
     readingTime: "14 min",
@@ -30,7 +30,7 @@ export const article: BlogArticle =
 
 <p>And the infrastructure that made APIs discoverable for humans? It wasn't built for this.</p>
 
-<img src="/images/blog/web-becoming-agentic-api-discovery-hero.png" alt="Hero — split screen: left side human+Google+docs flow with green checkmarks, right side AI agent+???+API with question marks and dashed lines" />
+<img src="/images/blog/web-becoming-agentic-api-discovery-hero.webp" alt="Hero — split screen: left side human+Google+docs flow with green checkmarks, right side AI agent+???+API with question marks and dashed lines" />
 
 <hr />
 
@@ -121,7 +121,7 @@ API</code></pre>
 
 <p>This is where <strong>Agent Readiness as discovery infrastructure</strong> enters the picture.</p>
 
-<img src="/images/blog/web-becoming-agentic-api-discovery-2.png" alt="Agent workflow — 8-step pipeline: Discover → Understand → Compare → Price → Auth → Select → Call → Handle Errors, with checkmarks and question marks showing where agents get stuck" />
+<img src="/images/blog/web-becoming-agentic-api-discovery-2.webp" alt="Agent workflow — 8-step pipeline: Discover → Understand → Compare → Price → Auth → Select → Call → Handle Errors, with checkmarks and question marks showing where agents get stuck" />
 
 <hr />
 
@@ -141,7 +141,7 @@ API</code></pre>
 
 <p>OpenAPI describes interfaces. llms.txt gives context. MCP provides tool calling. API marketplaces catalog. Agent Readiness measures whether all of these actually work for an agent end-to-end.</p>
 
-<img src="/images/blog/web-becoming-agentic-api-discovery-3.png" alt="Comparison layers — stacked diagram: Search (gray), API Marketplace (gray), OpenAPI (cyan), llms.txt (cyan), MCP (cyan-green), Agent Readiness (green), with brackets showing Human discovery vs Machine context vs Verification" />
+<img src="/images/blog/web-becoming-agentic-api-discovery-3.webp" alt="Comparison layers — stacked diagram: Search (gray), API Marketplace (gray), OpenAPI (cyan), llms.txt (cyan), MCP (cyan-green), Agent Readiness (green), with brackets showing Human discovery vs Machine context vs Verification" />
 
 <hr />
 
@@ -194,7 +194,7 @@ llms.txt   Docs       Verification
 
 <p>Trust requires verification. Verification requires evidence.</p>
 
-<img src="/images/blog/web-becoming-agentic-api-discovery-4.png" alt="Architecture stack — 3-column diagram: Discovery (cyan), Understanding (cyan-green), Trust (green), each with sub-items, converging into API at bottom" />
+<img src="/images/blog/web-becoming-agentic-api-discovery-4.webp" alt="Architecture stack — 3-column diagram: Discovery (cyan), Understanding (cyan-green), Trust (green), each with sub-items, converging into API at bottom" />
 
 <hr />
 
@@ -281,7 +281,7 @@ llms.txt   Docs       Verification
 
 <p>And that's the point. This is an open problem. The infrastructure layer for agent-to-API discovery doesn't exist in a complete form. Pieces of it exist — llms.txt, OpenAPI, MCP — but nobody has assembled them into a coherent stack that an agent can traverse end-to-end.</p>
 
-<img src="/images/blog/web-becoming-agentic-api-discovery-5.png" alt="Concept — six question marks in a circle: Unified standard?, Self-declared trust?, Who measures?, OpenAPI enough?, Evidence layer?, Google of agentic web?, with AgentBadge logo in center" />
+<img src="/images/blog/web-becoming-agentic-api-discovery-5.webp" alt="Concept — six question marks in a circle: Unified standard?, Self-declared trust?, Who measures?, OpenAPI enough?, Evidence layer?, Google of agentic web?, with AgentBadge logo in center" />
 
 <hr />
 
@@ -367,7 +367,7 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
   <li>Run a scan — Web, CLI, or GitHub Action</li>
 </ol>
 
-<img src="/images/blog/web-becoming-agentic-api-discovery-6.png" alt="CTA — terminal aesthetic: Scan your API with cursor blink, dark charcoal background, cyan and green accents" />
+<img src="/images/blog/web-becoming-agentic-api-discovery-6.webp" alt="CTA — terminal aesthetic: Scan your API with cursor blink, dark charcoal background, cyan and green accents" />
 
 <hr />
 

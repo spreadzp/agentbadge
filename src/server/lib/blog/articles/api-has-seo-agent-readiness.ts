@@ -11,8 +11,8 @@ export const article: BlogArticle =
     date: "2026-08-14",
     dateModified: "2026-08-14",
     agentGuideSlug: "seo-vs-agent-readiness",
-    heroImage: "/images/blog/api-has-seo-agent-readiness-hero.png",
-    ogImage: "/images/blog/api-has-seo-agent-readiness-og.png",
+    heroImage: "/images/blog/api-has-seo-agent-readiness-hero.webp",
+    ogImage: "/images/blog/api-has-seo-agent-readiness-og.jpeg",
     shortAnswer: "SEO optimizes websites for search engines. Agent Readiness optimizes APIs for AI agents. A good SEO score doesn't mean your API is agent-ready — you need machine-readable discovery, OpenAPI specs, MCP tools, and structured metadata that agents can parse and act on.",
     tags: ["agent-readiness", "seo", "aeo", "agentic-web", "api"],
     readingTime: "12 min",
@@ -26,7 +26,7 @@ export const article: BlogArticle =
 
 <p>This isn't an evolution of SEO. It's a new layer.</p>
 
-<img src="/images/blog/api-has-seo-agent-readiness-hero.png" alt="Hero — SEO on the left with green checkmarks, Agent Readiness on the right with red X marks on missing OpenAPI, auth, and structured errors" />
+<img src="/images/blog/api-has-seo-agent-readiness-hero.webp" alt="Hero — SEO on the left with green checkmarks, Agent Readiness on the right with red X marks on missing OpenAPI, auth, and structured errors" />
 
 <hr />
 
@@ -52,7 +52,7 @@ export const article: BlogArticle =
 
 <p>SEO helps with step 1 — finding the page. Steps 2–7 require entirely different infrastructure.</p>
 
-<img src="/images/blog/api-has-seo-agent-readiness-2.png" alt="Two parallel pipelines — Web Discovery (SEO, green checkmarks) vs API Discovery (Agent Readiness, question marks and gaps)" />
+<img src="/images/blog/api-has-seo-agent-readiness-2.webp" alt="Two parallel pipelines — Web Discovery (SEO, green checkmarks) vs API Discovery (Agent Readiness, question marks and gaps)" />
 
 <hr />
 
@@ -72,7 +72,7 @@ export const article: BlogArticle =
 
 <p>A more powerful model can't fix missing information that the API simply didn't provide.</p>
 
-<img src="/images/blog/api-has-seo-agent-readiness-3.png" alt="Side-by-side comparison — human reading prose documentation vs AI agent parsing structured JSON schema" />
+<img src="/images/blog/api-has-seo-agent-readiness-3.webp" alt="Side-by-side comparison — human reading prose documentation vs AI agent parsing structured JSON schema" />
 
 <hr />
 
@@ -103,7 +103,7 @@ export const article: BlogArticle =
   <li>Machine-readability ≈ semantic HTML + accessibility (can a parser extract the data?)</li>
 </ul>
 
-<img src="/images/blog/api-has-seo-agent-readiness-4.png" alt="Four-layer stack diagram — Discovery, Documentation, Authentication, Machine-readability" />
+<img src="/images/blog/api-has-seo-agent-readiness-4.webp" alt="Four-layer stack diagram — Discovery, Documentation, Authentication, Machine-readability" />
 
 <hr />
 
@@ -123,7 +123,7 @@ export const article: BlogArticle =
 
 <p>If 3+ answers are "not sure" — you have an Agent Readiness gap.</p>
 
-<img src="/images/blog/api-has-seo-agent-readiness-5.png" alt="Agent Readiness Self-Test checklist card with 7 questions, some checked green, some unchecked red" />
+<img src="/images/blog/api-has-seo-agent-readiness-5.webp" alt="Agent Readiness Self-Test checklist card with 7 questions, some checked green, some unchecked red" />
 
 <hr />
 
@@ -144,7 +144,7 @@ export const article: BlogArticle =
 
 <p><strong>Why not "AI scoring":</strong> LLMs can hallucinate. Deterministic checks can't. If we say "OpenAPI spec not found" — that's a fact, not an opinion.</p>
 
-<img src="/images/blog/api-has-seo-agent-readiness-6.png" alt="Circular flow diagram — Measure → Evidence → Fix → Monitor → back to Measure, with AgentBadge in the center" />
+<img src="/images/blog/api-has-seo-agent-readiness-6.webp" alt="Circular flow diagram — Measure → Evidence → Fix → Monitor → back to Measure, with AgentBadge in the center" />
 
 <hr />
 
