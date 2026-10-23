@@ -81,6 +81,7 @@ export const article: BlogArticle = {
 <li><strong>User MCP</strong> (<code>/mcp</code>) — wallet-bound participant actions: <code>gec_bid_submit</code>, <code>gec_demand_search</code>, award/deliverable/verification tools. 18 tools behind OAuth 2.1 + EIP-191 wallet proof.</li>
 </ul>
 <p>The elegant part: every open demand carries a <code>provider_action.machine_entry</code> object — endpoints, chain id, cookie policy and a numbered step list. We implemented the client <em>from the projection alone</em>.</p>
+<p><img src="/images/blog/gec-interop-d2.webp" alt="Trust boundary diagram: keyless Public MCP zone (gec_open_demands, machine_entry, start_here) above an OAuth 2.1 PKCE + EIP-191 + consent gate, below it the wallet-bound User MCP zone (mcp-session-id, gec_bid_submit, idempotency fields)" /></p>
 
 <h2 id="walk">The walk, step by step (real timings)</h2>
 <table>
@@ -100,6 +101,7 @@ export const article: BlogArticle = {
 </tbody>
 </table>
 <p>Total wall-clock for the write path: under 5 seconds of network time.</p>
+<p><img src="/images/blog/gec-interop-d1.webp" alt="Sequence diagram of the full run: projection, authorize, wallet challenge, local EIP-191 sign, verify, consent, token, MCP initialize, tools/list, public read gate, gec_bid_submit SUBMITTED" /></p>
 <p><img src="/images/blog/gec-interop-terminal-bid.webp" alt="Terminal run of --phase=bid — all steps green, bid id echoed" /></p>
 
 <h2 id="friction">Friction table — spec vs. production</h2>
