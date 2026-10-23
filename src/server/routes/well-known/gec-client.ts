@@ -108,10 +108,23 @@ gecCallbackRoutes.get(
   (c) => {
     const error = c.req.query("error");
     if (error) {
-      // `error` is a short ASCII code from the AS (invalid_request etc.) —
-      // safe to relay; error_description is capped before echoing.
-      const description = (c.req.query("error_description") ?? "").slice(0, 200);
-      return c.json({ ok: false, error, error_description: description }, 400);
+      // Audit H-3: `error` echoes only RFC 6749 §4.1.2.1 codes — anything else
+      // (injected newlines, spoofed strings, oversized values) degrades to a
+      // fixed "unknown_error". error_description: capped + control chars stripped.
+      const KNOWN_ERRORS = new Set([
+        "invalid_request",
+        "unauthorized_client",
+        "access_denied",
+        "unsupported_response_type",
+        "invalid_scope",
+        "server_error",
+        "temporarily_unavailable",
+      ]);
+      const safeError = KNOWN_ERRORS.has(error) ? error : "unknown_error";
+      const description = (c.req.query("error_description") ?? "")
+        .replace(/[\x00-\x1f\x7f]/g, "")
+        .slice(0, 200);
+      return c.json({ ok: false, error: safeError, error_description: description }, 400);
     }
     return c.json({
       ok: true,

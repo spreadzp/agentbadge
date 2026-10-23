@@ -6,10 +6,12 @@ import {
   GEC_ENDPOINTS,
   GEC_BID_AMOUNT_MINOR,
   GEC_TARGET_DEMAND,
+  makeState,
   pkce,
   redact,
   responseShapeOf,
   Transcript,
+  verifyState,
 } from "../scripts/gec-interop.mts";
 import { createHash } from "node:crypto";
 
@@ -64,27 +66,63 @@ describe("buildAuthorizeUrl", () => {
   });
 });
 
-describe("cookieJar", () => {
-  it("captures Set-Cookie pairs and emits them on the next request", () => {
+describe("cookieJar (per-origin — audit H-2)", () => {
+  const res = (cookies: string[]) =>
+    ({ headers: { getSetCookie: () => cookies } }) as unknown as Response;
+
+  it("captures Set-Cookie pairs scoped to the response origin", () => {
     const jar = createCookieJar();
-    const fakeRes = {
-      headers: {
-        getSetCookie: () => ["sess=abc; Path=/; HttpOnly", "pref=dark; Path=/"],
-      },
-    } as unknown as Response;
-    jar.capture(fakeRes);
-    expect(jar.header()).toBe("sess=abc; pref=dark");
-    expect(jar.names().sort()).toEqual(["pref", "sess"]);
+    jar.capture(res(["sess=abc; Path=/; HttpOnly", "pref=dark; Path=/"]), "https://sasame.online");
+    expect(jar.header("https://sasame.online")).toBe("sess=abc; pref=dark");
+    expect(jar.names()["https://sasame.online"].sort()).toEqual(["pref", "sess"]);
   });
 
-  it("empty jar yields undefined header; later Set-Cookie overrides earlier", () => {
+  it("never leaks cookies across origins (session-fixation guard)", () => {
     const jar = createCookieJar();
-    expect(jar.header()).toBeUndefined();
-    const res = (cookies: string[]) =>
-      ({ headers: { getSetCookie: () => cookies } }) as unknown as Response;
-    jar.capture(res(["a=1"]));
-    jar.capture(res(["a=2"]));
-    expect(jar.header()).toBe("a=2");
+    jar.capture(res(["evil=fixated"]), "https://live-vps.sasame.online");
+    expect(jar.header("https://live-sasame.sasame.online")).toBeUndefined();
+    expect(jar.header("https://live-vps.sasame.online")).toBe("evil=fixated");
+    jar.capture(res(["real=ok"]), "https://live-sasame.sasame.online");
+    expect(jar.header("https://live-sasame.sasame.online")).toBe("real=ok");
+  });
+
+  it("empty jar yields undefined; later Set-Cookie overrides; empty value deletes (M-4)", () => {
+    const jar = createCookieJar();
+    expect(jar.header("https://x.test")).toBeUndefined();
+    jar.capture(res(["a=1"]), "https://x.test");
+    jar.capture(res(["a=2"]), "https://x.test");
+    expect(jar.header("https://x.test")).toBe("a=2");
+    jar.capture(res(["a=; Max-Age=0"]), "https://x.test");
+    expect(jar.header("https://x.test")).toBeUndefined();
+  });
+
+  it("skips malformed lines (no name, no equals)", () => {
+    const jar = createCookieJar();
+    jar.capture(res(["=novalue", "justflag", "ok=1"]), "https://x.test");
+    expect(jar.header("https://x.test")).toBe("ok=1");
+  });
+});
+
+describe("state↔verifier binding (audit H-1)", () => {
+  it("verifyState accepts a state made for the same verifier, rejects others", () => {
+    const { verifier } = pkce();
+    const state = makeState(verifier);
+    expect(verifyState(state, verifier)).toBe(true);
+
+    const other = pkce();
+    expect(verifyState(state, other.verifier)).toBe(false);
+    expect(verifyState(makeState(other.verifier), verifier)).toBe(false);
+  });
+
+  it("rejects malformed/forged states", () => {
+    const { verifier } = pkce();
+    expect(verifyState("noDotHere", verifier)).toBe(false);
+    expect(verifyState("seed.", verifier)).toBe(false);
+    expect(verifyState(".tag", verifier)).toBe(false);
+    expect(verifyState("", verifier)).toBe(false);
+    const state = makeState(verifier);
+    const [seed] = state.split(".");
+    expect(verifyState(`${seed}.AAAAAAAAAAAAAAA`, verifier)).toBe(false);
   });
 });
 

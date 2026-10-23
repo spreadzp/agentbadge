@@ -24,9 +24,9 @@
  * reach the transcript — values for denylisted keys are masked BEFORE write.
  */
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { privateKeyToAccount } from "viem/accounts";
-import type { Hex } from "viem";
+import type { Hex, LocalAccount } from "viem";
 
 // ─── Their endpoints (from provider_action.machine_entry, baseline-2026-10-23) ─
 export const GEC_ENDPOINTS = {
@@ -72,10 +72,31 @@ export function base64url(buf: Buffer | Uint8Array): string {
 }
 
 export function pkce(): { verifier: string; challenge: string } {
-  // 32 random bytes → 43-char base64url verifier (spec range 43–128)
-  const verifier = base64url(randomBytes(32));
+  // 64 random bytes = 512 bits entropy (≥256-bit FAPI-style floor)
+  const verifier = base64url(randomBytes(64));
   const challenge = base64url(createHash("sha256").update(verifier).digest());
   return { verifier, challenge };
+}
+
+// ─── state ↔ verifier binding (audit H-1) ────────────────────────────────────
+// state = base64url(seed || base64url(hmac-sha256(verifier, seed))) — opaque to
+// outsiders but cryptographically bound to THIS flow's verifier. On callback,
+// verifyState() recomputes the tag with the in-memory verifier and compares;
+// a transplanted state (CSRF / code-injection from another flow) fails closed.
+
+export function makeState(verifier: string): string {
+  const seed = base64url(randomBytes(16));
+  const tag = createHmac("sha256", verifier).update(seed).digest("base64url");
+  return `${seed}.${tag}`;
+}
+
+export function verifyState(state: string, verifier: string): boolean {
+  const dot = state.indexOf(".");
+  if (dot <= 0 || dot === state.length - 1) return false;
+  const seed = state.slice(0, dot);
+  const tag = state.slice(dot + 1);
+  const expect = createHmac("sha256", verifier).update(seed).digest("base64url");
+  return tag === expect;
 }
 
 // ─── Authorize URL (machine_entry step 1) ────────────────────────────────────
@@ -106,31 +127,46 @@ export function buildAuthorizeUrl(p: AuthorizeParams): string {
 // ─── Cookie jar (machine_entry: PRESERVE_HTTP_COOKIE_JAR) ────────────────────
 
 export interface CookieJar {
-  /** Store name=value pairs from a Response's Set-Cookie headers. */
-  capture(res: Response): void;
-  /** Cookie header value for the next request, or undefined when empty. */
-  header(): string | undefined;
-  /** Cookie names held (never values — for debugging/transcripts). */
-  names(): string[];
+  /** Store name=value pairs from a Response's Set-Cookie headers, scoped to the response's own origin. */
+  capture(res: Response, origin: string): void;
+  /** Cookie header value for requests to `origin`, or undefined when empty. */
+  header(origin: string): string | undefined;
+  /** Cookie names held per origin (never values — for debugging/transcripts). */
+  names(): Record<string, string[]>;
 }
 
+// Audit H-2 + M-4: jar is keyed by (origin, name) — cookies captured from one
+// origin are NEVER sent to another (the flow touches 3 distinct origins:
+// sasame.online, live-sasame.sasame.online, live-vps.sasame.online). An empty
+// value deletes the entry (Set-Cookie "name=; Max-Age=0" semantics) instead of
+// silently overwriting a live session cookie with an empty string.
 export function createCookieJar(): CookieJar {
-  const store = new Map<string, string>();
+  const store = new Map<string, Map<string, string>>();
   return {
-    capture(res: Response) {
-      // undici: getSetCookie() returns each Set-Cookie line separately
+    capture(res: Response, origin: string) {
+      const bucket = store.get(origin) ?? new Map<string, string>();
+      store.set(origin, bucket);
       for (const line of res.headers.getSetCookie?.() ?? []) {
         const first = line.split(";", 1)[0];
         const eq = first.indexOf("=");
-        if (eq > 0) store.set(first.slice(0, eq).trim(), first.slice(eq + 1).trim());
+        if (eq <= 0) continue; // "=value" (no name) or bare flag — skip
+        const name = first.slice(0, eq).trim();
+        const value = first.slice(eq + 1).trim();
+        if (!name) continue;
+        if (value === "") bucket.delete(name);
+        else bucket.set(name, value);
       }
+      if (bucket.size === 0) store.delete(origin);
     },
-    header() {
-      if (store.size === 0) return undefined;
-      return [...store.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
+    header(origin: string) {
+      const bucket = store.get(origin);
+      if (!bucket || bucket.size === 0) return undefined;
+      return [...bucket.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
     },
     names() {
-      return [...store.keys()];
+      const out: Record<string, string[]> = {};
+      for (const [origin, bucket] of store) out[origin] = [...bucket.keys()];
+      return out;
     },
   };
 }
@@ -202,21 +238,28 @@ export interface FetchResult {
 }
 
 export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<FetchResult> {
+  const origin = new URL(url).origin;
   const headers: Record<string, string> = { ...opts.headers };
-  const cookie = opts.jar?.header();
+  const cookie = opts.jar?.header(origin);
   if (cookie) headers["cookie"] = cookie;
   if (opts.bearer) headers["authorization"] = `Bearer ${opts.bearer}`;
+
+  // Audit M-2: never auto-follow redirects while carrying credentials —
+  // WHATWG fetch does not strip Authorization on cross-origin redirects in
+  // non-browser runtimes. Bearer/cookie requests go manual-redirect; the
+  // caller inspects Location before any follow-up.
+  const manual = opts.redirectManual || Boolean(opts.bearer) || Boolean(cookie);
 
   const t0 = Date.now();
   const res = await fetch(url, {
     method: opts.method ?? "GET",
     headers,
     body: opts.body,
-    redirect: opts.redirectManual ? "manual" : "follow",
+    redirect: manual ? "manual" : "follow",
   });
   const ms = Date.now() - t0;
 
-  opts.jar?.capture(res);
+  opts.jar?.capture(res, origin);
   const text = await res.text();
   let body: unknown = text;
   try {
@@ -231,21 +274,22 @@ export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<Fet
 // Signature and challenge text are secrets — returned to the caller, never
 // recorded into the transcript (mask would catch them, but we don't even try).
 
-export function loadWallet(): { address: `0x${string}`; key: Hex } {
+// Audit M-3: return the account object, not the raw key — the hex stays in a
+// single stack frame here instead of threading through every caller.
+export function loadWallet(): { address: `0x${string}`; account: LocalAccount } {
   const key = process.env.GEC_INTEROP_PRIVATE_KEY;
   const address = process.env.GEC_INTEROP_ADDRESS;
   if (!key || !key.startsWith("0x")) {
     throw new Error("GEC_INTEROP_PRIVATE_KEY missing/invalid in env");
   }
-  const derived = privateKeyToAccount(key as Hex).address;
-  if (address && derived.toLowerCase() !== address.toLowerCase()) {
-    throw new Error(`GEC_INTEROP_ADDRESS mismatch: env=${address} derived=${derived}`);
+  const account = privateKeyToAccount(key as Hex);
+  if (address && account.address.toLowerCase() !== address.toLowerCase()) {
+    throw new Error(`GEC_INTEROP_ADDRESS mismatch: env=${address} derived=${account.address}`);
   }
-  return { address: derived, key: key as Hex };
+  return { address: account.address, account };
 }
 
-export async function signChallenge(message: string, key: Hex): Promise<Hex> {
-  const account = privateKeyToAccount(key);
+export async function signChallenge(message: string, account: LocalAccount): Promise<Hex> {
   return account.signMessage({ message });
 }
 
@@ -258,6 +302,10 @@ export interface McpCallResult {
   error?: unknown;
 }
 
+// Audit M-6: incrementing JSON-RPC id — responses can be correlated to their
+// requests inside a session; a constant id:1 breaks that pairing.
+let mcpRequestId = 0;
+
 export async function mcpCall(
   endpoint: string,
   method: string,
@@ -269,7 +317,7 @@ export async function mcpCall(
     jar: opts.jar,
     bearer: opts.bearer,
     headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: ++mcpRequestId, method, params }),
   });
   const b = r.body as { result?: unknown; error?: unknown };
   return { status: r.status, ms: r.ms, result: b?.result, error: b?.error };
