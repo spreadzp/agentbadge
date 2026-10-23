@@ -386,7 +386,7 @@ function stepFail(step: string, what: string): never {
   throw new Error(`[kill-gate] ${step}: ${what}`);
 }
 
-async function runRehearsal(t: Transcript): Promise<void> {
+async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
   const jar = createCookieJar();
   const { address, account } = loadWallet();
   const { verifier, challenge } = pkce();
@@ -509,6 +509,12 @@ async function runRehearsal(t: Transcript): Promise<void> {
   if (!sessionId) stepFail("mcp-initialize", "no mcp-session-id in initialize response headers");
   await mcpCall(GEC_ENDPOINTS.resource, "notifications/initialized", {}, { bearer, jar, sessionId });
 
+  return { bearer, jar, sessionId };
+}
+
+async function runRehearsal(t: Transcript): Promise<void> {
+  const { bearer, jar, sessionId } = await authenticateUserMcp(t);
+
   // 10. tools/list — gec_bid_submit schema is 205-6 input, persisted in evidence (not secret)
   const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
   if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
@@ -560,6 +566,43 @@ async function runRehearsal(t: Transcript): Promise<void> {
   console.log(`[gec-interop] rehearsal complete — gec_open_demands returned ${openCount ?? "?"} demands, no bid submitted`);
 }
 
+// ─── SLICE-205-6: live bid — same OAuth chain, terminal write gec_bid_submit ──
+// Amount = max_budget_minor from the demand projection (5,000,000 microUSDC).
+// proposal/capability_refs describe the evidence package we deliver.
+async function runBid(t: Transcript): Promise<void> {
+  const { bearer, jar, sessionId } = await authenticateUserMcp(t);
+
+  const bidArgs = {
+    demand_id: GEC_TARGET_DEMAND,
+    idempotency_key: `agentbadge-205-bid-aefcd6-${crypto.randomUUID().slice(0, 8)}`,
+    amount_minor: GEC_BID_AMOUNT_MINOR,
+    expected_completion: "2026-10-26T23:00:00Z", // on-or-before demand deadline
+    capability_refs: [
+      "mcp_interoperability", "oauth_2_1", "wallet_authentication",
+      "protocol_tracing", "evidence_verification",
+    ],
+    proposal:
+      "Independent external provider (AgentBadge, agentbadge.xyz) delivering " +
+      "bounded redacted protocol evidence: full CIMD/OAuth2.1-PKCE cycle, " +
+      "EIP-191 wallet verification, authenticated User MCP session, plus a " +
+      "concise interoperability + friction report. Evidence: JSON transcript " +
+      "of every step (no secrets) + screenshots. Burner wallet 0x3bF7...Fb89f " +
+      "is independently controlled and unaffiliated with SaSame/Owner/Pancho.",
+  };
+
+  const bid = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
+    { name: "gec_bid_submit", arguments: bidArgs }, { bearer, jar, sessionId });
+  const isErr = (bid.result as { isError?: boolean })?.isError;
+  t.record({ step: "gec_bid_submit", method: "POST", path: "/mcp",
+    status: bid.status, ms: bid.ms,
+    note: `demand=aefcd6… amount=${GEC_BID_AMOUNT_MINOR} idem=${bidArgs.idempotency_key}`,
+    responseShape: responseShapeOf(bid.result ?? bid.error) });
+  if (bid.error || bid.status !== 200 || isErr) {
+    stepFail("gec_bid_submit", JSON.stringify(bid.error ?? bid.result));
+  }
+  console.log("[gec-interop] bid submitted — 5,000,000 microUSDC on demand aefcd6…");
+}
+
 async function main(): Promise<void> {
   const phase = parsePhase(process.argv.slice(2));
 
@@ -580,8 +623,7 @@ async function main(): Promise<void> {
     if (phase === "rehearsal") {
       await runRehearsal(t);
     } else {
-      // SLICE-205-6 gate: bid phase stays parked until rehearsal evidence exists.
-      console.log("[gec-interop] STOP — bid phase gated to SLICE-205-6. No network calls made.");
+      await runBid(t);
     }
   } finally {
     const out = outPath(process.argv.slice(2));
