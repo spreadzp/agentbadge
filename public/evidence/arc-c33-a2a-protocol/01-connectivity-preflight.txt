@@ -1,0 +1,11 @@
+=== A2A connectivity preflight ===
+RPC:      https://rpc.blockdaemon.testnet.arc.io
+Explorer: https://explorer.testnet.arc.io
+Server:   http://localhost:4021
+
+PASS  arc rpc eth_chainId  [https://rpc.blockdaemon.testnet.arc.io -> 0x4cef52]
+PASS  arc rpc eth_blockNumber  [-> 0x417c7ad]
+PASS  arc explorer  [https://explorer.testnet.arc.io -> 200]
+PASS  server /health  [http://localhost:4021/health -> 200 healthy]
+
+=== RESULT: 4 PASS, 0 FAIL ===

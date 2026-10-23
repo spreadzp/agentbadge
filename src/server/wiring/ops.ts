@@ -47,6 +47,12 @@ export function wireStaticOps(app: Hono): void {
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     return next();
   }, serveStatic({ root: "./public" }));
+  // Article evidence (run transcripts, test/source snapshots) — not immutable,
+  // evidence files may be corrected after publication.
+  app.use("/evidence/*", (c, next) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return next();
+  }, serveStatic({ root: "./public" }));
 }
 
 // OpenAPI spec + Swagger UI — openAPIRouteHandler(app) introspects the app at

@@ -1,0 +1,50 @@
+{
+  "messages": [
+    {
+      "id": "60a07991-6bd9-496e-8ec1-53da20960f95",
+      "taskId": "a5ea133e-e6f3-4411-b0cb-a2bbacc412c5",
+      "role": "ROLE_USER",
+      "partsJson": [
+        {
+          "filename": "",
+          "mediaType": "text/plain"
+        }
+      ],
+      "fromAgentId": "897437",
+      "toAgentId": "897438",
+      "readAt": null,
+      "createdAt": "2026-10-23 09:19:19.671036+00"
+    },
+    {
+      "id": "f7925129-370f-4f1f-9f1e-7f5b2601cefd",
+      "taskId": "8a439d2e-5ccb-4b44-8f18-41e058809b73",
+      "role": "ROLE_USER",
+      "partsJson": [
+        {
+          "filename": "",
+          "mediaType": "text/plain"
+        }
+      ],
+      "fromAgentId": "897437",
+      "toAgentId": "897438",
+      "readAt": 1792746844337,
+      "createdAt": "2026-10-23 09:14:01.608559+00"
+    },
+    {
+      "id": "4f5ab3e0-5c19-4c63-9bda-df7d36432da6",
+      "taskId": "cee9cfe6-465b-4c46-8124-9d9490408132",
+      "role": "ROLE_USER",
+      "partsJson": [
+        {
+          "filename": "",
+          "mediaType": "text/plain"
+        }
+      ],
+      "fromAgentId": "897437",
+      "toAgentId": "897438",
+      "readAt": 1792746635906,
+      "createdAt": "2026-10-23 09:10:33.267583+00"
+    }
+  ],
+  "nextPageToken": ""
+}

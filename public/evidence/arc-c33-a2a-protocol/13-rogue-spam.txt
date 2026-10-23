@@ -1,0 +1,2 @@
+#1 → 429 (Retry-After: 60s)
+rate limit hit — anon bucket rejected further spam.

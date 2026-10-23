@@ -1,0 +1,35 @@
+{
+  "messages": [
+    {
+      "id": "9a2ad3b9-5855-43aa-a162-f245af5eb4fb",
+      "taskId": "92a792f9-9526-4219-8131-b4214ee5afa4",
+      "role": "ROLE_USER",
+      "partsJson": [
+        {
+          "filename": "",
+          "mediaType": "text/plain"
+        }
+      ],
+      "fromAgentId": "897438",
+      "toAgentId": "897437",
+      "readAt": null,
+      "createdAt": "2026-10-23 09:19:34.286346+00"
+    },
+    {
+      "id": "229ae7c8-b66f-4882-a096-7b941db187e7",
+      "taskId": "d39847cc-210d-4742-a4cc-800df4f21238",
+      "role": "ROLE_USER",
+      "partsJson": [
+        {
+          "filename": "",
+          "mediaType": "text/plain"
+        }
+      ],
+      "fromAgentId": "897438",
+      "toAgentId": "897437",
+      "readAt": null,
+      "createdAt": "2026-10-23 09:17:40.175226+00"
+    }
+  ],
+  "nextPageToken": ""
+}

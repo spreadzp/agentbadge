@@ -1,0 +1,3 @@
+GET /tasks/a5ea133e-e6f3-4411-b0cb-a2bbacc412c5 (unsigned) → 404
+{"error":{"code":404,"message":"task not found"}}
+OK — foreign task invisible as 404 (no enumeration oracle)

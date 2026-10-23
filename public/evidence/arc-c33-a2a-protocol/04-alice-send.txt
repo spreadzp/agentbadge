@@ -1,0 +1,39 @@
+{
+  "id": "a5ea133e-e6f3-4411-b0cb-a2bbacc412c5",
+  "contextId": "eaccf9ea-c473-4960-ad01-a1da09987168",
+  "status": {
+    "state": "TASK_STATE_COMPLETED",
+    "timestamp": "2026-10-23T09:19:19.595Z"
+  },
+  "artifacts": [
+    {
+      "artifactId": "de2cd3c8-a2b4-42ef-814e-4c50b33bf9bc",
+      "name": "agent-info",
+      "description": "agent capabilities reply",
+      "parts": [
+        {
+          "text": "AgentBadge A2A agent — supported skill: `agent-scan`. Send a message containing a domain (e.g. 'scan example.com') to trigger an agent-readiness scan. Docs: https://agentbadge.xyz",
+          "metadata": {}
+        }
+      ],
+      "metadata": {}
+    }
+  ],
+  "history": [
+    {
+      "messageId": "harness-1792747158683-m8cc15",
+      "contextId": "eaccf9ea-c473-4960-ad01-a1da09987168",
+      "taskId": "a5ea133e-e6f3-4411-b0cb-a2bbacc412c5",
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "mediaType": "text/plain"
+        }
+      ],
+      "metadata": {
+        "toAgentId": "897438"
+      }
+    }
+  ],
+  "metadata": {}
+}

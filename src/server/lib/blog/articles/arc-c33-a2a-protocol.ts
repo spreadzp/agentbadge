@@ -34,7 +34,7 @@ export const article: BlogArticle = {
     {
       type: "view-demo",
       label: "A2A agent card",
-      url: "https://agentbadge.xyz/a2a/.well-known/agent-card.json",
+      url: "https://agentbadge.xyz/.well-known/agent-card.json",
     },
     {
       type: "view-demo",
@@ -70,7 +70,7 @@ export const article: BlogArticle = {
       text: "A foreign @a2a-js/sdk client completed the full A2A v1.0 flow against /a2a: agent card, message:send, TASK_STATE_COMPLETED with artifact, and tasks/{id} polling.",
       status: "VERIFIED",
       evidence: [
-        { type: "test", url: "hackathon/server/tests/e2e/a2a-interop.test.ts" },
+        { type: "test", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/a2a-interop.test.ts.txt" },
       ],
     },
     {
@@ -78,8 +78,8 @@ export const article: BlogArticle = {
       text: "Two ERC-8004 passport agents (897437, 897438 on Arc testnet) held an async conversation through the /ext/* mailbox: send, unread, mark-read, reply on the shared contextId.",
       status: "VERIFIED",
       evidence: [
-        { type: "demo", url: "docs/ARTICLES/content-plan/round-2/articles/arc-c33-a2a-protocol/assets/screens/06-bob-inbox.txt" },
-        { type: "demo", url: "docs/ARTICLES/content-plan/round-2/articles/arc-c33-a2a-protocol/assets/screens/10-alice-inbox.txt" },
+        { type: "demo", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/06-bob-inbox.txt" },
+        { type: "demo", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/10-alice-inbox.txt" },
       ],
     },
     {
@@ -87,10 +87,10 @@ export const article: BlogArticle = {
       text: "Rate-limiting and access boundaries held: unsigned spam hit 429+Retry-After on the first send, unsigned /ext/inbox returned 403, and a foreign taskId returned 404. Two probes were inconclusive — the forged-passport run was itself rate-limited (429), and a replayed nonce returned HTTP 200 twice, a bug under investigation rather than a verified rejection.",
       status: "EXPERIMENTAL",
       evidence: [
-        { type: "demo", url: "docs/ARTICLES/content-plan/round-2/articles/arc-c33-a2a-protocol/assets/screens/13-rogue-spam.txt" },
-        { type: "demo", url: "docs/ARTICLES/content-plan/round-2/articles/arc-c33-a2a-protocol/assets/screens/16-rogue-ext-probe.txt" },
-        { type: "demo", url: "docs/ARTICLES/content-plan/round-2/articles/arc-c33-a2a-protocol/assets/screens/17-rogue-tenant-probe.txt" },
-        { type: "demo", url: "docs/ARTICLES/content-plan/round-2/articles/arc-c33-a2a-protocol/assets/screens/15-alice-replay.txt" },
+        { type: "demo", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/13-rogue-spam.txt" },
+        { type: "demo", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/16-rogue-ext-probe.txt" },
+        { type: "demo", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/17-rogue-tenant-probe.txt" },
+        { type: "demo", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/15-alice-replay.txt" },
       ],
     },
     {
@@ -98,13 +98,13 @@ export const article: BlogArticle = {
       text: "The anchor pipeline is implemented: tasks queue in Postgres and a Merkle batch emits one emitTopic on AgentEventLog per 20 tasks or 10 minutes. In this run the emit failed with a stale-nonce error and no transaction confirmed — the design is code-verified, the live on-chain anchor is not.",
       status: "EXPERIMENTAL",
       evidence: [
-        { type: "github", url: "hackathon/server/src/server/routes/a2a-spec.ts" },
+        { type: "demo", url: "https://agentbadge.xyz/evidence/arc-c33-a2a-protocol/a2a-spec.ts.txt" },
       ],
     },
   ],
   economicContext: {
     endpoints: {
-      agentCard: "https://agentbadge.xyz/a2a/.well-known/agent-card.json",
+      agentCard: "https://agentbadge.xyz/.well-known/agent-card.json",
       challenge: "https://agentbadge.xyz/a2a/challenge",
       messageSend: "https://agentbadge.xyz/a2a/message:send",
       mailbox: "https://agentbadge.xyz/a2a/ext/inbox",

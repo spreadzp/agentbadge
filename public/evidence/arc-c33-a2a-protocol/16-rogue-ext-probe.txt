@@ -1,0 +1,8 @@
+GET /ext/inbox (unsigned) → 403
+{
+  "error": {
+    "code": 403,
+    "message": "passport tier required — mint one at https://agentbadge.xyz/passport"
+  }
+}
+OK — passport tier required, anonymous rejected
