@@ -9,6 +9,12 @@ primary_region = "ams"
   AGENT_WALLET_CHAIN = "ARC"
   AGENT_WALLET_LEDGER_STORE = "db"
 
+# Migrations run on the temp release machine at deploy time — the dev net
+# cannot reach db.prisma.io:5432, but Fly's network can. Assets are vendored
+# by deploy.sh into .docker-packages/database (migrations + contract + config).
+[deploy]
+  release_command = "sh -c 'cd /app/.docker-packages/database && bunx prisma@8.0.0-rc.15 db migrate --advance-ref db'"
+
 [http_service]
   internal_port = 4021
   force_https = true

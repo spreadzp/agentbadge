@@ -45,6 +45,13 @@ x-rate-limit:
     - X-RateLimit-Limit
     - X-RateLimit-Remaining
     - X-RateLimit-Reset
+  mcpAbuseGuardNote: "SLICE-200-08: /mcp + /mcp/:ns (incl. JSON-RPC roots) —
+    per-IP base bucket anon=60/min; Bearer agb_ keyed lane agent:<id>=120/min;
+    heavy-ops list gets a dedicated 10/min bucket; MCP_HEAVY_X402_PRICE+PAYTO
+    arms an x402 gate on heavy tools."
+  mcpAbuseGuardEnv: MCP_ABUSE_ENABLED, MCP_ABUSE_ANON_RPM, MCP_ABUSE_KEYED_RPM,
+    MCP_ABUSE_HEAVY_RPM, MCP_ABUSE_HEAVY_OPS, MCP_HEAVY_X402_PRICE,
+    MCP_HEAVY_X402_PAYTO
 x-payer-binding:
   spec: /payer-binding.md
   challenge: agentbadge-pay:v1
@@ -1747,6 +1754,29 @@ paths:
           description: RSS XML feed
           content:
             application/rss+xml: {}
+  /api/v1/risk/{address}:
+    get:
+      operationId: getApiV1RiskByAddress
+      tags:
+        - Forensics
+      summary: Pre-payment risk check for a seller address
+      description: "Payment-graph forensics: verdict (pass|caution|block|no_data),
+        organic revenue share, human-readable reasons, index freshness
+        (indexedToBlock + lagBlocks). no_data is NOT pass — treat as unrated.
+        Free in v1; 60 req/min per IP."
+      responses:
+        "200":
+          description: Risk verdict (check `verdict` field)
+        "400":
+          description: Invalid address format
+        "429":
+          description: Rate limited
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: address
+          required: true
   /what-is-agent-readiness:
     get:
       operationId: getWhatIsAgentReadiness
@@ -2297,6 +2327,180 @@ paths:
             type: string
           in: path
           name: domain
+          required: true
+  /a2a/challenge:
+    get:
+      operationId: getA2aChallenge
+      tags:
+        - A2A v1.0
+      summary: Issue one-shot A2A auth nonce
+      description: Returns a nonce + unix timestamp. The client builds the canonical
+        `agentbadge-action:v1` challenge itself
+        (agentId/method/path/body_sha256/timestamp/nonce), signs it EIP-191, and
+        sends the X-Agent-Id/X-Wallet/X-Sig/X-Timestamp/X-Nonce headers.
+      responses:
+        "200":
+          description: Nonce + timestamp issued
+  /a2a:
+    post:
+      operationId: postA2a
+      tags:
+        - A2A v1.0
+      summary: A2A JSON-RPC 2.0 endpoint
+      description: "Spec methods: SendMessage, GetTask, ListTasks, CancelTask, task
+        resubscribe (SSE), push-notification config. `A2A-Version: 1.0` header
+        on responses."
+      responses:
+        "200":
+          description: JSON-RPC result
+  /a2a/message:send:
+    post:
+      operationId: postA2aMessageSend
+      tags:
+        - A2A v1.0
+      summary: Send message (REST binding)
+      description: Equivalent of JSON-RPC SendMessage. Signed requests (EIP-191
+        headers + ERC-8004 owner match) run at passport tier with durable
+        Postgres tasks; unsigned/invalid → anonymous tier, Redis-only TTL tasks.
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "404":
+          description: Task not found or not accessible to caller
+        "429":
+          description: Rate limit exceeded (tier-scoped)
+  /a2a/tasks:
+    get:
+      operationId: getA2aTasks
+      tags:
+        - A2A v1.0
+      summary: List tasks
+      description: "Caller-scoped list: ?contextId&status&pageSize&pageToken filters.
+        Passport and anonymous tiers see only their own scope."
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "404":
+          description: Task not found or not accessible to caller
+        "429":
+          description: Rate limit exceeded (tier-scoped)
+  /a2a/tasks/{id}:
+    get:
+      operationId: getA2aTasksById
+      tags:
+        - A2A v1.0
+      summary: Get task
+      description: Single task by id within the caller's scope.
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "404":
+          description: Task not found or not accessible to caller
+        "429":
+          description: Rate limit exceeded (tier-scoped)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+    post:
+      operationId: postA2aTasksById
+      tags:
+        - A2A v1.0
+      summary: "Task verb: :cancel / :subscribe"
+      description: POST /a2a/tasks/{id}:cancel → canceled task. POST
+        /a2a/tasks/{id}:subscribe → SSE stream of task events.
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "404":
+          description: Task not found or not accessible to caller
+        "429":
+          description: Rate limit exceeded (tier-scoped)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /a2a/ext/inbox:
+    get:
+      operationId: getA2aExtInbox
+      tags:
+        - A2A v1.0
+      summary: "Ext mailbox: inbox"
+      description: "AgentBadge extension — Messages TO the signed agentId. Filters:
+        ?unread=1&since=<ISO>&from=<agentId>&pageSize&pageToken. Requires
+        EIP-191 signed headers (passport tier, own ext rate bucket)."
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "403":
+          description: Anonymous tier — passport required
+        "404":
+          description: Not found or not addressed to caller
+        "429":
+          description: Rate limit exceeded
+  /a2a/ext/outbox:
+    get:
+      operationId: getA2aExtOutbox
+      tags:
+        - A2A v1.0
+      summary: "Ext mailbox: outbox"
+      description: AgentBadge extension — Messages FROM the signed agentId (same
+        filters as inbox). Requires EIP-191 signed headers (passport tier, own
+        ext rate bucket).
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "403":
+          description: Anonymous tier — passport required
+        "404":
+          description: Not found or not addressed to caller
+        "429":
+          description: Rate limit exceeded
+  /a2a/ext/unread:
+    get:
+      operationId: getA2aExtUnread
+      tags:
+        - A2A v1.0
+      summary: "Ext mailbox: unread"
+      description: AgentBadge extension — Unread messages TO the signed agentId —
+        {count, messages[]}. Requires EIP-191 signed headers (passport tier, own
+        ext rate bucket).
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "403":
+          description: Anonymous tier — passport required
+        "404":
+          description: Not found or not addressed to caller
+        "429":
+          description: Rate limit exceeded
+  /a2a/ext/messages/{id}:
+    post:
+      operationId: postA2aExtMessagesById
+      tags:
+        - A2A v1.0
+      summary: "Ext mailbox: mark-read"
+      description: AgentBadge extension — POST /a2a/ext/messages/{id}:read — sets
+        readAt; foreign/unknown ids → 404. Requires EIP-191 signed headers
+        (passport tier, own ext rate bucket).
+      responses:
+        "200":
+          description: Success — `application/a2a+json`
+        "403":
+          description: Anonymous tier — passport required
+        "404":
+          description: Not found or not addressed to caller
+        "429":
+          description: Rate limit exceeded
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
           required: true
   /a2a/send:
     post:
@@ -4460,6 +4664,18 @@ paths:
           description: Request accepted
         "400":
           description: Validation error
+        "429":
+          description: Rate limit exceeded
+    get:
+      operationId: getApiWorkRequests
+      tags:
+        - Work Requests
+      summary: List work requests
+      description: Paginated list of submitted work requests (public projection — no
+        contact details).
+      responses:
+        "200":
+          description: Paginated list
         "429":
           description: Rate limit exceeded
   /api/work-requests/{id}:

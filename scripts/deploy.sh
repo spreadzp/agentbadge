@@ -44,6 +44,28 @@ for pkg in a2a payment-forensics; do
   fi
 done
 
+# DB migrations for fly release_command (TCP 5432 is firewalled on dev net;
+# the release machine reaches db.prisma.io). Prisma CLI is fetched by bunx.
+if [ -d "../../packages/database" ]; then
+  mkdir -p "$VENDOR_DIR/database/src/prisma"
+  # prisma db migrate needs the full emit output (contract.prisma + emitted
+  # contract.json/contract.d.ts/db.ts) — vendor the whole dir, file-by-file
+  # copies kept hitting missing-artifact errors on the release machine.
+  rsync -a "../../packages/database/src/prisma/" "$VENDOR_DIR/database/src/prisma/"
+  rsync -a "../../packages/database/package.json" "$VENDOR_DIR/database/"
+  cat > "$VENDOR_DIR/database/prisma.config.ts" <<'EOF'
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    db: { connection: process.env['DIRECT_URL'] ?? process.env['DATABASE_URL']! },
+  }),
+});
+EOF
+fi
+
 # ── Deploy ──────────────────────────────────────────────────────────
 
 exec fly deploy \

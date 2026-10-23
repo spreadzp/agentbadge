@@ -105,6 +105,14 @@ export function getA2ASpecApp(): A2AHonoApp {
       mailboxStore:
         passportStore instanceof PostgresTaskStore ? passportStore : undefined,
       extLimit: envInt("A2A_EXT_LIMIT", 120),
+      // SLICE-203-9: dev-only debug view — GET /a2a/ext/debug/tasks.
+      // Gated on A2A_DEBUG_VIEW=1 AND Postgres store; no auth, so this
+      // must stay unset in prod deploys.
+      debugTasks:
+        process.env.A2A_DEBUG_VIEW === "1" &&
+          passportStore instanceof PostgresTaskStore
+          ? () => passportStore.debugList()
+          : undefined,
     });
 
     // SLICE-203-6: Arc anchor — Merkle-batch emitTopic("a2a", manifest).
@@ -114,17 +122,17 @@ export function getA2ASpecApp(): A2AHonoApp {
     anchorWriter =
       db && process.env.A2A_ANCHOR_ENABLED === "true"
         ? new ArcAnchorWriter({
-            store: new PostgresAnchorStore(db),
-            emit: async (topic, manifestJson) => {
-              const w = getArcEventLogWriter();
-              if (!w) throw new Error("no Arc writer key configured");
-              return w.writer(manifestJson, topic);
-            },
-            enabled: true,
-            batchSize: envInt("A2A_ANCHOR_BATCH_SIZE", 20),
-            maxAgeMs: envInt("A2A_ANCHOR_MAX_AGE", 600) * 1000,
-            warn: (msg, meta) => logger.warn(msg, meta),
-          })
+          store: new PostgresAnchorStore(db),
+          emit: async (topic, manifestJson) => {
+            const w = getArcEventLogWriter();
+            if (!w) throw new Error("no Arc writer key configured");
+            return w.writer(manifestJson, topic);
+          },
+          enabled: true,
+          batchSize: envInt("A2A_ANCHOR_BATCH_SIZE", 20),
+          maxAgeMs: envInt("A2A_ANCHOR_MAX_AGE", 600) * 1000,
+          warn: (msg, meta) => logger.warn(msg, meta),
+        })
         : null;
     if (anchorWriter) {
       // Age-path flush trigger (N-path also fired post-request below).
@@ -219,8 +227,8 @@ a2aSpecRoutes.post(
   restDoc(
     "Send message (REST binding)",
     "Equivalent of JSON-RPC SendMessage. Signed requests (EIP-191 headers + " +
-      "ERC-8004 owner match) run at passport tier with durable Postgres " +
-      "tasks; unsigned/invalid → anonymous tier, Redis-only TTL tasks.",
+    "ERC-8004 owner match) run at passport tier with durable Postgres " +
+    "tasks; unsigned/invalid → anonymous tier, Redis-only TTL tasks.",
   ),
   forward,
 );
@@ -230,7 +238,7 @@ a2aSpecRoutes.get(
   restDoc(
     "List tasks",
     "Caller-scoped list: ?contextId&status&pageSize&pageToken filters. " +
-      "Passport and anonymous tiers see only their own scope.",
+    "Passport and anonymous tiers see only their own scope.",
   ),
   forward,
 );
@@ -246,7 +254,7 @@ a2aSpecRoutes.post(
   restDoc(
     "Task verb: :cancel / :subscribe",
     "POST /a2a/tasks/{id}:cancel → canceled task. " +
-      "POST /a2a/tasks/{id}:subscribe → SSE stream of task events.",
+    "POST /a2a/tasks/{id}:subscribe → SSE stream of task events.",
   ),
   forward,
 );
@@ -286,4 +294,13 @@ ext(
   "/ext/messages/:id", "Ext mailbox: mark-read",
   "POST /a2a/ext/messages/{id}:read — sets readAt; foreign/unknown ids → 404.",
   "post",
+);
+
+// SLICE-203-9: dev-only debug view — GET /a2a/ext/debug/tasks.
+// The inner app mounts it only when A2A_DEBUG_VIEW=1 + Postgres store,
+// otherwise the inner router answers 404 — safe to register unconditionally.
+ext(
+  "/ext/debug/tasks", "Ext debug: flat task list (dev-only)",
+  "A2A_DEBUG_VIEW=1 + Postgres only — flat cross-owner task listing.",
+  "get",
 );

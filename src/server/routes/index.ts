@@ -26,6 +26,7 @@ import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
 import { feedRoutes } from "./feed";
 import { mcpRoutes } from "./mcp";
+import { riskRoutes } from "./risk-api";
 
 import { landingRoutes } from "./landing";
 import { authorityRoutes } from "./authority";
@@ -116,6 +117,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", agentCardRoutes);
   app.route("/", feedRoutes);
   app.route("/", mcpRoutes);
+  app.route("/", riskRoutes);
 }
 
 // HTML page routes — mounted after wireMcpNamespaceRoutes.

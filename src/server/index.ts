@@ -19,6 +19,10 @@ import { wireAgentRegistration } from "./wiring/agent-registration";
 import { wireWitness } from "./wiring/witness";
 import { wireStaticOps, wireOpenApi } from "./wiring/ops";
 import { startBackgroundJobs, wireErrorHandler } from "./wiring/background";
+import {
+  startForensicsIndexer,
+  stopForensicsIndexer,
+} from "./lib/forensics/indexer";
 import { startFxDeltaEngine } from "./lib/fx-delta/boot";
 import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { agentKeyAuth } from "./middleware/agent-key-auth";
@@ -250,6 +254,10 @@ const port = Number(process.env.PORT ?? 4021);
 // EPIC-140: background cache rebuilds + escrow reconciler extracted to wiring/background.ts
 startBackgroundJobs();
 
+// EPIC-204: payment-forensics indexer — env-gated (FORENSICS_*), no-op
+// with a warn when DATABASE_ENABLED=off.
+startForensicsIndexer();
+
 // OpenAPI spec + Swagger UI — MUST run after all route mounts
 // (openAPIRouteHandler introspects app at call time). EPIC-140: wiring/ops.ts
 wireOpenApi(app);
@@ -285,6 +293,7 @@ if (import.meta.main) {
     const shutdown = async (signal: string) => {
       logger.info("SERVER shutting down", { signal });
       try {
+        stopForensicsIndexer();
         await database.close();
       } catch (e) {
         logger.error("database: close failed", { error: e });

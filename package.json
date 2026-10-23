@@ -53,7 +53,7 @@
     "@agentbadge/bstock-tracker": "0.1.7",
     "@agentbadge/cache": "^0.2.0",
     "@agentbadge/circle-payments": "0.1.18",
-    "@agentbadge/database": "0.5.4",
+    "@agentbadge/database": "0.6.0",
     "@agentbadge/evm-core": "^0.1.2",
     "@agentbadge/hedera-core": "^0.2.1",
     "@agentbadge/keeperhub": "^0.1.1",
@@ -84,7 +84,8 @@
     "stripe": "^22.5.0",
     "viem": "^2.55.8",
     "yaml": "^2.9.0",
-    "zod": "^4.0.0"
+    "zod": "^4.0.0",
+    "@agentbadge/payment-forensics": "file:../../packages/payment-forensics"
   },
   "optionalDependencies": {
     "@x402/hedera": "^2.25.0",
