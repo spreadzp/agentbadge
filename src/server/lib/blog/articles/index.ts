@@ -34,6 +34,8 @@ import { article as arcC28ContractHardening } from "./arc-c28-contract-hardening
 import { article as arcC29TaskBoard } from "./arc-c29-task-board";
 import { article as arcC30AgentEconomy } from "./arc-c30-agent-economy";
 import { article as arcC31AgentAllowance } from "./arc-c31-agent-allowance";
+import { article as arcC33A2aProtocol } from "./arc-c33-a2a-protocol";
+import { article as arcC32PaymentForensics } from "./arc-c32-payment-forensics";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -70,5 +72,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC28ContractHardening,
   arcC30AgentEconomy,
   arcC31AgentAllowance,
+  arcC33A2aProtocol,
   arcC29TaskBoard,
+  arcC32PaymentForensics,
 ];
