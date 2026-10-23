@@ -52,6 +52,10 @@ if [ -d "../../packages/database" ]; then
   # contract.json/contract.d.ts/db.ts) — vendor the whole dir, file-by-file
   # copies kept hitting missing-artifact errors on the release machine.
   rsync -a "../../packages/database/src/prisma/" "$VENDOR_DIR/database/src/prisma/"
+  # Migration graph lives in migrations/: app/<name>/ edges + refs/db.json
+  # pointers + snapshots/<hash>/ contract snapshots. Without it prisma sees
+  # an empty graph and fails with MIGRATION.MARKER_MISMATCH.
+  rsync -a --delete "../../packages/database/migrations/" "$VENDOR_DIR/database/migrations/"
   rsync -a "../../packages/database/package.json" "$VENDOR_DIR/database/"
   cat > "$VENDOR_DIR/database/prisma.config.ts" <<'EOF'
 import { definePrismaConfig } from '@prisma/cli-engine';
