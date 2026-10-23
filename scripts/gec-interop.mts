@@ -234,6 +234,8 @@ export interface FetchResult {
   status: number;
   ms: number;
   location: string | null;
+  /** MCP Streamable HTTP session id from initialize — echoed back on later calls. */
+  sessionId: string | null;
   body: unknown; // caller decides what survives via responseShapeOf
 }
 
@@ -267,7 +269,8 @@ export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<Fet
   } catch {
     /* non-JSON body (HTML/empty) — keep raw text, truncated on record */
   }
-  return { status: res.status, ms, location: res.headers.get("location"), body };
+  return { status: res.status, ms, location: res.headers.get("location"),
+    sessionId: res.headers.get("mcp-session-id"), body };
 }
 
 // ─── EIP-191 personal_sign (machine_entry step 4) ────────────────────────────
@@ -310,26 +313,45 @@ export async function mcpCall(
   endpoint: string,
   method: string,
   params: Record<string, unknown>,
-  opts: { bearer?: string; jar?: CookieJar } = {},
-): Promise<McpCallResult> {
+  opts: { bearer?: string; jar?: CookieJar; sessionId?: string } = {},
+): Promise<McpCallResult & { sessionId?: string | null }> {
+  const headers: Record<string, string> = {
+    "content-type": "application/json", accept: "application/json, text/event-stream",
+  };
+  if (opts.sessionId) headers["mcp-session-id"] = opts.sessionId;
   const r = await timedFetch(endpoint, {
     method: "POST",
     jar: opts.jar,
     bearer: opts.bearer,
-    headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", id: ++mcpRequestId, method, params }),
   });
-  const b = r.body as { result?: unknown; error?: unknown };
-  return { status: r.status, ms: r.ms, result: b?.result, error: b?.error };
+  // SSE framing: data: {...} lines — unwrap the last JSON payload if present
+  let b = r.body as { result?: unknown; error?: unknown };
+  if (typeof r.body === "string" && r.body.startsWith("event:") || (typeof r.body === "string" && r.body.includes("data:"))) {
+    const dataLines = (r.body as string).split("\n")
+      .filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim());
+    for (let i = dataLines.length - 1; i >= 0; i--) {
+      try { b = JSON.parse(dataLines[i]); break; } catch { /* keep looking */ }
+    }
+  }
+  return { status: r.status, ms: r.ms, result: b?.result, error: b?.error, sessionId: r.sessionId };
 }
 
 // ─── Phase plans (live execution: 205-5 rehearsal / 205-6 bid) ───────────────
 
 export const REHEARSAL_STEPS = [
   "GET openDemandsApi — projection CURRENT + target demand OPEN",
-  "MCP initialize on publicMcp (keyless)",
-  "MCP tools/list on publicMcp",
-  "MCP tools/call gec_open_demands on publicMcp",
+  "GET authorize (PKCE S256, CIMD client_id, resource=User MCP) → 302",
+  "Parse mcp_state/mcp_base from consent Location",
+  "POST challenge {wallet_address, chain_id:0x2105} Origin=sasame.online",
+  "EIP-191 personal_sign challenge.message (local, secret — not logged)",
+  "POST verify {challenge fields + signature} (cookie jar)",
+  "POST consent {mcp_state,mcp_base} → follow callback → code/state",
+  "POST token exchange (authorization_code + code_verifier, form-encoded)",
+  "MCP initialize on User MCP (bearer) → mcp-session-id",
+  "MCP tools/list — capture gec_bid_submit schema",
+  "MCP initialize on publicMcp (keyless) → tools/call gec_open_demands — read-only finish",
 ] as const;
 
 export const BID_STEPS = [
@@ -347,7 +369,195 @@ function parsePhase(argv: string[]): "rehearsal" | "bid" {
   const arg = argv.find((a) => a.startsWith("--phase="));
   const phase = arg?.split("=", 2)[1];
   if (phase === "rehearsal" || phase === "bid") return phase;
-  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid");
+  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid [--out=<transcript.json>]");
+}
+
+function outPath(argv: string[]): string | undefined {
+  return argv.find((a) => a.startsWith("--out="))?.split("=", 2)[1];
+}
+
+// ─── SLICE-205-5: live rehearsal — full OAuth cycle, read-only finish ────────
+// Every step is recorded as {step, method, path, status, ms, responseShape}.
+// path NEVER contains query (code_challenge/state live there). Secrets —
+// signature, bearer, cookies, challenge text — never enter the transcript;
+// the redact() denylist is a second belt, not the first.
+
+function stepFail(step: string, what: string): never {
+  throw new Error(`[kill-gate] ${step}: ${what}`);
+}
+
+async function runRehearsal(t: Transcript): Promise<void> {
+  const jar = createCookieJar();
+  const { address, account } = loadWallet();
+  const { verifier, challenge } = pkce();
+  const state = makeState(verifier);
+
+  // 0. Projection: target demand must still be OPEN
+  const proj = await timedFetch(GEC_ENDPOINTS.openDemandsApi, { jar });
+  t.record({ step: "open-demands-projection", method: "GET", path: "/api/gec/open-demands",
+    status: proj.status, ms: proj.ms, responseShape: responseShapeOf(proj.body) });
+  if (proj.status !== 200) stepFail("projection", `HTTP ${proj.status}`);
+
+  // 1. GET authorize → 302 Location (carries mcp_state/mcp_base → consent)
+  const authUrl = buildAuthorizeUrl({
+    clientId: clientId(), redirectUri: redirectUri(),
+    state, codeChallenge: challenge,
+  });
+  const auth = await timedFetch(authUrl, { jar, redirectManual: true });
+  t.record({ step: "authorize", method: "GET", path: "/authorize",
+    status: auth.status, ms: auth.ms,
+    responseShape: { location: auth.location ? "<redacted>" : null } });
+  if (auth.status !== 302 || !auth.location) stepFail("authorize", `expected 302+Location, got ${auth.status}`);
+
+  // 2. Parse mcp_state/mcp_base from Location
+  const loc = new URL(auth.location!, GEC_ENDPOINTS.origin);
+  const mcpState = loc.searchParams.get("mcp_state");
+  const mcpBase = loc.searchParams.get("mcp_base");
+  if (!mcpState || !mcpBase) stepFail("authorize-location", "no mcp_state/mcp_base in Location");
+
+  // 3. POST challenge {wallet_address, chain_id} — Origin pinned (live-probed:
+  // field is wallet_address, NOT address — wrong key → invalid_wallet_address)
+  const chal = await timedFetch(GEC_ENDPOINTS.challenge, {
+    jar, method: "POST",
+    headers: { "content-type": "application/json", origin: GEC_ENDPOINTS.origin },
+    body: JSON.stringify({ wallet_address: address, chain_id: GEC_ENDPOINTS.chainId }),
+  });
+  t.record({ step: "challenge", method: "POST", path: "/account/market/api/wallet/challenge",
+    status: chal.status, ms: chal.ms, responseShape: responseShapeOf(chal.body) });
+  if (chal.status !== 200 && chal.status !== 201) stepFail("challenge", `HTTP ${chal.status}`);
+  // Their shape: {ok, challenge: {wallet_address, chain_id, purpose, nonce,
+  // issued_at, expires_at, body:{origin,chain_id}, message}} — sign .message
+  const chalBody = chal.body as { ok?: boolean; challenge?: Record<string, unknown> };
+  const chalFields = chalBody.challenge;
+  const message = chalFields?.message as string | undefined;
+  if (!chalFields || !message) stepFail("challenge", "no challenge.message in response");
+
+  // 4. EIP-191 personal_sign — LOCAL, signature never recorded
+  const signature = await signChallenge(message, account);
+
+  // 5. POST verify — returned challenge fields + signature (cookie jar keeps session)
+  const verify = await timedFetch(GEC_ENDPOINTS.verify, {
+    jar, method: "POST",
+    headers: { "content-type": "application/json", origin: GEC_ENDPOINTS.origin },
+    body: JSON.stringify({ ...chalFields, signature }),
+  });
+  t.record({ step: "verify", method: "POST", path: "/account/market/api/wallet/verify",
+    status: verify.status, ms: verify.ms, responseShape: responseShapeOf(verify.body) });
+  if (verify.status !== 200 && verify.status !== 302) stepFail("verify", `HTTP ${verify.status}`);
+
+  // 6. POST participant-consent {mcp_state, mcp_base} → 302 chain → our callback
+  const consent = await timedFetch(GEC_ENDPOINTS.consent, {
+    jar, method: "POST",
+    headers: { "content-type": "application/json", origin: GEC_ENDPOINTS.origin },
+    body: JSON.stringify({ mcp_state: mcpState, mcp_base: mcpBase }),
+    redirectManual: true,
+  });
+  t.record({ step: "participant-consent", method: "POST", path: "/account/mcp/participant-consent",
+    status: consent.status, ms: consent.ms,
+    responseShape: { location: consent.location ? "<redacted>" : null } });
+  if (!consent.location) stepFail("consent", `expected redirect Location, got ${consent.status}`);
+
+  // 7. Follow redirect chain manually until our callback (credentials stay manual)
+  let hop: string | null = consent.location;
+  let code: string | null = null;
+  let retState: string | null = null;
+  for (let i = 0; i < 5 && hop; i++) {
+    const next = new URL(hop, GEC_ENDPOINTS.origin);
+    if (next.origin === new URL(redirectUri()).origin && next.pathname === GEC_CALLBACK_PATH) {
+      code = next.searchParams.get("code");
+      retState = next.searchParams.get("state");
+      break;
+    }
+    const r = await timedFetch(next.toString(), { jar, redirectManual: true });
+    t.record({ step: `consent-redirect-${i + 1}`, method: "GET",
+      path: next.pathname, status: r.status, ms: r.ms,
+      responseShape: { location: r.location ? "<redacted>" : null } });
+    hop = r.location;
+  }
+  if (!code) stepFail("callback", "redirect chain ended without code on our redirect_uri");
+
+  // Audit H-1: state must be the HMAC-bound one we generated for THIS verifier
+  if (!retState || !verifyState(retState, verifier)) stepFail("state-verify", "returned state failed verifier binding");
+
+  // 8. POST token exchange — RFC 6749: form-encoded, not JSON.
+  // bearer comes back, NEVER logged
+  const tok = await timedFetch(GEC_ENDPOINTS.token, {
+    jar, method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code", code,
+      client_id: clientId(), redirect_uri: redirectUri(),
+      code_verifier: verifier, resource: GEC_ENDPOINTS.resource,
+    }).toString(),
+  });
+  t.record({ step: "token-exchange", method: "POST", path: "/token",
+    status: tok.status, ms: tok.ms, responseShape: responseShapeOf(tok.body) });
+  if (tok.status !== 200) stepFail("token", `HTTP ${tok.status}`);
+  const bearer = (tok.body as { access_token?: string }).access_token;
+  if (!bearer) stepFail("token", "no access_token in response");
+
+  // 9. MCP initialize on User MCP (bearer)
+  const init = await mcpCall(GEC_ENDPOINTS.resource, "initialize", {
+    protocolVersion: "2025-03-26", capabilities: {},
+    clientInfo: { name: "agentbadge-gec-interop", version: "0.1.0" },
+  }, { bearer, jar });
+  t.record({ step: "mcp-initialize", method: "POST", path: "/mcp",
+    status: init.status, ms: init.ms, responseShape: responseShapeOf(init.result ?? init.error) });
+  if (init.error || init.status !== 200) stepFail("mcp-initialize", JSON.stringify(init.error ?? init.status));
+  // MCP Streamable HTTP: session id issued on initialize must be echoed on all later calls
+  const sessionId = init.sessionId ?? undefined;
+  if (!sessionId) stepFail("mcp-initialize", "no mcp-session-id in initialize response headers");
+  await mcpCall(GEC_ENDPOINTS.resource, "notifications/initialized", {}, { bearer, jar, sessionId });
+
+  // 10. tools/list — gec_bid_submit schema is 205-6 input, persisted in evidence (not secret)
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
+  const bidTool = toolList.find((x) => x.name === "gec_bid_submit");
+  t.record({ step: "mcp-tools-list", method: "POST", path: "/mcp",
+    status: tools.status, ms: tools.ms,
+    responseShape: {
+      toolNames: toolList.map((x) => x.name),
+      gec_bid_submit_schema: bidTool?.inputSchema ?? null,
+    } });
+  if (!bidTool) stepFail("mcp-tools-list", "gec_bid_submit not advertised by User MCP");
+  console.log(`[gec-interop] gec_bid_submit schema captured (${toolList.length} tools advertised)`);
+
+  // 11. Read-side finish: gec_open_demands lives on keyless publicMcp —
+  // "Public MCP is keyless discovery. Authenticated User MCP owns wallet-bound
+  // participant actions." (their serverInfo.instructions, captured 2026-10-23)
+  const pubInit = await mcpCall(GEC_ENDPOINTS.publicMcp, "initialize", {
+    protocolVersion: "2025-03-26", capabilities: {},
+    clientInfo: { name: "agentbadge-gec-interop", version: "0.1.0" },
+  }, { jar });
+  t.record({ step: "public-mcp-initialize", method: "POST", path: "/public-mcp",
+    status: pubInit.status, ms: pubInit.ms,
+    responseShape: responseShapeOf((pubInit.result as { serverInfo?: unknown })?.serverInfo ?? pubInit.error) });
+  if (pubInit.error || pubInit.status !== 200) stepFail("public-mcp-initialize", JSON.stringify(pubInit.error ?? pubInit.status));
+  const pubSession = pubInit.sessionId ?? undefined;
+  // Their server binds the session via cookies + notifications/initialized;
+  // without it tools/call answers "Tool not found" even though tools/list shows it.
+  await mcpCall(GEC_ENDPOINTS.publicMcp, "notifications/initialized", {}, { jar, sessionId: pubSession });
+
+  const demands = await mcpCall(GEC_ENDPOINTS.publicMcp, "tools/call",
+    { name: "gec_open_demands", arguments: {} }, { jar, sessionId: pubSession });
+  const isErr = (demands.result as { isError?: boolean })?.isError;
+  t.record({ step: "gec_open_demands", method: "POST", path: "/public-mcp",
+    status: demands.status, ms: demands.ms, responseShape: responseShapeOf(demands.result ?? demands.error) });
+  if (demands.error || demands.status !== 200 || isErr) stepFail("gec_open_demands", JSON.stringify(demands.error ?? demands.result));
+
+  // Acceptance: print OPEN demand count — result shape is their JSON payload
+  // (MCP tools/call wraps in content[]; text part carries the JSON).
+  let openCount: number | null = null;
+  const content = (demands.result as { content?: { type: string; text?: string }[] })?.content ?? [];
+  for (const part of content) {
+    if (part.type !== "text" || !part.text) continue;
+    try {
+      const parsed = JSON.parse(part.text) as { demands?: unknown[]; summary?: { demand_count?: number; open_count?: number } };
+      openCount = parsed.summary?.open_count ?? parsed.summary?.demand_count ?? parsed.demands?.length ?? null;
+    } catch { /* keep looking */ }
+  }
+  console.log(`[gec-interop] rehearsal complete — gec_open_demands returned ${openCount ?? "?"} demands, no bid submitted`);
 }
 
 async function main(): Promise<void> {
@@ -365,13 +575,24 @@ async function main(): Promise<void> {
   console.log(`[gec-interop] planned steps:`);
   steps.forEach((s, i) => console.log(`  ${i + 1}. ${s}`));
 
-  // SLICE-205-3 boundary: no live network calls yet. Live execution is
-  // gated to SLICE-205-5 (rehearsal, after /arc-audit) and SLICE-205-6 (bid).
-  console.log(
-    `\n[gec-interop] STOP before first live step — live execution is gated to ` +
-      (phase === "rehearsal" ? "SLICE-205-5 (post-/arc-audit)" : "SLICE-205-6") +
-      `. No network calls made.`,
-  );
+  const t = new Transcript();
+  try {
+    if (phase === "rehearsal") {
+      await runRehearsal(t);
+    } else {
+      // SLICE-205-6 gate: bid phase stays parked until rehearsal evidence exists.
+      console.log("[gec-interop] STOP — bid phase gated to SLICE-205-6. No network calls made.");
+    }
+  } finally {
+    const out = outPath(process.argv.slice(2));
+    if (out) {
+      const { writeFileSync, mkdirSync } = await import("node:fs");
+      const { dirname } = await import("node:path");
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, t.toJSON());
+      console.log(`[gec-interop] transcript → ${out} (${t.entries.length} entries)`);
+    }
+  }
 }
 
 if (import.meta.main) {
