@@ -13,7 +13,7 @@ export const article: BlogArticle = {
   readingTime: "6 min",
   shortAnswer:
     "On 2026-10-23 we walked SaSame GEC's live provider path end-to-end from an independent environment: keyless open-demands projection, CIMD-based OAuth 2.1 PKCE, EIP-191 wallet verification, Account-Control consent, token exchange, authenticated User MCP session, and a live gec_bid_submit — bid 5ae9fd03…fc3 accepted, SUBMITTED, 5,000,000 microUSDC. One ~600-line script, no SDK, $0 gas. Eight friction points, all recoverable, documented with fixes.",
-  heroImage: "/images/blog/gec-interop-og.webp",
+  heroImage: "/images/blog/gec-interop-hero.webp",
   ogImage: "/images/blog/gec-interop-og.webp",
   status: "LIVE",
   technologies: ["MCP", "OAuth 2.1", "PKCE S256", "EIP-191", "JSON-RPC", "Bun", "TypeScript", "viem"],
@@ -82,6 +82,7 @@ export const article: BlogArticle = {
 </ul>
 <p>The elegant part: every open demand carries a <code>provider_action.machine_entry</code> object — endpoints, chain id, cookie policy and a numbered step list. We implemented the client <em>from the projection alone</em>.</p>
 <p><img src="/images/blog/gec-interop-d2.webp" alt="Trust boundary diagram: keyless Public MCP zone (gec_open_demands, machine_entry, start_here) above an OAuth 2.1 PKCE + EIP-191 + consent gate, below it the wallet-bound User MCP zone (mcp-session-id, gec_bid_submit, idempotency fields)" /></p>
+<p><img src="/images/blog/gec-interop-2s.webp" alt="Split composition: keyless public side with open demand cards versus wallet-bound side with a vault door — the agent crosses via OAuth 2.1 PKCE" /></p>
 
 <h2 id="walk">The walk, step by step (real timings)</h2>
 <table>
@@ -119,6 +120,7 @@ export const article: BlogArticle = {
 <tr><td>8</td><td>follow redirects</td><td>manual redirects — cookies leak otherwise</td><td><code>redirect:manual</code> + replay</td></tr>
 </tbody>
 </table>
+<p><img src="/images/blog/gec-interop-3s.webp" alt="The agent stepping over eight small labeled pebbles — field-name, form-post, session-id, initialized-note, public-mcp, sse-unwrap, manual-redirect, challenge-echo — each turning from amber to cyan" /></p>
 <p><strong>What impressed us:</strong> machine_entry self-describing onboarding, per-demand <code>bid_constraints</code> (machine-checkable before writing), idempotent <code>gec_bid_submit</code> (idempotency_key + duplicate flag + request_sha256), <code>structuredContent</code> next to <code>content[]</code>, and an honest disclosure stance — "a Demand or budget cap is not proof of reserved funds or payment".</p>
 
 <h2 id="cost">What it cost</h2>
