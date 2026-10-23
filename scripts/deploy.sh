@@ -39,7 +39,7 @@ for pkg in a2a payment-forensics; do
   src="../../packages/$pkg"
   if [ -d "$src" ]; then
     mkdir -p "$VENDOR_DIR"
-    rsync -a --delete --exclude node_modules --exclude .git --exclude '*.tsbuildinfo' \
+    rsync -a --delete --exclude node_modules --exclude .git --exclude '*.tsbuildinfo' --exclude graphify-out --exclude tests \
       "$src/" "$VENDOR_DIR/$pkg/"
   fi
 done

@@ -2,9 +2,12 @@
 FROM oven/bun:1.3-slim AS css-builder
 WORKDIR /build
 COPY package.json bun.lock ./
-# file: deps live outside this build context (../../packages/* resolves to
-# /packages/* from /build). deploy.sh vendors them into .docker-packages/.
-COPY .docker-packages /packages
+# file: deps live outside this build context — deploy.sh vendors them into
+# .docker-packages/. Retarget file: paths so bun copies them into
+# node_modules; keeps dep resolution inside /build (fixes @noble/hashes
+# self-reference crash seen with out-of-tree /packages symlinks).
+COPY .docker-packages ./.docker-packages
+RUN sed -i 's|file:\.\./\.\./packages/|file:./.docker-packages/|g' package.json bun.lock
 RUN bun install tailwindcss@3 @tailwindcss/typography
 COPY tailwind.config.cjs ./
 RUN mkdir -p src/views src/server/routes
@@ -19,9 +22,12 @@ FROM oven/bun:1.3-slim
 WORKDIR /app
 
 COPY package.json bun.lock ./
-# file: deps live outside this build context (../../packages/* resolves to
-# /packages/* from /app). deploy.sh vendors them into .docker-packages/.
-COPY .docker-packages /packages
+# file: deps live outside this build context — deploy.sh vendors them into
+# .docker-packages/. Retarget file: paths so bun copies them into
+# node_modules; keeps dep resolution inside /app (fixes @noble/hashes
+# self-reference crash seen with out-of-tree /packages symlinks).
+COPY .docker-packages ./.docker-packages
+RUN sed -i 's|file:\.\./\.\./packages/|file:./.docker-packages/|g' package.json bun.lock
 # SLICE-169-9: @x402/hedera + @x402/hono are optionalDependencies — a diet
 # image (Hedera chain off, PASSPORT_CHAIN_ENABLED unset) can drop
 # ~357MB via: docker build --build-arg OMIT_OPTIONAL_DEPS=true .
