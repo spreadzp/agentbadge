@@ -16,3 +16,4 @@ base-core/
 data/corpus/
 .data/
 out/
+.docker-packages/

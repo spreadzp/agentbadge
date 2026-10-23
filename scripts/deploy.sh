@@ -28,6 +28,22 @@ echo "  GIT_COMMIT=${GIT_COMMIT}"
 echo "  BUILD_DATE=${BUILD_DATE}"
 echo ""
 
+# ── Vendor file: workspace deps ─────────────────────────────────────
+# package.json references ../../packages/* via file: links, but the Docker
+# build context is hackathon/server — those paths don't exist inside it.
+# Vendor the needed packages into .docker-packages/; the Dockerfile copies
+# them to /packages/* so `file:../../packages/x` resolves correctly.
+VENDOR_DIR=".docker-packages"
+rm -rf "$VENDOR_DIR"
+for pkg in a2a payment-forensics; do
+  src="../../packages/$pkg"
+  if [ -d "$src" ]; then
+    mkdir -p "$VENDOR_DIR"
+    rsync -a --delete --exclude node_modules --exclude .git --exclude '*.tsbuildinfo' \
+      "$src/" "$VENDOR_DIR/$pkg/"
+  fi
+done
+
 # ── Deploy ──────────────────────────────────────────────────────────
 
 exec fly deploy \
