@@ -15,7 +15,7 @@ export const article: BlogArticle = {
   shortAnswer:
     "AgentBadge runs a complete A2A v1.0 server on agentbadge.xyz: a foreign @a2a-js/sdk client completed the full flow with no AgentBadge code. Passport agents (ERC-8004 + EIP-191 challenge) get Postgres persistence and a mailbox extension; anonymous traffic lands in an ephemeral, rate-limited tier that still works. A hostile-actor harness confirmed spam 429s, unsigned-ext 403s and owner-scoped 404s — while the forged-passport and replay probes came back inconclusive, including a real replay bug we report openly. Tasks anchor to Arc in Merkle batches via emitTopic.",
   heroImage: "/images/blog/arc-c33-a2a-protocol-hero.webp",
-  ogImage: "/images/blog/arc-c33-a2a-protocol-hero.webp",
+  ogImage: "/images/blog/arc-c33-a2a-protocol-og.webp",
   agentGuideSlug: "arc-c33-a2a-protocol",
   // SLICE-201-5: Knowledge Object v1 metadata
   status: "LIVE",
