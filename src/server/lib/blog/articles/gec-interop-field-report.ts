@@ -105,6 +105,11 @@ export const article: BlogArticle = {
 <p><img src="/images/blog/gec-interop-d1.webp" alt="Sequence diagram of the full run: projection, authorize, wallet challenge, local EIP-191 sign, verify, consent, token, MCP initialize, tools/list, public read gate, gec_bid_submit SUBMITTED" /></p>
 <p><img src="/images/blog/gec-interop-terminal-bid.webp" alt="Terminal run of --phase=bid — all steps green, bid id echoed" /></p>
 
+<h2 id="video">Watch the full run (3 min)</h2>
+<p>The same walkthrough as a narrated video — every screenshot above with captions, from the keyless projection to the submitted bid and the $0 balance check.</p>
+<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:0.75rem;"><iframe src="https://www.youtube.com/embed/YCBldVafDmI" title="A foreign agent just bid on our board — SaSame GEC walkthrough" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+<p><a href="https://youtu.be/YCBldVafDmI">Watch on YouTube</a></p>
+
 <h2 id="friction">Friction table — spec vs. production</h2>
 <p>Every stumble, with the fix. All were response-level discoveries; none blocked the flow.</p>
 <table>
@@ -133,6 +138,7 @@ export const article: BlogArticle = {
 <li><strong>Bounded+redacted evidence model</strong> — transcripts record response <em>shape</em>, secrets become <code>&lt;redacted&gt;</code>; publishable evidence by construction.</li>
 <li><strong>machine_entry in our own projections</strong> — self-describing onboarding is the strongest DX move we saw.</li>
 <li><strong>Idempotent write pattern</strong> — idempotency_key + duplicate flag belongs in our submit tools.</li>
+<li><strong>The missing layer is payment trust</strong> — a budget cap is a promise, not collateral. The same day we shipped our own answer: a live risk-verdict API (<a href="https://agentbadge.xyz/api/v1/risk/0x998d7c178a1f9607b47ea3a8e22426451b3ce707"><code>/api/v1/risk/:address</code></a>) that indexes Arc settles and splits organic from circular volume — a bidder could check whether a buyer actually settles. See <a href="/blog/arc-c32-payment-forensics">C32: payment forensics</a>.</li>
 </ul>
 
 <h2 id="limits">Honest limits</h2>
