@@ -106,6 +106,7 @@ export const article: BlogArticle = {
 </ul>
 <p>Eleven seconds after the deposit confirmed, the burner had <strong>0.0000691 ETH</strong> on Base — fee ~0.02 USDC. More than enough: Base gas for <code>approve</code> + <code>depositForBurn</code> costs roughly 0.00001 ETH.</p>
 
+<p><img src="/images/blog/d1-en.webp" alt="Sequence diagram — operator, GasZip/LiFi rejection, Relay approve+deposit, burner burn on Base, Iris attestation ~24 min, permissionless receiveMessage mint on Arc" /></p>
 <h2 id="cctp">CCTP: burn, wait, mint</h2>
 <p>With gas in place, the standard Circle CCTP path ran:</p>
 <ul>
@@ -120,6 +121,8 @@ export const article: BlogArticle = {
 <li>mint <code>0xe9057fd74703296c76b09f28c3687e83d7005890ab59c6b55e8dcf9286bbb8ea</code> (Arc, confirmed 11:24:43 UTC)</li>
 </ul>
 
+<p><img src="/images/blog/d2-en.webp" alt="Full rescue process flowchart — stranded state, aggregator probe, Relay refuel, CCTP burn, attestation wait with resume loop, permissionless mint, final balances" /></p>
+<p><em>The whole run in one picture: probe → dead plan A → Relay refuel → burn → attestation wait (with resume) → permissionless mint.</em></p>
 <h2 id="ledger">The ledger</h2>
 <table>
 <thead><tr><th>Item</th><th>Value</th></tr></thead>
