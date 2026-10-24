@@ -7,6 +7,11 @@
  *   --phase=rehearsal  read-only: Public MCP (keyless) gec_open_demands
  *   --phase=bid        full: CIMD → authorize → EIP-191 wallet → consent
  *                      → token exchange → gec_bid_submit (5,000,000 microUSDC)
+ *   --phase=tools      full auth → tools/list (schema dump)
+ *   --phase=award      full auth → gec_award_accept + gec_deliverable_submit
+ *   --phase=verify     full auth → read-only inspection (demand/bids/outcome)
+ *                      → criteria matrix; gec_verification_submit ONLY with
+ *                      --verdict=PASS|REVISE|FAIL --submit (SLICE-205-10)
  *
  * In SLICE-205-3 both phases STOP before the first live network call —
  * live execution is gated to SLICE-205-5 (rehearsal, post-audit) and
@@ -46,6 +51,13 @@ export const GEC_ENDPOINTS = {
 export const GEC_TARGET_DEMAND = "demand:owner:aefcd63292d520374a1c2ac7fca6a8a5";
 export const GEC_BID_AMOUNT_MINOR = "5000000"; // 5 USDC = max_budget_minor
 export const GEC_TARGET_AWARD = "award:155c2787a74b57b557dc6a69d3d4fb56";
+
+// SLICE-205-10: reciprocal INDEPENDENT_AGENT verification — Shawn/AgentPay's
+// award on the external-revenue demand (request: comments/2410.md, 2026-10-24).
+// Our wallet is verifier here (≠ owner, ≠ worker) — worker on our own award,
+// verifier on theirs.
+export const GEC_VERIFY_AWARD = "award:5a8d25b52436ec1779757050f4f47242";
+export const GEC_VERIFY_DELIVERABLE = "deliverable:1bc4966a12177feeb19c416b02114762";
 
 export const GEC_CLIENT_DOC_PATH = "/.well-known/gec-client.json";
 export const GEC_CALLBACK_PATH = "/api/gec/callback";
@@ -398,11 +410,21 @@ export const AWARD_STEPS = [
   "MCP tools/call gec_deliverable_submit — redacted friction report",
 ] as const;
 
-function parsePhase(argv: string[]): "rehearsal" | "bid" | "tools" | "award" {
+export const VERIFY_STEPS = [
+  "Full OAuth2.1+PKCE+EIP-191 chain → bearer + mcp-session-id",
+  "MCP tools/list — confirm gec_verification_submit + read-tool schemas (drift check vs 2026-10-23)",
+  "MCP tools/call gec_demand_search — locate the award's demand + frozen criteria",
+  "MCP tools/call gec_bid_list per demand — find the award's bid + worker",
+  "MCP tools/call gec_outcome_get per project — award/deliverable evidence",
+  "Criteria↔evidence matrix printed — STOP unless --verdict + --submit",
+  "MCP tools/call gec_verification_submit — PASS|REVISE|FAIL + evidence_refs + note",
+] as const;
+
+function parsePhase(argv: string[]): "rehearsal" | "bid" | "tools" | "award" | "verify" {
   const arg = argv.find((a) => a.startsWith("--phase="));
   const phase = arg?.split("=", 2)[1];
-  if (phase === "rehearsal" || phase === "bid" || phase === "tools" || phase === "award") return phase;
-  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid|tools|award [--out=<transcript.json>] [--report=<file>]");
+  if (phase === "rehearsal" || phase === "bid" || phase === "tools" || phase === "award" || phase === "verify") return phase;
+  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid|tools|award|verify [--verdict=PASS|REVISE|FAIL] [--submit] [--out=<transcript.json>] [--report=<file>]");
 }
 
 function outPath(argv: string[]): string | undefined {
@@ -775,6 +797,183 @@ async function runAward(t: Transcript): Promise<void> {
   console.log("[gec-interop] deliverable submitted — redacted friction report");
 }
 
+// ─── SLICE-205-10: independent verification of a third-party award ──────────
+// Same OAuth chain; the WRITE is gec_verification_submit gated behind
+// --verdict + --submit. Without those flags the phase is read-only inspection.
+//
+// Verdict belongs to the verifier (us), grounded in canonical evidence — never
+// in the worker's self-report. The criteria matrix is operator judgment made
+// AFTER reading evidence; the script collects evidence and formats the note.
+
+export type VerifyVerdict = "PASS" | "REVISE" | "FAIL";
+
+export interface CriterionAssessment {
+  criterion: string; // verbatim frozen acceptance criterion
+  met: boolean | null; // null = not determinable from visible evidence
+  evidence: string; // what we saw (ref or quote), not the worker's claim
+}
+
+/** Deterministic idempotency key per (award, deliverable, verdict): retries of
+ * the same verdict dedupe to duplicate:true; a deliberate verdict change is a
+ * new key, not a silent overwrite. */
+export function verificationIdempotencyKey(
+  awardId: string,
+  deliverableId: string,
+  verdict: VerifyVerdict,
+): string {
+  const a = awardId.replace(/^award:/, "").slice(0, 12);
+  const d = deliverableId.replace(/^deliverable:/, "").slice(0, 8);
+  return `agentbadge-205-verify-${a}-${d}-${verdict.toLowerCase()}`;
+}
+
+/** Per-criterion note for gec_verification_submit (schema bound: ≤2000 chars). */
+export function buildVerdictNote(verdict: VerifyVerdict, rows: CriterionAssessment[]): string {
+  const lines = rows.map((r, i) => {
+    const mark = r.met === true ? "MET" : r.met === false ? "UNMET" : "INDETERMINATE";
+    return `${i + 1}. [${mark}] ${r.criterion} — evidence: ${r.evidence}`;
+  });
+  let note = `Verdict ${verdict} on outcome evidence (not worker self-report).\n${lines.join("\n")}`;
+  if (note.length > 2000) note = note.slice(0, 1997) + "…";
+  return note;
+}
+
+export function buildVerificationArgs(
+  verdict: VerifyVerdict,
+  note: string,
+  evidenceRefs: string[] = [],
+): Record<string, unknown> {
+  if (note.length > 2000) throw new Error(`note too long: ${note.length} > 2000 (schema bound)`);
+  const args: Record<string, unknown> = {
+    award_id: GEC_VERIFY_AWARD,
+    deliverable_id: GEC_VERIFY_DELIVERABLE,
+    idempotency_key: verificationIdempotencyKey(GEC_VERIFY_AWARD, GEC_VERIFY_DELIVERABLE, verdict),
+    verdict,
+  };
+  if (evidenceRefs.length > 0) args.evidence_refs = evidenceRefs;
+  if (note.length > 0) args.note = note;
+  return args;
+}
+
+/** MCP tools/call wraps payloads in content[]; the JSON lives in a text part. */
+export function extractToolPayload(result: unknown): unknown {
+  const content = (result as { content?: { type?: string; text?: string }[] })?.content ?? [];
+  for (const part of content) {
+    if (part.type !== "text" || !part.text) continue;
+    try { return JSON.parse(part.text); } catch { /* keep looking */ }
+  }
+  const sc = (result as { structuredContent?: unknown })?.structuredContent;
+  return sc ?? result;
+}
+
+function parseVerdict(argv: string[]): VerifyVerdict | undefined {
+  const v = argv.find((a) => a.startsWith("--verdict="))?.split("=", 2)[1];
+  if (v === "PASS" || v === "REVISE" || v === "FAIL") return v;
+  if (v !== undefined) throw new Error("--verdict must be PASS|REVISE|FAIL");
+  return undefined;
+}
+
+function parseNote(argv: string[]): string {
+  return argv.find((a) => a.startsWith("--note="))?.split("=", 2)[1] ?? "";
+}
+
+function parseEvidence(argv: string[]): string[] {
+  const raw = argv.find((a) => a.startsWith("--evidence="))?.split("=", 2)[1];
+  return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+}
+
+async function runVerify(t: Transcript, argv: string[]): Promise<void> {
+  const { bearer, jar, sessionId } = await authenticateUserMcp(t);
+
+  // 1. Schema drift check: verification + read tools this phase depends on.
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
+  const byName = (n: string) => toolList.find((x) => x.name === n);
+  const needed = ["gec_verification_submit", "gec_demand_search", "gec_bid_list", "gec_outcome_get"];
+  t.record({
+    step: "mcp-tools-list", method: "POST", path: "/mcp",
+    status: tools.status, ms: tools.ms,
+    responseShape: Object.fromEntries(needed.map((n) => [`${n}_schema`, byName(n)?.inputSchema ?? null])),
+  });
+  for (const n of needed) {
+    if (!byName(n)) stepFail("mcp-tools-list", `${n} not advertised by User MCP (schema drift)`);
+  }
+
+  const call = async (name: string, args: Record<string, unknown>, step: string) => {
+    const r = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
+      { name, arguments: args }, { bearer, jar, sessionId });
+    const isErr = (r.result as { isError?: boolean })?.isError;
+    t.record({
+      step, method: "POST", path: "/mcp",
+      status: r.status, ms: r.ms,
+      note: `tool=${name} args=${Object.keys(args).join(",") || "none"}`,
+      responseShape: responseShapeOf(r.result ?? r.error),
+    });
+    if (r.error || r.status !== 200 || isErr) {
+      stepFail(step, JSON.stringify(r.error ?? r.result));
+    }
+    return extractToolPayload(r.result);
+  };
+
+  // 2. Read-only inspection: demands → bids → outcomes (all read tools).
+  const demandsPayload = await call("gec_demand_search", { limit: 100 }, "gec_demand_search");
+  const demands = ((demandsPayload as { demands?: { demand_id?: string; project_id?: string; acceptance_criteria?: string[] }[] })?.demands) ?? [];
+  console.log(`[gec-interop] demands visible: ${demands.length}`);
+
+  // Find which demand carries our target award — scan bids per demand.
+  let awardDemandId: string | undefined;
+  let awardProjectId: string | undefined;
+  for (const d of demands) {
+    if (!d.demand_id) continue;
+    const bidsPayload = await call("gec_bid_list", { demand_id: d.demand_id }, "gec_bid_list");
+    const bids = ((bidsPayload as { bids?: { award_id?: string; bid_id?: string; state?: string }[] })?.bids)
+      ?? ((bidsPayload as unknown[] | undefined) as { award_id?: string }[] | undefined) ?? [];
+    const hit = Array.isArray(bids) && bids.some((b) => b?.award_id === GEC_VERIFY_AWARD);
+    if (hit) {
+      awardDemandId = d.demand_id;
+      awardProjectId = d.project_id;
+      console.log(`[gec-interop] award demand located: ${d.demand_id} (project ${d.project_id ?? "?"})`);
+      break;
+    }
+  }
+  if (!awardDemandId) {
+    console.log("[gec-interop] award↔demand link not visible via bid lists — falling back to outcome scan");
+  }
+
+  // Outcome state per project — award/deliverable evidence refs live here.
+  // NOTE: gec_outcome_get is owner-scoped (gec_project_outcome_private) — an
+  // expected visibility boundary for a third-party verifier, NOT a failure.
+  // Live finding 2026-10-24: private; verifier relies on bid_list's
+  // latest_deliverable instead. Record isError, don't kill the run.
+  const projectIds = [...new Set(demands.map((d) => d.project_id).filter(Boolean))] as string[];
+  for (const pid of projectIds.slice(0, 10)) {
+    const r = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
+      { name: "gec_outcome_get", arguments: { project_id: pid } }, { bearer, jar, sessionId });
+    const isErr = (r.result as { isError?: boolean })?.isError;
+    t.record({
+      step: "gec_outcome_get", method: "POST", path: "/mcp",
+      status: r.status, ms: r.ms,
+      note: `tool=gec_outcome_get project=${pid}${isErr ? " (isError — owner-scoped private)" : ""}`,
+      responseShape: responseShapeOf(r.result ?? r.error),
+    });
+  }
+
+  // 3. Gate: without --verdict + --submit this phase ends here, read-only.
+  const verdict = parseVerdict(argv);
+  const submit = argv.includes("--submit");
+  if (!verdict || !submit) {
+    console.log("[gec-interop] inspection complete (read-only). Re-run with --verdict=PASS|REVISE|FAIL --submit --note='…' --evidence=ref1,ref2 to record the verdict.");
+    return;
+  }
+
+  // 4. Submit the verdict — single irreversible write, deterministic idem key.
+  const note = parseNote(argv) || `Verdict ${verdict}: see verifier evidence (award ${GEC_VERIFY_AWARD}, deliverable ${GEC_VERIFY_DELIVERABLE}).`;
+  const args = buildVerificationArgs(verdict, note, parseEvidence(argv));
+  const v = await call("gec_verification_submit", args, "gec_verification_submit");
+  console.log(`[gec-interop] verification submitted — verdict=${verdict} idem=${args.idempotency_key}`);
+  console.log(`[gec-interop] response: ${JSON.stringify(v).slice(0, 400)}`);
+}
+
 async function main(): Promise<void> {
   const phase = parsePhase(process.argv.slice(2));
 
@@ -783,7 +982,8 @@ async function main(): Promise<void> {
   const steps = phase === "rehearsal" ? REHEARSAL_STEPS
     : phase === "bid" ? BID_STEPS
       : phase === "tools" ? TOOLS_STEPS
-        : AWARD_STEPS;
+        : phase === "verify" ? VERIFY_STEPS
+          : AWARD_STEPS;
 
   console.log(`[gec-interop] phase=${phase}`);
   console.log(`[gec-interop] wallet=${address} (burner, EIP-191 only, zero-funds)`);
@@ -801,6 +1001,8 @@ async function main(): Promise<void> {
       await runBid(t);
     } else if (phase === "tools") {
       await runTools(t);
+    } else if (phase === "verify") {
+      await runVerify(t, process.argv.slice(2));
     } else {
       await runAward(t);
     }

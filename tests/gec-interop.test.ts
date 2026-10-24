@@ -2,15 +2,21 @@ import { describe, expect, it } from "vitest";
 import {
   base64url,
   buildAuthorizeUrl,
+  buildVerificationArgs,
+  buildVerdictNote,
   createCookieJar,
+  extractToolPayload,
   GEC_ENDPOINTS,
   GEC_BID_AMOUNT_MINOR,
   GEC_TARGET_DEMAND,
+  GEC_VERIFY_AWARD,
+  GEC_VERIFY_DELIVERABLE,
   makeState,
   pkce,
   redact,
   responseShapeOf,
   Transcript,
+  verificationIdempotencyKey,
   verifyState,
 } from "../scripts/gec-interop.mts";
 import { createHash } from "node:crypto";
@@ -196,5 +202,99 @@ describe("constants sanity", () => {
     expect(GEC_BID_AMOUNT_MINOR).toBe("5000000");
     expect(GEC_ENDPOINTS.chainId).toBe("0x2105");
     expect(GEC_ENDPOINTS.publicMcp).not.toBe(GEC_ENDPOINTS.resource);
+  });
+
+  it("verify constants pin the AgentPay award/deliverable from comments/2410.md", () => {
+    expect(GEC_VERIFY_AWARD).toBe("award:5a8d25b52436ec1779757050f4f47242");
+    expect(GEC_VERIFY_DELIVERABLE).toBe("deliverable:1bc4966a12177feeb19c416b02114762");
+    expect(GEC_VERIFY_AWARD).not.toBe("award:155c2787a74b57b557dc6a69d3d4fb56"); // not our own award
+  });
+});
+
+// ─── SLICE-205-10: verification-phase helpers (pure, zero network) ───────────
+
+describe("verificationIdempotencyKey", () => {
+  it("is deterministic per (award, deliverable, verdict)", () => {
+    const k1 = verificationIdempotencyKey(GEC_VERIFY_AWARD, GEC_VERIFY_DELIVERABLE, "FAIL");
+    const k2 = verificationIdempotencyKey(GEC_VERIFY_AWARD, GEC_VERIFY_DELIVERABLE, "FAIL");
+    expect(k1).toBe(k2);
+  });
+
+  it("differs per verdict so a deliberate change is a new key, not an overwrite", () => {
+    const fail = verificationIdempotencyKey(GEC_VERIFY_AWARD, GEC_VERIFY_DELIVERABLE, "FAIL");
+    const pass = verificationIdempotencyKey(GEC_VERIFY_AWARD, GEC_VERIFY_DELIVERABLE, "PASS");
+    expect(fail).not.toBe(pass);
+  });
+
+  it("stays inside the schema bound (8-128 chars)", () => {
+    const k = verificationIdempotencyKey(GEC_VERIFY_AWARD, GEC_VERIFY_DELIVERABLE, "REVISE");
+    expect(k.length).toBeGreaterThanOrEqual(8);
+    expect(k.length).toBeLessThanOrEqual(128);
+  });
+});
+
+describe("buildVerdictNote", () => {
+  const rows = [
+    { criterion: "independently controlled external customer", met: false, evidence: "worker reports none; no payer visible" },
+    { criterion: "deliverable received, scope completed", met: true, evidence: "deliverable:1bc49… state DELIVERED" },
+    { criterion: "external wallet payment verified", met: null, evidence: "no tx_hash in evidence" },
+  ];
+
+  it("marks each criterion MET/UNMET/INDETERMINATE with evidence", () => {
+    const note = buildVerdictNote("FAIL", rows);
+    expect(note).toContain("Verdict FAIL");
+    expect(note).toContain("[UNMET] independently controlled external customer");
+    expect(note).toContain("[MET] deliverable received");
+    expect(note).toContain("[INDETERMINATE] external wallet payment");
+    expect(note).toContain("not worker self-report");
+  });
+
+  it("truncates to the 2000-char schema bound", () => {
+    const huge = Array.from({ length: 30 }, (_, i) => ({
+      criterion: `criterion ${i} ${"x".repeat(200)}`,
+      met: false,
+      evidence: "y".repeat(200),
+    }));
+    expect(buildVerdictNote("FAIL", huge).length).toBeLessThanOrEqual(2000);
+  });
+});
+
+describe("buildVerificationArgs", () => {
+  it("conforms to the gec_verification_submit schema (required fields, bounds)", () => {
+    const args = buildVerificationArgs("FAIL", "outcome evidence: no external revenue", [
+      "evidence/verify-2026-10-24.json",
+    ]) as Record<string, unknown>;
+    expect(args.award_id).toBe(GEC_VERIFY_AWARD);
+    expect(args.deliverable_id).toBe(GEC_VERIFY_DELIVERABLE);
+    expect((args.idempotency_key as string).length).toBeGreaterThanOrEqual(8);
+    expect(args.verdict).toBe("FAIL");
+    expect(args.evidence_refs).toEqual(["evidence/verify-2026-10-24.json"]);
+    expect(args.note).toBe("outcome evidence: no external revenue");
+  });
+
+  it("omits optional fields when empty", () => {
+    const args = buildVerificationArgs("REVISE", "") as Record<string, unknown>;
+    expect(args.evidence_refs).toBeUndefined();
+    expect(args.note).toBeUndefined();
+  });
+
+  it("throws on note > 2000 chars (schema bound)", () => {
+    expect(() => buildVerificationArgs("FAIL", "n".repeat(2001))).toThrow(/note too long/);
+  });
+});
+
+describe("extractToolPayload", () => {
+  it("unwraps the JSON text part from MCP tools/call content[]", () => {
+    const result = {
+      content: [
+        { type: "text", text: "{\"ok\":true,\"demands\":[]}" },
+      ],
+    };
+    expect(extractToolPayload(result)).toEqual({ ok: true, demands: [] });
+  });
+
+  it("falls back to structuredContent, then raw result", () => {
+    expect(extractToolPayload({ structuredContent: { ok: 1 } })).toEqual({ ok: 1 });
+    expect(extractToolPayload({ plain: true })).toEqual({ plain: true });
   });
 });
