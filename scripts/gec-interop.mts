@@ -45,6 +45,7 @@ export const GEC_ENDPOINTS = {
 
 export const GEC_TARGET_DEMAND = "demand:owner:aefcd63292d520374a1c2ac7fca6a8a5";
 export const GEC_BID_AMOUNT_MINOR = "5000000"; // 5 USDC = max_budget_minor
+export const GEC_TARGET_AWARD = "award:155c2787a74b57b557dc6a69d3d4fb56";
 
 export const GEC_CLIENT_DOC_PATH = "/.well-known/gec-client.json";
 export const GEC_CALLBACK_PATH = "/api/gec/callback";
@@ -240,6 +241,24 @@ export interface FetchResult {
 }
 
 export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<FetchResult> {
+  // Flaky upstream (sasame.online 522/timeouts): up to 3 attempts on network
+  // errors or 5xx responses; retryable state is cheap because every step of
+  // the OAuth chain is idempotent-by-design (new challenge/nonce per attempt).
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * attempt));
+    try {
+      const r = await timedFetchOnce(url, opts);
+      if (r.status < 500) return r;
+      lastErr = new Error(`HTTP ${r.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+async function timedFetchOnce(url: string, opts: FetchOpts = {}): Promise<FetchResult> {
   const origin = new URL(url).origin;
   const headers: Record<string, string> = { ...opts.headers };
   const cookie = opts.jar?.header(origin);
@@ -258,6 +277,7 @@ export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<Fet
     headers,
     body: opts.body,
     redirect: manual ? "manual" : "follow",
+    signal: AbortSignal.timeout(30_000), // flaky upstream: fail fast, keep transcript
   });
   const ms = Date.now() - t0;
 
@@ -269,8 +289,10 @@ export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<Fet
   } catch {
     /* non-JSON body (HTML/empty) — keep raw text, truncated on record */
   }
-  return { status: res.status, ms, location: res.headers.get("location"),
-    sessionId: res.headers.get("mcp-session-id"), body };
+  return {
+    status: res.status, ms, location: res.headers.get("location"),
+    sessionId: res.headers.get("mcp-session-id"), body
+  };
 }
 
 // ─── EIP-191 personal_sign (machine_entry step 4) ────────────────────────────
@@ -365,11 +387,22 @@ export const BID_STEPS = [
   "MCP tools/call gec_bid_submit on User MCP (bearer) — demand aefcd6…, 5,000,000 microUSDC",
 ] as const;
 
-function parsePhase(argv: string[]): "rehearsal" | "bid" {
+export const TOOLS_STEPS = [
+  "Full OAuth2.1+PKCE+EIP-191 chain → bearer + mcp-session-id (same as bid)",
+  "MCP tools/list on User MCP — capture ALL tool schemas (gec_award_accept, gec_deliverable_submit, …)",
+] as const;
+
+export const AWARD_STEPS = [
+  "Full OAuth2.1+PKCE+EIP-191 chain → bearer + mcp-session-id",
+  "MCP tools/call gec_award_accept — award 155c27…fb56",
+  "MCP tools/call gec_deliverable_submit — redacted friction report",
+] as const;
+
+function parsePhase(argv: string[]): "rehearsal" | "bid" | "tools" | "award" {
   const arg = argv.find((a) => a.startsWith("--phase="));
   const phase = arg?.split("=", 2)[1];
-  if (phase === "rehearsal" || phase === "bid") return phase;
-  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid [--out=<transcript.json>]");
+  if (phase === "rehearsal" || phase === "bid" || phase === "tools" || phase === "award") return phase;
+  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid|tools|award [--out=<transcript.json>] [--report=<file>]");
 }
 
 function outPath(argv: string[]): string | undefined {
@@ -394,8 +427,10 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
 
   // 0. Projection: target demand must still be OPEN
   const proj = await timedFetch(GEC_ENDPOINTS.openDemandsApi, { jar });
-  t.record({ step: "open-demands-projection", method: "GET", path: "/api/gec/open-demands",
-    status: proj.status, ms: proj.ms, responseShape: responseShapeOf(proj.body) });
+  t.record({
+    step: "open-demands-projection", method: "GET", path: "/api/gec/open-demands",
+    status: proj.status, ms: proj.ms, responseShape: responseShapeOf(proj.body)
+  });
   if (proj.status !== 200) stepFail("projection", `HTTP ${proj.status}`);
 
   // 1. GET authorize → 302 Location (carries mcp_state/mcp_base → consent)
@@ -404,9 +439,11 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     state, codeChallenge: challenge,
   });
   const auth = await timedFetch(authUrl, { jar, redirectManual: true });
-  t.record({ step: "authorize", method: "GET", path: "/authorize",
+  t.record({
+    step: "authorize", method: "GET", path: "/authorize",
     status: auth.status, ms: auth.ms,
-    responseShape: { location: auth.location ? "<redacted>" : null } });
+    responseShape: { location: auth.location ? "<redacted>" : null }
+  });
   if (auth.status !== 302 || !auth.location) stepFail("authorize", `expected 302+Location, got ${auth.status}`);
 
   // 2. Parse mcp_state/mcp_base from Location
@@ -422,8 +459,10 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     headers: { "content-type": "application/json", origin: GEC_ENDPOINTS.origin },
     body: JSON.stringify({ wallet_address: address, chain_id: GEC_ENDPOINTS.chainId }),
   });
-  t.record({ step: "challenge", method: "POST", path: "/account/market/api/wallet/challenge",
-    status: chal.status, ms: chal.ms, responseShape: responseShapeOf(chal.body) });
+  t.record({
+    step: "challenge", method: "POST", path: "/account/market/api/wallet/challenge",
+    status: chal.status, ms: chal.ms, responseShape: responseShapeOf(chal.body)
+  });
   if (chal.status !== 200 && chal.status !== 201) stepFail("challenge", `HTTP ${chal.status}`);
   // Their shape: {ok, challenge: {wallet_address, chain_id, purpose, nonce,
   // issued_at, expires_at, body:{origin,chain_id}, message}} — sign .message
@@ -441,8 +480,10 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     headers: { "content-type": "application/json", origin: GEC_ENDPOINTS.origin },
     body: JSON.stringify({ ...chalFields, signature }),
   });
-  t.record({ step: "verify", method: "POST", path: "/account/market/api/wallet/verify",
-    status: verify.status, ms: verify.ms, responseShape: responseShapeOf(verify.body) });
+  t.record({
+    step: "verify", method: "POST", path: "/account/market/api/wallet/verify",
+    status: verify.status, ms: verify.ms, responseShape: responseShapeOf(verify.body)
+  });
   if (verify.status !== 200 && verify.status !== 302) stepFail("verify", `HTTP ${verify.status}`);
 
   // 6. POST participant-consent {mcp_state, mcp_base} → 302 chain → our callback
@@ -452,9 +493,11 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     body: JSON.stringify({ mcp_state: mcpState, mcp_base: mcpBase }),
     redirectManual: true,
   });
-  t.record({ step: "participant-consent", method: "POST", path: "/account/mcp/participant-consent",
+  t.record({
+    step: "participant-consent", method: "POST", path: "/account/mcp/participant-consent",
     status: consent.status, ms: consent.ms,
-    responseShape: { location: consent.location ? "<redacted>" : null } });
+    responseShape: { location: consent.location ? "<redacted>" : null }
+  });
   if (!consent.location) stepFail("consent", `expected redirect Location, got ${consent.status}`);
 
   // 7. Follow redirect chain manually until our callback (credentials stay manual)
@@ -469,9 +512,11 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
       break;
     }
     const r = await timedFetch(next.toString(), { jar, redirectManual: true });
-    t.record({ step: `consent-redirect-${i + 1}`, method: "GET",
+    t.record({
+      step: `consent-redirect-${i + 1}`, method: "GET",
       path: next.pathname, status: r.status, ms: r.ms,
-      responseShape: { location: r.location ? "<redacted>" : null } });
+      responseShape: { location: r.location ? "<redacted>" : null }
+    });
     hop = r.location;
   }
   if (!code) stepFail("callback", "redirect chain ended without code on our redirect_uri");
@@ -490,8 +535,10 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
       code_verifier: verifier, resource: GEC_ENDPOINTS.resource,
     }).toString(),
   });
-  t.record({ step: "token-exchange", method: "POST", path: "/token",
-    status: tok.status, ms: tok.ms, responseShape: responseShapeOf(tok.body) });
+  t.record({
+    step: "token-exchange", method: "POST", path: "/token",
+    status: tok.status, ms: tok.ms, responseShape: responseShapeOf(tok.body)
+  });
   if (tok.status !== 200) stepFail("token", `HTTP ${tok.status}`);
   const bearer = (tok.body as { access_token?: string }).access_token;
   if (!bearer) stepFail("token", "no access_token in response");
@@ -501,8 +548,10 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     protocolVersion: "2025-03-26", capabilities: {},
     clientInfo: { name: "agentbadge-gec-interop", version: "0.1.0" },
   }, { bearer, jar });
-  t.record({ step: "mcp-initialize", method: "POST", path: "/mcp",
-    status: init.status, ms: init.ms, responseShape: responseShapeOf(init.result ?? init.error) });
+  t.record({
+    step: "mcp-initialize", method: "POST", path: "/mcp",
+    status: init.status, ms: init.ms, responseShape: responseShapeOf(init.result ?? init.error)
+  });
   if (init.error || init.status !== 200) stepFail("mcp-initialize", JSON.stringify(init.error ?? init.status));
   // MCP Streamable HTTP: session id issued on initialize must be echoed on all later calls
   const sessionId = init.sessionId ?? undefined;
@@ -520,12 +569,14 @@ async function runRehearsal(t: Transcript): Promise<void> {
   if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
   const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
   const bidTool = toolList.find((x) => x.name === "gec_bid_submit");
-  t.record({ step: "mcp-tools-list", method: "POST", path: "/mcp",
+  t.record({
+    step: "mcp-tools-list", method: "POST", path: "/mcp",
     status: tools.status, ms: tools.ms,
     responseShape: {
       toolNames: toolList.map((x) => x.name),
       gec_bid_submit_schema: bidTool?.inputSchema ?? null,
-    } });
+    }
+  });
   if (!bidTool) stepFail("mcp-tools-list", "gec_bid_submit not advertised by User MCP");
   console.log(`[gec-interop] gec_bid_submit schema captured (${toolList.length} tools advertised)`);
 
@@ -536,9 +587,11 @@ async function runRehearsal(t: Transcript): Promise<void> {
     protocolVersion: "2025-03-26", capabilities: {},
     clientInfo: { name: "agentbadge-gec-interop", version: "0.1.0" },
   }, { jar });
-  t.record({ step: "public-mcp-initialize", method: "POST", path: "/public-mcp",
+  t.record({
+    step: "public-mcp-initialize", method: "POST", path: "/public-mcp",
     status: pubInit.status, ms: pubInit.ms,
-    responseShape: responseShapeOf((pubInit.result as { serverInfo?: unknown })?.serverInfo ?? pubInit.error) });
+    responseShape: responseShapeOf((pubInit.result as { serverInfo?: unknown })?.serverInfo ?? pubInit.error)
+  });
   if (pubInit.error || pubInit.status !== 200) stepFail("public-mcp-initialize", JSON.stringify(pubInit.error ?? pubInit.status));
   const pubSession = pubInit.sessionId ?? undefined;
   // Their server binds the session via cookies + notifications/initialized;
@@ -548,8 +601,10 @@ async function runRehearsal(t: Transcript): Promise<void> {
   const demands = await mcpCall(GEC_ENDPOINTS.publicMcp, "tools/call",
     { name: "gec_open_demands", arguments: {} }, { jar, sessionId: pubSession });
   const isErr = (demands.result as { isError?: boolean })?.isError;
-  t.record({ step: "gec_open_demands", method: "POST", path: "/public-mcp",
-    status: demands.status, ms: demands.ms, responseShape: responseShapeOf(demands.result ?? demands.error) });
+  t.record({
+    step: "gec_open_demands", method: "POST", path: "/public-mcp",
+    status: demands.status, ms: demands.ms, responseShape: responseShapeOf(demands.result ?? demands.error)
+  });
   if (demands.error || demands.status !== 200 || isErr) stepFail("gec_open_demands", JSON.stringify(demands.error ?? demands.result));
 
   // Acceptance: print OPEN demand count — result shape is their JSON payload
@@ -593,14 +648,131 @@ async function runBid(t: Transcript): Promise<void> {
   const bid = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
     { name: "gec_bid_submit", arguments: bidArgs }, { bearer, jar, sessionId });
   const isErr = (bid.result as { isError?: boolean })?.isError;
-  t.record({ step: "gec_bid_submit", method: "POST", path: "/mcp",
+  t.record({
+    step: "gec_bid_submit", method: "POST", path: "/mcp",
     status: bid.status, ms: bid.ms,
     note: `demand=aefcd6… amount=${GEC_BID_AMOUNT_MINOR} idem=${bidArgs.idempotency_key}`,
-    responseShape: responseShapeOf(bid.result ?? bid.error) });
+    responseShape: responseShapeOf(bid.result ?? bid.error)
+  });
   if (bid.error || bid.status !== 200 || isErr) {
     stepFail("gec_bid_submit", JSON.stringify(bid.error ?? bid.result));
   }
   console.log("[gec-interop] bid submitted — 5,000,000 microUSDC on demand aefcd6…");
+}
+
+async function runTools(t: Transcript): Promise<void> {
+  const { bearer, jar, sessionId } = await authenticateUserMcp(t);
+
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const toolList = (tools.result as { tools?: { name: string; description?: string; inputSchema?: unknown }[] })?.tools ?? [];
+  // Tool schemas are the public API contract — recording them in full is
+  // safe (no secrets) and is the input for the award phase.
+  t.record({
+    step: "mcp-tools-list", method: "POST", path: "/mcp",
+    status: tools.status, ms: tools.ms,
+    responseShape: { tools: toolList.map((x) => ({ name: x.name, inputSchema: x.inputSchema ?? null })) }
+  });
+  for (const x of toolList) {
+    console.log(`[gec-interop] tool: ${x.name}`);
+    console.log(`  schema: ${JSON.stringify(x.inputSchema)}`);
+  }
+}
+
+// ─── Award phase: accept the landed award + submit the redacted report ──────
+// Award id comes from the owner's notification (LinkedIn) and is pinned in
+// GEC_TARGET_AWARD; arg shapes adapt to the live tools/list schemas.
+
+function loadReport(): string {
+  const arg = process.argv.find((a) => a.startsWith("--report="));
+  const file = arg?.split("=", 2)[1]
+    ?? "../../docs/EPICS/205-sasame-gec-interop/evidence/deliverable-summary-2026-10-23.md";
+  const { readFileSync } = require("node:fs") as typeof import("node:fs");
+  return readFileSync(file, "utf8");
+}
+
+// Live schemas captured 2026-10-23 via --phase=tools:
+//   gec_award_accept        required: award_id
+//   gec_deliverable_submit  required: award_id, idempotency_key(8-128),
+//                           summary(1-4000), evidence_refs(1-50, each <=1000)
+function buildAwardAcceptArgs(): Record<string, unknown> {
+  return { award_id: GEC_TARGET_AWARD };
+}
+
+function buildDeliverableArgs(summary: string): Record<string, unknown> {
+  return {
+    award_id: GEC_TARGET_AWARD,
+    idempotency_key: `agentbadge-205-deliver-155c27-${crypto.randomUUID().slice(0, 8)}`,
+    summary,
+    evidence_refs: [
+      "https://agentbadge.xyz/blog/gec-interop-field-report - published field report (full trace)",
+      "https://youtu.be/YCBldVafDmI - narrated 3-min screen capture of the run",
+      "evidence/rehearsal-2026-10-23.json - redacted transcript, read-only cycle",
+      "evidence/bid-2026-10-23.json - redacted transcript, write cycle to gec_bid_submit",
+      "evidence/friction-report-en.md - full interop + friction report (8 findings, fixes)",
+      "evidence/tools-discovery-2026-10-23.json - redacted transcript of this session",
+      "scripts/gec-interop.mts - single-file client used (Bun/TS, no MCP SDK)",
+    ],
+    artifact_refs: [
+      "https://agentbadge.xyz/blog/gec-interop-field-report",
+      "https://youtu.be/YCBldVafDmI",
+    ],
+  };
+}
+
+async function runAward(t: Transcript): Promise<void> {
+  const { bearer, jar, sessionId } = await authenticateUserMcp(t);
+
+  // Re-list tools so the transcript carries the exact schemas this call used.
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
+  const acceptTool = toolList.find((x) => x.name === "gec_award_accept");
+  const deliverTool = toolList.find((x) => x.name === "gec_deliverable_submit");
+  t.record({
+    step: "mcp-tools-list", method: "POST", path: "/mcp",
+    status: tools.status, ms: tools.ms,
+    responseShape: {
+      gec_award_accept_schema: acceptTool?.inputSchema ?? null,
+      gec_deliverable_submit_schema: deliverTool?.inputSchema ?? null,
+    }
+  });
+  if (!acceptTool) stepFail("mcp-tools-list", "gec_award_accept not advertised by User MCP");
+  if (!deliverTool) stepFail("mcp-tools-list", "gec_deliverable_submit not advertised by User MCP");
+
+  const acceptArgs = buildAwardAcceptArgs();
+  const accept = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
+    { name: "gec_award_accept", arguments: acceptArgs }, { bearer, jar, sessionId });
+  const acceptErr = (accept.result as { isError?: boolean })?.isError;
+  t.record({
+    step: "gec_award_accept", method: "POST", path: "/mcp",
+    status: accept.status, ms: accept.ms,
+    note: `award=155c27…fb56 args=${Object.keys(acceptArgs).join(",")}`,
+    responseShape: responseShapeOf(accept.result ?? accept.error)
+  });
+  if (accept.error || accept.status !== 200 || acceptErr) {
+    stepFail("gec_award_accept", JSON.stringify(accept.error ?? accept.result));
+  }
+  console.log("[gec-interop] award accepted — 155c27…fb56");
+
+  const reportText = loadReport();
+  if (reportText.length > 4000) {
+    stepFail("deliverable-args", `summary too long: ${reportText.length} > 4000 chars (schema bound)`);
+  }
+  const deliverArgs = buildDeliverableArgs(reportText);
+  const deliver = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
+    { name: "gec_deliverable_submit", arguments: deliverArgs }, { bearer, jar, sessionId });
+  const deliverErr = (deliver.result as { isError?: boolean })?.isError;
+  t.record({
+    step: "gec_deliverable_submit", method: "POST", path: "/mcp",
+    status: deliver.status, ms: deliver.ms,
+    note: `args=${Object.keys(deliverArgs).join(",")} report_bytes=${reportText.length}`,
+    responseShape: responseShapeOf(deliver.result ?? deliver.error)
+  });
+  if (deliver.error || deliver.status !== 200 || deliverErr) {
+    stepFail("gec_deliverable_submit", JSON.stringify(deliver.error ?? deliver.result));
+  }
+  console.log("[gec-interop] deliverable submitted — redacted friction report");
 }
 
 async function main(): Promise<void> {
@@ -608,7 +780,10 @@ async function main(): Promise<void> {
 
   // Env + identity check WITHOUT printing secrets (key never logged).
   const { address } = loadWallet();
-  const steps = phase === "rehearsal" ? REHEARSAL_STEPS : BID_STEPS;
+  const steps = phase === "rehearsal" ? REHEARSAL_STEPS
+    : phase === "bid" ? BID_STEPS
+      : phase === "tools" ? TOOLS_STEPS
+        : AWARD_STEPS;
 
   console.log(`[gec-interop] phase=${phase}`);
   console.log(`[gec-interop] wallet=${address} (burner, EIP-191 only, zero-funds)`);
@@ -622,8 +797,12 @@ async function main(): Promise<void> {
   try {
     if (phase === "rehearsal") {
       await runRehearsal(t);
-    } else {
+    } else if (phase === "bid") {
       await runBid(t);
+    } else if (phase === "tools") {
+      await runTools(t);
+    } else {
+      await runAward(t);
     }
   } finally {
     const out = outPath(process.argv.slice(2));

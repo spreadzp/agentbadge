@@ -8,6 +8,10 @@ const CSP_DIRECTIVES = [
   "img-src 'self' data: https:",
   "font-src 'self' https:",
   "connect-src 'self' https://*.hedera.com https://plausible.io https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com",
+  // frame-src: without it default-src 'self' blocks <iframe> embeds
+  // (YouTube video in blog articles). youtube-nocookie is the
+  // privacy-mode variant of the same player.
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -35,7 +39,14 @@ export function securityHeaders(): MiddlewareHandler {
     c.header("Referrer-Policy", "strict-origin-when-cross-origin");
     c.header("Permissions-Policy", PERMISSIONS_POLICY);
     c.header("Cross-Origin-Opener-Policy", "same-origin");
-    c.header("Cross-Origin-Embedder-Policy", "credentialless");
+    // COEP credentialless makes the page a credentialless embedder, which
+    // rejects cross-origin iframe documents that carry no COEP of their
+    // own (YouTube player → net::ERR_BLOCKED_BY_RESPONSE). Blog articles
+    // embed external videos, so the header is omitted on /blog/; all
+    // other pages keep it.
+    if (!c.req.path.startsWith("/blog/")) {
+      c.header("Cross-Origin-Embedder-Policy", "credentialless");
+    }
     // Public assets under /images/ must be embeddable on external sites
     // (Velog, Medium, dev.to syndication). Everything else stays same-origin.
     const corp = c.req.path.startsWith("/images/") ? "cross-origin" : "same-origin";
