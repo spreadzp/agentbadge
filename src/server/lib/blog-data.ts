@@ -262,6 +262,65 @@ export function filterByTag(
   return articles.filter((a) => a.tags.includes(tag));
 }
 
+export interface BlogChannel {
+  key: string;
+  label: string;
+  tags: string[];
+}
+
+/** Curated channel groups over the long tail of article tags. */
+export const BLOG_CHANNELS: BlogChannel[] = [
+  {
+    key: "payments-x402",
+    label: "Payments & x402",
+    tags: ["x402", "usdc", "payments", "http-402", "micropayments", "eip-3009", "freemium", "eaas", "service-catalog", "refusal", "verdict", "caps", "disclosure"],
+  },
+  {
+    key: "arc",
+    label: "Arc",
+    tags: ["arc", "arc-studio", "mainnet", "testnet", "circle", "agent-economy", "sablier", "vesting", "merkle-anchor"],
+  },
+  {
+    key: "interop",
+    label: "Interop (MCP · A2A)",
+    tags: ["mcp", "a2a", "agentic-web", "interoperability", "agent-tools", "model-context-protocol", "machine-to-machine", "oauth-2-1", "api-discovery"],
+  },
+  {
+    key: "agent-readiness",
+    label: "Agent readiness",
+    tags: ["agent-readiness", "api", "openapi", "aeo", "seo", "llms-txt", "geo", "machine-readability", "discovery", "rules", "scanner", "scoring", "measurement", "deterministic", "reproducibility", "evidence", "guide"],
+  },
+  {
+    key: "identity-security",
+    label: "Identity & security",
+    tags: ["erc-8004", "erc8004", "identity", "agent-identity", "eip-191", "did", "verifiable-credentials", "api-keys", "agent-wallet", "security", "smart-contracts", "uups", "audit", "owner-controls", "agent-allowance", "budget-vault", "knowledge-object", "transparency", "verification", "hash-chain", "erc-8183"],
+  },
+  {
+    key: "markets",
+    label: "Markets & forensics",
+    tags: ["bstocks", "tokenized-stocks", "rwa", "crypto", "trading", "real-time-data", "arbitrage", "market-making", "trading-strategies", "risks", "venue", "gateway", "bounty", "escrow", "forensics", "risk", "wash-trading", "hbar", "hedera", "web3", "agents"],
+  },
+];
+
+export function getChannelCounts(
+  articles: BlogArticle[],
+): { key: string; label: string; count: number }[] {
+  return BLOG_CHANNELS.map((ch) => ({
+    key: ch.key,
+    label: ch.label,
+    count: articles.filter((a) => a.tags.some((t) => ch.tags.includes(t))).length,
+  })).filter((c) => c.count > 0);
+}
+
+export function filterByChannel(
+  articles: BlogArticle[],
+  key: string,
+): BlogArticle[] {
+  const ch = BLOG_CHANNELS.find((c) => c.key === key);
+  if (!ch) return articles;
+  return articles.filter((a) => a.tags.some((t) => ch.tags.includes(t)));
+}
+
 export function generateBlogIndexMarkdown(): string {
   const lines = BLOG_ARTICLES.map(
     (a) => `- [${a.title}](${BASE_URL_FOR_MD}/blog/${a.slug}) — ${a.description}\n  - HTML: ${BASE_URL_FOR_MD}/blog/${a.slug}\n  - Markdown: ${BASE_URL_FOR_MD}/blog/${a.slug}.md\n  - Published: ${a.date}`,

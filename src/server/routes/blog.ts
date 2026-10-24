@@ -10,6 +10,8 @@ import {
   getRelatedArticles,
   getTagCounts,
   filterByTag,
+  getChannelCounts,
+  filterByChannel,
 } from "../lib/blog-data";
 import { toKnowledgeObject } from "../lib/blog/knowledge-object";
 import { PageMeta as PageMetaRegistry } from "../lib/page-meta";
@@ -37,15 +39,21 @@ blogRoutes.get(
     const pageParam = c.req.query("page");
     const page = pageParam ? parseInt(pageParam, 10) : 1;
     const tagParam = c.req.query("tag");
+    const channelParam = c.req.query("channel");
     const tagCounts = getTagCounts(BLOG_ARTICLES);
-    const filteredArticles = tagParam ? filterByTag(BLOG_ARTICLES, tagParam) : BLOG_ARTICLES;
+    const channelCounts = getChannelCounts(BLOG_ARTICLES);
+    const filteredArticles = tagParam
+      ? filterByTag(BLOG_ARTICLES, tagParam)
+      : channelParam
+        ? filterByChannel(BLOG_ARTICLES, channelParam)
+        : BLOG_ARTICLES;
     const { items, meta: paginationMeta } = paginateArticles(filteredArticles, page);
 
     const schemas = [
       ...pageCoreSchemas(),
       blogLd({
         description: meta.description,
-        path: tagParam ? `/blog?tag=${tagParam}` : "/blog",
+        path: tagParam ? `/blog?tag=${tagParam}` : channelParam ? `/blog?channel=${channelParam}` : "/blog",
         articles: items,
       }),
       itemListLd(items),
@@ -53,11 +61,15 @@ blogRoutes.get(
     ];
     const content = BlogListPage(items, paginationMeta, {
       tagCounts,
+      channels: channelCounts,
       activeTag: tagParam,
+      activeChannel: channelParam,
     }).toString();
     const canonicalPath = tagParam
       ? `/blog?tag=${encodeURIComponent(tagParam)}`
-      : paginationMeta.currentPage > 1
+      : channelParam
+        ? `/blog?channel=${encodeURIComponent(channelParam)}`
+        : paginationMeta.currentPage > 1
         ? `/blog?page=${paginationMeta.currentPage}`
         : "/blog";
     const prevRel = paginationMeta.hasPrev

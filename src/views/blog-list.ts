@@ -3,7 +3,9 @@ import { type BlogArticle, type PaginationMeta } from "../server/lib/blog-data";
 
 export interface TagFilterData {
   tagCounts: { tag: string; count: number }[];
+  channels?: { key: string; label: string; count: number }[];
   activeTag?: string;
+  activeChannel?: string;
 }
 
 export function BlogListPage(items: BlogArticle[], meta: PaginationMeta, tagFilter?: TagFilterData) {
@@ -12,8 +14,13 @@ export function BlogListPage(items: BlogArticle[], meta: PaginationMeta, tagFilt
     .join("");
   const pagination = renderPagination(meta);
   const tagBar = tagFilter ? renderTagFilterBar(tagFilter) : "";
-  const filterNotice = tagFilter?.activeTag
-    ? `<div class="mx-auto max-w-6xl mb-6 text-sm text-slate-400">Showing articles tagged: <span class="font-semibold text-emerald-400">${tagFilter.activeTag}</span> · <a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Clear filter</a></div>`
+  const activeLabel = tagFilter?.activeTag
+    ? `tagged: <span class="font-semibold text-emerald-400">${tagFilter.activeTag}</span>`
+    : tagFilter?.activeChannel
+      ? `in channel: <span class="font-semibold text-emerald-400">${tagFilter.channels.find((c) => c.key === tagFilter.activeChannel)?.label ?? tagFilter.activeChannel}</span>`
+      : "";
+  const filterNotice = activeLabel
+    ? `<div class="mx-auto max-w-6xl mb-6 text-sm text-slate-400">Showing articles ${activeLabel} · <a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Clear filter</a></div>`
     : "";
 
   return html`<div class="blog-list">
@@ -42,17 +49,37 @@ export function BlogListPage(items: BlogArticle[], meta: PaginationMeta, tagFilt
 }
 
 function renderTagFilterBar(data: TagFilterData): string {
-  if (data.tagCounts.length === 0) return "";
-  const pills = data.tagCounts
-    .map(({ tag, count }) => {
-      const isActive = data.activeTag === tag;
-      const cls = isActive
-        ? "bg-emerald-500 text-white"
-        : "border border-slate-700 text-slate-300 hover:border-emerald-500 hover:text-emerald-400";
-      return `<a href="/blog?tag=${encodeURIComponent(tag)}" class="rounded-full px-3 py-1 text-xs font-medium ${cls}">${tag} (${count})</a>`;
-    })
+  const channels = data.channels ?? [];
+  if (data.tagCounts.length === 0 && channels.length === 0) return "";
+  const pillCls = (active: boolean) =>
+    active
+      ? "bg-emerald-500 text-white"
+      : "border border-slate-700 text-slate-300 hover:border-emerald-500 hover:text-emerald-400";
+  const channelPills = channels
+    .map(
+      ({ key, label, count }) =>
+        `<a href="/blog?channel=${encodeURIComponent(key)}" class="rounded-full px-3 py-1.5 text-xs font-medium ${pillCls(data.activeChannel === key)}">${label} (${count})</a>`,
+    )
     .join("");
-  return `<div class="px-4 md:px-8 pt-4"><div class="mx-auto max-w-6xl flex flex-wrap gap-2">${pills}</div></div>`;
+  const tagPills = data.tagCounts
+    .map(
+      ({ tag, count }) =>
+        `<a href="/blog?tag=${encodeURIComponent(tag)}" class="rounded-full px-3 py-1 text-xs font-medium ${pillCls(data.activeTag === tag)}">${tag} (${count})</a>`,
+    )
+    .join("");
+  const details = tagPills
+    ? `<details class="mt-3 group">
+      <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-slate-700 px-3 py-1 text-xs font-medium text-slate-400 hover:border-emerald-500 hover:text-emerald-400 [&::-webkit-details-marker]:hidden">
+        All tags (${data.tagCounts.length})
+        <span class="transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      <div class="mt-3 flex flex-wrap gap-2">${tagPills}</div>
+    </details>`
+    : "";
+  return `<div class="px-4 md:px-8 pt-4"><div class="mx-auto max-w-6xl">
+    <div class="flex flex-wrap gap-2">${channelPills}</div>
+    ${details}
+  </div></div>`;
 }
 
 function renderPagination(meta: PaginationMeta): string {
