@@ -84,6 +84,7 @@ flowchart LR
   server_lib["server/lib"] --> pkg_cache["pkg: cache"]
   server_lib["server/lib"] --> pkg_circle_payments["pkg: circle-payments"]
   server_lib["server/lib"] --> pkg_database["pkg: database"]
+  server_lib["server/lib"] --> pkg_econ_events["pkg: econ-events"]
   server_lib["server/lib"] --> pkg_evm_core["pkg: evm-core"]
   server_lib["server/lib"] --> pkg_hedera_core["pkg: hedera-core"]
   server_lib["server/lib"] --> pkg_keeperhub["pkg: keeperhub"]
@@ -187,4 +188,4 @@ flowchart LR
 - Nodes are top-level modules (`server/routes`, `views`, `agent-readiness/*`, ...).
 - `pkg:*` nodes are `@agentbadge/*` packages — dependency direction is
   always server → package, never the reverse.
-- 33 modules import across boundaries; 15 packages consumed.
+- 33 modules import across boundaries; 16 packages consumed.

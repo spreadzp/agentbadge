@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- SLICE-207-3: +4 lines for ledger emit hook */
 /**
  * SLICE-151-9: VenueStore (D12-151) — jobs + provider offers persistence.
  * SLICE-152-5: pluggable backend — ARC_VENUE_STORE=json (default,
@@ -14,6 +15,7 @@ import {
   resetStoreForTesting as resetJsonStore,
 } from "./json-store";
 import { createVenueDbStore } from "./db-store";
+import { emitVenueJob } from "../econ-ledger/venue.js";
 
 // ─── Records ─────────────────────────────────────────────────────
 
@@ -195,6 +197,9 @@ export function venueStoreBackend(): VenueStoreBackend {
 
 export function upsertJob(job: VenueJob): void {
   resolveBackend().upsertJob(job);
+  // SLICE-207-3: project status transitions into the economic ledger
+  // (status-gated, idempotent on jobId+status ordinal, no-op when DB off).
+  emitVenueJob(job);
 }
 
 export function getJob(jobId: string): VenueJob | undefined {

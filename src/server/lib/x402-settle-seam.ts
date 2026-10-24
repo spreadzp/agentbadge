@@ -18,6 +18,7 @@ import {
   type PaymentRouter,
 } from "@agentbadge/circle-payments";
 import { refuse as refusalResponse } from "./error-response";
+import { emitX402Settle } from "./econ-ledger/x402.js";
 import type { RefundService } from "./refund-log";
 
 export interface SettleSeamResult {
@@ -192,6 +193,16 @@ async function settlePhase(v: VerifiedPayment, opts: SettleSeamOptions) {
     v.stamp("Settled without payer");
     return null;
   }
+  // SLICE-207-3: settled payment → `pay` leg in the economic ledger
+  // (fire-and-forget; no-op when DATABASE_ENABLED=false).
+  emitX402Settle({
+    payer,
+    payTo: v.requirements.payTo,
+    amountAtomic: v.requirements.amount,
+    tx: settle.transaction,
+    network: v.requirements.network,
+    scheme: v.requirements.scheme,
+  });
   return {
     payer,
     amountAtomic: v.requirements.amount,

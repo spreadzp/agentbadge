@@ -4,6 +4,7 @@ import type { Context } from "hono";
 import { submitTaskMessage, transferHbarWithKey, transferHbarWithSignature, isValidA2ADid, didToAccountId, createScheduledTransfer, signScheduledTransaction, signScheduledTransactionWithSignature, deleteScheduledTransaction, getScheduleInfo } from "@agentbadge/hedera-core";
 import { marketUpsert as upsert, listTasks, marketGet as get, getTaskById, setEscrowStatus, returnTaskToMarket, updateTaskVerificationAttempts, validatePagination, reserveTask, transitionTask } from "@agentbadge/passport";
 import { logger } from "@agentbadge/passport/logger";
+import { emitMarketStatus } from "./econ-ledger/index.js";
 import { ErrorCodes } from "./error-codes";
 import { errorResponse } from "./error-response";
 import { taskLinks } from "./hateoas";
@@ -507,6 +508,8 @@ export async function completeTask(c: Context): Promise<Response> {
         logger.error("Complete commit failed — task state changed during I/O", { taskId, currentStatus: committed.currentStatus });
         return errorResponse(c, 409, ErrorCodes.TASK_ALREADY_CLAIMED, "Task state changed during completion");
       }
+      // SLICE-207-3: project verify + escrow pay leg into the ledger.
+      emitMarketStatus("completed", { ...task, paymentTxId, completedTxId: hcsTxId });
 
       logger.info("Marketplace task completed", { hcsTxId, taskId, paymentTxId });
 

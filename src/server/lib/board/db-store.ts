@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- SLICE-207-3: +4 lines for ledger emit hook */
 /**
  * SLICE-199-05 (EPIC-199): Postgres backend for the BoardStore — an
  * in-memory mirror hydrated at construction; every mutation updates the
@@ -24,6 +25,7 @@ import {
   upsertBoardMetaPlan,
 } from "./db-sql";
 import type { BoardStoreBackend } from "./store";
+import { emitBoardEntry } from "../econ-ledger/board.js";
 import { assertSpecHash } from "./types";
 import type {
   BoardCardPatch,
@@ -185,6 +187,9 @@ export class PrismaBoardStore implements BoardStoreBackend {
     const stored = { ...entry };
     this.mirror.entries.set(entry.id, stored);
     this.exec(insertEntryPlan(this.db, stored));
+    // SLICE-207-3: project into the economic ledger (fire-and-forget,
+    // no-op when DATABASE_ENABLED=false).
+    emitBoardEntry(stored);
     return stored;
   }
 

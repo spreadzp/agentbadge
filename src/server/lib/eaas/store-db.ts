@@ -7,6 +7,7 @@ import type { Hex } from "viem";
 
 import { DbWriteBehind } from "../db-mirror";
 import type { StoredVerdict, VerdictStoreBackend } from "./store";
+import { emitEaasVerdict } from "../econ-ledger/eaas.js";
 
 /** Repo payload column type (JsonValue) — avoids importing codec-types. */
 type RepoPayload = Parameters<EaasVerdictRepository["put"]>[0]["payload"];
@@ -54,6 +55,9 @@ export function createDbVerdictStore(
           payload: verdict as unknown as RepoPayload,
         }),
       );
+      // SLICE-207-3: project the verdict into the economic ledger
+      // (no-op when DATABASE_ENABLED=false).
+      emitEaasVerdict(verdict);
     },
     get(verdictId: Hex) {
       return map.get(verdictId);
@@ -76,3 +80,4 @@ export function createDbVerdictStore(
     },
   };
 }
+

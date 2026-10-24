@@ -11,6 +11,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { BoardStoreBackend } from "./store";
+import { emitBoardEntry } from "../econ-ledger/board.js";
 import { assertSpecHash, type BoardData } from "./types";
 import {
   applyCardPatch,
@@ -121,6 +122,9 @@ export function createJsonBoardStore(): BoardStoreBackend {
       }
       s.entries[entry.id] = { ...entry };
       saveStore(s);
+      // SLICE-207-3: project into the economic ledger (no-op when
+      // DATABASE_ENABLED=false — json mode still emits when PG is on).
+      emitBoardEntry(s.entries[entry.id]!);
       return s.entries[entry.id];
     },
     listEntries(cardId) {
