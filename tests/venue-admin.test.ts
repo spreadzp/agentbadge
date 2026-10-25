@@ -46,10 +46,14 @@ const CUSTOM_EVAL = "0x0000000000000000000000000000000000000f0a";
 
 const SAVED_DB = process.env.DATABASE_ENABLED;
 const SAVED_KEY = process.env.ARC_EVALUATOR_KEY;
+const SAVED_OPS_KEY = process.env.ARC_OPS_KEY;
+const SAVED_MAINNET = process.env.ARC_MAINNET_ENABLED;
+const SAVED_ATTEST = process.env.ARC_ATTESTATION_ENABLED;
 
 beforeEach(() => {
   process.env.DATABASE_ENABLED = "false";
   delete process.env.ARC_EVALUATOR_KEY; // server evaluator = zero/treasury
+  delete process.env.ARC_OPS_KEY; // ops authority feeds venue-eval since EPIC-173
   resetConfigCache();
   resetDatabaseForTests();
   useMemoryStoreForTesting();
@@ -65,6 +69,12 @@ afterEach(() => {
   else process.env.DATABASE_ENABLED = SAVED_DB;
   if (SAVED_KEY === undefined) delete process.env.ARC_EVALUATOR_KEY;
   else process.env.ARC_EVALUATOR_KEY = SAVED_KEY;
+  if (SAVED_OPS_KEY === undefined) delete process.env.ARC_OPS_KEY;
+  else process.env.ARC_OPS_KEY = SAVED_OPS_KEY;
+  if (SAVED_MAINNET === undefined) delete process.env.ARC_MAINNET_ENABLED;
+  else process.env.ARC_MAINNET_ENABLED = SAVED_MAINNET;
+  if (SAVED_ATTEST === undefined) delete process.env.ARC_ATTESTATION_ENABLED;
+  else process.env.ARC_ATTESTATION_ENABLED = SAVED_ATTEST;
   resetConfigCache();
 });
 

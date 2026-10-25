@@ -50,9 +50,24 @@ export function loadCirclePayments(
     arcPrivateKey = requiredString("ARC_PRIVATE_KEY", errors);
   }
   const attestation = booleanFlag("ARC_ATTESTATION_ENABLED");
+  // EPIC-173 (D-173-1): the attestation/eval-write key is the ops
+  // authority. ARC_OPS_KEY wins; ARC_EVALUATOR_KEY stays accepted for
+  // one release (deprecated) — readKey() also emits the warn via keys.ts.
   let arcEvaluatorKey: string | undefined;
   if (arcMainnet || attestation) {
-    arcEvaluatorKey = requiredString("ARC_EVALUATOR_KEY", errors);
+    const keyRe = /^0x[0-9a-fA-F]{64}$/;
+    const ops = process.env.ARC_OPS_KEY;
+    const legacy = process.env.ARC_EVALUATOR_KEY;
+    if (ops && keyRe.test(ops)) {
+      arcEvaluatorKey = ops;
+    } else if (legacy && keyRe.test(legacy)) {
+      arcEvaluatorKey = legacy;
+    } else {
+      errors.push(
+        "ARC_OPS_KEY required when ARC_MAINNET_ENABLED or " +
+          "ARC_ATTESTATION_ENABLED (ARC_EVALUATOR_KEY is deprecated)",
+      );
+    }
   }
   const circlePayments: CirclePaymentsConfig = {
     enabled: true,

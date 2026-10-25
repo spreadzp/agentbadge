@@ -11,7 +11,7 @@
  * Mounted only when circlePayments.attestation is enabled
  * (ARC_ATTESTATION_ENABLED) — see registerCoreRoutes gate.
  *
- * Two-wallet rule (D6-151): feedback is written by the evaluator key,
+ * Two-wallet rule (D6-151): feedback is written by the ops key,
  * never by the agent-owner key. Site attestations attach to the oracle
  * agent (ARC_ORACLE_AGENT_ID) or a client-supplied agentId.
  */
@@ -133,7 +133,7 @@ attestationRoutes.post(
     tags: ["Attestations"],
     summary: "Run scan and write onchain attestation on Arc",
     description:
-      "Scans the URL, then writes ERC-8004 giveFeedback (evaluator key) " +
+      "Scans the URL, then writes ERC-8004 giveFeedback (ops key) " +
       "and a memo event carrying the report hash. Returns tx hashes + " +
       "explorer links. Writes to the oracle agent unless agentId is given.",
     responses: {

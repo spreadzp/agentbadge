@@ -74,7 +74,7 @@ export interface EvaluateJobDeps {
   /** escrow factory per registered contract — reads rec.variant
    *  (probe-detected ABI flavor) to pick circle vs acp ABI. */
   escrowFor: (contract: EaasContract) => Erc8183;
-  /** Settler WriteClient (ARC_EVALUATOR_KEY-derived EOA). */
+  /** Settler WriteClient (ARC_SETTLE_KEY-derived EOA — money authority, EPIC-173). */
   wallet: WriteClient;
   /** Settler address — stamped into artifact.evaluator. */
   settlerAddress: `0x${string}`;

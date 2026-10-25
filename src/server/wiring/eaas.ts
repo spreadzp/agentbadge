@@ -1,11 +1,9 @@
 // EPIC-154: EaaS wiring — verdict API (154-2 x402), external-job
-// evaluation (154-3, ARC_EVALUATOR_KEY settler + tag1=eaas-eval
-// feedback), memo anchoring (154-4), billing tiers (154-5), async
+// evaluation (154-3, ARC_SETTLE_KEY settler + ARC_OPS_KEY
+// tag1=eaas-eval feedback), memo anchoring (154-4), billing tiers (154-5), async
 // delivery + feeds (154-6). Mounted after wireCirclePayments; gated
 // on ARC_EAAS_ENABLED — no payment rail = nothing mounts (fail closed).
 
-import { createWalletClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import type { Hono } from "hono";
 import { logger } from "@agentbadge/passport/logger";
 import { createErc8183 } from "@agentbadge/circle-payments";
@@ -33,7 +31,7 @@ import type { EaasQuotaDeps } from "../lib/eaas/subscription";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 import { createEaasRefundStack } from "../lib/eaas/refund";
-import { evaluatorKey } from "../lib/eaas/keys";
+import { keyWallet, opsKey, settleKey, warnKeyOverlap } from "../lib/eaas/keys";
 import { mountEaasPayerBinding } from "../lib/eaas/payer-binding";
 import { mountVerifySurface } from "./eaas-verify";
 
@@ -60,32 +58,30 @@ export function wireEaas(
     return;
   }
 
-  // Chain pieces — needed by both the jobs evaluator and the anchorer.
-  const key = evaluatorKey();
+  // EPIC-173 authority split: settle wallet = money (escrow complete/reject
+  // on external jobs); ops wallet signs non-money writes — anchors,
+  // head-flush, ERC-8004 feedback.
+  warnKeyOverlap();
   const net = resolveVenueNetwork();
   const chain = arcChainFor(getConfig().bstock?.arcNetwork ?? net.chain.caip2);
   const read = publicClient(net);
-  const account = key ? privateKeyToAccount(key) : null;
-  const wallet = key && account
-    ? createWalletClient({
-      account,
-      chain,
-      transport: http(net.chain.rpcUrl),
-    })
-    : null;
-  // Shared send seam — anchorer (154-4) and chain flusher (172-3).
+  const settle = keyWallet(settleKey(), chain, net.chain.rpcUrl);
+  const ops = keyWallet(opsKey(), chain, net.chain.rpcUrl);
+  // Shared send seam — anchorer (154-4) and chain flusher (172-3) — ops authority.
   const eoaSend =
-    wallet && account ? mkEoaSend({ wallet, account, read, chain }) : undefined;
+    ops.wallet && ops.account
+      ? mkEoaSend({ wallet: ops.wallet, account: ops.account, read, chain })
+      : undefined;
   // ─── SLICE-154-4: onchain memo anchoring ───────────────────────
   let anchorer: ReturnType<typeof createAnchorer> | undefined;
   let anchorStore: ReturnType<typeof createJsonAnchorStore> | undefined;
-  if (cfg.memoAnchor && wallet && account) {
+  if (cfg.memoAnchor && ops.wallet && ops.account) {
     anchorStore = pickAnchorStore(db);
     anchorer = createAnchorer({
       store: anchorStore,
       verdicts: store,
       memo: net.memo,
-      selfAddress: account.address,
+      selfAddress: ops.account.address,
       send: eoaSend!,
       retries: cfg.anchorRetries,
       backoffMs: 5_000,
@@ -93,7 +89,7 @@ export function wireEaas(
     anchorer.resumePending();
   } else if (cfg.memoAnchor) {
     logger.warn(
-      "EaaS memo anchoring ON but no evaluator key — anchors disabled",
+      "EaaS memo anchoring ON but no ops key (ARC_OPS_KEY) — anchors disabled",
     );
   }
   // ─── SLICE-172-2/3: verdict hash-chain — appends + head-anchor flush ──
@@ -103,7 +99,7 @@ export function wireEaas(
     retries: cfg.anchorRetries,
     memo: net.memo,
     send: eoaSend,
-    selfAddress: account?.address,
+    selfAddress: ops.account?.address,
   });
   // Public verify reads the memo by memoId: getLogs(Memo, memoId) → block time.
   const findAnchor = createFindAnchor({
@@ -186,10 +182,10 @@ export function wireEaas(
   );
 
   // ─── SLICE-154-3: external job evaluation ──────────────────────
-  if (!key || !wallet || !account) {
-    logger.warn(
-      "EaaS jobs API NOT mounted — ARC_EVALUATOR_KEY/DEPLOYER_PRIVATE_KEY missing",
-    );
+  // Settle authority (ARC_SETTLE_KEY) gates the paid evaluation surface:
+  // no money key → no mount. Missing ops key only disables feedback.
+  if (!settle.wallet || !settle.account) {
+    logger.warn("EaaS jobs API NOT mounted — ARC_SETTLE_KEY missing (DEPLOYER fallback removed in EPIC-173)");
   } else {
     const contracts = createContractRegistry({
       store: pickContractStore(db),
@@ -224,8 +220,8 @@ export function wireEaas(
             usdc: net.chain.usdc,
             ...(rec.variant ? { variant: rec.variant } : {}),
           }),
-        wallet: wallet as never,
-        settlerAddress: account.address,
+        wallet: settle.wallet as never,
+        settlerAddress: settle.account.address,
         estimateGas: async (args) =>
           read.estimateContractGas({
             ...args,
@@ -241,13 +237,13 @@ export function wireEaas(
           registry: net.reputationRegistry,
           memo: net.memo,
         },
-        sendTx: async (tx) =>
-          wallet.sendTransaction({
-            account,
-            to: tx.to,
-            data: tx.data,
-            chain,
-          }),
+        // EPIC-173: feedback is an ops-authority tx; no ops key → eval.ts skips it.
+        ...(ops.wallet && ops.account ? {
+          sendTx: async (tx: { to: `0x${string}`; data: `0x${string}` }) =>
+            ops.wallet!.sendTransaction({
+              account: ops.account!, to: tx.to, data: tx.data, chain,
+            }),
+        } : {}),
         // agentId resolution is venue-store + ARC_EAAS_AGENTID_MAP env
         // ("0xwallet:agentId,…"); unresolved → feedback skipped.
         resolveAgentId: async (provider) => {
@@ -266,7 +262,8 @@ export function wireEaas(
     logger.info("EaaS jobs API mounted", {
       evalUsd: cfg.evalUsd,
       gasCap: cfg.gasCap,
-      settler: account.address,
+      settler: settle.account.address,
+      ops: ops.account?.address ?? null,
       network: net.name,
     });
   }

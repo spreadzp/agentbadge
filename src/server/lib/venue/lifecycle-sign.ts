@@ -5,8 +5,9 @@
  *
  * sign:"server" is honoured only when a role key exists (ROLE_KEY_ENV) AND,
  * if the allowlist env is set, the derived address matches the role entry.
- * Role→key mapping is MVP: client/provider/evaluator envs fall back to
- * DEPLOYER_PRIVATE_KEY for the demo wallet.
+ * EPIC-173 (D-173-1): DEPLOYER_PRIVATE_KEY fallback is gone — role-specific
+ * keys first, then the shared ops authority (ARC_OPS_KEY; the deprecated
+ * ARC_EVALUATOR_KEY still maps there with a warn for one release).
  */
 import {
   createPublicClient,
@@ -15,15 +16,16 @@ import {
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { opsKey } from "../eaas/keys";
 import type { PreparedTx } from "./lifecycle";
 
 export type VenueRole = "client" | "provider" | "evaluator";
 
-/** role → private key env var (MVP mapping; evaluator reuses 151 key). */
+/** role → dedicated private key env var (ops authority is the fallback). */
 const ROLE_KEY_ENV: Record<VenueRole, string[]> = {
-  client: ["ARC_VENUE_CLIENT_KEY", "DEPLOYER_PRIVATE_KEY"],
-  provider: ["ARC_VENUE_PROVIDER_KEY", "DEPLOYER_PRIVATE_KEY"],
-  evaluator: ["ARC_EVALUATOR_KEY", "DEPLOYER_PRIVATE_KEY"],
+  client: ["ARC_VENUE_CLIENT_KEY"],
+  provider: ["ARC_VENUE_PROVIDER_KEY"],
+  evaluator: ["ARC_VENUE_EVALUATOR_KEY"],
 };
 
 /** Parse ARC_VENUE_SERVER_WALLETS="client:0x…,provider:0x…" allowlist. */
@@ -44,7 +46,10 @@ function roleKey(role: VenueRole): `0x${string}` | null {
     const k = process.env[env];
     if (k && /^0x[0-9a-fA-F]{64}$/.test(k)) return k as `0x${string}`;
   }
-  return null;
+  // Venue server-signing is an ops authority (D-173-1) — role-specific
+  // key absent → shared ops key; the legacy ARC_EVALUATOR_KEY maps in
+  // there with a deprecation warn. No DEPLOYER_PRIVATE_KEY fallback.
+  return opsKey();
 }
 
 /**

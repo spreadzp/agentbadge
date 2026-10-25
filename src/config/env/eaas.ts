@@ -4,7 +4,8 @@
  * Whole feature is gated behind ARC_EAAS_ENABLED (codebase boolean
  * convention: "true" enables; absent/anything else disables). When enabled,
  * ARC_VERDICT_SIGNER_KEY is required — the EIP-712 verdict signer EOA
- * (deliberately NOT ARC_EVALUATOR_KEY, which settles escrow jobs).
+ * (deliberately NOT the settle key ARC_SETTLE_KEY, which settles escrow
+ * jobs — EPIC-173 authority split).
  *
  * ARC_EAAS_STORE picks the VerdictStore backend: json (default) | sqlite.
  *

@@ -260,8 +260,9 @@ describe("drainBoardOutbox", () => {
     const bounty = getBounty("b-card-1")!;
     expect(bounty.onchainJobId).toBeUndefined();
     process.env.ARC_VENUE_PROVIDER_KEY ||= "0x" + "11".repeat(32);
-    process.env.ARC_EVALUATOR_KEY ||= "0x" + "22".repeat(32);
-    process.env.DEPLOYER_PRIVATE_KEY ||= "0x" + "33".repeat(32);
+    // EPIC-173: evaluator/client resolve via the ops authority —
+    // DEPLOYER_PRIVATE_KEY fallback no longer exists.
+    process.env.ARC_OPS_KEY ||= "0x" + "22".repeat(32);
     const rows = [
       outboxRow("createJob", { payload: { bountyId: "b-card-1" } }),
     ];

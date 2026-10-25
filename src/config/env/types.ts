@@ -87,7 +87,7 @@ export interface CirclePaymentsConfig {
   /** Arc mainnet (eip155:5042) surface — EPIC-151 */
   arcMainnet: boolean;
   arcMainnetRpcUrl: string;
-  /** Evaluator EOA key for ERC-8004 feedback — required when arcMainnet enabled (D6-151). */
+  /** Ops-authority key (ARC_OPS_KEY; ARC_EVALUATOR_KEY legacy) for ERC-8004 writes (D6-151, D-173-1). */
   arcEvaluatorKey?: string;
   /** Readiness attestation route — POST /api/attestations (151-3) */
   attestation: boolean;

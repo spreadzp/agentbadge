@@ -3,17 +3,17 @@
  *
  * Writes a scan attestation on-chain:
  *   1. ERC-8004 giveFeedback(agentId, score, tag1="readiness", …) on the
- *      ReputationRegistry — signed by ARC_EVALUATOR_KEY.
+ *      ReputationRegistry — signed by the ops authority (ARC_OPS_KEY).
  *   2. Memo contract wrap of identity ownerOf(agentId) carrying
  *      memoId = keccak256(reportHash) + ASCII score summary (audit trail).
  *
- * Two-wallet rule (D6-151): feedback MUST come from the evaluator EOA —
+ * Two-wallet rule (D6-151): feedback MUST come from the ops EOA (ARC_OPS_KEY) —
  * never from the agent-owner key (ERC-8004 self-deal ban, F-verified on
  * testnet in SLICE-151-2 smoke run).
  *
  * Oracle agent: site attestations default to OUR oracle agentId
  * (ARC_ORACLE_AGENT_ID). The oracle agent is registered once under the
- * OPERATOR key — it cannot be created by the evaluator key (self-deal).
+ * OPERATOR key — it cannot be created by the ops key (self-deal).
  * Clients may pass their own registered `agentId` in the POST body.
  */
 
@@ -113,7 +113,7 @@ export function createArcAttestationWriter(
       // Scanner scores can be fractional — int256 feedback needs an int.
       const score = Math.round(input.score);
 
-      // 1. ERC-8004 reputation feedback — evaluator key signs.
+      // 1. ERC-8004 reputation feedback — ops key (ARC_OPS_KEY) signs.
       const feedbackTx = await identity.giveFeedback(evaluator as never, {
         agentId,
         value: BigInt(score),

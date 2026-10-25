@@ -7,6 +7,7 @@ import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getAddress, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { opsKey } from "../lib/eaas/keys";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
@@ -21,11 +22,15 @@ export const TX_PHASES = [
   "refunded", "rated",
 ] as const;
 
-/** Evaluator EOA for new jobs — derived from ARC_EVALUATOR_KEY. */
+/**
+ * Evaluator EOA for new jobs — the ops authority (ARC_OPS_KEY; legacy
+ * ARC_EVALUATOR_KEY maps there with a warn — EPIC-173). Venue-eval is
+ * ops, not money (D-173-1); CIRCLE_TREASURY_ADDRESS/zero when no key.
+ */
 export function venueEvaluator(): `0x${string}` {
-  const key = process.env.ARC_EVALUATOR_KEY;
-  if (key && /^0x[0-9a-fA-F]{64}$/.test(key)) {
-    return privateKeyToAccount(key as `0x${string}`).address;
+  const key = opsKey();
+  if (key) {
+    return privateKeyToAccount(key).address;
   }
   return (process.env.CIRCLE_TREASURY_ADDRESS ??
     "0x0000000000000000000000000000000000000000") as `0x${string}`;

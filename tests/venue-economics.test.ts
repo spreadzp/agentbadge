@@ -63,7 +63,9 @@ const testNet: VenueNetwork = {
 const ENV_KEYS = [
   "DATABASE_ENABLED", "ARC_VENUE_TAKE_BPS", "ARC_EVAL_FEE_USDC",
   "ARC_TREASURY_ADDRESS", "ARC_VENUE_FEE_HOOK", "ARC_VENUE_SERVER_WALLETS",
-  "ARC_VENUE_PROVIDER_KEY", "DEPLOYER_PRIVATE_KEY",
+  "ARC_VENUE_PROVIDER_KEY", "ARC_VENUE_EVALUATOR_KEY", "ARC_OPS_KEY",
+  "ARC_EVALUATOR_KEY", "ARC_SETTLE_KEY", "DEPLOYER_PRIVATE_KEY",
+  "ARC_MAINNET_ENABLED", "ARC_ATTESTATION_ENABLED",
 ] as const;
 const savedEnv: Record<string, string | undefined> = {};
 
@@ -75,8 +77,16 @@ beforeEach(() => {
   delete process.env.ARC_TREASURY_ADDRESS;
   delete process.env.CIRCLE_TREASURY_ADDRESS;
   delete process.env.ARC_VENUE_PROVIDER_KEY;
+  delete process.env.ARC_VENUE_EVALUATOR_KEY;
+  delete process.env.ARC_OPS_KEY;
+  delete process.env.ARC_EVALUATOR_KEY;
+  delete process.env.ARC_SETTLE_KEY;
   delete process.env.DEPLOYER_PRIVATE_KEY;
   delete process.env.ARC_VENUE_SERVER_WALLETS;
+  // EPIC-173: flags off — ambient .env may enable attestation/mainnet,
+  // which makes loadConfig require an ops key these tests don't set.
+  process.env.ARC_MAINNET_ENABLED = "false";
+  process.env.ARC_ATTESTATION_ENABLED = "false";
   resetConfigCache();
   resetDatabaseForTests();
   useMemoryStoreForTesting();

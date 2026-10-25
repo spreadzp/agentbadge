@@ -19,8 +19,8 @@
  * instance.
  *
  * SLICE-185-4: rep sink is the v1 log sink (188 lands a real one later);
- * the anchorer reuses the evaluator key + venue network send seam —
- * same EOA that anchors EaaS verdicts, memo domain "witness".
+ * the anchorer reuses the ops key (ARC_OPS_KEY) + venue network send
+ * seam — same EOA that anchors EaaS verdicts, memo domain "witness".
  */
 import type { Hono } from "hono";
 import { createWalletClient, http } from "viem";
@@ -37,7 +37,7 @@ import {
   createWitnessAnchorer,
 } from "../lib/witness/anchor";
 import { mkEoaSend } from "../lib/eaas/anchor";
-import { evaluatorKey } from "../lib/eaas/keys";
+import { opsKey } from "../lib/eaas/keys";
 import { arcChainFor } from "../lib/marketplace/chain";
 import { publicClient, resolveVenueNetwork } from "../lib/venue/chain";
 import { getConfig } from "../../config/env";
@@ -59,7 +59,7 @@ export function wireWitness(app: Hono): void {
   // ─── SLICE-185-4: memo anchor (opt-in, D-185-7) ───────────────
   let anchorer: ReturnType<typeof createWitnessAnchorer> | undefined;
   if (envFlag("WITNESS_ANCHOR_ENABLED")) {
-    const key = evaluatorKey();
+    const key = opsKey();
     const net = resolveVenueNetwork();
     if (key) {
       const account = privateKeyToAccount(key);
