@@ -129,6 +129,7 @@ flowchart LR
   server_routes["server/routes"] --> pkg_a2a["pkg: a2a"]
   server_routes["server/routes"] --> pkg_cache["pkg: cache"]
   server_routes["server/routes"] --> pkg_circle_payments["pkg: circle-payments"]
+  server_routes["server/routes"] --> pkg_database["pkg: database"]
   server_routes["server/routes"] --> pkg_evm_core["pkg: evm-core"]
   server_routes["server/routes"] --> pkg_hedera_core["pkg: hedera-core"]
   server_routes["server/routes"] --> pkg_mcp["pkg: mcp"]
