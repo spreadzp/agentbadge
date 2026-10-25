@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- route registry; mounts grow per-slice */
 // EPIC-140 (SLICE-140-8): route registry — barrel + register*Routes functions.
 // index.ts becomes a table of contents: wire* calls interleave with register*
 // calls at the original positions, preserving Hono's registration order.
@@ -29,6 +30,7 @@ import { mcpRoutes } from "./mcp";
 import { riskRoutes } from "./risk-api";
 import { econLedgerRoutes } from "./econ-ledger-api";
 import { econLedgerExposureRoutes } from "./econ-ledger-exposure-api";
+import { econLedgerShipmentsRoutes } from "./econ-ledger-shipments-api";
 
 import { landingRoutes } from "./landing";
 import { authorityRoutes } from "./authority";
@@ -122,6 +124,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", riskRoutes);
   app.route("/", econLedgerRoutes);
   app.route("/", econLedgerExposureRoutes);
+  app.route("/", econLedgerShipmentsRoutes);
 }
 
 // HTML page routes — mounted after wireMcpNamespaceRoutes.
