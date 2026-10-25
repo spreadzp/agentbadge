@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agentbadge.xyz/schemas/verdict-signers/v1.json",
+  "updated": "2026-10-25T00:00:00.000Z",
+  "current": "0xeaf85d8c4a0baf0d73b32fffb7e57976b5572ba2",
+  "next": "0xeaf85d8c4a0baf0d73b32fffb7e57976b5572ba2",
+  "verify": "EIP-712 VerdictArtifact — recovered signer == artifact.evaluator (self-describing; this file is advisory trust-ahead, not acceptance)"
+}

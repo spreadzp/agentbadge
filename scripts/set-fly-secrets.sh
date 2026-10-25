@@ -124,7 +124,16 @@ OPTIONAL_SECRETS=(
   ARC_RPC_URL
   ARC_EXPLORER_URL
   ARC_ORACLE_AGENT_ID
-  ARC_EVALUATOR_KEY
+  # EPIC-173 canonical split — ARC_EVALUATOR_KEY removed in 173-3 cutover;
+  # set the two dedicated authorities instead.
+  ARC_SETTLE_KEY
+  ARC_OPS_KEY
+  # ── Signer-service (EPIC-173/SLICE-173-2) — socket backend opts ──
+  # SIGNER_KEY falls back to ARC_SETTLE_KEY; leave SIGNER_KEY unset.
+  SIGNER_BACKEND
+  SIGNER_SOCKET_PATH
+  SIGNER_ALLOW_TO
+  SIGNER_MAX_GAS
   ACCESS_PASS_MINTER_KEY
   # ── ERC-8004 canonical registration (EPIC-194) ──
   ERC8004_CHAIN_ID

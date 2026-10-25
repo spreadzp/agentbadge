@@ -39,6 +39,10 @@ npx @agentbadge/verify-verdict <verdictId|txHash> \
 
 Level-1 cross-check: `curl https://agentbadge.xyz/api/verify/<verdictId>` — compare `anchor.memoId` and `chain.head_ref.headHash` against the package output.
 
+## Signer rotation (trust-ahead)
+
+`GET /keys/verdict-signers.json` — `{current, next}` evaluator EOAs. Verdict verification itself is self-describing: the EIP-712 signature recovers to `artifact.evaluator`, so verdicts signed by a rotated-out key still verify — this file is NOT an acceptance list. Adopt `next` into your trust set ahead of rotation (electron-builder model): when `current` rotates, artifacts from the new signer are already expected.
+
 ## Links
 
 - Blog article: https://agentbadge.xyz/blog/arc-c16-verdict-verification
