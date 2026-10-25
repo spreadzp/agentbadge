@@ -53,9 +53,9 @@ SECRETS=(
 
 # Optional secrets (set if present in .env, skip silently if missing)
 OPTIONAL_SECRETS=(
-  SENTRY_DSN
-  SOURCE_COMMIT
-  BUILD_DATE
+  # SENTRY_DSN intentionally NOT pushed — inactive keys, initSentry no-ops without it.
+  # SOURCE_COMMIT/BUILD_DATE intentionally NOT pushed — build-time metadata comes
+  # from deploy.sh --build-arg → image ENV; stale .env values shadow fresh builds.
   ATTESTCOIN_ENABLED
   TASK_ESCROW_SEPOLIA_ADDR
   TASK_MARKETPLACE_ASC_ADDR
@@ -134,6 +134,10 @@ OPTIONAL_SECRETS=(
   SIGNER_SOCKET_PATH
   SIGNER_ALLOW_TO
   SIGNER_MAX_GAS
+  SIGNER_RPC_URL
+  # ── EaaS eval surface (EPIC-173 dogfood → prod) ──
+  ARC_EAAS_ENABLED
+  ARC_VERDICT_SIGNER_KEY
   ACCESS_PASS_MINTER_KEY
   # ── ERC-8004 canonical registration (EPIC-194) ──
   ERC8004_CHAIN_ID
