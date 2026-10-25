@@ -15,7 +15,11 @@
  * Gate: requires Postgres (econLedgerOrNull) — in-memory mode = no-op.
  */
 
-import type { Database, EconLedgerStore } from "@agentbadge/database";
+import {
+  rebuildTrustEdges,
+  type Database,
+  type EconLedgerStore,
+} from "@agentbadge/database";
 import type { BuildEventInput } from "@agentbadge/econ-events";
 import { logger } from "@agentbadge/passport/logger";
 import { emitEconomicBatch } from "./emit.js";
@@ -149,6 +153,18 @@ export async function runEconBackfill(
     }
   } catch (err) {
     logger.warn("econ-backfill: x402 scan failed", { error: String(err) });
+  }
+
+  // SLICE-207-4: after any ledger backfill, fold the log into the
+  // AgentTrustEdge table — covers events emitted before 207-4 existed.
+  try {
+    const edgeRep = await rebuildTrustEdges(ledger, database.trustEdges);
+    logger.info("econ-backfill: trust edges rebuilt", {
+      scanned: edgeRep.scanned,
+      written: edgeRep.written,
+    });
+  } catch (err) {
+    logger.warn("econ-backfill: edge rebuild failed", { error: String(err) });
   }
 
   logger.info("econ-backfill done", report as unknown as Record<string, unknown>);
