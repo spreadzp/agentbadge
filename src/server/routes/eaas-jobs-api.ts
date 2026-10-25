@@ -61,6 +61,8 @@ export interface EaasJobsRoutesDeps extends EvaluateJobDeps {
   /** SLICE-173-2: settle-signer liveness ping — wired only on the
    *  socket backend; paid routes 503 before charging when it fails. */
   signerPing?: () => Promise<unknown>;
+  /** SLICE-173-4: operator alert on signer-down (throttled upstream). */
+  signerDownNotify?: (err: Error) => Promise<void>;
 }
 
 const dr = (summary: string) =>

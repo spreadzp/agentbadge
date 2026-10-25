@@ -17,6 +17,7 @@ import { POLICY_REGISTRY } from "../lib/eaas/policies";
 import { createContractRegistry } from "../lib/eaas/contracts";
 import { createAnchorer, createFindAnchor, createJsonAnchorStore, mkEoaSend } from "../lib/eaas/anchor";
 import { setupVerdictChain } from "../lib/eaas/chain-wire";
+import { createSignerDownNotifier } from "../lib/eaas/signer-alerts";
 import { createEaasRoutes } from "../routes/eaas-api";
 import { createEaasJobsRoutes } from "../routes/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../routes/eaas-billing-api";
@@ -224,7 +225,8 @@ export function wireEaas(
           }),
         wallet: settle.wallet as never,
         settlerAddress: settle.settlerAddress,
-        ...(settle.signerPing ? { signerPing: settle.signerPing } : {}),
+        // SLICE-173-4: socket backend — liveness ping + operator alert on down.
+        ...(settle.signerPing ? { signerPing: settle.signerPing, signerDownNotify: createSignerDownNotifier() } : {}),
         estimateGas: async (args) =>
           read.estimateContractGas({
             ...args,
@@ -290,11 +292,7 @@ export function wireEaas(
   );
 
   logger.info("EaaS verdict API mounted", {
-    verdictUsd: cfg.verdictUsd,
-    scanUsd: cfg.scanUsd,
-    store: store.name,
-    chainId,
-    memoAnchor: cfg.memoAnchor && !!anchorer,
-    tiers: Object.keys(cfg.tierQuotas),
+    verdictUsd: cfg.verdictUsd, scanUsd: cfg.scanUsd, store: store.name,
+    chainId, memoAnchor: cfg.memoAnchor && !!anchorer, tiers: Object.keys(cfg.tierQuotas),
   });
 }

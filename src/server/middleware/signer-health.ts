@@ -16,16 +16,21 @@ import { logger } from "@agentbadge/passport/logger";
 
 export function signerHealthGate(
   ping: (() => Promise<unknown>) | undefined,
+  opts: { onDown?: (err: Error) => void | Promise<void> } = {},
 ) {
   return async (c: Context, next: Next) => {
     if (!ping) return next();
     try {
       await ping();
     } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
       logger.warn("signer health-gate refused paid route", {
         path: c.req.path,
-        error: e instanceof Error ? e.message : String(e),
+        error: err.message,
       });
+      // Fire-and-forget operator alert (SLICE-173-4) — throttled
+      // upstream; must never delay or break the refusal.
+      void opts.onDown?.(err);
       return c.json(
         {
           error: "signer_unavailable",

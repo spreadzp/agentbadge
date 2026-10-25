@@ -90,7 +90,7 @@ export function registerEvaluateRoute(
     },
     // SLICE-173-2: signer must be live BEFORE payment verify/settle —
     // dead signer → 503, x402 never taken (D-173-4, no fallback key).
-    signerHealthGate(deps.signerPing),
+    signerHealthGate(deps.signerPing, { onDown: deps.signerDownNotify }),
     eaasQuotaGate({
       quota: deps.quota,
       policy: (c) => (c.get("evalInput") as EvalInput).policy,
