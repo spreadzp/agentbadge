@@ -58,6 +58,9 @@ export interface EaasJobsRoutesDeps extends EvaluateJobDeps {
   quota?: EaasQuotaDeps;
   /** SLICE-154-6: async request delivery — absent = async:true rejected. */
   async_?: EaasAsyncDeps;
+  /** SLICE-173-2: settle-signer liveness ping — wired only on the
+   *  socket backend; paid routes 503 before charging when it fails. */
+  signerPing?: () => Promise<unknown>;
 }
 
 const dr = (summary: string) =>

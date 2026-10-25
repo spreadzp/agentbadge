@@ -31,7 +31,7 @@ import type { EaasQuotaDeps } from "../lib/eaas/subscription";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 import { createEaasRefundStack } from "../lib/eaas/refund";
-import { keyWallet, opsKey, settleKey, warnKeyOverlap } from "../lib/eaas/keys";
+import { keyWallet, opsKey, resolveSettleAuthority, warnKeyOverlap } from "../lib/eaas/keys";
 import { mountEaasPayerBinding } from "../lib/eaas/payer-binding";
 import { mountVerifySurface } from "./eaas-verify";
 
@@ -65,7 +65,9 @@ export function wireEaas(
   const net = resolveVenueNetwork();
   const chain = arcChainFor(getConfig().bstock?.arcNetwork ?? net.chain.caip2);
   const read = publicClient(net);
-  const settle = keyWallet(settleKey(), chain, net.chain.rpcUrl);
+  // SLICE-173-2: backend socket → money key lives in the signer service;
+  // this process only holds a SocketSigner client (no key material).
+  const settle = resolveSettleAuthority(chain, net.chain.rpcUrl);
   const ops = keyWallet(opsKey(), chain, net.chain.rpcUrl);
   // Shared send seam — anchorer (154-4) and chain flusher (172-3) — ops authority.
   const eoaSend =
@@ -182,9 +184,9 @@ export function wireEaas(
   );
 
   // ─── SLICE-154-3: external job evaluation ──────────────────────
-  // Settle authority (ARC_SETTLE_KEY) gates the paid evaluation surface:
-  // no money key → no mount. Missing ops key only disables feedback.
-  if (!settle.wallet || !settle.account) {
+  // Settle authority gates the paid surface: env needs ARC_SETTLE_KEY;
+  // socket backend = SocketSigner, liveness via health-gate (173-2).
+  if (!settle.wallet || (settle.account === null && !settle.socketSigner)) {
     logger.warn("EaaS jobs API NOT mounted — ARC_SETTLE_KEY missing (DEPLOYER fallback removed in EPIC-173)");
   } else {
     const contracts = createContractRegistry({
@@ -221,7 +223,8 @@ export function wireEaas(
             ...(rec.variant ? { variant: rec.variant } : {}),
           }),
         wallet: settle.wallet as never,
-        settlerAddress: settle.account.address,
+        settlerAddress: settle.settlerAddress,
+        ...(settle.signerPing ? { signerPing: settle.signerPing } : {}),
         estimateGas: async (args) =>
           read.estimateContractGas({
             ...args,
@@ -262,7 +265,7 @@ export function wireEaas(
     logger.info("EaaS jobs API mounted", {
       evalUsd: cfg.evalUsd,
       gasCap: cfg.gasCap,
-      settler: settle.account.address,
+      settler: typeof settle.settlerAddress === "function" ? "socket-signer" : settle.settlerAddress,
       ops: ops.account?.address ?? null,
       network: net.name,
     });

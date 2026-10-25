@@ -13,10 +13,10 @@
  * DEPLOYER_PRIVATE_KEY fallback is GONE — no dev-key fallback may spend
  * money or sign for the platform (D-173-1, D-173-5).
  *
- * SIGNER_BACKEND: "env" (default) | "socket". "socket" is the SLICE-173-2
- * backend — declaring it now makes the unsupported state fail fast
- * instead of silently falling back to an env key (D-173-4: fail
- * closed, never fake).
+ * SIGNER_BACKEND: "env" (default) | "socket". "socket" (SLICE-173-2)
+ * moves the money key into the unix-socket signer service — the API
+ * holds no key material, settle ops are JSON-RPC round-trips on
+ * SIGNER_SOCKET_PATH (D-173-2; fail fast, never fake, D-173-4).
  */
 import {
   createWalletClient,
@@ -26,6 +26,11 @@ import {
   type WalletClient,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import {
+  arcSignerAsWriteClient,
+  createSocketSigner,
+  type SocketSigner,
+} from "@agentbadge/circle-payments";
 import { logger } from "@agentbadge/passport/logger";
 
 const KEY_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -73,20 +78,65 @@ export function keyWallet(
 }
 
 /**
- * Declared signer backend. "socket" throws — the unix-socket signer
- * service lands in SLICE-173-2; until then the env backend is the only
- * valid answer and pretending otherwise would hide custody.
+ * Declared signer backend: "env" (key in process env) | "socket"
+ * (money key inside the unix-socket signer service — SLICE-173-2).
  */
-export function signerBackend(): "env" {
+export function signerBackend(): "env" | "socket" {
   const raw = (process.env.SIGNER_BACKEND ?? "env").toLowerCase();
-  if (raw === "env") return "env";
-  if (raw === "socket") {
-    throw new Error(
-      "SIGNER_BACKEND=socket is not supported yet — unix-socket signer " +
-        "service lands in SLICE-173-2; use 'env' until then",
-    );
-  }
+  if (raw === "env" || raw === "socket") return raw;
   throw new Error(`Unknown SIGNER_BACKEND "${raw}" (env | socket)`);
+}
+
+/**
+ * Settle authority for the declared backend (SLICE-173-2).
+ * env → viem wallet from ARC_SETTLE_KEY as before.
+ * socket → SocketSigner WriteClient; no key material in this process.
+ * `account` is env-backend only; `settlerAddress` may be a lazy getter
+ * (socket resolves the EOA once connected — throws while down, so
+ * call sites must sit behind the signer health-gate anyway).
+ */
+export interface SettleAuthority {
+  wallet: WalletClient | { writeContract: (c: never) => Promise<never> } | null;
+  account: Account | null;
+  settlerAddress: `0x${string}` | (() => `0x${string}`);
+  /** Ping the service — wired into the paid-route health-gate. */
+  signerPing?: () => Promise<unknown>;
+  /** Socket backend: close() on shutdown (kept for lifecycle hooks). */
+  socketSigner?: SocketSigner;
+}
+
+export function resolveSettleAuthority(
+  chain: Chain,
+  rpcUrl: string,
+): SettleAuthority {
+  if (signerBackend() === "socket") {
+    const signer = createSocketSigner({
+      socketPath: process.env.SIGNER_SOCKET_PATH,
+    });
+    return {
+      wallet: arcSignerAsWriteClient(signer) as never,
+      account: null,
+      settlerAddress: () => signer.address,
+      signerPing: () => signer.ping(),
+      socketSigner: signer,
+    };
+  }
+  const { account, wallet } = keyWallet(settleKey(), chain, rpcUrl);
+  return {
+    wallet,
+    account,
+    settlerAddress: account?.address ?? "0x0000000000000000000000000000000000000000",
+  };
+}
+
+/** Resolve settler EOA — env is a plain address; socket backend (173-2)
+ *  is a lazy getter that throws while the service is down (503 via gate). */
+export function settlerAddressOf(deps: {
+  settlerAddress: `0x${string}` | (() => `0x${string}`);
+}): `0x${string}` {
+  return typeof deps.settlerAddress === "function"
+    ? deps.settlerAddress()
+    : deps.settlerAddress;
 }
 
 /**

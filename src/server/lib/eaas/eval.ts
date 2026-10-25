@@ -1,15 +1,12 @@
 /**
  * SLICE-154-3: external-job evaluation — settle a foreign ERC-8183 job
- * AND return a signed VerdictArtifact in one call (POST /api/eaas/jobs/evaluate
- * after x402 settle):
+ * AND return a signed VerdictArtifact (POST /api/eaas/jobs/evaluate):
  *   1. escrow.getJob(jobId) — status gate (EvaluatorError → 409)
- *   2. expired → claimRefund (verdict "expired")
+ *   2. expired → claimRefund ("expired")
  *   3. Submitted → policy → complete/reject onchain
- *   4. sign VerdictArtifact (evaluator = settler EOA) → persist (idempotent
- *      per chainId:contract:jobId) → chain.append → giveFeedback(agentId, ±1,
- *      "eaas-eval", best-effort; skipped on noFeedback / no agentId)
- * Gas-cap: the evaluator WriteClient wraps every writeContract with
- * estimateGas — over ARC_EAAS_GAS_CAP aborts before send.
+ *   4. sign artifact (evaluator = settler EOA) → persist → chain.append →
+ *      giveFeedback(agentId, ±1, "eaas-eval"; skipped w/o agentId)
+ * Gas-cap: WriteClient wraps writes with estimateGas — over cap aborts.
  */
 
 import { logger } from "@agentbadge/passport/logger";
@@ -22,6 +19,7 @@ import type {
 } from "@agentbadge/circle-payments";
 import type { Hex } from "viem";
 import type { PolicyFn } from "./policies";
+import { settlerAddressOf } from "./keys";
 import {
   hashCanonical,
   hashDeliverable,
@@ -76,8 +74,9 @@ export interface EvaluateJobDeps {
   escrowFor: (contract: EaasContract) => Erc8183;
   /** Settler WriteClient (ARC_SETTLE_KEY-derived EOA — money authority, EPIC-173). */
   wallet: WriteClient;
-  /** Settler address — stamped into artifact.evaluator. */
-  settlerAddress: `0x${string}`;
+  /** Settler address — stamped into artifact.evaluator. Function form
+   *  resolves lazily (SocketSigner learns its EOA on connect — 173-2). */
+  settlerAddress: `0x${string}` | (() => `0x${string}`);
   estimateGas?: EstimateGasFn;
   /** ARC_EAAS_GAS_CAP — max estimated gas for a settle tx. */
   gasCap: number;
@@ -171,7 +170,7 @@ async function signEvalArtifact(
     reason: verdict.reason,
     reasonHash: verdict.reasonHash,
     evidenceHash: hashCanonical(verdict.evidence ?? null),
-    evaluator: deps.settlerAddress as Hex,
+    evaluator: settlerAddressOf(deps) as Hex,
     chainId: input.contract.chainId,
     issuedAt: verdict.evaluatedAt,
   };
@@ -204,7 +203,7 @@ export async function evaluateExternalJob(
     deps.estimateGas && deps.gasCap > 0
       ? gasCappedWallet(
         deps.wallet,
-        deps.settlerAddress,
+        settlerAddressOf(deps),
         deps.estimateGas,
         BigInt(deps.gasCap),
       )
@@ -231,7 +230,7 @@ export async function evaluateExternalJob(
       id: input.jobId,
       client: ZERO,
       provider: ZERO,
-      evaluator: deps.settlerAddress,
+      evaluator: settlerAddressOf(deps),
       description: "",
       budget: 0n,
       expiredAt: 0n,

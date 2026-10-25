@@ -22,11 +22,13 @@ import {
   evaluateExternalJob,
   GasCapError,
 } from "../lib/eaas/eval";
+import { settlerAddressOf } from "../lib/eaas/keys";
 import {
   consumerKey,
   createRateLimiter,
 } from "../lib/eaas/request";
 import { eaasQuotaGate } from "../lib/eaas/subscription";
+import { signerHealthGate } from "../middleware/signer-health";
 import { respondAsync } from "../lib/eaas/requests";
 import { validateEvaluate, type EvalInput } from "../lib/eaas/eval-request";
 import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../lib/witness/jobs";
@@ -86,6 +88,9 @@ export function registerEvaluateRoute(
       c.set("evalInput", { ...parsed, rec });
       return next();
     },
+    // SLICE-173-2: signer must be live BEFORE payment verify/settle —
+    // dead signer → 503, x402 never taken (D-173-4, no fallback key).
+    signerHealthGate(deps.signerPing),
     eaasQuotaGate({
       quota: deps.quota,
       policy: (c) => (c.get("evalInput") as EvalInput).policy,
@@ -144,7 +149,7 @@ export function registerEvaluateRoute(
             String(input.jobId),
           ),
           requesterWallet: payer,
-          evaluatorWallet: deps.settlerAddress,
+          evaluatorWallet: settlerAddressOf(deps),
           ...(input.witnessAllowed === false
             ? { witnessAllowed: false }
             : {}),
@@ -198,7 +203,7 @@ export function registerEvaluateRoute(
             String(input.jobId),
           ),
           requesterWallet: payer,
-          evaluatorWallet: deps.settlerAddress,
+          evaluatorWallet: settlerAddressOf(deps),
           deliveredAt: Date.now(),
           evaluatorVerdict: result.verdict.verdict,
           ...(input.witnessAllowed === false

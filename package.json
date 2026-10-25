@@ -13,6 +13,8 @@
     "dev:css": "tailwindcss -i src/input.css -o public/css/tailwind.css --watch",
     "build": "bun run build:css && bun build src/server/index.ts --outdir dist --target bun",
     "start": "bun src/server/index.ts",
+    "start:signer": "bash scripts/start-with-signer.sh",
+    "signer": "bun src/signer-service/index.ts",
     "typecheck": "tsc --noEmit",
     "gen:openapi": "bun scripts/gen-openapi.ts",
     "check:openapi": "bun scripts/gen-openapi.ts --check",

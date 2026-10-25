@@ -54,4 +54,7 @@ COPY public ./public
 COPY --from=css-builder /build/public/css/tailwind.css ./public/css/tailwind.css
 
 EXPOSE 4021
-CMD ["bun", "src/server/index.ts"]
+# EPIC-173 (173-2): entrypoint is a thin launcher — SIGNER_BACKEND=socket
+# supervises API + unix-socket signer-service on one machine (money key
+# never enters the API env); unset → plain `bun src/server/index.ts`.
+CMD ["sh", "scripts/start.sh"]

@@ -13,7 +13,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   opsKey,
+  resolveSettleAuthority,
   settleKey,
+  settlerAddressOf,
   signerBackend,
   warnKeyOverlap,
 } from "../src/server/lib/eaas/keys";
@@ -34,6 +36,7 @@ const AUTH_VARS = [
   "ARC_VENUE_EVALUATOR_KEY",
   "DEPLOYER_PRIVATE_KEY",
   "SIGNER_BACKEND",
+  "SIGNER_SOCKET_PATH",
   "ARC_VENUE_SERVER_WALLETS",
 ] as const;
 
@@ -114,12 +117,27 @@ describe("EPIC-173: authority env split", () => {
     expect(serverRoleAddress("provider")).toBe(opsAddr);
   });
 
-  it("signerBackend defaults to env; socket fails fast until 173-2", () => {
+  it("signerBackend defaults to env; socket supported since 173-2", () => {
     expect(signerBackend()).toBe("env");
     process.env.SIGNER_BACKEND = "socket";
-    expect(() => signerBackend()).toThrow(/SLICE-173-2/);
+    expect(signerBackend()).toBe("socket");
     process.env.SIGNER_BACKEND = "bogus";
     expect(() => signerBackend()).toThrow(/Unknown SIGNER_BACKEND/);
+  });
+
+  it("socket backend: API env ARC_SETTLE_KEY is ignored (AC1 — no key material)", () => {
+    process.env.SIGNER_BACKEND = "socket";
+    process.env.SIGNER_SOCKET_PATH = `/tmp/test-signer-${process.pid}.sock`;
+    process.env.ARC_SETTLE_KEY = K1; // must NOT be picked up by the API
+    const authority = resolveSettleAuthority(null as never, "");
+    try {
+      expect(authority.account).toBeNull();
+      expect(authority.socketSigner).toBeDefined();
+      // Lazy settler throws while the service is unreachable — fail closed.
+      expect(() => settlerAddressOf(authority)).toThrow();
+    } finally {
+      authority.socketSigner?.close();
+    }
   });
 
   it("warnKeyOverlap warns when settle and ops share an EOA", () => {

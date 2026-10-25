@@ -168,6 +168,9 @@ flowchart LR
   server_wiring["server/wiring"] --> server_services["server/services"]
   server_wiring["server/wiring"] --> telegram["telegram"]
   server_wiring["server/wiring"] --> views["views"]
+  signer_service["signer-service"] --> pkg_circle_payments["pkg: circle-payments"]
+  signer_service["signer-service"] --> pkg_passport_logger["pkg: passport/logger"]
+  signer_service["signer-service"] --> server_lib["server/lib"]
   telegram["telegram"] --> pkg_bstock_tracker["pkg: bstock-tracker"]
   telegram["telegram"] --> server_lib["server/lib"]
   verifiers["verifiers"] --> pkg_hedera_core["pkg: hedera-core"]
@@ -189,4 +192,4 @@ flowchart LR
 - Nodes are top-level modules (`server/routes`, `views`, `agent-readiness/*`, ...).
 - `pkg:*` nodes are `@agentbadge/*` packages — dependency direction is
   always server → package, never the reverse.
-- 33 modules import across boundaries; 16 packages consumed.
+- 34 modules import across boundaries; 16 packages consumed.
