@@ -38,6 +38,8 @@ import { article as arcC33A2aProtocol } from "./arc-c33-a2a-protocol";
 import { article as arcC32PaymentForensics } from "./arc-c32-payment-forensics";
 import { article as gecInteropFieldReport } from "./gec-interop-field-report";
 import { article as usdcRescueBaseToArc } from "./usdc-rescue-base-to-arc";
+import { article as keylessSigner } from "./keyless-signer";
+import { article as economicLedger } from "./economic-ledger";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -79,4 +81,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC32PaymentForensics,
   gecInteropFieldReport,
   usdcRescueBaseToArc,
+  keylessSigner,
+  economicLedger,
 ];

@@ -57,16 +57,30 @@ export const article: BlogArticle = {
   ],
   claims: [
     {
+      id: "c35-live-bid-accepted",
+      status: "VERIFIED",
       text: "Live bid bid:5ae9fd033bc25c77e93173abc8414fc3 was accepted by SaSame GEC User MCP on 2026-10-23, state SUBMITTED, duplicate:false, amount 5,000,000 microUSDC on demand aefcd632…a8a5.",
-      evidence: ["Redacted transcript evidence/bid-2026-10-23.json (9 entries)", "tools/call response ok:true with bid_id + request_sha256"],
+      evidence: [
+        { type: "test", url: "https://github.com/spreadzp/agentbadge/tree/main/evidence/bid-2026-10-23.json" },
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/scripts/gec-interop.mts" },
+      ],
     },
     {
+      id: "c35-full-mcp-cycle-no-sdk",
+      status: "VERIFIED",
       text: "Full OAuth 2.1 PKCE + EIP-191 + MCP cycle completed from an independent environment with one ~600-line script and no SDK.",
-      evidence: ["scripts/gec-interop.mts", "evidence/rehearsal-2026-10-23.json (11 entries, all 2xx/3xx)"],
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/scripts/gec-interop.mts" },
+        { type: "test", url: "https://github.com/spreadzp/agentbadge/tree/main/evidence/rehearsal-2026-10-23.json" },
+      ],
     },
     {
+      id: "c35-gas-free-burner",
+      status: "VERIFIED",
       text: "Burner wallet held 0 ETH / 0 USDC on Base mainnet at bid time — the flow is gas-free.",
-      evidence: ["eth_getBalance + ERC-20 balanceOf via mainnet.base.org", "screenshots/balance-check-2026-10-23.png"],
+      evidence: [
+        { type: "test", url: "https://github.com/spreadzp/agentbadge/tree/main/screenshots/balance-check-2026-10-23.png" },
+      ],
     },
   ],
   content: `<h2 id="the-board">A demand that onboards itself</h2>

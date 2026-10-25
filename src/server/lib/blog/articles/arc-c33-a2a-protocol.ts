@@ -24,7 +24,7 @@ export const article: BlogArticle = {
   concepts: ["two-tier-identity", "fail-down-not-open", "batch-anchoring", "owner-scoped-tasks", "evidence-over-promises"],
   topics: ["a2a-protocol", "agent-interoperability", "identity-tiers", "abuse-resistance", "onchain-anchoring"],
   capabilities: ["a2a-message-send", "task-lifecycle", "mailbox-extension", "merkle-batch-anchor", "rate-limiting"],
-  rules: ["a2a-v1.0-interop", "eip191-challenge-binding", "no-enumeration-oracle"],
+  rules: [],
   actions: [
     {
       type: "read",

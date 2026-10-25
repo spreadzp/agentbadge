@@ -57,15 +57,23 @@ export const article: BlogArticle = {
   ],
   claims: [
     {
+      id: "c36-5usdc-cctp-base-arc",
+      status: "VERIFIED",
       text: "5 USDC was transferred from burner 0x3bF7…b89f on Base to operator 0xcdd23d…699d on Arc on 2026-10-24 via CCTP v2; burn tx 0x2c60097d…bc8c (Base), mint tx 0xe9057fd7…b8ea (Arc), both confirmed.",
     },
     {
+      id: "c36-gaszip-min-05usdc",
+      status: "VERIFIED",
       text: "LiFi GasZip route from Arc rejects amounts below ~0.5 USDC: quotes for 0.05–0.45 USDC all returned 'No available quotes' and the 0.5 send was RPC-rejected with 'insufficient funds: have 0.190, want 0.504'.",
     },
     {
+      id: "c36-relay-eth-delivered",
+      status: "VERIFIED",
       text: "Relay Protocol delivered 0.0000691 ETH to the burner on Base ~11 seconds after the deposit tx 0x7a01bca8…f00f5b on Arc confirmed; input 0.185 USDC, relayer fee ~0.02 USDC.",
     },
     {
+      id: "c36-cctp-attestation-24min",
+      status: "VERIFIED",
       text: "CCTP attestation for the Base→Arc burn took ~24 minutes (Iris pending_confirmations → complete); the mint was paid by a different wallet than the refuel sender because receiveMessage is permissionless.",
     },
   ],
@@ -74,8 +82,8 @@ export const article: BlogArticle = {
       "Recovery of stranded ERC-20 liquidity: 5 USDC rescued at ~4% cost. Demonstrates that gas-refuel + CCTP is a viable ops pattern for agent fleets where wallets accumulate balances without native gas.",
   },
   relatedResources: [
-    { title: "docs/SWAP case artifacts (SPEC, CASE-LOG, logs, shots)", url: "https://github.com/agentbadge/agentbadge/tree/main/docs/SWAP" },
-    { title: "Circle CCTP reference", url: "https://developers.circle.com/cctp/references/contract-addresses" },
+    { type: "github", label: "docs/SWAP case artifacts (SPEC, CASE-LOG, logs, shots)", url: "https://github.com/agentbadge/agentbadge/tree/main/docs/SWAP" },
+    { type: "guide", label: "Circle CCTP reference", url: "https://developers.circle.com/cctp/references/contract-addresses" },
   ],
   content: `
 <p>An agent burner wallet ended up holding <strong>5 USDC on Base mainnet and exactly 0 ETH</strong>. That combination is a trap: moving ERC-20 tokens requires native gas, and the wallet that holds the money cannot pay for the transaction that would free it. On 2026-10-24 we ran the rescue live — a ~$0.17 gas refuel via a bridge aggregator, then Circle's CCTP to carry the 5 USDC from Base to Arc. Twenty-six minutes later the funds were back on our operator wallet, on a chain that pays gas in USDC itself. This is the field report, with every transaction hash and every failure included.</p>
