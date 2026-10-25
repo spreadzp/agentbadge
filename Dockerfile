@@ -51,6 +51,7 @@ COPY src ./src
 COPY tests ./tests
 COPY content ./content
 COPY public ./public
+COPY scripts ./scripts
 COPY --from=css-builder /build/public/css/tailwind.css ./public/css/tailwind.css
 
 EXPOSE 4021
