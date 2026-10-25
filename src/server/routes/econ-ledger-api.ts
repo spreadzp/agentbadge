@@ -21,7 +21,6 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import type { Context } from "hono";
 import {
   fromMicros,
   toMicros,
@@ -31,32 +30,15 @@ import {
 } from "@agentbadge/database";
 import { getDatabase } from "../lib/database";
 import { createRateLimiter } from "../middleware/rate-limit";
-
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
-const CURSOR_RE = /^\d+$/;
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 200;
+import {
+  ADDRESS_RE,
+  emptyEdges,
+  emptyPage,
+  errJson,
+  pageArgs,
+} from "../lib/econ-ledger/api-utils";
 
 const ledgerLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
-
-type LedgerErrorCode = "no_data" | "invalid_address" | "not_found" | "unavailable";
-
-function errJson(c: Context, status: number, code: LedgerErrorCode, message: string) {
-  return c.json({ error: { code, message } }, status as never);
-}
-
-/** Page shape that ALSO conforms when carrying the error flag (non-strict schema). */
-function emptyPage(c: Context, code: LedgerErrorCode, message: string) {
-  return c.json({
-    events: [],
-    nextCursor: null,
-    error: { code, message },
-  });
-}
-
-function emptyEdges(c: Context, code: LedgerErrorCode, message: string) {
-  return c.json({ edges: [], error: { code, message } });
-}
 
 export interface EconLedgerApiDeps {
   /** Injectable for tests; prod default = getDatabase(). */
@@ -71,16 +53,6 @@ export function createEconLedgerRoutes(deps: EconLedgerApiDeps = {}): Hono {
     events: rows.map((s) => s.event),
     nextCursor: rows.length === limit ? String(rows[rows.length - 1]!.ledgerSeq) : null,
   });
-
-  const pageArgs = (c: Context): { cursor?: bigint; limit: number } | { err: Response } => {
-    const raw = c.req.query("cursor");
-    if (raw !== undefined && !CURSOR_RE.test(raw)) {
-      return { err: errJson(c, 400, "invalid_address", "invalid cursor — expected decimal ledgerSeq") };
-    }
-    const lim = Number(c.req.query("limit") ?? DEFAULT_LIMIT);
-    const limit = Number.isFinite(lim) ? Math.min(Math.max(1, lim), MAX_LIMIT) : DEFAULT_LIMIT;
-    return { cursor: raw !== undefined ? BigInt(raw) : undefined, limit: Math.floor(limit) };
-  };
 
   /** Directed edge rows → undirected contract TrustEdge rows, grouped by sorted pair. */
   const toUndirected = (rows: AgentTrustEdgeRecord[]) => {

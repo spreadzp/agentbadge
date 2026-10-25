@@ -28,6 +28,7 @@ import { feedRoutes } from "./feed";
 import { mcpRoutes } from "./mcp";
 import { riskRoutes } from "./risk-api";
 import { econLedgerRoutes } from "./econ-ledger-api";
+import { econLedgerExposureRoutes } from "./econ-ledger-exposure-api";
 
 import { landingRoutes } from "./landing";
 import { authorityRoutes } from "./authority";
@@ -120,6 +121,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", mcpRoutes);
   app.route("/", riskRoutes);
   app.route("/", econLedgerRoutes);
+  app.route("/", econLedgerExposureRoutes);
 }
 
 // HTML page routes — mounted after wireMcpNamespaceRoutes.
