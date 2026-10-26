@@ -18,6 +18,22 @@ import { passportChainEnabled } from "../lib/passport-chain-gate";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 
+// Resilience (2026-10-26 outage): a dead/unreachable database must never
+// take the whole process down — Prisma Postgres planLimitReached (P6003)
+// turned a marker-read rejection into a Bun exit-1 crash loop and ~20h of
+// downtime. Registered at module scope so the guards are active before
+// boot-time store hydration runs (wireErrorHandler below is called late).
+// DB-facing stores degrade to in-memory mirrors; errors surface loudly,
+// they do not kill the server.
+process.on("unhandledRejection", (reason: unknown) => {
+  console.error("[process] unhandled rejection:", reason);
+  captureError(reason instanceof Error ? reason : new Error(String(reason)));
+});
+process.on("uncaughtException", (err: Error) => {
+  console.error("[process] uncaught exception:", err);
+  captureError(err);
+});
+
 // Rebuild directory/A2A/market caches from HCS in background (SLICE-7-2:
 // graceful degradation — server starts immediately with empty cache, rebuilds
 // in background with retries). Escrow reconciler sweeper is config-gated (SLICE-84-2).
