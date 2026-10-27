@@ -14,7 +14,6 @@
  * Emits: work_offer | work_accept | handoff | pay | verify (per hop).
  */
 
-import type { EconLedgerStore } from "@agentbadge/database";
 import {
   appendEvent,
   appendEventWithRetry,
@@ -34,15 +33,13 @@ import {
   type HopJobExecutor,
   type HopJobSpec,
   type HopSpec,
+  type ShipmentDeps,
   type ShipmentSpec,
 } from "./types";
 
 export { shipmentState, SHIPMENT_SOURCE, ShipmentOrderError };
-
-export interface ShipmentDeps {
-  ledger: EconLedgerStore;
-  executor?: HopJobExecutor;
-}
+export { verifyHop } from "./verify";
+export type { ShipmentDeps };
 
 /** Offer + N hop-linked jobs; hop i evaluator = hops[i+1].receiver,
  *  last = client (D-207-7). One job per hop. Idempotent at the offer
@@ -260,40 +257,4 @@ export async function settleHop(
   });
 }
 
-/** Final hop verification — evaluator verdict per hop.
- *  H-3: requires the hop already paid — verified is terminal. */
-export async function verifyHop(
-  shipmentId: string,
-  hopIndex: number,
-  outcome: "pass" | "fail" | "inconclusive",
-  actor: `0x${string}`,
-  counterparty: `0x${string}`,
-  deps: ShipmentDeps,
-  extra?: { deliverableHash?: `0x${string}`; score?: number; txHash?: `0x${string}` },
-): Promise<void> {
-  assertShipmentId(shipmentId);
-  const { hops } = await shipmentState(deps.ledger, shipmentId);
-  const hop = hops.find((h) => h.hopIndex === hopIndex);
-  if (!hop || statusRank(hop.status) < statusRank("paid")) {
-    throw new ShipmentOrderError(
-      `hop ${hopIndex} not paid (status "${hop?.status ?? "missing"}") — verify refused`,
-    );
-  }
-  await appendEvent(deps.ledger, {
-    source: SHIPMENT_SOURCE,
-    sourceId: shipmentId,
-    seq: seqFor(hopIndex, "verify"),
-    kind: "verify",
-    actor,
-    counterparty,
-    at: new Date().toISOString(),
-    payload: {
-      outcome,
-      shipmentId,
-      hopIndex,
-      ...(extra?.deliverableHash ? { deliverableHash: extra.deliverableHash } : {}),
-      ...(extra?.score !== undefined ? { score: extra.score } : {}),
-      ...(extra?.txHash ? { txHash: extra.txHash } : {}),
-    },
-  });
-}
+// verifyHop moved to ./verify.ts (max-lines) — re-exported above.

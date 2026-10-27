@@ -23,6 +23,7 @@ import {
 } from "../src/server/lib/econ-ledger/supply-chain/shipment";
 import { InMemoryHopExecutor } from "../src/server/lib/econ-ledger/supply-chain/executor";
 import type { HopSpec } from "../src/server/lib/econ-ledger/supply-chain/types";
+import { hashCanonical } from "../src/server/lib/eaas/verdict";
 
 const CLIENT = "0x" + "aa".repeat(20) as `0x${string}`;
 const CARRIER = "0x" + "bb".repeat(20) as `0x${string}`;
@@ -92,6 +93,41 @@ describe("supply-chain pack — 3-hop dogfood", () => {
     // edges materialized — pay legs folded into AgentTrustEdge (207-4)
     const pairEdges = await db.trustEdges.listPair(CLIENT, CARRIER);
     expect(pairEdges.some((e) => e.kind === "pay" && e.eventCount >= 1)).toBe(true);
+  });
+
+  it("verify carries criteriaDigest bound to offer terms (207-9)", async () => {
+    const { db, deps } = await makeShipment();
+    const sid = "shp-e2e-1";
+    await acceptShipment(sid, 0, sid, CARRIER, deps);
+    await handoffHop(sid, 0, { proofOfDelivery: "pod-0" }, CLIENT, CARRIER, deps, HOPS[0]);
+    await settleHop(sid, 0, "10", CLIENT, CARRIER, deps);
+    await verifyHop(sid, 0, "pass", WAREHOUSE, CARRIER, deps, {
+      policyRef: "agentbadge:policy:shipment-terms",
+      verifierVersion: "shipment-verifier@1",
+    });
+    const st = await shipmentState(db.econLedger, sid);
+    const verify = st.events.find((e) => e.kind === "verify")!;
+    const offer = st.events.find((e) => e.kind === "work_offer")!;
+    const terms = (offer.payload as { terms?: unknown }).terms;
+    const p = verify.payload as Record<string, unknown>;
+    expect(p.criteriaDigest).toBe(hashCanonical(terms));
+    expect(p.policyRef).toBe("agentbadge:policy:shipment-terms");
+    expect(p.verifierVersion).toBe("shipment-verifier@1");
+  });
+
+  it("criteriaDigest still binds terms when extras omitted (auto)", async () => {
+    const { db, deps } = await makeShipment();
+    const sid = "shp-e2e-1";
+    await acceptShipment(sid, 0, sid, CARRIER, deps);
+    await handoffHop(sid, 0, { proofOfDelivery: "pod-0" }, CLIENT, CARRIER, deps, HOPS[0]);
+    await settleHop(sid, 0, "10", CLIENT, CARRIER, deps);
+    await verifyHop(sid, 0, "pass", WAREHOUSE, CARRIER, deps);
+    const st = await shipmentState(db.econLedger, sid);
+    const verify = st.events.find((e) => e.kind === "verify")!;
+    const offer = st.events.find((e) => e.kind === "work_offer")!;
+    const terms = (offer.payload as { terms?: unknown }).terms;
+    const p = verify.payload as Record<string, unknown>;
+    expect(p.criteriaDigest).toBe(hashCanonical(terms));
   });
 
   it("hop i+1 cannot handoff while hop i is unpaid (ordering AC)", async () => {

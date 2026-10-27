@@ -194,6 +194,25 @@ describe("eaas mapper", () => {
     expect(out.seq).toBe(1);
     valid(out);
   });
+
+  it("verify carries policyRef + verifierVersion from artifact (207-9)", () => {
+    const out = verdictToEconomic({
+      artifact: {
+        verdictId: HEX32,
+        kind: "approve",
+        policy: "deliverable-present",
+        deliverableHash: HEX32,
+        evaluator: "0xeval",
+        issuedAt: NOW_ISO,
+        chainId: 5042002,
+      },
+      consumerWallet: "0xconsumer",
+    } as never);
+    const p = out.payload as Record<string, unknown>;
+    expect(p.policyRef).toBe("deliverable-present");
+    expect(p.verifierVersion).toBe("AgentBadgeVerdict@1");
+    valid(out);
+  });
 });
 
 describe("x402 mapper", () => {

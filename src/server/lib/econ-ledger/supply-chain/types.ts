@@ -7,6 +7,8 @@
  * is enforced by reading events, never by trusting caller input.
  */
 
+import type { EconLedgerStore } from "@agentbadge/database";
+
 /** One hop of a shipment: receiver gets custody + pay for the leg. */
 export interface HopSpec {
   /** 0x-address of the party receiving the hop (carrier/warehouse). */
@@ -29,6 +31,12 @@ export interface ShipmentSpec {
   /** The party creating + funding the shipment (0x-address). */
   client: `0x${string}`;
   hops: HopSpec[];
+}
+
+/** Shared deps for shipment lifecycle functions. */
+export interface ShipmentDeps {
+  ledger: EconLedgerStore;
+  executor?: HopJobExecutor;
 }
 
 /** Hop job executor — the chain seam. Prod = ERC-8183 (D-207-7). */
