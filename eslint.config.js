@@ -37,6 +37,7 @@ export default [
       "src/agents/report/html-layout.ts",
       "src/mcp/parity-tools.ts",
       "src/server/lib/agent-guide/generator.ts",
+      "src/server/lib/blog/articles/bedrij-principle.ts",
       "src/server/lib/blog/articles/from-seo-to-geo-to-agent-readiness.ts",
       "src/server/lib/blog/articles/how-do-you-measure-agent-readiness.ts",
       "src/server/lib/blog/articles/web-becoming-agentic-api-discovery.ts",

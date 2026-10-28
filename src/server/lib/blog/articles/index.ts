@@ -40,6 +40,7 @@ import { article as gecInteropFieldReport } from "./gec-interop-field-report";
 import { article as usdcRescueBaseToArc } from "./usdc-rescue-base-to-arc";
 import { article as keylessSigner } from "./keyless-signer";
 import { article as economicLedger } from "./economic-ledger";
+import { article as bedrijPrinciple } from "./bedrij-principle";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -83,4 +84,5 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   usdcRescueBaseToArc,
   keylessSigner,
   economicLedger,
+  bedrijPrinciple,
 ];

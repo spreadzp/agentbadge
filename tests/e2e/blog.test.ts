@@ -19,10 +19,10 @@ describe("Blog infrastructure (SLICE-52-1)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("GET /blog/:slug has BlogPosting JSON-LD", async () => {
+  it("GET /blog/:slug has article JSON-LD", async () => {
     const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
     const html = await res.text();
-    expect(html).toContain('"@type":"BlogPosting"');
+    expect(html).toMatch(/"@type":"(BlogPosting|TechArticle)"/);
   });
 
   it("GET /blog/rss.xml returns valid RSS XML", async () => {
@@ -105,5 +105,55 @@ describe("Blog agent-readiness (SLICE-60-1)", () => {
     const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
     const html = await res.text();
     expect(html).toContain('"dateModified"');
+  });
+});
+
+describe("Blog: The Bedrij Principle (SLICE-211-4)", () => {
+  const SLUG = "bedrij-principle";
+
+  it("GET /blog/bedrij-principle returns 200", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    expect(res.status).toBe(200);
+  });
+
+  it("article renders hero image", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/images/blog/bedrij-principle-hero.webp");
+  });
+
+  it("article has TechArticle JSON-LD + title", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain('"@type":"TechArticle"');
+    expect(html).toContain("The Bedrij Principle");
+  });
+
+  it("GET /blog/bedrij-principle.md returns markdown", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}.md`);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("The Bedrij Principle");
+    expect(body).toContain("For AI Agents");
+  });
+
+  it("GET /blog/bedrij-principle.json returns Knowledge Object", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}.json`);
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { slug?: string; status?: string };
+    expect(json.slug).toBe(SLUG);
+    expect(json.status).toBe("EXPERIMENT");
+  });
+
+  it("transition diagram image is embedded inline", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/images/blog/bedrij-principle-2.webp");
+  });
+
+  it("sitemap includes the new article", async () => {
+    const res = await fetch(`${BASE}/sitemap.xml`);
+    const xml = await res.text();
+    expect(xml).toContain(`/blog/${SLUG}`);
   });
 });
