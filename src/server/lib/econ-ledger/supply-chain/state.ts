@@ -110,6 +110,9 @@ export async function shipmentState(
       const p = e.payload as HandoffPayload;
       const hop = hops.get(p.hopIndex) ?? { hopIndex: p.hopIndex, status: "offered" as HopStatus };
       if (statusRank(hop.status) < statusRank("handed_off")) hop.status = "handed_off";
+      // 212-3: lift typed participants from the payload into the read
+      // model — optional, absent on pre-212 hops (mixed chains legal).
+      if (p.roles) hop.roles = p.roles;
       hops.set(p.hopIndex, hop);
     } else if (e.kind === "pay" || e.kind === "verify") {
       const p = e.payload as { shipmentId?: string; hopIndex?: number; jobId?: string };
