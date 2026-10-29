@@ -157,6 +157,10 @@ export const article: BlogArticle = {
       url: "https://dev.to/spread2009/the-bedrij-principle-one-primitive-for-infinite-agent-supply-chains-3jgc",
     },
     {
+      platform: "medium",
+      url: "https://paulspread-99907.medium.com/the-bedrij-principle-one-primitive-for-infinite-agent-supply-chains-adf1fa4e7b1e",
+    },
+    {
       platform: "linkedin",
       url: "https://www.linkedin.com/pulse/bedrij-principle-one-primitive-infinite-agent-supply-chains-spread-eecxe",
     },
