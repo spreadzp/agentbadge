@@ -14,6 +14,7 @@
  * Emits: work_offer | work_accept | handoff | pay | verify (per hop).
  */
 
+import { ParticipantRolesSchema, type ParticipantRoles } from "@agentbadge/econ-events";
 import {
   appendEvent,
   appendEventWithRetry,
@@ -146,8 +147,26 @@ export async function handoffHop(
   counterparty: `0x${string}`,
   deps: ShipmentDeps,
   epcis?: { what?: string; where?: string; why?: string },
+  roles?: ParticipantRoles,
 ): Promise<void> {
   assertShipmentId(shipmentId);
+  // 212-2: typed participants ride the handoff payload (D-211-7).
+  // Optional — pre-212 events replay unchanged (D-211-2). label is
+  // display-only, never identity (D-212-3); zod-validate + per-address
+  // assert so bad input surfaces as ShipmentOrderError, not a ledger write.
+  let parsedRoles: ParticipantRoles | undefined;
+  if (roles !== undefined) {
+    const check = ParticipantRolesSchema.safeParse(roles);
+    if (!check.success) {
+      throw new ShipmentOrderError(
+        `invalid handoff roles: ${check.error.issues.map((i) => `${i.path.join(".") || "roles"} ${i.message}`).join("; ")}`,
+      );
+    }
+    for (const [slot, role] of Object.entries(check.data)) {
+      if (role) assertAddress(role.address, `roles.${slot}.address`);
+    }
+    parsedRoles = check.data;
+  }
   const { hops, client } = await shipmentState(deps.ledger, shipmentId);
   if (hops.length === 0) {
     throw new ShipmentOrderError(`shipment ${shipmentId} has no offer — cannot handoff`);
@@ -186,6 +205,7 @@ export async function handoffHop(
       ...epcis,
       ...(evidence.deliverableHash ? { deliverableHash: evidence.deliverableHash } : {}),
       ...(evidence.proofOfDelivery ? { proofOfDelivery: evidence.proofOfDelivery } : {}),
+      ...(parsedRoles ? { roles: parsedRoles } : {}),
     },
   });
 }
@@ -251,7 +271,7 @@ export async function settleHop(
     } catch (err) {
       throw new ShipmentOrderError(
         `settled onchain (jobId=${hop.jobId}${txHash ? `, txHash=${txHash}` : ""}) ` +
-          `but ledger write failed — reconcile manually: ${err instanceof Error ? err.message : err}`,
+        `but ledger write failed — reconcile manually: ${err instanceof Error ? err.message : err}`,
       );
     }
   });
