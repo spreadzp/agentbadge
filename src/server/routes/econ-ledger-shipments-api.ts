@@ -2,9 +2,12 @@
  * SLICE-207-7: shipment chain read —
  * `GET /api/ledger/shipments/:id`.
  *
- * Returns { shipmentId, hops[{hopIndex,status,jobId?,receiver?}],
- * events[] } conforming to LedgerShipmentSchema — hops derived from
- * the shipment's own event stream (sourceId = shipmentId, log = SoT).
+ * Returns { shipmentId, hops[{hopIndex,status,jobId?,receiver?,
+ * roles?,rolesAssertedBy?}], events[] } conforming to
+ * LedgerShipmentSchema — hops derived from the shipment's own event
+ * stream (sourceId = shipmentId, log = SoT). `roles` are SELF-DECLARED
+ * participant claims by the handoff actor (see rolesAssertedBy) —
+ * advisory only, never verified identity (D-212-3, audit H-1).
  * Unknown shipment → 404 not_found; disabled → no_data.
  */
 
@@ -46,7 +49,7 @@ export function createEconLedgerShipmentsRoutes(
       },
     }),
     async (c) => {
-      const rl = await ledgerLimiter(c, async () => {});
+      const rl = await ledgerLimiter(c, async () => { });
       if (rl) return rl;
       const id = c.req.param("id");
       // M-3: bound the param before it reaches the store layer.

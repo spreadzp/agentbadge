@@ -7,18 +7,24 @@
 
 import type { EconEventStored, EconLedgerStore } from "@agentbadge/database";
 import {
+  ADDRESS,
   buildEconomicEvent,
   type BuildEventInput,
+  DECIMAL_USDC,
   type EconomicEvent,
   type HandoffPayload,
+  ParticipantRolesWriteSchema,
+  type ParticipantRoles,
   type ShipmentHop,
 } from "@agentbadge/econ-events";
 import { statusRank, type HopSpec, type HopStatus } from "./types";
 
 export const SHIPMENT_SOURCE = "supply_chain";
 export const SHIPMENT_ID_RE = /^[\w.:-]{1,128}$/;
-export const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
-export const DECIMAL_USDC_RE = /^\d{1,12}(\.\d{1,6})?$/;
+// 212-5: single source for shared regexes — previously re-declared
+// here and could drift from the package contract.
+export const ADDRESS_RE = ADDRESS;
+export const DECIMAL_USDC_RE = DECIMAL_USDC;
 
 export class ShipmentOrderError extends Error {
   constructor(message: string) {
@@ -57,7 +63,8 @@ export function assertShipmentId(id: string): void {
 
 export function assertAddress(addr: string, field: string): asserts addr is `0x${string}` {
   if (!ADDRESS_RE.test(addr)) {
-    throw new ShipmentOrderError(`${field} is not a valid 0x-address: ${addr}`);
+    // cap attacker-influenced echo (audit M-4/nit)
+    throw new ShipmentOrderError(`${field} is not a valid 0x-address: ${addr.slice(0, 80)}`);
   }
 }
 
@@ -65,6 +72,40 @@ export function assertAmountUsdc(amount: string): void {
   if (!DECIMAL_USDC_RE.test(amount)) {
     throw new ShipmentOrderError(`amountUsdc must be decimal USDC: ${amount}`);
   }
+}
+
+/**
+ * 212-2/212-5: validate caller-supplied handoff roles (write side).
+ * Strict schema — unknown slots/keys fail loudly (audit M-3),
+ * addresses normalize to lowercase, roles must name >=1 participant
+ * and one address can't carry two types. custodian must equal the
+ * counterparty (audit H-2) — it IS the custody receiver; the other
+ * slots may legitimately be third parties.
+ */
+export function parseHandoffRoles(
+  roles: ParticipantRoles,
+  counterparty: string,
+): ParticipantRoles {
+  const check = ParticipantRolesWriteSchema.safeParse(roles);
+  if (!check.success) {
+    const detail = check.error.issues
+      .map((i) => `${i.path.join(".") || "roles"} ${i.message}`)
+      .join("; ")
+      .slice(0, 200); // M-4: bound attacker-influenced text
+    throw new ShipmentOrderError(`invalid handoff roles: ${detail}`);
+  }
+  for (const [slot, role] of Object.entries(check.data)) {
+    if (role) assertAddress(role.address, `roles.${slot}.address`);
+  }
+  if (
+    check.data.custodian &&
+    check.data.custodian.address.toLowerCase() !== counterparty.toLowerCase()
+  ) {
+    throw new ShipmentOrderError(
+      `roles.custodian ${check.data.custodian.address} ≠ handoff counterparty ${counterparty}`,
+    );
+  }
+  return check.data;
 }
 
 // ─── Ledger append (awaited — pack guards re-read immediately) ────
@@ -110,9 +151,16 @@ export async function shipmentState(
       const p = e.payload as HandoffPayload;
       const hop = hops.get(p.hopIndex) ?? { hopIndex: p.hopIndex, status: "offered" as HopStatus };
       if (statusRank(hop.status) < statusRank("handed_off")) hop.status = "handed_off";
-      // 212-3: lift typed participants from the payload into the read
-      // model — optional, absent on pre-212 hops (mixed chains legal).
-      if (p.roles) hop.roles = p.roles;
+      // 212-3/212-5: lift typed participants into the read model.
+      // First-event-wins (audit H-3) — the write path rejects repeat
+      // handoffs, but never let a later event rewrite roles, and never
+      // let a roles-less event clear them. Clone so the hop doesn't
+      // alias the event payload object (audit M-5). rolesAssertedBy
+      // keeps provenance — roles are self-declared by the actor (H-1).
+      if (p.roles && hop.roles === undefined) {
+        hop.roles = structuredClone(p.roles);
+        hop.rolesAssertedBy = e.actor;
+      }
       hops.set(p.hopIndex, hop);
     } else if (e.kind === "pay" || e.kind === "verify") {
       const p = e.payload as { shipmentId?: string; hopIndex?: number; jobId?: string };

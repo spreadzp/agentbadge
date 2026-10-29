@@ -14,7 +14,7 @@
  * Emits: work_offer | work_accept | handoff | pay | verify (per hop).
  */
 
-import { ParticipantRolesSchema, type ParticipantRoles } from "@agentbadge/econ-events";
+import type { ParticipantRoles } from "@agentbadge/econ-events";
 import {
   appendEvent,
   appendEventWithRetry,
@@ -22,6 +22,7 @@ import {
   assertAmountUsdc,
   assertShipmentId,
   hopStatus,
+  parseHandoffRoles,
   seqFor,
   SHIPMENT_SOURCE,
   ShipmentOrderError,
@@ -150,63 +151,79 @@ export async function handoffHop(
   roles?: ParticipantRoles,
 ): Promise<void> {
   assertShipmentId(shipmentId);
-  // 212-2: typed participants ride the handoff payload (D-211-7).
-  // Optional — pre-212 events replay unchanged (D-211-2). label is
-  // display-only, never identity (D-212-3); zod-validate + per-address
-  // assert so bad input surfaces as ShipmentOrderError, not a ledger write.
-  let parsedRoles: ParticipantRoles | undefined;
-  if (roles !== undefined) {
-    const check = ParticipantRolesSchema.safeParse(roles);
-    if (!check.success) {
+  // 212-2/212-5: typed participants ride the handoff payload (D-211-7);
+  // self-declared, never identity (D-212-3). Strict write-side parse.
+  const parsedRoles = roles === undefined ? undefined : parseHandoffRoles(roles, counterparty);
+  // H-3: serialize the guard→append pair — two concurrent handoffs of
+  // the same hop must not both pass the "not yet handed off" check.
+  await withHopLock(`${shipmentId}:${hopIndex}`, async () => {
+    const { hops, client } = await shipmentState(deps.ledger, shipmentId);
+    if (hops.length === 0) {
+      throw new ShipmentOrderError(`shipment ${shipmentId} has no offer — cannot handoff`);
+    }
+    const hop = hops.find((h) => h.hopIndex === hopIndex);
+    // M-2: a hopIndex outside the derived plan must not mint a phantom
+    // hop carrying attacker roles in the public read model.
+    if (!hop) {
+      throw new ShipmentOrderError(`hop ${hopIndex} not in shipment plan — cannot handoff`);
+    }
+    // H-3: handoff is a one-way state transition, not idempotent data —
+    // a repeat call would either silently dedupe (roles typo becomes
+    // uncorrectable) or rewrite the read model (last-writer-wins).
+    if (statusRank(hop.status) >= statusRank("handed_off")) {
+      throw new ShipmentOrderError(`hop ${hopIndex} already handed off — cannot re-handoff`);
+    }
+    // M-4: the receiver must be the plan's own; the hander-offer must be
+    // the previous custody holder (client at hop 0).
+    if (hop.receiver && counterparty !== hop.receiver) {
       throw new ShipmentOrderError(
-        `invalid handoff roles: ${check.error.issues.map((i) => `${i.path.join(".") || "roles"} ${i.message}`).join("; ")}`,
+        `handoff counterparty ${counterparty} ≠ plan receiver ${hop.receiver}`,
       );
     }
-    for (const [slot, role] of Object.entries(check.data)) {
-      if (role) assertAddress(role.address, `roles.${slot}.address`);
+    const expectedActor = hopIndex === 0 ? client : hops.find((h) => h.hopIndex === hopIndex - 1)?.receiver;
+    if (expectedActor && actor !== expectedActor) {
+      throw new ShipmentOrderError(`handoff actor ${actor} ≠ custody holder ${expectedActor}`);
     }
-    parsedRoles = check.data;
-  }
-  const { hops, client } = await shipmentState(deps.ledger, shipmentId);
-  if (hops.length === 0) {
-    throw new ShipmentOrderError(`shipment ${shipmentId} has no offer — cannot handoff`);
-  }
-  const hop = hops.find((h) => h.hopIndex === hopIndex);
-  // M-4: the receiver must be the plan's own; the hander-offer must be
-  // the previous custody holder (client at hop 0).
-  if (hop?.receiver && counterparty !== hop.receiver) {
-    throw new ShipmentOrderError(
-      `handoff counterparty ${counterparty} ≠ plan receiver ${hop.receiver}`,
-    );
-  }
-  const expectedActor = hopIndex === 0 ? client : hops.find((h) => h.hopIndex === hopIndex - 1)?.receiver;
-  if (expectedActor && actor !== expectedActor) {
-    throw new ShipmentOrderError(`handoff actor ${actor} ≠ custody holder ${expectedActor}`);
-  }
-  if (hopIndex > 0) {
-    const prev = hopStatus(hops, hopIndex - 1);
-    if (statusRank(prev) < statusRank("paid")) {
+    if (hopIndex > 0) {
+      const prev = hopStatus(hops, hopIndex - 1);
+      if (statusRank(prev) < statusRank("paid")) {
+        throw new ShipmentOrderError(
+          `hop ${hopIndex} blocked: hop ${hopIndex - 1} is "${prev}", must be paid first`,
+        );
+      }
+    }
+    // H-2: custodian IS the party taking custody — if the slot is used,
+    // it must not contradict the ledger's own custody model. Other
+    // slots (operator/device/sensor) may legitimately be third parties.
+    if (
+      parsedRoles?.custodian &&
+      parsedRoles.custodian.address.toLowerCase() !== counterparty.toLowerCase()
+    ) {
       throw new ShipmentOrderError(
-        `hop ${hopIndex} blocked: hop ${hopIndex - 1} is "${prev}", must be paid first`,
+        `roles.custodian ${parsedRoles.custodian.address} ≠ handoff counterparty ${counterparty}`,
       );
     }
-  }
-  await appendEvent(deps.ledger, {
-    source: SHIPMENT_SOURCE,
-    sourceId: shipmentId,
-    seq: seqFor(hopIndex, "handoff"),
-    kind: "handoff",
-    actor,
-    counterparty,
-    at: new Date().toISOString(),
-    payload: {
-      shipmentId,
-      hopIndex,
-      ...epcis,
-      ...(evidence.deliverableHash ? { deliverableHash: evidence.deliverableHash } : {}),
-      ...(evidence.proofOfDelivery ? { proofOfDelivery: evidence.proofOfDelivery } : {}),
-      ...(parsedRoles ? { roles: parsedRoles } : {}),
-    },
+    await appendEvent(deps.ledger, {
+      source: SHIPMENT_SOURCE,
+      sourceId: shipmentId,
+      seq: seqFor(hopIndex, "handoff"),
+      kind: "handoff",
+      actor,
+      counterparty,
+      at: new Date().toISOString(),
+      payload: {
+        // H-4: explicit fields only, guarded keys last — an `epcis`
+        // object carrying hopIndex/roles keys cannot override them.
+        ...(epcis?.what ? { what: epcis.what } : {}),
+        ...(epcis?.where ? { where: epcis.where } : {}),
+        ...(epcis?.why ? { why: epcis.why } : {}),
+        ...(evidence.deliverableHash ? { deliverableHash: evidence.deliverableHash } : {}),
+        ...(evidence.proofOfDelivery ? { proofOfDelivery: evidence.proofOfDelivery } : {}),
+        ...(parsedRoles ? { roles: parsedRoles } : {}),
+        shipmentId,
+        hopIndex,
+      },
+    });
   });
 }
 
