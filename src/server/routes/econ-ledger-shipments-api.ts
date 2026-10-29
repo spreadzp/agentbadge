@@ -41,7 +41,9 @@ export function createEconLedgerShipmentsRoutes(
       description:
         "Full supply-chain view: hops derived from the event log " +
         "(offered → handed_off → paid → verified) plus the raw events. " +
-        "Conforms to LedgerShipmentSchema.",
+        "Optional `roles` on a hop are SELF-DECLARED participant claims " +
+        "by the handoff actor (see `rolesAssertedBy`) — advisory only, " +
+        "never verified identity. Conforms to LedgerShipmentSchema.",
       responses: {
         200: { description: "LedgerShipment" },
         404: { description: "Unknown shipmentId" },

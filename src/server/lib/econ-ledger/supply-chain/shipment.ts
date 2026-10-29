@@ -14,12 +14,12 @@
  * Emits: work_offer | work_accept | handoff | pay | verify (per hop).
  */
 
-import type { ParticipantRoles } from "@agentbadge/econ-events";
 import {
   appendEvent,
   appendEventWithRetry,
   assertAddress,
   assertAmountUsdc,
+  assertHopIndex,
   assertShipmentId,
   hopStatus,
   parseHandoffRoles,
@@ -120,6 +120,7 @@ export async function acceptShipment(
   deps: ShipmentDeps,
 ): Promise<void> {
   assertShipmentId(shipmentId);
+  assertHopIndex(hopIndex);
   const { events } = await shipmentState(deps.ledger, shipmentId);
   if (!events.some((e) => e.kind === "work_offer")) {
     throw new ShipmentOrderError(`shipment ${shipmentId} has no offer — cannot accept`);
@@ -148,9 +149,10 @@ export async function handoffHop(
   counterparty: `0x${string}`,
   deps: ShipmentDeps,
   epcis?: { what?: string; where?: string; why?: string },
-  roles?: ParticipantRoles,
+  roles?: unknown, // N-2: raw input — typed param invites a lenient pre-parse
 ): Promise<void> {
   assertShipmentId(shipmentId);
+  assertHopIndex(hopIndex);
   // 212-2/212-5: typed participants ride the handoff payload (D-211-7);
   // self-declared, never identity (D-212-3). Strict write-side parse.
   const parsedRoles = roles === undefined ? undefined : parseHandoffRoles(roles, counterparty);
@@ -177,12 +179,14 @@ export async function handoffHop(
     // the previous custody holder (client at hop 0).
     if (hop.receiver && counterparty !== hop.receiver) {
       throw new ShipmentOrderError(
-        `handoff counterparty ${counterparty} ≠ plan receiver ${hop.receiver}`,
+        `handoff counterparty ${counterparty.slice(0, 80)} ≠ plan receiver ${hop.receiver}`,
       );
     }
     const expectedActor = hopIndex === 0 ? client : hops.find((h) => h.hopIndex === hopIndex - 1)?.receiver;
     if (expectedActor && actor !== expectedActor) {
-      throw new ShipmentOrderError(`handoff actor ${actor} ≠ custody holder ${expectedActor}`);
+      throw new ShipmentOrderError(
+        `handoff actor ${actor.slice(0, 80)} ≠ custody holder ${expectedActor}`,
+      );
     }
     if (hopIndex > 0) {
       const prev = hopStatus(hops, hopIndex - 1);
@@ -192,17 +196,7 @@ export async function handoffHop(
         );
       }
     }
-    // H-2: custodian IS the party taking custody — if the slot is used,
-    // it must not contradict the ledger's own custody model. Other
-    // slots (operator/device/sensor) may legitimately be third parties.
-    if (
-      parsedRoles?.custodian &&
-      parsedRoles.custodian.address.toLowerCase() !== counterparty.toLowerCase()
-    ) {
-      throw new ShipmentOrderError(
-        `roles.custodian ${parsedRoles.custodian.address} ≠ handoff counterparty ${counterparty}`,
-      );
-    }
+    // H-2 custodian==counterparty is enforced inside parseHandoffRoles.
     await appendEvent(deps.ledger, {
       source: SHIPMENT_SOURCE,
       sourceId: shipmentId,

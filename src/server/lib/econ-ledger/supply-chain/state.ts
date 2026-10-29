@@ -44,13 +44,16 @@ export async function withHopLock<T>(key: string, fn: () => Promise<T>): Promise
   const prev = hopLocks.get(key) ?? Promise.resolve();
   let release!: () => void;
   const cur = new Promise<void>((r) => { release = r; });
-  hopLocks.set(key, prev.then(() => cur));
+  // Store the tail we compare against in finally — comparing to `cur`
+  // never matched, so entries leaked per key (re-audit N-1).
+  const tail = prev.then(() => cur);
+  hopLocks.set(key, tail);
   await prev;
   try {
     return await fn();
   } finally {
     release();
-    if (hopLocks.get(key) === cur) hopLocks.delete(key);
+    if (hopLocks.get(key) === tail) hopLocks.delete(key);
   }
 }
 
@@ -74,6 +77,14 @@ export function assertAmountUsdc(amount: string): void {
   }
 }
 
+/** Re-audit N-6: seqFor derives event seq from hopIndex, so a fractional
+ *  or negative value can collide with another kind's seq. */
+export function assertHopIndex(hopIndex: number): void {
+  if (!Number.isInteger(hopIndex) || hopIndex < 0) {
+    throw new ShipmentOrderError(`hopIndex must be a non-negative integer: ${hopIndex}`);
+  }
+}
+
 /**
  * 212-2/212-5: validate caller-supplied handoff roles (write side).
  * Strict schema — unknown slots/keys fail loudly (audit M-3),
@@ -83,7 +94,7 @@ export function assertAmountUsdc(amount: string): void {
  * slots may legitimately be third parties.
  */
 export function parseHandoffRoles(
-  roles: ParticipantRoles,
+  roles: unknown, // N-2: raw input — a typed param invites a lenient pre-parse upstream
   counterparty: string,
 ): ParticipantRoles {
   const check = ParticipantRolesWriteSchema.safeParse(roles);
