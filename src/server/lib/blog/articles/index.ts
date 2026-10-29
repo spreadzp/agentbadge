@@ -41,6 +41,7 @@ import { article as usdcRescueBaseToArc } from "./usdc-rescue-base-to-arc";
 import { article as keylessSigner } from "./keyless-signer";
 import { article as economicLedger } from "./economic-ledger";
 import { article as bedrijPrinciple } from "./bedrij-principle";
+import { article as supplyChainParticipantRoles } from "./supply-chain-participant-roles";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -84,5 +85,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   usdcRescueBaseToArc,
   keylessSigner,
   economicLedger,
+  supplyChainParticipantRoles,
   bedrijPrinciple,
 ];
