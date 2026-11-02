@@ -10,6 +10,7 @@ import { isStripeConfigured } from "../lib/stripe-client";
 import { adminAuth } from "../middleware/adminAuth";
 import { getDatabase } from "../lib/database";
 import { getCache } from "../lib/cache";
+import { getArcRpcHealth } from "../lib/arc-rpc-health";
 import { getConfig } from "../../config/env";
 
 export const opsRoutes = new Hono();
@@ -32,8 +33,12 @@ const healthHandler = async (c: Context) => {
       ? "up"
       : "down"
     : "disabled";
+  // Arc RPC: live head per network vs. the forensics indexer cursor (lag).
+  const arcRpc = await getArcRpcHealth();
+  // Cache down = rate limit / replay run per-process (degraded, still 200 so
+  // Fly probes do not restart the machine over a cache outage).
   return c.json({
-    status: "healthy",
+    status: cacheStatus === "down" ? "degraded" : "healthy",
     version: APP_VERSION,
     buildDate: BUILD_DATE,
     gitCommit: GIT_COMMIT,
@@ -43,6 +48,7 @@ const healthHandler = async (c: Context) => {
       status: cacheStatus,
       backend: cacheSection?.enabled ? (cacheSection.backend ?? "memory") : null,
     },
+    arcRpc,
     mcp: {
       toolsCount: tools.length,
       tools: tools.map((t) => t.name),

@@ -12,10 +12,21 @@ import type { CacheProvider } from "@agentbadge/cache";
 import type { TxHashStore } from "@agentbadge/circle-payments";
 
 export class CacheTxHashStore implements TxHashStore {
-  constructor(private readonly cache: CacheProvider) {}
+  private readonly local = new Set<string>();
+
+  constructor(private readonly cache: CacheProvider) { }
 
   async claim(txHash: string): Promise<boolean> {
-    const n = await this.cache.incr(`arc:tx:${txHash.toLowerCase()}`);
+    const key = txHash.toLowerCase();
+    const n = await this.cache.incr(`arc:tx:${key}`);
+    // INCR never returns 0 on success → 0 means backend unavailable.
+    // Use a per-process set so payments are not rejected during an outage,
+    // while replays on this instance are still blocked.
+    if (n === 0) {
+      if (this.local.has(key)) return false;
+      this.local.add(key);
+      return true;
+    }
     return n === 1;
   }
 }

@@ -29,7 +29,7 @@ function mockContext(
   } as unknown as Context & { _capturedHeaders: Record<string, string> };
 }
 
-const nextFn: Next = (async () => {}) as Next;
+const nextFn: Next = (async () => { }) as Next;
 
 describe("CacheRateLimitStore (SLICE-144-3)", () => {
   afterEach(() => {
@@ -77,7 +77,7 @@ describe("CacheRateLimitStore (SLICE-144-3)", () => {
     await cache.close();
   });
 
-  it("cache failure → hit returns count 0, never throws", async () => {
+  it("cache failure → hit falls back to local count (no fail-open), never throws", async () => {
     const broken: CacheProvider = {
       get: vi.fn().mockRejectedValue(new Error("down")),
       set: vi.fn().mockRejectedValue(new Error("down")),
@@ -88,11 +88,11 @@ describe("CacheRateLimitStore (SLICE-144-3)", () => {
       close: vi.fn().mockResolvedValue(undefined),
     };
     const store = new CacheRateLimitStore(broken);
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
 
     const entry = await store.hit("ip", 60_000);
 
-    expect(entry.count).toBe(0);
+    expect(entry.count).toBe(1);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });

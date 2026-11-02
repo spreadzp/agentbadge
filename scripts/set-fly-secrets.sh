@@ -245,6 +245,12 @@ if [ -f "$FXDELTA_ENV_FILE" ]; then
   parse_env "$FXDELTA_ENV_FILE"
 fi
 
+# ── Guard: never push a local DB URL over the production one ─────────
+
+if [[ "${DATABASE_URL:-}" =~ @(localhost|127\.0\.0\.1)[:/] ]]; then
+  error "DATABASE_URL in .env points to localhost — refusing to push it to Fly. Remove DATABASE_URL from .env (or drop it from the push list) and re-run."
+fi
+
 # ── Validate all required keys are present ────────────────────────────
 
 missing=0

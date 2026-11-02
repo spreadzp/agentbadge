@@ -20,7 +20,7 @@ import type { RateLimitEntry, RateLimitStore } from "./rate-limit";
 const KEY_PREFIX = "rl:";
 
 export class CacheRateLimitStore implements RateLimitStore {
-  constructor(private readonly cache: CacheProvider) {}
+  constructor(private readonly cache: CacheProvider) { }
 
   /**
    * Atomic increment for one window. `windowMs` becomes the key TTL —
@@ -30,18 +30,30 @@ export class CacheRateLimitStore implements RateLimitStore {
    */
   async hit(key: string, windowMs: number): Promise<RateLimitEntry> {
     const now = Date.now();
+    let count = 0;
     try {
-      const count = await this.cache.incr(
-        KEY_PREFIX + key,
-        Math.ceil(windowMs / 1000),
-      );
-      return { count, resetAt: now + windowMs };
+      count = await this.cache.incr(KEY_PREFIX + key, Math.ceil(windowMs / 1000));
     } catch (err) {
       // Defensive: CacheProvider contract already swallows backend errors,
       // but a non-conforming provider must not break the request path.
-      console.warn("[rate-limit] cache hit failed, allowing request:", err);
-      return { count: 0, resetAt: now + windowMs };
+      console.warn("[rate-limit] cache hit threw, using local counter:", err);
     }
+    // INCR never returns 0 on success → 0 means backend unavailable.
+    // Fall back to a per-process counter instead of failing open.
+    if (count === 0) return this.localHit(key, windowMs, now);
+    return { count, resetAt: now + windowMs };
+  }
+
+  private readonly local = new Map<string, RateLimitEntry>();
+
+  private localHit(key: string, windowMs: number, now: number): RateLimitEntry {
+    const prev = this.local.get(key);
+    const entry =
+      prev && prev.resetAt > now
+        ? { count: prev.count + 1, resetAt: prev.resetAt }
+        : { count: 1, resetAt: now + windowMs };
+    this.local.set(key, entry);
+    return entry;
   }
 
   // ── Sync surface — no-ops, TTL handles eviction ──────────
@@ -50,11 +62,11 @@ export class CacheRateLimitStore implements RateLimitStore {
     return undefined;
   }
 
-  set(_key: string, _entry: RateLimitEntry): void {}
+  set(_key: string, _entry: RateLimitEntry): void { }
 
-  delete(_key: string): void {}
+  delete(_key: string): void { }
 
-  sweep(_now: number): void {}
+  sweep(_now: number): void { }
 
   size(): number {
     return 0;
