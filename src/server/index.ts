@@ -52,12 +52,9 @@ import {
   registerOpsRoutes,
 } from "./routes";
 import { loadConfig, getConfig } from "../config/env";
-import { initSentry } from "./lib/sentry";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
 import { setDiscoveryApp } from "./routes/discovery";
 
-// Initialize Sentry before anything else (no-op if SENTRY_DSN not set)
-initSentry();
 
 // Register verifiers (SLICE-24-4, SLICE-24-5)
 const verifierRegistry = VerifierRegistry.getInstance();
