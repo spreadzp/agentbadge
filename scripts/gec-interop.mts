@@ -13,6 +13,17 @@
  *                      → criteria matrix; gec_verification_submit ONLY with
  *                      --verdict=PASS|REVISE|FAIL --submit (SLICE-205-10)
  *
+ * Buyer phases (SLICE-209-2, D-209-7):
+ *   --phase=project    sasame_run role=buyer action=draft — Production Project
+ *   --phase=demand     sasame_run role=buyer action=draft — Demand, cap
+ *                      3,500,000 microUSDC (D-209-4), deadline T+7d
+ *   --phase=publish    sasame_run role=buyer action=publish (confirmed in auto)
+ *   --phase=lifecycle  sasame_run role=buyer action=status — bids→award→delivery
+ *   Flags: --submit flips execution_mode plan_only→auto (writes run only
+ *   post-audit 209-3/209-4); --project=<id> --demand=<id> --state=<path>
+ *   Idempotency: sasame_run has no idempotency_key (additionalProperties:false)
+ *   — client-side dedupe via persisted buyer-state.json in the 209 evidence dir.
+ *
  * In SLICE-205-3 both phases STOP before the first live network call —
  * live execution is gated to SLICE-205-5 (rehearsal, post-audit) and
  * SLICE-205-6 (bid). Tests cover the pure functions only.
@@ -420,11 +431,18 @@ export const VERIFY_STEPS = [
   "MCP tools/call gec_verification_submit — PASS|REVISE|FAIL + evidence_refs + note",
 ] as const;
 
-function parsePhase(argv: string[]): "rehearsal" | "bid" | "tools" | "award" | "verify" {
+export type GecPhase =
+  | "rehearsal" | "bid" | "tools" | "award" | "verify"
+  | "project" | "demand" | "publish" | "lifecycle";
+
+const BUYER_PHASES: readonly GecPhase[] = ["project", "demand", "publish", "lifecycle"];
+
+export function parsePhase(argv: string[]): GecPhase {
   const arg = argv.find((a) => a.startsWith("--phase="));
-  const phase = arg?.split("=", 2)[1];
+  const phase = arg?.split("=", 2)[1] as GecPhase | undefined;
   if (phase === "rehearsal" || phase === "bid" || phase === "tools" || phase === "award" || phase === "verify") return phase;
-  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid|tools|award|verify [--verdict=PASS|REVISE|FAIL] [--submit] [--out=<transcript.json>] [--report=<file>]");
+  if (phase && BUYER_PHASES.includes(phase)) return phase;
+  throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid|tools|award|verify|project|demand|publish|lifecycle [--verdict=PASS|REVISE|FAIL] [--submit] [--out=<transcript.json>] [--report=<file>] [--project=<id>] [--demand=<id>] [--state=<path>]");
 }
 
 function outPath(argv: string[]): string | undefined {
@@ -974,6 +992,349 @@ async function runVerify(t: Transcript, argv: string[]): Promise<void> {
   console.log(`[gec-interop] response: ${JSON.stringify(v).slice(0, 400)}`);
 }
 
+// ─── SLICE-209-2: buyer-side phases (D-209-7) ─────────────────────────
+// Live tools/list 2026-11-02 (evidence/tools-list.json): User MCP
+// advertises a single unified `sasame_run` tool — {goal, constraints,
+// execution_mode, context.gec{role, action, …}}. The projection's
+// machine_entry.role_actions still documents named gec_* tools
+// (gec_project_create, gec_demand_create, gec_demand_publication_set) —
+// we target what the server ACTUALLY advertises, never invented names.
+//
+// Idempotency (AC#2): sasame_run has no idempotency_key
+// (additionalProperties:false). Client-side dedupe instead: a persisted
+// buyer-state.json carries created ids + phases_done; a phase no-ops
+// when its step is already recorded. Their transport guidance is
+// bounded retry with the SAME inputs, so deterministic args also make
+// server retries safe.
+//
+// Write gate (AC#5): every phase defaults to execution_mode=plan_only —
+// dry-run, no mutation. --submit flips to "auto"; real writes run only
+// after the 209-3 audit + 209-4 fixes.
+
+export const BUYER_CAP_MINOR = "3500000"; // 3.5 USDC cap (D-209-4, revised 2026-11-02)
+export const BUYER_PROJECT_NAME = "AgentBadge synthesis article";
+export const BUYER_GOAL_PROJECT =
+  "Create a Production Project draft 'AgentBadge synthesis article': " +
+  "an external-visibility project that will hold one paid Demand for a " +
+  "synthesis article about AgentBadge public blog posts.";
+export const BUYER_GOAL_DEMAND =
+  "Draft a paid Demand under the synthesis-article project: an external " +
+  "agent reads the listed AgentBadge blog posts and publishes ONE original " +
+  "'how it all works together' synthesis article (with direct links) on its " +
+  "own venue. Cap 3.5 USDC, acceptance criteria machine-checkable, policy " +
+  "EXTERNAL_OUTCOME / DECLARED_POLICY_ONLY, deadline T+7d from publish.";
+export const BUYER_GOAL_LIFECYCLE =
+  "Report lifecycle status for our published Demand: bids, awards, " +
+  "deliverables, verification and settlement state. Read-only.";
+
+export type BuyerAction =
+  | "draft" | "publish" | "status" | "browse" | "apply" | "verify"
+  | "settlement_prepare" | "settlement_verify";
+
+export interface SasameRunOpts {
+  goal: string;
+  action: BuyerAction;
+  constraints?: string[];
+  executionMode?: "auto" | "plan_only";
+  projectId?: string;
+  projectName?: string;
+  demandId?: string;
+  budgetMinor?: string;
+  expectedCompletion?: string;
+  deadline?: string;
+  capabilityRefs?: string[];
+  proposal?: string;
+  confirmed?: boolean;
+  acquisitionChannel?: string;
+}
+
+/** Build sasame_run arguments; absent fields are omitted (additionalProperties:false). */
+export function buildSasameRunArgs(o: SasameRunOpts): Record<string, unknown> {
+  const gec: Record<string, unknown> = { role: "buyer", action: o.action };
+  if (o.projectId !== undefined) gec.project_id = o.projectId;
+  if (o.projectName !== undefined) gec.project_name = o.projectName;
+  if (o.demandId !== undefined) gec.demand_id = o.demandId;
+  if (o.budgetMinor !== undefined) gec.budget_minor = o.budgetMinor;
+  if (o.expectedCompletion !== undefined) gec.expected_completion = o.expectedCompletion;
+  if (o.deadline !== undefined) gec.deadline = o.deadline;
+  if (o.capabilityRefs !== undefined) gec.capability_refs = o.capabilityRefs;
+  if (o.proposal !== undefined) gec.proposal = o.proposal;
+  if (o.confirmed !== undefined) gec.confirmed = o.confirmed;
+  if (o.acquisitionChannel !== undefined) gec.acquisition_channel = o.acquisitionChannel;
+  const args: Record<string, unknown> = {
+    goal: o.goal,
+    execution_mode: o.executionMode ?? "plan_only",
+    context: { gec },
+  };
+  if (o.constraints !== undefined) args.constraints = o.constraints;
+  return args;
+}
+
+/** T+7d demand deadline in strict ISO Z format (schema pattern requires Z). */
+export function demandDeadlineFrom(now: Date): string {
+  return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+}
+
+// ─── Buyer state file (client-side idempotency) ──────────────────────
+export interface BuyerState {
+  project_id?: string;
+  demand_id?: string;
+  award_id?: string;
+  phases_done?: string[];
+  updated_at?: string;
+}
+
+export function defaultBuyerStatePath(): string {
+  return (
+    process.env.GEC_BUYER_STATE ??
+    "../../docs/EPICS/209-gec-buyer-route/evidence/buyer-state.json"
+  );
+}
+
+export function loadBuyerState(path: string): BuyerState {
+  try {
+    const { readFileSync } = require("node:fs") as typeof import("node:fs");
+    return JSON.parse(readFileSync(path, "utf8")) as BuyerState;
+  } catch {
+    return {};
+  }
+}
+
+export function saveBuyerState(path: string, s: BuyerState): void {
+  const { writeFileSync, mkdirSync } = require("node:fs") as typeof import("node:fs");
+  const { dirname } = require("node:path") as typeof import("node:path");
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(
+    path,
+    JSON.stringify({ ...s, updated_at: new Date().toISOString() }, null, 2) + "\n",
+  );
+}
+
+export function buyerPhaseDone(s: BuyerState, phase: string): boolean {
+  return (s.phases_done ?? []).includes(phase);
+}
+
+function markPhaseDone(s: BuyerState, phase: string): BuyerState {
+  return { ...s, phases_done: [...new Set([...(s.phases_done ?? []), phase])] };
+}
+
+// ─── Buyer phase plumbing ─────────────────────────────────────────────
+function parseStatePath(argv: string[]): string {
+  return argv.find((a) => a.startsWith("--state="))?.split("=", 2)[1] ?? defaultBuyerStatePath();
+}
+
+function parseExecMode(argv: string[]): "auto" | "plan_only" {
+  return argv.includes("--submit") ? "auto" : "plan_only";
+}
+
+function parseIdArg(argv: string[], name: string): string | undefined {
+  return argv.find((a) => a.startsWith(`--${name}=`))?.split("=", 2)[1];
+}
+
+/** First string value for any of `keys`, searched recursively in the tool payload. */
+export function findKeyDeep(v: unknown, keys: string[]): string | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (keys.includes(k) && typeof val === "string") return val;
+    const deep = findKeyDeep(val, keys);
+    if (deep) return deep;
+  }
+  return undefined;
+}
+
+/** OAuth + tools/list; fails closed unless sasame_run is advertised. */
+async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
+  const auth = await authenticateUserMcp(t);
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, auth);
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
+  const runTool = toolList.find((x) => x.name === "sasame_run");
+  t.record({
+    step: "mcp-tools-list", method: "POST", path: "/mcp",
+    status: tools.status, ms: tools.ms,
+    responseShape: {
+      toolNames: toolList.map((x) => x.name),
+      sasame_run_schema: runTool?.inputSchema ?? null,
+    },
+  });
+  if (!runTool) stepFail("mcp-tools-list", "sasame_run not advertised by User MCP");
+  return auth;
+}
+
+/** tools/call sasame_run with transcript record; returns extracted payload. */
+async function sasameRun(
+  t: Transcript,
+  auth: { bearer: string; jar: CookieJar; sessionId: string },
+  args: Record<string, unknown>,
+  step: string,
+): Promise<unknown> {
+  const gec = (args.context as { gec?: Record<string, unknown> }).gec ?? {};
+  const r = await mcpCall(
+    GEC_ENDPOINTS.resource, "tools/call",
+    { name: "sasame_run", arguments: args },
+    auth,
+  );
+  const isErr = (r.result as { isError?: boolean })?.isError;
+  t.record({
+    step, method: "POST", path: "/mcp",
+    status: r.status, ms: r.ms,
+    note: `tool=sasame_run action=${String(gec.action ?? "?")} mode=${String(args.execution_mode)}`,
+    responseShape: responseShapeOf(r.result ?? r.error),
+  });
+  if (r.error || r.status !== 200 || isErr) {
+    stepFail(step, JSON.stringify(r.error ?? r.result));
+  }
+  return extractToolPayload(r.result);
+}
+
+// ─── Phase plans ──────────────────────────────────────────────────────
+export const PROJECT_STEPS = [
+  "Full OAuth2.1+PKCE+EIP-191 chain → bearer + mcp-session-id",
+  "MCP tools/list — confirm sasame_run advertised (live schema into transcript)",
+  "MCP tools/call sasame_run role=buyer action=draft — project draft (plan_only unless --submit)",
+  "On auto: persist project_id into buyer-state.json — re-run skips (idempotent)",
+] as const;
+
+export const DEMAND_STEPS = [
+  "Full OAuth2.1+PKCE+EIP-191 chain → bearer + mcp-session-id",
+  "MCP tools/list — confirm sasame_run advertised",
+  "Resolve project_id (buyer-state.json or --project=)",
+  "MCP tools/call sasame_run role=buyer action=draft — demand, cap 3,500,000 microUSDC, deadline T+7d",
+  "On auto: persist demand_id into buyer-state.json — re-run skips (idempotent)",
+] as const;
+
+export const PUBLISH_STEPS = [
+  "Full OAuth2.1+PKCE+EIP-191 chain → bearer + mcp-session-id",
+  "Resolve demand_id (buyer-state.json or --demand=)",
+  "MCP tools/call sasame_run role=buyer action=publish — confirmed only with --submit",
+  "On auto: mark publish done in buyer-state.json",
+] as const;
+
+export const LIFECYCLE_STEPS = [
+  "Full OAuth2.1+PKCE+EIP-191 chain → bearer + mcp-session-id",
+  "Resolve demand_id (buyer-state.json or --demand=)",
+  "MCP tools/call sasame_run role=buyer action=status — bids → award → delivery → verify → settle (read-only)",
+] as const;
+
+// ─── Phase runners ────────────────────────────────────────────────────
+async function runBuyerProject(t: Transcript, argv: string[]): Promise<void> {
+  const statePath = parseStatePath(argv);
+  let state = loadBuyerState(statePath);
+  if (buyerPhaseDone(state, "project") && state.project_id) {
+    console.log(`[gec-interop] project already created: ${state.project_id} — idempotent skip`);
+    return;
+  }
+  const auth = await buyerSession(t);
+  const mode = parseExecMode(argv);
+  const args = buildSasameRunArgs({
+    goal: BUYER_GOAL_PROJECT,
+    action: "draft",
+    projectName: BUYER_PROJECT_NAME,
+    acquisitionChannel: "OTHER_AGENT",
+    constraints: ["project draft only — no demand, no publication"],
+    executionMode: mode,
+  });
+  const payload = await sasameRun(t, auth, args, "sasame_run-project-draft");
+  if (mode === "auto") {
+    const pid = findKeyDeep(payload, ["project_id"]) ?? state.project_id;
+    if (!pid) stepFail("sasame_run-project-draft", "auto run returned no project_id");
+    state = markPhaseDone({ ...state, project_id: pid }, "project");
+    saveBuyerState(statePath, state);
+    console.log(`[gec-interop] project created: ${pid} — state → ${statePath}`);
+  } else {
+    console.log("[gec-interop] plan_only — draft returned, nothing written (use --submit post-audit 209-3/209-4)");
+  }
+}
+
+async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
+  const statePath = parseStatePath(argv);
+  let state = loadBuyerState(statePath);
+  if (buyerPhaseDone(state, "demand") && state.demand_id) {
+    console.log(`[gec-interop] demand already created: ${state.demand_id} — idempotent skip`);
+    return;
+  }
+  const projectId = parseIdArg(argv, "project") ?? state.project_id;
+  if (!projectId) stepFail("demand-args", "no project_id — run --phase=project first or pass --project=<id>");
+  const auth = await buyerSession(t);
+  const mode = parseExecMode(argv);
+  const deadline = demandDeadlineFrom(new Date());
+  const args = buildSasameRunArgs({
+    goal: BUYER_GOAL_DEMAND,
+    action: "draft",
+    projectId,
+    budgetMinor: BUYER_CAP_MINOR,
+    deadline,
+    expectedCompletion: deadline,
+    acquisitionChannel: "OTHER_AGENT",
+    constraints: [
+      "verification_policy EXTERNAL_OUTCOME",
+      "verification_assurance DECLARED_POLICY_ONLY",
+      "machine-checkable acceptance criteria per D-209-5",
+      "demand draft only — no publication in this phase",
+    ],
+    executionMode: mode,
+  });
+  const payload = await sasameRun(t, auth, args, "sasame_run-demand-draft");
+  if (mode === "auto") {
+    const did = findKeyDeep(payload, ["demand_id"]) ?? state.demand_id;
+    if (!did) stepFail("sasame_run-demand-draft", "auto run returned no demand_id");
+    state = markPhaseDone({ ...state, project_id: projectId, demand_id: did }, "demand");
+    saveBuyerState(statePath, state);
+    console.log(`[gec-interop] demand created: ${did} — state → ${statePath}`);
+  } else {
+    console.log("[gec-interop] plan_only — demand draft returned, nothing written (use --submit post-audit 209-3/209-4)");
+  }
+}
+
+async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
+  const statePath = parseStatePath(argv);
+  let state = loadBuyerState(statePath);
+  if (buyerPhaseDone(state, "publish")) {
+    console.log(`[gec-interop] demand already published: ${state.demand_id ?? "?"} — idempotent skip`);
+    return;
+  }
+  const demandId = parseIdArg(argv, "demand") ?? state.demand_id;
+  if (!demandId) stepFail("publish-args", "no demand_id — run --phase=demand first or pass --demand=<id>");
+  const auth = await buyerSession(t);
+  const mode = parseExecMode(argv);
+  const args = buildSasameRunArgs({
+    goal: "Publish the drafted Demand so external providers can bid on it.",
+    action: "publish",
+    demandId,
+    projectId: state.project_id,
+    confirmed: mode === "auto",
+    acquisitionChannel: "OTHER_AGENT",
+    executionMode: mode,
+  });
+  const payload = await sasameRun(t, auth, args, "sasame_run-demand-publish");
+  if (mode === "auto") {
+    state = markPhaseDone({ ...state, demand_id: demandId }, "publish");
+    saveBuyerState(statePath, state);
+    console.log(`[gec-interop] demand published: ${demandId}`);
+  } else {
+    console.log("[gec-interop] plan_only — publish dry-run only (use --submit post-audit 209-3/209-4)");
+    void payload;
+  }
+}
+
+async function runBuyerLifecycle(t: Transcript, argv: string[]): Promise<void> {
+  const statePath = parseStatePath(argv);
+  const state = loadBuyerState(statePath);
+  const demandId = parseIdArg(argv, "demand") ?? state.demand_id;
+  if (!demandId) stepFail("lifecycle-args", "no demand_id — publish a demand first or pass --demand=<id>");
+  const auth = await buyerSession(t);
+  const args = buildSasameRunArgs({
+    goal: BUYER_GOAL_LIFECYCLE,
+    action: "status",
+    demandId,
+    projectId: state.project_id,
+    constraints: ["read-only lifecycle report — no writes"],
+    executionMode: parseExecMode(argv),
+  });
+  const payload = await sasameRun(t, auth, args, "sasame_run-demand-status");
+  console.log(`[gec-interop] lifecycle status: ${JSON.stringify(payload).slice(0, 800)}`);
+}
+
 async function main(): Promise<void> {
   const phase = parsePhase(process.argv.slice(2));
 
@@ -983,7 +1344,11 @@ async function main(): Promise<void> {
     : phase === "bid" ? BID_STEPS
       : phase === "tools" ? TOOLS_STEPS
         : phase === "verify" ? VERIFY_STEPS
-          : AWARD_STEPS;
+          : phase === "project" ? PROJECT_STEPS
+            : phase === "demand" ? DEMAND_STEPS
+              : phase === "publish" ? PUBLISH_STEPS
+                : phase === "lifecycle" ? LIFECYCLE_STEPS
+                  : AWARD_STEPS;
 
   console.log(`[gec-interop] phase=${phase}`);
   console.log(`[gec-interop] wallet=${address} (burner, EIP-191 only, zero-funds)`);
@@ -1003,6 +1368,14 @@ async function main(): Promise<void> {
       await runTools(t);
     } else if (phase === "verify") {
       await runVerify(t, process.argv.slice(2));
+    } else if (phase === "project") {
+      await runBuyerProject(t, process.argv.slice(2));
+    } else if (phase === "demand") {
+      await runBuyerDemand(t, process.argv.slice(2));
+    } else if (phase === "publish") {
+      await runBuyerPublish(t, process.argv.slice(2));
+    } else if (phase === "lifecycle") {
+      await runBuyerLifecycle(t, process.argv.slice(2));
     } else {
       await runAward(t);
     }

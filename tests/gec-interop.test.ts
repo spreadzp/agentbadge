@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parsePhase,
   base64url,
   buildAuthorizeUrl,
   buildVerificationArgs,
@@ -296,5 +297,125 @@ describe("extractToolPayload", () => {
   it("falls back to structuredContent, then raw result", () => {
     expect(extractToolPayload({ structuredContent: { ok: 1 } })).toEqual({ ok: 1 });
     expect(extractToolPayload({ plain: true })).toEqual({ plain: true });
+  });
+});
+
+// ─── SLICE-209-2: buyer-phase helpers (pure, zero network) ───────────
+import {
+  parsePhase,
+  BUYER_CAP_MINOR,
+  buildSasameRunArgs,
+  buyerPhaseDone,
+  demandDeadlineFrom,
+  defaultBuyerStatePath,
+  loadBuyerState,
+  saveBuyerState,
+  type BuyerState,
+} from "../scripts/gec-interop.mts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+describe("demandDeadlineFrom", () => {
+  it("returns T+7d in strict ISO Z format matching the sasame_run pattern", () => {
+    const d = demandDeadlineFrom(new Date("2026-11-03T00:00:00.000Z"));
+    expect(d).toBe("2026-11-10T00:00:00.000Z");
+  });
+});
+
+describe("buildSasameRunArgs", () => {
+  it("builds a buyer draft call: role=buyer, action=draft, plan_only default", () => {
+    const args = buildSasameRunArgs({
+      goal: "Create a production project draft for the synthesis article demand",
+      action: "draft",
+      projectName: "AgentBadge synthesis article",
+      budgetMinor: BUYER_CAP_MINOR,
+      deadline: "2026-11-10T00:00:00.000Z",
+    }) as Record<string, unknown>;
+    expect(args.execution_mode).toBe("plan_only");
+    const gec = (args.context as { gec: Record<string, unknown> }).gec;
+    expect(gec.role).toBe("buyer");
+    expect(gec.action).toBe("draft");
+    expect(gec.project_name).toBe("AgentBadge synthesis article");
+    expect(gec.budget_minor).toBe("3500000");
+    expect(gec.deadline).toBe("2026-11-10T00:00:00.000Z");
+  });
+
+  it("publish action carries confirmed:true (schema requires it before publish)", () => {
+    const args = buildSasameRunArgs({
+      goal: "Publish the demand",
+      action: "publish",
+      demandId: "demand:x",
+      confirmed: true,
+      executionMode: "auto",
+    }) as Record<string, unknown>;
+    const gec = (args.context as { gec: Record<string, unknown> }).gec;
+    expect(gec.action).toBe("publish");
+    expect(gec.confirmed).toBe(true);
+    expect(gec.demand_id).toBe("demand:x");
+    expect(args.execution_mode).toBe("auto");
+  });
+
+  it("omits absent optional fields (additionalProperties:false schema)", () => {
+    const args = buildSasameRunArgs({ goal: "status", action: "status", demandId: "demand:y" }) as Record<string, unknown>;
+    const gec = (args.context as { gec: Record<string, unknown> }).gec;
+    expect(gec.project_id).toBeUndefined();
+    expect(gec.budget_minor).toBeUndefined();
+    expect(gec.confirmed).toBeUndefined();
+    expect(gec.demand_id).toBe("demand:y");
+  });
+
+  it("BUYER_CAP_MINOR is 3.5 USDC = 3,500,000 microUSDC (D-209-4)", () => {
+    expect(BUYER_CAP_MINOR).toBe("3500000");
+  });
+});
+
+describe("buyer state file (idempotency)", () => {
+  it("missing state file → empty state", () => {
+    const dir = mkdtempSync(join(tmpdir(), "buyer-"));
+    try {
+      expect(loadBuyerState(join(dir, "nope.json"))).toEqual({});
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+
+  it("roundtrips created ids; buyerPhaseDone marks completed phases", () => {
+    const dir = mkdtempSync(join(tmpdir(), "buyer-"));
+    const p = join(dir, "state.json");
+    try {
+      const s: BuyerState = { project_id: "project:1", demand_id: "demand:2", phases_done: ["project", "demand"] };
+      saveBuyerState(p, s);
+      const back = loadBuyerState(p);
+      expect(back.project_id).toBe("project:1");
+      expect(back.demand_id).toBe("demand:2");
+      expect(buyerPhaseDone(back, "project")).toBe(true);
+      expect(buyerPhaseDone(back, "demand")).toBe(true);
+      expect(buyerPhaseDone(back, "publish")).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+
+  it("default path lands in the 209 evidence dir", () => {
+    expect(defaultBuyerStatePath()).toContain("209-gec-buyer-route");
+    expect(defaultBuyerStatePath()).toContain("buyer-state.json");
+  });
+});
+
+describe("parsePhase (buyer phases, dispatch only)", () => {
+  it("accepts project|demand|publish|lifecycle", () => {
+    expect(parsePhase(["--phase=project"])).toBe("project");
+    expect(parsePhase(["--phase=demand"])).toBe("demand");
+    expect(parsePhase(["--phase=publish"])).toBe("publish");
+    expect(parsePhase(["--phase=lifecycle"])).toBe("lifecycle");
+  });
+  it("keeps the 205 phases", () => {
+    expect(parsePhase(["--phase=tools"])).toBe("tools");
+    expect(parsePhase(["--phase=verify"])).toBe("verify");
+  });
+  it("rejects unknown phases", () => {
+    expect(() => parsePhase(["--phase=explode"])).toThrow(/usage/);
+    expect(() => parsePhase([])).toThrow(/usage/);
   });
 });
