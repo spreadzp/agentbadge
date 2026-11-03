@@ -511,22 +511,47 @@ describe("assertChallengeShape (audit H5)", () => {
     expect(() => assertChallengeShape(noExp, BUYER_WALLET)).toThrow(/expires_at/);
     const { body: _b, ...noBody } = good;
     expect(() => assertChallengeShape(noBody, BUYER_WALLET)).toThrow(/origin/);
-    // Message that names the wallet but not the origin / chain / nonce.
+    // Message that names the wallet but not the nonce still fails closed.
     expect(() => assertChallengeShape({ ...good, message: `Sign in ${BUYER_WALLET}` }, BUYER_WALLET))
-      .toThrow(/origin/);
+      .toThrow(/nonce/);
     expect(() => assertChallengeShape({ ...good, message: `https://sasame.online ${BUYER_WALLET} chain=0x2105` }, BUYER_WALLET))
       .toThrow(/nonce/);
-    expect(() => assertChallengeShape({ ...good, message: `https://sasame.online ${BUYER_WALLET} nonce=abcdef123456` }, BUYER_WALLET))
-      .toThrow(/chain id/);
+    // A message naming a FOREIGN http origin fails — replay red flag.
+    expect(() => assertChallengeShape(
+      { ...good, message: `https://evil.example ${BUYER_WALLET} nonce=abcdef123456` }, BUYER_WALLET,
+    )).toThrow(/foreign origin/);
+  });
+  it("live challenge/1.0: wallet+purpose+nonce+issued_at in text, no URL required", () => {
+    const live = {
+      ...good,
+      purpose: "sasame-exchange-participant-session",
+      issued_at: "2026-11-03T19:54:23.488Z",
+      // Real shape observed 2026-11-03: no origin/chain text at all.
+      message:
+        "sasame-wallet-ownership-challenge/1.0\n" + `${BUYER_WALLET}\n` +
+        "sasame-exchange-participant-session\n" + "abcdef123456\n" +
+        "2026-11-03T19:54:23.488Z\n" + "7e690f2d17450ca56ad99f0a67913d5f",
+    };
+    expect(() => assertChallengeShape(live, BUYER_WALLET)).not.toThrow();
+    // Purpose/issued_at present as fields but missing from the text → refuse.
+    expect(() => assertChallengeShape(
+      { ...live, message: `x/1.0\n${BUYER_WALLET}\nwrong-purpose\nabcdef123456\n2026-11-03T19:54:23.488Z` }, BUYER_WALLET,
+    )).toThrow(/purpose/);
+    expect(() => assertChallengeShape(
+      { ...live, message: `x/1.0\n${BUYER_WALLET}\nsasame-exchange-participant-session\nabcdef123456\nother-time` }, BUYER_WALLET,
+    )).toThrow(/issued_at/);
   });
   it("re-audit 2: unparseable issued_at and >15min window fail closed", () => {
     expect(() => assertChallengeShape({ ...good, issued_at: "not-a-date" }, BUYER_WALLET)).toThrow(/issued_at/);
     expect(() => assertChallengeShape(
       { ...good, expires_at: new Date(Date.now() + 60 * 60_000).toISOString() }, BUYER_WALLET,
     )).toThrow(/window/);
-    // A normal short challenge without issued_at still passes.
+    // A normal short challenge WITHOUT issued_at still passes.
+    expect(() => assertChallengeShape(good, BUYER_WALLET)).not.toThrow();
+    // And a valid one WITH issued_at (field present → must be in the text).
+    const iat = new Date(Date.now() - 60_000).toISOString();
     expect(() => assertChallengeShape(
-      { ...good, issued_at: new Date(Date.now() - 60_000).toISOString() }, BUYER_WALLET,
+      { ...good, issued_at: iat, message: `${good.message} iat=${iat}` }, BUYER_WALLET,
     )).not.toThrow();
   });
   it("re-audit 3: future issued_at refused; far-future expiry refused despite in-window issued_at", () => {

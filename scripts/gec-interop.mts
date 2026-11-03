@@ -494,15 +494,27 @@ export function assertChallengeShape(
     stepFail("challenge-shape", "challenge message does not contain the signer address — refusing to sign");
   }
   // N-10: the SIGNED text itself must carry the pinned terms — fields alone
-  // don't bind what the signature attests to.
-  if (!msg.includes(GEC_ENDPOINTS.origin)) {
-    stepFail("challenge-shape", "challenge message does not name the expected origin — refusing to sign");
-  }
-  if (!msg.includes(GEC_ENDPOINTS.chainId) && !msg.includes("8453")) {
-    stepFail("challenge-shape", "challenge message does not name the Base chain id — refusing to sign");
+  // don't bind what the signature attests to. Live challenge/1.0 binds
+  // wallet + purpose + nonce + issued_at in the text; origin + chain are
+  // verified in the structured fields above (server echoes them in `body`
+  // and the verify call posts them back).
+  const wantAddr = String(f.wallet_address ?? "").toLowerCase();
+  if (wantAddr.length === 0 || !msg.toLowerCase().includes(wantAddr)) {
+    stepFail("challenge-shape", "challenge message does not contain the wallet address — refusing to sign");
   }
   if (!msg.includes(f.nonce as string)) {
     stepFail("challenge-shape", "challenge message does not contain its nonce — refusing to sign");
+  }
+  if (typeof f.issued_at === "string" && !msg.includes(f.issued_at)) {
+    stepFail("challenge-shape", "challenge message does not contain its issued_at — refusing to sign");
+  }
+  if (typeof f.purpose === "string" && !msg.includes(f.purpose)) {
+    stepFail("challenge-shape", "challenge message does not contain its purpose — refusing to sign");
+  }
+  // If the message DOES name an http origin, it must be ours — a foreign
+  // origin inside the signed text is a replay red flag.
+  if (/https?:\/\//i.test(msg) && !msg.includes(GEC_ENDPOINTS.origin)) {
+    stepFail("challenge-shape", "challenge message names a foreign origin — refusing to sign");
   }
 }
 
@@ -1244,11 +1256,13 @@ export const BUYER_GOAL_PROJECT =
   "an external-visibility project that will hold one paid Demand for a " +
   "synthesis article about AgentBadge public blog posts.";
 export const BUYER_GOAL_DEMAND =
-  "Draft a paid Demand under the synthesis-article project: an external " +
-  "agent reads the listed AgentBadge blog posts and publishes ONE original " +
-  "'how it all works together' synthesis article (with direct links) on its " +
-  "own venue. Cap 3.5 USDC, acceptance criteria machine-checkable, policy " +
-  "EXTERNAL_OUTCOME / DECLARED_POLICY_ONLY, deadline T+7d from publish.";
+  "Draft a paid Demand under the synthesis-article project. The full task " +
+  "brief for the provider is in `proposal` — embed it VERBATIM as the Demand " +
+  "body so the Demand is self-sufficient. An external agent reads the listed " +
+  "AgentBadge blog posts and publishes ONE original 'how it all works " +
+  "together' synthesis article (with direct links) on its own venue. Cap 3.5 " +
+  "USDC, acceptance criteria machine-checkable, policy EXTERNAL_OUTCOME / " +
+  "DECLARED_POLICY_ONLY, deadline T+7d from publish.";
 export const BUYER_GOAL_LIFECYCLE =
   "Report lifecycle status for our published Demand: bids, awards, " +
   "deliverables, verification and settlement state. Read-only.";
@@ -1802,10 +1816,18 @@ async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
     const auth = await buyerSession(t);
     const mode = parseExecMode(argv);
     const deadline = demandDeadlineFrom(new Date());
+    // A2: the ready provider brief must be IN the Demand text — `goal` caps
+    // at 1000 chars, so the brief travels in `proposal` (max 4000) and the
+    // goal instructs sasame to embed it verbatim.
+    const briefPath = argValue(argv, "brief")
+      ?? resolve(SCRIPT_DIR, "../../../docs/EPICS/209-gec-buyer-route/assets/provider-prompt-FINAL.md");
+    const brief = readFileSync(briefPath, "utf8");
+    if (brief.length > 4000) stepFail("demand-args", `brief ${brief.length} chars > gec.proposal max 4000`);
     const args = buildSasameRunArgs({
       goal: BUYER_GOAL_DEMAND,
       action: "draft",
       projectId,
+      proposal: brief,
       budgetMinor: BUYER_CAP_MINOR,
       deadline,
       expectedCompletion: deadline,
