@@ -12,11 +12,14 @@ import {
   type BuildEventInput,
   DECIMAL_USDC,
   type EconomicEvent,
+  EvidenceWriteListSchema,
+  type EvidenceRef,
   type HandoffPayload,
   ParticipantRolesWriteSchema,
   type ParticipantRoles,
   type ShipmentHop,
 } from "@agentbadge/econ-events";
+import { logger } from "@agentbadge/passport/logger";
 import { statusRank, type HopSpec, type HopStatus } from "./types";
 
 export const SHIPMENT_SOURCE = "supply_chain";
@@ -115,6 +118,44 @@ export function parseHandoffRoles(
     throw new ShipmentOrderError(
       `roles.custodian ${check.data.custodian.address} ≠ handoff counterparty ${counterparty}`,
     );
+  }
+  return check.data;
+}
+
+/**
+ * 213-2: validate caller-supplied handoff evidence refs (write side).
+ * Strict schema — unknown keys fail loudly, hash/issuer addresses
+ * normalize to lowercase, uri must be http(s)/ipfs/ar, cap <=32 refs
+ * (D-213-2). A ref is a LINK, not a fact (D-213-4): issuer is
+ * self-declared — issuer.address outside {actor, counterparty} logs an
+ * advisory warning but stays VALID (D-213-3); proving the link between
+ * issuer and hop parties is a v2 verification concern.
+ */
+export function parseHandoffEvidence(
+  refs: unknown, // raw input — a typed param invites a lenient pre-parse upstream
+  actor: string,
+  counterparty: string,
+): EvidenceRef[] {
+  const check = EvidenceWriteListSchema.safeParse(refs);
+  if (!check.success) {
+    const detail = check.error.issues
+      .map((i) => `${i.path.join(".") || "evidence"} ${i.message}`)
+      .join("; ")
+      .slice(0, 200); // bound attacker-influenced text (M-4 mirror)
+    throw new ShipmentOrderError(`invalid handoff evidence: ${detail}`);
+  }
+  const parties = new Set([actor.toLowerCase(), counterparty.toLowerCase()]);
+  for (const [i, e] of check.data.entries()) {
+    assertAddress(e.issuer.address, `evidence[${i}].issuer.address`);
+    if (!parties.has(e.issuer.address)) {
+      logger.warn("evidence issuer is not a hop party (advisory)", {
+        index: i,
+        issuer: e.issuer.address,
+        actor,
+        counterparty,
+        type: e.type,
+      });
+    }
   }
   return check.data;
 }

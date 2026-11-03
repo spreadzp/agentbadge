@@ -22,6 +22,7 @@ import {
   assertHopIndex,
   assertShipmentId,
   hopStatus,
+  parseHandoffEvidence,
   parseHandoffRoles,
   seqFor,
   SHIPMENT_SOURCE,
@@ -150,12 +151,15 @@ export async function handoffHop(
   deps: ShipmentDeps,
   epcis?: { what?: string; where?: string; why?: string },
   roles?: unknown, // N-2: raw input — typed param invites a lenient pre-parse
+  evidenceRefs?: unknown, // 213-2: raw input — strict write parse inside
 ): Promise<void> {
   assertShipmentId(shipmentId);
   assertHopIndex(hopIndex);
   // 212-2/212-5: typed participants ride the handoff payload (D-211-7);
   // self-declared, never identity (D-212-3). Strict write-side parse.
   const parsedRoles = roles === undefined ? undefined : parseHandoffRoles(roles, counterparty);
+  // 213-2 (D-211-8): typed evidence links — issuer mismatch → advisory-warn (D-213-3)
+  const parsedEvidence = evidenceRefs === undefined ? undefined : parseHandoffEvidence(evidenceRefs, actor, counterparty);
   // H-3: serialize the guard→append pair — two concurrent handoffs of
   // the same hop must not both pass the "not yet handed off" check.
   await withHopLock(`${shipmentId}:${hopIndex}`, async () => {
@@ -214,6 +218,7 @@ export async function handoffHop(
         ...(evidence.deliverableHash ? { deliverableHash: evidence.deliverableHash } : {}),
         ...(evidence.proofOfDelivery ? { proofOfDelivery: evidence.proofOfDelivery } : {}),
         ...(parsedRoles ? { roles: parsedRoles } : {}),
+        ...(parsedEvidence ? { evidence: parsedEvidence } : {}),
         shipmentId,
         hopIndex,
       },
