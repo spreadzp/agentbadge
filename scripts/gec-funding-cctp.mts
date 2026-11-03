@@ -94,10 +94,11 @@ const TM = parseAbi([
   // V2 depositForBurn returns void (audit nit — uint64 nonce was V1).
   "function depositForBurn(uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken, bytes32 destinationCaller, uint256 maxFee, uint32 minFinalityThreshold)",
   "function localMessageTransmitter() view returns (address)",
-  "function localDomain() view returns (uint32)",
 ]);
 const MT = parseAbi([
   "function receiveMessage(bytes message, bytes attestation) returns (bool)",
+  // localDomain lives on the transmitter, not the messenger (smoke-verified).
+  "function localDomain() view returns (uint32)",
 ]);
 const DEPOSIT_FOR_BURN_EVENT = parseAbi([
   "event DepositForBurn(uint64 indexed nonce, address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller)",
@@ -372,17 +373,20 @@ async function verifyContracts(): Promise<void> {
     const code = await p;
     if (!code || code === "0x") throw new Error(`no bytecode at ${name} — address wrong or RPC broken`);
   }
-  // Cross-check contract self-knowledge (audit M1): the messenger itself must
-  // agree on the domain and the transmitter it routes through.
-  const [mt, domain] = await Promise.all([
+  // Cross-check contract self-knowledge (audit M1): each chain's contracts
+  // must agree on the wiring — Arc TM routes to the pinned transmitter, and
+  // each transmitter reports its own domain (26 on Arc, 6 on Base).
+  const [mt, arcDom, baseDom] = await Promise.all([
     pubArc.readContract({ address: CCTP_TOKEN_MESSENGER, abi: TM, functionName: "localMessageTransmitter" }),
-    pubArc.readContract({ address: CCTP_TOKEN_MESSENGER, abi: TM, functionName: "localDomain" }),
+    pubArc.readContract({ address: CCTP_MESSAGE_TRANSMITTER, abi: MT, functionName: "localDomain" }),
+    pubBase.readContract({ address: CCTP_MESSAGE_TRANSMITTER, abi: MT, functionName: "localDomain" }),
   ]);
   if ((mt as Address).toLowerCase() !== CCTP_MESSAGE_TRANSMITTER.toLowerCase()) {
     throw new Error(`TokenMessengerV2.localMessageTransmitter=${mt} != ${CCTP_MESSAGE_TRANSMITTER}`);
   }
-  if (domain !== ARC_DOMAIN) throw new Error(`TokenMessengerV2.localDomain=${domain} != ${ARC_DOMAIN}`);
-  log("contracts verified: code@4 addrs, chainIds 5042/8453, localDomain=26, localMessageTransmitter matches");
+  if (arcDom !== ARC_DOMAIN) throw new Error(`Arc MessageTransmitterV2.localDomain=${arcDom} != ${ARC_DOMAIN}`);
+  if (baseDom !== BASE_DOMAIN) throw new Error(`Base MessageTransmitterV2.localDomain=${baseDom} != ${BASE_DOMAIN}`);
+  log("contracts verified: code@4 addrs, chainIds 5042/8453, localDomain 26/6, localMessageTransmitter matches");
 }
 
 async function balances(): Promise<{ arcUsdc: bigint; baseEth: bigint; baseUsdc: bigint }> {
