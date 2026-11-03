@@ -1256,13 +1256,42 @@ export const BUYER_GOAL_PROJECT =
   "an external-visibility project that will hold one paid Demand for a " +
   "synthesis article about AgentBadge public blog posts.";
 export const BUYER_GOAL_DEMAND =
-  "Draft a paid Demand under the synthesis-article project. The full task " +
-  "brief for the provider is in `proposal` — embed it VERBATIM as the Demand " +
-  "body so the Demand is self-sufficient. An external agent reads the listed " +
-  "AgentBadge blog posts and publishes ONE original 'how it all works " +
-  "together' synthesis article (with direct links) on its own venue. Cap 3.5 " +
-  "USDC, acceptance criteria machine-checkable, policy EXTERNAL_OUTCOME / " +
-  "DECLARED_POLICY_ONLY, deadline T+7d from publish.";
+  "Preview a paid Demand under the synthesis-article project (plan_only, no " +
+  "publication yet): an external agent reads the listed AgentBadge blog posts " +
+  "and publishes ONE original 'how it all works together' synthesis article " +
+  "(with direct links) on its own venue. Cap 3.5 USDC, machine-checkable " +
+  "acceptance criteria, policy EXTERNAL_OUTCOME / DECLARED_POLICY_ONLY, " +
+  "deadline T+7d from publish.";
+
+/** The publish call's goal BECOMES the live demand objective — it must carry
+ * the full task spec within the 1000-char limit (learned 2026-11-03: the
+ * stray demand's objective is the commit-call goal verbatim). */
+export const BUYER_PUBLISH_GOAL =
+  "Commissioned article task (paid via a GEC marketplace — disclose this in " +
+  "the post): write and publish ONE original 600-1200-word technical article " +
+  "for developers showing how AgentBadge's pieces compose into a working " +
+  "agent economy: agents prove identity -> readiness scan -> task board -> " +
+  "budgeted work -> USDC payment -> on-chain verdicts. Directly link at least " +
+  "3 of these AgentBadge posts in the body: agentbadge.xyz/blog/" +
+  "what-is-agent-readiness, arc-c29-task-board, arc-c30-agent-economy, " +
+  "arc-c31-agent-allowance, arc-c32-payment-forensics, " +
+  "gec-interop-field-report, usdc-rescue-base-to-arc, " +
+  "supply-chain-participant-roles. Include an AI-content disclosure per the " +
+  "venue's policy; publish on Hashnode/X/dev.to/Medium/LinkedIn/personal blog " +
+  "(never Reddit); submit the public post URL + full article text.";
+
+/** D-209-5 machine-checkable acceptance rules (each <=160 chars). */
+export const BUYER_PUBLISH_CONSTRAINTS: readonly string[] = [
+  "verification_policy EXTERNAL_OUTCOME",
+  "verification_assurance DECLARED_POLICY_ONLY",
+  "criteria: 1 public article URL (live, publicly accessible)",
+  "criteria: >=3 direct links to the listed AgentBadge URLs in body",
+  "criteria: submission = post URL + full article text",
+  "criteria: commissioned/sponsored disclosure present",
+  "criteria: publishing account is not AgentBadge-owned",
+  "criteria: venue AI-content policy respected; Reddit forbidden",
+  "style: original synthesis 'wow' moment — guidance not gate",
+] as const;
 export const BUYER_GOAL_LIFECYCLE =
   "Report lifecycle status for our published Demand: bids, awards, " +
   "deliverables, verification and settlement state. Read-only.";
@@ -1577,7 +1606,7 @@ function findObjectWithKey(v: unknown, keys: string[], want?: string): Record<st
 }
 
 /** OAuth + tools/list; fails closed unless sasame_run is advertised. */
-async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
+export async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
   const auth = await authenticateUserMcp(t);
   const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { ...auth, allowRetry: true });
   if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", tools.error ?? tools.status);
@@ -1600,7 +1629,7 @@ async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: Cooki
  * NON-idempotent — no blind retry. Read actions (status/browse) may retry. */
 const SASAME_READ_ACTIONS: ReadonlySet<BuyerAction> = new Set(["status", "browse"]);
 
-async function sasameRun(
+export async function sasameRun(
   t: Transcript,
   auth: { bearer: string; jar: CookieJar; sessionId: string },
   args: Record<string, unknown>,
@@ -1753,6 +1782,11 @@ async function runBuyerProject(t: Transcript, argv: string[]): Promise<void> {
       goal: BUYER_GOAL_PROJECT,
       action: "draft",
       projectName: BUYER_PROJECT_NAME,
+      // Live schema/concierge: a draft without a positive all-in budget and
+      // confirmed:true stays uncommitted (dropoff BUDGET_REQUIRED). The
+      // project's all-in cap = the single 3.5 USDC demand it will hold.
+      budgetMinor: BUYER_CAP_MINOR,
+      confirmed: mode === "auto",
       acquisitionChannel: "OTHER_AGENT",
       constraints: ["project draft only — no demand, no publication"],
       executionMode: mode,
@@ -1763,8 +1797,16 @@ async function runBuyerProject(t: Transcript, argv: string[]): Promise<void> {
     }
     const payload = await sasameRun(t, auth, args, "sasame_run-project-draft");
     if (mode === "auto") {
-      const pid = findKeyDeep(payload, ["project_id"]);
-      if (!pid) stepFail("sasame_run-project-draft", `auto run returned no project_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
+      // Live protocol: draft returns a preview only — the commit is a second
+      // call with action="publish" + confirmed=true (concierge next_action).
+      const commit = await sasameRun(t, auth, buildSasameRunArgs({
+        goal: "Confirm the previewed project draft: commit it as the Production Project.",
+        action: "publish", projectName: BUYER_PROJECT_NAME,
+        budgetMinor: BUYER_CAP_MINOR, confirmed: true,
+        acquisitionChannel: "OTHER_AGENT", executionMode: "auto",
+      }), "sasame_run-project-commit");
+      const pid = findKeyDeep(commit, ["project_id"]);
+      if (!pid) stepFail("sasame_run-project-commit", `commit returned no project_id in ${JSON.stringify(redact(commit)).slice(0, 400)}`);
       // N-9: persist the raw id BEFORE validation so a non-matching shape
       // is still recoverable via --phase=lifecycle/browse, not a duplicate.
       state = { ...state, project_id_unconfirmed: pid };
@@ -1829,6 +1871,7 @@ async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
       projectId,
       proposal: brief,
       budgetMinor: BUYER_CAP_MINOR,
+      confirmed: mode === "auto",
       deadline,
       expectedCompletion: deadline,
       acquisitionChannel: "OTHER_AGENT",
@@ -1846,29 +1889,29 @@ async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
     }
     const payload = await sasameRun(t, auth, args, "sasame_run-demand-draft");
     if (mode === "auto") {
-      const did = findKeyDeep(payload, ["demand_id"]);
-      if (!did) stepFail("sasame_run-demand-draft", `auto run returned no demand_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
-      state = { ...state, demand_id_unconfirmed: did }; // N-9: persist raw id before validation
-      saveBuyerState(statePath, state);
-      validateBuyerId(did, "demand_id");
-      console.log(`[gec-interop] demand created: ${did}`); // printed BEFORE save
-      assertNoPendingMarkers(payload, "sasame_run-demand-draft");
-      const check = await sasameRun(t, auth, buildSasameRunArgs({
-        goal: "Read-only: confirm the demand draft exists with the right budget.",
-        action: "status", demandId: did, projectId, executionMode: "plan_only",
-      }), "sasame_run-demand-status");
-      const problems = statusTermsProblems(check, {
-        id: did, idKeys: ["demand_id"], projectId, budgetMinor: BUYER_CAP_MINOR,
-        allowedStates: ["DRAFT", "CREATED", "PENDING_REVIEW"],
-      });
-      if (problems.length) {
-        stepFail("sasame_run-demand-status", `read-back terms failed for ${did}: ${problems.join("; ")} — NOT marking done; re-run to verify`);
+      // Atomic model (2026-11-03): draft never persists — it only previews.
+      // Validate the preview's echoed terms, then mark the phase done; the
+      // gated publish call mints demand_id later.
+      const draft = ((payload as { draft?: Record<string, unknown> }).draft ?? {}) as Record<string, unknown>;
+      const problems: string[] = [];
+      const echoedBudget = String(draft.max_budget_minor ?? "");
+      if (echoedBudget !== BUYER_CAP_MINOR) problems.push(`max_budget_minor ${echoedBudget || "<unset>"} != ${BUYER_CAP_MINOR}`);
+      const policy = String(draft.verification_policy ?? "");
+      if (policy !== "INDEPENDENT_PARTICIPANT" && policy !== "EXTERNAL_OUTCOME") {
+        problems.push(`unexpected verification_policy ${policy || "<unset>"}`);
       }
-      state = markPhaseDone({ ...state, project_id: projectId, demand_id: did, demand_id_unconfirmed: undefined, pending: undefined }, "demand");
+      const criteria = Array.isArray(draft.acceptance_criteria) ? draft.acceptance_criteria : [];
+      if (criteria.length === 0) problems.push("empty acceptance_criteria");
+      const draftDeadline = String(draft.deadline ?? "");
+      if (!draftDeadline) problems.push("no deadline echoed");
+      if (problems.length) {
+        stepFail("sasame_run-demand-draft", `preview terms failed: ${problems.join("; ")}`);
+      }
+      state = markPhaseDone({ ...state, pending: undefined }, "demand");
       saveBuyerState(statePath, state);
-      console.log(`[gec-interop] confirmed + persisted: ${did} — state → ${statePath}`);
+      console.log(`[gec-interop] demand preview verified — ready to publish (T+7d deadline ${draftDeadline})`);
     } else {
-      console.log("[gec-interop] plan_only — demand draft returned, nothing written (use --submit post-audit)");
+      console.log("[gec-interop] plan_only — demand preview returned, nothing written (use --submit post-audit)");
     }
   } finally {
     release();
@@ -1948,46 +1991,40 @@ async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
       return;
     }
     pendingGuard(state, "publish", argv);
-    const demandId = parseIdArg(argv, "demand") ?? state.demand_id;
-    if (!demandId) stepFail("publish-args", "no demand_id — run --phase=demand first or pass --demand=<id>");
-    validateBuyerId(demandId, "demand_id");
-    if (state.demand_id && demandId !== state.demand_id && !argv.includes("--allow-id-mismatch")) {
-      stepFail("publish-args", `--demand=${demandId} differs from state ${state.demand_id} — --allow-id-mismatch to override`);
+    // Live model (learned 2026-11-03): there is no persistent draft demand —
+    // publish+confirmed creates AND opens the demand atomically, and the
+    // call's `goal` becomes the objective. demand_id comes FROM the response.
+    if (state.demand_id) {
+      stepFail("publish-args", `state already has demand_id ${state.demand_id} — refusing a duplicate publish`);
     }
     const auth = await buyerSession(t);
     const mode = parseExecMode(argv);
+    const deadline = demandDeadlineFrom(new Date());
+    // A2: the ready provider brief travels in `proposal` (max 4000); the
+    // objective itself is the publish goal (≤1000).
+    const briefPath = argValue(argv, "brief")
+      ?? resolve(SCRIPT_DIR, "../../../docs/EPICS/209-gec-buyer-route/assets/provider-prompt-FINAL.md");
+    const brief = readFileSync(briefPath, "utf8");
+    if (brief.length > 4000) stepFail("publish-args", `brief ${brief.length} chars > gec.proposal max 4000`);
     if (mode === "auto") {
       // Audit H3: never publish an unfunded or unverified Demand.
       await assertPublishFunded(statePath, address);
-      const pre = await sasameRun(t, auth, buildSasameRunArgs({
-        goal: "Read-only: report the draft demand's current state before publish.",
-        action: "status", demandId, projectId: state.project_id, executionMode: "plan_only",
-      }), "sasame_run-pre-publish-status");
-      const preProblems = statusTermsProblems(pre, {
-        id: demandId, idKeys: ["demand_id"], projectId: state.project_id,
-        budgetMinor: BUYER_CAP_MINOR,
-        // Re-audit 5 N5-3: PENDING_REVIEW is NOT a publishable state — it
-        // appears when a publish already landed and sits in the moderation
-        // queue. Allowing it would let an --ignore-pending re-run publish a
-        // second time. Fresh drafts are DRAFT/CREATED/READY.
-        allowedStates: ["DRAFT", "CREATED", "READY"],
-      });
-      if (preProblems.length) {
-        stepFail("pre-publish-status", `status terms failed for ${demandId}: ${preProblems.join("; ")} — refusing to publish`);
-      }
-      console.log(`[gec-interop] pre-publish status confirmed ${demandId}`);
       // Audit N-7: explicit operator YES on the publish plan.
       await confirmPublish(argv, {
-        demand_id: demandId, project_id: state.project_id,
+        project_id: state.project_id,
         cap_minor: BUYER_CAP_MINOR, wallet: address,
+        objective: BUYER_PUBLISH_GOAL.slice(0, 200) + "…",
       });
     }
     const args = buildSasameRunArgs({
-      goal: "Publish the drafted Demand so external providers can bid on it. Deadline is T+7d from now.",
+      goal: BUYER_PUBLISH_GOAL, // becomes the live objective verbatim
       action: "publish",
-      demandId,
       projectId: state.project_id,
-      deadline: demandDeadlineFrom(new Date()), // audit H3: T+7d from PUBLISH
+      proposal: brief,
+      budgetMinor: BUYER_CAP_MINOR,
+      deadline,
+      expectedCompletion: deadline,
+      constraints: [...BUYER_PUBLISH_CONSTRAINTS],
       confirmed: mode === "auto",
       acquisitionChannel: "OTHER_AGENT",
       executionMode: mode,
@@ -1997,7 +2034,17 @@ async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
       saveBuyerState(statePath, state);
     }
     const payload = await sasameRun(t, auth, args, "sasame_run-demand-publish");
-    if (mode === "auto") {
+    const demandId = findKeyDeep(payload, ["demand_id"]) as string | undefined;
+    if (mode === "auto" && !demandId) {
+      stepFail("sasame_run-demand-publish", `publish returned no demand_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
+    }
+    if (mode === "auto" && demandId) {
+      state = { ...state, demand_id_unconfirmed: demandId };
+      saveBuyerState(statePath, state);
+      validateBuyerId(demandId, "demand_id");
+      console.log(`[gec-interop] demand published: ${demandId}`);
+    }
+    if (mode === "auto" && demandId) {
       // Audit N-2: the write response itself can already say "pending
       // approval" — that is NOT a landed publish.
       assertNoPendingMarkers(payload, "sasame_run-demand-publish");
