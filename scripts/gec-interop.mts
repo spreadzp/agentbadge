@@ -66,6 +66,11 @@ export const GEC_ENDPOINTS = {
   scope: "gec.read gec.write",
 } as const;
 
+/** Canonical buyer wallet (D-209-2) — the funded identity the interop key
+ * MUST derive. Audit N-11: pinning it here means a wrong .env key fails
+ * closed before any write, instead of passing the funding gate on its own
+ * unrelated USDC balance. */
+export const BUYER_ADDRESS = "0x3bF7bf14c839AC615F87cDeDe344dF01B9cFb89f";
 export const GEC_TARGET_DEMAND = "demand:owner:aefcd63292d520374a1c2ac7fca6a8a5";
 export const GEC_BID_AMOUNT_MINOR = "5000000"; // 5 USDC = max_budget_minor
 export const GEC_TARGET_AWARD = "award:155c2787a74b57b557dc6a69d3d4fb56";
@@ -175,8 +180,12 @@ export function createCookieJar(): CookieJar {
   const store = new Map<string, Map<string, string>>();
   return {
     capture(res: Response, origin: string) {
-      const bucket = store.get(origin) ?? new Map<string, string>();
-      store.set(origin, bucket);
+      // Audit N-14/M5: with redirect:"follow" the final response may come
+      // from another host — scope cookies to the RESPONSE's origin (res.url),
+      // not the request URL.
+      const effectiveOrigin = res.url ? new URL(res.url).origin : origin;
+      const bucket = store.get(effectiveOrigin) ?? new Map<string, string>();
+      store.set(effectiveOrigin, bucket);
       for (const line of res.headers.getSetCookie?.() ?? []) {
         const first = line.split(";", 1)[0];
         const eq = first.indexOf("=");
@@ -184,14 +193,17 @@ export function createCookieJar(): CookieJar {
         const name = first.slice(0, eq).trim();
         const value = first.slice(eq + 1).trim();
         if (!name) continue;
-        // Audit M5: Max-Age=0 or a past Expires also deletes, not just "".
-        const maxAge0 = /;\s*max-age\s*=\s*0\b/i.test(line);
+        // Audit N-14: Max-Age takes precedence over Expires; <=0 (incl. -1,
+        // "00") means delete. A past Expires deletes only when no Max-Age.
+        const maxAge = /;\s*max-age\s*=\s*(-?\d+)/i.exec(line)?.[1];
         const expires = /;\s*expires\s*=\s*([^;]+)/i.exec(line)?.[1];
-        const expired = expires !== undefined && Date.parse(expires) <= Date.now();
-        if (value === "" || maxAge0 || expired) bucket.delete(name);
-        else bucket.set(name, value);
+        const expiresPast = maxAge === undefined && expires !== undefined
+          && Date.parse(expires) <= Date.now();
+        if (value === "" || (maxAge !== undefined && Number(maxAge) <= 0) || expiresPast) {
+          bucket.delete(name);
+        } else bucket.set(name, value);
       }
-      if (bucket.size === 0) store.delete(origin);
+      if (bucket.size === 0) store.delete(effectiveOrigin);
     },
     header(origin: string) {
       const bucket = store.get(origin);
@@ -208,10 +220,24 @@ export function createCookieJar(): CookieJar {
 
 // ─── Transcript + redaction (whitelist fields; denylisted keys masked) ───────
 
-// Audit M4: broadened key denylist — session/bearer/jwt/nonce/api key/
-// credential/verifier shapes were previously invisible to the mask.
-const SECRET_KEY_RE =
-  /authorization|cookie|set-cookie|token|signature|challenge|message|code_verifier|code$|state|client_secret|private|secret|mcp_state|mcp_base|session|bearer|jwt|nonce|api_?key|password|otp|credential|verifier|auth\b/i;
+// Audit M4/N-16: denylist matches EXACT key names (plus secret-shaped
+// suffixes), not substrings — masking "*state" or "*code*" by substring
+// destroyed lifecycle fields like demand_state, error_code and error
+// message, which are evidence, not secrets. Exact names still cover the
+// genuinely sensitive OAuth keys (state, code, message, nonce).
+const SECRET_KEY_EXACT = new Set([
+  "authorization", "proxy-authorization", "cookie", "set-cookie",
+  "token", "access_token", "refresh_token", "id_token", "token_type",
+  "signature", "challenge", "code", "code_verifier", "state",
+  "client_secret", "private_key", "secret", "mcp_state", "mcp_base",
+  "session", "session_id", "sessionid", "mcp-session-id", "mcp_session_id",
+  "bearer", "jwt", "nonce", "api_key", "apikey", "password", "otp",
+  "credential", "message", "verifier",
+]);
+const SECRET_KEY_SUFFIX = /_(token|secret|key|password|signature|verifier)$/i;
+function isSecretKey(k: string): boolean {
+  return SECRET_KEY_EXACT.has(k.toLowerCase()) || SECRET_KEY_SUFFIX.test(k);
+}
 
 /** Value-level patterns that are secret regardless of the key name. */
 const SECRET_VALUE_RE = [
@@ -242,7 +268,7 @@ export function redact<T>(value: T): T {
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = SECRET_KEY_RE.test(k) ? "<redacted>" : redact(v);
+      out[k] = isSecretKey(k) ? "<redacted>" : redact(v);
     }
     return out as T;
   }
@@ -312,22 +338,25 @@ export interface FetchResult {
 }
 
 export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<FetchResult> {
-  // Flaky upstream (sasame.online 522/timeouts): up to 3 attempts on network
-  // errors or 5xx — but ONLY for idempotent calls (audit C3). Non-idempotent
-  // writes get a single attempt; the caller does a read-back to determine
-  // whether the write landed instead of risking a duplicate remote mutation.
-  const maxAttempts = opts.allowRetry === false ? 1 : 3;
+  // Audit N-15: retry is OPT-IN now (allowRetry === true), never default —
+  // a write call that forgets the flag can no longer silently retry. A 5xx
+  // response is RETURNED (not thrown) after the last attempt so the caller
+  // keeps the body for a read-back; only network errors throw.
+  const maxAttempts = opts.allowRetry === true ? 3 : 1;
   let lastErr: unknown;
+  let lastRes: FetchResult | undefined;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * attempt));
     try {
       const r = await timedFetchOnce(url, opts);
       if (r.status < 500) return r;
+      lastRes = r;
       lastErr = new Error(`HTTP ${r.status}`);
     } catch (e) {
       lastErr = e;
     }
   }
+  if (lastRes) return lastRes;
   throw lastErr;
 }
 
@@ -384,6 +413,13 @@ export function loadWallet(): { address: `0x${string}`; account: LocalAccount } 
   if (address && account.address.toLowerCase() !== address.toLowerCase()) {
     throw new Error(`GEC_INTEROP_ADDRESS mismatch: env=${address} derived=${account.address}`);
   }
+  // Audit N-11: the interop key IS the buyer key — a different key that
+  // happens to hold ≥3.5 USDC must not pass the publish funding gate.
+  if (account.address.toLowerCase() !== BUYER_ADDRESS.toLowerCase()) {
+    throw new Error(
+      `GEC_INTEROP_PRIVATE_KEY derives ${account.address}, expected buyer ${BUYER_ADDRESS} — refusing`,
+    );
+  }
   return { address: account.address, account };
 }
 
@@ -404,24 +440,32 @@ export function assertChallengeShape(
   if (!fields) stepFail("challenge-shape", "no challenge object");
   const f = fields!;
   if (typeof f.wallet_address !== "string" ||
-      f.wallet_address.toLowerCase() !== address.toLowerCase()) {
+    f.wallet_address.toLowerCase() !== address.toLowerCase()) {
     stepFail("challenge-shape", `challenge wallet_address ${String(f.wallet_address)} != signer ${address}`);
   }
-  if (f.chain_id !== undefined && f.chain_id !== GEC_ENDPOINTS.chainId) {
+  // Audit N-10: every checked field is REQUIRED — a challenge missing them,
+  // or with an unparseable expiry, must NOT be signed (was: check-if-defined,
+  // which failed open).
+  if (f.chain_id !== GEC_ENDPOINTS.chainId) {
     stepFail("challenge-shape", `challenge chain_id ${String(f.chain_id)} != ${GEC_ENDPOINTS.chainId}`);
   }
   const body = f.body as { origin?: string } | undefined;
-  if (body?.origin !== undefined && body.origin !== GEC_ENDPOINTS.origin) {
-    stepFail("challenge-shape", `challenge origin ${body.origin} != ${GEC_ENDPOINTS.origin}`);
+  if (body?.origin !== GEC_ENDPOINTS.origin) {
+    stepFail("challenge-shape", `challenge origin ${String(body?.origin)} != ${GEC_ENDPOINTS.origin}`);
   }
-  if (f.nonce !== undefined && (typeof f.nonce !== "string" || f.nonce.length < 8)) {
+  if (typeof f.nonce !== "string" || f.nonce.length < 8) {
     stepFail("challenge-shape", "challenge nonce missing/too short");
   }
-  if (f.expires_at !== undefined) {
-    const exp = Date.parse(String(f.expires_at));
-    if (!Number.isNaN(exp) && exp <= Date.now()) {
-      stepFail("challenge-shape", `challenge expired at ${String(f.expires_at)}`);
-    }
+  const exp = Date.parse(String(f.expires_at));
+  if (Number.isNaN(exp)) {
+    stepFail("challenge-shape", `challenge expires_at ${String(f.expires_at)} missing/unparseable`);
+  }
+  if (exp <= Date.now()) {
+    stepFail("challenge-shape", `challenge expired at ${String(f.expires_at)}`);
+  }
+  const iat = Date.parse(String(f.issued_at));
+  if (!Number.isNaN(iat) && exp - iat > 10 * 60 * 1000) {
+    stepFail("challenge-shape", `challenge window ${Math.round((exp - iat) / 60000)}min > 10min — refusing`);
   }
   const msg = String(f.message ?? "");
   if (msg.length === 0 || msg.length > 4000) {
@@ -429,6 +473,17 @@ export function assertChallengeShape(
   }
   if (!msg.toLowerCase().includes(address.toLowerCase())) {
     stepFail("challenge-shape", "challenge message does not contain the signer address — refusing to sign");
+  }
+  // N-10: the SIGNED text itself must carry the pinned terms — fields alone
+  // don't bind what the signature attests to.
+  if (!msg.includes(GEC_ENDPOINTS.origin)) {
+    stepFail("challenge-shape", "challenge message does not name the expected origin — refusing to sign");
+  }
+  if (!msg.includes(GEC_ENDPOINTS.chainId) && !msg.includes("8453")) {
+    stepFail("challenge-shape", "challenge message does not name the Base chain id — refusing to sign");
+  }
+  if (!msg.includes(f.nonce as string)) {
+    stepFail("challenge-shape", "challenge message does not contain its nonce — refusing to sign");
   }
 }
 
@@ -538,9 +593,9 @@ export function parsePhase(argv: string[]): GecPhase {
 }
 
 function outPath(argv: string[]): string | undefined {
-  const a = argv.find((x) => x.startsWith("--out="));
-  const v = a?.slice(a.indexOf("=") + 1);
-  return v || undefined; // empty --out= means "don't write", never ""
+  // Audit M8: empty --out= throws like every other strict flag — a silent
+  // no-op flag looks like a typo that loses the transcript.
+  return argValue(argv, "out");
 }
 
 // ─── SLICE-205-5: live rehearsal — full OAuth cycle, read-only finish ────────
@@ -563,7 +618,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
   const state = makeState(verifier);
 
   // 0. Projection: target demand must still be OPEN
-  const proj = await timedFetch(GEC_ENDPOINTS.openDemandsApi, { jar });
+  const proj = await timedFetch(GEC_ENDPOINTS.openDemandsApi, { jar, allowRetry: true });
   t.record({
     step: "open-demands-projection", method: "GET", path: "/api/gec/open-demands",
     status: proj.status, ms: proj.ms, responseShape: responseShapeOf(proj.body)
@@ -575,7 +630,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     clientId: clientId(), redirectUri: redirectUri(),
     state, codeChallenge: challenge,
   });
-  const auth = await timedFetch(authUrl, { jar, redirectManual: true });
+  const auth = await timedFetch(authUrl, { jar, redirectManual: true, allowRetry: true });
   t.record({
     step: "authorize", method: "GET", path: "/authorize",
     status: auth.status, ms: auth.ms,
@@ -592,7 +647,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
   // 3. POST challenge {wallet_address, chain_id} — Origin pinned (live-probed:
   // field is wallet_address, NOT address — wrong key → invalid_wallet_address)
   const chal = await timedFetch(GEC_ENDPOINTS.challenge, {
-    jar, method: "POST",
+    jar, method: "POST", allowRetry: true, // idempotent — re-posting just issues a fresh challenge
     headers: { "content-type": "application/json", origin: GEC_ENDPOINTS.origin },
     body: JSON.stringify({ wallet_address: address, chain_id: GEC_ENDPOINTS.chainId }),
   });
@@ -618,7 +673,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
 
   // 5. POST verify — returned challenge fields + signature (cookie jar keeps session)
   const verify = await timedFetch(GEC_ENDPOINTS.verify, {
-    jar, method: "POST",
+    jar, method: "POST", // single attempt — verify consumes the challenge server-side
     headers: { "content-type": "application/json", origin: GEC_ENDPOINTS.origin },
     body: JSON.stringify({ ...chalFields, signature }),
   });
@@ -658,7 +713,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
       }
       break;
     }
-    const r = await timedFetch(next.toString(), { jar, redirectManual: true });
+    const r = await timedFetch(next.toString(), { jar, redirectManual: true, allowRetry: true });
     t.record({
       step: `consent-redirect-${i + 1}`, method: "GET",
       path: next.pathname, status: r.status, ms: r.ms,
@@ -674,7 +729,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
   // 8. POST token exchange — RFC 6749: form-encoded, not JSON.
   // bearer comes back, NEVER logged
   const tok = await timedFetch(GEC_ENDPOINTS.token, {
-    jar, method: "POST",
+    jar, method: "POST", // single attempt — the auth code is one-time-use
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "authorization_code", code,
@@ -694,7 +749,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
   const init = await mcpCall(GEC_ENDPOINTS.resource, "initialize", {
     protocolVersion: "2025-03-26", capabilities: {},
     clientInfo: { name: "agentbadge-gec-interop", version: "0.1.0" },
-  }, { bearer, jar });
+  }, { bearer, jar, allowRetry: true });
   t.record({
     step: "mcp-initialize", method: "POST", path: "/mcp",
     status: init.status, ms: init.ms, responseShape: responseShapeOf(init.result ?? init.error)
@@ -703,7 +758,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
   // MCP Streamable HTTP: session id issued on initialize must be echoed on all later calls
   const sessionId = init.sessionId ?? undefined;
   if (!sessionId) stepFail("mcp-initialize", "no mcp-session-id in initialize response headers");
-  await mcpCall(GEC_ENDPOINTS.resource, "notifications/initialized", {}, { bearer, jar, sessionId });
+  await mcpCall(GEC_ENDPOINTS.resource, "notifications/initialized", {}, { bearer, jar, sessionId, allowRetry: true });
 
   return { bearer, jar, sessionId };
 }
@@ -712,8 +767,8 @@ async function runRehearsal(t: Transcript): Promise<void> {
   const { bearer, jar, sessionId } = await authenticateUserMcp(t);
 
   // 10. tools/list — gec_bid_submit schema is 205-6 input, persisted in evidence (not secret)
-  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
-  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId, allowRetry: true });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", tools.error ?? tools.status);
   const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
   const bidTool = toolList.find((x) => x.name === "gec_bid_submit");
   t.record({
@@ -733,7 +788,7 @@ async function runRehearsal(t: Transcript): Promise<void> {
   const pubInit = await mcpCall(GEC_ENDPOINTS.publicMcp, "initialize", {
     protocolVersion: "2025-03-26", capabilities: {},
     clientInfo: { name: "agentbadge-gec-interop", version: "0.1.0" },
-  }, { jar });
+  }, { jar, allowRetry: true });
   t.record({
     step: "public-mcp-initialize", method: "POST", path: "/public-mcp",
     status: pubInit.status, ms: pubInit.ms,
@@ -743,10 +798,10 @@ async function runRehearsal(t: Transcript): Promise<void> {
   const pubSession = pubInit.sessionId ?? undefined;
   // Their server binds the session via cookies + notifications/initialized;
   // without it tools/call answers "Tool not found" even though tools/list shows it.
-  await mcpCall(GEC_ENDPOINTS.publicMcp, "notifications/initialized", {}, { jar, sessionId: pubSession });
+  await mcpCall(GEC_ENDPOINTS.publicMcp, "notifications/initialized", {}, { jar, sessionId: pubSession, allowRetry: true });
 
   const demands = await mcpCall(GEC_ENDPOINTS.publicMcp, "tools/call",
-    { name: "gec_open_demands", arguments: {} }, { jar, sessionId: pubSession });
+    { name: "gec_open_demands", arguments: {} }, { jar, sessionId: pubSession, allowRetry: true });
   const isErr = (demands.result as { isError?: boolean })?.isError;
   t.record({
     step: "gec_open_demands", method: "POST", path: "/public-mcp",
@@ -827,8 +882,8 @@ async function runBid(t: Transcript, argv: string[]): Promise<void> {
 async function runTools(t: Transcript): Promise<void> {
   const { bearer, jar, sessionId } = await authenticateUserMcp(t);
 
-  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
-  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId, allowRetry: true });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", tools.error ?? tools.status);
   const toolList = (tools.result as { tools?: { name: string; description?: string; inputSchema?: unknown }[] })?.tools ?? [];
   // Tool schemas are the public API contract — recording them in full is
   // safe (no secrets) and is the input for the award phase.
@@ -848,8 +903,7 @@ async function runTools(t: Transcript): Promise<void> {
 // GEC_TARGET_AWARD; arg shapes adapt to the live tools/list schemas.
 
 function loadReport(): string {
-  const a = process.argv.find((x) => x.startsWith("--report="));
-  const file = a?.slice(a.indexOf("=") + 1)
+  const file = argValue(process.argv, "report")
     ?? resolve(SCRIPT_DIR, "../../../docs/EPICS/205-sasame-gec-interop/evidence/deliverable-summary-2026-10-23.md");
   return readFileSync(file, "utf8");
 }
@@ -900,8 +954,8 @@ async function runAward(t: Transcript, argv: string[]): Promise<void> {
   const { bearer, jar, sessionId } = await authenticateUserMcp(t);
 
   // Re-list tools so the transcript carries the exact schemas this call used.
-  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
-  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId, allowRetry: true });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", tools.error ?? tools.status);
   const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
   const acceptTool = toolList.find((x) => x.name === "gec_award_accept");
   const deliverTool = toolList.find((x) => x.name === "gec_deliverable_submit");
@@ -926,10 +980,19 @@ async function runAward(t: Transcript, argv: string[]): Promise<void> {
     note: `award=155c27…fb56 args=${Object.keys(acceptArgs).join(",")}`,
     responseShape: responseShapeOf(accept.result ?? accept.error)
   });
-  if (accept.error || accept.status !== 200 || acceptErr) {
-    stepFail("gec_award_accept", accept.error ?? accept.result);
+  // Audit N-19: resumable — an "already accepted" refusal means a previous
+  // run's accept landed; proceed to the deliverable instead of dying.
+  const acceptFailed = accept.error || accept.status !== 200 || acceptErr;
+  if (acceptFailed) {
+    const blob = JSON.stringify(redact(accept.error ?? accept.result ?? ""));
+    if (/already|accepted|conflict|duplicate|state/i.test(blob)) {
+      console.log("[gec-interop] award already accepted server-side — resuming at deliverable");
+    } else {
+      stepFail("gec_award_accept", accept.error ?? accept.result);
+    }
+  } else {
+    console.log("[gec-interop] award accepted — 155c27…fb56");
   }
-  console.log("[gec-interop] award accepted — 155c27…fb56");
 
   const reportText = loadReport();
   if (reportText.length > 4000) {
@@ -1028,13 +1091,11 @@ function parseVerdict(argv: string[]): VerifyVerdict | undefined {
 }
 
 function parseNote(argv: string[]): string {
-  const a = argv.find((x) => x.startsWith("--note="));
-  return a?.slice(a.indexOf("=") + 1) ?? "";
+  return argValue(argv, "note") ?? "";
 }
 
 function parseEvidence(argv: string[]): string[] {
-  const a = argv.find((x) => x.startsWith("--evidence="));
-  const raw = a?.slice(a.indexOf("=") + 1);
+  const raw = argValue(argv, "evidence");
   return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
 }
 
@@ -1042,8 +1103,8 @@ async function runVerify(t: Transcript, argv: string[]): Promise<void> {
   const { bearer, jar, sessionId } = await authenticateUserMcp(t);
 
   // 1. Schema drift check: verification + read tools this phase depends on.
-  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId });
-  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { bearer, jar, sessionId, allowRetry: true });
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", tools.error ?? tools.status);
   const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
   const byName = (n: string) => toolList.find((x) => x.name === n);
   const needed = ["gec_verification_submit", "gec_demand_search", "gec_bid_list", "gec_outcome_get"];
@@ -1057,8 +1118,10 @@ async function runVerify(t: Transcript, argv: string[]): Promise<void> {
   }
 
   const call = async (name: string, args: Record<string, unknown>, step: string) => {
+    // Audit N-15: reads may retry; gec_verification_submit is a write —
+    // never retried blindly even though its idempotency key would dedupe.
     const r = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
-      { name, arguments: args }, { bearer, jar, sessionId });
+      { name, arguments: args }, { bearer, jar, sessionId, allowRetry: name !== "gec_verification_submit" });
     const isErr = (r.result as { isError?: boolean })?.isError;
     t.record({
       step, method: "POST", path: "/mcp",
@@ -1105,7 +1168,7 @@ async function runVerify(t: Transcript, argv: string[]): Promise<void> {
   const projectIds = [...new Set(demands.map((d) => d.project_id).filter(Boolean))] as string[];
   for (const pid of projectIds.slice(0, 10)) {
     const r = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
-      { name: "gec_outcome_get", arguments: { project_id: pid } }, { bearer, jar, sessionId });
+      { name: "gec_outcome_get", arguments: { project_id: pid } }, { bearer, jar, sessionId, allowRetry: true });
     const isErr = (r.result as { isError?: boolean })?.isError;
     t.record({
       step: "gec_outcome_get", method: "POST", path: "/mcp",
@@ -1128,7 +1191,7 @@ async function runVerify(t: Transcript, argv: string[]): Promise<void> {
   const args = buildVerificationArgs(verdict, note, parseEvidence(argv));
   const v = await call("gec_verification_submit", args, "gec_verification_submit");
   console.log(`[gec-interop] verification submitted — verdict=${verdict} idem=${args.idempotency_key}`);
-  console.log(`[gec-interop] response: ${JSON.stringify(v).slice(0, 400)}`);
+  console.log(`[gec-interop] response: ${JSON.stringify(redact(v)).slice(0, 400)}`);
 }
 
 // ─── SLICE-209-2: buyer-side phases (D-209-7) ─────────────────────────
@@ -1215,8 +1278,11 @@ export function demandDeadlineFrom(now: Date): string {
 }
 
 // ─── Buyer state file (client-side idempotency) ──────────────────────
-/** Audit H2: strict resource-id shape — demand:owner:<32-hex> style. */
-export const ID_SHAPE_RE = /^(project|demand|award|bid|deliverable):[A-Za-z0-9_-]+:[a-fA-F0-9]{32}$/;
+/** Audit H2/N-9: resource-id shape — calibrated against live IDs in this
+ * repo: `demand:owner:<32hex>` (3 segments) AND `award:<32hex>` (2
+ * segments, see GEC_TARGET_AWARD). The earlier 3-segment-only form
+ * rejected real award/deliverable ids AFTER the write had landed. */
+export const ID_SHAPE_RE = /^(project|demand|award|bid|deliverable):(?:[A-Za-z0-9_-]{2,64}:)?[a-fA-F0-9]{32}$/;
 
 export function validateBuyerId(id: string, label: string): string {
   if (!ID_SHAPE_RE.test(id)) throw new Error(`${label} has unexpected id shape: ${id}`);
@@ -1232,6 +1298,11 @@ export interface BuyerState {
   project_id?: string;
   demand_id?: string;
   award_id?: string;
+  // Audit N-9: the raw server-returned id is persisted BEFORE shape
+  // validation — a malformed-looking id can still be recovered manually
+  // instead of forcing a duplicate create.
+  project_id_unconfirmed?: string;
+  demand_id_unconfirmed?: string;
   phases_done?: string[];
   updated_at?: string;
 }
@@ -1279,23 +1350,43 @@ export function saveBuyerState(path: string, s: BuyerState): void {
   renameSync(tmp, path);
 }
 
-/** Audit H6: exclusive lockfile for the whole buyer run. */
+/** Audit H6/N-13: exclusive lockfile for the whole buyer run. */
 export function acquireBuyerLock(statePath: string): () => void {
   const lockPath = `${statePath}.lock`;
+  mkdirSync(dirname(statePath), { recursive: true }); // before the lock — ENOENT ≠ "lock held"
   let fd: number;
   try {
     fd = openSync(lockPath, "wx");
-  } catch {
-    throw new Error(`another buyer run holds ${lockPath} — refusing to run concurrently`);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      const pid = readFileSync(lockPath, "utf8").trim();
+      // N-13: check liveness for an accurate diagnostic — never auto-clear.
+      let liveness = "unreadable";
+      if (/^\d+$/.test(pid)) {
+        try { process.kill(Number(pid), 0); liveness = "ALIVE"; }
+        catch { liveness = "DEAD"; }
+      }
+      throw new Error(
+        `another buyer run holds ${lockPath} (recorded pid ${pid || "unknown"}, ${liveness}) — ` +
+        `refusing to run concurrently; if that pid is dead, remove ${lockPath}`,
+      );
+    }
+    throw e;
   }
   writeFileSync(fd, `${process.pid}\n`);
   let released = false;
-  return () => {
+  const release = () => {
     if (released) return;
     released = true;
     try { closeSync(fd); } catch { /* already closed */ }
     try { unlinkSync(lockPath); } catch { /* already removed */ }
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
   };
+  const onSignal = () => { release(); process.exit(130); };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  return release;
 }
 
 export function buyerPhaseDone(s: BuyerState, phase: string): boolean {
@@ -1319,6 +1410,21 @@ export function argValue(argv: string[], name: string): string | undefined {
 
 function parseStatePath(argv: string[]): string {
   return argValue(argv, "state") ?? defaultBuyerStatePath();
+}
+
+// Audit N-13: a typo'd --state name in an existing directory opens a FRESH
+// state (ENOENT → {}) with all dedupe lost. Write phases require --init to
+// acknowledge a new file at a custom path; the default path self-creates.
+function assertFreshStateAllowed(statePath: string, argv: string[]): void {
+  if (
+    argValue(argv, "state") !== undefined &&
+    !existsSync(statePath) &&
+    !argv.includes("--init")
+  ) {
+    throw new Error(
+      `no buyer state at custom --state=${statePath} — pass --init to create a fresh state file there`,
+    );
+  }
 }
 
 function parseExecMode(argv: string[]): "auto" | "plan_only" {
@@ -1347,7 +1453,7 @@ export function findKeyDeep(v: unknown, keys: string[]): string | undefined {
 /** OAuth + tools/list; fails closed unless sasame_run is advertised. */
 async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
   const auth = await authenticateUserMcp(t);
-  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, auth);
+  const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, { ...auth, allowRetry: true });
   if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", tools.error ?? tools.status);
   const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
   const runTool = toolList.find((x) => x.name === "sasame_run");
@@ -1432,20 +1538,68 @@ export const LIFECYCLE_STEPS = [
 //      before phases_done is marked — a "pending approval" reply can no
 //      longer be mistaken for a completed write
 //   5. stale pending on re-run → refuse to create a second entity; the
-//      operator resolves via a status read-back or --force
+//      operator resolves via a status read-back or --ignore-pending
+
+// Audit N-2: a status payload proves nothing by echoing an id back — the
+// read-back must match on state terms. Returns the list of mismatches.
+export function statusTermsProblems(payload: unknown, expected: {
+  id: string;
+  idKeys: string[];
+  projectId?: string;
+  budgetMinor?: string;
+  allowedStates: readonly string[];
+}): string[] {
+  const bad: string[] = [];
+  const pend = findKeyDeep(payload, ["pending", "awaiting_approval", "moderation", "is_pending"]);
+  if (pend && !/^(false|0|none|null|no)$/i.test(pend)) {
+    bad.push(`pending/awaiting marker present: ${pend}`);
+  }
+  if (findKeyDeep(payload, expected.idKeys) !== expected.id) {
+    bad.push(`${expected.idKeys[0]} not echoed as ${expected.id}`);
+  }
+  if (expected.projectId !== undefined) {
+    const p = findKeyDeep(payload, ["project_id"]);
+    if (p !== expected.projectId) bad.push(`project_id ${String(p)} != ${expected.projectId}`);
+  }
+  if (expected.budgetMinor !== undefined) {
+    const b = findKeyDeep(payload, ["budget_minor", "max_budget_minor", "cap_minor"]);
+    if (b !== expected.budgetMinor) bad.push(`budget ${String(b)} != ${expected.budgetMinor}`);
+  }
+  const st = findKeyDeep(payload, [
+    "state", "status", "demand_state", "project_state", "lifecycle_state", "publication_state",
+  ]);
+  if (st === undefined) {
+    bad.push("no state/status term in read-back");
+  } else if (!expected.allowedStates.some((s) => s.toUpperCase() === st.toUpperCase())) {
+    bad.push(`state ${st} not in allowed ${expected.allowedStates.join("/")}`);
+  }
+  return bad;
+}
+
+/** Audit N-2: the publish response itself can already say "pending approval".
+ * Soft check — only DENY markers fail; absence defers to the status read-back. */
+export function assertNoPendingMarkers(payload: unknown, step: string): void {
+  const pend = findKeyDeep(payload, ["pending", "awaiting_approval", "moderation", "is_pending"]);
+  if (pend && !/^(false|0|none|null|no)$/i.test(pend)) {
+    stepFail(step, `write returned pending/awaiting marker ${pend} — NOT treating as landed`);
+  }
+}
 
 function pendingGuard(state: BuyerState, phase: string, argv: string[]): void {
-  if (state.pending && !argv.includes("--force")) {
+  // Audit N-7: scoped flag — --ignore-pending ONLY bypasses the stale-pending
+  // gate; it no longer doubles as a confirmation override.
+  if (state.pending && !argv.includes("--ignore-pending")) {
     stepFail(
       `pending-${phase}`,
       `stale pending marker ${JSON.stringify(state.pending)} — a write may have ` +
-      `already landed. Run a status read-back (--phase=lifecycle) or pass --force`,
+      `already landed. Run a status read-back (--phase=lifecycle) or pass --ignore-pending`,
     );
   }
 }
 
 async function runBuyerProject(t: Transcript, argv: string[]): Promise<void> {
   const statePath = parseStatePath(argv);
+  assertFreshStateAllowed(statePath, argv);
   const release = acquireBuyerLock(statePath);
   try {
     const { address } = loadWallet();
@@ -1473,17 +1627,26 @@ async function runBuyerProject(t: Transcript, argv: string[]): Promise<void> {
     if (mode === "auto") {
       const pid = findKeyDeep(payload, ["project_id"]);
       if (!pid) stepFail("sasame_run-project-draft", `auto run returned no project_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
+      // N-9: persist the raw id BEFORE validation so a non-matching shape
+      // is still recoverable via --phase=lifecycle/browse, not a duplicate.
+      state = { ...state, project_id_unconfirmed: pid };
+      saveBuyerState(statePath, state);
       validateBuyerId(pid, "project_id");
       console.log(`[gec-interop] project created: ${pid}`); // printed BEFORE save
+      assertNoPendingMarkers(payload, "sasame_run-project-draft");
       const check = await sasameRun(t, auth, buildSasameRunArgs({
         goal: "Read-only: confirm the project draft exists.", action: "status",
         projectId: pid, executionMode: "plan_only",
       }), "sasame_run-project-status");
-      const confirmed = findKeyDeep(check, ["project_id"]) === pid;
+      const problems = statusTermsProblems(check, {
+        id: pid, idKeys: ["project_id"],
+        allowedStates: ["DRAFT", "CREATED", "ACTIVE", "OPEN"],
+      });
+      const confirmed = problems.length === 0;
       if (!confirmed) {
-        stepFail("sasame_run-project-status", `read-back did not confirm ${pid} — NOT marking done; re-run to verify`);
+        stepFail("sasame_run-project-status", `read-back terms failed for ${pid}: ${problems.join("; ")} — NOT marking done; re-run to verify`);
       }
-      state = markPhaseDone({ ...state, project_id: pid, pending: undefined }, "project");
+      state = markPhaseDone({ ...state, project_id: pid, project_id_unconfirmed: undefined, pending: undefined }, "project");
       saveBuyerState(statePath, state);
       console.log(`[gec-interop] confirmed + persisted: ${pid} — state → ${statePath}`);
     } else {
@@ -1496,6 +1659,7 @@ async function runBuyerProject(t: Transcript, argv: string[]): Promise<void> {
 
 async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
   const statePath = parseStatePath(argv);
+  assertFreshStateAllowed(statePath, argv);
   const release = acquireBuyerLock(statePath);
   try {
     const { address } = loadWallet();
@@ -1508,8 +1672,8 @@ async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
     const projectId = parseIdArg(argv, "project") ?? state.project_id;
     if (!projectId) stepFail("demand-args", "no project_id — run --phase=project first or pass --project=<id>");
     validateBuyerId(projectId, "project_id");
-    if (state.project_id && projectId !== state.project_id && !argv.includes("--force")) {
-      stepFail("demand-args", `--project=${projectId} differs from state ${state.project_id} — --force to override`);
+    if (state.project_id && projectId !== state.project_id && !argv.includes("--allow-id-mismatch")) {
+      stepFail("demand-args", `--project=${projectId} differs from state ${state.project_id} — --allow-id-mismatch to override`);
     }
     const auth = await buyerSession(t);
     const mode = parseExecMode(argv);
@@ -1538,17 +1702,23 @@ async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
     if (mode === "auto") {
       const did = findKeyDeep(payload, ["demand_id"]);
       if (!did) stepFail("sasame_run-demand-draft", `auto run returned no demand_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
+      state = { ...state, demand_id_unconfirmed: did }; // N-9: persist raw id before validation
+      saveBuyerState(statePath, state);
       validateBuyerId(did, "demand_id");
       console.log(`[gec-interop] demand created: ${did}`); // printed BEFORE save
+      assertNoPendingMarkers(payload, "sasame_run-demand-draft");
       const check = await sasameRun(t, auth, buildSasameRunArgs({
         goal: "Read-only: confirm the demand draft exists with the right budget.",
         action: "status", demandId: did, projectId, executionMode: "plan_only",
       }), "sasame_run-demand-status");
-      const confirmed = findKeyDeep(check, ["demand_id"]) === did;
-      if (!confirmed) {
-        stepFail("sasame_run-demand-status", `read-back did not confirm ${did} — NOT marking done; re-run to verify`);
+      const problems = statusTermsProblems(check, {
+        id: did, idKeys: ["demand_id"], projectId, budgetMinor: BUYER_CAP_MINOR,
+        allowedStates: ["DRAFT", "CREATED", "PENDING_REVIEW"],
+      });
+      if (problems.length) {
+        stepFail("sasame_run-demand-status", `read-back terms failed for ${did}: ${problems.join("; ")} — NOT marking done; re-run to verify`);
       }
-      state = markPhaseDone({ ...state, project_id: projectId, demand_id: did, pending: undefined }, "demand");
+      state = markPhaseDone({ ...state, project_id: projectId, demand_id: did, demand_id_unconfirmed: undefined, pending: undefined }, "demand");
       saveBuyerState(statePath, state);
       console.log(`[gec-interop] confirmed + persisted: ${did} — state → ${statePath}`);
     } else {
@@ -1562,20 +1732,33 @@ async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 const ERC20_BALANCE = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
-/** Audit H3: publish is funded-only — funding-state must show the CCTP mint
- * AND the buyer's on-chain Base USDC must cover the cap. */
+/** Audit H3/N-11: publish is funded-only — the CANONICAL funding-state
+ * must show a confirmed mint AND the pinned buyer's on-chain Base USDC
+ * must cover the cap. */
 async function assertPublishFunded(statePath: string, wallet: string): Promise<void> {
+  // N-11: never derive the funding path from the caller's --state — a
+  // foreign buyer-state dir could smuggle in an unrelated funding file.
   const fundingPath =
     process.env.GEC_FUNDING_STATE ??
-    resolve(dirname(statePath), "funding-state.json");
+    resolve(SCRIPT_DIR, "../../../docs/EPICS/209-gec-buyer-route/evidence/funding-state.json");
   if (!existsSync(fundingPath)) {
     stepFail("publish-funding", `no funding-state.json at ${fundingPath} — run the CCTP funding leg first`);
   }
-  const funding = JSON.parse(readFileSync(fundingPath, "utf8")) as { mint_tx?: string };
-  if (!funding.mint_tx) {
-    stepFail("publish-funding", `funding-state at ${fundingPath} has no mint_tx — mint on Base first`);
+  const funding = JSON.parse(readFileSync(fundingPath, "utf8")) as {
+    mint_tx?: string; mint_confirmed?: boolean;
+  };
+  const minted =
+    funding.mint_tx === "relayed-externally" ||
+    (typeof funding.mint_tx === "string" && /^0x[0-9a-fA-F]{64}$/.test(funding.mint_tx) && funding.mint_confirmed === true);
+  if (!minted) {
+    stepFail("publish-funding",
+      `funding-state at ${fundingPath} shows no CONFIRMED mint (mint_tx=${funding.mint_tx ?? "none"}) — finish the CCTP leg first`);
   }
   const pub = createPublicClient({ chain: base, transport: http() });
+  const chainId = await pub.getChainId();
+  if (chainId !== 8453) {
+    stepFail("publish-funding", `Base client reports chainId ${chainId} != 8453 — refusing balance gate`);
+  }
   const bal = await pub.readContract({
     address: USDC_BASE, abi: ERC20_BALANCE, functionName: "balanceOf", args: [wallet as `0x${string}`],
   });
@@ -1586,8 +1769,30 @@ async function assertPublishFunded(statePath: string, wallet: string): Promise<v
   console.log(`[gec-interop] funding verified: mint_tx=${funding.mint_tx} baseUsdc=${Number(bal) / 1e6} ≥ cap`);
 }
 
+/** Audit N-7: publishing a paid demand gets the same explicit YES as the
+ * funding spend — TTY prompt, or GEC_INTEROP_CONFIRM=YES non-interactive. */
+async function confirmPublish(argv: string[], summary: Record<string, unknown>): Promise<void> {
+  console.log(`[gec-interop] PUBLISH PLAN: ${JSON.stringify(summary)}`);
+  if (!argv.includes("--submit")) {
+    console.log("[gec-interop] dry-run — pass --submit to publish (post re-audit)");
+    return;
+  }
+  if (process.stdin.isTTY) {
+    const { createInterface } = await import("node:readline");
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await new Promise<string>((r) => rl.question("Type YES to publish: ", r));
+    rl.close();
+    if (answer.trim() !== "YES") stepFail("publish-confirm", "publish aborted by operator");
+    return;
+  }
+  if (process.env.GEC_INTEROP_CONFIRM !== "YES") {
+    stepFail("publish-confirm", "non-interactive publish requires GEC_INTEROP_CONFIRM=YES");
+  }
+}
+
 async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
   const statePath = parseStatePath(argv);
+  assertFreshStateAllowed(statePath, argv);
   const release = acquireBuyerLock(statePath);
   try {
     const { address } = loadWallet();
@@ -1600,8 +1805,8 @@ async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
     const demandId = parseIdArg(argv, "demand") ?? state.demand_id;
     if (!demandId) stepFail("publish-args", "no demand_id — run --phase=demand first or pass --demand=<id>");
     validateBuyerId(demandId, "demand_id");
-    if (state.demand_id && demandId !== state.demand_id && !argv.includes("--force")) {
-      stepFail("publish-args", `--demand=${demandId} differs from state ${state.demand_id} — --force to override`);
+    if (state.demand_id && demandId !== state.demand_id && !argv.includes("--allow-id-mismatch")) {
+      stepFail("publish-args", `--demand=${demandId} differs from state ${state.demand_id} — --allow-id-mismatch to override`);
     }
     const auth = await buyerSession(t);
     const mode = parseExecMode(argv);
@@ -1612,10 +1817,20 @@ async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
         goal: "Read-only: report the draft demand's current state before publish.",
         action: "status", demandId, projectId: state.project_id, executionMode: "plan_only",
       }), "sasame_run-pre-publish-status");
-      if (findKeyDeep(pre, ["demand_id"]) !== demandId) {
-        stepFail("pre-publish-status", `status read-back does not confirm ${demandId} — refusing to publish`);
+      const preProblems = statusTermsProblems(pre, {
+        id: demandId, idKeys: ["demand_id"], projectId: state.project_id,
+        budgetMinor: BUYER_CAP_MINOR,
+        allowedStates: ["DRAFT", "CREATED", "PENDING_REVIEW", "READY"],
+      });
+      if (preProblems.length) {
+        stepFail("pre-publish-status", `status terms failed for ${demandId}: ${preProblems.join("; ")} — refusing to publish`);
       }
       console.log(`[gec-interop] pre-publish status confirmed ${demandId}`);
+      // Audit N-7: explicit operator YES on the publish plan.
+      await confirmPublish(argv, {
+        demand_id: demandId, project_id: state.project_id,
+        cap_minor: BUYER_CAP_MINOR, wallet: address,
+      });
     }
     const args = buildSasameRunArgs({
       goal: "Publish the drafted Demand so external providers can bid on it. Deadline is T+7d from now.",
@@ -1633,12 +1848,20 @@ async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
     }
     const payload = await sasameRun(t, auth, args, "sasame_run-demand-publish");
     if (mode === "auto") {
+      // Audit N-2: the write response itself can already say "pending
+      // approval" — that is NOT a landed publish.
+      assertNoPendingMarkers(payload, "sasame_run-demand-publish");
       const check = await sasameRun(t, auth, buildSasameRunArgs({
         goal: "Read-only: confirm the demand is published/OPEN.",
         action: "status", demandId, projectId: state.project_id, executionMode: "plan_only",
       }), "sasame_run-post-publish-status");
-      if (findKeyDeep(check, ["demand_id"]) !== demandId) {
-        stepFail("post-publish-status", `read-back did not confirm ${demandId} — NOT marking done; verify manually`);
+      const problems = statusTermsProblems(check, {
+        id: demandId, idKeys: ["demand_id"], projectId: state.project_id,
+        budgetMinor: BUYER_CAP_MINOR,
+        allowedStates: ["OPEN", "PUBLISHED", "ACTIVE", "LIVE"],
+      });
+      if (problems.length) {
+        stepFail("post-publish-status", `read-back terms failed for ${demandId}: ${problems.join("; ")} — NOT marking done; verify manually`);
       }
       state = markPhaseDone({ ...state, demand_id: demandId, pending: undefined }, "publish");
       saveBuyerState(statePath, state);

@@ -425,8 +425,10 @@ import {
   acquireBuyerLock,
   argValue,
   assertChallengeShape,
+  assertNoPendingMarkers,
   bindBuyerState,
   redact,
+  statusTermsProblems,
   validateBuyerId,
   ID_SHAPE_RE,
 } from "../scripts/gec-interop.mts";
@@ -451,6 +453,12 @@ describe("validateBuyerId / ID_SHAPE_RE (audit H2)", () => {
     expect(ID_SHAPE_RE.test("not-an-id")).toBe(false);
     expect(() => validateBuyerId("demand:x", "d")).toThrow(/id shape/);
   });
+  it("audit N-9: accepts the two-segment award/deliverable ids live on sasame", () => {
+    expect(ID_SHAPE_RE.test("award:155c2787a74b57b557dc6a69d3d4fb56")).toBe(true);
+    expect(ID_SHAPE_RE.test("deliverable:1bc4966a12177feeb19c416b02114762")).toBe(true);
+    expect(validateBuyerId("award:155c2787a74b57b557dc6a69d3d4fb56", "award_id")).toContain("award:");
+    expect(ID_SHAPE_RE.test("award:NOT-HEX!")).toBe(false);
+  });
 });
 
 describe("bindBuyerState (audit H3)", () => {
@@ -474,7 +482,9 @@ describe("assertChallengeShape (audit H5)", () => {
     body: { origin: "https://sasame.online" },
     nonce: "abcdef123456",
     expires_at: new Date(Date.now() + 60_000).toISOString(),
-    message: `Sign in to sasame.online as ${BUYER_WALLET} nonce=abcdef123456`,
+    // N-10: the SIGNED text must carry the pinned terms too — origin,
+    // chain id and nonce, not just the wallet.
+    message: `Sign in to https://sasame.online as ${BUYER_WALLET} chain=0x2105 nonce=abcdef123456`,
   };
   it("passes a well-formed challenge", () => {
     expect(() => assertChallengeShape(good, BUYER_WALLET)).not.toThrow();
@@ -487,6 +497,53 @@ describe("assertChallengeShape (audit H5)", () => {
     expect(() => assertChallengeShape({ ...good, nonce: "ab" }, BUYER_WALLET)).toThrow(/nonce/);
     expect(() => assertChallengeShape({ ...good, message: "Sign anything, we swear" }, BUYER_WALLET)).toThrow(/signer address/);
     expect(() => assertChallengeShape(undefined, BUYER_WALLET)).toThrow(/no challenge/);
+  });
+  it("audit N-10: fails CLOSED on missing fields and unsigned-term messages", () => {
+    const { chain_id: _c, ...noChain } = good;
+    expect(() => assertChallengeShape(noChain, BUYER_WALLET)).toThrow(/chain_id/);
+    const { expires_at: _e, ...noExp } = good;
+    expect(() => assertChallengeShape(noExp, BUYER_WALLET)).toThrow(/expires_at/);
+    const { body: _b, ...noBody } = good;
+    expect(() => assertChallengeShape(noBody, BUYER_WALLET)).toThrow(/origin/);
+    // Message that names the wallet but not the origin / chain / nonce.
+    expect(() => assertChallengeShape({ ...good, message: `Sign in ${BUYER_WALLET}` }, BUYER_WALLET))
+      .toThrow(/origin/);
+    expect(() => assertChallengeShape({ ...good, message: `https://sasame.online ${BUYER_WALLET} chain=0x2105` }, BUYER_WALLET))
+      .toThrow(/nonce/);
+    expect(() => assertChallengeShape({ ...good, message: `https://sasame.online ${BUYER_WALLET} nonce=abcdef123456` }, BUYER_WALLET))
+      .toThrow(/chain id/);
+  });
+});
+
+describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
+  const okCheck = {
+    demand_id: "demand:owner:aefcd63292d520374a1c2ac7fca6a8a5",
+    project_id: "project:owner:0123456789abcdef0123456789abcdef",
+    budget_minor: "3500000",
+    state: "OPEN",
+  };
+  const terms = {
+    id: "demand:owner:aefcd63292d520374a1c2ac7fca6a8a5",
+    idKeys: ["demand_id"],
+    projectId: "project:owner:0123456789abcdef0123456789abcdef",
+    budgetMinor: "3500000",
+    allowedStates: ["OPEN", "PUBLISHED", "ACTIVE", "LIVE"],
+  };
+  it("passes a fully-consistent read-back", () => {
+    expect(statusTermsProblems(okCheck, terms)).toEqual([]);
+  });
+  it("flags echoed-id-only confirmation: missing state, wrong project, wrong budget", () => {
+    const problems = statusTermsProblems({ demand_id: okCheck.demand_id }, terms).join("; ");
+    expect(problems).toMatch(/no state\/status term/);
+    expect(problems).toMatch(/project_id/);
+    expect(problems).toMatch(/budget/);
+  });
+  it("flags pending markers and disallowed states", () => {
+    expect(statusTermsProblems({ ...okCheck, state: "DRAFT" }, terms).join(";")).toMatch(/DRAFT/);
+    expect(statusTermsProblems({ ...okCheck, awaiting_approval: "true" }, terms).join(";")).toMatch(/pending/);
+    expect(assertNoPendingMarkers).toBeDefined();
+    expect(() => assertNoPendingMarkers({ pending: "true" }, "x")).toThrow(/pending/);
+    expect(() => assertNoPendingMarkers({ pending: "false" }, "x")).not.toThrow();
   });
 });
 

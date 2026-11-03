@@ -35,7 +35,7 @@
  *   before receiveMessage is ever sent.
  * - State file (audit C2/M3): ENOENT-only empty, every other error aborts;
  *   atomic tmp+rename writes; absolute path resolved from the script dir;
- *   --tx that differs from the recorded burn is refused without --force.
+ *   --tx that differs from the recorded burn is refused without --allow-foreign-tx.
  * - Private keys come only from env and are never logged.
  *
  * Run (from hackathon/server, keys in .env):
@@ -43,7 +43,7 @@
  */
 import {
   createPublicClient, createWalletClient, http, pad, parseAbi, parseUnits,
-  defineChain, type Address, type Hex,
+  defineChain, concat, keccak256, type Address, type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { existsSync, mkdirSync, openSync, closeSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
@@ -99,9 +99,14 @@ const MT = parseAbi([
   "function receiveMessage(bytes message, bytes attestation) returns (bool)",
   // localDomain lives on the transmitter, not the messenger (smoke-verified).
   "function localDomain() view returns (uint32)",
+  // Audit N-8: usedNonces(keccak256(srcDomain||nonce)) detects a third-party
+  // relay BEFORE simulating — no inference from revert causes needed.
+  "function usedNonces(bytes32) view returns (uint256)",
 ]);
+// Audit N-3: CCTP V2 event — the V1 signature (indexed nonce, no maxFee/
+// finality/hookData) has a different topic0, so a V1 scan can never match.
 const DEPOSIT_FOR_BURN_EVENT = parseAbi([
-  "event DepositForBurn(uint64 indexed nonce, address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller)",
+  "event DepositForBurn(address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller, uint256 maxFee, uint32 indexed minFinalityThreshold, bytes hookData)",
 ]);
 
 const log = (...a: unknown[]) => console.log(`[gec-funding]`, ...a);
@@ -217,10 +222,17 @@ export interface DecodedCctpMessage {
   mintRecipient: Address;
   amount: bigint;
   burnToken: Address;
+  /** Full 32-byte words — audit N-17: upper-12-byte zero must be checked. */
+  destinationCallerWord: string;
+  mintRecipientWord: string;
+  burnTokenWord: string;
 }
 
 function readU32(hex: string, byteOff: number): number {
   return parseInt(hex.slice(2 + byteOff * 2, 2 + (byteOff + 4) * 2), 16);
+}
+function readBytes32Word(hex: string, byteOff: number): string {
+  return hex.slice(2 + byteOff * 2, 2 + (byteOff + 32) * 2);
 }
 function readBytes32Address(hex: string, byteOff: number): Address {
   // last 20 bytes of the 32-byte word (left-padded address)
@@ -240,6 +252,9 @@ export function parseCctpMessage(msg: Hex): DecodedCctpMessage | null {
     burnToken: readBytes32Address(msg, 152),
     mintRecipient: readBytes32Address(msg, 184),
     amount: readU256(msg, 216),
+    destinationCallerWord: readBytes32Word(msg, 108),
+    mintRecipientWord: readBytes32Word(msg, 184),
+    burnTokenWord: readBytes32Word(msg, 152),
   };
 }
 
@@ -254,8 +269,16 @@ export function verifyAttestedMessage(
   if (d.sourceDomain !== expected.sourceDomain) bad.push(`sourceDomain ${d.sourceDomain} != ${expected.sourceDomain}`);
   if (d.destinationDomain !== expected.destinationDomain) bad.push(`destinationDomain ${d.destinationDomain} != ${expected.destinationDomain}`);
   if (d.mintRecipient.toLowerCase() !== expected.recipient.toLowerCase()) bad.push(`mintRecipient ${d.mintRecipient} != ${expected.recipient}`);
-  if (d.destinationCaller.toLowerCase() !== "0x0000000000000000000000000000000000000000") {
-    bad.push(`destinationCaller ${d.destinationCaller} is not permissionless-zero`);
+  // Audit N-17: compare the full words — a caller word like 0x…01…0 would
+  // truncate to a plausible address while the upper bytes hide non-zero data.
+  if (d.destinationCallerWord !== "0".repeat(64)) {
+    bad.push(`destinationCaller word ${d.destinationCallerWord} is not all-zero`);
+  }
+  if (!d.mintRecipientWord.startsWith("0".repeat(24))) {
+    bad.push(`mintRecipient word has non-zero upper 12 bytes: ${d.mintRecipientWord}`);
+  }
+  if (d.burnToken.toLowerCase() !== USDC_ARC.toLowerCase() || !d.burnTokenWord.startsWith("0".repeat(24))) {
+    bad.push(`burnToken word ${d.burnTokenWord} != padded USDC@Arc ${USDC_ARC}`);
   }
   if (expected.amountMinor !== undefined && d.amount !== BigInt(expected.amountMinor)) {
     bad.push(`amount ${d.amount} != recorded ${expected.amountMinor}`);
@@ -267,10 +290,13 @@ export function verifyAttestedMessage(
 export interface FundingState {
   intent?: { phase: "burning" | "minting"; amount_minor?: string; recipient?: string; at: string };
   burn_tx?: string;
+  burn_confirmed?: boolean; // receipt observed successful (audit N-4)
   mint_tx?: string;
+  mint_confirmed?: boolean;
   amount_minor?: string;
   recipient?: string;
-  total_burned_minor?: string;
+  burns?: { tx: string; amount_minor: string; at: string }[]; // append-only (audit N-6)
+  reverted_tx?: string[]; // hashes that went on-chain but reverted — audit trail (audit N-4)
   updated_at?: string;
 }
 
@@ -294,23 +320,44 @@ export function saveFundingState(path: string, s: FundingState): void {
   renameSync(tmp, path); // atomic: readers never see a truncated file
 }
 
-// ─── Run serialization (audit H6): one process per state file ──────────
+// ─── Run serialization (audit H6/N-13): one process per state file ─────
 export function acquireLock(statePath: string): () => void {
   const lockPath = `${statePath}.lock`;
+  mkdirSync(dirname(statePath), { recursive: true }); // before the lock — ENOENT ≠ "lock held"
   let fd: number;
   try {
     fd = openSync(lockPath, "wx");
-  } catch {
-    throw new Error(`another funding run holds ${lockPath} — refusing to run concurrently`);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      const pid = readFileSync(lockPath, "utf8").trim();
+      // N-13: check liveness for an accurate diagnostic — never auto-clear,
+      // but tell the operator exactly what state the lock is in.
+      let liveness = "unreadable";
+      if (/^\d+$/.test(pid)) {
+        try { process.kill(Number(pid), 0); liveness = "ALIVE"; }
+        catch { liveness = "DEAD"; }
+      }
+      throw new Error(
+        `another funding run holds ${lockPath} (recorded pid ${pid || "unknown"}, ${liveness}) — ` +
+        `refusing to run concurrently; if that pid is dead, remove ${lockPath}`,
+      );
+    }
+    throw e;
   }
   writeFileSync(fd, `${process.pid}\n`);
   let released = false;
-  return () => {
+  const release = () => {
     if (released) return;
     released = true;
     try { closeSync(fd); } catch { /* already closed */ }
     try { unlinkSync(lockPath); } catch { /* already removed */ }
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
   };
+  const onSignal = () => { release(); process.exit(130); };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  return release;
 }
 
 // ─── Spend confirmation (audit nit): no silent --submit ────────────────
@@ -320,7 +367,8 @@ async function confirmSpend(argv: string[], summary: Record<string, unknown>): P
     log("dry-run — pass --submit to execute (209-5 only, post re-audit)");
     return;
   }
-  if (hasFlag(argv, "force")) return; // explicit operator override
+  // Audit N-7: no flag may skip the confirmation — --allow-foreign-tx only
+  // relaxes tx provenance, never the explicit YES.
   if (process.stdin.isTTY) {
     const { createInterface } = await import("node:readline");
     const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -402,20 +450,27 @@ async function balances(): Promise<{ arcUsdc: bigint; baseEth: bigint; baseUsdc:
   return { arcUsdc, baseEth, baseUsdc };
 }
 
-/** Live fast-fee quote; falls back to the conservative 0.05 USDC ceiling. */
+/**
+ * Live fast-fee quote; falls back to the conservative 0.05 USDC ceiling.
+ * Audit N-12: the endpoint returns a top-level ARRAY of
+ * {finalityThreshold, minimumFee} — minimumFee is basis points. Pick the
+ * threshold-1000 (fast) tier and floor the buffered result.
+ */
 async function fetchMaxFee(amount: bigint): Promise<bigint> {
   try {
     const r = await fetch(`${IRIS_API}/v2/burn/USDC/fees/${ARC_DOMAIN}/${BASE_DOMAIN}`, {
       signal: AbortSignal.timeout(15_000),
     });
     if (r.ok) {
-      const j = (await r.json()) as { minimumFee?: number | string; fees?: { minimumFee?: number | string }[] };
-      const raw = j.minimumFee ?? j.fees?.[0]?.minimumFee;
+      const j = (await r.json()) as { finalityThreshold?: number; minimumFee?: number | string }[] | { fees?: { finalityThreshold?: number; minimumFee?: number | string }[]; minimumFee?: number | string };
+      const tiers = Array.isArray(j) ? j : (j.fees ?? []);
+      const tier = tiers.find((t) => t.finalityThreshold === MIN_FINALITY_THRESHOLD) ?? tiers[0];
+      const raw = tier?.minimumFee ?? (!Array.isArray(j) ? j.minimumFee : undefined);
       if (raw !== undefined) {
         const n = BigInt(Math.round(Number(raw)));
-        // Circle returns the fee in micro-USDC; a sub-10k value is basis points.
-        const quoted = n < 10_000n ? (amount * n) / 10_000n : n;
-        return computeMaxFee(quoted);
+        // minimumFee is bps in the array shape; micro-USDC in the object shape.
+        const quoted = Array.isArray(j) || n < 10_000n ? (amount * n) / 10_000n : n;
+        return computeMaxFee(quoted) || 1_000n; // floor ≥0.001 USDC
       }
     }
   } catch { /* fall through to the conservative ceiling */ }
@@ -465,12 +520,13 @@ async function verifyBurnTx(txHash: string): Promise<void> {
   }
 }
 
-// ─── tx arg (audit M3: foreign --tx refused without --force) ───────────
+// ─── tx arg (audit M3: foreign --tx refused without --allow-foreign-tx) ──
 function txArg(argv: string[], state: FundingState): string {
   const t = argValue(argv, "tx") ?? state.burn_tx;
   if (!t || !/^0x[0-9a-fA-F]{64}$/.test(t)) throw new Error("no burn tx — pass --tx=<hash> or run burn first");
-  if (state.burn_tx && t.toLowerCase() !== state.burn_tx.toLowerCase() && !hasFlag(argv, "force")) {
-    throw new Error(`--tx ${t} differs from recorded burn ${state.burn_tx} — pass --force to override`);
+  // Audit N-7: dedicated flag for tx-provenance override — never --force.
+  if (state.burn_tx && t.toLowerCase() !== state.burn_tx.toLowerCase() && !hasFlag(argv, "allow-foreign-tx")) {
+    throw new Error(`--tx ${t} differs from recorded burn ${state.burn_tx} — pass --allow-foreign-tx to override`);
   }
   return t;
 }
@@ -496,42 +552,105 @@ async function cmdPlan(argv: string[]): Promise<void> {
   log("PLAN OK — pass burn --submit to execute (gated to 209-5, post re-audit)");
 }
 
+// Audit N-13: a custom GEC_FUNDING_STATE path that does not exist yet must be
+// acknowledged with --init — a typo would silently drop cumulative-cap dedupe.
+function assertFreshFundingState(argv: string[], statePath: string): void {
+  if (process.env[FUNDING_STATE_ENV] && !existsSync(statePath) && !hasFlag(argv, "init")) {
+    throw new Error(
+      `no funding state at ${statePath} (custom ${FUNDING_STATE_ENV}) — pass --init to create a fresh state file`,
+    );
+  }
+}
+
 async function cmdBurn(argv: string[]): Promise<void> {
   const statePath = defaultFundingStatePath();
+  assertFreshFundingState(argv, statePath);
   const release = acquireLock(statePath);
   try {
     let state = loadFundingState(statePath);
+    // Audit N-4: a recorded hash without confirmation must be reconciled on
+    // the chain before deciding — a reverted tx poisons the state otherwise.
+    if (state.burn_tx && !state.burn_confirmed) {
+      const { pub } = arcClients();
+      const rc = await pub.getTransactionReceipt({ hash: state.burn_tx as Hex }).catch(() => null);
+      if (rc?.status === "success") {
+        state = { ...state, burn_confirmed: true, intent: undefined };
+        saveFundingState(statePath, state);
+        log(`burn confirmed on-chain: ${state.burn_tx}`);
+      } else if (rc) {
+        log(`recorded burn REVERTED on-chain: ${state.burn_tx} — clearing for retry`);
+        state = {
+          ...state, burn_tx: undefined, burn_confirmed: undefined, intent: undefined,
+          reverted_tx: [...(state.reverted_tx ?? []), state.burn_tx],
+        };
+        saveFundingState(statePath, state);
+      } else {
+        throw new Error(
+          `burn_tx ${state.burn_tx} broadcast but not yet mined — ` +
+          `wait and re-run; refusing to send a second burn`,
+        );
+      }
+    }
     if (state.burn_tx) {
       log(`burn already sent: ${state.burn_tx} — idempotent skip (use resume)`);
       return;
     }
-    // Audit C1: a stale "burning" intent means we may already have sent one.
+    // Audit C1/N-3: recover an orphaned burn — explicit --tx (verified on-chain)
+    // or a V2 DepositForBurn scan matched on depositor+recipient+amount.
     if (state.intent?.phase === "burning") {
       const { pub, acct } = arcClients();
       let found: string | undefined;
-      try {
+      const txOverride = argValue(argv, "tx");
+      if (txOverride) {
+        await verifyBurnTx(txOverride);
+        found = txOverride;
+      } else {
         const latest = await pub.getBlockNumber();
         const logs = await pub.getLogs({
           address: CCTP_TOKEN_MESSENGER, event: DEPOSIT_FOR_BURN_EVENT[0],
           args: { depositor: acct.address }, fromBlock: latest - 50_000n, toBlock: "latest",
+        }); // audit N-3: V2 ABI; RPC errors abort, never swallowed
+        const intentAt = Date.parse(state.intent.at);
+        const want = pad(BUYER_ADDRESS, { size: 32 }).toLowerCase();
+        const wantAmt = state.intent.amount_minor ? BigInt(state.intent.amount_minor) : undefined;
+        const candidates = logs.filter((l) => {
+          const a = l.args;
+          if (!a) return false;
+          if (String(a.mintRecipient).toLowerCase() !== want) return false;
+          if (wantAmt !== undefined && a.amount !== wantAmt) return false;
+          return true;
         });
-        found = logs[0]?.transactionHash;
-      } catch { /* scan best-effort */ }
-      if (found) {
-        log(`recovered burn tx from chain logs: ${found}`);
-        state = { ...state, burn_tx: found, intent: undefined };
-        saveFundingState(statePath, state);
-      } else {
-        throw new Error(
-          "stale 'burning' intent without burn_tx and no recent DepositForBurn found — " +
-          "pass --tx=<hash> to recover, or delete funding-state.json intent if nothing was sent",
-        );
+        // Audit N-3: match on intent.at too — an event that predates the
+        // recorded intent (5 min clock skew tolerated) is an unrelated burn.
+        const matches: typeof candidates = [];
+        for (const l of candidates) {
+          if (Number.isNaN(intentAt) || l.blockNumber == null) { matches.push(l); continue; }
+          const blk = await pub.getBlock({ blockNumber: l.blockNumber });
+          if (Number(blk.timestamp) * 1000 >= intentAt - 300_000) matches.push(l);
+        }
+        found = matches.at(-1)?.transactionHash; // newest, not oldest (audit N-3)
       }
+      if (found) {
+        log(`recovered burn tx: ${found}`);
+        const amt = state.intent.amount_minor ?? "0";
+        state = {
+          ...state, burn_tx: found, intent: undefined,
+          amount_minor: state.amount_minor ?? amt, recipient: BUYER_ADDRESS,
+          burns: [...(state.burns ?? []), { tx: found, amount_minor: amt, at: state.intent.at }],
+        };
+        saveFundingState(statePath, state);
+        log(`burn already sent: ${found} — idempotent skip (use resume)`);
+        return;
+      }
+      throw new Error(
+        "stale 'burning' intent without burn_tx and no matching V2 DepositForBurn found — " +
+        "pass --tx=<hash> to recover, or delete funding-state.json intent if nothing was sent",
+      );
     }
     const amount = parseUsdcAmount(argValue(argv, "amount") ?? BURN_AMOUNT_USDC_DEFAULT);
-    const total = BigInt(state.total_burned_minor ?? "0");
-    if (total + amount > parseUsdcAmount(BURN_AMOUNT_HARD_CAP_USDC)) {
-      throw new Error(`cumulative cap: ${Number(total) / 1e6} already burned + ${Number(amount) / 1e6} > 4.0 ceiling`);
+    const burned = (state.burns ?? []).reduce((s, b) => s + BigInt(b.amount_minor), 0n);
+    if (burned + amount > parseUsdcAmount(BURN_AMOUNT_HARD_CAP_USDC)) {
+      throw new Error(`cumulative cap: ${Number(burned) / 1e6} already burned + ${Number(amount) / 1e6} > 4.0 ceiling`);
     }
     await verifyContracts();
     const { wal, pub, acct } = arcClients();
@@ -545,10 +664,6 @@ async function cmdBurn(argv: string[]): Promise<void> {
       mintRecipient: BUYER_ADDRESS, destinationCaller: "0x0 (permissionless)",
     });
     if (!submit(argv)) return;
-
-    // Audit C1: intent persisted BEFORE any irreversible send.
-    state = { ...state, intent: { phase: "burning", amount_minor: amount.toString(), recipient: BUYER_ADDRESS, at: new Date().toISOString() } };
-    saveFundingState(statePath, state);
 
     const allowance = await pub.readContract({
       address: USDC_ARC, abi: ERC20, functionName: "allowance",
@@ -568,18 +683,25 @@ async function cmdBurn(argv: string[]): Promise<void> {
       address: CCTP_TOKEN_MESSENGER, abi: TM, functionName: "depositForBurn",
       args: buildDepositForBurnArgs(amount, BUYER_ADDRESS, maxFee), account: acct,
     });
+    // Audit C1/N-5: the intent covers exactly the send window — saved after
+    // the simulates, immediately before writeContract. A failure earlier in
+    // this function leaves no stale intent to lock the run out; a failure
+    // inside writeContract keeps it, because the tx may have broadcast.
+    state = { ...state, intent: { phase: "burning", amount_minor: amount.toString(), recipient: BUYER_ADDRESS, at: new Date().toISOString() } };
+    saveFundingState(statePath, state);
     const burnTx = await wal.writeContract(sim.request);
     log("burn tx:", burnTx, `https://explorer.arc.io/tx/${burnTx}`);
-    // Audit C1: persist the hash IMMEDIATELY — before the receipt wait — so a
-    // timeout/crash here can never cause a second burn.
-    state = { ...state, burn_tx: burnTx, amount_minor: amount.toString(), recipient: BUYER_ADDRESS };
+    // Audit C1/N-6: persist the hash IMMEDIATELY (before the receipt wait) and
+    // add to the append-only burns[] at the same moment — the cumulative cap
+    // then reflects every broadcast, not just receipt-confirmed ones.
+    state = {
+      ...state, burn_tx: burnTx, amount_minor: amount.toString(), recipient: BUYER_ADDRESS,
+      burns: [...(state.burns ?? []), { tx: burnTx, amount_minor: amount.toString(), at: new Date().toISOString() }],
+    };
     saveFundingState(statePath, state);
     const rc = await pub.waitForTransactionReceipt({ hash: burnTx });
     if (rc.status !== "success") throw new Error(`depositForBurn reverted: ${burnTx}`);
-    state = {
-      ...state, intent: undefined,
-      total_burned_minor: (total + amount).toString(),
-    };
+    state = { ...state, intent: undefined, burn_confirmed: true };
     saveFundingState(statePath, state);
     log(`state → ${statePath}; next: attest/poll, then mint --submit`);
   } finally {
@@ -603,9 +725,32 @@ async function cmdAttest(argv: string[]): Promise<void> {
 
 /** Shared mint path for mint + resume (audit M3: identical guards). */
 async function mintFlow(argv: string[], statePath: string): Promise<void> {
+  assertFreshFundingState(argv, statePath);
   const release = acquireLock(statePath);
   try {
     let state = loadFundingState(statePath);
+    // Audit N-4: reconcile a recorded-but-unconfirmed mint hash on-chain.
+    if (state.mint_tx && !state.mint_confirmed) {
+      const { pub: pubBase } = await baseClients();
+      const rc = await pubBase.getTransactionReceipt({ hash: state.mint_tx as Hex }).catch(() => null);
+      if (rc?.status === "success") {
+        state = { ...state, mint_confirmed: true, intent: undefined };
+        saveFundingState(statePath, state);
+        log(`mint confirmed on-chain: ${state.mint_tx}`);
+      } else if (rc) {
+        log(`recorded mint REVERTED on-chain: ${state.mint_tx} — clearing for retry`);
+        state = {
+          ...state, mint_tx: undefined, mint_confirmed: undefined, intent: undefined,
+          reverted_tx: [...(state.reverted_tx ?? []), state.mint_tx],
+        };
+        saveFundingState(statePath, state);
+      } else {
+        throw new Error(
+          `mint_tx ${state.mint_tx} broadcast but not yet mined — ` +
+          `wait and re-run; refusing to send a second receiveMessage`,
+        );
+      }
+    }
     if (state.mint_tx) {
       log(`mint already done: ${state.mint_tx} — idempotent skip`);
       return;
@@ -622,19 +767,51 @@ async function mintFlow(argv: string[], statePath: string): Promise<void> {
       amountMinor: state.amount_minor,
     });
     if (mismatches.length) {
-      throw new Error(`attested message mismatch: ${mismatches.join("; ")} — refusing to mint (--force to override)`);
+      throw new Error(`attested message mismatch: ${mismatches.join("; ")} — refusing to mint`);
     }
+    // Audit N-8: BEFORE simulating, ask the Base transmitter whether this
+    // message nonce is already spent — a third party may have relayed
+    // receiveMessage (the H1 permissionless design). usedNonces key is
+    // keccak256(abi.encodePacked(sourceDomain, nonce)) — srcDomain is a
+    // 4-byte uint32, nonce the bytes32 at message offset 12.
+    const nonceWord = `0x${readBytes32Word(msg, 12)}` as Hex;
+    const nonceHash = keccak256(concat([
+      `0x${ARC_DOMAIN.toString(16).padStart(8, "0")}` as Hex,
+      nonceWord,
+    ]));
+    const usedBits = await pubBase.readContract({
+      address: CCTP_MESSAGE_TRANSMITTER, abi: MT, functionName: "usedNonces",
+      args: [nonceHash],
+    });
+    if (usedBits !== 0n) {
+      const baseUsdc = await pubBase.readContract({
+        address: USDC_BASE, abi: ERC20, functionName: "balanceOf", args: [acct.address],
+      });
+      const expected = state.amount_minor ? BigInt(state.amount_minor) - MAX_FEE_MINOR : NET_FLOOR_MINOR;
+      if (baseUsdc >= expected) {
+        state = { ...state, mint_tx: "relayed-externally", mint_confirmed: true, intent: undefined };
+        saveFundingState(statePath, state);
+        log(`nonce already used (relayed externally), balance ${Number(baseUsdc) / 1e6} USDC — recorded`);
+        return;
+      }
+      throw new Error(
+        `nonce used but buyer Base USDC ${Number(baseUsdc) / 1e6} < expected ${Number(expected) / 1e6} — ` +
+        `relay may have failed or paid a different recipient; inspect before retrying`,
+      );
+    }
+    // Simulate before spending; any remaining revert is a real failure.
+    const sim = await pubBase.simulateContract({
+      address: CCTP_MESSAGE_TRANSMITTER, abi: MT, functionName: "receiveMessage",
+      args: [msg, att], account: acct,
+    });
     await confirmSpend(argv, {
       action: "receiveMessage", chain: "Base(8453)", burn_tx: burnTx,
       mintRecipient: BUYER_ADDRESS,
     });
     if (!submit(argv)) return;
+    // N-5: intent right before the send, same discipline as the burn side.
     state = { ...state, intent: { phase: "minting", recipient: BUYER_ADDRESS, at: new Date().toISOString() } };
     saveFundingState(statePath, state);
-    const sim = await pubBase.simulateContract({
-      address: CCTP_MESSAGE_TRANSMITTER, abi: MT, functionName: "receiveMessage",
-      args: [msg, att], account: acct,
-    });
     const mintTx = await wal.writeContract(sim.request);
     log("mint tx:", mintTx);
     // Same C1 discipline on the mint side.
@@ -642,7 +819,7 @@ async function mintFlow(argv: string[], statePath: string): Promise<void> {
     saveFundingState(statePath, state);
     const rc = await pubBase.waitForTransactionReceipt({ hash: mintTx });
     if (rc.status !== "success") throw new Error(`receiveMessage reverted: ${mintTx}`);
-    state = { ...state, intent: undefined };
+    state = { ...state, intent: undefined, mint_confirmed: true };
     saveFundingState(statePath, state);
     log(`USDC minted on Base → ${BUYER_ADDRESS}`);
   } finally {
@@ -671,7 +848,7 @@ async function main(): Promise<void> {
     case "resume": return mintFlow(argv, defaultFundingStatePath());
     case "status": return cmdStatus();
     default:
-      console.error("usage: bun run scripts/gec-funding-cctp.mts plan|burn|attest|mint|resume|status [--amount=] [--tx=] [--submit] [--force]");
+      console.error("usage: bun run scripts/gec-funding-cctp.mts plan|burn|attest|mint|resume|status [--amount=] [--tx=] [--submit] [--allow-foreign-tx]");
       process.exit(1);
   }
 }

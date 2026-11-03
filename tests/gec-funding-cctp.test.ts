@@ -109,12 +109,21 @@ describe("CCTP V2 message decode + verify (audit M2)", () => {
   // Synthetic V2 message: header@0..148, BurnMessageV2 body@148.
   // sourceDomain=26@4, destDomain=6@8, destCaller=0@108, burnToken@152,
   // mintRecipient@184, amount@216.
-  function buildMsg(over: Partial<{ src: number; dst: number; rec: string; caller: string; amt: bigint }> = {}): `0x${string}` {
+  function buildMsg(over: Partial<{
+    src: number; dst: number; rec: string; caller: string; amt: bigint;
+    token: string; unpadRec: boolean;
+  }> = {}): `0x${string}` {
     const buf = Buffer.alloc(376);
     buf.writeUInt32BE(over.src ?? 26, 4);
     buf.writeUInt32BE(over.dst ?? 6, 8);
+    const tok = (over.token ?? USDC_ARC).slice(2).toLowerCase();
+    buf.write(tok, 152 + 12, "hex"); // last 20 bytes of bytes32 @152
     const rec = (over.rec ?? BUYER_ADDRESS).slice(2).toLowerCase();
-    buf.write(rec, 184 + 12, "hex"); // last 20 bytes of bytes32 @184
+    if (over.unpadRec) {
+      buf.write(rec, 184, "hex"); // left-aligned — high 12 bytes non-zero
+    } else {
+      buf.write(rec, 184 + 12, "hex"); // last 20 bytes of bytes32 @184
+    }
     if (over.caller) buf.write(over.caller.slice(2).toLowerCase(), 108 + 12, "hex");
     const amt = over.amt ?? 3_600_000n;
     buf.write(amt.toString(16).padStart(64, "0"), 216, "hex");
@@ -144,6 +153,11 @@ describe("CCTP V2 message decode + verify (audit M2)", () => {
     expect(verifyAttestedMessage(buildMsg({ dst: 10 }), expected).join(";")).toMatch(/destinationDomain/);
     expect(verifyAttestedMessage(buildMsg({ caller: BUYER_ADDRESS }), expected).join(";")).toMatch(/destinationCaller/);
     expect(verifyAttestedMessage(buildMsg({ amt: 9_999_999n }), expected).join(";")).toMatch(/amount/);
+  });
+  it("audit N-10/N-11: flags wrong burnToken and unpadded byte32 words", () => {
+    const usdcBase = USDC_BASE; // correct shape, wrong token
+    expect(verifyAttestedMessage(buildMsg({ token: usdcBase }), expected).join(";")).toMatch(/burnToken/);
+    expect(verifyAttestedMessage(buildMsg({ unpadRec: true }), expected).join(";")).toMatch(/non-zero upper 12 bytes/);
   });
   it("returns null on short/malformed payloads → verify reports decode failure", () => {
     expect(parseCctpMessage("0x1234" as `0x${string}`)).toBeNull();
