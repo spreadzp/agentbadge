@@ -152,7 +152,7 @@ describe("redaction", () => {
     expect(shaped.ms).toBe(42);
   });
 
-  it("masks code/state/challenge/message/mcp_state values", () => {
+  it("masks code/state/challenge/mcp_state values; message stays (re-audit 2 N-16)", () => {
     const shaped = redact({
       code: "authcode",
       state: "st",
@@ -160,8 +160,14 @@ describe("redaction", () => {
       message: "sign me",
       mcp_state: "ms",
       mcp_base: "mb",
-    });
-    for (const v of Object.values(shaped)) expect(v).toBe("<redacted>");
+    }) as Record<string, unknown>;
+    expect(shaped.code).toBe("<redacted>");      // OAuth authorization code — a credential
+    expect(shaped.state).toBe("<redacted>");     // OAuth CSRF state
+    expect(shaped.challenge).toBe("<redacted>");
+    expect(shaped.mcp_state).toBe("<redacted>");
+    expect(shaped.mcp_base).toBe("<redacted>");
+    // message is signed plaintext + error diagnostics — NOT a credential.
+    expect(shaped.message).toBe("sign me");
   });
 
   it("truncates long string values", () => {
@@ -513,6 +519,16 @@ describe("assertChallengeShape (audit H5)", () => {
     expect(() => assertChallengeShape({ ...good, message: `https://sasame.online ${BUYER_WALLET} nonce=abcdef123456` }, BUYER_WALLET))
       .toThrow(/chain id/);
   });
+  it("re-audit 2: unparseable issued_at and >15min window fail closed", () => {
+    expect(() => assertChallengeShape({ ...good, issued_at: "not-a-date" }, BUYER_WALLET)).toThrow(/issued_at/);
+    expect(() => assertChallengeShape(
+      { ...good, expires_at: new Date(Date.now() + 60 * 60_000).toISOString() }, BUYER_WALLET,
+    )).toThrow(/window/);
+    // A normal short challenge without issued_at still passes.
+    expect(() => assertChallengeShape(
+      { ...good, issued_at: new Date(Date.now() - 60_000).toISOString() }, BUYER_WALLET,
+    )).not.toThrow();
+  });
 });
 
 describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
@@ -544,6 +560,19 @@ describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
     expect(assertNoPendingMarkers).toBeDefined();
     expect(() => assertNoPendingMarkers({ pending: "true" }, "x")).toThrow(/pending/);
     expect(() => assertNoPendingMarkers({ pending: "false" }, "x")).not.toThrow();
+  });
+  it("re-audit 2: non-string pending markers and sibling-object scoping", () => {
+    // pending: true (boolean) and pending: {...} (object) are real markers
+    expect(() => assertNoPendingMarkers({ pending: true }, "x")).toThrow(/pending/);
+    expect(() => assertNoPendingMarkers({ pending: { reason: "moderation" } }, "x")).toThrow(/pending/);
+    expect(() => assertNoPendingMarkers({ pending: false }, "x")).not.toThrow();
+    // A sibling object's state/budget must not satisfy terms for OUR object
+    const wrapped = { demand: { ...okCheck }, sibling: { demand_id: "demand:other:beefbeefbeefbeefbeefbeefbeefbeef" } };
+    expect(statusTermsProblems(wrapped, terms)).toEqual([]);
+    // The state key living on a DIFFERENT object than the one echoing our
+    // id must not satisfy the check — terms are scoped to the id's object.
+    const stateOnSibling = { demand: { demand_id: terms.id }, meta: { state: "OPEN" } };
+    expect(statusTermsProblems(stateOnSibling, terms).join(";")).toMatch(/no state\/status term/);
   });
 });
 

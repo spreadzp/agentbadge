@@ -225,6 +225,9 @@ export function createCookieJar(): CookieJar {
 // destroyed lifecycle fields like demand_state, error_code and error
 // message, which are evidence, not secrets. Exact names still cover the
 // genuinely sensitive OAuth keys (state, code, message, nonce).
+// Re-audit 2 N-16: `message` removed — it is signed plaintext/challenge text
+// and error diagnostics, NOT a credential; masking it hid what we signed and
+// destroyed error responses. `code` stays: it IS the OAuth authorization code.
 const SECRET_KEY_EXACT = new Set([
   "authorization", "proxy-authorization", "cookie", "set-cookie",
   "token", "access_token", "refresh_token", "id_token", "token_type",
@@ -232,7 +235,7 @@ const SECRET_KEY_EXACT = new Set([
   "client_secret", "private_key", "secret", "mcp_state", "mcp_base",
   "session", "session_id", "sessionid", "mcp-session-id", "mcp_session_id",
   "bearer", "jwt", "nonce", "api_key", "apikey", "password", "otp",
-  "credential", "message", "verifier",
+  "credential", "verifier",
 ]);
 const SECRET_KEY_SUFFIX = /_(token|secret|key|password|signature|verifier)$/i;
 function isSecretKey(k: string): boolean {
@@ -464,8 +467,14 @@ export function assertChallengeShape(
     stepFail("challenge-shape", `challenge expired at ${String(f.expires_at)}`);
   }
   const iat = Date.parse(String(f.issued_at));
-  if (!Number.isNaN(iat) && exp - iat > 10 * 60 * 1000) {
-    stepFail("challenge-shape", `challenge window ${Math.round((exp - iat) / 60000)}min > 10min — refusing`);
+  // Re-audit 2 N-10: a present-but-unparseable issued_at is malformed, not
+  // absent — fail closed. Absent issued_at → bounded expiry from NOW instead.
+  if (f.issued_at !== undefined && f.issued_at !== null && Number.isNaN(iat)) {
+    stepFail("challenge-shape", `challenge issued_at ${String(f.issued_at)} unparseable`);
+  }
+  const windowMs = !Number.isNaN(iat) ? exp - iat : exp - Date.now();
+  if (windowMs > 15 * 60 * 1000) {
+    stepFail("challenge-shape", `challenge window ${Math.round(windowMs / 60000)}min > 15min — refusing`);
   }
   const msg = String(f.message ?? "");
   if (msg.length === 0 || msg.length > 4000) {
@@ -985,7 +994,11 @@ async function runAward(t: Transcript, argv: string[]): Promise<void> {
   const acceptFailed = accept.error || accept.status !== 200 || acceptErr;
   if (acceptFailed) {
     const blob = JSON.stringify(redact(accept.error ?? accept.result ?? ""));
-    if (/already|accepted|conflict|duplicate|state/i.test(blob)) {
+    // Re-audit 2 N-19: narrow resume terms — bare "accepted"/"state" matched
+    // real failures ("invalid state", "already refunded", "state mismatch")
+    // and would skip to the deliverable write. Require an explicit "already"
+    // or a conflict/409-shaped refusal.
+    if (/already\s+(accepted|awarded|taken|exists)|duplicate|conflict|409/i.test(blob)) {
       console.log("[gec-interop] award already accepted server-side — resuming at deliverable");
     } else {
       stepFail("gec_award_accept", accept.error ?? accept.result);
@@ -1450,6 +1463,46 @@ export function findKeyDeep(v: unknown, keys: string[]): string | undefined {
   return undefined;
 }
 
+/** Like findKeyDeep but returns the value of ANY type — needed for boolean
+ * `pending: true` markers and object/array flags (re-audit 2 N-2). */
+function findKeyAny(v: unknown, keys: string[]): unknown {
+  if (!v || typeof v !== "object") return undefined;
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (keys.includes(k)) return val;
+    const deep = findKeyAny(val, keys);
+    if (deep !== undefined) return deep;
+  }
+  return undefined;
+}
+
+/** Is this a truthy "pending/awaiting" marker? Strings need a deny-list; any
+ * other truthy scalar or non-empty object/array counts as a marker. */
+function pendingMarker(v: unknown): boolean {
+  if (v === undefined || v === null || v === false) return false;
+  if (typeof v === "string") return v.length > 0 && !/^(false|0|none|null|no)$/i.test(v);
+  if (typeof v === "number") return v !== 0;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return Object.keys(v as Record<string, unknown>).length > 0;
+  return Boolean(v);
+}
+
+const PENDING_KEYS = ["pending", "awaiting_approval", "moderation", "is_pending", "pending_approval"];
+
+/** First object in the tree that holds one of `keys` with value `want`
+ * (any `want` when undefined). Re-audit 2 N-2: term checks must run on the
+ * object that echoes OUR id — not on a sibling object that happens to
+ * carry a `state`/`budget` key first in traversal order. */
+function findObjectWithKey(v: unknown, keys: string[], want?: string): Record<string, unknown> | undefined {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
+  const o = v as Record<string, unknown>;
+  if (keys.some((k) => k in o && (want === undefined || o[k] === want))) return o;
+  for (const val of Object.values(o)) {
+    const deep = findObjectWithKey(val, keys, want);
+    if (deep) return deep;
+  }
+  return undefined;
+}
+
 /** OAuth + tools/list; fails closed unless sasame_run is advertised. */
 async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
   const auth = await authenticateUserMcp(t);
@@ -1550,22 +1603,26 @@ export function statusTermsProblems(payload: unknown, expected: {
   allowedStates: readonly string[];
 }): string[] {
   const bad: string[] = [];
-  const pend = findKeyDeep(payload, ["pending", "awaiting_approval", "moderation", "is_pending"]);
-  if (pend && !/^(false|0|none|null|no)$/i.test(pend)) {
-    bad.push(`pending/awaiting marker present: ${pend}`);
-  }
-  if (findKeyDeep(payload, expected.idKeys) !== expected.id) {
+  // Re-audit 2 N-2: scope every term check to the object that echoes OUR id;
+  // a sibling object's state/budget must not satisfy (or fail) the check.
+  const scope = findObjectWithKey(payload, expected.idKeys, expected.id);
+  if (!scope) {
     bad.push(`${expected.idKeys[0]} not echoed as ${expected.id}`);
+    return bad; // nothing else can be trusted — terms belong to another object
+  }
+  const pend = findKeyAny(scope, PENDING_KEYS);
+  if (pendingMarker(pend)) {
+    bad.push(`pending/awaiting marker present: ${JSON.stringify(pend)}`);
   }
   if (expected.projectId !== undefined) {
-    const p = findKeyDeep(payload, ["project_id"]);
+    const p = findKeyDeep(scope, ["project_id"]);
     if (p !== expected.projectId) bad.push(`project_id ${String(p)} != ${expected.projectId}`);
   }
   if (expected.budgetMinor !== undefined) {
-    const b = findKeyDeep(payload, ["budget_minor", "max_budget_minor", "cap_minor"]);
+    const b = findKeyDeep(scope, ["budget_minor", "max_budget_minor", "cap_minor"]);
     if (b !== expected.budgetMinor) bad.push(`budget ${String(b)} != ${expected.budgetMinor}`);
   }
-  const st = findKeyDeep(payload, [
+  const st = findKeyDeep(scope, [
     "state", "status", "demand_state", "project_state", "lifecycle_state", "publication_state",
   ]);
   if (st === undefined) {
@@ -1577,11 +1634,12 @@ export function statusTermsProblems(payload: unknown, expected: {
 }
 
 /** Audit N-2: the publish response itself can already say "pending approval".
- * Soft check — only DENY markers fail; absence defers to the status read-back. */
+ * Soft check — only DENY markers fail; absence defers to the status read-back.
+ * Re-audit 2: works for non-string markers (boolean/object/array) too. */
 export function assertNoPendingMarkers(payload: unknown, step: string): void {
-  const pend = findKeyDeep(payload, ["pending", "awaiting_approval", "moderation", "is_pending"]);
-  if (pend && !/^(false|0|none|null|no)$/i.test(pend)) {
-    stepFail(step, `write returned pending/awaiting marker ${pend} — NOT treating as landed`);
+  const pend = findKeyAny(payload, PENDING_KEYS);
+  if (pendingMarker(pend)) {
+    stepFail(step, `write returned pending/awaiting marker ${JSON.stringify(pend)} — NOT treating as landed`);
   }
 }
 

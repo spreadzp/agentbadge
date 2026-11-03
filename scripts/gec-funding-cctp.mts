@@ -43,7 +43,7 @@
  */
 import {
   createPublicClient, createWalletClient, http, pad, parseAbi, parseUnits,
-  defineChain, concat, keccak256, type Address, type Hex,
+  defineChain, type Address, type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { existsSync, mkdirSync, openSync, closeSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
@@ -99,8 +99,9 @@ const MT = parseAbi([
   "function receiveMessage(bytes message, bytes attestation) returns (bool)",
   // localDomain lives on the transmitter, not the messenger (smoke-verified).
   "function localDomain() view returns (uint32)",
-  // Audit N-8: usedNonces(keccak256(srcDomain||nonce)) detects a third-party
-  // relay BEFORE simulating — no inference from revert causes needed.
+  // Audit N-8: usedNonces(nonce) detects a third-party relay BEFORE
+  // simulating. CCTP V2 keys by the RAW bytes32 message nonce — verified
+  // live on Base: usedNonces(bytes32(0))==1, keccak(domain||nonce)==0.
   "function usedNonces(bytes32) view returns (uint256)",
 ]);
 // Audit N-3: CCTP V2 event — the V1 signature (indexed nonce, no maxFee/
@@ -295,7 +296,9 @@ export interface FundingState {
   mint_confirmed?: boolean;
   amount_minor?: string;
   recipient?: string;
-  burns?: { tx: string; amount_minor: string; at: string }[]; // append-only (audit N-6)
+  // append-only (audit N-6); reverted:true marks entries the chain rejected —
+  // they stay in the audit trail but are excluded from the cumulative cap
+  burns?: { tx: string; amount_minor: string; at: string; reverted?: boolean }[];
   reverted_tx?: string[]; // hashes that went on-chain but reverted — audit trail (audit N-4)
   updated_at?: string;
 }
@@ -468,8 +471,11 @@ async function fetchMaxFee(amount: bigint): Promise<bigint> {
       const raw = tier?.minimumFee ?? (!Array.isArray(j) ? j.minimumFee : undefined);
       if (raw !== undefined) {
         const n = BigInt(Math.round(Number(raw)));
-        // minimumFee is bps in the array shape; micro-USDC in the object shape.
-        const quoted = Array.isArray(j) || n < 10_000n ? (amount * n) / 10_000n : n;
+        // Re-audit 2 N-12: shape determines the unit — never guess by size.
+        // Array/tier shape: minimumFee is basis points. Object shape: already
+        // micro-USDC. The old `n < 10_000n` heuristic misclassified a small
+        // micro fee as bps and inflated the cap ×amount/10000.
+        const quoted = tier ? (amount * n) / 10_000n : n;
         return computeMaxFee(quoted) || 1_000n; // floor ≥0.001 USDC
       }
     }
@@ -579,9 +585,14 @@ async function cmdBurn(argv: string[]): Promise<void> {
         log(`burn confirmed on-chain: ${state.burn_tx}`);
       } else if (rc) {
         log(`recorded burn REVERTED on-chain: ${state.burn_tx} — clearing for retry`);
+        // Re-audit 2: flag the burns[] entry as reverted — it stays for the
+        // audit trail but no longer counts against the cumulative cap.
+        const deadTx = state.burn_tx.toLowerCase();
         state = {
           ...state, burn_tx: undefined, burn_confirmed: undefined, intent: undefined,
           reverted_tx: [...(state.reverted_tx ?? []), state.burn_tx],
+          burns: (state.burns ?? []).map((b) =>
+            b.tx.toLowerCase() === deadTx ? { ...b, reverted: true } : b),
         };
         saveFundingState(statePath, state);
       } else {
@@ -648,7 +659,7 @@ async function cmdBurn(argv: string[]): Promise<void> {
       );
     }
     const amount = parseUsdcAmount(argValue(argv, "amount") ?? BURN_AMOUNT_USDC_DEFAULT);
-    const burned = (state.burns ?? []).reduce((s, b) => s + BigInt(b.amount_minor), 0n);
+    const burned = (state.burns ?? []).reduce((s, b) => s + (b.reverted ? 0n : BigInt(b.amount_minor)), 0n);
     if (burned + amount > parseUsdcAmount(BURN_AMOUNT_HARD_CAP_USDC)) {
       throw new Error(`cumulative cap: ${Number(burned) / 1e6} already burned + ${Number(amount) / 1e6} > 4.0 ceiling`);
     }
@@ -771,17 +782,13 @@ async function mintFlow(argv: string[], statePath: string): Promise<void> {
     }
     // Audit N-8: BEFORE simulating, ask the Base transmitter whether this
     // message nonce is already spent — a third party may have relayed
-    // receiveMessage (the H1 permissionless design). usedNonces key is
-    // keccak256(abi.encodePacked(sourceDomain, nonce)) — srcDomain is a
-    // 4-byte uint32, nonce the bytes32 at message offset 12.
+    // receiveMessage (the H1 permissionless design). V2 keys usedNonces
+    // by the RAW bytes32 nonce at message offset 12 (re-audit 2, verified
+    // on-chain — NOT keccak256(sourceDomain||nonce) as in V1).
     const nonceWord = `0x${readBytes32Word(msg, 12)}` as Hex;
-    const nonceHash = keccak256(concat([
-      `0x${ARC_DOMAIN.toString(16).padStart(8, "0")}` as Hex,
-      nonceWord,
-    ]));
     const usedBits = await pubBase.readContract({
       address: CCTP_MESSAGE_TRANSMITTER, abi: MT, functionName: "usedNonces",
-      args: [nonceHash],
+      args: [nonceWord],
     });
     if (usedBits !== 0n) {
       const baseUsdc = await pubBase.readContract({
