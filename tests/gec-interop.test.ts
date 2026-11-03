@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   parsePhase,
   base64url,
@@ -65,7 +65,7 @@ describe("buildAuthorizeUrl", () => {
     expect(u.searchParams.get("redirect_uri")).toBe(
       "https://agentbadge.xyz/api/gec/callback",
     );
-    expect(u.searchParams.get("scope")).toBe("gec.read gec.write");
+    expect(u.searchParams.get("scope")).toBe("gec.read gec.write account.read");
     expect(u.searchParams.get("resource")).toBe("https://live-sasame.sasame.online/mcp");
     expect(u.searchParams.get("state")).toBe("teststate123");
     expect(u.searchParams.get("code_challenge")).toBe("chal");
@@ -526,20 +526,31 @@ describe("assertChallengeShape (audit H5)", () => {
       ...good,
       purpose: "sasame-exchange-participant-session",
       issued_at: "2026-11-03T19:54:23.488Z",
+      // Must be ≤15min from issued_at AND from frozen now (19:55) — the
+      // inherited good.expires_at is real-clock and drifts stale.
+      expires_at: "2026-11-03T19:59:00.000Z",
       // Real shape observed 2026-11-03: no origin/chain text at all.
       message:
         "sasame-wallet-ownership-challenge/1.0\n" + `${BUYER_WALLET}\n` +
         "sasame-exchange-participant-session\n" + "abcdef123456\n" +
         "2026-11-03T19:54:23.488Z\n" + "7e690f2d17450ca56ad99f0a67913d5f",
     };
-    expect(() => assertChallengeShape(live, BUYER_WALLET)).not.toThrow();
-    // Purpose/issued_at present as fields but missing from the text → refuse.
-    expect(() => assertChallengeShape(
-      { ...live, message: `x/1.0\n${BUYER_WALLET}\nwrong-purpose\nabcdef123456\n2026-11-03T19:54:23.488Z` }, BUYER_WALLET,
-    )).toThrow(/purpose/);
-    expect(() => assertChallengeShape(
-      { ...live, message: `x/1.0\n${BUYER_WALLET}\nsasame-exchange-participant-session\nabcdef123456\nother-time` }, BUYER_WALLET,
-    )).toThrow(/issued_at/);
+    // Live-captured issued_at/expires_at drift stale — freeze the clock just
+    // after capture so ALL assertions run inside the freshness window.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-03T19:55:00Z"));
+    try {
+      expect(() => assertChallengeShape(live, BUYER_WALLET)).not.toThrow();
+      // Purpose/issued_at present as fields but missing from the text → refuse.
+      expect(() => assertChallengeShape(
+        { ...live, message: `x/1.0\n${BUYER_WALLET}\nwrong-purpose\nabcdef123456\n2026-11-03T19:54:23.488Z` }, BUYER_WALLET,
+      )).toThrow(/purpose/);
+      expect(() => assertChallengeShape(
+        { ...live, message: `x/1.0\n${BUYER_WALLET}\nsasame-exchange-participant-session\nabcdef123456\nother-time` }, BUYER_WALLET,
+      )).toThrow(/issued_at/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("re-audit 2: unparseable issued_at and >15min window fail closed", () => {
     expect(() => assertChallengeShape({ ...good, issued_at: "not-a-date" }, BUYER_WALLET)).toThrow(/issued_at/);

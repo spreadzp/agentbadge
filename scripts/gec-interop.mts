@@ -63,7 +63,7 @@ export const GEC_ENDPOINTS = {
   resource: "https://live-sasame.sasame.online/mcp", // User MCP — gec_bid_submit
   origin: "https://sasame.online",
   chainId: "0x2105", // Base mainnet
-  scope: "gec.read gec.write",
+  scope: "gec.read gec.write account.read", // account.read: session-grant route (2026-11-03)
 } as const;
 
 /** Canonical buyer wallet (D-209-2) — the funded identity the interop key
@@ -1281,6 +1281,25 @@ export const BUYER_PUBLISH_GOAL =
   "(never Reddit); submit the public post URL + full article text.";
 
 /** D-209-5 machine-checkable acceptance rules (each <=160 chars). */
+/** Demand-create contract (low-level gec_demand_create rail — confirmed live
+ * 2026-11-03): objective + hard-gate acceptance criteria. The style/"wow"
+ * guidance stays in the objective text, not as a gate. */
+export const BUYER_DEMAND_CRITERIA: readonly string[] = [
+  "1 public article URL that is live and publicly accessible",
+  ">=3 direct links to the listed AgentBadge URLs inside the article body",
+  "submission = public post URL + full article text",
+  "commissioned/sponsored disclosure present in the post",
+  "publishing account is not owned or operated by AgentBadge",
+  "venue AI-content policy respected; Reddit is forbidden",
+  "verifier must be an independent participant, not the buyer and not the provider",
+];
+export const BUYER_DEMAND_CAPABILITIES: readonly string[] = [
+  "technical-writing", "article-writing",
+];
+/** Idempotency key for gec_demand_create — same key + same args replays
+ * safely (duplicate:false conflict only when args differ). */
+export const BUYER_DEMAND_IDEMPOTENCY = "agentbadge-209-6-paid-synthesis-v1";
+
 export const BUYER_PUBLISH_CONSTRAINTS: readonly string[] = [
   "verification_policy EXTERNAL_OUTCOME",
   "verification_assurance DECLARED_POLICY_ONLY",
@@ -2033,40 +2052,97 @@ async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
       state = { ...state, pending: { phase: "publish", at: new Date().toISOString() } };
       saveBuyerState(statePath, state);
     }
-    const payload = await sasameRun(t, auth, args, "sasame_run-demand-publish");
-    const demandId = findKeyDeep(payload, ["demand_id"]) as string | undefined;
-    if (mode === "auto" && !demandId) {
-      stepFail("sasame_run-demand-publish", `publish returned no demand_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
+    // Canonical write rails (learned 2026-11-03): sasame_run publish routes
+    // paid-task goals to AUTHORITY session-grant prep. The low-level
+    // gec_demand_create + gec_demand_publication_set tools are the direct
+    // protocol rails behind the concierge — same write, deterministic fields.
+    if (mode !== "auto") {
+      // plan_only: there is no preview call for the low-level rail — the
+      // demand phase already previewed terms. Just echo the plan and stop.
+      console.log(`[gec-interop] plan_only — would call gec_demand_create {objective ${BUYER_PUBLISH_GOAL.length}ch, cap ${BUYER_CAP_MINOR}, deadline ${deadline}} + gec_demand_publication_set on ${state.project_id}`);
+      void args;
+      return;
     }
-    if (mode === "auto" && demandId) {
-      state = { ...state, demand_id_unconfirmed: demandId };
-      saveBuyerState(statePath, state);
-      validateBuyerId(demandId, "demand_id");
-      console.log(`[gec-interop] demand published: ${demandId}`);
+    const createRes = await mcpCall(GEC_ENDPOINTS.resource, "tools/call", {
+      name: "gec_demand_create", arguments: {
+        project_id: state.project_id,
+        idempotency_key: BUYER_DEMAND_IDEMPOTENCY,
+        objective: BUYER_PUBLISH_GOAL,
+        acceptance_criteria: [...BUYER_DEMAND_CRITERIA],
+        max_budget_minor: BUYER_CAP_MINOR,
+        deadline,
+        required_capabilities: [...BUYER_DEMAND_CAPABILITIES],
+      },
+    }, { ...auth, allowRetry: false });
+    t.record({
+      step: "gec-demand-create", method: "POST", path: "/mcp",
+      status: createRes.status, ms: createRes.ms,
+      note: "tool=gec_demand_create",
+      responseShape: responseShapeOf(createRes.result ?? createRes.error),
+    });
+    const createPayload = extractToolPayload(createRes.result) as Record<string, unknown>;
+    const createErr = (createRes.result as { isError?: boolean })?.isError;
+    if (createErr || createRes.status !== 200) {
+      stepFail("gec-demand-create", `create failed: ${JSON.stringify(redact(createRes.result)).slice(0, 400)}`);
     }
-    if (mode === "auto" && demandId) {
-      // Audit N-2: the write response itself can already say "pending
-      // approval" — that is NOT a landed publish.
-      assertNoPendingMarkers(payload, "sasame_run-demand-publish");
-      const check = await sasameRun(t, auth, buildSasameRunArgs({
-        goal: "Read-only: confirm the demand is published/OPEN.",
-        action: "status", demandId, projectId: state.project_id, executionMode: "plan_only",
-      }), "sasame_run-post-publish-status");
-      const problems = statusTermsProblems(check, {
-        id: demandId, idKeys: ["demand_id"], projectId: state.project_id,
-        budgetMinor: BUYER_CAP_MINOR,
-        allowedStates: ["OPEN", "PUBLISHED", "ACTIVE", "LIVE"],
-      });
-      if (problems.length) {
-        stepFail("post-publish-status", `read-back terms failed for ${demandId}: ${problems.join("; ")} — NOT marking done; verify manually`);
-      }
-      state = markPhaseDone({ ...state, demand_id: demandId, pending: undefined }, "publish");
-      saveBuyerState(statePath, state);
-      console.log(`[gec-interop] demand published + confirmed: ${demandId}`);
-    } else {
-      console.log("[gec-interop] plan_only — publish dry-run only (use --submit post-audit)");
-      void payload;
+    const demand = (createPayload.demand ?? {}) as Record<string, unknown>;
+    const demandId = (demand.demand_id ?? findKeyDeep(createPayload, ["demand_id"])) as string | undefined;
+    if (!demandId) {
+      stepFail("gec-demand-create", `create returned no demand_id in ${JSON.stringify(redact(createPayload)).slice(0, 400)}`);
     }
+    state = { ...state, demand_id_unconfirmed: demandId };
+    saveBuyerState(statePath, state);
+    validateBuyerId(demandId, "demand_id");
+    console.log(`[gec-interop] demand created: ${demandId}`);
+
+    // Enable public recruitment — without this the demand is OPEN but
+    // invisible in the public projection (verified live: create defaults to
+    // public_recruitment=false).
+    const pubRes = await mcpCall(GEC_ENDPOINTS.resource, "tools/call", {
+      name: "gec_demand_publication_set", arguments: {
+        demand_id: demandId, public_recruitment: true,
+      },
+    }, { ...auth, allowRetry: true });
+    t.record({
+      step: "gec-publication-set", method: "POST", path: "/mcp",
+      status: pubRes.status, ms: pubRes.ms,
+      note: "tool=gec_demand_publication_set",
+      responseShape: responseShapeOf(pubRes.result ?? pubRes.error),
+    });
+    const pubPayload = extractToolPayload(pubRes.result) as Record<string, unknown>;
+    const pubErr = (pubRes.result as { isError?: boolean })?.isError;
+    if (pubErr || pubRes.status !== 200 || pubPayload.public_recruitment !== true) {
+      stepFail("gec-publication-set", `recruitment enable failed: ${JSON.stringify(redact(pubRes.result)).slice(0, 400)}`);
+    }
+
+    // Read-back via the PUBLIC projection — the strongest check: proves the
+    // demand is listed and echoes the terms exactly as providers see them.
+    const proj = await timedFetch(GEC_ENDPOINTS.openDemandsApi, { allowRetry: true });
+    t.record({
+      step: "open-demands-readback", method: "GET", path: "/api/gec/open-demands",
+      status: proj.status, ms: proj.ms,
+      note: `post-publish projection check for ${demandId}`,
+      responseShape: proj.status === 200 ? { demands_count: "see demands" } : {},
+    });
+    if (proj.status !== 200) stepFail("open-demands-readback", `HTTP ${proj.status}`);
+    const listed = ((proj.body as { demands?: Array<Record<string, unknown>> }).demands ?? [])
+      .find((d) => d.demand_id === demandId);
+    if (!listed) {
+      stepFail("open-demands-readback", `${demandId} not in public projection — recruitment did not take`);
+    }
+    const problems: string[] = [];
+    if (listed.state !== "OPEN") problems.push(`state=${String(listed.state)}`);
+    if (String(listed.max_budget_minor) !== BUYER_CAP_MINOR) problems.push(`max_budget_minor=${String(listed.max_budget_minor)}`);
+    if (listed.project_id !== state.project_id) problems.push(`project_id=${String(listed.project_id)}`);
+    const crit = Array.isArray(listed.acceptance_criteria) ? listed.acceptance_criteria : [];
+    if (crit.length < BUYER_DEMAND_CRITERIA.length) problems.push(`acceptance_criteria=${crit.length} < ${BUYER_DEMAND_CRITERIA.length}`);
+    if (!String(listed.objective ?? "").includes("agentbadge.xyz/blog/")) problems.push("objective missing article links");
+    if (problems.length) {
+      stepFail("open-demands-readback", `listed terms wrong for ${demandId}: ${problems.join("; ")} — NOT marking done`);
+    }
+    state = markPhaseDone({ ...state, demand_id: demandId, pending: undefined }, "publish");
+    saveBuyerState(statePath, state);
+    console.log(`[gec-interop] demand published + publicly recruited: ${demandId} (deadline ${String(listed.deadline)})`);
   } finally {
     release();
   }
