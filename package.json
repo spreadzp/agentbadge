@@ -53,8 +53,8 @@
   "dependencies": {
     "@agentbadge/a2a": "file:../../packages/a2a",
     "@agentbadge/bstock-tracker": "0.1.7",
-    "@agentbadge/cache": "^0.2.0",
-    "@agentbadge/circle-payments": "0.1.18",
+    "@agentbadge/cache": "^0.2.1",
+    "@agentbadge/circle-payments": "0.1.20",
     "@agentbadge/database": "file:../../packages/database",
     "@agentbadge/econ-events": "file:../../packages/econ-events",
     "@agentbadge/evm-core": "^0.1.2",
