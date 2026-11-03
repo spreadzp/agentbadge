@@ -24,8 +24,8 @@ export const article: BlogArticle = {
   readingTime: "7 min",
   shortAnswer:
     "Participant roles are optional typed declarations of who participated in a hop — custodian, operator, device, sensor — carried in the handoff event and replayed into per-hop state with rolesAssertedBy provenance. Self-declared, never identity: no guard consults them. Shipped after an adversarial AI audit (4 High findings, all fixed).",
-  heroImage: "/images/blog/supply-chain-participant-roles-hero.webp",
-  ogImage: "/images/blog/supply-chain-participant-roles-og.jpeg",
+  heroImage: "/images/blog/supply-chain-participant-roles-hero.webp?v=2",
+  ogImage: "/images/blog/supply-chain-participant-roles-og.jpeg?v=2",
   status: "EXPERIMENT",
   technologies: [
     "TypeScript",
