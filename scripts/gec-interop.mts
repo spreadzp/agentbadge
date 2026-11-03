@@ -468,13 +468,23 @@ export function assertChallengeShape(
   }
   const iat = Date.parse(String(f.issued_at));
   // Re-audit 2 N-10: a present-but-unparseable issued_at is malformed, not
-  // absent — fail closed. Absent issued_at → bounded expiry from NOW instead.
-  if (f.issued_at !== undefined && f.issued_at !== null && Number.isNaN(iat)) {
-    stepFail("challenge-shape", `challenge issued_at ${String(f.issued_at)} unparseable`);
+  // absent — fail closed. Re-audit 3: issued_at in the future is also
+  // malformed (60s clock-skew tolerance), and expiry must sit within 15min
+  // of NOW no matter where issued_at anchors — an issued_at 1min before a
+  // year-away expiry no longer passes.
+  if (f.issued_at !== undefined && f.issued_at !== null) {
+    if (Number.isNaN(iat)) {
+      stepFail("challenge-shape", `challenge issued_at ${String(f.issued_at)} unparseable`);
+    }
+    if (iat > Date.now() + 60_000) {
+      stepFail("challenge-shape", `challenge issued_at ${String(f.issued_at)} is in the future`);
+    }
   }
-  const windowMs = !Number.isNaN(iat) ? exp - iat : exp - Date.now();
-  if (windowMs > 15 * 60 * 1000) {
-    stepFail("challenge-shape", `challenge window ${Math.round(windowMs / 60000)}min > 15min — refusing`);
+  const windowMs = !Number.isNaN(iat) && !(f.issued_at === undefined || f.issued_at === null)
+    ? exp - iat
+    : exp - Date.now();
+  if (windowMs > 15 * 60 * 1000 || exp - Date.now() > 15 * 60 * 1000) {
+    stepFail("challenge-shape", `challenge window >15min — refusing`);
   }
   const msg = String(f.message ?? "");
   if (msg.length === 0 || msg.length > 4000) {
@@ -996,9 +1006,10 @@ async function runAward(t: Transcript, argv: string[]): Promise<void> {
     const blob = JSON.stringify(redact(accept.error ?? accept.result ?? ""));
     // Re-audit 2 N-19: narrow resume terms — bare "accepted"/"state" matched
     // real failures ("invalid state", "already refunded", "state mismatch")
-    // and would skip to the deliverable write. Require an explicit "already"
-    // or a conflict/409-shaped refusal.
-    if (/already\s+(accepted|awarded|taken|exists)|duplicate|conflict|409/i.test(blob)) {
+    // and would skip to the deliverable write. Re-audit 3: word boundaries
+    // ("14091" must not match "409", "unconflicted" must not match "conflict")
+    // plus snake_case error codes (award_already_accepted).
+    if (/already[_\s-]+(accepted|awarded|taken|exists)|already_accepted|duplicate|\bconflict\b|\b409\b/i.test(blob)) {
       console.log("[gec-interop] award already accepted server-side — resuming at deliverable");
     } else {
       stepFail("gec_award_accept", accept.error ?? accept.result);
@@ -1455,31 +1466,39 @@ function parseIdArg(argv: string[], name: string): string | undefined {
 /** First string value for any of `keys`, searched recursively in the tool payload. */
 export function findKeyDeep(v: unknown, keys: string[]): string | undefined {
   if (!v || typeof v !== "object") return undefined;
-  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-    if (keys.includes(k) && typeof val === "string") return val;
+  const o = v as Record<string, unknown>;
+  // Re-audit 3 N-2: own-level keys take priority over children — otherwise a
+  // nested {project:{state:ACTIVE}} shadows this object's own state:DRAFT.
+  for (const k of Object.keys(o)) {
+    if (keys.includes(k) && typeof o[k] === "string") return o[k] as string;
+  }
+  for (const val of Object.values(o)) {
     const deep = findKeyDeep(val, keys);
     if (deep) return deep;
   }
   return undefined;
 }
 
-/** Like findKeyDeep but returns the value of ANY type — needed for boolean
- * `pending: true` markers and object/array flags (re-audit 2 N-2). */
-function findKeyAny(v: unknown, keys: string[]): unknown {
-  if (!v || typeof v !== "object") return undefined;
+/** Collect EVERY occurrence of `keys` in the tree — a falsy first match
+ * must not hide a truthy second (re-audit 3 N-2: {pending:false} hiding
+ * awaiting_approval:true). */
+function findAllKeyValues(v: unknown, keys: string[], acc: unknown[] = []): unknown[] {
+  if (!v || typeof v !== "object") return acc;
   for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-    if (keys.includes(k)) return val;
-    const deep = findKeyAny(val, keys);
-    if (deep !== undefined) return deep;
+    if (keys.includes(k)) acc.push(val);
+    else findAllKeyValues(val, keys, acc);
   }
-  return undefined;
+  return acc;
 }
 
 /** Is this a truthy "pending/awaiting" marker? Strings need a deny-list; any
- * other truthy scalar or non-empty object/array counts as a marker. */
+ * other truthy scalar or non-empty object/array counts as a marker.
+ * Re-audit 3: resolved-type strings ("approved", "settled", …) are not pending. */
 function pendingMarker(v: unknown): boolean {
   if (v === undefined || v === null || v === false) return false;
-  if (typeof v === "string") return v.length > 0 && !/^(false|0|none|null|no)$/i.test(v);
+  if (typeof v === "string") {
+    return v.length > 0 && !/^(false|0|none|null|no|approved|resolved|completed|done|settled|final|ready|granted|rejected)$/i.test(v);
+  }
   if (typeof v === "number") return v !== 0;
   if (Array.isArray(v)) return v.length > 0;
   if (typeof v === "object") return Object.keys(v as Record<string, unknown>).length > 0;
@@ -1491,12 +1510,16 @@ const PENDING_KEYS = ["pending", "awaiting_approval", "moderation", "is_pending"
 /** First object in the tree that holds one of `keys` with value `want`
  * (any `want` when undefined). Re-audit 2 N-2: term checks must run on the
  * object that echoes OUR id — not on a sibling object that happens to
- * carry a `state`/`budget` key first in traversal order. */
+ * carry a `state`/`budget` key first in traversal order.
+ * Re-audit 3: array elements ARE searched (a demand inside a list must not
+ * fail closed). */
 function findObjectWithKey(v: unknown, keys: string[], want?: string): Record<string, unknown> | undefined {
-  if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
-  const o = v as Record<string, unknown>;
-  if (keys.some((k) => k in o && (want === undefined || o[k] === want))) return o;
-  for (const val of Object.values(o)) {
+  if (!v || typeof v !== "object") return undefined;
+  if (!Array.isArray(v)) {
+    const o = v as Record<string, unknown>;
+    if (keys.some((k) => k in o && (want === undefined || o[k] === want))) return o;
+  }
+  for (const val of Object.values(v)) {
     const deep = findObjectWithKey(val, keys, want);
     if (deep) return deep;
   }
@@ -1610,9 +1633,9 @@ export function statusTermsProblems(payload: unknown, expected: {
     bad.push(`${expected.idKeys[0]} not echoed as ${expected.id}`);
     return bad; // nothing else can be trusted — terms belong to another object
   }
-  const pend = findKeyAny(scope, PENDING_KEYS);
-  if (pendingMarker(pend)) {
-    bad.push(`pending/awaiting marker present: ${JSON.stringify(pend)}`);
+  const pendHits = findAllKeyValues(scope, PENDING_KEYS);
+  if (pendHits.some(pendingMarker)) {
+    bad.push(`pending/awaiting marker present: ${JSON.stringify(pendHits.filter(pendingMarker)[0])}`);
   }
   if (expected.projectId !== undefined) {
     const p = findKeyDeep(scope, ["project_id"]);
@@ -1637,9 +1660,9 @@ export function statusTermsProblems(payload: unknown, expected: {
  * Soft check — only DENY markers fail; absence defers to the status read-back.
  * Re-audit 2: works for non-string markers (boolean/object/array) too. */
 export function assertNoPendingMarkers(payload: unknown, step: string): void {
-  const pend = findKeyAny(payload, PENDING_KEYS);
-  if (pendingMarker(pend)) {
-    stepFail(step, `write returned pending/awaiting marker ${JSON.stringify(pend)} — NOT treating as landed`);
+  const pendHits = findAllKeyValues(payload, PENDING_KEYS);
+  if (pendHits.some(pendingMarker)) {
+    stepFail(step, `write returned pending/awaiting marker ${JSON.stringify(pendHits.filter(pendingMarker)[0])} — NOT treating as landed`);
   }
 }
 

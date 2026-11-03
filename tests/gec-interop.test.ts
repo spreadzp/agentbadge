@@ -529,6 +529,16 @@ describe("assertChallengeShape (audit H5)", () => {
       { ...good, issued_at: new Date(Date.now() - 60_000).toISOString() }, BUYER_WALLET,
     )).not.toThrow();
   });
+  it("re-audit 3: future issued_at refused; far-future expiry refused despite in-window issued_at", () => {
+    expect(() => assertChallengeShape(
+      { ...good, issued_at: new Date(Date.now() + 10 * 60_000).toISOString() }, BUYER_WALLET,
+    )).toThrow(/future/);
+    // issued_at only 1min before a year-away expiry must still refuse.
+    const yearAway = new Date(Date.now() + 365 * 24 * 60 * 60_000);
+    expect(() => assertChallengeShape(
+      { ...good, issued_at: new Date(yearAway.getTime() - 60_000).toISOString(), expires_at: yearAway.toISOString() }, BUYER_WALLET,
+    )).toThrow(/window|future/);
+  });
 });
 
 describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
@@ -573,6 +583,22 @@ describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
     // id must not satisfy the check — terms are scoped to the id's object.
     const stateOnSibling = { demand: { demand_id: terms.id }, meta: { state: "OPEN" } };
     expect(statusTermsProblems(stateOnSibling, terms).join(";")).toMatch(/no state\/status term/);
+  });
+  it("re-audit 3: falsy first pending match does not hide a truthy second", () => {
+    // {settlement:{pending:false}, awaiting_approval:true} must flag.
+    expect(() => assertNoPendingMarkers({ settlement: { pending: false }, awaiting_approval: true }, "x"))
+      .toThrow(/pending/);
+    // Resolved-type strings are NOT pending markers.
+    expect(() => assertNoPendingMarkers({ pending: "resolved" }, "x")).not.toThrow();
+    expect(statusTermsProblems({ ...okCheck, settlement: { pending: false }, state: "OPEN" }, terms)).toEqual([]);
+  });
+  it("re-audit 3: own-level state beats a nested child's state; list-contained demands get scoped", () => {
+    // Own "state":"DRAFT" must win over nested project:{state:"ACTIVE"}.
+    const shadowed = { ...okCheck, state: "DRAFT", project: { state: "ACTIVE" } };
+    expect(statusTermsProblems(shadowed, terms).join(";")).toMatch(/DRAFT/);
+    // A demand object inside an array must be found and checked — not fail closed.
+    const inList = { demands: [{ ...okCheck }] };
+    expect(statusTermsProblems(inList, terms)).toEqual([]);
   });
 });
 

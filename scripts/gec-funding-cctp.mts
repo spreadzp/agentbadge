@@ -470,12 +470,15 @@ async function fetchMaxFee(amount: bigint): Promise<bigint> {
       const tier = tiers.find((t) => t.finalityThreshold === MIN_FINALITY_THRESHOLD) ?? tiers[0];
       const raw = tier?.minimumFee ?? (!Array.isArray(j) ? j.minimumFee : undefined);
       if (raw !== undefined) {
-        const n = BigInt(Math.round(Number(raw)));
         // Re-audit 2 N-12: shape determines the unit — never guess by size.
         // Array/tier shape: minimumFee is basis points. Object shape: already
-        // micro-USDC. The old `n < 10_000n` heuristic misclassified a small
-        // micro fee as bps and inflated the cap ×amount/10000.
-        const quoted = tier ? (amount * n) / 10_000n : n;
+        // micro-USDC. Re-audit 3 N-12: keep fractional bps — BigInt(round(n))
+        // truncated 1.3bps to 1 and under-capped the fee. Compute with
+        // 4-decimal bps precision and round the cap UP (over-estimate = safe).
+        const n = Number(raw);
+        const quoted = tier
+          ? (amount * BigInt(Math.round(n * 1e4)) + 999_999_999n) / 1_000_000_000n
+          : BigInt(Math.ceil(n));
         return computeMaxFee(quoted) || 1_000n; // floor ≥0.001 USDC
       }
     }
@@ -786,7 +789,11 @@ async function mintFlow(argv: string[], statePath: string): Promise<void> {
     // by the RAW bytes32 nonce at message offset 12 (re-audit 2, verified
     // on-chain — NOT keccak256(sourceDomain||nonce) as in V1).
     const nonceWord = `0x${readBytes32Word(msg, 12)}` as Hex;
-    const usedBits = await pubBase.readContract({
+    // Re-audit 3 N-8: usedNonces(bytes32(0)) is 1 on Base — a zero nonce would
+    // always report "relayed". Zero nonce in a verified message shouldn't
+    // happen, but guard anyway: skip the check rather than false-positive.
+    const ZERO_NONCE = `0x${"0".repeat(64)}` as Hex;
+    const usedBits = nonceWord === ZERO_NONCE ? 0n : await pubBase.readContract({
       address: CCTP_MESSAGE_TRANSMITTER, abi: MT, functionName: "usedNonces",
       args: [nonceWord],
     });
