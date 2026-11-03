@@ -1009,7 +1009,7 @@ async function runAward(t: Transcript, argv: string[]): Promise<void> {
     // and would skip to the deliverable write. Re-audit 3: word boundaries
     // ("14091" must not match "409", "unconflicted" must not match "conflict")
     // plus snake_case error codes (award_already_accepted).
-    if (/already[_\s-]+(accepted|awarded|taken|exists)|already_accepted|duplicate|\bconflict\b|\b409\b/i.test(blob)) {
+    if (/already[_\s-]+(accepted|awarded|taken|exists)|already_accepted|duplicate[^a-z0-9]{0,30}(award|accept|request)|conflict[^a-z0-9]{0,30}(award|accept|request)|http[^0-9]{0,10}409\b/i.test(blob)) {
       console.log("[gec-interop] award already accepted server-side — resuming at deliverable");
     } else {
       stepFail("gec_award_accept", accept.error ?? accept.result);
@@ -1469,8 +1469,11 @@ export function findKeyDeep(v: unknown, keys: string[]): string | undefined {
   const o = v as Record<string, unknown>;
   // Re-audit 3 N-2: own-level keys take priority over children — otherwise a
   // nested {project:{state:ACTIVE}} shadows this object's own state:DRAFT.
-  for (const k of Object.keys(o)) {
-    if (keys.includes(k) && typeof o[k] === "string") return o[k] as string;
+  // Re-audit 4: iterate the CALLER's key order, not the object's insertion
+  // order — with several state keys on one object the caller's priority wins
+  // (generic "state" before "publication_state"), not JSON key luck.
+  for (const k of keys) {
+    if (typeof o[k] === "string") return o[k] as string;
   }
   for (const val of Object.values(o)) {
     const deep = findKeyDeep(val, keys);
@@ -1501,7 +1504,17 @@ function pendingMarker(v: unknown): boolean {
   }
   if (typeof v === "number") return v !== 0;
   if (Array.isArray(v)) return v.length > 0;
-  if (typeof v === "object") return Object.keys(v as Record<string, unknown>).length > 0;
+  if (typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    // Re-audit 4: a non-empty moderation/pending OBJECT isn't automatically
+    // pending — resolve it: nested pending keys, a status-like field, or
+    // resolved-shaped keys ({passed:true}, {approved:true}, …).
+    if (findAllKeyValues(o, PENDING_KEYS).some(pendingMarker)) return true;
+    const st = o.status ?? o.state ?? o.result;
+    if (st !== undefined) return pendingMarker(st);
+    if (Object.keys(o).some((k) => /^(passed|approved|resolved|ok|clear|completed|granted)$/i.test(k))) return false;
+    return Object.keys(o).length > 0;
+  }
   return Boolean(v);
 }
 
@@ -1645,13 +1658,20 @@ export function statusTermsProblems(payload: unknown, expected: {
     const b = findKeyDeep(scope, ["budget_minor", "max_budget_minor", "cap_minor"]);
     if (b !== expected.budgetMinor) bad.push(`budget ${String(b)} != ${expected.budgetMinor}`);
   }
-  const st = findKeyDeep(scope, [
-    "state", "status", "demand_state", "project_state", "lifecycle_state", "publication_state",
-  ]);
-  if (st === undefined) {
-    bad.push("no state/status term in read-back");
-  } else if (!expected.allowedStates.some((s) => s.toUpperCase() === st.toUpperCase())) {
-    bad.push(`state ${st} not in allowed ${expected.allowedStates.join("/")}`);
+  // Re-audit 4 N-2: state checks look at OWN-LEVEL keys only — a child's
+  // state (e.g. a bid's, a linked project's) must not pass for this object.
+  // ALL own-level state-key hits must be in allowed — {publication_state:
+  // PUBLISHED, state: PENDING_REVIEW} flags instead of first-match passing.
+  const stateKeys = ["state", "status", "demand_state", "project_state", "lifecycle_state", "publication_state"];
+  const ownStates = stateKeys.filter((k) => typeof scope[k] === "string").map((k) => scope[k] as string);
+  if (ownStates.length === 0) {
+    bad.push("no own-level state/status term in read-back");
+  } else {
+    for (const st of ownStates) {
+      if (!expected.allowedStates.some((s) => s.toUpperCase() === st.toUpperCase())) {
+        bad.push(`state ${st} not in allowed ${expected.allowedStates.join("/")}`);
+      }
+    }
   }
   return bad;
 }

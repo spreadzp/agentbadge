@@ -459,6 +459,14 @@ async function balances(): Promise<{ arcUsdc: bigint; baseEth: bigint; baseUsdc:
  * {finalityThreshold, minimumFee} — minimumFee is basis points. Pick the
  * threshold-1000 (fast) tier and floor the buffered result.
  */
+/** Fee in micro-USDC for `bps` basis points of `amountMinor`, 4-decimal
+ * precision, rounded UP (over-estimate is the safe direction for a cap).
+ * bps×1e4 keeps 4 decimals; fee = amount·bps/10_000 → divisor 10_000·1e4 = 1e8.
+ * Exported for tests (re-audit 4 N-12 demanded a unit test). */
+export function bpsFeeMinor(amountMinor: bigint, bps: number): bigint {
+  return (amountMinor * BigInt(Math.round(bps * 1e4)) + 99_999_999n) / 100_000_000n;
+}
+
 async function fetchMaxFee(amount: bigint): Promise<bigint> {
   try {
     const r = await fetch(`${IRIS_API}/v2/burn/USDC/fees/${ARC_DOMAIN}/${BASE_DOMAIN}`, {
@@ -472,14 +480,13 @@ async function fetchMaxFee(amount: bigint): Promise<bigint> {
       if (raw !== undefined) {
         // Re-audit 2 N-12: shape determines the unit — never guess by size.
         // Array/tier shape: minimumFee is basis points. Object shape: already
-        // micro-USDC. Re-audit 3 N-12: keep fractional bps — BigInt(round(n))
-        // truncated 1.3bps to 1 and under-capped the fee. Compute with
-        // 4-decimal bps precision and round the cap UP (over-estimate = safe).
+        // micro-USDC. Re-audit 4 N-12: fractional bps via bpsFeeMinor
+        // (divisor 1e8 — 1e9 under-capped 10×) and clamp to the 0.05 USDC
+        // ceiling — a live quote must not exceed MAX_FEE either.
         const n = Number(raw);
-        const quoted = tier
-          ? (amount * BigInt(Math.round(n * 1e4)) + 999_999_999n) / 1_000_000_000n
-          : BigInt(Math.ceil(n));
-        return computeMaxFee(quoted) || 1_000n; // floor ≥0.001 USDC
+        const quoted = tier ? bpsFeeMinor(amount, n) : BigInt(Math.ceil(n));
+        const cap = computeMaxFee(quoted);
+        return cap > MAX_FEE_MINOR ? MAX_FEE_MINOR : (cap || 1_000n);
       }
     }
   } catch { /* fall through to the conservative ceiling */ }

@@ -560,7 +560,7 @@ describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
   });
   it("flags echoed-id-only confirmation: missing state, wrong project, wrong budget", () => {
     const problems = statusTermsProblems({ demand_id: okCheck.demand_id }, terms).join("; ");
-    expect(problems).toMatch(/no state\/status term/);
+    expect(problems).toMatch(/state\/status term/);
     expect(problems).toMatch(/project_id/);
     expect(problems).toMatch(/budget/);
   });
@@ -582,7 +582,19 @@ describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
     // The state key living on a DIFFERENT object than the one echoing our
     // id must not satisfy the check — terms are scoped to the id's object.
     const stateOnSibling = { demand: { demand_id: terms.id }, meta: { state: "OPEN" } };
-    expect(statusTermsProblems(stateOnSibling, terms).join(";")).toMatch(/no state\/status term/);
+    expect(statusTermsProblems(stateOnSibling, terms).join(";")).toMatch(/state\/status term/);
+  });
+  it("re-audit 4: all own-level state keys must be allowed; moderation objects resolve", () => {
+    // publication_state PUBLISHED + state PENDING_REVIEW on the SAME object → flag
+    expect(statusTermsProblems(
+      { ...okCheck, state: "PENDING_REVIEW", publication_state: "PUBLISHED" }, terms,
+    ).join(";")).toMatch(/PENDING_REVIEW/);
+    // A moderation object with resolved status is not a pending marker
+    expect(() => assertNoPendingMarkers({ moderation: { status: "approved" } }, "x")).not.toThrow();
+    expect(() => assertNoPendingMarkers({ moderation: { passed: true } }, "x")).not.toThrow();
+    // A moderation object reporting an active queue IS a marker
+    expect(() => assertNoPendingMarkers({ moderation: { pending: true } }, "x")).toThrow(/pending/);
+    expect(() => assertNoPendingMarkers({ moderation: { status: "in_review" } }, "x")).toThrow(/pending/);
   });
   it("re-audit 3: falsy first pending match does not hide a truthy second", () => {
     // {settlement:{pending:false}, awaiting_approval:true} must flag.

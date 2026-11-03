@@ -16,6 +16,7 @@ import {
   buildDepositForBurnArgs,
   classifyAttestation,
   computeMaxFee,
+  bpsFeeMinor,
   assertNetFloor,
   assertSigner,
   defaultFundingStatePath,
@@ -76,6 +77,20 @@ describe("fee helpers (audit nit: live fee + buffer, net floor)", () => {
     expect(() => assertNetFloor(3_600_000n, 50_000n)).not.toThrow();
     expect(() => assertNetFloor(3_600_000n, 150_000n)).toThrow(/net floor/);
     expect(() => assertNetFloor(3_600_000n, 100_001n)).toThrow(/net floor/);
+  });
+});
+describe("bpsFeeMinor (re-audit 4 N-12)", () => {
+  it("computes fee = amount x bps/10_000 with 4-decimal precision, ceil", () => {
+    // 1 bps of 3.6 USDC = 360 minor — the 1e9-divisor regression gave 36.
+    expect(bpsFeeMinor(3_600_000n, 1)).toBe(360n);
+    // 1.4 bps of 3.6 USDC = 504 — must not truncate to 1bps→360 or under-cap.
+    expect(bpsFeeMinor(3_600_000n, 1.4)).toBe(504n);
+    // 1.3 bps of 3.6 USDC = 468 exactly.
+    expect(bpsFeeMinor(3_600_000n, 1.3)).toBe(468n);
+    // Fractional remainder rounds UP (over-estimate is safe for a cap).
+    expect(bpsFeeMinor(3_600_000n, 1.41)).toBe(508n); // 507.6 → 508
+    // Zero fee stays zero.
+    expect(bpsFeeMinor(3_600_000n, 0)).toBe(0n);
   });
 });
 
