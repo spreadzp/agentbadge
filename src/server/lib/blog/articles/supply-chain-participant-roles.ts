@@ -153,6 +153,11 @@ export const article: BlogArticle = {
       evidence: [],
     },
   ],
-  externalLinks: [],
+  externalLinks: [
+    {
+      platform: "devto",
+      url: "https://dev.to/spread2009/brick-1-any-node-can-hand-off-typed-participants-in-a-verifiable-supply-chain-415g",
+    },
+  ],
   content: supplyChainParticipantRolesContent,
 };
