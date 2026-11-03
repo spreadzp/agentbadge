@@ -419,3 +419,128 @@ describe("parsePhase (buyer phases, dispatch only)", () => {
     expect(() => parsePhase([])).toThrow(/usage/);
   });
 });
+
+// ─── SLICE-209-4: audit-fix helpers (pure, zero network) ─────────────
+import {
+  acquireBuyerLock,
+  argValue,
+  assertChallengeShape,
+  bindBuyerState,
+  redact,
+  validateBuyerId,
+  ID_SHAPE_RE,
+} from "../scripts/gec-interop.mts";
+import { existsSync, writeFileSync } from "node:fs";
+
+const BUYER_WALLET = "0x3bF7bf14c839AC615F87cDeDe344dF01B9cFb89f";
+
+describe("argValue (audit M8)", () => {
+  it("keeps = inside values; rejects empty", () => {
+    expect(argValue(["--state=/tmp/a=b.json"], "state")).toBe("/tmp/a=b.json");
+    expect(argValue(["--note=a=b=c"], "note")).toBe("a=b=c");
+    expect(() => argValue(["--state="], "state")).toThrow(/empty/);
+    expect(argValue(["--other=x"], "state")).toBeUndefined();
+  });
+});
+
+describe("validateBuyerId / ID_SHAPE_RE (audit H2)", () => {
+  it("accepts resource ids; rejects bare strings and junk", () => {
+    expect(validateBuyerId("demand:owner:aefcd63292d520374a1c2ac7fca6a8a5", "d")).toBe("demand:owner:aefcd63292d520374a1c2ac7fca6a8a5");
+    expect(ID_SHAPE_RE.test("project:owner:0123456789abcdef0123456789abcdef")).toBe(true);
+    expect(ID_SHAPE_RE.test("demand:x")).toBe(false);
+    expect(ID_SHAPE_RE.test("not-an-id")).toBe(false);
+    expect(() => validateBuyerId("demand:x", "d")).toThrow(/id shape/);
+  });
+});
+
+describe("bindBuyerState (audit H3)", () => {
+  it("stamps wallet+cap on a fresh state; tolerates same binding", () => {
+    const s = bindBuyerState({}, BUYER_WALLET);
+    expect(s.wallet).toBe(BUYER_WALLET);
+    expect(s.cap_minor).toBe(BUYER_CAP_MINOR);
+    expect(() => bindBuyerState(s, BUYER_WALLET)).not.toThrow();
+  });
+  it("rejects foreign wallet and foreign cap", () => {
+    expect(() => bindBuyerState({ wallet: "0x000000000000000000000000000000000000dead" }, BUYER_WALLET))
+      .toThrow(/bound to/);
+    expect(() => bindBuyerState({ cap_minor: "999" }, BUYER_WALLET)).toThrow(/cap/);
+  });
+});
+
+describe("assertChallengeShape (audit H5)", () => {
+  const good = {
+    wallet_address: BUYER_WALLET,
+    chain_id: "0x2105",
+    body: { origin: "https://sasame.online" },
+    nonce: "abcdef123456",
+    expires_at: new Date(Date.now() + 60_000).toISOString(),
+    message: `Sign in to sasame.online as ${BUYER_WALLET} nonce=abcdef123456`,
+  };
+  it("passes a well-formed challenge", () => {
+    expect(() => assertChallengeShape(good, BUYER_WALLET)).not.toThrow();
+  });
+  it("rejects wrong address, wrong chain, foreign origin, expired, missing-nonce, address-less message", () => {
+    expect(() => assertChallengeShape({ ...good, wallet_address: "0x000000000000000000000000000000000000dead" }, BUYER_WALLET)).toThrow(/wallet_address/);
+    expect(() => assertChallengeShape({ ...good, chain_id: "0x1" }, BUYER_WALLET)).toThrow(/chain_id/);
+    expect(() => assertChallengeShape({ ...good, body: { origin: "https://evil.example" } }, BUYER_WALLET)).toThrow(/origin/);
+    expect(() => assertChallengeShape({ ...good, expires_at: "2000-01-01T00:00:00Z" }, BUYER_WALLET)).toThrow(/expired/);
+    expect(() => assertChallengeShape({ ...good, nonce: "ab" }, BUYER_WALLET)).toThrow(/nonce/);
+    expect(() => assertChallengeShape({ ...good, message: "Sign anything, we swear" }, BUYER_WALLET)).toThrow(/signer address/);
+    expect(() => assertChallengeShape(undefined, BUYER_WALLET)).toThrow(/no challenge/);
+  });
+});
+
+describe("redact (audit M4)", () => {
+  it("masks new key shapes: session, jwt, api_key, credential, verifier", () => {
+    const r = redact({ session: "x", jwt: "y", api_key: "z", credential: "w", verifier: "v", ok_field: 1 }) as Record<string, unknown>;
+    expect(r.session).toBe("<redacted>");
+    expect(r.jwt).toBe("<redacted>");
+    expect(r.api_key).toBe("<redacted>");
+    expect(r.credential).toBe("<redacted>");
+    expect(r.verifier).toBe("<redacted>");
+    expect(r.ok_field).toBe(1);
+  });
+  it("value-patterns mask secrets regardless of key name", () => {
+    const r = redact({ note: `pk=0x${"a".repeat(64)} done` }) as Record<string, unknown>;
+    expect(String(r.note)).not.toContain("a".repeat(64));
+    expect(String(r.note)).toContain("<redacted>");
+    const j = redact({ data: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dGVzdHNpZ25hdHVyZQ" }) as Record<string, unknown>;
+    expect(String(j.data)).toContain("<redacted>");
+  });
+  it("parses embedded JSON inside content[].text strings", () => {
+    const inner = JSON.stringify({ token: "secret", demand_id: "demand:owner:aefcd63292d520374a1c2ac7fca6a8a5" });
+    const r = redact({ content: [{ type: "text", text: inner }] }) as { content: { text: string }[] };
+    expect(r.content[0].text).toContain("<redacted>");
+    expect(r.content[0].text).toContain("demand:owner");
+  });
+});
+
+describe("acquireBuyerLock (audit H6)", () => {
+  it("serializes concurrent runs; releases cleanly", () => {
+    const dir = mkdtempSync(join(tmpdir(), "buyer-lock-"));
+    const p = join(dir, "state.json");
+    try {
+      const r1 = acquireBuyerLock(p);
+      expect(() => acquireBuyerLock(p)).toThrow(/concurrently/);
+      r1();
+      const r2 = acquireBuyerLock(p);
+      r2();
+      expect(existsSync(`${p}.lock`)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+});
+
+describe("loadBuyerState (audit C2: fail-closed)", () => {
+  it("corrupt JSON aborts instead of resetting to {}", () => {
+    const dir = mkdtempSync(join(tmpdir(), "buyer-corrupt-"));
+    const p = join(dir, "state.json");
+    try {
+      writeFileSync(p, "{nope", "utf8");
+      expect(() => loadBuyerState(p)).toThrow(/unreadable/);
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+});

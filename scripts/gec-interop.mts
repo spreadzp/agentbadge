@@ -29,7 +29,7 @@
  * SLICE-205-6 (bid). Tests cover the pure functions only.
  *
  * Env:
- *   GEC_INTEROP_PRIVATE_KEY=0x...  burner wallet (EIP-191 sign only, zero funds)
+ *   GEC_INTEROP_PRIVATE_KEY=0x...  buyer wallet (EIP-191 auth + funded Base USDC — post-209 it is NO LONGER zero-funds)
  *   GEC_INTEROP_ADDRESS=0x...      its address (independent check vs key)
  *   GEC_CLIENT_BASE=https://agentbadge.xyz  (our origin; CIMD + callback under it)
  *   EVIDENCE_DIR=docs/EPICS/205-sasame-gec-interop/evidence  transcript target
@@ -42,7 +42,14 @@
 
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, http, parseAbi } from "viem";
+import { base } from "viem/chains";
 import type { Hex, LocalAccount } from "viem";
+import { existsSync, mkdirSync, openSync, closeSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
 // ─── Their endpoints (from provider_action.machine_entry, baseline-2026-10-23) ─
 export const GEC_ENDPOINTS = {
@@ -177,7 +184,11 @@ export function createCookieJar(): CookieJar {
         const name = first.slice(0, eq).trim();
         const value = first.slice(eq + 1).trim();
         if (!name) continue;
-        if (value === "") bucket.delete(name);
+        // Audit M5: Max-Age=0 or a past Expires also deletes, not just "".
+        const maxAge0 = /;\s*max-age\s*=\s*0\b/i.test(line);
+        const expires = /;\s*expires\s*=\s*([^;]+)/i.exec(line)?.[1];
+        const expired = expires !== undefined && Date.parse(expires) <= Date.now();
+        if (value === "" || maxAge0 || expired) bucket.delete(name);
         else bucket.set(name, value);
       }
       if (bucket.size === 0) store.delete(origin);
@@ -197,8 +208,34 @@ export function createCookieJar(): CookieJar {
 
 // ─── Transcript + redaction (whitelist fields; denylisted keys masked) ───────
 
+// Audit M4: broadened key denylist — session/bearer/jwt/nonce/api key/
+// credential/verifier shapes were previously invisible to the mask.
 const SECRET_KEY_RE =
-  /authorization|cookie|set-cookie|token|signature|challenge|message|code_verifier|code$|state|client_secret|private|secret|mcp_state|mcp_base/i;
+  /authorization|cookie|set-cookie|token|signature|challenge|message|code_verifier|code$|state|client_secret|private|secret|mcp_state|mcp_base|session|bearer|jwt|nonce|api_?key|password|otp|credential|verifier|auth\b/i;
+
+/** Value-level patterns that are secret regardless of the key name. */
+const SECRET_VALUE_RE = [
+  /0x[0-9a-fA-F]{64}\b/g, // private-key / hash-shaped hex
+  /\bBearer\s+[A-Za-z0-9._~+\/-]+={0,2}/gi,
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, // JWT
+  /\bsessionid=[^\s;"']+/gi,
+];
+
+function redactString(s: string): string {
+  let out = s;
+  for (const re of SECRET_VALUE_RE) out = out.replace(re, "<redacted>");
+  // MCP tool results embed JSON inside content[].text — parse and scrub it
+  // instead of letting nested tokens ride through as opaque strings.
+  if (out.length > 1 && (out.startsWith("{") || out.startsWith("["))) {
+    try {
+      const parsed = JSON.parse(out) as unknown;
+      if (parsed && typeof parsed === "object") {
+        out = JSON.stringify(redact(parsed));
+      }
+    } catch { /* not JSON — leave as text */ }
+  }
+  return out;
+}
 
 export function redact<T>(value: T): T {
   if (Array.isArray(value)) return value.map(redact) as T;
@@ -209,8 +246,12 @@ export function redact<T>(value: T): T {
     }
     return out as T;
   }
-  if (typeof value === "string" && value.length > 500) {
-    return (value.slice(0, 500) + "…<truncated>") as T;
+  if (typeof value === "string") {
+    const scrubbed = redactString(value);
+    if (scrubbed.length > 500) {
+      return (scrubbed.slice(0, 500) + "…<truncated>") as T;
+    }
+    return scrubbed as T;
   }
   return value;
 }
@@ -229,7 +270,11 @@ export class Transcript {
   readonly entries: TranscriptEntry[] = [];
 
   record(e: TranscriptEntry): void {
-    this.entries.push({ ...e, responseShape: e.responseShape === undefined ? undefined : redact(e.responseShape) });
+    this.entries.push({
+      ...e,
+      note: e.note === undefined ? undefined : redact(e.note),
+      responseShape: e.responseShape === undefined ? undefined : redact(e.responseShape),
+    });
   }
 
   toJSON(): string {
@@ -252,6 +297,9 @@ export interface FetchOpts {
   redirectManual?: boolean;
   /** Bearer access token — used only for the Authorization header, never logged. */
   bearer?: string;
+  /** Set false for non-idempotent writes — audit C3: a blind retry can repeat
+   * a server-side write whose response was lost (double publish/draft). */
+  allowRetry?: boolean;
 }
 
 export interface FetchResult {
@@ -265,10 +313,12 @@ export interface FetchResult {
 
 export async function timedFetch(url: string, opts: FetchOpts = {}): Promise<FetchResult> {
   // Flaky upstream (sasame.online 522/timeouts): up to 3 attempts on network
-  // errors or 5xx responses; retryable state is cheap because every step of
-  // the OAuth chain is idempotent-by-design (new challenge/nonce per attempt).
+  // errors or 5xx — but ONLY for idempotent calls (audit C3). Non-idempotent
+  // writes get a single attempt; the caller does a read-back to determine
+  // whether the write landed instead of risking a duplicate remote mutation.
+  const maxAttempts = opts.allowRetry === false ? 1 : 3;
   let lastErr: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * attempt));
     try {
       const r = await timedFetchOnce(url, opts);
@@ -341,6 +391,47 @@ export async function signChallenge(message: string, account: LocalAccount): Pro
   return account.signMessage({ message });
 }
 
+/**
+ * Audit H5: blind EIP-191 signing is identity forgery bait — the challenge
+ * text and its structured fields must be validated BEFORE signing. Checks
+ * what the server claims to send: our wallet address in the message, the
+ * expected chain id and origin, a nonce, and an unexpired expiry.
+ */
+export function assertChallengeShape(
+  fields: Record<string, unknown> | undefined,
+  address: string,
+): void {
+  if (!fields) stepFail("challenge-shape", "no challenge object");
+  const f = fields!;
+  if (typeof f.wallet_address !== "string" ||
+      f.wallet_address.toLowerCase() !== address.toLowerCase()) {
+    stepFail("challenge-shape", `challenge wallet_address ${String(f.wallet_address)} != signer ${address}`);
+  }
+  if (f.chain_id !== undefined && f.chain_id !== GEC_ENDPOINTS.chainId) {
+    stepFail("challenge-shape", `challenge chain_id ${String(f.chain_id)} != ${GEC_ENDPOINTS.chainId}`);
+  }
+  const body = f.body as { origin?: string } | undefined;
+  if (body?.origin !== undefined && body.origin !== GEC_ENDPOINTS.origin) {
+    stepFail("challenge-shape", `challenge origin ${body.origin} != ${GEC_ENDPOINTS.origin}`);
+  }
+  if (f.nonce !== undefined && (typeof f.nonce !== "string" || f.nonce.length < 8)) {
+    stepFail("challenge-shape", "challenge nonce missing/too short");
+  }
+  if (f.expires_at !== undefined) {
+    const exp = Date.parse(String(f.expires_at));
+    if (!Number.isNaN(exp) && exp <= Date.now()) {
+      stepFail("challenge-shape", `challenge expired at ${String(f.expires_at)}`);
+    }
+  }
+  const msg = String(f.message ?? "");
+  if (msg.length === 0 || msg.length > 4000) {
+    stepFail("challenge-shape", `challenge message length ${msg.length} out of bounds`);
+  }
+  if (!msg.toLowerCase().includes(address.toLowerCase())) {
+    stepFail("challenge-shape", "challenge message does not contain the signer address — refusing to sign");
+  }
+}
+
 // ─── MCP JSON-RPC (initialize / tools/list / tools/call) ─────────────────────
 
 export interface McpCallResult {
@@ -358,7 +449,7 @@ export async function mcpCall(
   endpoint: string,
   method: string,
   params: Record<string, unknown>,
-  opts: { bearer?: string; jar?: CookieJar; sessionId?: string } = {},
+  opts: { bearer?: string; jar?: CookieJar; sessionId?: string; allowRetry?: boolean } = {},
 ): Promise<McpCallResult & { sessionId?: string | null }> {
   const headers: Record<string, string> = {
     "content-type": "application/json", accept: "application/json, text/event-stream",
@@ -368,6 +459,7 @@ export async function mcpCall(
     method: "POST",
     jar: opts.jar,
     bearer: opts.bearer,
+    allowRetry: opts.allowRetry,
     headers,
     body: JSON.stringify({ jsonrpc: "2.0", id: ++mcpRequestId, method, params }),
   });
@@ -439,14 +531,16 @@ const BUYER_PHASES: readonly GecPhase[] = ["project", "demand", "publish", "life
 
 export function parsePhase(argv: string[]): GecPhase {
   const arg = argv.find((a) => a.startsWith("--phase="));
-  const phase = arg?.split("=", 2)[1] as GecPhase | undefined;
+  const phase = arg?.slice(arg.indexOf("=") + 1) as GecPhase | undefined;
   if (phase === "rehearsal" || phase === "bid" || phase === "tools" || phase === "award" || phase === "verify") return phase;
   if (phase && BUYER_PHASES.includes(phase)) return phase;
   throw new Error("usage: bun run scripts/gec-interop.mts --phase=rehearsal|bid|tools|award|verify|project|demand|publish|lifecycle [--verdict=PASS|REVISE|FAIL] [--submit] [--out=<transcript.json>] [--report=<file>] [--project=<id>] [--demand=<id>] [--state=<path>]");
 }
 
 function outPath(argv: string[]): string | undefined {
-  return argv.find((a) => a.startsWith("--out="))?.split("=", 2)[1];
+  const a = argv.find((x) => x.startsWith("--out="));
+  const v = a?.slice(a.indexOf("=") + 1);
+  return v || undefined; // empty --out= means "don't write", never ""
 }
 
 // ─── SLICE-205-5: live rehearsal — full OAuth cycle, read-only finish ────────
@@ -455,8 +549,11 @@ function outPath(argv: string[]): string | undefined {
 // signature, bearer, cookies, challenge text — never enter the transcript;
 // the redact() denylist is a second belt, not the first.
 
-function stepFail(step: string, what: string): never {
-  throw new Error(`[kill-gate] ${step}: ${what}`);
+function stepFail(step: string, what: unknown): never {
+  // Audit M4: embedded error/result payloads go through redact — thrown
+  // errors land in CI logs and stderr where raw session data must not.
+  const s = typeof what === "string" ? what : JSON.stringify(redact(what));
+  throw new Error(`[kill-gate] ${step}: ${s}`);
 }
 
 async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
@@ -511,6 +608,11 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
   const message = chalFields?.message as string | undefined;
   if (!chalFields || !message) stepFail("challenge", "no challenge.message in response");
 
+  // Audit H5: validate the challenge (address, chain, origin, nonce, expiry,
+  // message contains the signer) BEFORE EIP-191 signing — this key now holds
+  // funds, blind signing is identity forgery.
+  assertChallengeShape(chalFields, address);
+
   // 4. EIP-191 personal_sign — LOCAL, signature never recorded
   const signature = await signChallenge(message, account);
 
@@ -549,6 +651,11 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     if (next.origin === new URL(redirectUri()).origin && next.pathname === GEC_CALLBACK_PATH) {
       code = next.searchParams.get("code");
       retState = next.searchParams.get("state");
+      // RFC 9207 nit: when the AS sends iss, it must be the authorize origin.
+      const iss = next.searchParams.get("iss");
+      if (iss !== null && iss !== new URL(GEC_ENDPOINTS.authorize).origin) {
+        stepFail("callback-iss", `iss ${iss} != ${new URL(GEC_ENDPOINTS.authorize).origin}`);
+      }
       break;
     }
     const r = await timedFetch(next.toString(), { jar, redirectManual: true });
@@ -592,7 +699,7 @@ async function authenticateUserMcp(t: Transcript): Promise<{ bearer: string; jar
     step: "mcp-initialize", method: "POST", path: "/mcp",
     status: init.status, ms: init.ms, responseShape: responseShapeOf(init.result ?? init.error)
   });
-  if (init.error || init.status !== 200) stepFail("mcp-initialize", JSON.stringify(init.error ?? init.status));
+  if (init.error || init.status !== 200) stepFail("mcp-initialize", init.error ?? init.status);
   // MCP Streamable HTTP: session id issued on initialize must be echoed on all later calls
   const sessionId = init.sessionId ?? undefined;
   if (!sessionId) stepFail("mcp-initialize", "no mcp-session-id in initialize response headers");
@@ -632,7 +739,7 @@ async function runRehearsal(t: Transcript): Promise<void> {
     status: pubInit.status, ms: pubInit.ms,
     responseShape: responseShapeOf((pubInit.result as { serverInfo?: unknown })?.serverInfo ?? pubInit.error)
   });
-  if (pubInit.error || pubInit.status !== 200) stepFail("public-mcp-initialize", JSON.stringify(pubInit.error ?? pubInit.status));
+  if (pubInit.error || pubInit.status !== 200) stepFail("public-mcp-initialize", pubInit.error ?? pubInit.status);
   const pubSession = pubInit.sessionId ?? undefined;
   // Their server binds the session via cookies + notifications/initialized;
   // without it tools/call answers "Tool not found" even though tools/list shows it.
@@ -645,7 +752,7 @@ async function runRehearsal(t: Transcript): Promise<void> {
     step: "gec_open_demands", method: "POST", path: "/public-mcp",
     status: demands.status, ms: demands.ms, responseShape: responseShapeOf(demands.result ?? demands.error)
   });
-  if (demands.error || demands.status !== 200 || isErr) stepFail("gec_open_demands", JSON.stringify(demands.error ?? demands.result));
+  if (demands.error || demands.status !== 200 || isErr) stepFail("gec_open_demands", demands.error ?? demands.result);
 
   // Acceptance: print OPEN demand count — result shape is their JSON payload
   // (MCP tools/call wraps in content[]; text part carries the JSON).
@@ -664,14 +771,24 @@ async function runRehearsal(t: Transcript): Promise<void> {
 // ─── SLICE-205-6: live bid — same OAuth chain, terminal write gec_bid_submit ──
 // Amount = max_budget_minor from the demand projection (5,000,000 microUSDC).
 // proposal/capability_refs describe the evidence package we deliver.
-async function runBid(t: Transcript): Promise<void> {
+// Audit H4: the write is now gated on --submit like every other phase, and
+// the idempotency key is DETERMINISTIC — a re-run dedupes server-side
+// instead of minting a fresh duplicate bid.
+function bidIdempotencyKey(): string {
+  const h = createHash("sha256")
+    .update(`bid|${GEC_TARGET_DEMAND}|${GEC_BID_AMOUNT_MINOR}`)
+    .digest("hex").slice(0, 8);
+  return `agentbadge-205-bid-aefcd6-${h}`;
+}
+
+async function runBid(t: Transcript, argv: string[]): Promise<void> {
   const { bearer, jar, sessionId } = await authenticateUserMcp(t);
 
   const bidArgs = {
     demand_id: GEC_TARGET_DEMAND,
-    idempotency_key: `agentbadge-205-bid-aefcd6-${crypto.randomUUID().slice(0, 8)}`,
+    idempotency_key: bidIdempotencyKey(),
     amount_minor: GEC_BID_AMOUNT_MINOR,
-    expected_completion: "2026-10-26T23:00:00Z", // on-or-before demand deadline
+    expected_completion: demandDeadlineFrom(new Date()), // T+7d — not a stale literal
     capability_refs: [
       "mcp_interoperability", "oauth_2_1", "wallet_authentication",
       "protocol_tracing", "evidence_verification",
@@ -685,8 +802,15 @@ async function runBid(t: Transcript): Promise<void> {
       "is independently controlled and unaffiliated with SaSame/Owner/Pancho.",
   };
 
+  // Audit H4: the bid is an irreversible write — same --submit gate as the
+  // buyer phases; no more default-write on phase run.
+  if (!argv.includes("--submit")) {
+    console.log(`[gec-interop] bid dry-run — args ready (idem=${bidArgs.idempotency_key}), pass --submit to send`);
+    t.record({ step: "gec_bid_submit-dry", method: "POST", path: "/mcp", status: 0, ms: 0, note: "not sent — --submit required" });
+    return;
+  }
   const bid = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
-    { name: "gec_bid_submit", arguments: bidArgs }, { bearer, jar, sessionId });
+    { name: "gec_bid_submit", arguments: bidArgs }, { bearer, jar, sessionId, allowRetry: false });
   const isErr = (bid.result as { isError?: boolean })?.isError;
   t.record({
     step: "gec_bid_submit", method: "POST", path: "/mcp",
@@ -695,7 +819,7 @@ async function runBid(t: Transcript): Promise<void> {
     responseShape: responseShapeOf(bid.result ?? bid.error)
   });
   if (bid.error || bid.status !== 200 || isErr) {
-    stepFail("gec_bid_submit", JSON.stringify(bid.error ?? bid.result));
+    stepFail("gec_bid_submit", bid.error ?? bid.result);
   }
   console.log("[gec-interop] bid submitted — 5,000,000 microUSDC on demand aefcd6…");
 }
@@ -724,10 +848,9 @@ async function runTools(t: Transcript): Promise<void> {
 // GEC_TARGET_AWARD; arg shapes adapt to the live tools/list schemas.
 
 function loadReport(): string {
-  const arg = process.argv.find((a) => a.startsWith("--report="));
-  const file = arg?.split("=", 2)[1]
-    ?? "../../docs/EPICS/205-sasame-gec-interop/evidence/deliverable-summary-2026-10-23.md";
-  const { readFileSync } = require("node:fs") as typeof import("node:fs");
+  const a = process.argv.find((x) => x.startsWith("--report="));
+  const file = a?.slice(a.indexOf("=") + 1)
+    ?? resolve(SCRIPT_DIR, "../../../docs/EPICS/205-sasame-gec-interop/evidence/deliverable-summary-2026-10-23.md");
   return readFileSync(file, "utf8");
 }
 
@@ -739,10 +862,17 @@ function buildAwardAcceptArgs(): Record<string, unknown> {
   return { award_id: GEC_TARGET_AWARD };
 }
 
+function deliverableIdempotencyKey(): string {
+  const h = createHash("sha256")
+    .update(`deliver|${GEC_TARGET_AWARD}`)
+    .digest("hex").slice(0, 8);
+  return `agentbadge-205-deliver-155c27-${h}`;
+}
+
 function buildDeliverableArgs(summary: string): Record<string, unknown> {
   return {
     award_id: GEC_TARGET_AWARD,
-    idempotency_key: `agentbadge-205-deliver-155c27-${crypto.randomUUID().slice(0, 8)}`,
+    idempotency_key: deliverableIdempotencyKey(),
     summary,
     evidence_refs: [
       "https://agentbadge.xyz/blog/gec-interop-field-report - published field report (full trace)",
@@ -760,7 +890,13 @@ function buildDeliverableArgs(summary: string): Record<string, unknown> {
   };
 }
 
-async function runAward(t: Transcript): Promise<void> {
+async function runAward(t: Transcript, argv: string[]): Promise<void> {
+  // Audit H4: award-accept + deliverable-submit are irreversible writes —
+  // gate on --submit exactly like bid/buyer phases.
+  if (!argv.includes("--submit")) {
+    console.log("[gec-interop] award dry-run — pass --submit to send gec_award_accept + gec_deliverable_submit");
+    return;
+  }
   const { bearer, jar, sessionId } = await authenticateUserMcp(t);
 
   // Re-list tools so the transcript carries the exact schemas this call used.
@@ -782,7 +918,7 @@ async function runAward(t: Transcript): Promise<void> {
 
   const acceptArgs = buildAwardAcceptArgs();
   const accept = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
-    { name: "gec_award_accept", arguments: acceptArgs }, { bearer, jar, sessionId });
+    { name: "gec_award_accept", arguments: acceptArgs }, { bearer, jar, sessionId, allowRetry: false });
   const acceptErr = (accept.result as { isError?: boolean })?.isError;
   t.record({
     step: "gec_award_accept", method: "POST", path: "/mcp",
@@ -791,7 +927,7 @@ async function runAward(t: Transcript): Promise<void> {
     responseShape: responseShapeOf(accept.result ?? accept.error)
   });
   if (accept.error || accept.status !== 200 || acceptErr) {
-    stepFail("gec_award_accept", JSON.stringify(accept.error ?? accept.result));
+    stepFail("gec_award_accept", accept.error ?? accept.result);
   }
   console.log("[gec-interop] award accepted — 155c27…fb56");
 
@@ -801,7 +937,7 @@ async function runAward(t: Transcript): Promise<void> {
   }
   const deliverArgs = buildDeliverableArgs(reportText);
   const deliver = await mcpCall(GEC_ENDPOINTS.resource, "tools/call",
-    { name: "gec_deliverable_submit", arguments: deliverArgs }, { bearer, jar, sessionId });
+    { name: "gec_deliverable_submit", arguments: deliverArgs }, { bearer, jar, sessionId, allowRetry: false });
   const deliverErr = (deliver.result as { isError?: boolean })?.isError;
   t.record({
     step: "gec_deliverable_submit", method: "POST", path: "/mcp",
@@ -810,7 +946,7 @@ async function runAward(t: Transcript): Promise<void> {
     responseShape: responseShapeOf(deliver.result ?? deliver.error)
   });
   if (deliver.error || deliver.status !== 200 || deliverErr) {
-    stepFail("gec_deliverable_submit", JSON.stringify(deliver.error ?? deliver.result));
+    stepFail("gec_deliverable_submit", deliver.error ?? deliver.result);
   }
   console.log("[gec-interop] deliverable submitted — redacted friction report");
 }
@@ -884,18 +1020,21 @@ export function extractToolPayload(result: unknown): unknown {
 }
 
 function parseVerdict(argv: string[]): VerifyVerdict | undefined {
-  const v = argv.find((a) => a.startsWith("--verdict="))?.split("=", 2)[1];
+  const a = argv.find((x) => x.startsWith("--verdict="));
+  const v = a?.slice(a.indexOf("=") + 1);
   if (v === "PASS" || v === "REVISE" || v === "FAIL") return v;
   if (v !== undefined) throw new Error("--verdict must be PASS|REVISE|FAIL");
   return undefined;
 }
 
 function parseNote(argv: string[]): string {
-  return argv.find((a) => a.startsWith("--note="))?.split("=", 2)[1] ?? "";
+  const a = argv.find((x) => x.startsWith("--note="));
+  return a?.slice(a.indexOf("=") + 1) ?? "";
 }
 
 function parseEvidence(argv: string[]): string[] {
-  const raw = argv.find((a) => a.startsWith("--evidence="))?.split("=", 2)[1];
+  const a = argv.find((x) => x.startsWith("--evidence="));
+  const raw = a?.slice(a.indexOf("=") + 1);
   return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
 }
 
@@ -928,7 +1067,7 @@ async function runVerify(t: Transcript, argv: string[]): Promise<void> {
       responseShape: responseShapeOf(r.result ?? r.error),
     });
     if (r.error || r.status !== 200 || isErr) {
-      stepFail(step, JSON.stringify(r.error ?? r.result));
+      stepFail(step, r.error ?? r.result);
     }
     return extractToolPayload(r.result);
   };
@@ -1076,7 +1215,20 @@ export function demandDeadlineFrom(now: Date): string {
 }
 
 // ─── Buyer state file (client-side idempotency) ──────────────────────
+/** Audit H2: strict resource-id shape — demand:owner:<32-hex> style. */
+export const ID_SHAPE_RE = /^(project|demand|award|bid|deliverable):[A-Za-z0-9_-]+:[a-fA-F0-9]{32}$/;
+
+export function validateBuyerId(id: string, label: string): string {
+  if (!ID_SHAPE_RE.test(id)) throw new Error(`${label} has unexpected id shape: ${id}`);
+  return id;
+}
+
 export interface BuyerState {
+  // Audit H3: state is bound to wallet + cap — a foreign/stale file that
+  // names a different owner or cap is rejected before any write.
+  wallet?: string;
+  cap_minor?: string;
+  pending?: { phase: string; at: string };
   project_id?: string;
   demand_id?: string;
   award_id?: string;
@@ -1084,30 +1236,66 @@ export interface BuyerState {
   updated_at?: string;
 }
 
+/** Audit H3: bind the state file to this wallet + cap on first write. */
+export function bindBuyerState(state: BuyerState, wallet: string): BuyerState {
+  if (state.wallet !== undefined && state.wallet.toLowerCase() !== wallet.toLowerCase()) {
+    throw new Error(`buyer state bound to ${state.wallet}, signer is ${wallet} — refusing`);
+  }
+  if (state.cap_minor !== undefined && state.cap_minor !== BUYER_CAP_MINOR) {
+    throw new Error(`buyer state cap ${state.cap_minor} != ${BUYER_CAP_MINOR} — refusing`);
+  }
+  return { ...state, wallet, cap_minor: BUYER_CAP_MINOR };
+}
+
 export function defaultBuyerStatePath(): string {
+  // Audit C2: resolve from the SCRIPT dir, not cwd — running from any other
+  // directory previously opened a different (empty) state file.
   return (
     process.env.GEC_BUYER_STATE ??
-    "../../docs/EPICS/209-gec-buyer-route/evidence/buyer-state.json"
+    resolve(SCRIPT_DIR, "../../../docs/EPICS/209-gec-buyer-route/evidence/buyer-state.json")
   );
 }
 
 export function loadBuyerState(path: string): BuyerState {
+  // Audit C2: only ENOENT means "nothing yet" — corrupt JSON, EACCES or any
+  // other failure aborts instead of silently resetting dedupe state.
   try {
-    const { readFileSync } = require("node:fs") as typeof import("node:fs");
     return JSON.parse(readFileSync(path, "utf8")) as BuyerState;
-  } catch {
-    return {};
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return {};
+    throw new Error(`buyer state unreadable at ${path}: ${(e as Error).message}`);
   }
 }
 
 export function saveBuyerState(path: string, s: BuyerState): void {
-  const { writeFileSync, mkdirSync } = require("node:fs") as typeof import("node:fs");
-  const { dirname } = require("node:path") as typeof import("node:path");
+  // Audit C2: atomic tmp+rename — a kill mid-write can no longer leave a
+  // truncated file that reads back as {}.
   mkdirSync(dirname(path), { recursive: true });
+  const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
   writeFileSync(
-    path,
+    tmp,
     JSON.stringify({ ...s, updated_at: new Date().toISOString() }, null, 2) + "\n",
   );
+  renameSync(tmp, path);
+}
+
+/** Audit H6: exclusive lockfile for the whole buyer run. */
+export function acquireBuyerLock(statePath: string): () => void {
+  const lockPath = `${statePath}.lock`;
+  let fd: number;
+  try {
+    fd = openSync(lockPath, "wx");
+  } catch {
+    throw new Error(`another buyer run holds ${lockPath} — refusing to run concurrently`);
+  }
+  writeFileSync(fd, `${process.pid}\n`);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    try { closeSync(fd); } catch { /* already closed */ }
+    try { unlinkSync(lockPath); } catch { /* already removed */ }
+  };
 }
 
 export function buyerPhaseDone(s: BuyerState, phase: string): boolean {
@@ -1119,8 +1307,18 @@ function markPhaseDone(s: BuyerState, phase: string): BuyerState {
 }
 
 // ─── Buyer phase plumbing ─────────────────────────────────────────────
+// Audit M8: indexOf-based split — "--x=a=b" keeps the full value, and an
+// empty value is rejected instead of silently degrading to the default.
+export function argValue(argv: string[], name: string): string | undefined {
+  const a = argv.find((x) => x.startsWith(`--${name}=`));
+  if (!a) return undefined;
+  const v = a.slice(a.indexOf("=") + 1);
+  if (!v) throw new Error(`--${name}= given an empty value`);
+  return v;
+}
+
 function parseStatePath(argv: string[]): string {
-  return argv.find((a) => a.startsWith("--state="))?.split("=", 2)[1] ?? defaultBuyerStatePath();
+  return argValue(argv, "state") ?? defaultBuyerStatePath();
 }
 
 function parseExecMode(argv: string[]): "auto" | "plan_only" {
@@ -1128,7 +1326,11 @@ function parseExecMode(argv: string[]): "auto" | "plan_only" {
 }
 
 function parseIdArg(argv: string[], name: string): string | undefined {
-  return argv.find((a) => a.startsWith(`--${name}=`))?.split("=", 2)[1];
+  const v = argValue(argv, name);
+  if (v !== undefined && !ID_SHAPE_RE.test(v)) {
+    throw new Error(`--${name}=${v} does not match the resource-id shape`);
+  }
+  return v;
 }
 
 /** First string value for any of `keys`, searched recursively in the tool payload. */
@@ -1146,7 +1348,7 @@ export function findKeyDeep(v: unknown, keys: string[]): string | undefined {
 async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: CookieJar; sessionId: string }> {
   const auth = await authenticateUserMcp(t);
   const tools = await mcpCall(GEC_ENDPOINTS.resource, "tools/list", {}, auth);
-  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", JSON.stringify(tools.error ?? tools.status));
+  if (tools.error || tools.status !== 200) stepFail("mcp-tools-list", tools.error ?? tools.status);
   const toolList = (tools.result as { tools?: { name: string; inputSchema?: unknown }[] })?.tools ?? [];
   const runTool = toolList.find((x) => x.name === "sasame_run");
   t.record({
@@ -1161,7 +1363,11 @@ async function buyerSession(t: Transcript): Promise<{ bearer: string; jar: Cooki
   return auth;
 }
 
-/** tools/call sasame_run with transcript record; returns extracted payload. */
+/** tools/call sasame_run with transcript record; returns extracted payload.
+ * Audit C3: write actions (draft/publish/apply/settlement_*) are
+ * NON-idempotent — no blind retry. Read actions (status/browse) may retry. */
+const SASAME_READ_ACTIONS: ReadonlySet<BuyerAction> = new Set(["status", "browse"]);
+
 async function sasameRun(
   t: Transcript,
   auth: { bearer: string; jar: CookieJar; sessionId: string },
@@ -1169,10 +1375,11 @@ async function sasameRun(
   step: string,
 ): Promise<unknown> {
   const gec = (args.context as { gec?: Record<string, unknown> }).gec ?? {};
+  const readOnly = SASAME_READ_ACTIONS.has(gec.action as BuyerAction);
   const r = await mcpCall(
     GEC_ENDPOINTS.resource, "tools/call",
     { name: "sasame_run", arguments: args },
-    auth,
+    { ...auth, allowRetry: readOnly },
   );
   const isErr = (r.result as { isError?: boolean })?.isError;
   t.record({
@@ -1182,7 +1389,7 @@ async function sasameRun(
     responseShape: responseShapeOf(r.result ?? r.error),
   });
   if (r.error || r.status !== 200 || isErr) {
-    stepFail(step, JSON.stringify(r.error ?? r.result));
+    stepFail(step, r.error ?? r.result);
   }
   return extractToolPayload(r.result);
 }
@@ -1217,111 +1424,245 @@ export const LIFECYCLE_STEPS = [
 ] as const;
 
 // ─── Phase runners ────────────────────────────────────────────────────
+// Audit H2/H3 pattern (all write phases):
+//   1. bindBuyerState — state file must name THIS wallet + cap
+//   2. pending marker persisted BEFORE the remote write
+//   3. ID extracted, shape-validated, printed BEFORE the save
+//   4. post-write read-only status read-back confirms server-side state
+//      before phases_done is marked — a "pending approval" reply can no
+//      longer be mistaken for a completed write
+//   5. stale pending on re-run → refuse to create a second entity; the
+//      operator resolves via a status read-back or --force
+
+function pendingGuard(state: BuyerState, phase: string, argv: string[]): void {
+  if (state.pending && !argv.includes("--force")) {
+    stepFail(
+      `pending-${phase}`,
+      `stale pending marker ${JSON.stringify(state.pending)} — a write may have ` +
+      `already landed. Run a status read-back (--phase=lifecycle) or pass --force`,
+    );
+  }
+}
+
 async function runBuyerProject(t: Transcript, argv: string[]): Promise<void> {
   const statePath = parseStatePath(argv);
-  let state = loadBuyerState(statePath);
-  if (buyerPhaseDone(state, "project") && state.project_id) {
-    console.log(`[gec-interop] project already created: ${state.project_id} — idempotent skip`);
-    return;
-  }
-  const auth = await buyerSession(t);
-  const mode = parseExecMode(argv);
-  const args = buildSasameRunArgs({
-    goal: BUYER_GOAL_PROJECT,
-    action: "draft",
-    projectName: BUYER_PROJECT_NAME,
-    acquisitionChannel: "OTHER_AGENT",
-    constraints: ["project draft only — no demand, no publication"],
-    executionMode: mode,
-  });
-  const payload = await sasameRun(t, auth, args, "sasame_run-project-draft");
-  if (mode === "auto") {
-    const pid = findKeyDeep(payload, ["project_id"]) ?? state.project_id;
-    if (!pid) stepFail("sasame_run-project-draft", "auto run returned no project_id");
-    state = markPhaseDone({ ...state, project_id: pid }, "project");
-    saveBuyerState(statePath, state);
-    console.log(`[gec-interop] project created: ${pid} — state → ${statePath}`);
-  } else {
-    console.log("[gec-interop] plan_only — draft returned, nothing written (use --submit post-audit 209-3/209-4)");
+  const release = acquireBuyerLock(statePath);
+  try {
+    const { address } = loadWallet();
+    let state = bindBuyerState(loadBuyerState(statePath), address);
+    if (buyerPhaseDone(state, "project") && state.project_id) {
+      console.log(`[gec-interop] project already created: ${state.project_id} — idempotent skip`);
+      return;
+    }
+    pendingGuard(state, "project", argv);
+    const auth = await buyerSession(t);
+    const mode = parseExecMode(argv);
+    const args = buildSasameRunArgs({
+      goal: BUYER_GOAL_PROJECT,
+      action: "draft",
+      projectName: BUYER_PROJECT_NAME,
+      acquisitionChannel: "OTHER_AGENT",
+      constraints: ["project draft only — no demand, no publication"],
+      executionMode: mode,
+    });
+    if (mode === "auto") {
+      state = { ...state, pending: { phase: "project", at: new Date().toISOString() } };
+      saveBuyerState(statePath, state);
+    }
+    const payload = await sasameRun(t, auth, args, "sasame_run-project-draft");
+    if (mode === "auto") {
+      const pid = findKeyDeep(payload, ["project_id"]);
+      if (!pid) stepFail("sasame_run-project-draft", `auto run returned no project_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
+      validateBuyerId(pid, "project_id");
+      console.log(`[gec-interop] project created: ${pid}`); // printed BEFORE save
+      const check = await sasameRun(t, auth, buildSasameRunArgs({
+        goal: "Read-only: confirm the project draft exists.", action: "status",
+        projectId: pid, executionMode: "plan_only",
+      }), "sasame_run-project-status");
+      const confirmed = findKeyDeep(check, ["project_id"]) === pid;
+      if (!confirmed) {
+        stepFail("sasame_run-project-status", `read-back did not confirm ${pid} — NOT marking done; re-run to verify`);
+      }
+      state = markPhaseDone({ ...state, project_id: pid, pending: undefined }, "project");
+      saveBuyerState(statePath, state);
+      console.log(`[gec-interop] confirmed + persisted: ${pid} — state → ${statePath}`);
+    } else {
+      console.log("[gec-interop] plan_only — draft returned, nothing written (use --submit post-audit)");
+    }
+  } finally {
+    release();
   }
 }
 
 async function runBuyerDemand(t: Transcript, argv: string[]): Promise<void> {
   const statePath = parseStatePath(argv);
-  let state = loadBuyerState(statePath);
-  if (buyerPhaseDone(state, "demand") && state.demand_id) {
-    console.log(`[gec-interop] demand already created: ${state.demand_id} — idempotent skip`);
-    return;
+  const release = acquireBuyerLock(statePath);
+  try {
+    const { address } = loadWallet();
+    let state = bindBuyerState(loadBuyerState(statePath), address);
+    if (buyerPhaseDone(state, "demand") && state.demand_id) {
+      console.log(`[gec-interop] demand already created: ${state.demand_id} — idempotent skip`);
+      return;
+    }
+    pendingGuard(state, "demand", argv);
+    const projectId = parseIdArg(argv, "project") ?? state.project_id;
+    if (!projectId) stepFail("demand-args", "no project_id — run --phase=project first or pass --project=<id>");
+    validateBuyerId(projectId, "project_id");
+    if (state.project_id && projectId !== state.project_id && !argv.includes("--force")) {
+      stepFail("demand-args", `--project=${projectId} differs from state ${state.project_id} — --force to override`);
+    }
+    const auth = await buyerSession(t);
+    const mode = parseExecMode(argv);
+    const deadline = demandDeadlineFrom(new Date());
+    const args = buildSasameRunArgs({
+      goal: BUYER_GOAL_DEMAND,
+      action: "draft",
+      projectId,
+      budgetMinor: BUYER_CAP_MINOR,
+      deadline,
+      expectedCompletion: deadline,
+      acquisitionChannel: "OTHER_AGENT",
+      constraints: [
+        "verification_policy EXTERNAL_OUTCOME",
+        "verification_assurance DECLARED_POLICY_ONLY",
+        "machine-checkable acceptance criteria per D-209-5",
+        "demand draft only — no publication in this phase",
+      ],
+      executionMode: mode,
+    });
+    if (mode === "auto") {
+      state = { ...state, pending: { phase: "demand", at: new Date().toISOString() } };
+      saveBuyerState(statePath, state);
+    }
+    const payload = await sasameRun(t, auth, args, "sasame_run-demand-draft");
+    if (mode === "auto") {
+      const did = findKeyDeep(payload, ["demand_id"]);
+      if (!did) stepFail("sasame_run-demand-draft", `auto run returned no demand_id in ${JSON.stringify(redact(payload)).slice(0, 400)}`);
+      validateBuyerId(did, "demand_id");
+      console.log(`[gec-interop] demand created: ${did}`); // printed BEFORE save
+      const check = await sasameRun(t, auth, buildSasameRunArgs({
+        goal: "Read-only: confirm the demand draft exists with the right budget.",
+        action: "status", demandId: did, projectId, executionMode: "plan_only",
+      }), "sasame_run-demand-status");
+      const confirmed = findKeyDeep(check, ["demand_id"]) === did;
+      if (!confirmed) {
+        stepFail("sasame_run-demand-status", `read-back did not confirm ${did} — NOT marking done; re-run to verify`);
+      }
+      state = markPhaseDone({ ...state, project_id: projectId, demand_id: did, pending: undefined }, "demand");
+      saveBuyerState(statePath, state);
+      console.log(`[gec-interop] confirmed + persisted: ${did} — state → ${statePath}`);
+    } else {
+      console.log("[gec-interop] plan_only — demand draft returned, nothing written (use --submit post-audit)");
+    }
+  } finally {
+    release();
   }
-  const projectId = parseIdArg(argv, "project") ?? state.project_id;
-  if (!projectId) stepFail("demand-args", "no project_id — run --phase=project first or pass --project=<id>");
-  const auth = await buyerSession(t);
-  const mode = parseExecMode(argv);
-  const deadline = demandDeadlineFrom(new Date());
-  const args = buildSasameRunArgs({
-    goal: BUYER_GOAL_DEMAND,
-    action: "draft",
-    projectId,
-    budgetMinor: BUYER_CAP_MINOR,
-    deadline,
-    expectedCompletion: deadline,
-    acquisitionChannel: "OTHER_AGENT",
-    constraints: [
-      "verification_policy EXTERNAL_OUTCOME",
-      "verification_assurance DECLARED_POLICY_ONLY",
-      "machine-checkable acceptance criteria per D-209-5",
-      "demand draft only — no publication in this phase",
-    ],
-    executionMode: mode,
+}
+
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+const ERC20_BALANCE = parseAbi(["function balanceOf(address) view returns (uint256)"]);
+
+/** Audit H3: publish is funded-only — funding-state must show the CCTP mint
+ * AND the buyer's on-chain Base USDC must cover the cap. */
+async function assertPublishFunded(statePath: string, wallet: string): Promise<void> {
+  const fundingPath =
+    process.env.GEC_FUNDING_STATE ??
+    resolve(dirname(statePath), "funding-state.json");
+  if (!existsSync(fundingPath)) {
+    stepFail("publish-funding", `no funding-state.json at ${fundingPath} — run the CCTP funding leg first`);
+  }
+  const funding = JSON.parse(readFileSync(fundingPath, "utf8")) as { mint_tx?: string };
+  if (!funding.mint_tx) {
+    stepFail("publish-funding", `funding-state at ${fundingPath} has no mint_tx — mint on Base first`);
+  }
+  const pub = createPublicClient({ chain: base, transport: http() });
+  const bal = await pub.readContract({
+    address: USDC_BASE, abi: ERC20_BALANCE, functionName: "balanceOf", args: [wallet as `0x${string}`],
   });
-  const payload = await sasameRun(t, auth, args, "sasame_run-demand-draft");
-  if (mode === "auto") {
-    const did = findKeyDeep(payload, ["demand_id"]) ?? state.demand_id;
-    if (!did) stepFail("sasame_run-demand-draft", "auto run returned no demand_id");
-    state = markPhaseDone({ ...state, project_id: projectId, demand_id: did }, "demand");
-    saveBuyerState(statePath, state);
-    console.log(`[gec-interop] demand created: ${did} — state → ${statePath}`);
-  } else {
-    console.log("[gec-interop] plan_only — demand draft returned, nothing written (use --submit post-audit 209-3/209-4)");
+  if (bal < BigInt(BUYER_CAP_MINOR)) {
+    stepFail("publish-funding",
+      `buyer Base USDC ${Number(bal) / 1e6} < cap ${Number(BUYER_CAP_MINOR) / 1e6} — funding not landed`);
   }
+  console.log(`[gec-interop] funding verified: mint_tx=${funding.mint_tx} baseUsdc=${Number(bal) / 1e6} ≥ cap`);
 }
 
 async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
   const statePath = parseStatePath(argv);
-  let state = loadBuyerState(statePath);
-  if (buyerPhaseDone(state, "publish")) {
-    console.log(`[gec-interop] demand already published: ${state.demand_id ?? "?"} — idempotent skip`);
-    return;
-  }
-  const demandId = parseIdArg(argv, "demand") ?? state.demand_id;
-  if (!demandId) stepFail("publish-args", "no demand_id — run --phase=demand first or pass --demand=<id>");
-  const auth = await buyerSession(t);
-  const mode = parseExecMode(argv);
-  const args = buildSasameRunArgs({
-    goal: "Publish the drafted Demand so external providers can bid on it.",
-    action: "publish",
-    demandId,
-    projectId: state.project_id,
-    confirmed: mode === "auto",
-    acquisitionChannel: "OTHER_AGENT",
-    executionMode: mode,
-  });
-  const payload = await sasameRun(t, auth, args, "sasame_run-demand-publish");
-  if (mode === "auto") {
-    state = markPhaseDone({ ...state, demand_id: demandId }, "publish");
-    saveBuyerState(statePath, state);
-    console.log(`[gec-interop] demand published: ${demandId}`);
-  } else {
-    console.log("[gec-interop] plan_only — publish dry-run only (use --submit post-audit 209-3/209-4)");
-    void payload;
+  const release = acquireBuyerLock(statePath);
+  try {
+    const { address } = loadWallet();
+    let state = bindBuyerState(loadBuyerState(statePath), address);
+    if (buyerPhaseDone(state, "publish")) {
+      console.log(`[gec-interop] demand already published: ${state.demand_id ?? "?"} — idempotent skip`);
+      return;
+    }
+    pendingGuard(state, "publish", argv);
+    const demandId = parseIdArg(argv, "demand") ?? state.demand_id;
+    if (!demandId) stepFail("publish-args", "no demand_id — run --phase=demand first or pass --demand=<id>");
+    validateBuyerId(demandId, "demand_id");
+    if (state.demand_id && demandId !== state.demand_id && !argv.includes("--force")) {
+      stepFail("publish-args", `--demand=${demandId} differs from state ${state.demand_id} — --force to override`);
+    }
+    const auth = await buyerSession(t);
+    const mode = parseExecMode(argv);
+    if (mode === "auto") {
+      // Audit H3: never publish an unfunded or unverified Demand.
+      await assertPublishFunded(statePath, address);
+      const pre = await sasameRun(t, auth, buildSasameRunArgs({
+        goal: "Read-only: report the draft demand's current state before publish.",
+        action: "status", demandId, projectId: state.project_id, executionMode: "plan_only",
+      }), "sasame_run-pre-publish-status");
+      if (findKeyDeep(pre, ["demand_id"]) !== demandId) {
+        stepFail("pre-publish-status", `status read-back does not confirm ${demandId} — refusing to publish`);
+      }
+      console.log(`[gec-interop] pre-publish status confirmed ${demandId}`);
+    }
+    const args = buildSasameRunArgs({
+      goal: "Publish the drafted Demand so external providers can bid on it. Deadline is T+7d from now.",
+      action: "publish",
+      demandId,
+      projectId: state.project_id,
+      deadline: demandDeadlineFrom(new Date()), // audit H3: T+7d from PUBLISH
+      confirmed: mode === "auto",
+      acquisitionChannel: "OTHER_AGENT",
+      executionMode: mode,
+    });
+    if (mode === "auto") {
+      state = { ...state, pending: { phase: "publish", at: new Date().toISOString() } };
+      saveBuyerState(statePath, state);
+    }
+    const payload = await sasameRun(t, auth, args, "sasame_run-demand-publish");
+    if (mode === "auto") {
+      const check = await sasameRun(t, auth, buildSasameRunArgs({
+        goal: "Read-only: confirm the demand is published/OPEN.",
+        action: "status", demandId, projectId: state.project_id, executionMode: "plan_only",
+      }), "sasame_run-post-publish-status");
+      if (findKeyDeep(check, ["demand_id"]) !== demandId) {
+        stepFail("post-publish-status", `read-back did not confirm ${demandId} — NOT marking done; verify manually`);
+      }
+      state = markPhaseDone({ ...state, demand_id: demandId, pending: undefined }, "publish");
+      saveBuyerState(statePath, state);
+      console.log(`[gec-interop] demand published + confirmed: ${demandId}`);
+    } else {
+      console.log("[gec-interop] plan_only — publish dry-run only (use --submit post-audit)");
+      void payload;
+    }
+  } finally {
+    release();
   }
 }
 
 async function runBuyerLifecycle(t: Transcript, argv: string[]): Promise<void> {
   const statePath = parseStatePath(argv);
-  const state = loadBuyerState(statePath);
+  const { address } = loadWallet();
+  const state = bindBuyerState(loadBuyerState(statePath), address);
   const demandId = parseIdArg(argv, "demand") ?? state.demand_id;
   if (!demandId) stepFail("lifecycle-args", "no demand_id — publish a demand first or pass --demand=<id>");
+  // Audit M7: lifecycle is read-only — --submit has no business flipping a
+  // status report into "auto". Reject it outright instead of passing it on.
+  if (argv.includes("--submit")) {
+    stepFail("lifecycle-args", "--submit is meaningless on a read-only status report");
+  }
   const auth = await buyerSession(t);
   const args = buildSasameRunArgs({
     goal: BUYER_GOAL_LIFECYCLE,
@@ -1329,10 +1670,10 @@ async function runBuyerLifecycle(t: Transcript, argv: string[]): Promise<void> {
     demandId,
     projectId: state.project_id,
     constraints: ["read-only lifecycle report — no writes"],
-    executionMode: parseExecMode(argv),
+    executionMode: "plan_only", // hard-coded — never auto
   });
   const payload = await sasameRun(t, auth, args, "sasame_run-demand-status");
-  console.log(`[gec-interop] lifecycle status: ${JSON.stringify(payload).slice(0, 800)}`);
+  console.log(`[gec-interop] lifecycle status: ${JSON.stringify(redact(payload)).slice(0, 800)}`);
 }
 
 async function main(): Promise<void> {
@@ -1351,7 +1692,9 @@ async function main(): Promise<void> {
                   : AWARD_STEPS;
 
   console.log(`[gec-interop] phase=${phase}`);
-  console.log(`[gec-interop] wallet=${address} (burner, EIP-191 only, zero-funds)`);
+  // Audit H5: no longer "zero-funds" — this key also holds the buyer's
+  // funded Base USDC, which is exactly why challenge validation exists.
+  console.log(`[gec-interop] wallet=${address} (funded buyer wallet — EIP-191 + Base USDC)`);
   console.log(`[gec-interop] client_id=${clientId()}`);
   console.log(`[gec-interop] redirect_uri=${redirectUri()}`);
   console.log(`[gec-interop] target demand=${GEC_TARGET_DEMAND}`);
@@ -1363,7 +1706,7 @@ async function main(): Promise<void> {
     if (phase === "rehearsal") {
       await runRehearsal(t);
     } else if (phase === "bid") {
-      await runBid(t);
+      await runBid(t, process.argv.slice(2));
     } else if (phase === "tools") {
       await runTools(t);
     } else if (phase === "verify") {
@@ -1376,8 +1719,12 @@ async function main(): Promise<void> {
       await runBuyerPublish(t, process.argv.slice(2));
     } else if (phase === "lifecycle") {
       await runBuyerLifecycle(t, process.argv.slice(2));
+    } else if (phase === "award") {
+      // Audit H4: explicit case — the old fallthrough ran award for ANY
+      // unmatched phase, a fragile default for an irreversible write.
+      await runAward(t, process.argv.slice(2));
     } else {
-      await runAward(t);
+      stepFail("dispatch", `unhandled phase ${phase} — exhaustive dispatch, no default`);
     }
   } finally {
     const out = outPath(process.argv.slice(2));
