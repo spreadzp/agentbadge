@@ -595,6 +595,25 @@ describe("statusTermsProblems + assertNoPendingMarkers (audit N-2)", () => {
     // A moderation object reporting an active queue IS a marker
     expect(() => assertNoPendingMarkers({ moderation: { pending: true } }, "x")).toThrow(/pending/);
     expect(() => assertNoPendingMarkers({ moderation: { status: "in_review" } }, "x")).toThrow(/pending/);
+    // N5-1: resolved-shaped keys are checked by VALUE, not presence —
+    // {approved:false} IS suspicious; {pending:false} alone is NOT pending.
+    expect(() => assertNoPendingMarkers({ moderation: { approved: false } }, "x")).toThrow(/pending/);
+    expect(() => assertNoPendingMarkers({ moderation: { passed: false } }, "x")).toThrow(/pending/);
+    expect(() => assertNoPendingMarkers({ moderation: { pending: false } }, "x")).not.toThrow();
+    expect(() => assertNoPendingMarkers({ moderation: "passed" }, "x")).not.toThrow();
+  });
+  it("re-audit 5: scope prefers the term-rich match; empty-string own id does not shadow", () => {
+    // A bare bid quoting demand_id must not become the scope — the demand
+    // object carrying project_id/budget/state is richer in term keys.
+    const bidFirst = {
+      bid: { demand_id: terms.id, note: "provider bid" },
+      demand: { ...okCheck },
+    };
+    expect(statusTermsProblems(bidFirst, terms)).toEqual([]);
+    // N5-7: an empty-string own-level demand_id must not shadow the real
+    // nested one.
+    const shadowedId = { wrapper: { demand_id: "", nested: { ...okCheck } } };
+    expect(statusTermsProblems(shadowedId, terms)).toEqual([]);
   });
   it("re-audit 3: falsy first pending match does not hide a truthy second", () => {
     // {settlement:{pending:false}, awaiting_approval:true} must flag.

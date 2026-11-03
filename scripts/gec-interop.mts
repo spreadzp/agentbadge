@@ -1009,7 +1009,7 @@ async function runAward(t: Transcript, argv: string[]): Promise<void> {
     // and would skip to the deliverable write. Re-audit 3: word boundaries
     // ("14091" must not match "409", "unconflicted" must not match "conflict")
     // plus snake_case error codes (award_already_accepted).
-    if (/already[_\s-]+(accepted|awarded|taken|exists)|already_accepted|duplicate[^a-z0-9]{0,30}(award|accept|request)|conflict[^a-z0-9]{0,30}(award|accept|request)|http[^0-9]{0,10}409\b/i.test(blob)) {
+    if (/already[_\s-]+(accepted|taken)|already_accepted|award[_\s-]{0,20}already[_\s-]+(awarded|accepted|exists|taken)|duplicate[^a-z0-9]{0,30}(award|accept|request)|conflict[^a-z0-9]{0,30}(award|accept|request)|http[^0-9]{0,10}409\b/i.test(blob)) {
       console.log("[gec-interop] award already accepted server-side — resuming at deliverable");
     } else {
       stepFail("gec_award_accept", accept.error ?? accept.result);
@@ -1473,7 +1473,9 @@ export function findKeyDeep(v: unknown, keys: string[]): string | undefined {
   // order — with several state keys on one object the caller's priority wins
   // (generic "state" before "publication_state"), not JSON key luck.
   for (const k of keys) {
-    if (typeof o[k] === "string") return o[k] as string;
+    // Re-audit 5 N5-7: an empty-string own value must not shadow a real
+    // nested value — "" is falsy data, not a match.
+    if (typeof o[k] === "string" && (o[k] as string).length > 0) return o[k] as string;
   }
   for (const val of Object.values(o)) {
     const deep = findKeyDeep(val, keys);
@@ -1500,19 +1502,26 @@ function findAllKeyValues(v: unknown, keys: string[], acc: unknown[] = []): unkn
 function pendingMarker(v: unknown): boolean {
   if (v === undefined || v === null || v === false) return false;
   if (typeof v === "string") {
-    return v.length > 0 && !/^(false|0|none|null|no|approved|resolved|completed|done|settled|final|ready|granted|rejected)$/i.test(v);
+    return v.length > 0 && !/^(false|0|none|null|no|approved|resolved|completed|done|settled|final|ready|granted|rejected|passed|ok|clear|complete|success|not_required|skipped)$/i.test(v);
   }
   if (typeof v === "number") return v !== 0;
   if (Array.isArray(v)) return v.length > 0;
   if (typeof v === "object") {
     const o = v as Record<string, unknown>;
-    // Re-audit 4: a non-empty moderation/pending OBJECT isn't automatically
-    // pending — resolve it: nested pending keys, a status-like field, or
-    // resolved-shaped keys ({passed:true}, {approved:true}, …).
-    if (findAllKeyValues(o, PENDING_KEYS).some(pendingMarker)) return true;
+    // Re-audit 5 N5-1: resolve objects by VALUE, not key presence —
+    // {approved:false} IS suspicious (fail open before), and {pending:false}
+    // alone is NOT pending (false positive before).
+    const nested = findAllKeyValues(o, PENDING_KEYS);
+    if (nested.length) return nested.some(pendingMarker);
     const st = o.status ?? o.state ?? o.result;
     if (st !== undefined) return pendingMarker(st);
-    if (Object.keys(o).some((k) => /^(passed|approved|resolved|ok|clear|completed|granted)$/i.test(k))) return false;
+    for (const k of Object.keys(o)) {
+      if (/^(passed|approved|resolved|ok|clear|completed|granted)$/i.test(k)) {
+        const kv = o[k];
+        // resolved-shaped key — resolved only if the VALUE says so.
+        return !(kv === true || (typeof kv === "string" && /^(true|yes|approved|passed|ok)$/i.test(kv)));
+      }
+    }
     return Object.keys(o).length > 0;
   }
   return Boolean(v);
@@ -1527,16 +1536,30 @@ const PENDING_KEYS = ["pending", "awaiting_approval", "moderation", "is_pending"
  * Re-audit 3: array elements ARE searched (a demand inside a list must not
  * fail closed). */
 function findObjectWithKey(v: unknown, keys: string[], want?: string): Record<string, unknown> | undefined {
-  if (!v || typeof v !== "object") return undefined;
-  if (!Array.isArray(v)) {
-    const o = v as Record<string, unknown>;
-    if (keys.some((k) => k in o && (want === undefined || o[k] === want))) return o;
+  // Re-audit 5 N5-5: collect ALL id-echoing objects, prefer the one richest
+  // in term keys (project_id / budget / state) — a bid or link object that
+  // merely quotes our demand_id must not become the scope.
+  const matches: Record<string, unknown>[] = [];
+  const TERM_KEYS = [
+    "project_id", "budget_minor", "max_budget_minor", "cap_minor",
+    "state", "status", "demand_state", "project_state", "lifecycle_state", "publication_state",
+  ];
+  const walk = (x: unknown): void => {
+    if (!x || typeof x !== "object") return;
+    if (!Array.isArray(x)) {
+      const o = x as Record<string, unknown>;
+      if (keys.some((k) => k in o && (want === undefined || o[k] === want))) matches.push(o);
+    }
+    for (const val of Object.values(x)) walk(val);
+  };
+  walk(v);
+  let best: Record<string, unknown> | undefined;
+  let bestScore = -1;
+  for (const m of matches) {
+    const score = TERM_KEYS.filter((k) => k in m).length;
+    if (score > bestScore) { best = m; bestScore = score; }
   }
-  for (const val of Object.values(v)) {
-    const deep = findObjectWithKey(val, keys, want);
-    if (deep) return deep;
-  }
-  return undefined;
+  return best;
 }
 
 /** OAuth + tools/list; fails closed unless sasame_run is advertised. */
@@ -1921,7 +1944,11 @@ async function runBuyerPublish(t: Transcript, argv: string[]): Promise<void> {
       const preProblems = statusTermsProblems(pre, {
         id: demandId, idKeys: ["demand_id"], projectId: state.project_id,
         budgetMinor: BUYER_CAP_MINOR,
-        allowedStates: ["DRAFT", "CREATED", "PENDING_REVIEW", "READY"],
+        // Re-audit 5 N5-3: PENDING_REVIEW is NOT a publishable state — it
+        // appears when a publish already landed and sits in the moderation
+        // queue. Allowing it would let an --ignore-pending re-run publish a
+        // second time. Fresh drafts are DRAFT/CREATED/READY.
+        allowedStates: ["DRAFT", "CREATED", "READY"],
       });
       if (preProblems.length) {
         stepFail("pre-publish-status", `status terms failed for ${demandId}: ${preProblems.join("; ")} — refusing to publish`);

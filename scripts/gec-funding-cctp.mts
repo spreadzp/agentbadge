@@ -151,6 +151,11 @@ export function buildDepositForBurnArgs(
   recipient: Address,
   maxFee: bigint = MAX_FEE_MINOR,
 ): readonly [bigint, number, Hex, Address, Hex, bigint, number] {
+  // Re-audit 5 N5-2: a bogus (non-positive or over-ceiling) fee must die here
+  // — the approve tx is sent BEFORE viem's encoding check would throw.
+  if (maxFee <= 0n || maxFee > MAX_FEE_MINOR) {
+    throw new Error(`maxFee ${maxFee} out of bounds (0, ${MAX_FEE_MINOR}] — refusing to build burn args`);
+  }
   return [
     amountMinor,
     BASE_DOMAIN,
@@ -468,6 +473,7 @@ export function bpsFeeMinor(amountMinor: bigint, bps: number): bigint {
 }
 
 async function fetchMaxFee(amount: bigint): Promise<bigint> {
+  let quoted: bigint | undefined;
   try {
     const r = await fetch(`${IRIS_API}/v2/burn/USDC/fees/${ARC_DOMAIN}/${BASE_DOMAIN}`, {
       signal: AbortSignal.timeout(15_000),
@@ -475,22 +481,33 @@ async function fetchMaxFee(amount: bigint): Promise<bigint> {
     if (r.ok) {
       const j = (await r.json()) as { finalityThreshold?: number; minimumFee?: number | string }[] | { fees?: { finalityThreshold?: number; minimumFee?: number | string }[]; minimumFee?: number | string };
       const tiers = Array.isArray(j) ? j : (j.fees ?? []);
-      const tier = tiers.find((t) => t.finalityThreshold === MIN_FINALITY_THRESHOLD) ?? tiers[0];
+      // Re-audit 5 N5-4a: only the threshold-1000 (fast) tier is usable — a
+      // tiers[0] fallback could silently pick the standard (0bps) tier and
+      // under-fund a fast burn. No fast tier → conservative ceiling.
+      const tier = tiers.find((t) => t.finalityThreshold === MIN_FINALITY_THRESHOLD);
       const raw = tier?.minimumFee ?? (!Array.isArray(j) ? j.minimumFee : undefined);
       if (raw !== undefined) {
         // Re-audit 2 N-12: shape determines the unit — never guess by size.
         // Array/tier shape: minimumFee is basis points. Object shape: already
         // micro-USDC. Re-audit 4 N-12: fractional bps via bpsFeeMinor
-        // (divisor 1e8 — 1e9 under-capped 10×) and clamp to the 0.05 USDC
-        // ceiling — a live quote must not exceed MAX_FEE either.
+        // (divisor 1e8 — 1e9 under-capped 10×).
         const n = Number(raw);
-        const quoted = tier ? bpsFeeMinor(amount, n) : BigInt(Math.ceil(n));
-        const cap = computeMaxFee(quoted);
-        return cap > MAX_FEE_MINOR ? MAX_FEE_MINOR : (cap || 1_000n);
+        if (!Number.isFinite(n) || n < 0) return MAX_FEE_MINOR; // N5-2: bogus quote → ceiling
+        quoted = tier ? bpsFeeMinor(amount, n) : BigInt(Math.ceil(n));
       }
     }
   } catch { /* fall through to the conservative ceiling */ }
-  return MAX_FEE_MINOR;
+  if (quoted === undefined || quoted < 0n) return MAX_FEE_MINOR;
+  // Re-audit 5 N5-4b: a live quote above the ceiling aborts loudly — silently
+  // clamping could under-fund the fast transfer on an irreversible step.
+  if (quoted > MAX_FEE_MINOR) {
+    throw new Error(
+      `live fee quote ${quoted} micro-USDC exceeds the ${MAX_FEE_MINOR} ceiling — ` +
+      `refusing to under-fund the burn; raise MAX_FEE or wait for lower fees`,
+    );
+  }
+  const cap = computeMaxFee(quoted);
+  return cap > MAX_FEE_MINOR ? MAX_FEE_MINOR : (cap || 1_000n);
 }
 
 // ─── Attestation polling (audit M2) ─────────────────────────────────────
