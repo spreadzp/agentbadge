@@ -64,7 +64,8 @@ describe("SLICE-206-1 machine descriptor", () => {
   it("machineEntrySchema round-trip", () => {
     const entry = buildMachineEntry({
       id: "task_abc123",
-      budgetUsdc: 3.5,
+      budget: 3.5,
+      currency: "USDC",
       budgetStatus: "ESCROWED",
       deadline: "2026-11-10T00:00:00Z",
       requiredCapabilities: ["code-review"],
@@ -91,7 +92,7 @@ describe("SLICE-206-1 machine descriptor", () => {
   });
 
   it("builder defaults: zero-budget task, no deadline", () => {
-    const entry = buildMachineEntry({ id: "task_zero", budgetUsdc: 0 });
+    const entry = buildMachineEntry({ id: "task_zero", budget: 0 });
     expect(entry.budget_status).toBe("DECLARED_NOT_RESERVED");
     expect(entry.deadline).toBeNull();
     expect(entry.required_capabilities).toEqual([]);

@@ -116,7 +116,9 @@ export type MachineEntryCall = z.infer<typeof callSchema>;
 
 export const machineEntrySchema = z.object({
   task_id: z.string().min(1),
-  budget_usdc: z.number().nonnegative(),
+  budget: z.number().nonnegative(),
+  /** Settlement currency — "HBAR" on the legacy market store, "USDC" on x402. */
+  currency: z.string(),
   budget_status: budgetStatusSchema,
   /** ISO-8601 deadline; null when the task has none. */
   deadline: z.string().nullable(),
@@ -138,7 +140,8 @@ const PHASE_ARGS: Partial<Record<EndpointDef["phase"], string[]>> = {
 
 export interface MachineEntryTask {
   id: string;
-  budgetUsdc: number;
+  budget: number;
+  currency?: string;
   budgetStatus?: BudgetStatus;
   /** ISO string or epoch ms. */
   deadline?: string | number | null;
@@ -165,7 +168,8 @@ export function buildMachineEntry(task: MachineEntryTask): MachineEntry {
         : task.deadline;
   return machineEntrySchema.parse({
     task_id: task.id,
-    budget_usdc: task.budgetUsdc,
+    budget: task.budget,
+    currency: task.currency ?? "USDC",
     budget_status: task.budgetStatus ?? "DECLARED_NOT_RESERVED",
     deadline,
     required_capabilities: task.requiredCapabilities ?? [],

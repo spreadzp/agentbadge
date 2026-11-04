@@ -42,8 +42,10 @@ export async function postTask(c: Context): Promise<Response> {
       return errorResponse(c, 400, ErrorCodes.INVALID_CAPABILITIES, "capabilities must be a non-empty array");
     }
 
-    if (typeof priceHbar !== "number" || priceHbar <= 0) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a positive number");
+    // EPIC-206-3 (D-206-6): priceHbar 0 allowed — reputation-only task,
+    // budget_status stays DECLARED_NOT_RESERVED, escrow path skipped.
+    if (typeof priceHbar !== "number" || priceHbar < 0) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_PRICE, "priceHbar must be a non-negative number");
     }
 
     // Assert verified DID matches actor field (defense-in-depth)

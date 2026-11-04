@@ -46,6 +46,7 @@ import { teamRoutes } from "./agent-guide/team";
 import { a2aRoutes } from "./a2a";
 import { a2aSpecRoutes } from "./a2a-spec";
 import { marketRoutes } from "./market";
+import { tasksReadRoutes } from "./tasks-read";
 import { metaRoutes } from "./meta";
 import { searchRoutes } from "./search";
 import { marketGuideRoutes } from "./market-guide";
@@ -143,6 +144,7 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/a2a", a2aSpecRoutes);
   app.route("/", a2aRoutes);
   app.route("/", marketRoutes);
+  app.route("/", tasksReadRoutes); // EPIC-206-3: keyless agent read layer
   app.route("/", metaRoutes);
   app.route("/", searchRoutes);
   app.route("/", marketGuideRoutes);
