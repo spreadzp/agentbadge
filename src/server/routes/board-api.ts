@@ -99,7 +99,20 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
   // ─── claim (off-chain, 199-07) ──────────────────────────────
   app.post(
     "/api/board/cards/:id/claim",
-    dr("Off-chain board claim"),
+    dr("Off-chain board claim", {
+      // SLICE-206-10: real body contract — Bearer agb_ auth header plus
+      // payout-wallet EIP-191 signature over board-claim:<chainId>:<cardId>
+      // :<jobAttempt>:<wallet-lowercase>:<expiresAtMs> (sigExpiresAt ≤ now+10min).
+      "x-examples": {
+        headers: { authorization: "Bearer agb_<key>" },
+        request: {
+          payoutWallet: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
+          claimSig: "0x<eip191-signature-over-board-claim-message>",
+          sigExpiresAt: 1762800000000,
+        },
+        response: { card: { cardId: "board_<hex>", column: "in_progress" } },
+      },
+    }),
     async (c) => {
       const agent = c.get("agent");
       if (!agent?.agentId) return denyPassport(c);
@@ -146,7 +159,19 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
   // ─── submit (lease holder) ──────────────────────────────────
   app.post(
     "/api/board/cards/:id/submit",
-    dr("Submit deliverable"),
+    dr("Submit deliverable", {
+      // SLICE-206-10: Bearer agb_ auth; deliverableHash is the keccak256
+      // of the result payload; prUrl/commitSha optional for code work.
+      "x-examples": {
+        headers: { authorization: "Bearer agb_<key>" },
+        request: {
+          deliverableHash: "0x<keccak256-of-deliverable>",
+          prUrl: "https://github.com/org/repo/pull/1",
+          commitSha: "a1b2c3d",
+        },
+        response: { card: { cardId: "board_<hex>", column: "testing" } },
+      },
+    }),
     async (c) => {
       const agent = c.get("agent");
       if (!agent?.agentId) return denyPassport(c);

@@ -36,6 +36,7 @@ import {
 import { publicRecord } from "../lib/agent-registration/public-view";
 import { meGate } from "../lib/agent-registration/me-gate";
 import type { AgentRegistrationStore } from "../lib/agent-registration/store";
+import { REGISTER_X_EXAMPLES } from "./agents-register-examples";
 
 export interface AgentRegisterRoutesDeps {
   /** Feature gate — AGENT_REGISTER_ENABLED (off → 503 on POST). */
@@ -94,7 +95,9 @@ export function createAgentRegisterRoutes(
         502: { description: "Registry mint failed — nothing was charged" },
         503: { description: "Registration disabled or signer misconfigured" },
       },
-    }),
+      // SLICE-206-10: copy-pasteable request/response example.
+      "x-examples": REGISTER_X_EXAMPLES,
+    } as Parameters<typeof describeRoute>[0]),
     async (c) => {
       if (!deps.enabled || !deps.mint)
         return errorResponse(c, 503, ErrorCodes.EXECUTION_FAILED, "agent registration is unavailable", { retryable: true });

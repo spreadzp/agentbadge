@@ -13,7 +13,8 @@ export {
   type DiscoverySources,
   type DiscoverySku,
 } from "./sources";
-export { buildLlmsTxt, buildLlmsFullTxt } from "./llms";
+export { buildLlmsTxt } from "./llms";
+export { buildLlmsFullTxt } from "./llms-full";
 export { buildAgentCard } from "./agent-card";
 export {
   buildAgentEvaluation,

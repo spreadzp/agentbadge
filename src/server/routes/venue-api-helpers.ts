@@ -92,5 +92,10 @@ export async function signedJson(
   return { wallet: sig.wallet, body };
 }
 
-export const dr = (summary: string) =>
-  describeRoute({ tags: ["Venue"], summary, responses: { 200: { description: summary } } });
+export const dr = (summary: string, extra: Record<string, unknown> = {}) =>
+  describeRoute({
+    tags: ["Venue"],
+    summary,
+    responses: { 200: { description: summary } },
+    ...extra,
+  } as Parameters<typeof describeRoute>[0]);

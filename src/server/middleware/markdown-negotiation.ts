@@ -155,6 +155,9 @@ export function markdownMirrorRoutes(app: Hono): Hono {
     await recordSrcAttribution(c);
 
     const stripped = path.slice(0, -3);
+    // Recursive mirrors are meaningless — /x.md.md must not resolve through
+    // the catch-all again, or crawlers discover an infinite .md URL space.
+    if (stripped.endsWith(".md")) return c.notFound();
     const target = stripped === "" || stripped === "/index" ? "/" : stripped;
     const inner = await app.request(target, {
       method: "GET",

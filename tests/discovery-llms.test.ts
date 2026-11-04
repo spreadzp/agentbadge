@@ -97,7 +97,11 @@ describe("MANIFEST_REGISTRY + generateAll", () => {
     const paths = MANIFEST_REGISTRY.map((m) => m.path);
     expect(paths).toContain("/llms.txt");
     expect(paths).toContain("/llms-full.txt");
-    for (const m of MANIFEST_REGISTRY) {
+    // Only the llms manifests are required to be text/plain — the registry
+    // also carries typed manifests (e.g. application/a2a+json agent cards).
+    for (const m of MANIFEST_REGISTRY.filter((m) =>
+      m.path.endsWith("llms.txt") || m.path.endsWith("llms-full.txt"),
+    )) {
       expect(m.contentType).toContain("text/plain");
     }
   });

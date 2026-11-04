@@ -34,6 +34,8 @@ export type TrafficStats = {
   errors: Map<string, number>;
   errorTotal: number;
   hourly: number[];
+  /** SLICE-206-17: rendered AI-crawler section body (per-crawler hits + top paths). */
+  aiCrawlerBody: string;
   from: string;
   until: string;
   hours: number;
@@ -42,19 +44,75 @@ export type TrafficStats = {
 const BOT_SIGNATURES: [RegExp, string][] = [
   [/better stack|uptime/i, "Better Stack uptime"],
   [/facebookexternalhit/i, "Facebook"],
-  [/elevenlabscrawler/i, "ElevenLabs"],
-  [/exasearchbot|exa\.ai/i, "Exa"],
+  [/elevenlabscrawler|elevenlabsbot/i, "ElevenLabs"],
+  [/exasearchbot|exabot|exa\.ai/i, "Exa"],
   [/bunnycdn/i, "BunnyCDN"],
   [/googlebot/i, "Googlebot"],
   [/bingbot/i, "Bingbot"],
-  [/gptbot|openai/i, "GPTBot"],
-  [/claudebot|claude-user|anthropic/i, "ClaudeBot"],
+  [/gptbot|oai-searchbot|chatgpt-user|openai/i, "GPTBot"],
+  [/claudebot|claude-searchbot|claude-user|anthropic/i, "ClaudeBot"],
   [/perplexity/i, "Perplexity"],
   [/moneyagentpoller/i, "MoneyAgentPoller"],
   [/agentkarma/i, "AgentKarma"],
   [/curl|wget|python-requests|go-http|node-fetch|axios/i, "HTTP client"],
   [/bot|crawler|spider|scraper/i, "Other bot"],
 ];
+
+/**
+ * SLICE-206-17: AI-training/agent crawlers we explicitly welcome in
+ * robots.txt. The report section answers "do they actually fetch us?"
+ * — hits + most-visited paths per crawler class.
+ */
+export const AI_CRAWLER_SIGNATURES: [RegExp, string][] = [
+  [/gptbot|oai-searchbot|chatgpt-user|openai/i, "OpenAI (GPTBot/Search/ChatGPT)"],
+  [/claudebot|claude-searchbot|claude-user|anthropic/i, "Anthropic (Claude)"],
+  [/perplexity/i, "Perplexity"],
+  [/elevenlabscrawler|elevenlabsbot/i, "ElevenLabs"],
+  [/exasearchbot|exabot|exa\.ai/i, "Exa"],
+  [/google-extended/i, "Google-Extended"],
+  [/ccbot/i, "Common Crawl"],
+  [/cohere-ai|cohere/i, "Cohere"],
+];
+
+export type AiCrawlerStat = {
+  crawler: string;
+  hits: number;
+  topPaths: [string, number][];
+};
+
+/** Aggregate rows into per-AI-crawler hit counts + top paths. */
+export function aiCrawlerStats(rows: TrafficRow[]): AiCrawlerStat[] {
+  const out = new Map<string, { hits: number; paths: Map<string, number> }>();
+  for (const { payload: p } of rows) {
+    const ua = p.ua ?? "";
+    const sig = AI_CRAWLER_SIGNATURES.find(([re]) => re.test(ua));
+    if (!sig) continue;
+    const slot = out.get(sig[1]) ?? { hits: 0, paths: new Map<string, number>() };
+    slot.hits++;
+    const path = p.path ?? "?";
+    slot.paths.set(path, (slot.paths.get(path) ?? 0) + 1);
+    out.set(sig[1], slot);
+  }
+  return [...out.entries()]
+    .map(([crawler, s]) => ({
+      crawler,
+      hits: s.hits,
+      topPaths: top(s.paths, 3) as [string, number][],
+    }))
+    .sort((a, b) => b.hits - a.hits);
+}
+
+/** Render the AI-crawler section as a report body block. */
+export function aiCrawlerSection(rows: TrafficRow[]): string {
+  const stats = aiCrawlerStats(rows);
+  if (stats.length === 0) return "  (no AI-crawler hits in window)";
+  const lines: string[] = [];
+  for (const s of stats) {
+    lines.push(`  ${s.crawler.padEnd(34)} ${s.hits}`);
+    for (const [p, n] of s.topPaths) lines.push(`      ${p} (${n})`);
+  }
+  return lines.join("\n");
+}
 
 export function classifyUa(ua: string | null | undefined): string {
   if (!ua) return "(no UA)";
@@ -103,6 +161,7 @@ export function collectStats(rows: TrafficRow[], hours: number): TrafficStats {
     errors,
     errorTotal,
     hourly,
+    aiCrawlerBody: aiCrawlerSection(rows),
     from: new Date(Date.now() - hours * 3600_000).toISOString(),
     until: new Date().toISOString(),
     hours,
@@ -135,6 +194,9 @@ export function formatTextReport(s: TrafficStats): string {
     "",
     "Top client → path:",
     table(top(s.byPathUa, 15), "client → path", "count"),
+    "",
+    "AI crawlers (welcomed in robots.txt):",
+    s.aiCrawlerBody,
     "",
     `Errors (4xx/5xx): ${s.errorTotal}`,
     table(top(s.errors, 20), "status path", "count"),
@@ -177,6 +239,7 @@ export function formatTelegramReport(s: TrafficStats): string {
     pre("Top clients", top(s.byUaClass, 10), "client"),
     pre("Top paths", top(s.byPath, 15), "path"),
     pre("Top client → path", top(s.byPathUa, 10), "client → path"),
+    section("AI crawlers (robots.txt allowlist)", s.aiCrawlerBody),
     pre(`Errors (4xx/5xx): ${s.errorTotal}`, top(s.errors, 12), "status path"),
     section("Requests per UTC hour", hourlyBody),
   ];

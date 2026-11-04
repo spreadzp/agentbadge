@@ -12,6 +12,12 @@ import { getCatalog } from "@agentbadge/hedera-core";
 import { catalogTierSchema } from "../openapi";
 import z from "zod";
 import type { NextCall } from "../lib/next-call";
+import {
+  buildPricingJson,
+  buildPricingMd,
+} from "../lib/service-catalog/pricing-export";
+import { defaultSources } from "../lib/service-catalog";
+import { BASE_URL } from "../lib/page-meta";
 
 export const catalogRoutes = new Hono();
 
@@ -50,28 +56,38 @@ catalogRoutes.get(
     tags: ["Catalog"],
     summary: "Machine-readable pricing (AB-010)",
     description:
-      "Returns pricing tiers in a flat JSON structure optimized for AI agent consumption. Each tier includes name, price (HBAR), and capabilities array.",
+      "Flat USDC price list for AI agents — generated from the ServiceSku registry, the same source of truth as /api/v1/services. Each service carries name, endpoint, price_usdc, unit, payment (x402|wallet-sig|free), and description; the free[] array lists no-auth endpoints.",
     responses: {
       200: {
-        description: "Pricing JSON",
+        description: "Pricing JSON (agentbadge.pricing.v1)",
         content: {
           "application/json": {
             schema: resolver(
               z.object({
-                currency: z.literal("HBAR"),
-                tiers: z.array(
+                schema: z.literal("agentbadge.pricing.v1"),
+                currency: z.literal("USDC"),
+                chain: z.string(),
+                canonical: z.string(),
+                services: z.array(
                   z.object({
+                    sku_id: z.string(),
                     name: z.string(),
-                    price: z.number(),
-                    capabilities: z.array(z.string()),
+                    endpoint: z.string(),
+                    price_usdc: z.string().nullable(),
+                    unit: z.string(),
+                    payment: z.enum(["x402", "wallet-sig", "free"]),
+                    description: z.string().optional(),
+                    surface: z.string(),
                   }),
                 ),
-                deprecated: z
-                  .object({
-                    replaced_by: z.string(),
-                    note: z.string(),
-                  })
-                  .optional(),
+                free: z.array(
+                  z.object({
+                    endpoint: z.string(),
+                    payment: z.literal("free"),
+                    limit: z.string(),
+                    description: z.string(),
+                  }),
+                ),
               }),
             ),
           },
@@ -80,19 +96,33 @@ catalogRoutes.get(
     },
   }),
   (c) => {
-    const tiers = getCatalog();
-    return c.json(
-      {
-        currency: "HBAR",
-        tiers,
-        deprecated: {
-          replaced_by: "/api/v1/services",
-          note: "HBAR-era pricing; use the canonical USDC services catalog.",
-        },
+    return c.json(buildPricingJson(defaultSources()), 200, {
+      "Cache-Control": "public, max-age=3600",
+    });
+  },
+);
+
+// SLICE-206-9: Markdown mirror of /pricing.json — same sources, same data.
+catalogRoutes.get(
+  "/pricing.md",
+  describeRoute({
+    tags: ["Catalog"],
+    summary: "Pricing in Markdown (agent-facing mirror of /pricing.json)",
+    responses: {
+      200: {
+        description: "Pricing Markdown",
+        content: { "text/markdown": {} },
       },
-      200,
-      { "Cache-Control": "public, max-age=3600" },
-    );
+    },
+  }),
+  () => {
+    const md = buildPricingMd(defaultSources(), BASE_URL);
+    return new Response(md, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
   },
 );
 

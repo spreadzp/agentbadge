@@ -5,7 +5,8 @@
  */
 
 import type { DiscoverySources } from "./sources";
-import { buildLlmsTxt, buildLlmsFullTxt } from "./llms";
+import { buildLlmsTxt } from "./llms";
+import { buildLlmsFullTxt } from "./llms-full";
 import { buildAgentCard } from "./agent-card";
 import {
   buildAgentEvaluation,

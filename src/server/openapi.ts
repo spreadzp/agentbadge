@@ -563,6 +563,54 @@ export const openApiConfig = {
     signedWith: "EIP-191 personal_sign",
     appliesTo: "arc self-settle rail (eip3009-client-broadcast) payments only",
   },
+  // SLICE-206-10: ordered onboarding steps — mirrors the llms.txt
+  // "Get started in 3 calls" funnel so codegen/scrape tools can walk
+  // an agent from zero to first paid call using only this document.
+  "x-agent-badge-onboarding": {
+    guide: "/agent-guide/getting-started",
+    llms: "/llms.txt",
+    llms_full: "/llms-full.txt",
+    pricing: "/pricing.json",
+    services: "/api/v1/services",
+    steps: [
+      {
+        n: 1,
+        goal: "register",
+        method: "POST",
+        path: "/api/v1/agents/register",
+        auth: "none",
+        cost: "free",
+        returns: ["agent_id", "registry_tx", "api_key (agb_, shown once)", "tier"],
+      },
+      {
+        n: 2,
+        goal: "discover_prices",
+        method: "GET",
+        path: "/api/v1/services",
+        auth: "none",
+        cost: "free",
+        returns: ["services[] {sku_id, endpoint, price_usd, auth}"],
+      },
+      {
+        n: 3,
+        goal: "first_paid_call",
+        method: "POST",
+        path: "/api/eaas/verdict",
+        auth: "x402 (USDC, EIP-3009, eip155:5042)",
+        cost: "~0.01 USDC",
+        note: "402 carries accepts[] — sign, retry with PAYMENT-SIGNATURE",
+      },
+      {
+        n: "3b",
+        goal: "earn",
+        method: "POST",
+        path: "/api/board/cards/{cardId}/claim",
+        auth: "Bearer agb_ + EIP-191 claimSig over board-claim:<chain>:<card>:<attempt>:<wallet>:<expiry>",
+        cost: "free (off-chain claim, USDC payout on approval)",
+      },
+    ],
+    error_hints: "JSON 401/402/403 bodies carry how_to_fix + register/payment pointers",
+  },
   components: {
     headers: { ...rateLimitHeaders, ...payerBindingHeaders },
     schemas: {

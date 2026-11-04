@@ -335,6 +335,25 @@ agentKnowledgeRoutes.get("/agent-guide/context", () => {
   return serveMarkdownFile(join(BASE_DIR, "context.md"));
 });
 
+// SLICE-206-8: onboarding tutorial — register → auth → pay or earn.
+agentKnowledgeRoutes.get("/agent-guide/getting-started", () => {
+  return serveMarkdownFile(join(BASE_DIR, "getting-started.md"));
+});
+
+// SLICE-206-17: earnings + post-task guides (Markdown, agent-facing).
+agentKnowledgeRoutes.get("/agent-guide/earnings", () => {
+  return serveMarkdownFile(join(BASE_DIR, "earnings.md"));
+});
+
+agentKnowledgeRoutes.get("/agent-guide/post-task", () => {
+  return serveMarkdownFile(join(BASE_DIR, "post-task.md"));
+});
+
+agentKnowledgeRoutes.get("/agent-guide/success-stories/:slug", (c) => {
+  const slug = c.req.param("slug");
+  return serveMarkdownFile(join(BASE_DIR, "success-stories", `${slug}.md`));
+});
+
 agentKnowledgeRoutes.get("/agent-guide/learn", () => {
   return serveMarkdownFile(join(BASE_DIR, "learn.md"));
 });

@@ -92,19 +92,47 @@ describe("GET /api/v1/services", () => {
   });
 });
 
-describe("deprecated pointers on legacy pricing routes", () => {
+describe("machine pricing export (SLICE-206-9)", () => {
   beforeEach(() => setupMockEnv());
   afterEach(() => vi.unstubAllEnvs());
 
-  it("/pricing.json carries deprecated pointer, old fields intact", async () => {
+  it("/pricing.json returns flat USDC service list from the SKU registry", async () => {
     const app = new Hono();
     app.route("/", catalogRoutes);
     const res = await app.request("/pricing.json");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.currency).toBe("HBAR");
-    expect(Array.isArray(body.tiers)).toBe(true);
-    expect(body.deprecated.replaced_by).toBe("/api/v1/services");
+    expect(body.schema).toBe("agentbadge.pricing.v1");
+    expect(body.currency).toBe("USDC");
+    expect(body.canonical).toBe("/api/v1/services");
+    expect(Array.isArray(body.services)).toBe(true);
+    expect(Array.isArray(body.free)).toBe(true);
+    // Same source of truth: every enabled SKU appears exactly once.
+    expect(body.services.length).toBe(
+      allSkus(defaultSources()).filter((s) => s.enabled !== false).length,
+    );
+    for (const s of body.services) {
+      expect(s.endpoint).toMatch(/^(GET|POST) \//);
+      expect(["x402", "wallet-sig", "free"]).toContain(s.payment);
+      expect(s.unit).toBeTruthy();
+      expect("price_usdc" in s).toBe(true);
+    }
+  });
+
+  it("/pricing.md mirrors the same services as Markdown", async () => {
+    const app = new Hono();
+    app.route("/", catalogRoutes);
+    const res = await app.request("/pricing.md");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/markdown");
+    const md = await res.text();
+    expect(md).toContain("Paid services");
+    expect(md).toContain("/api/v1/services");
+    const jsonRes = await app.request("/pricing.json");
+    const body = await jsonRes.json();
+    for (const s of body.services.slice(0, 3)) {
+      expect(md).toContain(s.endpoint);
+    }
   });
 
   it("/api/meta/fees carries deprecated pointer, old fields intact", async () => {

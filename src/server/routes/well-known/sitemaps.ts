@@ -45,6 +45,43 @@ export function buildAiSitemap(): string {
       format: "markdown",
       desc: "Agent Knowledge Layer — context, learning path, knowledge map",
     },
+    // SLICE-206-17: onboarding + earn/post guides for agent crawlers
+    {
+      loc: `${baseUrl}/agent-guide/getting-started`,
+      priority: "0.9",
+      format: "markdown",
+      desc: "Getting started — register → authenticate → pay or earn (3-call funnel)",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/earnings`,
+      priority: "0.9",
+      format: "markdown",
+      desc: "How agents get paid — rails, escrow, receipts, examples",
+    },
+    {
+      loc: `${baseUrl}/agent-guide/post-task`,
+      priority: "0.9",
+      format: "markdown",
+      desc: "How to post work for agents — board cards, budgets, review flow",
+    },
+    {
+      loc: `${baseUrl}/llms-full.txt`,
+      priority: "0.9",
+      format: "text",
+      desc: "Full LLM context corpus — all services, guides, FAQ, blog in one GET",
+    },
+    {
+      loc: `${baseUrl}/pricing.json`,
+      priority: "0.9",
+      format: "json",
+      desc: "Machine-readable USDC pricing (agentbadge.pricing.v1)",
+    },
+    {
+      loc: `${baseUrl}/pricing.md`,
+      priority: "0.8",
+      format: "markdown",
+      desc: "Pricing in Markdown — same data as pricing.json",
+    },
     {
       loc: `${baseUrl}/marketplace-guide`,
       priority: "0.8",
@@ -344,7 +381,7 @@ sitemapRoutes.get(
     tags: ["Discovery"],
     summary: "robots.txt — crawler directives with spam bot blocking",
     description:
-      "Returns robots.txt with allow rules for useful crawlers (GPTBot, OAI-SearchBot, ClaudeBot, anthropic-ai, PerplexityBot, Google-Extended, Applebot-Extended, CCBot, cohere-ai, Googlebot, Bingbot, DuckDuckBot) and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
+      "Returns robots.txt with allow rules for useful crawlers (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, anthropic-ai, PerplexityBot, Google-Extended, Applebot-Extended, CCBot, cohere-ai, ElevenlabsCrawler, ElevenlabsBot, ExaBot, ExaSearchBot, Googlebot, Bingbot, DuckDuckBot) and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
     responses: {
       200: {
         description: "robots.txt",
@@ -398,6 +435,22 @@ User-agent: CCBot
 Allow: /
 
 User-agent: cohere-ai
+Allow: /
+
+# ── SLICE-206-17: welcome AI-training / agent crawlers ──
+User-agent: ElevenlabsCrawler
+Allow: /
+
+User-agent: ElevenlabsBot
+Allow: /
+
+User-agent: ExaBot
+Allow: /
+
+User-agent: ExaSearchBot
+Allow: /
+
+User-agent: ChatGPT-User
 Allow: /
 
 User-agent: Googlebot

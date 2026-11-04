@@ -29,17 +29,10 @@ import { agentKeyAuth } from "./middleware/agent-key-auth";
 import { wireMcpAbuseGuard, armMcpHeavyGate } from "./wiring/mcp-abuse";
 import { CacheRateLimitStore } from "./middleware/rate-limit-redis-store";
 import { getCache } from "./lib/cache";
-import { requestLoggerMiddleware } from "./middleware/request-logger";
-import { corsMiddleware } from "./middleware/cors";
-import { contentNegotiationMiddleware } from "./middleware/content-negotiation";
-import {
-  markdownNegotiation,
-  markdownMirrorRoutes,
-} from "./middleware/markdown-negotiation";
-import { cacheHeadersMiddleware } from "./middleware/cache-headers";
+import { wireRequestPipeline } from "./wiring/request-pipeline";
+import { markdownMirrorRoutes } from "./middleware/markdown-negotiation";
 import { hostNormalizationMiddleware, trailingSlashMiddleware } from "./middleware/canonical-redirects";
 import { structuredNotFoundHandler } from "./middleware/structured-error-handler";
-import { securityHeaders } from "./middleware/security-headers";
 import { ga4Pageview } from "./middleware/ga4-pageview";
 import { opsRoutes } from "./routes/ops";
 import { linkedinRoutes } from "./routes/linkedin";
@@ -72,14 +65,10 @@ const app = new Hono();
 app.use(hostNormalizationMiddleware());
 app.use(trailingSlashMiddleware());
 
-app.use(requestLoggerMiddleware());
-app.use(corsMiddleware());
-app.use(securityHeaders());
-app.use(contentNegotiationMiddleware());
-// SLICE-178-4: Accept: text/markdown negotiation for public HTML pages
-// (post-response transform; homepage '/' is owned by content-negotiation).
-app.use(markdownNegotiation());
-app.use(cacheHeadersMiddleware());
+// EPIC-206: logger → telemetry → CORS → security → negotiation →
+// markdown → error-hints → cache headers. Extracted to wiring/
+// request-pipeline.ts (max-lines); ordering documented there.
+wireRequestPipeline(app);
 // SLICE-49-19: L402 Lightning payment middleware (before signature verification)
 // EPIC-140: extracted to wiring/payments.ts — must stay BEFORE signature/rateLimit.
 wireL402(app);
