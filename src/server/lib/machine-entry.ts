@@ -98,6 +98,11 @@ export function buildMachineDescriptor() {
       rule: "verifier_wallet != owner != worker != platform_signer",
       errors: ["VERIFIER_IS_OWNER", "VERIFIER_IS_WORKER", "VERIFIER_IS_PLATFORM"],
       verdicts: ["PASS", "REVISE", "FAIL"],
+      invariants: [
+        "verdict signer must differ from task owner, awarded worker, and platform signers",
+        "award signer must be the task owner; deliverable signer must be the awarded worker",
+        "one active bid per wallet per task",
+      ],
     },
     budget_status: [...BUDGET_STATUSES],
   } as const;
