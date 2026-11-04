@@ -19,6 +19,7 @@ import {
   type RateLimitEntry,
 } from "../../middleware/rate-limit";
 import { logger } from "@agentbadge/passport/logger";
+import { WORK_REQUEST_X_EXAMPLES } from "../openapi-examples";
 
 export const workRequestRoutes = new Hono();
 
@@ -157,7 +158,10 @@ workRequestRoutes.post(
       400: { description: "Validation error" },
       429: { description: "Rate limit exceeded" },
     },
-  }),
+    // SLICE-206-10: copy-pasteable request/response pair — drift-checked
+    // against validateWorkRequest in openapi-onboarding.test.ts.
+    "x-examples": WORK_REQUEST_X_EXAMPLES,
+  } as Parameters<typeof describeRoute>[0]),
   async (c) => {
     const rlResult = await postLimiter(c, async () => { });
     if (rlResult instanceof Response) {

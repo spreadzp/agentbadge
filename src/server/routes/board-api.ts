@@ -26,6 +26,10 @@ import {
   type BoardReviewDeps,
 } from "../lib/board/review";
 import { submitBoardWork } from "../lib/board/submit";
+import {
+  BOARD_CLAIM_X_EXAMPLES,
+  BOARD_SUBMIT_X_EXAMPLES,
+} from "./openapi-examples";
 import { cancelBoardCard } from "../lib/board/cancel";
 import {
   denyPassport,
@@ -103,15 +107,7 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
       // SLICE-206-10: real body contract — Bearer agb_ auth header plus
       // payout-wallet EIP-191 signature over board-claim:<chainId>:<cardId>
       // :<jobAttempt>:<wallet-lowercase>:<expiresAtMs> (sigExpiresAt ≤ now+10min).
-      "x-examples": {
-        headers: { authorization: "Bearer agb_<key>" },
-        request: {
-          payoutWallet: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
-          claimSig: "0x<eip191-signature-over-board-claim-message>",
-          sigExpiresAt: 1762800000000,
-        },
-        response: { card: { cardId: "board_<hex>", column: "in_progress" } },
-      },
+      "x-examples": BOARD_CLAIM_X_EXAMPLES,
     }),
     async (c) => {
       const agent = c.get("agent");
@@ -162,15 +158,7 @@ export function createBoardRoutes(deps: BoardRouteDeps = {}) {
     dr("Submit deliverable", {
       // SLICE-206-10: Bearer agb_ auth; deliverableHash is the keccak256
       // of the result payload; prUrl/commitSha optional for code work.
-      "x-examples": {
-        headers: { authorization: "Bearer agb_<key>" },
-        request: {
-          deliverableHash: "0x<keccak256-of-deliverable>",
-          prUrl: "https://github.com/org/repo/pull/1",
-          commitSha: "a1b2c3d",
-        },
-        response: { card: { cardId: "board_<hex>", column: "testing" } },
-      },
+      "x-examples": BOARD_SUBMIT_X_EXAMPLES,
     }),
     async (c) => {
       const agent = c.get("agent");

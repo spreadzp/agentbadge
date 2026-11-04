@@ -31,6 +31,7 @@ import { eaasQuotaGate } from "../lib/eaas/subscription";
 import { signerHealthGate } from "../middleware/signer-health";
 import { respondAsync } from "../lib/eaas/requests";
 import { validateEvaluate, type EvalInput } from "../lib/eaas/eval-request";
+import { EAAS_EVALUATE_X_EXAMPLES } from "./openapi-examples";
 import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../lib/witness/jobs";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type {
@@ -54,7 +55,10 @@ export function registerEvaluateRoute(
       summary:
         "Evaluate + settle an allowlisted ERC-8183 job (x402-gated; refusal = no charge)",
       responses: { 200: { description: "Verdict + artifact" } },
-    }),
+      // SLICE-206-10: paid-call example — drift-checked against
+      // validateEvaluate in openapi-onboarding.test.ts.
+      "x-examples": EAAS_EVALUATE_X_EXAMPLES,
+    } as Parameters<typeof describeRoute>[0]),
     async (c, next) => {
       const body = await c.req.json().catch(() => null);
       const parsed = validateEvaluate(body, c);

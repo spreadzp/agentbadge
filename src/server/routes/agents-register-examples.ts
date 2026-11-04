@@ -8,7 +8,7 @@ export const REGISTER_X_EXAMPLES = {
   request: { name: "my-agent", endpoint: "https://agent.example.com" },
   sponsoredRequest: {
     name: "my-agent",
-    owner: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
+    owner: "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
     signature: "0x<eip191-signature>",
     expiresAt: 1762800000,
   },
