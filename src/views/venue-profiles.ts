@@ -61,6 +61,31 @@ export function venueProviderDetailPage(
       <span class="flex items-center gap-2">${raw(jobStatusBadge(j.status))}<span class="text-xs text-slate-500">${relTime(j.createdAt)}</span></span>
     </div>`;
 
+  /** SLICE-206-13: verified verdicts — social proof for agent evaluators. */
+  const verdicts = p.recentJobs.filter((j) => j.verdict != null).slice(0, 5);
+  const verdictBadge = (v?: string) =>
+    v === "completed"
+      ? `<span class="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400">verified</span>`
+      : `<span class="rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-medium text-rose-400">rejected</span>`;
+  const verdictRow = (j: ProviderProfile["recentJobs"][number]) => {
+    // 172-3 anchor tx: ERC-8004 feedback tx preferred, chain status tx fallback.
+    const tx =
+      j.feedback?.txHash ??
+      j.chainTxs.completed ??
+      j.chainTxs.rejected ??
+      null;
+    return `
+    <div class="flex items-center justify-between gap-3 border-b border-slate-800/60 py-2 text-sm last:border-0">
+      <a href="/market/jobs/${esc(j.jobId)}" class="truncate text-slate-200 hover:text-emerald-300">${esc(j.title || j.jobId)}</a>
+      <span class="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+        ${raw(verdictBadge(j.verdict))}
+        <span class="font-mono" title="verifier">${esc(shortAddr(j.evaluator))}</span>
+        ${tx ? raw(`<a class="text-sky-400 hover:underline" target="_blank" href="${net.explorerTx(tx)}">tx</a>`) : ""}
+        <span>${relTime(j.createdAt)}</span>
+      </span>
+    </div>`;
+  };
+
   const offerRow = (o: ProviderProfile["offers"][number]) => `
     <div class="flex items-center justify-between gap-3 border-b border-slate-800/60 py-2 text-sm last:border-0">
       <div>
@@ -103,6 +128,15 @@ export function venueProviderDetailPage(
         ${raw(stat("active offers", p.offers.filter((o) => o.active).length))}
       </div>
       ${p.stats.lastActiveAt ? raw(`<p class="mt-3 text-xs text-slate-500">last active ${relTime(p.stats.lastActiveAt)}</p>`) : ""}
+
+      <section class="mt-8">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Recent verified verdicts</h2>
+        <div class="${VENUE_CARD} mt-3 px-4">
+          ${verdicts.length === 0
+      ? raw(`<p class="py-3 text-sm text-slate-500">No verified verdicts yet.</p>`)
+      : raw(verdicts.map(verdictRow).join(""))}
+        </div>
+      </section>
 
       <section class="mt-8">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Recent jobs</h2>

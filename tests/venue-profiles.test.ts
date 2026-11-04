@@ -266,5 +266,40 @@ describe("SLICE-152-6 provider profiles", () => {
     expect(dHtml).toContain("#13");
     expect(dHtml).toContain("jobs done");
     expect(dHtml).toContain("venue index");
+    // SLICE-206-13: no verdicts → correct empty state.
+    expect(dHtml).toContain("No verified verdicts yet.");
+  });
+
+  it("detail page shows Recent verified verdicts (206-13)", async () => {
+    upsertJob(
+      jobFixture({
+        status: "completed",
+        provider: PROVIDER,
+        verdict: "completed",
+        feedback: { status: "sent", txHash: "0xfeed0011" },
+      }),
+    );
+    upsertJob(
+      jobFixture({
+        status: "rejected",
+        provider: PROVIDER,
+        verdict: "rejected",
+        chainTxs: { rejected: "0xbeef0022" },
+      }),
+    );
+    const app = pageApp({
+      network: () => NET,
+      agentLookup: async () => ({ owner: null, metadataURI: null }),
+    });
+    const res = await app.request(`/market/providers/${PROVIDER}`);
+    const html = await res.text();
+    expect(res.status).toBe(200);
+    expect(html).toContain("Recent verified verdicts");
+    expect(html).toContain("verified");
+    expect(html).toContain("rejected");
+    // 172-3 anchor: feedback.txHash preferred; chainTxs fallback.
+    expect(html).toContain("https://scan/tx/0xfeed0011");
+    expect(html).toContain("https://scan/tx/0xbeef0022");
+    expect(html).toContain("0xcccc…cccc"); // verifier = evaluator
   });
 });
