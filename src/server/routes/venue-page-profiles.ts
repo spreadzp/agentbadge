@@ -59,10 +59,11 @@ export function registerVenueProfilePageRoutes(
       responses: { 200: { description: "HTML page" } },
     }),
     async (c) => {
-      const profile = await getProviderProfile(
-        c.req.param("address"),
-        deps.profiles,
-      );
+      const address = c.req.param("address");
+      // Garbage params (e.g. "0x....md.md.md") must 404 — an empty
+      // profile 200 gives crawlers an infinite URL space to index.
+      if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return c.notFound();
+      const profile = await getProviderProfile(address, deps.profiles);
       return c.html(venueProviderDetailPage(profile, net()));
     },
   );
