@@ -142,6 +142,11 @@ export function buildAgentCard(src: DiscoverySources): string {
           "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
         llms_txt: `${b}/llms.txt`,
         llms_full_txt: `${b}/llms-full.txt`,
+        // SLICE-206-9: machine-readable price list (USDC, x402 flags)
+        pricing_json: `${b}/pricing.json`,
+        pricing_md: `${b}/pricing.md`,
+        // SLICE-206-8: 3-call onboarding walkthrough
+        getting_started: `${b}/agent-guide/getting-started`,
         guides: `${b}/agent-guide/context`,
         did_resolver: `${b}/did`,
         api_catalog: `${b}/.well-known/api-catalog`,
