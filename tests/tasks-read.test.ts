@@ -86,7 +86,7 @@ describe("GET /api/tasks/:id + /status", () => {
     expect(body.machine_entry.task_id).toBe("d1");
     expect(body.machine_entry.currency).toBe("HBAR");
     expect(body.machine_entry.calls.map((c) => c.phase)).toEqual([
-      "read", "bid", "deliver", "verdict", "verify-status",
+      "read", "bid", "award", "deliver", "verdict", "verify-status",
     ]);
     const bid = body.machine_entry.calls.find((c) => c.phase === "bid");
     expect(bid?.path).toBe("/api/tasks/d1/bids");

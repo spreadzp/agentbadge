@@ -77,6 +77,7 @@ describe("SLICE-206-1 machine descriptor", () => {
     expect(parsed.calls.map((c) => c.phase)).toEqual([
       "read",
       "bid",
+      "award",
       "deliver",
       "verdict",
       "verify-status",

@@ -72,8 +72,10 @@ export function setPlatformSignersForTesting(addrs: string[] | null): void {
 
 // ─── Independence check ──────────────────────────────────────────
 
-/** Identity strings the task owner resolves to (case-insensitive). */
-function identitySet(did: string | undefined): Set<string> {
+/** Identity strings a task side resolves to (case-insensitive): the
+ *  stored identity itself plus the directory's Hedera accountId.
+ *  Exported for the award owner-check (206-6). */
+export function identitySet(did: string | undefined): Set<string> {
   const s = new Set<string>();
   if (did) {
     s.add(did.toLowerCase());

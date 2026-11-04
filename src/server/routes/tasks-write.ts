@@ -14,8 +14,8 @@ import z from "zod";
 import { getTaskById, transitionTask } from "@agentbadge/passport";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
 import { idempotentWrite, readIdempotencyKey } from "../lib/contract-guards";
+import { requireSigAuth } from "../lib/tasks/sig-auth";
 import {
   applyVerdict,
   checkVerifierIndependence,
@@ -60,22 +60,9 @@ tasksWriteRoutes.post(
   }),
   async (c) => {
     // 1. sig-auth — the verifier is the signer, not a body field.
-    const sig = await verifyWalletSigRequest({
-      wallet: c.req.header("x-wallet"),
-      signature: c.req.header("x-sig"),
-      timestamp: c.req.header("x-timestamp"),
-      method: c.req.method,
-      path: c.req.path,
-    });
-    if (sig !== "valid") {
-      return errorResponse(
-        c,
-        401,
-        ErrorCodes.WRONG_SIGNER,
-        "Missing or invalid sig-auth headers (X-Wallet/X-Sig/X-Timestamp)",
-      );
-    }
-    const verifierWallet = c.req.header("x-wallet")!;
+    const auth = await requireSigAuth(c);
+    if (auth instanceof Response) return auth;
+    const verifierWallet = auth;
 
     // 2. idempotency_key required on this NEW write (206-2, D-206-5).
     const idem = readIdempotencyKey(c);
