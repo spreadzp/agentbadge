@@ -213,6 +213,11 @@ export async function shipmentState(
         hop.roles = structuredClone(p.roles);
         hop.rolesAssertedBy = e.actor;
       }
+      // 213-3: lift evidence refs the same way — first-event-wins,
+      // clone so the hop never aliases the event payload.
+      if (p.evidence && hop.evidence === undefined) {
+        hop.evidence = structuredClone(p.evidence);
+      }
       hops.set(p.hopIndex, hop);
     } else if (e.kind === "pay" || e.kind === "verify") {
       const p = e.payload as { shipmentId?: string; hopIndex?: number; jobId?: string };
