@@ -13,6 +13,7 @@ import {
   publicTaskDetail,
   publicTaskStatus,
   publicTaskSummary,
+  startHerePayload,
 } from "../lib/tasks/public-read";
 
 export const tasksReadRoutes = new Hono();
@@ -148,12 +149,6 @@ tasksReadRoutes.get(
   }),
   (c) => {
     const open = getActiveTasks().filter((t) => t.status === "posted").length;
-    return c.json({
-      protocol_doc: "/.well-known/agentbadge-machine.json",
-      protocol_version: "agentbadge-market/1",
-      open_tasks: open,
-      next_call: { method: "GET", path: "/api/tasks/open" },
-      auth_required_for_writes: "sig-auth (X-Wallet/X-Sig/X-Timestamp)",
-    });
+    return c.json(startHerePayload(open));
   },
 );

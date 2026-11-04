@@ -73,3 +73,15 @@ export function publicTaskStatus(t: CachedMarketTask) {
     updated_at: new Date(t.createdAt).toISOString(),
   };
 }
+
+/** Entry-point payload — shared by GET /api/start-here and the public
+ *  MCP `start_here` tool (single source, 206-4). */
+export function startHerePayload(openCount: number) {
+  return {
+    protocol_doc: "/.well-known/agentbadge-machine.json",
+    protocol_version: "agentbadge-market/1",
+    open_tasks: openCount,
+    next_call: { method: "GET", path: "/api/tasks/open" },
+    auth_required_for_writes: "sig-auth (X-Wallet/X-Sig/X-Timestamp)",
+  };
+}
