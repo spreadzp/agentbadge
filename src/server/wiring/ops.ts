@@ -10,6 +10,7 @@ import { openAPIRouteHandler } from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { stringify as yamlStringify } from "yaml";
 import { openApiConfig } from "../openapi";
+import { srcAttribution } from "../middleware/src-attribution";
 
 export function wireStaticOps(app: Hono): void {
   // Serve static files from public/ (favicon, icons, logo, CSS, Google verification)
@@ -63,6 +64,11 @@ export function wireOpenApi(app: Hono): void {
     exclude: ["/docs", "/api/specs", "/openapi.json", "/openapi.yaml", "/swagger.json", "/ui", /^\/ui\//, "/metrics", "/api/telemetry"],
     excludeMethods: ["OPTIONS"],
   });
+  // SLICE-206-12: ?src= attribution on machine spec endpoints.
+  app.use("/api/specs", srcAttribution());
+  app.use("/openapi.json", srcAttribution());
+  app.use("/openapi.yaml", srcAttribution());
+  app.use("/swagger.json", srcAttribution());
   app.get("/api/specs", openApiSpecHandler);
   // Standard OpenAPI discovery paths (SLICE-47-9)
   app.get("/openapi.json", openApiSpecHandler);

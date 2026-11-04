@@ -21,6 +21,8 @@ export type TrafficRow = {
     ua?: string | null;
     referer?: string | null;
     ip?: string | null;
+    /** SLICE-206-12: normalized ?src=<registry> attribution token. */
+    src?: string | null;
   };
   createdAt: string;
 };
@@ -36,6 +38,8 @@ export type TrafficStats = {
   hourly: number[];
   /** SLICE-206-17: rendered AI-crawler section body (per-crawler hits + top paths). */
   aiCrawlerBody: string;
+  /** SLICE-206-12: rendered ?src attribution section (hits + register conversions). */
+  srcBody: string;
   from: string;
   until: string;
   hours: number;
@@ -114,6 +118,16 @@ export function aiCrawlerSection(rows: TrafficRow[]): string {
   return lines.join("\n");
 }
 
+// SLICE-206-12: ?src= aggregation/section lives in src-attribution-report.ts
+// (max-lines) — re-exported here for the single import surface.
+export {
+  SRC_CONVERSION_PATHS,
+  srcAttributionStats,
+  srcAttributionSection,
+  type SrcStat,
+} from "./src-attribution-report";
+import { srcAttributionSection } from "./src-attribution-report";
+
 export function classifyUa(ua: string | null | undefined): string {
   if (!ua) return "(no UA)";
   for (const [re, name] of BOT_SIGNATURES) if (re.test(ua)) return name;
@@ -162,6 +176,7 @@ export function collectStats(rows: TrafficRow[], hours: number): TrafficStats {
     errorTotal,
     hourly,
     aiCrawlerBody: aiCrawlerSection(rows),
+    srcBody: srcAttributionSection(rows),
     from: new Date(Date.now() - hours * 3600_000).toISOString(),
     until: new Date().toISOString(),
     hours,
@@ -197,6 +212,9 @@ export function formatTextReport(s: TrafficStats): string {
     "",
     "AI crawlers (welcomed in robots.txt):",
     s.aiCrawlerBody,
+    "",
+    "Registry attribution (?src=):",
+    s.srcBody,
     "",
     `Errors (4xx/5xx): ${s.errorTotal}`,
     table(top(s.errors, 20), "status path", "count"),
@@ -240,6 +258,7 @@ export function formatTelegramReport(s: TrafficStats): string {
     pre("Top paths", top(s.byPath, 15), "path"),
     pre("Top client → path", top(s.byPathUa, 10), "client → path"),
     section("AI crawlers (robots.txt allowlist)", s.aiCrawlerBody),
+    section("Registry attribution (?src=)", s.srcBody),
     pre(`Errors (4xx/5xx): ${s.errorTotal}`, top(s.errors, 12), "status path"),
     section("Requests per UTC hour", hourlyBody),
   ];

@@ -12,6 +12,7 @@
  */
 
 import type { MiddlewareHandler } from "hono";
+import { normalizeSrc } from "./src-attribution";
 import { getDatabase } from "../lib/database";
 
 export const trafficLog: MiddlewareHandler = async (c, next) => {
@@ -35,6 +36,9 @@ export const trafficLog: MiddlewareHandler = async (c, next) => {
         forwarded?.split(",")[0]?.trim() ??
         null,
       requestId: (c.get("requestId") as string | undefined) ?? null,
+      // SLICE-206-12: normalized ?src= for registry attribution +
+      // src→registration conversion in traffic-report.
+      src: normalizeSrc(c.req.query("src")),
     };
 
     void db.events

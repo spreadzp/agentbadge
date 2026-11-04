@@ -18,8 +18,12 @@ import {
 } from "../lib/service-catalog/pricing-export";
 import { defaultSources } from "../lib/service-catalog";
 import { BASE_URL } from "../lib/page-meta";
+import { srcAttribution } from "../middleware/src-attribution";
 
 export const catalogRoutes = new Hono();
+
+// SLICE-206-12: ?src= attribution on pricing/catalog endpoints.
+catalogRoutes.use(srcAttribution());
 
 catalogRoutes.get(
   "/catalog",

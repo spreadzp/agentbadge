@@ -21,6 +21,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ErrorCodes } from "../lib/error-codes";
+import { srcAttribution } from "../middleware/src-attribution";
 import { errorResponse } from "../lib/error-response";
 import { parseFrontmatter } from "../lib/frontmatter";
 import { getRegistry } from "../registry/loader";
@@ -31,6 +32,9 @@ import { defaultCoreSchemas, howToLd, breadcrumbListLd } from "../lib/json-ld";
 import { BUILD_DATE } from "../lib/build-info";
 
 export const agentKnowledgeRoutes = new Hono();
+
+// SLICE-206-12: ?src= attribution on every /agent-guide* entry point.
+agentKnowledgeRoutes.use(srcAttribution());
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASE_DIR = join(__dirname, "../agent-knowledge");

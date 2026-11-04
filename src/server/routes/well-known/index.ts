@@ -18,7 +18,12 @@ import { gecClientRoutes, gecCallbackRoutes } from "./gec-client";
 export { buildAgentCard } from "../../lib/agent-discovery";
 export { buildAiSitemap, buildSitemap } from "./sitemaps";
 
+import { srcAttribution } from "../../middleware/src-attribution";
+
 export const wellKnownRoutes = new Hono();
+
+// SLICE-206-12: ?src= attribution on every well-known/skill entry point.
+wellKnownRoutes.use(srcAttribution());
 
 wellKnownRoutes.route("/", agentCardRoutes);
 wellKnownRoutes.route("/", sitemapRoutes);
