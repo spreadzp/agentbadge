@@ -36,7 +36,7 @@ export type BudgetStatus = z.infer<typeof budgetStatusSchema>;
 // ─── Canonical endpoint template ─────────────────────────────────
 
 const endpointSchema = z.object({
-  phase: z.enum(["discover", "read", "start", "bid", "deliver", "verify-status"]),
+  phase: z.enum(["discover", "read", "start", "bid", "deliver", "verdict", "verify-status"]),
   method: z.enum(["GET", "POST"]),
   path: z.string(),
   /** Public-MCP tool equivalent (206-4 read tools); null when write-only. */
@@ -56,6 +56,7 @@ export const ENDPOINT_TEMPLATE: readonly EndpointDef[] = [
   { phase: "start", method: "GET", path: "/api/start-here", tool_equiv: "start_here", auth: "none" },
   { phase: "bid", method: "POST", path: "/api/tasks/{task_id}/bids", tool_equiv: null, auth: "sig-auth" },
   { phase: "deliver", method: "POST", path: "/api/tasks/{task_id}/deliverables", tool_equiv: null, auth: "sig-auth" },
+  { phase: "verdict", method: "POST", path: "/api/tasks/{task_id}/verdict", tool_equiv: "verdict_submit", auth: "sig-auth" },
   { phase: "verify-status", method: "GET", path: "/api/tasks/{task_id}/status", tool_equiv: "get_task", auth: "none" },
 ] as const;
 
@@ -136,6 +137,7 @@ export type MachineEntry = z.infer<typeof machineEntrySchema>;
 const PHASE_ARGS: Partial<Record<EndpointDef["phase"], string[]>> = {
   bid: ["idempotency_key", "proposal", "price_usdc"],
   deliver: ["idempotency_key", "evidence_refs", "summary"],
+  verdict: ["idempotency_key", "verdict", "evidence_refs", "note"],
 };
 
 export interface MachineEntryTask {

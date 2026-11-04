@@ -78,6 +78,7 @@ describe("SLICE-206-1 machine descriptor", () => {
       "read",
       "bid",
       "deliver",
+      "verdict",
       "verify-status",
     ]);
     // concrete task_id substituted — no template placeholders left

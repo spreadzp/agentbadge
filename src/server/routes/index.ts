@@ -47,6 +47,7 @@ import { a2aRoutes } from "./a2a";
 import { a2aSpecRoutes } from "./a2a-spec";
 import { marketRoutes } from "./market";
 import { tasksReadRoutes } from "./tasks-read";
+import { tasksWriteRoutes } from "./tasks-write";
 import { mcpPublicRoutes } from "./mcp-public";
 import { metaRoutes } from "./meta";
 import { searchRoutes } from "./search";
@@ -146,6 +147,7 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", a2aRoutes);
   app.route("/", marketRoutes);
   app.route("/", tasksReadRoutes); // EPIC-206-3: keyless agent read layer
+  app.route("/", tasksWriteRoutes); // EPIC-206-5: agent-contour verdict writes
   app.route("/", mcpPublicRoutes); // EPIC-206-4: keyless read-only MCP facade
   app.route("/", metaRoutes);
   app.route("/", searchRoutes);
