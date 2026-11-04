@@ -13,6 +13,7 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+import { legacyWriteDeprecation } from "../lib/contract-guards";
 import { requireDidSignature } from "../middleware/did-auth";
 import { keyEndpointGate } from "../middleware/key-endpoint-gate";
 import {
@@ -36,6 +37,10 @@ marketRoutes.use("/market/*", keyEndpointGate());
 // Apply DID signature verification to all mutation POST routes (except -with-key endpoints, EPIC-83)
 // Middleware self-skips GET/HEAD and -with-key paths
 marketRoutes.use("/market/*", requireDidSignature());
+
+// EPIC-206 (SLICE-206-2, D-206-8): legacy writes stay contract-compatible;
+// Deprecation+Sunset headers point agents at agentbadge-machine.json.
+marketRoutes.use("/market/*", legacyWriteDeprecation());
 
 marketRoutes.post(
   "/market/tasks",

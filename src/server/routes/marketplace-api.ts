@@ -24,6 +24,7 @@ import { logger } from "@agentbadge/passport/logger";
 import { getConfig } from "../../config/env";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
+import { legacyWriteDeprecation } from "../lib/contract-guards";
 import {
   requireWalletSig,
   type AgentAuthVariables,
@@ -72,6 +73,10 @@ function serviceJson(svc: ReturnType<typeof getService> & object) {
 export const marketplaceApiRoutes = new Hono<{
   Variables: AgentAuthVariables;
 }>();
+
+// EPIC-206 (SLICE-206-2, D-206-8): legacy writes keep old contract +
+// Deprecation/Sunset headers → successor is agentbadge-machine.json.
+marketplaceApiRoutes.use("/market/*", legacyWriteDeprecation());
 
 // ─── POST /api/market/passport — business onboarding ───────────
 // x402-gated upstream (index.ts); sig verified again here for the mint target.
