@@ -88,11 +88,18 @@ export function identitySet(did: string | undefined): Set<string> {
 export type VerifierViolation =
   | "VERIFIER_IS_OWNER"
   | "VERIFIER_IS_WORKER"
-  | "VERIFIER_IS_PLATFORM";
+  | "VERIFIER_IS_PLATFORM"
+  | "VERIFIER_NOT_DESIGNATED";
+
+/** SLICE-206-18 (audit C-1 fix): a task whose external verdicts come
+ *  through this route MUST name a designated verifier. Local extension
+ *  type — the field rides on the stored task object; hedera-core
+ *  CachedMarketTask carries `verifierDid` from its next publish. */
+export type TaskWithVerifier = CachedMarketTask & { verifierDid?: string };
 
 export function checkVerifierIndependence(
   verifierWallet: string,
-  task: CachedMarketTask,
+  task: TaskWithVerifier,
   platformAddrs: readonly string[] = platformSignerAddresses(),
 ): VerifierViolation | null {
   const v = verifierWallet.toLowerCase();
@@ -100,6 +107,13 @@ export function checkVerifierIndependence(
   if (identitySet(task.claimerDid).has(v)) return "VERIFIER_IS_WORKER";
   if (platformAddrs.some((a) => a.toLowerCase() === v)) {
     return "VERIFIER_IS_PLATFORM";
+  }
+  // Positive binding (audit C-1): without a designated verifier ANY
+  // third-party wallet could verdict — a worker's second wallet
+  // self-PASSes, a stranger grief-FAILs. Tasks without verifierDid use
+  // the poster's own complete path; this route stays closed for them.
+  if (!task.verifierDid || !identitySet(task.verifierDid).has(v)) {
+    return "VERIFIER_NOT_DESIGNATED";
   }
   return null;
 }
@@ -180,5 +194,7 @@ export function violationToErrorCode(v: VerifierViolation): ErrorCode {
       return ErrorCodes.VERIFIER_IS_WORKER;
     case "VERIFIER_IS_PLATFORM":
       return ErrorCodes.VERIFIER_IS_PLATFORM;
+    case "VERIFIER_NOT_DESIGNATED":
+      return ErrorCodes.VERIFIER_NOT_DESIGNATED;
   }
 }

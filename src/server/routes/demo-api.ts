@@ -67,6 +67,28 @@ demoApiRoutes.get(
         400,
       );
     }
+    // Pre-paywall stash (audit H — charged-on-failure + DNS pin): when
+    // the wiring precheck already resolved+validated the target, reuse
+    // it and pin the connection to those addresses.
+    const stashed = c.get("scanLitePrecheck");
+    if (stashed) {
+      const stashedResult = await runScanLite(stashed.url, {
+        pinned: stashed.addrs,
+      });
+      if (typeof stashedResult === "string") {
+        const { status, error } = rejectStatus(stashedResult);
+        return c.json({ error, code: stashedResult.toUpperCase() }, status);
+      }
+      return c.json({
+        scan: "lite",
+        price_usdc: demoScanPriceUsd(),
+        ...stashedResult,
+        upgrade: {
+          full_scan: "/api/scan-packs (x402)",
+          pricing: "/pricing.json",
+        },
+      });
+    }
     const target = validateTarget(raw);
     if (!(target instanceof URL)) {
       const { status, error } = rejectStatus(target);

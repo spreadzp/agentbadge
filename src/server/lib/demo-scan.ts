@@ -5,14 +5,33 @@
  * Price is exported from here so the ServiceSku registry can't drift
  * (206-9 SoT).
  *
- * SSRF guard (post-audit): http(s) public hosts only — URL() itself
- * normalizes numeric v4 literals; trailing-dot, IPv6-mapped, CGNAT and
- * private ranges rejected; DNS resolved+checked before every hop;
- * redirects followed MANUALLY (≤3, each re-validated); body stream-read
- * with a hard cap. Residual (accepted): last-mile DNS TOCTOU — the
- * standard guard short of a connect-time proxy.
+ * SSRF guard lives in demo-scan-guard.ts (206-18 lint split): http(s)
+ * public hosts only, DNS resolved+checked and PINNED into the
+ * connection per hop, redirects followed MANUALLY (≤3, each
+ * re-validated), body stream-read with a hard cap, regex surface
+ * bounded to <head> (audit round-2).
  */
-import { lookup } from "node:dns/promises";
+import {
+  defaultLookup,
+  pinnedDispatcher,
+  resolveAddrs,
+  validateTarget,
+  type DnsLookupFn,
+  type ScanLiteReject,
+} from "./demo-scan-guard";
+
+// Back-compat re-exports — existing callers/tests keep importing from
+// demo-scan (206-18 module split, 300-line lint cap).
+export {
+  isPrivateAddress,
+  precheckTarget,
+  validateTarget,
+} from "./demo-scan-guard";
+export type {
+  DnsLookupFn,
+  ScanLitePrecheck,
+  ScanLiteReject,
+} from "./demo-scan-guard";
 
 const ATOMIC_PER_USD = 1_000_000;
 
@@ -28,116 +47,6 @@ export function demoScanPriceUsd(): string {
 /** "$0.001" — the form paymentForPrice expects. */
 export function demoScanPriceTag(): string {
   return `$${demoScanPriceUsd()}`;
-}
-
-export type ScanLiteReject =
-  | "invalid_url"
-  | "blocked_host"
-  | "dns_private"
-  | "too_many_redirects"
-  | "fetch_failed"
-  | "not_html";
-
-/** IPv4 → uint32 (post-URL() dotted form), or undefined. */
-function ipv4ToInt(dotted: string): number | undefined {
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(dotted);
-  if (!m) return undefined;
-  const parts = m.slice(1).map(Number);
-  if (parts.some((p) => p > 255)) return undefined;
-  return (
-    ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>>
-    0
-  );
-}
-
-/** RFC-1918 / loopback / link-local / CGNAT / unspecified v4? */
-function isPrivateV4(dotted: string): boolean {
-  const n = ipv4ToInt(dotted);
-  if (n === undefined) return true; // unparseable = treat as blocked
-  const a = n >>> 24;
-  if (a === 0 || a === 10 || a === 127 || a === 224 || a >= 240) return true;
-  if (((n >>> 16) & 0xffff) === 0xa9fe) return true; // 169.254/16
-  if ((n >>> 20) === 0xac1) return true; // 172.16/12
-  if (((n >>> 16) & 0xffff) === 0xc0a8) return true; // 192.168/16
-  if ((n >>> 22) === 0x191) return true; // 100.64/10 CGNAT
-  if ((n >>> 17) === 0x6309) return true; // 198.18/15 benchmark
-  return false;
-}
-
-/** IPv6 guard: loopback, link-local, ULA, unspecified, v4-mapped. */
-function isPrivateV6(host: string): boolean {
-  const h = host.replace(/^\[|\]$/g, "").toLowerCase();
-  if (h === "::1" || h === "::") return true;
-  if (h.startsWith("fe80")) return true;
-  if (h.startsWith("fc") || h.startsWith("fd")) return true;
-  // ::ffff:a.b.c.d mapped or hex-tailed — extract v4 tail and check.
-  const v4Tail = /::ffff:(?:0x)?[0-9a-f.:]+$/.exec(h);
-  if (v4Tail) {
-    const tail = v4Tail[0].slice(7);
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(tail)) return isPrivateV4(tail);
-    return true; // hex-form mapped v4 — conservative block
-  }
-  return false;
-}
-
-/** Literal/dotted-decimal/IPv6 private check on a resolved address. */
-export function isPrivateAddress(addr: string): boolean {
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(addr)) return isPrivateV4(addr);
-  if (addr.includes(":")) return isPrivateV6(addr);
-  return false;
-}
-
-const BLOCKED_HOSTNAMES: RegExp[] = [
-  /^localhost$/i,
-  /\.local$/i,
-  /\.internal$/i,
-  /\.localhost$/i,
-];
-
-/** Sync literal-level check — scheme + obvious private hosts. DNS
- *  and redirect hops are enforced separately in runScanLite. */
-export function validateTarget(raw: string): ScanLiteReject | URL {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return "invalid_url";
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    return "invalid_url";
-  }
-  const host = url.hostname.replace(/\.$/, ""); // "localhost." → localhost
-  if (BLOCKED_HOSTNAMES.some((re) => re.test(host))) return "blocked_host";
-  if (isPrivateAddress(host)) return "blocked_host";
-  return url;
-}
-
-export type DnsLookupFn = (host: string) => Promise<{ address: string }[]>;
-
-const defaultLookup: DnsLookupFn = async (host) =>
-  (await lookup(host, { all: true, verbatim: true })) as { address: string }[];
-
-/** Resolve hostname → all A/AAAA private → reject. IP literals and
- *  already-blocked names skip DNS entirely. */
-async function dnsGuard(
-  url: URL,
-  lookupFn: DnsLookupFn,
-): Promise<ScanLiteReject | null> {
-  const host = url.hostname.replace(/\.$/, "");
-  if (isPrivateAddress(host) || BLOCKED_HOSTNAMES.some((re) => re.test(host))) {
-    return "blocked_host";
-  }
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(":")) {
-    return null; // literal IP — nothing to resolve, already checked
-  }
-  try {
-    const addrs = await lookupFn(host);
-    if (addrs.length === 0) return "fetch_failed";
-    if (addrs.some((a) => isPrivateAddress(a.address))) return "dns_private";
-  } catch {
-    return "fetch_failed";
-  }
-  return null;
 }
 
 const MAX_BYTES = 512 * 1024;
@@ -167,6 +76,18 @@ async function readCappedBody(res: Response, byteCap: number): Promise<string> {
   return new TextDecoder().decode(
     Uint8Array.from(chunks.flatMap((c) => Array.from(c))),
   );
+}
+
+const HEAD_CAP = 64 * 1024;
+/** Bound the regex surface to the <head> region (audit H — quadratic
+ *  cost on full-body scans). Head-terminator search is linear; regexes
+ *  then run on ≤64KB. */
+function headSlice(html: string): string {
+  const end = /<\/head\b[^>]*>/i.exec(html);
+  const limit = end
+    ? Math.min(end.index + end[0].length, HEAD_CAP)
+    : HEAD_CAP;
+  return html.slice(0, limit);
 }
 
 export interface ScanLiteResult {
@@ -199,21 +120,34 @@ function metaContent(html: string, key: string): string | null {
 export interface ScanLiteDeps {
   fetchFn?: typeof fetch;
   lookupFn?: DnsLookupFn;
+  /** Pre-resolved+validated addresses for the FIRST hop (pre-paywall
+   *  precheck stash — the connection pins to them; undefined = resolve
+   *  inside, null = literal IP already validated). */
+  pinned?: { address: string }[] | null;
 }
 
 /** Fetch with manual redirect following — every hop re-runs
- *  validateTarget + dnsGuard so a redirect can't bounce to metadata. */
+ *  validateTarget + resolveAddrs so a redirect can't bounce to metadata. */
 async function fetchGuarded(
   initial: URL,
   deps: ScanLiteDeps,
 ): Promise<Response | ScanLiteReject> {
   const fetchFn = deps.fetchFn ?? fetch;
-  const lookupFn = deps.lookupFn ?? defaultLookup;
+  const lookupFn = deps.lookupFn;
   let url = initial;
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const dnsVerdict = await dnsGuard(url, lookupFn);
-    if (dnsVerdict) return dnsVerdict;
+    // Hop 0 may carry pre-paywall pinned addrs (precharge fix); later
+    // hops resolve+pin themselves — every hop re-runs the guard so a
+    // redirect can't bounce to a private target.
+    let addrs: { address: string }[] | null | undefined =
+      hop === 0 ? deps.pinned : undefined;
+    if (addrs === undefined) {
+      const resolved = await resolveAddrs(url, lookupFn ?? defaultLookup);
+      if (typeof resolved === "string") return resolved;
+      addrs = resolved.addrs;
+    }
+    const pin = addrs?.length ? await pinnedDispatcher(addrs) : {};
 
     let res: Response;
     try {
@@ -224,7 +158,8 @@ async function fetchGuarded(
         },
         redirect: "manual",
         signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+        ...pin,
+      } as RequestInit);
     } catch {
       return "fetch_failed";
     }
@@ -263,14 +198,18 @@ export async function runScanLite(
   }
 
   const html = await readCappedBody(res, MAX_BYTES);
+  // Audit H (regex cost): bound the regex surface to the <head> region
+  // — meta/title/link patterns on a full 512KB body measured 11.5s of
+  // blocked event loop. All signals we extract live in <head>.
+  const head = headSlice(html);
 
-  const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-  const robots = metaContent(html, "robots") ?? "";
-  const hasLlms = /<link[^>]+rel=["'][^"']*llms/i.test(html) ||
-    /<link[^>]+href=["'][^"']*llms\.txt["']/i.test(html);
-  const hasAgents = /<link[^>]+href=["'][^"']*agents\.txt["']/i.test(html);
-  const hasJsonLd = /<script[^>]+type=["']application\/ld\+json["']/i.test(html);
-  const mdHint = /content[- ]negotiation|text\/markdown/i.test(html);
+  const titleMatch = head.match(/<title[^>]*>([^<]*)<\/title>/i);
+  const robots = metaContent(head, "robots") ?? "";
+  const hasLlms = /<link[^>]+rel=["'][^"']*llms/i.test(head) ||
+    /<link[^>]+href=["'][^"']*llms\.txt["']/i.test(head);
+  const hasAgents = /<link[^>]+href=["'][^"']*agents\.txt["']/i.test(head);
+  const hasJsonLd = /<script[^>]+type=["']application\/ld\+json["']/i.test(head);
+  const mdHint = /content[- ]negotiation|text\/markdown/i.test(head);
 
   const score =
     (hasLlms ? 2 : 0) + (hasJsonLd ? 1 : 0) + (mdHint ? 1 : 0);
@@ -283,9 +222,9 @@ export async function runScanLite(
     fetched_bytes: html.length,
     title: titleMatch ? titleMatch[1].trim() : null,
     og: {
-      title: metaContent(html, "og:title"),
-      description: metaContent(html, "og:description"),
-      site_name: metaContent(html, "og:site_name"),
+      title: metaContent(head, "og:title"),
+      description: metaContent(head, "og:description"),
+      site_name: metaContent(head, "og:site_name"),
     },
     signals: {
       has_llms_txt_link: hasLlms,
@@ -297,3 +236,5 @@ export async function runScanLite(
     agent_ready_hint: hint,
   };
 }
+
+

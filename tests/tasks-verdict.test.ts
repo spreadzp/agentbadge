@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { getTaskById, marketClear, marketUpsert } from "@agentbadge/passport";
-import type { CachedMarketTask } from "@agentbadge/hedera-core";
+import type { TaskWithVerifier } from "../src/server/lib/tasks/verdict";
 import { tasksWriteRoutes } from "../src/server/routes/tasks-write";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
 import { setPlatformSignersForTesting } from "../src/server/lib/tasks/verdict";
@@ -31,7 +31,7 @@ function sig(wallet: string) {
   };
 }
 
-function task(over: Partial<CachedMarketTask>): CachedMarketTask {
+function task(over: Partial<TaskWithVerifier>): TaskWithVerifier {
   return {
     taskId: `t_${Math.random().toString(36).slice(2, 8)}`,
     posterDid: "did:example:poster1",
@@ -44,6 +44,10 @@ function task(over: Partial<CachedMarketTask>): CachedMarketTask {
     txId: "0.0.1@1",
     consensusTimestamp: "1.0",
     createdAt: Date.now(),
+    // SLICE-206-18 (audit C-1): positive binding — only the designated
+    // verifier may verdict. Negative checks (owner/worker/platform)
+    // still fire first for their dedicated codes.
+    verifierDid: VERIFIER,
     ...over,
   };
 }
@@ -94,6 +98,45 @@ describe("independence invariant (D-206-4)", () => {
     const res = await post("p1", PLATFORM, { verdict: "PASS" });
     expect(res.status).toBe(403);
     expect(((await res.json()) as { code: string }).code).toBe("VERIFIER_IS_PLATFORM");
+  });
+});
+
+describe("designated verifier (audit C-1, 206-18)", () => {
+  it("stranger wallet (not designated) → 403 VERIFIER_NOT_DESIGNATED", async () => {
+    marketUpsert(task({ taskId: "d1" }));
+    const res = await post("d1", "0x" + "9".repeat(40), { verdict: "FAIL" });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe(
+      "VERIFIER_NOT_DESIGNATED",
+    );
+  });
+
+  it("worker's second wallet cannot self-PASS → 403", async () => {
+    marketUpsert(task({ taskId: "d2", claimerDid: WORKER }));
+    // a fresh wallet is NOT the worker identity — before the fix this
+    // passed the negative-only check and self-PASSed the delivery.
+    const secondWallet = "0x" + "a".repeat(40);
+    const res = await post("d2", secondWallet, { verdict: "PASS" });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe(
+      "VERIFIER_NOT_DESIGNATED",
+    );
+  });
+
+  it("task without verifierDid → verdict route closed (403)", async () => {
+    marketUpsert(task({ taskId: "d3", verifierDid: undefined }));
+    const res = await post("d3", VERIFIER, { verdict: "PASS" });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe(
+      "VERIFIER_NOT_DESIGNATED",
+    );
+  });
+
+  it("designated verifier DID resolves via identitySet (did + accountId)", async () => {
+    marketUpsert(task({ taskId: "d4", verifierDid: "did:example:verifier1" }));
+    // wallet that is neither the DID nor its resolved accountId → reject
+    const res = await post("d4", "0x" + "b".repeat(40), { verdict: "PASS" });
+    expect(res.status).toBe(403);
   });
 });
 

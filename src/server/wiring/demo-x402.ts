@@ -10,7 +10,7 @@
  */
 import type { Hono, MiddlewareHandler } from "hono";
 import { logger } from "@agentbadge/passport/logger";
-import { demoScanPriceTag } from "../lib/demo-scan";
+import { demoScanPriceTag, precheckTarget } from "../lib/demo-scan";
 import { demoApiRoutes } from "../routes/demo-api";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 
@@ -24,6 +24,28 @@ export function wireDemoX402(
     );
     return;
   }
+
+  // Audit H (charged-on-failure): when a payment-signature is attached
+  // the request is about to be charged — validate URL + DNS BEFORE the
+  // paywall settles so an invalid target is rejected unpaid. Unpaid
+  // probes still hit the 402 challenge (price discovery intact). The
+  // resolved addresses are stashed and pinned for the fetch.
+  app.use("/api/v1/demo/scan-lite", async (c, next) => {
+    if (c.req.header("payment-signature")) {
+      const raw = c.req.query("url");
+      const checked = raw
+        ? await precheckTarget(raw)
+        : "invalid_url" as const;
+      if (typeof checked === "string") {
+        return c.json(
+          { error: `invalid scan target: ${checked}`, code: checked.toUpperCase() },
+          400,
+        );
+      }
+      c.set("scanLitePrecheck", checked);
+    }
+    await next();
+  });
 
   app.use(
     "/api/v1/demo/scan-lite",

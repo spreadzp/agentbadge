@@ -21,6 +21,7 @@ import {
   demoScanPriceTag,
   demoScanPriceUsd,
   isPrivateAddress,
+  precheckTarget,
   runScanLite,
   validateTarget,
   type DnsLookupFn,
@@ -253,6 +254,32 @@ describe("runScanLite — fetch guards (post-audit)", () => {
       lookupFn: publicLookup,
     });
     expect(typeof r).not.toBe("string");
+  });
+
+  // SLICE-206-18 (audit H): precheck resolves+validates once, handler
+  // pins the connection to those addresses — hop-0 lookup is skipped.
+  it("pinned addrs skip hop-0 re-resolution (rebind window closed)", async () => {
+    const pre = await precheckTarget("https://x.example/", publicLookup);
+    expect(typeof pre).not.toBe("string");
+    if (typeof pre === "string") return;
+    expect(pre.addrs?.[0]?.address).toBe("93.184.216.34");
+    const counting: DnsLookupFn = vi.fn(async () => [
+      { address: "10.0.0.9" }, // would be dns_private if consulted
+    ]);
+    const r = await runScanLite(pre.url, {
+      fetchFn: fakeFetch,
+      lookupFn: counting,
+      pinned: pre.addrs,
+    });
+    expect(counting).not.toHaveBeenCalled(); // pinned = no re-resolve
+    expect(typeof r).not.toBe("string");
+  });
+
+  it("precheckTarget rejects private DNS before any fetch", async () => {
+    const evil: DnsLookupFn = async () => [{ address: "169.254.169.254" }];
+    expect(await precheckTarget("https://meta.example/", evil)).toBe("dns_private");
+    expect(await precheckTarget("http://127.0.0.1/")).toBe("blocked_host");
+    expect(await precheckTarget("not a url")).toBe("invalid_url");
   });
 });
 

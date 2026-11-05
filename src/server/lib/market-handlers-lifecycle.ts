@@ -21,13 +21,16 @@ export async function postTask(c: Context): Promise<Response> {
       return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
     }
 
-    const { posterDid, title, description, priceHbar, capabilities, deadline } = body as {
+    const { posterDid, title, description, priceHbar, capabilities, deadline, verifierDid } = body as {
       posterDid?: string;
       title?: string;
       description?: string;
       priceHbar?: number;
       capabilities?: string[];
       deadline?: number;
+      /** SLICE-206-18 (audit C-1): designated independent verifier —
+       *  DID or EVM wallet that alone may submit verdicts on this task. */
+      verifierDid?: string;
     };
 
     if (!posterDid || !title || !description || priceHbar === undefined || !capabilities) {
@@ -36,6 +39,18 @@ export async function postTask(c: Context): Promise<Response> {
 
     if (!isValidA2ADid(posterDid)) {
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid posterDid format");
+    }
+
+    // Designated verifier (optional at create; REQUIRED for the external
+    // verdict route — audit C-1). DID or 0x wallet; must differ from poster.
+    if (verifierDid !== undefined) {
+      const ok = isValidA2ADid(verifierDid) || /^0x[0-9a-fA-F]{40}$/.test(verifierDid);
+      if (!ok) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid verifierDid format (DID or 0x wallet expected)");
+      }
+      if (verifierDid.toLowerCase() === posterDid.toLowerCase()) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "verifierDid must differ from posterDid");
+      }
     }
 
     if (!Array.isArray(capabilities) || capabilities.length === 0) {
@@ -87,6 +102,7 @@ export async function postTask(c: Context): Promise<Response> {
         priceHbar,
         capabilities,
         deadline,
+        ...(verifierDid ? { verifierDid } : {}),
         status: "posted" as const,
         txId,
         consensusTimestamp: consensusTimestamp ?? `pending-consensus:${txId}`,

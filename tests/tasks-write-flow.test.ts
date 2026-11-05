@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { getTaskById, marketClear, marketUpsert } from "@agentbadge/passport";
-import type { CachedMarketTask } from "@agentbadge/hedera-core";
+import type { TaskWithVerifier } from "../src/server/lib/tasks/verdict";
 import { tasksWriteRoutes } from "../src/server/routes/tasks-write";
 import { tasksWriteFlowRoutes } from "../src/server/routes/tasks-write-flow";
 import { tasksReadRoutes } from "../src/server/routes/tasks-read";
@@ -37,7 +37,7 @@ function sig(wallet: string) {
   };
 }
 
-function task(over: Partial<CachedMarketTask>): CachedMarketTask {
+function task(over: Partial<TaskWithVerifier>): TaskWithVerifier {
   return {
     taskId: `t_${Math.random().toString(36).slice(2, 8)}`,
     posterDid: OWNER, // wallet-shaped owner identity (agent contour)
@@ -84,7 +84,7 @@ afterEach(() => {
 
 describe("e2e: bid → award → deliver → verdict PASS", () => {
   it("full path: external burner completes to payment-ready", async () => {
-    marketUpsert(task({ taskId: "e2e1" }));
+    marketUpsert(task({ taskId: "e2e1", verifierDid: VERIFIER }));
 
     // 1. bid — no registration, sig-auth only
     const bid = await post("/api/tasks/e2e1/bids", BIDDER, {
