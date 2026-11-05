@@ -83,6 +83,18 @@ describe("GET /agent-guide/getting-started", () => {
     expect(md).toContain("/pricing.json");
   });
 
+  it("tutorial covers the agent-native contour (206-6): descriptor + sig-auth writes", async () => {
+    const res = await agentKnowledgeRoutes.request("/agent-guide/getting-started");
+    const md = await res.text();
+    expect(md).toContain("/.well-known/agentbadge-machine.json");
+    expect(md).toContain("/api/tasks/open");
+    expect(md).toContain("/api/tasks/<taskId>/bids");
+    expect(md).toContain("/api/tasks/<taskId>/deliverables");
+    expect(md).toContain("agentbadge-access:v1");
+    expect(md).toContain("X-Wallet");
+    expect(md).toContain("idempotency-key");
+  });
+
   it("agent-knowledge .md files referenced by the tutorial exist on disk", () => {
     const expected = ["getting-started.md", "earnings.md", "post-task.md", "context.md"];
     for (const f of expected) {
