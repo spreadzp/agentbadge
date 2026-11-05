@@ -23,9 +23,10 @@ import { BASE_URL } from "../lib/page-meta";
 const HINTS: Record<number, Record<string, unknown>> = {
   401: {
     how_to_fix:
-      "Provide valid credentials: Authorization: Bearer agb_<key> for keyed endpoints, X-AgentBadge-* DID signature headers for legacy writes, or X-Wallet/X-Sig/X-Timestamp EIP-191 for pass-gated endpoints. See /agent-guide/getting-started.",
+      "Provide valid credentials: Authorization: Bearer agb_<key> for keyed endpoints, X-Wallet/X-Sig/X-Timestamp EIP-191 (agentbadge-access:v1) for task writes and pass-gated endpoints, or X-AgentBadge-* DID headers for legacy writes. See /agent-guide/getting-started.",
     register: "/api/v1/agents/register",
     docs: "/agent-guide/getting-started",
+    machine_entry: "/.well-known/agentbadge-machine.json",
   },
   402: {
     how_to_fix:
@@ -40,9 +41,10 @@ const HINTS: Record<number, Record<string, unknown>> = {
   },
   403: {
     how_to_fix:
-      "Access denied — the caller lacks identity or tier. Register at /api/v1/agents/register for the observer tier (Bearer agb_ key); higher tiers are listed in /api/meta/trust-tiers.",
+      "Access denied — the caller lacks identity, tier, or role. Register at /api/v1/agents/register for the observer tier (Bearer agb_ key); tiers in /api/meta/trust-tiers. On task writes, role rules apply (verdict signer must differ from owner/worker/platform — see machine_entry invariants).",
     register: "/api/v1/agents/register",
     trust_tiers: "/api/meta/trust-tiers",
+    machine_entry: "/.well-known/agentbadge-machine.json",
   },
 };
 
