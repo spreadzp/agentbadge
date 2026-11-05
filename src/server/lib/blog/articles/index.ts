@@ -36,6 +36,7 @@ import { article as arcC30AgentEconomy } from "./arc-c30-agent-economy";
 import { article as arcC31AgentAllowance } from "./arc-c31-agent-allowance";
 import { article as arcC33A2aProtocol } from "./arc-c33-a2a-protocol";
 import { article as arcC32PaymentForensics } from "./arc-c32-payment-forensics";
+import { article as arcC40AgentInterop } from "./arc-c40-agent-interop";
 import { article as gecInteropFieldReport } from "./gec-interop-field-report";
 import { article as usdcRescueBaseToArc } from "./usdc-rescue-base-to-arc";
 import { article as keylessSigner } from "./keyless-signer";
@@ -81,6 +82,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC33A2aProtocol,
   arcC29TaskBoard,
   arcC32PaymentForensics,
+  arcC40AgentInterop,
   gecInteropFieldReport,
   usdcRescueBaseToArc,
   keylessSigner,
