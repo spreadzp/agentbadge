@@ -97,6 +97,31 @@ describe("idempotentWrite dedupe", () => {
     expect(otherKey.duplicate).toBe(false);
     expect(calls).toBe(3);
   });
+
+  // audit 206-18 round-2: concurrent same-key calls must share ONE
+  // produce() execution — the old get→await→set window double-ran.
+  it("concurrent same-key calls join one produce (no double side-effects)", async () => {
+    let calls = 0;
+    const produce = async () => {
+      calls++;
+      await new Promise((r) => setTimeout(r, 20)); // yield — exposes check-then-act
+      return { status: 200, body: { n: calls } };
+    };
+    const [a, b, c2] = await Promise.all([
+      idempotentWrite("POST /x", "test-idem-race", produce),
+      idempotentWrite("POST /x", "test-idem-race", produce),
+      idempotentWrite("POST /x", "test-idem-race", produce),
+    ]);
+    expect(calls).toBe(1);
+    expect(a.duplicate).toBe(false);
+    expect(b.duplicate).toBe(true);
+    expect(c2.duplicate).toBe(true);
+    expect(b.body).toEqual({ n: 1, duplicate: true });
+    // after the in-flight join, a later sequential retry still replays
+    const replay = await idempotentWrite("POST /x", "test-idem-race", produce);
+    expect(replay.duplicate).toBe(true);
+    expect(calls).toBe(1);
+  });
 });
 
 describe("legacyWriteDeprecation (D-206-8)", () => {

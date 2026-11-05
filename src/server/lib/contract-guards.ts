@@ -65,6 +65,13 @@ const dedupeStore = new Map<
   { stored: StoredResponse; at: number }
 >();
 
+/** In-flight produce() executions keyed like dedupeStore — audit
+ *  206-18 round-2: without it, two concurrent same-key calls both
+ *  miss the store and both run produce() (check-then-act across the
+ *  await) → double side-effects. Joining callers share ONE execution
+ *  and are marked duplicate. */
+const inflight = new Map<string, Promise<IdempotentResult>>();
+
 function dedupeKey(scope: string, key: string): string {
   return `${scope}\u0000${key}`;
 }
@@ -95,14 +102,37 @@ export async function idempotentWrite(
     };
   }
   if (hit) dedupeStore.delete(k);
-  const stored = await produce();
-  if (dedupeStore.size >= IDEM_MAX_ENTRIES) {
-    // FIFO evict oldest — Map preserves insertion order.
-    const oldest = dedupeStore.keys().next().value;
-    if (oldest !== undefined) dedupeStore.delete(oldest);
+
+  // Concurrent same-key call in flight → join it instead of a second
+  // produce() (check-then-act race fix). The joined caller replays
+  // the shared outcome marked duplicate — store dedupe covers later
+  // sequential retries as before.
+  const running = inflight.get(k);
+  if (running) {
+    const shared = await running;
+    return {
+      status: shared.status,
+      body: { ...shared.body, duplicate: true },
+      duplicate: true,
+    };
   }
-  dedupeStore.set(k, { stored, at: Date.now() });
-  return { status: stored.status, body: stored.body as Record<string, unknown>, duplicate: false };
+
+  const exec = (async (): Promise<IdempotentResult> => {
+    const stored = await produce();
+    if (dedupeStore.size >= IDEM_MAX_ENTRIES) {
+      // FIFO evict oldest — Map preserves insertion order.
+      const oldest = dedupeStore.keys().next().value;
+      if (oldest !== undefined) dedupeStore.delete(oldest);
+    }
+    dedupeStore.set(k, { stored, at: Date.now() });
+    return { status: stored.status, body: stored.body as Record<string, unknown>, duplicate: false };
+  })();
+  inflight.set(k, exec);
+  try {
+    return await exec;
+  } finally {
+    inflight.delete(k);
+  }
 }
 
 /** Test seam — clears the dedupe store. */
