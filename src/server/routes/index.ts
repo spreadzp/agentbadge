@@ -26,6 +26,7 @@ import { discoveryManifestRoutes } from "./discovery";
 import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
 import { feedRoutes } from "./feed";
+import { feedDirectoryRoutes } from "./feed-directory";
 import { mcpRoutes } from "./mcp";
 import { riskRoutes } from "./risk-api";
 import { econLedgerRoutes } from "./econ-ledger-api";
@@ -124,6 +125,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", wellKnownRoutes);
   app.route("/", agentCardRoutes);
   app.route("/", feedRoutes);
+  app.route("/", feedDirectoryRoutes);
   app.route("/", mcpRoutes);
   app.route("/", riskRoutes);
   app.route("/", econLedgerRoutes);

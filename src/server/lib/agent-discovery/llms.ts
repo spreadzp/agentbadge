@@ -136,6 +136,9 @@ We offer consulting and development services for the agentic web:
 - /.well-known/agentbadge.json — Deployment descriptor (network, token IDs, API version, payment protocol)
 - /.well-known/jwks.json — JSON Web Key Set (RFC 7517) for verifying signed credentials
 - /api/meta/errors — Machine-readable error catalog with recovery actions for AI agents
+- /feed.json — Platform feed (JSON Feed 1.1): articles + capability announcements.
+  Capability items carry {_type:"capability", _endpoint, _method, _price, _added_at};
+  the RSS /feed marks them with <category>capability</category>
 - /api/v1/services — Canonical paid-services catalog (ServiceSku registry, USDC prices); supersedes /api/meta/fees
 - /api/meta/trust-tiers — Identity/trust ladder (7 tiers, incl. keyed observer) with capabilities and requirements
 - POST /api/v1/agents/register — Self-serve ERC-8004 registration (free, observer tier, agb_ key once);
