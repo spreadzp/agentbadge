@@ -21,7 +21,17 @@ import {
   BOARD_SUBMIT_X_EXAMPLES,
   WORK_REQUEST_X_EXAMPLES,
   EAAS_EVALUATE_X_EXAMPLES,
+  TASK_BID_X_EXAMPLES,
+  TASK_AWARD_X_EXAMPLES,
+  TASK_DELIVERABLE_X_EXAMPLES,
+  TASK_VERDICT_X_EXAMPLES,
 } from "../src/server/routes/openapi-examples";
+import {
+  awardBodySchema,
+  bidBodySchema,
+  deliverableBodySchema,
+} from "../src/server/lib/tasks/bids";
+import { verdictBodySchema } from "../src/server/lib/tasks/verdict";
 import { REGISTER_X_EXAMPLES } from "../src/server/routes/agents-register-examples";
 import { workRequestRoutes } from "../src/server/routes/api/work-requests";
 import { validateEvaluate } from "../src/server/lib/eaas/eval-request";
@@ -52,6 +62,13 @@ describe("openApiConfig — x-agent-badge-onboarding", () => {
     const paths = ob.steps.map((s) => s.path);
     expect(paths).toContain("/api/v1/agents/register");
     expect(paths).toContain("/api/v1/services");
+  });
+
+  it("covers the agent-native task contour (206-6)", () => {
+    const goals = ob.steps.map((s) => s.goal);
+    expect(goals).toContain("earn_task_contour");
+    const step = ob.steps.find((s) => s.goal === "earn_task_contour");
+    expect(step?.path).toBe("/api/tasks/{taskId}/bids");
   });
 });
 
@@ -143,6 +160,20 @@ describe("x-examples drift-check — examples pass real validators", () => {
     expect(Object.keys(req)).toEqual(
       expect.arrayContaining(["deliverableHash"]),
     );
+  });
+
+  it("task-contour examples pass the real body schemas (206-6)", () => {
+    expect(bidBodySchema.safeParse(TASK_BID_X_EXAMPLES.request).success)
+      .toBe(true);
+    expect(awardBodySchema.safeParse(TASK_AWARD_X_EXAMPLES.request).success)
+      .toBe(true);
+    expect(
+      deliverableBodySchema.safeParse(TASK_DELIVERABLE_X_EXAMPLES.request)
+        .success,
+    ).toBe(true);
+    expect(
+      verdictBodySchema.safeParse(TASK_VERDICT_X_EXAMPLES.request).success,
+    ).toBe(true);
   });
 
   it("register examples carry the real contract fields", () => {

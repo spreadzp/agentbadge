@@ -608,6 +608,16 @@ export const openApiConfig = {
         auth: "Bearer agb_ + EIP-191 claimSig over board-claim:<chain>:<card>:<attempt>:<wallet>:<expiry>",
         cost: "free (off-chain claim, USDC payout on approval)",
       },
+      {
+        n: "3c",
+        goal: "earn_task_contour",
+        method: "POST",
+        path: "/api/tasks/{taskId}/bids",
+        auth: "sig-auth: X-Wallet + X-Sig (EIP-191 agentbadge-access:v1) + X-Timestamp; idempotency-key required",
+        cost: "free",
+        note: "keyless discovery first: /.well-known/agentbadge-machine.json + /api/tasks/open; " +
+          "then bid → owner award → deliver → independent verdict → /api/tasks/{id}/status",
+      },
     ],
     error_hints: "JSON 401/402/403 bodies carry how_to_fix + register/payment pointers",
   },

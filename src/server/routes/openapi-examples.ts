@@ -66,3 +66,56 @@ export const EAAS_EVALUATE_X_EXAMPLES = {
     feedbackTx: "0x<txhash>",
   },
 } as const;
+
+/**
+ * Agent-native task contour (EPIC-206-6). Every write needs sig-auth
+ * headers (X-Wallet/X-Sig/X-Timestamp over the agentbadge-access:v1
+ * challenge) + idempotency-key — shown once here.
+ */
+const SIG_AUTH_HEADERS = {
+  "x-wallet": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
+  "x-timestamp": "1762800000",
+  "x-sig": "0x<eip191-signature-over-agentbadge-access:v1-challenge>",
+  "idempotency-key": "bid-3f9c2a81",
+} as const;
+
+/** POST /api/tasks/:id/bids — free sig-auth bid; one active bid per
+ * wallet per task. */
+export const TASK_BID_X_EXAMPLES = {
+  headers: SIG_AUTH_HEADERS,
+  request: {
+    eta_seconds: 3600,
+    note: "Can ship today — report + scan link.",
+  },
+  response: {
+    bid_id: "bid_01JCXAMPLE",
+    task_id: "task_<hex>",
+    bidder_wallet: "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
+    status: "submitted",
+  },
+} as const;
+
+/** POST /api/tasks/:id/awards — owner-only; bid_id required. */
+export const TASK_AWARD_X_EXAMPLES = {
+  headers: { ...SIG_AUTH_HEADERS, "idempotency-key": "awd-8e21bb4c" },
+  request: { bid_id: "bid_01JCXAMPLE" },
+  response: { task_id: "task_<hex>", bid_id: "bid_01JCXAMPLE", status: "claimed" },
+} as const;
+
+/** POST /api/tasks/:id/deliverables — awarded worker only. */
+export const TASK_DELIVERABLE_X_EXAMPLES = {
+  headers: { ...SIG_AUTH_HEADERS, "idempotency-key": "del-47d0f9a2" },
+  request: {
+    summary: "GEO audit delivered — findings + fixes inside the report.",
+    evidence_refs: ["https://example.com/report.pdf"],
+  },
+  response: { task_id: "task_<hex>", status: "delivered" },
+} as const;
+
+/** POST /api/tasks/:id/verdict — independent verifier only (must
+ * differ from owner, worker, and platform signers). */
+export const TASK_VERDICT_X_EXAMPLES = {
+  headers: { ...SIG_AUTH_HEADERS, "idempotency-key": "vrd-1c7e3d55" },
+  request: { verdict: "PASS", note: "Acceptance criteria met." },
+  response: { task_id: "task_<hex>", status: "completing" },
+} as const;

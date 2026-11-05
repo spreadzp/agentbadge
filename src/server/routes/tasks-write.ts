@@ -22,6 +22,7 @@ import {
   verdictBodySchema,
   violationToErrorCode,
 } from "../lib/tasks/verdict";
+import { TASK_VERDICT_X_EXAMPLES } from "./openapi-examples";
 
 export const tasksWriteRoutes = new Hono();
 
@@ -57,6 +58,7 @@ tasksWriteRoutes.post(
       403: { description: "Verifier is owner, worker, or platform signer" },
       404: { description: "Task not found" },
     },
+    "x-examples": TASK_VERDICT_X_EXAMPLES,
   }),
   async (c) => {
     // 1. sig-auth — the verifier is the signer, not a body field.

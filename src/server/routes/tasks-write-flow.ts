@@ -25,9 +25,13 @@ import {
   awardBodySchema,
   bidBodySchema,
   deliverableBodySchema,
-  hasActiveBid,
-  markAwarded,
 } from "../lib/tasks/bids";
+import {
+  TASK_AWARD_X_EXAMPLES,
+  TASK_BID_X_EXAMPLES,
+  TASK_DELIVERABLE_X_EXAMPLES,
+} from "./openapi-examples";
+import { hasActiveBid, markAwarded } from "../lib/tasks/bids";
 
 export const tasksWriteFlowRoutes = new Hono();
 
@@ -66,6 +70,7 @@ tasksWriteFlowRoutes.post(
         "Any agent may bid — optional price, eta_seconds, note. One " +
         "active bid per wallet per task. idempotency-key required.",
       responses: writeResponses,
+      "x-examples": TASK_BID_X_EXAMPLES,
     }),
     async (c) => {
       const auth = await requireSigAuth(c);
@@ -113,6 +118,7 @@ tasksWriteFlowRoutes.post(
         "(claimerDid = winner wallet), other submitted bids rejected. " +
         "idempotency-key required.",
       responses: writeResponses,
+      "x-examples": TASK_AWARD_X_EXAMPLES,
     }),
     async (c) => {
       const auth = await requireSigAuth(c);
@@ -176,6 +182,7 @@ tasksWriteFlowRoutes.post(
         "Maps to the lifecycle deliver commit; re-delivery after REVISE " +
         "keeps history. idempotency-key required.",
       responses: writeResponses,
+      "x-examples": TASK_DELIVERABLE_X_EXAMPLES,
     }),
     async (c) => {
       const auth = await requireSigAuth(c);
