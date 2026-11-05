@@ -11,6 +11,7 @@ import { wireMarketplace } from "./wiring/marketplace-x402";
 import { registerMcpNamespaces, wireMcpNamespaceRoutes, registerDefaultMcpTools } from "./wiring/mcp-namespaces";
 import { wireCirclePayments } from "./wiring/circle-payments";
 import { wireEaas } from "./wiring/eaas";
+import { wireDemoX402 } from "./wiring/demo-x402";
 import { configureVenueBilling } from "./routes/venue-api";
 import { createSettleSeam } from "./lib/x402-settle-seam";
 import { venueMonthlyPriceAtomic } from "./lib/venue/billing";
@@ -212,6 +213,10 @@ registerPostMarketplaceRoutes(app);
 // EPIC-154 SLICE-154-2: EaaS verdict API (x402-gated POST + free GETs).
 // Requires circle payments runtime for pricing; no-op when either flag off.
 wireEaas(app, { circleRuntime });
+
+// SLICE-206-15: demo micro-paywall — $0.001 x402 scan-lite.
+// Fail closed without a runtime (paid route not mounted).
+wireDemoX402(app, { runtime: circleRuntime });
 
 // EPIC-155 SLICE-155-1: agent wallet registry (wallet↔agentId↔venue) +
 // Circle CLI read mirror. Gated on AGENT_WALLET_ENABLED; CLI missing →

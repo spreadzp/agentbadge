@@ -5,6 +5,7 @@
  */
 import type { ServiceSku } from "../types";
 import type { CatalogSources } from "../sources";
+import { demoScanPriceUsd } from "../../demo-scan";
 
 const SCAN_INPUT_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -50,6 +51,29 @@ export function scanSkus(src: CatalogSources["scan"]): ServiceSku[] {
     },
     auth: "x402",
     enabled: src.enabled,
+  });
+
+  // SLICE-206-15: $0.001 demo teaser — price SoT is demo-scan.ts
+  // (DEMO_SCAN_USDC env), not a literal.
+  skus.push({
+    sku_id: "scan:demo-scan-lite",
+    surface: "scan",
+    name: "Demo scan-lite — one-page agent-readiness probe",
+    description:
+      "Cheapest x402 try-out: fetch one page, get og/meta + " +
+      "agent-signals (llms.txt, JSON-LD, agents.txt, robots).",
+    price_usd: demoScanPriceUsd(),
+    pricing: "per_call",
+    endpoint: { method: "GET", path: "/api/v1/demo/scan-lite" },
+    input_schema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Public http(s) page to probe" },
+      },
+      required: ["url"],
+    },
+    input_example: { url: "https://example.com" },
+    auth: "x402",
   });
 
   return skus;

@@ -140,6 +140,8 @@ We offer consulting and development services for the agentic web:
   Capability items carry {_type:"capability", _endpoint, _method, _price, _added_at};
   the RSS /feed marks them with <category>capability</category>
 - /api/v1/services — Canonical paid-services catalog (ServiceSku registry, USDC prices); supersedes /api/meta/fees
+- GET /api/v1/demo/scan-lite?url= — try us for $0.001 (x402): one-page
+  agent-readiness probe — og/meta + llms.txt/JSON-LD/agents.txt signals
 - /api/meta/trust-tiers — Identity/trust ladder (7 tiers, incl. keyed observer) with capabilities and requirements
 - POST /api/v1/agents/register — Self-serve ERC-8004 registration (free, observer tier, agb_ key once);
   sponsored mode: {owner, signature} with EIP-191 intent — treasury pays mint+transfer, no USDC needed
