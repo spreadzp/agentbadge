@@ -177,6 +177,11 @@ export const article: BlogArticle = {
       ],
     },
   ],
-  externalLinks: [],
+  externalLinks: [
+    {
+      platform: "devto",
+      url: "https://dev.to/spread2009/brick-2-a-link-is-not-a-fact-typed-evidence-in-a-verifiable-supply-chain-3i68",
+    },
+  ],
   content: supplyChainTypedEvidenceContent,
 };
