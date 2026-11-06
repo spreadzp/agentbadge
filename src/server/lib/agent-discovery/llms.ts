@@ -143,6 +143,7 @@ We offer consulting and development services for the agentic web:
 - GET /api/v1/demo/scan-lite?url= — try us for $0.001 (x402): one-page
   agent-readiness probe — og/meta + llms.txt/JSON-LD/agents.txt signals
 - /api/meta/trust-tiers — Identity/trust ladder (7 tiers, incl. keyed observer) with capabilities and requirements
+- /api/meta/traffic-report — Live traffic telemetry (clients, paths, AI crawlers, ?src attribution; ?hours= window, default 24)
 - POST /api/v1/agents/register — Self-serve ERC-8004 registration (free, observer tier, agb_ key once);
   sponsored mode: {owner, signature} with EIP-191 intent — treasury pays mint+transfer, no USDC needed
 - check_compliance MCP tool — Scan any URL for isitagentready compliance via MCP
