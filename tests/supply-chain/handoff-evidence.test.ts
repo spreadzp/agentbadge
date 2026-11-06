@@ -164,13 +164,12 @@ describe("handoffHop evidence[] (SLICE-213-2)", () => {
     }
   });
 
-  it("issuer = actor or counterparty → no advisory-warn", async () => {
+  it("issuer = asserting actor → no advisory-warn", async () => {
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
     try {
       const { deps, shipmentId } = await makeDeps();
       await handoffHop(shipmentId, 0, {}, CLIENT, CARRIER, deps, undefined, undefined, [
         ref({ issuer: { address: CLIENT, type: "org" } }),
-        ref({ hash: OTHER_HASH, issuer: { address: CARRIER, type: "org" } }),
       ]);
       expect(warn).not.toHaveBeenCalledWith(
         expect.stringContaining("evidence issuer"),
@@ -179,5 +178,57 @@ describe("handoffHop evidence[] (SLICE-213-2)", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+
+  it("213-5 H-1: issuer = counterparty (not the asserting actor) → advisory-warn", async () => {
+    // Two-sided advisory — a claim "on behalf of" the other hop party is
+    // a self-attestation attempt, previously silent.
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+    try {
+      const { deps, shipmentId } = await makeDeps();
+      await handoffHop(shipmentId, 0, {}, CLIENT, CARRIER, deps, undefined, undefined, [
+        ref({ issuer: { address: CARRIER, type: "org" } }),
+      ]);
+      const payload = await handoffPayload(deps, shipmentId);
+      expect(payload?.evidence).toHaveLength(1); // advisory only — still appended
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("counterparty, not the asserting actor"),
+        expect.objectContaining({ shipmentId, hopIndex: 0, indexes: [0], count: 1 }),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("213-5 M-3: multiple suspicious issuers → one aggregated warn per class", async () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+    try {
+      const { deps, shipmentId } = await makeDeps();
+      await handoffHop(shipmentId, 0, {}, CLIENT, CARRIER, deps, undefined, undefined, [
+        ref({ issuer: { address: SENSOR, type: "device" } }),
+        ref({ hash: OTHER_HASH, issuer: { address: DEVICE, type: "device" } }),
+      ]);
+      const issuerWarns = warn.mock.calls.filter((c) =>
+        String(c[0]).includes("not a hop party"),
+      );
+      expect(issuerWarns).toHaveLength(1); // aggregated, not per-ref
+      expect(issuerWarns[0]?.[1]).toEqual(
+        expect.objectContaining({ shipmentId, hopIndex: 0, indexes: [0, 1], count: 2 }),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("213-5 M-3: cardinality pre-check — [] and >32 reject before element parse", async () => {
+    const { deps, shipmentId } = await makeDeps();
+    await expect(
+      handoffHop(shipmentId, 0, {}, CLIENT, CARRIER, deps, undefined, undefined, []),
+    ).rejects.toThrow(/expected 1\.\.32/);
+    const many = Array.from({ length: 33 }, (_, i) => ref({ hash: `0x${String(i).padStart(64, "0")}` }));
+    await expect(
+      handoffHop(shipmentId, 0, {}, CLIENT, CARRIER, deps, undefined, undefined, many),
+    ).rejects.toThrow(/expected 1\.\.32/);
+    expect(await handoffPayload(deps, shipmentId)).toBeUndefined();
   });
 });

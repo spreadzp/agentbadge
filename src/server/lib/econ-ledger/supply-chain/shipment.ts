@@ -19,11 +19,9 @@ import {
   appendEventWithRetry,
   assertAddress,
   assertAmountUsdc,
+  assertHandoffOrder,
   assertHopIndex,
   assertShipmentId,
-  hopStatus,
-  parseHandoffEvidence,
-  parseHandoffRoles,
   seqFor,
   SHIPMENT_SOURCE,
   ShipmentOrderError,
@@ -31,6 +29,7 @@ import {
   sumUsdc,
   withHopLock,
 } from "./state";
+import { parseHandoffEvidence, parseHandoffRoles } from "./claims";
 import {
   statusRank,
   type HopJobExecutor,
@@ -41,6 +40,10 @@ import {
 } from "./types";
 
 export { shipmentState, SHIPMENT_SOURCE, ShipmentOrderError };
+
+/** 213-5 (audit M-2): hard bound on hops per shipment plan. */
+const MAX_HOPS = 64;
+
 export { verifyHop } from "./verify";
 export type { ShipmentDeps };
 
@@ -55,6 +58,11 @@ export async function createShipment(
   assertShipmentId(shipmentId);
   assertAddress(client, "client");
   if (hops.length === 0) throw new ShipmentOrderError("shipment needs >=1 hop");
+  // 213-5 (audit M-2): bound the plan — terms.hops is unbounded on read,
+  // and shipmentState rebuild is O(hops^2) per lifecycle.
+  if (hops.length > MAX_HOPS) {
+    throw new ShipmentOrderError(`shipment has ${hops.length} hops — max ${MAX_HOPS}`);
+  }
   for (const h of hops) {
     assertAddress(h.receiver, `hops[].receiver`);
     assertAmountUsdc(h.amountUsdc);
@@ -155,52 +163,25 @@ export async function handoffHop(
 ): Promise<void> {
   assertShipmentId(shipmentId);
   assertHopIndex(hopIndex);
-  // 212-2/212-5: typed participants ride the handoff payload (D-211-7);
-  // self-declared, never identity (D-212-3). Strict write-side parse.
-  const parsedRoles = roles === undefined ? undefined : parseHandoffRoles(roles, counterparty);
-  // 213-2 (D-211-8): typed evidence links — issuer mismatch → advisory-warn (D-213-3)
-  const parsedEvidence = evidenceRefs === undefined ? undefined : parseHandoffEvidence(evidenceRefs, actor, counterparty);
   // H-3: serialize the guard→append pair — two concurrent handoffs of
   // the same hop must not both pass the "not yet handed off" check.
   await withHopLock(`${shipmentId}:${hopIndex}`, async () => {
-    const { hops, client } = await shipmentState(deps.ledger, shipmentId);
-    if (hops.length === 0) {
-      throw new ShipmentOrderError(`shipment ${shipmentId} has no offer — cannot handoff`);
-    }
-    const hop = hops.find((h) => h.hopIndex === hopIndex);
-    // M-2: a hopIndex outside the derived plan must not mint a phantom
-    // hop carrying attacker roles in the public read model.
-    if (!hop) {
-      throw new ShipmentOrderError(`hop ${hopIndex} not in shipment plan — cannot handoff`);
-    }
-    // H-3: handoff is a one-way state transition, not idempotent data —
-    // a repeat call would either silently dedupe (roles typo becomes
-    // uncorrectable) or rewrite the read model (last-writer-wins).
-    if (statusRank(hop.status) >= statusRank("handed_off")) {
-      throw new ShipmentOrderError(`hop ${hopIndex} already handed off — cannot re-handoff`);
-    }
-    // M-4: the receiver must be the plan's own; the hander-offer must be
-    // the previous custody holder (client at hop 0).
-    if (hop.receiver && counterparty !== hop.receiver) {
-      throw new ShipmentOrderError(
-        `handoff counterparty ${counterparty.slice(0, 80)} ≠ plan receiver ${hop.receiver}`,
-      );
-    }
-    const expectedActor = hopIndex === 0 ? client : hops.find((h) => h.hopIndex === hopIndex - 1)?.receiver;
-    if (expectedActor && actor !== expectedActor) {
-      throw new ShipmentOrderError(
-        `handoff actor ${actor.slice(0, 80)} ≠ custody holder ${expectedActor}`,
-      );
-    }
-    if (hopIndex > 0) {
-      const prev = hopStatus(hops, hopIndex - 1);
-      if (statusRank(prev) < statusRank("paid")) {
-        throw new ShipmentOrderError(
-          `hop ${hopIndex} blocked: hop ${hopIndex - 1} is "${prev}", must be paid first`,
-        );
-      }
-    }
+    // 213-5 (audit M-2): light read — guards need status/receiver only;
+    // roles/evidence lifts are skipped.
+    const { hops, client } = await shipmentState(deps.ledger, shipmentId, { light: true });
+    assertHandoffOrder(hops, client, hopIndex, actor, counterparty);
+    // 213-5 (audit M-3): strict parses run INSIDE the lock after guards —
+    // a rejected handoff can't burn parse work against a live shipment,
+    // and a roles/evidence typo can't slip an event past a stale guard read.
+    // 212-2/212-5: typed participants ride the handoff payload (D-211-7);
+    // self-declared, never identity (D-212-3). Strict write-side parse.
     // H-2 custodian==counterparty is enforced inside parseHandoffRoles.
+    const parsedRoles = roles === undefined ? undefined : parseHandoffRoles(roles, counterparty);
+    // 213-2 (D-211-8): typed evidence links — issuer mismatch → advisory-warn (D-213-3).
+    // ctx flows into the advisory so log correlation needs no manual join.
+    const parsedEvidence = evidenceRefs === undefined ? undefined : parseHandoffEvidence(
+      evidenceRefs, actor, counterparty, { shipmentId, hopIndex },
+    );
     await appendEvent(deps.ledger, {
       source: SHIPMENT_SOURCE,
       sourceId: shipmentId,
@@ -253,7 +234,7 @@ export async function settleHop(
     if (statusRank(hop.status) >= statusRank("paid")) {
       return; // already settled — idempotent leg
     }
-    if (hop.receiver && receiver !== hop.receiver) {
+    if (hop.receiver && receiver.toLowerCase() !== hop.receiver.toLowerCase()) {
       throw new ShipmentOrderError(
         `settle receiver ${receiver} ≠ plan receiver ${hop.receiver}`,
       );

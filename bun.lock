@@ -10,7 +10,7 @@
         "@agentbadge/cache": "^0.2.1",
         "@agentbadge/circle-payments": "0.1.20",
         "@agentbadge/database": "^0.6.1",
-        "@agentbadge/econ-events": "^0.1.1",
+        "@agentbadge/econ-events": "^0.1.2",
         "@agentbadge/evm-core": "^0.1.2",
         "@agentbadge/hedera-core": "^0.2.1",
         "@agentbadge/keeperhub": "^0.1.1",
@@ -85,7 +85,7 @@
 
     "@agentbadge/database": ["@agentbadge/database@0.6.1", "", { "dependencies": { "@agentbadge/econ-events": "^0.1.1", "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-nkjtnCbnN8mvkSlG0w0Ffo1tesJn6U8IFUQju3CmTUCDS7QeQ60NQmhN2yaQta1EX1kPpimDyq73K3S8dUBt2Q=="],
 
-    "@agentbadge/econ-events": ["@agentbadge/econ-events@0.1.1", "", { "dependencies": { "zod": "^4.0.0" } }, "sha512-4hRiOR5fsL86A3DUOJ5P3KuhSLPtkctK2CuyKr9QKgspKsRREMJB5b2yHa6mcZ1RdgSrCzaewzl47dNF+vRg0w=="],
+    "@agentbadge/econ-events": ["@agentbadge/econ-events@0.1.2", "", { "dependencies": { "zod": "^4.0.0" } }, "sha512-YkCT1Itf/a5kGGarRVb359ifL029PIGnZaVA2BQGmBMsZrYI9IpguawxdPETxOvrA2g8oWDK+ASHQ7ZY/qL/nA=="],
 
     "@agentbadge/evm-core": ["@agentbadge/evm-core@0.1.2", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "ethers": "^6.17.0" } }, "sha512-qecaJWw+MLuFnpv8dMV3i+XmztSZpXAjbcBc0DfdfbrL7wHpw1Ilgk2UfImhQ99Tefz7HRpqF9pWWmNDSqAK3g=="],
 
@@ -1680,6 +1680,8 @@
     "zod": ["zod@4.4.3", "", {}, ""],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
+
+    "@agentbadge/database/@agentbadge/econ-events": ["@agentbadge/econ-events@0.1.1", "", { "dependencies": { "zod": "^4.0.0" } }, "sha512-4hRiOR5fsL86A3DUOJ5P3KuhSLPtkctK2CuyKr9QKgspKsRREMJB5b2yHa6mcZ1RdgSrCzaewzl47dNF+vRg0w=="],
 
     "@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, ""],
 

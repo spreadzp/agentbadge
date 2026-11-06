@@ -12,14 +12,9 @@ import {
   type BuildEventInput,
   DECIMAL_USDC,
   type EconomicEvent,
-  EvidenceWriteListSchema,
-  type EvidenceRef,
-  type HandoffPayload,
-  ParticipantRolesWriteSchema,
-  type ParticipantRoles,
+  HandoffPayloadSchema,
   type ShipmentHop,
 } from "@agentbadge/econ-events";
-import { logger } from "@agentbadge/passport/logger";
 import { statusRank, type HopSpec, type HopStatus } from "./types";
 
 export const SHIPMENT_SOURCE = "supply_chain";
@@ -61,6 +56,16 @@ export async function withHopLock<T>(key: string, fn: () => Promise<T>): Promise
 }
 
 // ─── Validation (audit C-3, M-2, M-3) ────────────────────────────
+/** 213-5 (audit M-7): bound attacker-influenced text before it reaches an
+ *  error message or a log line — strip control/format chars, then slice.
+ *  Length-only capping leaves \n and ESC sequences in the echo. */
+const ECHO_BAD = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/gu;
+/** M-7: sanitize + bound attacker-influenced echo text. Exported for
+ *  claims.ts — same contract, one implementation. */
+export function bound(s: string, n = 200): string {
+  return s.replace(ECHO_BAD, "").slice(0, n);
+}
+
 export function assertShipmentId(id: string): void {
   if (!SHIPMENT_ID_RE.test(id)) {
     throw new ShipmentOrderError(`shipmentId must match ${SHIPMENT_ID_RE}`);
@@ -76,7 +81,7 @@ export function assertAddress(addr: string, field: string): asserts addr is `0x$
 
 export function assertAmountUsdc(amount: string): void {
   if (!DECIMAL_USDC_RE.test(amount)) {
-    throw new ShipmentOrderError(`amountUsdc must be decimal USDC: ${amount}`);
+    throw new ShipmentOrderError(`amountUsdc must be decimal USDC: ${bound(amount, 80)}`);
   }
 }
 
@@ -84,80 +89,64 @@ export function assertAmountUsdc(amount: string): void {
  *  or negative value can collide with another kind's seq. */
 export function assertHopIndex(hopIndex: number): void {
   if (!Number.isInteger(hopIndex) || hopIndex < 0) {
-    throw new ShipmentOrderError(`hopIndex must be a non-negative integer: ${hopIndex}`);
+    throw new ShipmentOrderError(`hopIndex must be a non-negative integer: ${bound(String(hopIndex), 80)}`);
   }
 }
 
 /**
- * 212-2/212-5: validate caller-supplied handoff roles (write side).
- * Strict schema — unknown slots/keys fail loudly (audit M-3),
- * addresses normalize to lowercase, roles must name >=1 participant
- * and one address can't carry two types. custodian must equal the
- * counterparty (audit H-2) — it IS the custody receiver; the other
- * slots may legitimately be third parties.
+ * Handoff order guards — run INSIDE the per-hop lock on the derived
+ * (light) state. Hoisted from handoffHop (213-5, max-lines lint);
+ * semantics unchanged.
+ *
+ * 213-5 rider: address equality is case-insensitive — plan terms may
+ * carry checksummed addresses while callers pass lowercase; a case-only
+ * mismatch is a liveness bug, not a plan violation.
  */
-export function parseHandoffRoles(
-  roles: unknown, // N-2: raw input — a typed param invites a lenient pre-parse upstream
-  counterparty: string,
-): ParticipantRoles {
-  const check = ParticipantRolesWriteSchema.safeParse(roles);
-  if (!check.success) {
-    const detail = check.error.issues
-      .map((i) => `${i.path.join(".") || "roles"} ${i.message}`)
-      .join("; ")
-      .slice(0, 200); // M-4: bound attacker-influenced text
-    throw new ShipmentOrderError(`invalid handoff roles: ${detail}`);
+export function assertHandoffOrder(
+  hops: ShipmentHop[],
+  client: string | undefined,
+  hopIndex: number,
+  actor: `0x${string}`,
+  counterparty: `0x${string}`,
+): void {
+  if (hops.length === 0) {
+    throw new ShipmentOrderError("shipment has no offer — cannot handoff");
   }
-  for (const [slot, role] of Object.entries(check.data)) {
-    if (role) assertAddress(role.address, `roles.${slot}.address`);
+  const hop = hops.find((h) => h.hopIndex === hopIndex);
+  // M-2: a hopIndex outside the derived plan must not mint a phantom
+  // hop carrying attacker roles in the public read model.
+  if (!hop) {
+    throw new ShipmentOrderError(`hop ${hopIndex} not in shipment plan — cannot handoff`);
   }
-  if (
-    check.data.custodian &&
-    check.data.custodian.address.toLowerCase() !== counterparty.toLowerCase()
-  ) {
+  // H-3: handoff is a one-way state transition, not idempotent data —
+  // a repeat call would either silently dedupe (roles typo becomes
+  // uncorrectable) or rewrite the read model (last-writer-wins).
+  if (statusRank(hop.status) >= statusRank("handed_off")) {
+    throw new ShipmentOrderError(`hop ${hopIndex} already handed off — cannot re-handoff`);
+  }
+  // M-4: the receiver must be the plan's own; the hander-offer must be
+  // the previous custody holder (client at hop 0).
+  if (hop.receiver && counterparty.toLowerCase() !== hop.receiver.toLowerCase()) {
     throw new ShipmentOrderError(
-      `roles.custodian ${check.data.custodian.address} ≠ handoff counterparty ${counterparty}`,
+      `handoff counterparty ${counterparty.slice(0, 80)} ≠ plan receiver ${hop.receiver}`,
     );
   }
-  return check.data;
-}
-
-/**
- * 213-2: validate caller-supplied handoff evidence refs (write side).
- * Strict schema — unknown keys fail loudly, hash/issuer addresses
- * normalize to lowercase, uri must be http(s)/ipfs/ar, cap <=32 refs
- * (D-213-2). A ref is a LINK, not a fact (D-213-4): issuer is
- * self-declared — issuer.address outside {actor, counterparty} logs an
- * advisory warning but stays VALID (D-213-3); proving the link between
- * issuer and hop parties is a v2 verification concern.
- */
-export function parseHandoffEvidence(
-  refs: unknown, // raw input — a typed param invites a lenient pre-parse upstream
-  actor: string,
-  counterparty: string,
-): EvidenceRef[] {
-  const check = EvidenceWriteListSchema.safeParse(refs);
-  if (!check.success) {
-    const detail = check.error.issues
-      .map((i) => `${i.path.join(".") || "evidence"} ${i.message}`)
-      .join("; ")
-      .slice(0, 200); // bound attacker-influenced text (M-4 mirror)
-    throw new ShipmentOrderError(`invalid handoff evidence: ${detail}`);
+  const expectedActor = hopIndex === 0
+    ? client
+    : hops.find((h) => h.hopIndex === hopIndex - 1)?.receiver;
+  if (expectedActor && actor.toLowerCase() !== expectedActor.toLowerCase()) {
+    throw new ShipmentOrderError(
+      `handoff actor ${actor.slice(0, 80)} ≠ custody holder ${expectedActor}`,
+    );
   }
-  const parties = new Set([actor.toLowerCase(), counterparty.toLowerCase()]);
-  for (const [i, e] of check.data.entries()) {
-    assertAddress(e.issuer.address, `evidence[${i}].issuer.address`);
-    if (!parties.has(e.issuer.address)) {
-      logger.warn("evidence issuer is not a hop party (advisory)", {
-        index: i,
-        issuer: e.issuer.address,
-        actor,
-        counterparty,
-        type: e.type,
-      });
+  if (hopIndex > 0) {
+    const prev = hopStatus(hops, hopIndex - 1);
+    if (statusRank(prev) < statusRank("paid")) {
+      throw new ShipmentOrderError(
+        `hop ${hopIndex} blocked: hop ${hopIndex - 1} is "${prev}", must be paid first`,
+      );
     }
   }
-  return check.data;
 }
 
 // ─── Ledger append (awaited — pack guards re-read immediately) ────
@@ -165,7 +154,16 @@ export async function appendEvent(
   ledger: EconLedgerStore,
   input: BuildEventInput,
 ): Promise<EconomicEvent> {
-  const event = buildEconomicEvent(input);
+  let event: EconomicEvent;
+  try {
+    event = buildEconomicEvent(input);
+  } catch (err) {
+    // 213-5 nit: builder failures (raw ZodError/EconEventError) surface
+    // as a bounded 4xx-class error, never an unbounded echo.
+    throw new ShipmentOrderError(
+      `event build failed: ${bound(err instanceof Error ? err.message : String(err))}`,
+    );
+  }
   await ledger.append([event]);
   return event;
 }
@@ -189,34 +187,57 @@ export async function appendEventWithRetry(
 }
 
 // ─── Derived state ───────────────────────────────────────────────
-/** Derive hop states from the shipment's own event stream (SoT read). */
+/** Derive hop states from the shipment's own event stream (SoT read).
+ *  213-5: `opts.light` skips the roles/evidence lifts — guard paths call
+ *  shipmentState O(hops) times per lifecycle and never read claims, so
+ *  cloning them per call was wasted work (audit M-2). */
 export async function shipmentState(
   ledger: EconLedgerStore,
   shipmentId: string,
+  opts?: { light?: boolean },
 ): Promise<{ hops: ShipmentHop[]; events: EconomicEvent[]; client?: string }> {
   const rows = await ledger.listBySourceId(SHIPMENT_SOURCE, shipmentId);
   const events = rows.map((r: EconEventStored) => r.event);
   const hops = new Map<number, ShipmentHop>();
+  const light = opts?.light === true;
   let client: string | undefined;
   for (const e of events) {
     if (e.kind === "handoff") {
-      const p = e.payload as HandoffPayload;
+      // 213-5 (audit H-2): re-parse the stored payload leniently instead
+      // of casting — a corrupt/forged payload skips projection instead of
+      // flowing unchecked into the read model.
+      const parsed = HandoffPayloadSchema.safeParse(e.payload);
+      if (!parsed.success) continue;
+      const p = parsed.data;
       const hop = hops.get(p.hopIndex) ?? { hopIndex: p.hopIndex, status: "offered" as HopStatus };
       if (statusRank(hop.status) < statusRank("handed_off")) hop.status = "handed_off";
+      // 213-5 (audit M-4): claims (roles/evidence) only lift from the
+      // canonical per-hop handoff event — seq binds the claim to THIS
+      // shipment's plan so a foreign writer's event can't pin provenance.
+      const canonical = e.seq === seqFor(p.hopIndex, "handoff");
       // 212-3/212-5: lift typed participants into the read model.
       // First-event-wins (audit H-3) — the write path rejects repeat
       // handoffs, but never let a later event rewrite roles, and never
       // let a roles-less event clear them. Clone so the hop doesn't
       // alias the event payload object (audit M-5). rolesAssertedBy
       // keeps provenance — roles are self-declared by the actor (H-1).
-      if (p.roles && hop.roles === undefined) {
+      if (!light && canonical && p.roles && hop.roles === undefined) {
         hop.roles = structuredClone(p.roles);
         hop.rolesAssertedBy = e.actor;
       }
       // 213-3: lift evidence refs the same way — first-event-wins,
       // clone so the hop never aliases the event payload.
-      if (p.evidence && hop.evidence === undefined) {
-        hop.evidence = structuredClone(p.evidence);
+      // 213-5 (audit H-1): attach provenance — evidenceAssertedBy mirrors
+      // rolesAssertedBy, and per-ref issuerMatchesParty tells a UI whether
+      // the self-declared issuer is one of the hop's parties without it
+      // having to correlate the raw events array.
+      if (!light && canonical && p.evidence && p.evidence.length > 0 && hop.evidence === undefined) {
+        const parties = new Set([e.actor.toLowerCase(), (e.counterparty ?? "").toLowerCase()]);
+        hop.evidence = p.evidence.map((r) => ({
+          ...structuredClone(r),
+          issuerMatchesParty: parties.has(r.issuer.address.toLowerCase()),
+        }));
+        hop.evidenceAssertedBy = e.actor;
       }
       hops.set(p.hopIndex, hop);
     } else if (e.kind === "pay" || e.kind === "verify") {

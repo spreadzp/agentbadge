@@ -59,16 +59,30 @@ describe("replay evidence (SLICE-213-3)", () => {
     const hop0 = state.hops.find((h) => h.hopIndex === 0);
     const hop1 = state.hops.find((h) => h.hopIndex === 1);
     expect(hop0?.status).toBe("paid");
+    // 213-5 (H-1): projection refs carry issuerMatchesParty, and the hop
+    // records who asserted the evidence (provenance).
     expect(hop0?.evidence).toEqual([
-      { type: "gps", hash: HASH, issuer: { address: CARRIER, type: "org" }, uri: "ipfs://QmGps" },
+      {
+        type: "gps",
+        hash: HASH,
+        issuer: { address: CARRIER, type: "org" },
+        uri: "ipfs://QmGps",
+        issuerMatchesParty: true, // CARRIER is the handoff counterparty
+      },
     ]);
+    expect(hop0?.evidenceAssertedBy).toBe(CLIENT);
     expect(hop1?.status).toBe("handed_off");
     expect(hop1?.evidence).toBeUndefined();
+    expect(hop1?.evidenceAssertedBy).toBeUndefined();
 
-    // derived evidence deep-equals the source event payload
+    // derived evidence carries the payload fields plus projection
+    // annotations (213-5 issuerMatchesParty) — compare ref-by-ref
     const handoffEv = state.events.find((e) => e.kind === "handoff");
-    const evEvidence = (handoffEv?.payload as Record<string, unknown>).evidence;
-    expect(hop0?.evidence).toEqual(evEvidence);
+    const evEvidence = (handoffEv?.payload as Record<string, unknown>).evidence as
+      Array<Record<string, unknown>>;
+    expect(hop0?.evidence).toEqual(
+      evEvidence.map((r) => ({ ...r, issuerMatchesParty: true })),
+    );
     // and is not the same object reference (no aliasing)
     expect(hop0?.evidence).not.toBe(evEvidence);
 
@@ -94,5 +108,141 @@ describe("replay evidence (SLICE-213-3)", () => {
 
     const state = await shipmentState(deps.ledger, sid);
     expect(state.hops.every((h) => h.evidence === undefined)).toBe(true);
+  });
+});
+
+describe("213-5 audit fixes — replay hardening", () => {
+  it("issuer outside hop parties → issuerMatchesParty false (H-1)", async () => {
+    const db = await makeDb();
+    const deps = { ledger: db.econLedger, executor: new InMemoryHopExecutor() };
+    const sid = "shp-ev-thirdparty";
+    await createShipment({ shipmentId: sid, client: CLIENT, hops: HOPS }, deps);
+    await acceptShipment(sid, 0, sid, CARRIER, deps);
+    const SENSOR = "0x" + "cc".repeat(20) as `0x${string}`;
+    await handoffHop(sid, 0, {}, CLIENT, CARRIER, deps, undefined, undefined, [
+      { type: "gps", hash: HASH, issuer: { address: SENSOR, type: "device" } },
+    ]);
+
+    const state = await shipmentState(deps.ledger, sid);
+    const hop0 = state.hops.find((h) => h.hopIndex === 0);
+    expect(hop0?.evidence?.[0]?.issuerMatchesParty).toBe(false);
+    expect(hop0?.evidenceAssertedBy).toBe(CLIENT);
+  });
+
+  it("evidence in a non-canonical-seq handoff event does NOT lift (M-4)", async () => {
+    // A foreign/forge event with a valid payload but seq ≠ seqFor(hop,handoff)
+    // must not pin claims into the public read model.
+    const db = await makeDb();
+    const deps = { ledger: db.econLedger, executor: new InMemoryHopExecutor() };
+    const sid = "shp-ev-forged";
+    await createShipment({ shipmentId: sid, client: CLIENT, hops: HOPS }, deps);
+    const { buildEconomicEvent } = await import("@agentbadge/econ-events");
+    const forged = buildEconomicEvent(
+      {
+        source: "supply_chain",
+        sourceId: sid,
+        seq: 99, // not seqFor(0, "handoff") = 4
+        kind: "handoff",
+        actor: "0x" + "99".repeat(20),
+        at: new Date().toISOString(),
+        payload: {
+          shipmentId: sid,
+          hopIndex: 0,
+          evidence: [{ type: "gps", hash: HASH, issuer: { address: "0x" + "99".repeat(20), type: "device" } }],
+        },
+      },
+      { mode: "replay" }, // importer path — lenient, mirrors a pre-213 event
+    );
+    await db.econLedger.append([forged]);
+
+    const state = await shipmentState(deps.ledger, sid);
+    const hop0 = state.hops.find((h) => h.hopIndex === 0);
+    // status still advances (a well-formed handoff is a handoff)…
+    expect(hop0?.status).toBe("handed_off");
+    // …but claims don't lift — no provenance binding to the plan
+    expect(hop0?.evidence).toBeUndefined();
+    expect(hop0?.evidenceAssertedBy).toBeUndefined();
+  });
+
+  it("corrupt handoff payload skips projection instead of poisoning it (H-2 read belt)", async () => {
+    const db = await makeDb();
+    const deps = { ledger: db.econLedger, executor: new InMemoryHopExecutor() };
+    const sid = "shp-ev-corrupt";
+    await createShipment({ shipmentId: sid, client: CLIENT, hops: HOPS }, deps);
+    // a corrupt payload can't come through append (the store re-verifies
+    // events) — it arrives via foreign implementations or backfill, so we
+    // bypass the store and hand the corrupt row straight to the read belt
+    const corruptRow = {
+      ledgerSeq: 999n,
+      event: {
+        id: "evt_corrupt_1",
+        spec: "econ-events/1",
+        source: "supply_chain",
+        sourceId: sid,
+        seq: 4,
+        kind: "handoff",
+        actor: "0x" + "99".repeat(20),
+        at: new Date().toISOString(),
+        payload: { totally: "garbage" }, // no shipmentId/hopIndex — must not replay
+        idempotencyKey: `ev:supply_chain:${sid}:4`,
+      },
+    };
+    const realList = deps.ledger.listBySourceId.bind(deps.ledger);
+    deps.ledger.listBySourceId = (async (...args: unknown[]) => {
+      const rows = await (realList as (...a: unknown[]) => Promise<unknown[]>)(...args);
+      return [...rows, corruptRow];
+    }) as never;
+
+    const state = await shipmentState(deps.ledger, sid); // must not throw
+    expect(state.hops.find((h) => h.hopIndex === 0)?.status).toBe("offered");
+    expect(state.hops.every((h) => h.evidence === undefined)).toBe(true);
+  });
+
+  it("light mode skips claim lifts for guard paths (M-2)", async () => {
+    const db = await makeDb();
+    const deps = { ledger: db.econLedger, executor: new InMemoryHopExecutor() };
+    const sid = "shp-ev-light";
+    await createShipment({ shipmentId: sid, client: CLIENT, hops: HOPS }, deps);
+    await acceptShipment(sid, 0, sid, CARRIER, deps);
+    await handoffHop(sid, 0, {}, CLIENT, CARRIER, deps, undefined, undefined, [
+      { type: "gps", hash: HASH, issuer: { address: CARRIER, type: "org" } },
+    ]);
+
+    const light = await shipmentState(deps.ledger, sid, { light: true });
+    const full = await shipmentState(deps.ledger, sid);
+    expect(light.hops.find((h) => h.hopIndex === 0)?.evidence).toBeUndefined();
+    expect(light.hops.find((h) => h.hopIndex === 0)?.evidenceAssertedBy).toBeUndefined();
+    // guard-relevant fields still derive in light mode
+    expect(light.hops.find((h) => h.hopIndex === 0)?.status).toBe("handed_off");
+    expect(full.hops.find((h) => h.hopIndex === 0)?.evidence).toHaveLength(1);
+  });
+
+  it("handoff counterparty compares case-insensitively vs plan (audit rider)", async () => {
+    const db = await makeDb();
+    const deps = { ledger: db.econLedger, executor: new InMemoryHopExecutor() };
+    const sid = "shp-ev-case";
+    // plan receiver stored checksummed; caller passes lowercase — must not
+    // be rejected as a plan mismatch (liveness bug, not a bypass)
+    const checksummed = ("0x" + "Bb".repeat(20)) as `0x${string}`;
+    await createShipment(
+      { shipmentId: sid, client: CLIENT, hops: [{ receiver: checksummed, amountUsdc: "10" }] },
+      deps,
+    );
+    await acceptShipment(sid, 0, sid, CARRIER, deps);
+    await expect(
+      handoffHop(sid, 0, {}, CLIENT, CARRIER, deps),
+    ).resolves.toBeUndefined();
+  });
+
+  it("shipment plan >64 hops rejected (M-2)", async () => {
+    const db = await makeDb();
+    const deps = { ledger: db.econLedger, executor: new InMemoryHopExecutor() };
+    const tooMany = Array.from({ length: 65 }, (_, i) => ({
+      receiver: `0x${String(i % 16)}${"0".repeat(39)}` as `0x${string}`,
+      amountUsdc: "1",
+    }));
+    await expect(
+      createShipment({ shipmentId: "shp-ev-many", client: CLIENT, hops: tooMany }, deps),
+    ).rejects.toThrow(/max 64/);
   });
 });
