@@ -152,7 +152,7 @@ export const supplyChainTypedEvidenceContent = `
 </p>
 
 <figure class="article-image">
-  <img src="/images/blog/supply-chain-typed-evidence-3.webp"
+  <img src="/images/blog/supply-chain-typed-evidence-2.webp"
        alt="Audit diagram: a forged issuer chip flagged by an amber advisory beacon that warns without blocking; strict write gate versus lenient read gate; canonical-sequence gate rejecting a forged event" />
   <figcaption>
     Forged-issuer claims hit an advisory, not a block — while the write path
@@ -208,12 +208,12 @@ export const supplyChainTypedEvidenceContent = `
 </p>
 
 <figure class="article-image">
-  <img src="/images/blog/supply-chain-typed-evidence-2.webp"
-       alt="Schema card: handoff event payload.evidence fields on the left, replay arrow, hops[].evidence projected read state with issuerMatchesParty and evidenceAssertedBy annotations on the right" />
+  <img src="/images/blog/supply-chain-typed-evidence-3.webp"
+       alt="Three stacked layers: reference (hash chip), provenance (asserted-by tag), and a dashed future verification layer labelled link is not fact" />
   <figcaption>
-    The projection adds annotations on read — <code>issuerMatchesParty</code>
-    per ref, <code>evidenceAssertedBy</code> per hop — and never mutates the
-    stored event.
+    Two layers are solid today: a hash that proves these bytes existed, and
+    who attached it. Verification is the dashed layer that is not built yet —
+    the ledger stores the pointer, not the proof.
   </figcaption>
 </figure>
 
