@@ -19,8 +19,8 @@ import {
   collectStats,
   formatTelegramReport,
   formatTextReport,
-  type TrafficRow,
 } from "../src/server/lib/report/traffic-format";
+import { fetchTrafficRows } from "../src/server/lib/report/traffic-digest";
 import {
   sendTelegramMessage,
   telegramFromEnv,
@@ -47,28 +47,10 @@ if (!db.db) {
   process.exit(1);
 }
 
-const cutoff = Date.now() - hours * 3600_000;
-// Paged scan — events.list is newest-first, so we can early-stop once we
-// cross the cutoff (rows are createdAt-desc).
-const PAGE = 5000;
-const rows: TrafficRow[] = [];
-let done = false;
-for (let offset = 0; !done; offset += PAGE) {
-  const page = await db.events.list({
-    type: "http_traffic",
-    limit: PAGE,
-    offset,
-  });
-  if (page.length === 0) break;
-  for (const e of page) {
-    if (Date.parse(e.createdAt) < cutoff) {
-      done = true;
-      break;
-    }
-    rows.push({ payload: e.payload ?? {}, createdAt: e.createdAt });
-  }
-  if (page.length < PAGE) break;
-}
+// Paged scan shared with routes/meta-traffic.ts and routes/ops-stats.ts
+// (lib/report/traffic-digest.ts) — events.list is newest-first, early-stop
+// once a row crosses the cutoff.
+const rows = await fetchTrafficRows(db.events, hours);
 
 const stats = collectStats(rows, hours);
 

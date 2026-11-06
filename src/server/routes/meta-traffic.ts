@@ -20,6 +20,7 @@ import {
   collectStats,
   type TrafficRow,
 } from "../lib/report/traffic-format";
+import { fetchTrafficRows } from "../lib/report/traffic-digest";
 import { srcAttributionStats } from "../lib/report/src-attribution-report";
 
 export const metaTrafficRoutes = new Hono();
@@ -140,31 +141,12 @@ metaTrafficRoutes.get(
 
     const raw = Number(c.req.query("hours") ?? "24");
     const hours = Math.min(Math.max(Math.trunc(raw) || 24, 1), 168);
-    const cutoff = Date.now() - hours * 3600_000;
 
-    // Paged scan — events.list is newest-first, so we can early-stop once
-    // we cross the cutoff (rows are createdAt-desc). Same loop as
-    // scripts/traffic-report.ts.
-    const PAGE = 5000;
-    const rows: TrafficRow[] = [];
-    let done = false;
+    // Paged scan shared with scripts/traffic-report.ts and
+    // routes/ops-stats.ts (lib/report/traffic-digest.ts).
+    let rows: TrafficRow[];
     try {
-      for (let offset = 0; !done; offset += PAGE) {
-        const page = await db.events.list({
-          type: "http_traffic",
-          limit: PAGE,
-          offset,
-        });
-        if (page.length === 0) break;
-        for (const e of page) {
-          if (Date.parse(e.createdAt) < cutoff) {
-            done = true;
-            break;
-          }
-          rows.push({ payload: e.payload ?? {}, createdAt: e.createdAt });
-        }
-        if (page.length < PAGE) break;
-      }
+      rows = await fetchTrafficRows(db.events, hours);
     } catch {
       return c.json(
         telemetryUnavailable(

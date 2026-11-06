@@ -53,6 +53,7 @@ import { tasksWriteFlowRoutes } from "./tasks-write-flow";
 import { mcpPublicRoutes } from "./mcp-public";
 import { metaRoutes } from "./meta";
 import { metaTrafficRoutes } from "./meta-traffic";
+import { opsStatsRoutes } from "./ops-stats";
 import { searchRoutes } from "./search";
 import { marketGuideRoutes } from "./market-guide";
 import { medicalGuideRoutes } from "./medical-guide";
@@ -156,6 +157,7 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", mcpPublicRoutes); // EPIC-206-4: keyless read-only MCP facade
   app.route("/", metaRoutes);
   app.route("/", metaTrafficRoutes);
+  app.route("/", opsStatsRoutes); // EPIC-217-1: ops stats digest → Telegram
   app.route("/", searchRoutes);
   app.route("/", marketGuideRoutes);
   app.route("/", medicalGuideRoutes);
