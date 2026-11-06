@@ -40,8 +40,8 @@ function RulesBlock(article: BlogArticle) {
     </h2>
     <ul class="mt-3 space-y-2">
       ${rules.map(
-        (r) =>
-          html`<li class="flex flex-wrap items-baseline gap-2">
+    (r) =>
+      html`<li class="flex flex-wrap items-baseline gap-2">
             <a
               href="/rules/${r.rule_id}"
               class="text-sm font-medium text-emerald-400 hover:text-emerald-300"
@@ -52,7 +52,7 @@ function RulesBlock(article: BlogArticle) {
             >
             <span class="text-xs text-slate-500">${r.category}</span>
           </li>`,
-      )}
+  )}
     </ul>
   </section>`;
 }
@@ -67,8 +67,8 @@ function ExternalLinksBlock(links: BlogExternalLink[]) {
     </h2>
     <ul class="mt-3 flex flex-wrap gap-3">
       ${links.map(
-        (l) =>
-          html`<li>
+    (l) =>
+      html`<li>
             <a
               href="${l.url}"
               rel="alternate"
@@ -77,7 +77,7 @@ function ExternalLinksBlock(links: BlogExternalLink[]) {
               >${PLATFORM_NAMES[l.platform]} ↗</a
             >
           </li>`,
-      )}
+  )}
     </ul>
   </section>`;
 }
@@ -121,9 +121,8 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
           </div>
         </div>
       </header>
-      ${
-        article.heroImage
-          ? html`<div class="w-full pb-8">
+      ${article.heroImage
+      ? html`<div class="w-full pb-8">
               <img
                 src="${article.heroImage}"
                 alt="${article.title}"
@@ -132,23 +131,40 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
                 fetchpriority="high"
               />
             </div>`
-          : ""
-      }
+      : ""
+    }
+      <div class="px-4 pb-4 md:px-8">
+        <div class="mx-auto max-w-3xl">
+          <div
+            class="rounded-lg border border-emerald-800/60 bg-emerald-950/30 px-4 py-3"
+            role="note"
+            aria-label="For AI agents"
+          >
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <span class="font-semibold text-emerald-400">🤖 For AI agents:</span>
+              <span class="text-slate-400">Machine-readable:</span>
+              <a href="/blog/${article.slug}.json" class="text-emerald-400 hover:text-emerald-300 font-medium">JSON</a>
+              <a href="/blog/${article.slug}.md" class="text-emerald-400 hover:text-emerald-300 font-medium">Markdown</a>
+              <a href="/llms.txt" class="text-emerald-400 hover:text-emerald-300 font-medium">llms.txt</a>
+              <a href="/agent-guide" class="text-emerald-400 hover:text-emerald-300 font-medium">Agent Guide</a>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="px-4 pb-16 md:px-8">
         <div
           class="mx-auto max-w-3xl rounded-xl border border-slate-700/50 bg-slate-900/30 p-6 md:p-8 shadow-2xl"
         >
-          ${
-            article.shortAnswer
-              ? html`<section
+          ${article.shortAnswer
+      ? html`<section
                   class="aeo-summary mb-6 rounded-lg border-l-4 border-emerald-500 bg-emerald-950/20 p-4"
                   aria-label="Summary"
                   data-aeo-summary
                 >
                   <p class="text-sm text-slate-300">${article.shortAnswer}</p>
                 </section>`
-              : ""
-          }
+      : ""
+    }
           <div
             class="prose prose-invert prose-emerald max-w-none
             prose-headings:text-white prose-h2:text-2xl prose-h2:font-bold prose-h2:mt-8 prose-h2:mb-4
