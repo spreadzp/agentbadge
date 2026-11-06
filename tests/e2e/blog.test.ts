@@ -157,3 +157,62 @@ describe("Blog: The Bedrij Principle (SLICE-211-4)", () => {
     expect(xml).toContain(`/blog/${SLUG}`);
   });
 });
+
+describe("Blog: Brick #2 — Typed Evidence (SLICE-213-6)", () => {
+  const SLUG = "supply-chain-typed-evidence";
+
+  it("GET /blog/supply-chain-typed-evidence returns 200", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    expect(res.status).toBe(200);
+  });
+
+  it("article renders hero image", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/images/blog/supply-chain-typed-evidence-hero.webp");
+  });
+
+  it("article has TechArticle JSON-LD + title", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain('"@type":"TechArticle"');
+    expect(html).toContain("Typed Evidence");
+  });
+
+  it("GET /blog/supply-chain-typed-evidence.md returns markdown", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}.md`);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("Typed Evidence");
+    expect(body).toContain("For AI Agents");
+  });
+
+  it("GET /blog/supply-chain-typed-evidence.json returns Knowledge Object", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}.json`);
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { slug?: string; status?: string };
+    expect(json.slug).toBe(SLUG);
+    expect(json.status).toBe("EXPERIMENT");
+  });
+
+  it("lifecycle + inline images are embedded", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/images/blog/supply-chain-typed-evidence-d1.webp");
+    expect(html).toContain("/images/blog/supply-chain-typed-evidence-2.webp");
+    expect(html).toContain("/images/blog/supply-chain-typed-evidence-3.webp");
+  });
+
+  it("article links back to C38 anchor and C39 brick #1", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/blog/bedrij-principle");
+    expect(html).toContain("/blog/supply-chain-participant-roles");
+  });
+
+  it("sitemap includes the new article", async () => {
+    const res = await fetch(`${BASE}/sitemap.xml`);
+    const xml = await res.text();
+    expect(xml).toContain(`/blog/${SLUG}`);
+  });
+});

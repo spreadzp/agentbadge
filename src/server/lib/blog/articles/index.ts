@@ -43,6 +43,7 @@ import { article as keylessSigner } from "./keyless-signer";
 import { article as economicLedger } from "./economic-ledger";
 import { article as bedrijPrinciple } from "./bedrij-principle";
 import { article as supplyChainParticipantRoles } from "./supply-chain-participant-roles";
+import { article as supplyChainTypedEvidence } from "./supply-chain-typed-evidence";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -88,5 +89,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   keylessSigner,
   economicLedger,
   supplyChainParticipantRoles,
+  supplyChainTypedEvidence,
   bedrijPrinciple,
 ];
