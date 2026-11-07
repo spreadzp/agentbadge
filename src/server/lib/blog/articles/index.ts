@@ -45,6 +45,7 @@ import { article as bedrijPrinciple } from "./bedrij-principle";
 import { article as supplyChainParticipantRoles } from "./supply-chain-participant-roles";
 import { article as supplyChainTypedEvidence } from "./supply-chain-typed-evidence";
 import { article as supplyChainScenarioMatrix } from "./supply-chain-scenario-matrix";
+import { article as supplyChainVerifiableShowcase } from "./supply-chain-verifiable-showcase";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -91,6 +92,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   economicLedger,
   supplyChainParticipantRoles,
   supplyChainTypedEvidence,
+  supplyChainVerifiableShowcase,
   supplyChainScenarioMatrix,
   bedrijPrinciple,
 ];

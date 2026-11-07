@@ -276,3 +276,72 @@ describe("Blog: Brick #3 — Scenario Matrix (SLICE-214-6)", () => {
     expect(xml).toContain(`/blog/${SLUG}`);
   });
 });
+
+describe("Blog: Brick #4 — Verifiable Showcase (SLICE-215-6)", () => {
+  const SLUG = "supply-chain-verifiable-showcase";
+
+  it("GET /blog/supply-chain-verifiable-showcase returns 200", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    expect(res.status).toBe(200);
+  });
+
+  it("article renders hero image", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/images/blog/supply-chain-verifiable-showcase-hero.webp");
+  });
+
+  it("article has TechArticle JSON-LD + title", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain('"@type":"TechArticle"');
+    expect(html).toContain("Verifiable Vitrine");
+  });
+
+  it("GET /blog/supply-chain-verifiable-showcase.md returns markdown", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}.md`);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("Verifiable Vitrine");
+    expect(body).toContain("For AI Agents");
+  });
+
+  it("GET /blog/supply-chain-verifiable-showcase.json returns Knowledge Object", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}.json`);
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { slug?: string; status?: string };
+    expect(json.slug).toBe(SLUG);
+    expect(json.status).toBe("EXPERIMENT");
+  });
+
+  it("pipeline, limits-plaque + read-path diagram images are embedded", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/images/blog/supply-chain-verifiable-showcase-2.webp");
+    expect(html).toContain("/images/blog/supply-chain-verifiable-showcase-3.webp");
+    expect(html).toContain("/images/blog/supply-chain-verifiable-showcase-d1.webp");
+  });
+
+  it("article embeds the real replay JSON + endpoint reference", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/api/ledger/shipments/");
+    expect(html).toContain("in_progress");
+    expect(html).toContain("completedPct");
+  });
+
+  it("article links back to anchor + bricks #1, #2 and #3", async () => {
+    const res = await fetch(`${BASE}/blog/${SLUG}`);
+    const html = await res.text();
+    expect(html).toContain("/blog/bedrij-principle");
+    expect(html).toContain("/blog/supply-chain-participant-roles");
+    expect(html).toContain("/blog/supply-chain-typed-evidence");
+    expect(html).toContain("/blog/supply-chain-scenario-matrix");
+  });
+
+  it("sitemap includes the new article", async () => {
+    const res = await fetch(`${BASE}/sitemap.xml`);
+    const xml = await res.text();
+    expect(xml).toContain(`/blog/${SLUG}`);
+  });
+});
