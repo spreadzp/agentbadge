@@ -11,7 +11,7 @@ import {
   type EconomicEvent,
   type ShipmentHop,
 } from "@agentbadge/econ-events";
-import { statusRank, type HopSpec, type HopStatus } from "./types";
+import { statusRank, type HopStatus } from "./types";
 
 export type { AdvisoryShipmentHop, ShipmentAdvisoryFlags } from "./advisory";
 export { shipmentState } from "./project";
@@ -190,7 +190,7 @@ export const hopStatus = (hops: ShipmentHop[], idx: number): HopStatus =>
 
 // ─── Misc helpers ────────────────────────────────────────────────
 /** BigInt decimal sum — float math drifts across many hops (audit M-1). */
-export function sumUsdc(hops: HopSpec[]): string {
+export function sumUsdc(hops: Array<{ amountUsdc: string }>): string {
   const SCALE = 1_000_000n;
   let micros = 0n;
   for (const h of hops) {

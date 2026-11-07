@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { LedgerShipmentSchema } from "@agentbadge/econ-events";
+import { ShipmentReplayResponseSchema } from "../src/server/lib/econ-ledger/supply-chain/replay-types";
 import { createDatabase, type Database } from "@agentbadge/database";
 import { createEconLedgerShipmentsRoutes } from "../src/server/routes/econ-ledger-shipments-api";
 import {
@@ -184,7 +184,7 @@ describe("GET /api/ledger/shipments/:id", () => {
     );
   }
 
-  it("returns full hop chain conforming to LedgerShipmentSchema", async () => {
+  it("returns full hop chain conforming to ShipmentReplayResponseSchema", async () => {
     const { db, deps } = await makeShipment();
     const sid = "shp-e2e-1";
     await handoffHop(sid, 0, {}, CLIENT, CARRIER, deps);
@@ -193,7 +193,7 @@ describe("GET /api/ledger/shipments/:id", () => {
 
     const res = await appFor(db).request(`/api/ledger/shipments/${sid}`);
     expect(res.status).toBe(200);
-    const body = LedgerShipmentSchema.parse(await res.json());
+    const body = ShipmentReplayResponseSchema.parse(await res.json());
     expect(body.shipmentId).toBe(sid);
     expect(body.hops[0]!.status).toBe("paid");
     expect(body.hops[0]!.jobId).toBe("job-shp-e2e-1-0");

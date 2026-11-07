@@ -5,12 +5,12 @@
  * shipmentState() lifts payload.roles into ShipmentHop.roles and
  * records rolesAssertedBy (the handoff actor — roles are
  * self-declared, never verified identity, H-1). Mixed chains replay
- * clean (D-211-2). Response parses against LedgerShipmentSchema.
+ * clean (D-211-2). Response parses against ShipmentReplayResponseSchema (215-1 contract).
  */
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { LedgerShipmentSchema } from "@agentbadge/econ-events";
+import { ShipmentReplayResponseSchema } from "../../src/server/lib/econ-ledger/supply-chain/replay-types";
 import { createDatabase, type Database } from "@agentbadge/database";
 import {
   acceptShipment,
@@ -76,12 +76,12 @@ describe("replay roles (SLICE-212-3)", () => {
     // and they are not the same object reference
     expect(hop0?.roles).not.toBe(evRoles);
 
-    // API read path — response conforms to LedgerShipmentSchema
+    // API read path — response conforms to ShipmentReplayResponseSchema
     const app = new Hono();
     app.route("/", createEconLedgerShipmentsRoutes({ getDb: () => db }));
     const res = await app.request(`/api/ledger/shipments/${sid}`);
     expect(res.status).toBe(200);
-    const body = LedgerShipmentSchema.parse(await res.json());
+    const body = ShipmentReplayResponseSchema.parse(await res.json());
     expect(body.hops[0]?.roles?.custodian?.type).toBe("org");
     expect(body.hops[0]?.rolesAssertedBy).toBe(CLIENT);
     expect(body.hops[1]?.roles).toBeUndefined();

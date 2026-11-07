@@ -1,13 +1,14 @@
 /**
- * SLICE-207-7: shipment chain read —
+ * SLICE-207-7 + SLICE-215-2 (D-211-9): shipment chain read —
  * `GET /api/ledger/shipments/:id`.
  *
- * Returns { shipmentId, hops[{hopIndex,status,jobId?,receiver?,
- * roles?,rolesAssertedBy?}], events[] } conforming to
- * LedgerShipmentSchema — hops derived from the shipment's own event
- * stream (sourceId = shipmentId, log = SoT). `roles` are SELF-DECLARED
- * participant claims by the handoff actor (see rolesAssertedBy) —
- * advisory only, never verified identity (D-212-3, audit H-1).
+ * Returns the canonical `ShipmentReplayResponse` (215-1 contract):
+ * { shipmentId, client, status, timeline[], hops[], aggregate, limits[] }
+ * — hops derived from the shipment's own event stream (sourceId =
+ * shipmentId, log = SoT) and carry plan terms, roles/evidence +
+ * provenance and advisory flags. `roles`/`evidence` are SELF-DECLARED
+ * claims by the handoff actor (see *AssertedBy) — advisory only,
+ * never verified identity (D-212-3, D-213-4).
  * Unknown shipment → 404 not_found; disabled → no_data.
  */
 
@@ -16,7 +17,7 @@ import { describeRoute } from "hono-openapi";
 import type { Database } from "@agentbadge/database";
 import { getDatabase } from "../lib/database";
 import { createRateLimiter } from "../middleware/rate-limit";
-import { shipmentState } from "../lib/econ-ledger/supply-chain/shipment";
+import { shipmentReplay } from "../lib/econ-ledger/supply-chain/replay";
 import { SHIPMENT_ID_RE } from "../lib/econ-ledger/supply-chain/state";
 import { emptyEdges, errJson } from "../lib/econ-ledger/api-utils";
 
@@ -37,15 +38,16 @@ export function createEconLedgerShipmentsRoutes(
     "/api/ledger/shipments/:id",
     describeRoute({
       tags: ["Ledger"],
-      summary: "Shipment hop chain with per-hop status",
+      summary: "Shipment replay view — timeline + per-hop + aggregate",
       description:
-        "Full supply-chain view: hops derived from the event log " +
-        "(offered → handed_off → paid → verified) plus the raw events. " +
-        "Optional `roles` on a hop are SELF-DECLARED participant claims " +
-        "by the handoff actor (see `rolesAssertedBy`) — advisory only, " +
-        "never verified identity. Conforms to LedgerShipmentSchema.",
+        "Supply-chain replay: a readable timeline of every ledger " +
+        "event plus per-hop plan/state (offered → handed_off → paid → " +
+        "verified) with roles/evidence provenance, advisory flags, a " +
+        "chain aggregate and honest `limits`. roles/evidence are " +
+        "SELF-DECLARED claims (see *AssertedBy) — advisory only, never " +
+        "verified identity. Conforms to ShipmentReplayResponseSchema.",
       responses: {
-        200: { description: "LedgerShipment" },
+        200: { description: "ShipmentReplayResponse" },
         404: { description: "Unknown shipmentId" },
         429: { description: "Rate limited" },
       },
@@ -62,15 +64,13 @@ export function createEconLedgerShipmentsRoutes(
       if (db.db === null) {
         return emptyEdges(c, "no_data", "ledger disabled");
       }
-      const state = await shipmentState(db.econLedger, id);
-      if (state.events.length === 0) {
-        return errJson(c, 404, "not_found", `no events for shipment ${id}`);
+      const replay = await shipmentReplay(db.econLedger, id);
+      // 404 both for unknown ids and for streams that cannot produce
+      // a canonical replay (no offer → no client) — never fabricate.
+      if (replay === null) {
+        return errJson(c, 404, "not_found", `no replayable shipment ${id}`);
       }
-      return c.json({
-        shipmentId: id,
-        hops: state.hops,
-        events: state.events,
-      });
+      return c.json(replay);
     },
   );
 

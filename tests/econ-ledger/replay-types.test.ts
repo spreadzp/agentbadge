@@ -26,8 +26,8 @@ const CLIENT = ADDR("aa");
 const CARRIER = ADDR("bb");
 const WAREHOUSE = ADDR("dd");
 const SENSOR = ADDR("ee");
-const HASH = `0x${"cd".repeat(32)}`;
-const TX = `0x${"ef".repeat(32)}`;
+const HASH: `0x${string}` = `0x${"cd".repeat(32)}`;
+const TX: `0x${string}` = `0x${"ef".repeat(32)}`;
 
 /** A complete response exercising every optional field. */
 const FULL_RESPONSE: ShipmentReplayResponse = {

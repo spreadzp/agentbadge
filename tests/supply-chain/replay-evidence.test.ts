@@ -4,12 +4,12 @@
  * shipmentState() lifts payload.evidence into ShipmentHop.evidence.
  * Mixed chains replay clean (D-211-2); pre-213 handoffs carry no
  * evidence — hops stay undefined. Response parses against
- * LedgerShipmentSchema.
+ * ShipmentReplayResponseSchema (215-1 contract).
  */
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { LedgerShipmentSchema } from "@agentbadge/econ-events";
+import { ShipmentReplayResponseSchema } from "../../src/server/lib/econ-ledger/supply-chain/replay-types";
 import { createDatabase, type Database } from "@agentbadge/database";
 import {
   acceptShipment,
@@ -86,12 +86,12 @@ describe("replay evidence (SLICE-213-3)", () => {
     // and is not the same object reference (no aliasing)
     expect(hop0?.evidence).not.toBe(evEvidence);
 
-    // API read path — response conforms to LedgerShipmentSchema
+    // API read path — response conforms to ShipmentReplayResponseSchema
     const app = new Hono();
     app.route("/", createEconLedgerShipmentsRoutes({ getDb: () => db }));
     const res = await app.request(`/api/ledger/shipments/${sid}`);
     expect(res.status).toBe(200);
-    const body = LedgerShipmentSchema.parse(await res.json());
+    const body = ShipmentReplayResponseSchema.parse(await res.json());
     expect(body.hops[0]?.evidence?.[0]?.type).toBe("gps");
     expect(body.hops[0]?.evidence?.[0]?.uri).toBe("ipfs://QmGps");
     expect(body.hops[1]?.evidence).toBeUndefined();
