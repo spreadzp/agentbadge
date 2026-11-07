@@ -44,7 +44,7 @@ export { shipmentState, SHIPMENT_SOURCE, ShipmentOrderError };
 /** 213-5 (audit M-2): hard bound on hops per shipment plan. */
 const MAX_HOPS = 64;
 
-export { verifyHop } from "./verify";
+export { disputeHop, verifyHop } from "./verify";
 export type { ShipmentDeps };
 
 /** Offer + N hop-linked jobs; hop i evaluator = hops[i+1].receiver,
@@ -233,6 +233,13 @@ export async function settleHop(
     }
     if (statusRank(hop.status) >= statusRank("paid")) {
       return; // already settled — idempotent leg
+    }
+    // 214-3 (D-214-4): a disputed hop cannot settle — the receiver's
+    // fail-verdict stands until a dispute engine exists (block 10).
+    if (hop.disputed) {
+      throw new ShipmentOrderError(
+        `hop ${hopIndex} is disputed — settle refused until resolution`,
+      );
     }
     if (hop.receiver && receiver.toLowerCase() !== hop.receiver.toLowerCase()) {
       throw new ShipmentOrderError(

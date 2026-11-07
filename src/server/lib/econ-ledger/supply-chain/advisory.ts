@@ -28,6 +28,17 @@ export interface ShipmentAdvisoryFlags {
    *  refs — a telemetry gap. The chain stays valid (backward compat,
    *  D-211-2); the flag marks the gap for the verifier. */
   missingEvidence?: boolean;
+  /** §25 S5: a gps-type evidence ref was asserted by a non-party
+   *  issuer — the route claim comes from outside custody, the
+   *  geo-policy engine judges plausibility (v2). §25 "CONFLICT"
+   *  maps to this advisory in v1. */
+  gpsAnomaly?: boolean;
+  /** §25 S6 (D-214-4): the hop's receiver recorded a fail-verdict on
+   *  the handoff (verify event, outcome:"fail") — a dispute stub.
+   *  settleHop refuses while this flag stands; there is no
+   *  un-dispute path in v1 (dispute engine = block 10). Set in the
+   *  event loop, not here — it is event-driven, not derived. */
+  disputed?: boolean;
 }
 
 /** ShipmentHop plus the derived advisory flags (214-2). */
@@ -45,6 +56,10 @@ export function applyAdvisoryFlags(hops: Map<number, AdvisoryShipmentHop>): void
       // S2: temperature claim asserted outside the hop's parties.
       if (ref.type === "temperature" && ref.issuerMatchesParty === false) {
         hop.tempViolation = true;
+      }
+      // S5: gps claim asserted outside the hop's parties.
+      if (ref.type === "gps" && ref.issuerMatchesParty === false) {
+        hop.gpsAnomaly = true;
       }
       // S3: device-typed issuer ≠ the declared sensor — only when a
       // device is declared (no declared sensor → nothing to compare).

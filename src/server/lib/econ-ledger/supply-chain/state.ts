@@ -1,9 +1,6 @@
-/**
- * SLICE-207-7: supply-chain pack — shared state/helpers.
- *
- * Shipment state is DERIVED from the event log (source=supply_chain,
- * sourceId=shipmentId) — the log is SoT, never caller input.
- */
+/** SLICE-207-7: supply-chain pack — shared state/helpers.
+ *  Shipment state is DERIVED from the event log (source=supply_chain,
+ *  sourceId=shipmentId) — the log is SoT, never caller input. */
 
 import type { EconEventStored, EconLedgerStore } from "@agentbadge/database";
 import {
@@ -194,9 +191,8 @@ export async function appendEventWithRetry(
 
 // ─── Derived state ───────────────────────────────────────────────
 /** Derive hop states from the shipment's own event stream (SoT read).
- *  213-5: `opts.light` skips the roles/evidence lifts — guard paths call
- *  shipmentState O(hops) times per lifecycle and never read claims, so
- *  cloning them per call was wasted work (audit M-2). */
+ *  213-5: `opts.light` skips the roles/evidence lifts + advisory
+ *  post-pass — guard paths never read claims (audit M-2). */
 export async function shipmentState(
   ledger: EconLedgerStore,
   shipmentId: string,
@@ -247,12 +243,17 @@ export async function shipmentState(
       }
       hops.set(p.hopIndex, hop);
     } else if (e.kind === "pay" || e.kind === "verify") {
-      const p = e.payload as { shipmentId?: string; hopIndex?: number; jobId?: string };
+      const p = e.payload as { shipmentId?: string; hopIndex?: number; jobId?: string; outcome?: string };
       const idx = p.hopIndex;
       if (idx === undefined) continue;
       const hop = hops.get(idx) ?? { hopIndex: idx, status: "offered" as HopStatus };
-      const stage = e.kind === "pay" ? "paid" : "verified";
-      if (statusRank(hop.status) < statusRank(stage)) hop.status = stage;
+      // 214-3 (D-214-4): verify outcome:"fail" = receiver-dispute stub —
+      // flag the hop, never lift to verified; settle refuses while it stands.
+      if (e.kind === "verify" && p.outcome === "fail") hop.disputed = true;
+      else {
+        const stage = e.kind === "pay" ? "paid" : "verified";
+        if (statusRank(hop.status) < statusRank(stage)) hop.status = stage;
+      }
       if (e.kind === "pay" && p.jobId) hop.jobId = p.jobId;
       hops.set(idx, hop);
     } else if (e.kind === "work_offer") {
@@ -272,9 +273,8 @@ export async function shipmentState(
   return { hops: [...hops.values()].sort((a, b) => a.hopIndex - b.hopIndex), events, client };
 }
 
-export function hopStatus(hops: ShipmentHop[], idx: number): HopStatus {
-  return hops.find((h) => h.hopIndex === idx)?.status ?? "offered";
-}
+export const hopStatus = (hops: ShipmentHop[], idx: number): HopStatus =>
+  hops.find((h) => h.hopIndex === idx)?.status ?? "offered";
 
 // ─── Misc helpers ────────────────────────────────────────────────
 /** BigInt decimal sum — float math drifts across many hops (audit M-1). */
