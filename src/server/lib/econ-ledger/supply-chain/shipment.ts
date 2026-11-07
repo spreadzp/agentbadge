@@ -68,55 +68,59 @@ export async function createShipment(
     assertAmountUsdc(h.amountUsdc);
   }
 
-  // H-2: refuse a second offer — a retry must not create a second set
-  // of chain jobs whose ids can never be re-recorded.
-  const existing = await shipmentState(deps.ledger, shipmentId);
-  if (existing.events.length > 0) {
-    throw new ShipmentOrderError(`shipment ${shipmentId} already exists — use a new shipmentId`);
-  }
-
-  const jobs: Array<{ hopIndex: number; jobId?: string }> = [];
-  const hopPlan = hops.map((h: HopSpec, i: number) => ({
-    hopIndex: i,
-    receiver: h.receiver,
-    amountUsdc: h.amountUsdc,
-    evaluator: (hops[i + 1]?.receiver ?? client) as string,
-    jobId: undefined as string | undefined,
-  }));
-
-  if (deps.executor) {
-    for (const plan of hopPlan) {
-      const jobSpec: HopJobSpec = {
-        shipmentId,
-        hopIndex: plan.hopIndex,
-        provider: plan.receiver as `0x${string}`,
-        evaluator: plan.evaluator as `0x${string}`,
-        client,
-        amountUsdc: plan.amountUsdc,
-        description: `shipment ${shipmentId} hop ${plan.hopIndex}`,
-      };
-      const ref = await deps.executor.createJob(jobSpec);
-      plan.jobId = ref.jobId;
-      jobs.push({ hopIndex: plan.hopIndex, jobId: ref.jobId });
+  // H-2/H-4: refuse a second offer — and serialize the whole
+  // check→create→append under the shipment lock so two concurrent
+  // creates can't each pass the existence check and mint a second
+  // set of funded jobs whose ids can never be re-recorded (audit H-4).
+  return withHopLock(shipmentId, async () => {
+    const existing = await shipmentState(deps.ledger, shipmentId);
+    if (existing.events.length > 0) {
+      throw new ShipmentOrderError(`shipment ${shipmentId} already exists — use a new shipmentId`);
     }
-  }
 
-  await appendEvent(deps.ledger, {
-    source: SHIPMENT_SOURCE,
-    sourceId: shipmentId,
-    seq: 1,
-    kind: "work_offer",
-    actor: client,
-    counterparty: hops[0]!.receiver,
-    amountUsdc: sumUsdc(hops),
-    at: new Date().toISOString(),
-    payload: {
-      taskRef: shipmentId,
-      budgetUsdc: sumUsdc(hops),
-      terms: { shipmentId, hopCount: hops.length, hops: hopPlan },
-    },
+    const jobs: Array<{ hopIndex: number; jobId?: string }> = [];
+    const hopPlan = hops.map((h: HopSpec, i: number) => ({
+      hopIndex: i,
+      receiver: h.receiver,
+      amountUsdc: h.amountUsdc,
+      evaluator: (hops[i + 1]?.receiver ?? client) as string,
+      jobId: undefined as string | undefined,
+    }));
+
+    if (deps.executor) {
+      for (const plan of hopPlan) {
+        const jobSpec: HopJobSpec = {
+          shipmentId,
+          hopIndex: plan.hopIndex,
+          provider: plan.receiver as `0x${string}`,
+          evaluator: plan.evaluator as `0x${string}`,
+          client,
+          amountUsdc: plan.amountUsdc,
+          description: `shipment ${shipmentId} hop ${plan.hopIndex}`,
+        };
+        const ref = await deps.executor.createJob(jobSpec);
+        plan.jobId = ref.jobId;
+        jobs.push({ hopIndex: plan.hopIndex, jobId: ref.jobId });
+      }
+    }
+
+    await appendEvent(deps.ledger, {
+      source: SHIPMENT_SOURCE,
+      sourceId: shipmentId,
+      seq: 1,
+      kind: "work_offer",
+      actor: client,
+      counterparty: hops[0]!.receiver,
+      amountUsdc: sumUsdc(hops),
+      at: new Date().toISOString(),
+      payload: {
+        taskRef: shipmentId,
+        budgetUsdc: sumUsdc(hops),
+        terms: { shipmentId, hopCount: hops.length, hops: hopPlan },
+      },
+    });
+    return { shipmentId, jobs };
   });
-  return { shipmentId, jobs };
 }
 
 /** Accept a shipment offer — countersigned by the hop's receiver.
@@ -220,11 +224,13 @@ export async function settleHop(
   opts?: { rail?: "x402" | "escrow" | "gateway" | "direct" | "other"; chainId?: number },
 ): Promise<void> {
   assertShipmentId(shipmentId);
+  assertHopIndex(hopIndex);
   assertAmountUsdc(amountUsdc);
   assertAddress(receiver, "receiver");
   // C-1: serialize the guard→settle→append triple per hop.
   await withHopLock(`${shipmentId}:${hopIndex}`, async () => {
-    const { hops } = await shipmentState(deps.ledger, shipmentId);
+    // light read — guards need status/receiver/jobId/disputed only.
+    const { hops } = await shipmentState(deps.ledger, shipmentId, { light: true });
     const hop = hops.find((h) => h.hopIndex === hopIndex);
     if (!hop || statusRank(hop.status) < statusRank("handed_off")) {
       throw new ShipmentOrderError(

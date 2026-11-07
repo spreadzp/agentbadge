@@ -193,7 +193,11 @@ export async function makeChain(opts: MakeChainOptions = {}): Promise<MadeChain>
     deps,
     executor,
     db,
-    jobId: (hopIndex) => `job-${shipmentId}-${hopIndex}`,
+    // audit nit: read the recorded job ref, don't re-derive the
+    // InMemoryHopExecutor's id format (an injected executor can use
+    // any id scheme).
+    jobId: (hopIndex) =>
+      jobs.find((j) => j.hopIndex === hopIndex)?.jobId ?? `job-${shipmentId}-${hopIndex}`,
     handoffActor,
     verifyActor,
     state: () => shipmentState(deps.ledger, shipmentId),

@@ -2,23 +2,19 @@
  *  Shipment state is DERIVED from the event log (source=supply_chain,
  *  sourceId=shipmentId) — the log is SoT, never caller input. */
 
-import type { EconEventStored, EconLedgerStore } from "@agentbadge/database";
+import type { EconLedgerStore } from "@agentbadge/database";
 import {
   ADDRESS,
   buildEconomicEvent,
   type BuildEventInput,
   DECIMAL_USDC,
   type EconomicEvent,
-  HandoffPayloadSchema,
   type ShipmentHop,
 } from "@agentbadge/econ-events";
 import { statusRank, type HopSpec, type HopStatus } from "./types";
-import {
-  applyAdvisoryFlags,
-  type AdvisoryShipmentHop,
-} from "./advisory";
 
 export type { AdvisoryShipmentHop, ShipmentAdvisoryFlags } from "./advisory";
+export { shipmentState } from "./project";
 
 export const SHIPMENT_SOURCE = "supply_chain";
 export const SHIPMENT_ID_RE = /^[\w.:-]{1,128}$/;
@@ -187,90 +183,6 @@ export async function appendEventWithRetry(
     }
   }
   throw last;
-}
-
-// ─── Derived state ───────────────────────────────────────────────
-/** Derive hop states from the shipment's own event stream (SoT read).
- *  213-5: `opts.light` skips the roles/evidence lifts + advisory
- *  post-pass — guard paths never read claims (audit M-2). */
-export async function shipmentState(
-  ledger: EconLedgerStore,
-  shipmentId: string,
-  opts?: { light?: boolean },
-): Promise<{ hops: AdvisoryShipmentHop[]; events: EconomicEvent[]; client?: string }> {
-  const rows = await ledger.listBySourceId(SHIPMENT_SOURCE, shipmentId);
-  const events = rows.map((r: EconEventStored) => r.event);
-  const hops = new Map<number, AdvisoryShipmentHop>();
-  const light = opts?.light === true;
-  let client: string | undefined;
-  for (const e of events) {
-    if (e.kind === "handoff") {
-      // 213-5 (audit H-2): re-parse the stored payload leniently instead
-      // of casting — a corrupt/forged payload skips projection instead of
-      // flowing unchecked into the read model.
-      const parsed = HandoffPayloadSchema.safeParse(e.payload);
-      if (!parsed.success) continue;
-      const p = parsed.data;
-      const hop = hops.get(p.hopIndex) ?? { hopIndex: p.hopIndex, status: "offered" as HopStatus };
-      if (statusRank(hop.status) < statusRank("handed_off")) hop.status = "handed_off";
-      // 213-5 (audit M-4): claims (roles/evidence) only lift from the
-      // canonical per-hop handoff event — seq binds the claim to THIS
-      // shipment's plan so a foreign writer's event can't pin provenance.
-      const canonical = e.seq === seqFor(p.hopIndex, "handoff");
-      // 212-3/212-5: lift typed participants into the read model.
-      // First-event-wins (audit H-3) — the write path rejects repeat
-      // handoffs, but never let a later event rewrite roles, and never
-      // let a roles-less event clear them. Clone so the hop doesn't
-      // alias the event payload object (audit M-5). rolesAssertedBy
-      // keeps provenance — roles are self-declared by the actor (H-1).
-      if (!light && canonical && p.roles && hop.roles === undefined) {
-        hop.roles = structuredClone(p.roles);
-        hop.rolesAssertedBy = e.actor;
-      }
-      // 213-3: lift evidence refs the same way — first-event-wins,
-      // clone so the hop never aliases the event payload.
-      // 213-5 (audit H-1): attach provenance — evidenceAssertedBy mirrors
-      // rolesAssertedBy, and per-ref issuerMatchesParty tells a UI whether
-      // the self-declared issuer is one of the hop's parties without it
-      // having to correlate the raw events array.
-      if (!light && canonical && p.evidence && p.evidence.length > 0 && hop.evidence === undefined) {
-        const parties = new Set([e.actor.toLowerCase(), (e.counterparty ?? "").toLowerCase()]);
-        hop.evidence = p.evidence.map((r) => ({
-          ...structuredClone(r),
-          issuerMatchesParty: parties.has(r.issuer.address.toLowerCase()),
-        }));
-        hop.evidenceAssertedBy = e.actor;
-      }
-      hops.set(p.hopIndex, hop);
-    } else if (e.kind === "pay" || e.kind === "verify") {
-      const p = e.payload as { shipmentId?: string; hopIndex?: number; jobId?: string; outcome?: string };
-      const idx = p.hopIndex;
-      if (idx === undefined) continue;
-      const hop = hops.get(idx) ?? { hopIndex: idx, status: "offered" as HopStatus };
-      // 214-3 (D-214-4): verify outcome:"fail" = receiver-dispute stub —
-      // flag the hop, never lift to verified; settle refuses while it stands.
-      if (e.kind === "verify" && p.outcome === "fail") hop.disputed = true;
-      else {
-        const stage = e.kind === "pay" ? "paid" : "verified";
-        if (statusRank(hop.status) < statusRank(stage)) hop.status = stage;
-      }
-      if (e.kind === "pay" && p.jobId) hop.jobId = p.jobId;
-      hops.set(idx, hop);
-    } else if (e.kind === "work_offer") {
-      client = e.actor;
-      const terms = (e.payload as { terms?: { hops?: Array<{ hopIndex: number; receiver: string; jobId?: string }> } }).terms;
-      for (const h of terms?.hops ?? []) {
-        const hop = hops.get(h.hopIndex) ?? { hopIndex: h.hopIndex, status: "offered" as HopStatus };
-        hop.receiver = h.receiver;
-        if (h.jobId) hop.jobId = h.jobId;
-        hops.set(h.hopIndex, hop);
-      }
-    }
-  }
-  // 214-2 (D-214-1): advisory flag post-pass — skipped in light mode
-  // like the claims lifts (guard paths never read them).
-  if (!light) applyAdvisoryFlags(hops);
-  return { hops: [...hops.values()].sort((a, b) => a.hopIndex - b.hopIndex), events, client };
 }
 
 export const hopStatus = (hops: ShipmentHop[], idx: number): HopStatus =>

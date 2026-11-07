@@ -157,9 +157,9 @@ describe("213-5 audit fixes — replay hardening", () => {
 
     const state = await shipmentState(deps.ledger, sid);
     const hop0 = state.hops.find((h) => h.hopIndex === 0);
-    // status still advances (a well-formed handoff is a handoff)…
-    expect(hop0?.status).toBe("handed_off");
-    // …but claims don't lift — no provenance binding to the plan
+    // 214-5 (H-1): a non-canonical-seq handoff lifts NOTHING — not even
+    // status. A forged event can't fake a delivery claim in replay.
+    expect(hop0?.status).toBe("offered");
     expect(hop0?.evidence).toBeUndefined();
     expect(hop0?.evidenceAssertedBy).toBeUndefined();
   });

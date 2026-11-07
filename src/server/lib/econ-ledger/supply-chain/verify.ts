@@ -23,7 +23,13 @@ import {
 import { statusRank, type ShipmentDeps } from "./types";
 
 /** Final hop verification — evaluator verdict per hop.
- *  H-3: requires the hop already paid — verified is terminal. */
+ *  H-3 (207 audit): requires the hop already paid — verified is terminal.
+ *  214-5 (audit H-3): the whole guard→append runs inside withHopLock
+ *  and the actor must BE the plan's evaluator for this hop —
+ *  hops[i+1].receiver, or the client on the last hop (D-207-7). A
+ *  fail outcome is the evaluator's rejection and projects as a
+ *  dispute on its own authority; inconclusive records a verdict
+ *  without lifting status (audit H-2). */
 export async function verifyHop(
   shipmentId: string,
   hopIndex: number,
@@ -42,39 +48,54 @@ export async function verifyHop(
   },
 ): Promise<void> {
   assertShipmentId(shipmentId);
-  const { hops, events } = await shipmentState(deps.ledger, shipmentId);
-  const hop = hops.find((h) => h.hopIndex === hopIndex);
-  if (!hop || statusRank(hop.status) < statusRank("paid")) {
-    throw new ShipmentOrderError(
-      `hop ${hopIndex} not paid (status "${hop?.status ?? "missing"}") — verify refused`,
-    );
-  }
-  const offerTerms = (events.find((e) => e.kind === "work_offer")?.payload as
-    | { terms?: unknown }
-    | undefined)?.terms;
-  const criteriaDigest =
-    extra?.criteriaDigest ??
-    (offerTerms !== undefined ? hashCanonical(offerTerms) : undefined);
-  await appendEvent(deps.ledger, {
-    source: SHIPMENT_SOURCE,
-    sourceId: shipmentId,
-    seq: seqFor(hopIndex, "verify"),
-    kind: "verify",
-    actor,
-    counterparty,
-    at: new Date().toISOString(),
-    payload: {
-      outcome,
-      shipmentId,
-      hopIndex,
-      ...(extra?.deliverableHash ? { deliverableHash: extra.deliverableHash } : {}),
-      ...(extra?.score !== undefined ? { score: extra.score } : {}),
-      ...(extra?.txHash ? { txHash: extra.txHash } : {}),
-      ...(criteriaDigest ? { criteriaDigest } : {}),
-      ...(extra?.policyRef ? { policyRef: extra.policyRef } : {}),
-      ...(extra?.evidenceHash ? { evidenceHash: extra.evidenceHash } : {}),
-      ...(extra?.verifierVersion ? { verifierVersion: extra.verifierVersion } : {}),
-    },
+  assertHopIndex(hopIndex);
+  await withHopLock(`${shipmentId}:${hopIndex}`, async () => {
+    const { hops, client, events } = await shipmentState(deps.ledger, shipmentId, { light: true });
+    const hop = hops.find((h) => h.hopIndex === hopIndex);
+    if (!hop || statusRank(hop.status) < statusRank("paid")) {
+      throw new ShipmentOrderError(
+        `hop ${hopIndex} not paid (status "${hop?.status ?? "missing"}") — verify refused`,
+      );
+    }
+    if (hop.disputed) {
+      throw new ShipmentOrderError(`hop ${hopIndex} is disputed — verdict refused until resolution`);
+    }
+    // evaluator = next hop's receiver, else the client (D-207-7) —
+    // string-compare on caller-supplied actor (trusted-boundary, M-7).
+    const evaluator = hops.find((h) => h.hopIndex === hopIndex + 1)?.receiver ?? client;
+    if (evaluator !== undefined && actor.toLowerCase() !== evaluator.toLowerCase()) {
+      throw new ShipmentOrderError(
+        `verify actor ${actor.slice(0, 80)} ≠ hop evaluator ${evaluator} — ` +
+          `only the plan's evaluator may issue a verdict`,
+      );
+    }
+    const offerTerms = (events.find((e) => e.kind === "work_offer")?.payload as
+      | { terms?: unknown }
+      | undefined)?.terms;
+    const criteriaDigest =
+      extra?.criteriaDigest ??
+      (offerTerms !== undefined ? hashCanonical(offerTerms) : undefined);
+    await appendEvent(deps.ledger, {
+      source: SHIPMENT_SOURCE,
+      sourceId: shipmentId,
+      seq: seqFor(hopIndex, "verify"),
+      kind: "verify",
+      actor,
+      counterparty,
+      at: new Date().toISOString(),
+      payload: {
+        outcome,
+        shipmentId,
+        hopIndex,
+        ...(extra?.deliverableHash ? { deliverableHash: extra.deliverableHash } : {}),
+        ...(extra?.score !== undefined ? { score: extra.score } : {}),
+        ...(extra?.txHash ? { txHash: extra.txHash } : {}),
+        ...(criteriaDigest ? { criteriaDigest } : {}),
+        ...(extra?.policyRef ? { policyRef: extra.policyRef } : {}),
+        ...(extra?.evidenceHash ? { evidenceHash: extra.evidenceHash } : {}),
+        ...(extra?.verifierVersion ? { verifierVersion: extra.verifierVersion } : {}),
+      },
+    });
   });
 }
 
@@ -86,11 +107,13 @@ export async function verifyHop(
  * reuses the verdict vocabulary).
  *
  * Guards: the hop must be handed off (nothing to dispute before a
- * delivery claim exists) and the actor must be the hop's receiver —
- * only the party claiming non-receipt may dispute. Occupies the
- * per-hop verdict seq slot and the whole guard→append runs inside
- * withHopLock — a concurrent settle cannot slip between the disputed
- * check and the event landing.
+ * delivery claim exists) and not yet paid — post-settle verdicts go
+ * through verifyHop (audit M-3). The actor must be the hop's
+ * receiver — only the party claiming non-receipt may dispute, and a
+ * receiver-less hop fails closed. Occupies the per-hop verdict seq
+ * slot and the whole guard→append runs inside withHopLock — a
+ * concurrent settle cannot slip between the disputed check and the
+ * event landing.
  *
  * settleHop refuses while `hop.disputed` stands; there is no
  * un-dispute path in v1 (dispute engine = block 10).
@@ -119,9 +142,17 @@ export async function disputeHop(
     if (hop.disputed) {
       throw new ShipmentOrderError(`hop ${hopIndex} already disputed`);
     }
-    if (hop.receiver && actor.toLowerCase() !== hop.receiver.toLowerCase()) {
+    // M-3: the dispute stub covers "not received" BEFORE settlement —
+    // a paid/verified hop is past that point; verdicts go through verify.
+    if (statusRank(hop.status) >= statusRank("paid")) {
       throw new ShipmentOrderError(
-        `dispute actor ${actor.slice(0, 80)} ≠ hop receiver ${hop.receiver} — ` +
+        `hop ${hopIndex} already ${hop.status} — post-settle verdicts go through verifyHop`,
+      );
+    }
+    // fail-closed: a receiver-less hop can never be disputed.
+    if (hop.receiver === undefined || actor.toLowerCase() !== hop.receiver.toLowerCase()) {
+      throw new ShipmentOrderError(
+        `dispute actor ${actor.slice(0, 80)} ≠ hop receiver ${hop.receiver ?? "<unset>"} — ` +
           `only the party claiming non-receipt may dispute`,
       );
     }
