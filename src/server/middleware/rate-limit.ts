@@ -36,6 +36,13 @@ export interface RateLimitStore {
    * mutation would be lost. Must never throw (degrade to count 0).
    */
   hit?(key: string, windowMs: number): Promise<RateLimitEntry>;
+  /**
+   * 215-5 (audit H-2): evict the `count` oldest live entries — a
+   * hard bound past `maxEntries` when the expired-only sweep leaves
+   * the store over cap (attacker IP-rotation flood). Optional: remote
+   * stores evict by TTL and may omit it.
+   */
+  evictOldest?(count: number): void;
 }
 
 export interface RateLimitConfig {
@@ -89,6 +96,16 @@ export class MemoryStore implements RateLimitStore {
     }
   }
 
+  /** Evict oldest LIVE entries — Map preserves insertion order. */
+  evictOldest(count: number): void {
+    let n = count;
+    for (const key of this.map.keys()) {
+      if (n <= 0) break;
+      this.map.delete(key);
+      n--;
+    }
+  }
+
   size(): number {
     return this.map.size;
   }
@@ -116,7 +133,15 @@ const DEFAULT_MAX_ENTRIES = 10_000;
  * platform and can't be spoofed by a client header. On any other host
  * (direct connection, dev, TLS passthrough LB) the header is ignored:
  * it is a plain HTTP header a client can set to arbitrary values
- * (arc-audit C-2). XFF/X-Real-IP remain best-effort fallbacks.
+ * (arc-audit C-2).
+ *
+ * 215-5 (audit H-2): XFF/X-Real-IP are honored ONLY when
+ * TRUST_PROXY_HEADERS=true is set — i.e. the deployer declares a
+ * trusted proxy in front that strips client-supplied values. Without
+ * it the headers are client-controlled: rotating fake IPs gives an
+ * attacker a fresh bucket per request. Off-Fly without the env we
+ * fall to a shared "unknown" bucket (documented trade-off: those
+ * clients share one limit instead of none at all).
  */
 export function resolveClientIp(c: Context): string {
   const onFly = Boolean(
@@ -127,15 +152,17 @@ export function resolveClientIp(c: Context): string {
     if (flyIp) return flyIp.trim();
   }
 
-  const xff = c.req.header("x-forwarded-for");
-  if (xff) {
-    const parts = xff.split(",").map((s) => s.trim());
-    const rightmost = parts[parts.length - 1];
-    if (rightmost) return rightmost;
-  }
+  if (process.env.TRUST_PROXY_HEADERS === "true") {
+    const xff = c.req.header("x-forwarded-for");
+    if (xff) {
+      const parts = xff.split(",").map((s) => s.trim());
+      const rightmost = parts[parts.length - 1];
+      if (rightmost) return rightmost;
+    }
 
-  const realIp = c.req.header("x-real-ip");
-  if (realIp) return realIp.trim();
+    const realIp = c.req.header("x-real-ip");
+    if (realIp) return realIp.trim();
+  }
 
   return "unknown";
 }
@@ -186,6 +213,11 @@ export function createRateLimiter(config?: RateLimitConfig) {
   function enforceMaxEntries(): void {
     if (store.size() > maxEntries) {
       store.sweep(Date.now());
+      // 215-5 (audit H-2): expired-only sweep can leave the store over
+      // cap under an IP-rotation flood — evict oldest live entries so
+      // memory stays bounded instead of rescanning a full map forever.
+      const over = store.size() - maxEntries;
+      if (over > 0) store.evictOldest?.(over);
     }
   }
 

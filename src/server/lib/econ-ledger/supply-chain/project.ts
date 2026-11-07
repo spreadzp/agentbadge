@@ -21,9 +21,15 @@ import { applyAdvisoryFlags, type AdvisoryShipmentHop } from "./advisory";
 
 export type { AdvisoryShipmentHop };
 
-interface OfferTerms {
+export interface OfferHopPlan {
+  hopIndex?: number;
+  receiver?: string;
+  amountUsdc?: string;
+  jobId?: string;
+}
+export interface OfferTerms {
   shipmentId?: string;
-  hops?: Array<{ hopIndex?: number; receiver?: string; jobId?: string }>;
+  hops?: OfferHopPlan[];
 }
 
 /** Derive hop states from the shipment's own event stream (SoT read).
@@ -42,20 +48,37 @@ export async function shipmentState(
   // H-1 pass 1: bind the plan to the canonical offer only — seq 1,
   // first wins; a later work_offer cannot rewrite receivers/jobIds.
   let client: string | undefined;
-  let planSize: number | undefined;
+  // 215-5 (audit M-2): the plan bound is MEMBERSHIP — the set of
+  // declared hop indexes — not their count; a sparse plan like
+  // [{hopIndex:5}] no longer admits canonical events for hop 0.
+  const planIndexes = new Set<number>();
   const offer = events.find((e) => e.kind === "work_offer" && e.seq === 1);
   if (offer) {
-    client = offer.actor;
-    const terms = (offer.payload as { terms?: OfferTerms }).terms;
-    if (terms && (terms.shipmentId === undefined || terms.shipmentId === shipmentId)) {
-      planSize = terms.hops?.length;
-      for (const h of terms.hops ?? []) {
-        if (!Number.isInteger(h.hopIndex) || (h.hopIndex as number) < 0) continue;
-        const idx = h.hopIndex as number;
-        const hop = hops.get(idx) ?? { hopIndex: idx, status: "offered" as HopStatus };
-        if (h.receiver !== undefined) hop.receiver = h.receiver;
-        if (h.jobId !== undefined) hop.jobId = h.jobId;
-        hops.set(idx, hop);
+    const rawTerms = (offer.payload as { terms?: OfferTerms } | null | undefined)?.terms;
+    const terms =
+      rawTerms !== null && typeof rawTerms === "object" ? rawTerms : undefined;
+    // 215-5 (audit M-3): bind the client only when the offer's own
+    // terms stay silent or name THIS shipment — a mismatched terms
+    // block is a foreign offer, not our client.
+    if (
+      terms === undefined ||
+      terms.shipmentId === undefined ||
+      terms.shipmentId === shipmentId
+    ) {
+      client = offer.actor;
+      // 215-5 (audit H-1): guards — non-array hops and non-object
+      // elements degrade to an empty plan, never a TypeError/500.
+      if (terms !== undefined && Array.isArray(terms.hops)) {
+        for (const h of terms.hops) {
+          if (h === null || typeof h !== "object") continue;
+          if (!Number.isInteger(h.hopIndex) || (h.hopIndex as number) < 0) continue;
+          const idx = h.hopIndex as number;
+          planIndexes.add(idx);
+          const hop = hops.get(idx) ?? { hopIndex: idx, status: "offered" as HopStatus };
+          if (typeof h.receiver === "string") hop.receiver = h.receiver;
+          if (typeof h.jobId === "string" && h.jobId.length > 0) hop.jobId = h.jobId;
+          hops.set(idx, hop);
+        }
       }
     }
   }
@@ -68,7 +91,7 @@ export async function shipmentState(
       if (!parsed.success) continue;
       const p = parsed.data;
       if (p.shipmentId !== shipmentId) continue;
-      if (planSize !== undefined && p.hopIndex >= planSize) continue;
+      if (!planIndexes.has(p.hopIndex)) continue;
       if (e.seq !== seqFor(p.hopIndex, "handoff")) continue;
       const hop = hops.get(p.hopIndex) ?? { hopIndex: p.hopIndex, status: "offered" as HopStatus };
       if (statusRank(hop.status) < statusRank("handed_off")) hop.status = "handed_off";
@@ -88,15 +111,20 @@ export async function shipmentState(
       }
       hops.set(p.hopIndex, hop);
     } else if (e.kind === "pay" || e.kind === "verify") {
-      const p = e.payload as {
-        shipmentId?: string;
-        hopIndex?: number;
-        jobId?: string;
-        outcome?: string;
-      };
+      // 215-5 (audit H-1): payload may be a null/primitive — treat
+      // it as empty instead of dereferencing.
+      const p =
+        typeof e.payload === "object" && e.payload !== null
+          ? (e.payload as {
+            shipmentId?: string;
+            hopIndex?: number;
+            jobId?: string;
+            outcome?: string;
+          })
+          : {};
       const idx = p.hopIndex;
       if (!Number.isInteger(idx) || (idx as number) < 0 || p.shipmentId !== shipmentId) continue;
-      if (planSize !== undefined && (idx as number) >= planSize) continue;
+      if (!planIndexes.has(idx as number)) continue;
       if (e.seq !== seqFor(idx as number, e.kind)) continue;
       const hop = hops.get(idx as number) ?? { hopIndex: idx as number, status: "offered" as HopStatus };
       // H-2: ONLY "pass" lifts to verified; "fail" is the receiver
@@ -108,7 +136,7 @@ export async function shipmentState(
         }
       } else {
         if (statusRank(hop.status) < statusRank("paid")) hop.status = "paid";
-        if (p.jobId) hop.jobId = p.jobId;
+        if (typeof p.jobId === "string" && p.jobId.length > 0) hop.jobId = p.jobId;
       }
       hops.set(idx as number, hop);
     }

@@ -115,6 +115,11 @@ export const REPLAY_LIMITS_V1 = [
   "linear hops only",
   "manual settlement per hop",
   "evidence is advisory — not verified",
+  // 215-5 (audit H-3/H-4): honest bounds + the trust boundary the
+  // reader must know — statuses are lifted from canonical seq slots,
+  // and writer authentication lives at the ledger layer, not here.
+  "caps: ≤256 hops / ≤4096 events",
+  "status lifted from canonical slots — writer trust at ledger layer",
 ] as const;
 
 export const ShipmentReplayResponseSchema = z.object({

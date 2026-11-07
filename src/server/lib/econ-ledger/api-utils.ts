@@ -13,6 +13,7 @@ export const MAX_LIMIT = 200;
 export type LedgerErrorCode =
   | "no_data"
   | "invalid_address"
+  | "invalid_id"
   | "not_found"
   | "unavailable";
 

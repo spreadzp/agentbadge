@@ -9,7 +9,10 @@
  * provenance and advisory flags. `roles`/`evidence` are SELF-DECLARED
  * claims by the handoff actor (see *AssertedBy) — advisory only,
  * never verified identity (D-212-3, D-213-4).
- * Unknown shipment → 404 not_found; disabled → no_data.
+ * Unknown shipment → 404 not_found; malformed id → 400 invalid_id;
+ * disabled/failed ledger → 503 unavailable (215-5, audit M-7).
+ * Public by design (215-5, audit M-5): ids are caller-chosen — use
+ * unguessable shipmentIds for flows whose leg details are private.
  */
 
 import { Hono } from "hono";
@@ -19,7 +22,8 @@ import { getDatabase } from "../lib/database";
 import { createRateLimiter } from "../middleware/rate-limit";
 import { shipmentReplay } from "../lib/econ-ledger/supply-chain/replay";
 import { SHIPMENT_ID_RE } from "../lib/econ-ledger/supply-chain/state";
-import { emptyEdges, errJson } from "../lib/econ-ledger/api-utils";
+import { errJson } from "../lib/econ-ledger/api-utils";
+import { logger } from "@agentbadge/passport/logger";
 
 const ledgerLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 
@@ -48,8 +52,10 @@ export function createEconLedgerShipmentsRoutes(
         "verified identity. Conforms to ShipmentReplayResponseSchema.",
       responses: {
         200: { description: "ShipmentReplayResponse" },
+        400: { description: "Malformed shipmentId" },
         404: { description: "Unknown shipmentId" },
         429: { description: "Rate limited" },
+        503: { description: "Ledger disabled or read failed" },
       },
     }),
     async (c) => {
@@ -58,18 +64,35 @@ export function createEconLedgerShipmentsRoutes(
       const id = c.req.param("id");
       // M-3: bound the param before it reaches the store layer.
       if (!SHIPMENT_ID_RE.test(id)) {
-        return errJson(c, 400, "not_found", "invalid shipmentId");
+        return errJson(c, 400, "invalid_id", "invalid shipmentId");
       }
       const db = getDb();
       if (db.db === null) {
-        return emptyEdges(c, "no_data", "ledger disabled");
+        // 215-5 (audit M-7): a disabled ledger is unavailable, not a
+        // 200 with a non-contract shape.
+        return errJson(c, 503, "unavailable", "ledger disabled");
       }
-      const replay = await shipmentReplay(db.econLedger, id);
+      let replay;
+      try {
+        replay = await shipmentReplay(db.econLedger, id);
+      } catch (err) {
+        logger.error("shipment replay failed", {
+          shipmentId: id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return errJson(c, 503, "unavailable", "ledger read failed");
+      }
       // 404 both for unknown ids and for streams that cannot produce
       // a canonical replay (no offer → no client) — never fabricate.
       if (replay === null) {
         return errJson(c, 404, "not_found", `no replayable shipment ${id}`);
       }
+      // 215-5 nit: a completed shipment is immutable history — let
+      // clients/cache it briefly; in-flight replays stay uncached.
+      c.header(
+        "Cache-Control",
+        replay.status === "completed" ? "public, max-age=60" : "no-store",
+      );
       return c.json(replay);
     },
   );

@@ -210,11 +210,11 @@ describe("GET /api/ledger/shipments/:id", () => {
     expect(body.error.code).toBe("not_found");
   });
 
-  it("disabled → no_data envelope (never 500)", async () => {
+  it("disabled → 503 unavailable (215-5 audit M-7)", async () => {
     const db = createDatabase({ enabled: false });
     const res = await appFor(db).request("/api/ledger/shipments/shp-x");
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     const body = await res.json() as { error: { code: string } };
-    expect(body.error.code).toBe("no_data");
+    expect(body.error.code).toBe("unavailable");
   });
 });

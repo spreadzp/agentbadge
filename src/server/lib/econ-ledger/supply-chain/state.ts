@@ -189,11 +189,20 @@ export const hopStatus = (hops: ShipmentHop[], idx: number): HopStatus =>
   hops.find((h) => h.hopIndex === idx)?.status ?? "offered";
 
 // ─── Misc helpers ────────────────────────────────────────────────
-/** BigInt decimal sum — float math drifts across many hops (audit M-1). */
+/** BigInt decimal sum — float math drifts across many hops (audit M-1).
+ *  215-5 (audit H-1): operates only on values matched by DECIMAL_USDC —
+ *  a crafted amount surfaces as a bounded ShipmentOrderError, never a
+ *  raw BigInt/.split TypeError. Callers validate upstream (replay.ts
+ *  drops invalid plan/pay amounts at ingestion). */
 export function sumUsdc(hops: Array<{ amountUsdc: string }>): string {
   const SCALE = 1_000_000n;
   let micros = 0n;
   for (const h of hops) {
+    if (!DECIMAL_USDC_RE.test(h.amountUsdc)) {
+      throw new ShipmentOrderError(
+        `amountUsdc must be decimal USDC: ${bound(String(h.amountUsdc), 80)}`,
+      );
+    }
     const [whole, frac = ""] = h.amountUsdc.split(".");
     micros += BigInt(whole) * SCALE + BigInt((frac + "000000").slice(0, 6));
   }
