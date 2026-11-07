@@ -16,6 +16,12 @@ import {
   type ShipmentHop,
 } from "@agentbadge/econ-events";
 import { statusRank, type HopSpec, type HopStatus } from "./types";
+import {
+  applyAdvisoryFlags,
+  type AdvisoryShipmentHop,
+} from "./advisory";
+
+export type { AdvisoryShipmentHop, ShipmentAdvisoryFlags } from "./advisory";
 
 export const SHIPMENT_SOURCE = "supply_chain";
 export const SHIPMENT_ID_RE = /^[\w.:-]{1,128}$/;
@@ -195,10 +201,10 @@ export async function shipmentState(
   ledger: EconLedgerStore,
   shipmentId: string,
   opts?: { light?: boolean },
-): Promise<{ hops: ShipmentHop[]; events: EconomicEvent[]; client?: string }> {
+): Promise<{ hops: AdvisoryShipmentHop[]; events: EconomicEvent[]; client?: string }> {
   const rows = await ledger.listBySourceId(SHIPMENT_SOURCE, shipmentId);
   const events = rows.map((r: EconEventStored) => r.event);
-  const hops = new Map<number, ShipmentHop>();
+  const hops = new Map<number, AdvisoryShipmentHop>();
   const light = opts?.light === true;
   let client: string | undefined;
   for (const e of events) {
@@ -260,6 +266,9 @@ export async function shipmentState(
       }
     }
   }
+  // 214-2 (D-214-1): advisory flag post-pass — skipped in light mode
+  // like the claims lifts (guard paths never read them).
+  if (!light) applyAdvisoryFlags(hops);
   return { hops: [...hops.values()].sort((a, b) => a.hopIndex - b.hopIndex), events, client };
 }
 
