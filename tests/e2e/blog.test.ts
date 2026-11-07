@@ -254,11 +254,12 @@ describe("Blog: Brick #3 — Scenario Matrix (SLICE-214-6)", () => {
     expect(json.status).toBe("EXPERIMENT");
   });
 
-  it("matrix + gate inline images are embedded", async () => {
+  it("matrix, gate + replay-diagram images are embedded", async () => {
     const res = await fetch(`${BASE}/blog/${SLUG}`);
     const html = await res.text();
     expect(html).toContain("/images/blog/supply-chain-scenario-matrix-2.webp");
     expect(html).toContain("/images/blog/supply-chain-scenario-matrix-3.webp");
+    expect(html).toContain("/images/blog/supply-chain-scenario-matrix-d1.webp");
   });
 
   it("article links back to anchor + bricks #1 and #2", async () => {

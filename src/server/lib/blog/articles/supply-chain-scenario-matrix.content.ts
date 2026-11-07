@@ -163,6 +163,26 @@ export const supplyChainScenarioMatrixContent = `
 </p>
 
 <figure class="article-image">
+  <img src="/images/blog/supply-chain-scenario-matrix-d1.webp"
+       alt="Flowchart of the replay pipeline: the append-only event stream binds the plan at the work_offer in sequence 1, then every event passes a canonical gate checking sequence slot, in-plan hop index and shipmentId — pass lifts status, flags and disputes into shipmentState, forged events drop without lifting anything; a verify event promotes the hop only on outcome pass, and a settle on a disputed hop is refused, while a real settle produces a pay event that re-enters the stream at its canonical sequence" />
+  <figcaption>
+    The replay pipeline after the H-1 fix. The plan binds once — to the
+    <code>work_offer</code> at <code>seq&nbsp;1</code> — and from then on
+    every event must pass the <em>canonical gate</em>: right sequence slot
+    for its hop and stage, an integer in-plan hop index, the bound
+    <code>shipmentId</code>. Passing lifts status, flags and disputes into
+    <code>shipmentState</code>; anything forged takes the drop path and
+    lifts nothing. Two second-order guards sit below the lift: a
+    <code>verify</code> promotes the hop only on an explicit
+    <code>"pass"</code> — <code>"inconclusive"</code> falls to the drop path
+    too — and <code>settleHop</code> refuses while the hop stands disputed.
+    A real settle emits its <code>pay</code> event back into the same
+    stream, which is what makes the whole read model replayable from the
+    ledger alone.
+  </figcaption>
+</figure>
+
+<figure class="article-image">
   <img src="/images/blog/supply-chain-scenario-matrix-3.webp"
        alt="A canonical-sequence gate wall: honest event chips labelled hop0..hop3 flow through matching seq slots into a shipmentState panel; forged chips labelled seq:99, hop:5, shp-OTHER bounce off into a rejected pool" />
   <figcaption>
