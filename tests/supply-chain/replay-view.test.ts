@@ -10,10 +10,15 @@
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
+import { buildEconomicEvent } from "@agentbadge/econ-events";
 import {
   REPLAY_LIMITS_V1,
   ShipmentReplayResponseSchema,
 } from "../../src/server/lib/econ-ledger/supply-chain/replay-types";
+import {
+  seqFor,
+  SHIPMENT_SOURCE,
+} from "../../src/server/lib/econ-ledger/supply-chain/state";
 import { createEconLedgerShipmentsRoutes } from "../../src/server/routes/econ-ledger-shipments-api";
 import {
   makeChain,
@@ -125,6 +130,50 @@ describe("GET /api/ledger/shipments/:id — replay view (215-2)", () => {
     expect(body.aggregate.outstandingUsdc).toBe("10"); // 4 + 6 unsettled
     // Custody is at hop1's receiver (last handed-off hop).
     expect(body.aggregate.currentCustodian).toBe(chain.receivers[1]);
+  });
+
+  it("valid id with zero events → honest 404, no fabricated replay (215-3)", async () => {
+    // Ledger holds a full chain for ANOTHER shipment — the empty
+    // answer is about this id, not about an empty store.
+    const chain = await makeChain({ lifecycle: "settled" });
+    const res = await appFor(chain).request(
+      "/api/ledger/shipments/shp-ghost-1",
+    );
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toMatchObject({ error: { code: "not_found" } });
+    // Honest-empty: the body must NOT parse as a replay with fake
+    // empty sections — an error envelope is the only valid answer.
+    expect(ShipmentReplayResponseSchema.safeParse(body).success).toBe(false);
+  });
+
+  it("events without a canonical offer → 404, nothing to replay (215-3)", async () => {
+    const chain = await makeChain({ lifecycle: "offered" });
+    const ghost = "shp-no-offer";
+    // A canonical-seq handoff for a shipment that has no work_offer:
+    // the stream exists, but no client/plan can be derived — the
+    // builder must refuse instead of fabricating a response.
+    await chain.db.econLedger.append([
+      buildEconomicEvent(
+        {
+          source: SHIPMENT_SOURCE,
+          sourceId: ghost,
+          seq: seqFor(0, "handoff"),
+          kind: "handoff",
+          actor: chain.receivers[0]!,
+          counterparty: chain.client,
+          at: new Date().toISOString(),
+          payload: { shipmentId: ghost, hopIndex: 0 },
+        },
+        { mode: "replay" },
+      ),
+    ]);
+    const res = await appFor(chain).request(
+      `/api/ledger/shipments/${ghost}`,
+    );
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toMatchObject({ error: { code: "not_found" } });
   });
 
   it("chain with no roles/evidence → optional fields absent, still valid", async () => {
