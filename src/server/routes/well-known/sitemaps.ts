@@ -509,7 +509,6 @@ const STATIC_LASTMOD: Record<string, string> = {
   "/agent-guide": "2026-07-25",
   "/market-guide": "2026-07-25",
   "/marketplace-guide": "2026-07-25",
-  "/medical-guide": "2026-07-25",
   "/faq": "2026-07-29",
   "/use-cases": "2026-07-29",
   "/contact": "2026-07-24",
@@ -518,6 +517,13 @@ const STATIC_LASTMOD: Record<string, string> = {
 };
 
 function pageLastmod(path: string): string {
+  // F9 (D-218-5): blog articles carry their real publish/modify dates —
+  // same pattern as ai-sitemap — not the build date.
+  const slug = path.startsWith("/blog/") ? path.slice("/blog/".length) : null;
+  if (slug) {
+    const article = BLOG_ARTICLES.find((a) => a.slug === slug);
+    if (article) return article.dateModified ?? article.date;
+  }
   return STATIC_LASTMOD[path] ?? BUILD_DATE;
 }
 

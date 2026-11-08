@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { ReadinessPricingSection } from "../../src/views/landing/sections/readiness-pricing";
 import { ReadinessThesisSection } from "../../src/views/landing/sections/readiness-thesis";
-import { buildAgentCard } from "../../src/server/routes/well-known";
-import { PageMeta } from "../../src/server/lib/page-meta";
+import { buildAgentCard, buildSitemap } from "../../src/server/routes/well-known";
+import { PageMeta, PUBLIC_PAGES } from "../../src/server/lib/page-meta";
+import { BLOG_ARTICLES } from "../../src/server/lib/blog-data";
+import { BUILD_DATE } from "../../src/server/lib/build-info";
 import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 
 /**
@@ -81,5 +84,48 @@ describe("SLICE-218-3: meta descriptions ≤160 chars (F12)", () => {
       .map(([path, meta]) => [path, meta.description?.length ?? 0] as const)
       .filter(([, len]) => len > 160);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("SLICE-218-4: sitemap lastmod + off-topic pruning (F9, F10)", () => {
+  const OFF_TOPIC = [
+    "/medical-guide",
+    "/hackathon/datahub",
+    "/hackathon/webmcp",
+    "/hackathon/attestcoin",
+    "/hackathon/keeperhub",
+    "/hackathon/fxdelta",
+    "/hackathon/agent-allowance",
+  ];
+
+  it("blog article lastmod uses real dates, not BUILD_DATE", () => {
+    const sitemap = buildSitemap();
+    const blogBlocks = sitemap.match(
+      /<loc>[^<]+\/blog\/[^<]+<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g,
+    );
+    expect(blogBlocks?.length).toBe(BLOG_ARTICLES.length);
+    const lastmods = new Set(
+      (blogBlocks ?? []).map((b) => b.match(/lastmod>([^<]+)/)![1]),
+    );
+    // F9: distinct real dates, not a single build stamp
+    expect(lastmods.size).toBeGreaterThan(1);
+    expect(lastmods.has(BUILD_DATE)).toBe(false);
+  });
+
+  it("off-topic paths absent from PUBLIC_PAGES, sitemap, footer and nav", () => {
+    const sitemap = buildSitemap();
+    for (const p of OFF_TOPIC) {
+      expect(PUBLIC_PAGES.some((e) => e.path === p)).toBe(false);
+      expect(sitemap).not.toContain(`>${`https://agentbadge.xyz${p}`}<`);
+      expect(sitemap).not.toContain(`loc>https://agentbadge.xyz${p}<`);
+    }
+    const footer = readFileSync("src/views/footer.ts", "utf8");
+    const nav = readFileSync("src/views/layout.ts", "utf8");
+    for (const p of OFF_TOPIC) {
+      expect(footer).not.toContain(`href="${p}"`);
+      expect(nav).not.toContain(`href="${p}"`);
+    }
+    // ctc renders the attestcoin page — same off-topic surface
+    expect(nav).not.toContain('href="/hackathon/ctc"');
   });
 });
