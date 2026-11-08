@@ -45,10 +45,11 @@ describe("Q&A block (201-11)", () => {
     expect(html).toContain("A payment protocol.");
   });
 
-  it("falls back to a summary question when no qa and no H2 questions", () => {
+  it("falls back to a real title question when no qa and no H2 questions", () => {
     const html = BlogArticlePage({ ...BASE, shortAnswer: "Short." }).toString();
-    // same fallback as toKnowledgeObject → page/JSON consistency
-    expect(html).toContain("What is &quot;T&quot; about?");
+    // same fallback as toKnowledgeObject → page/JSON consistency (218-6: no "about?" template)
+    expect(html).toContain("What is T?");
+    expect(html).not.toContain("about?");
     expect(html).toContain("Short.");
   });
 });
@@ -157,5 +158,29 @@ describe("FAQPage JSON-LD", () => {
     expect(html).toContain("FAQPage");
     expect(html).toContain("Question");
     expect(html).toContain("acceptedAnswer");
+  });
+});
+
+describe("single AI-block (218-6, D-218-9)", () => {
+  it("strips embedded For-AI-Agents section — KO block is the only one", () => {
+    const html = BlogArticlePage({
+      ...BASE,
+      content:
+        '<p>body</p><hr /><h2 id="for-agents">For AI Agents</h2><p>embedded stuff</p><h2 id="tail">Tail</h2><p>kept</p>',
+    }).toString();
+    // exactly one AI-block: the KO-driven AgentContextBlock
+    expect((html.match(/aria-label="For AI Agents"/g) ?? []).length).toBe(1);
+    expect(html).not.toContain("embedded stuff");
+    expect(html).toContain("kept"); // content after the section survives
+  });
+
+  it("keeps interior h3 and end-of-file sections fully removed", () => {
+    const html = BlogArticlePage({
+      ...BASE,
+      content:
+        '<p>body</p><h2>For AI Agents</h2><h3>Sub</h3><p>sub content</p>',
+    }).toString();
+    expect(html).not.toContain("sub content");
+    expect((html.match(/aria-label="For AI Agents"/g) ?? []).length).toBe(1);
   });
 });

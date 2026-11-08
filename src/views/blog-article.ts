@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { type BlogArticle, type BlogExternalLink } from "../server/lib/blog-data";
 import { toKnowledgeObject } from "../server/lib/blog/knowledge-object";
+import { stripForAiAgentsSection } from "../server/lib/blog/strip-for-agents";
 import { RelatedArticles } from "./related-articles";
 import { RelatedLinks } from "./related-links";
 import { articleRuleDescriptions } from "../server/lib/blog/article-rules";
@@ -171,7 +172,7 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
             prose-p:text-slate-300 prose-li:text-slate-300 prose-a:text-emerald-400
             prose-strong:text-white prose-code:text-emerald-400"
           >
-            ${raw(article.content)}
+            ${raw(stripForAiAgentsSection(article.content))}
           </div>
         </div>
       </div>

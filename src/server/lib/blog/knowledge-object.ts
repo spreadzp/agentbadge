@@ -141,6 +141,17 @@ export function extractQaFromContent(html: string, maxItems = 8): KnowledgeQa[] 
   return qa;
 }
 
+/**
+ * SLICE-218-6 / D-218-9: no template "What is X about?" questions.
+ * Question-style titles are reused verbatim; other titles get a plain
+ * "What is <title>?" question — real, answerable, and non-meta.
+ */
+function fallbackQuestion(title: string): string {
+  const t = title.trim();
+  if (t.endsWith("?")) return t;
+  return `What is ${t.replace(/[.:;!]+$/, "")}?`;
+}
+
 function deriveEvidence(article: BlogArticle): KnowledgeEvidence[] {
   const evidence: KnowledgeEvidence[] = [];
   for (const link of article.externalLinks ?? []) {
@@ -225,7 +236,7 @@ export function toKnowledgeObject(article: BlogArticle): KnowledgeObject {
           ? extracted
           : [
             {
-              question: `What is "${article.title}" about?`,
+              question: fallbackQuestion(article.title),
               answer: truncate(
                 article.shortAnswer ?? article.description,
                 300,
