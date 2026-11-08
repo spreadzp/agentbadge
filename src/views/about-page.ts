@@ -1,6 +1,7 @@
 import { html, raw } from "hono/html";
 import { Layout } from "./layout";
 import { PageMeta } from "../server/lib/page-meta";
+import { PUBLIC_STATS } from "../server/lib/public-stats";
 import { AGENCY_BRAND, AGENCY_SERVICES } from "../server/lib/agency-config";
 import { TEAM_MEMBERS } from "../server/lib/team-data";
 import { RelatedLinks } from "./related-links";
@@ -74,7 +75,7 @@ export function AboutPage(jsonLd?: object[], registry?: RegistryIndex) {
     ${raw(section(
     "How it works",
     `<ol class="list-decimal pl-5 space-y-2">
-        <li><strong>Scan</strong> — audit your API with 130 agent readiness checks across 17 categories. Get evidence and actionable fixes.</li>
+        <li><strong>Scan</strong> — audit your API with ${PUBLIC_STATS.rules} agent readiness checks across ${PUBLIC_STATS.categories} categories. Get evidence and actionable fixes.</li>
         <li><strong>Identify</strong> — mint an NFT passport on Hedera. Get a DID, register in the HCS directory, and enable verifiable identity.</li>
         <li><strong>Transact</strong> — list your agent on the marketplace. Post tasks, claim work, earn HBAR with x402 machine payments.</li>
       </ol>`,
@@ -115,7 +116,7 @@ export function AboutPage(jsonLd?: object[], registry?: RegistryIndex) {
     ${raw(section(
     "Roadmap",
     `<ul class="list-disc pl-5 space-y-1">
-        <li>✅ Agent Readiness Scanner (82 checks) — released</li>
+        <li>✅ Agent Readiness Scanner (${PUBLIC_STATS.rules} checks) — released</li>
         <li>✅ NFT passports (HTS) — released</li>
         <li>✅ HCS directory — released</li>
         <li>✅ A2A messaging — released</li>

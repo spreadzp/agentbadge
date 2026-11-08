@@ -1,4 +1,5 @@
 import type { BlogArticle } from "../../blog-data";
+import { PUBLIC_STATS } from "../../public-stats";
 
 export const article: BlogArticle = 
   {
@@ -291,7 +292,7 @@ Evidence:
 
 <blockquote><p><strong>Is your API optimized for the machine that comes after the search result?</strong></p></blockquote>
 
-<p><strong><a href="https://agentbadge.xyz/services/scanner">Scan your API →</a></strong> — Free, no signup, 72 checks in seconds.</p>
+<p><strong><a href="https://agentbadge.xyz/services/scanner">Scan your API →</a></strong> — Free, no signup, ${PUBLIC_STATS.rules} checks in seconds.</p>
 
 <hr />
 

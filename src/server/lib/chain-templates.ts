@@ -7,6 +7,7 @@
 
 import { getConfig } from "../../config/env.js";
 import { chainDisplayName, explorerName } from "./chain-ui.js";
+import { publicStatsVars } from "./public-stats.js";
 
 export interface ChainTemplateVars {
   CHAIN_NAME: string;
@@ -51,11 +52,17 @@ export function getChainTemplateVars(): ChainTemplateVars {
 }
 
 /**
- * Replace all {{VARIABLE}} placeholders in a string with chain-appropriate values.
+ * Replace all {{VARIABLE}} placeholders in a string with chain-appropriate
+ * values. Also resolves public-stat placeholders ({{RULE_COUNT}},
+ * {{CATEGORY_COUNT}}, {{PILLAR_COUNT}}, {{MCP_TOOL_COUNT}},
+ * {{WEBMCP_TOOL_COUNT}}, {{LAST_UPDATED}}) from PUBLIC_STATS (D-218-1).
  */
 export function applyChainTemplates(content: string): string {
-  const vars = getChainTemplateVars();
+  const vars: Record<string, string> = {
+    ...getChainTemplateVars(),
+    ...publicStatsVars(),
+  };
   return content.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-    return key in vars ? String(vars[key as keyof ChainTemplateVars]) : match;
+    return vars[key] ?? match;
   });
 }

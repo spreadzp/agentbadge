@@ -1,5 +1,6 @@
 import { html, raw } from "hono/html";
 import { AGENCY_SERVICES, AGENCY_BRAND } from "../../server/lib/agency-config";
+import { PUBLIC_STATS } from "../../server/lib/public-stats";
 
 /**
  * AgencyHubPage — homepage as agency services hub.
@@ -84,7 +85,7 @@ function AgencyHeroSection() {
           </a>
         </div>
         <div class="mt-3 text-xs text-slate-500 font-mono">
-          No signup · 130 checks · results in seconds
+          No signup · ${PUBLIC_STATS.rules} checks · results in seconds
         </div>
       </div>
     </section>
@@ -100,7 +101,7 @@ function CrossSellSection() {
           <div class="text-center">
             <div class="text-4xl mb-3">🔍</div>
             <h3 class="text-lg font-semibold text-white">1. Scan</h3>
-            <p class="mt-2 text-sm text-slate-400">Audit your API with 82 agent readiness checks. Find gaps, get evidence, fix issues.</p>
+            <p class="mt-2 text-sm text-slate-400">Audit your API with ${PUBLIC_STATS.rules} agent readiness checks. Find gaps, get evidence, fix issues.</p>
             <a href="/services/scanner" class="mt-3 inline-block text-sm text-emerald-400 hover:text-emerald-300">Start scanning →</a>
           </div>
           <div class="text-center">
@@ -126,7 +127,7 @@ function ScannerPreviewSection() {
     <section id="scanner-preview" class="px-4 py-16 md:px-8">
       <div class="mx-auto max-w-4xl">
         <h2 class="text-2xl font-bold text-white text-center">Try the Scanner</h2>
-        <p class="mt-3 text-slate-400 text-center">Scan any URL for agent readiness — 130 checks across 17 categories.</p>
+        <p class="mt-3 text-slate-400 text-center">Scan any URL for agent readiness — ${PUBLIC_STATS.rules} checks across ${PUBLIC_STATS.categories} categories.</p>
         <div class="mt-8 rounded-xl border border-slate-700 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl overflow-hidden">
           <div class="h-9 border-b border-slate-700 flex items-center px-4 gap-2">
             <span class="w-2 h-2 rounded-full bg-red-400"></span>
@@ -182,7 +183,7 @@ function FaqSection() {
               What is an agent readiness scan?
               <svg class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <p class="mt-3 text-sm text-slate-400">A scan checks your API or website against 130+ agent readiness rules across 18 categories — discovery, documentation, authentication, payments, and more. You get a score, evidence, and actionable fixes.</p>
+            <p class="mt-3 text-sm text-slate-400">A scan checks your API or website against ${PUBLIC_STATS.rules}+ agent readiness rules across ${PUBLIC_STATS.categories} categories — discovery, documentation, authentication, payments, and more. You get a score, evidence, and actionable fixes.</p>
           </details>
           <details class="group rounded-lg border border-slate-800 bg-slate-900/50 p-5">
             <summary class="flex cursor-pointer items-center justify-between text-white font-medium">

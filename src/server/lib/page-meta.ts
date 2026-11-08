@@ -1,5 +1,6 @@
 import { RULE_DESCRIPTIONS } from "../../agent-readiness/rule-descriptions";
 import { BLOG_ARTICLES } from "./blog-data";
+import { PUBLIC_STATS } from "./public-stats";
 
 export interface PageMeta {
   title: string;
@@ -43,7 +44,7 @@ export function pageTitle(unique: string): string {
 }
 
 export const SITE_DESCRIPTION =
-  "AgentBadge — scan your API or website with 145+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score.";
+  `AgentBadge — scan your API or website with ${PUBLIC_STATS.rules}+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score.`;
 
 export const BASE_URL =
   process.env.BASE_URL && process.env.BASE_URL.startsWith("http")
@@ -54,13 +55,13 @@ export const PageMeta: Record<string, PageMeta> = {
   "/": {
     title: "Agent Readiness Scanner & Evidence-Based Scoring",
     description:
-      "Scan your API or website with 145+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score. Free scan, no signup required.",
+      `Scan your API or website with ${PUBLIC_STATS.rules}+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score. Free scan, no signup required.`,
     path: "/",
   },
   "/services/scanner": {
     title: "Agent Readiness Scanner",
     description:
-      "Scan your API or website against 72 agent readiness rules across 15 categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.",
+      `Scan your API or website against ${PUBLIC_STATS.rules} agent readiness rules across ${PUBLIC_STATS.categories} categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.`,
     path: "/services/scanner",
   },
   "/services/passports": {
@@ -90,7 +91,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/hackathon/webmcp": {
     title: "WebMCP Challenge",
     description:
-      "AgentBadge WebMCP implementation for the WebMCP Challenge hackathon. Six imperative tools, declarative API, and discovery endpoint for agent-native compliance.",
+      `AgentBadge WebMCP implementation for the WebMCP Challenge hackathon. ${PUBLIC_STATS.webmcpTools} imperative tools, declarative API, and discovery endpoint for agent-native compliance.`,
     path: "/hackathon/webmcp",
   },
   "/hackathon/attestcoin": {
@@ -114,7 +115,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/hackathon/ai-builders": {
     title: "AgentBadge — Onchain Trust Records for AI Agents",
     description:
-      "AgentBadge scans any site for agent-readiness with 40+ deterministic rules, records results onchain on Base Sepolia, and mints soulbound trust badges. MCP-native, x402 payments, live audit trail.",
+      `AgentBadge scans any site for agent-readiness with ${PUBLIC_STATS.rules}+ deterministic rules, records results onchain on Base Sepolia, and mints soulbound trust badges. MCP-native, x402 payments, live audit trail.`,
     path: "/hackathon/ai-builders",
   },
   "/hackathon/fxdelta": {

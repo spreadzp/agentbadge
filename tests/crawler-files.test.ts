@@ -1,44 +1,16 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { Hono } from "hono";
-import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { uiRoutes } from "../src/server/routes/ui";
-import { searchRoutes } from "../src/server/routes/search";
-import { contactRoutes } from "../src/server/routes/contact";
-import { agentGuideRoutes } from "../src/server/routes/agent-guide";
-import { marketGuideRoutes } from "../src/server/routes/market-guide";
-import { medicalGuideRoutes } from "../src/server/routes/medical-guide";
-import { contentPageRoutes } from "../src/server/routes/content-pages";
-import { changelogRoutes } from "../src/server/routes/changelog";
-import { catalogRoutes } from "../src/server/routes/catalog";
-import { corsMiddleware } from "../src/server/middleware/cors";
-import { rateLimitMiddleware } from "../src/server/middleware/rate-limit";
-import { signatureVerificationMiddleware } from "../src/server/middleware/signature-verification";
+import type { Hono } from "hono";
 
-function makeCrawlerTestApp(): Hono {
-  const app = new Hono();
-  app.use(corsMiddleware());
-  app.use((c, next) => signatureVerificationMiddleware(c as any, next));
-  app.use(rateLimitMiddleware());
-  // Register wellKnownRoutes BEFORE uiRoutes (matching index.ts order)
-  app.route("/", catalogRoutes);
-  app.route("/", wellKnownRoutes);
-  app.route("/", uiRoutes);
-  app.route("/", searchRoutes);
-  app.route("/", contactRoutes);
-  app.route("/", agentGuideRoutes);
-  app.route("/", marketGuideRoutes);
-  app.route("/", medicalGuideRoutes);
-  app.route("/", contentPageRoutes);
-  app.route("/", changelogRoutes);
-  return app;
-}
+process.env.MOCK_HEDERA = "true";
+// Use the real app: a hand-built subset drifts from registerPageRoutes and
+// sitemap URLs silently 404. Dynamic import so MOCK_HEDERA is set first.
+const { createApp } = await import("../src/server/index");
 
 describe("Crawler files integration (SLICE-18-3)", () => {
   let app: Hono;
 
   beforeAll(() => {
-    process.env.MOCK_HEDERA = "true";
-    app = makeCrawlerTestApp();
+    app = createApp();
   });
 
   describe("GET /robots.txt", () => {

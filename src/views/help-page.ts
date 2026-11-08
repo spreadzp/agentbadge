@@ -184,7 +184,7 @@ export function HelpPage() {
     <section class="mt-8">
       <h2 class="text-lg font-semibold text-white">MCP Server</h2>
       <p class="mt-2 text-sm text-slate-300">
-        AgentBadge exposes an MCP (Model Context Protocol) server with 9 tools for passport lifecycle
+        AgentBadge exposes an MCP (Model Context Protocol) server with ${applyChainTemplates("{{MCP_TOOL_COUNT}}")} tools for passport lifecycle
         management. Connect from your IDE or agent runtime:
       </p>
       <div class="mt-4 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900 p-4">

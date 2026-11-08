@@ -90,7 +90,7 @@ Evidence transforms claims from assertions into verifiable facts. This is the fo
 
 If OpenAPI is necessary but not sufficient, and if Agent Readiness is cumulative layers with evidence — then the next question is: **how do we objectively measure whether an API is agent-ready?**
 
-That is the measurement problem. Article 8 introduces the measurement framework: 72 checks across 15 categories, each producing evidence, each scored, each verifiable.
+That is the measurement problem. Article 8 introduces the measurement framework: {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories, each producing evidence, each scored, each verifiable.
 
 ## Agent Readiness
 
@@ -108,7 +108,7 @@ npx @agentbadge/cli scan https://api.example.com
 npx @agentbadge/cli scan https://api.example.com --format json > report.json
 ```
 
-72 checks in seconds. Free, no signup. Every finding includes evidence — the HTTP response that produced it.
+{{RULE_COUNT}} checks in seconds. Free, no signup. Every finding includes evidence — the HTTP response that produced it.
 
 ## API Endpoints
 

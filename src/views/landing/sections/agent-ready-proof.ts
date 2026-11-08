@@ -1,4 +1,5 @@
 import { html, raw } from "hono/html";
+import { PUBLIC_STATS } from "../../../server/lib/public-stats";
 
 interface ProofCard {
   label: string;
@@ -33,9 +34,9 @@ const PROOF_CARDS: ProofCard[] = [
   {
     label: "MCP Server",
     url: "/hackathon/webmcp",
-    description: "WebMCP with 6 tools: scan, badge, passport, verify, score, search.",
+    description: `WebMCP with ${PUBLIC_STATS.webmcpTools} tools: scan, badge, passport, verify, score, search.`,
     icon: "🔌",
-    status: "6 tools",
+    status: `${PUBLIC_STATS.webmcpTools} tools`,
   },
   {
     label: "Agent Guide",

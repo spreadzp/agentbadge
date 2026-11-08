@@ -25,7 +25,7 @@ Swagger creates the spec. AgentBadge verifies it's sufficient for AI agents. You
 | Creating OpenAPI documentation | — | ✓ | — |
 | Interactive API explorer (Swagger UI) | — | ✓ | — |
 | OpenAPI spec generation | — | ✓ | — |
-| API readiness scoring (122 rules) | ✓ | — | — |
+| API readiness scoring ({{RULE_COUNT}} rules) | ✓ | — | — |
 | Agent discovery checks (robots.txt, llms.txt) | ✓ | — | — |
 | Agent guide verification | ✓ | — | — |
 | Error handling consistency checks | ✓ | — | — |

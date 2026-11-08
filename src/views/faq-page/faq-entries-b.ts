@@ -15,7 +15,7 @@ export const FAQ_ENTRIES_B: QaPair[] = [
   {
     question: "How many checks does AgentBadge run?",
     answer:
-      "AgentBadge runs 70+ checks across 17 categories, covering discovery (robots.txt, llms.txt, OpenAPI), authentication (OAuth2, API keys, well-known), documentation (content negotiation, error schemas), execution (rate limits, idempotency), and verification (semantic consistency, runtime tests). Each check produces a status (VERIFIED, INFERRED, CONFLICT, MISSING) with captured evidence. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
+      "AgentBadge runs {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories, covering discovery (robots.txt, llms.txt, OpenAPI), authentication (OAuth2, API keys, well-known), documentation (content negotiation, error schemas), execution (rate limits, idempotency), and verification (semantic consistency, runtime tests). Each check produces a status (VERIFIED, INFERRED, CONFLICT, MISSING) with captured evidence. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a>",
   },
   {
     question: "What is DNS-AID and how does AgentBadge use it?",
@@ -67,7 +67,7 @@ export const FAQ_ENTRIES_B: QaPair[] = [
   {
     question: "What does AgentBadge's scanner actually do when it scans my API?",
     answer:
-      "AgentBadge's scanner fetches your robots.txt, llms.txt, OpenAPI spec, well-known endpoints, and authentication flows — then runs 70+ checks across 17 categories. Each check produces evidence (HTTP responses, parsed schemas, discovered URLs) and a status. The scanner also performs active probing: sending real requests to verify your endpoints work as documented. The full report includes a score, grade, gap analysis, and fix recommendations. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a> <a href=\"/comparisons/agentbadge-vs-postman\" class=\"text-emerald-400 underline hover:text-emerald-300\">See comparison: AgentBadge vs Postman →</a>",
+      "AgentBadge's scanner fetches your robots.txt, llms.txt, OpenAPI spec, well-known endpoints, and authentication flows — then runs {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories. Each check produces evidence (HTTP responses, parsed schemas, discovered URLs) and a status. The scanner also performs active probing: sending real requests to verify your endpoints work as documented. The full report includes a score, grade, gap analysis, and fix recommendations. <a href=\"/blog/inside-an-agent-readiness-scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: Inside an Agent Readiness Scanner →</a> <a href=\"/comparisons/agentbadge-vs-postman\" class=\"text-emerald-400 underline hover:text-emerald-300\">See comparison: AgentBadge vs Postman →</a>",
   },
   {
     question: "What problems does AgentBadge solve that OpenAPI alone doesn't?",
@@ -133,7 +133,7 @@ export const FAQ_ENTRIES_B: QaPair[] = [
   {
     question: "What does AgentBadge measure?",
     answer:
-      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence (HTTP responses, parsed schemas, headers), not opinions. The scanner is deterministic and reproducible: same URL + same ruleset version = same result. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
+      "AgentBadge measures {{RULE_COUNT}} agent readiness rules across {{CATEGORY_COUNT}} categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence (HTTP responses, parsed schemas, headers), not opinions. The scanner is deterministic and reproducible: same URL + same ruleset version = same result. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
   },
   {
     question: "Can I self-host the scanner?",

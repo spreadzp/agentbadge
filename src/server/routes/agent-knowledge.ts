@@ -30,6 +30,7 @@ import { RelevantEngineeringCapability } from "../../components/RelevantEngineer
 import { GuideLayout } from "../../views/guide-layout";
 import { defaultCoreSchemas, howToLd, breadcrumbListLd } from "../lib/json-ld";
 import { BUILD_DATE } from "../lib/build-info";
+import { applyChainTemplates } from "../lib/chain-templates.js";
 
 export const agentKnowledgeRoutes = new Hono();
 
@@ -44,7 +45,8 @@ async function serveMarkdownFile(
 ): Promise<Response> {
   try {
     const content = await readFile(filePath, "utf-8");
-    return new Response(content, {
+    // D-218-1: resolve {{RULE_COUNT}}/{{CATEGORY_COUNT}}/etc. at serve time
+    return new Response(applyChainTemplates(content), {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
         "Cache-Control": "public, max-age=300",
@@ -91,7 +93,7 @@ async function serveIndexMarkdown(): Promise<string> {
       .join("\n")}\n`;
     md = md.replace(/## Articles[\s\S]*?(?=## |$)/, articlesSection);
   }
-  return md;
+  return applyChainTemplates(md);
 }
 
 agentKnowledgeRoutes.get("/agent-guide", async (c) => {
@@ -390,7 +392,9 @@ agentKnowledgeRoutes.get("/agent-guide/concepts/:name", async (c) => {
       }
     }
 
-    const output = ctaHtml ? `${body}\n\n${ctaHtml}` : body;
+    const output = ctaHtml
+      ? `${applyChainTemplates(body)}\n\n${ctaHtml}`
+      : applyChainTemplates(body);
     return new Response(output, {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
@@ -433,7 +437,9 @@ agentKnowledgeRoutes.get("/agent-guide/articles/:slug", async (c) => {
       }
     }
 
-    const output = ctaHtml ? `${body}\n\n${ctaHtml}` : body;
+    const output = ctaHtml
+      ? `${applyChainTemplates(body)}\n\n${ctaHtml}`
+      : applyChainTemplates(body);
     return new Response(output, {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",

@@ -278,7 +278,7 @@
     },
     {
       "name": "get_team",
-      "description": "Fetch the Team page (/team) — team members and roles."
+      "description": "Fetch the Team page (/agent-guide/team) — team members and roles."
     },
     {
       "name": "get_use_cases",

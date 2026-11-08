@@ -1,4 +1,5 @@
 import { html, raw } from "hono/html";
+import { PUBLIC_STATS } from "../../../server/lib/public-stats";
 
 /**
  * ReadinessAgentReadyProofSection — "We don't just measure Agent Readiness.
@@ -12,7 +13,7 @@ export function ReadinessAgentReadyProofSection() {
     { label: "/openapi.json", desc: "Machine-readable API specification", href: "/openapi.json" },
     { label: "/.well-known/webmcp.json", desc: "WebMCP server descriptor", href: "/.well-known/webmcp.json" },
     { label: "WebMCP tools", desc: "navigator.modelContext protocol support" },
-    { label: "Machine-readable rules", desc: "145+ checks published as structured data", href: "/api/rules" },
+    { label: "Machine-readable rules", desc: `${PUBLIC_STATS.rules}+ checks published as structured data`, href: "/api/rules" },
   ];
 
   return html`

@@ -153,7 +153,7 @@ export const HOMEPAGE_FAQ: HomepageFaqItem[] = [
   {
     question: "What does AgentBadge measure?",
     shortAnswer:
-      "AgentBadge measures 122 agent readiness rules across 18 categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence, not opinions. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
+      "AgentBadge measures {{RULE_COUNT}} agent readiness rules across {{CATEGORY_COUNT}} categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence, not opinions. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
     faqAnchor: "what-does-agentbadge-measure",
   },
   {

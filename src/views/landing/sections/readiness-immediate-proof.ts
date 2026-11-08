@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { RULE_DESCRIPTIONS } from "../../../agent-readiness/rule-descriptions";
+import { PUBLIC_STATS } from "../../../server/lib/public-stats";
 
 /**
  * ReadinessImmediateProofSection — static proof that AgentBadge реально
@@ -7,11 +7,11 @@ import { RULE_DESCRIPTIONS } from "../../../agent-readiness/rule-descriptions";
  * SLICE-110-3
  */
 export function ReadinessImmediateProofSection() {
-  const ruleCount = RULE_DESCRIPTIONS.length;
+  const ruleCount = PUBLIC_STATS.rules;
 
   const stats = [
-    { value: `${ruleCount}+`, label: "Automated checks", sub: "across 15 categories" },
-    { value: "4", label: "Scoring pillars", sub: "Discovery · Understandability · Executability · Verifiability" },
+    { value: `${ruleCount}+`, label: "Automated checks", sub: `across ${PUBLIC_STATS.categories} categories` },
+    { value: `${PUBLIC_STATS.pillars}`, label: "Scoring pillars", sub: "Discovery · Understandability · Executability · Verifiability" },
     { value: "3", label: "Evidence levels", sub: "VERIFIED · CONFLICT · INFERRED" },
     { value: "100%", label: "Reproducible", sub: "deterministic, no LLM hallucination" },
   ];
@@ -34,7 +34,7 @@ export function ReadinessImmediateProofSection() {
             What AgentBadge Actually Checks
           </h2>
           <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
-            ${ruleCount}+ deterministic checks across 15 categories — evidence-based scoring,
+            ${ruleCount}+ deterministic checks across ${PUBLIC_STATS.categories} categories — evidence-based scoring,
             not LLM hallucination. Every result is backed by fetched proof.
           </p>
         </div>

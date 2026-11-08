@@ -404,7 +404,10 @@ Disallow: /api/
 Disallow: /ui/a2a/inbox/fragment
 Crawl-delay: 10
 
-Content-Signal: ai-train=no, search=yes, ai-input=no
+# Content-Signal (D-218-2): crawlers below may READ (allowlist answers
+# "who may fetch"), this signal answers "what may be done with content":
+# indexing/search + AI input (RAG/answers) OK, model training is NOT.
+Content-Signal: ai-train=no, search=yes, ai-input=yes
 
 # ── Allow useful LLM / AI crawlers ──
 User-agent: GPTBot

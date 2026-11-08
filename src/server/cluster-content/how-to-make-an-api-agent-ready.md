@@ -8,7 +8,7 @@ Making an API agent-ready is a systematic process that spans four pillars: disco
 
 **Executability** ensures that an agent can actually make requests and get useful responses. This means consistent error formats (RFC 7807 Problem Details), clear rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`), predictable pagination, and responses that match the documented schema. Many APIs have excellent documentation but fail executability checks because the actual responses diverge from the spec.
 
-**Verifiability** is the final pillar. An agent (or its operator) should be able to verify that the API behaves as documented. This includes consistency between the OpenAPI spec and live responses, valid structured data in responses, and machine-readable metadata that can be checked programmatically. Tools like AgentBadge scan APIs against a ruleset of 60+ checks to verify agent readiness.
+**Verifiability** is the final pillar. An agent (or its operator) should be able to verify that the API behaves as documented. This includes consistency between the OpenAPI spec and live responses, valid structured data in responses, and machine-readable metadata that can be checked programmatically. Tools like AgentBadge scan APIs against a ruleset of {{RULE_COUNT}}+ checks to verify agent readiness.
 
 The transformation from a standard API to an agent-ready API is not about rewriting — it's about adding machine-readable layers. Most of the work is metadata: `robots.txt`, `llms.txt`, an agent guide, structured error responses, and rate limit headers. The core API logic stays the same.
 

@@ -1,6 +1,7 @@
 // EPIC-140 (SLICE-140-19): ai-builders hero + architecture sections.
 import { html, raw } from "hono/html";
 import { sectionWrapper } from "./shared";
+import { PUBLIC_STATS } from "../../../server/lib/public-stats";
 
 export function Hero() {
   return html`<section class="relative overflow-hidden border-b border-slate-700/50 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/20">
@@ -251,7 +252,7 @@ export function ArchitectureDiagram() {
 
         <rect class="node-rect" x="200" y="40" width="160" height="60" stroke="rgb(34 197 94)" />
         <text class="node-label" x="280" y="62">AgentBadge Scan</text>
-        <text class="node-desc" x="280" y="78">40 rules, score 0-100</text>
+        <text class="node-desc" x="280" y="78">${PUBLIC_STATS.rules} rules, score 0-100</text>
         <text class="node-tag" x="280" y="92">web2</text>
 
         <line class="flow-line" x1="365" y1="70" x2="405" y2="70" stroke="rgb(34 197 94)" stroke-width="2" marker-end="url(#arrow-emerald)" />
@@ -353,7 +354,7 @@ export function ArchitectureDiagram() {
           </div>
           <div>
             <p class="font-medium text-slate-200">What is MCP?</p>
-            <p class="mt-1 text-slate-400">Model Context Protocol — an open standard for AI agents to discover and call tools. AgentBadge exposes 6 MCP tools (scan, badge, passport, verify, score, search) that any MCP-compatible agent can call directly.</p>
+            <p class="mt-1 text-slate-400">Model Context Protocol — an open standard for AI agents to discover and call tools. AgentBadge exposes ${PUBLIC_STATS.webmcpTools} MCP tools (scan, badge, passport, verify, score, search) that any MCP-compatible agent can call directly.</p>
           </div>
         </div>
       </details>

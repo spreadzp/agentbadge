@@ -6,7 +6,7 @@ import { BASE_URL } from "../../server/lib/page-meta";
  * WebMcpHackathonPage — landing page for the WebMCP Challenge hackathon.
  *
  * Showcases AgentBadge as an agent-native compliance platform powered by WebMCP:
- * - 6 imperative tools exposed via document.modelContext.registerTool()
+ * - Imperative tools exposed via document.modelContext.registerTool() (count = allTools.length)
  * - 1 declarative form tool
  * - Discovery endpoint at /.well-known/webmcp.json
  * - Demo instructions for Chrome flag and ChatGPT in-app browser
@@ -38,7 +38,7 @@ function WebMcpHero() {
           Platform Powered by WebMCP
         </h1>
         <p class="mt-6 text-lg text-slate-300 fade-in-up">
-          Six imperative tools, a declarative form API, and a discovery endpoint — all exposed
+          ${allTools.length} imperative tools, a declarative form API, and a discovery endpoint — all exposed
           through the browser's native <code class="rounded bg-slate-800 px-1.5 py-0.5 text-sm text-indigo-300">document.modelContext</code> interface.
           AI agents discover and use AgentBadge without leaving the page.
         </p>
@@ -53,7 +53,7 @@ function WebMcpHero() {
         <div class="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-slate-400">
           <span class="flex items-center gap-2">
             <svg class="h-4 w-4 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-            6 Imperative Tools
+            ${allTools.length} Imperative Tools
           </span>
           <span class="flex items-center gap-2">
             <svg class="h-4 w-4 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -125,7 +125,7 @@ function WebMcpTools() {
     <div class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
       <div class="text-center">
         <h2 class="text-2xl font-bold text-white sm:text-3xl">Imperative Tools</h2>
-        <p class="mt-4 text-slate-400">Six tools exposed via <code class="rounded bg-slate-800 px-1.5 py-0.5 text-sm text-indigo-300">document.modelContext.registerTool()</code></p>
+        <p class="mt-4 text-slate-400">${allTools.length} tools exposed via <code class="rounded bg-slate-800 px-1.5 py-0.5 text-sm text-indigo-300">document.modelContext.registerTool()</code></p>
       </div>
       <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         ${raw(tools.map((t) => html`<div class="hover-lift rounded-xl border border-slate-700/40 bg-slate-900/50 p-6">
@@ -229,7 +229,7 @@ curl -s "${BASE_URL}/api/badge?url=https://example.com" | head -3</code></pre>
           </div>
           <h3 class="mt-4 text-xl font-semibold text-white">Declarative Form</h3>
           <p class="mt-3 text-sm text-slate-400">The form above works as a normal HTML form. Enter a URL and click Scan — no WebMCP support needed.</p>
-          <p class="mt-4 text-sm text-slate-400">When browsers implement <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-emerald-300">document.modelContext</code>, the inject script will automatically register all 6 tools. The page is spec-ready.</p>
+          <p class="mt-4 text-sm text-slate-400">When browsers implement <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-emerald-300">document.modelContext</code>, the inject script will automatically register all ${allTools.length} tools. The page is spec-ready.</p>
         </div>
       </div>
     </div>
@@ -275,7 +275,7 @@ function WebMcpCtaFooter() {
     <div class="rounded-2xl border border-indigo-600/25 bg-gradient-to-br from-indigo-950/40 to-slate-950 p-12 text-center">
       <h2 class="text-3xl font-bold text-white sm:text-4xl">Agent-Native Compliance Starts Here</h2>
       <p class="mx-auto mt-4 max-w-2xl text-slate-300">
-        AgentBadge exposes six imperative tools and one declarative form through WebMCP.
+        AgentBadge exposes ${allTools.length} imperative tools and one declarative form through WebMCP.
         AI agents discover, scan, verify, and issue passports — all without leaving the page.
       </p>
       <div class="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">

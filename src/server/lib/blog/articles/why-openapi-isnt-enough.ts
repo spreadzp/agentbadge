@@ -1,4 +1,5 @@
 import type { BlogArticle } from "../../blog-data";
+import { PUBLIC_STATS } from "../../public-stats";
 
 export const article: BlogArticle = 
   {
@@ -147,7 +148,7 @@ Should I retry?</code></pre>
 
 <p>When AgentBadge scans your API, every finding includes evidence: the actual HTTP response, header, or body that produced the check result. Not "we think your API supports discovery" — but <code>GET /llms.txt → 200, content-type: text/plain, 847 bytes, valid format</code>.</p>
 
-<p>This changes the conversation. Instead of debating whether an API is "agent-ready" in the abstract, you can point to specific, verifiable responses. Instead of a badge that says "ready," you get a report that says "72 checks run, 58 passed, 14 failed — here's the evidence for each."</p>
+<p>This changes the conversation. Instead of debating whether an API is "agent-ready" in the abstract, you can point to specific, verifiable responses. Instead of a badge that says "ready," you get a report that says "${PUBLIC_STATS.rules} checks run, ${PUBLIC_STATS.rules - 14} passed, 14 failed — here's the evidence for each."</p>
 
 <p>Evidence also means reproducibility. Another agent, another scanner, another developer can run the same checks and get the same results. The claim isn't "trust us" — it's "verify yourself."</p>
 
@@ -161,7 +162,7 @@ Should I retry?</code></pre>
 
 <p>That's the measurement problem. And it's what <a href="/blog/how-do-you-measure-agent-readiness">Article 8 — "How Do You Measure Agent Readiness?"</a> addresses.</p>
 
-<p>The measurement framework turns the 7 layers into 72 deterministic checks across 15 categories. Each check produces evidence. Each evidence item is scored. Each score is verifiable.</p>
+<p>The measurement framework turns the 8 layers into ${PUBLIC_STATS.rules} deterministic checks across ${PUBLIC_STATS.categories} categories. Each check produces evidence. Each evidence item is scored. Each score is verifiable.</p>
 
 <img src="/images/blog/why-openapi-isnt-enough/5s.webp" alt="Article 7 to Article 8 bridge: flow from structural gap through measurement problem to framework" />
 
@@ -174,7 +175,7 @@ Should I retry?</code></pre>
   <li><strong>Audit your semantics</strong> — Do your OpenAPI operations have <code>summary</code> and <code>description</code> fields that explain intent, not just method?</li>
   <li><strong>Review your error responses</strong> — Are errors structured (RFC 9457) with recovery hints, or just <code>{"error": "something"}</code>?</li>
   <li><strong>Add examples</strong> — Does every operation have at least one concrete request/response example?</li>
-  <li><strong>Run a scan</strong> — <code>npx @agentbadge/cli scan https://your-api.com</code> — 72 checks in seconds, free, no signup.</li>
+  <li><strong>Run a scan</strong> — <code>npx @agentbadge/cli scan https://your-api.com</code> — ${PUBLIC_STATS.rules} checks in seconds, free, no signup.</li>
 </ol>
 
 <pre><code>npx @agentbadge/cli scan https://api.example.com

@@ -132,7 +132,7 @@ This is like valid HTML that isn't accessible. Technically correct, but unusable
 
 ## Capabilities
 
-- [Passive Scanner](/agent-guide/capabilities/scanner) — 72 checks across 15 categories, non-intrusive HTTP scanning
+- [Passive Scanner](/agent-guide/capabilities/scanner) — {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories, non-intrusive HTTP scanning
 - [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via `npx @agentbadge/cli scan`
 - [Agent Knowledge Layer](/agent-guide/) — Machine-readable product context
 

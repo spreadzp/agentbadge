@@ -91,7 +91,7 @@ Each check is binary: pass or fail. Each pass has evidence. Each fail has a fix 
 
 ## Capabilities
 
-- [Passive Scanner](/agent-guide/capabilities/scanner) — 72 checks across 15 categories, non-intrusive HTTP scanning
+- [Passive Scanner](/agent-guide/capabilities/scanner) — {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories, non-intrusive HTTP scanning
 - [CLI Tool](/agent-guide/capabilities/cli) — Local scanning via `npx @agentbadge/cli scan`
 - [Agent Knowledge Layer](/agent-guide/) — Machine-readable product context
 - [GEO Optimization](/agent-guide/capabilities/geo-optimization) — Content optimization for generative AI discovery
@@ -188,7 +188,7 @@ GEO covers #1 and partially #2. Agent Readiness covers all five.
 
 AgentBadge measures each layer with deterministic checks:
 
-- 72 checks across 15 categories
+- {{RULE_COUNT}} checks across {{CATEGORY_COUNT}} categories
 - Each check: binary pass/fail
 - Each pass: HTTP evidence (response body, headers, status)
 - Each fail: specific fix recommendation

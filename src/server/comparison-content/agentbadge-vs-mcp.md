@@ -8,7 +8,7 @@ MCP servers expose tools and data sources to AI agents. AgentBadge scans APIs to
 
 **MCP is a connection protocol.** It defines how an AI agent connects to a server, discovers available tools, and calls them. MCP assumes the API is already agent-ready — it doesn't check whether the API has proper error handling, whether robots.txt allows AI crawlers, or whether the OpenAPI spec is complete.
 
-**AgentBadge is a readiness certification service.** It scans your API against 122 rules across 4 pillars (Discovery, Understandability, Executability, Verifiability) and scores how prepared your API is for AI agent consumption. AgentBadge doesn't connect agents to tools — it verifies that the connection will work.
+**AgentBadge is a readiness certification service.** It scans your API against {{RULE_COUNT}} rules across {{PILLAR_COUNT}} pillars (Discovery, Understandability, Executability, Verifiability) and scores how prepared your API is for AI agent consumption. AgentBadge doesn't connect agents to tools — it verifies that the connection will work.
 
 Key differences:
 

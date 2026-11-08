@@ -1,4 +1,5 @@
 import type { BlogArticle } from "../../blog-data";
+import { PUBLIC_STATS } from "../../public-stats";
 
 export const article: BlogArticle =
 {
@@ -143,7 +144,7 @@ Content-Type: application/json
   <li><strong>Document authentication</strong> — so agents can auth without human help</li>
 </ol>
 
-<p>You can check all of these with the <a href="/services/scanner">AgentBadge Scanner</a> — it runs 72 checks across 15 categories and gives you an AgentGrade score.</p>
+<p>You can check all of these with the <a href="/services/scanner">AgentBadge Scanner</a> — it runs ${PUBLIC_STATS.rules} checks across ${PUBLIC_STATS.categories} categories and gives you an AgentGrade score.</p>
 
 <h2>MCP Server Example</h2>
 <p>Here's a minimal MCP server that wraps a REST API:</p>

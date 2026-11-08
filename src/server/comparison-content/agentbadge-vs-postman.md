@@ -24,7 +24,7 @@ Postman doesn't check any of these. AgentBadge doesn't do interactive testing, m
 |----------|-----------|---------|------|
 | Manual API testing | — | ✓ | — |
 | Mock servers | — | ✓ | — |
-| API readiness scoring (122 rules) | ✓ | — | — |
+| API readiness scoring ({{RULE_COUNT}} rules) | ✓ | — | — |
 | Agent discovery checks (robots.txt, llms.txt) | ✓ | — | — |
 | Agent guide verification | ✓ | — | — |
 | On-chain identity (NFT passports) | ✓ | — | — |

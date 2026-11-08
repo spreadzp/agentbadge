@@ -19,6 +19,7 @@ import { ClusterPage } from "../../views/cluster-page";
 import { NotesPage } from "../../views/notes-page";
 import { getAuditRuns, getAuditSummary } from "../lib/notes-data";
 import { marked } from "marked";
+import { applyChainTemplates } from "../lib/chain-templates.js";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -29,7 +30,8 @@ function renderMarkdown(contentFile: string): string {
   const fullPath = join(__dirname, "..", contentFile.replace("src/server/", ""));
   try {
     const md = readFileSync(fullPath, "utf-8");
-    return marked.parse(md, { async: false }) as string;
+    // D-218-1: resolve {{RULE_COUNT}}/{{CATEGORY_COUNT}}/etc. before render
+    return marked.parse(applyChainTemplates(md), { async: false }) as string;
   } catch {
     return "";
   }
@@ -182,7 +184,10 @@ contentPageRoutes.get(
 );
 
 contentPageRoutes.get(
-  "/rules/:id.json",
+  // Regex param required: plain ":id.json" is parsed by Hono as a param
+  // literally named "id.json" and would match every /rules/X path,
+  // shadowing the HTML route below (all rule pages 404'd).
+  "/rules/:id{.+\\.json$}",
   describeRoute({
     tags: ["Content"],
     summary: "Rule Detail (JSON)",
@@ -193,7 +198,7 @@ contentPageRoutes.get(
     },
   }),
   (c) => {
-    const ruleId = c.req.param("id") ?? "";
+    const ruleId = c.req.param("id").replace(/\.json$/, "");
     const rule = buildRuleApiResponse(ruleId);
     if (!rule) {
       return c.json({ error: "Rule not found", rule_id: ruleId }, 404);

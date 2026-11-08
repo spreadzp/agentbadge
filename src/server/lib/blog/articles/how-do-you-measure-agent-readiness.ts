@@ -1,4 +1,5 @@
 import type { BlogArticle } from "../../blog-data";
+import { PUBLIC_STATS } from "../../public-stats";
 
 export const article: BlogArticle = 
   {
@@ -121,7 +122,7 @@ Evidence:
 
 <blockquote><p><strong>Don't tell developers what to believe. Show them what we measured.</strong></p></blockquote>
 
-<p>When every assertion includes evidence, the conversation changes. Instead of debating whether an API is "ready," you can point to specific findings: 72 checks run, 58 passed, 14 failed — here's the evidence for each.</p>
+<p>When every assertion includes evidence, the conversation changes. Instead of debating whether an API is "ready," you can point to specific findings: ${PUBLIC_STATS.rules} checks run, ${PUBLIC_STATS.rules - 14} passed, 14 failed — here's the evidence for each.</p>
 
 <hr />
 

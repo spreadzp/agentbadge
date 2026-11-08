@@ -93,6 +93,7 @@ flowchart LR
   server_lib["server/lib"] --> pkg_passport_logger["pkg: passport/logger"]
   server_lib["server/lib"] --> pkg_passport_payment["pkg: passport/payment"]
   server_lib["server/lib"] --> pkg_payment_forensics["pkg: payment-forensics"]
+  server_lib["server/lib"] --> pkg_webmcp["pkg: webmcp"]
   server_lib["server/lib"] --> server["server"]
   server_lib["server/lib"] --> server_metrics["server/metrics"]
   server_lib["server/lib"] --> server_middleware["server/middleware"]

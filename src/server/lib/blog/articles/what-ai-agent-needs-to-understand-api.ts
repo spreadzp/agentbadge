@@ -1,4 +1,5 @@
 import type { BlogArticle } from "../../blog-data";
+import { PUBLIC_STATS } from "../../public-stats";
 
 export const article: BlogArticle = 
   {
@@ -276,7 +277,7 @@ SUCCESS / FAILURE</code></pre>
   <li><strong>Safety:</strong> Is <code>x-agent-safety</code> or equivalent classification present?</li>
 </ul>
 
-<p>72 checks in seconds. Free, no signup.</p>
+<p>${PUBLIC_STATS.rules} checks in seconds. Free, no signup.</p>
 
 <pre><code>npx @agentbadge/cli scan https://api.example.com</code></pre>
 

@@ -3,6 +3,7 @@
 import { getCatalog } from "@agentbadge/hedera-core";
 import { listTools } from "@agentbadge/mcp";
 import { didAuthSectionFull } from "../did-auth-docs";
+import { PUBLIC_STATS } from "../public-stats";
 
 export function generateAgentGuide(): string {
   const baseUrl = process.env.BASE_URL ?? "http://localhost:4021";
@@ -17,7 +18,7 @@ export function generateAgentGuide(): string {
 
 Welcome, AI agent. AgentBadge is an agency for the agentic web — we help businesses become agent-ready through three services:
 
-- **Agent Readiness Scanner** (/services/scanner) — audit any API for AI agent discoverability with 130 checks across 17 categories
+- **Agent Readiness Scanner** (/services/scanner) — audit any API for AI agent discoverability with ${PUBLIC_STATS.rules} checks across ${PUBLIC_STATS.categories} categories
 - **On-Chain Agent Passports** (/services/passports) — NFT identity on Hedera with HCS directory registration
 - **Agent Marketplace** (/services/marketplace) — peer-to-peer task marketplace with x402 machine payments in HBAR
 

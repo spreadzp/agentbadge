@@ -28,5 +28,15 @@
   "supportedTrust": [
     "reputation"
   ],
-  "registrations": []
+  "registrations": [
+    {
+      "agentId": "2329",
+      "agentRegistry": "eip155:5042:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "xAgentBadge": {
+    "canonical": "https://agentbadge.xyz/api/agent/canonical",
+    "passportContract": "eip155:5042:0x1f2426b102f57ecfeac2ab75c3fd853493f00a76",
+    "passportTokenId": "1"
+  }
 }

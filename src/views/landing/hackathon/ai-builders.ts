@@ -2,6 +2,7 @@
 import { html, raw } from "hono/html";
 import { demoSection, auditSectionAnchor, sectionWrapper, type HackathonDemoConfig } from "./shared";
 import { Hero, ArchitectureDiagram } from "./ai-builders-hero";
+import { PUBLIC_STATS } from "../../../server/lib/public-stats";
 
 export interface AIBuildersPageOpts {
   registryAddress?: string;
@@ -55,10 +56,10 @@ function StackSection() {
     { label: "Base Sepolia", desc: "84532, Basescan" },
     { label: "TrustRegistry / TrustBadge", desc: "Solidity 0.8.30, OZ 5.1" },
     { label: "x402 v2", desc: "EIP-3009 USDC, facilitator" },
-    { label: "MCP tools", desc: "6 tools: scan, badge, passport, verify, score, search" },
+    { label: "MCP tools", desc: `${PUBLIC_STATS.webmcpTools} tools: scan, badge, passport, verify, score, search` },
     { label: "SSE", desc: "live audit stream" },
     { label: "Hono + hono/html", desc: "server-rendered, zero client framework" },
-    { label: "Agent Readiness Scanner", desc: "40+ deterministic rules, CLI + API" },
+    { label: "Agent Readiness Scanner", desc: `${PUBLIC_STATS.rules}+ deterministic rules, CLI + API` },
   ];
 
   return sectionWrapper("stack", "", html`

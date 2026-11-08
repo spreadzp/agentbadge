@@ -3,6 +3,7 @@ import { describeRoute } from "hono-openapi";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { didAuthSectionCompact } from "../../lib/did-auth-docs";
+import { PUBLIC_STATS } from "../../lib/public-stats";
 
 export const policyRoutes = new Hono();
 
@@ -136,7 +137,7 @@ through audit, identity, and marketplace services on Hedera.
 
 ## Capabilities
 
-- Agent Readiness Scanner — audit APIs/websites against 72+ agent readiness rules
+- Agent Readiness Scanner — audit APIs/websites against ${PUBLIC_STATS.rules}+ agent readiness rules
 - On-Chain Agent Passports — NFT-based agent identity on Hedera Token Service
 - Agent Marketplace — peer-to-peer task marketplace with x402 HBAR payments
 - MCP Server Development — custom MCP server implementation

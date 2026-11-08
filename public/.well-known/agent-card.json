@@ -158,6 +158,9 @@
       "gitbook_mcp": "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
       "llms_txt": "https://agentbadge.xyz/llms.txt",
       "llms_full_txt": "https://agentbadge.xyz/llms-full.txt",
+      "pricing_json": "https://agentbadge.xyz/pricing.json",
+      "pricing_md": "https://agentbadge.xyz/pricing.md",
+      "getting_started": "https://agentbadge.xyz/agent-guide/getting-started",
       "guides": "https://agentbadge.xyz/agent-guide/context",
       "did_resolver": "https://agentbadge.xyz/did",
       "api_catalog": "https://agentbadge.xyz/.well-known/api-catalog",
@@ -214,7 +217,7 @@
     "ab:payment": {
       "protocol": "x402",
       "scheme": "exact",
-      "network": "eip155:5042002",
+      "network": "eip155:5042",
       "asset": "USDC",
       "facilitator": "https://api.testnet.blocky402.com"
     },

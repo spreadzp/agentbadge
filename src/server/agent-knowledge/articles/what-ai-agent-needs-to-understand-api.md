@@ -89,7 +89,7 @@ Safety levels: `read-only` → `write` → `destructive` → `financial` → `ir
 
 ## Agent Readiness
 
-These 8 context layers = 8 categories of measurement. Agent Readiness is the measurable set of properties that determine whether an autonomous agent can discover, understand, and successfully use your API.
+These 8 context layers define the dimensions of Agent Readiness — the measurable set of properties that determine whether an autonomous agent can discover, understand, and successfully use your API.
 
 - [What Is Agent Readiness?](/agent-guide/articles/what-is-agent-readiness) — foundational concept
 - [Why AI Agents Fail to Use APIs](/agent-guide/articles/why-ai-agents-fail-apis) — 7 failure modes these layers solve
@@ -104,7 +104,7 @@ npx @agentbadge/cli scan https://api.example.com
 npx @agentbadge/cli scan https://api.example.com --format json > report.json
 ```
 
-72 checks in seconds. Free, no signup.
+{{RULE_COUNT}} checks in seconds. Free, no signup.
 
 ## API Endpoints
 

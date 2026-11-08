@@ -8,7 +8,7 @@
         {
           "claim": "mainnet deployment — AgentEventLog contract on Arc",
           "action": "open",
-          "ref": "https://explorer.arc.io/address/0x1bb6A87D18cbd4285b4d383F88f10a1Ed01B4700"
+          "ref": "https://explorer.arc.io/address/0x20387070057178e9629dd6c9037c52487f090a90"
         },
         {
           "claim": "agent card published (A2A v1.0)",
@@ -77,12 +77,12 @@
     {
       "name": "agent passport NFT (ERC-8004)",
       "evidence": "https://agentbadge.xyz/.well-known/erc8004-agent.json",
-      "verify": "https://explorer.arc.io/address/0xd226824e66e6aac7104579840506e268886a8169"
+      "verify": "https://explorer.arc.io/address/0x1f2426b102f57ecfeac2ab75c3fd853493f00a76"
     },
     {
       "name": "on-chain event logging (Arc mainnet)",
       "evidence": "https://agentbadge.xyz/.well-known/agentbadge.json",
-      "verify": "https://explorer.arc.io/address/0x1bb6A87D18cbd4285b4d383F88f10a1Ed01B4700"
+      "verify": "https://explorer.arc.io/address/0x20387070057178e9629dd6c9037c52487f090a90"
     },
     {
       "name": "MCP server (namespaced tools)",

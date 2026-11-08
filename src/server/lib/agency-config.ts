@@ -1,3 +1,5 @@
+import { PUBLIC_STATS } from "./public-stats";
+
 export interface AgencyService {
   id: string;
   name: string;
@@ -31,11 +33,11 @@ export const AGENCY_SERVICES: AgencyService[] = [
     name: "Agent Readiness Scanner",
     tagline: "Audit any API for AI agent discoverability",
     description:
-      "Scan your API or website against 130 agent readiness rules across 17 categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.",
+      `Scan your API or website against ${PUBLIC_STATS.rules} agent readiness rules across ${PUBLIC_STATS.categories} categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.`,
     url: "/services/scanner",
     icon: "🔍",
     features: [
-      "130 checks across 17 categories",
+      `${PUBLIC_STATS.rules} checks across ${PUBLIC_STATS.categories} categories`,
       "Deterministic evidence-based scoring",
       "CLI and web scanner",
       "Improvement guides with fix hints",
@@ -44,7 +46,7 @@ export const AGENCY_SERVICES: AgencyService[] = [
     howItWorks: [
       { step: "Enter your URL", description: "Provide any API endpoint or website URL. The scanner fetches all well-known resources: robots.txt, sitemap.xml, llms.txt, OpenAPI spec, agent-card.json, and more." },
       { step: "Fetch resources", description: "The scanner downloads and parses each resource, checking for presence, format, and content. HTTP headers, content negotiation, and response codes are captured as evidence." },
-      { step: "Evaluate rules", description: "130 deterministic rules across 17 categories are evaluated against the fetched evidence. Each rule produces a pass, fail, or not-applicable result with a detailed hint." },
+      { step: "Evaluate rules", description: `${PUBLIC_STATS.rules} deterministic rules across ${PUBLIC_STATS.categories} categories are evaluated against the fetched evidence. Each rule produces a pass, fail, or not-applicable result with a detailed hint.` },
       { step: "Get your report", description: "Receive a structured report with an AgentGrade score (0-100), category breakdown, top issues to fix, and actionable improvement guides with code examples." },
     ],
     useCases: [
@@ -54,12 +56,12 @@ export const AGENCY_SERVICES: AgencyService[] = [
     ],
     faq: [
       { question: "How long does a scan take?", answer: "A full scan typically completes in 10-30 seconds depending on the number of resources found. The scanner fetches up to 15 well-known files in parallel." },
-      { question: "What is the AgentGrade score?", answer: "The AgentGrade score is a 0-100 weighted average across 15 categories. Each category contributes proportionally to the final score based on rule count and severity." },
+      { question: "What is the AgentGrade score?", answer: `The AgentGrade score is a 0-100 weighted average across ${PUBLIC_STATS.categories} categories. Each category contributes proportionally to the final score based on rule count and severity.` },
       { question: "Can I use the CLI in CI/CD?", answer: "Yes. The CLI supports JSON output, a --threshold flag for pass/fail gates, and a --format flag for CI integration. Add it to your pipeline to block deployments below a score threshold." },
       { question: "Do you offer remediation services?", answer: "Yes. Each report includes actionable fix hints with code examples. For deeper remediation, AgentBadge offers consulting services to bring your score to 100." },
     ],
     pricing: [
-      { tier: "Free scan", price: "$0", features: ["Full 72-rule scan", "Web report", "Category breakdown", "Top 5 issues"] },
+      { tier: "Free scan", price: "$0", features: [`Full ${PUBLIC_STATS.rules}-rule scan`, "Web report", "Category breakdown", "Top 5 issues"] },
       { tier: "CLI + API", price: "$49/mo", features: ["Unlimited scans", "JSON API access", "CI/CD integration", "Improvement guides", "Badge SVG"] },
       { tier: "Enterprise", price: "Contact us", features: ["Custom rules", "Dedicated support", "On-premise deployment", "SLA", "Remediation consulting"] },
     ],

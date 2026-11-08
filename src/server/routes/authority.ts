@@ -9,24 +9,8 @@ import { PageMeta } from "../lib/page-meta";
 import { parseFrontmatter } from "../lib/frontmatter";
 import { defaultCoreSchemas, articleLd } from "../lib/json-ld";
 import { describeRoute } from "hono-openapi";
-import {
-  RULE_DESCRIPTIONS,
-  CATEGORY_DESCRIPTIONS,
-  PILLAR_DESCRIPTIONS,
-} from "../../agent-readiness/rule-descriptions";
 import { BUILD_DATE } from "../lib/build-info";
-
-function injectDynamicFacts(body: string): string {
-  const replacements: Record<string, string> = {
-    RULE_COUNT: String(RULE_DESCRIPTIONS.length),
-    CATEGORY_COUNT: String(Object.keys(CATEGORY_DESCRIPTIONS).length),
-    PILLAR_COUNT: String(Object.keys(PILLAR_DESCRIPTIONS).length),
-    LAST_UPDATED: BUILD_DATE,
-  };
-  return body.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-    return replacements[key] ?? match;
-  });
-}
+import { injectDynamicFacts } from "../lib/public-stats";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = join(__dirname, "../content");

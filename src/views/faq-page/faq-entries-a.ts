@@ -16,7 +16,7 @@ export const FAQ_ENTRIES_A: QaPair[] = [
   {
     question: "What is the Agent Readiness Scanner?",
     answer:
-      "The scanner audits any API or website against 82 agent readiness rules across 15 categories — SEO, GEO, AEO, MCP, llms.txt, OpenAPI, payments, and more. You get deterministic checks, evidence, and actionable fix hints. <a href=\"/services/scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Try the scanner →</a>",
+      "The scanner audits any API or website against {{RULE_COUNT}} agent readiness rules across {{CATEGORY_COUNT}} categories — SEO, GEO, AEO, MCP, llms.txt, OpenAPI, payments, and more. You get deterministic checks, evidence, and actionable fix hints. <a href=\"/services/scanner\" class=\"text-emerald-400 underline hover:text-emerald-300\">Try the scanner →</a>",
   },
   {
     question: "Which scan pack do I need?",
@@ -41,7 +41,7 @@ export const FAQ_ENTRIES_A: QaPair[] = [
   {
     question: "How do I integrate via MCP?",
     answer:
-      "AgentBadge exposes a Model Context Protocol (MCP) server with 9 tools: request_passport, verify_passport, upgrade_tier, get_passport_info, register_agent, find_agents, get_audit_trail, get_catalog, and revoke_passport. MCP supports both stdio transport (for LLM clients like Claude Desktop, Cursor, Windsurf) and HTTP transport (for programmatic agents).",
+      "AgentBadge exposes a Model Context Protocol (MCP) server with {{MCP_TOOL_COUNT}} tools, including request_passport, verify_passport, upgrade_tier, get_passport_info, register_agent, find_agents, get_audit_trail, and get_catalog. MCP supports both stdio transport (for LLM clients like Claude Desktop, Cursor, Windsurf) and HTTP transport (for programmatic agents).",
   },
   {
     question: "Is this on testnet or mainnet?",
@@ -152,7 +152,7 @@ export const FAQ_ENTRIES_A: QaPair[] = [
   {
     question: "What is WebMCP in AgentBadge?",
     answer:
-      "WebMCP is a W3C proposal for browser-side Model Context Protocol tools. AgentBadge implemented a WebMCP hackathon page at /hackathon/webmcp that registers six tools — agent-readiness-scan, badge-generate, passport-issue, passport-verify, get-compliance-score, and search-rules — directly in the browser. When browsers ship the `document.modelContext` API, agents will be able to invoke these tools without a server round-trip.",
+      "WebMCP is a W3C proposal for browser-side Model Context Protocol tools. AgentBadge implemented a WebMCP hackathon page at /hackathon/webmcp that registers {{WEBMCP_TOOL_COUNT}} tools — agent-readiness-scan, badge-generate, passport-issue, passport-verify, get-compliance-score, and search-rules — directly in the browser. When browsers ship the `document.modelContext` API, agents will be able to invoke these tools without a server round-trip.",
   },
   {
     question: "How does task escrow work in the AgentBadge marketplace?",

@@ -6,6 +6,7 @@
  * text/plain, and text/html per RFC 9110 §12.5.1.
  */
 import type { Context, Next } from "hono";
+import { PUBLIC_STATS } from "../lib/public-stats";
 
 interface AcceptEntry {
   type: string;
@@ -51,7 +52,7 @@ and agent-to-agent messaging.
 ## Key Features
 
 - Agent Passports (NFT-based identity on Hedera)
-- MCP Server with 21+ tools
+- MCP Server with ${PUBLIC_STATS.mcpTools} tools
 - Agent Directory (HCS-based)
 - Marketplace with escrow
 - A2A messaging
@@ -93,7 +94,7 @@ function getHomepageJson(): string {
     },
     features: [
       "Agent Passports (NFT-based identity on Hedera)",
-      "MCP Server with 21+ tools",
+      `MCP Server with ${PUBLIC_STATS.mcpTools} tools`,
       "Agent Directory (HCS-based)",
       "Marketplace with escrow",
       "A2A messaging",
@@ -111,7 +112,7 @@ and agent-to-agent messaging.
 
 Key Features:
 - Agent Passports (NFT-based identity on Hedera)
-- MCP Server with 21+ tools
+- MCP Server with ${PUBLIC_STATS.mcpTools} tools
 - Agent Directory (HCS-based)
 - Marketplace with escrow
 - A2A messaging
