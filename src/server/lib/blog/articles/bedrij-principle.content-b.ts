@@ -61,11 +61,16 @@ verify</code></pre>
 <tr><td>Replay</td><td>event-derived</td></tr>
 <tr><td>Multi-hop</td><td>working</td></tr>
 <tr><td>Automated evidence evaluation</td><td>announced</td></tr>
-<tr><td>Live testnet</td><td>announced</td></tr>
+<tr><td>Live testnet</td><td>live — 2026-11-08</td></tr>
 </tbody>
 </table>
 <p>The ordering guarantee is worth spelling out, because it is the transition contract doing real work: hop <em>i+1</em> cannot hand off until hop <em>i</em> is paid — the guard re-derives state from the log and throws <code>ShipmentOrderError</code> rather than trusting a flag. Try to settle a hop that was never handed off, same refusal. No evidence, no money.</p>
 <p>What is deliberately <em>not</em> there yet: evidence is advisory (typed references, not automated evaluation), and verification is a manual evaluator — a human or delegated agent acting as a risk gate before each settlement. Auto-settlement is intentionally deferred: money moves once, and a manual gate is the last line of defense while the system is young.</p>
+
+<h3 id="live-on-testnet">Live on testnet — update 2026-11-08</h3>
+<p><strong>The dogfood ran.</strong> On 2026-11-08 we settled a real three-hop shipment on Arc testnet — shipper → agent → device → restaurant — with per-hop escrow on an ERC-8183 job contract and the custody cycle enforced onchain for every hop: <code>work_offer → handoff → pay → verify</code>.</p>
+<p>Each hop is inspectable as a create + settle pair (0.01 USDC escrow each): jobs <a href="https://testnet.arcscan.app/tx/0x606f189928acbfc03af27419d2e324868a2e11fac15e2a2c75d3d1f2e5c6995e">66</a>/<a href="https://testnet.arcscan.app/tx/0xf15f6e1e11237427a62cc050c7cd4ec517a25d497d804b1a0d437f4e0d070a05">66-settle</a>, <a href="https://testnet.arcscan.app/tx/0xf9ebb85b65f54764d9925687b88003637f5973b3ce0d2d3c39124f3db05e57a7">67</a>/<a href="https://testnet.arcscan.app/tx/0x35f507f1d8654fa7269a8e6d95495bbc9a1b5e1fb0539c485de5f7c52c97b542">67-settle</a>, <a href="https://testnet.arcscan.app/tx/0xdc7c70beed73c41d60b99763b36c9e4cab5f7bf73fe8852141052501fec5c3ff">68</a>/<a href="https://testnet.arcscan.app/tx/0x7798a4e627633c897ad256319d0d1158b2ecbcc5a5e2de02fdbd7b886db1df39">68-settle</a> on contract <code>0x0049e5…bf6a0</code> (chainId 5042002). And the chain is replayable: <a href="/api/ledger/shipments/dogfood-1794151620383">GET /api/ledger/shipments/dogfood-1794151620383</a> returns the full event-derived timeline — offer, handoffs, payments, verifications — because the state lives in the events, not in a status column.</p>
+<p>Two honesty notes from the run: settlement was ops-settled (a delegated evaluator signs <code>complete</code> on behalf of each hop's logical evaluator — the contract checks the signing key, not the role label), and the replay's <code>pay</code>/<code>txHash</code> fields are ledger-asserted rather than independently chain-verified. The primitive held; the trust boundaries are documented where they live.</p>
 
 <h2 id="next">11 — What we are building next</h2>
 <p><strong>Short answer:</strong> five experimental bricks, each designed to prove one part of the hypothesis — participant roles (212), typed evidence (213), a scenario matrix (214), a replay view (215), and a live onchain dogfood (216). Each gets its own article; this one is the anchor.</p>
@@ -74,7 +79,7 @@ verify</code></pre>
 <li><strong>Evidence</strong> — <code>evidence[]</code> typed references on transitions, so proof has structure instead of being a hash-string hope.</li>
 <li><strong>Scenario matrix</strong> — a regression suite of realistic chain shapes that must keep passing as the model grows.</li>
 <li><strong>Replay view</strong> — <code>GET /shipments/:id</code> rebuilt from the event log, so any party can replay the custody story.</li>
-<li><strong>Live dogfood</strong> — a real multi-hop shipment settled on testnet, with transaction hashes attached to this article after the fact.</li>
+<li><strong>Live dogfood</strong> — a real multi-hop shipment settled on testnet. <em>Done 2026-11-08:</em> transaction hashes and the replay link are attached in the "Live on testnet" update above.</li>
 </ul>
 <p>None of these are feature announcements. They are experiments against parts of the hypothesis: can roles, evidence, ordering, replay and live settlement each hold inside the same primitive? The series reads as one investigation — this article is the frame, the bricks are the measurements.</p>
 
