@@ -213,9 +213,7 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json</co
 
 <hr />
 
-<p><em>OpenAPI describes an API. Agent Readiness describes whether an agent can actually use it.</em></p>
-
-<p><em>For AI agents: the <a href="/agent-guide/articles/why-openapi-isnt-enough">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
+<p><em>OpenAPI describes an API. Agent Readiness describes whether an agent can actually use it.</em></p>`,
     externalLinks: [
       {
         platform: "devto",

@@ -37,11 +37,15 @@ describe("blog article HTML discovery (201-12)", () => {
     expect(tech.url).toContain(`/blog/${SLUG}`);
   });
 
-  it("canonical points to HTML /blog/:slug, never the .json URL", async () => {
+  it("canonical points to HTML /blog/:slug (or declared canonical), never the .json URL", async () => {
     const html = await (await app.request(`/blog/${SLUG}`)).text();
     const canon = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
     expect(canon).toBeTruthy();
-    expect(canon).toContain(`/blog/${SLUG}`);
+    // SLICE-218-5: articles may declare a canonical override (e.g.
+    // /blog/what-is-agent-readiness → /what-is-agent-readiness).
+    const article = BLOG_ARTICLES.find((a) => a.slug === SLUG);
+    const expected = article?.canonical ?? `/blog/${SLUG}`;
+    expect(canon).toContain(expected);
     expect(canon).not.toContain(".json");
   });
 

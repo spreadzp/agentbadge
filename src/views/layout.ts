@@ -41,7 +41,6 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
   const selfPath = meta?.path ?? "/";
   const canonicalPath = noIndex ? "/" : (meta?.canonical ?? selfPath);
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
-  const selfUrl = `${BASE_URL}${selfPath}`;
   const ogImage = `${BASE_URL}/icons/og-image.png`;
   const jsonLdHtml = renderJsonLd(jsonLd ?? defaultCoreSchemas());
   return html`<!DOCTYPE html>
@@ -61,7 +60,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="${selfUrl}" />
+        <meta property="og:url" content="${canonicalUrl}" />
         <meta property="og:image" content="${ogImage}" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />

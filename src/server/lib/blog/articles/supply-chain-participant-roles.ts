@@ -144,13 +144,19 @@ export const article: BlogArticle = {
       id: "c39-audit-approve-with-nits",
       status: "VERIFIED",
       text: "An adversarial AI audit of the 212-1..3 deltas returned REQUEST CHANGES (0 Critical, 4 High, 6 Medium); after fixes the re-audit returned APPROVE WITH NITS — findings archived in docs/EPICS/212-supply-chain-participant-roles/reviews/.",
-      evidence: [],
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/212-supply-chain-participant-roles/reviews/REVIEW-FINDINGS.md" },
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/212-supply-chain-participant-roles/reviews/REVIEW-FINDINGS-REAUDIT.md" },
+      ],
     },
     {
       id: "c39-roles-not-identity",
       status: "VERIFIED",
       text: "Roles are self-declared advisory claims: no guard, auth or settlement path reads them; labels are display-only text and look-alike strings are an accepted residual risk.",
-      evidence: [],
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/advisory.ts" },
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/state.ts" },
+      ],
     },
   ],
   externalLinks: [

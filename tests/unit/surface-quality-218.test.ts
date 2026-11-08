@@ -182,3 +182,49 @@ describe("SLICE-218-5: canonical consolidation — what is agent readiness (F7)"
     expect(faq).not.toContain('href="/blog/what-is-agent-readiness"');
   });
 });
+
+describe("SLICE-218-6: editorial hygiene — AI blocks, FAQ, evidence (F13/F16)", () => {
+  it("every article has at most one For-AI-Agents block", () => {
+    // F13: articles previously carried both a full <h2>For AI Agents</h2>
+    // section AND a trailing <em> pointer duplicating it. Keep exactly one
+    // AI-facing block per article (ledger article pattern).
+    for (const article of BLOG_ARTICLES) {
+      const html = article.content;
+      const h2Blocks = (html.match(/<h2[^>]*>\s*For AI [Aa]gents/gi) ?? []).length;
+      const emPointers = (html.match(/<p><em>For AI agents:/gi) ?? []).length;
+      const blockquoteBlocks = (html.match(/<blockquote><p>For AI agents:/gi) ?? []).length;
+      expect(
+        h2Blocks + emPointers + blockquoteBlocks,
+        `${article.slug} has ${h2Blocks + emPointers + blockquoteBlocks} AI blocks`,
+      ).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("no duplicate For-AI em-pointer after an h2 AI section", () => {
+    // Regression for the 3 files that had both: the trailing
+    // <em>For AI agents: the Agent Knowledge Layer...</em> line was
+    // removed wherever an <h2> AI block already exists.
+    for (const article of BLOG_ARTICLES) {
+      if (/<h2[^>]*>\s*For AI [Aa]gents/i.test(article.content)) {
+        expect(
+          article.content,
+          `${article.slug} still carries a duplicate em-pointer`,
+        ).not.toMatch(/<p><em>For AI agents: the <a href/);
+      }
+    }
+  });
+
+  it("VERIFIED claims carry evidence links", () => {
+    // F13/D-218-9: a VERIFIED claim without an evidence link is
+    // indistinguishable from an UNVERIFIED one to machines.
+    for (const article of BLOG_ARTICLES) {
+      for (const claim of article.claims ?? []) {
+        if (claim.status !== "VERIFIED") continue;
+        expect(
+          claim.evidence?.length ?? 0,
+          `${article.slug}/${claim.id} VERIFIED with no evidence`,
+        ).toBeGreaterThan(0);
+      }
+    }
+  });
+});

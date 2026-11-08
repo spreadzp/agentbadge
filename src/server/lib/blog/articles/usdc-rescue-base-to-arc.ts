@@ -60,21 +60,36 @@ export const article: BlogArticle = {
       id: "c36-5usdc-cctp-base-arc",
       status: "VERIFIED",
       text: "5 USDC was transferred from burner 0x3bF7…b89f on Base to operator 0xcdd23d…699d on Arc on 2026-10-24 via CCTP v2; burn tx 0x2c60097d…bc8c (Base), mint tx 0xe9057fd7…b8ea (Arc), both confirmed.",
+      evidence: [
+        { type: "transaction", url: "https://basescan.org/tx/0x2c60097d665bf5234de80bb1189efe20166b108819e124f129033ceae44dbc8c" },
+        { type: "transaction", url: "https://explorer.arc.io/tx/0xe9057fd74703296c76b09f28c3687e83d7005890ab59c6b55e8dcf9286bbb8ea" },
+      ],
     },
     {
       id: "c36-gaszip-min-05usdc",
       status: "VERIFIED",
       text: "LiFi GasZip route from Arc rejects amounts below ~0.5 USDC: quotes for 0.05–0.45 USDC all returned 'No available quotes' and the 0.5 send was RPC-rejected with 'insufficient funds: have 0.190, want 0.504'.",
+      evidence: [
+        { type: "demo", url: "https://li.quest/v1/quote" },
+      ],
     },
     {
       id: "c36-relay-eth-delivered",
       status: "VERIFIED",
       text: "Relay Protocol delivered 0.0000691 ETH to the burner on Base ~11 seconds after the deposit tx 0x7a01bca8…f00f5b on Arc confirmed; input 0.185 USDC, relayer fee ~0.02 USDC.",
+      evidence: [
+        { type: "transaction", url: "https://explorer.arc.io/tx/0xf307371832133bd3c8d8d3b4679127a400ce28a64554230ca708f0abca56c601" },
+        { type: "transaction", url: "https://explorer.arc.io/tx/0x7a01bca83dfb1aae5d1aab8205ce467e0b0d015f2e79e7c1b8c537ac29600f5b" },
+      ],
     },
     {
       id: "c36-cctp-attestation-24min",
       status: "VERIFIED",
       text: "CCTP attestation for the Base→Arc burn took ~24 minutes (Iris pending_confirmations → complete); the mint was paid by a different wallet than the refuel sender because receiveMessage is permissionless.",
+      evidence: [
+        { type: "transaction", url: "https://basescan.org/tx/0x2c60097d665bf5234de80bb1189efe20166b108819e124f129033ceae44dbc8c" },
+        { type: "transaction", url: "https://explorer.arc.io/tx/0xe9057fd74703296c76b09f28c3687e83d7005890ab59c6b55e8dcf9286bbb8ea" },
+      ],
     },
   ],
   economicContext: {

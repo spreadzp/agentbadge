@@ -235,9 +235,7 @@ Result: 76 → 72</code></pre>
 <li><a href="/blog/what-ai-agent-needs-to-understand-api">What Does an AI Agent Need to Understand an API?</a> — Article 6</li>
 <li><a href="/blog/why-openapi-isnt-enough">Why Your OpenAPI Spec Isn't Enough</a> — Article 7</li>
 <li><a href="/blog/how-do-you-measure-agent-readiness">How Do You Measure Agent Readiness?</a> — Article 8</li>
-</ul>
-
-<p><em>For AI agents: the <a href="/agent-guide/articles/inside-an-agent-readiness-scanner">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
+</ul>`,
     externalLinks: [
       {
         platform: "devto",

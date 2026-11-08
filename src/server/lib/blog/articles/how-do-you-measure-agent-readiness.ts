@@ -320,9 +320,7 @@ Missing:
 
 <hr />
 
-<p><em>Don't certify. Measure.</em></p>
-
-<p><em>For AI agents: the <a href="/agent-guide/articles/how-do-you-measure-agent-readiness">Agent Knowledge Layer</a> provides machine-readable access to this article's concepts, capabilities, and knowledge map.</em></p>`,
+<p><em>Don't certify. Measure.</em></p>`,
     externalLinks: [
       {
         platform: "devto",

@@ -32,7 +32,6 @@ export function LandingLayout(
   const selfPath = meta?.path ?? "/";
   const canonicalPath = meta?.canonical ?? selfPath;
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
-  const selfUrl = `${BASE_URL}${selfPath}`;
   const ogImage = meta?.ogImage ?? `${BASE_URL}/icons/og-image.png`;
   const jsonLdHtml = renderJsonLd(jsonLd ?? defaultCoreSchemas());
 
@@ -55,7 +54,7 @@ export function LandingLayout(
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="${meta?.ogType ?? "website"}" />
-        <meta property="og:url" content="${selfUrl}" />
+        <meta property="og:url" content="${canonicalUrl}" />
         <meta property="og:image" content="${ogImage}" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
