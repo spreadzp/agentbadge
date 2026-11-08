@@ -211,6 +211,11 @@ export const article: BlogArticle = {
       ],
     },
   ],
-  externalLinks: [],
+  externalLinks: [
+    {
+      platform: "linkedin",
+      url: "https://www.linkedin.com/pulse/brick-5-experiment-ran-three-hop-supply-chain-settled-paul-spread-wjzne",
+    },
+  ],
   content: supplyChainLiveTestnetContent,
 };
