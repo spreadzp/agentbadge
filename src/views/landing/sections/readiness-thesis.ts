@@ -30,7 +30,7 @@ export function ReadinessThesisSection() {
         </p>
         <div class="mt-8 flex flex-wrap justify-center gap-4">
           <a
-            href="/agent-guide/articles/what-is-agent-readiness"
+            href="/services/scanner"
             class="pulse-glow inline-flex items-center justify-center rounded-lg bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-emerald-400"
           >
             Scan your API free

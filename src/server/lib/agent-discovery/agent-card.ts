@@ -12,6 +12,21 @@ import type { DiscoverySources } from "./sources";
 
 const json = (v: unknown): string => JSON.stringify(v, null, 2) + "\n";
 
+/**
+ * F6 (D-218-4): contract keys with no configured address are omitted
+ * from the card rather than serialized as `""` — an empty string is not
+ * a contract address and breaks schema consumers. If no contracts are
+ * configured for a chain, the `contracts` key itself is dropped.
+ */
+function withContracts(
+  contracts: Record<string, string | undefined>,
+): { contracts?: Record<string, string> } {
+  const entries = Object.entries(contracts).filter(
+    (entry): entry is [string, string] => Boolean(entry[1]),
+  );
+  return entries.length ? { contracts: Object.fromEntries(entries) } : {};
+}
+
 export function buildAgentCard(src: DiscoverySources): string {
   const b = src.baseUrl;
   const env = src.wellKnownEnv;
@@ -200,25 +215,25 @@ export function buildAgentCard(src: DiscoverySources): string {
         multi_chain: {
           base_sepolia: {
             chain_id: 84532,
-            contracts: {
-              trust_registry: env?.contracts?.trustRegistry ?? "",
-              trust_badge: env?.contracts?.trustBadge ?? "",
-              agent_passport: env?.contracts?.agentPassportBase ?? "",
-            },
+            ...withContracts({
+              trust_registry: env?.contracts?.trustRegistry,
+              trust_badge: env?.contracts?.trustBadge,
+              agent_passport: env?.contracts?.agentPassportBase,
+            }),
             purpose:
               "On-chain scan recording, TrustBadge soulbound NFT, AgentPassport NFT via KeeperHub",
           },
           ethereum_sepolia: {
             chain_id: 11155111,
-            contracts: { task_escrow: env?.contracts?.taskEscrow ?? "" },
+            ...withContracts({ task_escrow: env?.contracts?.taskEscrow }),
             purpose: "Attestcoin cross-chain task posting",
           },
           creditcoin_testnet: {
             chain_id: 1023,
-            contracts: {
-              task_marketplace_asc: env?.contracts?.taskMarketplaceAsc ?? "",
-              task_state: env?.contracts?.taskState ?? "",
-            },
+            ...withContracts({
+              task_marketplace_asc: env?.contracts?.taskMarketplaceAsc,
+              task_state: env?.contracts?.taskState,
+            }),
             purpose: "Attestcoin cross-chain task verification and lifecycle",
           },
         },

@@ -57,8 +57,8 @@ export function ReadinessPricingSection() {
               <li class="flex items-start gap-2"><span class="text-emerald-400 mt-0.5">✓</span> Fresh badge / no stale state</li>
               <li class="flex items-start gap-2"><span class="text-emerald-400 mt-0.5">✓</span> CI integrations</li>
             </ul>
-            <a href="#" class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-5 py-3 font-semibold text-slate-950 transition-colors hover:bg-emerald-400 text-sm w-full">
-              Start monitoring →
+            <a href="/contact" class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-5 py-3 font-semibold text-slate-950 transition-colors hover:bg-emerald-400 text-sm w-full">
+              Request monitoring access →
             </a>
           </div>
 
@@ -73,7 +73,7 @@ export function ReadinessPricingSection() {
               <li class="flex items-start gap-2"><span class="text-emerald-400 mt-0.5">✓</span> SLA / dedicated support</li>
               <li class="flex items-start gap-2"><span class="text-emerald-400 mt-0.5">✓</span> B2B API / bulk scoring</li>
             </ul>
-            <a href="#" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-3 font-semibold text-slate-200 border border-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-400 text-sm w-full">
+            <a href="/contact" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-3 font-semibold text-slate-200 border border-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-400 text-sm w-full">
               Talk to us →
             </a>
           </div>

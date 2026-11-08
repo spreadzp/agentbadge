@@ -55,13 +55,13 @@ export const PageMeta: Record<string, PageMeta> = {
   "/": {
     title: "Agent Readiness Scanner & Evidence-Based Scoring",
     description:
-      `Scan your API or website with ${PUBLIC_STATS.rules}+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score. Free scan, no signup required.`,
+      `Scan any API or website with ${PUBLIC_STATS.rules} deterministic agent readiness rules — evidence, fixes, score. Free, no signup.`,
     path: "/",
   },
   "/services/scanner": {
     title: "Agent Readiness Scanner",
     description:
-      `Scan your API or website against ${PUBLIC_STATS.rules} agent readiness rules across ${PUBLIC_STATS.categories} categories. Get deterministic checks, evidence, and actionable fixes for SEO, GEO, and AEO compliance.`,
+      `Scan any site against ${PUBLIC_STATS.rules} agent readiness rules in ${PUBLIC_STATS.categories} categories — deterministic checks, evidence, actionable fixes.`,
     path: "/services/scanner",
   },
   "/services/passports": {
@@ -85,7 +85,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/hackathon/datahub": {
     title: "DataHub Integration — Medical Data Verification",
     description:
-      "AgentBadge integrates DataHub MCP Server for medical data verification. AI agents discover datasets, verify quality via assertions, and settle payments through Hedera escrow.",
+      "AgentBadge integrates DataHub MCP Server for medical data verification — agents discover datasets, verify quality, settle payments.",
     path: "/hackathon/datahub",
   },
   "/hackathon/webmcp": {
@@ -97,37 +97,37 @@ export const PageMeta: Record<string, PageMeta> = {
   "/hackathon/attestcoin": {
     title: "Attestcoin Protocol — Cross-Chain Verified Task Marketplace",
     description:
-      "AI agents process cryptographically verified cross-chain data via Attestcoin Protocol. Tasks posted on Ethereum Sepolia, verified on Creditcoin, escrow released back on Ethereum.",
+      "Cryptographically verified cross-chain tasks for AI agents — posted on Ethereum Sepolia, verified on Creditcoin, escrow settles back.",
     path: "/hackathon/attestcoin",
   },
   "/hackathon/ctc": {
     title: "CTC — Cross-Chain Task Verification (Creditcoin)",
     description:
-      "AI agents process cryptographically verified cross-chain data via Attestcoin Protocol. Tasks posted on Ethereum Sepolia, verified on Creditcoin, escrow released back on Ethereum.",
+      "Cross-chain task verification via Attestcoin Protocol — tasks posted on Ethereum Sepolia, verified on Creditcoin, escrow settles back.",
     path: "/hackathon/ctc",
   },
   "/hackathon/keeperhub": {
     title: "KeeperHub Integration — Onchain Trust Layer",
     description:
-      "AgentBadge integrates KeeperHub as its deterministic onchain execution layer: scan results recorded onchain via KeeperHub workflows, soulbound TrustBadge NFTs, live audit trail on Base.",
+      "AgentBadge uses KeeperHub as its onchain execution layer — scan results onchain, soulbound TrustBadge NFTs, live audit trail on Base.",
     path: "/hackathon/keeperhub",
   },
   "/hackathon/ai-builders": {
     title: "AgentBadge — Onchain Trust Records for AI Agents",
     description:
-      `AgentBadge scans any site for agent-readiness with ${PUBLIC_STATS.rules}+ deterministic rules, records results onchain on Base Sepolia, and mints soulbound trust badges. MCP-native, x402 payments, live audit trail.`,
+      `AgentBadge scans any site against ${PUBLIC_STATS.rules} agent-readiness rules, records results onchain, mints trust badges. MCP-native, x402 payments.`,
     path: "/hackathon/ai-builders",
   },
   "/hackathon/fxdelta": {
     title: "FX Delta Agent — Paid FX Signals for AI Agents on Celo",
     description:
-      "A paid x402 API for AI agents: compares live token prices on Celo with official FX rates and returns buy / sell / watch signals per currency pair. USDC on Celo mainnet, no gas for the buyer.",
+      "Paid x402 FX API for AI agents — compares live Celo token prices with official FX rates, returns buy/sell/watch signals. Gas-free USDC.",
     path: "/hackathon/fxdelta",
   },
   "/hackathon/agent-allowance": {
     title: "Agent Allowance — Onchain USDC Budget Vaults for AI Agents on Arc",
     description:
-      "Owner funds a USDC vault once on Arc mainnet; funds vest linearly Sablier-style, and the agent can only claim vested amounts to allowlisted payees within a per-transaction cap. Live verified claims on Arc mainnet (chainId 5042), ERC-8004 agentId, full audit on explorer.arc.io.",
+      "Onchain USDC budget vaults on Arc — owner funds once, agent claims vested amounts to allowlisted payees under per-tx caps. Live verified claims, ERC-8004.",
     path: "/hackathon/agent-allowance",
   },
   "/dashboard": {
