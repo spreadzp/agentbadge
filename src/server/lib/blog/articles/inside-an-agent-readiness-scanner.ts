@@ -230,7 +230,7 @@ Result: 76 → 72</code></pre>
 <h2>Related Articles</h2>
 
 <ul>
-<li><a href="/blog/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1</li>
+<li><a href="/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1</li>
 <li><a href="/blog/why-ai-agents-fail-to-use-apis">Why AI Agents Fail to Use APIs</a> — Article 5</li>
 <li><a href="/blog/what-ai-agent-needs-to-understand-api">What Does an AI Agent Need to Understand an API?</a> — Article 6</li>
 <li><a href="/blog/why-openapi-isnt-enough">Why Your OpenAPI Spec Isn't Enough</a> — Article 7</li>

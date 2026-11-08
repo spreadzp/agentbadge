@@ -217,7 +217,7 @@ export function RulesCatalogPage() {
         <h2 class="text-lg font-semibold text-white">Learn about agent readiness</h2>
         <p class="text-slate-400 mt-2">New to agent readiness? Start with these guides:</p>
         <div class="mt-4 flex flex-wrap gap-3">
-          <a href="/what-is-an-ai-ready-api" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">What is an AI-Ready API?</a>
+          <a href="/what-is-agent-readiness" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">What is an AI-Ready API?</a>
           <a href="/how-to-make-an-api-agent-ready" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">How to Make an API Agent-Ready</a>
           <a href="/agent-readiness-vs-seo" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">Agent Readiness vs SEO</a>
           <a href="/openapi-vs-agent-readiness" class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-emerald-500 hover:text-emerald-300">OpenAPI vs Agent Readiness</a>

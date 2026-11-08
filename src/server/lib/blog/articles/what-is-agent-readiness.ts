@@ -10,6 +10,7 @@ export const article: BlogArticle =
   authorRole: "Agency for the Agentic Web",
   date: "2026-08-14",
   dateModified: "2026-08-14",
+  canonical: "/what-is-agent-readiness",
   agentGuideSlug: "what-is-agent-readiness",
   heroImage: "/images/blog/what-is-agent-readiness-hero.webp",
   ogImage: "/images/blog/what-is-agent-readiness-og.jpeg",
@@ -825,7 +826,7 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
   ],
   relatedLinks: [
     { label: "FAQ", href: "/faq", description: "Common questions about agent readiness" },
-    { label: "Agent Guide", href: "/agent-guide/articles/what-is-agent-readiness", description: "Step-by-step guide to becoming agent-ready" },
+    { label: "Agent Guide", href: "/what-is-agent-readiness", description: "Step-by-step guide to becoming agent-ready" },
     { label: "Run a Scan", href: "/services/scanner", description: "Check your API's agent readiness score" },
   ],
 };

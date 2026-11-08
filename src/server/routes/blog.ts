@@ -220,6 +220,7 @@ blogRoutes.get(
       articleAuthor: article.author,
       articlePublishedTime: article.date,
       articleModifiedTime: article.dateModified ?? article.date,
+      ...(article.canonical ? { canonical: article.canonical } : {}),
       ...(article.ogImage ? { ogImage: `${BASE_URL}${article.ogImage}` } : {}),
       ...(article.markdown ? { markdownUrl: `/blog/${article.slug}.md` } : {}),
       jsonUrl: `/blog/${article.slug}.json`,

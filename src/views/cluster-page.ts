@@ -10,6 +10,7 @@ export function ClusterPage(data: ClusterPageData, markdownHtml?: string) {
     title: data.title,
     description: data.description,
     path: `/${data.slug}`,
+    ...(data.canonical ? { canonical: data.canonical } : {}),
   };
 
   const relatedRules = data.relatedRuleIds

@@ -8,7 +8,7 @@ import { html } from "hono/html";
  * - Eyebrow: "Agent Readiness Infrastructure"
  * - H1: "Can an AI agent actually use your API?"
  * - Subtitle with product description
- * - 2 CTAs: Scan free → /agent-guide/articles/what-is-agent-readiness, See how it works → #how
+ * - 2 CTAs: Scan free → /services/scanner, See how it works → #how
  * - Mock scan terminal panel with sample results
  */
 export function ReadinessHeroSection() {

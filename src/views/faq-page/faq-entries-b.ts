@@ -133,7 +133,7 @@ export const FAQ_ENTRIES_B: QaPair[] = [
   {
     question: "What does AgentBadge measure?",
     answer:
-      "AgentBadge measures {{RULE_COUNT}} agent readiness rules across {{CATEGORY_COUNT}} categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence (HTTP responses, parsed schemas, headers), not opinions. The scanner is deterministic and reproducible: same URL + same ruleset version = same result. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
+      "AgentBadge measures {{RULE_COUNT}} agent readiness rules across {{CATEGORY_COUNT}} categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence (HTTP responses, parsed schemas, headers), not opinions. The scanner is deterministic and reproducible: same URL + same ruleset version = same result. <a href=\"/what-is-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
   },
   {
     question: "Can I self-host the scanner?",

@@ -307,7 +307,7 @@ llms.txt   Docs       Verification
 <h2>Related articles</h2>
 
 <ul>
-  <li><a href="/blog/what-is-agent-readiness">What Is Agent Readiness?</a> — the foundational concept behind Agent Readiness and why good APIs can be invisible to AI agents.</li>
+  <li><a href="/what-is-agent-readiness">What Is Agent Readiness?</a> — the foundational concept behind Agent Readiness and why good APIs can be invisible to AI agents.</li>
   <li><a href="/blog/api-has-seo-agent-readiness">Your API Has SEO. Does It Have Agent Readiness?</a> — why SEO optimization isn't enough for agent discoverability, and 10 things to check.</li>
   <li><a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — the evolution from website optimization to content optimization to API optimization for the agentic web.</li>
 </ul>
@@ -361,7 +361,7 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
 <pre><code>npx @agentbadge/cli scan https://api.example.com</code></pre>
 
 <ol>
-  <li><a href="/blog/what-is-agent-readiness">Read Article 1</a> — What is Agent Readiness?</li>
+  <li><a href="/what-is-agent-readiness">Read Article 1</a> — What is Agent Readiness?</li>
   <li><a href="/blog/api-has-seo-agent-readiness">Read Article 2</a> — SEO vs Agent Readiness</li>
   <li><a href="/agent-guide/knowledge-map.json">Check the knowledge map</a> — See how concepts connect</li>
   <li>Run a scan — Web, CLI, or GitHub Action</li>

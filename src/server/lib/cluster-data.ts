@@ -8,6 +8,9 @@ export interface ClusterPageData {
   relatedRuleIds: string[];
   relatedPages: string[];
   pillar: string;
+  // SLICE-218-5 (D-218-6): canonical override when this page's intent
+  // is covered by a stronger authority page. Absent = self-canonical.
+  canonical?: string;
 }
 
 export const CLUSTER_PAGES: ClusterPageData[] = [
@@ -75,6 +78,7 @@ export const CLUSTER_PAGES: ClusterPageData[] = [
     relatedRuleIds: ["AB-001", "AB-003", "AB-004", "AB-014", "AB-016"],
     relatedPages: ["how-to-make-an-api-agent-ready", "agent-readiness-vs-seo", "openapi-vs-agent-readiness"],
     pillar: "discovery",
+    canonical: "/what-is-agent-readiness",
   },
   {
     slug: "how-ai-agents-use-apis",

@@ -160,7 +160,7 @@ export const article: BlogArticle =
 
 <ul>
   <li><a href="/services/scanner">Run a free scan</a> — get your Agent Readiness score</li>
-  <li><a href="/blog/what-is-agent-readiness">Read Article 1: What Is Agent Readiness?</a> — the foundation</li>
+  <li><a href="/what-is-agent-readiness">Read Article 1: What Is Agent Readiness?</a> — the foundation</li>
   <li><a href="/agent-guide/">Explore the Agent Knowledge Layer</a> — machine-readable guide for AI agents</li>
 </ul>
 

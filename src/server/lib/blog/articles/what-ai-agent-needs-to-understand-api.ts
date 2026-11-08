@@ -262,7 +262,7 @@ SUCCESS / FAILURE</code></pre>
 
 <h2>This Is Agent Readiness</h2>
 
-<p>These 8 context layers are not a wish list. They are measurable properties. <a href="/blog/what-is-agent-readiness">Agent Readiness</a> is the framework that measures whether an API provides sufficient context for autonomous use.</p>
+<p>These 8 context layers are not a wish list. They are measurable properties. <a href="/what-is-agent-readiness">Agent Readiness</a> is the framework that measures whether an API provides sufficient context for autonomous use.</p>
 
 <p>Agent Readiness checks each layer with deterministic, evidence-based rules:</p>
 
@@ -296,7 +296,7 @@ SUCCESS / FAILURE</code></pre>
 <h2>Related Articles</h2>
 
 <ul>
-  <li><a href="/blog/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1: the foundational concept</li>
+  <li><a href="/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1: the foundational concept</li>
   <li><a href="/blog/api-has-seo-agent-readiness">API Has SEO Agent Readiness</a> — Article 2: SEO vs agent discovery</li>
   <li><a href="/blog/web-becoming-agentic-api-discovery">The Web Is Becoming Agentic</a> — Article 3: agentic web and API discovery</li>
   <li><a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — Article 4: evolution of optimization</li>

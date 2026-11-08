@@ -29,8 +29,10 @@ export function LandingLayout(
       ? pageTitle(meta.title)
       : pageTitle("");
   const description = meta?.description ?? SITE_DESCRIPTION;
-  const canonicalPath = meta?.path ?? "/";
+  const selfPath = meta?.path ?? "/";
+  const canonicalPath = meta?.canonical ?? selfPath;
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
+  const selfUrl = `${BASE_URL}${selfPath}`;
   const ogImage = meta?.ogImage ?? `${BASE_URL}/icons/og-image.png`;
   const jsonLdHtml = renderJsonLd(jsonLd ?? defaultCoreSchemas());
 
@@ -49,11 +51,11 @@ export function LandingLayout(
         <title>${composedTitle}</title>
         <meta name="description" content="${description}" />
         <link rel="canonical" href="${canonicalUrl}" />
-        <link rel="alternate" type="text/markdown" title="Markdown version" href="${canonicalPath === "/" ? "/index.md" : `${canonicalPath}.md`}" />
+        <link rel="alternate" type="text/markdown" title="Markdown version" href="${selfPath === "/" ? "/index.md" : `${selfPath}.md`}" />
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="${meta?.ogType ?? "website"}" />
-        <meta property="og:url" content="${canonicalUrl}" />
+        <meta property="og:url" content="${selfUrl}" />
         <meta property="og:image" content="${ogImage}" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />

@@ -147,13 +147,13 @@ export const HOMEPAGE_FAQ: HomepageFaqItem[] = [
   {
     question: "What is Agent Readiness?",
     shortAnswer:
-      "Agent Readiness is the ability of your API or service to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
+      "Agent Readiness is the ability of your API or service to be discovered, understood, and used by an AI agent without human intervention. It extends SEO principles to machine-readable interfaces. <a href=\"/what-is-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
     faqAnchor: "what-is-agent-readiness",
   },
   {
     question: "What does AgentBadge measure?",
     shortAnswer:
-      "AgentBadge measures {{RULE_COUNT}} agent readiness rules across {{CATEGORY_COUNT}} categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence, not opinions. <a href=\"/what-is-an-ai-ready-api\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
+      "AgentBadge measures {{RULE_COUNT}} agent readiness rules across {{CATEGORY_COUNT}} categories — discovery, documentation, authentication, executability, and verifiability. Each check produces evidence, not opinions. <a href=\"/what-is-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Learn more →</a>",
     faqAnchor: "what-does-agentbadge-measure",
   },
   {

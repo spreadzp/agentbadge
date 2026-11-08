@@ -135,7 +135,7 @@ Content-Type: application/json
 <p>This is the most common case in 2026. You keep your REST API and add an MCP server on top. The MCP server wraps your existing endpoints and exposes them as agent-friendly tools.</p>
 
 <h2>How to Make Your API Agent-Ready</h2>
-<p>Whether you use MCP or REST (or both), your API needs to be <a href="/blog/what-is-agent-readiness">agent-ready</a>. This means:</p>
+<p>Whether you use MCP or REST (or both), your API needs to be <a href="/what-is-agent-readiness">agent-ready</a>. This means:</p>
 <ol>
   <li><strong>Provide an OpenAPI spec</strong> at <code>/openapi.json</code> — so agents can discover your endpoints</li>
   <li><strong>Provide an MCP server</strong> — so agents can call your tools with schema validation</li>
@@ -191,12 +191,12 @@ server.run({ transportType: "stdio" });</code></pre>
   <li><strong>x402</strong> for machine payments (if monetized)</li>
 </ol>
 
-<p>This stack is what we call <a href="/blog/what-is-agent-readiness">agent readiness</a>. And you can verify yours with a <a href="/services/scanner">free scan</a> from AgentBadge.</p>
+<p>This stack is what we call <a href="/what-is-agent-readiness">agent readiness</a>. And you can verify yours with a <a href="/services/scanner">free scan</a> from AgentBadge.</p>
 
 <h2>Further Reading</h2>
 <ul>
   <li><a href="/agent-guide">Agent Guide</a> — complete documentation for agent-ready infrastructure</li>
-  <li><a href="/blog/what-is-agent-readiness">What is Agent Readiness?</a> — the foundation article</li>
+  <li><a href="/what-is-agent-readiness">What is Agent Readiness?</a> — the foundation article</li>
   <li><a href="https://modelcontextprotocol.io">MCP specification</a> — official protocol docs</li>
   <li><a href="/services/scanner">AgentBadge Scanner</a> — check your API's agent readiness</li>
 </ul>`,

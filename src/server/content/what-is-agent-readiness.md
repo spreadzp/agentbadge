@@ -1,7 +1,7 @@
 ---
 title: "What Is Agent Readiness?"
 description: "Agent Readiness is the degree to which an API or service can be discovered, understood, and used by AI agents without human intervention."
-canonical: "/what-is-agent-readiness"
+canonical: /what-is-agent-readiness
 type: "authority"
 last_updated: "2026-09-02"
 ---

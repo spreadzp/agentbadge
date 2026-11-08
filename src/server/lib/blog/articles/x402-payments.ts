@@ -207,7 +207,7 @@ Content-Type: application/json
 
 <h2>Further Reading</h2>
 <ul>
-  <li><a href="/blog/what-is-agent-readiness">What is Agent Readiness?</a> — the foundation of agent-ready APIs</li>
+  <li><a href="/what-is-agent-readiness">What is Agent Readiness?</a> — the foundation of agent-ready APIs</li>
   <li><a href="/blog/mcp-vs-api">MCP vs API: Agent Tools 2026</a> — how agents interact with tools</li>
   <li><a href="/agent-guide">Agent Guide</a> — complete documentation for agent infrastructure</li>
   <li><a href="/services/marketplace">AgentBadge Marketplace</a> — see x402 in action</li>

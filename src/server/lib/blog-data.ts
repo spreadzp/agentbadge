@@ -1,69 +1,11 @@
-export interface BlogExternalLink {
-  platform:
-  | "devto"
-  | "medium"
-  | "linkedin"
-  | "hackernews"
-  | "hackernoon"
-  | "reddit"
-  | "github"
-  | "hashnode"
-  | "twitter"
-  | "qiita"
-  | "zenn"
-  | "velog"
-  | "hsoub";
-  url: string;
-}
-
-
-export interface BlogArticle {
-  slug: string;
-  title: string;
-  description: string;
-  author: string;
-  authorRole: string;
-  date: string;
-  dateModified?: string;
-  tags: string[];
-  readingTime: string;
-  content: string;
-  markdown?: string;
-  agentGuideSlug?: string;
-  heroImage?: string;
-  ogImage?: string;
-  shortAnswer?: string;
-  externalLinks?: BlogExternalLink[];
-  relatedLinks?: RelatedLinkItem[];
-  // SLICE-201-5 (EPIC-201 track B): Knowledge Object v1 metadata.
-  // All optional — toKnowledgeObject derives values when absent
-  // (status defaults to LIVE; topics/concepts from tags; qa from
-  // question-style H2s; claims from shortAnswer as UNVERIFIED draft).
-  status?:
-  | "IDEA"
-  | "EXPERIMENT"
-  | "PROTOTYPE"
-  | "LIVE"
-  | "PRODUCTION"
-  | "ARCHIVED";
-  topics?: string[];
-  concepts?: string[];
-  rules?: string[];
-  capabilities?: string[];
-  technologies?: string[];
-  entities?: string[];
-  actions?: import("./blog/knowledge-object").KnowledgeAction[];
-  qa?: import("./blog/knowledge-object").KnowledgeQa[];
-  claims?: import("./blog/knowledge-object").KnowledgeClaim[];
-  economicContext?: import("./blog/knowledge-object").EconomicContext;
-  relatedResources?: import("./blog/knowledge-object").RelatedResource[];
-}
-
-import { RelatedLinkItem } from "../../views/related-links";
 // EPIC-140 (SLICE-140-10): article content split to ./blog/articles/*.ts
-// Local import (helpers below reference BLOG_ARTICLES) + re-export for old import path.
+// SLICE-218-5: type contracts live in ./blog/types (this file hit
+// max-lines). Re-exported below so existing call sites keep working.
 import { BLOG_ARTICLES } from "./blog/articles";
+import type { BlogArticle, PaginationMeta, BlogChannel } from "./blog/types";
+
 export { BLOG_ARTICLES };
+export type { BlogExternalLink, BlogArticle, PaginationMeta, BlogChannel } from "./blog/types";
 
 // --- Markdown generation (SLICE-60-2) ---
 
@@ -194,14 +136,6 @@ for (const article of BLOG_ARTICLES) {
 
 export const ARTICLES_PER_PAGE = 9;
 
-export interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalArticles: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
 export function paginateArticles(
   articles: BlogArticle[],
   page: number | undefined,
@@ -260,12 +194,6 @@ export function filterByTag(
   tag: string,
 ): BlogArticle[] {
   return articles.filter((a) => a.tags.includes(tag));
-}
-
-export interface BlogChannel {
-  key: string;
-  label: string;
-  tags: string[];
 }
 
 /** Curated channel groups over the long tail of article tags. */

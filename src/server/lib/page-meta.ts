@@ -6,6 +6,10 @@ export interface PageMeta {
   title: string;
   description: string;
   path: string;
+  // SLICE-218-5 (D-218-6): canonical override for consolidated pages.
+  // When set, <link rel="canonical"> points here while path/og:url/markdown
+  // alternates stay on the page's own URL.
+  canonical?: string;
   ogImage?: string;
   ogType?: string;
   articleAuthor?: string;

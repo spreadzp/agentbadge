@@ -206,7 +206,7 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json</co
 <h2>Related Articles</h2>
 
 <ul>
-  <li><a href="/blog/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1: the foundational concept</li>
+  <li><a href="/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1: the foundational concept</li>
   <li><a href="/blog/why-ai-agents-fail-to-use-apis">Why AI Agents Fail to Use APIs</a> — Article 5: 7 failure modes</li>
   <li><a href="/blog/what-ai-agent-needs-to-understand-api">What Does an AI Agent Need to Understand an API?</a> — Article 6: 8 context layers</li>
 </ul>

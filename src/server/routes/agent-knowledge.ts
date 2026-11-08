@@ -395,12 +395,18 @@ agentKnowledgeRoutes.get("/agent-guide/concepts/:name", async (c) => {
     const output = ctaHtml
       ? `${applyChainTemplates(body)}\n\n${ctaHtml}`
       : applyChainTemplates(body);
-    return new Response(output, {
-      headers: {
-        "Content-Type": "text/markdown; charset=utf-8",
-        "Cache-Control": "public, max-age=300",
-      },
-    });
+    // SLICE-218-5 (D-218-6): markdown has no <head>, so consolidated
+    // articles signal their canonical HTML page via a Link header
+    // (RFC 6596 — the same mechanism Google honors for non-HTML docs).
+    const canonical = frontmatter.canonical as string | undefined;
+    const headers: Record<string, string> = {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    };
+    if (canonical) {
+      headers.Link = `<${BASE_URL}${canonical}>; rel="canonical"`;
+    }
+    return new Response(output, { headers });
   } catch {
     return new Response(
       JSON.stringify({
@@ -440,12 +446,18 @@ agentKnowledgeRoutes.get("/agent-guide/articles/:slug", async (c) => {
     const output = ctaHtml
       ? `${applyChainTemplates(body)}\n\n${ctaHtml}`
       : applyChainTemplates(body);
-    return new Response(output, {
-      headers: {
-        "Content-Type": "text/markdown; charset=utf-8",
-        "Cache-Control": "public, max-age=300",
-      },
-    });
+    // SLICE-218-5 (D-218-6): markdown has no <head>, so consolidated
+    // articles signal their canonical HTML page via a Link header
+    // (RFC 6596 — the same mechanism Google honors for non-HTML docs).
+    const canonical = frontmatter.canonical as string | undefined;
+    const headers: Record<string, string> = {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    };
+    if (canonical) {
+      headers.Link = `<${BASE_URL}${canonical}>; rel="canonical"`;
+    }
+    return new Response(output, { headers });
   } catch {
     return new Response(
       JSON.stringify({

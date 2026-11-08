@@ -5,6 +5,7 @@ related_capabilities:
 related_services:
   - ai-agent-consulting
   - geo-consulting
+canonical: /what-is-agent-readiness
 ---
 # What Is Agent Readiness?
 

@@ -6,6 +6,8 @@ import { buildAgentCard, buildSitemap } from "../../src/server/routes/well-known
 import { PageMeta, PUBLIC_PAGES } from "../../src/server/lib/page-meta";
 import { BLOG_ARTICLES } from "../../src/server/lib/blog-data";
 import { BUILD_DATE } from "../../src/server/lib/build-info";
+import { getClusterPage } from "../../src/server/lib/cluster-data";
+import { agentKnowledgeRoutes } from "../../src/server/routes/agent-knowledge";
 import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 
 /**
@@ -127,5 +129,56 @@ describe("SLICE-218-4: sitemap lastmod + off-topic pruning (F9, F10)", () => {
     }
     // ctc renders the attestcoin page — same off-topic surface
     expect(nav).not.toContain('href="/hackathon/ctc"');
+  });
+});
+
+describe("SLICE-218-5: canonical consolidation — what is agent readiness (F7)", () => {
+  const CANONICAL = "/what-is-agent-readiness";
+
+  it("cluster page what-is-an-ai-ready-api canonicalizes to the authority page", () => {
+    expect(getClusterPage("what-is-an-ai-ready-api")?.canonical).toBe(CANONICAL);
+  });
+
+  it("blog article what-is-agent-readiness canonicalizes to the authority page", () => {
+    const article = BLOG_ARTICLES.find((a) => a.slug === "what-is-agent-readiness");
+    expect(article?.canonical).toBe(CANONICAL);
+  });
+
+  it("markdown guide article emits Link rel=canonical header (RFC 6596)", async () => {
+    const res = await agentKnowledgeRoutes.request(
+      "/agent-guide/articles/what-is-agent-readiness",
+      { headers: { Accept: "text/markdown" } },
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Link")).toBe(
+      `<https://agentbadge.xyz${CANONICAL}>; rel="canonical"`,
+    );
+  });
+
+  it("thin SEO pages keep self-canonical (unique intents — no consolidation)", () => {
+    // F7 audit decision: each page answers a distinct intent
+    // (comparisons, how-tos, checklist) → self-canonical, not folded
+    // into the authority page.
+    const THIN = [
+      "agent-readiness-vs-seo",
+      "agent-readiness-vs-geo",
+      "openapi-vs-agent-readiness",
+      "how-ai-agents-use-apis",
+      "how-to-make-an-api-agent-ready",
+    ];
+    for (const slug of THIN) {
+      expect(getClusterPage(slug)?.canonical).toBeUndefined();
+    }
+    // checklist is a standalone page-meta page — self-canonical
+    expect(PageMeta["/agent-readiness-checklist"]).toBeTruthy();
+    expect(PageMeta["/agent-readiness-checklist"].canonical).toBeUndefined();
+  });
+
+  it("hero/FAQ link the canonical URL, not consolidated pages", () => {
+    const hero = readFileSync("src/views/landing/sections/readiness-hero.ts", "utf8");
+    const faq = readFileSync("src/views/faq-page/categories.ts", "utf8");
+    expect(hero).not.toContain("/agent-guide/articles/what-is-agent-readiness");
+    expect(faq).not.toContain('href="/what-is-an-ai-ready-api"');
+    expect(faq).not.toContain('href="/blog/what-is-agent-readiness"');
   });
 });
