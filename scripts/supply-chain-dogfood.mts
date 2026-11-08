@@ -49,6 +49,7 @@ import type {
 import { shipmentReplay } from "../src/server/lib/econ-ledger/supply-chain/replay";
 import { resolveVenueNetwork } from "../src/server/lib/venue/chain";
 import { serverRoleAddress } from "../src/server/lib/venue/lifecycle-sign";
+import { getDatabase } from "../src/server/lib/database";
 
 const log = (msg: string) => console.error(`[dogfood] ${msg}`);
 const fail = (msg: string): never => {
@@ -105,6 +106,10 @@ interface DogfoodConfig {
   restaurant: `0x${string}`;
   hopUsdc: [string, string, string];
   executor: HopJobExecutor;
+  /** provider address (lowercase) → privkey that signs its setBudget.
+   *  ref-variant ERC-8183: _setBudget requires actor == job.provider,
+   *  so every hop receiver needs a signer, not just an address. */
+  providerKeys: Map<string, `0x${string}`>;
 }
 
 function hopAmounts(): [string, string, string] {
@@ -148,6 +153,7 @@ function loadConfig(): DogfoodConfig {
       restaurant: DRY.org as `0x${string}`,
       hopUsdc,
       executor: new InMemoryHopExecutor(),
+      providerKeys: new Map(),
     };
   }
   // Live: the script's env is authoritative for its own run — map the
@@ -189,12 +195,40 @@ function loadConfig(): DogfoodConfig {
   if (!evaluatorAddr) {
     fail("no evaluator key — set SC_DOGFOOD_EVAL_KEY or ARC_OPS_KEY (ops evaluator EOA)");
   }
-  const agent = partyAddr("SC_DOGFOOD_AGENT_KEY", "SC_DOGFOOD_AGENT_ADDR");
-  const device = partyAddr("SC_DOGFOOD_DEVICE_KEY", "SC_DOGFOOD_DEVICE_ADDR");
-  if (!agent) fail("SC_DOGFOOD_AGENT_KEY or SC_DOGFOOD_AGENT_ADDR required");
-  if (!device) fail("SC_DOGFOOD_DEVICE_KEY or SC_DOGFOOD_DEVICE_ADDR required");
-  const rest = process.env.SC_DOGFOOD_RESTAURANT_ADDR;
-  const restaurant = rest && ADDR_RE.test(rest) ? (rest as `0x${string}`) : client;
+  // Providers sign their own setBudget (ref variant: actor == job.provider),
+  // so hop receivers need KEYS, not just addresses.
+  const providerKeys = new Map<string, `0x${string}`>();
+  const agentKey = process.env.SC_DOGFOOD_AGENT_KEY ?? "";
+  const deviceKey = process.env.SC_DOGFOOD_DEVICE_KEY ?? "";
+  if (!KEY_RE.test(agentKey)) {
+    fail("SC_DOGFOOD_AGENT_KEY required (0x + 64 hex) — hop0 provider signs setBudget");
+  }
+  if (!KEY_RE.test(deviceKey)) {
+    fail("SC_DOGFOOD_DEVICE_KEY required (0x + 64 hex) — hop1 provider signs setBudget");
+  }
+  SECRETS.push(agentKey, deviceKey);
+  const agent = privateKeyToAccount(agentKey as `0x${string}`).address;
+  const device = privateKeyToAccount(deviceKey as `0x${string}`).address;
+  providerKeys.set(agent.toLowerCase(), agentKey as `0x${string}`);
+  providerKeys.set(device.toLowerCase(), deviceKey as `0x${string}`);
+  // Restaurant: key (own provider) or default to client — org signs its own hop2.
+  const restKey = process.env.SC_DOGFOOD_RESTAURANT_KEY ?? "";
+  let restaurant = client;
+  if (restKey) {
+    if (!KEY_RE.test(restKey)) fail("SC_DOGFOOD_RESTAURANT_KEY must be 0x + 64 hex");
+    SECRETS.push(restKey);
+    restaurant = privateKeyToAccount(restKey as `0x${string}`).address;
+    providerKeys.set(restaurant.toLowerCase(), restKey as `0x${string}`);
+  } else {
+    const rest = process.env.SC_DOGFOOD_RESTAURANT_ADDR;
+    if (rest && ADDR_RE.test(rest)) {
+      if (rest.toLowerCase() !== client.toLowerCase()) {
+        fail("SC_DOGFOOD_RESTAURANT_ADDR needs SC_DOGFOOD_RESTAURANT_KEY — hop2 provider signs setBudget");
+      }
+    }
+    // restaurant == client → org signs hop2's setBudget itself.
+    providerKeys.set(client.toLowerCase(), orgKey as `0x${string}`);
+  }
   // resolveVenueNetwork validates ARC_RPC_URL (https + host allowlist).
   const net = resolveVenueNetwork();
   // 216-3 (audit H-9): a dogfood is a TESTNET exercise by definition —
@@ -209,7 +243,14 @@ function loadConfig(): DogfoodConfig {
     device: device!,
     restaurant,
     hopUsdc,
-    executor: new Erc8183HopExecutor(net, net.chain.usdc, net.chain.rpcUrl, evaluatorAddr),
+    executor: new Erc8183HopExecutor(
+      net,
+      net.chain.usdc,
+      net.chain.rpcUrl,
+      evaluatorAddr!,
+      (p) => providerKeys.get(p.toLowerCase()),
+    ),
+    providerKeys,
   };
 }
 
@@ -222,8 +263,13 @@ interface JobRecord {
 }
 class CapturingExecutor implements HopJobExecutor {
   readonly jobs: JobRecord[] = [];
-  constructor(private readonly inner: HopJobExecutor) {}
+  constructor(
+    private readonly inner: HopJobExecutor,
+    private readonly keyFor?: (provider: string) => `0x${string}` | undefined,
+  ) { }
   async createJob(spec: HopJobSpec): Promise<HopJobRef> {
+    const providerKey = this.keyFor?.(spec.provider.toLowerCase());
+    if (providerKey) spec.providerKey = providerKey;
     const ref = await this.inner.createJob(spec);
     this.jobs.push({ hopIndex: spec.hopIndex, jobId: ref.jobId, createTxHash: ref.txHash });
     return ref;
@@ -238,112 +284,134 @@ class CapturingExecutor implements HopJobExecutor {
 
 // ─── run ───────────────────────────────────────────────────────────
 try {
-const cfg = loadConfig();
-const receivers = [cfg.agent, cfg.device, cfg.restaurant];
-const hash = (n: number) => `0x${String(n).padStart(64, "0")}` as `0x${string}`;
-const exec = new CapturingExecutor(cfg.executor);
+  const cfg = loadConfig();
+  const receivers = [cfg.agent, cfg.device, cfg.restaurant];
+  const hash = (n: number) => `0x${String(n).padStart(64, "0")}` as `0x${string}`;
+  const exec = new CapturingExecutor(
+    cfg.executor,
+    (p) => cfg.providerKeys.get(p.toLowerCase()),
+  );
 
-log(`mode=${live ? "live" : "dry-run"} shipment=${shipmentId} client=${cfg.client}`);
+  // 216-4 resume path: SC_DOGFOOD_RESUME_JOBS="0:58,1:59" reuses jobIds
+  // already funded onchain — createShipment skips createJob for them.
+  const resumeJobIds: Record<number, string> = {};
+  for (const part of (process.env.SC_DOGFOOD_RESUME_JOBS ?? "").split(",")) {
+    const [i, id] = part.split(":").map((s) => s.trim());
+    if (i && id && /^\d+$/.test(i) && /^\d+$/.test(id)) {
+      resumeJobIds[Number(i)] = id;
+    }
+  }
 
-const chain = await makeChain({
-  shipmentId,
-  client: cfg.client,
-  executor: exec,
-  lifecycle: "verified",
-  hops: [
-    {
-      receiver: cfg.agent,
-      amountUsdc: cfg.hopUsdc[0],
-      what: "chilled fish lot FISH-114 — Bergen salmon, 400kg",
-      where: "FishCo cold store, dock 3",
-      why: "custody transfer to processing plant",
-      roles: {
-        custodian: { address: cfg.agent, type: "agent", label: "Plant intake" },
+  log(`mode=${live ? "live" : "dry-run"} shipment=${shipmentId} client=${cfg.client}`);
+
+  // SC_DOGFOOD_DB=1: write events into the DATABASE_URL-backed ledger —
+  // the same store GET /api/ledger/shipments/:id serves publicly.
+  const ledgerDb = process.env.SC_DOGFOOD_DB === "1" ? getDatabase() : undefined;
+  if (ledgerDb && !ledgerDb.db) {
+    fail("SC_DOGFOOD_DB=1 needs a DATABASE_URL-backed db — got in-memory");
+  }
+
+  const chain = await makeChain({
+    shipmentId,
+    client: cfg.client,
+    executor: exec,
+    lifecycle: "verified",
+    ...(Object.keys(resumeJobIds).length ? { resumeJobIds } : {}),
+    ...(ledgerDb ? { db: ledgerDb } : {}),
+    hops: [
+      {
+        receiver: cfg.agent,
+        amountUsdc: cfg.hopUsdc[0],
+        what: "chilled fish lot FISH-114 — Bergen salmon, 400kg",
+        where: "FishCo cold store, dock 3",
+        why: "custody transfer to processing plant",
+        roles: {
+          custodian: { address: cfg.agent, type: "agent", label: "Plant intake" },
+        },
+        evidenceRefs: [
+          { type: "gps", hash: hash(1), issuer: { address: cfg.agent, type: "agent" } },
+          { type: "temperature", hash: hash(2), issuer: { address: cfg.device, type: "device", label: "reefer logger T-9" } },
+          { type: "signature", hash: hash(3), issuer: { address: cfg.agent, type: "agent" } },
+        ],
+        deliverableHash: hash(10),
       },
-      evidenceRefs: [
-        { type: "gps", hash: hash(1), issuer: { address: cfg.agent, type: "agent" } },
-        { type: "temperature", hash: hash(2), issuer: { address: cfg.device, type: "device", label: "reefer logger T-9" } },
-        { type: "signature", hash: hash(3), issuer: { address: cfg.agent, type: "agent" } },
-      ],
-      deliverableHash: hash(10),
-    },
-    {
-      receiver: cfg.device,
-      amountUsdc: cfg.hopUsdc[1],
-      what: "reefer van leg — plant to restaurant",
-      where: "city corridor, cold chain 2-4C",
-      why: "last-mile transport",
-      roles: {
-        custodian: { address: cfg.device, type: "device", label: "ColdVan unit" },
+      {
+        receiver: cfg.device,
+        amountUsdc: cfg.hopUsdc[1],
+        what: "reefer van leg — plant to restaurant",
+        where: "city corridor, cold chain 2-4C",
+        why: "last-mile transport",
+        roles: {
+          custodian: { address: cfg.device, type: "device", label: "ColdVan unit" },
+        },
+        evidenceRefs: [
+          { type: "temperature", hash: hash(4), issuer: { address: cfg.device, type: "device" } },
+          { type: "signature", hash: hash(5), issuer: { address: cfg.device, type: "device", label: "dropoff signature" } },
+        ],
+        proofOfDelivery: "pod-coldvan-114",
       },
-      evidenceRefs: [
-        { type: "temperature", hash: hash(4), issuer: { address: cfg.device, type: "device" } },
-        { type: "signature", hash: hash(5), issuer: { address: cfg.device, type: "device", label: "dropoff signature" } },
-      ],
-      proofOfDelivery: "pod-coldvan-114",
-    },
-    {
-      receiver: cfg.restaurant,
-      amountUsdc: cfg.hopUsdc[2],
-      what: "delivery acceptance — lot FISH-114",
-      where: "Restaurant receiving dock",
-      why: "receiver-accept, verify, settle",
-      roles: {
-        custodian: { address: cfg.restaurant, type: "org", label: "Restaurant" },
+      {
+        receiver: cfg.restaurant,
+        amountUsdc: cfg.hopUsdc[2],
+        what: "delivery acceptance — lot FISH-114",
+        where: "Restaurant receiving dock",
+        why: "receiver-accept, verify, settle",
+        roles: {
+          custodian: { address: cfg.restaurant, type: "org", label: "Restaurant" },
+        },
+        evidenceRefs: [
+          { type: "signature", hash: hash(6), issuer: { address: cfg.restaurant, type: "org", label: "receiver-accept" } },
+        ],
+        deliverableHash: hash(12),
       },
-      evidenceRefs: [
-        { type: "signature", hash: hash(6), issuer: { address: cfg.restaurant, type: "org", label: "receiver-accept" } },
-      ],
-      deliverableHash: hash(12),
-    },
-  ],
-});
+    ],
+  });
 
-const state = await chain.state();
-const replay = await shipmentReplay(chain.deps.ledger, shipmentId);
-if (!replay) fail("replay returned null — the run did not produce a replayable chain");
+  const state = await chain.state();
+  const replay = await shipmentReplay(chain.deps.ledger, shipmentId);
+  if (!replay) fail("replay returned null — the run did not produce a replayable chain");
 
-const evaluatorOf = (i: number): `0x${string}` => receivers[i + 1] ?? cfg.client;
-const plan = chain.specs.map((s, i) => ({
-  hopIndex: i,
-  receiver: s.receiver,
-  // 216-3 (audit H-4): honest label — the LOGICAL evaluator per the
-  // plan. Onchain the ops evaluator EOA signs the settle; the verdict
-  // is ops-settled, post-hoc — NOT this party's signature.
-  logicalEvaluator: evaluatorOf(i),
-  amountUsdc: s.amountUsdc,
-}));
-const jobs = exec.jobs.map((j) => ({
-  ...j,
-  status: state.hops.find((h) => h.hopIndex === j.hopIndex)?.status ?? "offered",
-}));
+  const evaluatorOf = (i: number): `0x${string}` => receivers[i + 1] ?? cfg.client;
+  const plan = chain.specs.map((s, i) => ({
+    hopIndex: i,
+    receiver: s.receiver,
+    // 216-3 (audit H-4): honest label — the LOGICAL evaluator per the
+    // plan. Onchain the ops evaluator EOA signs the settle; the verdict
+    // is ops-settled, post-hoc — NOT this party's signature.
+    logicalEvaluator: evaluatorOf(i),
+    amountUsdc: s.amountUsdc,
+  }));
+  const jobs = exec.jobs.map((j) => ({
+    ...j,
+    status: state.hops.find((h) => h.hopIndex === j.hopIndex)?.status ?? "offered",
+  }));
 
-const out = {
-  mode: live ? "live" : "dry-run",
-  shipmentId,
-  client: cfg.client,
-  plan,
-  jobs,
-  status: replay.status,
-  aggregate: replay.aggregate,
-  // 216-3 (audit H-4): name the trust boundary — pay/txHash are
-  // ledger-asserted; settlement was signed by the ops evaluator EOA,
-  // a post-hoc verdict, not the logical evaluator's own signature.
-  notes: [
-    "settlement is ops-settled — logicalEvaluator ≠ signing evaluator",
-    "pay/txHash are ledger-asserted — not independently chain-verified",
-  ],
-  replay,
-};
+  const out = {
+    mode: live ? "live" : "dry-run",
+    shipmentId,
+    client: cfg.client,
+    plan,
+    jobs,
+    status: replay.status,
+    aggregate: replay.aggregate,
+    // 216-3 (audit H-4): name the trust boundary — pay/txHash are
+    // ledger-asserted; settlement was signed by the ops evaluator EOA,
+    // a post-hoc verdict, not the logical evaluator's own signature.
+    notes: [
+      "settlement is ops-settled — logicalEvaluator ≠ signing evaluator",
+      "pay/txHash are ledger-asserted — not independently chain-verified",
+    ],
+    replay,
+  };
 
-// The doc contains only public data by construction; scrub drops any
-// env-sourced secret value if one ever leaks into a field or error.
-console.log(scrub(out));
-for (const j of exec!.jobs) {
-  if (j.createTxHash) log(`hop${j.hopIndex} create tx ${j.createTxHash}`);
-  if (j.settleTxHash) log(`hop${j.hopIndex} settle tx ${j.settleTxHash}`);
-}
-log(`done — status=${replay.status} hops=${jobs.map((j) => j.status).join(",")}`);
+  // The doc contains only public data by construction; scrub drops any
+  // env-sourced secret value if one ever leaks into a field or error.
+  console.log(scrub(out));
+  for (const j of exec!.jobs) {
+    if (j.createTxHash) log(`hop${j.hopIndex} create tx ${j.createTxHash}`);
+    if (j.settleTxHash) log(`hop${j.hopIndex} settle tx ${j.settleTxHash}`);
+  }
+  log(`done — status=${replay.status} hops=${jobs.map((j) => j.status).join(",")}`);
 } catch (err) {
   // 216-3 (audit H-9): a mid-run failure leaves funded escrows whose
   // only trace is this dump — emit the created jobs before dying so

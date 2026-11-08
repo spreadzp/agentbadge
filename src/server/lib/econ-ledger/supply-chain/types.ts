@@ -66,6 +66,11 @@ export interface HopJobSpec {
   /** 216-3 (audit M-6): job expiry override (seconds from creation) —
    *  forwarded from HopSpec.ttlSec; ignored before. */
   ttlSec?: number;
+  /** 216-4 (live run): privkey the provider signs setBudget with — the
+   *  ref-variant ERC-8183 requires actor == job.provider. Injected by
+   *  the caller (dogfood script) per receiver; absent → client-signed
+   *  setBudget fallback for variants that allow client|provider. */
+  providerKey?: `0x${string}`;
 }
 
 export interface HopJobRef {

@@ -24,8 +24,9 @@
  * HopJobExecutor contract.
  */
 
+import { privateKeyToAccount } from "viem/accounts";
 import type { VenueNetwork } from "../../venue/chain";
-import { sendAsRole } from "../../venue/lifecycle-sign";
+import { sendAsAccount, sendAsRole } from "../../venue/lifecycle-sign";
 import { deliverableHash } from "../../venue/lifecycle";
 import {
   decodeRefJobId,
@@ -33,6 +34,8 @@ import {
   refApproveFundTxs,
   refCompleteTx,
   refCreateJobTx,
+  refSetBudgetTx,
+  refSubmitTx,
   REF_STATUS,
 } from "../../board/erc8183-ref";
 import {
@@ -57,7 +60,13 @@ export class Erc8183HopExecutor implements HopJobExecutor {
     /** Onchain evaluator EOA — the server-signed ops address (H-4).
      *  The logical evaluator (next receiver) stays in the job spec. */
     private readonly evaluatorAddr: `0x${string}`,
-  ) {}
+    /** 216-4: resolves the privkey that signs provider-only calls
+     *  (setBudget, submit) for a provider EOA. Covers resumed jobs,
+     *  where no HopJobSpec ever carried providerKey. */
+    private readonly keyForProvider?: (
+      provider: `0x${string}`,
+    ) => `0x${string}` | undefined,
+  ) { }
 
   async createJob(spec: HopJobSpec): Promise<HopJobRef> {
     // 216-3 (audit C-2): a zero-budget job is not an escrow — the
@@ -92,8 +101,29 @@ export class Erc8183HopExecutor implements HopJobExecutor {
     if (jobId === null) {
       throw new Error(`createJob tx ${txHash} mined without JobCreated log`);
     }
-    // Budget + fund — built once, sequential sends (N-4).
     const amount = usdcMicros(spec.amountUsdc);
+    // ref-variant lifecycle (216-4 live run): setBudget is provider-
+    // signed (Unauthorized otherwise) and fund() reverts while
+    // budget == 0 — so the receiver signs setBudget via
+    // spec.providerKey before the client funds. Without a key we
+    // fall back to a client-signed setBudget (accepted by variants
+    // that allow client|provider; reverts cleanly on ref).
+    const budgetTx = refSetBudgetTx(this.net, jobId, this.usdcToken, amount);
+    const providerKey = spec.providerKey ?? this.keyForProvider?.(spec.provider);
+    const budgeted = providerKey
+      ? await sendAsAccount(
+        privateKeyToAccount(providerKey),
+        [budgetTx],
+        this.rpcUrl,
+      )
+      : await sendAsRole("client", [budgetTx], this.rpcUrl);
+    if (!budgeted?.length) {
+      throw new Error(
+        `hop job ${jobId} created (tx ${txHash}) but setBudget failed — ` +
+        `spec.providerKey must sign it on the ref variant`,
+      );
+    }
+    // Budget + fund — built once, sequential sends (N-4).
     const [approveTx, fundTx] = refApproveFundTxs(this.net, jobId, this.usdcToken, amount);
     const funded = await sendAsRole("client", [approveTx!, fundTx!], this.rpcUrl);
     // 216-3 (audit H-6 residual): sendAsRole returns null on any
@@ -104,7 +134,7 @@ export class Erc8183HopExecutor implements HopJobExecutor {
       // jobId so ops retries fund on that id instead of a phantom hop.
       throw new Error(
         `hop job ${jobId} created (tx ${txHash}) but funding failed — ` +
-          `retry fund on jobId ${jobId} before proceeding`,
+        `retry fund on jobId ${jobId} before proceeding`,
       );
     }
     return { jobId: String(jobId), txHash };
@@ -145,6 +175,24 @@ export class Erc8183HopExecutor implements HopJobExecutor {
       throw new ShipmentOrderError(
         `settle amount ${amountUsdc} ≠ onchain budget ${job.budget} (job ${jobId})`,
       );
+    }
+    // 216-4: _complete requires JobStatus.Submitted — a Funded job
+    // first needs the provider's own submit (provider-only onchain).
+    if (job.status === REF_STATUS.Funded) {
+      const providerKey = this.keyForProvider?.(job.provider);
+      if (!providerKey) {
+        throw new ShipmentOrderError(
+          `job ${jobId} needs provider-signed submit — no key for ${job.provider}`,
+        );
+      }
+      const submitted = await sendAsAccount(
+        privateKeyToAccount(providerKey),
+        [refSubmitTx(this.net, BigInt(jobId), deliverableHash(`hop:${jobId}:delivered`))],
+        this.rpcUrl,
+      );
+      if (!submitted?.length) {
+        throw new Error(`provider submit of job ${jobId} failed onchain`);
+      }
     }
     const hashes = await sendAsRole(
       "evaluator",

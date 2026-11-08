@@ -13,9 +13,10 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  keccak256,
   type Hex,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, type LocalAccount } from "viem/accounts";
 import { opsKey } from "../eaas/keys";
 import type { PreparedTx } from "./lifecycle";
 
@@ -79,16 +80,67 @@ export function serverSigner(
   const key = roleKey(role);
   const account = privateKeyToAccount(key as `0x${string}`);
   const wallet = createWalletClient({ account, transport: http(rpcUrl) });
+  const publicClient = createPublicClient({ transport: http(rpcUrl) });
   return {
     address: account.address,
-    send: async (tx) =>
-      wallet.sendTransaction({
-        account,
-        to: tx.to,
-        data: tx.data,
-        chain: null,
-      }),
+    send: (tx) => signAndSendRaw(account, wallet, publicClient, tx),
   };
+}
+
+/** Sign locally, broadcast raw, return the tx hash.
+ * Sign first so the tx hash is known BEFORE broadcast: flaky
+ * load-balanced RPCs (blockdaemon) can accept a raw tx on one
+ * backend, then answer a viem internal retry with "already
+ * known" — the error kills the caller while the tx still
+ * mines. Precompute the hash and treat "already known" as
+ * submitted; the receipt wait downstream confirms the outcome. */
+async function signAndSendRaw(
+  account: LocalAccount,
+  wallet: ReturnType<typeof createWalletClient>,
+  publicClient: ReturnType<typeof createPublicClient>,
+  tx: PreparedTx,
+): Promise<Hex> {
+  const { account: _omit, ...serializable } =
+    await wallet.prepareTransactionRequest({
+      account,
+      to: tx.to,
+      data: tx.data,
+      chain: null,
+    });
+  const signed = await account.signTransaction(
+    serializable as Parameters<typeof account.signTransaction>[0],
+  );
+  const hash = keccak256(signed);
+  try {
+    await publicClient.sendRawTransaction({
+      serializedTransaction: signed,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/already known/i.test(msg)) throw err;
+  }
+  return hash;
+}
+
+/** Sequential send + receipt-wait as an explicit local account —
+ * for signers that are NOT venue ROLE keys (per-hop providers
+ * signing their own setBudget in the supply-chain dogfood). Same
+ * ordering + success semantics as sendAsRole. */
+export async function sendAsAccount(
+  account: LocalAccount,
+  txs: PreparedTx[],
+  rpcUrl: string,
+): Promise<Hex[] | null> {
+  const wallet = createWalletClient({ account, transport: http(rpcUrl) });
+  const publicClient = createPublicClient({ transport: http(rpcUrl) });
+  const hashes: Hex[] = [];
+  for (const tx of txs) {
+    const hash = await signAndSendRaw(account, wallet, publicClient, tx);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") return null;
+    hashes.push(hash);
+  }
+  return hashes;
 }
 
 /** Default server-sign sender — sends each tx sequentially as `role`.

@@ -71,12 +71,16 @@ export interface MakeChainOptions {
    *  per hop, issuer = receiver → issuerIsHopParty + issuerIsCounterparty true), a raw
    *  array, or a per-hop factory. Per-hop `hops[i].evidenceRefs` wins. */
   evidencePerHop?:
-    | number
-    | unknown[]
-    | ((hop: ChainHopCtx) => unknown);
+  | number
+  | unknown[]
+  | ((hop: ChainHopCtx) => unknown);
   executor?: HopJobExecutor;
   db?: Database;
   lifecycle?: ChainLifecycle;
+  /** 216-4: jobIds already minted onchain for given hopIndexes —
+   *  resumed instead of re-created (live-run recovery after a
+   *  mid-flight failure: funded escrows are reused, not doubled). */
+  resumeJobIds?: Record<number, string>;
 }
 
 export interface MadeChain {
@@ -112,9 +116,9 @@ export async function makeChain(opts: MakeChainOptions = {}): Promise<MadeChain>
 
   const hopInputs: ChainHopInput[] = typeof opts.hops === "number" || opts.hops === undefined
     ? Array.from({ length: opts.hops ?? 3 }, (_, i) => ({
-        receiver: defaultReceiver(i),
-        amountUsdc: "10",
-      }))
+      receiver: defaultReceiver(i),
+      amountUsdc: "10",
+    }))
     : opts.hops;
   const specs: HopSpec[] = hopInputs.map(({ roles: _r, evidenceRefs: _e, proofOfDelivery: _p, deliverableHash: _d, skipSettle: _s, skipHandoff: _h, ...hop }) => hop);
   const receivers = specs.map((h) => h.receiver);
@@ -149,7 +153,11 @@ export async function makeChain(opts: MakeChainOptions = {}): Promise<MadeChain>
   });
 
   const deps = { ledger: db.econLedger, executor };
-  const { jobs } = await createShipment({ shipmentId, client, hops: specs }, deps);
+  const { jobs } = await createShipment(
+    { shipmentId, client, hops: specs },
+    deps,
+    opts.resumeJobIds ? { resumeJobIds: opts.resumeJobIds } : undefined,
+  );
   const lifecycle = opts.lifecycle ?? "settled";
 
   if (lifecycle !== "offered") {
