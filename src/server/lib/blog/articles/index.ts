@@ -46,6 +46,7 @@ import { article as supplyChainParticipantRoles } from "./supply-chain-participa
 import { article as supplyChainTypedEvidence } from "./supply-chain-typed-evidence";
 import { article as supplyChainScenarioMatrix } from "./supply-chain-scenario-matrix";
 import { article as supplyChainVerifiableShowcase } from "./supply-chain-verifiable-showcase";
+import { article as supplyChainLiveTestnet } from "./supply-chain-live-testnet";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -94,5 +95,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   supplyChainTypedEvidence,
   supplyChainVerifiableShowcase,
   supplyChainScenarioMatrix,
+  supplyChainLiveTestnet,
   bedrijPrinciple,
 ];
