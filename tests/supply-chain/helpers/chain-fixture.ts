@@ -68,7 +68,7 @@ export interface MakeChainOptions {
    *  hop's receiver, required by the write-side H-2 guard). */
   roles?: unknown | ((hop: ChainHopCtx) => unknown);
   /** Evidence applied to every hop: a count N (auto-generates N refs
-   *  per hop, issuer = receiver → issuerMatchesParty true), a raw
+   *  per hop, issuer = receiver → issuerIsHopParty + issuerIsCounterparty true), a raw
    *  array, or a per-hop factory. Per-hop `hops[i].evidenceRefs` wins. */
   evidencePerHop?:
     | number

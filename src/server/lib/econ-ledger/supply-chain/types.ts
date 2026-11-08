@@ -63,6 +63,9 @@ export interface HopJobSpec {
   description: string;
   /** deliverableHash of the handoff evidence, bound on submit. */
   deliverableHash?: `0x${string}`;
+  /** 216-3 (audit M-6): job expiry override (seconds from creation) —
+   *  forwarded from HopSpec.ttlSec; ignored before. */
+  ttlSec?: number;
 }
 
 export interface HopJobRef {

@@ -73,12 +73,21 @@ function scrub(doc: unknown): string {
 }
 
 // ─── flags ─────────────────────────────────────────────────────────
+// 216-3 (audit H-9): --dry-run is explicit; --live AND --dry-run is a
+// refusal, and --live requires --yes — a stray script run on a shell
+// with env keys must never sign transactions unprompted.
 const args = process.argv.slice(2);
 const live = args.includes("--live");
+if (live && args.includes("--dry-run")) {
+  fail("--live and --dry-run are mutually exclusive");
+}
 const shipmentId =
   args.find((a) => a.startsWith("--shipment-id="))?.split("=")[1] ??
   `dogfood-${Date.now()}`;
 const amountArg = args.find((a) => a.startsWith("--amount="))?.split("=")[1];
+/** 216-3 (audit H-9): per-hop spend ceiling — a dogfood must be cheap
+ *  even when a fat-fingered amount or a wide env var lands. */
+const HOP_CAP_USDC = "0.10";
 
 // ─── config ────────────────────────────────────────────────────────
 const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
@@ -105,6 +114,14 @@ function hopAmounts(): [string, string, string] {
   const parts = raw.split(",").map((s) => s.trim());
   if (parts.length !== 3 || parts.some((p) => !/^\d+(\.\d+)?$/.test(p))) {
     fail(`SC_DOGFOOD_HOP_USDC must be 3 decimal amounts: ${raw}`);
+  }
+  // 216-3 (audit H-9): cap each hop — the script funds REAL escrows.
+  for (const p of parts) {
+    const [w, f = ""] = p.split(".");
+    const micros = BigInt(w) * 1_000_000n + BigInt((f + "000000").slice(0, 6));
+    if (micros === 0n || micros > 100_000n) {
+      fail(`hop amount ${p} out of range (0 < amount ≤ ${HOP_CAP_USDC})`);
+    }
   }
   return parts as [string, string, string];
 }
@@ -135,11 +152,28 @@ function loadConfig(): DogfoodConfig {
   }
   // Live: the script's env is authoritative for its own run — map the
   // dogfood keys onto the venue role envs sendAsRole resolves.
+  // 216-3 (audit H-9): --yes is the live consent — a bare --live run
+  // must refuse before touching keys or the network.
+  if (!args.includes("--yes")) {
+    fail("live mode requires --yes — this spends real USDC on a real chain");
+  }
   const orgKey = process.env.SC_DOGFOOD_ORG_KEY ?? "";
   if (!KEY_RE.test(orgKey)) {
     fail("SC_DOGFOOD_ORG_KEY required (0x + 64 hex) — org funds the hop jobs");
   }
   SECRETS.push(orgKey);
+  // 216-3 (audit H-9): every env value that could flow into output or
+  // an error — key fallbacks and the RPC endpoint — joins the scrub set.
+  for (const k of [
+    process.env.ARC_VENUE_EVALUATOR_KEY,
+    process.env.ARC_OPS_KEY,
+    process.env.ARC_RPC_URL,
+    process.env.SC_DOGFOOD_EVAL_KEY,
+    process.env.SC_DOGFOOD_AGENT_KEY,
+    process.env.SC_DOGFOOD_DEVICE_KEY,
+  ]) {
+    if (k && k.length >= 8) SECRETS.push(k);
+  }
   process.env.ARC_VENUE_CLIENT_KEY = orgKey;
   const evalKey = process.env.SC_DOGFOOD_EVAL_KEY ?? "";
   if (evalKey) {
@@ -163,6 +197,12 @@ function loadConfig(): DogfoodConfig {
   const restaurant = rest && ADDR_RE.test(rest) ? (rest as `0x${string}`) : client;
   // resolveVenueNetwork validates ARC_RPC_URL (https + host allowlist).
   const net = resolveVenueNetwork();
+  // 216-3 (audit H-9): a dogfood is a TESTNET exercise by definition —
+  // funding escrows on mainnet from a script is out of scope for 216-4.
+  if (net.name === "mainnet") {
+    fail("mainnet refused — SC dogfood runs on testnet only");
+  }
+  log(`network=${net.name} chainId=${net.chain.chainId} rpc=${net.chain.rpcUrl}`);
   return {
     client,
     agent: agent!,
@@ -267,7 +307,10 @@ const evaluatorOf = (i: number): `0x${string}` => receivers[i + 1] ?? cfg.client
 const plan = chain.specs.map((s, i) => ({
   hopIndex: i,
   receiver: s.receiver,
-  evaluator: evaluatorOf(i),
+  // 216-3 (audit H-4): honest label — the LOGICAL evaluator per the
+  // plan. Onchain the ops evaluator EOA signs the settle; the verdict
+  // is ops-settled, post-hoc — NOT this party's signature.
+  logicalEvaluator: evaluatorOf(i),
   amountUsdc: s.amountUsdc,
 }));
 const jobs = exec.jobs.map((j) => ({
@@ -283,18 +326,33 @@ const out = {
   jobs,
   status: replay.status,
   aggregate: replay.aggregate,
+  // 216-3 (audit H-4): name the trust boundary — pay/txHash are
+  // ledger-asserted; settlement was signed by the ops evaluator EOA,
+  // a post-hoc verdict, not the logical evaluator's own signature.
+  notes: [
+    "settlement is ops-settled — logicalEvaluator ≠ signing evaluator",
+    "pay/txHash are ledger-asserted — not independently chain-verified",
+  ],
   replay,
 };
 
 // The doc contains only public data by construction; scrub drops any
 // env-sourced secret value if one ever leaks into a field or error.
 console.log(scrub(out));
-for (const j of exec.jobs) {
+for (const j of exec!.jobs) {
   if (j.createTxHash) log(`hop${j.hopIndex} create tx ${j.createTxHash}`);
   if (j.settleTxHash) log(`hop${j.hopIndex} settle tx ${j.settleTxHash}`);
 }
 log(`done — status=${replay.status} hops=${jobs.map((j) => j.status).join(",")}`);
 } catch (err) {
+  // 216-3 (audit H-9): a mid-run failure leaves funded escrows whose
+  // only trace is this dump — emit the created jobs before dying so
+  // ops can reconcile or resume by jobId.
+  try {
+    log(`jobs before failure: ${scrub(exec.jobs)}`);
+  } catch {
+    /* exec may not exist yet — nothing to dump */
+  }
   // Scrub the error the same way — a live-path failure could echo a
   // configured endpoint or payload.
   fail(scrub(err instanceof Error ? err.message : String(err)));

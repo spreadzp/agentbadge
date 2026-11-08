@@ -6,7 +6,7 @@
  * shipment through accept → handoff(roles+evidence) → settle → verify
  * on InMemoryHopExecutor; returns live deps so scenarios can keep
  * driving the same chain. Advisory fields (rolesAssertedBy,
- * evidenceAssertedBy, issuerMatchesParty) must be visible in replay.
+ * evidenceAssertedBy, issuerIsHopParty) must be visible in replay.
  */
 
 import { describe, expect, it } from "vitest";
@@ -18,7 +18,7 @@ import {
   shipmentState,
 } from "../../../src/server/lib/econ-ledger/supply-chain/shipment";
 import { InMemoryHopExecutor } from "../../../src/server/lib/econ-ledger/supply-chain/executor";
-import { makeChain } from "./chain-fixture";
+import { makeChain, type ChainHopCtx } from "./chain-fixture";
 
 const CLIENT = "0x" + "aa".repeat(20) as `0x${string}`;
 const SENSOR = "0x" + "dd".repeat(20) as `0x${string}`;
@@ -43,7 +43,7 @@ describe("makeChain() fixture (SLICE-214-1)", () => {
   it("roles + evidencePerHop ride the chain and surface advisory fields in replay", async () => {
     const chain = await makeChain({
       hops: 2,
-      roles: (hop) => ({ custodian: { address: hop.receiver, type: "org" } }),
+      roles: (hop: ChainHopCtx) => ({ custodian: { address: hop.receiver, type: "org" } }),
       evidencePerHop: [
         { type: "gps", hash: HASH, issuer: { address: SENSOR, type: "device" } },
       ],
@@ -55,19 +55,19 @@ describe("makeChain() fixture (SLICE-214-1)", () => {
       expect(hop.evidence).toHaveLength(1);
       expect(hop.evidence?.[0]?.hash).toBe(HASH);
       // SENSOR is third-party → honest advisory flag (213-5 H-1)
-      expect(hop.evidence?.[0]?.issuerMatchesParty).toBe(false);
+      expect(hop.evidence?.[0]?.issuerIsHopParty).toBe(false);
       expect(hop.evidenceAssertedBy).toBe(chain.handoffActor(hop.hopIndex));
     }
   });
 
-  it("issuer = hop receiver → issuerMatchesParty true (no advisory)", async () => {
+  it("issuer = hop receiver → issuerIsHopParty true (no advisory)", async () => {
     const chain = await makeChain({
       hops: 1,
       evidencePerHop: 1, // auto-generated, issuer = receiver
     });
     const { hops } = await chain.state();
     expect(hops[0]?.evidence).toHaveLength(1);
-    expect(hops[0]?.evidence?.[0]?.issuerMatchesParty).toBe(true);
+    expect(hops[0]?.evidence?.[0]?.issuerIsHopParty).toBe(true);
     expect(hops[0]?.evidence?.[0]?.issuer.address).toBe(chain.receivers[0]);
   });
 
@@ -107,7 +107,7 @@ describe("makeChain() fixture (SLICE-214-1)", () => {
     expect(hops[0]?.evidence).toHaveLength(1);
     expect(hops[1]?.evidence).toHaveLength(1);
     expect(hops[1]?.evidence?.[0]?.hash).toBe(OTHER_HASH);
-    expect(hops[1]?.evidence?.[0]?.issuerMatchesParty).toBe(true);
+    expect(hops[1]?.evidence?.[0]?.issuerIsHopParty).toBe(true);
     // hop1 handoff actor is hop0's receiver — provenance follows the chain
     expect(hops[1]?.evidenceAssertedBy).toBe(r0);
     expect(chain.handoffActor(0)).toBe(CLIENT);

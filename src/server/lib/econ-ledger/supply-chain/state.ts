@@ -9,8 +9,8 @@ import {
   type BuildEventInput,
   DECIMAL_USDC,
   type EconomicEvent,
-  type ShipmentHop,
 } from "@agentbadge/econ-events";
+import type { SupplyChainHop } from "./advisory";
 import { statusRank, type HopStatus } from "./types";
 
 export type { AdvisoryShipmentHop, ShipmentAdvisoryFlags } from "./advisory";
@@ -36,6 +36,14 @@ export class ShipmentOrderError extends Error {
 // double-pay onchain. Single-process scope — a multi-instance deploy
 // must upgrade to pg_advisory_xact_lock (documented in DECISIONS).
 const hopLocks = new Map<string, Promise<void>>();
+
+/** 216-3 (audit M-1): NUL-separated lock keys — `:` IS legal inside a
+ *  shipmentId (SHIPMENT_ID_RE allows it), so `${id}:${hop}` keys
+ *  collided: creating shipment "a:0" locked the same key as hop 0 of
+ *  shipment "a" — a queueable DoS. \0 is unreachable via the id regex. */
+export const createLockKey = (shipmentId: string): string => `${shipmentId}\0create`;
+export const hopLockKey = (shipmentId: string, hopIndex: number): string =>
+  `${shipmentId}\0${hopIndex}`;
 
 export async function withHopLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const prev = hopLocks.get(key) ?? Promise.resolve();
@@ -84,6 +92,28 @@ export function assertAmountUsdc(amount: string): void {
   }
 }
 
+/** Decimal USDC → atomic micros. Input must already satisfy
+ *  DECIMAL_USDC_RE (callers validate upstream) — throws otherwise. */
+export function usdcMicros(usdc: string): bigint {
+  if (!DECIMAL_USDC_RE.test(usdc)) {
+    throw new ShipmentOrderError(`invalid amountUsdc: ${bound(usdc, 80)}`);
+  }
+  const [whole, frac = ""] = usdc.split(".");
+  return (
+    BigInt(whole) * 1_000_000n + BigInt((frac + "000000").slice(0, 6))
+  );
+}
+
+/** 216-3 (audit C-2): a zero-amount hop mints a zero-budget escrow —
+ *  a budget-less job both bypasses the settle budget check and moves
+ *  nothing, so the ledger would record pay the chain never moved. */
+export function assertPositiveAmountUsdc(amount: string): void {
+  assertAmountUsdc(amount);
+  if (usdcMicros(amount) === 0n) {
+    throw new ShipmentOrderError(`amountUsdc must be > 0: ${bound(amount, 80)}`);
+  }
+}
+
 /** Re-audit N-6: seqFor derives event seq from hopIndex, so a fractional
  *  or negative value can collide with another kind's seq. */
 export function assertHopIndex(hopIndex: number): void {
@@ -102,7 +132,7 @@ export function assertHopIndex(hopIndex: number): void {
  * mismatch is a liveness bug, not a plan violation.
  */
 export function assertHandoffOrder(
-  hops: ShipmentHop[],
+  hops: SupplyChainHop[],
   client: string | undefined,
   hopIndex: number,
   actor: `0x${string}`,
@@ -124,21 +154,31 @@ export function assertHandoffOrder(
     throw new ShipmentOrderError(`hop ${hopIndex} already handed off — cannot re-handoff`);
   }
   // M-4: the receiver must be the plan's own; the hander-offer must be
-  // the previous custody holder (client at hop 0).
-  if (hop.receiver && counterparty.toLowerCase() !== hop.receiver.toLowerCase()) {
+  // the previous custody holder (client at hop 0). 216-3 (audit H-5):
+  // FAIL CLOSED — a plan hop without a receiver, or a missing custody
+  // holder, is a malformed/foreign offer and refuses, never skips.
+  if (hop.receiver === undefined || counterparty.toLowerCase() !== hop.receiver.toLowerCase()) {
     throw new ShipmentOrderError(
-      `handoff counterparty ${counterparty.slice(0, 80)} ≠ plan receiver ${hop.receiver}`,
+      `handoff counterparty ${counterparty.slice(0, 80)} ≠ plan receiver ${hop.receiver ?? "<unset>"}`,
     );
   }
   const expectedActor = hopIndex === 0
     ? client
     : hops.find((h) => h.hopIndex === hopIndex - 1)?.receiver;
-  if (expectedActor && actor.toLowerCase() !== expectedActor.toLowerCase()) {
+  if (expectedActor === undefined || actor.toLowerCase() !== expectedActor.toLowerCase()) {
     throw new ShipmentOrderError(
-      `handoff actor ${actor.slice(0, 80)} ≠ custody holder ${expectedActor}`,
+      `handoff actor ${actor.slice(0, 80)} ≠ custody holder ${expectedActor ?? "<unset>"}`,
     );
   }
   if (hopIndex > 0) {
+    const prevHop = hops.find((h) => h.hopIndex === hopIndex - 1);
+    // 216-3 (audit M-6): a disputed previous hop halts the chain —
+    // "paid" with an open dispute is not a releasable custody step.
+    if ((prevHop as { disputed?: boolean } | undefined)?.disputed === true) {
+      throw new ShipmentOrderError(
+        `hop ${hopIndex} blocked: hop ${hopIndex - 1} is disputed — chain halted until resolution`,
+      );
+    }
     const prev = hopStatus(hops, hopIndex - 1);
     if (statusRank(prev) < statusRank("paid")) {
       throw new ShipmentOrderError(
@@ -185,7 +225,7 @@ export async function appendEventWithRetry(
   throw last;
 }
 
-export const hopStatus = (hops: ShipmentHop[], idx: number): HopStatus =>
+export const hopStatus = (hops: SupplyChainHop[], idx: number): HopStatus =>
   hops.find((h) => h.hopIndex === idx)?.status ?? "offered";
 
 // ─── Misc helpers ────────────────────────────────────────────────

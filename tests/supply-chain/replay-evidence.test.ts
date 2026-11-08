@@ -59,7 +59,7 @@ describe("replay evidence (SLICE-213-3)", () => {
     const hop0 = state.hops.find((h) => h.hopIndex === 0);
     const hop1 = state.hops.find((h) => h.hopIndex === 1);
     expect(hop0?.status).toBe("paid");
-    // 213-5 (H-1): projection refs carry issuerMatchesParty, and the hop
+    // 213-5 (H-1): projection refs carry issuerIsHopParty, and the hop
     // records who asserted the evidence (provenance).
     expect(hop0?.evidence).toEqual([
       {
@@ -67,21 +67,31 @@ describe("replay evidence (SLICE-213-3)", () => {
         hash: HASH,
         issuer: { address: CARRIER, type: "org" },
         uri: "ipfs://QmGps",
-        issuerMatchesParty: true, // CARRIER is the handoff counterparty
+        issuerIsHopParty: true, // CARRIER is the handoff counterparty
+        issuerIsCounterparty: true, // 216-3 (H-1): self-serving channel marker
       },
     ]);
     expect(hop0?.evidenceAssertedBy).toBe(CLIENT);
+    // 216-3 (H-1): counterparty-issued evidence also lifts the
+    // counterpartyIssued advisory — a gps ref asserted BY the receiver
+    // about their own handoff is an unverified claim.
+    expect(hop0?.counterpartyIssued).toBe(true);
     expect(hop1?.status).toBe("handed_off");
     expect(hop1?.evidence).toBeUndefined();
     expect(hop1?.evidenceAssertedBy).toBeUndefined();
 
     // derived evidence carries the payload fields plus projection
-    // annotations (213-5 issuerMatchesParty) — compare ref-by-ref
+    // annotations (213-5 issuerIsHopParty, 216-3 issuerIsCounterparty)
+    // — compare ref-by-ref
     const handoffEv = state.events.find((e) => e.kind === "handoff");
     const evEvidence = (handoffEv?.payload as Record<string, unknown>).evidence as
       Array<Record<string, unknown>>;
     expect(hop0?.evidence).toEqual(
-      evEvidence.map((r) => ({ ...r, issuerMatchesParty: true })),
+      evEvidence.map((r) => ({
+        ...r,
+        issuerIsHopParty: true,
+        issuerIsCounterparty: true,
+      })),
     );
     // and is not the same object reference (no aliasing)
     expect(hop0?.evidence).not.toBe(evEvidence);
@@ -112,7 +122,7 @@ describe("replay evidence (SLICE-213-3)", () => {
 });
 
 describe("213-5 audit fixes — replay hardening", () => {
-  it("issuer outside hop parties → issuerMatchesParty false (H-1)", async () => {
+  it("issuer outside hop parties → issuerIsHopParty false (H-1)", async () => {
     const db = await makeDb();
     const deps = { ledger: db.econLedger, executor: new InMemoryHopExecutor() };
     const sid = "shp-ev-thirdparty";
@@ -125,7 +135,7 @@ describe("213-5 audit fixes — replay hardening", () => {
 
     const state = await shipmentState(deps.ledger, sid);
     const hop0 = state.hops.find((h) => h.hopIndex === 0);
-    expect(hop0?.evidence?.[0]?.issuerMatchesParty).toBe(false);
+    expect(hop0?.evidence?.[0]?.issuerIsHopParty).toBe(false);
     expect(hop0?.evidenceAssertedBy).toBe(CLIENT);
   });
 

@@ -10,8 +10,27 @@
  * review", not a verdict — the ref is a link, not a fact (D-213-4).
  */
 
-import type { ShipmentHop } from "@agentbadge/econ-events";
+import type { ShipmentEvidenceRef, ShipmentHop } from "@agentbadge/econ-events";
 import { statusRank } from "./types";
+
+/** 216-3 (audit H-1): the projection's evidence ref. The published
+ *  package schema (@agentbadge/econ-events 0.1.2) still names the
+ *  annotation `issuerMatchesParty` — the issuerIsHopParty /
+ *  issuerIsCounterparty rename ships in 0.1.3 (not yet on npm).
+ *  The server emits the new provenance fields, so model the lifted
+ *  ref locally until the publish lands and this file can use
+ *  ShipmentEvidenceRef directly again. */
+export type ProjectedEvidenceRef =
+  Omit<ShipmentEvidenceRef, "issuerMatchesParty"> & {
+    issuerIsHopParty: boolean;
+    issuerIsCounterparty?: boolean;
+  };
+
+/** Projection-internal hop — ShipmentHop minus the npm-stale evidence
+ *  annotation (see ProjectedEvidenceRef). */
+export type SupplyChainHop = Omit<ShipmentHop, "evidence"> & {
+  evidence?: ProjectedEvidenceRef[];
+};
 
 /** 214-5 (audit M-1): telemetry-producing ref types — a claim from
  *  a source other than the declared device is the fake-sensor signal.
@@ -46,10 +65,19 @@ export interface ShipmentAdvisoryFlags {
    *  un-dispute path in v1 (dispute engine = block 10). Set in the
    *  event loop, not here — it is event-driven, not derived. */
   disputed?: boolean;
+  /** 216-3 (audit H-1): at least one evidence ref names the hop's
+   *  counterparty as issuer — a self-serving channel: the actor
+   *  ASSERTS the claim on the receiver's behalf. Flagged for review;
+   *  it no longer counts as a trusted source for violation flags. */
+  counterpartyIssued?: boolean;
+  /** 216-3 (audit M-4): plan-declared leg amount from the canonical
+   *  offer — carried on the hop so settle can compare the requested
+   *  pay without re-reading terms. Derived, not a flag. */
+  planAmountUsdc?: string;
 }
 
 /** ShipmentHop plus the derived advisory flags (214-2). */
-export type AdvisoryShipmentHop = ShipmentHop & ShipmentAdvisoryFlags;
+export type AdvisoryShipmentHop = SupplyChainHop & ShipmentAdvisoryFlags;
 
 /** Post-pass over the derived hops — mutates flags in place. */
 export function applyAdvisoryFlags(hops: Map<number, AdvisoryShipmentHop>): void {
@@ -59,23 +87,33 @@ export function applyAdvisoryFlags(hops: Map<number, AdvisoryShipmentHop>): void
       hop.missingEvidence = true;
     }
     const declaredDevice = hop.roles?.device?.address?.toLowerCase();
+    // 216-3 (audit H-1): a "device" whose address IS the asserting
+    // actor is a self-declared sensor — it cannot vouch for itself,
+    // so it provides no trusted channel at all.
+    const selfDeclaredDevice =
+      declaredDevice !== undefined &&
+      hop.rolesAssertedBy?.toLowerCase() === declaredDevice;
+    const trustedDevice = selfDeclaredDevice ? undefined : declaredDevice;
     for (const ref of hop.evidence ?? []) {
-      // M-1 trusted source: a hop party OR the declared device — a
-      // declared sensor's own reading is a trusted channel, not a
-      // violation (previously every non-party claim fired, flagging
-      // clean cold-chain data).
+      if (ref.issuerIsCounterparty === true) hop.counterpartyIssued = true;
+      // 216-3 (audit H-1): trusted = the declared device ONLY — and
+      // never a self-declared one. Hop-party issuers (actor or
+      // counterparty) are self-claims: provenance stays on the ref
+      // (issuerIsHopParty) but they no longer suppress the violation
+      // advisory — "this data needs policy review" is the honest call.
       const trusted =
-        ref.issuerMatchesParty === true ||
-        (declaredDevice !== undefined && ref.issuer.address.toLowerCase() === declaredDevice);
+        trustedDevice !== undefined && ref.issuer.address.toLowerCase() === trustedDevice;
       if (ref.type === "temperature" && !trusted) hop.tempViolation = true;
       if (ref.type === "gps" && !trusted) hop.gpsAnomaly = true;
       // S3: a telemetry ref from a source ≠ the declared sensor —
       // matched on ref type so a rogue can't evade by declaring
-      // issuer.type "org" (audit M-1 evasion).
+      // issuer.type "org" (audit M-1 evasion). A self-declared device
+      // provides no baseline to compare against — the violation flags
+      // above carry that signal instead.
       if (
-        declaredDevice !== undefined &&
+        trustedDevice !== undefined &&
         TELEMETRY_TYPES.has(ref.type) &&
-        ref.issuer.address.toLowerCase() !== declaredDevice
+        ref.issuer.address.toLowerCase() !== trustedDevice
       ) {
         hop.fakeSensor = true;
       }

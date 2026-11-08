@@ -29,7 +29,7 @@ import {
   verifyHop,
 } from "../../src/server/lib/econ-ledger/supply-chain/shipment";
 import { InMemoryHopExecutor } from "../../src/server/lib/econ-ledger/supply-chain/executor";
-import { makeChain } from "./helpers/chain-fixture";
+import { makeChain, type ChainHopCtx } from "./helpers/chain-fixture";
 
 const CLIENT = "0x" + "aa".repeat(20) as `0x${string}`;
 const SENSOR = "0x" + "dd".repeat(20) as `0x${string}`;
@@ -45,7 +45,7 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
     const chain = await makeChain({
       hops: 3,
       lifecycle: "verified",
-      roles: (hop) => ({
+      roles: (hop: ChainHopCtx) => ({
         custodian: { address: hop.receiver, type: "org" },
         device: { address: SENSOR, type: "device" },
       }),
@@ -62,7 +62,7 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
       expect(hop.status).toBe("verified");
       expect(hop.evidence).toHaveLength(2);
       // sensor telemetry is honestly marked non-party (issuer ∉ custody)
-      expect(hop.evidence?.[0]?.issuerMatchesParty).toBe(false);
+      expect(hop.evidence?.[0]?.issuerIsHopParty).toBe(false);
       // but the DECLARED device is a trusted source → all flags off
       expect(hop.tempViolation).toBeUndefined();
       expect(hop.fakeSensor).toBeUndefined();
@@ -76,7 +76,7 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
     expect(events.filter((e) => e.kind === "pay")).toHaveLength(3);
     expect(events.filter((e) => e.kind === "verify")).toHaveLength(3);
     // every hop job settled through the executor
-    const settled = (chain.executor as { settled: Array<{ jobId: string }> }).settled;
+    const settled = (chain.executor as InMemoryHopExecutor).settled;
     expect(settled.map((s) => s.jobId).sort()).toEqual([0, 1, 2].map((i) => chain.jobId(i)).sort());
   });
 
@@ -147,8 +147,8 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
     // gpsAnomaly fires too (independent flags, audit M-1)
     expect(hop.gpsAnomaly).toBe(true);
     // the rogue ref is honestly marked as non-party too (213-5 H-1)
-    expect(hop.evidence?.[0]?.issuerMatchesParty).toBe(false);
-    expect(hop.evidence?.[1]?.issuerMatchesParty).toBe(true);
+    expect(hop.evidence?.[0]?.issuerIsHopParty).toBe(false);
+    expect(hop.evidence?.[1]?.issuerIsHopParty).toBe(true);
   });
 
   it("S3: no declared device → cannot judge fake — flag stays off", async () => {
@@ -164,7 +164,7 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
     const { hops } = await chain.state();
     expect(hops[0]?.fakeSensor).toBeUndefined();
     expect(hops[0]?.gpsAnomaly).toBe(true);
-    expect(hops[0]?.evidence?.[0]?.issuerMatchesParty).toBe(false);
+    expect(hops[0]?.evidence?.[0]?.issuerIsHopParty).toBe(false);
   });
 
   it("S4 missing telemetry: hop without evidence → missingEvidence flag, chain still valid", async () => {
@@ -215,15 +215,18 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
     const { hops } = await chain.state();
     expect(hops[0]?.gpsAnomaly).toBe(true);
     expect(hops[0]?.status).toBe("paid"); // advisory — not a block
-    expect(hops[0]?.evidence?.[0]?.issuerMatchesParty).toBe(false);
+    expect(hops[0]?.evidence?.[0]?.issuerIsHopParty).toBe(false);
     // no device declared → fakeSensor stays off (independent flags)
     expect(hops[0]?.fakeSensor).toBeUndefined();
   });
 
-  it("S5: gps ref asserted by a hop party → no anomaly (S1 stays clean)", async () => {
+  it("S5: gps ref asserted by a hop party → counterpartyIssued + gpsAnomaly (216-3 H-1)", async () => {
     // 214-5 (audit H-6): the negative case must CONTAIN a gps ref —
     // numeric evidencePerHop generates "document" refs and could never
-    // fail. Party-issued gps → issuerMatchesParty, no flag.
+    // fail. 216-3 (audit H-1): a party is no longer a TRUSTED issuer —
+    // the receiver claiming its own gps is an unverified self-serving
+    // channel: issuerIsHopParty marks provenance, counterpartyIssued
+    // marks the conflict, gpsAnomaly stays ON (advisory, not a block).
     const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
     const chain = await makeChain({
       hops: [{
@@ -236,8 +239,11 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
     });
     const { hops } = await chain.state();
     expect(hops[0]?.evidence?.[0]?.type).toBe("gps");
-    expect(hops[0]?.evidence?.[0]?.issuerMatchesParty).toBe(true);
-    expect(hops[0]?.gpsAnomaly).toBeUndefined();
+    expect(hops[0]?.evidence?.[0]?.issuerIsHopParty).toBe(true);
+    expect(hops[0]?.evidence?.[0]?.issuerIsCounterparty).toBe(true);
+    expect(hops[0]?.counterpartyIssued).toBe(true);
+    expect(hops[0]?.gpsAnomaly).toBe(true); // 216-3: party ≠ trusted
+    expect(hops[0]?.status).toBe("paid"); // advisory — not a block
   });
 
   it("S6 receiver dispute: receiver rejects → disputed flag, settle blocked, chain halts", async () => {
@@ -274,11 +280,12 @@ describe("scenario matrix (SLICE-214-2, §25)", () => {
     const post = await chain.state();
     expect(post.events.filter((e) => e.kind === "pay")).toHaveLength(0);
     expect(post.hops[0]?.status).toBe("handed_off");
-    // and the chain honestly halts — hop1 cannot handoff while hop0
-    // is unpaid (existing guard, asserted for completeness)
+    // and the chain honestly halts — 216-3 (audit M-6): hop1 cannot
+    // handoff while hop0 is DISPUTED (fails before the paid check,
+    // because a disputed custody claim must not roll forward)
     await expect(
       handoffHop(shipmentId, 1, {}, r1, r2, deps),
-    ).rejects.toThrow(/must be paid first/);
+    ).rejects.toThrow(/disputed/);
   });
 
   it("S6: dispute guards — only the hop's receiver may dispute, only a handed-off hop", async () => {
@@ -564,5 +571,220 @@ describe("audit hardening (SLICE-214-5)", () => {
     const { hops, events } = await chain.state();
     expect(events.filter((e) => e.kind === "pay")).toHaveLength(0);
     expect(hops[0]?.status).toBe("handed_off");
+  });
+});
+
+describe("216-3 audit hardening (SLICE-216-3)", () => {
+  it("H-8: control chars / bidi overrides in role labels are rejected on write", async () => {
+    // Audit H-8 triage: self-declared labels stay by-design, but the
+    // write schema must refuse control/format chars — log/terminal
+    // injection and look-alike labels — and blank strings. This test
+    // is the regression that keeps the read schema honest.
+    const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
+    const chain = await makeChain({
+      hops: [{ receiver: r1, amountUsdc: "10" }],
+      lifecycle: "offered",
+    });
+    const { deps, shipmentId } = chain;
+    await acceptShipment(shipmentId, 0, shipmentId, r1, deps);
+    for (const bad of [
+      "Maasvlakte\nForged Terminal",
+      "Coldport\u202Erotcod", // RTL bidi override — look-alike label
+      "tag\u0000cut",
+      "   ",
+    ]) {
+      await expect(
+        handoffHop(
+          shipmentId,
+          0,
+          {},
+          CLIENT,
+          r1,
+          deps,
+          undefined,
+          { custodian: { address: r1, type: "org", label: bad } },
+        ),
+      ).rejects.toThrow();
+    }
+    // nothing landed — the accept recorded, no handoff event exists,
+    // and the hop never left its offered state
+    const { hops, events } = await chain.state();
+    expect(events.filter((e) => e.kind === "work_accept")).toHaveLength(1);
+    expect(events.filter((e) => e.kind === "handoff")).toHaveLength(0);
+    expect(hops[0]?.status).not.toBe("handed_off");
+  });
+
+  it("C-2: zero-amount plan refuses at create; zero settle refuses before the executor", async () => {
+    const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
+    const executor = new InMemoryHopExecutor();
+    const chain = await makeChain({ hops: 1, lifecycle: "offered", executor });
+    const { deps } = chain;
+    await expect(
+      createShipment(
+        { shipmentId: `shp-zero-${Date.now()}`, client: CLIENT, hops: [{ receiver: r1, amountUsdc: "0" }] },
+        deps,
+      ),
+    ).rejects.toThrow(/> 0/);
+    // the zero-amount create died before ANY job was minted — the only
+    // created job is the fixture's own from makeChain above
+    expect(executor.created).toHaveLength(1);
+    // and a legit hop's settle path rejects "0" the same way
+    const chain2 = await makeChain({
+      hops: [{ receiver: r1, amountUsdc: "10" }],
+      lifecycle: "offered",
+      executor,
+    });
+    await handoffHop(chain2.shipmentId, 0, {}, CLIENT, r1, chain2.deps);
+    await expect(
+      settleHop(chain2.shipmentId, 0, "0", CLIENT, r1, chain2.deps),
+    ).rejects.toThrow(/> 0/);
+    expect(executor.settled).toHaveLength(0);
+  });
+
+  it("M-3/M-4: settle amount must match plan; re-settle is idempotent, mismatch is loud", async () => {
+    const executor = new InMemoryHopExecutor();
+    const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
+    const chain = await makeChain({
+      hops: [{ receiver: r1, amountUsdc: "10" }],
+      lifecycle: "offered",
+      executor,
+    });
+    const { deps, shipmentId } = chain;
+    await handoffHop(shipmentId, 0, {}, CLIENT, r1, deps);
+    // settle amount ≠ plan amount → refused BEFORE touching the executor
+    await expect(
+      settleHop(shipmentId, 0, "11", CLIENT, r1, deps),
+    ).rejects.toThrow(/plan/);
+    expect(executor.settled).toHaveLength(0);
+    // correct settle lands once
+    await settleHop(shipmentId, 0, "10", CLIENT, r1, deps);
+    expect(executor.settled).toHaveLength(1);
+    // same-amount retry is an idempotent no-op (C-2)
+    await settleHop(shipmentId, 0, "10", CLIENT, r1, deps);
+    expect(executor.settled).toHaveLength(1);
+    // a DIFFERENT amount on a paid hop is a loud mismatch, not silent
+    await expect(
+      settleHop(shipmentId, 0, "9", CLIENT, r1, deps),
+    ).rejects.toThrow(/diverges|mismatch|≠/);
+    expect(executor.settled).toHaveLength(1);
+    // and a wrong receiver is refused too
+    const r2 = "0x" + "b2".repeat(20) as `0x${string}`;
+    await expect(
+      settleHop(shipmentId, 0, "10", CLIENT, r2, deps),
+    ).rejects.toThrow(/receiver/);
+  });
+
+  it("M-2: a second verify verdict on the same hop is refused", async () => {
+    const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
+    const chain = await makeChain({
+      hops: [{ receiver: r1, amountUsdc: "10" }],
+      lifecycle: "settled",
+    });
+    const { deps, shipmentId } = chain;
+    await verifyHop(shipmentId, 0, "pass", CLIENT, r1, deps);
+    await expect(
+      verifyHop(shipmentId, 0, "fail", CLIENT, r1, deps),
+    ).rejects.toThrow(/already has a verdict/);
+  });
+
+  it("H-1: a declared device that IS the asserting actor is not trusted telemetry", async () => {
+    // Audit H-1: when the party that declares roles.device IS the
+    // device itself, the "trusted channel" collapses to self-assertion
+    // — a temp claim from that address must flag, not suppress.
+    const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
+    const chain = await makeChain({
+      hops: [{
+        receiver: r1,
+        amountUsdc: "10",
+        // the handoff actor (CLIENT) declares ITSELF as the sensor
+        roles: { device: { address: CLIENT, type: "device" } },
+        evidenceRefs: [
+          { type: "temperature", hash: TEMP_HASH, issuer: { address: CLIENT, type: "device" } },
+        ],
+      }],
+    });
+    const { hops } = await chain.state();
+    // self-asserted device ≠ trusted → the unverified temp claim flags
+    expect(hops[0]?.tempViolation).toBe(true);
+    expect(hops[0]?.evidence?.[0]?.issuerIsHopParty).toBe(true);
+  });
+
+  it("H-2: accept is receiver-only and single-shot", async () => {
+    const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
+    const chain = await makeChain({
+      hops: [{ receiver: r1, amountUsdc: "10" }],
+      lifecycle: "offered",
+    });
+    const { deps, shipmentId } = chain;
+    // a third party cannot accept on the receiver's behalf
+    await expect(
+      acceptShipment(shipmentId, 0, shipmentId, ROGUE, deps),
+    ).rejects.toThrow(/receiver/);
+    await acceptShipment(shipmentId, 0, shipmentId, r1, deps);
+    // a second canonical accept is refused — the slot is single-use
+    await expect(
+      acceptShipment(shipmentId, 0, shipmentId, r1, deps),
+    ).rejects.toThrow(/already|accepted/);
+  });
+
+  it("C-1: partial createJob failure attaches created jobIds; resume reuses them", async () => {
+    class FragileExecutor extends InMemoryHopExecutor {
+      override async createJob(spec: Parameters<InMemoryHopExecutor["createJob"]>[0]) {
+        if (spec.hopIndex === 1) throw new Error("chain exploded");
+        return super.createJob(spec);
+      }
+    }
+    const executor = new FragileExecutor();
+    const db = ({ ...createDatabase({ enabled: false }), db: {} as never }) as never;
+    const deps = { ledger: (db as { econLedger: never }).econLedger, executor };
+    const spec = {
+      shipmentId: `shp-c1-${Date.now()}`,
+      client: CLIENT,
+      hops: [
+        { receiver: "0x" + "b1".repeat(20) as `0x${string}`, amountUsdc: "10" },
+        { receiver: "0x" + "b2".repeat(20) as `0x${string}`, amountUsdc: "10" },
+      ],
+    };
+    const err = await createShipment(spec, deps).then(
+      () => undefined,
+      (e: Error & { createdJobIds?: Record<number, string> }) => e,
+    );
+    expect(err).toBeDefined();
+    // the failure carries the job minted before the explosion — ops
+    // can resume without double-funding hop0's escrow (audit C-1)
+    expect(err!.createdJobIds).toEqual({ 0: `job-${spec.shipmentId}-0` });
+    // resume: hop0 reuses the recovered id, hop1 mints fresh
+    const resumable = new InMemoryHopExecutor();
+    const { jobs } = await createShipment(
+      spec,
+      { ledger: deps.ledger, executor: resumable },
+      { resumeJobIds: err!.createdJobIds },
+    );
+    expect(jobs[0]?.jobId).toBe(`job-${spec.shipmentId}-0`);
+    // only hop1 went through createJob — no duplicate escrow for hop0
+    expect(resumable.created.map((s) => s.hopIndex)).toEqual([1]);
+  });
+
+  it("M-6: hop ttlSec is forwarded to the executor job spec", async () => {
+    const executor = new InMemoryHopExecutor();
+    const db = ({ ...createDatabase({ enabled: false }), db: {} as never }) as never;
+    const r1 = "0x" + "b1".repeat(20) as `0x${string}`;
+    await createShipment(
+      {
+        shipmentId: `shp-ttl-${Date.now()}`,
+        client: CLIENT,
+        hops: [{ receiver: r1, amountUsdc: "10", ttlSec: 3600 }],
+      },
+      { ledger: (db as { econLedger: never }).econLedger, executor },
+    );
+    expect(executor.created[0]?.ttlSec).toBe(3600);
+    // and a bad ttl is refused at create (executor contract)
+    await expect(
+      executor.createJob({
+        shipmentId: "s", hopIndex: 0,
+        provider: r1, evaluator: CLIENT, client: CLIENT,
+        amountUsdc: "10", description: "x", ttlSec: -5,
+      }),
+    ).rejects.toThrow(/ttlSec/);
   });
 });

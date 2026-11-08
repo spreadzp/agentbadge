@@ -57,13 +57,44 @@ const ADVISORY_FLAG_KEYS = [
   "missingEvidence",
   "gpsAnomaly",
   "disputed",
+  "counterpartyIssued",
 ] as const;
+
+/** 216-3 (audit M-7): per-process replay micro-cache — a hot read
+ *  loop on one shipmentId replays the SoT once per TTL instead of
+ *  re-projecting the stream per request. 404s cache too: an unknown
+ *  id hammering the endpoint doesn't re-scan the ledger each call. */
+const REPLAY_CACHE_TTL_MS = 5_000;
+const REPLAY_CACHE_MAX = 512;
+const replayCache = new Map<
+  string,
+  { at: number; res: ShipmentReplayResponse | null }
+>();
 
 export async function shipmentReplay(
   ledger: EconLedgerStore,
   shipmentId: string,
 ): Promise<ShipmentReplayResponse | null> {
-  const state = await shipmentState(ledger, shipmentId);
+  const cached = replayCache.get(shipmentId);
+  if (cached && Date.now() - cached.at < REPLAY_CACHE_TTL_MS) return cached.res;
+  const res = await buildReplay(ledger, shipmentId);
+  replayCache.set(shipmentId, { at: Date.now(), res });
+  if (replayCache.size > REPLAY_CACHE_MAX) {
+    // oldest-first eviction — Map iterates in insertion order.
+    replayCache.delete(replayCache.keys().next().value!);
+  }
+  return res;
+}
+
+async function buildReplay(
+  ledger: EconLedgerStore,
+  shipmentId: string,
+): Promise<ShipmentReplayResponse | null> {
+  // 216-3 (audit M-7): bound the stream read at the query — cap+1 rows
+  // is enough to detect an over-cap stream without projecting it.
+  const state = await shipmentState(ledger, shipmentId, {
+    limit: REPLAY_MAX_EVENTS + 1,
+  });
   if (state.events.length === 0 || state.client === undefined) return null;
   const refuse = (reason: string): null => {
     logger.warn("shipment replay refused", { shipmentId, reason });

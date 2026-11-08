@@ -58,7 +58,7 @@ const FULL_RESPONSE: ShipmentReplayResponse = {
           hash: HASH,
           issuer: { address: SENSOR, type: "device" },
           uri: "https://example.com/sensor/1",
-          issuerMatchesParty: false,
+          issuerIsHopParty: false,
         },
       ],
       evidenceAssertedBy: CLIENT,
@@ -85,7 +85,7 @@ describe("ShipmentReplayResponseSchema (215-1 contract)", () => {
     const res = ShipmentReplayResponseSchema.safeParse(FULL_RESPONSE);
     expect(res.success).toBe(true);
     if (res.success) {
-      expect(res.data.hops[0]?.evidence?.[0]?.issuerMatchesParty).toBe(false);
+      expect(res.data.hops[0]?.evidence?.[0]?.issuerIsHopParty).toBe(false);
       expect(res.data.aggregate.completedPct).toBe(50);
     }
   });

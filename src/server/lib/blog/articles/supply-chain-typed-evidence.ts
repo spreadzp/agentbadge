@@ -6,7 +6,7 @@ export const article: BlogArticle = {
   title:
     "Brick #2: A Link Is Not a Fact — Typed Evidence in a Verifiable Supply Chain",
   description:
-    "A handoff event says custody moved — but where is the proof? Brick #2 adds typed evidence references {type, hash, issuer, uri?} to the handoff payload: proof that travels with the transition, replayed with evidenceAssertedBy + issuerMatchesParty provenance. Includes the adversarial AI audit story — 0 Critical, 2 High, 7 Medium findings, all fixed or documented.",
+    "A handoff event says custody moved — but where is the proof? Brick #2 adds typed evidence references {type, hash, issuer, uri?} to the handoff payload: proof that travels with the transition, replayed with evidenceAssertedBy + issuerIsHopParty provenance. Includes the adversarial AI audit story — 0 Critical, 2 High, 7 Medium findings, all fixed or documented.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-11-06",
@@ -24,7 +24,7 @@ export const article: BlogArticle = {
   ],
   readingTime: "7 min",
   shortAnswer:
-    "Typed evidence is an optional list of {type, hash, issuer, uri?} references on a handoff event — seven write types, 1–32 refs, URI allowlist — replayed into per-hop state with evidenceAssertedBy and issuerMatchesParty provenance. A hash proves bytes existed, not that they are true; advisories warn, never block. Shipped after an adversarial AI audit (2 High, 7 Medium, all resolved).",
+    "Typed evidence is an optional list of {type, hash, issuer, uri?} references on a handoff event — seven write types, 1–32 refs, URI allowlist — replayed into per-hop state with evidenceAssertedBy and issuerIsHopParty provenance. A hash proves bytes existed, not that they are true; advisories warn, never block. Shipped after an adversarial AI audit (2 High, 7 Medium, all resolved).",
   heroImage: "/images/blog/supply-chain-typed-evidence-hero.webp",
   ogImage: "/images/blog/supply-chain-typed-evidence-og.jpeg",
   status: "EXPERIMENT",
@@ -109,9 +109,9 @@ export const article: BlogArticle = {
         "No — the ledger stores the reference, never fetches it. A hash proves specific bytes existed, not that they are accurate; an issuer is a self-declared claim (the same advisory layer as participant roles); resolving a URI is a trust decision each consumer makes separately. Issuer registries, countersigned evidence and oracle attestations are future layers.",
     },
     {
-      question: "What are issuerMatchesParty and evidenceAssertedBy?",
+      question: "What are issuerIsHopParty and evidenceAssertedBy?",
       answer:
-        "Read-model annotations added by the replay projection. issuerMatchesParty flags whether an evidence issuer is one of the two parties in the hop (a party vouching for its own data is weaker than an independent issuer); evidenceAssertedBy records which actor attached the refs at write time — neither exists in the stored event.",
+        "Read-model annotations added by the replay projection. issuerIsHopParty flags whether an evidence issuer is one of the two parties in the hop (a party vouching for its own data is weaker than an independent issuer); evidenceAssertedBy records which actor attached the refs at write time — neither exists in the stored event.",
     },
     {
       question: "What did the AI audit find in the evidence implementation?",
@@ -139,7 +139,7 @@ export const article: BlogArticle = {
     {
       id: "c41-replay-annotations",
       status: "VERIFIED",
-      text: "The replay read model lifts payload.evidence into ShipmentHop.evidence, adds per-ref issuerMatchesParty and per-hop evidenceAssertedBy, and gates claim-lifting on the canonical event sequence so forged events never enter public state.",
+      text: "The replay read model lifts payload.evidence into ShipmentHop.evidence, adds per-ref issuerIsHopParty and per-hop evidenceAssertedBy, and gates claim-lifting on the canonical event sequence so forged events never enter public state.",
       evidence: [
         {
           type: "github",

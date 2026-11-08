@@ -6,7 +6,7 @@ export const article: BlogArticle = {
   title:
     "Brick #4: Show Me the Evidence - a Verifiable Vitrine for Agent Supply Chains",
   description:
-    "A public, embeddable JSON replay endpoint - GET /api/ledger/shipments/:id - that lets anyone verify a shipment's history: canonical timeline, per-hop roles/evidence with *AssertedBy provenance, issuerMatchesParty, aggregate state and a machine-readable limits array. Includes the read-path adversarial audit story: 0 Critical, 5 High, 7 Medium findings, all fixed or documented.",
+    "A public, embeddable JSON replay endpoint - GET /api/ledger/shipments/:id - that lets anyone verify a shipment's history: canonical timeline, per-hop roles/evidence with *AssertedBy provenance, issuerIsHopParty, aggregate state and a machine-readable limits array. Includes the read-path adversarial audit story: 0 Critical, 5 High, 7 Medium findings, all fixed or documented.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-11-07",
@@ -134,7 +134,7 @@ export const article: BlogArticle = {
     {
       question: "How do roles and evidence provenance work in the replay response?",
       answer:
-        "Every hop carries rolesAssertedBy and evidenceAssertedBy naming the address that made the claim - roles and evidence are self-declared metadata, never verified identity. issuerMatchesParty on each evidence ref tells the reader whether the issuer is a hop party (custodian/receiver/client) or an outside source like a sensor device - verifiable from the addresses in the payload itself.",
+        "Every hop carries rolesAssertedBy and evidenceAssertedBy naming the address that made the claim - roles and evidence are self-declared metadata, never verified identity. issuerIsHopParty on each evidence ref tells the reader whether the issuer is a hop party (custodian/receiver/client) or an outside source like a sensor device - verifiable from the addresses in the payload itself.",
     },
   ],
   claims: [

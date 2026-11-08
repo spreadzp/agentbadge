@@ -11,7 +11,7 @@
  *  - hops: plan + derived state per hop, INCLUDING the advisory flag
  *    set (tempViolation, fakeSensor, missingEvidence, gpsAnomaly,
  *    disputed) and provenance annotations (rolesAssertedBy,
- *    evidenceAssertedBy, issuerMatchesParty) — final list per O-215-1.
+ *    evidenceAssertedBy, issuerIsHopParty, issuerIsCounterparty) — final list per O-215-1.
  *  - limits: honest-limitation strings, ALWAYS present and non-empty
  *    (D-215-3) — the vitrine declares what it does NOT prove.
  *
@@ -60,12 +60,17 @@ export const ReplayTimelineEntrySchema = z.object({
 export type ReplayTimelineEntry = z.infer<typeof ReplayTimelineEntrySchema>;
 
 /** Evidence ref as surfaced by the replay — the payload ref plus the
- *  projection-time annotation `issuerMatchesParty` (is the self-declared
+ *  projection-time annotation `issuerIsHopParty` (is the self-declared
  *  issuer one of the hop's parties). Mirrors ShipmentEvidenceRefSchema
  *  in @agentbadge/econ-events api.ts, kept local because that schema is
  *  not exported from the package index. */
 export const ReplayEvidenceRefSchema = EvidenceRefSchema.extend({
-  issuerMatchesParty: z.boolean(),
+  /** 216-3 (audit H-1): renamed — membership in the hop's party set
+   *  is a provenance fact, never an endorsement of the claim. */
+  issuerIsHopParty: z.boolean(),
+  /** 216-3 (audit H-1): issuer IS the hop's counterparty — the actor
+   *  asserts the claim on the receiver's behalf (self-serving channel). */
+  issuerIsCounterparty: z.boolean().optional(),
 });
 export type ReplayEvidenceRef = z.infer<typeof ReplayEvidenceRefSchema>;
 
@@ -80,14 +85,16 @@ export const ReplayHopSchema = z.object({
   amountUsdc: z.string().regex(DECIMAL_USDC),
   /** offered → handed_off → paid → verified (derived, never caller input). */
   status: z.enum(["offered", "handed_off", "paid", "verified"]),
-  /** ERC-8183 job bound to the hop (0x0/deferred → omitted). */
-  jobId: z.string().min(1).optional(),
+  /** ERC-8183 job bound to the hop (0x0/deferred → omitted).
+   *  216-3 (audit H-7): bounded — an unbounded id is a payload bomb. */
+  jobId: z.string().min(1).max(128).optional(),
   /** Settle transaction hash when the pay leg landed onchain. */
   txHash: z.string().regex(HEX32).optional(),
   roles: ParticipantRolesSchema.optional(),
-  rolesAssertedBy: z.string().min(1).optional(),
+  /** 216-3 (audit H-7): provenance actors are addresses — bound them. */
+  rolesAssertedBy: z.string().regex(ADDRESS).optional(),
   evidence: z.array(ReplayEvidenceRefSchema).optional(),
-  evidenceAssertedBy: z.string().min(1).optional(),
+  evidenceAssertedBy: z.string().regex(ADDRESS).optional(),
   // Advisory flags (applyAdvisoryFlags, final list per O-215-1) —
   // "this data needs policy review", never a verdict.
   tempViolation: z.boolean().optional(),
@@ -95,6 +102,8 @@ export const ReplayHopSchema = z.object({
   missingEvidence: z.boolean().optional(),
   gpsAnomaly: z.boolean().optional(),
   disputed: z.boolean().optional(),
+  /** 216-3 (audit H-1): counterparty-issued evidence seen on the hop. */
+  counterpartyIssued: z.boolean().optional(),
 });
 export type ReplayHop = z.infer<typeof ReplayHopSchema>;
 
@@ -120,6 +129,9 @@ export const REPLAY_LIMITS_V1 = [
   // and writer authentication lives at the ledger layer, not here.
   "caps: ≤256 hops / ≤4096 events",
   "status lifted from canonical slots — writer trust at ledger layer",
+  // 216-3 (audit M-9): the pay leg echoes what the settle wrote — the
+  // vitrine does not independently verify the chain tx.
+  "pay/txHash are ledger-asserted — not independently chain-verified",
 ] as const;
 
 export const ShipmentReplayResponseSchema = z.object({

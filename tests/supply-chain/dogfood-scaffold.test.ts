@@ -48,9 +48,15 @@ describe("supply-chain-dogfood --dry-run", () => {
     for (const [i, hop] of plan.entries()) {
       expect(hop.hopIndex).toBe(i);
       expect(hop.receiver).toMatch(/^0x[0-9a-f]{40}$/);
-      expect(hop.evaluator).toMatch(/^0x[0-9a-f]{40}$/);
+      // 216-3 (audit H-4): honest field name — the LOGICAL evaluator,
+      // since the ops evaluator EOA signs the settle onchain.
+      expect(hop.logicalEvaluator).toMatch(/^0x[0-9a-f]{40}$/);
       expect(hop.amountUsdc).toMatch(/^\d+(\.\d+)?$/);
     }
+    // 216-3 (audit H-4): the output names the trust boundary out loud.
+    expect(out.notes).toContain(
+      "settlement is ops-settled — logicalEvaluator ≠ signing evaluator",
+    );
 
     // Result: one job per hop, every hop verified, shipment completed.
     const jobs = out.jobs as Array<Record<string, unknown>>;
@@ -71,8 +77,22 @@ describe("supply-chain-dogfood --dry-run", () => {
 });
 
 describe("supply-chain-dogfood --live (config seam for 216-4)", () => {
+  it("--live without --yes refuses before touching keys or chain (216-3 H-9)", () => {
+    // A bare --live run must stop on the consent gate — spending real
+    // USDC is never the default, even when every key is configured.
+    const r = runDogfood(["--live"]);
+    expect(r.status).not.toBe(0);
+    expect(`${r.stdout}\n${r.stderr}`).toMatch(/--yes/);
+  });
+
+  it("--live AND --dry-run is a hard conflict (216-3 H-9)", () => {
+    const r = runDogfood(["--live", "--dry-run", "--yes"]);
+    expect(r.status).not.toBe(0);
+    expect(`${r.stdout}\n${r.stderr}`).toMatch(/mutually exclusive/);
+  });
+
   it("fails fast with a config error when keys are missing — never touches chain", () => {
-    const r = runDogfood(["--live"], {
+    const r = runDogfood(["--live", "--yes"], {
       SC_DOGFOOD_ORG_KEY: "",
       SC_DOGFOOD_AGENT_KEY: "",
       SC_DOGFOOD_DEVICE_KEY: "",
@@ -83,5 +103,17 @@ describe("supply-chain-dogfood --live (config seam for 216-4)", () => {
     });
     expect(r.status).not.toBe(0);
     expect(`${r.stdout}\n${r.stderr}`).toMatch(/SC_DOGFOOD_\w+|key/i);
+  });
+
+  it("rejects an over-cap hop amount before any run (216-3 H-9)", () => {
+    const r = runDogfood(["--dry-run", "--amount=5"]);
+    expect(r.status).not.toBe(0);
+    expect(`${r.stdout}\n${r.stderr}`).toMatch(/out of range/);
+  });
+
+  it("rejects a zero hop amount before any run (216-3 H-9)", () => {
+    const r = runDogfood(["--dry-run", "--amount=0"]);
+    expect(r.status).not.toBe(0);
+    expect(`${r.stdout}\n${r.stderr}`).toMatch(/out of range/);
   });
 });

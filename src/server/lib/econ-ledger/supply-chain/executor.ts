@@ -33,15 +33,20 @@ import {
   refApproveFundTxs,
   refCompleteTx,
   refCreateJobTx,
+  REF_STATUS,
 } from "../../board/erc8183-ref";
-import { DECIMAL_USDC_RE, ShipmentOrderError } from "./state";
+import {
+  assertPositiveAmountUsdc,
+  DECIMAL_USDC_RE,
+  ShipmentOrderError,
+  usdcMicros,
+} from "./state";
 import type {
   HopJobExecutor,
   HopJobRef,
   HopJobSpec,
 } from "./types";
 
-const USDC_DECIMALS = 6;
 const DEFAULT_HOP_TTL_SEC = 48 * 3600;
 
 export class Erc8183HopExecutor implements HopJobExecutor {
@@ -55,10 +60,16 @@ export class Erc8183HopExecutor implements HopJobExecutor {
   ) {}
 
   async createJob(spec: HopJobSpec): Promise<HopJobRef> {
-    if (!DECIMAL_USDC_RE.test(spec.amountUsdc)) {
-      throw new ShipmentOrderError(`invalid amountUsdc: ${spec.amountUsdc}`);
+    // 216-3 (audit C-2): a zero-budget job is not an escrow — the
+    // settle budget check would skip it outright. Refuse at create.
+    assertPositiveAmountUsdc(spec.amountUsdc);
+    if (spec.ttlSec !== undefined && (!Number.isInteger(spec.ttlSec) || spec.ttlSec <= 0)) {
+      throw new ShipmentOrderError(`ttlSec must be a positive integer: ${spec.ttlSec}`);
     }
-    const expiredAt = BigInt(Math.floor(Date.now() / 1000) + DEFAULT_HOP_TTL_SEC);
+    // 216-3 (audit M-6): honor the hop's ttlSec when the plan sets one.
+    const expiredAt = BigInt(
+      Math.floor(Date.now() / 1000) + (spec.ttlSec ?? DEFAULT_HOP_TTL_SEC),
+    );
     const hashes = await sendAsRole(
       "client",
       [
@@ -82,10 +93,13 @@ export class Erc8183HopExecutor implements HopJobExecutor {
       throw new Error(`createJob tx ${txHash} mined without JobCreated log`);
     }
     // Budget + fund — built once, sequential sends (N-4).
-    const amount = toAtomic(spec.amountUsdc);
+    const amount = usdcMicros(spec.amountUsdc);
     const [approveTx, fundTx] = refApproveFundTxs(this.net, jobId, this.usdcToken, amount);
     const funded = await sendAsRole("client", [approveTx!, fundTx!], this.rpcUrl);
-    if (!funded?.length) {
+    // 216-3 (audit H-6 residual): sendAsRole returns null on any
+    // failure — a partial batch is impossible — but assert BOTH hashes
+    // anyway: approve alone must never read as funded.
+    if (!funded || funded.length !== 2) {
       // H-1: the job EXISTS onchain but is unfunded — throw with the
       // jobId so ops retries fund on that id instead of a phantom hop.
       throw new Error(
@@ -104,7 +118,30 @@ export class Erc8183HopExecutor implements HopJobExecutor {
       throw new ShipmentOrderError(`invalid amountUsdc: ${amountUsdc}`);
     }
     const job = await readRefJob(BigInt(jobId), this.net);
-    if (job && job.budget !== 0n && job.budget !== toAtomic(amountUsdc)) {
+    // 216-3 (audit C-2): FAIL CLOSED — an unreadable or absent job
+    // cannot prove its budget, so the settle refuses rather than
+    // signing an unchecked complete() on the wrong amount.
+    if (!job) {
+      throw new ShipmentOrderError(
+        `job ${jobId} unreadable or absent — settle refused (cannot verify budget)`,
+      );
+    }
+    // Idempotent settle: an already-Completed job returns without a
+    // new tx — lets the ledger leg converge after a failed append retry.
+    if (job.status === REF_STATUS.Completed) {
+      if (job.settledAmount !== usdcMicros(amountUsdc)) {
+        throw new ShipmentOrderError(
+          `job ${jobId} already settled at a different amount`,
+        );
+      }
+      return {};
+    }
+    if (job.status !== REF_STATUS.Funded && job.status !== REF_STATUS.Submitted) {
+      throw new ShipmentOrderError(
+        `job ${jobId} status ${job.status} is not settleable`,
+      );
+    }
+    if (job.budget !== usdcMicros(amountUsdc)) {
       throw new ShipmentOrderError(
         `settle amount ${amountUsdc} ≠ onchain budget ${job.budget} (job ${jobId})`,
       );
@@ -121,33 +158,38 @@ export class Erc8183HopExecutor implements HopJobExecutor {
   }
 }
 
-/** Exact decimal→atomic conversion; rejects non-decimal input (M-2). */
-function toAtomic(usdc: string): bigint {
-  if (!DECIMAL_USDC_RE.test(usdc)) {
-    throw new ShipmentOrderError(`invalid amountUsdc: ${usdc}`);
-  }
-  const [whole, frac = ""] = usdc.split(".");
-  const micros = BigInt(whole) * 10n ** BigInt(USDC_DECIMALS) +
-    BigInt((frac + "000000").slice(0, USDC_DECIMALS));
-  return micros;
-}
-
 /** Deterministic test/dogfood executor — same contract, no chain. */
 export class InMemoryHopExecutor implements HopJobExecutor {
   readonly created: HopJobSpec[] = [];
   readonly settled: Array<{ jobId: string; amountUsdc: string }> = [];
+  /** 216-3 (audit C-2): mirrors the chain executor's Completed check —
+   *  a repeated settle() on the same jobId is a no-op. */
+  private readonly settledIds = new Set<string>();
   /** Injected failure for the "failed hop preserves the log" AC. */
   failOnSettleJobId?: string;
 
   async createJob(spec: HopJobSpec): Promise<HopJobRef> {
+    // 216-3 (audit C-2): mirror the chain executor — a zero-amount hop
+    // is not an escrow, refuse it identically.
+    assertPositiveAmountUsdc(spec.amountUsdc);
+    if (spec.ttlSec !== undefined && (!Number.isInteger(spec.ttlSec) || spec.ttlSec <= 0)) {
+      throw new ShipmentOrderError(`ttlSec must be a positive integer: ${spec.ttlSec}`);
+    }
     this.created.push(spec);
     return { jobId: `job-${spec.shipmentId}-${spec.hopIndex}` };
   }
 
   async settle(jobId: string, amountUsdc: string): Promise<{ txHash?: string }> {
+    // 216-3 (audit C-2): idempotent like the chain executor — a
+    // re-settle of an already-settled job is a no-op, not a dup row.
+    if (this.settledIds.has(jobId)) return {};
     if (jobId === this.failOnSettleJobId) {
       throw new Error(`settle of ${jobId} rejected (injected)`);
     }
+    // Mark settled only AFTER a successful settle — a failed attempt
+    // must stay retryable (the chain executor does too: the job never
+    // reached Completed onchain).
+    this.settledIds.add(jobId);
     this.settled.push({ jobId, amountUsdc });
     return {};
   }

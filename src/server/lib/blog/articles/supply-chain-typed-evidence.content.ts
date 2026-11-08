@@ -67,7 +67,7 @@ export const supplyChainTypedEvidenceContent = `
   into <code>ShipmentHop.evidence</code> during replay — so
   <code>GET /api/ledger/shipments/:id</code> returns it per hop, annotated with
   <code>evidenceAssertedBy</code> (who attached it) and per-ref
-  <code>issuerMatchesParty</code> (whether the issuer is one of the two parties
+  <code>issuerIsHopParty</code> (whether the issuer is one of the two parties
   in that hop).
 </p>
 
@@ -90,7 +90,7 @@ export const supplyChainTypedEvidenceContent = `
           "hash": "0xcdcd…cdcd",
           "issuer": { "address": "0xbbbb…bbbb", "type": "org" },
           "uri": "ipfs://QmGps",
-          "issuerMatchesParty": true
+          "issuerIsHopParty": true
         }
       ],
       "evidenceAssertedBy": "0xaaaa…aaaa"
@@ -104,7 +104,7 @@ export const supplyChainTypedEvidenceContent = `
 }</code></pre>
 
 <p>
-  Three things worth reading in that JSON. <code>issuerMatchesParty: true</code>
+  Three things worth reading in that JSON. <code>issuerIsHopParty: true</code>
   because the GPS issuer (<code>0xbbbb…</code>) <em>is</em> the counterparty
   taking custody — a hop party vouching for its own data is weaker evidence
   than an independent issuer would be, and the flag makes that distinction
@@ -117,7 +117,7 @@ export const supplyChainTypedEvidenceContent = `
 
 <figure class="article-image">
   <img src="/images/blog/supply-chain-typed-evidence-d1.webp"
-       alt="Diagram: the evidence lifecycle — handoffHop write with evidenceRefs, strict write schema, append-only handoff event, lenient replay, ShipmentHop.evidence plus issuerMatchesParty and evidenceAssertedBy, per-hop evidence in the shipments API" />
+       alt="Diagram: the evidence lifecycle — handoffHop write with evidenceRefs, strict write schema, append-only handoff event, lenient replay, ShipmentHop.evidence plus issuerIsHopParty and evidenceAssertedBy, per-hop evidence in the shipments API" />
   <figcaption>
     The lifecycle of an evidence reference: asserted at write time by the party
     doing the handoff, validated by a strict schema, stored in the append-only
@@ -204,7 +204,7 @@ export const supplyChainTypedEvidenceContent = `
   Brick #1 established, not a registry lookup. A URI is fetched by nobody: the
   ledger stores the pointer, consumers decide whether to resolve it. And
   advisories are log warnings, not verdicts — a third-party issuer flags
-  <code>issuerMatchesParty: false</code>; it does not block the handoff.
+  <code>issuerIsHopParty: false</code>; it does not block the handoff.
 </p>
 
 <figure class="article-image">

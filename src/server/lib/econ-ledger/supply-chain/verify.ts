@@ -14,6 +14,7 @@ import {
   assertHopIndex,
   assertShipmentId,
   bound,
+  hopLockKey,
   seqFor,
   SHIPMENT_SOURCE,
   ShipmentOrderError,
@@ -49,7 +50,7 @@ export async function verifyHop(
 ): Promise<void> {
   assertShipmentId(shipmentId);
   assertHopIndex(hopIndex);
-  await withHopLock(`${shipmentId}:${hopIndex}`, async () => {
+  await withHopLock(hopLockKey(shipmentId, hopIndex), async () => {
     const { hops, client, events } = await shipmentState(deps.ledger, shipmentId, { light: true });
     const hop = hops.find((h) => h.hopIndex === hopIndex);
     if (!hop || statusRank(hop.status) < statusRank("paid")) {
@@ -60,12 +61,22 @@ export async function verifyHop(
     if (hop.disputed) {
       throw new ShipmentOrderError(`hop ${hopIndex} is disputed — verdict refused until resolution`);
     }
+    // 216-3 (audit M-2): one verdict per hop — the canonical slot is
+    // single-use, so a second verify is refused explicitly instead of
+    // silently landing in a foreign slot that lifts nothing.
+    if (events.some((e) => e.kind === "verify" && e.seq === seqFor(hopIndex, "verify"))) {
+      throw new ShipmentOrderError(
+        `hop ${hopIndex} already has a verdict — a second one is refused`,
+      );
+    }
     // evaluator = next hop's receiver, else the client (D-207-7) —
     // string-compare on caller-supplied actor (trusted-boundary, M-7).
+    // 216-3 (audit H-5): FAIL CLOSED — an undeterminable evaluator
+    // (receiver-less next hop AND no bound client) refuses the verdict.
     const evaluator = hops.find((h) => h.hopIndex === hopIndex + 1)?.receiver ?? client;
-    if (evaluator !== undefined && actor.toLowerCase() !== evaluator.toLowerCase()) {
+    if (evaluator === undefined || actor.toLowerCase() !== evaluator.toLowerCase()) {
       throw new ShipmentOrderError(
-        `verify actor ${actor.slice(0, 80)} ≠ hop evaluator ${evaluator} — ` +
+        `verify actor ${actor.slice(0, 80)} ≠ hop evaluator ${evaluator ?? "<undeterminable>"} — ` +
           `only the plan's evaluator may issue a verdict`,
       );
     }
@@ -131,7 +142,7 @@ export async function disputeHop(
 ): Promise<void> {
   assertShipmentId(shipmentId);
   assertHopIndex(hopIndex);
-  await withHopLock(`${shipmentId}:${hopIndex}`, async () => {
+  await withHopLock(hopLockKey(shipmentId, hopIndex), async () => {
     const { hops } = await shipmentState(deps.ledger, shipmentId, { light: true });
     const hop = hops.find((h) => h.hopIndex === hopIndex);
     if (!hop || statusRank(hop.status) < statusRank("handed_off")) {

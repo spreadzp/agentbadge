@@ -15,7 +15,7 @@ import {
   type EconomicEvent,
   HandoffPayloadSchema,
 } from "@agentbadge/econ-events";
-import { seqFor, SHIPMENT_SOURCE } from "./state";
+import { ADDRESS_RE, DECIMAL_USDC_RE, seqFor, SHIPMENT_SOURCE } from "./state";
 import { statusRank, type HopStatus } from "./types";
 import { applyAdvisoryFlags, type AdvisoryShipmentHop } from "./advisory";
 
@@ -38,9 +38,16 @@ export interface OfferTerms {
 export async function shipmentState(
   ledger: EconLedgerStore,
   shipmentId: string,
-  opts?: { light?: boolean },
+  /** `opts.limit` caps the underlying stream read (216-3 audit M-7) —
+   *  callers pass cap+1 and refuse when the row count exceeds the cap,
+   *  so an over-long stream never pays a full projection/scan. */
+  opts?: { light?: boolean; limit?: number },
 ): Promise<{ hops: AdvisoryShipmentHop[]; events: EconomicEvent[]; client?: string }> {
-  const rows = await ledger.listBySourceId(SHIPMENT_SOURCE, shipmentId);
+  const rows = await ledger.listBySourceId(
+    SHIPMENT_SOURCE,
+    shipmentId,
+    opts?.limit !== undefined ? { limit: opts.limit } : undefined,
+  );
   const events = rows.map((r: EconEventStored) => r.event);
   const hops = new Map<number, AdvisoryShipmentHop>();
   const light = opts?.light === true;
@@ -75,7 +82,17 @@ export async function shipmentState(
           const idx = h.hopIndex as number;
           planIndexes.add(idx);
           const hop = hops.get(idx) ?? { hopIndex: idx, status: "offered" as HopStatus };
-          if (typeof h.receiver === "string") hop.receiver = h.receiver;
+          // 216-3 (audit H-5): plan fields validate like the replay
+          // read — a malformed receiver/amount stays unset so every
+          // guard downstream fails closed instead of skipping the check.
+          if (typeof h.receiver === "string" && ADDRESS_RE.test(h.receiver)) {
+            hop.receiver = h.receiver;
+          }
+          if (typeof h.amountUsdc === "string" && DECIMAL_USDC_RE.test(h.amountUsdc)) {
+            // 216-3 (audit M-4): plan-declared leg amount — settle
+            // compares the requested pay against it before signing.
+            hop.planAmountUsdc = h.amountUsdc;
+          }
           if (typeof h.jobId === "string" && h.jobId.length > 0) hop.jobId = h.jobId;
           hops.set(idx, hop);
         }
@@ -103,9 +120,14 @@ export async function shipmentState(
       }
       if (!light && p.evidence && p.evidence.length > 0 && hop.evidence === undefined) {
         const parties = new Set([e.actor.toLowerCase(), (e.counterparty ?? "").toLowerCase()]);
+        const counterparty = (e.counterparty ?? "").toLowerCase();
         hop.evidence = p.evidence.map((r) => ({
           ...structuredClone(r),
-          issuerMatchesParty: parties.has(r.issuer.address.toLowerCase()),
+          // 216-3 (audit H-1): renamed issuerMatchesParty → issuerIsHopParty
+          // — membership is a fact, not an endorsement; and the
+          // counterparty (self-serving channel) gets its own marker.
+          issuerIsHopParty: parties.has(r.issuer.address.toLowerCase()),
+          issuerIsCounterparty: r.issuer.address.toLowerCase() === counterparty,
         }));
         hop.evidenceAssertedBy = e.actor;
       }
