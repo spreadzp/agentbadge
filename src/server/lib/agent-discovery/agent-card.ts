@@ -208,10 +208,20 @@ export function buildAgentCard(src: DiscoverySources): string {
         facilitator: env?.facilitatorUrl,
       },
       blockchain: {
-        network: env?.hederaNetwork ?? "testnet",
-        passport_token_id: env?.passportTokenId,
-        directory_topic_id: env?.directoryTopicId,
-        audit_topic_id: env?.auditTopicId,
+        // SLICE-218-8 (D-218-11/13): EVM-first — Arc is the primary
+        // settlement network (matches ab:payment). The Hedera/HCS
+        // identity stack stays readable under `legacy` — existing
+        // agents keep working; new agents mint on EVM.
+        network: `eip155:${env?.evmChainId ?? "5042"}`,
+        asset: "USDC",
+        legacy: {
+          network: env?.hederaNetwork ?? "testnet",
+          stack: "Hedera testnet (HCS/HBAR)",
+          note: "Legacy identity stack — read-only verify. Deprecated for new agents: EVM passport mint + Arc Task Board + USDC.",
+          passport_token_id: env?.passportTokenId,
+          directory_topic_id: env?.directoryTopicId,
+          audit_topic_id: env?.auditTopicId,
+        },
         multi_chain: {
           base_sepolia: {
             chain_id: 84532,

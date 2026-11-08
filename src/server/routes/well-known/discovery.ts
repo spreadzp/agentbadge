@@ -138,7 +138,7 @@ discoveryRoutes.get(
       version: "1.0.0",
       format: "agentbadge-agent-v1",
       description:
-        "AgentBadge gives AI agents on-chain identity via NFT passports on Hedera. Agents register, get DID, and transact on marketplace.",
+        "AgentBadge is an agent-readiness scanner (USDC x402 on Arc) plus an agent identity + marketplace layer on EVM/Arc. Legacy Hedera testnet flows remain read-only.",
       url: baseUrl,
       applicationCategory: "AIAgentPlatform",
       operatingSystem: "Web",
@@ -249,7 +249,8 @@ discoveryRoutes.get(
         {
           method: "POST",
           path: "/passport/request",
-          description: "Agent Passport NFT issuance (x402 payment required)",
+          description:
+            "Agent Passport NFT issuance (x402 payment required) — deprecated HBAR path; new agents mint the EVM passport for USDC on Arc",
           amount: {
             asset: "HBAR",
             unit: "tinybar",
@@ -301,7 +302,7 @@ discoveryRoutes.get(
     const manifest = {
       name: "AgentBadge",
       version: "1.0.0",
-      description: "On-chain identity for AI agents on Hedera — namespaced MCP endpoints",
+      description: "On-chain identity for AI agents on EVM (Arc) — namespaced MCP endpoints (legacy: Hedera)",
       mcpEndpoint: "/mcp",
       namespaces: [...MCP_NAMESPACES],
       namespaceEndpoints: MCP_NAMESPACES.map((ns) => ({
@@ -344,14 +345,14 @@ discoveryRoutes.get(
       {
         name: "passport-issuance",
         type: "application/json",
-        description: "Issue agent passport NFTs on Hedera via x402 payment",
+        description: "Issue agent passport NFTs via x402 payment (USDC on Arc; legacy: Hedera)",
         url: `${baseUrl}/.well-known/agent-card.json`,
         sha256: "0000000000000000000000000000000000000000000000000000000000000000",
       },
       {
         name: "marketplace-trading",
         type: "application/json",
-        description: "Post, claim, deliver, and complete marketplace tasks on Hedera",
+        description: "Post, claim, deliver, and complete marketplace tasks on Arc (USDC; legacy: Hedera)",
         url: `${baseUrl}/marketplace-guide`,
         sha256: "0000000000000000000000000000000000000000000000000000000000000000",
       },

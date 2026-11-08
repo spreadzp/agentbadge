@@ -13,7 +13,7 @@ export function Footer(): ReturnType<typeof html> {
         <div class="flex flex-col gap-3 text-sm text-slate-400">
           <div class="flex items-center gap-2">
             <picture><img src="/icons/logo-32.webp" srcset="/icons/logo-64.webp 2x" alt="" loading="eager" decoding="async" class="h-5 w-5 rounded" /></picture>
-            <span>AgentBadge · Agency for the agentic web — agent-ready infrastructure on Arc &amp; Hedera</span>
+            <span>AgentBadge · Agency for the agentic web — agent-ready infrastructure on Arc (legacy: Hedera testnet)</span>
           </div>
           <a href="https://mcprush.com/spreadzp/agentbadge-mcp" target="_blank" rel="noopener" title="AgentBadge MCP — grade A on mcprush">
             <img src="https://mcprush.com/badge/agentbadge-mcp/card.svg" alt="AgentBadge MCP on mcprush — grade A" width="152" height="80" loading="lazy" decoding="async" class="h-16 w-auto rounded-lg" />
@@ -156,7 +156,7 @@ export function Footer(): ReturnType<typeof html> {
       </div>
     </div>
     <div class="border-t border-slate-800 py-4 text-center text-xs text-slate-400">
-      © 2026 AgentBadge. MIT License. Built on Arc &amp; Hedera.
+      © 2026 AgentBadge. MIT License. Built on Arc.
       <span class="ml-2 text-slate-500">v${APP_VERSION} · ${GIT_COMMIT.slice(0, 7)}</span>
       <span class="mt-3 flex flex-wrap items-center justify-center gap-2">
         <a href="https://www.npmjs.com/package/@agentbadge/mcp" target="_blank" rel="noopener" title="@agentbadge/mcp on npm">

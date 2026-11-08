@@ -37,6 +37,7 @@ vi.mock("../src/server/lib/chain-ui.js", () => ({
   explorerTxUrl: (txId: string) => `https://explorer.test/tx/${txId}`,
   explorerName: () => "Explorer",
   accountPlaceholder: () => "0.0.xxxx",
+  chainDisplayName: () => "Arc",
   formatPrice: (raw: string | number) => `${raw} HBAR`,
 }));
 

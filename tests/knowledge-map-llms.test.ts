@@ -182,7 +182,9 @@ describe("SLICE-46-4: Knowledge-map extension + llms.txt", () => {
     it("preserves existing llms.txt content", async () => {
       const res = await app.request("/llms.txt");
       const text = await res.text();
-      expect(text).toContain("Agent Passport on Hedera");
+      // SLICE-218-8: scanner-first header — stale "Agent Passport on
+      // Hedera" title was replaced by the dynamic builder (218-7).
+      expect(text).toContain("AgentBadge — Agent Readiness Scanner");
     });
   });
 });

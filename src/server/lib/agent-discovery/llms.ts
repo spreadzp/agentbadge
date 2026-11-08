@@ -121,8 +121,8 @@ We offer consulting and development services for the agentic web:
 - **AI Agent Consulting** — Agent architecture, agent-ready APIs, MCP, agent cards, knowledge layers, agent economy, A2A, x402 machine payments, agent commerce. Make your product agent-ready.
 - **Backend Infrastructure** — Node.js, NestJS, Laravel, PostgreSQL, Redis, REST APIs, GraphQL, event-driven systems, microservices, Docker.
 - **API Development** — REST API design, OpenAPI specs, GraphQL, Hono, Express, TypeScript, API documentation.
-- **Blockchain Infrastructure** — Hedera, Ethereum, Arc, wallets, tokenization, Web3, HTS, HCS, EVM, crypto payments, micropayments, x402, agent economy, DeFi, NFT.
-- **Smart Contract Development** — Solidity, Hedera smart contracts, tokenization, DeFi, NFT, on-chain logic.
+- **Blockchain Infrastructure** — EVM, Arc, Ethereum, Base, wallets, tokenization, Web3, crypto payments, micropayments, x402, agent economy, DeFi, NFT (legacy: Hedera HTS/HCS).
+- **Smart Contract Development** — Solidity, EVM smart contracts, tokenization, DeFi, NFT, on-chain logic.
 - **MCP Server Development** — Model Context Protocol servers, agent tools, Claude/Cursor/Windsurf integrations.
 - **Web Development & Design** — React, Angular, Vue.js, WordPress, Laravel, Next.js, Nuxt.js, Svelte, HTML, HTMX, CSS, Tailwind, JavaScript, TypeScript, PHP, UI/UX design, responsive design, accessibility. Websites, landing pages, web apps.
 

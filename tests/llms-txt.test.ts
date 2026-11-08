@@ -31,7 +31,10 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
       }
     });
 
-    it("MCP_TOOLS_INDEX count matches registered MCP tools", () => {
+    it("GET /llms.txt lists all registered MCP tools (registry-driven)", async () => {
+      // SLICE-218-8: the served document renders the live registry —
+      // the hand-maintained MCP_TOOLS_INDEX table in hedera-core is no
+      // longer the source (F8). Same intent, asserted on the live route.
       registerPassportTools();
       registerAuditCatalogTools();
       registerDirectoryTools();
@@ -40,10 +43,13 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
       registerGuideTools();
       registerSigningTools();
       registerDiscoveryTools();
-      const registered = listTools();
-      expect(MCP_TOOLS_INDEX.length).toBe(registered.length);
-      for (const r of registered) {
-        expect(MCP_TOOLS_INDEX.find((t) => t.name === r.name)).toBeDefined();
+      const app = new Hono();
+      app.route("/", catalogRoutes);
+      app.route("/", discoveryManifestRoutes);
+      const res = await app.request("/llms.txt");
+      const text = await res.text();
+      for (const t of listTools()) {
+        expect(text).toContain(`\`${t.name}\``);
       }
     });
 
@@ -104,18 +110,19 @@ describe("SLICE-18-8: llms.txt upgrade", () => {
     it("response body contains new sections", async () => {
       const res = await app.request("/llms.txt");
       const text = await res.text();
-      expect(text).toContain("### MCP Tools");
-      expect(text).toContain("### Curl Examples");
-      expect(text).toContain("## Content Pages");
+      // SLICE-218-8: dynamic builder emits "## MCP Server" + "### Tools"
+      // from the live registry (was "### MCP Tools" / "### Curl Examples"
+      // / "## Content Pages" in the old static format).
+      expect(text).toContain("## MCP Server");
+      expect(text).toContain("### Tools");
     });
 
-    it("response body contains tool table with categories", async () => {
+    it("response body contains tool list from the registry", async () => {
       const res = await app.request("/llms.txt");
       const text = await res.text();
-      expect(text).toContain("| Tool | Category | Description |");
-      expect(text).toContain("| passport |");
-      expect(text).toContain("| directory |");
-      expect(text).toContain("| market |");
+      // Registry-driven list format: "- `tool_name` — description".
+      expect(text).toContain("`request_passport`");
+      expect(text).toContain("`register_agent`");
     });
   });
 });

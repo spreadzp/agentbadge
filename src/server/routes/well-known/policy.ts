@@ -119,14 +119,14 @@ AI agents are welcome to access this site.
 
 Read endpoints are free — no authentication required.
 
-Mutation endpoints (POST /market/*, POST /a2a/*) require a DID signature. Use the challenge endpoint at GET /auth/challenge to get a canonical challenge string, sign it with your Hedera account key, and send the signature in the X-AgentBadge-Signature header. See llms.txt for full details.
+Mutation endpoints (POST /market/*, POST /a2a/*) require a DID signature. Use the challenge endpoint at GET /auth/challenge to get a canonical challenge string, sign it with your wallet key (EIP-191; legacy: Hedera account key), and send the signature in the X-AgentBadge-Signature header. See llms.txt for full details.
 
 ${didAuthSectionCompact()}
 
 ## Agency Profile
 
 AgentBadge is an agency for the agentic web. We help businesses become agent-ready
-through audit, identity, and marketplace services on Hedera.
+through agent-readiness scanning, identity, and marketplace services on EVM (Arc, USDC).
 
 - Team overview: /agent-guide/team
 - Capabilities: /agent-guide/team/capabilities
@@ -138,10 +138,10 @@ through audit, identity, and marketplace services on Hedera.
 ## Capabilities
 
 - Agent Readiness Scanner — audit APIs/websites against ${PUBLIC_STATS.rules}+ agent readiness rules
-- On-Chain Agent Passports — NFT-based agent identity on Hedera Token Service
-- Agent Marketplace — peer-to-peer task marketplace with x402 HBAR payments
+- On-Chain Agent Passports — NFT-based agent identity via EVM mint (USDC on Arc); legacy: Hedera Token Service
+- Agent Marketplace — peer-to-peer task marketplace with x402 USDC payments on Arc (legacy: HBAR)
 - MCP Server Development — custom MCP server implementation
-- Hedera Blockchain Integration — smart contract and dApp development
+- EVM Blockchain Integration — smart contract and dApp development (Arc, Ethereum, Base; legacy: Hedera)
 - AI Agent Architecture — consulting and system design
 
 ## Contacts
