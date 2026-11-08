@@ -13,7 +13,6 @@ let app: Hono;
 const TEST_SOURCES: DiscoverySources = {
   baseUrl: "https://staging.agentbadge.xyz",
   authSection: "",
-  llmsCore: "",
   articles: [],
   faqEntries: [],
   tiers: [],

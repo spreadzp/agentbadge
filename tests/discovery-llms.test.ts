@@ -23,8 +23,6 @@ function mockSources(overrides: Partial<DiscoverySources> = {}): DiscoverySource
   return {
     baseUrl: "https://agentbadge.xyz",
     authSection: "## DID Signature Authentication\n\n...challenge...\n",
-    llmsCore:
-      "# AgentBadge\n\n> Agent identity, discovery, and micropayments on Arc.\n\n## Quick Start\n\n- [Get a passport](https://agentbadge.xyz/passport/request)\n",
     articles: [
       {
         slug: "test-article",

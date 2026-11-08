@@ -12,7 +12,6 @@ import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 const TEST_SOURCES: DiscoverySources = {
   baseUrl: "https://staging.agentbadge.xyz",
   authSection: "",
-  llmsCore: "",
   articles: [],
   faqEntries: [],
   tiers: [],

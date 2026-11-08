@@ -7,7 +7,6 @@ import type { DiscoverySources } from "../src/server/lib/agent-discovery";
 const TEST_SOURCES: DiscoverySources = {
   baseUrl: "https://staging.agentbadge.xyz",
   authSection: "",
-  llmsCore: "",
   articles: [],
   faqEntries: [],
   tiers: [],
@@ -75,8 +74,8 @@ describe("Well-known routes", () => {
       expect(payment).toBeDefined();
       expect(payment.protocol).toBe("x402");
       expect(payment.scheme).toBe("exact");
-      expect(payment.network).toMatch(/^hedera:/);
-      expect(payment.asset).toBe("HBAR");
+      expect(payment.network).toMatch(/^eip155:/);
+      expect(payment.asset).toBe("USDC");
       expect(payment.facilitator).toBeDefined();
     });
 

@@ -25,7 +25,6 @@ function mkSources(over: Partial<DiscoverySources> = {}): DiscoverySources {
   return {
     baseUrl: BASE,
     authSection: "## DID Signature Authentication\n\nstub",
-    llmsCore: "# Agent Passport on Hedera\n\n> stub",
     articles: [],
     faqEntries: [],
     tiers: [],
@@ -81,8 +80,8 @@ describe("buildAgentCard — A2A v1.0 canonical", () => {
     expect(provider.url).toBe(BASE);
     const caps = card.capabilities as Record<string, unknown>;
     expect(caps.extendedAgentCard).toBe(true);
-    expect(card.defaultInputModes).toEqual(["application/json"]);
-    expect(card.defaultOutputModes).toEqual(["application/json"]);
+    expect(card.defaultInputModes).toEqual(["text/plain"]);
+    expect(card.defaultOutputModes).toEqual(["text/plain", "application/json"]);
     expect(card.documentationUrl).toBeTruthy();
   });
 
@@ -91,14 +90,17 @@ describe("buildAgentCard — A2A v1.0 canonical", () => {
     expect(Array.isArray(ifs)).toBe(true);
     expect(ifs.length).toBeGreaterThan(0);
     expect(ifs[0].url).toBe(`${BASE}/a2a`);
-    expect(ifs[0].protocolBinding).toBe("HTTP+JSON");
+    expect(ifs[0].protocolBinding).toBe("JSONRPC");
     expect(ifs[0].protocolVersion).toBe("1.0");
   });
 
   it("declares x402 securityScheme", () => {
-    const schemes = card.securitySchemes as Record<string, { type: string; scheme: string }>;
-    expect(schemes.x402.type).toBe("http");
-    expect(schemes.x402.scheme).toBe("x402");
+    const schemes = card.securitySchemes as Record<
+      string,
+      { apiKeySecurityScheme: { location: string; name: string } }
+    >;
+    expect(schemes.x402.apiKeySecurityScheme.location).toBe("header");
+    expect(schemes.x402.apiKeySecurityScheme.name).toBe("X-PAYMENT");
   });
 
   it("skills have REQUIRED tags (v1.0)", () => {

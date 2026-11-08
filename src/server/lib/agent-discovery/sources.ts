@@ -3,14 +3,14 @@
  * agent-discovery module. `collectSources()` gathers live inputs once;
  * all builders in this package take `DiscoverySources` and are pure.
  *
- * Sources: getLlmsTxt()/getCatalog() (hedera-core), BLOG_ARTICLES,
+ * Sources: getCatalog() (hedera-core tiers), BLOG_ARTICLES,
  * FAQ entries, DID auth section, BASE_URL, enumerated app routes
  * (Hono app.routes), and optional SKU registry (EPIC-179, absent →
  * Paid Services section degrades).
  */
 
 import type { Hono } from "hono";
-import { getCatalog, getLlmsTxt, type TierEntry } from "@agentbadge/hedera-core";
+import { getCatalog, type TierEntry } from "@agentbadge/hedera-core";
 import { BLOG_ARTICLES, type BlogArticle } from "../blog-data";
 import { didAuthSectionCompact } from "../did-auth-docs";
 import { BASE_URL } from "../page-meta";
@@ -37,6 +37,13 @@ export interface DiscoverySku {
   endpoint: string;
   priceUsd: string;
   description?: string;
+  /**
+   * Non-USDC denomination when the SKU prices in a native asset
+   * (legacy HBAR passport tiers). SLICE-218-7: llms.txt groups these
+   * under a Legacy block so the file presents one payment model
+   * (USDC x402 on Arc) while still disclosing live endpoints.
+   */
+  nativeCurrency?: string;
 }
 
 export interface DiscoverySources {
@@ -44,8 +51,6 @@ export interface DiscoverySources {
   baseUrl: string;
   /** Compact DID auth section (did-auth-docs). */
   authSection: string;
-  /** Existing core llms.txt body from @agentbadge/hedera-core. */
-  llmsCore: string;
   /** Blog articles (markdown mirrors live at /blog/<slug>.md). */
   articles: BlogArticle[];
   /** FAQ pairs for llms-full.txt. */
@@ -154,7 +159,6 @@ export function collectSources(app?: Hono): DiscoverySources {
   return {
     baseUrl: BASE_URL,
     authSection: didAuthSectionCompact(),
-    llmsCore: getLlmsTxt(),
     articles: BLOG_ARTICLES,
     faqEntries: getFaqEntries(),
     tiers: getCatalog(),
@@ -169,6 +173,7 @@ export function collectSources(app?: Hono): DiscoverySources {
         endpoint: s.endpoint.path,
         priceUsd: s.price_usd ?? "dynamic",
         description: s.description,
+        nativeCurrency: s.price_native?.currency,
       })),
     apiInfo: {
       title: openApiConfig.info.title,

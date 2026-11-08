@@ -20,7 +20,6 @@ import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 const SRC: DiscoverySources = {
   baseUrl: "https://agentbadge.xyz",
   authSection: "",
-  llmsCore: "",
   articles: [],
   faqEntries: [],
   tiers: [],

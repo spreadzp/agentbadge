@@ -17,7 +17,6 @@ const GITBOOK_MCP = "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp"
 const SRC: DiscoverySources = {
   baseUrl: "https://agentbadge.xyz",
   authSection: "",
-  llmsCore: "",
   articles: [],
   faqEntries: [],
   tiers: [],

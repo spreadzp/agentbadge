@@ -12,7 +12,6 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { readFile } from "node:fs/promises";
 import { handleHttpToolCall, listTools } from "@agentbadge/mcp";
 
 import { useMemoryBoardStoreForTesting } from "../src/server/lib/board/json-store";
@@ -22,6 +21,8 @@ import { createBoardReadRoutes } from "../src/server/routes/board-api-read";
 import { createBoardGuideRoutes } from "../src/server/routes/agent-guide-hire";
 import { registerBoardTools } from "../src/mcp/board-tools";
 import { buildAgentCard } from "../src/server/lib/agent-discovery";
+import { collectSources } from "../src/server/lib/agent-discovery/sources";
+import { buildLlmsTxt } from "../src/server/lib/agent-discovery/llms";
 
 const SPEC = "## Fix flaky bounty e2e\nRun bunx vitest run until green.";
 
@@ -125,8 +126,10 @@ describe("agent-guide hire page", () => {
 });
 
 describe("llms.txt", () => {
-  it("documents the Arc Task Board workflow", async () => {
-    const llms = await readFile("public/llms.txt", "utf-8");
+  it("documents the Arc Task Board workflow", () => {
+    // SLICE-218-7: llms.txt is generated dynamically (public/llms.txt no
+    // longer committed) — assert on the builder output, not the disk file.
+    const llms = buildLlmsTxt(collectSources());
     expect(llms).toContain("Task Board");
     expect(llms).toContain("/api/board/cards");
     expect(llms).toContain("/receipt");
@@ -140,7 +143,6 @@ describe("agent-card", () => {
       buildAgentCard({
         baseUrl: "https://agentbadge.xyz",
         authSection: "",
-        llmsCore: "",
         articles: [],
         faqEntries: [],
         tiers: [],

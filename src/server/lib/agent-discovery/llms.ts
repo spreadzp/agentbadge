@@ -11,6 +11,7 @@
 
 import type { DiscoverySources, DiscoverySku } from "./sources";
 import { honestRefusalSection } from "./refusal-section";
+import { llmsCoreSection, mcpSection } from "./llms-core";
 
 /** Public API section rendered from enumerated app routes. */
 function publicApiSection(src: DiscoverySources): string {
@@ -31,11 +32,29 @@ function publicApiSection(src: DiscoverySources): string {
 function paidServicesSection(src: DiscoverySources): string {
   const skus: DiscoverySku[] = src.skus ?? [];
   if (skus.length === 0) return "";
-  const lines = skus.map(
-    (s) =>
-      `- [${s.name}](${src.baseUrl}/api/v1/services#${s.id}) — \`${s.id}\` — $${s.priceUsd} USDC (x402) — ${s.description ?? ""}`,
-  );
-  return `\n## Paid Services\n\n${lines.join("\n")}\n`;
+  // SLICE-218-7 (F3): one payment model — USDC x402 on Arc. SKUs priced
+  // in a native asset (legacy HBAR passport tiers) move to a labelled
+  // Legacy block instead of masquerading as "$dynamic USDC" entries;
+  // hiding live paid endpoints would misrepresent the catalog.
+  const usdc: string[] = [];
+  const legacy: string[] = [];
+  for (const s of skus) {
+    const line = `- [${s.name}](${src.baseUrl}/api/v1/services#${s.id}) — \`${s.id}\` — ${s.description ?? ""}`;
+    if (s.nativeCurrency) {
+      legacy.push(
+        `${line} — priced in ${s.nativeCurrency} (legacy asset; paid surfaces settle in USDC via x402 on Arc)`,
+      );
+    } else {
+      usdc.push(
+        `- [${s.name}](${src.baseUrl}/api/v1/services#${s.id}) — \`${s.id}\` — $${s.priceUsd} USDC (x402) — ${s.description ?? ""}`,
+      );
+    }
+  }
+  const legacyBlock =
+    legacy.length > 0
+      ? `\n\n### Legacy\n\n${legacy.join("\n")}`
+      : "";
+  return `\n## Paid Services\n\n${usdc.join("\n")}${legacyBlock}\n`;
 }
 
 /**
@@ -193,18 +212,20 @@ wallet signature — no API keys, no accounts.
 
 /**
  * llms.txt — compact discovery file (llmstxt.org).
- * Composition: core body (hedera-core; carries the H1 per llmstxt.org)
- * → DID auth → generated public API → paid services (EPIC-179,
- * degrades) → honest-refusal contract (EPIC-181) → capability sections.
+ * Composition: scanner-first core (SLICE-218-7, PUBLIC_STATS numbers)
+ * → getting-started → DID auth → generated public API → paid services
+ * (EPIC-179, degrades) → honest-refusal contract (EPIC-181) → MCP
+ * registry section → capability sections.
  */
 export function buildLlmsTxt(src: DiscoverySources): string {
   return [
-    src.llmsCore.trimEnd(),
+    llmsCoreSection(src),
     gettingStartedSection(src),
     src.authSection.trimEnd(),
     publicApiSection(src),
     paidServicesSection(src),
     honestRefusalSection(),
+    mcpSection(src),
     capabilitiesSection(src),
   ]
     .filter((s) => s.length > 0)

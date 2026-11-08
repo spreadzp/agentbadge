@@ -85,7 +85,6 @@ describe("llms-full.txt — guide links", () => {
     const src: DiscoverySources = {
       baseUrl: "https://agentbadge.xyz",
       authSection: "## Auth\n",
-      llmsCore: "# AgentBadge\n\n> test\n",
       articles: [],
       faqEntries: [],
       tiers: [],

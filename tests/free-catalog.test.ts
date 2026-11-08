@@ -168,7 +168,6 @@ function mockDiscoverySources(
   return {
     baseUrl: "https://agentbadge.xyz",
     authSection: "## Auth\n\nx\n",
-    llmsCore: "# AgentBadge\n\n> summary\n",
     articles: [],
     faqEntries: [],
     tiers: [],

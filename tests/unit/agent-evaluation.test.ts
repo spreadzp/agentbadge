@@ -21,7 +21,6 @@ function mkSources(over: Partial<DiscoverySources> = {}): DiscoverySources {
   return {
     baseUrl: BASE,
     authSection: "",
-    llmsCore: "# AgentBadge\n\n> stub",
     articles: [],
     faqEntries: [],
     tiers: [],
