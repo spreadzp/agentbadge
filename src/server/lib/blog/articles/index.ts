@@ -47,6 +47,7 @@ import { article as supplyChainTypedEvidence } from "./supply-chain-typed-eviden
 import { article as supplyChainScenarioMatrix } from "./supply-chain-scenario-matrix";
 import { article as supplyChainVerifiableShowcase } from "./supply-chain-verifiable-showcase";
 import { article as supplyChainLiveTestnet } from "./supply-chain-live-testnet";
+import { article as paymentInfrastructureFoundation } from "./payment-infrastructure-foundation";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -97,4 +98,5 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   supplyChainScenarioMatrix,
   supplyChainLiveTestnet,
   bedrijPrinciple,
+  paymentInfrastructureFoundation,
 ];
