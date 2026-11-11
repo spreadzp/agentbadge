@@ -27,7 +27,7 @@ import {
   saveFundingState,
   acquireLock,
   type FundingState,
-} from "../scripts/gec-funding-cctp.mts";
+} from "./../scripts/gec-funding-cctp.mjs";
 
 describe("parseUsdcAmount", () => {
   it("parses the planned 3.6 USDC burn → 3,600,000 microUSDC", () => {
