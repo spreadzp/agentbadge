@@ -36,7 +36,7 @@ function renderMarkdown(contentFile: string): string {
     return "";
   }
 }
-import { faqPageLd, articleLd, pageCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd } from "../lib/json-ld";
+import { faqPageLd, articleLd, pageCoreSchemas, personLd, breadcrumbFor, aboutPageLd, webPageLd, defaultCoreSchemas } from "../lib/json-ld";
 import { TEAM_MEMBERS } from "../lib/team-data";
 import { getRegistry } from "../registry/loader";
 import type { RegistryIndex } from "../registry/types";

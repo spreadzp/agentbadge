@@ -175,7 +175,6 @@ describe("SLICE-82-3: agent-card.json has auth block", () => {
       createDiscoveryRoutes(() => ({
         baseUrl: "https://agentbadge.xyz",
         authSection: "",
-        llmsCore: "",
         articles: [],
         faqEntries: [],
         tiers: [],

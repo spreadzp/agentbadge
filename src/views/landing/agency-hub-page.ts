@@ -190,7 +190,7 @@ function FaqSection() {
               What is an on-chain agent passport?
               <svg class="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <p class="mt-3 text-sm text-slate-400">An NFT passport on Hedera that serves as verifiable on-chain identity for your AI agent. It includes capabilities, tier, and a DID for agent-to-agent trust.</p>
+            <p class="mt-3 text-sm text-slate-400">An NFT passport on Arc that serves as verifiable on-chain identity for your AI agent. It includes capabilities, tier, and a DID for agent-to-agent trust.</p>
           </details>
           <details class="group rounded-lg border border-slate-800 bg-slate-900/50 p-5">
             <summary class="flex cursor-pointer items-center justify-between text-white font-medium">

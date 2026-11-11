@@ -184,7 +184,9 @@ export const article: BlogArticle = {
       id: "c42-audit-resolved",
       status: "VERIFIED",
       text: "An adversarial AI audit of the 214-1..3 deltas returned REQUEST CHANGES (0 Critical, 6 High, 7 Medium); all Highs were fixed in commit de2cf81 with per-finding regression tests, and Mediums M-5/M-6/M-7 were documented-accepted in decisions.md (D-214-5).",
-      evidence: [],
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/214-supply-chain-scenario-matrix/reviews/scenario-matrix-REVIEW.md" },
+      ],
     },
     {
       id: "c42-flags-advisory",

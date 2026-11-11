@@ -151,19 +151,27 @@ export const article: BlogArticle = {
       id: "c41-schema-split",
       status: "VERIFIED",
       text: "buildEconomicEvent defaults to strict handoff write validation and accepts mode: replay for stored events; the read schema keeps an open evidence type so future types never brick replay for older clients.",
-      evidence: [],
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/emit.ts" },
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/state.ts" },
+      ],
     },
     {
       id: "c41-audit-resolved",
       status: "VERIFIED",
       text: "An adversarial AI audit of the 213-1..3 deltas returned REQUEST CHANGES (0 Critical, 2 High, 7 Medium); all findings were fixed or documented-accepted in 213-5 with regression coverage — findings archived in docs/EPICS/213-supply-chain-evidence/reviews/.",
-      evidence: [],
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/213-supply-chain-evidence/reviews/evidence-REVIEW.md" },
+      ],
     },
     {
       id: "c41-evidence-not-truth",
       status: "VERIFIED",
       text: "Evidence refs are advisory pointers: no fetch, no artifact verification, issuers are self-declared claims, and advisories are log warnings that never block a write.",
-      evidence: [],
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/advisory.ts" },
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/claims.ts" },
+      ],
     },
     {
       id: "c41-package-published",

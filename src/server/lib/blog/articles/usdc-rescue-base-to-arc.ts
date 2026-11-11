@@ -93,8 +93,11 @@ export const article: BlogArticle = {
     },
   ],
   economicContext: {
-    summary:
-      "Recovery of stranded ERC-20 liquidity: 5 USDC rescued at ~4% cost. Demonstrates that gas-refuel + CCTP is a viable ops pattern for agent fleets where wallets accumulate balances without native gas.",
+    endpoints: {
+      services: "https://agentbadge.xyz/api/v1/services",
+      guide: "https://agentbadge.xyz/agent-guide/context",
+    },
+    payment: { supported: true, currency: "USDC" },
   },
   relatedResources: [
     { type: "github", label: "docs/SWAP case artifacts (SPEC, CASE-LOG, logs, shots)", url: "https://github.com/agentbadge/agentbadge/tree/main/docs/SWAP" },
@@ -133,7 +136,7 @@ export const article: BlogArticle = {
 <h2 id="cctp">CCTP: burn, wait, mint</h2>
 <p>With gas in place, the standard Circle CCTP path ran:</p>
 <ul>
-<li><code>USDC.approve(TokenMessengerV2, 5_000_000)</code> — <code>0xb37458778f83a8c45c762f6dd09bf45e6f25aef7d2d22405be2ca6ac763d5af1</code> (Base)</li>
+<li><code>USDC.approve(TokenMessengerV2, 5_000_000)</code> — <code>0xb37458778f83a8c45c762f6dd09bf45e6f25aef7d2d22405be2ca6ac763d5af1</code> (Base)<!-- secret-scan:allow: public tx hash --></li>
 <li><code>depositForBurn</code> — <code>0x2c60097d665bf5234de80bb1189efe20166b108819e124f129033ceae44dbc8c</code> (Base, mined 11:00:50 UTC)</li>
 </ul>
 <p><img src="/images/blog/usdc-rescue-burn.webp" alt="CCTP burn submitted on Base" /></p>
