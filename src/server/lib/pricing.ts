@@ -1,10 +1,21 @@
 /**
- * Fiat pricing tiers and product catalog.
+ * Fiat pricing tiers and product catalog — COMPATIBILITY PROJECTION.
  *
  * SLICE-67-2: Maps AgentBadge products to USD amounts and Stripe product names.
- * Used by the checkout endpoint to create Stripe Checkout Sessions without
- * hardcoding prices.
+ * SLICE-221-1 (D-221-2/D-221-5): `FIAT_PRODUCTS` is no longer the source of
+ * truth — it is derived from the canonical commerce catalog
+ * (lib/commerce-catalog). Legacy `listFiatProducts`/`getFiatProduct` keep
+ * working for `/api/payment/*` until SLICE-221-5 deprecates them.
+ *
+ * New code must use `listCommerceProducts`/`getCommerceProduct` —
+ * decimal-string prices, never float `amountUsd`.
  */
+
+import {
+  listCommerceProducts,
+  legacyProductIdFor,
+  type CommerceProduct,
+} from "./commerce-catalog";
 
 export interface FiatProduct {
   productId: string;
@@ -15,48 +26,36 @@ export interface FiatProduct {
   metadata: Record<string, string>;
 }
 
-export const FIAT_PRODUCTS: Record<string, FiatProduct> = {
-  "directory-listing": {
-    productId: "directory-listing",
-    name: "AgentBadge Directory Listing",
-    description: "Lifetime curated listing in the AgentBadge agent directory",
-    amountUsd: 29.99,
-    amountCents: 2999,
-    metadata: { product: "directory-listing", tier: "standard" },
-  },
-  "passport-bronze": {
-    productId: "passport-bronze",
-    name: "Agent Passport — Bronze Tier",
-    description: "Bronze tier on-chain agent passport NFT mint",
-    amountUsd: 9.99,
-    amountCents: 999,
-    metadata: { product: "passport", tier: "bronze" },
-  },
-  "passport-silver": {
-    productId: "passport-silver",
-    name: "Agent Passport — Silver Tier",
-    description: "Silver tier on-chain agent passport NFT mint",
-    amountUsd: 49.99,
-    amountCents: 4999,
-    metadata: { product: "passport", tier: "silver" },
-  },
-  "passport-gold": {
-    productId: "passport-gold",
-    name: "Agent Passport — Gold Tier",
-    description: "Gold tier on-chain agent passport NFT mint",
-    amountUsd: 199.99,
-    amountCents: 19999,
-    metadata: { product: "passport", tier: "gold" },
-  },
-  "passport-platinum": {
-    productId: "passport-platinum",
-    name: "Agent Passport — Platinum Tier",
-    description: "Platinum tier on-chain agent passport NFT mint",
-    amountUsd: 499.99,
-    amountCents: 49999,
-    metadata: { product: "passport", tier: "platinum" },
-  },
-};
+function toLegacyMetadata(product: CommerceProduct): Record<string, string> {
+  if (product.fulfillmentKind === "passport-mint") {
+    return {
+      product: "passport",
+      tier: product.productCode.slice("PASSPORT_".length).toLowerCase(),
+    };
+  }
+  return { product: "directory-listing", tier: "standard" };
+}
+
+function projectToFiat(product: CommerceProduct): FiatProduct {
+  const usd = product.prices.find((p) => p.currency === "USD");
+  const amountUsd = usd ? Number(usd.amount) : 0;
+  return {
+    productId: legacyProductIdFor(product.productCode)!,
+    name: product.name,
+    description: product.description,
+    amountUsd,
+    amountCents: Math.round(amountUsd * 100),
+    metadata: toLegacyMetadata(product),
+  };
+}
+
+/** Legacy fiat products — projection of the commerce catalog. */
+export const FIAT_PRODUCTS: Record<string, FiatProduct> = Object.fromEntries(
+  listCommerceProducts().map((p) => {
+    const fiat = projectToFiat(p);
+    return [fiat.productId, fiat];
+  }),
+);
 
 export function getFiatProduct(productId: string): FiatProduct | undefined {
   return FIAT_PRODUCTS[productId];
