@@ -76,6 +76,14 @@ export function startBackgroundJobs(): void {
   if (process.env.ARC_VENUE_ENABLED === "true") {
     startVenueBillingSweeper();
   }
+
+  // 217-8/217-9: TG archive workers (daily digest + weekly rollup doc).
+  // Self-gates on DATABASE_ENABLED + TG creds; logs skip-reason.
+  startArchiveWorkers({
+    events: getDatabase().events,
+    db: getDatabase(),
+    databaseEnabled: getConfig().database?.enabled ?? false,
+  });
 }
 
 // Capture unhandled errors from routes
