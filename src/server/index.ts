@@ -36,6 +36,7 @@ import { hostNormalizationMiddleware, trailingSlashMiddleware } from "./middlewa
 import { structuredNotFoundHandler } from "./middleware/structured-error-handler";
 import { ga4Pageview } from "./middleware/ga4-pageview";
 import { opsRoutes } from "./routes/ops";
+import { rescueTelemetryRoutes } from "./routes/rescue-telemetry";
 import { linkedinRoutes } from "./routes/linkedin";
 import { getDatabase } from "./lib/database";
 import {
@@ -48,7 +49,6 @@ import {
 import { loadConfig, getConfig } from "../config/env";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
 import { setDiscoveryApp } from "./routes/discovery";
-
 
 // Register verifiers (SLICE-24-4, SLICE-24-5)
 const verifierRegistry = VerifierRegistry.getInstance();
@@ -135,10 +135,8 @@ if (database.db) {
   logger.info("database: disabled (in-memory)");
 }
 
-// EPIC-140: x402 Hedera + MPP/Stripe + Base x402 gates extracted to
-// wiring/payments.ts — must stay AFTER notFound + config validation, BEFORE routes.
-// SLICE-169-9: async (lazy x402 imports) — awaited so the x402/MPP
-// middlewares still register before any route mounts.
+// EPIC-140: x402 + MPP/Stripe gates → wiring/payments.ts — AFTER notFound +
+// config validation, BEFORE routes. SLICE-169-9: async (lazy x402 imports).
 await wirePaymentGates(app);
 
 app.route("/", linkedinRoutes);
@@ -146,9 +144,11 @@ app.route("/", linkedinRoutes);
 // EPIC-140: ops routes (health, redirects, indexnow) extracted to routes/ops.ts
 app.route("/", opsRoutes);
 
+// 208-1c (D-208-39): rescue CLI telemetry ingest (no auth, rate-limited)
+app.route("/", rescueTelemetryRoutes);
+
 // EPIC-140: static-file middleware extracted to wiring/ops.ts
 wireStaticOps(app);
-
 
 // EPIC-140: core routes extracted to routes/index.ts
 registerCoreRoutes(app);
