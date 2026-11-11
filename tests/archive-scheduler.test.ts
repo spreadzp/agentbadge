@@ -194,6 +194,66 @@ describe("archive-scheduler — SLICE-217-7", () => {
     loop.stop();
   });
 
+  it("sendAtUtcHour: closed window holds until the send hour, then sends", async () => {
+    const cursors = new FakeCursors();
+    const run = vi.fn(async () => ({ messageId: 7 }));
+    const j = { ...job("traffic-daily", "daily", run), sendAtUtcHour: 10 };
+    // Yesterday's window closed at today 00:00. Before 10:00 — no send.
+    const loop = startArchiveLoop({
+      cursors,
+      jobs: [j],
+      now: () => iso("2026-11-10T09:30:00Z"),
+      autoStart: false,
+    });
+    await loop.tick();
+    expect(run).not.toHaveBeenCalled();
+    expect(cursors.commits).toHaveLength(0);
+    loop.stop();
+
+    const loop2 = startArchiveLoop({
+      cursors,
+      jobs: [j],
+      now: () => iso("2026-11-10T10:00:00Z"),
+      autoStart: false,
+    });
+    await loop2.tick();
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(cursors.commits).toHaveLength(1);
+    loop2.stop();
+  });
+
+  it("sendAtUtcHour: lagging cursor drains immediately (window.to+hour is past)", async () => {
+    const cursors = new FakeCursors();
+    cursors.rows.set("traffic-weekly", {
+      throughAt: BigInt(iso("2026-10-26T00:00:00Z")), // two weeks behind
+      note: null,
+    });
+    const run = vi.fn(async (w: ArchiveWindow) => {
+      return { note: new Date(w.from).toISOString() };
+    });
+    const j = { ...job("traffic-weekly", "weekly", run), sendAtUtcHour: 10 };
+    const loop = startArchiveLoop({
+      cursors,
+      jobs: [j],
+      now: () => iso("2026-11-10T03:00:00Z"), // 03:00 — before send hour
+      autoStart: false,
+    });
+    await loop.tick();
+    // Oldest unsent window Oct 26–Nov 2 closed Nov 2 → due long ago.
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run.mock.calls[0]![0]).toEqual({
+      from: iso("2026-10-26T00:00:00Z"),
+      to: iso("2026-11-02T00:00:00Z"),
+    });
+    // Next tick: Nov 2–9 closed Mon Nov 9 → due Nov 9 10:00, also past.
+    await loop.tick();
+    expect(run).toHaveBeenCalledTimes(2);
+    // Nov 9–16 has not closed yet → 3rd tick is a no-op.
+    await loop.tick();
+    expect(run).toHaveBeenCalledTimes(2);
+    loop.stop();
+  });
+
   it("stop() prevents further ticks; timer is unref'd", async () => {
     const cursors = new FakeCursors();
     const run = vi.fn(async () => ({}));

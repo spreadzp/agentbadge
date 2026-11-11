@@ -35,6 +35,12 @@ import {
 /** TG Bot API sendDocument hard limit is 50MB; alert past 45MB. */
 export const OVERSIZE_ALERT_BYTES = 45 * 1024 * 1024;
 
+/** Send hour for all archive streams: a just-closed window holds until
+ *  10:00 UTC (12:00 EET) instead of firing at 00:15 on the first tick —
+ *  daily digest lands in the morning, weekly doc Monday morning. Change
+ *  to 8 for 10:00 EET. */
+export const ARCHIVE_SEND_UTC_HOUR = 10;
+
 // ─── Cursor facade resolution ────────────────────────────────────
 
 /** In-memory ArchiveCursorFacade — used while @agentbadge/database
@@ -90,7 +96,10 @@ export function resolveArchiveCursors(
     commit: (stream, u) =>
       store.commitCursor(stream, {
         throughAt: u.throughAt,
-        messageId: u.messageId ?? null,
+        // Facade allows number; lastMessageId is pg int8 — coerce or
+        // commitCursor throws AFTER the TG send already succeeded, the
+        // cursor never advances and the window resends every tick.
+        messageId: u.messageId == null ? null : BigInt(u.messageId),
         note: u.note ?? null,
       }),
   };
@@ -149,6 +158,7 @@ export function buildArchiveJobs(deps: ArchiveWorkersDeps): ArchiveJob[] {
   const daily: ArchiveJob = {
     stream: "traffic-daily",
     kind: "daily",
+    sendAtUtcHour: ARCHIVE_SEND_UTC_HOUR,
     run: async (w) => {
       const rows = await fetchTrafficRowsInWindow(deps.events, w);
       const stats = collectStats(rows, (w.to - w.from) / 3600_000);
@@ -163,6 +173,7 @@ export function buildArchiveJobs(deps: ArchiveWorkersDeps): ArchiveJob[] {
   const weekly: ArchiveJob = {
     stream: "traffic-weekly",
     kind: "weekly",
+    sendAtUtcHour: ARCHIVE_SEND_UTC_HOUR,
     run: async (w) => {
       const out = await buildExport(
         { events: deps.events },
@@ -200,6 +211,7 @@ export function buildArchiveJobs(deps: ArchiveWorkersDeps): ArchiveJob[] {
     jobs.push({
       stream: "forensics-weekly",
       kind: "weekly",
+      sendAtUtcHour: ARCHIVE_SEND_UTC_HOUR,
       run: async (w) => {
         const out = await buildExport(
           { events: deps.events, forensics },

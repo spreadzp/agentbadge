@@ -41,6 +41,15 @@ export interface ArchiveJob {
   stream: string;
   kind: StreamKind;
   /**
+   * Hour-of-day (UTC, 0–23) at which a closed window becomes sendable:
+   * a window is due when `now >= window.to + sendAtUtcHour*3600_000`.
+   * Yesterday's daily digest therefore lands at e.g. 10:00 UTC today;
+   * the Mon–Sun weekly closes Mon 00:00 and sends Mon 10:00 — the
+   * once-per-week gate falls out of the weekly window boundary itself.
+   * Default 0 = send as soon as the window closes (legacy behavior).
+   */
+  sendAtUtcHour?: number;
+  /**
    * Sends/built-and-sends one window. Resolves → cursor commits
    * `window.to`. Rejects → cursor untouched, window retries next tick.
    */
@@ -82,6 +91,11 @@ export function startArchiveLoop(deps: ArchiveLoopDeps): ArchiveLoop {
       now(),
     );
     if (!w) return;
+    // Time-of-day gate: a just-closed window holds until the configured
+    // send hour. Lagging windows (cursor behind) are already past it —
+    // catch-up drains unchanged, one window per tick.
+    const dueAt = w.to + (job.sendAtUtcHour ?? 0) * 3_600_000;
+    if (now() < dueAt) return;
 
     const res = await job.run(w);
     // Commit-after-send: reaching here means run() resolved.

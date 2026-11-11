@@ -171,10 +171,18 @@ describe("archive-workers — SLICE-217-8/9", () => {
     };
     const c = resolveArchiveCursors({ archiveCursors: store } as never, vi.fn());
     expect(await c.get("s")).toEqual({ throughAt: 123n });
+    // number messageId must coerce to bigint — pg int8 rejects number
+    // and the post-send commit failure resends the window every tick.
     await c.commit("s", { throughAt: 5n, messageId: 9 });
     expect(store.commitCursor).toHaveBeenCalledWith("s", {
       throughAt: 5n,
-      messageId: 9,
+      messageId: 9n,
+      note: null,
+    });
+    await c.commit("s", { throughAt: 6n, messageId: null });
+    expect(store.commitCursor).toHaveBeenCalledWith("s", {
+      throughAt: 6n,
+      messageId: null,
       note: null,
     });
   });
