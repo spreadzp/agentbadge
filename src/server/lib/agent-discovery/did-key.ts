@@ -8,7 +8,7 @@
  *
  * `DID_SIGNING_KEY` is a SEPARATE role from money/verdict keys
  * (authority-split, EPIC-173) — compromise never touches funds.
- * Value: PKCS8, either PEM (`-----BEGIN PRIVATE KEY-----`) or raw
+ * Value: PKCS8, either PEM (`-----BEGIN PRIVATE KEY-----`) or raw — secret-scan:allow
  * base64 DER. Rotation = new key + new kid (`agentbadge-YYYY-N`).
  *
  * Purity: `didKeyMaterialFromPkcs8` is pure; `didKeyMaterialFromEnv` is
@@ -51,7 +51,7 @@ export function didKeyMaterialFromPkcs8(pkcs8: string): DidKeyMaterial | null {
   try {
     // EPIC-194-7 audit (N-6): accept only PKCS8 armor — a different PEM type
     // must be rejected outright, not stripped and passed to the prefix check.
-    if (pkcs8.includes("-----") && !pkcs8.includes("-----BEGIN PRIVATE KEY-----")) {
+    if (pkcs8.includes("-----") && !pkcs8.includes("-----BEGIN PRIVATE KEY-----")) { // secret-scan:allow
       return null;
     }
     const der = pkcs8.includes("-----")
@@ -65,7 +65,7 @@ export function didKeyMaterialFromPkcs8(pkcs8: string): DidKeyMaterial | null {
     const pub = ed25519.getPublicKey(seed);
     // jose.importPKCS8 rejects raw base64 — always hand it PEM armor.
     const pemBody = der.replace(/(.{64})/g, "$1\n");
-    const pem = `-----BEGIN PRIVATE KEY-----\n${pemBody}\n-----END PRIVATE KEY-----`;
+    const pem = `-----BEGIN PRIVATE KEY-----\n${pemBody}\n-----END PRIVATE KEY-----`; // secret-scan:allow
     return {
       publicJwk: {
         kty: "OKP",

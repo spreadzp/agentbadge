@@ -17,3 +17,8 @@ data/corpus/
 .data/
 out/
 .docker-packages/
+
+# Ad-hoc ops/dogfood scripts that may sit next to credentials.
+# Anything under scripts/local/ is never committed — keep cred-adjacent
+# one-offs here instead of scripts/.
+scripts/local/

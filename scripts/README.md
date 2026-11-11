@@ -2,6 +2,14 @@
 
 Utility scripts for the AgentBadge server.
 
+## scripts/local/ (gitignored)
+
+Put ad-hoc ops/dogfood scripts that run next to real credentials in
+`scripts/local/` — it is gitignored and never pushed. Committed scripts
+must read secrets from `process.env`; the pre-commit hook scans staged
+files for key patterns and blocks likely leaks (`secret-scan:allow`
+inline marker for false positives).
+
 ## sign-transaction.ts
 
 Standalone CLI for signing frozen Hedera transactions locally. No network calls — private key never leaves the machine.

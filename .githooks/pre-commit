@@ -1,8 +1,43 @@
 #!/usr/bin/env bash
-# Pre-commit hook: run eslint on staged files, block commit on errors
-# Installed at .git/hooks/pre-commit
+# Pre-commit hook: secret scan + eslint on staged files
+# Enabled via core.hooksPath=.githooks (this file is the live hook)
 
 set -e
+
+# ─── Secret scan ────────────────────────────────────────────────
+# Block commits that stage probable secrets, on any file type.
+# Two passes per staged blob:
+#   1. STRONG_RE — patterns that are almost certainly a secret.
+#   2. HEX_RE    — 0x<64 hex>, flagged only on "keyish" lines so bare
+#      tx hashes / evidence blobs don't false-positive.
+# Escape hatches: `secret-scan:allow` inline on the flagged line, or
+# extend ALLOW_RE below for known-safe fixtures.
+STRONG_RE='-----BEGIN [A-Z ]*PRIVATE KEY-----|sk_live_[0-9a-zA-Z]{16,}|sk_test_[0-9a-zA-Z]{16,}|rk_live_[0-9a-zA-Z]{16,}|whsec_[0-9a-zA-Z]{16,}|agb_[0-9a-zA-Z_-]{20,}|gh[pousr]_[0-9a-zA-Z]{20,}|github_pat_[0-9a-zA-Z_]{20,}|glpat-[0-9a-zA-Z_-]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[0-9a-zA-Z-]{10,}|302e020100300506032b657004220420[0-9a-fA-F]{64}'
+HEX_RE='0x[0-9a-fA-F]{64}'
+KEYISH_RE='key|secret|private|deployer|mnemonic|seed|signer|token|credential|password|passwd'
+# Well-known fixtures already in history / canonical doc examples:
+# hardhat accounts #0/#1, all-zero placeholder, repeated-hex test key,
+# testnet Hedera key (create-market-topic.ts), fake agb_/sk_live_/AKIA values.
+ALLOW_RE='0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80|0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d|0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789|0x0{64}|302e020100300506032b6570042204207a1808c14f6e11817bc7c1b3ab9aa86bef1883e7da58046f8ab84021c30bfce7|agb_deadbeef|sk_live_abcdef|AKIAIOSFODNN7EXAMPLE'
+
+SECRET_HITS=""
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  blob=$(git show ":$f" 2>/dev/null || true)
+  [ -n "$blob" ] || continue
+  hits=$(printf '%s' "$blob" | grep -nIE -e "$STRONG_RE" | grep -v -e 'secret-scan:allow' | grep -vE -e "$ALLOW_RE" || true)
+  hexhits=$(printf '%s' "$blob" | grep -nIE -e "$HEX_RE" | grep -niE -e "$KEYISH_RE" | grep -v -e 'secret-scan:allow' | grep -vE -e "$ALLOW_RE" || true)
+  [ -n "$hits" ] && SECRET_HITS="${SECRET_HITS}--- $f ---\n$hits\n"
+  [ -n "$hexhits" ] && SECRET_HITS="${SECRET_HITS}--- $f ---\n$hexhits\n"
+done < <(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -n "$SECRET_HITS" ]; then
+  printf "❌ Possible secrets in staged files:\n%b\n" "$SECRET_HITS"
+  echo "If this is a false positive, add 'secret-scan:allow' on the line"
+  echo "or extend ALLOW_RE in .githooks/pre-commit."
+  echo "To bypass: git commit --no-verify (not recommended)"
+  exit 1
+fi
 
 # Get staged .ts/.tsx files (only in src/ and tests/)
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' | grep -E '^(src|tests)/' || true)

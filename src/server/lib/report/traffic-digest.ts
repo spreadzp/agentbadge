@@ -15,6 +15,11 @@ import {
   type TrafficRow,
   type TrafficStats,
 } from "./traffic-format";
+import {
+  formatBusinessTelegram,
+  formatBusinessText,
+  type BusinessStats,
+} from "./business-stats";
 
 export type DigestWindowPreset = "24h" | "7d" | "30d";
 
@@ -77,6 +82,9 @@ export type DigestResponse = {
   totalRequests: number;
   errorTotal: number;
   topPaths: [string, number][];
+  /** SLICE-217-2: business aggregates for the same window (null when the
+   *  orm scan failed — traffic digest must not die on a business error). */
+  business?: BusinessStats | null;
   reportText: string;
 };
 
@@ -90,19 +98,30 @@ export async function runDigest(opts: {
   stats: TrafficStats;
   hours: number;
   preset: DigestWindowPreset;
+  business?: BusinessStats | null;
   sendTelegram?: (text: string) => Promise<number>;
 }): Promise<DigestResponse> {
   const { stats, hours, preset, sendTelegram } = opts;
+  const business = opts.business ?? null;
   const topPaths = [...stats.byPath.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
+
+  // Business block rides inside the same TG message / text report —
+  // appended after the traffic sections, before the footer (per spec).
+  const tgText = business
+    ? `${formatTelegramReport(stats)}\n\n${formatBusinessTelegram(business)}`
+    : formatTelegramReport(stats);
+  const reportText = business
+    ? `${formatTextReport(stats)}\n\n${formatBusinessText(business)}`
+    : formatTextReport(stats);
 
   let send: Pick<DigestResponse, "sent" | "reason" | "error" | "messageId">;
   if (!sendTelegram) {
     send = { sent: false, reason: "no_creds" };
   } else {
     try {
-      const messageId = await sendTelegram(formatTelegramReport(stats));
+      const messageId = await sendTelegram(tgText);
       send = { sent: true, messageId };
     } catch (e) {
       send = {
@@ -124,6 +143,7 @@ export async function runDigest(opts: {
     totalRequests: stats.total,
     errorTotal: stats.errorTotal,
     topPaths,
-    reportText: formatTextReport(stats),
+    business,
+    reportText,
   };
 }

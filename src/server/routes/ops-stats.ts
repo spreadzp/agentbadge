@@ -24,6 +24,7 @@ import {
   telegramFromEnv,
 } from "../lib/notify/telegram";
 import { collectStats } from "../lib/report/traffic-format";
+import { collectBusinessStats } from "../lib/report/business-stats";
 import {
   fetchTrafficRows,
   parseDigestWindow,
@@ -46,6 +47,7 @@ const digestResponseSchema = z.object({
   totalRequests: z.number().int(),
   errorTotal: z.number().int(),
   topPaths: z.array(z.tuple([z.string(), z.number().int()])),
+  business: z.unknown().nullable().optional(),
   reportText: z.string(),
 });
 
@@ -119,11 +121,19 @@ opsStatsRoutes.get(
 
     const stats = collectStats(rows, hours);
 
+    // SLICE-217-2: business aggregates over the same window. Failure
+    // degrades to null — never fails the traffic digest.
+    const business = await collectBusinessStats(
+      db.db,
+      new Date(Date.now() - hours * 3600_000).toISOString(),
+    ).catch(() => null);
+
     const tg = telegramFromEnv();
     const result = await runDigest({
       stats,
       hours,
       preset,
+      business,
       sendTelegram: tg
         ? (text) => sendTelegramMessage(text, tg)
         : undefined,
