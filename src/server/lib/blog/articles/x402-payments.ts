@@ -11,7 +11,9 @@ export const article: BlogArticle =
   date: "2026-08-10",
   agentGuideSlug: "hedera-blockchain-for-agents",
   shortAnswer: "x402 enables AI agents to pay for API calls autonomously using HTTP 402 Payment Required. Agents receive a payment challenge, complete it with HBAR on Hedera, and retry the request — all without human intervention. It's machine-to-machine commerce for the agentic web.",
-  tags: ["x402", "payments", "hbar", "hedera", "machine-to-machine"],
+  tags: ["x402", "payments", "hedera", "machine-to-machine", "archive"],
+  // SLICE-217-14: Hedera-era article (HBAR examples) — kept as history.
+  legacy: true,
   readingTime: "9 min",
   // SLICE-201-9: KO v1 metadata (article-knowledge-sync run)
   status: "LIVE",

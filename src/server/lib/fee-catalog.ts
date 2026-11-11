@@ -21,7 +21,7 @@ export function getFeeCatalog(): FeeCatalog {
 
   return {
     total_count: 8,
-    currency_note: "HBAR prices are approximate. USD equivalents are indicative and fluctuate with HBAR price.",
+    currency_note: "Passport tiers are priced in USDC on Arc via x402. USD equivalents are indicative and may fluctuate.",
     network,
     fees: [
       {

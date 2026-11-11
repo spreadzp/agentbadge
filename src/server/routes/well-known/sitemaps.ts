@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { BASE_URL, PUBLIC_PAGES } from "../../lib/page-meta";
+import { BLOG_CHANNELS } from "../../lib/blog-data";
 import { BUILD_DATE } from "../../lib/build-info";
 import { BLOG_ARTICLES } from "../../lib/blog-data";
 import { MCP_NAMESPACES } from "./agent-card";
@@ -539,9 +540,21 @@ export function buildSitemap(): string {
   </url>`,
   ).join("\n");
 
+  // SLICE-217-14: rubric channel pages are canonical crawl targets —
+  // the canonical URL *includes* the ?channel= query param.
+  const channelUrls = BLOG_CHANNELS.map(
+    (ch) => `  <url>
+    <loc>${baseUrl}/blog?channel=${encodeURIComponent(ch.key)}</loc>
+    <lastmod>${STATIC_LASTMOD["/blog"] ?? BUILD_DATE}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`,
+  ).join("\n");
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
+${channelUrls}
 </urlset>`;
 }
 

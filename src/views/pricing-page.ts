@@ -217,7 +217,7 @@ export function PricingPage(jsonLd?: object[]) {
 
     <section class="mt-10 rounded-xl border border-slate-800 bg-slate-900 p-6">
       <h2 class="text-lg font-semibold text-white">Comparison with alternatives</h2>
-      <p class="mt-2 text-sm text-slate-400">Why pay in HBAR for a passport instead of running your own identity stack?</p>
+      <p class="mt-2 text-sm text-slate-400">Why pay in USDC for a passport instead of running your own identity stack?</p>
       <div class="mt-4 overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="text-left text-slate-400">

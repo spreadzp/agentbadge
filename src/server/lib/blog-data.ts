@@ -236,7 +236,7 @@ export function getChannelCounts(
   return BLOG_CHANNELS.map((ch) => ({
     key: ch.key,
     label: ch.label,
-    count: articles.filter((a) => a.tags.some((t) => ch.tags.includes(t))).length,
+    count: articles.filter((a) => (a.tags ?? []).some((t) => ch.tags.includes(t))).length,
   })).filter((c) => c.count > 0);
 }
 

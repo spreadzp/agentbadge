@@ -82,7 +82,7 @@ export const FAQ_ENTRIES_B: QaPair[] = [
   {
     question: "How do x402 payments work with AI agents on {{CHAIN_NAME}}?",
     answer:
-      "x402 uses HTTP 402 (Payment Required) to let AI agents pay for API calls autonomously. When an agent requests a paid resource, the server responds with 402 and payment requirements. The agent pays in {{CHAIN_NAME}} and retries with payment proof. AgentBadge uses x402 for passport issuance fees, and the scanner checks whether your API supports x402 for agent-to-service payments. This enables autonomous commerce: agents can discover, pay for, and use APIs without human intervention. <a href=\"/blog/x402-payments\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: x402 Payments →</a>",
+      "x402 uses HTTP 402 (Payment Required) to let AI agents pay for API calls autonomously. When an agent requests a paid resource, the server responds with 402 and payment requirements. The agent pays in {{CURRENCY}} on {{CHAIN_NAME}} and retries with payment proof. AgentBadge uses x402 for passport issuance fees, and the scanner checks whether your API supports x402 for agent-to-service payments. This enables autonomous commerce: agents can discover, pay for, and use APIs without human intervention. <a href=\"/blog/x402-payments\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: x402 Payments →</a>",
   },
   {
     question: "What is the SEO → GEO → Agent Readiness progression?",

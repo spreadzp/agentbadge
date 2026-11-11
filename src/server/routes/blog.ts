@@ -31,7 +31,7 @@ blogRoutes.get(
     responses: { 200: { description: "HTML blog listing page" } },
   }),
   (c) => {
-    const meta = PageMetaRegistry["/blog"] ?? {
+    const baseMeta = PageMetaRegistry["/blog"] ?? {
       title: "Blog",
       description: "Deep dives into agent-ready infrastructure, MCP protocol, x402 payments.",
       path: "/blog",
@@ -42,12 +42,27 @@ blogRoutes.get(
     const channelParam = c.req.query("channel");
     const tagCounts = getTagCounts(BLOG_ARTICLES);
     const channelCounts = getChannelCounts(BLOG_ARTICLES);
-    const filteredArticles = tagParam
-      ? filterByTag(BLOG_ARTICLES, tagParam)
-      : channelParam
-        ? filterByChannel(BLOG_ARTICLES, channelParam)
-        : BLOG_ARTICLES;
+    // SLICE-217-14: newest-first in every view — array order is curated, not chronological.
+    const filteredArticles = (
+      tagParam ? filterByTag(BLOG_ARTICLES, tagParam)
+      : channelParam ? filterByChannel(BLOG_ARTICLES, channelParam)
+      : BLOG_ARTICLES
+    ).slice().sort((a, b) => b.date.localeCompare(a.date));
     const { items, meta: paginationMeta } = paginateArticles(filteredArticles, page);
+
+    // SLICE-217-14: rubric pages get their own meta — name + count (agents read <title> as the answer).
+    const rubricLabel = channelParam
+      ? (channelCounts.find((ch) => ch.key === channelParam)?.label ?? channelParam)
+      : tagParam
+        ? `#${tagParam}`
+        : undefined;
+    const meta = rubricLabel
+      ? {
+          ...baseMeta,
+          title: `${rubricLabel} — ${filteredArticles.length} articles | AgentBadge Blog`,
+          description: `${filteredArticles.length} AgentBadge articles in the “${rubricLabel}” rubric — agent readiness, x402 payments, Arc.`,
+        }
+      : baseMeta;
 
     const schemas = [
       ...pageCoreSchemas(),
@@ -72,11 +87,21 @@ blogRoutes.get(
         : paginationMeta.currentPage > 1
         ? `/blog?page=${paginationMeta.currentPage}`
         : "/blog";
+    // SLICE-217-14: rel=prev/next keep the active rubric filter too —
+    // crawlers follow these links and must stay inside ?channel=/?tag=.
+    const pageUrl = (p: number): string => {
+      const q = new URLSearchParams();
+      if (channelParam) q.set("channel", channelParam);
+      if (tagParam) q.set("tag", tagParam);
+      if (p > 1) q.set("page", String(p));
+      const qs = q.toString();
+      return `/blog${qs ? `?${qs}` : ""}`;
+    };
     const prevRel = paginationMeta.hasPrev
-      ? `${BASE_URL}${paginationMeta.currentPage === 2 ? "/blog" : `/blog?page=${paginationMeta.currentPage - 1}`}`
+      ? `${BASE_URL}${pageUrl(paginationMeta.currentPage - 1)}`
       : undefined;
     const nextRel = paginationMeta.hasNext
-      ? `${BASE_URL}/blog?page=${paginationMeta.currentPage + 1}`
+      ? `${BASE_URL}${pageUrl(paginationMeta.currentPage + 1)}`
       : undefined;
     const pageHtml = LandingLayout(
       content,

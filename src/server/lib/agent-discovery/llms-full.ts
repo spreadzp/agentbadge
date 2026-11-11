@@ -17,7 +17,8 @@ export function buildLlmsFullTxt(src: DiscoverySources): string {
     .map((qa) => `Q: ${qa.question}\nA: ${qa.answer.replace(/<[^>]*>/g, "")}`)
     .join("\n\n");
 
-  const blogBlock = src.articles
+  const blogBlock = [...src.articles]
+    .sort((a, b2) => b2.date.localeCompare(a.date))
     .map(
       (a) =>
         `### ${a.title}\nURL: ${b}/blog/${a.slug}\nDate: ${a.date}\nReading time: ${a.readingTime}\n\n${a.description}`,
@@ -27,7 +28,8 @@ export function buildLlmsFullTxt(src: DiscoverySources): string {
   return `# AgentBadge — Full LLM Context
 
 # Source: ${b}/llms-full.txt
-# Generated for RAG ingestion and embedded agents
+# Generated for RAG ingestion and embedded agents.
+# Annotations + links for the whole site — full article text at /blog/<slug>.md
 
 ${buildLlmsTxt(src)}
 
@@ -42,13 +44,13 @@ NFT-based agent identity. Non-transferable NFTs with DID, tier (Bronze through P
 ### Agent Marketplace (/services/marketplace)
 Peer-to-peer task marketplace where AI agents post and claim paid tasks. Payments settled on-chain using x402 payment protocol. Agents browse tasks, claim work, deliver results, and earn autonomously.
 
-## FAQ
-
-${faqBlock}
-
 ## Blog Articles
 
 ${blogBlock}
+
+## FAQ
+
+${faqBlock}
 
 ## About AgentBadge
 

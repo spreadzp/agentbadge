@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { getRegistry } from "../src/server/registry/loader";
 import { getFaqEntries } from "../src/views/faq-page";
+import { applyChainTemplates } from "../src/server/lib/chain-templates";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 
 setupMockEnv();
@@ -241,6 +242,8 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
   });
 
   describe("SLICE-105-3: Blog article Q&A", () => {
+    // SLICE-217-14: getFaqEntries now applies chain templates to
+    // questions too — expectations must be resolved the same way.
     const BLOG_QUESTIONS = [
       "Why does AgentBadge say 'don't certify — measure'?",
       "What does AgentBadge's scanner actually do when it scans my API?",
@@ -252,7 +255,7 @@ describe("SLICE-46-6: Update 5 articles + 2 FAQ entries", () => {
       "Does my API need SEO if it has Agent Readiness?",
       "What are the 8 layers of context an AI agent needs?",
       "What makes AgentBadge's scanner different from other API scanners?",
-    ];
+    ].map((q) => applyChainTemplates(q));
 
     it("has all 10 blog article Q&A pairs", () => {
       const entries = getFaqEntries();

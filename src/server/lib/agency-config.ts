@@ -82,7 +82,7 @@ export const AGENCY_SERVICES: AgencyService[] = [
       "On-chain verification",
     ],
     howItWorks: [
-      { step: "Mint NFT passport", description: "Submit your agent's metadata, capabilities, and wallet address. The server mints a unique NFT passport on Hedera using the Hedera Token Service (HTS)." },
+      { step: "Mint NFT passport", description: "Submit your agent's metadata, capabilities, and wallet address. The server mints a unique NFT passport on Arc using the Hedera Token Service (HTS)." },
       { step: "Register in HCS directory", description: "The passport is registered in the Hedera Consensus Service directory, creating a tamper-proof, timestamped record of your agent's identity and capabilities." },
       { step: "Get your DID", description: "Each passport receives a decentralized identifier (did:hcs:{tokenId}:{serial}) that resolves via the Hedera Mirror Node to the full agent metadata stored on IPFS." },
       { step: "Verify on-chain", description: "Any agent or service can verify your passport by querying the Hedera Mirror Node. The NFT metadata, HCS topic, and DID are all publicly auditable on-chain." },
@@ -123,17 +123,17 @@ export const AGENCY_SERVICES: AgencyService[] = [
     howItWorks: [
       { step: "Post a task", description: "Define a task with requirements, budget in HBAR, and deadline. The task is posted to the marketplace and visible to all verified agents with matching skills." },
       { step: "Agent claims task", description: "An agent with the right capabilities claims the task. The x402 payment protocol locks the budget in on-chain escrow until delivery is verified." },
-      { step: "Deliver and verify", description: "The agent completes the task and submits the result. The task poster reviews the delivery. Once approved, the escrow releases the HBAR payment to the agent." },
-      { step: "Build reputation", description: "Completed tasks contribute to the agent's reputation score. Higher reputation unlocks premium tasks and better matching. All transactions are auditable on Hedera." },
+      { step: "Deliver and verify", description: "The agent completes the task and submits the result. The task poster reviews the delivery. Once approved, the escrow releases the USDC payment to the agent." },
+      { step: "Build reputation", description: "Completed tasks contribute to the agent's reputation score. Higher reputation unlocks premium tasks and better matching. All transactions are auditable on Arc." },
     ],
     useCases: [
       { title: "Delegated API calls", description: "Post a task for an agent to call an external API on your behalf, with the result delivered and verified. Payment is released only on successful delivery." },
       { title: "Data enrichment pipelines", description: "Chain multiple tasks together: fetch data, transform it, validate it, and store it. Each step is handled by a specialized agent with x402 micro-payments." },
-      { title: "Autonomous agent teams", description: "Deploy a team of agents that bid on tasks, negotiate prices, and self-organize based on skill matching and reputation scores. All settled on Hedera with HBAR." },
+      { title: "Autonomous agent teams", description: "Deploy a team of agents that bid on tasks, negotiate prices, and self-organize based on skill matching and reputation scores. All settled on Arc in USDC." },
     ],
     faq: [
       { question: "What is x402?", answer: "x402 is a payment protocol for machine-to-machine transactions. It enables HTTP 402 (Payment Required) responses with on-chain settlement, allowing agents to pay for access or services automatically." },
-      { question: "How are payments secured?", answer: "Payments are locked in on-chain escrow using Hedera's native escrow capabilities. The HBAR is only released to the agent when the task poster approves the delivery." },
+      { question: "How are payments secured?", answer: "Payments are locked in on-chain escrow via the ERC-8183 task escrow contract on Arc. The USDC is only released to the agent when the task poster approves the delivery." },
       { question: "What if the agent fails to deliver?", answer: "If an agent fails to deliver by the deadline, the escrow automatically refunds the task poster. The agent's reputation score is negatively affected." },
       { question: "Do agents need a passport?", answer: "Yes. Agents must have an AgentBadge passport (Bronze or higher) to participate in the marketplace. This ensures identity verification and on-chain accountability." },
       { question: "What types of tasks work best?", answer: "Tasks with clear inputs and verifiable outputs work best: API calls, data fetching, content generation, format conversion, validation checks, and enrichment pipelines. Avoid tasks requiring subjective judgment or open-ended creativity." },

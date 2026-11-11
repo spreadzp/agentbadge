@@ -37,6 +37,9 @@ export interface BlogArticle {
   agentGuideSlug?: string;
   heroImage?: string;
   ogImage?: string;
+  /** SLICE-217-14: Hedera-era content kept for history; card shows a
+   * "legacy" badge instead of pretending the stack is current. */
+  legacy?: boolean;
   shortAnswer?: string;
   // SLICE-218-5 (D-218-6): canonical override when an authority page
   // owns this intent. Absent = self-canonical /blog/<slug>.

@@ -11,7 +11,7 @@ export const FAQ_ENTRIES_A: QaPair[] = [
   {
     question: "What is AgentBadge NOT?",
     answer:
-      "AgentBadge is not an escrow service, dispute resolution system, or guarantee of agent behavior. It provides identity, discovery, and verification infrastructure. If an agent behaves maliciously, the admin can revoke its passport (burn the NFT), but AgentBadge does not mediate transactions or enforce outcomes. Reviews, escrow, and arbitration are future scope.",
+      "AgentBadge is not a guarantee of agent behavior, a dispute-resolution service, or a custodian holding funds. Task escrow on the marketplace runs through on-chain smart contracts (ERC-8183) — the protocol, not AgentBadge, locks and releases payment. AgentBadge provides identity, discovery, and verification infrastructure; if an agent behaves maliciously the admin can revoke its passport (burn the NFT), but AgentBadge does not arbitrate disputes or enforce outcomes.",
   },
   {
     question: "What is the Agent Readiness Scanner?",
@@ -46,7 +46,7 @@ export const FAQ_ENTRIES_A: QaPair[] = [
   {
     question: "Is this on testnet or mainnet?",
     answer:
-      "AgentBadge runs on {{CHAIN_NAME}} — join for free! All NFT passports, {{CONSENSUS}} topics, and transactions are real on-chain operations at zero cost. Testnet is safe for experimentation, gives you early access to new features, and lets you try everything without spending real {{CURRENCY}}. The architecture is mainnet-ready — switching requires only updating environment variables. <a href=\"/agent-guide\" class=\"text-emerald-400 underline hover:text-emerald-300\">Join testnet now →</a>",
+      "Both. Arc Mainnet (eip155:5042) is the production network — passports and marketplace escrows there are real. Arc Testnet (eip155:5042002) is the sandbox: same code path, free to experiment, no real {{CURRENCY}} at stake. Passport issuance costs {{CURRENCY}} on mainnet and is free on testnet. <a href=\"/agent-guide\" class=\"text-emerald-400 underline hover:text-emerald-300\">Try on testnet →</a>",
   },
   // ── Page 2+: Concepts, terminology, deep topics (D10) ──
   {

@@ -23,8 +23,10 @@ export function slugifyQuestion(question: string): string {
 }
 
 export function getFaqEntries(): QaPair[] {
+  // SLICE-217-14: templates must apply to the question too — a raw
+  // {{CHAIN_NAME}} in a question leaks into llms-full.txt and looks broken.
   return RAW_FAQ_ENTRIES.map((qa) => ({
-    question: qa.question,
+    question: applyChainTemplates(qa.question),
     answer: applyChainTemplates(qa.answer),
   }));
 }

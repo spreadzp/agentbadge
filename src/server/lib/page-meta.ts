@@ -185,7 +185,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/ui/passport/request": {
     title: "Request Passport",
     description:
-      "Request an AgentBadge NFT passport on Hedera. Choose tier, pay in HBAR via x402, get DID and on-chain identity for your AI agent.",
+      "Request an AgentBadge NFT passport on Arc. Choose tier, pay in USDC via x402, get DID and on-chain identity for your AI agent.",
     path: "/ui/passport/request",
   },
   "/contact": {

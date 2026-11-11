@@ -126,8 +126,16 @@ export interface DiscoverySources {
 
 /** Path prefixes that belong in the public agent-facing API surface. */
 const PUBLIC_ROUTE_PREFIXES = ["/api/", "/.well-known/"];
-/** Paths that are noise for agents (admin, internal, assets). */
-const EXCLUDED_PREFIXES = ["/api/admin", "/api/internal"];
+/** Paths that are noise for agents (admin, internal, ops, webhooks). */
+const EXCLUDED_PREFIXES = [
+  "/api/admin",
+  "/api/internal",
+  // SLICE-217-14: operational surface must not leak into public catalogs —
+  // indexer runner is an ops trigger, webhook endpoints are inbound-only.
+  "/api/indexer",
+  "/api/stripe/webhook",
+  "/audit/webhook",
+];
 
 /**
  * Extract public route list from a Hono app. Dedupes, filters to
@@ -262,6 +270,12 @@ function collectWellKnownEnv(): NonNullable<DiscoverySources["wellKnownEnv"]> {
 }
 
 /** MCP introspection — namespaces + tool listings from the live registry. */
+// SLICE-217-14: hide ops tools from public catalogs (llms.txt, agent-card) —
+// the [OPS/INTERNAL] description marker plus explicit admin-only names.
+const INTERNAL_TOOL_NAMES = new Set(["rebuild_cache"]);
+const isPublicTool = (t: { name: string; description?: string }) =>
+  !INTERNAL_TOOL_NAMES.has(t.name) && !t.description?.includes("[OPS/INTERNAL]");
+
 function collectMcpServer(): DiscoverySources["mcpServer"] {
   try {
     const namespaces = MCP_NAMESPACES.map((nsName) => {
@@ -269,14 +283,14 @@ function collectMcpServer(): DiscoverySources["mcpServer"] {
       return {
         name: nsName,
         description: MCP_NAMESPACE_DESCRIPTIONS[nsName] ?? `${nsName} MCP namespace`,
-        tools: (ns ? ns.listTools() : []).map((t) => ({ name: t.name, description: t.description })),
+        tools: (ns ? ns.listTools() : []).filter(isPublicTool).map((t) => ({ name: t.name, description: t.description })),
       };
     });
     return {
       name: "agentbadge",
       version: openApiConfig.info.version,
       namespaces,
-      tools: listTools().map((t) => ({ name: t.name, description: t.description })),
+      tools: listTools().filter(isPublicTool).map((t) => ({ name: t.name, description: t.description })),
     };
   } catch {
     return undefined;

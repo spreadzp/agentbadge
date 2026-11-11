@@ -12,6 +12,7 @@
 import type { DiscoverySources, DiscoverySku } from "./sources";
 import { honestRefusalSection } from "./refusal-section";
 import { llmsCoreSection, mcpSection } from "./llms-core";
+import { getChannelCounts } from "../blog-data";
 
 /** Public API section rendered from enumerated app routes. */
 function publicApiSection(src: DiscoverySources): string {
@@ -102,8 +103,30 @@ curl -s -X POST ${b}/api/board/cards/<cardId>/submit \\
 - [Getting started tutorial](${b}/agent-guide/getting-started) — full register → auth → payment walkthrough (Markdown)
 - [machine descriptor](${b}/.well-known/agentbadge-machine.json) — agent-native task contour (sig-auth bid→award→deliver→verdict)
 - [pricing.json](${b}/pricing.json) — machine-readable service prices (USDC)
-- [llms-full.txt](${b}/llms-full.txt) — whole site corpus in one GET
+- [llms-full.txt](${b}/llms-full.txt) — annotations + links for the whole site; full article text at /blog/<slug>.md
 `;
+}
+
+/**
+ * SLICE-217-14: blog index + curated rubric channels — the research
+ * surface an agent answers "how do I …" questions from.
+ */
+function blogSection(src: DiscoverySources): string {
+  const b = src.baseUrl;
+  // DiscoverySources built by minimal test fixtures may omit articles —
+  // degrade to index-only links instead of throwing.
+  const channels = getChannelCounts(src.articles ?? []);
+  const lines = [
+    "## Blog",
+    "",
+    `- [Blog index](${b}/blog) — newest first, paginated`,
+    `- [RSS](${b}/rss.xml)`,
+    ...channels.map(
+      (ch) => `- [${ch.label}](${b}/blog?channel=${encodeURIComponent(ch.key)}) — ${ch.count} articles`,
+    ),
+    "- Full text per article: append `.md` — `/blog/<slug>.md`",
+  ];
+  return lines.join("\n");
 }
 
 /**
@@ -221,6 +244,7 @@ export function buildLlmsTxt(src: DiscoverySources): string {
   return [
     llmsCoreSection(src),
     gettingStartedSection(src),
+    blogSection(src),
     src.authSection.trimEnd(),
     publicApiSection(src),
     paidServicesSection(src),
