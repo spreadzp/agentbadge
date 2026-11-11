@@ -14,6 +14,8 @@ import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { startArchiveWorkers } from "./archive-workers";
+import { getDatabase } from "../lib/database";
+import { getConfig } from "../../config/env";
 import { captureError } from "../lib/sentry";
 import { passportChainEnabled } from "../lib/passport-chain-gate";
 import { ErrorCodes } from "../lib/error-codes";
