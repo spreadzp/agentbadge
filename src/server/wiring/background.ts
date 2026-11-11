@@ -13,6 +13,7 @@ import { startBountyLeaseSweeper } from "../services/bounty-lease-sweeper";
 import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
+import { startArchiveWorkers } from "./archive-workers";
 import { captureError } from "../lib/sentry";
 import { passportChainEnabled } from "../lib/passport-chain-gate";
 import { ErrorCodes } from "../lib/error-codes";
