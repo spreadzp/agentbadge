@@ -202,6 +202,7 @@ export async function buildExport(
 
   let json: unknown;
   let rowCount: number;
+  let forensicsJsonl: string | null = null;
 
   switch (f.stream) {
     case "http_traffic": {
@@ -218,9 +219,10 @@ export async function buildExport(
         throw new Error("buildExport: forensics_edge requires deps.forensics.scan");
       }
       const edges = await deps.forensics.scan(w, { chain: f.chain });
-      json = {
-        window: { from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString() },
-        edges: edges.map((e) => ({
+      const chainCounts: Record<string, number> = {};
+      const lines = edges.map((e) => {
+        chainCounts[e.chain] = (chainCounts[e.chain] ?? 0) + 1;
+        return JSON.stringify({
           chain: e.chain,
           txHash: e.txHash,
           payer: e.payer,
@@ -229,9 +231,17 @@ export async function buildExport(
           blockNumber: e.blockNumber.toString(),
           ...(e.ts !== undefined ? { ts: e.ts.toString() } : {}),
           ...(e.createdAt !== undefined ? { createdAt: e.createdAt } : {}),
-        })),
+        });
+      });
+      // JSONL payload (one edge per line — diff/merge friendly);
+      // `json` keeps the object view for tests + caption counts.
+      json = {
+        window: { from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString() },
+        chainCounts,
+        edges: lines.map((l) => JSON.parse(l)),
       };
       rowCount = edges.length;
+      forensicsJsonl = lines.join("\n") + (lines.length > 0 ? "\n" : "");
       break;
     }
     case "event": {
@@ -242,14 +252,24 @@ export async function buildExport(
     }
   }
 
-  const plain = Buffer.from(JSON.stringify(json), "utf8");
+  const plain = Buffer.from(
+    forensicsJsonl ?? JSON.stringify(json),
+    "utf8",
+  );
   const gzipped = plain.byteLength > GZIP_THRESHOLD_BYTES;
   const data: Uint8Array = gzipped
     ? new Uint8Array(gzipSync(plain))
     : new Uint8Array(plain);
 
   const dates = `${isoDate(w.from)}_${isoDate(w.to)}`;
-  const filename = `${filenameStream(f.stream)}_${dates}.json${gzipped ? ".gz" : ""}`;
+  const base =
+    f.stream === "forensics_edge"
+      ? f.chain
+        ? `forensics-${f.chain}`
+        : "forensics-edge"
+      : filenameStream(f.stream);
+  const ext = f.stream === "forensics_edge" ? ".jsonl" : ".json";
+  const filename = `${base}_${dates}${ext}${gzipped ? ".gz" : ""}`;
   const caption = `#archive stream=${f.stream} ${isoDate(w.from)}..${isoDate(w.to)} rows=${rowCount}`;
 
   return { json, data, caption, filename, rowCount, bytes: data.byteLength };

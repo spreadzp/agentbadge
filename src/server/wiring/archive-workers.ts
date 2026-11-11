@@ -100,6 +100,24 @@ export function resolveArchiveCursors(
 
 export interface ArchiveWorkersDeps {
   events: ExportEventStore;
+  /** forensics_edge scan — registers the third job when present. */
+  forensics?: {
+    scan(
+      window: { from: number; to: number },
+      opts?: { chain?: string },
+    ): Promise<
+      Array<{
+        chain: string;
+        txHash: string;
+        payer: string;
+        seller: string;
+        amountAtomic: bigint;
+        blockNumber: bigint;
+        ts?: bigint;
+        createdAt?: string;
+      }>
+    >;
+  };
   /** TG creds — absent → no jobs registered (caller logs skip-reason). */
   telegram?: TelegramConfig;
   /** Injectable senders (tests). Default: real Bot API calls. */
@@ -172,7 +190,46 @@ export function buildArchiveJobs(deps: ArchiveWorkersDeps): ArchiveJob[] {
     },
   };
 
-  return [daily, weekly];
+  const jobs: ArchiveJob[] = [daily, weekly];
+
+  // 217-12: forensics_weekly — weekly edge export (public on-chain
+  // data; our DB is the only long-term edge history — RPC keeps ~2d).
+  // Only when a forensics scan source is wired.
+  if (deps.forensics) {
+    const forensics = deps.forensics;
+    jobs.push({
+      stream: "forensics-weekly",
+      kind: "weekly",
+      run: async (w) => {
+        const out = await buildExport(
+          { events: deps.events, forensics },
+          w,
+          { stream: "forensics_edge", raw: true },
+        );
+        const dates = `${new Date(w.from).toISOString().slice(0, 10)}..${new Date(w.to).toISOString().slice(0, 10)}`;
+        const chains = Object.entries(
+          (out.json as { chainCounts: Record<string, number> }).chainCounts,
+        )
+          .map(([c, n]) => `${c}:${n}`)
+          .join(",");
+        if (out.bytes > oversizeBytes) {
+          const messageId = await sendMessage(
+            `#archive stream=forensics_edge weekly ${dates} oversized: ${out.bytes}B > 45MB — run tg-export manually`,
+            tg,
+          );
+          return { messageId, note: `oversized ${out.bytes}B` };
+        }
+        const messageId = await sendDocument(tg, {
+          filename: out.filename,
+          data: out.data,
+          caption: `#archive stream=forensics_edge weekly ${dates} edges=${out.rowCount} chains=${chains || "none"}`,
+        });
+        return { messageId, note: `${out.rowCount} edges` };
+      },
+    });
+  }
+
+  return jobs;
 }
 
 export interface StartArchiveWorkersDeps extends ArchiveWorkersDeps {

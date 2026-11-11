@@ -106,6 +106,47 @@ describe("archive-workers — SLICE-217-8/9", () => {
     expect(res.note).toContain("oversized");
   });
 
+  it("forensics-weekly: JSONL doc + per-chain counts in caption, own stream", async () => {
+    const sendMessage = vi.fn(async () => 0);
+    const sendDocument = vi.fn(async () => 66);
+    const edge = (chain: string, txHash: string) => ({
+      chain, txHash, payer: "0xp", seller: "0xs",
+      amountAtomic: 1n, blockNumber: 9n, createdAt: "2026-11-05T00:00:00Z",
+    });
+    const jobs = buildArchiveJobs({
+      events: trafficEvents([]),
+      forensics: { scan: async () => [edge("5042", "0xa"), edge("5042", "0xb"), edge("5042002", "0xc")] },
+      telegram: tg,
+      sendMessage,
+      sendDocument,
+    });
+
+    const fj = jobs.find((j) => j.stream === "forensics-weekly")!;
+    expect(fj.kind).toBe("weekly");
+    const res = await fj.run(W);
+    expect(res.messageId).toBe(66);
+    const [cfg, doc] = sendDocument.mock.calls[0]!;
+    expect(cfg).toEqual(tg);
+    expect(doc.filename).toMatch(/^forensics-edge_2026-11-09_2026-11-10\.jsonl$/);
+    // JSONL: 3 lines = 3 edges
+    const lines = Buffer.from(doc.data).toString("utf8").trimEnd().split("\n");
+    expect(lines).toHaveLength(3);
+    expect(() => lines.forEach((l) => JSON.parse(l))).not.toThrow();
+    expect(doc.caption).toContain("edges=3");
+    expect(doc.caption).toContain("5042:2");
+    expect(doc.caption).toContain("5042002:1");
+  });
+
+  it("forensics-weekly absent without deps.forensics", () => {
+    const jobs = buildArchiveJobs({
+      events: trafficEvents([]),
+      telegram: tg,
+      sendMessage: vi.fn(),
+      sendDocument: vi.fn(),
+    });
+    expect(jobs.map((j) => j.stream)).toEqual(["traffic-daily", "traffic-weekly"]);
+  });
+
   it("no telegram creds → zero jobs", () => {
     const jobs = buildArchiveJobs({
       events: trafficEvents([]),

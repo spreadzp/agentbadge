@@ -173,11 +173,20 @@ describe("buildExport — SLICE-217-6", () => {
       { stream: "forensics_edge", raw: true, chain: "5042" },
     );
     expect(res.rowCount).toBe(1);
-    const parsed = JSON.parse(Buffer.from(res.data).toString("utf8")) as {
-      edges: Array<{ payer: string; txHash: string }>;
-    };
-    expect(parsed.edges[0]!.payer).toBe("0xAAA");
-    expect(parsed.edges[0]!.txHash).toBe("0xtx1");
+    // JSONL payload — one edge per line
+    const lines = Buffer.from(res.data)
+      .toString("utf8")
+      .trimEnd()
+      .split("\n");
+    expect(lines).toHaveLength(1);
+    const parsed = JSON.parse(lines[0]!) as { payer: string; txHash: string };
+    expect(parsed.payer).toBe("0xAAA");
+    expect(parsed.txHash).toBe("0xtx1");
+    expect(res.filename).toMatch(/^forensics-5042_2026-11-03_2026-11-10\.jsonl$/);
+    // object view keeps edges + per-chain counts
+    const view = res.json as { edges: unknown[]; chainCounts: Record<string, number> };
+    expect(view.edges).toHaveLength(1);
+    expect(view.chainCounts["5042"]).toBe(1);
   });
 
   it("forensics_edge without scan dep → throws", async () => {
