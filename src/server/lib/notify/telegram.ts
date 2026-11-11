@@ -61,3 +61,70 @@ export async function sendTelegramMessage(
   }
   return data.result?.message_id ?? 0;
 }
+
+/** Bot API sendDocument hard limit is 50MB; warn past 45MB. */
+export const TELEGRAM_DOCUMENT_MAX_BYTES = 50 * 1024 * 1024;
+const WARN_BYTES = 45 * 1024 * 1024;
+
+export type TelegramDocument = {
+  /** Required — without a filename TG treats the upload as nameless binary. */
+  filename: string;
+  /** Raw bytes or text; sent as-is via multipart, never re-encoded/base64. */
+  data: Uint8Array | string;
+  /** Plain-text caption (≤1024 chars). Escaped via escHtml, sent as HTML. */
+  caption?: string;
+  /** Blob MIME type; defaults to octet-stream / text/plain by data type. */
+  mimeType?: string;
+  disableNotification?: boolean;
+};
+
+/**
+ * Send one file via Bot API sendDocument (multipart/form-data).
+ * Returns message_id on ok=true; throws with the API description on ok=false.
+ * Caller guarantees size ≤ 50MB — a >45MB payload logs a warning.
+ */
+export async function sendTelegramDocument(
+  cfg: TelegramConfig,
+  doc: TelegramDocument,
+): Promise<number> {
+  const byteLength =
+    typeof doc.data === "string" ? Buffer.byteLength(doc.data) : doc.data.byteLength;
+  if (byteLength > WARN_BYTES) {
+    console.warn(
+      `telegram sendDocument: ${doc.filename} is ${byteLength} bytes (>45MB, TG limit 50MB)`,
+    );
+  }
+
+  const form = new FormData();
+  form.append("chat_id", cfg.chatId);
+  const blob =
+    typeof doc.data === "string"
+      ? new Blob([doc.data], { type: doc.mimeType ?? "text/plain" })
+      : new Blob([doc.data as BlobPart], {
+          type: doc.mimeType ?? "application/octet-stream",
+        });
+  form.append("document", blob, doc.filename);
+  if (doc.caption) {
+    form.append("caption", escHtml(doc.caption));
+    form.append("parse_mode", "HTML");
+  }
+  if (doc.disableNotification) {
+    form.append("disable_notification", "true");
+  }
+
+  const res = await fetch(
+    `https://api.telegram.org/bot${cfg.token}/sendDocument`,
+    { method: "POST", body: form },
+  );
+  const data = (await res.json()) as {
+    ok: boolean;
+    result?: { message_id?: number };
+    description?: string;
+  };
+  if (!data.ok) {
+    throw new Error(
+      `telegram sendDocument failed: ${data.description ?? res.status}`,
+    );
+  }
+  return data.result?.message_id ?? 0;
+}
