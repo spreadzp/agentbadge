@@ -188,10 +188,10 @@ if (import.meta.main) {
     telegram: tg ?? undefined,
     forensics: {
       scan: async (w, opts) => {
-        // Edge ts is epoch seconds; window is ms. [fromMs,toMs) → seconds.
+        // Window is by createdAt (ISO), NOT ts — see SLICE-217-12.
         const rows = await db.forensics.edges.listWindow(
-          BigInt(Math.floor(w.from / 1000)),
-          BigInt(Math.ceil(w.to / 1000)),
+          new Date(w.from).toISOString(),
+          new Date(w.to).toISOString(),
           opts?.chain !== undefined ? { chain: opts.chain } : {},
         );
         return rows.map((r) => ({
