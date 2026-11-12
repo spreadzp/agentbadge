@@ -1,4 +1,8 @@
 import { getConfig } from "../../config/env";
+import {
+  MARKETPLACE_LISTINGS,
+  type MarketplaceListing,
+} from "./agent-discovery/marketplace-listings";
 
 export interface DeploymentDescriptor {
   schema_version: string;
@@ -13,6 +17,8 @@ export interface DeploymentDescriptor {
   fee_catalog_url: string;
   error_catalog_url: string;
   trust_tiers_url: string;
+  /** EPIC-242: external marketplaces where paid services are listed. */
+  marketplace_listings: MarketplaceListing[];
   generated_at: string;
 }
 
@@ -27,6 +33,7 @@ export function getDeploymentDescriptor(): DeploymentDescriptor {
     passport_token_id: config.passportTokenId,
     directory_topic_id: config.directoryTopicId,
     audit_topic_id: config.auditTopicId,
+    marketplace_listings: MARKETPLACE_LISTINGS,
     api_version: process.env.npm_package_version ?? "0.13.0",
     payment_protocol: "x402",
     facilitator: config.x402FacilitatorUrl,

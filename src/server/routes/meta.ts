@@ -232,6 +232,17 @@ metaRoutes.get(
                 fee_catalog_url: z.string(),
                 error_catalog_url: z.string(),
                 trust_tiers_url: z.string(),
+                marketplace_listings: z.array(
+                  z.object({
+                    marketplace: z.string(),
+                    catalogUrl: z.string(),
+                    service: z.string(),
+                    endpoint: z.string(),
+                    rail: z.string(),
+                    status: z.enum(["pending_review", "listed", "indexed"]),
+                    since: z.string().optional(),
+                  }),
+                ),
                 generated_at: z.string(),
               }),
             ),

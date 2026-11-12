@@ -78,6 +78,8 @@ export function organizationLd(): object {
       "https://github.com/spreadzp/agentbadge",
       "https://www.linkedin.com/company/agentbadge",
       "https://agentbadge.gitbook.io/agentbadge-docs",
+      // EPIC-242: external marketplace presence (Circle agent services)
+      "https://agents.circle.com/services",
     ],
   };
 }

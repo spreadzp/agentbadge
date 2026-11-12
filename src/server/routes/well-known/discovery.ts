@@ -4,6 +4,7 @@ import z from "zod";
 import { BASE_URL } from "../../lib/page-meta";
 import { buildDiscoveryJson, allTools } from "@agentbadge/webmcp";
 import { MCP_NAMESPACES } from "./agent-card";
+import { MARKETPLACE_LISTINGS } from "../../lib/agent-discovery/marketplace-listings";
 
 export const discoveryRoutes = new Hono();
 
@@ -184,6 +185,8 @@ discoveryRoutes.get(
         spec: "https://x402.org",
         facilitator: `${baseUrl}/.well-known/x402.json`,
       },
+      /** EPIC-242: external venues where the paid services are listed. */
+      "ab:distribution": MARKETPLACE_LISTINGS,
       "ab:mcp_tools": [
         "request_passport",
         "verify_passport",

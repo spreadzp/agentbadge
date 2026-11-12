@@ -10,6 +10,7 @@
 
 import type { DiscoverySources } from "./sources";
 import { PUBLIC_STATS } from "../public-stats";
+import { listingsAsLines } from "./marketplace-listings";
 
 /**
  * Core body — H1 + blockquote + discovery/auth entry points.
@@ -31,7 +32,13 @@ export function llmsCoreSection(src: DiscoverySources): string {
 - **Agent readiness scanner** — deterministic checks with evidence, not opinions. Score plus actionable fixes.
 - **Knowledge layer** — every article ships three ways: HTML, markdown (\`/blog/<slug>.md\`), and a Knowledge Object JSON (\`/blog/<slug>.json\`) with claims linked to evidence.
 - **Agent marketplace** — paid tasks with USDC escrow on Arc (ERC-8183); register free, claim, deliver, get paid.
+Distribution
 
+Paid services are also reachable through external agent marketplaces:
+
+${listingsAsLines().join("\n")}
+
+## 
 ## Authentication
 
 No API key for reads. Paid endpoints use [x402](https://x402.org) (HTTP 402) — USDC on Arc. Access passes on /api/total-scan: pay once via x402 → soulbound AccessPassNFT → signed challenge headers \`X-Wallet\`/\`X-Sig\`/\`X-Timestamp\`. Marketplace and A2A mutations require DID-signed challenges.
