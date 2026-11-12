@@ -13,6 +13,7 @@ import { fulfillOrder, resetProcessedSessions } from "../src/server/lib/order-fu
 
 const mockedIssuePassport = vi.mocked(issuePassport);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock session doesn't satisfy the full Stripe.Checkout.Session type
 function makeSession(overrides: Partial<Record<string, unknown>> = {}): any {
   return {
     id: `cs_test_${Math.random().toString(36).slice(2, 10)}`,
@@ -128,7 +129,7 @@ describe("fulfillOrder — directory listing", () => {
     await fulfillOrder(session);
 
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[fulfillDirectoryListing]"),
+      expect.stringContaining("fulfillDirectoryListing: listing published"),
     );
     expect(mockedIssuePassport).not.toHaveBeenCalled();
   });
@@ -142,7 +143,7 @@ describe("fulfillOrder — directory listing", () => {
     await fulfillOrder(session);
 
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Missing listingId"),
+      expect.stringContaining("missing listingId"),
     );
   });
 });
@@ -155,7 +156,7 @@ describe("fulfillOrder — unknown product", () => {
     await fulfillOrder(session);
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Unknown productId"),
+      expect.stringContaining("unknown productId"),
     );
   });
 });

@@ -24,9 +24,11 @@ import {
 import { getConfig } from "../../../config/env";
 import { getDatabase } from "../database";
 import { getStripeClient, isStripeConfigured } from "../stripe-client";
+import { fulfillOrder } from "../order-fulfillment";
 
 import { PaymentsCheckout } from "./checkout";
 import { DirectUsdcStubProvider } from "./usdc-provider";
+import type { WebhookDispatchDeps } from "./webhook-dispatch";
 
 export { PaymentsCheckout, CheckoutError, multiplyUsdDecimal } from "./checkout";
 export type {
@@ -38,6 +40,23 @@ export type {
   PaymentsCheckoutDeps,
 } from "./checkout";
 export { DirectUsdcStubProvider } from "./usdc-provider";
+export {
+  dispatchFulfillment,
+  registerFulfillmentHandler,
+  resetFulfillmentRegistry,
+  setFulfillmentNotifier,
+} from "./fulfillment";
+export type {
+  FulfillmentHandler,
+  FulfillmentInput,
+  FulfillmentNotifier,
+} from "./fulfillment";
+export { dispatchCheckoutSession } from "./webhook-dispatch";
+export type {
+  CheckoutSessionLike,
+  WebhookDispatchDeps,
+  WebhookDispatchResult,
+} from "./webhook-dispatch";
 export type { UsdcNetworks } from "./usdc-provider";
 
 const BASE_URL = "https://agentbadge.xyz";
@@ -124,4 +143,17 @@ export function setPaymentsCheckoutForTests(
   svc: PaymentsCheckout | null,
 ): void {
   instance = svc;
+}
+
+/** SLICE-221-3 (D-221-9): production deps for the webhook dispatch —
+ *  confirm + normalized fulfillment input ride the lazy singleton;
+ *  sessions without paymentId stay on the legacy fulfillOrder path. */
+export function makeStripeWebhookDispatch(): WebhookDispatchDeps {
+  return {
+    confirm: (input) => getPaymentsCheckout().confirmPayment(input),
+    getFulfillmentInput: (paymentId) =>
+      getPaymentsCheckout().getFulfillmentInput(paymentId),
+    fulfillLegacy: (session) =>
+      fulfillOrder(session as Parameters<typeof fulfillOrder>[0]),
+  };
 }

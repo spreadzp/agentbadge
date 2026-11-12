@@ -24,12 +24,14 @@ const mockedGetStripeClient = vi.mocked(getStripeClient);
 const mockedIsStripeConfigured = vi.mocked(isStripeConfigured);
 const mockedFulfillOrder = vi.mocked(fulfillOrder);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock event doesn't satisfy Stripe.Event
 function mockStripeWebhook(constructEventResult: any) {
   mockedIsStripeConfigured.mockReturnValue(true);
   mockedGetStripeClient.mockReturnValue({
     webhooks: {
-      constructEvent: vi.fn().mockReturnValue(constructEventResult),
+      constructEventAsync: vi.fn().mockReturnValue(constructEventResult),
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock client doesn't satisfy Stripe
   } as any);
 }
 
@@ -46,6 +48,7 @@ describe("POST /api/stripe/webhook", () => {
 
   it("returns { received: true } for valid checkout.session.completed event", async () => {
     const mockEvent = {
+      id: "evt_test_1",
       type: "checkout.session.completed",
       data: { object: { id: "cs_test_123", metadata: { productId: "passport-bronze" } } },
     };
@@ -86,10 +89,11 @@ describe("POST /api/stripe/webhook", () => {
     mockedIsStripeConfigured.mockReturnValue(true);
     mockedGetStripeClient.mockReturnValue({
       webhooks: {
-        constructEvent: vi.fn().mockImplementation(() => {
+        constructEventAsync: vi.fn().mockImplementation(() => {
           throw new Error("Invalid signature");
         }),
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock client doesn't satisfy Stripe
     } as any);
 
     const app = makeTestApp();
@@ -170,6 +174,7 @@ describe("POST /api/stripe/webhook", () => {
   it("passes the session object to fulfillOrder for checkout.session.completed", async () => {
     const sessionObj = { id: "cs_test_456", metadata: { productId: "passport-gold" } };
     const mockEvent = {
+      id: "evt_test_2",
       type: "checkout.session.completed",
       data: { object: sessionObj },
     };
@@ -188,6 +193,6 @@ describe("POST /api/stripe/webhook", () => {
     expect(mockedFulfillOrder).toHaveBeenCalledOnce();
     const passedSession = mockedFulfillOrder.mock.calls[0][0];
     expect(passedSession.id).toBe("cs_test_456");
-    expect(passedSession.metadata.productId).toBe("passport-gold");
+    expect(passedSession.metadata?.productId).toBe("passport-gold");
   });
 });

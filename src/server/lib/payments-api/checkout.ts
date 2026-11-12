@@ -34,6 +34,7 @@ import {
 import { submitAttempt } from "./attempt";
 import type { CreateAttemptInput, CreateAttemptResult } from "./attempt";
 import { CheckoutError } from "./errors";
+import type { FulfillmentInput } from "./fulfillment";
 import { multiplyUsdDecimal } from "./money";
 import type { UsdcNetworks } from "./usdc-provider";
 
@@ -70,10 +71,9 @@ export interface CreatePaymentResult {
 }
 
 function defaultId(prefix: string): string {
-  return `${prefix}_${
-    globalThis.crypto?.randomUUID?.() ??
+  return `${prefix}_${globalThis.crypto?.randomUUID?.() ??
     `${Date.now()}_${Math.random().toString(36).slice(2)}`
-  }`;
+    }`;
 }
 
 /** Stable fingerprint — same convention as PaymentService so later
@@ -169,9 +169,8 @@ export class PaymentsCheckout {
     }
     const amount = multiplyUsdDecimal(usd.amount, quantity);
 
-    const reference = `chk_${
-      input.idempotencyKey ?? this.newId("ref").slice(4)
-    }`;
+    const reference = `chk_${input.idempotencyKey ?? this.newId("ref").slice(4)
+      }`;
     if (input.idempotencyKey != null) {
       const dup =
         (await this.stores.payments.getByIdempotencyKey(
@@ -260,5 +259,34 @@ export class PaymentsCheckout {
     input: Parameters<PaymentService["confirmPayment"]>[0],
   ) {
     return this.service.confirmPayment(input);
+  }
+
+  /** SLICE-221-3 (D-221-4): normalized registry input for a payment —
+   *  productCode + buyer metadata + amount from the row payload. */
+  async getFulfillmentInput(
+    paymentId: string,
+  ): Promise<FulfillmentInput | null> {
+    const row = await this.stores.payments.getById(paymentId);
+    if (!row) return null;
+    const payload =
+      typeof row.payload === "object" && row.payload !== null
+        ? (row.payload as {
+          productCode?: unknown;
+          metadata?: unknown;
+        })
+        : {};
+    return {
+      productCode:
+        typeof payload.productCode === "string"
+          ? payload.productCode
+          : (row.productId ?? "unknown"),
+      buyerRef: row.customerId ?? row.agentId ?? undefined,
+      metadata:
+        typeof payload.metadata === "object" && payload.metadata !== null
+          ? (payload.metadata as Record<string, unknown>)
+          : {},
+      amountUsd: row.amount,
+      paymentRef: row.id,
+    };
   }
 }

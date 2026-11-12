@@ -14,7 +14,8 @@ import type Stripe from "stripe";
 
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { listFiatProducts, getFiatProduct } from "../lib/pricing";
-import { fulfillOrder } from "../lib/order-fulfillment";
+import { dispatchCheckoutSession } from "../lib/payments-api/webhook-dispatch";
+import { makeStripeWebhookDispatch } from "../lib/payments-api";
 import { EventLedger, withIdempotency } from "../lib/event-ledger";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
@@ -189,7 +190,9 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
                 webhookLedger,
                 event.id,
                 session.id,
-                async () => { await fulfillOrder(session); },
+                async () => {
+                    await dispatchCheckoutSession(session, makeStripeWebhookDispatch());
+                },
                 {
                     onAlert: (info) => {
                         logger.error("webhook: repeated failures", { attempts: info.attempts, eventId: info.eventId, lastError: info.lastError });

@@ -1,9 +1,13 @@
 /**
- * Order fulfillment dispatcher.
+ * Order fulfillment dispatcher (SLICE-221-3, D-221-4/D-221-9).
  *
- * SLICE-67-4: Stub implementation.
- * SLICE-67-6: Real fulfillment logic with idempotency, passport minting,
- *   and directory listing publishing.
+ * Handlers now take the normalized FulfillmentInput — never a raw
+ * Stripe session. `fulfillOrder(session)` is the legacy adapter: it
+ * normalizes the session and routes through the same fulfillment
+ * registry as the new payments path.
+ *
+ * Exactly-once: processedSessions guards legacy redelivery; the
+ * registry dedupeKey guards the new confirm path.
  */
 
 import type Stripe from "stripe";
@@ -12,6 +16,13 @@ import { issuePassport } from "@agentbadge/passport";
 import { logger } from "@agentbadge/passport/logger";
 import { passportChainEnabled } from "./passport-chain-gate";
 import { sendDiscordMessage } from "../services/contact.service";
+import {
+  dispatchFulfillment,
+  registerFulfillmentHandler,
+  setFulfillmentNotifier,
+  type FulfillmentHandler,
+  type FulfillmentInput,
+} from "./payments-api/fulfillment";
 
 const processedSessions = new Set<string>();
 
@@ -19,70 +30,71 @@ export function resetProcessedSessions(): void {
   processedSessions.clear();
 }
 
-export async function fulfillOrder(session: Stripe.Checkout.Session): Promise<void> {
-  if (processedSessions.has(session.id)) {
-    logger.info("fulfillOrder: session already processed, skipping", { sessionId: session.id });
-    return;
-  }
+// ---------------------------------------------------------------------------
+// Normalized handlers (D-221-4)
+// ---------------------------------------------------------------------------
 
-  const productId = session.metadata?.productId;
-  if (!productId) {
-    logger.error("fulfillOrder: no productId in session metadata", { sessionId: session.id });
-    return;
-  }
-
-  switch (productId) {
-    case "directory-listing":
-      await fulfillDirectoryListing(session);
-      break;
-    case "passport-bronze":
-    case "passport-silver":
-    case "passport-gold":
-    case "passport-platinum":
-      await fulfillPassportMint(session);
-      break;
-    default:
-      logger.warn("fulfillOrder: unknown productId", { productId, sessionId: session.id });
-  }
-
-  processedSessions.add(session.id);
-
-  await notifyPaymentDiscord(session, productId);
-}
-
-async function fulfillDirectoryListing(session: Stripe.Checkout.Session): Promise<void> {
-  const listingId = session.metadata?.listingId;
-
+export async function fulfillDirectoryListing(
+  input: FulfillmentInput,
+): Promise<void> {
+  const listingId = input.metadata.listingId;
   if (!listingId) {
-    logger.error("fulfillDirectoryListing: missing listingId in metadata", { sessionId: session.id });
+    logger.error("fulfillDirectoryListing: missing listingId in metadata", {
+      paymentRef: input.paymentRef,
+    });
     return;
   }
 
-  logger.info("fulfillDirectoryListing: listing published", { listingId, sessionId: session.id });
+  logger.info("fulfillDirectoryListing: listing published", {
+    listingId,
+    paymentRef: input.paymentRef,
+  });
 
-  const email = session.customer_details?.email ?? session.customer_email;
-  if (email) {
-    logger.info("fulfillDirectoryListing: confirmation email queued", { email });
+  if (input.email) {
+    logger.info("fulfillDirectoryListing: confirmation email queued", {
+      email: input.email,
+    });
   }
 }
 
-async function fulfillPassportMint(session: Stripe.Checkout.Session): Promise<void> {
-  // SLICE-169-9: minting needs the Hedera chain — skip when gated off.
+/** Parse helper — catalog metadata stores arrays natively; legacy Stripe
+ *  session metadata is strings-only (JSON-encoded). */
+function parseMetaList(v: unknown): string[] | undefined {
+  if (Array.isArray(v)) return v as string[];
+  if (typeof v !== "string" || !v) return undefined;
+  try {
+    const parsed = JSON.parse(v);
+    return Array.isArray(parsed) ? (parsed as string[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function fulfillPassportMint(
+  input: FulfillmentInput,
+): Promise<void> {
   if (!passportChainEnabled()) {
-    logger.error("fulfillPassportMint: PASSPORT_CHAIN_ENABLED is off, mint skipped", { sessionId: session.id });
+    logger.error(
+      "fulfillPassportMint: PASSPORT_CHAIN_ENABLED is off, mint skipped",
+      { paymentRef: input.paymentRef },
+    );
     return;
   }
 
-  const tier = session.metadata?.tier as Tier;
-  const name = session.metadata?.name ?? "Stripe-paid agent";
-  const accountId = session.metadata?.accountId;
-  const capabilities = JSON.parse(session.metadata?.capabilities ?? "[]") as Capability[];
-  const endpoint = session.metadata?.endpoint;
-  const skills = session.metadata?.skills ? JSON.parse(session.metadata.skills) : undefined;
-  const imageUrl = session.metadata?.imageUrl;
+  const m = input.metadata;
+  const tier = m.tier as Tier;
+  const name = (m.name as string) ?? "Stripe-paid agent";
+  const accountId = m.accountId as string;
+  const capabilities = (parseMetaList(m.capabilities) ?? []) as Capability[];
+  const endpoint = m.endpoint as string | undefined;
+  const skills = parseMetaList(m.skills);
+  const imageUrl = m.imageUrl as string | undefined;
 
   if (!tier || !accountId) {
-    logger.error("fulfillPassportMint: missing required metadata (tier or accountId)", { sessionId: session.id });
+    logger.error(
+      "fulfillPassportMint: missing required metadata (tier or accountId)",
+      { paymentRef: input.paymentRef },
+    );
     return;
   }
 
@@ -97,23 +109,108 @@ async function fulfillPassportMint(session: Stripe.Checkout.Session): Promise<vo
     imageUrl,
   );
 
-  logger.info("fulfillPassportMint: passport minted", { tokenId: result.tokenId, serialNumber: result.serialNumber, sessionId: session.id });
+  logger.info("fulfillPassportMint: passport minted", {
+    tokenId: result.tokenId,
+    serialNumber: result.serialNumber,
+    paymentRef: input.paymentRef,
+  });
 }
 
-async function notifyPaymentDiscord(session: Stripe.Checkout.Session, productId: string): Promise<void> {
-  const email = session.customer_details?.email ?? session.customer_email ?? "unknown";
-  const amount = session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : "unknown";
+// Registry wiring — kind keys come from catalog fulfillmentKind values.
+/** Registers the built-in handlers + Discord notifier on the default
+ *  registry. Exported so tests can restore it after
+ *  resetFulfillmentRegistry(). */
+export function registerDefaultFulfillmentHandlers(): void {
+  registerFulfillmentHandler("passport-mint", fulfillPassportMint);
+  registerFulfillmentHandler("directory-listing", fulfillDirectoryListing);
+  setFulfillmentNotifier(notifyPaymentDiscord);
+}
+
+registerDefaultFulfillmentHandlers();
+
+// ---------------------------------------------------------------------------
+// Legacy adapter (D-221-9)
+// ---------------------------------------------------------------------------
+
+/** Stripe session → normalized input. kind comes from the legacy
+ *  productId mapping — same dispatch as the new catalog path. */
+export function normalizeSession(
+  session: Pick<
+    Stripe.Checkout.Session,
+    "id" | "metadata" | "customer_details" | "customer_email" | "amount_total"
+  >,
+): FulfillmentInput & { kind?: string } {
+  const productId = session.metadata?.productId;
+  const kind =
+    productId === "directory-listing"
+      ? "directory-listing"
+      : productId?.startsWith("passport-")
+        ? "passport-mint"
+        : undefined;
+  const email =
+    session.customer_details?.email ?? session.customer_email ?? undefined;
+  return {
+    productCode: productId ?? "unknown",
+    kind,
+    buyerRef: email,
+    metadata: (session.metadata ?? {}) as Record<string, unknown>,
+    email,
+    amountUsd: session.amount_total
+      ? (session.amount_total / 100).toFixed(2)
+      : undefined,
+    paymentRef: session.id,
+  };
+}
+
+export async function fulfillOrder(
+  session: Stripe.Checkout.Session,
+  opts?: { registry?: Map<string, FulfillmentHandler> },
+): Promise<void> {
+  if (processedSessions.has(session.id)) {
+    logger.info("fulfillOrder: session already processed, skipping", {
+      sessionId: session.id,
+    });
+    return;
+  }
+
+  const input = normalizeSession(session);
+  if (input.productCode === "unknown") {
+    logger.error("fulfillOrder: no productId in session metadata", {
+      sessionId: session.id,
+    });
+    return;
+  }
+
+  const dispatched = await dispatchFulfillment(input, {
+    kind: input.kind,
+    dedupeKey: `session:${session.id}`,
+    registry: opts?.registry,
+  });
+  if (!dispatched) {
+    logger.warn("fulfillOrder: unknown productId", {
+      productId: input.productCode,
+      sessionId: session.id,
+    });
+  }
+  processedSessions.add(session.id);
+}
+
+async function notifyPaymentDiscord(input: FulfillmentInput): Promise<void> {
+  const email = input.email ?? input.buyerRef ?? "unknown";
+  const amount = input.amountUsd ? `$${input.amountUsd}` : "unknown";
   const message = [
     `💳 New Payment Received`,
-    `Product: ${productId}`,
+    `Product: ${input.productCode}`,
     `Amount: ${amount}`,
     `Email: ${email}`,
-    `Session: ${session.id}`,
+    `Session: ${input.paymentRef ?? "unknown"}`,
   ].join("\n");
 
   try {
     await sendDiscordMessage({ message });
-    logger.info("fulfillOrder: Discord notification sent", { sessionId: session.id });
+    logger.info("fulfillOrder: Discord notification sent", {
+      paymentRef: input.paymentRef,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error("fulfillOrder: Discord notification failed", { error: msg });
