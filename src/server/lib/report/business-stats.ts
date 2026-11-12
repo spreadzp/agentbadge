@@ -11,6 +11,10 @@
  */
 
 import type { PrismaDb } from "@agentbadge/database";
+import {
+  aggregatePayLegs,
+  type PayLegRow,
+} from "./revenue-aggregate";
 
 export type BusinessStats = {
   scans: number;
@@ -30,6 +34,13 @@ export type BusinessStats = {
   bounties: { byStatus: Record<string, number>; claims: number };
   board: { cards: number; entries: number };
   a2a: { tasks: number; byStatus: Record<string, number> };
+  /** SLICE-242-11: settled-pay rollup (counterparty=PAY_TO). null when
+   *  payTo env unset or no pay legs in window — absent, never a fake 0. */
+  x402Revenue?: {
+    count: number;
+    usdc: string;
+    topEndpoints: { endpoint: string; count: number; usdc: string }[];
+  } | null;
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -57,6 +68,9 @@ interface BizRow {
   kind?: unknown;
   amountUsd?: unknown;
   amountUsdc?: unknown;
+  counterparty?: unknown;
+  at?: unknown;
+  payload?: unknown;
 }
 
 /**
@@ -69,6 +83,7 @@ interface BizRow {
 export async function collectBusinessStats(
   db: PrismaDb,
   cutoffIso: string,
+  opts?: { payTo?: string },
 ): Promise<BusinessStats> {
   const pub = db.orm.public;
   const within = (r: BizRow) => String(r.createdAt) >= cutoffIso;
@@ -133,6 +148,24 @@ export async function collectBusinessStats(
     tasks: tasks.length,
     byStatus: countBy(tasks, (r) => String(r.status ?? "unknown")),
   };
+
+  // SLICE-242-11: revenue rollup over the SAME already-scanned
+  // EconomicEvent rows — no second listByAgent pass needed (the digest
+  // window is short; payTo absent → section simply absent).
+  if (opts?.payTo) {
+    const roll = aggregatePayLegs(events as unknown as PayLegRow[], {
+      payTo: opts.payTo,
+      since: cutoffIso,
+    });
+    stats.x402Revenue =
+      roll.total.count > 0
+        ? {
+          count: roll.total.count,
+          usdc: roll.total.usdc,
+          topEndpoints: roll.byEndpoint.slice(0, 3),
+        }
+        : null;
+  }
   return stats;
 }
 
@@ -148,7 +181,8 @@ export function businessIsEmpty(b: BusinessStats): boolean {
     Object.keys(b.bounties.byStatus).length === 0 &&
     b.board.cards === 0 &&
     b.board.entries === 0 &&
-    b.a2a.tasks === 0
+    b.a2a.tasks === 0 &&
+    !(b.x402Revenue && b.x402Revenue.count > 0)
   );
 }
 
@@ -167,7 +201,7 @@ export function formatBusinessText(b: BusinessStats): string {
     const kinds = b.spend.topKinds.map(([k, v]) => `${k}:${v}`).join(" ");
     lines.push(
       `  spend=${b.spend.total} ($${b.spend.amountUsd.toFixed(2)}) ${pairs(b.spend.byState)}` +
-        (kinds ? ` kinds:${kinds}` : ""),
+      (kinds ? ` kinds:${kinds}` : ""),
     );
   }
   if (b.eaas.requests > 0 || b.eaas.verdicts > 0)
@@ -178,6 +212,15 @@ export function formatBusinessText(b: BusinessStats): string {
     lines.push(`  bounties=${pairs(b.bounties.byStatus)} claims=${b.bounties.claims}`);
   if (b.board.cards || b.board.entries) lines.push(`  board=cards:${b.board.cards} entries:${b.board.entries}`);
   if (b.a2a.tasks > 0) lines.push(`  a2a=${b.a2a.tasks} ${pairs(b.a2a.byStatus)}`);
+  if (b.x402Revenue && b.x402Revenue.count > 0) {
+    const tops = b.x402Revenue.topEndpoints
+      .map((t) => `${t.endpoint}:$${t.usdc}`)
+      .join(" ");
+    lines.push(
+      `  x402=$${b.x402Revenue.usdc} (${b.x402Revenue.count}pays)` +
+      (tops ? ` top:${tops}` : ""),
+    );
+  }
   return lines.join("\n");
 }
 

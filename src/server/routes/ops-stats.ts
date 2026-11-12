@@ -25,6 +25,7 @@ import {
 } from "../lib/notify/telegram";
 import { collectStats } from "../lib/report/traffic-format";
 import { collectBusinessStats } from "../lib/report/business-stats";
+import { revenuePayTo } from "../lib/report/revenue-aggregate";
 import {
   fetchTrafficRows,
   parseDigestWindow,
@@ -126,6 +127,7 @@ opsStatsRoutes.get(
     const business = await collectBusinessStats(
       db.db,
       new Date(Date.now() - hours * 3600_000).toISOString(),
+      { payTo: revenuePayTo() }, // 242-11: x402Revenue section
     ).catch(() => null);
 
     const tg = telegramFromEnv();

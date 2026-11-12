@@ -118,6 +118,63 @@ describe("collectBusinessStats", () => {
   });
 });
 
+describe("collectBusinessStats x402Revenue (SLICE-242-11)", () => {
+  const PAY_TO = "0x23ddc6a1f4b8d7c9e0a2b3c4d5e6f7a8b9c0d51b30";
+
+  const payRow = (over: Record<string, unknown> = {}) => ({
+    createdAt: iso(),
+    kind: "pay",
+    counterparty: PAY_TO,
+    amountUsdc: "10",
+    at: iso(),
+    payload: { rail: "x402", endpoint: "/api/total-scan" },
+    ...over,
+  });
+
+  it("aggregates pay legs to payTo into x402Revenue with top-3 endpoints", async () => {
+    const db = fakeDb({
+      EconomicEvent: [
+        payRow({ amountUsdc: "10" }),
+        payRow({ amountUsdc: "5", payload: { rail: "x402" } }),
+        payRow({ kind: "dispute" }), // non-pay excluded
+        payRow({ counterparty: "0x9999999999999999999999999999999999999999" }),
+        payRow({ at: iso(48 * 3600_000) }), // out of window
+      ],
+    });
+    const b = await collectBusinessStats(db as never, cutoff, { payTo: PAY_TO });
+    expect(b.x402Revenue).toEqual({
+      count: 2,
+      usdc: "15",
+      topEndpoints: [
+        { endpoint: "/api/total-scan", count: 1, usdc: "10" },
+        { endpoint: "unknown", count: 1, usdc: "5" },
+      ],
+    });
+    expect(formatBusinessText(b)).toContain("x402=$15");
+    expect(formatBusinessText(b)).toContain("2pays");
+  });
+
+  it("no pay legs → x402Revenue null, section absent", async () => {
+    const db = fakeDb({ EconomicEvent: [] });
+    const b = await collectBusinessStats(db as never, cutoff, { payTo: PAY_TO });
+    expect(b.x402Revenue).toBeNull();
+    expect(formatBusinessText(b)).not.toContain("x402=");
+  });
+
+  it("no opts.payTo → field untouched (undefined)", async () => {
+    const db = fakeDb({ EconomicEvent: [payRow()] });
+    const b = await collectBusinessStats(db as never, cutoff);
+    expect(b.x402Revenue).toBeUndefined();
+    expect(formatBusinessText(b)).not.toContain("x402=");
+  });
+
+  it("revenue-only activity counts as non-empty business", async () => {
+    const db = fakeDb({ EconomicEvent: [payRow()] });
+    const b = await collectBusinessStats(db as never, cutoff, { payTo: PAY_TO });
+    expect(businessIsEmpty(b)).toBe(false);
+  });
+});
+
 describe("formatBusinessTelegram", () => {
   it("renders 💼 Business header and escapes HTML", async () => {
     const b = await collectBusinessStats(

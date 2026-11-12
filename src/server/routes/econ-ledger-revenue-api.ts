@@ -18,23 +18,20 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import {
-  fromMicros,
-  toMicros,
-  type Database,
-  type EconEventStored,
-} from "@agentbadge/database";
+import type { Database } from "@agentbadge/database";
 import { getDatabase } from "../lib/database";
 import { createRateLimiter } from "../middleware/rate-limit";
 import { opsBearerAuth } from "../middleware/ops-auth";
 import { errJson } from "../lib/econ-ledger/api-utils";
+import {
+  aggregatePayLegs,
+  collectPayLegs,
+  revenuePayTo,
+} from "../lib/report/revenue-aggregate";
 
 const ledgerLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 
-const PAGE_SIZE = 500;
-const SCAN_CAP = 10_000;
 const DAY_MS = 86_400_000;
-const UNKNOWN_ENDPOINT = "unknown";
 
 export interface RevenueApiDeps {
   /** Injectable for tests; prod default = getDatabase(). */
@@ -45,17 +42,9 @@ export interface RevenueApiDeps {
   now?: () => number;
 }
 
-const envPayTo = () =>
-  process.env.X402_PAY_TO ?? process.env.CIRCLE_SELLER_ADDRESS ?? undefined;
-
-interface Bucket {
-  count: number;
-  micros: bigint;
-}
-
 export function createRevenueRoutes(deps: RevenueApiDeps = {}): Hono {
   const getDb = deps.getDb ?? getDatabase;
-  const getPayTo = deps.payTo ?? envPayTo;
+  const getPayTo = deps.payTo ?? revenuePayTo;
   const now = deps.now ?? Date.now;
   const app = new Hono();
 
@@ -116,89 +105,20 @@ export function createRevenueRoutes(deps: RevenueApiDeps = {}): Hono {
           "X402_PAY_TO / CIRCLE_SELLER_ADDRESS not configured",
         );
       }
-      const payToLc = payTo.toLowerCase();
       const since = new Date(now() - days * DAY_MS).toISOString();
 
       try {
-        const inWindow: EconEventStored[] = [];
-        let truncated = false;
-        let cursor: bigint | undefined;
-        let scanned = 0;
-
-        for (; ;) {
-          const page = await db.econLedger.listByAgent(payToLc, {
-            ...(cursor !== undefined ? { beforeLedgerSeq: cursor } : {}),
-            limit: PAGE_SIZE,
-          });
-          if (page.length === 0) break;
-          scanned += page.length;
-          cursor = page[page.length - 1]!.ledgerSeq;
-
-          let pageMaxAt = "";
-          for (const row of page) {
-            const e = row.event;
-            if (e.at > pageMaxAt) pageMaxAt = e.at;
-            if (
-              e.kind !== "pay" ||
-              e.counterparty?.toLowerCase() !== payToLc ||
-              e.at < since
-            ) {
-              continue;
-            }
-            inWindow.push(row);
-          }
-
-          if (scanned >= SCAN_CAP) {
-            truncated = true;
-            break;
-          }
-          // Newest-first: a page entirely older than the window means
-          // nothing in-window can follow (append order ~ event time).
-          if (pageMaxAt < since) break;
-          if (page.length < PAGE_SIZE) break;
-        }
-
-        const total: Bucket = { count: 0, micros: 0n };
-        const byDay = new Map<string, Bucket>();
-        const byEndpoint = new Map<string, Bucket>();
-        const bump = (m: Map<string, Bucket>, k: string, micros: bigint) => {
-          const b = m.get(k) ?? { count: 0, micros: 0n };
-          b.count++;
-          b.micros += micros;
-          m.set(k, b);
-        };
-
-        for (const row of inWindow) {
-          const e = row.event;
-          const micros = toMicros(e.amountUsdc);
-          total.count++;
-          total.micros += micros;
-          bump(byDay, e.at.slice(0, 10), micros);
-          const endpoint =
-            (e.payload as { endpoint?: string } | undefined)?.endpoint ??
-            UNKNOWN_ENDPOINT;
-          bump(byEndpoint, endpoint, micros);
-        }
-
-        const fmt = (b: Bucket) => ({
-          count: b.count,
-          usdc: fromMicros(b.micros),
+        const { rows, truncated } = await collectPayLegs(db.econLedger, {
+          payTo,
+          since,
         });
-
+        const rollup = aggregatePayLegs(rows, { payTo, since });
         return c.json({
           payTo,
           window,
-          total: fmt(total),
-          byDay: [...byDay.entries()]
-            .map(([day, b]) => ({ day, ...fmt(b) }))
-            .sort((a, b2) => (a.day < b2.day ? -1 : 1)),
-          byEndpoint: [...byEndpoint.entries()]
-            .sort(
-              ([, a], [, b]) =>
-                b.count - a.count ||
-                (b.micros > a.micros ? 1 : b.micros < a.micros ? -1 : 0),
-            )
-            .map(([endpoint, b]) => ({ endpoint, ...fmt(b) })),
+          total: rollup.total,
+          byDay: rollup.byDay,
+          byEndpoint: rollup.byEndpoint,
           ...(truncated ? { truncated: true } : {}),
         });
       } catch (e) {
