@@ -1727,6 +1727,156 @@ paths:
           in: path
           name: code
           required: true
+  /api/v1/payments:
+    post:
+      operationId: postApiV1Payments
+      tags:
+        - Payments
+      summary: Create a checkout payment
+      description: Creates a PENDING payment for a catalog product. `metadata` is
+        validated against the product's declared metadataSchema BEFORE the
+        payment row exists — no 'paid but no fulfillment data' state. `amount`
+        is a decimal string (catalog USD price × quantity, integer-cents math).
+        Idempotent via Idempotency-Key header. Attach a rail with POST
+        /api/v1/payments/:id/attempts.
+      responses:
+        "201":
+          description: Payment created (or deduped)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  reference:
+                    type: string
+                  status:
+                    type: string
+                  amount:
+                    type: string
+                  currency:
+                    type: string
+                  productCode:
+                    type: string
+                required:
+                  - id
+                  - reference
+                  - status
+                  - amount
+                  - currency
+        "400":
+          description: Invalid metadata / product / quantity
+  /api/v1/payments/{id}/attempts:
+    post:
+      operationId: postApiV1PaymentsByIdAttempts
+      tags:
+        - Payments
+      summary: Attach a payment rail attempt
+      description: Binds STRIPE (Checkout Session — returns redirectUrl) or
+        DIRECT_USDC (self-serve paymentInstructions) to an existing
+        PENDING/PROCESSING payment. `network` applies to USDC only (eip155:*
+        Arc/Base, solana). Recipient and tokenContract are server-configured and
+        cannot be supplied by the client.
+      responses:
+        "201":
+          description: Attempt submitted to the rail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  paymentId:
+                    type: string
+                  provider:
+                    type: string
+                  status:
+                    type: string
+                  network:
+                    type: string
+                  expiresAt:
+                    type: string
+                required:
+                  - id
+                  - paymentId
+                  - provider
+                  - status
+        "400":
+          description: Invalid provider/network or forbidden field
+        "404":
+          description: Payment not found
+        "409":
+          description: Payment not payable (terminal status)
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/payments/{id}:
+    get:
+      operationId: getApiV1PaymentsById
+      tags:
+        - Payments
+      summary: Get payment status
+      description: "Payment status polling — returns the payment plus its attempts.
+        Lazy expiry applies: overdue non-terminal rows transition to EXPIRED on
+        read."
+      responses:
+        "200":
+          description: Payment + attempts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  reference:
+                    type: string
+                  status:
+                    type: string
+                  amount:
+                    type: string
+                  currency:
+                    type: string
+                  productCode:
+                    type: string
+                required:
+                  - id
+                  - reference
+                  - status
+                  - amount
+                  - currency
+        "404":
+          description: Payment not found
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/payments/{id}/receipt:
+    get:
+      operationId: getApiV1PaymentsByIdReceipt
+      tags:
+        - Payments
+      summary: Get verified payment receipt
+      description: Returns the latest receipt for the payment — present only after a
+        CONFIRMED attempt (self-heal confirm or webhook).
+      responses:
+        "200":
+          description: Verified receipt
+        "404":
+          description: No receipt — payment unconfirmed or unknown
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /.well-known/api-catalog:
     get:
       operationId: getWellKnownApiCatalog

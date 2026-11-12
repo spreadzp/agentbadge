@@ -17,6 +17,7 @@ import { loadAgentRegistration } from "./agent-registration";
 import { loadKeeperHub } from "./keeperhub";
 import { loadPassportChain } from "./passport-chain";
 import { loadMarketplace } from "./marketplace";
+import { loadPayments } from "./payments";
 import { loadMcpAbuse } from "./mcp-abuse";
 import { loadScanPacks } from "./scan-packs";
 import type {
@@ -213,6 +214,7 @@ export function loadConfig(): AppConfig {
   const analytics = loadAnalytics();
   const mcpAbuse = loadMcpAbuse();
   const scanPacks = loadScanPacks();
+  const payments = loadPayments(errors);
   // Marketplace validation errors accumulate but are not thrown (matches
   // original ordering — the throw above precedes this section).
   const marketplace = loadMarketplace(errors);
@@ -251,5 +253,6 @@ export function loadConfig(): AppConfig {
     scanPacks,
     marketplace,
     mcpAbuse,
+    payments,
   };
 }

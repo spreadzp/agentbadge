@@ -35,7 +35,13 @@ echo ""
 # them to /packages/* so `file:../../packages/x` resolves correctly.
 VENDOR_DIR=".docker-packages"
 rm -rf "$VENDOR_DIR"
-for pkg in a2a payment-forensics econ-events database; do
+
+# @agentbadge/payments ships dist/ (gitignored) — build before vendoring.
+if [ -d "../../packages/payments" ]; then
+  (cd ../../packages/payments && bun run build)
+fi
+
+for pkg in a2a payment-forensics econ-events database payments; do
   src="../../packages/$pkg"
   if [ -d "$src" ]; then
     mkdir -p "$VENDOR_DIR"

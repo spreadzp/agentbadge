@@ -109,6 +109,20 @@ export const ErrorCodes = {
   EXECUTION_FAILED: "execution_failed",
   DATA_UNAVAILABLE: "data_unavailable",
 
+  // 400/404/409/502/503 — payments API (EPIC-221)
+  PAYMENT_NOT_FOUND: "payment_not_found",
+  PAYMENT_NOT_PAYABLE: "payment_not_payable",
+  CHECKOUT_INVALID_METADATA: "invalid_metadata",
+  CHECKOUT_UNKNOWN_PRODUCT: "unknown_product",
+  CHECKOUT_NO_USD_PRICE: "no_usd_price",
+  CHECKOUT_INVALID_QUANTITY: "invalid_quantity",
+  CHECKOUT_INVALID_PROVIDER: "invalid_provider",
+  CHECKOUT_PROVIDER_UNAVAILABLE: "provider_unavailable",
+  CHECKOUT_NETWORK_NOT_SUPPORTED: "network_not_supported",
+  CHECKOUT_FORBIDDEN_FIELD: "forbidden_field",
+  CHECKOUT_RAIL_ERROR: "rail_error",
+  RECEIPT_NOT_FOUND: "receipt_not_found",
+
   // 500 — server
   INTERNAL_ERROR: "INTERNAL_ERROR",
   INVALID_STATE: "INVALID_STATE",

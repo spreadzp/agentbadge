@@ -23,6 +23,7 @@ import { eventsRoutes } from "./events";
 import { catalogRoutes } from "./catalog";
 import { servicesCatalogRoutes } from "./services-catalog";
 import { commerceCatalogRoutes } from "./commerce-catalog";
+import { paymentsApiRoutes } from "./payments-api";
 import { discoveryManifestRoutes } from "./discovery";
 import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
@@ -125,6 +126,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", catalogRoutes);
   app.route("/", servicesCatalogRoutes);
   app.route("/", commerceCatalogRoutes); // EPIC-221 SLICE-221-1: /api/v1/catalog/*
+  app.route("/", paymentsApiRoutes); // EPIC-221 SLICE-221-2: /api/v1/payments*
   app.route("/", discoveryManifestRoutes);
   app.route("/", wellKnownRoutes);
   app.route("/", agentCardRoutes);
@@ -205,12 +207,12 @@ export function registerApiRoutes(app: Hono): void {
       createReceiptRoutes(
         receiptKey && evm
           ? {
-              signer: createReceiptSigner(receiptKey, evm.chainId),
-              chainId: evm.chainId,
-              agentRegistry:
-                process.env.ERC8004_REGISTRY ?? "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-              escrowAddress: evm.escrow,
-            }
+            signer: createReceiptSigner(receiptKey, evm.chainId),
+            chainId: evm.chainId,
+            agentRegistry:
+              process.env.ERC8004_REGISTRY ?? "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+            escrowAddress: evm.escrow,
+          }
           : {},
       ),
     );
@@ -267,15 +269,15 @@ export function registerPostMarketplaceRoutes(app: Hono): void {
       store: undefined, // default in-memory ring buffer
       writeAttestation: cp.arcEvaluatorKey
         ? createArcAttestationWriter({
-            chainId: net.chainId,
-            rpcUrl: cp.arcMainnet ? cp.arcMainnetRpcUrl : cp.arcRpcUrl,
-            evaluatorKey: cp.arcEvaluatorKey as `0x${string}`,
-            oracleAgentId: cp.oracleAgentId ? BigInt(cp.oracleAgentId) : undefined,
-            usdc: net.usdc,
-            identityRegistry: contracts.identityRegistry,
-            reputationRegistry: contracts.reputationRegistry,
-            memoContract: contracts.memo,
-          }).write
+          chainId: net.chainId,
+          rpcUrl: cp.arcMainnet ? cp.arcMainnetRpcUrl : cp.arcRpcUrl,
+          evaluatorKey: cp.arcEvaluatorKey as `0x${string}`,
+          oracleAgentId: cp.oracleAgentId ? BigInt(cp.oracleAgentId) : undefined,
+          usdc: net.usdc,
+          identityRegistry: contracts.identityRegistry,
+          reputationRegistry: contracts.reputationRegistry,
+          memoContract: contracts.memo,
+        }).write
         : undefined,
     });
     app.route("/", attestationRoutes);

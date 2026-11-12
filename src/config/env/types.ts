@@ -1,9 +1,7 @@
-/**
- * Environment config type definitions (EPIC-140, SLICE-140-25).
- * All interfaces describing the shape of AppConfig and its sections.
- */
+/** Environment config type definitions — AppConfig and its sections. */
 
 import type { SupportedChain } from "@agentbadge/circle-payments";
+import type { PaymentsConfig } from "./payments-types";
 
 export type ChainMode = "hedera" | "evm" | "base";
 
@@ -297,4 +295,5 @@ export interface AppConfig {
   cache?: CacheEnvConfig;
   scanPacks: ScanPacksConfig;
   marketplace?: MarketplaceConfig;
+  payments: PaymentsConfig;
 }
