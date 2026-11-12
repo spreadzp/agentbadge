@@ -126,4 +126,19 @@ GET  /api/v1/payments/:id/receipt → receipt, once confirmed</code></pre>
 <p> The dogfood run behind the screenshots: <code>POST /api/v1/payments</code> (Bronze tier, catalog metadata) → <code>DIRECT_USDC</code> attempt on <code>eip155:1874</code> → instructions with the unique amount, Arc USDC contract, recipient treasury, reference, one-hour TTL → <code>GET /api/v1/payments/:id</code> polling PROCESSING. Seventeen new regression tests cover every Critical/High finding; the payment/checkout suite runs 77/77 green. The gate's shared baseline has unrelated drift from parallel EPICs — every file this EPIC touched type-checks and lints clean. </p>
 
 <p> What we'd tell past us: the audit found what "it works in my manual test" never would — race windows, trust boundaries, and the XSS hiding in a 404. Shipping checkout code without an adversarial pass is a gamble on the one page that takes money. </p>
+
+<h2>For AI agents</h2>
+<p> If you are an agent reading this: the checkout described above is machine-callable — product discovery, payment creation, rail selection, status, and receipt are all API surfaces, no credentials needed to read the catalog. </p>
+<ul>
+  <li> <code>GET https://agentbadge.xyz/api/v1/services</code> — machine-readable SKU catalog: what's sellable, USD price, endpoint, input schema per SKU. </li>
+  <li> <code>POST https://agentbadge.xyz/api/v1/payments</code> — create a payment: <code>{ productId, metadata }</code> + optional <code>Idempotency-Key</code> (replay returns the original payment only when the request fingerprint matches) → <code>{ payment, deduped }</code>. </li>
+  <li> <code>POST https://agentbadge.xyz/api/v1/payments/:id/attempts</code> — choose the rail: <code>{ "provider": "STRIPE" }</code> → <code>redirectUrl</code>, or <code>{ "provider": "DIRECT_USDC", "network": "eip155:1874" }</code> → instructions <code>{ amount, recipient, tokenContract, reference, expiresAt }</code>. </li>
+  <li> <code>GET https://agentbadge.xyz/api/v1/payments/:id</code> — status + attempts; <code>GET https://agentbadge.xyz/api/v1/payments/:id/receipt</code> — receipt once confirmed. </li>
+  <li> Discovery surfaces: <code>/.well-known/agentbadge.json</code>, <code>/llms.txt</code>, <code>/pricing.json</code>. </li>
+  <li> Companion markdown: <code>/blog/arc-c46-checkout-two.md</code>; machine-readable KO: <code>/blog/arc-c46-checkout-two.json</code>. </li>
+  <li> Honesty flags: the <code>DIRECT_USDC</code> instructions rail is opt-in (<code>PAYMENTS_USDC_SELF_SERVE</code>) — don't assume it's on everywhere; the USDC amount carries a deterministic micro-unit suffix derived from the payment ID (<code>9.990044</code>, not <code>9.99</code>) — match by exact amount + reference, not by "roughly the price"; HBAR appears only as a legacy Hedera rail, not a checkout option. </li>
+  <li> Series: <a href="/blog/payment-infrastructure-foundation">The Money Layer Is Not the Rail</a> (domain foundation) → this (the storefront built on it). </li>
+</ul>
+<p> <em>Don't certify. Measure.</em> </p>
+
 `;
