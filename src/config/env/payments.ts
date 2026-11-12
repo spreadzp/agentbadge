@@ -107,6 +107,33 @@ export function loadPayments(errors: string[]): PaymentsConfig {
   ) {
     errors.push("Invalid USDC_MONITOR_LOOKBACK_BLOCKS: integer >= 1");
   }
+  // EPIC-222-5: reconciliation sweeper — same explicit opt-in and
+  // chain prerequisites as the monitor (it reads Transfer logs).
+  const reconFlag =
+    process.env.USDC_RECONCILIATION_ENABLED === "true";
+  const reconIntervalMs = Number(
+    process.env.USDC_RECONCILIATION_INTERVAL_MS ?? 3_600_000,
+  );
+  const reconLookback = Number(
+    process.env.USDC_RECONCILIATION_LOOKBACK_BLOCKS ??
+      monitorLookback,
+  );
+  if (
+    reconFlag &&
+    (!Number.isInteger(reconIntervalMs) || reconIntervalMs < 1000)
+  ) {
+    errors.push(
+      "Invalid USDC_RECONCILIATION_INTERVAL_MS: integer >= 1000",
+    );
+  }
+  if (
+    reconFlag &&
+    (!Number.isInteger(reconLookback) || reconLookback < 1)
+  ) {
+    errors.push(
+      "Invalid USDC_RECONCILIATION_LOOKBACK_BLOCKS: integer >= 1",
+    );
+  }
   const hasArcNetwork = Object.values(networks).some(
     (n) => n.label === "arc",
   );
@@ -122,6 +149,12 @@ export function loadPayments(errors: string[]): PaymentsConfig {
       arcRpcUrl,
       intervalMs: monitorIntervalMs,
       lookbackBlocks: monitorLookback,
+    },
+    usdcReconciliation: {
+      enabled: Boolean(reconFlag && arcRpcUrl && hasArcNetwork),
+      arcRpcUrl,
+      intervalMs: reconIntervalMs,
+      lookbackBlocks: reconLookback,
     },
   };
 }

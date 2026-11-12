@@ -25,6 +25,21 @@ export interface UsdcMonitorConfig {
   lookbackBlocks: number;
 }
 
+/** EPIC-222-5: reconciliation sweeper — opt-in like the monitor,
+ *  same RPC/network prerequisites (it reads the chain). */
+export interface UsdcReconciliationConfig {
+  /** USDC_RECONCILIATION_ENABLED === "true" AND arcRpcUrl AND
+   *  >=1 arc network. */
+  enabled: boolean;
+  /** Shared ARC_RPC_URL — recon never opens its own endpoint. */
+  arcRpcUrl?: string;
+  /** USDC_RECONCILIATION_INTERVAL_MS — tick cadence (default 1h). */
+  intervalMs: number;
+  /** USDC_RECONCILIATION_LOOKBACK_BLOCKS — first-run scan depth
+   *  when no cursor exists (default 4096). */
+  lookbackBlocks: number;
+}
+
 export interface PaymentsConfig {
   /** CAIP-2 network tag → server-bound rail config. */
   usdcNetworks: Record<string, UsdcNetworkConfig>;
@@ -36,4 +51,6 @@ export interface PaymentsConfig {
   usdcSelfServeEnabled: boolean;
   /** EPIC-222-3: monitor config; enabled=false → no timer, no RPC. */
   usdcMonitor: UsdcMonitorConfig;
+  /** EPIC-222-5: reconciliation config; enabled=false → no timer. */
+  usdcReconciliation: UsdcReconciliationConfig;
 }
