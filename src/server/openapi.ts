@@ -526,7 +526,16 @@ export const openApiConfig = {
     title: "AgentBadge API",
     version: APP_VERSION,
     description:
-      "On-chain identity system for AI agents on Hedera Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
+      "Agent-readiness verification and attestation for AI agents. Paid x402 scans return a full ruleset verdict and can mint an AccessPass NFT on Arc; free endpoints expose the verdict registry, service catalog and machine-readable descriptors for discovery.",
+    // SLICE-242-6: Circle /sell/score agent-guidance — plain-language
+    // what/get/when within ~1000 tokens.
+    "x-guidance":
+      "Verify an AI agent or API for agent-readiness. Input: POST /api/total-scan with a target URL; the endpoint answers 402 first — pay in USDC over x402 (EIP-3009, Arc eip155:5042) and retry. Output: a full ruleset verdict with score, failed rules, and how_to_fix hints; eligible scans mint an AccessPass NFT attestation on Arc. Free calls: GET /api/v1/services for the priced catalog, GET /.well-known/agentbadge-machine.json for machine descriptors, GET /openapi.json for this spec. Call when an agent needs a verifiable readiness verdict, an on-chain attestation, or a paid due-diligence scan of another service.",
+    contact: { email: "feedback@agentbadge.xyz" },
+  },
+  externalDocs: {
+    url: "https://agentbadge.gitbook.io/agentbadge-docs",
+    description: "AgentBadge documentation — guides, API reference, agent onboarding",
   },
   servers: [{ url: process.env.BASE_URL ?? "http://localhost:4021", description: "AgentBadge API" }],
   tags: [
