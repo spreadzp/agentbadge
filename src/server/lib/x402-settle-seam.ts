@@ -195,36 +195,7 @@ async function settlePhase(v: VerifiedPayment, opts: SettleSeamOptions) {
     v.stamp("Settled without payer");
     return null;
   }
-  // SLICE-207-3: settled payment → `pay` leg in the economic ledger
-  // (fire-and-forget; no-op when DATABASE_ENABLED=false).
-  emitX402Settle({
-    payer,
-    payTo: v.requirements.payTo,
-    amountAtomic: v.requirements.amount,
-    tx: settle.transaction,
-    network: v.requirements.network,
-    scheme: v.requirements.scheme,
-  });
-  logger.info("x402-settle-seam: payment settled", {
-    payer,
-    payTo: v.requirements.payTo,
-    amountAtomic: v.requirements.amount,
-    tx: settle.transaction,
-    network: v.requirements.network,
-    scheme: v.requirements.scheme,
-    resource: opts.resourceUrl,
-  });
-  // Operator notification (Discord/Telegram) — fire-and-forget, never
-  // throws; no-op when no channel env is configured.
-  void notifyX402Payment({
-    payer,
-    payTo: v.requirements.payTo,
-    amountAtomic: v.requirements.amount,
-    tx: settle.transaction,
-    network: v.requirements.network,
-    scheme: v.requirements.scheme,
-    resource: opts.resourceUrl,
-  });
+  recordSettled(v, settle, opts, payer);
   return {
     payer,
     amountAtomic: v.requirements.amount,
@@ -232,6 +203,26 @@ async function settlePhase(v: VerifiedPayment, opts: SettleSeamOptions) {
     sourceChain: v.requirements.network,
     scheme: v.requirements.scheme,
   } satisfies SettleSeamResult;
+}
+
+/** Post-settle side effects: econ-ledger leg + success log + notify (fire-and-forget). */
+function recordSettled(
+  v: VerifiedPayment,
+  settle: Awaited<ReturnType<PaymentRouter["settle"]>>,
+  opts: SettleSeamOptions,
+  payer: `0x${string}`,
+): void {
+  const leg = {
+    payer, payTo: v.requirements.payTo, amountAtomic: v.requirements.amount,
+    tx: settle.transaction, network: v.requirements.network,
+    scheme: v.requirements.scheme,
+  };
+  emitX402Settle(leg);
+  logger.info("x402-settle-seam: payment settled", {
+    ...leg,
+    resource: opts.resourceUrl,
+  });
+  void notifyX402Payment({ ...leg, resource: opts.resourceUrl });
 }
 
 /** Atomic verify+settle — the original path, unchanged semantics. */
