@@ -19,6 +19,7 @@ import {
 } from "@agentbadge/circle-payments";
 import { refuse as refusalResponse } from "./error-response";
 import { emitX402Settle } from "./econ-ledger/x402.js";
+import { notifyX402Payment } from "../services/payment-notification.js";
 import type { RefundService } from "./refund-log";
 
 export interface SettleSeamResult {
@@ -202,6 +203,17 @@ async function settlePhase(v: VerifiedPayment, opts: SettleSeamOptions) {
     tx: settle.transaction,
     network: v.requirements.network,
     scheme: v.requirements.scheme,
+  });
+  // Operator notification (Discord/Telegram) — fire-and-forget, never
+  // throws; no-op when no channel env is configured.
+  void notifyX402Payment({
+    payer,
+    payTo: v.requirements.payTo,
+    amountAtomic: v.requirements.amount,
+    tx: settle.transaction,
+    network: v.requirements.network,
+    scheme: v.requirements.scheme,
+    resource: opts.resourceUrl,
   });
   return {
     payer,

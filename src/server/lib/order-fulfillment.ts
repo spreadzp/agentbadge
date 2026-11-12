@@ -15,7 +15,10 @@ import type { Tier, Capability } from "@agentbadge/hedera-core";
 import { issuePassport } from "@agentbadge/passport";
 import { logger } from "@agentbadge/passport/logger";
 import { passportChainEnabled } from "./passport-chain-gate";
-import { sendDiscordMessage } from "../services/contact.service";
+import {
+  sendDiscordMessage,
+  sendTelegramMessage,
+} from "../services/contact.service";
 import {
   dispatchFulfillment,
   registerFulfillmentHandler,
@@ -227,6 +230,18 @@ async function notifyPaymentDiscord(input: FulfillmentInput): Promise<void> {
       paymentRef: input.paymentRef,
     });
   } catch (err) {
+
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+      try {
+        await sendTelegramMessage({ message });
+        logger.info("fulfillOrder: Telegram notification sent", {
+          paymentRef: input.paymentRef,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error("fulfillOrder: Telegram notification failed", { error: msg });
+      }
+    }
     const msg = err instanceof Error ? err.message : String(err);
     logger.error("fulfillOrder: Discord notification failed", { error: msg });
   }
