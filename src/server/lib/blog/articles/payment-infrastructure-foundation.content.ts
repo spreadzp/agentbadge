@@ -21,6 +21,13 @@ export const paymentInfrastructureFoundationContent = `
 <p> The rail (<code>PaymentProvider</code> interface: <code>createPayment</code>, <code>verifyPayment</code>, optional <code>refundPayment</code>) produces <strong>evidence</strong>, never verdicts. Only the domain writes domain state. </p>
 
 <figure class="article-image">
+  <img src="/images/blog/payment-infrastructure-foundation-d3.webp"
+       alt="Component diagram of the domain/rail boundary: Caller → PaymentService → guarded domain store → append-only entities (Payment, PaymentAttempt, PaymentReceipt, PaymentEvent). On the rail side, the PaymentProvider interface fans out to the Stripe rail, the x402 USDC rail on Arc/Base/Solana, and the test-only FakeProvider. Rails return PaymentEvidence (status, txHash, amount, finality) to the service; the domain is the only side that writes verdicts" />
+  <figcaption> The boundary in one picture: rails produce <code>PaymentEvidence</code>, the domain writes verdicts — the interface is the only crossing. </figcaption>
+</figure>
+
+
+<figure class="article-image">
   <img src="/images/blog/payment-infrastructure-foundation-hero.webp"
        alt="A rail carriage labeled RAIL hands an evidence envelope toward a glowing checkpoint bridge; above the gate a magnifier hovers over nine lit green checkmarks; on the far platform an emerald DOMAIN vault holds four stacked slots — Payment, Attempt, Receipt, Event — with an amber $5.00 capsule floating nearby" />
   <figcaption> The split, drawn: the rail produces evidence; the domain keeps verdicts — and nothing crosses the gate unchecked. </figcaption>
@@ -83,6 +90,13 @@ FAILED, EXPIRED, REFUNDED, CONFIRMED = terminal</code></pre>
   </tbody>
 </table>
 <p> A clean verdict is the <em>only</em> path to <code>CONFIRMED</code>. Not a rail callback. Not a create-time status. Not a raw <code>transitionPayment</code> — the audit noticed those helpers were exported from the package barrel, so we un-exported them; the only public doors are the guarded persistence paths and the service. </p>
+
+<figure class="article-image">
+  <img src="/images/blog/payment-infrastructure-foundation-d4.webp"
+       alt="Flowchart of the 9-check verdict pipeline inside verifyPayment: PaymentEvidence (status, txHash, amount, finality) enters the pipeline — reference_match, amount_match + currency_match, provider_match, recipient_match, network_match, finality, tx_not_reused, status_success — then branches to outcomes: all clean → CONFIRMED (guarded write + receipt, the only path); retryable-only finality fail → PENDING; failed check on captured funds → DISPUTED; failed check with no funds moved → FAILED/EXPIRED terminal" />
+  <figcaption> Nine checks between evidence and <code>CONFIRMED</code> — and three honest ways to say no: <code>PENDING</code>, <code>DISPUTED</code>, <code>FAILED</code>. </figcaption>
+</figure>
+
 
 <h2>What happens when evidence and checks disagree</h2>
 
