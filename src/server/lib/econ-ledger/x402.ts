@@ -34,6 +34,8 @@ export interface SettleLeg {
   tx?: string;
   network: string;
   scheme: string;
+  /** Paid resource URL/path — lands in payload.endpoint (242-8). */
+  resource?: string;
 }
 
 /** Pure mapper — settled payment → canonical `pay` input. */
@@ -54,6 +56,7 @@ export function settleToEconomic(leg: SettleLeg): BuildEventInput {
       rail: "x402",
       txHash: leg.tx && HEX32.test(leg.tx) ? leg.tx : undefined,
       chainId: chainIdOf(leg.network),
+      endpoint: leg.resource,
     },
   };
 }

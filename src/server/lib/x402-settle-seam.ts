@@ -18,9 +18,11 @@ import {
   type PaymentRouter,
 } from "@agentbadge/circle-payments";
 import { refuse as refusalResponse } from "./error-response";
-import { emitX402Settle } from "./econ-ledger/x402.js";
-import { notifyX402Payment } from "../services/payment-notification.js";
-import { logger } from "@agentbadge/passport/logger";
+import {
+  logVerifyFailure,
+  recordSettled,
+  reportSettleFailure,
+} from "./x402-settle-seam-effects.js";
 import type { RefundService } from "./refund-log";
 
 export interface SettleSeamResult {
@@ -173,7 +175,10 @@ async function verifyPhase(
 
   const verify = await opts.router.verify(payload, requirements);
   if (!verify.isValid) {
-    stamp(verify.invalidReason ?? "Payment verification failed");
+    // 242-10: verify-fail is user noise — log only, never alert (D-242-15).
+    const reason = verify.invalidReason ?? "Payment verification failed";
+    logVerifyFailure(reason, opts.resourceUrl ?? c.req.url);
+    stamp(reason);
     return null;
   }
   if (!verify.payer) {
@@ -187,7 +192,11 @@ async function verifyPhase(
 async function settlePhase(v: VerifiedPayment, opts: SettleSeamOptions) {
   const settle = await opts.router.settle(v.payload, v.requirements);
   if (!settle.success) {
-    v.stamp(settle.errorReason ?? "Payment settlement failed");
+    // 242-10: settle-fail after a valid verify = lost money — log + alert
+    // (deduped by reason, 15 min window, see D-242-15).
+    const reason = settle.errorReason ?? "Payment settlement failed";
+    reportSettleFailure(v, opts, reason);
+    v.stamp(reason);
     return null;
   }
   const payer = (settle.payer ?? v.payer) as `0x${string}` | undefined;
@@ -203,26 +212,6 @@ async function settlePhase(v: VerifiedPayment, opts: SettleSeamOptions) {
     sourceChain: v.requirements.network,
     scheme: v.requirements.scheme,
   } satisfies SettleSeamResult;
-}
-
-/** Post-settle side effects: econ-ledger leg + success log + notify (fire-and-forget). */
-function recordSettled(
-  v: VerifiedPayment,
-  settle: Awaited<ReturnType<PaymentRouter["settle"]>>,
-  opts: SettleSeamOptions,
-  payer: `0x${string}`,
-): void {
-  const leg = {
-    payer, payTo: v.requirements.payTo, amountAtomic: v.requirements.amount,
-    tx: settle.transaction, network: v.requirements.network,
-    scheme: v.requirements.scheme,
-  };
-  emitX402Settle(leg);
-  logger.info("x402-settle-seam: payment settled", {
-    ...leg,
-    resource: opts.resourceUrl,
-  });
-  void notifyX402Payment({ ...leg, resource: opts.resourceUrl });
 }
 
 /** Atomic verify+settle — the original path, unchanged semantics. */

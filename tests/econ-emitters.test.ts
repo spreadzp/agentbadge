@@ -231,6 +231,31 @@ describe("x402 mapper", () => {
     valid(out);
   });
 
+  it("resource → payload.endpoint; absent resource → field omitted (242-8)", () => {
+    const withRes = settleToEconomic({
+      payer: "0xpayer",
+      payTo: "0xpayee",
+      amountAtomic: "5000000",
+      network: "arc",
+      scheme: "exact",
+      resource: "/api/total-scan",
+    });
+    expect((withRes.payload as Record<string, unknown>).endpoint).toBe(
+      "/api/total-scan",
+    );
+    valid(withRes);
+
+    const noRes = settleToEconomic({
+      payer: "0xpayer",
+      payTo: "0xpayee",
+      amountAtomic: "5000000",
+      network: "arc",
+      scheme: "exact",
+    });
+    expect((noRes.payload as Record<string, unknown>).endpoint).toBeUndefined();
+    valid(noRes);
+  });
+
   it("missing tx → deterministic sourceId still dedupes", () => {
     const leg = {
       payer: "0xpayer",
