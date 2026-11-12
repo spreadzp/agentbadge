@@ -24,6 +24,12 @@ import {
   getCommerceProduct,
   productCodeForLegacyId,
 } from "../commerce-catalog";
+import {
+  buildEffectContext,
+  type FulfillmentEffectContext,
+} from "./fulfillment-effects";
+
+export type { FulfillmentEffectContext } from "./fulfillment-effects";
 
 export interface FulfillmentInput {
   /** Catalog code (PASSPORT_BRONZE) or legacy productId (passport-bronze). */
@@ -37,7 +43,10 @@ export interface FulfillmentInput {
   paymentRef?: string;
 }
 
-export type FulfillmentHandler = (input: FulfillmentInput) => Promise<void>;
+export type FulfillmentHandler = (
+  input: FulfillmentInput,
+  ctx?: FulfillmentEffectContext,
+) => Promise<void>;
 export type FulfillmentNotifier = (input: FulfillmentInput) => Promise<void>;
 
 /** Narrow structural slice of the payments EventStorePort — only the two
@@ -57,7 +66,9 @@ export interface FulfillmentEventStore {
   }): Promise<unknown>;
   listByPayment(
     paymentId: string,
-  ): Promise<{ entity: string; to: string; atMs: number }[]>;
+  ): Promise<
+    { entity: string; to: string; atMs: number; payload?: unknown }[]
+  >;
 }
 
 export type FulfillmentDispatchStatus =
@@ -202,8 +213,14 @@ export async function dispatchFulfillment(
     inFlightRefs.add(key);
   }
 
+  // 6.1/6.2: operation-level effect guard — handlers that mint/spend
+  // check priorEffect before external work; a stale-claim retry then
+  // dedupes on "done", never re-executes.
+  const effectCtx =
+    events && paymentId ? buildEffectContext(events, paymentId) : undefined;
+
   try {
-    await handler(input);
+    await handler(input, effectCtx);
   } catch (err) {
     if (key) inFlightRefs.delete(key);
     if (events && paymentId) {

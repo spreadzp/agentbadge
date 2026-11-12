@@ -11,6 +11,7 @@ import {
 import { startEscrowReconciler } from "../services/escrow-reconciler";
 import { startBountyLeaseSweeper } from "../services/bounty-lease-sweeper";
 import { startBountyQaRunner } from "../services/bounty-qa-runner";
+import { startUsdcPaymentMonitor } from "../services/usdc-payment-monitor";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { startArchiveWorkers } from "./archive-workers";
@@ -79,6 +80,10 @@ export function startBackgroundJobs(): void {
   if (process.env.ARC_VENUE_ENABLED === "true") {
     startVenueBillingSweeper();
   }
+
+  // 222-3: USDC on-chain payment monitor — explicit opt-in via
+  // USDC_MONITOR_ENABLED + ARC_RPC_URL; off = zero behavior change.
+  startUsdcPaymentMonitor();
 
   // 217-8/217-9: TG archive workers (daily digest + weekly rollup doc).
   // Self-gates on DATABASE_ENABLED + TG creds; logs skip-reason.

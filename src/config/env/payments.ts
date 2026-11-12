@@ -85,11 +85,43 @@ export function loadPayments(errors: string[]): PaymentsConfig {
     errors.push("Invalid PAYMENTS_USDC_TTL_SEC: integer 60-86400");
   }
 
+  // EPIC-222-3: the on-chain monitor confirms real money — explicit
+  // opt-in only; never auto-on from the mere presence of ARC_RPC_URL.
+  const monitorFlag = process.env.USDC_MONITOR_ENABLED === "true";
+  const arcRpcUrl = process.env.ARC_RPC_URL?.trim() || undefined;
+  const monitorIntervalMs = Number(
+    process.env.USDC_MONITOR_INTERVAL_MS ?? 30_000,
+  );
+  const monitorLookback = Number(
+    process.env.USDC_MONITOR_LOOKBACK_BLOCKS ?? 4096,
+  );
+  if (
+    monitorFlag &&
+    (!Number.isInteger(monitorIntervalMs) || monitorIntervalMs < 1000)
+  ) {
+    errors.push("Invalid USDC_MONITOR_INTERVAL_MS: integer >= 1000");
+  }
+  if (
+    monitorFlag &&
+    (!Number.isInteger(monitorLookback) || monitorLookback < 1)
+  ) {
+    errors.push("Invalid USDC_MONITOR_LOOKBACK_BLOCKS: integer >= 1");
+  }
+  const hasArcNetwork = Object.values(networks).some(
+    (n) => n.label === "arc",
+  );
+
   return {
     usdcNetworks: networks,
     usdcInstructionsTtlSec: ttlSec,
     // H-8: instructions-only stub is opt-in, never on by default.
     usdcSelfServeEnabled:
       process.env.PAYMENTS_USDC_SELF_SERVE === "true",
+    usdcMonitor: {
+      enabled: Boolean(monitorFlag && arcRpcUrl && hasArcNetwork),
+      arcRpcUrl,
+      intervalMs: monitorIntervalMs,
+      lookbackBlocks: monitorLookback,
+    },
   };
 }

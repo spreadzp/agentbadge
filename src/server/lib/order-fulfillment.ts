@@ -23,6 +23,7 @@ import {
   dispatchFulfillment,
   registerFulfillmentHandler,
   setFulfillmentNotifier,
+  type FulfillmentEffectContext,
   type FulfillmentHandler,
   type FulfillmentInput,
 } from "./payments-api/fulfillment";
@@ -75,6 +76,7 @@ function parseMetaList(v: unknown): string[] | undefined {
 
 export async function fulfillPassportMint(
   input: FulfillmentInput,
+  ctx?: FulfillmentEffectContext,
 ): Promise<void> {
   if (!passportChainEnabled()) {
     logger.error(
@@ -101,6 +103,35 @@ export async function fulfillPassportMint(
     return;
   }
 
+  // Reviews 6.1/6.2 (EPIC-222): the mint is an external effect — before
+  // running it, consult the durable effect ledger. "done" → dedupe (a
+  // crashed run already minted); "intent" → an effect may be in flight
+  // or was interrupted mid-mint — never blind re-mint, flag for ops.
+  if (ctx) {
+    const prior = await ctx.priorEffect();
+    if (prior.status === "done") {
+      logger.info("fulfillPassportMint: prior mint deduped by operationId", {
+        paymentRef: input.paymentRef,
+        priorResult: prior.result,
+      });
+      return;
+    }
+    if (prior.status === "intent") {
+      logger.error(
+        "fulfillPassportMint: unresolved effect-intent — mint may have " +
+          "run already; NOT re-minting, ops must reconcile",
+        { paymentRef: input.paymentRef },
+      );
+      return;
+    }
+    if (!(await ctx.markIntent())) {
+      logger.info("fulfillPassportMint: effect already claimed", {
+        paymentRef: input.paymentRef,
+      });
+      return;
+    }
+  }
+
   const result = await issuePassport(
     accountId,
     "",
@@ -111,6 +142,11 @@ export async function fulfillPassportMint(
     skills,
     imageUrl,
   );
+
+  await ctx?.markDone({
+    tokenId: result.tokenId,
+    serialNumber: result.serialNumber,
+  });
 
   logger.info("fulfillPassportMint: passport minted", {
     tokenId: result.tokenId,

@@ -13,6 +13,18 @@ export interface UsdcNetworkConfig {
   label: string;
 }
 
+/** EPIC-222-3: on-chain USDC monitor — explicit opt-in (D-222-3). */
+export interface UsdcMonitorConfig {
+  /** USDC_MONITOR_ENABLED === "true" AND arcRpcUrl AND >=1 arc network. */
+  enabled: boolean;
+  /** ARC_RPC_URL — viem http transport for the Arc adapter. */
+  arcRpcUrl?: string;
+  /** USDC_MONITOR_INTERVAL_MS — tick cadence (default 30s). */
+  intervalMs: number;
+  /** USDC_MONITOR_LOOKBACK_BLOCKS — scan window depth (default 4096). */
+  lookbackBlocks: number;
+}
+
 export interface PaymentsConfig {
   /** CAIP-2 network tag → server-bound rail config. */
   usdcNetworks: Record<string, UsdcNetworkConfig>;
@@ -22,4 +34,6 @@ export interface PaymentsConfig {
    *  explicitly opted into; unset/false → DIRECT_USDC provider is not
    *  registered and attempts get provider_unavailable. */
   usdcSelfServeEnabled: boolean;
+  /** EPIC-222-3: monitor config; enabled=false → no timer, no RPC. */
+  usdcMonitor: UsdcMonitorConfig;
 }
