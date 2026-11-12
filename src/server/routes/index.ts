@@ -32,6 +32,7 @@ import { feedDirectoryRoutes } from "./feed-directory";
 import { mcpRoutes } from "./mcp";
 import { riskRoutes } from "./risk-api";
 import { econLedgerRoutes } from "./econ-ledger-api";
+import { econLedgerRevenueRoutes } from "./econ-ledger-revenue-api";
 import { econLedgerExposureRoutes } from "./econ-ledger-exposure-api";
 import { econLedgerShipmentsRoutes } from "./econ-ledger-shipments-api";
 
@@ -136,6 +137,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", mcpRoutes);
   app.route("/", riskRoutes);
   app.route("/", econLedgerRoutes);
+  app.route("/", econLedgerRevenueRoutes); // 242-9: /api/ledger/revenue (ops)
   app.route("/", econLedgerExposureRoutes);
   app.route("/", econLedgerShipmentsRoutes);
 }

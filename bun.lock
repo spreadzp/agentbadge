@@ -10,7 +10,7 @@
         "@agentbadge/cache": "^0.2.1",
         "@agentbadge/circle-payments": "0.1.20",
         "@agentbadge/database": "^0.6.2",
-        "@agentbadge/econ-events": "^0.1.2",
+        "@agentbadge/econ-events": "^0.1.4",
         "@agentbadge/evm-core": "^0.1.2",
         "@agentbadge/hedera-core": "^0.2.1",
         "@agentbadge/keeperhub": "^0.1.1",
@@ -86,7 +86,7 @@
 
     "@agentbadge/database": ["@agentbadge/database@0.6.2", "", { "dependencies": { "@agentbadge/econ-events": "^0.1.3", "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-vG6R5FC+vEiNqTbZWbb7ZgrCUyL7T9Hep9p/lAdpJToGajTxErg8z4mrcqwXm/ft1wneU9Po3+SUXoW9PG+6IQ=="],
 
-    "@agentbadge/econ-events": ["@agentbadge/econ-events@0.1.2", "", { "dependencies": { "zod": "^4.0.0" } }, "sha512-YkCT1Itf/a5kGGarRVb359ifL029PIGnZaVA2BQGmBMsZrYI9IpguawxdPETxOvrA2g8oWDK+ASHQ7ZY/qL/nA=="],
+    "@agentbadge/econ-events": ["@agentbadge/econ-events@0.1.4", "", { "dependencies": { "zod": "^4.0.0" } }, "sha512-mjCvKhywG5H8ThfjbHf6ORO5e3RRWNFsKuhlX2mSfehcGUZR8L3aWlMy+dUi5zEhaipbe+iThmYk15MrquwCgw=="],
 
     "@agentbadge/evm-core": ["@agentbadge/evm-core@0.1.2", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "ethers": "^6.17.0" } }, "sha512-qecaJWw+MLuFnpv8dMV3i+XmztSZpXAjbcBc0DfdfbrL7wHpw1Ilgk2UfImhQ99Tefz7HRpqF9pWWmNDSqAK3g=="],
 
