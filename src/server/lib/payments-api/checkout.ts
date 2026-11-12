@@ -34,6 +34,8 @@ import {
 
 import { submitAttempt } from "./attempt";
 import type { CreateAttemptInput, CreateAttemptResult } from "./attempt";
+import { listPaymentExceptions } from "./checkout-exceptions";
+import type { ListExceptionsOpts } from "./checkout-exceptions";
 import {
   assertIdempotentReplay,
   checkoutFingerprint,
@@ -242,6 +244,12 @@ export class PaymentsCheckout {
   async getReceipt(paymentId: string) {
     const receipts = await this.stores.receipts.listByPayment(paymentId);
     return receipts[receipts.length - 1] ?? null;
+  }
+
+  /** 222-4: ops exception feed — `null` when the persistence
+   *  backend has no exceptions port (pre-222-4 stores). */
+  async listExceptions(opts?: ListExceptionsOpts) {
+    return listPaymentExceptions(this.stores, opts);
   }
 
   /** Domain-service confirm — verification pipeline + receipt (221-2

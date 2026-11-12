@@ -13,11 +13,70 @@ import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { paymentJson } from "../lib/payments-api/api-schemas";
 import type { PaymentsCheckout } from "../lib/payments-api";
+import { adminAuth } from "../middleware/adminAuth";
 
 export function createPaymentsReadRoutes(
   getCheckout: () => PaymentsCheckout,
 ): Hono {
   const routes = new Hono();
+
+  // 222-4: ops exception feed — admin-only (payment internals:
+  // txHashes, payers, expected/actual amounts). Registered BEFORE
+  // `/api/v1/payments/:id` so "exceptions" is not parsed as a payment id.
+  routes.get(
+    "/api/v1/payments/exceptions",
+    describeRoute({
+      tags: ["Payments"],
+      summary: "List payment exceptions (admin)",
+      description:
+        "Ops/reconciliation queue — anomalies the monitor and " +
+        "reconciliation flagged (underpaid, late, duplicate, …).",
+      responses: {
+        200: { description: "Exception rows, newest first" },
+        401: { description: "Missing/invalid admin key" },
+      },
+    }),
+    adminAuth,
+    async (c) => {
+      const checkout = getCheckout();
+      const status = c.req.query("status");
+      const kind = c.req.query("kind");
+      const limitQ = c.req.query("limit");
+      const limit = limitQ
+        ? Math.min(Math.max(1, Number(limitQ) || 0), 500)
+        : 200;
+      const rows = await checkout.listExceptions({
+        ...(status ? { status } : {}),
+        ...(kind ? { kind } : {}),
+        limit,
+      });
+      if (!rows) {
+        return errorResponse(
+          c,
+          503,
+          ErrorCodes.INTERNAL_ERROR,
+          "exceptions store not configured on this backend",
+        );
+      }
+      return c.json({
+        exceptions: rows.map((r) => ({
+          id: r.id,
+          paymentId: r.paymentId,
+          attemptId: r.attemptId,
+          kind: r.kind,
+          severity: r.severity,
+          status: r.status,
+          details: r.details,
+          createdAt: new Date(r.createdAtMs).toISOString(),
+          resolvedAt:
+            r.resolvedAtMs != null
+              ? new Date(r.resolvedAtMs).toISOString()
+              : null,
+          resolutionNote: r.resolutionNote ?? null,
+        })),
+      });
+    },
+  );
 
   routes.get(
     "/api/v1/payments/:id",

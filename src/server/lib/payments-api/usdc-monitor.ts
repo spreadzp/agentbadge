@@ -68,6 +68,12 @@ export interface UsdcMonitorDeps {
   newId?: (prefix: string) => string;
   nowMs?: () => number;
   lookbackBlocks?: bigint;
+  /**
+   * 222-4: how far back terminal attempts stay in the match feed —
+   * a late/duplicate tx against a recently-consumed attempt must
+   * surface as an exception, not NONE. Default 1h.
+   */
+  recentTerminalMs?: number;
   logger?: UsdcMonitorLogger;
 }
 
@@ -122,10 +128,29 @@ export async function runUsdcMonitorTick(
       (a.status === "PENDING" || a.status === "PROCESSING"),
   );
   result.payableAttempts = payable.length;
-  if (payable.length === 0) return result;
+
+  // 222-4: recently-terminal feed — late/duplicate transfers on
+  // consumed attempts surface as exceptions instead of NONE.
+  const recentWindowMs = deps.recentTerminalMs ?? 3_600_000;
+  const listRecent = deps.stores.attempts.listRecentTerminal?.bind(
+    deps.stores.attempts,
+  );
+  const recentTerminal = listRecent
+    ? (await listRecent(atMs - recentWindowMs)).filter(
+        (a) =>
+          a.provider === "DIRECT_USDC" && a.network != null,
+      )
+    : [];
+  const payableIds = new Set(payable.map((a) => a.id));
+  const terminalExtras = recentTerminal.filter(
+    (a) => !payableIds.has(a.id),
+  );
+  if (payable.length === 0 && terminalExtras.length === 0) {
+    return result;
+  }
 
   const byNetwork = new Map<string, PersistedAttempt[]>();
-  for (const a of payable) {
+  for (const a of [...payable, ...terminalExtras]) {
     const key = a.network ?? "";
     const group = byNetwork.get(key) ?? [];
     group.push(a);

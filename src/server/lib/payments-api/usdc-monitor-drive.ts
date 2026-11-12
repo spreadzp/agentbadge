@@ -19,6 +19,7 @@ import {
   type PaymentNetworkConfig,
   type PersistedAttempt,
 } from "@agentbadge/payments";
+import { flagMatch, recordException } from "./usdc-monitor-exceptions";
 
 import type { UsdcMonitorDeps, UsdcMonitorTickResult } from "./usdc-monitor";
 
@@ -67,7 +68,11 @@ export function toExpectation(
     expiresAtMs: attempt.expiresAtMs ?? undefined,
     // Attempt may only tighten the network floor (H-2).
     minConfirmations: Math.max(boundMin, net.confirmationsRequired),
-    payable: true,
+    // Terminal attempts stay in the feed as consumed expectations —
+    // an exact-amount hit flags DUPLICATE/LATE, never EXACT.
+    payable: !["CONFIRMED", "FAILED", "EXPIRED"].includes(
+      attempt.status,
+    ),
   };
 }
 
@@ -98,53 +103,7 @@ export function toPaymentEvidence(
   };
 }
 
-/** FUZZY/AMBIGUOUS → deterministic flag events (dedupe-safe on
- *  re-scan) on every involved attempt. Never confirms, never merges. */
-export async function flagMatch(
-  deps: UsdcMonitorDeps,
-  matchStatus: "FUZZY" | "AMBIGUOUS",
-  candidates: {
-    expectation: AttemptPaymentExpectation;
-    failureReason: string;
-  }[],
-  attemptsById: Map<string, PersistedAttempt>,
-  tx: ChainTxEvidence,
-  atMs: number,
-): Promise<number> {
-  let flagged = 0;
-  for (const c of candidates) {
-    const att = attemptsById.get(c.expectation.attemptId);
-    if (!att) continue;
-    try {
-      await deps.stores.events.append({
-        // Deterministic id — re-scanning the same tx re-appends null.
-        id: `usdcmon-flag-${att.id}-${tx.txHash}-${matchStatus}`,
-        entity: "PAYMENT_ATTEMPT",
-        paymentId: att.paymentId,
-        attemptId: att.id,
-        from: att.status,
-        to: att.status,
-        actor: ACTOR,
-        reason: `usdc-monitor ${matchStatus}: ${c.failureReason} (tx ${tx.txHash})`,
-        atMs,
-        payload: {
-          txHash: tx.txHash,
-          matchStatus,
-          failureReason: c.failureReason,
-          amountUnits: tx.amountUnits.toString(),
-          payer: tx.from,
-        },
-      });
-      flagged++;
-    } catch (e) {
-      deps.logger?.warn("usdc-monitor: flag event failed", {
-        attemptId: att.id,
-        error: errMsg(e),
-      });
-    }
-  }
-  return flagged;
-}
+export { flagMatch, recordException };
 
 /** EXACT match → verify → drive the state machine. */
 export async function driveExactMatch(
@@ -187,6 +146,14 @@ export async function driveExactMatch(
       at,
       patch: { transactionHash: tx.txHash },
     });
+    await recordException(
+      deps,
+      attempt,
+      verdict.failureReason ?? "AMOUNT_MISMATCH",
+      tx,
+      atMs,
+      { stage: "verify", attemptStatus: "FAILED" },
+    );
     if (verdict.failureReason === "LATE_PAYMENT") {
       // Funds captured late — dispute for ops, never auto-confirm.
       const payment = await deps.stores.payments.getById(attempt.paymentId);

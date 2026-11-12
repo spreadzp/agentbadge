@@ -339,6 +339,118 @@ describe("usdc monitor env gate (USDC_MONITOR_ENABLED + ARC_RPC_URL)", () => {
   });
 });
 
+describe("222-4: exceptions via monitor", () => {
+  let stores: Stores;
+
+  const TX2 = "0x" + "cd".repeat(32);
+
+  beforeEach(() => {
+    stores = createInMemoryPaymentStores();
+  });
+
+  /** Seed a TERMINAL attempt — payable:false expectation in feed. */
+  async function seedTerminal(status: "EXPIRED" | "CONFIRMED") {
+    const paymentId = await seedPayment(stores);
+    await stores.attempts.applyStatus(
+      "att-pay1",
+      "PENDING",
+      status === "EXPIRED" ? "EXPIRED" : "CONFIRMED",
+      NOW_MS - 1000,
+      { confirmedAtMs: NOW_MS - 1000 },
+    );
+    return paymentId;
+  }
+
+  it("late payment on EXPIRED attempt → LATE_PAYMENT exception, status unchanged", async () => {
+    await seedTerminal("EXPIRED");
+    const result = await runUsdcMonitorTick(
+      makeDeps(stores, mockChain([transfer(9_990_044n)])),
+    );
+    expect(result.confirmed).toBe(0);
+    const attempt = await stores.attempts.getById("att-pay1");
+    expect(attempt?.status).toBe("EXPIRED");
+    const ex = await stores.exceptions!.listByPayment("pay1");
+    expect(ex).toHaveLength(1);
+    expect(ex[0].kind).toBe("LATE_PAYMENT");
+    expect(ex[0].severity).toBe("CRITICAL");
+    expect(ex[0].status).toBe("OPEN");
+    const exDetails = ex[0].details as { txHash?: string };
+    expect(exDetails.txHash).toBe(TX_HASH);
+  });
+
+  it("duplicate transfer on CONFIRMED attempt → DUPLICATE_TRANSFER exception, no re-confirm", async () => {
+    await seedTerminal("CONFIRMED");
+    const fulfill = vi.fn(async () => {});
+    const result = await runUsdcMonitorTick(
+      makeDeps(stores, mockChain([transfer(9_990_044n, TX2)]), fulfill),
+    );
+    expect(result.confirmed).toBe(0);
+    const attempt = await stores.attempts.getById("att-pay1");
+    expect(attempt?.status).toBe("CONFIRMED");
+    const ex = await stores.exceptions!.listByPayment("pay1");
+    expect(ex).toHaveLength(1);
+    expect(ex[0].kind).toBe("DUPLICATE_TRANSFER");
+    expect(fulfill).not.toHaveBeenCalled();
+  });
+
+  it("reorg simulation: confirmations drop below floor → stays PROCESSING, never CONFIRMED", async () => {
+    await seedPayment(stores);
+    // Tick 1: confirmations OK → could confirm if all checks pass.
+    const good = await runUsdcMonitorTick(
+      makeDeps(stores, mockChain([transfer(9_990_044n)])),
+    );
+    expect(good.confirmed).toBe(1);
+
+    // Fresh attempt — simulate reorg where the SAME tx is re-seen
+    // with dropped confirmations (receipt re-orgs to pending).
+    const stores2 = createInMemoryPaymentStores();
+    await seedPayment(stores2, { paymentId: "pay2" });
+    const shallow = mockChain([transfer(9_990_044n)]);
+    shallow.getConfirmations = async () => ({
+      confirmations: 0,
+      finalized: false,
+    });
+    shallow.txEvidence = async (tx) => ({
+      ...tx,
+      network: CAIP2,
+      confirmations: 0,
+      blockTimestampSec: BLOCK_TS,
+    });
+    const first = await runUsdcMonitorTick(
+      makeDeps(stores2, shallow),
+    );
+    expect(first.confirmed).toBe(0);
+    expect(first.pending).toBe(1);
+    expect(
+      (await stores2.attempts.getById("att-pay2"))?.status,
+    ).toBe("PROCESSING");
+
+    // Still unfinalized next tick — CONFIRMED stays unreachable.
+    const second = await runUsdcMonitorTick(
+      makeDeps(stores2, shallow),
+    );
+    expect(second.confirmed).toBe(0);
+    expect(
+      (await stores2.attempts.getById("att-pay2"))?.status,
+    ).toBe("PROCESSING");
+  });
+
+  it("FUZZY flag also writes an exception row (dedupe-safe)", async () => {
+    await seedPayment(stores);
+    await runUsdcMonitorTick(
+      makeDeps(stores, mockChain([transfer(9_990_045n)])),
+    );
+    const ex = await stores.exceptions!.listByPayment("pay1");
+    expect(ex).toHaveLength(1);
+    expect(ex[0].kind).toBe("OVERPAID");
+    // Re-tick → same deterministic id, still one row.
+    await runUsdcMonitorTick(
+      makeDeps(stores, mockChain([transfer(9_990_045n)])),
+    );
+    expect(await stores.exceptions!.listByPayment("pay1")).toHaveLength(1);
+  });
+});
+
 describe("fulfillment effect-context (reviews 6.1/6.2)", () => {
   let stores: Stores;
   const input = { productCode: "PASSPORT_BRONZE", metadata: {} };
