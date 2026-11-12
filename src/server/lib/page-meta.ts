@@ -242,6 +242,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "AgentBadge passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
     path: "/pricing",
   },
+  "/checkout": {
+    title: "Checkout",
+    description:
+      "AgentBadge checkout — pay by card via Stripe or in USDC on Arc, Base, or Solana.",
+    path: "/checkout",
+  },
   "/about": {
     title: "About",
     description:

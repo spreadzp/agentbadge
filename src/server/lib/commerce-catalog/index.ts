@@ -224,6 +224,16 @@ export function legacyProductIdFor(productCode: string): string | undefined {
   return PRODUCT_SEEDS.find((s) => s.code === productCode)?.legacyId;
 }
 
+export type MetadataFieldType = FieldType;
+
+/** Declared metadata fields with types for a fulfillment kind — used by the
+ *  checkout UI to render the metadata form (D-221-3/D-221-8). */
+export function metadataFieldTypesFor(
+  kind: FulfillmentKind,
+): Record<string, MetadataFieldType> {
+  return FIELD_TYPES_BY_KIND[kind];
+}
+
 // ---------------------------------------------------------------------------
 // Metadata validation (D-221-8)
 // ---------------------------------------------------------------------------

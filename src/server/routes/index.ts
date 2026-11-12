@@ -62,6 +62,7 @@ import { medicalGuideRoutes } from "./medical-guide";
 import { bstockGuideRoutes } from "./bstock-guide";
 import { contactRoutes } from "./contact";
 import { contentPageRoutes } from "./content-pages";
+import { checkoutPageRoutes } from "./checkout-pages";
 import { blogRoutes } from "./blog";
 import { createShowcaseRoutes } from "./agent-readiness-showcase";
 import { BASE_URL } from "../lib/page-meta";
@@ -167,6 +168,7 @@ export function registerPageRoutes(app: Hono): void {
   app.route("/", medicalGuideRoutes);
   app.route("/", bstockGuideRoutes);
   app.route("/", contactRoutes);
+  app.route("/", checkoutPageRoutes); // EPIC-221 SLICE-221-4: /checkout*
   app.route("/", contentPageRoutes);
   app.route("/", blogRoutes);
 
