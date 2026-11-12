@@ -171,3 +171,20 @@ export function legacyWriteDeprecation(): MiddlewareHandler {
     );
   };
 }
+
+/**
+ * SLICE-221-5 (D-221-5): soft-deprecation for the legacy checkout surface —
+ * applies to ALL methods (the GET read routes are superseded too, unlike
+ * legacyWriteDeprecation which only marks mutations). Headers are staged
+ * via c.header() before next() so they also apply to error responses.
+ */
+export function legacyEndpointDeprecation(
+  successorPath: string,
+): MiddlewareHandler {
+  return async (c, next) => {
+    c.header("Deprecation", "true");
+    c.header("Sunset", LEGACY_SUNSET);
+    c.header("Link", `<${successorPath}>; rel="successor-version"`);
+    await next();
+  };
+}

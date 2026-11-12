@@ -17,6 +17,7 @@ import { listFiatProducts, getFiatProduct } from "../lib/pricing";
 import { dispatchCheckoutSession } from "../lib/payments-api/webhook-dispatch";
 import { makeStripeWebhookDispatch } from "../lib/payments-api";
 import { EventLedger, withIdempotency } from "../lib/event-ledger";
+import { legacyEndpointDeprecation } from "../lib/contract-guards";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { captureError } from "../lib/sentry";
@@ -42,10 +43,20 @@ const fiatProductListSchema = z.object({
 
 export const paymentRoutes = new Hono();
 
+// SLICE-221-5 (D-221-5): legacy checkout surface is soft-deprecated in favour
+// of /api/v1/payments* + /checkout — headers on ALL methods, incl. error
+// responses. /api/stripe/webhook stays current (serves both flows).
+paymentRoutes.use(
+  "/api/payment/*",
+  legacyEndpointDeprecation("/api/v1/payments"),
+);
+paymentRoutes.use("/payment/*", legacyEndpointDeprecation("/checkout"));
+
 paymentRoutes.get(
     "/api/payment/products",
     describeRoute({
         tags: ["Payment"],
+        deprecated: true,
         summary: "List available fiat products",
         description: "Returns all products available for Stripe Checkout purchase.",
         responses: {
@@ -74,6 +85,7 @@ paymentRoutes.post(
     "/api/payment/checkout",
     describeRoute({
         tags: ["Payment"],
+        deprecated: true,
         summary: "Create a Stripe Checkout Session",
         description:
             "Creates a Stripe Checkout Session for one-time fiat payment and returns the redirect URL. For passport products, include accountId in metadata for NFT minting.",
