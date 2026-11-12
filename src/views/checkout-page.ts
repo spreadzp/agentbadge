@@ -15,7 +15,7 @@ import type { UsdcNetworks } from "../server/lib/payments-api";
  */
 
 const FIELD_LABELS: Record<string, string> = {
-  accountId: "Hedera Account ID",
+  accountId: "EVM wallet address",
   name: "Agent name",
   capabilities: "Capabilities",
   endpoint: "Endpoint URL",
@@ -25,7 +25,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 const FIELD_HINTS: Record<string, string> = {
-  accountId: "shard.realm.num (e.g. 0.0.1234) — the passport mints to this account",
+  accountId: "0x… EVM address (e.g. 0x1234…abcd) — the passport mints to this wallet on Arc",
   capabilities: "Comma-separated, e.g. api_call,payment",
   skills: "Comma-separated",
   endpoint: "https:// your agent's public endpoint",
@@ -56,7 +56,7 @@ function fieldInput(
         <input id="f-${name}" name="${name}" type="text"
                ${required ? "required" : ""}
                data-field-type="${type}"
-               ${name === "accountId" ? 'pattern="^\\d+\\.\\d+\\.\\d+$" title="Hedera Account ID format: shard.realm.num"' : ""}
+               ${name === "accountId" ? 'pattern="^0x[0-9a-fA-F]{40}$" title="EVM address format: 0x followed by 40 hex characters"' : ""}
                placeholder="${multi ? "value1,value2" : ""}"
                class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none" />
         ${hint ? `<span class="mt-1 block text-xs text-slate-500">${hint}</span>` : ""}
@@ -121,8 +121,8 @@ export function CheckoutPage(
           <div class="text-right">
             <p class="text-2xl font-semibold text-sky-400">$${usd}</p>
             ${hbar
-              ? html`<p class="text-xs text-slate-500">${hbar} HBAR equivalent</p>`
-              : ""}
+      ? html`<p class="text-xs text-slate-500">${hbar} HBAR — legacy Hedera mint</p>`
+      : ""}
           </div>
         </div>
       </div>

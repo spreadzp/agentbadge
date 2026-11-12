@@ -149,8 +149,8 @@ export function PricingPage(jsonLd?: object[]) {
       <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Pricing</span>
       <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">Passport Tiers</h1>
       <p class="mt-3 max-w-2xl text-slate-300">
-        Pay once, own your identity forever. Pay in HBAR on Hedera, by card, or in USDC on Arc, Base, or Solana.
-        The fee covers the HTS mint transaction and the HCS registration — there are no recurring charges.
+        Pay once, own your identity forever. Pay by card or in USDC on Arc, Base, or Solana — passports mint on Arc mainnet.
+        The fee covers the on-chain passport mint and identity registration — there are no recurring charges. HBAR on Hedera remains available as a legacy rail.
       </p>
     </section>
 
@@ -174,12 +174,12 @@ export function PricingPage(jsonLd?: object[]) {
 
     <section class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
       <div class="rounded-lg border border-slate-800 bg-slate-900 p-5">
-        <h3 class="text-sm font-semibold text-white">Hedera network fees</h3>
-        <p class="mt-2 text-sm text-slate-400">~0.001 HBAR per transaction. Included in the tier price.</p>
+        <h3 class="text-sm font-semibold text-white">Arc network fees</h3>
+        <p class="mt-2 text-sm text-slate-400">Arc mainnet gas in USDC — sub-cent. Included in the tier price.</p>
       </div>
       <div class="rounded-lg border border-slate-800 bg-slate-900 p-5">
-        <h3 class="text-sm font-semibold text-white">Mirror Node reads</h3>
-        <p class="mt-2 text-sm text-slate-400">Free. No account or signature required for verification.</p>
+        <h3 class="text-sm font-semibold text-white">On-chain verification</h3>
+        <p class="mt-2 text-sm text-slate-400">Free. Public reads — no account or signature required.</p>
       </div>
       <div class="rounded-lg border border-slate-800 bg-slate-900 p-5">
         <h3 class="text-sm font-semibold text-white">x402 facilitator fee</h3>
