@@ -95,17 +95,42 @@ async function main(): Promise<void> {
   });
 
   console.log(`\n[3] Paid response: ${res2.status}`);
+  if (res2.status === 402) {
+    // Retry challenge carries the facilitator's invalidReason in `error`
+    // (e.g. verify_unavailable when a rail is down) — surface it.
+    const retry = decodeB64(res2.headers.get("payment-required")) as
+      | { error?: string }
+      | null;
+    console.log("  retry 402 error:", retry?.error ?? "(none)");
+  }
   const paymentResponse = decodeB64(res2.headers.get("payment-response"));
   const extensionResponses = decodeB64(res2.headers.get("extension-responses"));
   console.log("  PAYMENT-RESPONSE:", JSON.stringify(paymentResponse, null, 2)?.slice(0, 1200));
   console.log("  EXTENSION-RESPONSES:", JSON.stringify(extensionResponses, null, 2)?.slice(0, 2000));
 
-  // Don't consume the whole SSE stream — first bytes are enough for proof
+  // Default: first bytes are enough for proof. FULL_STREAM=1 drains the
+  // stream until the 'result' event to prove the scan completes (242-1).
   const reader = res2.body?.getReader();
   if (reader) {
-    const { value } = await reader.read();
-    console.log(`\n[4] First SSE chunk: ${new TextDecoder().decode(value).slice(0, 300)}`);
-    await reader.cancel();
+    if (process.env.FULL_STREAM === "1") {
+      const decoder = new TextDecoder();
+      let buf = "";
+      const deadline = Date.now() + 240_000;
+      let resultEvent = "";
+      while (Date.now() < deadline) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const m = buf.match(/event: result\ndata: ([^\n]+)/);
+        if (m) { resultEvent = m[1]; break; }
+      }
+      console.log(`\n[4] stream: ${buf.length} chars, result event: ${resultEvent ? resultEvent.slice(0, 600) : "(not seen)"}`);
+      await reader.cancel();
+    } else {
+      const { value } = await reader.read();
+      console.log(`\n[4] First SSE chunk: ${new TextDecoder().decode(value).slice(0, 300)}`);
+      await reader.cancel();
+    }
   }
 
   const after = await usdcBalance();
