@@ -23,7 +23,7 @@ const PASSPORT_INPUT_SCHEMA: Record<string, unknown> = {
 };
 
 const PASSPORT_INPUT_EXAMPLE: Record<string, unknown> = {
-  accountId: "0.0.12345",
+  accountId: "0x0000000000000000000000000000000000001234",
   signature: "0x…(EIP-191 signature)",
   tier: "bronze",
   name: "my-agent",

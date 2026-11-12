@@ -36,7 +36,7 @@ import { createPaymentsApiRoutes } from "../src/server/routes/payments-api";
 // ---------------------------------------------------------------------------
 
 const PASSPORT_METADATA = {
-  accountId: "0.0.1234",
+  accountId: "0x1111111111111111111111111111111111111111",
   name: "test-agent",
   capabilities: ["scan"],
 };

@@ -73,7 +73,7 @@ const mockedIssuePassport = vi.mocked(issuePassport);
 
 const USDC_NETWORKS: UsdcNetworks = {};
 const PASSPORT_METADATA = {
-  accountId: "0.0.1234",
+  accountId: "0x1111111111111111111111111111111111111111",
   name: "test-agent",
   capabilities: ["scan"],
 };
@@ -173,7 +173,7 @@ describe("dispatchCheckoutSession", () => {
     const input = handler.mock.calls[0][0];
     expect(input.productCode).toBe("PASSPORT_BRONZE");
     expect(input.buyerRef).toBe("buyer@example.com");
-    expect(input.metadata).toMatchObject({ accountId: "0.0.1234" });
+    expect(input.metadata).toMatchObject({ accountId: "0x1111111111111111111111111111111111111111" });
     expect(result.path).toBe("confirm");
     expect(result.status).toBe("CONFIRMED");
   });
@@ -317,7 +317,7 @@ describe("webhook → confirm → fulfillment pipeline", () => {
     const input = handler.mock.calls[0][0];
     expect(input.productCode).toBe("PASSPORT_BRONZE");
     expect(input.metadata).toMatchObject({
-      accountId: "0.0.1234",
+      accountId: "0x1111111111111111111111111111111111111111",
       tier: "bronze",
     });
     expect(input.buyerRef).toBe("buyer@example.com");
@@ -388,7 +388,7 @@ describe("order-fulfillment normalized handlers", () => {
       metadata: {
         productId: "passport-bronze",
         tier: "bronze",
-        accountId: "0.0.12345",
+        accountId: "0x2222222222222222222222222222222222222222",
         name: "Test Agent",
         capabilities: '["verification","discovery"]',
         endpoint: "https://agent.example",
@@ -400,13 +400,13 @@ describe("order-fulfillment normalized handlers", () => {
     };
     const normalized = normalizeSession(session as never);
     expect(normalized.productCode).toBe("passport-bronze");
-    expect(normalized.metadata).toMatchObject({ accountId: "0.0.12345" });
+    expect(normalized.metadata).toMatchObject({ accountId: "0x2222222222222222222222222222222222222222" });
 
     await fulfillOrder(session as never);
 
     expect(mockedIssuePassport).toHaveBeenCalledTimes(1);
     const call = mockedIssuePassport.mock.calls[0];
-    expect(call[0]).toBe("0.0.12345"); // accountId
+    expect(call[0]).toBe("0x2222222222222222222222222222222222222222"); // accountId
     expect(call[2]).toBe("bronze"); // tier
     expect(call[3]).toBe("Test Agent"); // name
     expect(call[4]).toEqual(["verification", "discovery"]); // capabilities
@@ -419,14 +419,14 @@ describe("order-fulfillment normalized handlers", () => {
     await fulfillPassportMint({
       productCode: "PASSPORT_BRONZE",
       metadata: {
-        accountId: "0.0.777",
+        accountId: "0x3333333333333333333333333333333333333333",
         tier: "bronze",
         name: "direct-agent",
         capabilities: ["scan"],
       },
     });
     expect(mockedIssuePassport).toHaveBeenCalledTimes(1);
-    expect(mockedIssuePassport.mock.calls[0][0]).toBe("0.0.777");
+    expect(mockedIssuePassport.mock.calls[0][0]).toBe("0x3333333333333333333333333333333333333333");
   });
 
   it("fulfillDirectoryListing accepts normalized input with listingId", async () => {

@@ -176,7 +176,7 @@ describe("checkout e2e via payments API", () => {
     const created = await postJson(app, "/api/v1/payments", {
       productCode: "PASSPORT_BRONZE",
       metadata: {
-        accountId: "0.0.1234",
+        accountId: "0x1111111111111111111111111111111111111111",
         name: "test-agent",
         capabilities: ["scan"],
       },

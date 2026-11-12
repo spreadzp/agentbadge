@@ -50,7 +50,7 @@ import { checkoutPageRoutes } from "../src/server/routes/checkout-pages";
 // ---------------------------------------------------------------------------
 
 const PASSPORT_METADATA = {
-  accountId: "0.0.1234",
+  accountId: "0x1111111111111111111111111111111111111111",
   name: "test-agent",
   capabilities: ["scan"],
 };
@@ -526,7 +526,7 @@ describe("H-5 strict metadata", () => {
     const app = makeApiApp(checkout);
     const res = await postJson(app, "/api/v1/payments", {
       productCode: "PASSPORT_BRONZE",
-      metadata: { ...PASSPORT_METADATA, accountId: "not-a-hedera-id" },
+      metadata: { ...PASSPORT_METADATA, accountId: "not-an-evm-address" },
     });
     expect(res.status).toBe(400);
   });

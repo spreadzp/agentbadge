@@ -29,7 +29,7 @@ interface FieldRule {
 }
 
 const FIELD_RULES: Record<string, FieldRule> = {
-  accountId: { pattern: /^\d+\.\d+\.\d+$/, patternHint: "x.y.z", maxLen: 32 },
+  accountId: { pattern: /^0x[0-9a-fA-F]{40}$/, patternHint: "0x EVM address", maxLen: 42 },
   name: { maxLen: 100 },
   endpoint: { pattern: /^https:\/\//, patternHint: "https:// URL", maxLen: 500 },
   imageUrl: { pattern: /^https:\/\//, patternHint: "https:// URL", maxLen: 500 },

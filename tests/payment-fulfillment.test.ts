@@ -20,7 +20,7 @@ function makeSession(overrides: Partial<Record<string, unknown>> = {}): any {
     metadata: {
       productId: "passport-bronze",
       tier: "bronze",
-      accountId: "0.0.12345",
+      accountId: "0x2222222222222222222222222222222222222222",
       name: "Test Agent",
       capabilities: '["verification","discovery"]',
       ...overrides,
@@ -81,7 +81,7 @@ describe("fulfillOrder — passport mint", () => {
 
     expect(mockedIssuePassport).toHaveBeenCalledTimes(1);
     const call = mockedIssuePassport.mock.calls[0];
-    expect(call[0]).toBe("0.0.12345"); // accountId
+    expect(call[0]).toBe("0x2222222222222222222222222222222222222222"); // accountId
     expect(call[1]).toBe(""); // signature — empty for Stripe
     expect(call[2]).toBe("bronze"); // tier
     expect(call[3]).toBe("Test Agent"); // name
