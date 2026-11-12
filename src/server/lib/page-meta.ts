@@ -155,7 +155,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/ui/catalog": {
     title: "Passport Tiers & Pricing",
     description:
-      "AgentBadge passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
+      "AgentBadge passport tiers: Bronze $9.99, Silver $49.99, Gold $199.99, Platinum $499.99 — pay by card or USDC on Arc. Capabilities per tier, on-chain identity on Arc mainnet.",
     path: "/ui/catalog",
   },
   "/ui/a2a": {
@@ -239,7 +239,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/pricing": {
     title: "Pricing — Passport Tiers",
     description:
-      "AgentBadge passport tiers: Bronze, Silver, Gold, Platinum. NFT passport pricing in HBAR, capabilities per tier, on-chain identity on Hedera.",
+      "AgentBadge passport tiers: Bronze $9.99, Silver $49.99, Gold $199.99, Platinum $499.99 — pay by card or USDC on Arc. Capabilities per tier, on-chain identity on Arc mainnet.",
     path: "/pricing",
   },
   "/checkout": {

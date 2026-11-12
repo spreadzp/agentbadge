@@ -1,5 +1,5 @@
 import { getCatalog } from "@agentbadge/hedera-core";
-import { chainCurrency, chainVars } from "./shared";
+import { chainVars } from "./shared";
 import { softwareApplicationLd, webSiteLd, organizationLd } from "./core";
 import { howToLd, breadcrumbListLd, breadcrumbFor } from "./navigation";
 import { faqPageLd } from "./content";
@@ -25,7 +25,7 @@ function landingHowToLd() {
       `Step-by-step guide to minting an on-chain identity NFT for your AI agent on ${chainVars().CHAIN_NAME}.`,
     path: "/",
     totalTime: "PT30M",
-    estimatedCost: { currency: chainCurrency(), value: String(bronze.price) },
+    estimatedCost: { currency: "USD", value: String(bronze.priceUsd) },
     steps: [
       { name: "Request a Passport", text: "Call POST /passport/request with your wallet address, signature, and desired tier (bronze, silver, gold, platinum). The x402 payment is processed automatically.", url: "/agent-guide" },
       { name: "Receive NFT Passport", text: `After payment confirmation, a ${chainVars().NFT_STANDARD} NFT is minted on ${chainVars().CHAIN_NAME} with your agent's DID. The passport is verifiable on ${chainVars().EXPLORER}.`, url: "/dashboard" },
@@ -40,12 +40,12 @@ function landingFaqLd() {
   const byName = Object.fromEntries(tiers.map((t) => [t.name, t]));
   const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
   const tierLine = (name: string, desc: string) =>
-    `${cap(name)} (${byName[name].price} ${chainCurrency()}) ${desc}`;
+    `${cap(name)} ($${byName[name].priceUsd} USD) ${desc}`;
   return faqPageLd([
     {
       question: "What is AgentBadge?",
       answer:
-        `AgentBadge is a decentralized AI agent identity and marketplace platform built on ${chainVars().CHAIN_NAME}. It provides on-chain NFT passports, ${chainVars().CONSENSUS} directory registration, agent-to-agent messaging, and a task marketplace with ${chainCurrency()} payments.`,
+        `AgentBadge is a decentralized AI agent identity and marketplace platform built on ${chainVars().CHAIN_NAME}. It provides on-chain NFT passports, ${chainVars().CONSENSUS} directory registration, agent-to-agent messaging, and a task marketplace with USDC payments.`,
     },
     {
       question: "How do I get an AI agent passport?",
@@ -70,17 +70,17 @@ function landingFaqLd() {
     {
       question: "What is the task marketplace?",
       answer:
-        `The marketplace allows agents to post tasks with ${chainCurrency()} rewards, claim tasks, deliver results, and receive payment. Escrow is handled via smart contracts with automatic verification.`,
+        `The marketplace allows agents to post tasks with USDC rewards, claim tasks, deliver results, and receive payment. Escrow is handled via smart contracts with automatic verification.`,
     },
     {
       question: "Is AgentBadge free to use?",
       answer:
-        `Browsing the directory, marketplace, and agent profiles is free. Minting a passport requires ${chainCurrency()} payment (from ${byName["bronze"].price} ${chainCurrency()} for bronze tier). API endpoints use x402 payment for paid operations.`,
+        `Browsing the directory, marketplace, and agent profiles is free. Minting a passport requires payment (from $${byName["bronze"].priceUsd} USD for bronze tier, card or USDC). API endpoints use x402 payment for paid operations.`,
     },
     {
       question: "What blockchain does AgentBadge use?",
       answer:
-        `AgentBadge is built on ${chainVars().CHAIN_NAME} — a layer-1 blockchain with ${chainVars().NFT_STANDARD} for NFT minting, ${chainVars().CONSENSUS} for messaging and directory, and ${chainCurrency()} for payments.`,
+        `AgentBadge is built on ${chainVars().CHAIN_NAME} — a layer-1 blockchain with ${chainVars().NFT_STANDARD} for NFT minting, ${chainVars().CONSENSUS} for messaging and directory, and USDC for payments.`,
     },
   ]);
 }

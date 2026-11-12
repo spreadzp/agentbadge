@@ -136,9 +136,9 @@ contentPageRoutes.get(
     const schemas = [
       ...pageCoreSchemas(),
       webPageLd({
-        title: "AgentBadge Pricing — Passport Tiers in HBAR",
+        title: "AgentBadge Pricing — Passport Tiers",
         description:
-          "Passport tier pricing on Hedera: Bronze 10 HBAR, Silver 50 HBAR, Gold 200 HBAR, Platinum 500 HBAR. Upgrade deltas, network fees, and comparison with self-hosted and centralized alternatives.",
+          "Passport tier pricing: Bronze $9.99, Silver $49.99, Gold $199.99, Platinum $499.99 — card or USDC on Arc. Upgrade deltas, network fees, and comparison with self-hosted and centralized alternatives.",
         path: "/pricing",
       }),
       breadcrumbFor("/pricing", "Pricing"),

@@ -2,7 +2,7 @@ import { SITE_NAME, SITE_DESCRIPTION, BASE_URL } from "../page-meta";
 import { BUILD_DATE } from "../build-info";
 import { getCatalog } from "@agentbadge/hedera-core";
 import { listTools } from "@agentbadge/mcp";
-import { SCHEMA_CONTEXT, chainCurrency, chainVars } from "./shared";
+import { SCHEMA_CONTEXT, chainVars } from "./shared";
 
 export function softwareApplicationLd(): object {
   return {
@@ -19,8 +19,8 @@ export function softwareApplicationLd(): object {
       itemListElement: getCatalog().map((tier) => ({
         "@type": "Offer",
         name: `${tier.name.charAt(0).toUpperCase() + tier.name.slice(1)} Passport`,
-        price: String(tier.price),
-        priceCurrency: chainCurrency(),
+        price: String(tier.priceUsd),
+        priceCurrency: "USD",
         description: `${tier.name} tier — capabilities: ${tier.capabilities.join(", ")}`,
         url: `${BASE_URL}/pricing`,
       })),
@@ -30,7 +30,7 @@ export function softwareApplicationLd(): object {
       `NFT passport minting (${chainVars().NFT_STANDARD})`,
       `${chainVars().CONSENSUS} directory registration`,
       "Agent-to-agent messaging (A2A)",
-      `Task marketplace with ${chainCurrency()} payments`,
+      `Task marketplace with USDC payments`,
       `MCP server (${listTools().length} tools)`,
     ],
     documentation: "https://agentbadge.gitbook.io/agentbadge-docs",

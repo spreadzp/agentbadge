@@ -89,16 +89,11 @@ export function PricingPage(jsonLd?: object[]) {
       : ""
     }
       <h2 class="text-lg font-semibold text-white">${t.name}</h2>
-      <div class="mt-3 flex items-baseline gap-3">
-        <div class="flex items-baseline gap-1">
-          <span class="text-4xl font-semibold text-emerald-400">${t.price}</span>
-          <span class="text-sm text-slate-400">HBAR</span>
-        </div>
-        <div class="flex items-baseline gap-1">
-          <span class="text-2xl font-semibold text-sky-400">$${t.priceUsd}</span>
-          <span class="text-xs text-slate-500">USD</span>
-        </div>
+      <div class="mt-3 flex items-baseline gap-1">
+        <span class="text-4xl font-semibold text-emerald-400">$${t.priceUsd}</span>
+        <span class="text-sm text-slate-400">USD</span>
       </div>
+      <p class="mt-1 text-xs text-slate-500">≈ ${t.price} HBAR — legacy Hedera rail</p>
       <p class="mt-2 text-sm text-slate-400">${t.description}</p>
       <ul class="mt-5 space-y-2 text-sm text-slate-300">
         ${t.capabilities
@@ -111,7 +106,7 @@ export function PricingPage(jsonLd?: object[]) {
       <div class="mt-6 flex flex-col gap-2">
         <a href="/ui/passport/request?tier=${t.name.toLowerCase()}"
            class="inline-flex items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20">
-          ${t.cta ?? `Mint ${t.name}`} (HBAR)
+          ${t.cta ?? `Mint ${t.name}`} (HBAR legacy)
         </a>
         <form action="/checkout" method="get" class="flex flex-col gap-2" data-checkout-form>
           <input type="hidden" name="product" value="${t.productId}" />
@@ -141,7 +136,7 @@ export function PricingPage(jsonLd?: object[]) {
 
   const upgradeRows = UPGRADE_DELTAS.map(
     (u) =>
-      `<tr class="border-t border-slate-800"><td class="py-3 pr-4 text-slate-300">${u.from}</td><td class="py-3 pr-4 text-slate-300">${u.to}</td><td class="py-3 text-emerald-400">+${u.delta} HBAR</td></tr>`,
+      `<tr class="border-t border-slate-800"><td class="py-3 pr-4 text-slate-300">${u.from}</td><td class="py-3 pr-4 text-slate-300">${u.to}</td><td class="py-3 text-emerald-400">+$${u.delta}</td></tr>`,
   ).join("");
 
   const content = html`
@@ -203,13 +198,13 @@ export function PricingPage(jsonLd?: object[]) {
           <tbody class="text-slate-300">
             <tr class="border-t border-slate-800">
               <td class="py-3 pr-4">On-chain identity</td>
-              <td class="py-3 pr-4 text-emerald-400">✓ HTS NFT</td>
+              <td class="py-3 pr-4 text-emerald-400">✓ NFT on Arc</td>
               <td class="py-3 pr-4">✓ your chain</td>
               <td class="py-3">✗</td>
             </tr>
             <tr class="border-t border-slate-800">
               <td class="py-3 pr-4">Discoverability</td>
-              <td class="py-3 pr-4 text-emerald-400">✓ public HCS directory</td>
+              <td class="py-3 pr-4 text-emerald-400">✓ public directory</td>
               <td class="py-3 pr-4">✗</td>
               <td class="py-3">✓</td>
             </tr>
@@ -221,7 +216,7 @@ export function PricingPage(jsonLd?: object[]) {
             </tr>
             <tr class="border-t border-slate-800">
               <td class="py-3 pr-4">P2P payments</td>
-              <td class="py-3 pr-4 text-emerald-400">✓ native HBAR</td>
+              <td class="py-3 pr-4 text-emerald-400">✓ USDC on Arc</td>
               <td class="py-3 pr-4">manual</td>
               <td class="py-3">✓</td>
             </tr>

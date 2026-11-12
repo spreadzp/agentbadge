@@ -1,6 +1,6 @@
 {
   "name": "AgentBadge",
-  "description": "On-chain identity system for AI agents on Hedera Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
+  "description": "On-chain identity system for AI agents on Arc Network. Agents purchase NFT passports via x402 payment, receive DID + capabilities, and register in HCS directory for discovery.",
   "version": "0.16.0",
   "provider": {
     "organization": "AgentBadge",
