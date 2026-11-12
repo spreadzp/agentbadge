@@ -73,6 +73,8 @@ export interface CirclePaymentsConfig {
   enabled: boolean;
   /** Gateway batch rail (BatchFacilitatorClient + GatewayEvmScheme) */
   gateway: boolean;
+  /** Exact rail (EIP-3009). Default on; CIRCLE_EXACT_ENABLED=false off (242-5) */
+  exact?: boolean;
   /** Arc self-settle rail (eip3009-client-broadcast) */
   arc: boolean;
   /** Passport identity in 402 extensions + /api/identity endpoint */
@@ -168,7 +170,6 @@ export interface KeeperHubEnvConfig {
     notify?: string;
   };
 }
-
 /** Passport chain gate (EPIC-169-9). PASSPORT_CHAIN_ENABLED=true else 501 on chain routes. */
 export interface PassportChainEnvConfig { enabled: boolean }
 /** Database persistence config (EPIC-143). DATABASE_ENABLED=true else in-memory. */

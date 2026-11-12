@@ -11,6 +11,7 @@ import { loadConfig, resetConfigCache } from "../../src/config/env";
 const CIRCLE_VARS = [
   "CIRCLE_PAYMENTS_ENABLED",
   "CIRCLE_GATEWAY_ENABLED",
+  "CIRCLE_EXACT_ENABLED",
   "CIRCLE_ARC_ENABLED",
   "CIRCLE_IDENTITY_ENABLED",
   "CIRCLE_ESCROW_ENABLED",
@@ -107,41 +108,52 @@ describe("SLICE-129-3: circlePayments env config", () => {
     expect(config.circlePayments!.arc).toBe(false);
     expect(config.circlePayments!.escrow).toBe(false);
   });
+  it("exact rail: default on, CIRCLE_EXACT_ENABLED=false turns it off", () => {
+    process.env.CIRCLE_PAYMENTS_ENABLED = "true";
+    process.env.CIRCLE_SELLER_ADDRESS =
+      "0x1111111111111111111111111111111111111111";
+    let config = loadConfig();
+    expect(config.circlePayments!.exact).toBe(true);
+    process.env.CIRCLE_EXACT_ENABLED = "false";
+    resetConfigCache();
+    config = loadConfig();
+    expect(config.circlePayments!.exact).toBe(false);
+  });
 
   it("arc enabled requires ARC_PRIVATE_KEY", () => {
-    process.env.CIRCLE_PAYMENTS_ENABLED = "true";
-    process.env.CIRCLE_SELLER_ADDRESS =
-      "0x1111111111111111111111111111111111111111";
-    process.env.CIRCLE_ARC_ENABLED = "true";
-    expect(() => loadConfig()).toThrow(/ARC_PRIVATE_KEY/);
-  });
+  process.env.CIRCLE_PAYMENTS_ENABLED = "true";
+  process.env.CIRCLE_SELLER_ADDRESS =
+    "0x1111111111111111111111111111111111111111";
+  process.env.CIRCLE_ARC_ENABLED = "true";
+  expect(() => loadConfig()).toThrow(/ARC_PRIVATE_KEY/);
+});
 
-  it("escrow enabled requires ARC_PRIVATE_KEY", () => {
-    process.env.CIRCLE_PAYMENTS_ENABLED = "true";
-    process.env.CIRCLE_SELLER_ADDRESS =
-      "0x1111111111111111111111111111111111111111";
-    process.env.CIRCLE_ESCROW_ENABLED = "true";
-    expect(() => loadConfig()).toThrow(/ARC_PRIVATE_KEY/);
-  });
+it("escrow enabled requires ARC_PRIVATE_KEY", () => {
+  process.env.CIRCLE_PAYMENTS_ENABLED = "true";
+  process.env.CIRCLE_SELLER_ADDRESS =
+    "0x1111111111111111111111111111111111111111";
+  process.env.CIRCLE_ESCROW_ENABLED = "true";
+  expect(() => loadConfig()).toThrow(/ARC_PRIVATE_KEY/);
+});
 
-  it("arc enabled with key loads full config", () => {
-    process.env.CIRCLE_PAYMENTS_ENABLED = "true";
-    process.env.CIRCLE_SELLER_ADDRESS =
-      "0x1111111111111111111111111111111111111111";
-    process.env.CIRCLE_ARC_ENABLED = "true";
-    process.env.ARC_PRIVATE_KEY = "0xabc123";
-    process.env.ARC_RPC_URL = "https://rpc.testnet.arc.io";
-    const config = loadConfig();
-    expect(config.circlePayments!.arc).toBe(true);
-    expect(config.circlePayments!.arcPrivateKey).toBe("0xabc123");
-    expect(config.circlePayments!.arcRpcUrl).toBe(
-      "https://rpc.testnet.arc.io",
-    );
-  });
+it("arc enabled with key loads full config", () => {
+  process.env.CIRCLE_PAYMENTS_ENABLED = "true";
+  process.env.CIRCLE_SELLER_ADDRESS =
+    "0x1111111111111111111111111111111111111111";
+  process.env.CIRCLE_ARC_ENABLED = "true";
+  process.env.ARC_PRIVATE_KEY = "0xabc123";
+  process.env.ARC_RPC_URL = "https://rpc.testnet.arc.io";
+  const config = loadConfig();
+  expect(config.circlePayments!.arc).toBe(true);
+  expect(config.circlePayments!.arcPrivateKey).toBe("0xabc123");
+  expect(config.circlePayments!.arcRpcUrl).toBe(
+    "https://rpc.testnet.arc.io",
+  );
+});
 
-  it("invalid seller address rejected", () => {
-    process.env.CIRCLE_PAYMENTS_ENABLED = "true";
-    process.env.CIRCLE_SELLER_ADDRESS = "not-an-address";
-    expect(() => loadConfig()).toThrow(/CIRCLE_SELLER_ADDRESS/);
-  });
+it("invalid seller address rejected", () => {
+  process.env.CIRCLE_PAYMENTS_ENABLED = "true";
+  process.env.CIRCLE_SELLER_ADDRESS = "not-an-address";
+  expect(() => loadConfig()).toThrow(/CIRCLE_SELLER_ADDRESS/);
+});
 });

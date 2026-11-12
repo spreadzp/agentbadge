@@ -72,6 +72,9 @@ export function loadCirclePayments(
   const circlePayments: CirclePaymentsConfig = {
     enabled: true,
     gateway: booleanFlag("CIRCLE_GATEWAY_ENABLED"),
+    // SLICE-242-5: default-on; "false" removes exact accepts from the 402
+    // surface so testnet USDC can't buy the live service.
+    exact: process.env.CIRCLE_EXACT_ENABLED !== "false",
     gatewayChains: loadGatewayChains(errors),
     gatewayProbeMs: process.env.CIRCLE_GATEWAY_PROBE_MS
       ? Number(process.env.CIRCLE_GATEWAY_PROBE_MS)

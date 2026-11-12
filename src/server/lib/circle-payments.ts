@@ -157,10 +157,10 @@ export function createCirclePaymentsRuntime(
     const server = (deps.resourceServer ??
       new x402ResourceServer()) as never;
     handles = {
-      // exact = baseline rail, always on when master enabled
-      exact: registerExactScheme(server, {
-        sellerAddress: cfg.sellerAddress,
-      }),
+      // exact rail — gated by CIRCLE_EXACT_ENABLED (SLICE-242-5)
+      ...(cfg.exact !== false
+        ? { exact: registerExactScheme(server, { sellerAddress: cfg.sellerAddress }) }
+        : {}),
       ...(cfg.gateway
         ? {
           gateway: withProbe(gatewayProbe, registerGatewayScheme(server, {
@@ -183,7 +183,7 @@ export function createCirclePaymentsRuntime(
   /** Router flags — gateway resolves via the probe getter. */
   const routerFlags = {
     gateway: gatewayProbe ? () => gatewayProbe.isUp() : cfg.gateway,
-    exact: true,
+    exact: cfg.exact !== false,
     arc: cfg.arc,
   };
 
