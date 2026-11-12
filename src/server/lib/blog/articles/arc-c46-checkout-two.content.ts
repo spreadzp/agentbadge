@@ -28,7 +28,27 @@ POST /api/v1/payments/:id/attempts
 GET  /api/v1/payments/:id      → status + attempts
 GET  /api/v1/payments/:id/receipt → receipt, once confirmed</code></pre>
 
+
+<figure class="article-image">
+  <img src="/images/blog/arc-c46-checkout-two-d1.webp"
+       alt="Sequence diagram of one API serving two rails: buyer picks a tier on /pricing and fills catalog-declared fields on /checkout; POST /api/v1/payments returns the payment with Idempotency-Key dedupe; the STRIPE attempt returns a redirectUrl to Stripe Checkout and the webhook confirms by binding session.id to the stored PaymentAttempt; the DIRECT_USDC attempt on eip155:1874 returns instructions — unique amount 9.990044, recipient, tokenContract, reference, expiresAt; both rails converge on confirm → dispatchFulfillment → mint passport on Arc, with the fulfillment-done marker written after the handler returns" />
+  <figcaption> One endpoint, two rails — and both end in the same durable fulfillment path. </figcaption>
+</figure>
+
 <p> The buyer picks a tier on <code>/pricing</code>, lands on <code>/checkout</code>, fills the fields the catalog declared, and chooses Card or USDC. Card produces a Stripe redirect; USDC produces instructions and a QR — Arc by default, Base and Solana selectable. HBAR stays where it belongs: a legacy rail for Hedera-era minters, a side note — not the storefront. </p>
+
+<figure class="article-image">
+  <img src="/images/blog/arc-c46-checkout-two-pricing.webp"
+       alt="The pricing page storefront the buyer starts from: four tiers with USD as the primary price and HBAR noted only as a legacy Hedera rail" />
+  <figcaption> The storefront: USD primary, Card or USDC — HBAR kept only as the legacy footnote. </figcaption>
+</figure>
+
+<figure class="article-image">
+  <img src="/images/blog/arc-c46-checkout-two-form.webp"
+       alt="The checkout form for a Bronze passport: catalog-declared fields — EVM wallet address (accountId), name, capabilities — with Card (Stripe) and USDC (Arc) payment method selector" />
+  <figcaption> The form renders exactly what the catalog declared — wallet address, name, capabilities — plus the rail choice. </figcaption>
+</figure>
+
 
 <figure class="article-image">
   <img src="/images/blog/arc-c46-checkout-two-live-instructions.webp"
@@ -58,11 +78,25 @@ GET  /api/v1/payments/:id/receipt → receipt, once confirmed</code></pre>
   </tbody>
 </table>
 
+<figure class="article-image">
+  <img src="/images/blog/arc-c46-checkout-two-audit.webp"
+       alt="Illustration of the audit outcome: a BLOCK clipboard — Critical findings (fulfilled before handler, in-memory dedupe, 404 XSS), High and Medium columns — every item stamped FIXED beside a magnifier showing 17 tests" />
+  <figcaption> All twenty findings stamped FIXED — 17 regression tests stand guard over the Critical and High list. </figcaption>
+</figure>
+
+
 <h2>The fixes — root cause, not patches</h2>
 
 <p> <strong>Order of operations (C-1).</strong> <code>dispatchFulfillment</code> now reports an explicit status — <code>fulfilled</code>, <code>deduped</code>, or <code>no-handler</code> — and the completion marker is written <em>after</em> the handler returns. A thrown handler produces a <code>failed</code> event and a 5xx that lets the rail retry, instead of a silent "done". </p>
 
 <p> <strong>Durable dedupe (C-2).</strong> In-memory flags survived one process. Fulfillment now claims through the event store: a <code>fulfillment-claim</code> event keyed by payment, a <code>fulfillment-done</code> event on success. Fresh claims dedupe; claims older than ten minutes are treated as stale and retried — a crashed worker no longer locks the order forever. </p>
+
+<figure class="article-image">
+  <img src="/images/blog/arc-c46-checkout-two-d2.webp"
+       alt="State diagram of durable fulfillment dedupe: a fulfillment-claim event keyed by paymentId enters CLAIMED; a handler that returns writes fulfillment-done AFTER it returns (C-1); a fresh claim that sees an existing done or claim resolves deduped; a thrown handler produces a failed event and 5xx so the rail retries; claims older than ten minutes are stale and retry — an event-store claim, not an in-memory flag, so restarts and second instances still dedupe (C-2)" />
+  <figcaption> The dedupe machine, exactly as it ships: claims live in the event store, so a restart can't unlock a double mint. </figcaption>
+</figure>
+
 
 <p> <strong>Binding, not trust (H-1/H-2).</strong> The Stripe webhook now resolves <code>session.id → PaymentAttempt</code> through the attempt store, verifies the session's payment status and amount against our own record, and only then confirms. Legacy checkout metadata is whitelisted — server-owned keys (<code>paymentId</code>, <code>productId</code>, <code>productCode</code>, <code>tier</code>) can no longer be injected by the client. Provider error details no longer leak into client responses. </p>
 
@@ -73,6 +107,13 @@ GET  /api/v1/payments/:id/receipt → receipt, once confirmed</code></pre>
 <p> <strong>Rails that earn their way on (H-8).</strong> The direct-USDC instructions stub ships behind <code>PAYMENTS_USDC_SELF_SERVE</code> — off by default, opt-in when the monitoring story exists. An unmonitored rail should never be the default. </p>
 
 <p> <strong>Unique-amount dedupe (H-9).</strong> The one visible in the screenshot: USDC instructions carry a deterministic micro-unit suffix derived from the payment ID — $9.99 becomes <code>9.990044</code>. Ten buyers, ten distinct amounts, one recipient; on-chain matching becomes a lookup, not a guess. Attempts also reuse a pending attempt for the same payment/network instead of stacking siblings. </p>
+
+<figure class="article-image">
+  <img src="/images/blog/arc-c46-checkout-two-dedupe.webp"
+       alt="Two-panel illustration: left, an event-store ledger with fulfillment-claim and fulfillment-done entries, a 10-minute dedupe clock; right, the unique-amount funnel — USDC transfers with distinct micro-unit suffixes match payments exactly" />
+  <figcaption> Two fixes in one picture: the event-store claim that survives restarts, and the unique amount that turns matching into a lookup. </figcaption>
+</figure>
+
 
 <p> Full disclosure in the review artifact: <code>docs/EPICS/221-pricing-checkout-2/reviews/checkout-REVIEW.md</code> — every finding with its fix and regression test mapped. </p>
 
