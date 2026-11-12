@@ -22,6 +22,7 @@ import {
   attemptJson,
   createAttemptSchema,
   createPaymentSchema,
+  idempotencyKeySchema,
   paymentJson,
 } from "../lib/payments-api/api-schemas";
 import {
@@ -29,6 +30,8 @@ import {
   getPaymentsCheckout,
   type PaymentsCheckout,
 } from "../lib/payments-api";
+import { CONTRACT_LIMITS } from "../lib/machine-entry";
+import { createPaymentsReadRoutes } from "./payments-read-routes";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -108,6 +111,22 @@ export function createPaymentsApiRoutes(
             .join("; "),
         );
       }
+      // H-3: an Idempotency-Key must be well-formed BEFORE it becomes a
+      // dedupe token — otherwise arbitrary values silently collide.
+      const rawKey = c.req.header("Idempotency-Key");
+      let idempotencyKey: string | undefined;
+      if (rawKey !== undefined) {
+        const key = idempotencyKeySchema.safeParse(rawKey);
+        if (!key.success) {
+          return errorResponse(
+            c,
+            400,
+            ErrorCodes.IDEMPOTENCY_KEY_REQUIRED,
+            `invalid Idempotency-Key — must be ${CONTRACT_LIMITS.idempotencyKey.min}-${CONTRACT_LIMITS.idempotencyKey.max} chars`,
+          );
+        }
+        idempotencyKey = key.data;
+      }
       try {
         const { payment, deduped } = await getCheckout().createPayment({
           productCode: parsed.data.productCode,
@@ -115,7 +134,7 @@ export function createPaymentsApiRoutes(
           metadata: parsed.data.metadata,
           customerId: parsed.data.customerId,
           agentId: parsed.data.agentId,
-          idempotencyKey: c.req.header("Idempotency-Key") ?? undefined,
+          idempotencyKey,
         });
         const payload =
           typeof payment.payload === "object" && payment.payload !== null
@@ -222,71 +241,7 @@ export function createPaymentsApiRoutes(
     },
   );
 
-  routes.get(
-    "/api/v1/payments/:id",
-    describeRoute({
-      tags: ["Payments"],
-      summary: "Get payment status",
-      description:
-        "Payment status polling — returns the payment plus its attempts. " +
-        "Lazy expiry applies: overdue non-terminal rows transition to " +
-        "EXPIRED on read.",
-      responses: {
-        200: {
-          description: "Payment + attempts",
-          content: {
-            "application/json": { schema: resolver(paymentJson) },
-          },
-        },
-        404: { description: "Payment not found" },
-      },
-    }),
-    async (c) => {
-      const checkout = getCheckout();
-      const payment = await checkout.getPayment(c.req.param("id"));
-      if (!payment) {
-        return errorResponse(
-          c,
-          404,
-          ErrorCodes.PAYMENT_NOT_FOUND,
-          "payment not found",
-        );
-      }
-      const attempts = await checkout.listAttempts(payment.id);
-      return c.json({
-        payment,
-        attempts,
-      });
-    },
-  );
-
-  routes.get(
-    "/api/v1/payments/:id/receipt",
-    describeRoute({
-      tags: ["Payments"],
-      summary: "Get verified payment receipt",
-      description:
-        "Returns the latest receipt for the payment — present only " +
-        "after a CONFIRMED attempt (self-heal confirm or webhook).",
-      responses: {
-        200: { description: "Verified receipt" },
-        404: { description: "No receipt — payment unconfirmed or unknown" },
-      },
-    }),
-    async (c) => {
-      const checkout = getCheckout();
-      const receipt = await checkout.getReceipt(c.req.param("id"));
-      if (!receipt) {
-        return errorResponse(
-          c,
-          404,
-          ErrorCodes.RECEIPT_NOT_FOUND,
-          "receipt not found — payment is not confirmed",
-        );
-      }
-      return c.json({ receipt });
-    },
-  );
+  routes.route("/", createPaymentsReadRoutes(getCheckout));
 
   return routes;
 }

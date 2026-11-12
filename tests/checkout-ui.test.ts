@@ -209,7 +209,8 @@ describe("checkout e2e via payments API", () => {
       USDC_NETWORKS["eip155:1874"].recipient,
     );
     expect(body.paymentInstructions.asset).toBe("USDC");
-    expect(body.paymentInstructions.amount).toBe("9.99");
+    // H-9: USDC instructions carry the payment-unique micro suffix.
+    expect(body.paymentInstructions.amount).toMatch(/^9\.99\d{4}$/);
     expect(body.paymentInstructions.reference).toBe(payment.id);
     expect(body.paymentInstructions.expiresAt).toBeTruthy();
 

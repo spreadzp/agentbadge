@@ -186,24 +186,39 @@ export async function fulfillOrder(
     dedupeKey: `session:${session.id}`,
     registry: opts?.registry,
   });
-  if (!dispatched) {
-    logger.warn("fulfillOrder: unknown productId", {
+  // H-6: a paid session with no handler is an incident, not a skip.
+  if (dispatched === "no-handler") {
+    logger.error("fulfillOrder: no fulfillment handler for productId", {
       productId: input.productCode,
+      kind: input.kind,
       sessionId: session.id,
     });
   }
   processedSessions.add(session.id);
 }
 
+/** M-8: attacker-controlled metadata reaches Discord — strip mentions,
+ *  markdown control chars and newlines, and cap field length. */
+function sanitizeField(v: unknown, maxLen = 100): string {
+  if (typeof v !== "string") return "unknown";
+  return v
+    .slice(0, maxLen)
+    .replace(/[\r\n]+/g, " ")
+    .replace(/[@#*_~`|]/g, "")
+    .trim() || "unknown";
+}
+
 async function notifyPaymentDiscord(input: FulfillmentInput): Promise<void> {
-  const email = input.email ?? input.buyerRef ?? "unknown";
-  const amount = input.amountUsd ? `$${input.amountUsd}` : "unknown";
+  const email = sanitizeField(input.email ?? input.buyerRef);
+  const amount = input.amountUsd
+    ? `$${sanitizeField(input.amountUsd, 20)}`
+    : "unknown";
   const message = [
     `💳 New Payment Received`,
-    `Product: ${input.productCode}`,
+    `Product: ${sanitizeField(input.productCode, 64)}`,
     `Amount: ${amount}`,
     `Email: ${email}`,
-    `Session: ${input.paymentRef ?? "unknown"}`,
+    `Session: ${sanitizeField(input.paymentRef)}`,
   ].join("\n");
 
   try {

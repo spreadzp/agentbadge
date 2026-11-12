@@ -22,6 +22,14 @@ export const CONTRACT_LIMITS = {
   summary: { maxLen: 4000 },
 } as const;
 
+/** Idempotency-Key header shape — length from CONTRACT_LIMITS, charset
+ *  restricted so arbitrary values can't silently collide (audit H-3). */
+export const idempotencyKeySchema = z
+  .string()
+  .min(CONTRACT_LIMITS.idempotencyKey.min)
+  .max(CONTRACT_LIMITS.idempotencyKey.max)
+  .regex(/^[A-Za-z0-9_-]+$/, "alphanumeric, '-' or '_' only");
+
 export const PROTOCOL_VERSION = "agentbadge-market/1";
 
 /** D-206-6: honest cap — declared budget ≠ reserved funds. */

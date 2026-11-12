@@ -6,6 +6,16 @@
 
 import { Layout } from "./layout";
 
+/** M-7: every session-derived value is reflected HTML — escape it. */
+function esc(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 interface SessionData {
   id: string;
   status?: string | null;
@@ -20,7 +30,7 @@ export function renderPaymentSuccess(session: SessionData, fallback: boolean): s
     : null;
 
   const emailRow = session.customer_email
-    ? `<div class="text-slate-400">Email: <span class="text-slate-200">${session.customer_email}</span></div>`
+    ? `<div class="text-slate-400">Email: <span class="text-slate-200">${esc(session.customer_email)}</span></div>`
     : "";
 
   const amountRow = amountFormatted
@@ -28,7 +38,7 @@ export function renderPaymentSuccess(session: SessionData, fallback: boolean): s
     : "";
 
   const productRow = session.metadata?.productId
-    ? `<div class="text-slate-400">Product: <span class="text-slate-200">${session.metadata.productId}</span></div>`
+    ? `<div class="text-slate-400">Product: <span class="text-slate-200">${esc(session.metadata.productId)}</span></div>`
     : "";
 
   const note = fallback
@@ -45,7 +55,7 @@ export function renderPaymentSuccess(session: SessionData, fallback: boolean): s
         ${productRow}
         ${amountRow}
         ${emailRow}
-        <div class="text-slate-400">Session ID: <span class="text-slate-200 break-all">${session.id}</span></div>
+        <div class="text-slate-400">Session ID: <span class="text-slate-200 break-all">${esc(session.id)}</span></div>
       </div>
       ${note}
       <div class="mt-6">
@@ -66,8 +76,8 @@ export function renderPaymentError(title: string, message: string): string {
   const content = `
     <section class="mx-auto max-w-lg rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
       <div class="text-5xl mb-4">⚠️</div>
-      <h1 class="text-2xl font-bold text-white">${title}</h1>
-      <p class="mt-4 text-slate-400">${message}</p>
+      <h1 class="text-2xl font-bold text-white">${esc(title)}</h1>
+      <p class="mt-4 text-slate-400">${esc(message)}</p>
       <div class="mt-6">
         <a href="/" class="inline-block rounded-lg bg-emerald-600 px-6 py-2 text-white hover:bg-emerald-500 transition-colors">Back to Home</a>
       </div>
@@ -75,8 +85,8 @@ export function renderPaymentError(title: string, message: string): string {
 
   return Layout(
     content,
-    title,
-    { title, description: message, path: "/payment/success" },
+    esc(title),
+    { title: esc(title), description: esc(message), path: "/payment/success" },
     undefined,
     true,
   ) as unknown as string;

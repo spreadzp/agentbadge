@@ -1,18 +1,10 @@
 /**
  * Attempt submission — POST /payments/:id/attempts backend
- * (EPIC-221, SLICE-221-2).
- *
- * Mirrors PaymentService.createPayment's attempt-side invariants:
- *  - provider resolved before ANY row write (H-3, no orphan attempts)
- *  - rail capability expectations bound at create (H-1/H-4)
- *  - only the rail call sits inside try — persistence errors propagate
- *  - C-1: rail NEVER returns CONFIRMED at create — clamp to PROCESSING
- *  - recipient/tokenContract bound at create from server config ONLY
- *
- * Design difference vs the service: on rail failure the attempt is
- * FAILED but the payment stays payable — a later attempt may retry a
- * different rail (spec's multi-attempt model; the atomic service fails
- * the payment outright because payment+attempt are one operation).
+ * (EPIC-221, SLICE-221-2). Invariants: provider resolved before any
+ * row write; rail expectations bound at create; rail never returns
+ * CONFIRMED at create (clamp to PROCESSING); recipient/token from
+ * server config only. On rail failure the attempt is FAILED but the
+ * payment stays payable (spec's multi-attempt model).
  */
 
 import {
@@ -35,6 +27,12 @@ import {
 import { getCommerceProduct } from "../commerce-catalog";
 
 import { CheckoutError } from "./errors";
+import { addUsdcMicroSuffix } from "./money";
+import {
+  findReusableAttempt,
+  railMetadataFromPayload,
+  resolveUsdcNetwork,
+} from "./usdc-networks";
 import type { UsdcNetworks } from "./usdc-provider";
 
 export interface AttemptDeps {
@@ -128,27 +126,41 @@ export async function submitAttempt(
   let token: string | undefined;
   let expiresAt: Date | undefined;
   if (isUsdc) {
-    network =
-      input.network ??
-      Object.keys(deps.usdcNetworks).find(
-        (tag) => deps.usdcNetworks[tag].label === "arc",
-      ) ??
-      Object.keys(deps.usdcNetworks)[0];
-    const cfg = network ? deps.usdcNetworks[network] : undefined;
-    if (!cfg || !network) {
-      throw new CheckoutError(
-        "network_not_supported",
-        400,
-        `USDC network not configured: ${input.network ?? "<none>"}`,
-        { available: Object.keys(deps.usdcNetworks) },
-      );
-    }
-    recipient = cfg.recipient;
-    token = cfg.tokenContract;
-    expiresAt = new Date(
-      deps.now().getTime() + deps.usdcInstructionsTtlSec * 1000,
-    );
+    const resolved = resolveUsdcNetwork({
+      usdcNetworks: deps.usdcNetworks,
+      usdcInstructionsTtlSec: deps.usdcInstructionsTtlSec,
+      now: deps.now,
+      network: input.network,
+    });
+    network = resolved.network;
+    recipient = resolved.recipient;
+    token = resolved.token;
+    expiresAt = resolved.expiresAt;
   }
+
+  // H-7: attempt idempotency — an open, payable attempt for the same
+  // provider+network already carries live instructions; reuse it instead
+  // of minting a second payable session on every retry.
+  const priorAttempts = await stores.attempts.listByPayment(paymentRow.id);
+  const reusable = findReusableAttempt(
+    priorAttempts,
+    input.provider,
+    network,
+    isUsdc,
+  );
+  if (reusable) {
+    return {
+      attempt: attemptFromRow(reusable),
+      payment: paymentFromRow(paymentRow),
+      providerMetadata: railMetadataFromPayload(reusable.payload),
+    };
+  }
+
+  // H-9: USDC binds on-chain evidence to a payment-unique amount — every
+  // buyer pays a deterministic micro-suffix so transfers never collide.
+  const attemptAmount = isUsdc
+    ? addUsdcMicroSuffix(paymentRow.amount, paymentRow.id)
+    : paymentRow.amount;
 
   const productCode =
     typeof paymentRow.payload === "object" && paymentRow.payload !== null
@@ -166,13 +178,14 @@ export async function submitAttempt(
     provider: input.provider,
     network: network ?? null,
     token: token ?? null,
-    amount: paymentRow.amount,
+    amount: attemptAmount,
     currency,
     status: "CREATED",
     expiresAtMs: expiresAt?.getTime() ?? null,
     // H-4: verification expectations bound at create time.
     payload: {
       expectedRecipient: recipient ?? null,
+      expectedAmount: attemptAmount,
       network: network ?? null,
       minConfirmations: null,
     },
@@ -185,7 +198,7 @@ export async function submitAttempt(
   try {
     rail = await provider.createPayment({
       reference: paymentRow.reference,
-      amount: paymentRow.amount,
+      amount: attemptAmount,
       currency: currency as "USD" | "USDC",
       network,
       token,
@@ -198,6 +211,8 @@ export async function submitAttempt(
       },
     });
   } catch (err) {
+    // M-4: rail error text stays in the audit event — the API surface
+    // gets a generic message, not provider internals.
     const reason = `rail createPayment failed: ${
       err instanceof Error ? err.message.slice(0, 200) : String(err)
     }`;
@@ -206,12 +221,19 @@ export async function submitAttempt(
       reason,
       at: deps.now(),
     });
-    throw new CheckoutError("rail_error", 502, reason);
+    throw new CheckoutError("rail_error", 502, "payment rail failed");
   }
 
   const at = deps.now();
-  attemptRow =
-    (await applyAttemptTransition(stores, attemptRow, "PENDING", {
+  // M-1: the CREATED→PENDING write carries providerReference + rail
+  // instructions. If it is lost (racing transition), the rail session is
+  // live but untracked — mark the attempt FAILED and error out instead
+  // of returning a ghost session that can never be confirmed.
+  const pendingRow = await applyAttemptTransition(
+    stores,
+    attemptRow,
+    "PENDING",
+    {
       actor: ACTOR,
       at,
       patch: {
@@ -227,7 +249,22 @@ export async function submitAttempt(
           rail: rail.metadata ?? {},
         },
       },
-    })) ?? attemptRow;
+    },
+  );
+  if (!pendingRow) {
+    await applyAttemptTransition(stores, attemptRow, "FAILED", {
+      actor: ACTOR,
+      reason:
+        "lost CREATED→PENDING race after rail create — session orphaned",
+      at,
+    });
+    throw new CheckoutError(
+      "rail_error",
+      502,
+      "attempt state lost after rail create",
+    );
+  }
+  attemptRow = pendingRow;
 
   // C-1: rail NEVER confirms at create — clamp to PROCESSING.
   const railStatus =

@@ -166,16 +166,13 @@ describe("POST /api/v1/payments", () => {
     expect(body.payment.productCode).toBe("PASSPORT_BRONZE");
   });
 
-  it("multiplies catalog price by quantity — decimal math, no floats", async () => {
+  it("quantity > 1 → 400 invalid_quantity (M-5 single-entitlement)", async () => {
     const res = await postJson(app, "/api/v1/payments", {
       productCode: "DIRECTORY_LISTING",
       quantity: 3,
       metadata: { listingId: "lst_1" },
     });
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    // DIRECTORY_LISTING USD price is "29.99" → 3 × 29.99 = "89.97"
-    expect(body.payment.amount).toBe("89.97");
+    expect(res.status).toBe(400);
   });
 
   it("400 on metadata failing product schema — before any row exists", async () => {
@@ -268,7 +265,8 @@ describe("POST /api/v1/payments/:id/attempts", () => {
       USDC_NETWORKS[ARC_NETWORK].tokenContract,
     );
     expect(body.paymentInstructions.reference).toBe(created.payment.id);
-    expect(body.paymentInstructions.amount).toBe(created.payment.amount);
+    // H-9: USDC amount carries the payment-unique micro suffix.
+    expect(body.paymentInstructions.amount).toMatch(/^9\.99\d{4}$/);
     expect(body.paymentInstructions.expiresAt).toBeTruthy();
   });
 

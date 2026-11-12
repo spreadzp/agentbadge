@@ -15,7 +15,8 @@ export type CheckoutErrorCode =
   | "provider_unavailable"
   | "network_not_supported"
   | "forbidden_field"
-  | "rail_error";
+  | "rail_error"
+  | "idempotency_conflict";
 
 export class CheckoutError extends Error {
   constructor(

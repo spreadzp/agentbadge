@@ -88,5 +88,8 @@ export function loadPayments(errors: string[]): PaymentsConfig {
   return {
     usdcNetworks: networks,
     usdcInstructionsTtlSec: ttlSec,
+    // H-8: instructions-only stub is opt-in, never on by default.
+    usdcSelfServeEnabled:
+      process.env.PAYMENTS_USDC_SELF_SERVE === "true",
   };
 }

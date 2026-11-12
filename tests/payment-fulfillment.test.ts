@@ -149,14 +149,14 @@ describe("fulfillOrder — directory listing", () => {
 });
 
 describe("fulfillOrder — unknown product", () => {
-  it("logs warning for unknown productId", async () => {
+  it("logs error for productId with no fulfillment handler", async () => {
     resetProcessedSessions();
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => { });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
     const session = makeSession({ productId: "unknown-thing" });
     await fulfillOrder(session);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("unknown productId"),
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("no fulfillment handler"),
     );
   });
 });

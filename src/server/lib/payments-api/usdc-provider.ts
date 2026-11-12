@@ -40,16 +40,24 @@ export class DirectUsdcStubProvider implements PaymentProvider {
   async createPayment(
     input: CreatePaymentInput,
   ): Promise<CreatePaymentResult> {
-    const cfg = this.networks[input.network ?? ""];
+    // H-4: own-property lookup — inherited keys (__proto__) are rejected.
+    const cfg =
+      Object.hasOwn(this.networks, input.network ?? "") &&
+      input.network !== undefined
+        ? this.networks[input.network]
+        : undefined;
     if (!cfg) {
       throw new Error(`unsupported USDC network: ${input.network ?? "<none>"}`);
     }
+    // H-9: bind to the PAYMENT id (caller supplies it in metadata), not
+    // the bare reference — providerReference + unique attempt amount are
+    // what verification matches against later.
     const paymentId =
       typeof input.metadata?.paymentId === "string"
         ? input.metadata.paymentId
         : input.reference;
     return {
-      providerReference: `usdc_${input.network}_${input.reference}`,
+      providerReference: `usdc_${input.network}_${paymentId}`,
       status: "PENDING",
       expiresAt: input.expiresAt,
       metadata: {

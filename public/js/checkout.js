@@ -82,8 +82,45 @@
     show(statusEl);
   }
 
+  /** Decimal string → micro-unit integer string (6 dp), no floats. */
+  function toMicroUnits(decimal) {
+    var m = /^(\d+)(?:\.(\d{1,6}))?$/.exec(decimal || "");
+    if (!m) return null;
+    return (
+      m[1] + (m[2] || "").padEnd(6, "0")
+    ).replace(/^0+(?=\d)/, "");
+  }
+
+  /** M-3: wallet-scannable payment URI — EIP-681 token transfer for EVM
+   *  networks, Solana Pay transfer for solana:*, bare recipient else. */
+  function paymentUri(inst) {
+    var net = inst.network || "";
+    var evm = /^eip155:(\d+)$/.exec(net);
+    if (evm && inst.tokenContract) {
+      var micro = toMicroUnits(inst.amount);
+      return (
+        "ethereum:" +
+        inst.tokenContract +
+        "@" +
+        evm[1] +
+        "/transfer?address=" +
+        encodeURIComponent(inst.recipient) +
+        (micro ? "&uint256=" + micro : "")
+      );
+    }
+    if (/^solana:/.test(net)) {
+      var q = "?amount=" + encodeURIComponent(inst.amount || "");
+      if (inst.tokenContract) {
+        q += "&spl-token=" + encodeURIComponent(inst.tokenContract);
+      }
+      return "solana:" + encodeURIComponent(inst.recipient) + q;
+    }
+    return inst.recipient;
+  }
+
   function renderInstructions(box, inst) {
-    var qrUrl = "/checkout/qr.svg?data=" + encodeURIComponent(inst.recipient);
+    var qrUrl =
+      "/checkout/qr.svg?data=" + encodeURIComponent(paymentUri(inst));
     box.innerHTML =
       '<div class="rounded-lg border border-sky-800/50 bg-slate-950 p-5">' +
       '<h2 class="text-sm font-semibold text-white">Send USDC to complete payment</h2>' +
@@ -127,7 +164,12 @@
       }
       api("/api/v1/payments/" + encodeURIComponent(paymentId))
         .then(function (body) {
-          var status = body.payment && body.payment.status;
+          // Nit: payment/status may be absent on error payloads — guard
+          // before calling toLowerCase.
+          var status =
+            body.payment && typeof body.payment.status === "string"
+              ? body.payment.status
+              : "PROCESSING";
           if (status === "CONFIRMED") {
             clearInterval(timer);
             api("/api/v1/payments/" + encodeURIComponent(paymentId) + "/receipt")

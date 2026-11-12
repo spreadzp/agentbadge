@@ -17,6 +17,7 @@ import { listFiatProducts, getFiatProduct } from "../lib/pricing";
 import { dispatchCheckoutSession } from "../lib/payments-api/webhook-dispatch";
 import { makeStripeWebhookDispatch } from "../lib/payments-api";
 import { EventLedger, withIdempotency } from "../lib/event-ledger";
+import { clientSafeMetadata } from "../lib/payments-api/legacy-metadata";
 import { legacyEndpointDeprecation } from "../lib/contract-guards";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
@@ -156,16 +157,21 @@ paymentRoutes.post(
                 success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
                 cancel_url: `${baseUrl}/payment/canceled`,
                 metadata: {
+                    // Server values last — client metadata can never
+                    // override product/rail binding keys (H-1).
+                    ...clientSafeMetadata(metadata),
                     ...product.metadata,
-                    ...metadata,
                     productId,
                 },
             });
 
             return c.json({ url: session.url, sessionId: session.id });
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Unknown Stripe error";
-            return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Stripe checkout failed: ${message}`);
+            // M-4: Stripe error text can leak internals — log, don't echo.
+            logger.error("legacy checkout: stripe session create failed", {
+                error: err instanceof Error ? err.message : String(err),
+            });
+            return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, "Stripe checkout failed");
         }
     });
 
@@ -191,8 +197,11 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
     try {
         event = await stripe.webhooks.constructEventAsync(rawBody, signature, webhookSecret);
     } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return c.json({ error: `Webhook signature verification failed: ${message}` }, 400);
+        // M-4: do not echo verification internals to the caller.
+        logger.warn("stripe webhook: signature verification failed", {
+            error: err instanceof Error ? err.message : String(err),
+        });
+        return c.json({ error: "Webhook signature verification failed" }, 400);
     }
 
     switch (event.type) {
@@ -203,7 +212,15 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
                 event.id,
                 session.id,
                 async () => {
-                    await dispatchCheckoutSession(session, makeStripeWebhookDispatch());
+                    const dispatched = await dispatchCheckoutSession(
+                        session,
+                        makeStripeWebhookDispatch(),
+                    );
+                    // H-6: non-fulfilling states surface as 5xx so Stripe
+                    // retries the delivery instead of silently acking.
+                    if (dispatched.error) {
+                        throw new Error(dispatched.error);
+                    }
                 },
                 {
                     onAlert: (info) => {
@@ -233,10 +250,17 @@ paymentRoutes.post("/api/stripe/webhook", async (c) => {
     return c.json({ received: true });
 });
 
+// M-7: session ids are `cs_(test|live)_…` — anything else is not a
+// session and never reaches Stripe or the template.
+const STRIPE_SESSION_ID_RE = /^cs_(test|live)_[A-Za-z0-9]+$/;
+
 paymentRoutes.get("/payment/success", async (c) => {
     const sessionId = c.req.query("session_id");
     if (!sessionId) {
         return c.html(renderPaymentError("Missing Session ID", "No session_id parameter was provided."));
+    }
+    if (!STRIPE_SESSION_ID_RE.test(sessionId)) {
+        return c.html(renderPaymentError("Invalid Session ID", "The session_id parameter is not a valid checkout session."));
     }
 
     if (!isStripeConfigured()) {

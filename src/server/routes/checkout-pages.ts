@@ -13,6 +13,16 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { toString as qrToString } from "qrcode";
 
+/** Escape user input reflected into server-rendered HTML (C-3). */
+function esc(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 import { getConfig } from "../../config/env";
 import {
   getCommerceProduct,
@@ -76,7 +86,7 @@ export function createCheckoutPageRoutes(
           simplePage(
             "Checkout — product not found",
             `<h1 class="text-xl font-semibold text-white">Product not found</h1>
-             <p class="mt-3 text-sm text-slate-400">The product "${rawCode || "?"}" is not available for checkout.</p>`,
+             <p class="mt-3 text-sm text-slate-400">The product "${esc(rawCode) || "?"}" is not available for checkout.</p>`,
           ),
           404,
         );
@@ -106,12 +116,20 @@ export function createCheckoutPageRoutes(
     }),
     async (c) => {
       const data = c.req.query("data")?.trim();
-      if (!data || data.length > 2000) {
+      // M-2: cap by BYTES (a 2000-char multi-byte payload is oversized),
+      // and a renderer failure must not surface as an unhandled 500.
+      if (!data || Buffer.byteLength(data, "utf8") > 512) {
         return c.json({ error: "missing or oversized data param" }, 400);
       }
-      const svg = await qrToString(data, { type: "svg", margin: 2 });
+      let svg: string;
+      try {
+        svg = await qrToString(data, { type: "svg", margin: 2 });
+      } catch {
+        return c.json({ error: "invalid qr payload" }, 400);
+      }
       return c.body(svg, 200, {
         "Content-Type": "image/svg+xml",
+        "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, max-age=300",
       });
     },

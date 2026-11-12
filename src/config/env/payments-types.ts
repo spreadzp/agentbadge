@@ -18,4 +18,8 @@ export interface PaymentsConfig {
   usdcNetworks: Record<string, UsdcNetworkConfig>;
   /** PAYMENTS_USDC_TTL_SEC — instructions expiry TTL (default 3600). */
   usdcInstructionsTtlSec: number;
+  /** PAYMENTS_USDC_SELF_SERVE — H-8: the instructions-only stub must be
+   *  explicitly opted into; unset/false → DIRECT_USDC provider is not
+   *  registered and attempts get provider_unavailable. */
+  usdcSelfServeEnabled: boolean;
 }

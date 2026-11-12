@@ -28,11 +28,18 @@ import {
 
 import {
   getCommerceProduct,
+  sanitizeProductMetadata,
   validateProductMetadata,
 } from "../commerce-catalog";
 
 import { submitAttempt } from "./attempt";
 import type { CreateAttemptInput, CreateAttemptResult } from "./attempt";
+import {
+  assertIdempotentReplay,
+  checkoutFingerprint,
+  defaultId,
+  PAYMENT_TTL_MS,
+} from "./checkout-idempotency";
 import { CheckoutError } from "./errors";
 import type { FulfillmentInput } from "./fulfillment";
 import { multiplyUsdDecimal } from "./money";
@@ -70,31 +77,8 @@ export interface CreatePaymentResult {
   deduped: boolean;
 }
 
-function defaultId(prefix: string): string {
-  return `${prefix}_${globalThis.crypto?.randomUUID?.() ??
-    `${Date.now()}_${Math.random().toString(36).slice(2)}`
-    }`;
-}
-
 /** Stable fingerprint — same convention as PaymentService so later
  *  service-side dedupe reads stay compatible. */
-function checkoutFingerprint(input: {
-  reference: string;
-  amount: string;
-  productCode: string;
-  customerId?: string;
-  agentId?: string;
-}): string {
-  return JSON.stringify({
-    reference: input.reference,
-    amount: input.amount,
-    currency: "USD",
-    purpose: "checkout",
-    productId: input.productCode,
-    customerId: input.customerId ?? null,
-    agentId: input.agentId ?? null,
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Checkout
@@ -152,11 +136,13 @@ export class PaymentsCheckout {
       );
     }
     const quantity = input.quantity ?? 1;
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000) {
+    // M-5: catalog products are single-entitlement — quantity > 1 would
+    // multiply the charge for one fulfillment.
+    if (quantity !== 1) {
       throw new CheckoutError(
         "invalid_quantity",
         400,
-        "quantity must be an integer 1..1000",
+        "quantity must be 1 — catalog products are single-entitlement",
       );
     }
     const usd = product.prices.find((p) => p.currency === "USD" && p.active);
@@ -171,13 +157,6 @@ export class PaymentsCheckout {
 
     const reference = `chk_${input.idempotencyKey ?? this.newId("ref").slice(4)
       }`;
-    if (input.idempotencyKey != null) {
-      const dup =
-        (await this.stores.payments.getByIdempotencyKey(
-          input.idempotencyKey,
-        )) ?? (await this.stores.payments.getByReference(reference));
-      if (dup) return { payment: dup, deduped: true };
-    }
 
     const at = this.now();
     const fingerprint = checkoutFingerprint({
@@ -187,6 +166,17 @@ export class PaymentsCheckout {
       customerId: input.customerId,
       agentId: input.agentId,
     });
+    if (input.idempotencyKey != null) {
+      const dup =
+        (await this.stores.payments.getByIdempotencyKey(
+          input.idempotencyKey,
+        )) ?? (await this.stores.payments.getByReference(reference));
+      if (dup) {
+        assertIdempotentReplay(dup, fingerprint, input.idempotencyKey);
+        return { payment: dup, deduped: true };
+      }
+    }
+
     const row = await this.stores.payments.create({
       id: this.newId("pay"),
       reference,
@@ -200,14 +190,14 @@ export class PaymentsCheckout {
       status: "PENDING",
       purpose:
         product.fulfillmentKind === "passport-mint" ? "PASSPORT" : "CUSTOM",
-      expiresAtMs: null,
+      expiresAtMs: at.getTime() + PAYMENT_TTL_MS,
       createdAtMs: at.getTime(),
       updatedAtMs: at.getTime(),
       payload: {
         request: fingerprint,
         productCode: product.productCode,
         quantity,
-        metadata,
+        metadata: sanitizeProductMetadata(product.productCode, metadata),
       },
     });
     if (!row) {
@@ -215,6 +205,7 @@ export class PaymentsCheckout {
       if (!winner) {
         throw new Error("payment insert deduped but row not found");
       }
+      assertIdempotentReplay(winner, fingerprint, input.idempotencyKey);
       return { payment: winner, deduped: true };
     }
     return { payment: row, deduped: false };
@@ -275,16 +266,25 @@ export class PaymentsCheckout {
           metadata?: unknown;
         })
         : {};
+    const product = getCommerceProduct(
+      typeof payload.productCode === "string"
+        ? payload.productCode
+        : (row.productId ?? ""),
+    );
     return {
       productCode:
         typeof payload.productCode === "string"
           ? payload.productCode
           : (row.productId ?? "unknown"),
       buyerRef: row.customerId ?? row.agentId ?? undefined,
-      metadata:
-        typeof payload.metadata === "object" && payload.metadata !== null
+      metadata: {
+        // Server-side binding: `tier` comes from the catalog product,
+        // never from client metadata (passport-mint handlers require it).
+        ...(typeof payload.metadata === "object" && payload.metadata !== null
           ? (payload.metadata as Record<string, unknown>)
-          : {},
+          : {}),
+        ...(product?.tier ? { tier: product.tier } : {}),
+      },
       amountUsd: row.amount,
       paymentRef: row.id,
     };

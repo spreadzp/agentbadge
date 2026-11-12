@@ -121,6 +121,7 @@ export const ErrorCodes = {
   CHECKOUT_NETWORK_NOT_SUPPORTED: "network_not_supported",
   CHECKOUT_FORBIDDEN_FIELD: "forbidden_field",
   CHECKOUT_RAIL_ERROR: "rail_error",
+  CHECKOUT_IDEMPOTENCY_CONFLICT: "idempotency_conflict",
   RECEIPT_NOT_FOUND: "receipt_not_found",
 
   // 500 — server

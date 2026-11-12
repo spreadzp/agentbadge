@@ -46,6 +46,9 @@ export interface CommerceProduct {
   prices: CommercePrice[];
   metadataSchema: MetadataSchema;
   fulfillmentKind: FulfillmentKind;
+  /** Passport tier for passport-mint products — server-side only, never
+   *  accepted from client metadata (fulfillment injects it). */
+  tier?: string;
 }
 
 /** Injected catalog inputs (defaultSources pattern from service-catalog). */
@@ -194,6 +197,7 @@ function buildProduct(
     prices,
     metadataSchema: seed.metadataSchema,
     fulfillmentKind: seed.fulfillmentKind,
+    tier: seed.tier,
   };
 }
 
@@ -234,56 +238,8 @@ export function metadataFieldTypesFor(
   return FIELD_TYPES_BY_KIND[kind];
 }
 
-// ---------------------------------------------------------------------------
-// Metadata validation (D-221-8)
-// ---------------------------------------------------------------------------
-
-export type MetadataValidation =
-  | { ok: true }
-  | { ok: false; errors: string[] };
-
-/**
- * Validate `metadata` against the product's declared schema.
- * Unknown extra keys are allowed (forward-compat); declared fields are
- * type-checked and all `required` fields must be present and non-empty.
- */
-export function validateProductMetadata(
-  productCode: string,
-  metadata: unknown,
-): MetadataValidation {
-  const product = getCommerceProduct(productCode);
-  const errors: string[] = [];
-  if (!product) {
-    return { ok: false, errors: [`unknown productCode: ${productCode}`] };
-  }
-  if (
-    typeof metadata !== "object" ||
-    metadata === null ||
-    Array.isArray(metadata)
-  ) {
-    return { ok: false, errors: ["metadata must be an object"] };
-  }
-
-  const md = metadata as Record<string, unknown>;
-  const fieldTypes = FIELD_TYPES_BY_KIND[product.fulfillmentKind];
-
-  for (const field of product.metadataSchema.required) {
-    if (!(field in md) || md[field] === undefined || md[field] === null) {
-      errors.push(`missing required field: ${field}`);
-    }
-  }
-
-  for (const [field, value] of Object.entries(md)) {
-    const expected = fieldTypes[field];
-    if (!expected) continue; // undeclared keys pass through
-    const typeOk =
-      expected === "string"
-        ? typeof value === "string" && value.length > 0
-        : Array.isArray(value) && value.every((v) => typeof v === "string");
-    if (!typeOk) {
-      errors.push(`invalid type for ${field}: expected ${expected}`);
-    }
-  }
-
-  return errors.length ? { ok: false, errors } : { ok: true };
-}
+export {
+  validateProductMetadata,
+  sanitizeProductMetadata,
+  type MetadataValidation,
+} from "./metadata-validation.js";

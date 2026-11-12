@@ -74,7 +74,6 @@ const mockedIssuePassport = vi.mocked(issuePassport);
 const USDC_NETWORKS: UsdcNetworks = {};
 const PASSPORT_METADATA = {
   accountId: "0.0.1234",
-  tier: "bronze",
   name: "test-agent",
   capabilities: ["scan"],
 };
@@ -362,12 +361,12 @@ describe("dispatchFulfillment registry", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
-  it("no handler for kind → resolves false, nothing thrown", async () => {
+  it("no handler for kind → resolves 'no-handler', nothing thrown", async () => {
     const ok = await dispatchFulfillment(
       { productCode: "NO_SUCH_PRODUCT", metadata: {} },
       { registry: new Map(), dedupeKey: "k" },
     );
-    expect(ok).toBe(false);
+    expect(ok).toBe("no-handler");
   });
 });
 

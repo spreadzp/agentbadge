@@ -123,7 +123,13 @@ export function getPaymentsCheckout(): PaymentsCheckout {
       }),
     );
   }
-  if (Object.keys(cfg.usdcNetworks).length > 0) {
+  // H-8: the self-serve instructions stub is opt-in via
+  // PAYMENTS_USDC_SELF_SERVE — networks may be configured without
+  // exposing the unmonitored rail.
+  if (
+    cfg.usdcSelfServeEnabled &&
+    Object.keys(cfg.usdcNetworks).length > 0
+  ) {
     registry.register(
       new DirectUsdcStubProvider({ networks: cfg.usdcNetworks }),
     );
@@ -155,5 +161,7 @@ export function makeStripeWebhookDispatch(): WebhookDispatchDeps {
       getPaymentsCheckout().getFulfillmentInput(paymentId),
     fulfillLegacy: (session) =>
       fulfillOrder(session as Parameters<typeof fulfillOrder>[0]),
+    // H-1 session→attempt binding + C-2 durable fulfillment dedupe.
+    stores: getDatabase().payments as unknown as PaymentServiceStores,
   };
 }

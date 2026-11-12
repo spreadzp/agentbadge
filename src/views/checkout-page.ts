@@ -120,7 +120,9 @@ export function CheckoutPage(
           </div>
           <div class="text-right">
             <p class="text-2xl font-semibold text-sky-400">$${usd}</p>
-            ${hbar ? `<p class="text-xs text-slate-500">${hbar} HBAR equivalent</p>` : ""}
+            ${hbar
+              ? html`<p class="text-xs text-slate-500">${hbar} HBAR equivalent</p>`
+              : ""}
           </div>
         </div>
       </div>
