@@ -12,7 +12,6 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
-    "rootDir": ".",
     "types": ["bun-types"]
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"],

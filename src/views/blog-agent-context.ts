@@ -1,6 +1,6 @@
 import { html } from "hono/html";
-import { type BlogArticle } from "../../server/lib/blog-data";
-import { type KnowledgeObject } from "../../server/lib/blog/knowledge-object";
+import { type BlogArticle } from "../server/lib/blog-data";
+import { type KnowledgeObject } from "../server/lib/blog/knowledge-object";
 import { StatusBadge } from "./blog-knowledge-blocks";
 
 

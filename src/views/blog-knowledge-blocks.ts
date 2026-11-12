@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import { type ContentStatus, type KnowledgeObject } from "../../server/lib/blog/knowledge-object";
+import { type ContentStatus, type KnowledgeObject } from "../server/lib/blog/knowledge-object";
 
 /**
  * SLICE-201-11: article knowledge blocks — Q&A, Key facts, context links,
