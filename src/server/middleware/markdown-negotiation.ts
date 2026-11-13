@@ -91,6 +91,49 @@ export function isMarkdownNegotiablePath(path: string): boolean {
   return true;
 }
 
+// ─── `.md` mirror helper ────────────────────────────────────────────────────
+
+let mirrorApp: Hono | null = null;
+
+/**
+ * Late-bound app reference for internal mirror sub-requests. Set once after
+ * the app is fully assembled (next to `setDiscoveryApp`) — the middleware is
+ * wired before route mounts, so it can't capture `app` directly.
+ */
+export function setMirrorApp(app: Hono): void {
+  mirrorApp = app;
+}
+
+/**
+ * Internal mirror fetch: re-request `path` minus the `.md` suffix with
+ * `Accept: text/markdown`. Returns the markdown Response, or null when the
+ * target isn't a negotiable page (real 404s, JSON APIs, excluded paths).
+ */
+async function serveMarkdownMirror(
+  path: string,
+): Promise<Response | null> {
+  if (!mirrorApp) return null;
+  const stripped = path.slice(0, -3);
+  // Recursive mirrors are meaningless — /x.md.md must not resolve through
+  // the catch-all again, or crawlers discover an infinite .md URL space.
+  if (stripped.endsWith(".md")) return null;
+  const target = stripped === "" || stripped === "/index" ? "/" : stripped;
+  const inner = await mirrorApp.request(target, {
+    method: "GET",
+    headers: { Accept: "text/markdown" },
+  });
+  if (!inner.ok) return null;
+  const ct = inner.headers.get("content-type") ?? "";
+  if (!ct.includes("text/markdown")) return null;
+  return new Response(await inner.text(), {
+    status: 200,
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+      Vary: "Accept",
+    },
+  });
+}
+
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
 export function markdownNegotiation() {
@@ -100,6 +143,22 @@ export function markdownNegotiation() {
       return;
     }
     const path = new URL(c.req.url).pathname;
+
+    // `.md` suffix: real routes keep ownership of their extension (e.g.
+    // /blog/:slug.md, /auth.md). Anything that still 404s — including paths
+    // shadowed by param routes like /rules/:id matching "AB-007.md" —
+    // falls back to the negotiated mirror so the advertised
+    // <link rel="alternate" type="text/markdown"> never 404s (audit P0).
+    if (path.endsWith(".md")) {
+      await next();
+      if (c.res.status !== 404) return;
+      // SLICE-178-5: ?src= attribution on .md entry points.
+      await recordSrcAttribution(c);
+      const mirrored = await serveMarkdownMirror(path);
+      if (mirrored) c.res = mirrored;
+      return;
+    }
+
     if (!isMarkdownNegotiablePath(path)) {
       await next();
       return;
@@ -144,7 +203,7 @@ export function markdownNegotiation() {
  * mirror body — identical content by construction. Anything that isn't
  * markdown (JSON APIs, missing pages) yields 404.
  */
-export function markdownMirrorRoutes(app: Hono): Hono {
+export function markdownMirrorRoutes(_app: Hono): Hono {
   const routes = new Hono();
 
   routes.get("*", async (c) => {
@@ -154,25 +213,9 @@ export function markdownMirrorRoutes(app: Hono): Hono {
     // SLICE-178-5: ?src= attribution on .md entry points.
     await recordSrcAttribution(c);
 
-    const stripped = path.slice(0, -3);
-    // Recursive mirrors are meaningless — /x.md.md must not resolve through
-    // the catch-all again, or crawlers discover an infinite .md URL space.
-    if (stripped.endsWith(".md")) return c.notFound();
-    const target = stripped === "" || stripped === "/index" ? "/" : stripped;
-    const inner = await app.request(target, {
-      method: "GET",
-      headers: { Accept: "text/markdown" },
-    });
-    if (!inner.ok) return c.notFound();
-    const ct = inner.headers.get("content-type") ?? "";
-    if (!ct.includes("text/markdown")) return c.notFound();
-    return new Response(await inner.text(), {
-      status: 200,
-      headers: {
-        "Content-Type": "text/markdown; charset=utf-8",
-        Vary: "Accept",
-      },
-    });
+    const mirrored = await serveMarkdownMirror(path);
+    if (!mirrored) return c.notFound();
+    return mirrored;
   });
 
   return routes;

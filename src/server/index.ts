@@ -31,7 +31,7 @@ import { wireMcpAbuseGuard, armMcpHeavyGate } from "./wiring/mcp-abuse";
 import { CacheRateLimitStore } from "./middleware/rate-limit-redis-store";
 import { getCache } from "./lib/cache";
 import { wireRequestPipeline } from "./wiring/request-pipeline";
-import { markdownMirrorRoutes } from "./middleware/markdown-negotiation";
+import { markdownMirrorRoutes, setMirrorApp } from "./middleware/markdown-negotiation";
 import { hostNormalizationMiddleware, trailingSlashMiddleware } from "./middleware/canonical-redirects";
 import { structuredNotFoundHandler } from "./middleware/structured-error-handler";
 import { ga4Pageview } from "./middleware/ga4-pageview";
@@ -253,9 +253,9 @@ startForensicsIndexer();
 // (openAPIRouteHandler introspects app at call time). EPIC-140: wiring/ops.ts
 wireOpenApi(app);
 
-// EPIC-178: wire app into discovery routes so /llms.txt enumerates the
-// full public route table (post-mount, lazy first-request generation).
+// EPIC-178: wire app into discovery routes so /llms.txt enumerates the full public route table (post-mount, lazy first-request generation).
 setDiscoveryApp(app);
+setMirrorApp(app); // late-bound app for `.md` mirror sub-requests (e.g. /rules/AB-007.md shadowed by param routes)
 
 // SLICE-178-4: `GET /<page>.md` mirrors — internal Accept: text/markdown
 // sub-request, so mirror content ≡ negotiated content. Registered LAST:

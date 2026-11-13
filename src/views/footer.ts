@@ -1,6 +1,6 @@
 import { html } from "hono/html";
 import { APP_VERSION, GIT_COMMIT } from "../server/lib/build-info";
-import { explorerName, explorerTxUrl } from "../server/lib/chain-ui.js";
+import { explorerName, explorerNftUrl } from "../server/lib/chain-ui.js";
 
 /**
  * Shared Footer component — used by both Layout() and LandingLayout().
@@ -114,7 +114,7 @@ export function Footer(): ReturnType<typeof html> {
             <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
             Medical Demo
           </a>
-          <a href="${explorerTxUrl('')}" target="_blank" rel="noopener" class="footer-pop inline-flex items-center gap-2 py-1 hover:text-emerald-400">
+          <a href="${explorerNftUrl(process.env.PASSPORT_TOKEN_ID ?? "0.0.9681741", "1")}" target="_blank" rel="noopener" class="footer-pop inline-flex items-center gap-2 py-1 hover:text-emerald-400">
             <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-0L10 14" /></svg>
             ${explorerName()}
           </a>
@@ -133,7 +133,7 @@ export function Footer(): ReturnType<typeof html> {
             <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm-6 0a3 3 0 100-6 3 3 0 000 6z" /></svg>
             Work With Us
           </a>
-          <a href="/team" class="footer-pop inline-flex items-center gap-2 py-1 hover:text-emerald-400">
+          <a href="/about" class="footer-pop inline-flex items-center gap-2 py-1 hover:text-emerald-400">
             <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm-6 0a3 3 0 100-6 3 3 0 000 6z" /></svg>
             Team
           </a>

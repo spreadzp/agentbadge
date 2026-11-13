@@ -120,7 +120,7 @@ function blogSection(src: DiscoverySources): string {
     "## Blog",
     "",
     `- [Blog index](${b}/blog) — newest first, paginated`,
-    `- [RSS](${b}/rss.xml)`,
+    `- [RSS](${b}/feed)`,
     ...channels.map(
       (ch) => `- [${ch.label}](${b}/blog?channel=${encodeURIComponent(ch.key)}) — ${ch.count} articles`,
     ),

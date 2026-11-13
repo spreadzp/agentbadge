@@ -104,46 +104,7 @@ agentKnowledgeRoutes.get("/agent-guide", async (c) => {
   const md = await serveIndexMarkdown();
   const wantsHtml = accept.includes("text/html");
   if (!wantsHtml) {
-    return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=300" } });
-  }
-  const schemas = [
-    ...defaultCoreSchemas(),
-    howToLd({
-      name: "AgentBadge Agent Guide",
-      description: "Machine-readable guide for AI agents to understand and use AgentBadge.",
-      path: "/agent-guide",
-      totalTime: "PT10M",
-      steps: [
-        { name: "Read the guide", text: "Fetch /agent-guide for the full knowledge index." },
-        { name: "Get context", text: "Read /agent-guide/context for background." },
-        { name: "Follow learning path", text: "Use /agent-guide/learn for step-by-step onboarding." },
-      ],
-    }),
-    breadcrumbListLd([
-      { name: "Home", path: "/" },
-      { name: "Agent Guide", path: "/agent-guide" },
-    ]),
-  ].map((s) => (s as Record<string, unknown>)["@type"] === "HowTo" ? { ...(s as Record<string, unknown>), dateModified: BUILD_DATE } : s);
-  return c.html(GuideLayout("Agent Guide", md, schemas, "/agent-guide", BUILD_DATE, [
-    { term: "Agent Passport", definition: "An NFT on Hedera that serves as on-chain identity for an AI agent, enabling verifiable interactions and directory registration." },
-    { term: "HCS Directory", definition: "Hedera Consensus Service topic used as a public registry where agents publish their passport DIDs and service endpoints." },
-    { term: "MCP Server", definition: "Model Context Protocol server exposing tools, resources, and prompts that AI agents can discover and invoke at runtime." },
-    { term: "Agent Readiness", definition: "The degree to which an API or service is discoverable, understandable, and usable by autonomous AI agents without human intervention." },
-    { term: "llms.txt", definition: "A machine-readable file at the root of a domain that provides LLMs with curated context about the site's content and API." },
-    { term: "A2A Protocol", definition: "Agent-to-Agent communication protocol enabling agents to discover, negotiate, and transact with each other directly." },
-    { term: "x402 Payment", definition: "HTTP 402-based payment protocol where agents autonomously pay for API access using cryptocurrency (HBAR on Hedera)." },
-  ]));
-});
-
-agentKnowledgeRoutes.get("/agent-guide/", async (c) => {
-  const accept = c.req.header("Accept") ?? "";
-  if (accept.includes("application/json")) {
-    return serveAgentGuideJson(c);
-  }
-  const md = await serveIndexMarkdown();
-  const wantsHtml = accept.includes("text/html");
-  if (!wantsHtml) {
-    return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=300" } });
+    return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=300", "Vary": "Accept" } });
   }
   const schemas = [
     ...defaultCoreSchemas(),

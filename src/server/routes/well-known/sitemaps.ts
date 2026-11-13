@@ -382,7 +382,7 @@ sitemapRoutes.get(
     tags: ["Discovery"],
     summary: "robots.txt — crawler directives with spam bot blocking",
     description:
-      "Returns robots.txt with allow rules for useful crawlers (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, anthropic-ai, PerplexityBot, Google-Extended, Applebot-Extended, CCBot, cohere-ai, ElevenlabsCrawler, ElevenlabsBot, ExaBot, ExaSearchBot, Googlebot, Bingbot, DuckDuckBot) and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
+      "Returns robots.txt with allow rules for useful crawlers (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, PerplexityBot, Perplexity-User, Google-Extended, Applebot-Extended, CCBot, cohere-ai, ElevenlabsCrawler, ElevenlabsBot, ExaBot, ExaSearchBot, Googlebot, Bingbot, DuckDuckBot) — each group repeats the wildcard disallows — and disallow for spam crawlers (AhrefsBot, SemrushBot, MJ12bot, DotBot, BLEXBot, Bytespider) and admin/internal paths.",
     responses: {
       200: {
         description: "robots.txt",
@@ -392,9 +392,10 @@ sitemapRoutes.get(
   }),
   () => {
     const baseUrl = BASE_URL;
-    const body = `User-agent: *
-Allow: /
-Disallow: /admin
+    // A named User-agent group fully REPLACES the `*` group for that bot —
+    // so every allow group must repeat the wildcard disallows or the bot
+    // inherits unrestricted access to /admin, /ui/, /api/ (audit P0).
+    const disallows = `Disallow: /admin
 Disallow: /ui/
 Disallow: /a2a/
 # /agents is a JSON API directory — not an indexable page (SLICE-131-3)
@@ -402,70 +403,43 @@ Disallow: /agents
 Disallow: /market/tasks/
 # /api/* are JSON endpoints — not indexable pages (SLICE-131-4)
 Disallow: /api/
-Disallow: /ui/a2a/inbox/fragment
-Crawl-delay: 10
+Disallow: /ui/a2a/inbox/fragment`;
+
+    // Welcomed AI/search crawlers — official UA tokens only.
+    const allowBots = [
+      "GPTBot",
+      "OAI-SearchBot",
+      "ChatGPT-User",
+      "ClaudeBot",
+      "PerplexityBot",
+      "Perplexity-User",
+      "Google-Extended",
+      "Applebot-Extended",
+      "CCBot",
+      "cohere-ai",
+      "ElevenlabsCrawler",
+      "ElevenlabsBot",
+      "ExaBot",
+      "ExaSearchBot",
+      "Googlebot",
+      "Bingbot",
+      "DuckDuckBot",
+    ];
+    const allowGroups = allowBots
+      .map((bot) => `User-agent: ${bot}\nAllow: /\n${disallows}`)
+      .join("\n\n");
+
+    const body = `User-agent: *
+Allow: /
+${disallows}
 
 # Content-Signal (D-218-2): crawlers below may READ (allowlist answers
 # "who may fetch"), this signal answers "what may be done with content":
 # indexing/search + AI input (RAG/answers) OK, model training is NOT.
-Content-Signal: ai-train=yes, search=yes, ai-input=yes
+Content-Signal: ai-train=no, search=yes, ai-input=yes
 
-# ── Allow useful LLM / AI crawlers ──
-User-agent: GPTBot
-Allow: /
-
-User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: anthropic-ai
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: PerplexityBot-User
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
-User-agent: Applebot-Extended
-Allow: /
-
-User-agent: CCBot
-Allow: /
-
-User-agent: cohere-ai
-Allow: /
-
-# ── SLICE-206-17: welcome AI-training / agent crawlers ──
-User-agent: ElevenlabsCrawler
-Allow: /
-
-User-agent: ElevenlabsBot
-Allow: /
-
-User-agent: ExaBot
-Allow: /
-
-User-agent: ExaSearchBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-User-agent: Googlebot
-Allow: /
-Disallow: /api/
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: DuckDuckBot
-Allow: /
+# ── Allow useful LLM / AI crawlers (same restrictions as User-agent: *) ──
+${allowGroups}
 
 # ── Block SEO-spam / link-analysis crawlers ──
 User-agent: AhrefsBot
@@ -491,8 +465,6 @@ User-agent: Bytespider
 Disallow: /
 
 Sitemap: ${baseUrl}/sitemap.xml
-Sitemap: ${baseUrl}/ai-sitemap.xml
-Sitemap: https://agentbadge.gitbook.io/agentbadge-docs/sitemap.xml
 `;
     return new Response(body, {
       headers: {

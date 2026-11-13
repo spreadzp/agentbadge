@@ -19,7 +19,7 @@ export function softwareApplicationLd(): object {
       itemListElement: getCatalog().map((tier) => ({
         "@type": "Offer",
         name: `${tier.name.charAt(0).toUpperCase() + tier.name.slice(1)} Passport`,
-        price: String(tier.priceUsd),
+        price: String(tier.priceUsd ?? tier.price ?? 0),
         priceCurrency: "USD",
         description: `${tier.name} tier — capabilities: ${tier.capabilities.join(", ")}`,
         url: `${BASE_URL}/pricing`,
