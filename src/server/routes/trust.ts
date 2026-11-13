@@ -16,8 +16,7 @@ import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { renderSnapshotMarkdown } from "../../agent-readiness/trust/snapshot-markdown";
 import { verifySnapshot } from "../../agent-readiness/trust/snapshot-verifier";
-import { createChallenge, getChallenge, deleteChallenge } from "../../agent-readiness/trust/challenge-store";
-import { isChallengeExpired } from "../../agent-readiness/trust/challenge";
+import { generateChallenge, verifyChallengeToken } from "../../agent-readiness/trust/challenge";
 import { verifyDomainOwnership } from "../../agent-readiness/trust/domain-ownership";
 
 // OpenAPI schemas
@@ -239,11 +238,11 @@ trustRoutes.get(
   async (c) => {
     const domain = normalizeDomain(c.req.param("domain"));
 
-    const challenge = createChallenge(domain);
+    const challenge = generateChallenge(domain);
 
     return c.json({
       token: challenge.token,
-      dns_record: `_agentbadge.${domain} TXT = ${challenge.token}`,
+      dns_record: `_agentbadge-verify.${domain} TXT = ${challenge.token}`,
       well_known_url: `https://${domain}/.well-known/agentbadge-verify.txt`,
       expires_at: challenge.expires_at,
     }, 200);
@@ -276,25 +275,17 @@ trustRoutes.post(
       return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "token is required");
     }
 
-    // Check challenge exists and is not expired
-    const challenge = getChallenge(domain);
-    if (!challenge || challenge.token !== parsed.data.token) {
+    const challenge = verifyChallengeToken(domain, parsed.data.token);
+    if (!challenge) {
       return errorResponse(c, 403, ErrorCodes.VERIFICATION_FAILED, "Invalid or missing challenge token");
-    }
-
-    if (isChallengeExpired(challenge)) {
-      deleteChallenge(domain);
-      return errorResponse(c, 403, ErrorCodes.VERIFICATION_FAILED, "Challenge token expired");
     }
 
     // Verify domain ownership via DNS or well-known file
     try {
       const proof = await verifyDomainOwnership(domain, challenge);
       if (!proof) {
-        deleteChallenge(domain);
         return errorResponse(c, 403, ErrorCodes.VERIFICATION_FAILED, "Domain ownership verification failed: no DNS TXT or well-known file found");
       }
-      deleteChallenge(domain);
       return c.json(proof, 200);
     } catch (e) {
       return errorResponse(c, 403, ErrorCodes.VERIFICATION_FAILED, `Domain ownership verification failed: ${(e as Error).message}`);

@@ -253,6 +253,11 @@ export type { AgentWalletEnvConfig } from "./agent-wallet-types";
 import type { AgentWalletEnvConfig } from "./agent-wallet-types";
 export type { AgentRegistrationEnvConfig } from "./agent-registration-types";
 import type { AgentRegistrationEnvConfig } from "./agent-registration-types";
+/** Trust config — TRUST_CHALLENGE_SECRET for stateless domain ownership challenges. */
+export interface TrustEnvConfig {
+  challengeSecret: string;
+}
+
 /** Cache layer config (EPIC-144). CACHE_ENABLED=true else InMemoryCache. */
 export interface CacheEnvConfig {
   enabled: boolean;
@@ -294,6 +299,7 @@ export interface AppConfig {
   agentRegistration?: AgentRegistrationEnvConfig;
   database?: DatabaseEnvConfig;
   cache?: CacheEnvConfig;
+  trust: TrustEnvConfig;
   scanPacks: ScanPacksConfig;
   marketplace?: MarketplaceConfig;
   payments: PaymentsConfig;
