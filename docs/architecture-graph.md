@@ -51,6 +51,7 @@ flowchart LR
   agent_readiness_trust["agent-readiness/trust"] --> agent_readiness_profile["agent-readiness/profile"]
   agent_readiness_trust["agent-readiness/trust"] --> agent_readiness_rule_engine["agent-readiness/rule-engine"]
   agent_readiness_trust["agent-readiness/trust"] --> agent_readiness_scanner["agent-readiness/scanner"]
+  agent_readiness_trust["agent-readiness/trust"] --> config["config"]
   agents["agents"] --> pkg_hedera_core["pkg: hedera-core"]
   agents["agents"] --> server_lib["server/lib"]
   components["components"] --> server_lib["server/lib"]
