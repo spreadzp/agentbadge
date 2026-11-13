@@ -42,10 +42,12 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           TRIMMED="$(echo "$COMMENT_BODY" | tr -d '[:space:]')"
-          if [ "$TRIMMED" != "/fly-logs" ]; then
+          if [ "$TRIMMED" = "/fly-logs" ]; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$TRIMMED" == /* ]]; then
             echo "allowed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "allowed=true" >> "$GITHUB_OUTPUT"
+            echo "allowed=silent" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Reply on malformed command
