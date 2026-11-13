@@ -40,7 +40,7 @@ function makeValidSnapshot(): TrustSnapshot {
       method: "dns_txt",
       verified: true,
       verified_at: "2026-09-04T21:55:00Z",
-      challenge_token: "ab_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+      challenge_token: "agentbadge-verify=cd70481c386f9492ec023f4a75476393",
       proof: "TXT record verified",
     },
     integrity: {

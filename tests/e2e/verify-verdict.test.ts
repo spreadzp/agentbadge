@@ -31,9 +31,8 @@ import {
 } from "../../src/server/lib/eaas/chain";
 import { createVerifyRoutes } from "../../src/server/routes/verify-api";
 
-// Level-2 package — relative import (separate repo, no server dep).
-import { verifyVerdict } from "../../../../packages/verify-verdict/src/verify.js";
-import type { VerdictReadClient } from "../../../../packages/verify-verdict/src/chain-read.js";
+// Level-2 package (separate repo, no server dep).
+import { verifyVerdict, type VerdictReadClient } from "@agentbadge/verify-verdict";
 
 const CHAIN_ID = 5042002;
 const signer = createVerdictSigner(Wallet.createRandom().privateKey, CHAIN_ID);

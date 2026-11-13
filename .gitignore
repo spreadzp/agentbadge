@@ -22,3 +22,7 @@ out/
 # Anything under scripts/local/ is never committed — keep cred-adjacent
 # one-offs here instead of scripts/.
 scripts/local/
+
+# Generated output (CLI scan report, vitest coverage)
+/agentbadge-report.*
+coverage/

@@ -95,6 +95,7 @@
     "@x402/hono": "^2.25.0"
   },
   "devDependencies": {
+    "@agentbadge/verify-verdict": "^0.1.0",
     "@circle-fin/x402-batching": "^3.5.0",
     "@lhci/cli": "^0.14.0",
     "@resvg/resvg-js": "^2.6.2",

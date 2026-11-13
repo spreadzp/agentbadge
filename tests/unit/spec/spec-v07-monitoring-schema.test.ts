@@ -21,7 +21,8 @@ function readSpec(): string {
   return readFileSync(SPEC_PATH, "utf-8");
 }
 
-describe("SLICE-99-1: Spec v0.7 — Monitoring Layer cross-check", () => {
+// Spec lives in the monorepo docs/ tree; skip when this repo is checked out standalone.
+describe.skipIf(!existsSync(SPEC_PATH))("SLICE-99-1: Spec v0.7 — Monitoring Layer cross-check", () => {
   let spec: string;
 
   it("spec v0.7 file exists", () => {

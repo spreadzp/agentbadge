@@ -39,6 +39,22 @@ try {
     // .env not found — skip
 }
 
+// Placeholder values for the env vars getConfig() requires, so suites run in a
+// fresh clone without a .env. `??=` keeps any value from the shell or .env above.
+process.env.HEDERA_OPERATOR_ID ??= "0.0.1001";
+process.env.HEDERA_OPERATOR_KEY ??= "302e020100300506032b657004220420" + "00".repeat(32);
+process.env.PASSPORT_TOKEN_ID ??= "0.0.1002";
+process.env.AUDIT_TOPIC_ID ??= "0.0.1003";
+process.env.DIRECTORY_TOPIC_ID ??= "0.0.1004";
+process.env.x402_FACILITATOR_URL ??= "https://facilitator.test.invalid";
+process.env.x402_FEE_PAYER ??= "0.0.1005";
+process.env.x402_TREASURY ??= "0.0.1006";
+process.env.IPFS_API_KEY ??= "test-ipfs-key";
+process.env.IPFS_API_SECRET ??= "test-ipfs-secret";
+process.env.MOCK_HEDERA ??= "true";
+process.env.MOCK_X402 ??= "true";
+process.env.MOCK_IPFS ??= "true";
+
 // Shim: @agentbadge/passport bundled CJS uses require("crypto")
 // Provide global require for ESM interop in vitest
 import { createRequire } from "node:module";
