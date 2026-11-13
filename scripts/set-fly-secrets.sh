@@ -49,6 +49,9 @@ SECRETS=(
   STRIPE_WEBHOOK_SECRET
   STRIPE_PUBLISHABLE_KEY
   PUBLIC_BASE_URL
+  # Devin PR#3: HMAC key for stateless trust challenge tokens — required in
+  # production, rotating it invalidates outstanding challenge tokens.
+  TRUST_CHALLENGE_SECRET
 )
 
 # Optional secrets (set if present in .env, skip silently if missing)

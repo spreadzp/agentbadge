@@ -1,0 +1,35 @@
+name: Deploy to Fly.io
+
+# Deploys this app (fly.toml → agent-passport-hedera) on every push to main
+# and on manual dispatch. The job runs inside the `production` environment,
+# which has a required reviewer (spreadzp) — every deploy pauses for human
+# approval in the Actions UI before touching Fly.
+# FLY_API_TOKEN is an app-scoped deploy token stored on that environment;
+# it is never exposed to pull_request workflows.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

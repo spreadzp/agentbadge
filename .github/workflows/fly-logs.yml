@@ -1,0 +1,89 @@
+name: Fly Logs Bridge
+
+# Read-only ops surface for Devin (and humans) via PR/issue comments.
+# A comment containing exactly `/fly-logs` on any issue or PR makes this
+# workflow fetch the recent Fly log buffer and post it back as a comment.
+#
+# Security notes:
+# - Allowed callers: devin-ai-integration[bot] or comments by users with
+#   write access (OWNER/MEMBER/COLLABORATOR). Anyone else is ignored.
+# - The command is matched EXACTLY (whole body == "/fly-logs") — no args,
+#   nothing else is executed. Extending the command surface means editing
+#   this file, which is reviewed like any other workflow change.
+# - FLY_RO_TOKEN is a Fly read-only org token on the `ops` environment
+#   (no deploy/ssh/machine capabilities).
+# - This repo is PUBLIC: posted log tails are publicly visible. Fly logs
+#   are JSON app logs — they can contain request paths/IPs but never
+#   secrets (secrets are env vars, not logged). Keep it that way: if the
+#   app ever starts logging sensitive payloads, restrict or remove this.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    environment: ops
+    if: >-
+      github.event.comment.user.login == 'devin-ai-integration[bot]' ||
+      github.event.comment.author_association == 'OWNER' ||
+      github.event.comment.author_association == 'MEMBER' ||
+      github.event.comment.author_association == 'COLLABORATOR'
+    steps:
+      - name: Gate on exact command
+        id: gate
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          TRIMMED="$(echo "$COMMENT_BODY" | tr -d '[:space:]')"
+          if [ "$TRIMMED" != "/fly-logs" ]; then
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Reply on malformed command
+        if: steps.gate.outputs.allowed == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            await github.rest.issues.createComment({
+              owner, repo,
+              issue_number: context.payload.issue.number,
+              body: "Unrecognized ops command. Supported: `/fly-logs` (posts recent Fly log buffer as a comment)."
+            });
+
+      - name: Setup flyctl
+        if: steps.gate.outputs.allowed == 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Fetch recent log buffer
+        if: steps.gate.outputs.allowed == 'true'
+        run: |
+          timeout 60 flyctl logs -a agent-passport-hedera --no-tail > /tmp/fly-logs.txt 2>&1 || true
+          wc -l /tmp/fly-logs.txt
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_RO_TOKEN }}
+
+      - name: Post logs as comment
+        if: steps.gate.outputs.allowed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const {owner, repo} = context.repo;
+            let logs = '';
+            try { logs = fs.readFileSync('/tmp/fly-logs.txt', 'utf8'); } catch {}
+            const tail = logs.slice(-55000) || '(empty log buffer)';
+            await github.rest.issues.createComment({
+              owner, repo,
+              issue_number: context.payload.issue.number,
+              body: "**fly logs (recent buffer)**\n\n```\n" + tail + "\n```"
+            });
