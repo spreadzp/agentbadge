@@ -47,9 +47,11 @@ describe("Blog infrastructure (SLICE-52-1)", () => {
   });
 
   it("GET /blog/:slug has canonical URL", async () => {
-    const res = await fetch(`${BASE}/blog/what-is-agent-readiness`);
+    // what-is-agent-readiness has a canonical override to the consolidated
+    // page (D-218-6) — use an article without override for the default case.
+    const res = await fetch(`${BASE}/blog/arc-c46-checkout-two`);
     const html = await res.text();
-    expect(html).toMatch(/<link rel="canonical" href="https:\/\/agentbadge\.xyz\/blog\/what-is-agent-readiness"/);
+    expect(html).toMatch(/<link rel="canonical" href="https:\/\/agentbadge\.xyz\/blog\/arc-c46-checkout-two"/);
   });
 
   it("Blog link in navigation", async () => {

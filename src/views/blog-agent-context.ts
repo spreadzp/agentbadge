@@ -1,7 +1,7 @@
 import { html } from "hono/html";
 import { type BlogArticle } from "../server/lib/blog-data";
 import { type KnowledgeObject } from "../server/lib/blog/knowledge-object";
-import { StatusBadge } from "./blog-knowledge-blocks";
+import { StatusBadge, knowledgePageExists } from "./blog-knowledge-blocks";
 
 
 /**
@@ -62,13 +62,14 @@ export function AgentContextBlock(article: BlogArticle, ko: KnowledgeObject) {
                 Key concepts
               </dt>
               <dd class="flex flex-wrap gap-2 text-sm">
-                ${ko.concepts.map(
-                  (c) =>
-                    html`<a
-                      href="/agent-guide/concepts/${encodeURIComponent(c)}"
-                      class="text-emerald-400 hover:text-emerald-300"
-                      >${c}</a
-                    >`,
+                ${ko.concepts.map((c) =>
+                  knowledgePageExists("concepts", c)
+                    ? html`<a
+                        href="/agent-guide/concepts/${encodeURIComponent(c)}"
+                        class="text-emerald-400 hover:text-emerald-300"
+                        >${c}</a
+                      >`
+                    : html`<span class="text-slate-500">${c}</span>`,
                 )}
               </dd>
             </div>`
@@ -83,13 +84,14 @@ export function AgentContextBlock(article: BlogArticle, ko: KnowledgeObject) {
                 Capabilities
               </dt>
               <dd class="flex flex-wrap gap-2 text-sm">
-                ${ko.capabilities.map(
-                  (c) =>
-                    html`<a
-                      href="/agent-guide/capabilities/${encodeURIComponent(c)}"
-                      class="text-emerald-400 hover:text-emerald-300"
-                      >${c}</a
-                    >`,
+                ${ko.capabilities.map((c) =>
+                  knowledgePageExists("capabilities", c)
+                    ? html`<a
+                        href="/agent-guide/capabilities/${encodeURIComponent(c)}"
+                        class="text-emerald-400 hover:text-emerald-300"
+                        >${c}</a
+                      >`
+                    : html`<span class="text-slate-500">${c}</span>`,
                 )}
               </dd>
             </div>`

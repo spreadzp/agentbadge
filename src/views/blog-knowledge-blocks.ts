@@ -1,4 +1,6 @@
 import { html } from "hono/html";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { type ContentStatus, type KnowledgeObject } from "../server/lib/blog/knowledge-object";
 
 /**
@@ -16,6 +18,39 @@ const STATUS_BADGE: Record<ContentStatus, string> = {
   PRODUCTION: "border-emerald-600/50 bg-emerald-950/40 text-emerald-300",
   ARCHIVED: "border-slate-600/50 bg-slate-900/60 text-slate-500",
 };
+
+/**
+ * agent-knowledge page registry (lazy, process-memoized).
+ * /agent-guide/<kind>/<name> resolves to src/server/agent-knowledge/<kind>/<name>.md —
+ * links are rendered only for names that actually have a page (404 fix:
+ * article metadata may list concepts/capabilities without a doc yet).
+ */
+const AGENT_KNOWLEDGE_DIR = join(__dirname, "../server/agent-knowledge");
+const knowledgePageCache = new Map<string, Set<string>>();
+
+function listKnowledgePages(kind: "concepts" | "capabilities"): Set<string> {
+  let pages = knowledgePageCache.get(kind);
+  if (!pages) {
+    try {
+      pages = new Set(
+        readdirSync(join(AGENT_KNOWLEDGE_DIR, kind))
+          .filter((f) => f.endsWith(".md"))
+          .map((f) => f.slice(0, -".md".length)),
+      );
+    } catch {
+      pages = new Set();
+    }
+    knowledgePageCache.set(kind, pages);
+  }
+  return pages;
+}
+
+export function knowledgePageExists(
+  kind: "concepts" | "capabilities",
+  name: string,
+): boolean {
+  return listKnowledgePages(kind).has(name);
+}
 
 export function StatusBadge(status: ContentStatus) {
   return html`<span
@@ -103,21 +138,29 @@ export function ContextBlock(ko: KnowledgeObject) {
     aria-label="Article context"
   >
     <span class="font-semibold uppercase tracking-widest text-slate-500">Context:</span>
-    ${ko.concepts.map(
-      (c) =>
-        html`<a
-          href="/agent-guide/concepts/${encodeURIComponent(c)}"
-          class="rounded-full border border-slate-700 px-3 py-1 text-slate-300 hover:border-emerald-600 hover:text-emerald-400"
-          >${c}</a
-        >`,
+    ${ko.concepts.map((c) =>
+      knowledgePageExists("concepts", c)
+        ? html`<a
+            href="/agent-guide/concepts/${encodeURIComponent(c)}"
+            class="rounded-full border border-slate-700 px-3 py-1 text-slate-300 hover:border-emerald-600 hover:text-emerald-400"
+            >${c}</a
+          >`
+        : html`<span
+            class="rounded-full border border-slate-800 px-3 py-1 text-slate-500"
+            >${c}</span
+          >`,
     )}
-    ${ko.capabilities.map(
-      (c) =>
-        html`<a
-          href="/agent-guide/capabilities/${encodeURIComponent(c)}"
-          class="rounded-full border border-slate-700 px-3 py-1 text-slate-300 hover:border-emerald-600 hover:text-emerald-400"
-          >${c}</a
-        >`,
+    ${ko.capabilities.map((c) =>
+      knowledgePageExists("capabilities", c)
+        ? html`<a
+            href="/agent-guide/capabilities/${encodeURIComponent(c)}"
+            class="rounded-full border border-slate-700 px-3 py-1 text-slate-300 hover:border-emerald-600 hover:text-emerald-400"
+            >${c}</a
+          >`
+        : html`<span
+            class="rounded-full border border-slate-800 px-3 py-1 text-slate-500"
+            >${c}</span
+          >`,
     )}
     ${(ko.technologies ?? []).map(
       (t) => html`<span class="rounded-full bg-slate-800 px-3 py-1 text-slate-400">${t}</span>`,
