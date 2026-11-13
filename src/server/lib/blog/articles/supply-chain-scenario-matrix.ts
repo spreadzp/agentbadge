@@ -85,7 +85,7 @@ export const article: BlogArticle = {
     {
       type: "read",
       label: "Shipment read endpoint",
-      url: "https://agentbadge.xyz/api/ledger/shipments/demo",
+      url: "https://agentbadge.xyz/api/ledger/shipments/dogfood-1794151620383",
     },
     {
       type: "read",
@@ -143,7 +143,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/supply-chain/scenario-matrix.test.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/supply-chain/scenario-matrix.test.ts",
         },
       ],
     },
@@ -154,7 +154,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/project.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/project.ts",
         },
       ],
     },
@@ -165,7 +165,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/verify.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/verify.ts",
         },
       ],
     },
@@ -176,7 +176,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/shipment.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/shipment.ts",
         },
       ],
     },
@@ -185,7 +185,7 @@ export const article: BlogArticle = {
       status: "VERIFIED",
       text: "An adversarial AI audit of the 214-1..3 deltas returned REQUEST CHANGES (0 Critical, 6 High, 7 Medium); all Highs were fixed in commit de2cf81 with per-finding regression tests, and Mediums M-5/M-6/M-7 were documented-accepted in decisions.md (D-214-5).",
       evidence: [
-        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/214-supply-chain-scenario-matrix/reviews/scenario-matrix-REVIEW.md" },
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/commit/de2cf81d" },
       ],
     },
     {
@@ -195,7 +195,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/advisory.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/advisory.ts",
         },
       ],
     },

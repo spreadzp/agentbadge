@@ -812,10 +812,6 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
       url: "https://x.com/paul_spread/status/2088268170003907062",
     },
     {
-      platform: "qiita",
-      url: "https://qiita.com/buidl25/items/071c755727117a117c30",
-    },
-    {
       platform: "velog",
       url: "https://velog.io/@buidl_25/What-Is-Agent-Readiness-エージェント対応度とは",
     },

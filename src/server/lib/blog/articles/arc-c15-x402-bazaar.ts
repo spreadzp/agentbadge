@@ -103,7 +103,7 @@ curl -s -X POST https://agentbadge.xyz/api/total-scan \\
   | base64 -d | jq '.extensions.bazaar.info'</code></pre>
 <ul>
 <li>Catalog implementation: <code>src/server/routes/services-catalog.ts</code> and <code>lib/service-catalog/</code> in the <a href="https://github.com/spreadzp/agentbadge">agentbadge repo</a></li>
-<li>Coverage contract: <a href="https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/e2e/catalog-coverage.test.ts"><code>tests/e2e/catalog-coverage.test.ts</code></a> — the GATE_TABLE every new paid route must join</li>
+<li>Coverage contract: <a href="https://github.com/spreadzp/agentbadge/blob/main/tests/e2e/catalog-coverage.test.ts"><code>tests/e2e/catalog-coverage.test.ts</code></a> — the GATE_TABLE every new paid route must join</li>
 </ul>
 <p><em>This is C15 in the Arc Campaign series. Earlier: <a href="https://agentbadge.xyz/blog/arc-c14-agent-discovery">C14</a> built the <code>.well-known</code> surface that gets agents to the door; C15 is what they read at the counter. Next in the pipeline: verdict transparency and keyless signers.</em></p>`,
 };

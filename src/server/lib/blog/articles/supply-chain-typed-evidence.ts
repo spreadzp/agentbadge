@@ -79,7 +79,7 @@ export const article: BlogArticle = {
     {
       type: "read",
       label: "Shipment read endpoint",
-      url: "https://agentbadge.xyz/api/ledger/shipments/demo",
+      url: "https://agentbadge.xyz/api/ledger/shipments/dogfood-1794151620383",
     },
     {
       type: "read",
@@ -161,7 +161,7 @@ export const article: BlogArticle = {
       status: "VERIFIED",
       text: "An adversarial AI audit of the 213-1..3 deltas returned REQUEST CHANGES (0 Critical, 2 High, 7 Medium); all findings were fixed or documented-accepted in 213-5 with regression coverage — findings archived in docs/EPICS/213-supply-chain-evidence/reviews/.",
       evidence: [
-        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/213-supply-chain-evidence/reviews/evidence-REVIEW.md" },
+        { type: "test", url: "https://github.com/spreadzp/agentbadge/blob/main/tests/supply-chain/replay-evidence.test.ts" },
       ],
     },
     {

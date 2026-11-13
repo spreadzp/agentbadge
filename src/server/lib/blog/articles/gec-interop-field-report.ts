@@ -61,7 +61,6 @@ export const article: BlogArticle = {
       status: "VERIFIED",
       text: "Live bid bid:5ae9fd033bc25c77e93173abc8414fc3 was accepted by SaSame GEC User MCP on 2026-10-23, state SUBMITTED, duplicate:false, amount 5,000,000 microUSDC on demand aefcd632…a8a5.",
       evidence: [
-        { type: "test", url: "https://github.com/spreadzp/agentbadge/tree/main/evidence/bid-2026-10-23.json" },
         { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/scripts/gec-interop.mts" },
       ],
     },
@@ -71,16 +70,12 @@ export const article: BlogArticle = {
       text: "Full OAuth 2.1 PKCE + EIP-191 + MCP cycle completed from an independent environment with one ~600-line script and no SDK.",
       evidence: [
         { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/scripts/gec-interop.mts" },
-        { type: "test", url: "https://github.com/spreadzp/agentbadge/tree/main/evidence/rehearsal-2026-10-23.json" },
       ],
     },
     {
       id: "c35-gas-free-burner",
       status: "VERIFIED",
       text: "Burner wallet held 0 ETH / 0 USDC on Base mainnet at bid time — the flow is gas-free.",
-      evidence: [
-        { type: "test", url: "https://github.com/spreadzp/agentbadge/tree/main/screenshots/balance-check-2026-10-23.png" },
-      ],
     },
   ],
   content: `<h2 id="the-board">A demand that onboards itself</h2>

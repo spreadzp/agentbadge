@@ -104,14 +104,6 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/221-pricing-checkout-2/reviews/checkout-REVIEW.md",
-        },
-        {
-          type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/221-pricing-checkout-2/reviews/REVIEW-FINDINGS.md",
-        },
-        {
-          type: "github",
           url: "https://github.com/spreadzp/agentbadge/blob/main/tests/checkout-audit-221-7.test.ts",
         },
       ],

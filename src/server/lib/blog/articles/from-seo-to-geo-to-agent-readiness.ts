@@ -358,10 +358,6 @@ npx @agentbadge/cli scan https://api.example.com --format json &gt; report.json<
         url: "https://qiita.com/buidl25/items/c46655b0307b384598d4",
       },
       {
-        platform: "zenn",
-        url: "https://zenn.dev/buidl25/articles/from-seo-to-geo-to-agent-readiness",
-      },
-      {
         platform: "velog",
         url: "https://velog.io/@buidl_25/from-seo-to-geo-to-agent-readiness",
       },

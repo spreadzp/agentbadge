@@ -318,10 +318,6 @@ SUCCESS / FAILURE</code></pre>
         url: "https://paulspread-99907.medium.com/what-does-an-ai-agent-actually-need-to-understand-an-api-3437e896cad0",
       },
       {
-        platform: "linkedin",
-        url: "https://www.linkedin.com/posts/paul-spread-bb337b63_ai-api-agentreadiness-openapi-agenticweb-activity-7346021578993885184-2k2B",
-      },
-      {
         platform: "hackernoon",
         url: "https://app.hackernoon.com/drafts/6a87fd59ae8e8a513e297000",
       },
@@ -336,10 +332,6 @@ SUCCESS / FAILURE</code></pre>
       {
         platform: "twitter",
         url: "https://x.com/paul_spread/status/2090544674612142249",
-      },
-      {
-        platform: "zenn",
-        url: "https://zenn.dev/buidl25/articles/what-ai-agent-needs-to-understand-api",
       },
       {
         platform: "velog",

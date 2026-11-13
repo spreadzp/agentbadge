@@ -100,7 +100,6 @@ export const article: BlogArticle = {
     payment: { supported: true, currency: "USDC" },
   },
   relatedResources: [
-    { type: "github", label: "docs/SWAP case artifacts (SPEC, CASE-LOG, logs, shots)", url: "https://github.com/agentbadge/agentbadge/tree/main/docs/SWAP" },
     { type: "guide", label: "Circle CCTP reference", url: "https://developers.circle.com/cctp/references/contract-addresses" },
   ],
   content: `

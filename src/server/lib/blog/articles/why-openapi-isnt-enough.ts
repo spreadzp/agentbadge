@@ -236,10 +236,6 @@ npx @agentbadge/cli scan https://api.example.com --format json > report.json</co
         url: "https://agentbadge.hashnode.dev/why-your-openapi-spec-isn-t-enough-for-ai-agents",
       },
       {
-        platform: "zenn",
-        url: "https://zenn.dev/buidl25/articles/why-openapi-isnt-enough-for-ai-agents",
-      },
-      {
         platform: "velog",
         url: "https://velog.io/@buidl_25/Why-Your-OpenAPI-Spec-Isnt-Enough-for-AI-Agents-OpenAPI-%EC%82%AC%EC%96%91%EC%9D%B4-AI-%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8%EC%97%90%EA%B2%8C-%EC%B6%A9%EB%B6%84%ED%95%98%EC%A7%80-%EC%95%8A%EC%9D%80-%EC%9D%B4%EC%9C%A0",
       },

@@ -122,7 +122,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/src/agent-readiness/trust/challenge-store.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/agent-readiness/trust/challenge.ts",
         },
       ],
     },
@@ -156,12 +156,7 @@ export const article: BlogArticle = {
       id: "devin-audit-f4-confirmed",
       status: "VERIFIED",
       text: "Committed build artifacts and planning docs: agentbadge-report.json (854KB) and coverage/coverage-summary.json are in git, plus ~10 hackathon-era markdown docs in the repo root.",
-      evidence: [
-        {
-          type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/agentbadge-report.json",
-        },
-      ],
+      evidence: [],
     },
     {
       id: "devin-audit-methodology-caveat",
