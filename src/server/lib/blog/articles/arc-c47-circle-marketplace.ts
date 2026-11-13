@@ -104,7 +104,7 @@ export const article: BlogArticle = {
     {
       question: "What exactly did AgentBadge submit?",
       answer:
-        "The Agent-Readiness Scan at POST https://agentbadge.xyz/api/total-scan — x402 payment, USDC on Arc (eip155:5042002), EIP-3009 transferWithAuthorization. An agent hits the endpoint, gets HTTP 402 with price/payTo/network, retries with a signed PAYMENT-SIGNATURE, the facilitator settles USDC on Arc, and the agent gets the scan report. No API keys, no accounts.",
+        "The Agent-Readiness Scan at POST https://agentbadge.xyz/api/total-scan — x402 payment, USDC on Arc (eip155:5042), EIP-3009 transferWithAuthorization. An agent hits the endpoint, gets HTTP 402 with price/payTo/network, retries with a signed PAYMENT-SIGNATURE, the facilitator settles USDC on Arc, and the agent gets the scan report. No API keys, no accounts.",
     },
     {
       question: "Why declare pending_review instead of listed?",
@@ -119,14 +119,14 @@ export const article: BlogArticle = {
     {
       question: "What happens when Circle approves the listing?",
       answer:
-        "Four steps: the Discovery API returns our items[] entry (resource, accepts[], metadata.provider); pending_review flips to listed in marketplace-listings.ts and all four surfaces update; we verify accepts[].network = eip155:5042002 and payTo = our wallet since the catalog rendering can lag the index; then the article hero swaps to the catalog screenshot and a second-wave announcement goes out.",
+        "Four steps: the Discovery API returns our items[] entry (resource, accepts[], metadata.provider); pending_review flips to listed in marketplace-listings.ts and all four surfaces update; we verify accepts[].network = eip155:5042 and payTo = our wallet since the catalog rendering can lag the index; then the article hero swaps to the catalog screenshot and a second-wave announcement goes out.",
     },
   ],
   claims: [
     {
       id: "c47-submitted-pending-review",
       status: "VERIFIED",
-      text: "The Agent-Readiness Scan was submitted to Circle's Agent Services Marketplace on 2026-11-12 (POST /api/total-scan, x402, USDC on Arc eip155:5042002, EIP-3009 transferWithAuthorization). Status pending_review — verified live: GET api.circle.com/v2/x402/discovery/resources?query=agentbadge returns only anchor-x402 (fuzzy match), and query=agentbadge.xyz returns zero items.",
+      text: "The Agent-Readiness Scan was submitted to Circle's Agent Services Marketplace on 2026-11-12 (POST /api/total-scan, x402, USDC on Arc eip155:5042, EIP-3009 transferWithAuthorization). Status pending_review — verified live: GET api.circle.com/v2/x402/discovery/resources?query=agentbadge returns only anchor-x402 (fuzzy match), and query=agentbadge.xyz returns zero items.",
       evidence: [
         {
           type: "github",
