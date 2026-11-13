@@ -300,7 +300,7 @@ SUCCESS / FAILURE</code></pre>
   <li><a href="/blog/api-has-seo-agent-readiness">API Has SEO Agent Readiness</a> — Article 2: SEO vs agent discovery</li>
   <li><a href="/blog/web-becoming-agentic-api-discovery">The Web Is Becoming Agentic</a> — Article 3: agentic web and API discovery</li>
   <li><a href="/blog/from-seo-to-geo-to-agent-readiness">From SEO to GEO to Agent Readiness</a> — Article 4: evolution of optimization</li>
-  <li><a href="/blog/why-ai-agents-fail-to-use-apis">Why AI Agents Fail to Use APIs</a> — Article 5: 7 failure modes these 8 layers solve</li>
+  <li><a href="/agent-guide/articles/why-ai-agents-fail-apis">Why AI Agents Fail to Use APIs</a> — Article 5: 7 failure modes these 8 layers solve</li>
 </ul>
 
 <hr />

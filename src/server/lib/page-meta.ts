@@ -47,6 +47,13 @@ export function pageTitle(unique: string): string {
   return `${truncated} | ${SITE_NAME}`;
 }
 
+/** `.md` mirror URL for a page path; the suffix goes before any query string. */
+export function markdownAlternatePath(path: string | undefined): string {
+  const [pathname, query] = (path ?? "/").split("?", 2);
+  const base = pathname === "/" || pathname === "" ? "/index" : pathname;
+  return `${base}.md${query ? `?${query}` : ""}`;
+}
+
 export const SITE_DESCRIPTION =
   `AgentBadge — scan your API or website with ${PUBLIC_STATS.rules}+ deterministic agent readiness checks. Get evidence-based scores, actionable fixes, and an AgentBadge readiness score.`;
 

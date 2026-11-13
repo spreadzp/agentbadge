@@ -11,16 +11,22 @@ import { Hono } from "hono";
 import {
   markdownNegotiation,
   markdownMirrorRoutes,
+  setMirrorApp,
 } from "../../src/server/middleware/markdown-negotiation";
 import { landingRoutes } from "../../src/server/routes/landing";
 import { servicesRoutes } from "../../src/server/routes/services";
+import { blogRoutes } from "../../src/server/routes/blog";
+import { BLOG_ARTICLES, getChannelCounts } from "../../src/server/lib/blog-data";
+import { markdownAlternatePath } from "../../src/server/lib/page-meta";
 
 function mkApp(): Hono {
   const app = new Hono();
   app.use(markdownNegotiation());
   app.route("/", landingRoutes);
   app.route("/", servicesRoutes);
+  app.route("/", blogRoutes);
   app.route("/", markdownMirrorRoutes(app));
+  setMirrorApp(app);
   return app;
 }
 
@@ -109,5 +115,31 @@ describe("discoverability — link rel=alternate", () => {
     const res = await app.request("/services/scanner");
     const html = await res.text();
     expect(html).toContain("/services/scanner.md");
+  });
+});
+
+describe("query-string pages — .md alternate keeps the query", () => {
+  const app = mkApp();
+  const channel = getChannelCounts(BLOG_ARTICLES)[0].key;
+
+  it("markdownAlternatePath inserts .md before the query", () => {
+    expect(markdownAlternatePath("/")).toBe("/index.md");
+    expect(markdownAlternatePath(undefined)).toBe("/index.md");
+    expect(markdownAlternatePath("/services/scanner")).toBe("/services/scanner.md");
+    expect(markdownAlternatePath("/blog?channel=arc")).toBe("/blog.md?channel=arc");
+  });
+
+  it("/blog?channel=<key> advertises /blog.md?channel=<key>, which resolves", async () => {
+    const html = await (await app.request(`/blog?channel=${channel}`)).text();
+    expect(html).toContain(`href="/blog.md?channel=${channel}"`);
+    expect(html).not.toContain(`channel=${channel}.md`);
+    const md = await app.request(`/blog.md?channel=${channel}`);
+    expect(md.status).toBe(200);
+    expect(md.headers.get("content-type")).toContain("text/markdown");
+  });
+
+  it("/blog.md?channel=<garbage> stays 404 (no crawl trap via the mirror)", async () => {
+    const res = await app.request("/blog.md?channel=zzz-garbage");
+    expect(res.status).toBe(404);
   });
 });

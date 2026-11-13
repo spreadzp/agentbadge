@@ -27,8 +27,9 @@ const STATUS_BADGE: Record<ContentStatus, string> = {
  */
 const AGENT_KNOWLEDGE_DIR = join(__dirname, "../server/agent-knowledge");
 const knowledgePageCache = new Map<string, Set<string>>();
+type KnowledgeKind = "concepts" | "capabilities" | "articles";
 
-function listKnowledgePages(kind: "concepts" | "capabilities"): Set<string> {
+function listKnowledgePages(kind: KnowledgeKind): Set<string> {
   let pages = knowledgePageCache.get(kind);
   if (!pages) {
     try {
@@ -46,7 +47,7 @@ function listKnowledgePages(kind: "concepts" | "capabilities"): Set<string> {
 }
 
 export function knowledgePageExists(
-  kind: "concepts" | "capabilities",
+  kind: KnowledgeKind,
   name: string,
 ): boolean {
   return listKnowledgePages(kind).has(name);

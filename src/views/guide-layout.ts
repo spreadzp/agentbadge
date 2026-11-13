@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { SITE_NAME, BASE_URL, pageTitle } from "../server/lib/page-meta";
+import { SITE_NAME, BASE_URL, pageTitle, markdownAlternatePath } from "../server/lib/page-meta";
 import { renderJsonLd } from "../server/lib/json-ld";
 import { getPlausibleScript } from "../server/lib/plausible";
 import { getGA4Script } from "../server/lib/ga4-script";
@@ -66,7 +66,7 @@ export function GuideLayout(
         <title>${composedTitle}</title>
         <meta name="description" content="${title} for AI agents on ${SITE_NAME} — agent-readiness scanner + agent infrastructure on Arc (USDC x402)." />
         <link rel="canonical" href="${canonicalUrl}" />
-        <link rel="alternate" type="text/markdown" title="Markdown version" href="${path === "/" ? "/index.md" : `${path ?? "/"}.md`}" />
+        <link rel="alternate" type="text/markdown" title="Markdown version" href="${markdownAlternatePath(path)}" />
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${title} for AI agents on ${SITE_NAME} — agent-readiness scanner + agent infrastructure on Arc (USDC x402)." />
         <meta property="og:type" content="article" />

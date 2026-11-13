@@ -20,7 +20,7 @@ export const article: BlogArticle =
     readingTime: "10 min",
     content: `<blockquote><p>If Agent Readiness is real, it should be measurable. And the measurement should be reproducible.</p></blockquote>
 
-<p>You've read about <a href="/what-is-agent-readiness">what Agent Readiness is</a>. You've seen <a href="/blog/why-ai-agents-fail-to-use-apis">why AI agents fail to use APIs</a> and <a href="/blog/what-ai-agent-needs-to-understand-api">what an agent needs to understand</a>. You know <a href="/blog/why-openapi-isnt-enough">why OpenAPI alone isn't enough</a>.</p>
+<p>You've read about <a href="/what-is-agent-readiness">what Agent Readiness is</a>. You've seen <a href="/agent-guide/articles/why-ai-agents-fail-apis">why AI agents fail to use APIs</a> and <a href="/blog/what-ai-agent-needs-to-understand-api">what an agent needs to understand</a>. You know <a href="/blog/why-openapi-isnt-enough">why OpenAPI alone isn't enough</a>.</p>
 
 <p>Now the question shifts from "what" to "how":</p>
 
@@ -289,7 +289,7 @@ Missing:
 
 <p>Fix the gaps. Re-scan. Verify the improvements with measurable evidence.</p>
 
-<p>This is where measurement becomes actionable — and where it bridges to <a href="/blog/from-scan-to-fix">Article 12: "From Scan to Fix: How to Improve Your Agent Readiness Score"</a> (upcoming).</p>
+<p>This is where measurement becomes actionable — and where it bridges to Article 12: "From Scan to Fix: How to Improve Your Agent Readiness Score" (upcoming).</p>
 
 <hr />
 
@@ -312,7 +312,7 @@ Missing:
 
 <ul>
   <li><a href="/what-is-agent-readiness">What Is Agent Readiness?</a> — Article 1: the foundational concept</li>
-  <li><a href="/blog/why-ai-agents-fail-to-use-apis">Why AI Agents Fail to Use APIs</a> — Article 5: 7 failure modes that measurement addresses</li>
+  <li><a href="/agent-guide/articles/why-ai-agents-fail-apis">Why AI Agents Fail to Use APIs</a> — Article 5: 7 failure modes that measurement addresses</li>
   <li><a href="/blog/what-ai-agent-needs-to-understand-api">What Does an AI Agent Need to Understand an API?</a> — Article 6: 8 context layers that measurement checks</li>
   <li><a href="/blog/why-openapi-isnt-enough">Why Your OpenAPI Spec Isn't Enough for AI Agents</a> — Article 7: the structural gap that measurement fills</li>
   <li><em>Inside an Agent Readiness Scanner</em> — Article 9 (upcoming): the engineering architecture behind the measurement engine</li>

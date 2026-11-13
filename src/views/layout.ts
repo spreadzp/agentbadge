@@ -1,5 +1,5 @@
 import { html, raw } from "hono/html";
-import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle } from "../server/lib/page-meta";
+import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle, markdownAlternatePath } from "../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../server/lib/json-ld";
 import { getPlausibleScript } from "../server/lib/plausible";
 import { getGA4Script } from "../server/lib/ga4-script";
@@ -56,7 +56,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         <meta name="description" content="${description}" />
         ${noIndex ? raw('<meta name="robots" content="noindex, nofollow" />') : raw('<meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />')}
         <link rel="canonical" href="${canonicalUrl}" />
-        <link rel="alternate" type="text/markdown" title="Markdown version" href="${selfPath === "/" ? "/index.md" : `${selfPath}.md`}" />
+        <link rel="alternate" type="text/markdown" title="Markdown version" href="${markdownAlternatePath(selfPath)}" />
         <meta property="og:title" content="${composedTitle}" />
         <meta property="og:description" content="${description}" />
         <meta property="og:type" content="website" />

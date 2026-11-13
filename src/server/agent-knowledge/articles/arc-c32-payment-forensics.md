@@ -9,7 +9,7 @@ AgentBadge indexes every x402 settle on Arc mainnet as a directed edge `payer �
 - `GET /api/v1/risk/0x<address>` — payment-graph verdict for any Arc address. No auth, 60 req/min/IP.
 - `GET /blog/arc-c32-payment-forensics.json` — Knowledge Object v1 for this article.
 - `GET /blog/arc-c32-payment-forensics.md` — the article as markdown.
-- `GET /api/openapi.yaml` — full spec including the risk endpoint.
+- `GET /openapi.yaml` — full spec including the risk endpoint.
 
 ## Response shape
 
