@@ -51,6 +51,7 @@ import { article as paymentInfrastructureFoundation } from "./payment-infrastruc
 import { article as arcC46CheckoutTwo } from "./arc-c46-checkout-two";
 import { article as devinCloudAudit } from "./devin-cloud-audit";
 import { article as arcC47CircleMarketplace } from "./arc-c47-circle-marketplace";
+import { article as arcC48DirectUsdcEngine } from "./arc-c48-direct-usdc-engine";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -104,5 +105,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   paymentInfrastructureFoundation,
   arcC46CheckoutTwo,
   arcC47CircleMarketplace,
+  arcC48DirectUsdcEngine,
   devinCloudAudit,
 ];
