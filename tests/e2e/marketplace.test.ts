@@ -20,14 +20,22 @@ import {
   type MarketplaceOps,
 } from "../../src/server/lib/marketplace";
 import { resetConfigCache } from "../../src/config/env";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { signChallenge, clearAccessCache } from "@agentbadge/pass-auth";
+
 // Demo services from @agentbadge/pass-auth (SLICE-138-6) — exercised
-// end-to-end against the fake chain via accessChecker.
-import { createWeatherApp } from "../../../../packages/pass-auth/demo/weather-api/index.js";
-import { createFortuneApp } from "../../../../packages/pass-auth/demo/fortune-mcp/index.js";
-import {
-  signChallenge,
-  clearAccessCache,
-} from "../../../../packages/pass-auth/src/index.js";
+// end-to-end against the fake chain via accessChecker. The demos are not
+// part of the published package, only of the monorepo checkout, so the
+// suite is skipped when this repo is checked out standalone.
+const PASS_AUTH_DEMO = join(__dirname, "../../../../packages/pass-auth/demo");
+const hasPassAuthDemo = existsSync(PASS_AUTH_DEMO);
+const { createWeatherApp } = hasPassAuthDemo
+  ? await import(join(PASS_AUTH_DEMO, "weather-api/index.js"))
+  : { createWeatherApp: undefined };
+const { createFortuneApp } = hasPassAuthDemo
+  ? await import(join(PASS_AUTH_DEMO, "fortune-mcp/index.js"))
+  : { createFortuneApp: undefined };
 
 /**
  * SLICE-138-7: E2E — full marketplace loop.
@@ -295,7 +303,7 @@ const SERVICE_META = {
 
 const SVC_ID = serviceIdFor(1n, subIdToBytes32("api"));
 
-describe("SLICE-138-7: marketplace e2e", () => {
+describe.skipIf(!hasPassAuthDemo)("SLICE-138-7: marketplace e2e", () => {
   let chain: FakeChain;
   let hook: ReturnType<typeof createMarketplaceMintOnSettleHook>;
 

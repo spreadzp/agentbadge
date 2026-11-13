@@ -63,15 +63,14 @@ AgentBadge uses Hedera DIDs in the format: \`did:hcs:{tokenId}:{serial}\`
 
 ### Domain Ownership Verification
 
-Agents can verify domain ownership via:
+Fetch a challenge token (\`agentbadge-verify=<hex>\`) from \`GET /api/trust/{domain}/challenge\`, publish it via one of the methods below, then call \`POST /api/trust/{domain}/verify-ownership\`.
 
 | Method | How |
 |--------|-----|
-| DNS TXT | Add \`agentbadge-verify={token}\` to \_domainkey TXT record |
-| Well-known file | Serve token at \`/.well-known/agentbadge-verify.txt\` |
-| Meta tag | Add \`<meta name="agentbadge-verify" content="{token}">\` to HTML head |
+| DNS TXT | Publish the token as a TXT record at \`_agentbadge-verify.{domain}\` |
+| Well-known file | Serve the token at \`/.well-known/agentbadge-verify.txt\` |
 
-Challenge tokens expire after **90 days**.
+Challenge tokens rotate every **90 days**; the current and previous token are both accepted.
 
 ## 3. Agent Registration
 
