@@ -13,7 +13,6 @@ import { verifySnapshot } from "../../../src/agent-readiness/trust/snapshot-veri
 import { renderSnapshotMarkdown } from "../../../src/agent-readiness/trust/snapshot-markdown";
 import { TrustViewer } from "../../../src/views/trust-viewer";
 import { makeValidSnapshot, makeTamperedHashSnapshot, makeExpiredOwnershipSnapshot } from "./fixtures/verification-fixtures";
-import { clearChallenges } from "../../../src/agent-readiness/trust/challenge-store";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -114,7 +113,6 @@ describe("SLICE-102-10: E2E Trust Lifecycle", () => {
       app = new Hono();
       app.route("/", trustRoutes);
       app.route("/", trustViewerRoutes);
-      clearChallenges();
     });
 
     it("GET /api/trust/:domain/challenge → 200 with challenge", async () => {

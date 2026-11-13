@@ -20,6 +20,7 @@ import { loadMarketplace } from "./marketplace";
 import { loadPayments } from "./payments";
 import { loadMcpAbuse } from "./mcp-abuse";
 import { loadScanPacks } from "./scan-packs";
+import { loadTrust, resetTrustConfigCache } from "./trust";
 import type {
   AnalyticsConfig,
   AppConfig,
@@ -179,6 +180,7 @@ export function getConfig(): AppConfig {
 
 export function resetConfigCache(): void {
   cachedConfig = null;
+  resetTrustConfigCache();
 }
 
 export function loadConfig(): AppConfig {
@@ -204,6 +206,7 @@ export function loadConfig(): AppConfig {
   const eaas = loadEaas(errors);
   const agentRegistration = loadAgentRegistration(errors);
   const agentWallet = loadAgentWallet(errors);
+  const trust = loadTrust(errors);
 
   const hederaNetwork = process.env.HEDERA_NETWORK ?? "testnet";
   const port = Number(process.env.PORT ?? 4021);
@@ -250,6 +253,7 @@ export function loadConfig(): AppConfig {
     agentRegistration,
     database,
     cache,
+    trust,
     scanPacks,
     marketplace,
     mcpAbuse,

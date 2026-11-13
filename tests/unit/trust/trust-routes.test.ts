@@ -1,20 +1,54 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
 import { trustRoutes } from "../../../src/server/routes/trust";
-import { clearChallenges } from "../../../src/agent-readiness/trust/challenge-store";
+import { deriveChallengeToken, getChallengeEpoch } from "../../../src/agent-readiness/trust/challenge";
+import { resetTrustConfigCache } from "../../../src/config/env/trust";
+
+vi.mock("node:dns/promises", () => ({
+  resolveTxt: vi.fn(),
+}));
+
+vi.mock("../../../src/agent-readiness/scanner/ssrf/safe-fetch", () => ({
+  safeFetch: vi.fn(),
+}));
+
+import { resolveTxt } from "node:dns/promises";
+import { safeFetch } from "../../../src/agent-readiness/scanner/ssrf/safe-fetch";
+
+const SECRET = "test-trust-challenge-secret-0123456789abcdef";
 
 describe("SLICE-102-7: Trust endpoints", () => {
   let app: Hono;
+  const savedSecret = process.env.TRUST_CHALLENGE_SECRET;
 
   beforeEach(() => {
+    process.env.TRUST_CHALLENGE_SECRET = SECRET;
+    resetTrustConfigCache();
+    vi.mocked(resolveTxt).mockReset().mockRejectedValue(new Error("ENOTFOUND"));
+    vi.mocked(safeFetch).mockReset().mockRejectedValue(new Error("ECONNREFUSED"));
     app = new Hono();
     app.route("/", trustRoutes);
-    clearChallenges();
   });
 
   afterEach(() => {
-    clearChallenges();
+    if (savedSecret === undefined) delete process.env.TRUST_CHALLENGE_SECRET;
+    else process.env.TRUST_CHALLENGE_SECRET = savedSecret;
+    resetTrustConfigCache();
   });
+
+  async function getChallengeToken(domain: string): Promise<string> {
+    const res = await app.request(`/api/trust/${domain}/challenge`);
+    expect(res.status).toBe(200);
+    return (await res.json()).token;
+  }
+
+  function verifyOwnership(domain: string, token: string) {
+    return app.request(`/api/trust/${domain}/verify-ownership`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+  }
 
   describe("GET /api/trust/:domain", () => {
     it("returns 404 for unknown domain", async () => {
@@ -36,7 +70,7 @@ describe("SLICE-102-7: Trust endpoints", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.token).toBeTruthy();
-      expect(body.dns_record).toContain("_agentbadge.api.example.com");
+      expect(body.dns_record).toContain("_agentbadge-verify.api.example.com");
       expect(body.dns_record).toContain(body.token);
       expect(body.well_known_url).toContain("https://api.example.com/.well-known/agentbadge-verify.txt");
       expect(body.expires_at).toBeTruthy();
@@ -47,6 +81,31 @@ describe("SLICE-102-7: Trust endpoints", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.dns_record).toContain("example.com");
+    });
+
+    it("returns the same token on repeated calls", async () => {
+      const t1 = await getChallengeToken("api.example.com");
+      const t2 = await getChallengeToken("api.example.com");
+      const t3 = await getChallengeToken("API.example.com");
+      expect(t2).toBe(t1);
+      expect(t3).toBe(t1);
+    });
+
+    it("returns the same token after a restart with the same secret", async () => {
+      const before = await getChallengeToken("api.example.com");
+      resetTrustConfigCache();
+      vi.resetModules();
+      const { trustRoutes: freshRoutes } = await import("../../../src/server/routes/trust");
+      const freshApp = new Hono();
+      freshApp.route("/", freshRoutes);
+      const res = await freshApp.request("/api/trust/api.example.com/challenge");
+      expect((await res.json()).token).toBe(before);
+    });
+
+    it("returns different tokens for different domains", async () => {
+      const a = await getChallengeToken("a.example.com");
+      const b = await getChallengeToken("b.example.com");
+      expect(a).not.toBe(b);
     });
   });
 
@@ -82,10 +141,85 @@ describe("SLICE-102-7: Trust endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: challenge.token }),
       });
-      // Will be 403 because DNS verification fails (no real DNS record)
+      // 403: DNS lookup and well-known fetch are mocked to fail
       expect(res.status).toBe(403);
       const body = await res.json();
       expect(body.error).toContain("verification failed");
+    });
+
+    it("returns 200 with a valid token published in DNS", async () => {
+      const token = await getChallengeToken("api.example.com");
+      vi.mocked(resolveTxt).mockResolvedValue([[token]]);
+
+      const res = await verifyOwnership("api.example.com", token);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.verified).toBe(true);
+      expect(body.method).toBe("dns_txt");
+      expect(body.challenge_token).toBe(token);
+      expect(vi.mocked(resolveTxt)).toHaveBeenCalledWith("_agentbadge-verify.api.example.com");
+    });
+
+    it("still verifies after further unauthenticated challenge requests", async () => {
+      const token = await getChallengeToken("api.example.com");
+      await getChallengeToken("api.example.com");
+      await getChallengeToken("api.example.com");
+      vi.mocked(resolveTxt).mockResolvedValue([[token]]);
+
+      const res = await verifyOwnership("api.example.com", token);
+      expect(res.status).toBe(200);
+    });
+
+    it("returns 200 via well-known file when DNS has no record", async () => {
+      const token = await getChallengeToken("api.example.com");
+      vi.mocked(safeFetch).mockResolvedValue({
+        status: 200,
+        headers: {},
+        body: new ArrayBuffer(0),
+        bodyText: `${token}\n`,
+        resolvedIp: "1.2.3.4",
+        fetchTime: 100,
+        redirectChain: [],
+      });
+
+      const res = await verifyOwnership("api.example.com", token);
+      expect(res.status).toBe(200);
+      expect((await res.json()).method).toBe("well_known_file");
+    });
+
+    it("returns 403 for a tampered token without hitting DNS", async () => {
+      const token = await getChallengeToken("api.example.com");
+      const tampered = token.slice(0, -1) + (token.endsWith("0") ? "1" : "0");
+      vi.mocked(resolveTxt).mockResolvedValue([[tampered]]);
+
+      const res = await verifyOwnership("api.example.com", tampered);
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toContain("Invalid or missing challenge token");
+      expect(vi.mocked(resolveTxt)).not.toHaveBeenCalled();
+    });
+
+    it("returns 403 for a token issued for another domain", async () => {
+      const token = await getChallengeToken("other.example.com");
+      const res = await verifyOwnership("api.example.com", token);
+      expect(res.status).toBe(403);
+    });
+
+    it("accepts a previous-epoch token", async () => {
+      const previous = deriveChallengeToken("api.example.com", getChallengeEpoch() - 1, SECRET);
+      expect(previous).not.toBe(await getChallengeToken("api.example.com"));
+      vi.mocked(resolveTxt).mockResolvedValue([[previous]]);
+
+      const res = await verifyOwnership("api.example.com", previous);
+      expect(res.status).toBe(200);
+      expect((await res.json()).challenge_token).toBe(previous);
+    });
+
+    it("rejects a token two epochs old", async () => {
+      const stale = deriveChallengeToken("api.example.com", getChallengeEpoch() - 2, SECRET);
+      vi.mocked(resolveTxt).mockResolvedValue([[stale]]);
+
+      const res = await verifyOwnership("api.example.com", stale);
+      expect(res.status).toBe(403);
     });
 
     it("returns 400 for invalid JSON body", async () => {
