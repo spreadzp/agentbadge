@@ -89,11 +89,11 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/hackathon/server/src/server/lib/commerce-catalog",
+          url: "https://github.com/spreadzp/agentbadge/tree/main/src/server/lib/commerce-catalog",
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/hackathon/server/src/server/routes/checkout-pages.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/checkout-pages.ts",
         },
       ],
     },
@@ -104,15 +104,15 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/docs/EPICS/221-pricing-checkout-2/reviews/checkout-REVIEW.md",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/221-pricing-checkout-2/reviews/checkout-REVIEW.md",
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/REVIEW-FINDINGS.md",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/221-pricing-checkout-2/reviews/REVIEW-FINDINGS.md",
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/hackathon/server/tests/checkout-audit-221-7.test.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/checkout-audit-221-7.test.ts",
         },
       ],
     },
@@ -123,7 +123,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/hackathon/server/src/server/lib/payments-api",
+          url: "https://github.com/spreadzp/agentbadge/tree/main/src/server/lib/payments-api",
         },
       ],
     },
@@ -134,11 +134,11 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/hackathon/server/docs/payments-v1-migration.md",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/payments-v1-migration.md",
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/tree/main/hackathon/server/src/server/lib/contract-guards.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/contract-guards.ts",
         },
       ],
     },
