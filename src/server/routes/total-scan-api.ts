@@ -56,7 +56,7 @@ totalScanRoutes.post(
       402: {
         description:
           "Payment required (x402). PAYMENT-REQUIRED header carries base64-encoded payment requirements " +
-          "(accepts: scheme exact, network eip155:84532, USDC 0x036CbD53842c5426634e7929541eC2318f3dCF7e, atomic amount). " +
+          "(accepts: scheme exact, network eip155:5042, USDC 0x3600000000000000000000000000000000000000, atomic amount). " +
           "Body lists per-bundle pricing.",
         content: {
           "application/json": {

@@ -10,7 +10,12 @@
 import type { Context, Next } from "hono";
 
 const DEFAULT_METHODS = "GET, POST, PUT, DELETE, OPTIONS";
-const DEFAULT_HEADERS = "Content-Type, Authorization, X-Admin-Key";
+const DEFAULT_HEADERS =
+  "Content-Type, Authorization, X-Admin-Key, PAYMENT-SIGNATURE, X-PAYMENT, X-Wallet, X-Sig, X-Timestamp";
+// x402: browsers can't read these unless exposed — without them a browser
+// client sees 402 but can't read PAYMENT-REQUIRED / send the signed payment.
+const EXPOSE_HEADERS =
+  "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-PAYMENT-RESPONSE";
 const MAX_AGE = "86400";
 
 function getAllowedOrigins(): string[] {
@@ -37,11 +42,13 @@ export function corsMiddleware() {
       c.header("Access-Control-Allow-Origin", "*");
       c.header("Access-Control-Allow-Methods", DEFAULT_METHODS);
       c.header("Access-Control-Allow-Headers", DEFAULT_HEADERS);
+      c.header("Access-Control-Expose-Headers", EXPOSE_HEADERS);
       c.header("Access-Control-Max-Age", MAX_AGE);
     } else if (origin && isOriginAllowed(origin, allowed)) {
       c.header("Access-Control-Allow-Origin", origin);
       c.header("Access-Control-Allow-Methods", DEFAULT_METHODS);
       c.header("Access-Control-Allow-Headers", DEFAULT_HEADERS);
+      c.header("Access-Control-Expose-Headers", EXPOSE_HEADERS);
       c.header("Access-Control-Max-Age", MAX_AGE);
     }
 
