@@ -32,6 +32,7 @@ import {
 } from "../lib/payments-api";
 import { CONTRACT_LIMITS } from "../lib/machine-entry";
 import { createPaymentsReadRoutes } from "./payments-read-routes";
+import { createPaymentsRefundRoutes } from "./payments-refund-route";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -241,6 +242,7 @@ export function createPaymentsApiRoutes(
     },
   );
 
+  routes.route("/", createPaymentsRefundRoutes(getCheckout));
   routes.route("/", createPaymentsReadRoutes(getCheckout));
 
   return routes;

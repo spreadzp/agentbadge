@@ -36,6 +36,9 @@ import { submitAttempt } from "./attempt";
 import type { CreateAttemptInput, CreateAttemptResult } from "./attempt";
 import { listPaymentExceptions } from "./checkout-exceptions";
 import type { ListExceptionsOpts } from "./checkout-exceptions";
+import { refundPaymentOps } from "./checkout-refund";
+import type { OpsRefundInput } from "./checkout-refund";
+import { buildFulfillmentInput } from "./checkout-fulfillment-input";
 import {
   assertIdempotentReplay,
   checkoutFingerprint,
@@ -254,6 +257,24 @@ export class PaymentsCheckout {
 
   /** Domain-service confirm — verification pipeline + receipt (221-2
    *  test/support path; production confirm rides webhooks/engine). */
+  /** 222-6: ops refund marker — CONFIRMED → REFUNDED + audit.
+   *  Refund send itself is manual on-chain ops (D-222-6). */
+  async markRefunded(input: {
+    paymentId: string;
+    txHash: string;
+    refundedBy: string;
+    note?: string;
+  }) {
+    return this.service.markRefunded(input);
+  }
+
+  /** 222-6: full ops refund flow — OPEN REFUND_REQUEST exception,
+   *  markRefunded, then resolve the request row. Deterministic
+   *  exception id (payment+txHash) dedupes repeat calls. */
+  async refundPaymentOps(input: OpsRefundInput) {
+    return refundPaymentOps(this.stores, this.service, input);
+  }
+
   async confirmPayment(
     input: Parameters<PaymentService["confirmPayment"]>[0],
   ) {
@@ -265,36 +286,6 @@ export class PaymentsCheckout {
   async getFulfillmentInput(
     paymentId: string,
   ): Promise<FulfillmentInput | null> {
-    const row = await this.stores.payments.getById(paymentId);
-    if (!row) return null;
-    const payload =
-      typeof row.payload === "object" && row.payload !== null
-        ? (row.payload as {
-          productCode?: unknown;
-          metadata?: unknown;
-        })
-        : {};
-    const product = getCommerceProduct(
-      typeof payload.productCode === "string"
-        ? payload.productCode
-        : (row.productId ?? ""),
-    );
-    return {
-      productCode:
-        typeof payload.productCode === "string"
-          ? payload.productCode
-          : (row.productId ?? "unknown"),
-      buyerRef: row.customerId ?? row.agentId ?? undefined,
-      metadata: {
-        // Server-side binding: `tier` comes from the catalog product,
-        // never from client metadata (passport-mint handlers require it).
-        ...(typeof payload.metadata === "object" && payload.metadata !== null
-          ? (payload.metadata as Record<string, unknown>)
-          : {}),
-        ...(product?.tier ? { tier: product.tier } : {}),
-      },
-      amountUsd: row.amount,
-      paymentRef: row.id,
-    };
+    return buildFulfillmentInput(this.stores, paymentId);
   }
 }
