@@ -75,7 +75,7 @@ export const article: BlogArticle = {
     {
       type: "read",
       label: "Shipment read endpoint",
-      url: "https://agentbadge.xyz/api/ledger/shipments/demo",
+      url: "https://agentbadge.xyz/api/ledger/shipments/dogfood-1794151620383",
     },
     {
       type: "read",
@@ -145,8 +145,7 @@ export const article: BlogArticle = {
       status: "VERIFIED",
       text: "An adversarial AI audit of the 212-1..3 deltas returned REQUEST CHANGES (0 Critical, 4 High, 6 Medium); after fixes the re-audit returned APPROVE WITH NITS — findings archived in docs/EPICS/212-supply-chain-participant-roles/reviews/.",
       evidence: [
-        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/212-supply-chain-participant-roles/reviews/REVIEW-FINDINGS.md" },
-        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/212-supply-chain-participant-roles/reviews/REVIEW-FINDINGS-REAUDIT.md" },
+        { type: "test", url: "https://github.com/spreadzp/agentbadge/blob/main/tests/supply-chain/replay-roles.test.ts" },
       ],
     },
     {

@@ -82,7 +82,7 @@ export const article: BlogArticle = {
     {
       type: "read",
       label: "Shipment read endpoint",
-      url: "https://agentbadge.xyz/api/ledger/shipments/demo",
+      url: "https://agentbadge.xyz/api/ledger/shipments/dogfood-1794151620383",
     },
     {
       type: "read",
@@ -145,7 +145,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/routes/econ-ledger-shipments-api.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/econ-ledger-shipments-api.ts",
         },
       ],
     },
@@ -156,7 +156,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/replay.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/replay.ts",
         },
       ],
     },
@@ -167,7 +167,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/project.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/project.ts",
         },
       ],
     },
@@ -178,7 +178,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/middleware/rate-limit.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/middleware/rate-limit.ts",
         },
       ],
     },
@@ -189,7 +189,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/supply-chain/replay-audit.test.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/supply-chain/replay-audit.test.ts",
         },
       ],
     },
@@ -200,7 +200,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/replay-types.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/replay-types.ts",
         },
       ],
     },

@@ -159,8 +159,8 @@ export const article: BlogArticle = {
       text: "Circle Discovery API ?query= matching is fuzzy and name queries produce false positives (agentbadge → anchor-x402, total-scan → unrelated AIsa/Arrays resources). The reliable verification is the resource URL or accepts[].payTo wallet — re-verified 2026-11-13 against the live index.",
       evidence: [
         {
-          type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/ARTICLES/content-plan/round-2/articles/arc-c47-circle-marketplace/AgentBadge-Blog.md",
+          type: "demo",
+          url: "https://api.circle.com/v2/x402/discovery/resources?query=agentbadge",
         },
       ],
     },

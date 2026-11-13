@@ -71,7 +71,7 @@ export const article: BlogArticle = {
     {
       type: "read",
       label: "Shipment read endpoint",
-      url: "https://agentbadge.xyz/api/ledger/shipments/demo",
+      url: "https://agentbadge.xyz/api/ledger/shipments/dogfood-1794151620383",
     },
     {
       type: "read",

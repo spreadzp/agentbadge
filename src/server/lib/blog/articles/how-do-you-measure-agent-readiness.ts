@@ -351,10 +351,6 @@ Missing:
         url: "https://x.com/paul_spread/status/2092620769977082069",
       },
       {
-        platform: "zenn",
-        url: "https://zenn.dev/buidl25/articles/how-do-you-measure-agent-readiness",
-      },
-      {
         platform: "velog",
         url: "https://velog.io/@buidl_25/How-Do-You-Measure-Agent-Readiness",
       },

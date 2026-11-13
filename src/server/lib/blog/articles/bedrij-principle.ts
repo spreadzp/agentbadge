@@ -75,7 +75,7 @@ export const article: BlogArticle = {
     {
       type: "read",
       label: "Shipment read endpoint",
-      url: "https://agentbadge.xyz/api/ledger/shipments/demo",
+      url: "https://agentbadge.xyz/api/ledger/shipments/dogfood-1794151620383",
     },
     {
       type: "read",
@@ -150,7 +150,7 @@ export const article: BlogArticle = {
       status: "VERIFIED",
       text: "Per the Fetzer Institute trustee history, Orest Bedrij (1933–2022) was a Ukrainian physicist and investment banker who at age 29 served as IBM's technical director on the computer complex for the first soft moon landing at NASA/JPL.",
       evidence: [
-        { type: "demo", url: "https://fetzer.org/about-us/trustees" },
+        { type: "demo", url: "https://web.archive.org/web/20250324223020/https://fetzer.org/trustee-history" },
       ],
     },
     {

@@ -27,7 +27,7 @@ export const article: BlogArticle = {
 <h2 id="did-document">What a resolver actually gets</h2>
 <p><code>GET https://agentbadge.xyz/.well-known/did.json</code> returns a real DID document — not the mislabeled config that used to live there: <code>verificationMethod</code> carries a real Ed25519 public key (<code>JsonWebKey</code>, OKP/Ed25519 — the same key that backs <code>/.well-known/jwks.json</code>), and <code>service[]</code> is the agent's map to us: agent-card → capabilities, mcp → tool interface, x402 → paid endpoints on Arc, api-catalog → the full service surface.</p>
 <h2 id="did-configuration">The signed DID Configuration — the part that proves it</h2>
-<p>A DID document served from a domain is self-asserted: of course <code>agentbadge.xyz</code> claims <code>did:web:agentbadge.xyz</code> belongs to it. The DIF <a href="https://identity.foundation/did-configuration/">DID Configuration spec</a> closes that loop in the other direction — the DID signs a credential that <em>claims the domain</em>.</p>
+<p>A DID document served from a domain is self-asserted: of course <code>agentbadge.xyz</code> claims <code>did:web:agentbadge.xyz</code> belongs to it. The DIF <a href="https://identity.foundation/well-known-did-configuration/resources/did-configuration/">DID Configuration spec</a> closes that loop in the other direction — the DID signs a credential that <em>claims the domain</em>.</p>
 <p><code>GET /.well-known/did-configuration.json</code> returns a <code>linked_dids</code> array with one VC-JWT. Decode it and you get <code>iss == sub == did:web:agentbadge.xyz</code>, <code>credentialSubject.origin == "https://agentbadge.xyz"</code>, signed EdDSA with <code>kid: "#key-1"</code> — the same verification method from the DID document. Verify it yourself, no AgentBadge account required:</p>
 <pre><code class="language-typescript">import { createLocalJWKSet, jwtVerify } from "jose";
 
@@ -90,9 +90,9 @@ curl -s https://agentbadge.xyz/.well-known/did-configuration.json | jq .
 curl -s https://agentbadge.xyz/.well-known/jwks.json | jq .</code></pre>
 <ul>
 <li>Source: <code>lib/agent-discovery/{did,did-config,did-key}.ts</code> in the <a href="https://github.com/spreadzp/agentbadge">agentbadge repo</a> — pure builders, zero IO, sources injected</li>
-<li>Verify test: <a href="https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/did-identity.test.ts"><code>tests/did-identity.test.ts</code></a> — the exact <code>jwtVerify</code> flow above, run against a live app</li>
+<li>Verify test: <a href="https://github.com/spreadzp/agentbadge/blob/main/tests/did-identity.test.ts"><code>tests/did-identity.test.ts</code></a> — the exact <code>jwtVerify</code> flow above, run against a live app</li>
 </ul>
 <p><em>This is C27 in the Arc Campaign series. Earlier: C14 covered the discovery surface these manifests live on; C26 covers cross-chain ERC-8004 resolution — the other half of "how agents know who is who."</em></p>
-<p><strong>Links:</strong> <a href="https://agentbadge.xyz">AgentBadge</a> · <a href="https://identity.foundation/did-configuration/">DID Configuration spec</a> · <a href="https://check.identinet.io">identinet check</a></p>
+<p><strong>Links:</strong> <a href="https://agentbadge.xyz">AgentBadge</a> · <a href="https://identity.foundation/well-known-did-configuration/resources/did-configuration/">DID Configuration spec</a> · <a href="https://check.identinet.io">identinet check</a></p>
 <p><em>Don't certify. Measure.</em></p>`,
 };

@@ -155,7 +155,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/payments-api/checkout-attempts.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/payments-api/attempt.ts",
         },
       ],
     },
@@ -166,7 +166,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/config/env/payments.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/config/env/payments.ts",
         },
       ],
     },

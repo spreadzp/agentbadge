@@ -180,11 +180,11 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/econ-ledger/supply-chain/executor.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/econ-ledger/supply-chain/executor.ts",
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/venue/lifecycle-sign.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/venue/lifecycle-sign.ts",
         },
       ],
     },
@@ -195,7 +195,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/tests/supply-chain/scenario-matrix.test.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/supply-chain/scenario-matrix.test.ts",
         },
       ],
     },
