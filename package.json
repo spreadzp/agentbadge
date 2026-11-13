@@ -64,7 +64,7 @@
     "@agentbadge/pass-auth": "^0.1.1",
     "@agentbadge/passport": "^0.3.0",
     "@agentbadge/payment-forensics": "^0.1.1",
-    "@agentbadge/payments": "file:../../packages/payments",
+    "@agentbadge/payments": "^0.1.0",
     "@agentbadge/webmcp": "^0.3.0",
     "@hashgraph/sdk": "^2.55.0",
     "@hono/swagger-ui": "^0.6.1",
