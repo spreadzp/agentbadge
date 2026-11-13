@@ -172,7 +172,7 @@ export const FAQ_ENTRIES_A: QaPair[] = [
   {
     question: "How does AgentBadge handle SEO for agents?",
     answer:
-      "AgentBadge optimizes APIs for agent discoverability using llms.txt, agents.txt, OpenAPI specs, structured data (JSON-LD), and machine-readable endpoints like /.well-known/ai-plugin.json. This is the agent equivalent of SEO — making your service findable and understandable by AI agents without human intervention. <a href=\"/blog/from-seo-to-geo-to-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: From SEO to GEO to Agent Readiness →</a>",
+      "AgentBadge optimizes APIs for agent discoverability using llms.txt, agents.txt, OpenAPI specs, structured data (JSON-LD), and machine-readable endpoints like /.well-known/agent-card.json. This is the agent equivalent of SEO — making your service findable and understandable by AI agents without human intervention. <a href=\"/blog/from-seo-to-geo-to-agent-readiness\" class=\"text-emerald-400 underline hover:text-emerald-300\">Read: From SEO to GEO to Agent Readiness →</a>",
   },
   {
     question: "How does AgentBadge support agent discovery on the web?",

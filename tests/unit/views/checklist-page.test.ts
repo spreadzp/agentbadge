@@ -82,4 +82,10 @@ describe("SLICE-114-2: ChecklistPage view component", () => {
     expect(html).toContain("<head>");
     expect(html).toContain("<body");
   });
+
+  it("escapes rule examples so HTML snippets render as text, not live tags", () => {
+    expect(html).not.toContain('<script src="bundle.js">');
+    expect(html).not.toContain('<img src="spacer.gif"');
+    expect(html).toContain("&lt;script src=&quot;bundle.js&quot;&gt;");
+  });
 });

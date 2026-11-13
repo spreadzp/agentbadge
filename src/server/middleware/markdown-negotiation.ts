@@ -105,12 +105,13 @@ export function setMirrorApp(app: Hono): void {
 }
 
 /**
- * Internal mirror fetch: re-request `path` minus the `.md` suffix with
+ * Internal mirror fetch: re-request `path` minus the `.md` suffix (query kept) with
  * `Accept: text/markdown`. Returns the markdown Response, or null when the
  * target isn't a negotiable page (real 404s, JSON APIs, excluded paths).
  */
 async function serveMarkdownMirror(
   path: string,
+  search = "",
 ): Promise<Response | null> {
   if (!mirrorApp) return null;
   const stripped = path.slice(0, -3);
@@ -118,7 +119,7 @@ async function serveMarkdownMirror(
   // the catch-all again, or crawlers discover an infinite .md URL space.
   if (stripped.endsWith(".md")) return null;
   const target = stripped === "" || stripped === "/index" ? "/" : stripped;
-  const inner = await mirrorApp.request(target, {
+  const inner = await mirrorApp.request(target + search, {
     method: "GET",
     headers: { Accept: "text/markdown" },
   });
@@ -154,7 +155,7 @@ export function markdownNegotiation() {
       if (c.res.status !== 404) return;
       // SLICE-178-5: ?src= attribution on .md entry points.
       await recordSrcAttribution(c);
-      const mirrored = await serveMarkdownMirror(path);
+      const mirrored = await serveMarkdownMirror(path, new URL(c.req.url).search);
       if (mirrored) c.res = mirrored;
       return;
     }
@@ -213,7 +214,7 @@ export function markdownMirrorRoutes(_app: Hono): Hono {
     // SLICE-178-5: ?src= attribution on .md entry points.
     await recordSrcAttribution(c);
 
-    const mirrored = await serveMarkdownMirror(path);
+    const mirrored = await serveMarkdownMirror(path, new URL(c.req.url).search);
     if (!mirrored) return c.notFound();
     return mirrored;
   });

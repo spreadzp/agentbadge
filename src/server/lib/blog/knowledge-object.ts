@@ -15,6 +15,8 @@
  * draft — finalized by SLICE-201-9 / human), actions from read + derivable
  * view-code/view-demo links.
  */
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { BASE_URL } from "../page-meta";
 import type { BlogArticle } from "../blog-data";
 
@@ -202,9 +204,14 @@ function deriveActions(article: BlogArticle, canonical: string): KnowledgeAction
   return actions;
 }
 
+const AGENT_GUIDE_ARTICLES_DIR = join(__dirname, "../../agent-knowledge/articles");
+
 function deriveRelatedResources(article: BlogArticle): RelatedResource[] {
   const resources: RelatedResource[] = [];
-  if (article.agentGuideSlug) {
+  if (
+    article.agentGuideSlug &&
+    existsSync(join(AGENT_GUIDE_ARTICLES_DIR, `${article.agentGuideSlug}.md`))
+  ) {
     resources.push({
       type: "guide",
       label: "Agent guide",

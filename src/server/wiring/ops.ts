@@ -63,6 +63,12 @@ export function wireStaticOps(app: Hono): void {
     c.header("Cache-Control", "public, max-age=3600");
     return next();
   }, serveStatic({ root: "./public" }));
+  // Published signer sets (e.g. verdict-signers.json {current,next}) — short
+  // cache so key rotations propagate quickly.
+  app.use("/keys/*", (c, next) => {
+    c.header("Cache-Control", "public, max-age=300");
+    return next();
+  }, serveStatic({ root: "./public" }));
 }
 
 // OpenAPI spec + Swagger UI — openAPIRouteHandler(app) introspects the app at

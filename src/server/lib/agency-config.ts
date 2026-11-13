@@ -150,7 +150,7 @@ export const AGENCY_SERVICES: AgencyService[] = [
     tagline: "Record scan results on Base Sepolia via TrustRegistry",
     description:
       "Trigger on-chain scan recording via KeeperHub workflows. Scan results are permanently recorded on Base Sepolia using the TrustRegistry smart contract, with TrustBadge soulbound NFTs and AgentPassport NFTs minted for verified sites.",
-    url: "/services/on-chain-recording",
+    url: "/agent-guide/concepts/on-chain-recording",
     icon: "⛓️",
     features: [
       "On-chain scan recording via TrustRegistry",
@@ -187,7 +187,7 @@ export const AGENCY_SERVICES: AgencyService[] = [
     tagline: "Cross-chain verified task marketplace on Ethereum + Creditcoin",
     description:
       "Verify AI agent tasks across Ethereum Sepolia and Creditcoin CC3 Testnet using the Attestcoin Protocol. Tasks posted on Ethereum are verified on Creditcoin with on-chain proofs, enabling trustless cross-chain task lifecycle management.",
-    url: "/services/cross-chain-verification",
+    url: "/agent-guide/concepts/cross-chain-verification",
     icon: "🔗",
     features: [
       "Cross-chain task verification (Ethereum ↔ Creditcoin)",

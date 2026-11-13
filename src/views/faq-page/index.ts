@@ -119,7 +119,7 @@ export function FaqPage(
       <li><a href="/llms-full.txt" class="text-emerald-400 underline hover:text-emerald-300">llms-full.txt</a></li>
       <li><a href="/agent-guide" class="text-emerald-400 underline hover:text-emerald-300">Agent Guide</a></li>
       <li><a href="/sitemap.xml" class="text-emerald-400 underline hover:text-emerald-300">sitemap.xml</a></li>
-      <li><a href="/.well-known/ai-plugin.json" class="text-emerald-400 underline hover:text-emerald-300">ai-plugin.json</a></li>
+      <li><a href="/.well-known/agent-card.json" class="text-emerald-400 underline hover:text-emerald-300">agent-card.json</a></li>
       <li><a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Blog</a></li>
     </ul>
   </section>

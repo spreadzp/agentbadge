@@ -115,11 +115,11 @@ describe("FOR AI AGENTS block (D-201-16)", () => {
     const html = BlogArticlePage({
       ...BASE,
       shortAnswer: "Sum.",
-      agentGuideSlug: "test-guide",
+      agentGuideSlug: "arc-c10-payer-binding",
       relatedLinks: [{ label: "Repo", href: "https://github.com/x/y" }],
     }).toString();
     expect(html).toContain("Sum.");
-    expect(html).toContain("/agent-guide/articles/test-guide");
+    expect(html).toContain("/agent-guide/articles/arc-c10-payer-binding");
     expect(html).toContain("https://github.com/x/y");
   });
 });

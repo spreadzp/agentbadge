@@ -6,6 +6,7 @@ import { RULE_DESCRIPTIONS, CATEGORY_DESCRIPTIONS, PILLAR_DESCRIPTIONS } from ".
 import { PILLARS, PILLAR_CATEGORIES, PILLAR_LABELS } from "../agent-readiness/scoring/pillar-map";
 import { CORE_RULE_IDS, isCoreRule } from "../agent-readiness/core-rules";
 import { BASE_URL } from "../server/lib/page-meta";
+import { esc } from "./venue-ui";
 
 const EFFORT_BADGE: Record<string, string> = {
   quick: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -21,19 +22,19 @@ function ruleItem(rule: (typeof RULE_DESCRIPTIONS)[number]) {
       <div>
         <div class="flex flex-wrap items-center gap-2">
           <span class="font-mono text-xs text-slate-500">${rule.rule_id}</span>
-          <span class="font-semibold text-slate-100">${rule.title}</span>
+          <span class="font-semibold text-slate-100">${esc(rule.title)}</span>
           ${core ? `<span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">Core</span>` : ""}
           <span class="rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${EFFORT_BADGE[rule.effort_hint] ?? EFFORT_BADGE.moderate}">${rule.effort_hint}</span>
         </div>
-        <p class="mt-1 text-sm text-slate-400">${rule.short_description}</p>
+        <p class="mt-1 text-sm text-slate-400">${esc(rule.short_description)}</p>
       </div>
       <span class="mt-1 shrink-0 text-slate-600 transition-transform group-open:rotate-90">▸</span>
     </summary>
     <div class="mt-3 border-t border-slate-800 pt-3 text-sm text-slate-400">
-      <p>${rule.user_value}</p>
+      <p>${esc(rule.user_value)}</p>
       <div class="mt-2 grid gap-2 sm:grid-cols-2">
-        <p class="rounded-lg bg-rose-500/5 p-2 text-xs"><span class="font-semibold text-rose-400">Avoid:</span> ${rule.wrong_example}</p>
-        <p class="rounded-lg bg-emerald-500/5 p-2 text-xs"><span class="font-semibold text-emerald-400">Fix:</span> ${rule.right_example}</p>
+        <p class="rounded-lg bg-rose-500/5 p-2 text-xs"><span class="font-semibold text-rose-400">Avoid:</span> ${esc(rule.wrong_example)}</p>
+        <p class="rounded-lg bg-emerald-500/5 p-2 text-xs"><span class="font-semibold text-emerald-400">Fix:</span> ${esc(rule.right_example)}</p>
       </div>
       <a href="/rules/${rule.rule_id}" class="mt-2 inline-block text-xs text-emerald-400 underline underline-offset-2 hover:text-emerald-300">Rule details → /rules/${rule.rule_id}</a>
     </div>

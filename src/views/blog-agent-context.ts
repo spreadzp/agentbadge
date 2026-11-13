@@ -20,7 +20,7 @@ export function AgentContextBlock(article: BlogArticle, ko: KnowledgeObject) {
   const machineLinks: { label: string; href: string }[] = [
     { label: "JSON", href: `/blog/${article.slug}.json` },
   ];
-  if (article.agentGuideSlug) {
+  if (article.agentGuideSlug && knowledgePageExists("articles", article.agentGuideSlug)) {
     machineLinks.push({
       label: "Companion guide",
       href: `/agent-guide/articles/${article.agentGuideSlug}`,
