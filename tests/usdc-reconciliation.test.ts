@@ -33,6 +33,7 @@ function fakeChain(transfers: DecodedTransfer[], head = 5000n) {
   const client: ArcChainClient = {
     network: getPaymentNetwork(CAIP2)!,
     getHead: async () => head,
+    verifyChainId: async () => { },
     scanTransfers: async (input) => {
       calls.push({ fromBlock: input.fromBlock, toBlock: input.toBlock });
       return transfers;
@@ -229,9 +230,83 @@ describe("222-5: reconciliation tick", () => {
       "CONFIRMED",
       NOW_MS - 10_000,
     );
+    // C-1 sweeper: a delivered CONFIRMED payment carries fulfill-done.
+    await stores.events.append({
+      id: "fulfill-done-pay1",
+      entity: "FULFILLMENT",
+      paymentId: "pay1",
+      from: "claimed",
+      to: "done",
+      actor: "fulfillment-registry",
+      atMs: NOW_MS - 9_000,
+    });
     const { client } = fakeChain([transfer(9_990_044n)]);
     const res = await runReconciliationTick(deps(stores, client));
     expect(res.mismatches).toEqual({});
     expect(res.exceptionsWritten).toBe(0);
+  });
+});
+
+describe("audit-222-7 regressions", () => {
+  it("H-2: receipt tx outside the scan window but found on-chain → no exception", async () => {
+    const stores = createInMemoryPaymentStores();
+    await seed(stores, { txHash: TX_HASH, withReceipt: true });
+    await stores.attempts.applyStatus(
+      "att-pay1",
+      "PENDING",
+      "CONFIRMED",
+      NOW_MS - 10_000,
+    );
+    // Scan window returns NOTHING (tx pre-dates the cursor window),
+    // but the receipt's txHash verifies directly on-chain.
+    const { client } = fakeChain([]);
+    client.getTxReceipt = async (h: string) =>
+      h === TX_HASH
+        ? { transactionHash: h, blockNumber: 4000n, status: "success" }
+        : null;
+    const res = await runReconciliationTick(deps(stores, client));
+    const kinds = (await stores.exceptions!.list({ status: "OPEN" })).map(
+      (r) => r.details?.mismatchKind,
+    );
+    expect(kinds).not.toContain("RECEIPT_WITHOUT_CHAIN_TX");
+    expect(res.mismatches.RECEIPT_WITHOUT_CHAIN_TX ?? 0).toBe(0);
+  });
+
+  it("H-2: receipt tx verifiably absent on-chain → RECEIPT_WITHOUT_CHAIN_TX", async () => {
+    const stores = createInMemoryPaymentStores();
+    await seed(stores, { txHash: TX_HASH, withReceipt: true });
+    await stores.attempts.applyStatus(
+      "att-pay1",
+      "PENDING",
+      "CONFIRMED",
+      NOW_MS - 10_000,
+    );
+    const { client } = fakeChain([]);
+    client.getTxReceipt = async () => null;
+    const res = await runReconciliationTick(deps(stores, client));
+    expect(res.mismatches.RECEIPT_WITHOUT_CHAIN_TX).toBe(1);
+  });
+
+  it("C-1: CONFIRMED payment without fulfill-done → CONFIRMED_WITHOUT_FULFILLMENT", async () => {
+    const stores = createInMemoryPaymentStores();
+    await seed(stores, { txHash: TX_HASH, withReceipt: true });
+    await stores.attempts.applyStatus(
+      "att-pay1",
+      "PENDING",
+      "CONFIRMED",
+      NOW_MS - 10_000,
+    );
+    const { client } = fakeChain([transfer(9_990_044n)]);
+    const res = await runReconciliationTick(deps(stores, client));
+    expect(res.mismatches.CONFIRMED_WITHOUT_FULFILLMENT).toBe(1);
+    const rows = await stores.exceptions!.list({ status: "OPEN" });
+    const gap = rows.find(
+      (r) => r.details?.mismatchKind === "CONFIRMED_WITHOUT_FULFILLMENT",
+    );
+    expect(gap).toBeDefined();
+    expect(gap!.severity).toBe("CRITICAL");
+    // Second run dedupes.
+    const second = await runReconciliationTick(deps(stores, client));
+    expect(second.exceptionsWritten).toBe(0);
   });
 });

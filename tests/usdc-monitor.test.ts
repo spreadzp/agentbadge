@@ -70,6 +70,7 @@ function mockChain(transfers: DecodedTransfer[], fail?: Error): ArcChainClient {
       finalized: true,
     }),
     getBlockTimestamp: async () => BLOCK_TS,
+    verifyChainId: async () => { },
     txEvidence: async (tx) => ({
       ...tx,
       network: CAIP2,
@@ -160,7 +161,7 @@ describe("runUsdcMonitorTick", () => {
 
   it("full lifecycle: payable attempt + exact Transfer → CONFIRMED + receipt + events + fulfillment", async () => {
     await seedPayment(stores);
-    const fulfill = vi.fn(async () => {});
+    const fulfill = vi.fn(async () => { });
     const result = await runUsdcMonitorTick(
       makeDeps(stores, mockChain([transfer(9_990_044n)]), fulfill),
     );
@@ -187,7 +188,7 @@ describe("runUsdcMonitorTick", () => {
 
   it("idempotent: second tick on a CONFIRMED attempt does nothing", async () => {
     await seedPayment(stores);
-    const fulfill = vi.fn(async () => {});
+    const fulfill = vi.fn(async () => { });
     const deps = makeDeps(stores, mockChain([transfer(9_990_044n)]), fulfill);
     await runUsdcMonitorTick(deps);
     const second = await runUsdcMonitorTick(deps);
@@ -198,7 +199,7 @@ describe("runUsdcMonitorTick", () => {
 
   it("wrong amount → FUZZY flag only, attempt stays payable, never CONFIRMED", async () => {
     await seedPayment(stores);
-    const fulfill = vi.fn(async () => {});
+    const fulfill = vi.fn(async () => { });
     const result = await runUsdcMonitorTick(
       makeDeps(stores, mockChain([transfer(9_990_045n)]), fulfill),
     );
@@ -380,7 +381,7 @@ describe("222-4: exceptions via monitor", () => {
 
   it("duplicate transfer on CONFIRMED attempt → DUPLICATE_TRANSFER exception, no re-confirm", async () => {
     await seedTerminal("CONFIRMED");
-    const fulfill = vi.fn(async () => {});
+    const fulfill = vi.fn(async () => { });
     const result = await runUsdcMonitorTick(
       makeDeps(stores, mockChain([transfer(9_990_044n, TX2)]), fulfill),
     );
@@ -465,12 +466,14 @@ describe("fulfillment effect-context (reviews 6.1/6.2)", () => {
   /** Effect-aware handler mirroring fulfillPassportMint's guard. */
   const mintHandler = (mints: number[]): FulfillmentHandler =>
     async (_input, ctx?: FulfillmentEffectContext) => {
-      if (!ctx) return;
+      if (!ctx) return "executed";
       const prior = await ctx.priorEffect();
-      if (prior.status !== "none") return;
-      if (!(await ctx.markIntent())) return;
+      if (prior.status === "done") return "deduped-done";
+      if (prior.status === "intent") return "needs-ops";
+      if (!(await ctx.markIntent())) return "deduped";
       mints.push(1);
       await ctx.markDone({ tokenId: "1" });
+      return "executed";
     };
 
   const events = (s: Stores): FulfillmentEventStore =>
@@ -586,5 +589,136 @@ describe("fulfillment effect-context (reviews 6.1/6.2)", () => {
     });
     expect(again).toBe("deduped");
     expect(mints).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Audit 222-7 regressions — C-1 unresolved, H-9 reclaim, H-6 isolation
+// ---------------------------------------------------------------------------
+
+describe("audit-222-7", () => {
+  let stores: Stores;
+  const input = { productCode: "PASSPORT_BRONZE", metadata: {} };
+
+  beforeEach(() => {
+    stores = createInMemoryPaymentStores();
+    resetFulfillmentRegistry();
+  });
+
+  const events = (s: Stores): FulfillmentEventStore =>
+    s.events as unknown as FulfillmentEventStore;
+
+  it("C-1: needs-ops handler → 'unresolved' + durable marker, NO done", async () => {
+    const registry = new Map<string, FulfillmentHandler>([
+      ["passport-mint", async () => "needs-ops" as const],
+    ]);
+    const status = await dispatchFulfillment(input, {
+      dedupeKey: "payment:pay9",
+      events: events(stores),
+      registry,
+      nowMs: NOW_MS,
+    });
+    expect(status).toBe("unresolved");
+    const rows = await events(stores).listByPayment("pay9");
+    const kinds = rows.map((r) => r.to);
+    expect(kinds).toContain("unresolved");
+    expect(kinds).not.toContain("done");
+  });
+
+  it("C-1: executed handler → 'fulfilled' + done marker", async () => {
+    const registry = new Map<string, FulfillmentHandler>([
+      ["passport-mint", async () => "executed" as const],
+    ]);
+    const status = await dispatchFulfillment(input, {
+      dedupeKey: "payment:pay10",
+      events: events(stores),
+      registry,
+      nowMs: NOW_MS,
+    });
+    expect(status).toBe("fulfilled");
+    const rows = await events(stores).listByPayment("pay10");
+    expect(rows.map((r) => r.to)).toContain("done");
+  });
+
+  it("H-9: stale claim reclaimed once — a second stale-claim dispatch dedupes", async () => {
+    let calls = 0;
+    const registry = new Map<string, FulfillmentHandler>([
+      [
+        "passport-mint",
+        async () => {
+          calls++;
+          return "executed" as const;
+        },
+      ],
+    ]);
+    await events(stores).append({
+      id: "fulfill-claim-pay11",
+      entity: "FULFILLMENT",
+      paymentId: "pay11",
+      from: "dispatch",
+      to: "claimed",
+      actor: "fulfillment-registry",
+      atMs: NOW_MS - CLAIM_STALE_MS - 1,
+    });
+    const first = await dispatchFulfillment(input, {
+      dedupeKey: "payment:pay11",
+      events: events(stores),
+      registry,
+      nowMs: NOW_MS,
+    });
+    expect(first).toBe("fulfilled");
+    expect(calls).toBe(1);
+    // After reclaim + done, another dispatch is a plain dedupe —
+    // the reclaim path never re-runs the handler.
+    const second = await dispatchFulfillment(input, {
+      dedupeKey: "payment:pay11",
+      events: events(stores),
+      registry,
+      nowMs: NOW_MS + 1,
+    });
+    expect(second).toBe("deduped");
+    expect(calls).toBe(1);
+  });
+
+  it("H-6: malformed attempt does not abort the rest of the network group", async () => {
+    await seedPayment(stores);
+    // Second attempt with a corrupt expectedAmount — toExpectation throws.
+    await stores.payments.create({
+      id: "pay-bad",
+      reference: "ref-pay-bad",
+      amount: "9.990044",
+      currency: "USD",
+      status: "PROCESSING",
+      purpose: "ORDER",
+      createdAtMs: NOW_MS,
+      updatedAtMs: NOW_MS,
+      payload: {},
+    });
+    await stores.attempts.create({
+      id: "att-pay-bad",
+      paymentId: "pay-bad",
+      provider: "DIRECT_USDC",
+      network: CAIP2,
+      token: TOKEN,
+      amount: "not-a-number",
+      currency: "USDC",
+      status: "PENDING",
+      providerReference: `usdc_${CAIP2}_pay-bad`,
+      expiresAtMs: NOW_MS + 3_600_000,
+      payload: {
+        expectedRecipient: TREASURY,
+        expectedAmount: "not-a-number",
+        network: CAIP2,
+        minConfirmations: 1,
+      },
+    });
+    const fulfill = vi.fn(async () => {});
+    const result = await runUsdcMonitorTick(
+      makeDeps(stores, mockChain([transfer(9_990_044n)]), fulfill),
+    );
+    expect(result.errors.length).toBeGreaterThan(0);
+    // Healthy attempt still confirms.
+    expect(result.confirmed).toBe(1);
+    expect(fulfill).toHaveBeenCalledWith("pay1");
   });
 });

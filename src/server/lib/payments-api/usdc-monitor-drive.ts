@@ -54,7 +54,8 @@ export function toExpectation(
       ? payload.expectedRecipient
       : (net.treasuryAddress ?? "");
   const boundMin =
-    typeof payload.minConfirmations === "number"
+    typeof payload.minConfirmations === "number" &&
+      Number.isFinite(payload.minConfirmations)
       ? payload.minConfirmations
       : 0;
   return {
@@ -73,7 +74,22 @@ export function toExpectation(
     payable: !["CONFIRMED", "FAILED", "EXPIRED"].includes(
       attempt.status,
     ),
+    // Audit H-3: the attempt's own bound tx re-scanned must NOT flag
+    // DUPLICATE — only a different tx with the same amount does.
+    boundTxHash: attempt.transactionHash ?? undefined,
   };
+}
+
+/** In-tick consumption (audit H-3): after a successful confirm the
+ *  expectation snapshot is marked consumed + bound, so a second
+ *  exact-amount tx in the SAME tick flags DUPLICATE instead of
+ *  re-driving confirm/fulfillment on the stale payable snapshot. */
+export function consumeExpectation(
+  expectation: AttemptPaymentExpectation,
+  txHash: string,
+): void {
+  expectation.payable = false;
+  expectation.boundTxHash = txHash;
 }
 
 /** Chain evidence → normalized PaymentEvidence for the pipeline. */
@@ -189,6 +205,7 @@ export async function driveExactMatch(
     return;
   }
   result.confirmed++;
+  consumeExpectation(expectation, tx.txHash);
   // Entitlement hook — durable claim/done inside dispatchFulfillment.
   try {
     await deps.fulfill?.(attempt.paymentId);

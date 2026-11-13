@@ -116,7 +116,7 @@ export function loadPayments(errors: string[]): PaymentsConfig {
   );
   const reconLookback = Number(
     process.env.USDC_RECONCILIATION_LOOKBACK_BLOCKS ??
-      monitorLookback,
+    monitorLookback,
   );
   if (
     reconFlag &&
@@ -137,15 +137,33 @@ export function loadPayments(errors: string[]): PaymentsConfig {
   const hasArcNetwork = Object.values(networks).some(
     (n) => n.label === "arc",
   );
+  const monitorEnabled = Boolean(monitorFlag && arcRpcUrl && hasArcNetwork);
+  const selfServe = process.env.PAYMENTS_USDC_SELF_SERVE === "true";
+
+  // Audit H-8 (222-7): self-serve instructions are money-at-risk —
+  // they are legal ONLY for rails the on-chain monitor can actually
+  // confirm (Arc-labeled networks). Self-serve without a running
+  // monitor is a hard config error, not a warning.
+  if (selfServe && !monitorEnabled) {
+    errors.push(
+      "PAYMENTS_USDC_SELF_SERVE=true requires USDC_MONITOR_ENABLED=true " +
+      "plus ARC_RPC_URL and a configured arc-labeled USDC network — " +
+      "self-serve must never issue instructions for unmonitored rails",
+    );
+  }
+  const exposedNetworks = selfServe
+    ? Object.fromEntries(
+      Object.entries(networks).filter(([, n]) => n.label === "arc"),
+    )
+    : networks;
 
   return {
-    usdcNetworks: networks,
+    usdcNetworks: exposedNetworks,
     usdcInstructionsTtlSec: ttlSec,
     // H-8: instructions-only stub is opt-in, never on by default.
-    usdcSelfServeEnabled:
-      process.env.PAYMENTS_USDC_SELF_SERVE === "true",
+    usdcSelfServeEnabled: selfServe,
     usdcMonitor: {
-      enabled: Boolean(monitorFlag && arcRpcUrl && hasArcNetwork),
+      enabled: monitorEnabled,
       arcRpcUrl,
       intervalMs: monitorIntervalMs,
       lookbackBlocks: monitorLookback,

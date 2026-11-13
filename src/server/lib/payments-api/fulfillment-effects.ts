@@ -35,10 +35,15 @@ export interface FulfillmentEffectContext {
   /** false = another worker already claimed the effect. */
   markIntent(): Promise<boolean>;
   markDone(result: unknown): Promise<void>;
+  /** C-1: mark the effect as definitively NOT executed (thrown before
+   *  the external call). Supersedes a bare intent so a crashed-but-
+   *  never-ran mint retries cleanly instead of sticking on "intent". */
+  markFailed(reason?: string): Promise<void>;
 }
 
 const effectIntentId = (opId: string) => `fulfill-effect-intent-${opId}`;
 const effectDoneId = (opId: string) => `fulfill-effect-done-${opId}`;
+const effectFailedId = (opId: string) => `fulfill-effect-failed-${opId}`;
 
 export function buildEffectContext(
   events: FulfillmentEventStore,
@@ -48,18 +53,23 @@ export function buildEffectContext(
     operationId: paymentId,
     async priorEffect() {
       const rows = await events.listByPayment(paymentId);
-      let intent = false;
+      let intentAt = -1;
+      let failedAt = -1;
       let done: { status: "done"; result?: unknown } | null = null;
       for (const e of rows) {
         if (e.entity !== FULFILLMENT_ENTITY) continue;
         if (e.to === "effect-done") {
           done = { status: "done", result: e.payload };
         } else if (e.to === "effect-intent") {
-          intent = true;
+          intentAt = Math.max(intentAt, e.atMs);
+        } else if (e.to === "effect-failed") {
+          failedAt = Math.max(failedAt, e.atMs);
         }
       }
       if (done) return done;
-      if (intent) return { status: "intent" };
+      // C-1: an effect-failed written AFTER the intent proves the
+      // effect never ran — report "none" so the retry executes.
+      if (intentAt > failedAt) return { status: "intent" };
       return { status: "none" };
     },
     async markIntent() {
@@ -88,6 +98,22 @@ export function buildEffectContext(
         });
       } catch {
         /* effect result marker is best-effort — intent already dedupes */
+      }
+    },
+    async markFailed(reason) {
+      try {
+        await events.append({
+          id: `${effectFailedId(paymentId)}_${Date.now()}`,
+          entity: FULFILLMENT_ENTITY,
+          paymentId,
+          from: "effect-intent",
+          to: "effect-failed",
+          actor: FULFILLMENT_ACTOR,
+          atMs: Date.now(),
+          reason: reason ?? null,
+        } as Parameters<typeof events.append>[0]);
+      } catch {
+        /* failure marker is best-effort — the intent row still dedupes */
       }
     },
   };

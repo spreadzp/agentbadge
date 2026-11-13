@@ -89,6 +89,33 @@ export function startUsdcPaymentMonitor(): void {
           if (status === "no-handler") {
             throw new Error(`no fulfillment handler for ${paymentId}`);
           }
+          if (status === "unresolved") {
+            // C-1: paid but not delivered — a durable CRITICAL
+            // exception, never a silent success.
+            try {
+              await stores.exceptions?.append({
+                id: `exc-fulfill-unresolved-${paymentId}`,
+                paymentId,
+                kind: "FULFILLMENT_UNRESOLVED",
+                severity: "CRITICAL",
+                details: {
+                  reason:
+                    "fulfillment handler reported needs-ops — " +
+                    "payment CONFIRMED, delivery not recorded",
+                },
+                status: "OPEN",
+                createdAtMs: Date.now(),
+              });
+            } catch (e) {
+              logger.error("usdc-monitor: unresolved exception append failed", {
+                paymentId,
+                error: e instanceof Error ? e.message : String(e),
+              });
+            }
+            logger.error("usdc-monitor: fulfillment unresolved", {
+              paymentId,
+            });
+          }
         },
         chainFor: (caip2) => chainFor(caip2, mon.arcRpcUrl),
         treasuryFor: (caip2) => cfg.usdcNetworks[caip2]?.recipient,

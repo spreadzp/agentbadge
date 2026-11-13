@@ -174,6 +174,7 @@ describe("C-1 dispatchFulfillment marks after success", () => {
     const handler: FulfillmentHandler = async () => {
       calls++;
       if (calls === 1) throw new Error("mint failed");
+      return "executed";
     };
     const input: FulfillmentInput = {
       productCode: "PASSPORT_BRONZE",
@@ -210,7 +211,7 @@ describe("C-1 dispatchFulfillment marks after success", () => {
 describe("C-2 durable dedupe markers", () => {
   it("payment: dedupeKey writes claim + done; fresh dispatch sees done", async () => {
     const events = makeEvents();
-    const handler = vi.fn(async (_i: FulfillmentInput) => {});
+    const handler = vi.fn(async (_i: FulfillmentInput) => "executed" as const);
     const input: FulfillmentInput = {
       productCode: "PASSPORT_BRONZE",
       metadata: {},
@@ -249,6 +250,7 @@ describe("C-2 durable dedupe markers", () => {
     const handler: FulfillmentHandler = async () => {
       calls++;
       if (calls === 1) throw new Error("boom");
+      return "executed";
     };
     const input: FulfillmentInput = {
       productCode: "PASSPORT_BRONZE",
@@ -333,7 +335,7 @@ describe("H-1/H-2 webhook session binding + amount checks", () => {
   it("session.id resolves the attempt; providerReference is confirmed", async () => {
     const { stores, attempt, paymentId } = await stripeAttempt();
     const confirm = vi.fn().mockResolvedValue({ status: "CONFIRMED" });
-    const handler = vi.fn(async (_i: FulfillmentInput) => {});
+    const handler = vi.fn(async (_i: FulfillmentInput) => "executed" as const);
     const session = {
       id: attempt.providerReference,
       metadata: { paymentId },

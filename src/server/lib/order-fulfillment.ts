@@ -15,10 +15,7 @@ import type { Tier, Capability } from "@agentbadge/hedera-core";
 import { issuePassport } from "@agentbadge/passport";
 import { logger } from "@agentbadge/passport/logger";
 import { passportChainEnabled } from "./passport-chain-gate";
-import {
-  sendDiscordMessage,
-  sendTelegramMessage,
-} from "../services/contact.service";
+import { notifyPaymentDiscord } from "./order-fulfillment-notify";
 import {
   dispatchFulfillment,
   registerFulfillmentHandler,
@@ -26,6 +23,7 @@ import {
   type FulfillmentEffectContext,
   type FulfillmentHandler,
   type FulfillmentInput,
+  type FulfillmentOutcome,
 } from "./payments-api/fulfillment";
 
 const processedSessions = new Set<string>();
@@ -40,13 +38,13 @@ export function resetProcessedSessions(): void {
 
 export async function fulfillDirectoryListing(
   input: FulfillmentInput,
-): Promise<void> {
+): Promise<FulfillmentOutcome> {
   const listingId = input.metadata.listingId;
   if (!listingId) {
     logger.error("fulfillDirectoryListing: missing listingId in metadata", {
       paymentRef: input.paymentRef,
     });
-    return;
+    return "needs-ops";
   }
 
   logger.info("fulfillDirectoryListing: listing published", {
@@ -59,6 +57,7 @@ export async function fulfillDirectoryListing(
       email: input.email,
     });
   }
+  return "executed";
 }
 
 /** Parse helper — catalog metadata stores arrays natively; legacy Stripe
@@ -77,13 +76,15 @@ function parseMetaList(v: unknown): string[] | undefined {
 export async function fulfillPassportMint(
   input: FulfillmentInput,
   ctx?: FulfillmentEffectContext,
-): Promise<void> {
+): Promise<FulfillmentOutcome> {
   if (!passportChainEnabled()) {
+    // C-1: the mint is gated OFF — a paid payment cannot be
+    // delivered by this path; dispatch must NOT record done.
     logger.error(
       "fulfillPassportMint: PASSPORT_CHAIN_ENABLED is off, mint skipped",
       { paymentRef: input.paymentRef },
     );
-    return;
+    return "needs-ops";
   }
 
   const m = input.metadata;
@@ -100,7 +101,7 @@ export async function fulfillPassportMint(
       "fulfillPassportMint: missing required metadata (tier or accountId)",
       { paymentRef: input.paymentRef },
     );
-    return;
+    return "needs-ops";
   }
 
   // Reviews 6.1/6.2 (EPIC-222): the mint is an external effect — before
@@ -114,34 +115,47 @@ export async function fulfillPassportMint(
         paymentRef: input.paymentRef,
         priorResult: prior.result,
       });
-      return;
+      return "deduped-done";
     }
     if (prior.status === "intent") {
+      // C-1: ambiguous — the mint may have executed without a done
+      // marker. Never report success; ops reconciles.
       logger.error(
         "fulfillPassportMint: unresolved effect-intent — mint may have " +
-          "run already; NOT re-minting, ops must reconcile",
+        "run already; NOT re-minting, ops must reconcile",
         { paymentRef: input.paymentRef },
       );
-      return;
+      return "needs-ops";
     }
     if (!(await ctx.markIntent())) {
       logger.info("fulfillPassportMint: effect already claimed", {
         paymentRef: input.paymentRef,
       });
-      return;
+      return "deduped";
     }
   }
 
-  const result = await issuePassport(
-    accountId,
-    "",
-    tier,
-    name,
-    capabilities,
-    endpoint,
-    skills,
-    imageUrl,
-  );
+  let result: Awaited<ReturnType<typeof issuePassport>>;
+  try {
+    result = await issuePassport(
+      accountId,
+      "",
+      tier,
+      name,
+      capabilities,
+      endpoint,
+      skills,
+      imageUrl,
+    );
+  } catch (err) {
+    // C-1: the throw happened on the mint call itself — record
+    // effect-failed so the intent is superseded and a retry is a
+    // clean first run, not an ambiguous "intent".
+    await ctx?.markFailed(
+      err instanceof Error ? err.message.slice(0, 300) : String(err),
+    );
+    throw err;
+  }
 
   await ctx?.markDone({
     tokenId: result.tokenId,
@@ -153,6 +167,7 @@ export async function fulfillPassportMint(
     serialNumber: result.serialNumber,
     paymentRef: input.paymentRef,
   });
+  return "executed";
 }
 
 // Registry wiring — kind keys come from catalog fulfillmentKind values.
@@ -234,51 +249,4 @@ export async function fulfillOrder(
     });
   }
   processedSessions.add(session.id);
-}
-
-/** M-8: attacker-controlled metadata reaches Discord — strip mentions,
- *  markdown control chars and newlines, and cap field length. */
-function sanitizeField(v: unknown, maxLen = 100): string {
-  if (typeof v !== "string") return "unknown";
-  return v
-    .slice(0, maxLen)
-    .replace(/[\r\n]+/g, " ")
-    .replace(/[@#*_~`|]/g, "")
-    .trim() || "unknown";
-}
-
-async function notifyPaymentDiscord(input: FulfillmentInput): Promise<void> {
-  const email = sanitizeField(input.email ?? input.buyerRef);
-  const amount = input.amountUsd
-    ? `$${sanitizeField(input.amountUsd, 20)}`
-    : "unknown";
-  const message = [
-    `💳 New Payment Received`,
-    `Product: ${sanitizeField(input.productCode, 64)}`,
-    `Amount: ${amount}`,
-    `Email: ${email}`,
-    `Session: ${sanitizeField(input.paymentRef)}`,
-  ].join("\n");
-
-  try {
-    await sendDiscordMessage({ message });
-    logger.info("fulfillOrder: Discord notification sent", {
-      paymentRef: input.paymentRef,
-    });
-  } catch (err) {
-
-    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
-      try {
-        await sendTelegramMessage({ message });
-        logger.info("fulfillOrder: Telegram notification sent", {
-          paymentRef: input.paymentRef,
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.error("fulfillOrder: Telegram notification failed", { error: msg });
-      }
-    }
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error("fulfillOrder: Discord notification failed", { error: msg });
-  }
 }

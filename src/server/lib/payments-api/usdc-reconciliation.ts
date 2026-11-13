@@ -12,6 +12,7 @@
  * Scan window is incremental: resumes from a persisted per-network
  * cursor (last reconciled block) instead of re-scanning history.
  */
+import { sweepFulfillmentGaps } from "./usdc-reconciliation-fulfillment";
 import {
   getPaymentNetwork,
   reconcileTransfers,
@@ -67,6 +68,9 @@ const SEVERITY: Record<ReconciliationMismatchKind, "WARN" | "CRITICAL"> = {
   RECEIPT_WITHOUT_CHAIN_TX: "CRITICAL",
   AMOUNT_DRIFT: "CRITICAL",
   RECIPIENT_DRIFT: "CRITICAL",
+  EXACT_TX_ON_UNCONFIRMED_ATTEMPT: "CRITICAL",
+  EXTRA_TX_ON_CONSUMED_ATTEMPT: "CRITICAL",
+  CONFIRMED_WITHOUT_FULFILLMENT: "CRITICAL",
 };
 
 function errMsg(e: unknown): string {
@@ -159,13 +163,22 @@ export async function runReconciliationTick(
           continue;
         }
         seen.add(a.id);
-        recon.push({
-          id: a.id,
-          paymentId: a.paymentId,
-          status: a.status,
-          transactionHash: a.transactionHash,
-          expectation: toExpectation(a, net, asset),
-        });
+        // H-6: one malformed row must not kill the network pass
+        // (an InvalidAmountError here would also pin the cursor).
+        try {
+          recon.push({
+            id: a.id,
+            paymentId: a.paymentId,
+            status: a.status,
+            transactionHash: a.transactionHash,
+            expectation: toExpectation(a, net, asset),
+          });
+        } catch (e) {
+          result.errors.push({
+            stage: `expectation:${a.id}`,
+            message: `malformed attempt skipped: ${errMsg(e)}`,
+          });
+        }
       }
 
       // Receipts for every involved payment.
@@ -187,6 +200,24 @@ export async function runReconciliationTick(
 
       const exceptions = deps.stores.exceptions;
       for (const m of mismatches) {
+        // H-2: RECEIPT_WITHOUT_CHAIN_TX fires for every receipt
+        // whose tx is merely outside the incremental window — the
+        // real gap test is whether the tx still exists on-chain.
+        // Verify directly; a live successful receipt means no gap.
+        if (m.kind === "RECEIPT_WITHOUT_CHAIN_TX" && m.txHash) {
+          try {
+            const rc = await chain.getTxReceipt(m.txHash);
+            if (rc && rc.status === "success") continue;
+          } catch (e) {
+            // RPC trouble — don't emit a gap exception we cannot
+            // back with evidence; leave it for the next run.
+            result.errors.push({
+              stage: `receipt-verify:${m.txHash}`,
+              message: errMsg(e),
+            });
+            continue;
+          }
+        }
         result.mismatches[m.kind] =
           (result.mismatches[m.kind] ?? 0) + 1;
         if (!exceptions) continue;
@@ -208,6 +239,20 @@ export async function runReconciliationTick(
         });
         if (appended) result.exceptionsWritten++;
       }
+
+      // Audit C-1 sweeper: CONFIRMED payment without a durable
+      // fulfill-done marker = paid-but-not-delivered.
+      const gap = await sweepFulfillmentGaps(recon, {
+        stores: deps.stores,
+        caip2,
+        atMs,
+      });
+      if (gap.count > 0) {
+        result.mismatches.CONFIRMED_WITHOUT_FULFILLMENT =
+          (result.mismatches.CONFIRMED_WITHOUT_FULFILLMENT ?? 0) + gap.count;
+        result.exceptionsWritten += gap.exceptionsWritten;
+      }
+      result.errors.push(...gap.errors);
 
       // Cursor advances only after a fully successful network pass.
       await deps.cursorStore?.set(caip2, head);

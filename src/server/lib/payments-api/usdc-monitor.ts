@@ -27,6 +27,7 @@ import {
   getPaymentNetwork,
   matchTransfer,
   type ArcChainClient,
+  type ChainTxEvidence,
   type ConfirmPaymentInput,
   type ConfirmPaymentOutcome,
   type PaymentServiceStores,
@@ -137,9 +138,9 @@ export async function runUsdcMonitorTick(
   );
   const recentTerminal = listRecent
     ? (await listRecent(atMs - recentWindowMs)).filter(
-        (a) =>
-          a.provider === "DIRECT_USDC" && a.network != null,
-      )
+      (a) =>
+        a.provider === "DIRECT_USDC" && a.network != null,
+    )
     : [];
   const payableIds = new Set(payable.map((a) => a.id));
   const terminalExtras = recentTerminal.filter(
@@ -181,11 +182,42 @@ export async function runUsdcMonitorTick(
       result.networksScanned++;
       result.transfersSeen += transfers.length;
 
-      const expectations = group.map((a) => toExpectation(a, net, asset));
-      const attemptsById = new Map(group.map((a) => [a.id, a]));
+      // H-6: a single malformed attempt must not kill the whole
+      // network pass — isolate expectation building per attempt and
+      // record the bad row as an exception instead of throwing.
+      const expectations = [];
+      const attemptsById = new Map<string, PersistedAttempt>();
+      for (const a of group) {
+        try {
+          expectations.push(toExpectation(a, net, asset));
+          attemptsById.set(a.id, a);
+        } catch (e) {
+          result.errors.push({
+            stage: `expectation:${a.id}`,
+            message: `malformed attempt skipped: ${errMsg(e)}`,
+          });
+        }
+      }
 
       for (const t of transfers) {
         try {
+          // H-5: cheap pre-match on decoded-log fields — the full
+          // evidence fetch (receipt + head + block, ~3 RPC calls)
+          // runs only for transfers that could matter.
+          const cheap: ChainTxEvidence = {
+            txHash: t.txHash,
+            network: net.caip2,
+            tokenContract: asset.contractAddress,
+            from: t.from,
+            to: t.to,
+            amountUnits: t.amountUnits,
+            blockNumber: t.blockNumber,
+            confirmations: 0,
+          };
+          const pre = matchTransfer(cheap, expectations, {
+            network: net,
+          });
+          if (pre.status === "NONE") continue; // unrelated income
           const tx = await chain.txEvidence({
             txHash: t.txHash,
             tokenContract: asset.contractAddress,

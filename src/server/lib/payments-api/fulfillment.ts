@@ -21,13 +21,20 @@
  */
 
 import {
-  getCommerceProduct,
-  productCodeForLegacyId,
-} from "../commerce-catalog";
-import {
   buildEffectContext,
   type FulfillmentEffectContext,
 } from "./fulfillment-effects";
+import {
+  FULFILLMENT_ACTOR,
+  FULFILLMENT_ENTITY,
+  claimEventId,
+  doneEventId,
+  durableState,
+  newMarkerId,
+  reclaimEventId,
+  resolveKind,
+  unresolvedEventId,
+} from "./fulfillment-state";
 
 export type { FulfillmentEffectContext } from "./fulfillment-effects";
 
@@ -43,10 +50,29 @@ export interface FulfillmentInput {
   paymentRef?: string;
 }
 
+/**
+ * Audit C-1 (EPIC-222): handlers with external effects MUST return a
+ * discriminated outcome — a silent return is never treated as
+ * "delivered". Dispatch writes the durable `done` marker ONLY for
+ * executed/deduped-done; anything else stays retryable/ops-visible.
+ */
+export type FulfillmentOutcome =
+  /** The external effect ran to completion in this call. */
+  | "executed"
+  /** A prior durable effect-done proves the effect already ran. */
+  | "deduped-done"
+  /** Another worker owns the effect/claim right now — do NOT record
+   *  done locally (the winner writes it). */
+  | "deduped"
+  /** The effect could not be attempted or is in an ambiguous state
+   *  (unresolved intent, missing metadata, feature gate off) — ops
+   *  must reconcile; dispatch records `unresolved`, NOT `done`. */
+  | "needs-ops";
+
 export type FulfillmentHandler = (
   input: FulfillmentInput,
   ctx?: FulfillmentEffectContext,
-) => Promise<void>;
+) => Promise<FulfillmentOutcome>;
 export type FulfillmentNotifier = (input: FulfillmentInput) => Promise<void>;
 
 /** Narrow structural slice of the payments EventStorePort — only the two
@@ -74,7 +100,11 @@ export interface FulfillmentEventStore {
 export type FulfillmentDispatchStatus =
   | "fulfilled"
   | "deduped"
-  | "no-handler";
+  | "no-handler"
+  /** C-1: handler reported needs-ops — unresolved marker written,
+   *  `done` intentionally NOT recorded; caller must surface an
+   *  ops exception. */
+  | "unresolved";
 
 const registry = new Map<string, FulfillmentHandler>();
 /** Keys whose handler completed in THIS process (fast path). */
@@ -82,14 +112,6 @@ const fulfilledRefs = new Set<string>();
 /** Keys with a handler currently executing — concurrency guard (C-1). */
 const inFlightRefs = new Set<string>();
 let notifier: FulfillmentNotifier | undefined;
-
-const FULFILLMENT_ENTITY = "FULFILLMENT";
-const FULFILLMENT_ACTOR = "fulfillment-registry";
-/** A claimed-without-done marker older than this is a crashed run → retry. */
-const CLAIM_STALE_MS = 10 * 60 * 1000;
-
-const claimEventId = (paymentId: string) => `fulfill-claim-${paymentId}`;
-const doneEventId = (paymentId: string) => `fulfill-done-${paymentId}`;
 
 export function registerFulfillmentHandler(
   key: string,
@@ -109,45 +131,6 @@ export function resetFulfillmentRegistry(): void {
   fulfilledRefs.clear();
   inFlightRefs.clear();
   notifier = undefined;
-}
-
-/** kind resolution: canonical productCode first, then the legacy kebab
- *  productId mapping (fulfillment.ts nit — legacy ids like
- *  "passport-bronze" resolve to their fulfillmentKind too). */
-function resolveKind(input: FulfillmentInput, explicit?: string): string {
-  if (explicit) return explicit;
-  const product =
-    getCommerceProduct(input.productCode) ??
-    getCommerceProduct(productCodeForLegacyId(input.productCode) ?? "");
-  return product?.fulfillmentKind ?? input.productCode;
-}
-
-type DurableState = "done" | "claimed-fresh" | "stale-claim" | "none";
-
-async function durableState(
-  events: FulfillmentEventStore,
-  paymentId: string,
-  nowMs: number,
-): Promise<DurableState> {
-  const rows = await events.listByPayment(paymentId);
-  let hasClaim = false;
-  let hasStaleClaim = false;
-  for (const e of rows) {
-    if (e.entity !== FULFILLMENT_ENTITY) continue;
-    if (e.to === "done") return "done";
-    if (e.to === "claimed") {
-      if (e.atMs > nowMs - CLAIM_STALE_MS) hasClaim = true;
-      else hasStaleClaim = true;
-    }
-  }
-  if (hasClaim) return "claimed-fresh";
-  if (hasStaleClaim) return "stale-claim";
-  return "none";
-}
-
-function newMarkerId(prefix: string): string {
-  return `${prefix}_${globalThis.crypto?.randomUUID?.() ??
-    `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
 }
 
 /**
@@ -208,7 +191,21 @@ export async function dispatchFulfillment(
         if (recheck !== "stale-claim") return "deduped";
       }
     }
-    // "stale-claim" → crashed run; proceed under the existing claim.
+    if (state === "stale-claim") {
+      // H-9: crashed run retry — fence concurrent reclaimers with a
+      // CAS marker; only the first append wins, others stand down.
+      const reclaimed = await events.append({
+        id: reclaimEventId(paymentId),
+        entity: FULFILLMENT_ENTITY,
+        paymentId,
+        from: "stale-claim",
+        to: "claimed",
+        actor: FULFILLMENT_ACTOR,
+        reason: "reclaimed after claim went stale",
+        atMs: nowMs,
+      });
+      if (reclaimed === null) return "deduped";
+    }
   } else if (key) {
     inFlightRefs.add(key);
   }
@@ -219,8 +216,9 @@ export async function dispatchFulfillment(
   const effectCtx =
     events && paymentId ? buildEffectContext(events, paymentId) : undefined;
 
+  let outcome: FulfillmentOutcome;
   try {
-    await handler(input, effectCtx);
+    outcome = await handler(input, effectCtx);
   } catch (err) {
     if (key) inFlightRefs.delete(key);
     if (events && paymentId) {
@@ -243,7 +241,36 @@ export async function dispatchFulfillment(
     throw err;
   }
 
-  // C-1: fulfillment is marked ONLY after the handler succeeded.
+  // C-1: `done` is recorded only when the handler PROVES the effect
+  // ran (executed) or the durable ledger proves it (deduped-done).
+  if (outcome === "deduped") {
+    if (key) inFlightRefs.delete(key);
+    return "deduped";
+  }
+  if (outcome === "needs-ops") {
+    if (key) inFlightRefs.delete(key);
+    if (events && paymentId) {
+      try {
+        await events.append({
+          id: unresolvedEventId(paymentId),
+          entity: FULFILLMENT_ENTITY,
+          paymentId,
+          from: "claimed",
+          to: "unresolved",
+          actor: FULFILLMENT_ACTOR,
+          reason:
+            "handler reported needs-ops — paid but not delivered; " +
+            "done intentionally not recorded",
+          atMs: nowMs,
+        });
+      } catch {
+        /* unresolved marker is best-effort; claim still dedupes */
+      }
+    }
+    return "unresolved";
+  }
+
+  // executed | deduped-done → record done.
   if (key) {
     inFlightRefs.delete(key);
     fulfilledRefs.add(key);

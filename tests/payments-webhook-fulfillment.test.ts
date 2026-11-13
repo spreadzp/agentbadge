@@ -143,7 +143,7 @@ describe("dispatchCheckoutSession", () => {
   });
 
   it("metadata.paymentId → confirmPayment; CONFIRMED → fulfillment handler", async () => {
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const confirm = vi
       .fn()
       .mockResolvedValue({ status: "CONFIRMED" });
@@ -179,7 +179,7 @@ describe("dispatchCheckoutSession", () => {
   });
 
   it("non-CONFIRMED outcome → no fulfillment dispatch", async () => {
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const session = {
       id: "cs_2",
       metadata: { paymentId: "pay_2" },
@@ -223,7 +223,7 @@ describe("dispatchCheckoutSession", () => {
     const confirm = vi
       .fn()
       .mockResolvedValue({ status: "CONFIRMED" });
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const session = {
       id: "cs_dup",
       metadata: { paymentId: "pay_dup" },
@@ -253,7 +253,7 @@ describe("dispatchCheckoutSession", () => {
     const confirm = vi
       .fn()
       .mockResolvedValue({ status: "CONFIRMED" });
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const session = {
       id: "cs_re",
       metadata: { paymentId: "pay_re" },
@@ -298,7 +298,7 @@ describe("webhook → confirm → fulfillment pipeline", () => {
     const paymentId = created.payment.id;
     await checkout.createAttempt({ paymentId, provider: "STRIPE" });
 
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const session = {
       id: "cs_paid",
       metadata: { paymentId },
@@ -335,7 +335,7 @@ describe("dispatchFulfillment registry", () => {
   });
 
   it("resolves handler by fulfillmentKind (catalog productCode)", async () => {
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const registry = registryWith({ "passport-mint": handler });
 
     await dispatchFulfillment(
@@ -347,7 +347,7 @@ describe("dispatchFulfillment registry", () => {
   });
 
   it("same dedupeKey → handler once; different key → runs again", async () => {
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const registry = registryWith({ "passport-mint": handler });
     const input: FulfillmentInput = {
       productCode: "PASSPORT_BRONZE",
@@ -435,11 +435,11 @@ describe("order-fulfillment normalized handlers", () => {
         productCode: "DIRECTORY_LISTING",
         metadata: { listingId: "lst_42" },
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe("executed");
   });
 
   it("legacy directory-listing session → directory handler path", async () => {
-    const handler = vi.fn(async (_input: FulfillmentInput) => { });
+    const handler = vi.fn(async (_input: FulfillmentInput) => "executed" as const);
     const session = {
       id: "cs_legacy_dir",
       metadata: { productId: "directory-listing", listingId: "lst_1" },
