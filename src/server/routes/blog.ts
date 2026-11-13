@@ -40,8 +40,9 @@ blogRoutes.get(
     const page = pageParam ? parseInt(pageParam, 10) : 1;
     const tagParam = c.req.query("tag");
     const channelParam = c.req.query("channel");
-    const tagCounts = getTagCounts(BLOG_ARTICLES);
-    const channelCounts = getChannelCounts(BLOG_ARTICLES);
+    const tagCounts = getTagCounts(BLOG_ARTICLES), channelCounts = getChannelCounts(BLOG_ARTICLES);
+    // Crawl trap: unknown rubric params → 404 instead of 200 + self-canonical.
+    if ((tagParam && !tagCounts.some((t) => t.tag === tagParam)) || (channelParam && !channelCounts.some((ch) => ch.key === channelParam))) return c.notFound();
     // SLICE-217-14: newest-first in every view — array order is curated, not chronological.
     const filteredArticles = (
       tagParam ? filterByTag(BLOG_ARTICLES, tagParam)

@@ -5,6 +5,8 @@
 // after ALL routes are mounted (last wire call before onError).
 
 import type { Hono } from "hono";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { openAPIRouteHandler } from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
@@ -41,6 +43,13 @@ export function wireStaticOps(app: Hono): void {
     return next();
   }, serveStatic({ root: "./public" }));
   app.use("/images/*", (c, next) => {
+    // Legacy crawlers replay .jpeg/.png URLs that were replaced by .webp —
+    // 301 to the webp twin when the requested file is gone but the webp exists.
+    const p = c.req.path;
+    if (/\.(jpe?g|png)$/i.test(p) && !existsSync(join("./public", p))) {
+      const webp = p.replace(/\.(jpe?g|png)$/i, ".webp");
+      if (existsSync(join("./public", webp))) return c.redirect(webp, 301);
+    }
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     return next();
   }, serveStatic({ root: "./public" }));

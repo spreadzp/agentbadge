@@ -289,6 +289,11 @@ discoveryRoutes.get(
   },
 );
 
+// Alias: clients probe `/.well-known/x402` (no .json) — redirect instead of 404.
+discoveryRoutes.get("/.well-known/x402", (c) =>
+  c.redirect("/.well-known/x402.json", 301),
+);
+
 // ─── WebMCP manifest (SLICE-47-12) ────────────────────────────
 
 discoveryRoutes.get(
