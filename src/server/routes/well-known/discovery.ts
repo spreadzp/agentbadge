@@ -110,6 +110,137 @@ discoveryRoutes.get(
   },
 );
 
+// ─── AAuth resource metadata (SLICE-PR3-7 / AB-135) ──────────────
+// draft-hardt-oauth-aauth-protocol §11.2.4: resource server metadata.
+// issuer MUST byte-match the origin this doc is fetched from (RFC8414 §3.3
+// semantics). Only fields describing what we actually serve — the
+// agent_authorization grant itself lands in phase 2 before it may be
+// advertised in grant_types_supported.
+discoveryRoutes.get(
+  "/.well-known/aauth-resource.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "AAuth resource server metadata",
+    description:
+      "AAuth (draft-hardt-oauth-aauth-protocol) resource server metadata: issuer and JWKS location for the agentbadge.xyz resource origin.",
+    responses: {
+      200: {
+        description: "AAuth resource metadata JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                issuer: z.string(),
+                jwks_uri: z.string(),
+                name: z.string(),
+                description: z.string(),
+                documentation_uri: z.string(),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    return c.json(
+      {
+        issuer: baseUrl,
+        jwks_uri: `${baseUrl}/.well-known/jwks.json`,
+        name: "AgentBadge",
+        description:
+          "Agent-readiness scoring, verifiable badges, and passport NFTs for AI agents. Paid endpoints use x402 (HTTP 402) payments.",
+        documentation_uri: `${baseUrl}/auth.md`,
+      },
+      200,
+      { "Cache-Control": "public, max-age=3600" },
+    );
+  },
+);
+
+// ─── aauth.json (SLICE-PR3-7 / AB-135 + AB-137) ──────────────────
+// Simplified discovery doc the agent-readiness scanner (and ecosystem
+// crawlers) probe. Points at the spec-canonical aauth-resource.json and
+// describes real agent-facing access: x402-paid endpoints, free trust
+// reads, passport issuance. scope_descriptions feeds AB-137.
+discoveryRoutes.get(
+  "/.well-known/aauth.json",
+  describeRoute({
+    tags: ["Discovery"],
+    summary: "Agent authorization discovery (AAuth-compatible)",
+    description:
+      "Simplified agent authorization discovery document: links AAuth resource metadata, OAuth server metadata, and published scope descriptions for agent-facing access.",
+    responses: {
+      200: {
+        description: "AAuth discovery JSON",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                issuer: z.string(),
+                jwks_uri: z.string(),
+                token_endpoint: z.string(),
+                aauth_resource_metadata: z.string(),
+                oauth_authorization_server: z.string(),
+                scope_descriptions: z.array(
+                  z.object({
+                    scope: z.string(),
+                    description: z.string(),
+                  }),
+                ),
+              }),
+            ),
+          },
+        },
+      },
+    },
+  }),
+  (c) => {
+    const baseUrl = BASE_URL;
+    return c.json(
+      {
+        issuer: baseUrl,
+        jwks_uri: `${baseUrl}/.well-known/jwks.json`,
+        token_endpoint: `${baseUrl}/auth/token`,
+        aauth_resource_metadata: `${baseUrl}/.well-known/aauth-resource.json`,
+        oauth_authorization_server: `${baseUrl}/.well-known/oauth-authorization-server`,
+        agent_auth: {
+          register_uri: `${baseUrl}/auth.md`,
+          supported_identity_types: ["did:hcs", "nft-passport"],
+          credential_types: ["nft", "hcs-signed-message"],
+          claims_endpoint: `${baseUrl}/passport`,
+          revocation_endpoint: `${baseUrl}/passport/revoke`,
+        },
+        scope_descriptions: [
+          {
+            scope: "trust:read",
+            description:
+              "Read agent trust snapshots via GET /api/trust/:domain — free, no auth.",
+          },
+          {
+            scope: "scan:lite",
+            description:
+              "Agent-readiness lite scan via GET /api/v1/demo/scan-lite — x402-paid (USDC on Arc).",
+          },
+          {
+            scope: "passport:issue",
+            description:
+              "Mint a passport NFT via POST /passport/request — x402 payment plus wallet proof.",
+          },
+          {
+            scope: "badge:verify",
+            description:
+              "Verify a badge verdict via the public verify endpoints — free, no auth.",
+          },
+        ],
+      },
+      200,
+      { "Cache-Control": "public, max-age=3600" },
+    );
+  },
+);
+
 // ─── skill.json (SLICE-121-6) ───────────────────────────────────
 
 discoveryRoutes.get(
