@@ -53,6 +53,7 @@ import { article as devinCloudAudit } from "./devin-cloud-audit";
 import { article as arcC47CircleMarketplace } from "./arc-c47-circle-marketplace";
 import { article as arcC48DirectUsdcEngine } from "./arc-c48-direct-usdc-engine";
 import { article as arcC49AgentRequestInbox } from "./arc-c49-agent-request-inbox";
+import { article as arcC50X402Gateway } from "./arc-c50-x402-gateway";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -108,5 +109,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC47CircleMarketplace,
   arcC48DirectUsdcEngine,
   arcC49AgentRequestInbox,
+  arcC50X402Gateway,
   devinCloudAudit,
 ];
