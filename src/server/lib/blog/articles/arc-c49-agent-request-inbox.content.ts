@@ -12,10 +12,10 @@ curl -X POST https://agentbadge.xyz/api/requests \\
   -H &quot;content-type: application/json&quot; \\
   -H &quot;Idempotency-Key: q-1742000000&quot; \\
   -d &#39;{&quot;kind&quot;:&quot;question&quot;,&quot;payload&quot;:{&quot;question&quot;:&quot;What does the free scan cover?&quot;}}&#39;
-# → 202 {&quot;request_id&quot;:&quot;req_8f3c…&quot;}
+# → 202 {&quot;request_id&quot;:&quot;rq_9a7f…&quot;}
 
 # 2. Poll by id (AAuth §11.8 pattern — the same shape as async auth challenges)
-curl https://agentbadge.xyz/api/requests/req_8f3c…
+curl https://agentbadge.xyz/api/requests/rq_9a7f…
 # → 202 {&quot;state&quot;:&quot;submitted&quot;} + Retry-After: 120
 #    …later… → 200 {&quot;state&quot;:&quot;completed&quot;,&quot;response&quot;:{…}}
 
