@@ -379,42 +379,101 @@ discoveryRoutes.get(
   }),
   (c) => {
     const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "https://facilitator-agentbadge.fly.dev";
-    const payTo = process.env.x402_TREASURY ?? process.env.HEDERA_OPERATOR_ID ?? "0.0.5266613";
-    const network = process.env.HEDERA_NETWORK ?? "testnet";
-    const networkId = network === "mainnet" ? "hedera:mainnet" : "hedera:testnet";
+    const payTo = process.env.X402_PAY_TO ?? process.env.x402_TREASURY ?? "";
 
-    const config = {
-      x402Version: 1,
-      name: "AgentBadge",
-      network: networkId,
-      facilitator: facilitatorUrl,
-      payTo,
-      services: [
+    // Advertise only rails that are actually mounted: marketplace +
+    // scan gates always (they fail closed without runtime), EPIC-223
+    // pilots only when the gateway flag is on.
+    const services: Array<Record<string, unknown>> = [
+      {
+        method: "GET",
+        path: "/api/v1/demo/scan-lite",
+        description:
+          "One-page agent-readiness probe — USDC on Arc via circle-payments",
+        amount: { asset: "USDC", network: "eip155:5042002", price: "0.001" },
+        mimeType: "application/json",
+        extensions: {
+          bazaar: {
+            discoverable: true,
+            category: "scan",
+            tags: ["arc", "usdc", "agent-readiness", "demo", "x402"],
+          },
+        },
+      },
+      {
+        method: "POST",
+        path: "/api/total-scan",
+        description:
+          "Agent-readiness scan, priced per selected rule bundle — multi-chain accepts",
+        amount: { asset: "USDC", network: "eip155:5042002" },
+        mimeType: "application/json",
+        extensions: {
+          bazaar: {
+            discoverable: true,
+            category: "scan",
+            tags: ["arc", "usdc", "agent-readiness", "scan", "x402"],
+          },
+        },
+      },
+      {
+        method: "POST",
+        path: "/api/market/passport",
+        description:
+          "Marketplace passport mint — USDC via circle-payments PaymentRouter",
+        amount: { asset: "USDC", network: "eip155:5042002" },
+        mimeType: "application/json",
+        extensions: {
+          bazaar: {
+            discoverable: true,
+            category: "identity",
+            tags: ["arc", "usdc", "passport", "marketplace", "x402"],
+          },
+        },
+      },
+    ];
+
+    if (process.env.X402_GATEWAY_ENABLED === "true") {
+      services.push(
         {
           method: "POST",
-          path: "/passport/request",
+          path: "/api/v1/passport/request",
           description:
-            "Agent Passport NFT issuance (x402 payment required) — deprecated HBAR path; new agents mint the EVM passport for USDC on Arc",
-          amount: {
-            asset: "HBAR",
-            unit: "tinybar",
-            tiers: {
-              bronze: "5000000",
-              silver: "25000000",
-              gold: "100000000",
-              platinum: "500000000",
-            },
-          },
+            "Agent Passport issuance — USDC on Arc testnet via x402 gateway (EPIC-223 pilot)",
+          amount: { asset: "USDC", network: "eip155:5042002", price: "0.10" },
           mimeType: "application/json",
           extensions: {
             bazaar: {
               discoverable: true,
               category: "identity",
-              tags: ["hedera", "nft", "passport", "agent-identity"],
+              tags: ["arc", "usdc", "passport", "agent-identity", "x402"],
             },
           },
         },
-      ],
+        {
+          method: "GET",
+          path: "/api/v1/fx/delta/premium",
+          description:
+            "Premium FX-delta snapshot — USDC on Arc testnet via x402 gateway (EPIC-223 pilot)",
+          amount: { asset: "USDC", network: "eip155:5042002", price: "0.02" },
+          mimeType: "application/json",
+          extensions: {
+            bazaar: {
+              discoverable: true,
+              category: "data",
+              tags: ["arc", "usdc", "fx", "premium", "x402"],
+            },
+          },
+        },
+      );
+    }
+
+    const config = {
+      x402Version: 1,
+      name: "AgentBadge",
+      network: "eip155:5042002",
+      facilitator: facilitatorUrl,
+      payTo,
+      services,
       extensions: {
         bazaar: {
           discoverable: true,
