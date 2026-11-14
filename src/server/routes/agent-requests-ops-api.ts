@@ -39,6 +39,10 @@ const stateSchema = z.object({
   state: z.enum(["working", "failed", "completed"]),
 });
 
+const spamSchema = z.object({
+  spam_flag: z.boolean(),
+});
+
 const toOpsItem = (r: InboxRequestRecord) => ({
   id: r.id,
   state: r.state,
@@ -233,6 +237,43 @@ export function createAgentRequestOpsRoutes(
         return errorResponse(c, 409, ErrorCodes.INVALID_STATE, "terminal");
       }
       return c.json({ id, state: target });
+    },
+  );
+
+  app.post(
+    "/api/ops/requests/:id/spam",
+    adminAuth,
+    describeRoute({
+      summary: "Toggle spamFlag — orthogonal to state, any record",
+      tags: ["Ops"],
+      responses: {
+        200: { description: "Flag updated" },
+        400: { description: "Missing spam_flag" },
+        404: { description: "Unknown id" },
+      },
+    }),
+    async (c) => {
+      const id = c.req.param("id");
+      const parsed = spamSchema.safeParse(await c.req.json().catch(() => null));
+      if (!parsed.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          "body must be { spam_flag: boolean }",
+        );
+      }
+      const { record } = await stores.requests.get(id);
+      if (!record) {
+        return errorResponse(
+          c,
+          404,
+          ErrorCodes.REQUEST_NOT_FOUND,
+          "no such request",
+        );
+      }
+      await stores.requests.setSpamFlag(id, parsed.data.spam_flag);
+      return c.json({ id, spamFlag: parsed.data.spam_flag });
     },
   );
 

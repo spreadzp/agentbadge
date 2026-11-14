@@ -380,6 +380,11 @@ discoveryRoutes.get(
   (c) => {
     const facilitatorUrl = process.env.x402_FACILITATOR_URL ?? "https://facilitator-agentbadge.fly.dev";
     const payTo = process.env.X402_PAY_TO ?? process.env.x402_TREASURY ?? "";
+    // CAIP-2 the pilots/rails actually charge on — same env the
+    // gateway registry uses (X402_GATEWAY_NETWORK), else ARC_CHAIN_ID.
+    const arcNetwork =
+      process.env.X402_GATEWAY_NETWORK ??
+      `eip155:${process.env.ARC_CHAIN_ID ?? "5042002"}`;
 
     // Advertise only rails that are actually mounted: marketplace +
     // scan gates always (they fail closed without runtime), EPIC-223
@@ -390,7 +395,7 @@ discoveryRoutes.get(
         path: "/api/v1/demo/scan-lite",
         description:
           "One-page agent-readiness probe — USDC on Arc via circle-payments",
-        amount: { asset: "USDC", network: "eip155:5042002", price: "0.001" },
+        amount: { asset: "USDC", network: arcNetwork, price: "0.001" },
         mimeType: "application/json",
         extensions: {
           bazaar: {
@@ -405,7 +410,7 @@ discoveryRoutes.get(
         path: "/api/total-scan",
         description:
           "Agent-readiness scan, priced per selected rule bundle — multi-chain accepts",
-        amount: { asset: "USDC", network: "eip155:5042002" },
+        amount: { asset: "USDC", network: arcNetwork },
         mimeType: "application/json",
         extensions: {
           bazaar: {
@@ -420,7 +425,7 @@ discoveryRoutes.get(
         path: "/api/market/passport",
         description:
           "Marketplace passport mint — USDC via circle-payments PaymentRouter",
-        amount: { asset: "USDC", network: "eip155:5042002" },
+        amount: { asset: "USDC", network: arcNetwork },
         mimeType: "application/json",
         extensions: {
           bazaar: {
@@ -438,8 +443,8 @@ discoveryRoutes.get(
           method: "POST",
           path: "/api/v1/passport/request",
           description:
-            "Agent Passport issuance — USDC on Arc testnet via x402 gateway (EPIC-223 pilot)",
-          amount: { asset: "USDC", network: "eip155:5042002", price: "0.10" },
+            "Agent Passport issuance — USDC on Arc via x402 gateway (EPIC-223 pilot)",
+          amount: { asset: "USDC", network: arcNetwork, price: "0.10" },
           mimeType: "application/json",
           extensions: {
             bazaar: {
@@ -453,8 +458,8 @@ discoveryRoutes.get(
           method: "GET",
           path: "/api/v1/fx/delta/premium",
           description:
-            "Premium FX-delta snapshot — USDC on Arc testnet via x402 gateway (EPIC-223 pilot)",
-          amount: { asset: "USDC", network: "eip155:5042002", price: "0.02" },
+            "Premium FX-delta snapshot — USDC on Arc via x402 gateway (EPIC-223 pilot)",
+          amount: { asset: "USDC", network: arcNetwork, price: "0.02" },
           mimeType: "application/json",
           extensions: {
             bazaar: {
@@ -470,7 +475,7 @@ discoveryRoutes.get(
     const config = {
       x402Version: 1,
       name: "AgentBadge",
-      network: "eip155:5042002",
+      network: arcNetwork,
       facilitator: facilitatorUrl,
       payTo,
       services,
