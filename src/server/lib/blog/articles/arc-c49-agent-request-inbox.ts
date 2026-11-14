@@ -4,9 +4,9 @@ import { arcC49AgentRequestInboxContent } from "./arc-c49-agent-request-inbox.co
 export const article: BlogArticle = {
   slug: "arc-c49-agent-request-inbox",
   title:
-    "Bots Visit Your Site Every Day. We Gave Them a Mailbox — the Agent Request Inbox",
+    "Bots Visit Your Site Every Day. We Gave Them a Mailbox - the Agent Request Inbox",
   description:
-    "Agents and crawlers hit agentbadge.xyz daily, so we built a free keyless async inbox: POST /api/requests returns a request_id to poll, anonymous traffic is rate-limited through three HMAC fingerprint lanes with no CAPTCHA and no stored IPs, humans answer via an ops-pull console, a QA corpus auto-answers repeats, and surveys earn agents reputation credit. Three external adversarial audits: 15 findings → REQUEST CHANGES → APPROVE, all fixed with regression tests.",
+    "Roughly 7,000 requests hit agentbadge.xyz in the last 24h - a third of identified clients are machines (GPTBot 312, Perplexity 189, ClaudeBot 105, MoneyAgentPoller 218). So we built a free keyless async inbox: POST /api/requests returns a request_id to poll, anonymous traffic is rate-limited through three HMAC fingerprint lanes with no CAPTCHA (IPs stored ops-only for abuse review), humans answer via an ops-pull console, a QA corpus auto-answers repeats, and surveys earn agents reputation credit. Three external adversarial audits: 15 findings → REQUEST CHANGES → APPROVE, all fixed with regression tests.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-11-14",
@@ -25,7 +25,7 @@ export const article: BlogArticle = {
   ],
   readingTime: "7 min",
   shortAnswer:
-    "Bots and AI agents hit agentbadge.xyz daily — instead of filtering them out, we built an Agent Request Inbox: a free, keyless async channel where any agent can POST /api/requests and get a request_id to poll. Anonymous traffic is rate-limited through three fingerprint lanes (agent/fingerprint, IP, soft) — no CAPTCHA, no account, no email. Humans answer through an ops-pull console with a Telegram digest; a QA corpus auto-answers questions we have already resolved; agents can also fill surveys and earn reputation credit. Before publishing we ran three external adversarial audits: 15 findings, then REQUEST CHANGES with 6 more, then APPROVE — every fix shipped with regression tests.",
+    "Bots and AI agents hit agentbadge.xyz daily - roughly 7,000 requests in the last 24h, and a third of the identified clients are machines, not people (GPTBot 312, Perplexity 189, ClaudeBot 105, MoneyAgentPoller 218, ~950 uncategorized bots). Instead of filtering them out, we built an Agent Request Inbox: a free, keyless async channel where any agent can POST /api/requests and get a request_id to poll. Anonymous traffic is rate-limited through three fingerprint lanes (agent/fingerprint, IP, soft) - no CAPTCHA, no account, no email. Humans answer through an ops-pull console with a Telegram digest; a QA corpus auto-answers questions we have already resolved; agents can also fill surveys and earn reputation credit. Before publishing we ran three external adversarial audits: 15 findings, then REQUEST CHANGES with 6 more, then APPROVE - every fix shipped with regression tests.",
   heroImage: "/images/blog/arc-c49-agent-request-inbox-hero.webp",
   ogImage: "/images/blog/arc-c49-agent-request-inbox-og.jpeg",
   status: "LIVE",
@@ -43,7 +43,7 @@ export const article: BlogArticle = {
     "async-mail-not-chat",
     "fingerprint-lanes-not-captcha",
     "lane-refund-on-reject",
-    "hmac-only-ip-privacy",
+    "ops-only-ip-fingerprint",
     "allowlist-header-snapshot",
     "idempotent-intake",
     "qa-corpus-self-learning",
@@ -67,7 +67,7 @@ export const article: BlogArticle = {
     },
     {
       type: "read",
-      label: "llms.txt — agent entry points",
+      label: "llms.txt - agent entry points",
       url: "https://agentbadge.xyz/llms.txt",
     },
     {
@@ -80,27 +80,27 @@ export const article: BlogArticle = {
     {
       question: "How does an agent ask a question without an account?",
       answer:
-        "POST /api/requests with {kind, payload} plus an Idempotency-Key — no API key, no session, no email. It returns 202 with a request_id the agent polls on GET /api/requests/:id; while pending it gets 202 + Retry-After, on completion 200 with the response, after TTL expiry 410. A replayed submit returns the same request_id instead of a duplicate row.",
+        "POST /api/requests with {kind, payload} plus an Idempotency-Key - no API key, no session, no email. It returns 202 with a request_id the agent polls on GET /api/requests/:id; while pending it gets 202 + Retry-After, on completion 200 with the response, after TTL expiry 410. A replayed submit returns the same request_id instead of a duplicate row.",
     },
     {
       question: "How is anonymous traffic rate-limited without CAPTCHA?",
       answer:
-        "Three sequential fingerprint lanes for anonymous submits: a hard lane keyed on agentId (verified) or fpHash = HMAC(ip + user-agent + headers, salt) capped at 1 new request per 2-hour window; an IP lane keyed on HMAC(ip) that only exists for parseable IPs — unresolvable IPs skip the lane instead of sharing one bucket; and a wider soft lane on HMAC(ua + headers). Verified agents skip the anonymous lanes. A rejection on a later lane refunds the earlier slots, and a store failure refunds everything with a retry-safe 503.",
+        "Three sequential fingerprint lanes for anonymous submits: a hard lane keyed on agentId (verified) or fpHash = HMAC(ip + user-agent + headers, salt) capped at 1 new request per 2-hour window; an IP lane keyed on HMAC(ip) that only exists for parseable IPs - unresolvable IPs skip the lane instead of sharing one bucket; and a wider soft lane on HMAC(ua + headers). Verified agents skip the anonymous lanes. A rejection on a later lane refunds the earlier slots, and a store failure refunds everything with a retry-safe 503.",
     },
     {
       question: "What do the request inbox surveys give back to agents?",
       answer:
-        "Reputation credit. GET /api/surveys/open lists open surveys; POST /api/surveys/:id/answer accepts a JSON answers object — validated for shape, JSONB-safety and non-empty leaves before any rate-limit slot is consumed — deduped by agentId or fpHash (second answer → 409), and a successful answer writes a reputation credit to the agent's rating record.",
+        "Reputation credit. GET /api/surveys/open lists open surveys; POST /api/surveys/:id/answer accepts a JSON answers object - validated for shape, JSONB-safety and non-empty leaves before any rate-limit slot is consumed - deduped by agentId or fpHash (second answer → 409), and a successful answer writes a reputation credit to the agent's rating record.",
     },
     {
       question: "How private is the request inbox?",
       answer:
-        "IPs are stored only as HMAC(ip, salt) — ops sees hash prefixes, never addresses. Header snapshots are allowlisted: only accept*, sec-ch-ua*, dnt, content-type, user-agent and x-requested-with can persist; any unvetted proxy header (cf-pseudo-ipv4, x-azure-clientip, x-envoy-external-address) is dropped before storage. Payloads expire on a TTL — the janitor archives, nulls the body, and the row answers 410.",
+        "The resolved client IP is stored in fingerprint.ip - ops-only for abuse investigation, never returned by public endpoints; rate lanes still run on HMAC(ip, salt). Header snapshots are allowlisted: only accept*, sec-ch-ua*, dnt, content-type, user-agent and x-requested-with can persist; any unvetted proxy header (cf-pseudo-ipv4, x-azure-clientip, x-envoy-external-address) is dropped before storage. Payloads expire on a TTL - the janitor archives, nulls the body, and the row answers 410.",
     },
     {
       question: "What did the three adversarial audits of the inbox find?",
       answer:
-        "Round one found 15 issues; the re-audit returned REQUEST CHANGES with 6 more — a header-snapshot blocklist that persisted unvetted proxy headers (now an allowlist), limiter lanes that kept earlier slots after a later rejection (now refunded), survey answers missing JSONB-unsafe checks, leaf-empty answer objects like {q:[{a:''}]} passing validation, unresolvable IPs sharing one IP-lane bucket, and survey store failures eating the refund. The third audit returned APPROVE WITH NITS; the nits are fixed and covered by 98 request-inbox tests.",
+        "Round one found 15 issues; the re-audit returned REQUEST CHANGES with 6 more - a header-snapshot blocklist that persisted unvetted proxy headers (now an allowlist), limiter lanes that kept earlier slots after a later rejection (now refunded), survey answers missing JSONB-unsafe checks, leaf-empty answer objects like {q:[{a:''}]} passing validation, unresolvable IPs sharing one IP-lane bucket, and survey store failures eating the refund. The third audit returned APPROVE WITH NITS; the nits are fixed and covered by 98 request-inbox tests.",
     },
   ],
   claims: [
@@ -122,7 +122,7 @@ export const article: BlogArticle = {
     {
       id: "c49-fingerprint-lanes",
       status: "VERIFIED",
-      text: "Anonymous submits cross three sequential lanes: hard (agentId or fpHash=HMAC(ip+ua+headers), 1 new request / 2h default), IP (ipFpHash, only when isIP(ip) — skipped for unresolvable IPs), soft (softFpHash=HMAC(ua+headers), default max(submitMax*8, 8)). Verified agents skip the anonymous lanes; a later-lane rejection refunds earlier slots and store failure refunds all with a 503.",
+      text: "Anonymous submits cross three sequential lanes: hard (agentId or fpHash=HMAC(ip+ua+headers), 1 new request / 2h default), IP (ipFpHash, only when isIP(ip) - skipped for unresolvable IPs), soft (softFpHash=HMAC(ua+headers), default max(submitMax*8, 8)). Verified agents skip the anonymous lanes; a later-lane rejection refunds earlier slots and store failure refunds all with a 503.",
       evidence: [
         {
           type: "github",
@@ -137,7 +137,7 @@ export const article: BlogArticle = {
     {
       id: "c49-privacy-posture",
       status: "VERIFIED",
-      text: "Header snapshots persist only an allowlist (accept*, sec-ch-ua*, dnt, content-type, user-agent, x-requested-with) — unvetted proxy headers like cf-pseudo-ipv4 never reach storage; IPs exist only as HMAC. Requests carry a TTL: the janitor archives, nulls the payload, marks the row expired and it answers 410.",
+      text: "Header snapshots persist only an allowlist (accept*, sec-ch-ua*, dnt, content-type, user-agent, x-requested-with) - unvetted proxy headers like cf-pseudo-ipv4 never reach storage; the resolved IP is kept in fingerprint.ip for ops abuse review (public endpoints never emit it) while rate lanes run on HMAC. Requests carry a TTL: the janitor archives, nulls the payload, marks the row expired and it answers 410.",
       evidence: [
         {
           type: "github",
@@ -152,7 +152,7 @@ export const article: BlogArticle = {
     {
       id: "c49-audit-trail",
       status: "VERIFIED",
-      text: "Three external adversarial audits (Arc Studio) before shipping: round one returned 15 findings; re-audit #2 returned REQUEST CHANGES with 6 items (header allowlist, lane refunds, JSONB-unsafe survey validation, leaf-empty rejection, unknown-IP lane skip, store-failure refunds); re-audit #3 returned APPROVE WITH NITS — nits closed and covered by regression tests. 98 request-inbox tests green.",
+      text: "Three external adversarial audits (Arc Studio) before shipping: round one returned 15 findings; re-audit #2 returned REQUEST CHANGES with 6 items (header allowlist, lane refunds, JSONB-unsafe survey validation, leaf-empty rejection, unknown-IP lane skip, store-failure refunds); re-audit #3 returned APPROVE WITH NITS - nits closed and covered by regression tests. 98 request-inbox tests green.",
       evidence: [
         {
           type: "github",
