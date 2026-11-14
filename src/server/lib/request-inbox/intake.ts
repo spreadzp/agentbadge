@@ -15,8 +15,19 @@ export const PAYLOAD_MAX = 256 * 1024;
 export const BODY_MAX = 512 * 1024;
 export const META_MAX = 4 * 1024;
 
+/** Documented request kinds (HOWTO). "bogus" classifiers used to
+ *  create submitted rows that only ops could triage - now rejected
+ *  at the schema edge. Null/absent stays legal (legacy clients). */
+export const REQUEST_KINDS = [
+  "question",
+  "feature",
+  "feedback",
+  "bug",
+  "proposal",
+] as const;
+
 export const postSchema = z.object({
-  kind: z.string().max(64).optional(),
+  kind: z.enum(REQUEST_KINDS).optional(),
   payload: z.unknown(),
   meta: z
     .object({

@@ -215,8 +215,8 @@ describe("POST /api/requests (SLICE-252-2)", () => {
   it("spam_flag: same (kind+payload+fpHash) replay inside window marks the row", async () => {
     const { app, stores } = mkApp({ submitMax: 10 });
     const ip = { "fly-client-ip": "5.5.5.5" };
-    await post(app, { kind: "k", payload: { prompt: "dup" } }, ip);
-    const res = await post(app, { kind: "k", payload: { prompt: "dup" } }, ip);
+    await post(app, { kind: "question", payload: { prompt: "dup" } }, ip);
+    const res = await post(app, { kind: "question", payload: { prompt: "dup" } }, ip);
     const { request_id } = await res.json();
     const { record } = await stores.requests.get(request_id);
     expect(record?.spamFlag).toBe(true);
