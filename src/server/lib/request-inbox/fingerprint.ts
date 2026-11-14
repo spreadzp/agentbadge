@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
+import { isIP } from "node:net";
 
 import type { InboxFingerprint } from "./types";
 
@@ -13,18 +14,15 @@ import type { InboxFingerprint } from "./types";
  * headers are dropped outright (raw IP is never persisted).
  */
 
-/** Header names that may carry credentials — removed from the snapshot. */
-const SENSITIVE_HEADER_RE =
-  /authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[-_]?key|x-admin-key|x-agent-key|x-agent-token|x-access-token|x-session-id|x-hub-signature|x-jwt-assertion|signature|x-auth|x-sig|x-wallet|token|secret|credential/i;
-
 /**
- * Headers that carry the client IP — removed from the snapshot too
- * (arc-audit C-1): keeping `fly-client-ip`/`x-forwarded-for` in the
- * forensic snapshot persisted the raw IP the whole hash design exists
- * to hide.
+ * Header snapshot ALLOWLIST — the only header names that may persist
+ * (arc-audit C-1 round-3). A denylist kept whack-a-moling new
+ * IP-credential carriers (cf-pseudo-ipv4, x-azure-clientip,
+ * x-envoy-external-address…); an allowlist guarantees nothing
+ * unvetted — credentials, raw URLs, IP carriers — ever persists.
  */
-const IP_CARRIER_HEADER_RE =
-  /^(fly-client-ip|x-forwarded-for|x-real-ip|cf-connecting-ip|true-client-ip|forwarded|fastly-client-ip|x-client-ip|x-cluster-client-ip|fly-forwarded-[a-z-]+)$/i;
+const SNAPSHOT_HEADER_RE =
+  /^(accept|accept-language|accept-encoding|accept-charset|sec-ch-ua|sec-ch-ua-mobile|sec-ch-ua-platform|sec-ch-ua-full-version|dnt|upgrade-insecure-requests|content-type|user-agent|x-requested-with)$/i;
 
 /**
  * Stable client-identity headers — the ONLY inputs to the soft-fp
@@ -46,8 +44,7 @@ export function sanitizeHeaders(
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(headers)) {
     const lower = name.toLowerCase();
-    if (SENSITIVE_HEADER_RE.test(lower)) continue;
-    if (IP_CARRIER_HEADER_RE.test(lower)) continue;
+    if (!SNAPSHOT_HEADER_RE.test(lower)) continue;
     out[lower] = value.slice(0, MAX_HEADER_VALUE_LEN);
     if (Object.keys(out).length >= MAX_SNAPSHOT_HEADERS) break;
   }
@@ -62,10 +59,14 @@ export function sanitizeHeaders(
 export function headersDigestFor(
   headers: Record<string, string>,
 ): string {
-  const canon = Object.keys(headers)
-    .filter((k) => IDENTITY_HEADER_RE.test(k))
+  // Re-audit C-2: digest the FULL uncapped header set, not the
+  // sanitized snapshot — alphabetically-earlier pad headers would
+  // otherwise push identity headers past MAX_SNAPSHOT_HEADERS and
+  // mint a fresh lane. Keys are lowercased before matching.
+  const canon = Object.entries(headers)
+    .filter(([k]) => IDENTITY_HEADER_RE.test(k.toLowerCase()))
+    .map(([k, v]) => `${k.toLowerCase()}:${v}`)
     .sort()
-    .map((k) => `${k}:${headers[k]}`)
     .join("\n");
   return createHash("sha256").update(canon).digest("hex");
 }
@@ -114,15 +115,24 @@ export function normalizeQuestion(question: string): string {
   return question
     .normalize("NFKC")
     .replace(/[\u0000-\u001F\u007F-\u009F]+/g, " ")
-    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g, "")
+    .replace(
+      /[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\u00AD\u061C\u180E\uFE00-\uFE0F]/g,
+      "",
+    )
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/** Cap + strip query/fragment — referers can carry tokens (audit M-3). */
+/** Cap + strip query/fragment + control chars (M-3, M-8):
+ *  referers can carry tokens; a NUL in `src` would fail jsonb
+ *  after the lane was consumed. */
 const cleanField = (v: string): string =>
-  v.split("?")[0].split("#")[0].slice(0, MAX_FIELD_LEN);
+  v
+    .split("?")[0]
+    .split("#")[0]
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+    .slice(0, MAX_FIELD_LEN);
 
 /**
  * Build the stored fingerprint pair. `ip` is consumed by the HMAC only —
@@ -138,15 +148,28 @@ export function buildFingerprint(input: {
 }): {
   fpHash: string;
   softFpHash: string;
+  /** HMAC(ip) — key for the anonymous IP-only lane (N-3).
+   *  null when the IP is "unknown" so the lane is skipped rather
+   *  than sharing one bucket across every anonymous caller. */
+  ipFpHash: string | null;
   fingerprint: InboxFingerprint;
 } {
   const ua = input.ua ? input.ua.slice(0, MAX_FIELD_LEN) : null;
   const sanitized = sanitizeHeaders(input.headers ?? {});
-  const headersDigest = headersDigestFor(sanitized);
+  const headersDigest = headersDigestFor(input.headers ?? {});
   const softFpHash = softFpHashFor(ua ?? "", headersDigest, input.salt);
   return {
     fpHash: fpHashFor(input.ip, ua ?? "", input.salt, headersDigest),
     softFpHash,
+    // Re-audit N-3: IP-only lane key — header-rotating anons still
+    // share one bucket per resolved IP. Round-3: only a parseable
+    // IP gets a key — "unknown"/garbage would force every anonymous
+    // caller into a single shared bucket.
+    ipFpHash: isIP(input.ip)
+      ? createHmac("sha256", input.salt)
+          .update(`ip:${input.ip}`)
+          .digest("hex")
+      : null,
     fingerprint: {
       ua,
       referer: input.referer ? cleanField(input.referer) : null,

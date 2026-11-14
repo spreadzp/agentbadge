@@ -73,7 +73,7 @@ export async function runInboxJanitor(
   const purgeable = await stores.requests.listPurgeable(cutoff, limit);
   result.purgeableListed = purgeable.length;
 
-  let archiveOk = opts.archiveDir === undefined;
+  let archiveOk = true;
   if (opts.archiveDir !== undefined && purgeable.length > 0) {
     try {
       await mkdir(opts.archiveDir, { recursive: true, mode: 0o700 });
@@ -99,8 +99,8 @@ export async function runInboxJanitor(
       });
       result.archiveFile = file;
       result.archived = lines.length;
-      archiveOk = true;
     } catch (err) {
+      archiveOk = false;
       result.errors.push(`archive: ${String(err)}`);
     }
   }

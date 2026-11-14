@@ -24,6 +24,7 @@ import { ErrorCodes } from "../lib/error-codes";
 import { buildFingerprint } from "../lib/request-inbox/fingerprint";
 import {
   createSubmitLanes,
+  hasJsonbUnsafe,
   headerSnapshot,
   readBodyCap,
 } from "../lib/request-inbox/intake";
@@ -50,6 +51,18 @@ export interface AgentSurveyRoutesDeps {
 const ANSWERS_MAX = 64 * 1024;
 
 const answerSchema = z.object({ answers: z.unknown() });
+
+// Re-audit H-4: an answers blob counts only if some leaf is a real
+// value — [null], {"q":""}, [[], {}] all fail.
+const hasNonEmptyLeaf = (v: unknown): boolean => {
+  if (typeof v === "string") return v.trim().length > 0;
+  if (typeof v === "number" || typeof v === "boolean") return true;
+  if (Array.isArray(v)) return v.some(hasNonEmptyLeaf);
+  if (v !== null && typeof v === "object") {
+    return Object.values(v).some(hasNonEmptyLeaf);
+  }
+  return false;
+};
 const surveyCreateSchema = z.object({
   title: z.string().min(1).max(200),
   questions: z.unknown(),
@@ -121,17 +134,26 @@ export function createAgentSurveyRoutes(
     describeRoute({
       summary: "Create an agent survey (ops-only, D-252-Q6)",
       tags: ["Ops"],
-      responses: {
-        201: { description: "Survey created" },
-        400: { description: "Invalid body" },
-        401: { description: "Admin key required" },
-      },
+      responses: { 201: { description: "Survey created" }, 400: { description: "Invalid body" }, 401: { description: "Admin key required" } },
     }),
     async (c) => {
       const parsed = surveyCreateSchema.safeParse(
         await c.req.json().catch(() => null),
       );
       if (!parsed.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          "title + questions required",
+        );
+      }
+      // Re-audit M-8: title/questions land in jsonb columns —
+      // NUL/unpaired surrogates would 500 at the DB layer.
+      if (
+        hasJsonbUnsafe(parsed.data.title) ||
+        hasJsonbUnsafe(parsed.data.questions)
+      ) {
         return errorResponse(
           c,
           400,
@@ -156,14 +178,7 @@ export function createAgentSurveyRoutes(
     describeRoute({
       summary: "Submit a survey answer — verified answers are rated",
       tags: ["Surveys"],
-      responses: {
-        202: { description: "Answer accepted (rated:true only verified)" },
-        400: { description: "Invalid body" },
-        404: { description: "Unknown survey" },
-        409: { description: "Already answered (dedupe)" },
-        410: { description: "Survey closed" },
-        429: { description: "Answer rate-limit" },
-      },
+      responses: { 202: { description: "Answer accepted (rated:true only verified)" }, 400: { description: "Invalid body" }, 404: { description: "Unknown survey" }, 409: { description: "Already answered (dedupe)" }, 410: { description: "Survey closed" }, 429: { description: "Answer rate-limit" } },
     }),
     async (c) => {
       const survey = await stores.surveys.getSurvey(c.req.param("id"));
@@ -176,9 +191,11 @@ export function createAgentSurveyRoutes(
       ) {
         return errorResponse(c, 410, ErrorCodes.REQUEST_EXPIRED, "closed");
       }
-      // Audit H-3: cap the buffered read — json() is unbounded.
-      // Audit H-4: empty answers mint free reputation claims.
+      // H-3: capped read; H-4: empty answers mint free claims.
       const raw = await readBodyCap(c, ANSWERS_MAX + 1024);
+      if (raw === null) {
+        return errorResponse(c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, "answers too large");
+      }
       let answers: unknown = undefined;
       try {
         const parsed = answerSchema.safeParse(
@@ -189,17 +206,19 @@ export function createAgentSurveyRoutes(
         /* malformed JSON → answers stays undefined */
       }
       if (
-        answers === undefined ||
-        answers === null ||
-        (Array.isArray(answers) && answers.length === 0) ||
-        (typeof answers === "object" &&
-          Object.keys(answers as object).length === 0) ||
+        answers == null ||
+        typeof answers !== "object" || // scalars aren't answers (H-4)
+        (Array.isArray(answers)
+          ? answers.length === 0
+          : Object.keys(answers as object).length === 0) ||
+        hasJsonbUnsafe(answers) || // M-8: jsonb column — NUL 500s
+        !hasNonEmptyLeaf(answers) || // [null] / {"q":""} aren't answers
         Buffer.byteLength(JSON.stringify(answers), "utf8") > ANSWERS_MAX
       ) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "answers required");
       }
       const agentId = agentKeyOf(c);
-      const { fpHash, softFpHash } = fpFor(c, env.fingerprintSalt);
+      const { fpHash, softFpHash, ipFpHash } = fpFor(c, env.fingerprintSalt);
       // Dedupe first — a repeat must never consume the rate-limit slot.
       const dup = agentId
         ? await stores.surveys.findAnswerByAgent(survey.id, agentId)
@@ -212,10 +231,8 @@ export function createAgentSurveyRoutes(
           "already answered",
         );
       }
-      // Same dual-lane model as request intake: anonymous IPs face
-      // the IP-less softFpHash lane too, so IP rotation can't mint
-      // fresh answer lanes (SLICE-252-7 landmine).
-      const hit = lanes.check(agentId, fpHash, softFpHash);
+      // Same dual-lane model as intake: soft + IP lanes stop rotation.
+      const hit = lanes.check(agentId, fpHash, softFpHash, ipFpHash);
       if (hit) {
         return errorResponse(
           c,
@@ -237,36 +254,39 @@ export function createAgentSurveyRoutes(
         });
       } catch (err) {
         if (err instanceof SurveyAnswerDuplicateError) {
-          return errorResponse(
-            c,
-            409,
-            ErrorCodes.INVALID_STATE,
-            "already answered",
-          );
+          return errorResponse(c, 409, ErrorCodes.INVALID_STATE, "already answered");
         }
-        throw err;
+        // Re-audit N-1: refund consumed lanes — a retryable 503 must
+        // not hold the caller's quota for the whole window.
+        lanes.refund(agentId, fpHash, softFpHash, ipFpHash);
+        return errorResponse(c, 503, ErrorCodes.INTERNAL_ERROR, "answer store unavailable — retry");
       }
-      // Audit H-5: claim the rated slot BEFORE crediting — a credit
-      // that precedes the claim can double-pay under a race.
+      // H-5: claim rated slot BEFORE crediting — race double-pays.
       const claimed = await stores.surveys.markRated(answer.id);
       if (agentId && claimed) {
-        writeReputation({
-          id: newReputationId(),
-          sourceType: "surveys",
-          sourceId: `${survey.id}:${agentId}`,
-          jobAttempt: 1,
-          passportId: agentId,
-          agentId,
-          score: 1,
-          status: "skipped", // milestone counter only — D-252-Q6, no mint
-          attempts: 0,
-          payload: {
-            metric: "answers_rated_count",
-            milestone: true,
-            surveyId: survey.id,
-            answerId: answer.id,
-          },
-        });
+        try {
+          writeReputation({
+            id: newReputationId(),
+            sourceType: "surveys",
+            sourceId: `${survey.id}:${agentId}`,
+            jobAttempt: 1,
+            passportId: agentId,
+            agentId,
+            score: 1,
+            status: "skipped", // milestone counter only — D-252-Q6, no mint
+            attempts: 0,
+            payload: {
+              metric: "answers_rated_count",
+              milestone: true,
+              surveyId: survey.id,
+              answerId: answer.id,
+            },
+          });
+        } catch (err) {
+          // Re-audit H-5: credit-write failure must not 500 — the
+          // answer is stored + rated; log and still return success.
+          console.error("[surveys] writeReputation failed:", err);
+        }
       }
       return c.json({ accepted: true, answer_id: answer.id, rated: agentId != null }, 202);
     },

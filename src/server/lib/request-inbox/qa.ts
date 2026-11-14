@@ -62,7 +62,10 @@ export async function transitionWithQa(
   const record = await store.transition(id, from, "completed", patch);
   if (!record) return null;
   const question = payloadQuestionText(record.payload);
-  if (question) {
+  // Re-audit N-5: a `completed` row with no response must not write a
+  // null-answer pair into the corpus — upserts only bump `uses`, so a
+  // stale null would persist forever.
+  if (question && record.response != null) {
     try {
       // Audit M-2: a failed upsert must not 500 the respond — the
       // transition already committed; a missing corpus row is a
@@ -80,4 +83,21 @@ export async function transitionWithQa(
     }
   }
   return record;
+}
+
+/** JSON.stringify with object keys deep-sorted — Postgres jsonb
+ *  reorders keys, so a naive stringify compare breaks honest
+ *  idempotent replays on DB-backed stores (re-audit M-11). */
+export function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
+  if (v !== null && typeof v === "object") {
+    const pairs = Object.keys(v as object)
+      .sort()
+      .map(
+        (k) =>
+          `${JSON.stringify(k)}:${canonicalJson((v as Record<string, unknown>)[k])}`,
+      );
+    return `{${pairs.join(",")}}`;
+  }
+  return JSON.stringify(v);
 }

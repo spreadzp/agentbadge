@@ -175,6 +175,9 @@ export function createMemoryRequestStore(): RequestStore {
       if (existingId) {
         const existing = qaPairs.get(existingId)!;
         existing.uses += 1;
+        // Re-audit N-5: a later upsert with a real response replaces
+        // a null/stale one, not just bumps the counter.
+        if (qa.response != null) existing.response = qa.response;
         return { ...existing };
       }
       const pair: InboxQaPair = { ...qa, uses: qa.uses ?? 0 };

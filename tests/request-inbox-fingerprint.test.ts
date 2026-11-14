@@ -96,13 +96,17 @@ describe("request-inbox fingerprint", () => {
     // harmless headers survive, lowercased
     expect(out["user-agent"]).toBe("agent/1.0");
     expect(out["accept"]).toBe("application/json");
-    expect(out["x-request-id"]).toBe("r1");
+    expect(out["x-request-id"]).toBeUndefined(); // not allowlisted
     expect(out["content-type"]).toBe("application/json");
   });
 
   it("header values are truncated at 512 chars and names lowercased", () => {
-    const out = sanitizeHeaders({ "X-Long": "a".repeat(600) });
-    expect(out["x-long"]).toHaveLength(512);
+    const out = sanitizeHeaders({
+      "X-Long": "a".repeat(600), // not allowlisted → dropped
+      Accept: "b".repeat(600),
+    });
+    expect(out["x-long"]).toBeUndefined();
+    expect(out["accept"]).toHaveLength(512);
   });
 
   it("normalizeQuestion case-folds and collapses whitespace", () => {

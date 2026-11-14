@@ -228,11 +228,14 @@ describe("POST /api/requests (SLICE-252-2)", () => {
       authorization: "Bearer secret",
       cookie: "sess=abc",
       "x-custom": "ok",
+      "x-requested-with": "test",
     });
     const { request_id } = await res.json();
     const { record } = await stores.requests.get(request_id);
     const keys = Object.keys(record?.fingerprint.headers ?? {});
-    expect(keys).toContain("x-custom");
+    // Allowlist snapshot (re-audit C-1): only vetted headers persist.
+    expect(keys).toContain("x-requested-with");
+    expect(keys).not.toContain("x-custom");
     expect(keys).not.toContain("authorization");
     expect(keys).not.toContain("cookie");
   });

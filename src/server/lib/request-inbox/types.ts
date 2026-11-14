@@ -23,7 +23,7 @@ export interface InboxFingerprint {
   /** Allowlisted-safe header snapshot — authorization/cookie/token
    *  headers are removed by `buildFingerprint`. */
   headers: Record<string, string>;
-  /** sha256(ua+headers+salt) — IP-less fingerprint for the rotation-proof
+  /** HMAC-SHA256(ua+headers+salt) — IP-less fingerprint for the rotation-proof
    *  soft rate lane (SLICE-252-7). Optional for back-compat with rows
    *  written before the dual-lane limiter. */
   softFpHash?: string;
@@ -36,7 +36,7 @@ export interface InboxRequestRecord {
   /** Original prompt (≤256KB) — null after janitor payload purge. */
   payload: unknown | null;
   fingerprint: InboxFingerprint;
-  /** sha256(ip+ua+env-salt) — keys dedupe and the 252-2 rate-limit. */
+  /** HMAC-SHA256(ip+ua+env-salt) — keys dedupe and the 252-2 rate-limit. */
   fpHash: string;
   agentId: string | null;
   verified: boolean;

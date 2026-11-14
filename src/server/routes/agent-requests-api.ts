@@ -23,12 +23,14 @@ import {
 import {
   contentHashFor,
   payloadQuestionText,
+  canonicalJson,
 } from "../lib/request-inbox/qa";
 import {
   createSubmitLanes,
   headerSnapshot,
   parseIntake,
   readBodyCap,
+  hasJsonbUnsafe,
   BODY_MAX,
   PAYLOAD_MAX,
   META_MAX,
@@ -99,18 +101,13 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
     describeRoute({
       summary: "Poll a request — 202 pending / 200 terminal / 410 expired",
       tags: ["Requests"],
-      responses: {
-        200: { description: "Terminal state with response" },
-        202: { description: "Still submitted/working" },
-        404: { description: "Unknown request id" },
-        410: { description: "Expired — must not retry" },
-      },
+      responses: { 200: { description: "Terminal state with response" }, 202: { description: "Still submitted/working" }, 404: { description: "Unknown request id" }, 410: { description: "Expired — must not retry" } },
     }),
     async (c) => {
       const id = c.req.param("id");
       const { record, expired } = await stores.requests.get(id);
       if (!record) {
-        return errorResponse( c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request", );
+        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request",);
       }
       if (expired) {
         return errorResponse(
@@ -134,42 +131,39 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
     describeRoute({
       summary: "Submit an async agent request → 202 + Location (D-252)",
       tags: ["Requests"],
-      responses: {
-        200: { description: "QA fast-path hit — instant answer" },
-        202: { description: "Accepted — poll Location" },
-        400: { description: "Invalid or oversized body" },
-        413: { description: "Body over 512KB" },
-        429: { description: "Submit rate-limit per agentId|fpHash" },
-      },
+      responses: { 200: { description: "QA fast-path hit — instant answer" }, 202: { description: "Accepted — poll Location" }, 400: { description: "Invalid or oversized body" }, 413: { description: "Body over 512KB" }, 429: { description: "Submit rate-limit per agentId|fpHash" } },
     }),
     async (c) => {
       const contentLength = Number(c.req.header("content-length") ?? 0);
       if (contentLength > BODY_MAX) {
-        return errorResponse( c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`, );
+        return errorResponse(c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`,);
       }
       // Audit H-3: chunked bodies have no length — stream-cap the read.
       const raw = await readBodyCap(c, BODY_MAX);
       if (raw === null) {
-        return errorResponse( c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`, );
+        return errorResponse(c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`,);
       }
       const intake = parseIntake(raw);
       if (!intake.ok) {
         if (intake.error === "too_large") {
-          return errorResponse( c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`, );
+          return errorResponse(c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`,);
         }
         if (intake.error === "bad_json") {
           return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "bad json");
         }
         if (intake.error === "field_too_large") {
           const cap = intake.field === "payload" ? PAYLOAD_MAX : META_MAX;
-          return errorResponse( c, 400, ErrorCodes.PAYLOAD_TOO_LARGE, `${intake.field} over ${cap} bytes`, );
+          return errorResponse(c, 400, ErrorCodes.PAYLOAD_TOO_LARGE, `${intake.field} over ${cap} bytes`,);
         }
-        return errorResponse( c, 400, ErrorCodes.INVALID_INPUT, "payload required", );
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "payload required",);
       }
       const { kind, payload } = intake.body;
+      if (kind != null && hasJsonbUnsafe(kind)) { // re-audit M-8
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "kind unsafe");
+      }
 
       const agentId = agentKeyOf(c);
-      const { fpHash, softFpHash, fingerprint } = buildFingerprint({
+      const { fpHash, softFpHash, ipFpHash, fingerprint } = buildFingerprint({
         ip: resolveClientIp(c),
         ua: c.req.header("user-agent") ?? null,
         referer: c.req.header("referer") ?? null,
@@ -180,40 +174,47 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
       const rawKey = c.req.header("idempotency-key")?.trim() || null;
       // Audit M-11: bounded, printable-ASCII keys only.
       if (rawKey !== null && !/^[\x20-\x7E]{8,255}$/.test(rawKey)) {
-        return errorResponse( c, 400, ErrorCodes.INVALID_INPUT, "bad idempotency-key", );
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad idempotency-key",);
       }
       const idempotencyKey = rawKey;
 
-      // ── 1. QA fast-path (D-252-Q7) — no row created. ──
+      // 1. QA fast-path (D-252-Q7) — no row created.
       const question = payloadQuestionText(payload);
       if (question) {
         const qHash = questionHashFor(normalizeQuestion(question));
         const pair = await stores.requests.getQaByHash(qHash);
         if (pair) {
-          await stores.requests.upsertQaPair({
-            id: pair.id,
-            questionHash: pair.questionHash,
-            question: pair.question,
-            response: pair.response,
-            sourceRequestId: pair.sourceRequestId,
-            createdAtMs: pair.createdAtMs,
-          }); // same questionHash → uses++
+          try {
+            await stores.requests.upsertQaPair({
+              id: pair.id,
+              questionHash: pair.questionHash,
+              question: pair.question,
+              response: pair.response,
+              sourceRequestId: pair.sourceRequestId,
+              createdAtMs: pair.createdAtMs,
+            }); // same questionHash → uses++
+          } catch {
+            /* uses++ is advisory — never fail the fast path (N-6) */
+          }
           return c.json({ state: "completed", response: pair.response, qa: true }, 200);
         }
       }
 
-      // ── 2. Idempotent replay — bypasses the submit limit (AAuth §11.8).
+      // 2. Idempotent replay — bypasses the submit limit (AAuth §11.8).
       if (idempotencyKey) {
         const existing = await stores.requests.findByIdempotency(
           idempotencyKey,
           fpHash,
         );
         if (existing) {
-          // Audit M-11: same key + different payload → 422, not replay.
+          // Re-audit M-11: jsonb reorders keys → canonical deep-sort
+          // both sides; a janitor-purged payload can't be compared,
+          // so key+fpHash match is the replay contract.
           if (
-            JSON.stringify(existing.payload) !== JSON.stringify(payload)
+            existing.payload !== null &&
+            canonicalJson(existing.payload) !== canonicalJson(payload)
           ) {
-            return errorResponse( c, 422, ErrorCodes.INVALID_INPUT, "idempotency-key reused with a different payload", );
+            return errorResponse(c, 422, ErrorCodes.INVALID_INPUT, "idempotency-key reused with a different payload",);
           }
           const url = `/api/requests/${existing.id}`;
           c.header("Location", url);
@@ -225,15 +226,14 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
         }
       }
 
-      // ── 3. Submit rate-limit (D-252-Q6): agentId|fpHash ~1/2h +
-      // IP-less soft lane for anonymous callers (SLICE-252-7 landmine).
-      const hit = lanes.check(agentId, fpHash, softFpHash);
+      // 3. Submit rate-limit (D-252-Q6): hard + IP + soft lanes.
+      const hit = lanes.check(agentId, fpHash, softFpHash, ipFpHash);
       if (hit) {
         c.header("Retry-After", String(hit.retryAfterSec));
-        return errorResponse( c, 429, ErrorCodes.RATE_LIMITED, "submit rate-limit exceeded", { retryable: true }, );
+        return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, "submit rate-limit exceeded", { retryable: true },);
       }
 
-      // ── 4. Persist + spam-flag probe (D-252-Q5). ──
+      // 4. Persist + spam-flag probe (D-252-Q5).
       const recordId = `rq_${crypto.randomUUID().replaceAll("-", "")}`;
       let record;
       try {
@@ -250,17 +250,21 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
           expiresAtMs: now() + env.requestTtlMs,
         }));
       } catch {
-        // Audit M-1: store failure post-lane → honest 503, not a 500.
-        return errorResponse( c, 503, ErrorCodes.INTERNAL_ERROR, "submit failed, retry later", { retryable: true }, );
+        // Audit M-1 + re-audit N-1: store failure post-lane → 503,
+        // and refund the consumed slots so the retry is not 429.
+        lanes.refund(agentId, fpHash, softFpHash, ipFpHash);
+        return errorResponse(c, 503, ErrorCodes.INTERNAL_ERROR, "submit failed, retry later", { retryable: true },);
       }
 
       if (question) {
         try {
           // Audit M-1: the spam probe is advisory — never 500 a submit.
           const hash = contentHashFor(kind ?? null, question);
+          // N-2: bounded probe — unbounded scan = amplifier.
           const recent = await stores.requests.listByState({
             sinceMs:
               now() - (deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS),
+            limit: 200,
           });
           const isSpam = recent.some(
             (r) =>

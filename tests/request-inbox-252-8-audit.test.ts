@@ -55,7 +55,9 @@ describe("C-1: snapshot strips IP-carrier headers", () => {
     expect(fingerprint.headers["fly-client-ip"]).toBeUndefined();
     expect(fingerprint.headers["x-forwarded-for"]).toBeUndefined();
     expect(fingerprint.headers["x-real-ip"]).toBeUndefined();
-    expect(fingerprint.headers["user-agent-ok"]).toBe("fine");
+    // Allowlist snapshot (C-1 round-3): unvetted benign headers
+    // no longer persist either.
+    expect(fingerprint.headers["user-agent-ok"]).toBeUndefined();
   });
 });
 

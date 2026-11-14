@@ -76,7 +76,7 @@ export function parseIntake(raw: string):
 }
 
 /** True if any string under `v` has NUL or an unpaired surrogate. */
-function hasJsonbUnsafe(v: unknown, depth = 0): boolean {
+export function hasJsonbUnsafe(v: unknown, depth = 0): boolean {
   if (depth > 32) return true;
   if (typeof v === "string") {
     return (
@@ -90,8 +90,10 @@ function hasJsonbUnsafe(v: unknown, depth = 0): boolean {
     return v.some((x) => hasJsonbUnsafe(x, depth + 1));
   }
   if (v !== null && typeof v === "object") {
-    return Object.values(v as Record<string, unknown>).some((x) =>
-      hasJsonbUnsafe(x, depth + 1),
+    // Re-audit M-8: object KEYS can also carry NUL/surrogates —
+    // values alone weren't enough.
+    return Object.entries(v as Record<string, unknown>).some(
+      ([k, x]) => hasJsonbUnsafe(k, depth + 1) || hasJsonbUnsafe(x, depth + 1),
     );
   }
   return false;
@@ -147,7 +149,12 @@ export function createSubmitLimiter(opts: {
   windowMs: number;
   max: number;
   now?: () => number;
-}): { check(key: string): { retryAfterSec: number } | null } {
+}): {
+  check(key: string): { retryAfterSec: number } | null;
+  /** Decrement a consumed slot — used when a post-lane step fails
+   *  so an honest retry isn't punished for our 5xx (re-audit N-1). */
+  refund(key: string): void;
+} {
   const store = new MemoryStore();
   const now = opts.now ?? (() => Date.now());
   let lastSweep = now();
@@ -176,6 +183,13 @@ export function createSubmitLimiter(opts: {
       }
       return null;
     },
+    refund(key) {
+      const e = store.get(key);
+      if (!e) return;
+      e.count = Math.max(0, e.count - 1);
+      if (e.count === 0) store.delete(key);
+      else store.set(key, e);
+    },
   };
 }
 
@@ -191,13 +205,24 @@ export function createSubmitLanes(opts: {
   max: number;
   /** Anonymous soft-lane cap — default max(max*8, 8). */
   softMax?: number;
+  /** Anonymous IP-only lane cap — default max(max*16, 16). */
+  ipMax?: number;
   now?: () => number;
 }): {
   check(
     agentId: string | null,
     fpHash: string,
     softFpHash: string,
+    ipFpHash?: string | null,
   ): { retryAfterSec: number } | null;
+  /** Give back the slots consumed by check() — call when a post-lane
+   *  step fails so honest retries aren't double-charged (N-1). */
+  refund(
+    agentId: string | null,
+    fpHash: string,
+    softFpHash: string,
+    ipFpHash?: string | null,
+  ): void;
 } {
   const hard = createSubmitLimiter({
     windowMs: opts.windowMs,
@@ -209,14 +234,47 @@ export function createSubmitLanes(opts: {
     max: opts.softMax ?? Math.max(opts.max * 8, 8),
     now: opts.now,
   });
+  const ipLane = createSubmitLimiter({
+    windowMs: opts.windowMs,
+    max: opts.ipMax ?? Math.max(opts.max * 16, 16),
+    now: opts.now,
+  });
   return {
-    check(agentId, fpHash, softFpHash) {
+    check(agentId, fpHash, softFpHash, ipFpHash) {
       // Audit H-1: hard lane first — a hard-limited request must not
       // burn soft quota (a hard reject shouldn't starve the shared
       // signature bucket for everyone else on it).
-      const limited = hard.check(`hard:${agentId ?? fpHash}`);
+      const hardKey = `hard:${agentId ?? fpHash}`;
+      const limited = hard.check(hardKey);
       if (limited) return limited;
-      return agentId === null ? soft.check(`soft:${softFpHash}`) : null;
+      if (agentId === null) {
+        // Re-audit N-3: anonymous callers are ALSO bound to their
+        // resolved IP alone — rotating identity headers mints fresh
+        // fpHash/softFpHash lanes but can't escape this bucket.
+        const ipKey = ipFpHash ? `ip:${ipFpHash}` : null;
+        const ipLimited = ipKey ? ipLane.check(ipKey) : null;
+        if (ipLimited) {
+          // M-1 round-3: the rejecting lane keeps its slot, but the
+          // already-taken hard slot must be returned — otherwise the
+          // rejected request holds it for the full window.
+          hard.refund(hardKey);
+          return ipLimited;
+        }
+        const softLimited = soft.check(`soft:${softFpHash}`);
+        if (softLimited) {
+          hard.refund(hardKey);
+          if (ipKey) ipLane.refund(ipKey);
+          return softLimited;
+        }
+      }
+      return null;
+    },
+    refund(agentId, fpHash, softFpHash, ipFpHash) {
+      hard.refund(`hard:${agentId ?? fpHash}`);
+      if (agentId === null) {
+        if (ipFpHash) ipLane.refund(`ip:${ipFpHash}`);
+        soft.refund(`soft:${softFpHash}`);
+      }
     },
   };
 }

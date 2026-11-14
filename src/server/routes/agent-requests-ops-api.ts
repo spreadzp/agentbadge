@@ -19,6 +19,7 @@ import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { transitionWithQa } from "../lib/request-inbox/qa";
+import { sanitizeHeaders } from "../lib/request-inbox/fingerprint";
 import type { RequestInboxStores } from "../lib/request-inbox/store";
 import type { InboxRequestRecord } from "../lib/request-inbox/types";
 
@@ -43,7 +44,12 @@ const toOpsItem = (r: InboxRequestRecord) => ({
   state: r.state,
   kind: r.kind,
   payload: r.payload,
-  fingerprint: r.fingerprint,
+  // Re-audit C-1: re-sanitize on read — rows written before the
+  // IP-carrier strip still carry raw IPs otherwise.
+  fingerprint:
+    r.fingerprint != null
+      ? { ...r.fingerprint, headers: sanitizeHeaders(r.fingerprint.headers ?? {}) }
+      : null,
   fpHash: r.fpHash,
   agentId: r.agentId,
   verified: r.verified,
@@ -51,6 +57,7 @@ const toOpsItem = (r: InboxRequestRecord) => ({
   createdAtMs: r.createdAtMs,
   expiresAtMs: r.expiresAtMs,
 });
+
 
 export function createAgentRequestOpsRoutes(
   deps: AgentRequestOpsRoutesDeps,

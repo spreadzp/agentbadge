@@ -241,9 +241,11 @@ export function createDbSurveyStore(repo: AgentSurveyRepository): SurveyStore {
       try {
         return toAnswer(await repo.putAnswer(upsert));
       } catch (err) {
-        // Audit H-5: @@unique([surveyId, agentId]) violation on a
-        // concurrent dup → typed error the route maps to 409.
-        if (err instanceof Error && err.message.includes("surveyId")) {
+        // Re-audit H-5: only a real unique-violation maps to 409 —
+        // Prisma P2002 or SQLSTATE 23505. A message-substring match
+        // also caught FK errors (…_surveyId_fkey) as false dups.
+        const code = (err as { code?: string } | null)?.code;
+        if (code === "P2002" || code === "23505") {
           throw new SurveyAnswerDuplicateError();
         }
         throw err;

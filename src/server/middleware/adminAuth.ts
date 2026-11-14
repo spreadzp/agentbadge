@@ -37,7 +37,9 @@ export async function adminAuth(c: Context, next: Next): Promise<Response | void
   const authHeader = c.req.header("Authorization");
   const bearerKey = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-  const provided = xAdminKey ?? bearerKey;
+  // Re-audit M-13 nit: ?? picks an EMPTY X-Admin-Key over a valid
+  // Bearer token — || falls through on empty strings too.
+  const provided = xAdminKey || bearerKey;
   if (!provided || !safeCompare(provided, apiKey)) {
     return errorResponse(c, 401, ErrorCodes.INTERNAL_ERROR, "Unauthorized");
   }
