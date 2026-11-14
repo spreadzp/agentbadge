@@ -25,7 +25,7 @@ import {
   payloadQuestionText,
 } from "../lib/request-inbox/qa";
 import {
-  createSubmitLimiter,
+  createSubmitLanes,
   headerSnapshot,
   parseIntake,
   BODY_MAX,
@@ -35,21 +35,19 @@ import {
 import type { RequestInboxStores } from "../lib/request-inbox/store";
 import type { RequestInboxEnvConfig } from "../../config/env/types";
 
-/** Default submit window ~2h (D-252-Q6: ~1 submit per 1–2h per key). */
-const DEFAULT_SUBMIT_WINDOW_MS = 2 * 60 * 60_000;
+const DEFAULT_SUBMIT_WINDOW_MS = 2 * 60 * 60_000; // ~2h (D-252-Q6)
 const DEFAULT_SUBMIT_MAX = 1;
-/** Poll hint — how often agents should retry the status endpoint. */
-const RETRY_AFTER_SEC = 5;
+const RETRY_AFTER_SEC = 5; // poll hint — how often agents should retry
 
 export interface AgentRequestRoutesDeps {
   stores: RequestInboxStores;
   env: RequestInboxEnvConfig;
-  /** Injectable clock for tests. */
-  now?: () => number;
-  /** Submit-rate-limit window (default 2h). */
-  submitWindowMs?: number;
-  /** Max NEW submits per window per agentId|fpHash (default 1). */
-  submitMax?: number;
+  now?: () => number; // injectable clock for tests
+  submitWindowMs?: number; // submit-rate window (default 2h)
+  submitMax?: number; // max NEW submits per agentId|fpHash (default 1)
+  /** Anonymous soft-lane cap (IP-rotation brake, SLICE-252-7) —
+   *  default max(submitMax*8, 8); verified agents skip the lane. */
+  submitSoftMax?: number;
 }
 
 const agentKeyOf = (c: Context): string | null =>
@@ -59,9 +57,10 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
   const app = new Hono();
   const { stores, env } = deps;
   const now = deps.now ?? (() => Date.now());
-  const limiter = createSubmitLimiter({
+  const lanes = createSubmitLanes({
     windowMs: deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS,
     max: deps.submitMax ?? DEFAULT_SUBMIT_MAX,
+    softMax: deps.submitSoftMax,
     now,
   });
 
@@ -185,7 +184,7 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
       const { kind, payload } = intake.body;
 
       const agentId = agentKeyOf(c);
-      const { fpHash, fingerprint } = buildFingerprint({
+      const { fpHash, softFpHash, fingerprint } = buildFingerprint({
         ip: resolveClientIp(c),
         ua: c.req.header("user-agent") ?? null,
         referer: c.req.header("referer") ?? null,
@@ -239,10 +238,11 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
         }
       }
 
-      // ── 3. Submit rate-limit (D-252-Q6): agentId|fpHash, ~1/2h. ──
-      const limited = limiter.check(`${agentId ?? fpHash}`);
-      if (limited) {
-        c.header("Retry-After", String(limited.retryAfterSec));
+      // ── 3. Submit rate-limit (D-252-Q6): agentId|fpHash ~1/2h +
+      // IP-less soft lane for anonymous callers (SLICE-252-7 landmine).
+      const hit = lanes.check(agentId, fpHash, softFpHash);
+      if (hit) {
+        c.header("Retry-After", String(hit.retryAfterSec));
         return errorResponse(
           c,
           429,
@@ -279,7 +279,7 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
             r.kind === (kind ?? null) &&
             r.payload != null &&
             contentHashFor(r.kind, payloadQuestionText(r.payload) ?? "") ===
-              hash,
+            hash,
         );
         if (isSpam) {
           await stores.requests.setSpamFlag(record.id, true);

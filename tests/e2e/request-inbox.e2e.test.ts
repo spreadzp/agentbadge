@@ -201,7 +201,7 @@ describe("survey → rating cycle (SLICE-252-6)", () => {
     );
     const { id: closedId } = await closed.json();
     expect(
-      (await post(closed ? app : app, `/api/surveys/${closedId}/answer`, { answers: {} }))
+      (await post(app, `/api/surveys/${closedId}/answer`, { answers: {} }))
         .status,
     ).toBe(410);
   });

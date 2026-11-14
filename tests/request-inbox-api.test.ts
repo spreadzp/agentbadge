@@ -25,7 +25,13 @@ const ENV = {
   payloadRetentionMs: 30 * 24 * 3600_000,
 };
 
-function mkApp(opts: { submitWindowMs?: number; submitMax?: number } = {}) {
+function mkApp(
+  opts: {
+    submitWindowMs?: number;
+    submitMax?: number;
+    submitSoftMax?: number;
+  } = {},
+) {
   const stores = createMemoryRequestInboxStores();
   const app = new Hono<{ Variables: Record<string, unknown> }>();
   // Simulates the global agentKeyAuth lane: header → verified agent.
@@ -45,6 +51,7 @@ function mkApp(opts: { submitWindowMs?: number; submitMax?: number } = {}) {
       now: () => Date.now(),
       submitWindowMs: opts.submitWindowMs ?? 7_200_000,
       submitMax: opts.submitMax ?? 1,
+      submitSoftMax: opts.submitSoftMax,
     }),
   );
   return { app, stores };
@@ -120,6 +127,33 @@ describe("POST /api/requests (SLICE-252-2)", () => {
       { "fly-client-ip": "8.8.8.8" },
     );
     expect(third.status).toBe(202);
+  });
+
+  it("IP rotation: soft lane (ua+headers) still 429s — SLICE-252-7", async () => {
+    // fpHash lane is wide open (100/window); the IP-less soft lane is
+    // capped at 2 — rotating IPs can't mint fresh anonymous lanes.
+    const { app } = mkApp({ submitMax: 100, submitSoftMax: 2 });
+    const sameClient = (ip: string) => ({
+      "fly-client-ip": ip,
+      "user-agent": "RotatorBot/1.0",
+      "accept-language": "en",
+    });
+    expect(
+      (await post(app, { payload: { prompt: "ip1" } }, sameClient("1.1.1.1")))
+        .status,
+    ).toBe(202);
+    expect(
+      (await post(app, { payload: { prompt: "ip2" } }, sameClient("2.2.2.2")))
+        .status,
+    ).toBe(202);
+    // Third IP, same client signature → soft lane trips.
+    const third = await post(
+      app,
+      { payload: { prompt: "ip3" } },
+      sameClient("3.3.3.3"),
+    );
+    expect(third.status).toBe(429);
+    expect(Number(third.headers.get("Retry-After"))).toBeGreaterThan(0);
   });
 
   it("idempotent replay bypasses the submit limit (AAuth §11.8)", async () => {

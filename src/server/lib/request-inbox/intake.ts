@@ -106,3 +106,43 @@ export function createSubmitLimiter(opts: {
     },
   };
 }
+
+/**
+ * Dual-lane submit limiter (SLICE-252-7 landmine): the hard lane keys on
+ * `agentId ?? fpHash`; anonymous callers ALSO face an IP-less soft lane
+ * keyed on `softFpHash` — rotating IPs keeps the same soft hash, so
+ * IP-hops can't mint fresh lanes. Verified agents skip the soft lane
+ * (their identity is already bounded by agentId).
+ */
+export function createSubmitLanes(opts: {
+  windowMs: number;
+  max: number;
+  /** Anonymous soft-lane cap — default max(max*8, 8). */
+  softMax?: number;
+  now?: () => number;
+}): {
+  check(
+    agentId: string | null,
+    fpHash: string,
+    softFpHash: string,
+  ): { retryAfterSec: number } | null;
+} {
+  const hard = createSubmitLimiter({
+    windowMs: opts.windowMs,
+    max: opts.max,
+    now: opts.now,
+  });
+  const soft = createSubmitLimiter({
+    windowMs: opts.windowMs,
+    max: opts.softMax ?? Math.max(opts.max * 8, 8),
+    now: opts.now,
+  });
+  return {
+    check(agentId, fpHash, softFpHash) {
+      const limited = hard.check(`${agentId ?? fpHash}`);
+      const softLimited =
+        agentId === null ? soft.check(`soft:${softFpHash}`) : null;
+      return limited ?? softLimited;
+    },
+  };
+}

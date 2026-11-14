@@ -90,7 +90,7 @@ export function createAgentRequestOpsRoutes(
       const records = await stores.requests.listByState({
         state,
         sinceMs,
-        limit: limit ?? 100,
+        limit: Math.min(limit ?? 100, 500),
       });
       return c.json({ items: records.map(toOpsItem) });
     },

@@ -18,6 +18,15 @@ const SENSITIVE_HEADER_RE =
 const MAX_SNAPSHOT_HEADERS = 40;
 const MAX_HEADER_VALUE_LEN = 512;
 
+/**
+ * Headers that change with the source IP or per request — excluded from
+ * the softFpHash digest (still kept in the forensic snapshot). If an
+ * IP-carrier header fed the digest, rotating the IP would mint a fresh
+ * softFpHash and defeat the soft rate lane (SLICE-252-7 landmine).
+ */
+const ROTATING_HEADER_RE =
+  /^(fly-client-ip|x-forwarded-for|x-real-ip|cf-connecting-ip|true-client-ip|forwarded|idempotency-key|traceparent|tracestate|x-request-id|request-id|x-correlation-id|x-b3-[a-z]+)$/i;
+
 export function sanitizeHeaders(
   headers: Record<string, string>,
 ): Record<string, string> {
@@ -31,8 +40,46 @@ export function sanitizeHeaders(
   return out;
 }
 
-export function fpHashFor(ip: string, ua: string, salt: string): string {
-  return createHash("sha256").update(`${ip}+${ua}+${salt}`).digest("hex");
+/**
+ * Canonical digest of the sanitized header snapshot — sorted name:value
+ * pairs so header ORDER doesn't matter (agents emit them consistently).
+ */
+export function headersDigestFor(
+  headers: Record<string, string>,
+): string {
+  const canon = Object.keys(headers)
+    .filter((k) => !ROTATING_HEADER_RE.test(k))
+    .sort()
+    .map((k) => `${k}:${headers[k]}`)
+    .join("\n");
+  return createHash("sha256").update(canon).digest("hex");
+}
+
+export function fpHashFor(
+  ip: string,
+  ua: string,
+  salt: string,
+  headersDigest = "",
+): string {
+  return createHash("sha256")
+    .update(`${ip}+${ua}+${headersDigest}+${salt}`)
+    .digest("hex");
+}
+
+/**
+ * IP-less fingerprint (SLICE-252-7 landmine): a rotator that only swaps
+ * IPs keeps the SAME softFpHash — the rate-limit soft lane keyed on it
+ * still applies. Rotating UA/headers escapes it, but that costs the
+ * attacker a fresh client signature per lane instead of a fresh IP.
+ */
+export function softFpHashFor(
+  ua: string,
+  headersDigest: string,
+  salt: string,
+): string {
+  return createHash("sha256")
+    .update(`soft+${ua}+${headersDigest}+${salt}`)
+    .digest("hex");
 }
 
 /** sha256 of the normalized question — the Q&A corpus dedupe key (Q7). */
@@ -56,15 +103,24 @@ export function buildFingerprint(input: {
   src?: string | null;
   headers?: Record<string, string>;
   salt: string;
-}): { fpHash: string; fingerprint: InboxFingerprint } {
+}): {
+  fpHash: string;
+  softFpHash: string;
+  fingerprint: InboxFingerprint;
+} {
   const ua = input.ua ?? null;
+  const sanitized = sanitizeHeaders(input.headers ?? {});
+  const headersDigest = headersDigestFor(sanitized);
+  const softFpHash = softFpHashFor(ua ?? "", headersDigest, input.salt);
   return {
-    fpHash: fpHashFor(input.ip, ua ?? "", input.salt),
+    fpHash: fpHashFor(input.ip, ua ?? "", input.salt, headersDigest),
+    softFpHash,
     fingerprint: {
       ua,
       referer: input.referer ?? null,
       src: input.src ?? null,
-      headers: sanitizeHeaders(input.headers ?? {}),
+      headers: sanitized,
+      softFpHash,
     },
   };
 }

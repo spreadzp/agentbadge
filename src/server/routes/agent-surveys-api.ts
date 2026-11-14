@@ -22,7 +22,7 @@ import { resolveClientIp } from "../middleware/rate-limit";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { buildFingerprint } from "../lib/request-inbox/fingerprint";
-import { createSubmitLimiter, headerSnapshot } from "../lib/request-inbox/intake";
+import { createSubmitLanes, headerSnapshot } from "../lib/request-inbox/intake";
 import type { RequestInboxStores } from "../lib/request-inbox/store";
 import type { RequestInboxEnvConfig } from "../../config/env/request-inbox-types";
 import type { ReputationWriteRecord } from "../lib/board/types";
@@ -37,6 +37,9 @@ export interface AgentSurveyRoutesDeps {
   writeReputation?: (rec: ReputationWriteRecord) => void;
   answerWindowMs?: number;
   answerMax?: number;
+  /** Soft-lane cap for anonymous answers (IP-rotation brake,
+   *  SLICE-252-7). Default: max(answerMax*8, 8). */
+  answerSoftMax?: number;
 }
 
 const ANSWERS_MAX = 64 * 1024;
@@ -76,9 +79,10 @@ export function createAgentSurveyRoutes(
     ((r: ReputationWriteRecord) => {
       boardStore().putReputation(r);
     });
-  const limiter = createSubmitLimiter({
+  const lanes = createSubmitLanes({
     windowMs: deps.answerWindowMs ?? 7_200_000,
     max: deps.answerMax ?? 20,
+    softMax: deps.answerSoftMax,
     now,
   });
 
@@ -175,7 +179,7 @@ export function createAgentSurveyRoutes(
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "answers required");
       }
       const agentId = agentKeyOf(c);
-      const { fpHash } = fpFor(c, env.fingerprintSalt);
+      const { fpHash, softFpHash } = fpFor(c, env.fingerprintSalt);
       // Dedupe first — a repeat must never consume the rate-limit slot.
       const dup = agentId
         ? await stores.surveys.findAnswerByAgent(survey.id, agentId)
@@ -188,13 +192,16 @@ export function createAgentSurveyRoutes(
           "already answered",
         );
       }
-      const limited = limiter.check(`${agentId ?? fpHash}`);
-      if (limited) {
+      // Same dual-lane model as request intake: anonymous IPs face
+      // the IP-less softFpHash lane too, so IP rotation can't mint
+      // fresh answer lanes (SLICE-252-7 landmine).
+      const hit = lanes.check(agentId, fpHash, softFpHash);
+      if (hit) {
         return errorResponse(
           c,
           429,
           ErrorCodes.RATE_LIMITED,
-          `retry in ${limited.retryAfterSec}s`,
+          `retry in ${hit.retryAfterSec}s`,
         );
       }
       const answer = await stores.surveys.putAnswer({

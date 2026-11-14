@@ -26,6 +26,29 @@ describe("request-inbox fingerprint", () => {
     expect(fpHashFor("1.2.3.4", "agent/1.0", "salt2")).not.toBe(base);
   });
 
+  it("softFpHash ignores IP but binds ua+headers (SLICE-252-7)", () => {
+    const mk = (ip: string) =>
+      buildFingerprint({
+        ip,
+        ua: "agent/1.0",
+        salt: "s",
+        headers: { "accept-language": "en" },
+      });
+    const a = mk("1.2.3.4");
+    const b = mk("9.9.9.9"); // rotated IP, same client signature
+    expect(a.softFpHash).toBe(b.softFpHash);
+    expect(a.fpHash).not.toBe(b.fpHash); // fpHash still binds the IP
+    expect(a.fingerprint.softFpHash).toBe(a.softFpHash);
+    // A different header signature → different soft lane.
+    const c = buildFingerprint({
+      ip: "9.9.9.9",
+      ua: "agent/1.0",
+      salt: "s",
+      headers: { "accept-language": "de" },
+    });
+    expect(c.softFpHash).not.toBe(a.softFpHash);
+  });
+
   it("snapshot never contains the raw IP", () => {
     const { fingerprint } = buildFingerprint({
       ip: "1.2.3.4",
