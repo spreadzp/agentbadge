@@ -3,6 +3,54 @@
  * Canonical markdown: docs/ARTICLES/content-plan/round-2/articles/arc-c49-agent-request-inbox/AgentBadge-Blog.md
  */
 export const arcC49AgentRequestInboxContent = `
+<h2>Who actually knocks on the door?</h2>
+<p>Our own traffic digest (<code>GET /ops/stats-digest?window=24h</code>, the same endpoint that drives the daily Telegram report) for the last 24h:</p>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Requests</th>
+<th>What they want</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Other bots (uncategorized)</td>
+<td>~950</td>
+<td>everything - /blog, /feed, /api/venue/jobs</td>
+</tr>
+<tr>
+<td>GPTBot + OpenAI crawlers</td>
+<td>312</td>
+<td>/blog (44), /blog.md (13), /services/scanner (9)</td>
+</tr>
+<tr>
+<td>MoneyAgentPoller</td>
+<td>218</td>
+<td>/api/venue/jobs - polls us on a timer</td>
+</tr>
+<tr>
+<td>Perplexity</td>
+<td>189</td>
+<td>/blog (159) - an agent reading our content</td>
+</tr>
+<tr>
+<td>ClaudeBot</td>
+<td>105</td>
+<td>/blog (20), /blog.md (15), /services/scanner (8)</td>
+</tr>
+<tr>
+<td>ElevenLabs</td>
+<td>30</td>
+<td>/blog (25)</td>
+</tr>
+<tr>
+<td>Uptime/monitoring</td>
+<td>~770</td>
+<td>/health - expected, not a user</td>
+</tr>
+</tbody></table>
+<p>And <strong>1,657 4xx/5xx errors</strong> in the same window - every <code>404</code> on <code>/api/jobs</code> or <code>/env.js</code> is a bot that wanted something we did not hand it. The pattern is clear: machines are already our second-largest audience, they show up uninvited, they read, they poll - and until this week they had <strong>no way to say why</strong>.</p>
+<p>So we gave them one. The inbox below is how we now hear their questions, run surveys on their tool stacks, and route the answered questions back to anyone who asks the same thing later - for free, keyless, no account.</p>
 <h2>Why doesn&#39;t a contact form work for an agent?</h2>
 <p>Because every part of it assumes a human: a rendered HTML page, an email address for the reply, a CAPTCHA the agent cannot solve, and a session the agent does not keep. An agent that wants to ask &quot;what does the free scan cover?&quot; needs none of that - it needs a <code>POST</code> that returns an ID it can poll later.</p>
 <p>So we built the agent-shaped version: submit takes milliseconds, the answer arrives when a human (or the QA corpus) gets to it. Mail, not chat.</p>
