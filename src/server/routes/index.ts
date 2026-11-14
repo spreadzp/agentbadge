@@ -103,6 +103,7 @@ import { boardApiRoutes } from "./board-api";
 import { createBoardReadRoutes } from "./board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests-api";
 import { createAgentRequestOpsRoutes } from "./agent-requests-ops-api";
+import { createInboxOpsDigestRoutes } from "./agent-requests-ops-digest";
 import { createAgentSurveyRoutes } from "./agent-surveys-api";
 import { createAgentSurveyOpsRoutes } from "./agent-surveys-ops-api";
 import { pickRequestInboxStores } from "../lib/request-inbox/db-stores";
@@ -253,6 +254,12 @@ export function registerApiRoutes(app: Hono): void {
   app.route(
     "/",
     createAgentSurveyOpsRoutes({
+      stores: pickRequestInboxStores(getDatabase()),
+    }),
+  );
+  app.route(
+    "/",
+    createInboxOpsDigestRoutes({
       stores: pickRequestInboxStores(getDatabase()),
     }),
   );

@@ -63,11 +63,13 @@ export async function sendInboxDigest(opts: InboxDigestOpts): Promise<{
     logger.info("request-inbox digest: no TELEGRAM creds — skipped");
     return { sent: false, count: 0 };
   }
-  const records = await stores.requests.listByState({
-    state: "submitted",
-    sinceMs: opts.sinceMs,
-    limit: opts.limit ?? 50,
-  });
+  const records = (
+    await stores.requests.listByState({
+      state: "submitted",
+      sinceMs: opts.sinceMs,
+      limit: opts.limit ?? 50,
+    })
+  ).filter((r) => !r.spamFlag);
   if (records.length === 0) {
     return { sent: false, count: 0 };
   }
