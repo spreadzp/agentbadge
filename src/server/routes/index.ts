@@ -102,6 +102,7 @@ import { bountyApiRoutes } from "./bounty-api";
 import { boardApiRoutes } from "./board-api";
 import { createBoardReadRoutes } from "./board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests-api";
+import { createAgentRequestOpsRoutes } from "./agent-requests-ops-api";
 import { pickRequestInboxStores } from "../lib/request-inbox/db-stores";
 import { getDatabase } from "../lib/database";
 import { createBoardQaRoutes } from "./board-api-qa";
@@ -230,6 +231,13 @@ export function registerApiRoutes(app: Hono): void {
     createAgentRequestRoutes({
       stores: pickRequestInboxStores(getDatabase()),
       env: getConfig().requestInbox,
+    }),
+  );
+  // 252-3: ops-pull channel — admin-gated respond/state + QA materialization.
+  app.route(
+    "/",
+    createAgentRequestOpsRoutes({
+      stores: pickRequestInboxStores(getDatabase()),
     }),
   );
   app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations

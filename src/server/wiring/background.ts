@@ -10,6 +10,7 @@ import {
 } from "@agentbadge/passport";
 import { startEscrowReconciler } from "../services/escrow-reconciler";
 import { startBountyLeaseSweeper } from "../services/bounty-lease-sweeper";
+import { startRequestInboxNotifier } from "../services/request-inbox-notifier";
 import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startUsdcPaymentMonitor } from "../services/usdc-payment-monitor";
 import { startUsdcReconciliation } from "../services/usdc-reconciliation";
@@ -66,6 +67,7 @@ export function startBackgroundJobs(): void {
   // 197-7: bounty lease sweeper (expired lease → reject → reopen).
   // Self-gates on BOUNTY_SWEEPER_ENABLED (default on).
   startBountyLeaseSweeper();
+  startRequestInboxNotifier(); // 252-3: hourly TG digest, no-op without creds
   // 197-9: QA runner (untrusted sha → isolated build/test/lint).
   // Explicit opt-in only: BOUNTY_QA_RUNNER_ENABLED=true.
   startBountyQaRunner();

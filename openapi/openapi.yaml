@@ -5603,6 +5603,59 @@ paths:
           description: Body over 512KB
         "429":
           description: Submit rate-limit per agentId|fpHash
+  /api/ops/requests:
+    get:
+      operationId: getApiOpsRequests
+      summary: Ops pull — list inbox requests by state/since/limit
+      tags:
+        - Ops
+      responses:
+        "200":
+          description: Request list with payload + fingerprint
+        "401":
+          description: Admin key required
+  /api/ops/requests/{id}/respond:
+    post:
+      operationId: postApiOpsRequestsByIdRespond
+      summary: Push an ops response — completes the request (D-252-Q3)
+      tags:
+        - Ops
+      responses:
+        "200":
+          description: Response stored; state updated
+        "404":
+          description: Unknown id
+        "409":
+          description: Already terminal
+        "410":
+          description: Expired
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/ops/requests/{id}/state:
+    post:
+      operationId: postApiOpsRequestsByIdState
+      summary: Manual state transition — working | failed | completed
+      tags:
+        - Ops
+      responses:
+        "200":
+          description: Transition applied
+        "400":
+          description: Invalid state
+        "404":
+          description: Unknown id
+        "409":
+          description: Already terminal
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /api/board/cards/{id}/claim:
     post:
       operationId: postApiBoardCardsByIdClaim
