@@ -6,6 +6,7 @@ import { bazaarExtensionFor } from "./lib/service-catalog/bazaar";
 import { wireL402, wirePaymentGates } from "./wiring/payments";
 import { passportChainEnabled } from "./lib/passport-chain-gate";
 import { wireKeeperhubX402 } from "./wiring/keeperhub-x402";
+import { wireX402Gateway } from "./wiring/x402-gateway";
 import { wireScanPacksX402 } from "./wiring/scan-packs-x402";
 import { wireMarketplace } from "./wiring/marketplace-x402";
 import { registerMcpNamespaces, wireMcpNamespaceRoutes, registerDefaultMcpTools } from "./wiring/mcp-namespaces";
@@ -195,6 +196,8 @@ if (circleRuntime && process.env.ARC_VENUE_ENABLED === "true") {
 // Hono composes handlers in registration order, so middleware added after the route never runs.
 // EPIC-140: extracted to wiring/keeperhub-x402.ts
 wireKeeperhubX402(app, { runtime: circleRuntime });
+// EPIC-223 SLICE-223-5: /api/v1/* pilots behind gateway middleware (no-op unless X402_GATEWAY_ENABLED).
+wireX402Gateway(app, { runtime: circleRuntime });
 // EPIC-140: api routes extracted to routes/index.ts (webmcp moved here — disjoint paths)
 registerApiRoutes(app);
 // EPIC-140: scanPacks catalog mount + x402 dynamic-pricing gate extracted to
@@ -206,9 +209,6 @@ wireScanPacksX402(app, { runtime: circleRuntime });
 wireMarketplace(app, { runtime: circleRuntime });
 // EPIC-140: post-marketplace routes extracted to routes/index.ts
 registerPostMarketplaceRoutes(app);
-
-// EPIC-156: circlePayments hoisted above (line ~150) — runtime feeds the
-// x402 gates; this block intentionally left as the EAAS comment anchor.
 
 // EPIC-154 SLICE-154-2: EaaS verdict API (x402-gated POST + free GETs).
 // Requires circle payments runtime for pricing; no-op when either flag off.

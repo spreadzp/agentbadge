@@ -21,6 +21,7 @@ import {
   createDbAgentWalletStore,
   createJsonAgentWalletStore,
   createMemoryAgentWalletStore,
+  type AgentWalletStore,
 } from "../lib/agent-wallet/registry";
 import { getDatabase } from "../lib/database";
 import { createSpendLedger } from "../lib/agent-wallet/ledger";
@@ -61,6 +62,10 @@ import { venueMonthlyPriceAtomic } from "../lib/venue/billing";
 
 const ATOMIC = 1e6;
 const atomicToUsd = (atomic: string | bigint) => Number(atomic) / ATOMIC;
+
+/** Live wallet registry — set by wireAgentWallet; x402 gateway payer→agentId (EPIC-223). */
+let liveStore: AgentWalletStore | null = null;
+export const getAgentWalletStore = (): AgentWalletStore | null => liveStore;
 
 /**
  * Early-mount path gates — register BEFORE route mounts in index.ts.
@@ -106,6 +111,7 @@ export function wireAgentWallet(app: Hono): void {
       : db.agentWallets
         ? createDbAgentWalletStore(db.agentWallets)
         : createJsonAgentWalletStore();
+  liveStore = store;
   const ledger = createSpendLedger(cfg.ledgerStore, undefined, db.spendLedger);
   // SLICE-176-6: parked-approval intents — own backend selector +
   // queue cap; sweeper flips pending→expired + approval.expired alerts.
