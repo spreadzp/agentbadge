@@ -18,7 +18,7 @@
         "@agentbadge/pass-auth": "^0.1.1",
         "@agentbadge/passport": "^0.3.0",
         "@agentbadge/payment-forensics": "^0.1.1",
-        "@agentbadge/payments": "^0.1.0",
+        "@agentbadge/payments": "^0.1.1",
         "@agentbadge/webmcp": "^0.3.0",
         "@hashgraph/sdk": "^2.55.0",
         "@hono/swagger-ui": "^0.6.1",
@@ -103,7 +103,7 @@
 
     "@agentbadge/payment-forensics": ["@agentbadge/payment-forensics@0.1.1", "", {}, "sha512-niTssw6tkaxkxq2PSdoh58XUeRe3/yBTE9h8y/QyWjPo4RoVlbATZ4eRvUef1Lxi8kFr5gyirMC5c+tIo8Oizw=="],
 
-    "@agentbadge/payments": ["@agentbadge/payments@0.1.0", "", { "dependencies": { "viem": "^2.56.7" } }, "sha512-x1gn1BQDmdYxUde+yU360Op7Neld6UvqQxzmt7QrdUIjSZOhyomCyYnQOJvyOy8QHKWS7O8Oh8zT2Qa1d+wrNw=="],
+    "@agentbadge/payments": ["@agentbadge/payments@0.1.1", "", { "dependencies": { "viem": "^2.56.7" } }, "sha512-Wa9KL/MLQViFAC9R/L1y2OjfTObzFLWg90pm4WbQtlt2PD140LhxtE5Ny1io4ocO3VJhlXTnaXfdhRZ9rKu4YA=="],
 
     "@agentbadge/verify-verdict": ["@agentbadge/verify-verdict@0.1.0", "", { "dependencies": { "@agentbadge/circle-payments": "0.1.18", "viem": "^2.0.0" }, "bin": { "verify-verdict": "dist/cli.js" } }, "sha512-yzjLoy7JVrlHC/UExa0M7oM5nqW4kTvWoxmjl70zFRKoUt7MU4pieewQGjc3DXcBgyJ2s1VeEcxoV5awJEFh7w=="],
 
