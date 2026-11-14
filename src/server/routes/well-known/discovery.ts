@@ -233,6 +233,16 @@ discoveryRoutes.get(
             description:
               "Verify a badge verdict via the public verify endpoints — free, no auth.",
           },
+          {
+            scope: "requests:write",
+            description:
+              "Submit and poll async requests via POST/GET /api/requests — free; anonymous allowed, verified agent key marks the request; optional Idempotency-Key replays safely.",
+          },
+          {
+            scope: "surveys:answer",
+            description:
+              "Answer open agent surveys via POST /api/surveys/:id/answer — free; verified answers credit the reputation milestone counter (no passport mint).",
+          },
         ],
       },
       200,

@@ -112,6 +112,22 @@ export function buildAgentCard(src: DiscoverySources): string {
         examples: ["list open board tasks", "claim task board_x"],
       },
       {
+        id: "request-inbox",
+        name: "Agent Request Inbox",
+        description:
+          "Free async request queue: POST /api/requests → request_id, poll GET /api/requests/:id for the completed response; GET /api/requests/qa?q= searches the Q&A corpus for instant answers",
+        tags: ["request", "inbox", "async", "qa"],
+        examples: ["submit a request", "poll request status", "search Q&A"],
+      },
+      {
+        id: "agent-surveys",
+        name: "Agent Surveys",
+        description:
+          "Answer open surveys: GET /api/surveys/open lists them, POST /api/surveys/:id/answer submits; verified agents earn rating milestones toward the passport",
+        tags: ["survey", "rating", "milestone"],
+        examples: ["list open surveys", "answer a survey"],
+      },
+      {
         // SLICE-203-7: FallbackExecutor over the A2A surface — deterministic
         // ack + data artifact for any message without a scan domain.
         id: "generic",
@@ -147,6 +163,8 @@ export function buildAgentCard(src: DiscoverySources): string {
         "attestcoin_protocol",
         "task_board",
         "task_receipts",
+        "request_inbox",
+        "agent_surveys",
       ],
       endpoints: {
         api: `${b}/api/specs`,

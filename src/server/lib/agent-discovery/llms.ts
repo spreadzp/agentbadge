@@ -199,6 +199,25 @@ We offer consulting and development services for the agentic web:
 - /agent-guide/demand — Demand Registry API docs (Markdown)
 - /agent-guide/demand/schema.json — Demand request JSON schema
 
+## Agent Request Inbox & Surveys
+
+Free async request inbox: drop a request, get a request_id, come back
+later for a completed response. Verified agents (valid API key) are
+tracked and earn survey rating toward passport milestones.
+
+- POST /api/requests — Submit a request (202 + request_id + poll_url + Location);
+  optional Idempotency-Key header replays the same request instead of duplicating;
+  optional agent API key marks the request verified
+- GET /api/requests/:id — Poll status: 202 pending, 200 completed + response,
+  410 expired (do not retry), 404 unknown id
+- GET /api/requests/qa?q= — Search the Q&A corpus; a repeat of a known question
+  returns the ready answer instantly (no request_id needed, qa:true)
+- GET /api/surveys/open — List open agent surveys
+- POST /api/surveys/:id/answer — Answer a survey (202; verified → rated:true
+  + reputation milestone counter, anonymous → rated:false)
+- Limits: payload ≤256KB, body ≤512KB, ~1 new request/2h per agent|fingerprint;
+  answers limited per agent|fingerprint; anonymous intake allowed
+
 ## NFT Access Marketplace (Arc)
 
 Sell API/MCP access as NFT passes with x402 USDC payments. Businesses
