@@ -10,6 +10,7 @@ import type { PaymentRouter } from "@agentbadge/circle-payments";
 
 import type { SettleSeamResult } from "../../src/server/lib/x402-settle-seam.js";
 import type { X402PaymentService } from "../../src/server/lib/x402-gateway/service.js";
+import { resetConfigCache } from "../../src/config/env/core.js";
 import { wireX402Gateway } from "../../src/server/wiring/x402-gateway.js";
 
 const SEAM_RESULT: SettleSeamResult = {
@@ -101,30 +102,35 @@ describe("wireX402Gateway (pilot passport-request)", () => {
     expect(decoded.resource.url).toContain("/api/v1/passport/request");
   });
 
-  it("signature → settle → PAYMENT-RESPONSE + UsageRecord + agentId", async () => {
-    const usageRecords = new InMemoryUsageRecordStore();
-    const service = mkService(usageRecords);
-    const resolveSpy = vi.spyOn(service, "resolveAgentId");
-    const app = new Hono();
-    wireX402Gateway(app, {
-      runtime: fakeRuntime(),
-      service,
-      registry: createPilotRegistry(ARC_TESTNET_CAIP2),
-    });
-    const res = await app.request("http://x/api/v1/passport/request", {
-      method: "POST",
-      headers: { "payment-signature": "sig" },
-    });
-    // Payment passed the gate; handler = real passport route →
-    // chainDisabled (passportChainEnabled off in test env) — proves
-    // pass-through without needing Hedera infra.
-    expect(res.status).not.toBe(402);
-    expect(res.headers.get("PAYMENT-RESPONSE")).toBeTruthy();
-    expect(resolveSpy).toHaveBeenCalledWith(SEAM_RESULT.payer);
-    const rows = await usageRecords.listByResource("passport-request");
-    expect(rows).toHaveLength(1);
-    expect(rows[0].agentId).toBe("agent_pilot");
-    expect(rows[0].paymentId).toBe("0xcafe");
+  it("chain off → preCheck 503 BEFORE settle — no charge, no record", async () => {
+    // vitest.setup forces PASSPORT_CHAIN_ENABLED=true; flip it off to
+    // prove the audit H-3 fix refuses before the payer is charged.
+    process.env.PASSPORT_CHAIN_ENABLED = "false";
+    resetConfigCache();
+    try {
+      const usageRecords = new InMemoryUsageRecordStore();
+      const service = mkService(usageRecords);
+      const settleSpy = vi.spyOn(service, "verifyAndSettle");
+      const app = new Hono();
+      wireX402Gateway(app, {
+        runtime: fakeRuntime(),
+        service,
+        registry: createPilotRegistry(ARC_TESTNET_CAIP2),
+      });
+      const res = await app.request("http://x/api/v1/passport/request", {
+        method: "POST",
+        headers: { "payment-signature": "sig" },
+      });
+      expect(res.status).toBe(503);
+      expect(settleSpy).not.toHaveBeenCalled();
+      expect(res.headers.get("PAYMENT-RESPONSE")).toBeNull();
+      expect(
+        await usageRecords.listByResource("passport-request"),
+      ).toHaveLength(0);
+    } finally {
+      process.env.PASSPORT_CHAIN_ENABLED = "true";
+      resetConfigCache();
+    }
   });
 
   it("other /api/v1 paths pass through ungated", async () => {

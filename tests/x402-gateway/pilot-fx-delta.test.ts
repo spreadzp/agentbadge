@@ -10,7 +10,21 @@ import type { PaymentRouter } from "@agentbadge/circle-payments";
 
 import type { SettleSeamResult } from "../../src/server/lib/x402-settle-seam.js";
 import type { X402PaymentService } from "../../src/server/lib/x402-gateway/service.js";
+import {
+  resetFxDeltaRuntime,
+  setFxDeltaRuntime,
+  type FxDeltaRuntime,
+} from "../../src/server/lib/fx-delta/index.js";
 import { wireX402Gateway } from "../../src/server/wiring/x402-gateway.js";
+
+const fakeEngine = () =>
+  ({
+    engine: {
+      getAll: () => [],
+      getEvents: () => [],
+      getHistory: () => [],
+    },
+  }) as unknown as FxDeltaRuntime;
 
 const SEAM_RESULT: SettleSeamResult = {
   payer: "0x4444444444444444444444444444444444444444",
@@ -82,9 +96,11 @@ describe("wireX402Gateway (pilot fx-delta-premium)", () => {
     process.env.X402_GATEWAY_ENABLED = saved;
   });
 
-  it("no signature → 402 + PAYMENT-REQUIRED on the seed path", async () => {
+  it("engine on, no signature → 402 + PAYMENT-REQUIRED on the seed path", async () => {
+    setFxDeltaRuntime(fakeEngine());
     const app = wire(mkService(new InMemoryUsageRecordStore()));
     const res = await app.request("http://x/api/v1/fx/delta/premium");
+    resetFxDeltaRuntime();
     expect(res.status).toBe(402);
     const decoded = decodePaymentRequiredHeader(
       res.headers.get("PAYMENT-REQUIRED")!,
@@ -92,7 +108,7 @@ describe("wireX402Gateway (pilot fx-delta-premium)", () => {
     expect(decoded.resource.url).toContain("/api/v1/fx/delta/premium");
   });
 
-  it("signature → gate passes, UsageRecord for fx-delta-premium", async () => {
+  it("engine off → preCheck 503 before settle — payer not charged", async () => {
     const usageRecords = new InMemoryUsageRecordStore();
     const service = mkService(usageRecords);
     const spy = vi.spyOn(service, "verifyAndSettle");
@@ -100,14 +116,43 @@ describe("wireX402Gateway (pilot fx-delta-premium)", () => {
     const res = await app.request("http://x/api/v1/fx/delta/premium", {
       headers: { "payment-signature": "sig" },
     });
-    // Handler reached — engine off in test env → honest 503, never 402.
     expect(res.status).toBe(503);
-    expect(res.headers.get("PAYMENT-RESPONSE")).toBeTruthy();
-    expect(spy).toHaveBeenCalledOnce();
-    const rows = await usageRecords.listByResource("fx-delta-premium");
-    expect(rows).toHaveLength(1);
-    expect(rows[0].amount).toBe("20000");
-    expect(rows[0].agentId).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+    expect(res.headers.get("PAYMENT-RESPONSE")).toBeNull();
+    expect(
+      await usageRecords.listByResource("fx-delta-premium"),
+    ).toHaveLength(0);
+
+    // No signature → same 503: never offer payment for a dead engine.
+    const res2 = await app.request("http://x/api/v1/fx/delta/premium");
+    expect(res2.status).toBe(503);
+    expect(res2.headers.get("PAYMENT-REQUIRED")).toBeNull();
+  });
+
+  it("signature → 200 snapshot + payment body + PAYMENT-RESPONSE + UsageRecord", async () => {
+    setFxDeltaRuntime(fakeEngine());
+    try {
+      const usageRecords = new InMemoryUsageRecordStore();
+      const service = mkService(usageRecords);
+      const spy = vi.spyOn(service, "verifyAndSettle");
+      const app = wire(service);
+      const res = await app.request("http://x/api/v1/fx/delta/premium", {
+        headers: { "payment-signature": "sig" },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        payment: { txHash: string; amount: string };
+      };
+      expect(body.payment.txHash).toBe("0xbeef");
+      expect(res.headers.get("PAYMENT-RESPONSE")).toBeTruthy();
+      expect(spy).toHaveBeenCalledOnce();
+      const rows = await usageRecords.listByResource("fx-delta-premium");
+      expect(rows).toHaveLength(1);
+      expect(rows[0].amount).toBe("20000");
+      expect(rows[0].agentId).toBeNull();
+    } finally {
+      resetFxDeltaRuntime();
+    }
   });
 
   it("GET on non-registered path passes through", async () => {

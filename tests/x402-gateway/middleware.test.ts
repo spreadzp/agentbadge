@@ -49,14 +49,14 @@ const mkService = (
 const mkApp = (service: X402PaymentService) => {
   const registry = createPilotRegistry(ARC_TESTNET_CAIP2);
   const app = new Hono<{
-    Variables: { x402Payment: SettleSeamResult };
+    Variables: { x402Payment?: SettleSeamResult };
   }>();
   app.use(
     "*",
     x402GatewayMiddleware({ service, registry }),
   );
   app.post("/api/v1/passport/request", (c) =>
-    c.json({ payer: c.get(X402_PAYMENT_KEY).payer }),
+    c.json({ payer: c.get(X402_PAYMENT_KEY)?.payer ?? null }),
   );
   app.get("/free", (c) => c.json({ free: true }));
   return app;
@@ -128,5 +128,51 @@ describe("x402GatewayMiddleware", () => {
       headers: { "payment-signature": "sig" },
     });
     expect(res.status).toBe(402);
+  });
+
+  it("HEAD on a GET-gated resource → 402 (audit H-1)", async () => {
+    // Hono serves HEAD via the GET handler; the gate must gate it too.
+    const res = await mkApp(mkService()).request(
+      "http://x/api/v1/fx/delta/premium",
+      { method: "HEAD" },
+    );
+    expect(res.status).toBe(402);
+  });
+
+  it("zero-priced resource → free pass-through, never settles (M-1)", async () => {
+    const service = mkService({
+      resolvePrice: async () => ({
+        resourceId: "passport-request",
+        priceUsd: "0",
+        source: "registry",
+        resolvedAt: new Date(),
+      }),
+      amountAtomicFor: () => "0",
+    });
+    const spy = vi.spyOn(service, "verifyAndSettle");
+    const res = await mkApp(service).request(
+      "http://x/api/v1/passport/request",
+      { method: "POST", headers: { "payment-signature": "sig" } },
+    );
+    expect(res.status).toBe(200);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("settled + usage write throws → still 200 + PAYMENT-RESPONSE (C-1)", async () => {
+    const res = await mkApp(
+      mkService({
+        recordUsage: async () => {
+          throw new Error("db down");
+        },
+      }),
+    ).request("http://x/api/v1/passport/request", {
+      method: "POST",
+      headers: { "payment-signature": "sig" },
+    });
+    // Money already moved — the resource MUST still be served and the
+    // receipt emitted; the lost UsageRecord is logged for reconciliation.
+    expect(res.status).toBe(200);
+    expect(res.headers.get("PAYMENT-RESPONSE")).toBeTruthy();
+    expect(await res.json()).toEqual({ payer: SEAM_RESULT.payer });
   });
 });

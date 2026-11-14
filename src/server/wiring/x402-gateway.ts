@@ -28,7 +28,14 @@ import {
 } from "../lib/x402-gateway";
 import { acceptsFor, createGatewayRegistry } from "../lib/x402-gateway/seed";
 import { getAgentWalletStore } from "./agent-wallet";
-import { passportRoutes } from "../routes/passport";
+import { getFxDeltaRuntime } from "../lib/fx-delta";
+import {
+  chainDisabled,
+  passportChainEnabled,
+} from "../lib/passport-chain-gate";
+import { ErrorCodes } from "../lib/error-codes";
+import { errorResponse } from "../lib/error-response";
+import { passportRequestHandler } from "../routes/passport";
 import { fxDeltaV1Routes } from "../routes/fx-delta-v1";
 
 export interface X402GatewayWiringDeps {
@@ -62,10 +69,15 @@ function toUsageRecordPort(store: UsageRecordStore): UsageRecordStorePort {
   };
 }
 
+/** M-6: wiring is idempotent per app — a second call must not stack
+ *  another middleware + route set. */
+const wiredApps = new WeakSet<Hono>();
+
 export function wireX402Gateway(
   app: Hono,
   deps: X402GatewayWiringDeps = {},
 ): void {
+  if (wiredApps.has(app)) return;
   if (process.env.X402_GATEWAY_ENABLED !== "true") return;
   if (!deps.runtime) {
     logger.warn(
@@ -73,6 +85,7 @@ export function wireX402Gateway(
     );
     return;
   }
+  wiredApps.add(app);
   const router = deps.runtime.router;
   const service =
     deps.service ??
@@ -93,12 +106,34 @@ export function wireX402Gateway(
       registry,
       serviceAcceptsFor: (amountAtomic) => acceptsFor(router, amountAtomic),
       bazaarExtensionFor,
+      // H-3: refuse BEFORE the 402 challenge/settle when the handler
+      // can't succeed — never charge for a request that ends in a 503.
+      preCheck: (c) => {
+        if (
+          c.req.path === "/api/v1/fx/delta/premium" &&
+          !getFxDeltaRuntime()
+        ) {
+          return errorResponse(
+            c,
+            503,
+            ErrorCodes.INTERNAL_ERROR,
+            "engine not started",
+          );
+        }
+        if (
+          c.req.path === "/api/v1/passport/request" &&
+          !passportChainEnabled()
+        ) {
+          return chainDisabled(c);
+        }
+      },
     }),
   );
 
-  // Pilot: /api/v1/passport/request — same handler as legacy /passport/request
-  // (issuePassport preserved literally; only the payment rail changed).
-  app.route("/api/v1", passportRoutes);
+  // H-6: mount the SINGLE handler — `app.route("/api/v1", passportRoutes)`
+  // would expose every future passport route under the paid prefix.
+  // Same handler as legacy /passport/request; only the rail changed.
+  app.post("/api/v1/passport/request", passportRequestHandler);
   // Pilot: /api/v1/fx/delta/premium — same snapshot as the Celo-gated
   // /api/fx-delta/premium, payment via the Arc gateway (SLICE-223-6).
   app.route("/", fxDeltaV1Routes);

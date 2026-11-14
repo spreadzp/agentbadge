@@ -10,6 +10,7 @@
 
 import type { Context } from "hono";
 import type { PaymentRouter } from "@agentbadge/circle-payments";
+import { logger } from "@agentbadge/passport/logger";
 import type {
   PaidResource,
   PaymentRequirements as GatewayPaymentRequirements,
@@ -62,8 +63,13 @@ export interface X402PaymentService {
     resource: PaidResource,
     amountAtomic: string,
   ): Promise<SettleSeamResult | null>;
-  /** Deterministic per-request dedupe anchor. */
-  requestIdFor(c: Context): string;
+  /**
+   * Dedupe anchor — the settlement tx when available (two payments can
+   * never collide), falling back to client idempotency headers, then a
+   * random id. Client headers alone are NOT the anchor: a client could
+   * reuse them across different payments and suppress usage records.
+   */
+  requestIdFor(c: Context, settle?: SettleSeamResult): string;
   /** Append-only usage write; null when store absent or duplicate. */
   recordUsage(input: {
     settleResult: SettleSeamResult;
@@ -123,7 +129,7 @@ export function createX402PaymentService(
     const store = deps.usageRecords;
     if (!store) return null;
     const id = `ur_${crypto.randomUUID()}`;
-    return store.append({
+    const row = await store.append({
       id,
       paymentId:
         input.paymentId ?? input.settleResult.tx ?? input.requestId,
@@ -132,12 +138,26 @@ export function createX402PaymentService(
       requestId: input.requestId,
       amount: input.settleResult.amountAtomic,
       currency: input.resource.currency,
-      network: input.resource.network,
+      // Attribute what actually settled, not what the registry declared.
+      network: input.settleResult.sourceChain ?? input.resource.network,
       payerAddress: input.settleResult.payer,
       txHash: input.settleResult.tx ?? null,
       createdAtMs: Date.now(),
       payload: input.payload ?? {},
     });
+    // Defense-in-depth replay check: the facilitator rejects spent
+    // nonces, but if the same tx ever lands under two records the
+    // books must surface it instead of silently double-crediting.
+    if (row) {
+      const siblings = await store.listByPayment(row.paymentId);
+      if (siblings.some((s) => s.id !== row.id)) {
+        logger.warn(
+          "x402-gateway: payment tx reused across usage records — possible replay",
+          { tx: row.paymentId, resource: input.resource.id },
+        );
+      }
+    }
+    return row;
   };
 
   const resolveAgentId: X402PaymentService["resolveAgentId"] = async (
@@ -148,7 +168,8 @@ export function createX402PaymentService(
     return rec?.agentId ?? null;
   };
 
-  const requestIdFor: X402PaymentService["requestIdFor"] = (c) =>
+  const requestIdFor: X402PaymentService["requestIdFor"] = (c, settle) =>
+    settle?.tx ??
     c.req.header("x-request-id") ??
     c.req.header("idempotency-key") ??
     `req_${crypto.randomUUID()}`;

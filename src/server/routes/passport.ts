@@ -9,7 +9,7 @@
  * payment middleware — see SLICE-7-1, middleware/signature-verification.ts.
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 
 import type { Tier, Capability } from "@agentbadge/hedera-core";
@@ -45,6 +45,63 @@ export interface PassportResponse {
 }
 
 export const passportRoutes = new Hono();
+
+/**
+ * POST /passport/request handler — exported so the x402 gateway pilot
+ * can mount THIS handler alone at /api/v1/passport/request instead of
+ * the whole sub-app (audit H-6: `app.route("/api/v1", passportRoutes)`
+ * would leak every future passport route under the paid prefix).
+ */
+export async function passportRequestHandler(c: Context) {
+  if (!passportChainEnabled()) return chainDisabled(c);
+
+  let body: PassportRequestBody;
+  try {
+    body = await c.req.json();
+  } catch {
+    return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
+  }
+
+  const { accountId, signature, tier, name, capabilities, endpoint, skills, imageUrl } = body;
+
+  if (!tier || !name || !capabilities) {
+    return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required fields");
+  }
+
+  try {
+    const result: IssuePassportResult = await issuePassport(
+      accountId,
+      signature,
+      tier,
+      name,
+      capabilities,
+      endpoint,
+      skills,
+      imageUrl,
+    );
+
+    const response: PassportResponse = {
+      tokenId: result.tokenId,
+      serialNumber: result.serialNumber,
+      did: result.did,
+      tier: result.tier,
+      hashScanLink: result.hashScanLink,
+      _links: passportLinks(result.tokenId, result.serialNumber),
+      next_call: {
+        method: "POST",
+        path: "/agents/register",
+        body: { did: result.did, name, capabilities },
+        authorization: "Bearer <did-auth-token>",
+        why: "Register your agent in the HCS directory so other agents can discover it.",
+      } satisfies NextCall,
+    };
+
+    return c.json(response, 200);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Passport issuance failed: ${message}`, { retryable: true });
+  }
+}
 
 passportRoutes.post(
   "/passport/request",
@@ -85,54 +142,5 @@ passportRoutes.post(
       },
     },
   }),
-  async (c) => {
-    if (!passportChainEnabled()) return chainDisabled(c);
-
-    let body: PassportRequestBody;
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
-    }
-
-    const { accountId, signature, tier, name, capabilities, endpoint, skills, imageUrl } = body;
-
-    if (!tier || !name || !capabilities) {
-      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "Missing required fields");
-    }
-
-    try {
-      const result: IssuePassportResult = await issuePassport(
-        accountId,
-        signature,
-        tier,
-        name,
-        capabilities,
-        endpoint,
-        skills,
-        imageUrl,
-      );
-
-      const response: PassportResponse = {
-        tokenId: result.tokenId,
-        serialNumber: result.serialNumber,
-        did: result.did,
-        tier: result.tier,
-        hashScanLink: result.hashScanLink,
-        _links: passportLinks(result.tokenId, result.serialNumber),
-        next_call: {
-          method: "POST",
-          path: "/agents/register",
-          body: { did: result.did, name, capabilities },
-          authorization: "Bearer <did-auth-token>",
-          why: "Register your agent in the HCS directory so other agents can discover it.",
-        } satisfies NextCall,
-      };
-
-      return c.json(response, 200);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Passport issuance failed: ${message}`, { retryable: true });
-    }
-  },
+  passportRequestHandler,
 );
