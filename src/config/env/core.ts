@@ -20,6 +20,7 @@ import { loadMarketplace } from "./marketplace";
 import { loadPayments } from "./payments";
 import { loadMcpAbuse } from "./mcp-abuse";
 import { loadScanPacks } from "./scan-packs";
+import { loadRequestInbox } from "./request-inbox";
 import { loadTrust, resetTrustConfigCache } from "./trust";
 import type {
   AnalyticsConfig,
@@ -258,5 +259,6 @@ export function loadConfig(): AppConfig {
     marketplace,
     mcpAbuse,
     payments,
+    requestInbox: loadRequestInbox(),
   };
 }
