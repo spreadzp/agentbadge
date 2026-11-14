@@ -139,19 +139,19 @@ describe("answer → rating (SLICE-252-4)", () => {
   it("dedupe: verified repeat → 409; anon same fpHash → 409; new ip → accepted", async () => {
     const { app } = mkApp();
     const { id } = await (await createSurvey(app, SV)).json();
-    await answer(app, id, { answers: {} }, { "x-test-agent": "a9" });
-    const dup = await answer(app, id, { answers: {} }, { "x-test-agent": "a9" });
+    await answer(app, id, { answers: { q1: "x" } }, { "x-test-agent": "a9" });
+    const dup = await answer(app, id, { answers: { q1: "x" } }, { "x-test-agent": "a9" });
     expect(dup.status).toBe(409);
     // anon: same ip+ua+salt → same fpHash → 409
-    await answer(app, id, { answers: {} }, { "fly-client-ip": "1.2.3.4" });
-    const dup2 = await answer(app, id, { answers: {} }, { "fly-client-ip": "1.2.3.4" });
+    await answer(app, id, { answers: { q1: "x" } }, { "fly-client-ip": "1.2.3.4" });
+    const dup2 = await answer(app, id, { answers: { q1: "x" } }, { "fly-client-ip": "1.2.3.4" });
     expect(dup2.status).toBe(409);
     // different ip → different fpHash → accepted
-    const ok = await answer(app, id, { answers: {} }, { "fly-client-ip": "5.6.7.8" });
+    const ok = await answer(app, id, { answers: { q1: "x" } }, { "fly-client-ip": "5.6.7.8" });
     expect(ok.status).toBe(202);
     // different agent on new survey → new rated write allowed
     const { id: id2 } = await (await createSurvey(app, SV)).json();
-    const ok2 = await answer(app, id2, { answers: {} }, { "x-test-agent": "a9" });
+    const ok2 = await answer(app, id2, { answers: { q1: "x" } }, { "x-test-agent": "a9" });
     expect(ok2.status).toBe(202);
   });
 
@@ -160,9 +160,9 @@ describe("answer → rating (SLICE-252-4)", () => {
     const { id } = await (
       await createSurvey(app, { ...SV, closesAtMs: Date.now() - 1000 })
     ).json();
-    const closed = await answer(app, id, { answers: {} });
+    const closed = await answer(app, id, { answers: { q1: "x" } });
     expect(closed.status).toBe(410);
-    const miss = await answer(app, "sv_nope", { answers: {} });
+    const miss = await answer(app, "sv_nope", { answers: { q1: "x" } });
     expect(miss.status).toBe(404);
   });
 });

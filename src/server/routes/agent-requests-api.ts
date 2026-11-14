@@ -28,6 +28,7 @@ import {
   createSubmitLanes,
   headerSnapshot,
   parseIntake,
+  readBodyCap,
   BODY_MAX,
   PAYLOAD_MAX,
   META_MAX,
@@ -54,6 +55,10 @@ const agentKeyOf = (c: Context): string | null =>
   (c.get("agentId") as string | undefined) ?? null;
 
 export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
+  // Audit M-12: short salt → low-work fpHash brute-force.
+  if ((deps.env.fingerprintSalt ?? "").length < 8) {
+    throw new Error("fingerprintSalt must be >= 8 chars");
+  }
   const app = new Hono();
   const { stores, env } = deps;
   const now = deps.now ?? (() => Date.now());
@@ -105,12 +110,7 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
       const id = c.req.param("id");
       const { record, expired } = await stores.requests.get(id);
       if (!record) {
-        return errorResponse(
-          c,
-          404,
-          ErrorCodes.REQUEST_NOT_FOUND,
-          "no such request",
-        );
+        return errorResponse( c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request", );
       }
       if (expired) {
         return errorResponse(
@@ -145,41 +145,26 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
     async (c) => {
       const contentLength = Number(c.req.header("content-length") ?? 0);
       if (contentLength > BODY_MAX) {
-        return errorResponse(
-          c,
-          413,
-          ErrorCodes.PAYLOAD_TOO_LARGE,
-          `body over ${BODY_MAX} bytes`,
-        );
+        return errorResponse( c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`, );
       }
-      const intake = parseIntake(await c.req.text());
+      // Audit H-3: chunked bodies have no length — stream-cap the read.
+      const raw = await readBodyCap(c, BODY_MAX);
+      if (raw === null) {
+        return errorResponse( c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`, );
+      }
+      const intake = parseIntake(raw);
       if (!intake.ok) {
         if (intake.error === "too_large") {
-          return errorResponse(
-            c,
-            413,
-            ErrorCodes.PAYLOAD_TOO_LARGE,
-            `body over ${BODY_MAX} bytes`,
-          );
+          return errorResponse( c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`, );
         }
         if (intake.error === "bad_json") {
           return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "bad json");
         }
         if (intake.error === "field_too_large") {
           const cap = intake.field === "payload" ? PAYLOAD_MAX : META_MAX;
-          return errorResponse(
-            c,
-            400,
-            ErrorCodes.PAYLOAD_TOO_LARGE,
-            `${intake.field} over ${cap} bytes`,
-          );
+          return errorResponse( c, 400, ErrorCodes.PAYLOAD_TOO_LARGE, `${intake.field} over ${cap} bytes`, );
         }
-        return errorResponse(
-          c,
-          400,
-          ErrorCodes.INVALID_INPUT,
-          "payload required",
-        );
+        return errorResponse( c, 400, ErrorCodes.INVALID_INPUT, "payload required", );
       }
       const { kind, payload } = intake.body;
 
@@ -192,8 +177,12 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
         headers: headerSnapshot(c),
         salt: env.fingerprintSalt,
       });
-      const idempotencyKey =
-        c.req.header("idempotency-key")?.trim() || null;
+      const rawKey = c.req.header("idempotency-key")?.trim() || null;
+      // Audit M-11: bounded, printable-ASCII keys only.
+      if (rawKey !== null && !/^[\x20-\x7E]{8,255}$/.test(rawKey)) {
+        return errorResponse( c, 400, ErrorCodes.INVALID_INPUT, "bad idempotency-key", );
+      }
+      const idempotencyKey = rawKey;
 
       // ── 1. QA fast-path (D-252-Q7) — no row created. ──
       const question = payloadQuestionText(payload);
@@ -209,10 +198,7 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
             sourceRequestId: pair.sourceRequestId,
             createdAtMs: pair.createdAtMs,
           }); // same questionHash → uses++
-          return c.json(
-            { state: "completed", response: pair.response, qa: true },
-            200,
-          );
+          return c.json({ state: "completed", response: pair.response, qa: true }, 200);
         }
       }
 
@@ -223,16 +209,17 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
           fpHash,
         );
         if (existing) {
+          // Audit M-11: same key + different payload → 422, not replay.
+          if (
+            JSON.stringify(existing.payload) !== JSON.stringify(payload)
+          ) {
+            return errorResponse( c, 422, ErrorCodes.INVALID_INPUT, "idempotency-key reused with a different payload", );
+          }
           const url = `/api/requests/${existing.id}`;
           c.header("Location", url);
           c.header("Retry-After", String(RETRY_AFTER_SEC));
           return c.json(
-            {
-              request_id: existing.id,
-              state: existing.state,
-              poll_url: url,
-              duplicate: true,
-            },
+            { request_id: existing.id, state: existing.state, poll_url: url, duplicate: true },
             202,
           );
         }
@@ -243,46 +230,54 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
       const hit = lanes.check(agentId, fpHash, softFpHash);
       if (hit) {
         c.header("Retry-After", String(hit.retryAfterSec));
-        return errorResponse(
-          c,
-          429,
-          ErrorCodes.RATE_LIMITED,
-          "submit rate-limit exceeded",
-          { retryable: true },
-        );
+        return errorResponse( c, 429, ErrorCodes.RATE_LIMITED, "submit rate-limit exceeded", { retryable: true }, );
       }
 
       // ── 4. Persist + spam-flag probe (D-252-Q5). ──
       const recordId = `rq_${crypto.randomUUID().replaceAll("-", "")}`;
-      const { record } = await stores.requests.submit({
-        id: recordId,
-        state: "submitted",
-        kind: kind ?? null,
-        payload,
-        fingerprint,
-        fpHash,
-        agentId,
-        verified: agentId != null,
-        idempotencyKey,
-        expiresAtMs: now() + env.requestTtlMs,
-      });
+      let record;
+      try {
+        ({ record } = await stores.requests.submit({
+          id: recordId,
+          state: "submitted",
+          kind: kind ?? null,
+          payload,
+          fingerprint,
+          fpHash,
+          agentId,
+          verified: agentId != null,
+          idempotencyKey,
+          expiresAtMs: now() + env.requestTtlMs,
+        }));
+      } catch {
+        // Audit M-1: store failure post-lane → honest 503, not a 500.
+        return errorResponse( c, 503, ErrorCodes.INTERNAL_ERROR, "submit failed, retry later", { retryable: true }, );
+      }
 
       if (question) {
-        const hash = contentHashFor(kind ?? null, question);
-        const recent = await stores.requests.listByState({
-          sinceMs: now() - (deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS),
-        });
-        const isSpam = recent.some(
-          (r) =>
-            r.id !== record.id &&
-            r.fpHash === fpHash &&
-            r.kind === (kind ?? null) &&
-            r.payload != null &&
-            contentHashFor(r.kind, payloadQuestionText(r.payload) ?? "") ===
-            hash,
-        );
-        if (isSpam) {
-          await stores.requests.setSpamFlag(record.id, true);
+        try {
+          // Audit M-1: the spam probe is advisory — never 500 a submit.
+          const hash = contentHashFor(kind ?? null, question);
+          const recent = await stores.requests.listByState({
+            sinceMs:
+              now() - (deps.submitWindowMs ?? DEFAULT_SUBMIT_WINDOW_MS),
+          });
+          const isSpam = recent.some(
+            (r) =>
+              r.id !== record.id &&
+              r.fpHash === fpHash &&
+              r.kind === (kind ?? null) &&
+              r.payload != null &&
+              contentHashFor(
+                r.kind,
+                payloadQuestionText(r.payload) ?? "",
+              ) === hash,
+          );
+          if (isSpam) {
+            await stores.requests.setSpamFlag(record.id, true);
+          }
+        } catch {
+          /* advisory only */
         }
       }
 

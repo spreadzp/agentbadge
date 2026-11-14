@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, appendFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { RequestInboxStores } from "./store";
@@ -73,9 +73,10 @@ export async function runInboxJanitor(
   const purgeable = await stores.requests.listPurgeable(cutoff, limit);
   result.purgeableListed = purgeable.length;
 
+  let archiveOk = opts.archiveDir === undefined;
   if (opts.archiveDir !== undefined && purgeable.length > 0) {
     try {
-      await mkdir(opts.archiveDir, { recursive: true });
+      await mkdir(opts.archiveDir, { recursive: true, mode: 0o700 });
       const stamp = new Date(nowMs).toISOString().slice(0, 10).replaceAll("-", "");
       const file = join(opts.archiveDir, `agent-requests-${stamp}.jsonl`);
       const lines = purgeable.map((r) =>
@@ -89,14 +90,26 @@ export async function runInboxJanitor(
           archivedAtMs: nowMs,
         }),
       );
-      // Fresh file per run day — a second run same-day regenerates
-      // identical content, so overwrite keeps the file deterministic.
-      await writeFile(file, lines.join("\n") + "\n", "utf8");
+      // Audit H-7: append (not overwrite) — two same-day runs must
+      // accumulate, and 0600 keeps payloads owner-only. The file is
+      // keyed by archive day; re-runs append, never truncate.
+      await appendFile(file, lines.join("\n") + "\n", {
+        encoding: "utf8",
+        mode: 0o600,
+      });
       result.archiveFile = file;
       result.archived = lines.length;
+      archiveOk = true;
     } catch (err) {
       result.errors.push(`archive: ${String(err)}`);
     }
+  }
+
+  // Audit H-7: never purge what wasn't archived — a failed archive
+  // must leave payloads intact rather than silently destroy data.
+  if (!archiveOk) {
+    result.errors.push("purge skipped: archive failed");
+    return result;
   }
 
   for (const r of purgeable) {

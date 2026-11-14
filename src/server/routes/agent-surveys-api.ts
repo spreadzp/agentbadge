@@ -22,7 +22,12 @@ import { resolveClientIp } from "../middleware/rate-limit";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { buildFingerprint } from "../lib/request-inbox/fingerprint";
-import { createSubmitLanes, headerSnapshot } from "../lib/request-inbox/intake";
+import {
+  createSubmitLanes,
+  headerSnapshot,
+  readBodyCap,
+} from "../lib/request-inbox/intake";
+import { SurveyAnswerDuplicateError } from "../lib/request-inbox/survey-store";
 import type { RequestInboxStores } from "../lib/request-inbox/store";
 import type { RequestInboxEnvConfig } from "../../config/env/request-inbox-types";
 import type { ReputationWriteRecord } from "../lib/board/types";
@@ -71,6 +76,10 @@ const fpFor = (
 export function createAgentSurveyRoutes(
   deps: AgentSurveyRoutesDeps,
 ): Hono {
+  // Audit M-12: short salt → low-work fpHash brute-force.
+  if ((deps.env.fingerprintSalt ?? "").length < 8) {
+    throw new Error("fingerprintSalt must be >= 8 chars");
+  }
   const app = new Hono();
   const { stores, env } = deps;
   const now = deps.now ?? (() => Date.now());
@@ -167,14 +176,25 @@ export function createAgentSurveyRoutes(
       ) {
         return errorResponse(c, 410, ErrorCodes.REQUEST_EXPIRED, "closed");
       }
-      const parsed = answerSchema.safeParse(
-        await c.req.json().catch(() => null),
-      );
+      // Audit H-3: cap the buffered read — json() is unbounded.
+      // Audit H-4: empty answers mint free reputation claims.
+      const raw = await readBodyCap(c, ANSWERS_MAX + 1024);
+      let answers: unknown = undefined;
+      try {
+        const parsed = answerSchema.safeParse(
+          raw === null ? null : JSON.parse(raw || "null"),
+        );
+        if (parsed.success) answers = parsed.data.answers;
+      } catch {
+        /* malformed JSON → answers stays undefined */
+      }
       if (
-        !parsed.success ||
-        parsed.data.answers === undefined ||
-        Buffer.byteLength(JSON.stringify(parsed.data.answers), "utf8") >
-        ANSWERS_MAX
+        answers === undefined ||
+        answers === null ||
+        (Array.isArray(answers) && answers.length === 0) ||
+        (typeof answers === "object" &&
+          Object.keys(answers as object).length === 0) ||
+        Buffer.byteLength(JSON.stringify(answers), "utf8") > ANSWERS_MAX
       ) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "answers required");
       }
@@ -204,16 +224,32 @@ export function createAgentSurveyRoutes(
           `retry in ${hit.retryAfterSec}s`,
         );
       }
-      const answer = await stores.surveys.putAnswer({
-        id: `ans_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
-        surveyId: survey.id,
-        agentId,
-        fpHash,
-        answers: parsed.data.answers,
-        rated: false,
-        createdAtMs: now(),
-      });
-      if (agentId) {
+      let answer;
+      try {
+        answer = await stores.surveys.putAnswer({
+          id: `ans_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+          surveyId: survey.id,
+          agentId,
+          fpHash,
+          answers,
+          rated: false,
+          createdAtMs: now(),
+        });
+      } catch (err) {
+        if (err instanceof SurveyAnswerDuplicateError) {
+          return errorResponse(
+            c,
+            409,
+            ErrorCodes.INVALID_STATE,
+            "already answered",
+          );
+        }
+        throw err;
+      }
+      // Audit H-5: claim the rated slot BEFORE crediting — a credit
+      // that precedes the claim can double-pay under a race.
+      const claimed = await stores.surveys.markRated(answer.id);
+      if (agentId && claimed) {
         writeReputation({
           id: newReputationId(),
           sourceType: "surveys",
@@ -231,7 +267,6 @@ export function createAgentSurveyRoutes(
             answerId: answer.id,
           },
         });
-        await stores.surveys.markRated(answer.id);
       }
       return c.json({ accepted: true, answer_id: answer.id, rated: agentId != null }, 202);
     },

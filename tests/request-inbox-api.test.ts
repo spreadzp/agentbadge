@@ -96,7 +96,7 @@ describe("POST /api/requests (SLICE-252-2)", () => {
 
   it("Idempotency-Key replay → same request_id, no new row, still 202", async () => {
     const { app } = mkApp();
-    const h = { "Idempotency-Key": "key-1", "fly-client-ip": "1.2.3.4" };
+    const h = { "Idempotency-Key": "key-11111", "fly-client-ip": "1.2.3.4" };
     const a = await post(app, { payload: { prompt: "p" } }, h);
     const b = await post(app, { payload: { prompt: "p" } }, h);
     const [ba, bb] = [await a.json(), await b.json()];
@@ -158,7 +158,7 @@ describe("POST /api/requests (SLICE-252-2)", () => {
 
   it("idempotent replay bypasses the submit limit (AAuth §11.8)", async () => {
     const { app } = mkApp();
-    const h = { "Idempotency-Key": "k2", "fly-client-ip": "7.7.7.7" };
+    const h = { "Idempotency-Key": "k2-99999", "fly-client-ip": "7.7.7.7" };
     await post(app, { payload: { prompt: "p" } }, h);
     const replay = await post(app, { payload: { prompt: "p" } }, h);
     expect(replay.status).toBe(202); // replay, not 429

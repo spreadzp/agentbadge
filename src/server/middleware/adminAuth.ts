@@ -10,16 +10,18 @@
  * Compares against `process.env.ADMIN_API_KEY` using timing-safe comparison.
  * Returns 401 if missing or invalid.
  */
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Context, Next } from "hono";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 
+/** Audit M-13: hash both sides first — equal-length-only compare
+ *  leaks the key length via timing and skips timingSafeEqual for
+ *  wrong-length inputs. Fixed-size digests compare cleanly. */
 function safeCompare(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
+  const ha = createHash("sha256").update(a).digest();
+  const hb = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ha, hb);
 }
 
 export async function adminAuth(c: Context, next: Next): Promise<Response | void> {

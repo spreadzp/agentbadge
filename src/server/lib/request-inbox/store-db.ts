@@ -7,7 +7,10 @@ import type {
   SurveyAnswerUpsert,
 } from "@agentbadge/database";
 
-import type { SurveyStore } from "./survey-store";
+import {
+  SurveyAnswerDuplicateError,
+  type SurveyStore,
+} from "./survey-store";
 import type {
   SubmitInput,
   RequestStore,
@@ -235,7 +238,16 @@ export function createDbSurveyStore(repo: AgentSurveyRepository): SurveyStore {
         rated: a.rated,
         createdAtMs: a.createdAtMs,
       };
-      return toAnswer(await repo.putAnswer(upsert));
+      try {
+        return toAnswer(await repo.putAnswer(upsert));
+      } catch (err) {
+        // Audit H-5: @@unique([surveyId, agentId]) violation on a
+        // concurrent dup → typed error the route maps to 409.
+        if (err instanceof Error && err.message.includes("surveyId")) {
+          throw new SurveyAnswerDuplicateError();
+        }
+        throw err;
+      }
     },
 
     async findAnswerByAgent(surveyId, agentId) {

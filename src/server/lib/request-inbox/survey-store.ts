@@ -6,11 +6,21 @@ import type { InboxSurveyAnswer, InboxSurveyRecord } from "./types";
  * (surveyId, agentId); anonymous answers on (surveyId, fpHash) with
  * agentId === null (a nullable unique column can't carry that rule).
  */
+/** Thrown by putAnswer when the (surveyId, agentId|fpHash) pair is
+ *  already claimed — routes map this to 409 (audit H-5). */
+export class SurveyAnswerDuplicateError extends Error {
+  constructor() {
+    super("survey answer already exists for this identity");
+    this.name = "SurveyAnswerDuplicateError";
+  }
+}
+
 export interface SurveyStore {
   putSurvey(s: InboxSurveyRecord): Promise<InboxSurveyRecord>;
   getSurvey(id: string): Promise<InboxSurveyRecord | null>;
   listOpenSurveys(nowMs: number, limit?: number): Promise<InboxSurveyRecord[]>;
   setSurveyActive(id: string, active: boolean): Promise<boolean>;
+  /** Atomic claim — throws SurveyAnswerDuplicateError on a dup. */
   putAnswer(a: InboxSurveyAnswer): Promise<InboxSurveyAnswer>;
   findAnswerByAgent(surveyId: string, agentId: string): Promise<InboxSurveyAnswer | null>;
   findAnswerByFp(surveyId: string, fpHash: string): Promise<InboxSurveyAnswer | null>;
@@ -58,6 +68,16 @@ export function createMemorySurveyStore(): SurveyStore {
     },
 
     async putAnswer(a) {
+      // Audit H-5: claim atomically — the dedupe check lives inside
+      // the write so concurrent answers can't both pass find-then-set.
+      for (const x of answers.values()) {
+        const dup =
+          x.surveyId === a.surveyId &&
+          (a.agentId !== null
+            ? x.agentId === a.agentId
+            : x.agentId === null && x.fpHash === a.fpHash);
+        if (dup) throw new SurveyAnswerDuplicateError();
+      }
       answers.set(a.id, { ...a });
       return { ...a };
     },

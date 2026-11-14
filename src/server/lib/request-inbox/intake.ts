@@ -60,6 +60,11 @@ export function parseIntake(raw: string):
   if (bytes(payload) > PAYLOAD_MAX) {
     return { ok: false, error: "field_too_large", field: "payload" };
   }
+  // Audit M-8: NUL / unpaired surrogates survive JSON.parse+zod but
+  // Postgres jsonb 500s on them — reject before the lane is consumed.
+  if (hasJsonbUnsafe(payload)) {
+    return { ok: false, error: "invalid" };
+  }
   if (meta) {
     for (const [k, v] of Object.entries(meta)) {
       if (v !== undefined && bytes(v) > META_MAX) {
@@ -68,6 +73,59 @@ export function parseIntake(raw: string):
     }
   }
   return { ok: true, body: parsed.data };
+}
+
+/** True if any string under `v` has NUL or an unpaired surrogate. */
+function hasJsonbUnsafe(v: unknown, depth = 0): boolean {
+  if (depth > 32) return true;
+  if (typeof v === "string") {
+    return (
+      v.includes("\u0000") ||
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(
+        v,
+      )
+    );
+  }
+  if (Array.isArray(v)) {
+    return v.some((x) => hasJsonbUnsafe(x, depth + 1));
+  }
+  if (v !== null && typeof v === "object") {
+    return Object.values(v as Record<string, unknown>).some((x) =>
+      hasJsonbUnsafe(x, depth + 1),
+    );
+  }
+  return false;
+}
+
+/**
+ * Stream the request body with a hard byte cap (audit H-3): chunked
+ * requests carry no Content-Length, so `c.req.text()` buffers them
+ * unbounded. Returns null when the body exceeds `cap`.
+ */
+export async function readBodyCap(
+  c: Context,
+  cap: number,
+): Promise<string | null> {
+  const body = c.req.raw.body;
+  if (!body) return "";
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (; ;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > cap) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks.map((x) => Buffer.from(x))).toString("utf8");
 }
 
 /** Lower-cased header snapshot (values truncated at 512 chars) —
@@ -80,7 +138,11 @@ export function headerSnapshot(c: Context): Record<string, string> {
   return out;
 }
 
-/** Sliding-window submit limiter — key is `agentId ?? fpHash`. */
+const LANE_MAX_ENTRIES = 10_000;
+
+/** Fixed-window submit limiter — key is `agentId ?? fpHash`. Entries
+ *  are swept periodically and evicted past LANE_MAX_ENTRIES so a
+ *  rotation flood can't grow the map forever (audit H-2). */
 export function createSubmitLimiter(opts: {
   windowMs: number;
   max: number;
@@ -88,9 +150,19 @@ export function createSubmitLimiter(opts: {
 }): { check(key: string): { retryAfterSec: number } | null } {
   const store = new MemoryStore();
   const now = opts.now ?? (() => Date.now());
+  let lastSweep = now();
   return {
     check(key) {
       const t = now();
+      if (t - lastSweep >= opts.windowMs) {
+        store.sweep(t);
+        lastSweep = t;
+      }
+      if (store.size() > LANE_MAX_ENTRIES) {
+        store.sweep(t);
+        const over = store.size() - LANE_MAX_ENTRIES;
+        if (over > 0) store.evictOldest?.(over);
+      }
       let e = store.get(key);
       if (!e || e.resetAt <= t) {
         e = { count: 0, resetAt: t + opts.windowMs };
@@ -139,10 +211,12 @@ export function createSubmitLanes(opts: {
   });
   return {
     check(agentId, fpHash, softFpHash) {
-      const limited = hard.check(`${agentId ?? fpHash}`);
-      const softLimited =
-        agentId === null ? soft.check(`soft:${softFpHash}`) : null;
-      return limited ?? softLimited;
+      // Audit H-1: hard lane first — a hard-limited request must not
+      // burn soft quota (a hard reject shouldn't starve the shared
+      // signature bucket for everyone else on it).
+      const limited = hard.check(`hard:${agentId ?? fpHash}`);
+      if (limited) return limited;
+      return agentId === null ? soft.check(`soft:${softFpHash}`) : null;
     },
   };
 }

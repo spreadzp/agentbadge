@@ -14,6 +14,9 @@ import { getDatabase } from "../lib/database";
 let timer: ReturnType<typeof setInterval> | null = null;
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // hourly
 const FIRST_TICK_MS = 30_000;
+/** Audit M-7: high-water mark — only report requests created since
+ *  the last successful digest, not the whole backlog every tick. */
+let lastDigestMs = 0;
 
 export function startRequestInboxNotifier(opts?: {
   intervalMs?: number;
@@ -32,7 +35,9 @@ export function startRequestInboxNotifier(opts?: {
       const cfg = telegramFromEnv();
       if (!cfg) return; // no creds → silent skip
       const stores = pickRequestInboxStores(getDatabase());
-      await sendInboxDigest({ stores, cfg });
+      const tick = Date.now();
+      const r = await sendInboxDigest({ stores, cfg, sinceMs: lastDigestMs });
+      if (r.sent) lastDigestMs = tick;
     } catch (err) {
       logger.error("request-inbox notifier tick failed", { error: err });
     }

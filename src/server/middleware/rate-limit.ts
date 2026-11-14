@@ -12,6 +12,7 @@
  * - Config per mount: {windowMs, max, keyBy, routes}
  */
 
+import { isIP } from "node:net";
 import type { Context, Next } from "hono";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
@@ -148,8 +149,9 @@ export function resolveClientIp(c: Context): string {
     process.env.FLY_APP_NAME || process.env.FLY_MACHINE_ID,
   );
   if (onFly) {
-    const flyIp = c.req.header("fly-client-ip");
-    if (flyIp) return flyIp.trim();
+    const flyIp = c.req.header("fly-client-ip")?.trim();
+    // Audit M-10: a non-IP value must not mint a fresh bucket.
+    if (flyIp && isIP(flyIp)) return flyIp;
   }
 
   if (process.env.TRUST_PROXY_HEADERS === "true") {
@@ -157,11 +159,11 @@ export function resolveClientIp(c: Context): string {
     if (xff) {
       const parts = xff.split(",").map((s) => s.trim());
       const rightmost = parts[parts.length - 1];
-      if (rightmost) return rightmost;
+      if (rightmost && isIP(rightmost)) return rightmost;
     }
 
-    const realIp = c.req.header("x-real-ip");
-    if (realIp) return realIp.trim();
+    const realIp = c.req.header("x-real-ip")?.trim();
+    if (realIp && isIP(realIp)) return realIp;
   }
 
   return "unknown";
