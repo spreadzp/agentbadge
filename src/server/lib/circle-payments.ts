@@ -9,6 +9,7 @@ import {
   createIdentityExtension,
   createMemoryFailureStore,
   createPaymentRouter,
+  getChain,
   getPrice,
   PRICE_TABLE,
   registerArcSelfSettleScheme,
@@ -196,9 +197,8 @@ export function createCirclePaymentsRuntime(
         sellerAddress: payTo, gatewayCrosschainTakeUsd: cfg.gatewayCrosschainTakeUsd,
         ...(perRailPayTo ? { railPayTo: perRailPayTo } : {}),
         ...(cfg.gatewayChains ? { gatewayChains: cfg.gatewayChains } : {}),
-        ...routerFlags,
-        handles: handles!,
-        metrics: metricsHooks,
+        ...(getChain(cfg.arcChainId) ? { arcChain: getChain(cfg.arcChainId) } : {}),
+        ...routerFlags, handles: handles!, metrics: metricsHooks,
       });
       routers.set(key, r);
     }
