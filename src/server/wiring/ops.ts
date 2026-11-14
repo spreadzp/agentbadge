@@ -33,6 +33,12 @@ export function wireStaticOps(app: Hono): void {
   // /.well-known/security.txt is generated at boot by discoveryManifestRoutes
   // (SLICE-178-2) — fresh Expires on every deploy, no static file.
   app.use("/6abf90e7f0354fb09ac01108f46a17e7.txt", serveStatic({ root: "./public", path: "/6abf90e7f0354fb09ac01108f46a17e7.txt" }));
+  // SLICE-252-10: agent-facing test kit for the request inbox.
+  app.use("/agent-test-kit.md", (c, next) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    c.header("Content-Type", "text/markdown; charset=utf-8");
+    return next();
+  }, serveStatic({ root: "./public", path: "/agent-test-kit.md" }));
 
   app.use("/icons/*", (c, next) => {
     c.header("Cache-Control", "public, max-age=31536000, immutable");
