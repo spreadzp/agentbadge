@@ -277,48 +277,5 @@ export function createAgentRequestOpsRoutes(
     },
   );
 
-  app.get(
-    "/api/ops/surveys/:id/answers",
-    adminAuth,
-    describeRoute({
-      summary: "Ops pull — survey answers with voter fingerprints (hashes only)",
-      tags: ["Ops"],
-      responses: {
-        200: { description: "Answer list for the survey" },
-        401: { description: "Admin key required" },
-        404: { description: "Unknown survey" },
-      },
-    }),
-    async (c) => {
-      const id = c.req.param("id");
-      const survey = await stores.surveys.getSurvey(id);
-      if (!survey) {
-        return errorResponse(
-          c,
-          404,
-          ErrorCodes.REQUEST_NOT_FOUND,
-          "no survey",
-        );
-      }
-      const answers = await stores.surveys.listAnswers(id, 500);
-      return c.json({
-        survey: {
-          id: survey.id,
-          title: survey.title,
-          active: survey.active,
-          closesAtMs: survey.closesAtMs,
-        },
-        items: answers.map((a) => ({
-          id: a.id,
-          agentId: a.agentId,
-          fpHash: a.fpHash,
-          answers: a.answers,
-          rated: a.rated,
-          createdAtMs: a.createdAtMs,
-        })),
-      });
-    },
-  );
-
   return app;
 }
