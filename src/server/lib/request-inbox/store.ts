@@ -44,6 +44,12 @@ export interface RequestStore {
     respondedAtMs?: number | null;
     spamFlag?: boolean;
   }): Promise<InboxRequestRecord | null>;
+  /** D-252-Q5 dedupe probe — replay check runs BEFORE the 252-2
+   *  submit rate-limit so a retried POST bypasses the limit. */
+  findByIdempotency(
+    idempotencyKey: string,
+    fpHash: string,
+  ): Promise<InboxRequestRecord | null>;
   setSpamFlag(id: string, spamFlag: boolean): Promise<boolean>;
   /** QA corpus materialization (D-252-Q7) — same questionHash bumps uses. */
   upsertQaPair(qa: Omit<InboxQaPair, "uses"> & { uses?: number }): Promise<InboxQaPair>;
@@ -111,6 +117,18 @@ export function createMemoryRequestStore(): RequestStore {
       };
       rows.set(record.id, record);
       return { record: cloneRecord(record), duplicate: false };
+    },
+
+    async findByIdempotency(idempotencyKey, fpHash) {
+      for (const r of rows.values()) {
+        if (
+          r.idempotencyKey === idempotencyKey &&
+          r.fpHash === fpHash
+        ) {
+          return cloneRecord(r);
+        }
+      }
+      return null;
     },
 
     async get(id) {

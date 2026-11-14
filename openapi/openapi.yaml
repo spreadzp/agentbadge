@@ -3,10 +3,25 @@
 openapi: 3.1.0
 info:
   title: AgentBadge API
-  description: On-chain identity system for AI agents on Hedera Network. Agents
-    purchase NFT passports via x402 payment, receive DID + capabilities, and
-    register in HCS directory for discovery.
+  description: Agent-readiness verification and attestation for AI agents. Paid
+    x402 scans return a full ruleset verdict and can mint an AccessPass NFT on
+    Arc; free endpoints expose the verdict registry, service catalog and
+    machine-readable descriptors for discovery.
   version: 0.16.0
+  x-guidance: "Verify an AI agent or API for agent-readiness. Input: POST
+    /api/total-scan with a target URL; the endpoint answers 402 first — pay in
+    USDC over x402 (EIP-3009, Arc eip155:5042) and retry. Output: a full ruleset
+    verdict with score, failed rules, and how_to_fix hints; eligible scans mint
+    an AccessPass NFT attestation on Arc. Free calls: GET /api/v1/services for
+    the priced catalog, GET /.well-known/agentbadge-machine.json for machine
+    descriptors, GET /openapi.json for this spec. Call when an agent needs a
+    verifiable readiness verdict, an on-chain attestation, or a paid
+    due-diligence scan of another service."
+  contact:
+    email: feedback@agentbadge.xyz
+externalDocs:
+  url: https://agentbadge.gitbook.io/agentbadge-docs
+  description: AgentBadge documentation — guides, API reference, agent onboarding
 servers:
   - url: https://agentbadge.xyz
     description: AgentBadge API
@@ -1815,6 +1830,46 @@ paths:
           in: path
           name: id
           required: true
+  /api/v1/payments/{id}/refund:
+    post:
+      operationId: postApiV1PaymentsByIdRefund
+      tags:
+        - Payments
+      summary: Mark a payment refunded (admin)
+      description: "Records an ops-executed on-chain refund: appends a REFUND_REQUEST
+        exception, transitions the payment CONFIRMED → REFUNDED, resolves the
+        exception. Requires admin auth (X-Admin-Key or Bearer). `txHash` must be
+        the refund transaction hash (0x + 64 hex)."
+      responses:
+        "200":
+          description: Payment marked REFUNDED
+        "400":
+          description: Missing/invalid txHash
+        "401":
+          description: Missing/invalid admin key
+        "404":
+          description: Unknown payment
+        "409":
+          description: Payment not CONFIRMED / already refunded
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/payments/exceptions:
+    get:
+      operationId: getApiV1PaymentsExceptions
+      tags:
+        - Payments
+      summary: List payment exceptions (admin)
+      description: Ops/reconciliation queue — anomalies the monitor and reconciliation
+        flagged (underpaid, late, duplicate, …).
+      responses:
+        "200":
+          description: Exception rows, newest first
+        "401":
+          description: Missing/invalid admin key
   /api/v1/payments/{id}:
     get:
       operationId: getApiV1PaymentsById
@@ -2239,6 +2294,27 @@ paths:
           in: path
           name: id
           required: true
+  /api/ledger/revenue:
+    get:
+      operationId: getApiLedgerRevenue
+      tags:
+        - Ledger
+      summary: "Revenue rollup: settled pay legs by day and endpoint"
+      description: Ops-only (METRICS_BEARER_TOKEN). Aggregates econ-ledger pay legs to
+        the configured payTo over the last N days. Endpoint without
+        payload.endpoint falls into the "unknown" bucket. DATABASE_ENABLED=false
+        → no_data envelope.
+      responses:
+        "200":
+          description: Revenue rollup { total, byDay, byEndpoint }
+        "400":
+          description: Invalid days parameter
+        "401":
+          description: Missing/wrong bearer
+        "429":
+          description: Rate limited
+        "500":
+          description: Pay-to or ledger unavailable
   /api/ledger/agents/{address}/exposure:
     get:
       operationId: getApiLedgerAgentsByAddressExposure
@@ -4781,6 +4857,39 @@ paths:
           description: Markdown bStock guide
           content:
             text/markdown: {}
+  /checkout:
+    get:
+      operationId: getCheckout
+      tags:
+        - Content
+      summary: Checkout page
+      description: "Server-rendered checkout: product summary, metadata form per
+        catalog schema, payment-method (Card/USDC) and network (Arc/Base/Solana)
+        selects. Client JS drives POST /api/v1/payments → attempts →
+        instructions/status/receipt."
+      responses:
+        "200":
+          description: HTML checkout page
+        "404":
+          description: Unknown product
+  /checkout/success:
+    get:
+      operationId: getCheckoutSuccess
+      tags:
+        - Content
+      summary: Checkout success return page
+      responses:
+        "200":
+          description: HTML success page
+  /checkout/cancel:
+    get:
+      operationId: getCheckoutCancel
+      tags:
+        - Content
+      summary: Checkout cancel return page
+      responses:
+        "200":
+          description: HTML cancel page
   /faq:
     get:
       operationId: getFaq
@@ -5447,6 +5556,53 @@ paths:
           in: path
           name: id
           required: true
+  /api/requests/qa:
+    get:
+      operationId: getApiRequestsQa
+      summary: Search the request-inbox QA corpus (D-252-Q7)
+      tags:
+        - Requests
+      responses:
+        "200":
+          description: Matching QA pairs
+  /api/requests/{id}:
+    get:
+      operationId: getApiRequestsById
+      summary: Poll a request — 202 pending / 200 terminal / 410 expired
+      tags:
+        - Requests
+      responses:
+        "200":
+          description: Terminal state with response
+        "202":
+          description: Still submitted/working
+        "404":
+          description: Unknown request id
+        "410":
+          description: Expired — must not retry
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/requests:
+    post:
+      operationId: postApiRequests
+      summary: Submit an async agent request → 202 + Location (D-252)
+      tags:
+        - Requests
+      responses:
+        "200":
+          description: QA fast-path hit — instant answer
+        "202":
+          description: Accepted — poll Location
+        "400":
+          description: Invalid or oversized body
+        "413":
+          description: Body over 512KB
+        "429":
+          description: Submit rate-limit per agentId|fpHash
   /api/board/cards/{id}/claim:
     post:
       operationId: postApiBoardCardsByIdClaim
@@ -5926,8 +6082,8 @@ paths:
         "402":
           description: "Payment required (x402). PAYMENT-REQUIRED header carries
             base64-encoded payment requirements (accepts: scheme exact, network
-            eip155:84532, USDC 0x036CbD53842c5426634e7929541eC2318f3dCF7e,
-            atomic amount). Body lists per-bundle pricing."
+            eip155:5042, USDC 0x3600000000000000000000000000000000000000, atomic
+            amount). Body lists per-bundle pricing."
           content:
             application/json:
               schema:
@@ -7603,6 +7759,7 @@ paths:
       operationId: getApiPaymentProducts
       tags:
         - Payment
+      deprecated: true
       summary: List available fiat products
       description: Returns all products available for Stripe Checkout purchase.
       responses:
@@ -7648,6 +7805,7 @@ paths:
       operationId: postApiPaymentCheckout
       tags:
         - Payment
+      deprecated: true
       summary: Create a Stripe Checkout Session
       description: Creates a Stripe Checkout Session for one-time fiat payment and
         returns the redirect URL. For passport products, include accountId in

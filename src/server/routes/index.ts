@@ -101,6 +101,9 @@ import { fxDeltaVerifyRoutes } from "./fx-delta-verify";
 import { bountyApiRoutes } from "./bounty-api";
 import { boardApiRoutes } from "./board-api";
 import { createBoardReadRoutes } from "./board-api-read";
+import { createAgentRequestRoutes } from "./agent-requests-api";
+import { pickRequestInboxStores } from "../lib/request-inbox/db-stores";
+import { getDatabase } from "../lib/database";
 import { createBoardQaRoutes } from "./board-api-qa";
 import { createReceiptRoutes } from "./board-api-receipt";
 import { createReceiptSigner } from "../lib/board/task-receipt";
@@ -221,6 +224,14 @@ export function registerApiRoutes(app: Hono): void {
       ),
     );
   }
+  // 252-2: public async request inbox — POST /api/requests + GET poll.
+  app.route(
+    "/",
+    createAgentRequestRoutes({
+      stores: pickRequestInboxStores(getDatabase()),
+      env: getConfig().requestInbox,
+    }),
+  );
   app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations
   app.route("/", createBoardGuideRoutes()); // 201-3: /agent-guide/hire-or-get-hired
   app.route("/", createBoardQaRoutes()); // 199-13: /api/board/cards/:id/qa

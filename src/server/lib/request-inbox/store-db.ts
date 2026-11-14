@@ -125,6 +125,11 @@ export function createDbRequestStore(
       return { record: toRequest(row), duplicate: false };
     },
 
+    async findByIdempotency(idempotencyKey, fpHash) {
+      const row = await repo.findByIdempotency(idempotencyKey, fpHash);
+      return row ? toRequest(row) : null;
+    },
+
     async get(id) {
       const row = await repo.get(id);
       if (!row) return { record: null, expired: false };
