@@ -167,10 +167,13 @@ export function buildFingerprint(input: {
     // caller into a single shared bucket.
     ipFpHash: isIP(input.ip)
       ? createHmac("sha256", input.salt)
-          .update(`ip:${input.ip}`)
-          .digest("hex")
+        .update(`ip:${input.ip}`)
+        .digest("hex")
       : null,
     fingerprint: {
+      // Ops-visible raw IP — stored for abuse investigation;
+      // never surfaced to public request/survey endpoints.
+      ip: input.ip,
       ua,
       referer: input.referer ? cleanField(input.referer) : null,
       src: input.src ? cleanField(input.src) : null,

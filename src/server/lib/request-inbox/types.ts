@@ -13,10 +13,13 @@ export type InboxRequestState =
   | "failed";
 
 /**
- * Secret-stripped requester fingerprint snapshot (D-252-Q2).
- * Raw IP is NEVER part of this object — it only feeds fpHash.
+ * Secret-stripped requester fingerprint snapshot (D-252-Q2, amended).
+ * Resolved client IP IS stored here (ops abuse investigation) — but it
+ * is still never returned by public endpoints, only via ops routes.
  */
 export interface InboxFingerprint {
+  /** Resolved client IP — ops-only, kept out of public responses. */
+  ip: string | null;
   ua: string | null;
   referer: string | null;
   src: string | null;

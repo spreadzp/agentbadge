@@ -173,7 +173,7 @@ describe("POST /api/requests (SLICE-252-2)", () => {
       state: "submitted",
       kind: null,
       payload: { prompt: question },
-      fingerprint: { ua: "a/1", referer: null, src: null, headers: {} },
+      fingerprint: { ip: null, ua: "a/1", referer: null, src: null, headers: {} },
       fpHash: "fp_seed",
       expiresAtMs: Date.now() + 60_000,
     });
@@ -276,7 +276,7 @@ describe("QA materialization (SLICE-252-2)", () => {
       state: "submitted",
       kind: null,
       payload: { prompt: "What is x402?" },
-      fingerprint: { ua: null, referer: null, src: null, headers: {} },
+      fingerprint: { ip: null, ua: null, referer: null, src: null, headers: {} },
       fpHash: "f",
       expiresAtMs: Date.now() + 60_000,
     });
@@ -293,7 +293,7 @@ describe("QA materialization (SLICE-252-2)", () => {
       state: "submitted",
       kind: null,
       payload: { prompt: "pending" },
-      fingerprint: { ua: null, referer: null, src: null, headers: {} },
+      fingerprint: { ip: null, ua: null, referer: null, src: null, headers: {} },
       fpHash: "f",
       expiresAtMs: Date.now() + 60_000,
     });
@@ -312,7 +312,7 @@ describe("GET /api/requests/:id (SLICE-252-2)", () => {
       state: "submitted",
       kind: null,
       payload: null,
-      fingerprint: { ua: null, referer: null, src: null, headers: {} },
+      fingerprint: { ip: null, ua: null, referer: null, src: null, headers: {} },
       fpHash: "f1",
       expiresAtMs: Date.now() + 60_000,
     });
@@ -338,7 +338,7 @@ describe("GET /api/requests/:id (SLICE-252-2)", () => {
       state: "submitted",
       kind: null,
       payload: null,
-      fingerprint: { ua: null, referer: null, src: null, headers: {} },
+      fingerprint: { ip: null, ua: null, referer: null, src: null, headers: {} },
       fpHash: "f2",
       expiresAtMs: Date.now() - 1,
     });

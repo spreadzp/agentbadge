@@ -25,7 +25,7 @@ afterAll(() => {
 const mkSubmit = (over: Partial<SubmitInput>): SubmitInput => ({
   id: `rq_${Math.random().toString(16).slice(2)}`,
   state: "submitted",
-  fingerprint: { ua: "a/1", referer: null, src: null, headers: {} },
+  fingerprint: { ip: null, ua: "a/1", referer: null, src: null, headers: {} },
   fpHash: `fp_${Math.random().toString(16).slice(2)}`,
   payload: { prompt: "p" },
   expiresAtMs: Date.now() + 60_000,

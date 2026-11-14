@@ -50,11 +50,14 @@ describe("C-1 round-2: extended IP-carrier headers dropped", () => {
         "x-requested-with": "fine",
       },
     });
-    expect(JSON.stringify(fingerprint)).not.toContain("1.2.3.4");
+    // Resolved IP lives at fingerprint.ip by design now — the check is
+    // that IP-carrier *headers* still never persist.
+    expect(fingerprint.ip).toBe("1.2.3.4");
+    expect(JSON.stringify(fingerprint.headers)).not.toContain("1.2.3.4");
     expect(fingerprint.headers["x-requested-with"]).toBe("fine");
   });
 
-  it("ops read re-sanitizes legacy rows (raw IP never served)", async () => {
+  it("ops read re-sanitizes legacy rows (header-carried IP stripped, fingerprint.ip served)", async () => {
     const stores = createMemoryRequestInboxStores();
     const app = new Hono<{ Variables: Record<string, unknown> }>();
     app.route("/", createAgentRequestOpsRoutes({ stores }));
@@ -64,6 +67,7 @@ describe("C-1 round-2: extended IP-carrier headers dropped", () => {
       kind: null,
       payload: { prompt: "hi" },
       fingerprint: {
+        ip: "9.9.9.9",
         ua: "a",
         referer: null,
         src: null,
@@ -84,8 +88,12 @@ describe("C-1 round-2: extended IP-carrier headers dropped", () => {
       headers: { "X-Admin-Key": ADMIN },
     });
     expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).not.toContain("9.9.9.9");
+    const body = await res.json();
+    const fp = body.items[0].fingerprint;
+    // fingerprint.ip is intentionally ops-visible now…
+    expect(fp.ip).toBe("9.9.9.9");
+    // …but IPs smuggled inside header snapshots stay stripped.
+    expect(JSON.stringify(fp.headers)).not.toContain("9.9.9.9");
   });
 });
 
@@ -390,7 +398,7 @@ const mkSurveyApp3 = (opts?: { answerMax?: number }) => {
     createAgentSurveyRoutes({
       stores,
       env: ENV,
-      writeReputation: () => {},
+      writeReputation: () => { },
       ...opts,
     }),
   );

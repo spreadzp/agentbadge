@@ -207,7 +207,7 @@ describe("TG digest (SLICE-252-3)", () => {
         state: "submitted",
         kind: null,
         payload: { prompt: q },
-        fingerprint: { ua: null, referer: null, src: null, headers: {} },
+        fingerprint: { ip: null, ua: null, referer: null, src: null, headers: {} },
         fpHash: `fp${i}`,
         expiresAtMs: Date.now() + 60_000,
       });

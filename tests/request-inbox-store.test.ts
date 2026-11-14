@@ -20,7 +20,7 @@ const mkSubmit = (over: Partial<SubmitInput> = {}): SubmitInput => ({
   state: "submitted",
   kind: "work-intent",
   payload: { prompt: "do the thing" },
-  fingerprint: { ua: "a/1", referer: null, src: null, headers: {} },
+  fingerprint: { ip: null, ua: "a/1", referer: null, src: null, headers: {} },
   fpHash: `fp_${Math.random().toString(16).slice(2)}`,
   expiresAtMs: Date.now() + 60_000,
   ...over,

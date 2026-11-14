@@ -50,8 +50,12 @@ describe("C-1: snapshot strips IP-carrier headers", () => {
         "user-agent-ok": "fine",
       },
     });
-    const json = JSON.stringify(fingerprint);
-    expect(json).not.toContain("1.2.3.4");
+    // Amended privacy posture: resolved IP IS stored at fingerprint.ip
+    // (ops visibility) — the invariant is only that IP-carrier *headers*
+    // never persist.
+    expect(fingerprint.ip).toBe("1.2.3.4");
+    const headersJson = JSON.stringify(fingerprint.headers);
+    expect(headersJson).not.toContain("1.2.3.4");
     expect(fingerprint.headers["fly-client-ip"]).toBeUndefined();
     expect(fingerprint.headers["x-forwarded-for"]).toBeUndefined();
     expect(fingerprint.headers["x-real-ip"]).toBeUndefined();
@@ -188,7 +192,7 @@ describe("H-7: purge never runs without a durable archive", () => {
   const mkSubmit = (id: string): SubmitInput => ({
     id,
     state: "completed",
-    fingerprint: { ua: "a/1", referer: null, src: null, headers: {} },
+    fingerprint: { ip: null, ua: "a/1", referer: null, src: null, headers: {} },
     fpHash: `fp_${id}`,
     payload: { prompt: "p" },
     expiresAtMs: Date.now() + 60_000,

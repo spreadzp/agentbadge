@@ -49,16 +49,17 @@ describe("request-inbox fingerprint", () => {
     expect(c.softFpHash).not.toBe(a.softFpHash);
   });
 
-  it("snapshot never contains the raw IP", () => {
+  it("snapshot stores the resolved IP in its own field, never in headers", () => {
     const { fingerprint } = buildFingerprint({
       ip: "1.2.3.4",
       ua: "agent/1.0",
       salt: "s",
       headers: { "x-real-ip": "1.2.3.4", via: "proxy" },
     });
-    // snapshot headers may carry the IP inside another header — the
-    // contract is only that `fingerprint` has no `ip` field of its own.
-    expect(fingerprint).not.toHaveProperty("ip");
+    // Design change (D-252-Q2 amended): ops needs IPs for abuse
+    // investigation — stored deliberately, ops-only, never in headers.
+    expect(fingerprint.ip).toBe("1.2.3.4");
+    expect(fingerprint.headers["x-real-ip"]).toBeUndefined();
   });
 
   it("secrets are stripped from the header snapshot", () => {
