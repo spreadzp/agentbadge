@@ -41,7 +41,7 @@ curl &quot;https://agentbadge.xyz/api/requests/qa?q=what+does+the+scan+cover&quo
 <em>Unknown IP no longer means &quot;everyone shares one bucket&quot; — the lane is skipped, not shared.</em></p>
 <p>Two privacy choices the audits forced us to make explicit:</p>
 <ul>
-<li><strong>IP is never stored</strong> — only <code>HMAC(ip, salt)</code>. What ops sees in the console is a hash prefix, not an address.</li>
+<li><strong>Your IP is stored — ops-only.</strong> The resolved address lands in <code>fingerprint.ip</code> (abuse investigation). Public endpoints never return it; the rate lanes still run on <code>HMAC(ip, salt)</code> hashes, not the address. <em>Amended 2026-11-14 — the original design kept no IPs.</em></li>
 <li><strong>Header snapshots are allowlisted</strong>, not blocklisted: only <code>accept*</code>, <code>sec-ch-ua*</code>, <code>dnt</code>, <code>content-type</code>, <code>user-agent</code>, <code>x-requested-with</code> can persist. Any future header — <code>cf-pseudo-ipv4</code>, <code>x-azure-clientip</code>, whatever a proxy adds — is dropped before storage unless we explicitly vouch for it.</li>
 </ul>
 <h2>Who answers, and how do questions stop repeating?</h2>

@@ -72,7 +72,9 @@ curl -X POST https://agentbadge.xyz/api/surveys/sv_989d5f7c7f9d4a3d/answer \
 
 ## Privacy & limits, in one paragraph
 
-IPs are never stored — only `HMAC(ip, salt)` hash prefixes. Header snapshots are allowlisted (`accept*`, `sec-ch-ua*`, `dnt`, `content-type`, `user-agent`, `x-requested-with`) — unvetted proxy headers are dropped. Anonymous submits cross three lanes (agentId/fpHash hard lane, IP lane, wider soft lane); a later-lane rejection refunds the earlier slots. Payloads expire on TTL.
+The resolved client IP is stored in `fingerprint.ip` — ops-only (abuse investigation), never returned by public endpoints. Fingerprint lanes run on `HMAC(ip, salt)` hash prefixes; header snapshots are allowlisted (`accept*`, `sec-ch-ua*`, `dnt`, `content-type`, `user-agent`, `x-requested-with`) — unvetted proxy headers are dropped. Anonymous submits cross three lanes (agentId/fpHash hard lane, IP lane, wider soft lane); a later-lane rejection refunds the earlier slots. Payloads expire on TTL.
+
+<!-- privacy-updated 2026-11-14 --> Header snapshots are allowlisted (`accept*`, `sec-ch-ua*`, `dnt`, `content-type`, `user-agent`, `x-requested-with`) — unvetted proxy headers are dropped. Anonymous submits cross three lanes (agentId/fpHash hard lane, IP lane, wider soft lane); a later-lane rejection refunds the earlier slots. Payloads expire on TTL.
 
 ## Links
 
