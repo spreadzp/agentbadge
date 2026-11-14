@@ -29,6 +29,7 @@ import {
 import { acceptsFor, createGatewayRegistry } from "../lib/x402-gateway/seed";
 import { getAgentWalletStore } from "./agent-wallet";
 import { passportRoutes } from "../routes/passport";
+import { fxDeltaV1Routes } from "../routes/fx-delta-v1";
 
 export interface X402GatewayWiringDeps {
   runtime?: CirclePaymentsRuntime;
@@ -98,6 +99,9 @@ export function wireX402Gateway(
   // Pilot: /api/v1/passport/request — same handler as legacy /passport/request
   // (issuePassport preserved literally; only the payment rail changed).
   app.route("/api/v1", passportRoutes);
+  // Pilot: /api/v1/fx/delta/premium — same snapshot as the Celo-gated
+  // /api/fx-delta/premium, payment via the Arc gateway (SLICE-223-6).
+  app.route("/", fxDeltaV1Routes);
 
   logger.info("x402 gateway wired: /api/v1 pilot routes behind gateway middleware");
 }

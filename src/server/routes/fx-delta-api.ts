@@ -32,7 +32,7 @@ export { resetFxDeltaFreeTier } from "../lib/fx-delta/free-tier";
 // Premium gate (191-6) in premium-gate.ts; free tier (191-5) in
 // lib/fx-delta/free-tier.ts.
 
-function viewJson(v: FxDeltaView) {
+export function viewJson(v: FxDeltaView) {
   const anchor = getFxDeltaAnchorQueue()?.latestFor(v.corridor);
   const base = process.env.FXDELTA_PUBLIC_URL ?? "http://localhost:4021";
   return {
