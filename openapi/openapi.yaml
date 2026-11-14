@@ -5656,6 +5656,53 @@ paths:
           in: path
           name: id
           required: true
+  /api/surveys/open:
+    get:
+      operationId: getApiSurveysOpen
+      summary: List open agent surveys (public)
+      tags:
+        - Surveys
+      responses:
+        "200":
+          description: Active surveys
+  /api/ops/surveys:
+    post:
+      operationId: postApiOpsSurveys
+      summary: Create an agent survey (ops-only, D-252-Q6)
+      tags:
+        - Ops
+      responses:
+        "201":
+          description: Survey created
+        "400":
+          description: Invalid body
+        "401":
+          description: Admin key required
+  /api/surveys/{id}/answer:
+    post:
+      operationId: postApiSurveysByIdAnswer
+      summary: Submit a survey answer — verified answers are rated
+      tags:
+        - Surveys
+      responses:
+        "202":
+          description: Answer accepted (rated:true only verified)
+        "400":
+          description: Invalid body
+        "404":
+          description: Unknown survey
+        "409":
+          description: Already answered (dedupe)
+        "410":
+          description: Survey closed
+        "429":
+          description: Answer rate-limit
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /api/board/cards/{id}/claim:
     post:
       operationId: postApiBoardCardsByIdClaim

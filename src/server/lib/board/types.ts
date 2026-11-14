@@ -103,7 +103,7 @@ export interface BoardEntryRecord {
 
 export interface ReputationWriteRecord {
   id: string;
-  sourceType: "board" | "venue";
+  sourceType: "board" | "venue" | "surveys";
   /** cardId | venue jobId. */
   sourceId: string;
   jobAttempt: number;

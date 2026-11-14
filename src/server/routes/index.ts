@@ -103,6 +103,7 @@ import { boardApiRoutes } from "./board-api";
 import { createBoardReadRoutes } from "./board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests-api";
 import { createAgentRequestOpsRoutes } from "./agent-requests-ops-api";
+import { createAgentSurveyRoutes } from "./agent-surveys-api";
 import { pickRequestInboxStores } from "../lib/request-inbox/db-stores";
 import { getDatabase } from "../lib/database";
 import { createBoardQaRoutes } from "./board-api-qa";
@@ -238,6 +239,14 @@ export function registerApiRoutes(app: Hono): void {
     "/",
     createAgentRequestOpsRoutes({
       stores: pickRequestInboxStores(getDatabase()),
+    }),
+  );
+  // 252-4: surveys → rating lane — public open/answer + ops create.
+  app.route(
+    "/",
+    createAgentSurveyRoutes({
+      stores: pickRequestInboxStores(getDatabase()),
+      env: getConfig().requestInbox,
     }),
   );
   app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations
