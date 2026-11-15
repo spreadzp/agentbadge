@@ -3740,8 +3740,9 @@ paths:
       tags:
         - Commerce
       summary: Verify payment
-      description: "Buyer or provider: PAYMENT_RECORDED → PAYMENT_VERIFIED (human
-        review, RECORD_ONLY mode)."
+      description: "Provider/payee only: PAYMENT_RECORDED → PAYMENT_VERIFIED (human
+        review, RECORD_ONLY mode). The buyer records; the payee verifies — no
+        self-attested payments."
       responses:
         "200":
           description: OK
@@ -6628,10 +6629,13 @@ paths:
                     enum:
                       - no_creds
                       - telegram_error
+                      - timeout
                   error:
                     type: string
                   messageId:
                     type: number
+                  partial:
+                    type: boolean
                   window:
                     type: object
                     properties:

@@ -11,19 +11,24 @@ import { ErrorCodes } from "../../lib/error-codes";
 import type { CommerceService } from "../../lib/commerce";
 import {
   commerceError,
+  idemKey,
+  readJson,
+  redactRow,
+  requestFingerprint,
+  requireWallet,
+  scopedWallet,
+} from "./shared";
+import {
   created,
   errs,
   evidenceSchema,
-  idemKey,
   jsonBody,
   ok,
   paymentRecordSchema,
-  readJson,
-  requireWallet,
   reviewSchema,
   row,
   submissionCreateSchema,
-} from "./shared";
+} from "./schemas";
 
 export function createFlowRoutes(service: CommerceService): Hono {
   const r = new Hono();
@@ -47,12 +52,22 @@ export function createFlowRoutes(service: CommerceService): Hono {
       if (auth instanceof Response) return auth;
       const body = await readJson(c);
       if (body instanceof Response) return body;
+      const parsed = submissionCreateSchema.safeParse(body);
+      if (!parsed.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          `invalid submission body: ${parsed.error.issues[0]?.message ?? "schema mismatch"}`,
+        );
+      }
       try {
         const { submission, duplicate } = await service.submissions.submit(
           auth.wallet,
           c.req.param("id"),
-          body as unknown as Parameters<CommerceService["submissions"]["submit"]>[2],
+          parsed.data as Parameters<CommerceService["submissions"]["submit"]>[2],
           idemKey(c),
+          await requestFingerprint(c),
         );
         return c.json({ submission, duplicate }, duplicate ? 200 : 201);
       } catch (err) {
@@ -71,6 +86,8 @@ export function createFlowRoutes(service: CommerceService): Hono {
     }),
     async (c) => {
       const id = c.req.param("id");
+      const viewer = await scopedWallet(c);
+      if (viewer instanceof Response) return viewer;
       const agreement = await service.agreements.get(id);
       if (!agreement) {
         return errorResponse(
@@ -80,7 +97,11 @@ export function createFlowRoutes(service: CommerceService): Hono {
           `agreement ${id} not found`,
         );
       }
-      return c.json({ submissions: await service.submissions.listByAgreement(id) });
+      const parties = [agreement.buyerWallet, agreement.providerWallet];
+      const submissions = await service.submissions.listByAgreement(id);
+      return c.json({
+        submissions: submissions.map((s) => redactRow(s, parties, viewer)),
+      });
     },
   );
 
@@ -157,6 +178,7 @@ export function createFlowRoutes(service: CommerceService): Hono {
             submissionId: c.req.param("id"),
           } as Parameters<CommerceService["evidence"]["attach"]>[1],
           idemKey(c),
+          await requestFingerprint(c),
         );
         return c.json({ evidence, duplicate }, duplicate ? 200 : 201);
       } catch (err) {
@@ -181,11 +203,20 @@ export function createFlowRoutes(service: CommerceService): Hono {
       if (auth instanceof Response) return auth;
       const body = await readJson(c);
       if (body instanceof Response) return body;
+      const parsed = paymentRecordSchema.safeParse(body);
+      if (!parsed.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          `invalid payment body: ${parsed.error.issues[0]?.message ?? "schema mismatch"}`,
+        );
+      }
       try {
         const payment = await service.payments.record(
           auth.wallet,
           c.req.param("id"),
-          body as unknown as Parameters<CommerceService["payments"]["record"]>[2],
+          parsed.data as Parameters<CommerceService["payments"]["record"]>[2],
         );
         return c.json({ payment });
       } catch (err) {
@@ -194,14 +225,14 @@ export function createFlowRoutes(service: CommerceService): Hono {
     },
   );
 
-  // POST /api/commerce/payments/:id/verify — either party
+  // POST /api/commerce/payments/:id/verify — provider/payee only (H3)
   r.post(
     "/api/commerce/payments/:id/verify",
     describeRoute({
       tags: ["Commerce"],
       summary: "Verify payment",
       description:
-        "Buyer or provider: PAYMENT_RECORDED → PAYMENT_VERIFIED (human review, RECORD_ONLY mode).",
+        "Provider/payee only: PAYMENT_RECORDED → PAYMENT_VERIFIED (human review, RECORD_ONLY mode). The buyer records; the payee verifies — no self-attested payments.",
       responses: { ...ok(z.object({ payment: row })), ...errs(401, 403, 404, 409) },
     }),
     async (c) => {
@@ -228,8 +259,11 @@ export function createFlowRoutes(service: CommerceService): Hono {
     }),
     async (c) => {
       const id = c.req.param("id");
+      const viewer = await scopedWallet(c);
+      if (viewer instanceof Response) return viewer;
       const task = await service.tasks.get(id);
-      if (!task) {
+      // DRAFT existence oracle — 404 either way.
+      if (!task || (task.status === "DRAFT" && task.buyerWallet !== viewer)) {
         return errorResponse(
           c,
           404,

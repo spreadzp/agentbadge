@@ -21,7 +21,7 @@ export interface PaymentService {
     agreementId: string,
     input?: PaymentRecordInput,
   ): Promise<CommercePaymentRow>;
-  /** Either agreement party: PAYMENT_RECORDED → PAYMENT_VERIFIED. */
+  /** Provider/payee only: PAYMENT_RECORDED → PAYMENT_VERIFIED (H3). */
   verify(actorWallet: string, paymentId: string): Promise<CommercePaymentRow>;
   getByAgreement(agreementId: string): Promise<CommercePaymentRow | null>;
 }
@@ -60,6 +60,8 @@ export function createPaymentService(ctx: CommerceCtx): PaymentService {
             recordedBy: actor,
             recordedAtMs: Date.now(),
             paymentId: input.paymentId ?? null,
+            // M3: the reported amount is validated above — persist it.
+            amount: input.amount ?? undefined,
             note: input.note ?? undefined,
           }),
         { actorWallet: actor },
@@ -78,11 +80,11 @@ export function createPaymentService(ctx: CommerceCtx): PaymentService {
         "agreement",
         payment.agreementId,
       );
-      if (
-        actor !== agreement.buyerWallet &&
-        actor !== agreement.providerWallet
-      ) {
-        throw forbidden("only agreement parties can verify a payment");
+      // H3: verification is the payee's acknowledgment — the payer
+      // (buyer) already recorded the payment; letting the same party
+      // verify would make the flag self-attested.
+      if (actor !== agreement.providerWallet) {
+        throw forbidden("only the provider/payee can verify a payment");
       }
       return transitionRow(ctx, "payment", payment, "PAYMENT_VERIFIED",
         (from) =>

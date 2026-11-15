@@ -62,7 +62,7 @@ const IDEM_TTL_MS = 24 * 60 * 60 * 1000; // 24h replay window
 const IDEM_MAX_ENTRIES = 10_000;
 const dedupeStore = new Map<
   string,
-  { stored: StoredResponse; at: number }
+  { stored: StoredResponse; at: number; fingerprint?: string }
 >();
 
 /** In-flight produce() executions keyed like dedupeStore — audit
@@ -80,21 +80,59 @@ export interface IdempotentResult {
   status: number;
   body: Record<string, unknown>;
   duplicate: boolean;
+  /** Body fingerprint stored with the entry — used for conflict check on
+   *  inflight joins (SLICE-224-6 / H1). */
+  fingerprint?: string;
+}
+
+/** Options for scoped dedupe (SLICE-224-6 / H1 fix). */
+export interface IdempotentScope {
+  /** Signing wallet — namespaces the key so wallet A's key can't replay
+   *  to wallet B (cross-user disclosure / targeted suppression). */
+  owner?: string;
+  /** Resource the write targets (taskId, agreementId…) — prevents a key
+   *  reused on task A returning task B's row. */
+  resource?: string;
+  /** sha256(canonicalJson(body)) — same key + different body = conflict. */
+  fingerprint?: string;
+}
+
+/** Thrown when a key is reused under a different body fingerprint. */
+export class IdempotencyConflictError extends Error {
+  constructor() {
+    super("idempotency key reused with a different request body");
+    this.name = "IdempotencyConflictError";
+  }
 }
 
 /**
- * Run `produce` once per (scope, key); replay stored response after.
- * `produce` returns the success status + JSON-serializable object body.
- * The stored body is returned verbatim with `duplicate: true` merged.
+ * Run `produce` once per (scope, owner, resource, key); replay stored
+ * response after. `produce` returns the success status + JSON-serializable
+ * object body. The stored body is returned verbatim with `duplicate: true`
+ * merged. When `opts.fingerprint` is supplied, a hit with a mismatched
+ * fingerprint throws IdempotencyConflictError instead of replaying.
  */
 export async function idempotentWrite(
   scope: string,
   key: string,
   produce: () => Promise<StoredResponse> | StoredResponse,
+  opts?: IdempotentScope,
 ): Promise<IdempotentResult> {
-  const k = dedupeKey(scope, key);
+  const k = dedupeKey(
+    opts?.owner || opts?.resource
+      ? `${scope}${opts?.owner ?? ""}|${opts?.resource ?? ""}`
+      : scope,
+    key,
+  );
   const hit = dedupeStore.get(k);
   if (hit && Date.now() - hit.at < IDEM_TTL_MS) {
+    if (
+      opts?.fingerprint !== undefined &&
+      hit.fingerprint !== undefined &&
+      hit.fingerprint !== opts.fingerprint
+    ) {
+      throw new IdempotencyConflictError();
+    }
     return {
       status: hit.stored.status,
       body: { ...(hit.stored.body as Record<string, unknown>), duplicate: true },
@@ -110,6 +148,13 @@ export async function idempotentWrite(
   const running = inflight.get(k);
   if (running) {
     const shared = await running;
+    if (
+      opts?.fingerprint !== undefined &&
+      shared.fingerprint !== undefined &&
+      shared.fingerprint !== opts.fingerprint
+    ) {
+      throw new IdempotencyConflictError();
+    }
     return {
       status: shared.status,
       body: { ...shared.body, duplicate: true },
@@ -124,8 +169,17 @@ export async function idempotentWrite(
       const oldest = dedupeStore.keys().next().value;
       if (oldest !== undefined) dedupeStore.delete(oldest);
     }
-    dedupeStore.set(k, { stored, at: Date.now() });
-    return { status: stored.status, body: stored.body as Record<string, unknown>, duplicate: false };
+    dedupeStore.set(k, {
+      stored,
+      at: Date.now(),
+      fingerprint: opts?.fingerprint,
+    });
+    return {
+      status: stored.status,
+      body: stored.body as Record<string, unknown>,
+      duplicate: false,
+      fingerprint: opts?.fingerprint,
+    };
   })();
   inflight.set(k, exec);
   try {

@@ -486,7 +486,7 @@ describe("evidence service", () => {
 // =====================================================================
 
 describe("payment service", () => {
-  it("buyer records payment; either party may verify", async () => {
+  it("buyer records payment; only provider/payee verifies", async () => {
     const { agreement } = await activeAgreement();
     expect(
       (await err(() =>
@@ -501,12 +501,17 @@ describe("payment service", () => {
     expect(rec.status).toBe("PAYMENT_RECORDED");
     expect(rec.recordedBy).toBe(BUYER);
 
+    // H3: buyer cannot self-attest — only the provider/payee verifies
+    expect((await err(() => svc.payments.verify(BUYER, rec.id))).code).toBe(
+      "FORBIDDEN",
+    );
+
     const ver = await svc.payments.verify(PROVIDER, rec.id);
     expect(ver.status).toBe("PAYMENT_VERIFIED");
     expect(ver.verifiedBy).toBe(PROVIDER);
 
     // terminal — no further transitions
-    expect((await err(() => svc.payments.verify(BUYER, rec.id))).code).toBe(
+    expect((await err(() => svc.payments.verify(PROVIDER, rec.id))).code).toBe(
       "INVALID_TRANSITION",
     );
   });

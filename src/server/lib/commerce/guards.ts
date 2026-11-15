@@ -107,13 +107,42 @@ export function assertIdempotencyKey(key: unknown): string {
 }
 
 const DECIMAL_RE = /^\d+(\.\d+)?$/;
+// M4: precision caps — integer part ≤20 digits (below any sane currency
+// total), fraction ≤6 (USDC-scale); total ≤32 chars.
+const DECIMAL_INT_RE = /^\d{1,20}$/;
+const DECIMAL_FRAC_RE = /^\d{1,6}$/;
 
 /** Money at the edge is a decimal string — never a float. */
 export function assertDecimal(value: unknown, field: string): string {
   if (typeof value !== "string" || !DECIMAL_RE.test(value)) {
     throw guardRejected(`${field} must be a decimal string`, { field });
   }
+  const [int, frac] = value.split(".");
+  if (
+    value.length > 32 ||
+    !DECIMAL_INT_RE.test(int!) ||
+    (frac !== undefined && !DECIMAL_FRAC_RE.test(frac))
+  ) {
+    throw guardRejected(
+      `${field} out of range — ≤20 integer digits, ≤6 decimals`,
+      { field },
+    );
+  }
   return value;
+}
+
+/**
+ * Compare two already-validated decimal strings (-1|0|1) without floats:
+ * scale both to the longer fraction and BigInt-compare the integers.
+ * Used for budget enforcement (offer.price ≤ task.budget).
+ */
+export function compareDecimals(a: string, b: string): number {
+  const [ai, af = ""] = a.split(".");
+  const [bi, bf = ""] = b.split(".");
+  const scale = Math.max(af.length, bf.length);
+  const av = BigInt(ai + af.padEnd(scale, "0"));
+  const bv = BigInt(bi + bf.padEnd(scale, "0"));
+  return av === bv ? 0 : av < bv ? -1 : 1;
 }
 
 const SHA256_RE = /^[0-9a-f]{64}$/i;

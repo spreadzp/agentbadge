@@ -12,7 +12,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { createInMemoryCommerceStores } from "@agentbadge/database";
 import { createCommerceService } from "../src/server/lib/commerce";
 import { createCommerceRoutes } from "../src/server/routes/commerce/index";
-import { buildAccessChallenge } from "../src/server/middleware/agent-auth";
+import { buildCommerceChallenge } from "../src/server/routes/commerce/shared";
+import { createHash, randomUUID } from "node:crypto";
 
 const BUYER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
 const PROVIDER_KEY = "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e87293edff032"; // secret-scan:allow: anvil test fixture
@@ -34,19 +35,26 @@ async function sigHeaders(
   account: ReturnType<typeof privateKeyToAccount>,
   method: string,
   path: string,
+  rawBody: string,
+  idemKey?: string,
 ): Promise<Record<string, string>> {
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = buildAccessChallenge({
+  const nonce = randomUUID();
+  const message = buildCommerceChallenge({
     wallet: account.address,
     method,
     path,
     timestamp,
+    nonce,
+    bodyHash: rawBody ? createHash("sha256").update(rawBody).digest("hex") : "-",
+    idemKey: idemKey ?? "-",
   });
   const signature = await account.signMessage({ message });
   return {
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
+    "x-nonce": nonce,
     "content-type": "application/json",
   };
 }
@@ -61,18 +69,24 @@ async function req(
     headers?: Record<string, string>;
   } = {},
 ) {
+  const rawBody = opts.body !== undefined ? JSON.stringify(opts.body) : "";
   const headers: Record<string, string> = { ...(opts.headers ?? {}) };
   if (opts.account) {
-    Object.assign(headers, await sigHeaders(opts.account, method, path));
+    Object.assign(
+      headers,
+      await sigHeaders(
+        opts.account, method, path, rawBody, headers["idempotency_key"],
+      ),
+    );
   }
-  if (opts.body !== undefined && !headers["content-type"]) {
+  if (rawBody && !headers["content-type"]) {
     headers["content-type"] = "application/json";
   }
   const res = await app.fetch(
     new Request(`http://localhost${path}`, {
       method,
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: rawBody || undefined,
     }),
   );
   return { status: res.status, body: await res.json() };
@@ -456,8 +470,18 @@ describe("guards + events", () => {
     const app = makeApp();
     const ts = Math.floor(Date.now() / 1000);
     const path = "/api/commerce/tasks";
+    const raw = "not-json{";
+    const nonce = randomUUID();
     const signature = await buyer.signMessage({
-      message: buildAccessChallenge({ wallet: buyer.address, method: "POST", path, timestamp: ts }),
+      message: buildCommerceChallenge({
+        wallet: buyer.address,
+        method: "POST",
+        path,
+        timestamp: ts,
+        nonce,
+        bodyHash: createHash("sha256").update(raw).digest("hex"),
+        idemKey: "-",
+      }),
     });
     const res = await app.fetch(
       new Request(`http://localhost${path}`, {
@@ -466,9 +490,10 @@ describe("guards + events", () => {
           "x-wallet": buyer.address,
           "x-sig": signature,
           "x-timestamp": String(ts),
+          "x-nonce": nonce,
           "content-type": "application/json",
         },
-        body: "not-json{",
+        body: raw,
       }),
     );
     expect(res.status).toBe(400);

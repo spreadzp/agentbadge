@@ -10,17 +10,22 @@ import { ErrorCodes } from "../../lib/error-codes";
 import type { CommerceService } from "../../lib/commerce";
 import {
   commerceError,
+  idemKey,
+  readJson,
+  redactRow,
+  requestFingerprint,
+  requireWallet,
+  scopedWallet,
+} from "./shared";
+import {
   created,
   errs,
-  idemKey,
   jsonBody,
   ok,
   patchTaskSchema,
-  readJson,
-  requireWallet,
   row,
   taskCreateSchema,
-} from "./shared";
+} from "./schemas";
 
 export function createTaskRoutes(service: CommerceService): Hono {
   const r = new Hono();
@@ -44,11 +49,21 @@ export function createTaskRoutes(service: CommerceService): Hono {
       if (auth instanceof Response) return auth;
       const body = await readJson(c);
       if (body instanceof Response) return body;
+      const parsed = taskCreateSchema.safeParse(body);
+      if (!parsed.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          `invalid task body: ${parsed.error.issues[0]?.message ?? "schema mismatch"}`,
+        );
+      }
       try {
         const { task, duplicate } = await service.tasks.create(
           auth.wallet,
-          body as unknown as Parameters<CommerceService["tasks"]["create"]>[1],
+          parsed.data as Parameters<CommerceService["tasks"]["create"]>[1],
           idemKey(c),
+          await requestFingerprint(c),
         );
         return c.json({ task, duplicate }, duplicate ? 200 : 201);
       } catch (err) {
@@ -84,12 +99,18 @@ export function createTaskRoutes(service: CommerceService): Hono {
           );
         }
       }
+      const viewer = await scopedWallet(c);
+      if (viewer instanceof Response) return viewer;
       const tasks = await service.tasks.list({
         status: open === "true" ? "OPEN" : status,
         buyerWallet: buyer?.toLowerCase(),
         limit,
+        // H4: DRAFTs surface only to their buyer; anonymous gets "".
+        visibleTo: viewer ?? "",
       });
-      return c.json({ tasks });
+      return c.json({
+        tasks: tasks.map((t) => redactRow(t, [t.buyerWallet], viewer)),
+      });
     },
   );
 
@@ -116,8 +137,20 @@ export function createTaskRoutes(service: CommerceService): Hono {
     }),
     async (c) => {
       const id = c.req.param("id");
+      const viewer = await scopedWallet(c);
+      if (viewer instanceof Response) return viewer;
       const task = await service.tasks.get(id);
       if (!task) {
+        return errorResponse(
+          c,
+          404,
+          ErrorCodes.RESOURCE_NOT_FOUND,
+          `task ${id} not found`,
+        );
+      }
+      // H4: DRAFTs exist only for their buyer — 404, not 403 (no
+      // existence oracle).
+      if (task.status === "DRAFT" && task.buyerWallet !== viewer) {
         return errorResponse(
           c,
           404,
@@ -133,7 +166,18 @@ export function createTaskRoutes(service: CommerceService): Hono {
       const submissions = agreement
         ? await service.submissions.listByAgreement(agreement.id)
         : [];
-      return c.json({ task, offers, agreement, payment, submissions });
+      const parties = agreement
+        ? [agreement.buyerWallet, agreement.providerWallet]
+        : [task.buyerWallet];
+      return c.json({
+        task: redactRow(task, [task.buyerWallet], viewer),
+        offers: offers.map((o) =>
+          redactRow(o, [o.providerWallet, task.buyerWallet], viewer),
+        ),
+        agreement: agreement ? redactRow(agreement, parties, viewer) : null,
+        payment: payment ? redactRow(payment, parties, viewer) : null,
+        submissions: submissions.map((s) => redactRow(s, parties, viewer)),
+      });
     },
   );
 

@@ -119,7 +119,7 @@ describe("commerce catalog", () => {
       expect(Array.isArray(p.metadataSchema.optional)).toBe(true);
       expect(
         p.metadataSchema.required.length +
-          p.metadataSchema.optional.length,
+        p.metadataSchema.optional.length,
       ).toBeGreaterThan(0);
     }
   });
@@ -128,7 +128,7 @@ describe("commerce catalog", () => {
 /* ------------------------ metadata validation -------------------------- */
 
 const VALID_PASSPORT_METADATA = {
-  accountId: "0.0.12345",
+  accountId: "0x1234567890abcdef1234567890abcdef12345678",
   name: "my-agent",
   capabilities: ["api_call", "payment"],
   endpoint: "https://agent.example.com",
@@ -147,9 +147,9 @@ describe("validateProductMetadata", () => {
 
   it("accepts passport metadata with only required fields", () => {
     const r = validateProductMetadata("PASSPORT_BRONZE", {
-      accountId: "0.0.1",
+      accountId: "0x1234567890abcdef1234567890abcdef12345678",
       name: "a",
-      capabilities: [],
+      capabilities: ["api_call"],
     });
     expect(r.ok).toBe(true);
   });

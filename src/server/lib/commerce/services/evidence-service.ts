@@ -24,6 +24,8 @@ export interface EvidenceService {
     actorWallet: string,
     input: EvidenceAttachInput,
     idempotencyKey?: string,
+    /** H1: sha256 of the signed request body — binds the dedupe entry. */
+    bodyFingerprint?: string,
   ): Promise<{ evidence: CommerceEvidenceRow; duplicate: boolean }>;
   listBySubmission(submissionId: string): Promise<CommerceEvidenceRow[]>;
   listByAgreement(agreementId: string): Promise<CommerceEvidenceRow[]>;
@@ -33,7 +35,7 @@ export function createEvidenceService(ctx: CommerceCtx): EvidenceService {
   const { stores, emit } = ctx;
 
   return {
-    async attach(actorWallet, input, idempotencyKey) {
+    async attach(actorWallet, input, idempotencyKey, bodyFingerprint) {
       const actor = assertWallet(actorWallet, "actorWallet");
       if (idempotencyKey !== undefined) {
         assertIdempotencyKey(idempotencyKey);
@@ -43,6 +45,11 @@ export function createEvidenceService(ctx: CommerceCtx): EvidenceService {
           async () => {
             const evidence = await doAttach(actor);
             return { status: 201, body: { evidence } };
+          },
+          {
+            owner: actor,
+            resource: input.submissionId ?? input.agreementId,
+            fingerprint: bodyFingerprint,
           },
         );
         return {
@@ -88,6 +95,13 @@ export function createEvidenceService(ctx: CommerceCtx): EvidenceService {
         ) {
           throw forbidden("only agreement parties can attach evidence");
         }
+        // Evidence documents live work — closed agreements take nothing.
+        if (agreement.status !== "ACTIVE") {
+          throw guardRejected(
+            `agreement is ${agreement.status} — evidence only on ACTIVE`,
+            { agreementId, status: agreement.status },
+          );
+        }
         const evidence = await stores.evidence.append({
           id: newId("ev"),
           submissionId: input.submissionId ?? null,
@@ -109,6 +123,7 @@ export function createEvidenceService(ctx: CommerceCtx): EvidenceService {
             submissionId: input.submissionId ?? null,
             agreementId,
             type: input.type,
+            attachedBy: actor,
           },
         });
         return evidence;

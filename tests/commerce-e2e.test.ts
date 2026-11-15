@@ -21,7 +21,8 @@ import {
   hashEvent,
 } from "../src/server/lib/commerce/state-machines";
 import { createCommerceRoutes } from "../src/server/routes/commerce/index";
-import { buildAccessChallenge } from "../src/server/middleware/agent-auth";
+import { buildCommerceChallenge } from "../src/server/routes/commerce/shared";
+import { createHash, randomUUID } from "node:crypto";
 
 // Anvil well-known fixtures — never real keys.
 const BUYER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
@@ -54,19 +55,26 @@ async function sigHeaders(
   account: Account,
   method: string,
   path: string,
+  rawBody: string,
+  idemKey?: string,
 ): Promise<Record<string, string>> {
   const timestamp = Math.floor(Date.now() / 1000);
-  const message = buildAccessChallenge({
+  const nonce = randomUUID();
+  const message = buildCommerceChallenge({
     wallet: account.address,
     method,
     path,
     timestamp,
+    nonce,
+    bodyHash: rawBody ? createHash("sha256").update(rawBody).digest("hex") : "-",
+    idemKey: idemKey ?? "-",
   });
   const signature = await account.signMessage({ message });
   return {
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
+    "x-nonce": nonce,
     "content-type": "application/json",
   };
 }
@@ -75,20 +83,36 @@ async function req(
   app: Hono,
   method: string,
   path: string,
-  opts: { account?: Account; body?: unknown; headers?: Record<string, string> } = {},
+  opts: {
+    account?: Account;
+    body?: unknown;
+    rawBody?: string;
+    headers?: Record<string, string>;
+  } = {},
 ) {
+  const rawBody =
+    opts.rawBody ?? (opts.body !== undefined ? JSON.stringify(opts.body) : "");
   const headers: Record<string, string> = { ...(opts.headers ?? {}) };
   if (opts.account) {
-    Object.assign(headers, await sigHeaders(opts.account, method, path));
+    Object.assign(
+      headers,
+      await sigHeaders(
+        opts.account,
+        method,
+        path,
+        rawBody,
+        headers["idempotency_key"],
+      ),
+    );
   }
-  if (opts.body !== undefined && !headers["content-type"]) {
+  if (rawBody && !headers["content-type"]) {
     headers["content-type"] = "application/json";
   }
   const res = await app.fetch(
     new Request(`http://localhost${path}`, {
       method,
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: rawBody || undefined,
     }),
   );
   return { status: res.status, body: await res.json() };
@@ -355,9 +379,12 @@ describe("e2e negative paths", () => {
 
   it("idempotency: same idempotency_key replays without double-write", async () => {
     const { app, stores } = makeApp();
-    const headers = await sigHeaders(buyer, "POST", "/api/commerce/tasks");
     const key = "e2e-idem-00000001";
     const body = { title: "idem", description: "x" };
+    const headers = await sigHeaders(
+      buyer, "POST", "/api/commerce/tasks",
+      JSON.stringify(body), key,
+    );
 
     const first = await req(app, "POST", "/api/commerce/tasks", {
       body,
@@ -453,7 +480,7 @@ describe("e2e negative paths", () => {
           entityType: e.entityType,
           entityId: e.entityId,
           eventType: e.eventType,
-          actorWallet: e.actorWallet,
+          actorWallet: e.actorWallet ?? null,
           payload: e.payload,
         }),
       ).toBe(e.hash);

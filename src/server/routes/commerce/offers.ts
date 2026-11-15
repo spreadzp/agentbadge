@@ -10,16 +10,21 @@ import { ErrorCodes } from "../../lib/error-codes";
 import type { CommerceService } from "../../lib/commerce";
 import {
   commerceError,
+  idemKey,
+  readJson,
+  redactRow,
+  requestFingerprint,
+  requireWallet,
+  scopedWallet,
+} from "./shared";
+import {
   created,
   errs,
-  idemKey,
   jsonBody,
   offerSubmitSchema,
   ok,
-  readJson,
-  requireWallet,
   row,
-} from "./shared";
+} from "./schemas";
 
 export function createOfferRoutes(service: CommerceService): Hono {
   const r = new Hono();
@@ -43,12 +48,22 @@ export function createOfferRoutes(service: CommerceService): Hono {
       if (auth instanceof Response) return auth;
       const body = await readJson(c);
       if (body instanceof Response) return body;
+      const parsed = offerSubmitSchema.safeParse(body);
+      if (!parsed.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          `invalid offer body: ${parsed.error.issues[0]?.message ?? "schema mismatch"}`,
+        );
+      }
       try {
         const { offer, duplicate } = await service.offers.submit(
           auth.wallet,
           c.req.param("id"),
-          body as unknown as Parameters<CommerceService["offers"]["submit"]>[2],
+          parsed.data as Parameters<CommerceService["offers"]["submit"]>[2],
           idemKey(c),
+          await requestFingerprint(c),
         );
         return c.json({ offer, duplicate }, duplicate ? 200 : 201);
       } catch (err) {
@@ -67,8 +82,11 @@ export function createOfferRoutes(service: CommerceService): Hono {
     }),
     async (c) => {
       const id = c.req.param("id");
+      const viewer = await scopedWallet(c);
+      if (viewer instanceof Response) return viewer;
       const task = await service.tasks.get(id);
-      if (!task) {
+      // DRAFT is an existence-oracle — same 404 whether missing or hidden.
+      if (!task || (task.status === "DRAFT" && task.buyerWallet !== viewer)) {
         return errorResponse(
           c,
           404,
@@ -76,7 +94,12 @@ export function createOfferRoutes(service: CommerceService): Hono {
           `task ${id} not found`,
         );
       }
-      return c.json({ offers: await service.offers.listByTask(id) });
+      const offers = await service.offers.listByTask(id);
+      return c.json({
+        offers: offers.map((o) =>
+          redactRow(o, [o.providerWallet, task.buyerWallet], viewer),
+        ),
+      });
     },
   );
 

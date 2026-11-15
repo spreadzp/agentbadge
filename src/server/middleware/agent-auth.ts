@@ -143,6 +143,10 @@ export function configureAgentAuthForTesting(config: {
   hasAccess?: HasAccessFn | null;
   cacheTtlMs?: number;
 }) {
+  // M5: never expose the crypto-verifier test seam in production.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("configureAgentAuthForTesting is not available in production");
+  }
   _overrideVerifier = config.verifier ?? null;
   _overrideHasAccess = config.hasAccess ?? null;
   _cacheTtlMs = config.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
@@ -204,20 +208,34 @@ export async function verifyWalletSigRequest(args: {
   const { wallet, signature, timestamp: timestampRaw, method, path } = args;
   if (!wallet || !signature || !timestampRaw) return "no-headers";
   if (!isAddress(wallet)) return "invalid";
+  // M8: digits-only — Number() accepts '1e9', '0x…', '  42  ' etc.
+  if (!/^\d{1,13}$/.test(timestampRaw)) return "invalid";
   const timestamp = Number(timestampRaw);
-  if (!Number.isFinite(timestamp)) return "invalid";
   const nowSec = Math.floor(Date.now() / 1000);
   if (Math.abs(nowSec - timestamp) > MAX_SKEW_SECONDS) return "invalid";
 
   const message = buildAccessChallenge({ wallet, method, path, timestamp });
+  return (await verifyWalletSignature(wallet, message, signature))
+    ? "valid"
+    : "invalid";
+}
+
+/**
+ * Verify a signature over an arbitrary challenge string — the commerce
+ * API signs a v2 challenge bound to the request body hash (H2). Reuses
+ * the test override so e2e tests keep their deterministic verifier.
+ */
+export async function verifyWalletSignature(
+  wallet: string,
+  message: string,
+  signature: string,
+): Promise<boolean> {
   const verifier = _overrideVerifier ?? defaultVerifyWalletSig;
-  let valid = false;
   try {
-    valid = await verifier(wallet, message, signature);
+    return await verifier(wallet, message, signature);
   } catch {
-    valid = false;
+    return false;
   }
-  return valid ? "valid" : "invalid";
 }
 
 export async function checkAccessPassRequest(args: {
