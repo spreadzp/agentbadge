@@ -56,6 +56,8 @@ export interface ExportEventStore {
     type?: string;
     limit?: number;
     offset?: number;
+    /** SLICE-234-1: server-side createdAt lower bound (ISO string). */
+    since?: string;
   }): Promise<Array<{ type: string; payload?: Record<string, unknown> | null; createdAt: string }>>;
 }
 
@@ -96,15 +98,19 @@ export function globToRegex(glob: string): RegExp {
 /**
  * Paged window scan of `http_traffic` events — events.list is
  * newest-first, so paging stops once a row crosses `window.from`.
+ * SLICE-234-1: `since` pushes the lower bound into SQL so the scan
+ * is O(window), not O(table); the client-side check stays as a
+ * safety net for stores that ignore `since`.
  */
 export async function fetchTrafficRowsInWindow(
   events: ExportEventStore,
   w: ArchiveWindow,
 ): Promise<TrafficRow[]> {
+  const since = new Date(w.from).toISOString();
   const rows: TrafficRow[] = [];
   let done = false;
   for (let offset = 0; !done; offset += PAGE) {
-    const page = await events.list({ type: "http_traffic", limit: PAGE, offset });
+    const page = await events.list({ type: "http_traffic", limit: PAGE, offset, since });
     if (page.length === 0) break;
     for (const e of page) {
       const ts = Date.parse(e.createdAt);
@@ -160,10 +166,11 @@ async function eventAggregate(
   f: ExportFilters,
 ): Promise<{ json: unknown; rowCount: number }> {
   const byType = new Map<string, number>();
+  const since = new Date(w.from).toISOString();
   let rowCount = 0;
   let done = false;
   for (let offset = 0; !done; offset += PAGE) {
-    const page = await deps.events.list({ type: f.type, limit: PAGE, offset });
+    const page = await deps.events.list({ type: f.type, limit: PAGE, offset, since });
     if (page.length === 0) break;
     for (const e of page) {
       const ts = Date.parse(e.createdAt);

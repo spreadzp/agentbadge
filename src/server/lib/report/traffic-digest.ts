@@ -43,8 +43,11 @@ const PAGE = 5000;
 
 /**
  * Paged scan of `http_traffic` events inside the window.
- * events.list is newest-first (createdAt desc) — early-stop once a row
- * crosses the cutoff. `now` injectable for tests.
+ * SLICE-234-1: the window bound travels to SQL via `since` —
+ * the scan is O(window), not O(table). events.list is newest-first
+ * (createdAt desc) — the client-side cutoff check stays as a safety
+ * net for stores that ignore `since` (mocks). `now` injectable for
+ * tests.
  */
 export async function fetchTrafficRows(
   events: Pick<Store, "list">,
@@ -52,6 +55,7 @@ export async function fetchTrafficRows(
   now: number = Date.now(),
 ): Promise<TrafficRow[]> {
   const cutoff = now - hours * 3600_000;
+  const since = new Date(cutoff).toISOString();
   const rows: TrafficRow[] = [];
   let done = false;
   for (let offset = 0; !done; offset += PAGE) {
@@ -59,6 +63,7 @@ export async function fetchTrafficRows(
       type: "http_traffic",
       limit: PAGE,
       offset,
+      since,
     });
     if (page.length === 0) break;
     for (const e of page) {

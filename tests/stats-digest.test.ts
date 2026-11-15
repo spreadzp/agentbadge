@@ -82,6 +82,16 @@ describe("fetchTrafficRows", () => {
     expect(rows).toHaveLength(5001);
     expect(events.list).toHaveBeenCalledTimes(2);
   });
+
+  it("passes the window bound to the store via `since` (SLICE-234-1)", async () => {
+    const now = Date.now();
+    const events = fakeEvents([[row("/a", 200, 60_000)]]);
+    await fetchTrafficRows(events as never, 24, now);
+    const expectedSince = new Date(now - 24 * 3600_000).toISOString();
+    expect(events.list).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "http_traffic", since: expectedSince }),
+    );
+  });
 });
 
 describe("runDigest", () => {
