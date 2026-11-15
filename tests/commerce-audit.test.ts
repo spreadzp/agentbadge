@@ -366,6 +366,57 @@ describe("H4 — DRAFT privacy + payload redaction", () => {
     });
     expect(mine.body.task.payload).toEqual({ secret: "buyer-ctx" });
   });
+
+  // SLICE-224-7 BUG-1: Devin prod run found nested deliverable/payment
+  // fields readable by non-parties on COMPLETED task detail.
+  it("non-party detail: submissions+payment sensitive fields nulled", async () => {
+    const { app } = makeApp();
+    const task = await createTask(app, {});
+    const offer = await req(app, "POST", `/api/commerce/tasks/${task.id}/offers`, {
+      account: providerA,
+      body: { price: "10.00", proposal: "ok" },
+    });
+    const accept = await req(
+      app,
+      "POST",
+      `/api/commerce/offers/${(offer.body.offer as Row).id}/accept`,
+      { account: buyer },
+    );
+    const agreement = accept.body.agreement as Row;
+    const sub = await req(app, "POST", `/api/commerce/agreements/${agreement.id}/submissions`, {
+      account: providerA,
+      body: { summary: "deliverable-secret", resultUrl: "https://x/y" },
+    });
+    await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${(sub.body.submission as Row).id}/review`,
+      { account: buyer, body: { verdict: "ACCEPTED", reviewNote: "LGTM-secret" } },
+    );
+    await req(app, "POST", `/api/commerce/agreements/${agreement.id}/payment`, {
+      account: buyer,
+      body: { paymentId: "pay-ref-secret", note: "manual wire note" },
+    });
+
+    const stranger = await req(app, "GET", `/api/commerce/tasks/${task.id}`, {
+      account: providerB,
+    });
+    expect(stranger.status).toBe(200);
+    const s0 = (stranger.body.submissions as Row[])[0];
+    expect(s0.summary).toBeNull();
+    expect(s0.resultUrl).toBeNull();
+    expect(s0.reviewNote).toBeNull();
+    const pay = stranger.body.payment as Row;
+    expect(pay.note).toBeNull();
+    expect(pay.paymentId).toBeNull();
+    expect(pay.recordedBy).toBeNull();
+
+    const mine = await req(app, "GET", `/api/commerce/tasks/${task.id}`, {
+      account: buyer,
+    });
+    expect((mine.body.submissions as Row[])[0].summary).toBe("deliverable-secret");
+    expect((mine.body.payment as Row).paymentId).toBe("pay-ref-secret");
+  });
 });
 
 // ─── H5: unverified agent identity ───────────────────────────────

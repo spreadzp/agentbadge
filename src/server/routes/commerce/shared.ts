@@ -228,9 +228,14 @@ export function redactRow<T extends { payload: unknown }>(
   row: T,
   parties: readonly (string | null | undefined)[],
   viewer: string | null,
+  sensitiveFields: readonly (keyof T)[] = [],
 ): T {
   if (viewer !== null && parties.includes(viewer)) return row;
-  return { ...row, payload: null };
+  const redacted = { ...row, payload: null };
+  for (const field of sensitiveFields) {
+    (redacted as Record<string, unknown>)[field as string] = null;
+  }
+  return redacted;
 }
 
 export async function readJson(

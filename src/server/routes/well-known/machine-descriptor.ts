@@ -54,6 +54,26 @@ const descriptorSchema = z.object({
     verdicts: z.array(z.string()),
   }),
   budget_status: z.array(z.enum(BUDGET_STATUSES)),
+  commerce: z.object({
+    base: z.string(),
+    auth: z.object({
+      scheme: z.string(),
+      signature: z.string(),
+      challenge_format: z.string(),
+      headers: z.object({
+        wallet: z.string(),
+        signature: z.string(),
+        timestamp: z.string(),
+        nonce: z.string(),
+        idempotency_key: z.string(),
+      }),
+      nonce_format: z.string(),
+      timestamp_skew_seconds: z.number(),
+    }),
+    endpoints: z.array(z.string()),
+    payment_mode: z.string(),
+    reads_public: z.boolean(),
+  }),
 });
 
 machineDescriptorRoutes.get(

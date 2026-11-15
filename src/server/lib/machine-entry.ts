@@ -113,6 +113,44 @@ export function buildMachineDescriptor() {
       ],
     },
     budget_status: [...BUDGET_STATUSES],
+    /** EPIC-224: agent commerce surface — same sig-auth, stricter v2 challenge. */
+    commerce: {
+      base: "/api/commerce",
+      auth: {
+        scheme: "sig-auth",
+        signature: "EIP-191 personal_sign over challenge",
+        challenge_format:
+          "agentbadge-commerce:v2\\nwallet:<lowercased>\\nmethod:<UPPER>\\npath:<path>\\ntimestamp:<unix_seconds>\\nnonce:<string>\\nbodyHash:<sha256-hex|->\\nidemKey:<string|->\\naud:agentbadge-commerce-api",
+        headers: {
+          wallet: "X-Wallet",
+          signature: "X-Sig",
+          timestamp: "X-Timestamp",
+          nonce: "X-Nonce",
+          idempotency_key: "idempotency_key",
+        },
+        nonce_format: "^[A-Za-z0-9_-]{8,128}$",
+        timestamp_skew_seconds: 300,
+      },
+      endpoints: [
+        "POST /api/commerce/tasks",
+        "GET /api/commerce/tasks",
+        "GET /api/commerce/tasks/:id",
+        "GET /api/commerce/tasks/:id/events",
+        "PATCH /api/commerce/tasks/:id",
+        "POST /api/commerce/tasks/:id/cancel",
+        "POST /api/commerce/tasks/:id/offers",
+        "POST /api/commerce/offers/:id/accept",
+        "POST /api/commerce/offers/:id/reject",
+        "POST /api/commerce/offers/:id/withdraw",
+        "POST /api/commerce/agreements/:id/submissions",
+        "POST /api/commerce/submissions/:id/evidence",
+        "POST /api/commerce/submissions/:id/review",
+        "POST /api/commerce/agreements/:id/payment",
+        "POST /api/commerce/payments/:id/verify",
+      ],
+      payment_mode: "RECORD_ONLY",
+      reads_public: true,
+    },
   } as const;
 }
 

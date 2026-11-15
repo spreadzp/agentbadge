@@ -175,8 +175,20 @@ export function createTaskRoutes(service: CommerceService): Hono {
           redactRow(o, [o.providerWallet, task.buyerWallet], viewer),
         ),
         agreement: agreement ? redactRow(agreement, parties, viewer) : null,
-        payment: payment ? redactRow(payment, parties, viewer) : null,
-        submissions: submissions.map((s) => redactRow(s, parties, viewer)),
+        payment: payment
+          ? redactRow(payment, parties, viewer, [
+            "note",
+            "paymentId",
+            "recordedBy",
+          ])
+          : null,
+        submissions: submissions.map((s) =>
+          redactRow(s, parties, viewer, [
+            "summary",
+            "resultUrl",
+            "reviewNote",
+          ]),
+        ),
       });
     },
   );
