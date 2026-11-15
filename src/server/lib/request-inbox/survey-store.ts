@@ -24,6 +24,10 @@ export interface SurveyStore {
   putAnswer(a: InboxSurveyAnswer): Promise<InboxSurveyAnswer>;
   findAnswerByAgent(surveyId: string, agentId: string): Promise<InboxSurveyAnswer | null>;
   findAnswerByFp(surveyId: string, fpHash: string): Promise<InboxSurveyAnswer | null>;
+  /** Rotation guard: match on the IP-less soft fingerprint — callers
+   *  with a stable UA+headers identity who hop IPs. A hit does NOT
+   *  throw; the route accepts the answer with flag="soft_fp_dup". */
+  findAnswerBySoftFp(surveyId: string, softFpHash: string): Promise<InboxSurveyAnswer | null>;
   listAnswers(surveyId: string, limit?: number): Promise<InboxSurveyAnswer[]>;
   markRated(id: string): Promise<boolean>;
 }
@@ -97,6 +101,19 @@ export function createMemorySurveyStore(): SurveyStore {
           a.surveyId === surveyId &&
           a.fpHash === fpHash &&
           a.agentId === null
+        ) {
+          return { ...a };
+        }
+      }
+      return null;
+    },
+
+    async findAnswerBySoftFp(surveyId, softFpHash) {
+      if (softFpHash == null) return null;
+      for (const a of answers.values()) {
+        if (
+          a.surveyId === surveyId &&
+          a.softFpHash === softFpHash
         ) {
           return { ...a };
         }

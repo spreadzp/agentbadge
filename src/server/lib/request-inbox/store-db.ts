@@ -91,8 +91,10 @@ const toAnswer = (r: AnswerRow): InboxSurveyAnswer => ({
   surveyId: r.surveyId,
   agentId: r.agentId,
   fpHash: r.fpHash,
+  softFpHash: r.softFpHash,
   answers: json(r.answers),
   rated: r.rated,
+  flag: r.flag,
   createdAtMs: num(r.createdAtMs),
 });
 
@@ -259,6 +261,11 @@ export function createDbSurveyStore(repo: AgentSurveyRepository): SurveyStore {
 
     async findAnswerByFp(surveyId, fpHash) {
       const row = await repo.findAnswerByFp(surveyId, fpHash);
+      return row ? toAnswer(row) : null;
+    },
+
+    async findAnswerBySoftFp(surveyId, softFpHash) {
+      const row = await repo.findAnswerBySoftFp(surveyId, softFpHash);
       return row ? toAnswer(row) : null;
     },
 

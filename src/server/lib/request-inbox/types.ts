@@ -77,7 +77,13 @@ export interface InboxSurveyAnswer {
   surveyId: string;
   agentId: string | null;
   fpHash: string | null;
+  /** IP-less fingerprint (HMAC of UA + identity headers). A repeat
+   *  on a rotating IP keeps the same softFpHash — matched answers
+   *  are accepted but flagged "soft_fp_dup" for ops (D-252-A). */
+  softFpHash?: string | null;
   answers: unknown;
+  /** Ops-review marker, e.g. "soft_fp_dup" — accepted but suspect. */
+  flag?: string | null;
   /** true once credited into ReputationWrite (verified only, 252-4). */
   rated: boolean;
   createdAtMs: number;

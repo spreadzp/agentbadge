@@ -231,15 +231,15 @@ export function createAgentSurveyRoutes(
           "already answered",
         );
       }
+      // D-252-A: same UA+headers identity on a rotated IP keeps the
+      // softFpHash — accept but flag for ops (no hard 409: curl clients
+      // can legitimately share that fingerprint).
+      const softDup = await stores.surveys.findAnswerBySoftFp(survey.id, softFpHash);
+      const flag = softDup ? "soft_fp_dup" : null;
       // Same dual-lane model as intake: soft + IP lanes stop rotation.
       const hit = lanes.check(agentId, fpHash, softFpHash, ipFpHash);
       if (hit) {
-        return errorResponse(
-          c,
-          429,
-          ErrorCodes.RATE_LIMITED,
-          `retry in ${hit.retryAfterSec}s`,
-        );
+        return errorResponse(c, 429, ErrorCodes.RATE_LIMITED, `retry in ${hit.retryAfterSec}s`);
       }
       let answer;
       try {
@@ -248,8 +248,10 @@ export function createAgentSurveyRoutes(
           surveyId: survey.id,
           agentId,
           fpHash,
+          softFpHash,
           answers,
           rated: false,
+          flag,
           createdAtMs: now(),
         });
       } catch (err) {
@@ -288,7 +290,7 @@ export function createAgentSurveyRoutes(
           console.error("[surveys] writeReputation failed:", err);
         }
       }
-      return c.json({ accepted: true, answer_id: answer.id, rated: agentId != null }, 202);
+      return c.json({ accepted: true, answer_id: answer.id, rated: agentId != null, flag }, 202);
     },
   );
 

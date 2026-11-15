@@ -155,6 +155,23 @@ describe("answer → rating (SLICE-252-4)", () => {
     expect(ok2.status).toBe(202);
   });
 
+  it("soft-fp: anon repeat from rotated IP → 202 with flag soft_fp_dup", async () => {
+    const { app } = mkApp();
+    const { id } = await (await createSurvey(app, SV)).json();
+    // Same anonymous caller (same UA + identity headers) hops IP —
+    // fpHash differs but softFpHash matches: accepted, flagged for ops.
+    const first = await answer(app, id, { answers: { q1: "x" } }, { "fly-client-ip": "9.9.9.9" });
+    expect(first.status).toBe(202);
+    expect((await first.json()).flag).toBeNull();
+    const repeat = await answer(app, id, { answers: { q1: "x" } }, { "fly-client-ip": "8.8.8.8" });
+    expect(repeat.status).toBe(202);
+    const body = await repeat.json();
+    expect(body.flag).toBe("soft_fp_dup");
+    expect(body.answer_id).toMatch(/^ans_/);
+    // A third hop still hard-409s only on exact fpHash; the flag is
+    // informational — the answer exists and is marked for review.
+  });
+
   it("closed survey → 410; missing → 404", async () => {
     const { app } = mkApp();
     const { id } = await (
