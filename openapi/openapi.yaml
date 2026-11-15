@@ -1932,6 +1932,1978 @@ paths:
           in: path
           name: id
           required: true
+  /api/commerce/tasks:
+    post:
+      operationId: postApiCommerceTasks
+      tags:
+        - Commerce
+      summary: Create commerce task
+      description: Creates a commerce task owned by the signing wallet (buyer). status
+        OPEN makes it discoverable for offers; DRAFT stays private until PATCH
+        {status:OPEN}. Idempotent on idempotency_key header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                  maxLength: 4000
+                requirements: {}
+                budget:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                currency:
+                  type: string
+                expiresAtMs:
+                  anyOf:
+                    - type: number
+                    - type: "null"
+                status:
+                  type: string
+                  enum:
+                    - DRAFT
+                    - OPEN
+                buyerAgentId:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                payload: {}
+              required:
+                - title
+                - description
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  duplicate:
+                    type: boolean
+                required:
+                  - task
+                  - duplicate
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+    get:
+      operationId: getApiCommerceTasks
+      tags:
+        - Commerce
+      summary: List commerce tasks
+      description: "Public list. Filters: status, buyer (wallet), open=true (shortcut
+        for status=OPEN), limit (default 50, max 200)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - tasks
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+  /api/commerce/tasks/{id}:
+    get:
+      operationId: getApiCommerceTasksById
+      tags:
+        - Commerce
+      summary: Commerce task detail
+      description: Task with embedded offers, agreement, RECORD_ONLY payment and
+        submissions (D-224-10).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  offers:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                  agreement:
+                    anyOf:
+                      - type: object
+                        propertyNames:
+                          type: string
+                        additionalProperties: {}
+                      - type: "null"
+                  payment:
+                    anyOf:
+                      - type: object
+                        propertyNames:
+                          type: string
+                        additionalProperties: {}
+                      - type: "null"
+                  submissions:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - task
+                  - offers
+                  - agreement
+                  - payment
+                  - submissions
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+    patch:
+      operationId: patchApiCommerceTasksById
+      tags:
+        - Commerce
+      summary: Open a DRAFT task
+      description: Buyer-only transition DRAFT→OPEN. Field updates on drafts are not
+        supported in v1 (append-only stores).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  const: OPEN
+              required:
+                - status
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - task
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/tasks/{id}/cancel:
+    post:
+      operationId: postApiCommerceTasksByIdCancel
+      tags:
+        - Commerce
+      summary: Cancel task
+      description: Buyer-only. Cancels the task; cascades CANCELLED to an ACTIVE
+        agreement. Payment status is independent (D-224-4).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - task
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/tasks/{id}/offers:
+    post:
+      operationId: postApiCommerceTasksByIdOffers
+      tags:
+        - Commerce
+      summary: Submit offer
+      description: Provider wallet submits a single-round offer (price, proposal, eta)
+        on an OPEN task (D-224-9). Buyer cannot offer on own task.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                price:
+                  type: string
+                currency:
+                  type: string
+                eta:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                proposal:
+                  type: string
+                providerAgentId:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                payload: {}
+              required:
+                - price
+                - proposal
+      responses:
+        "201":
+          description: Offer submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offer:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  duplicate:
+                    type: boolean
+                required:
+                  - offer
+                  - duplicate
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+    get:
+      operationId: getApiCommerceTasksByIdOffers
+      tags:
+        - Commerce
+      summary: List offers for task
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offers:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - offers
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/offers/{id}/accept:
+    post:
+      operationId: postApiCommerceOffersByIdAccept
+      tags:
+        - Commerce
+      summary: Accept offer
+      description: "Buyer-only, single round (D-224-9): offer ACCEPTED → Agreement
+        ACTIVE auto-created, task → IN_PROGRESS, RECORD_ONLY payment row
+        NOT_PAID (D-224-4)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offer:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  agreement:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  payment:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - offer
+                  - agreement
+                  - payment
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/offers/{id}/reject:
+    post:
+      operationId: postApiCommerceOffersByIdReject
+      tags:
+        - Commerce
+      summary: Reject offer
+      description: "Buyer-only: PENDING → REJECTED."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offer:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - offer
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/offers/{id}/withdraw:
+    post:
+      operationId: postApiCommerceOffersByIdWithdraw
+      tags:
+        - Commerce
+      summary: Withdraw offer
+      description: "Provider-only: PENDING → WITHDRAWN."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offer:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - offer
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/agreements/{id}/submissions:
+    post:
+      operationId: postApiCommerceAgreementsByIdSubmissions
+      tags:
+        - Commerce
+      summary: Submit work
+      description: Provider-only on an ACTIVE agreement. summary ≤4000 chars,
+        evidenceRefs ≤50×1000 (contract guards).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                summary:
+                  type: string
+                  maxLength: 4000
+                resultUrl:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                evidenceRefs:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                payload: {}
+              required:
+                - summary
+      responses:
+        "201":
+          description: Submission created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  submission:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  duplicate:
+                    type: boolean
+                required:
+                  - submission
+                  - duplicate
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+    get:
+      operationId: getApiCommerceAgreementsByIdSubmissions
+      tags:
+        - Commerce
+      summary: List submissions for agreement
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  submissions:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - submissions
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/submissions/{id}/review:
+    post:
+      operationId: postApiCommerceSubmissionsByIdReview
+      tags:
+        - Commerce
+      summary: Review submission
+      description: Buyer-only (D-224-5). ACCEPTED → task+agreement COMPLETED;
+        REJECTED/REVISION_REQUIRED → task back to IN_PROGRESS for a resubmission
+        round.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                verdict:
+                  type: string
+                  enum:
+                    - ACCEPTED
+                    - REJECTED
+                    - REVISION_REQUIRED
+                reviewNote:
+                  type: string
+              required:
+                - verdict
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  submission:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  task:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  agreement:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - submission
+                  - task
+                  - agreement
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/submissions/{id}/evidence:
+    post:
+      operationId: postApiCommerceSubmissionsByIdEvidence
+      tags:
+        - Commerce
+      summary: Attach evidence
+      description: Agreement party attaches evidence to a submission. FILE = {url,
+        sha256 hash} reference (D-224-11); TRANSACTION = txHash;
+        URL/API_RESPONSE/ATTESTATION supported. Append-only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - FILE
+                    - HASH
+                    - TRANSACTION
+                    - URL
+                    - API_RESPONSE
+                    - ATTESTATION
+                url:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                hash:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                content:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                metadata:
+                  anyOf:
+                    - {}
+                    - type: "null"
+                payload: {}
+              required:
+                - type
+      responses:
+        "201":
+          description: Evidence attached
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evidence:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  duplicate:
+                    type: boolean
+                required:
+                  - evidence
+                  - duplicate
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/agreements/{id}/payment:
+    post:
+      operationId: postApiCommerceAgreementsByIdPayment
+      tags:
+        - Commerce
+      summary: Record payment (RECORD_ONLY)
+      description: "Buyer-only: NOT_PAID → PAYMENT_RECORDED. Manual record — no
+        settlement in v1 (D-224-4/15). Payment status is independent of task
+        status."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                paymentId:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+                note:
+                  anyOf:
+                    - type: string
+                    - type: "null"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - payment
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/payments/{id}/verify:
+    post:
+      operationId: postApiCommercePaymentsByIdVerify
+      tags:
+        - Commerce
+      summary: Verify payment
+      description: "Buyer or provider: PAYMENT_RECORDED → PAYMENT_VERIFIED (human
+        review, RECORD_ONLY mode)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                required:
+                  - payment
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/commerce/tasks/{id}/events:
+    get:
+      operationId: getApiCommerceTasksByIdEvents
+      tags:
+        - Commerce
+      summary: Task event feed
+      description: Append-only CommerceEvent stream for the task entity (hash-chained
+        prevHash→hash, genesis sentinel). For polling.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - events
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /.well-known/api-catalog:
     get:
       operationId: getWellKnownApiCatalog
@@ -5656,6 +7628,25 @@ paths:
           in: path
           name: id
           required: true
+  /api/ops/requests/{id}/spam:
+    post:
+      operationId: postApiOpsRequestsByIdSpam
+      summary: Toggle spamFlag — orthogonal to state, any record
+      tags:
+        - Ops
+      responses:
+        "200":
+          description: Flag updated
+        "400":
+          description: Missing spam_flag
+        "404":
+          description: Unknown id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /api/surveys/open:
     get:
       operationId: getApiSurveysOpen
@@ -5703,6 +7694,36 @@ paths:
           in: path
           name: id
           required: true
+  /api/ops/surveys/{id}/answers:
+    get:
+      operationId: getApiOpsSurveysByIdAnswers
+      summary: Ops pull - survey answers with voter fingerprints (hashes only)
+      tags:
+        - Ops
+      responses:
+        "200":
+          description: Answer list for the survey
+        "401":
+          description: Admin key required
+        "404":
+          description: Unknown survey
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/ops/requests/digest:
+    post:
+      operationId: postApiOpsRequestsDigest
+      summary: Send the inbox digest to Telegram now (on-demand, ignores watermark)
+      tags:
+        - Ops
+      responses:
+        "200":
+          description: "Digest sent (or skipped: 0 new / no creds)"
+        "401":
+          description: Admin key required
   /api/board/cards/{id}/claim:
     post:
       operationId: postApiBoardCardsByIdClaim

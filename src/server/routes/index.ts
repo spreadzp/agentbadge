@@ -24,6 +24,8 @@ import { catalogRoutes } from "./catalog";
 import { servicesCatalogRoutes } from "./services-catalog";
 import { commerceCatalogRoutes } from "./commerce-catalog";
 import { paymentsApiRoutes } from "./payments-api";
+import { createCommerceRoutes } from "./commerce";
+import { createCommerceService } from "../lib/commerce";
 import { discoveryManifestRoutes } from "./discovery";
 import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
@@ -136,6 +138,8 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", servicesCatalogRoutes);
   app.route("/", commerceCatalogRoutes); // EPIC-221 SLICE-221-1: /api/v1/catalog/*
   app.route("/", paymentsApiRoutes); // EPIC-221 SLICE-221-2: /api/v1/payments*
+  // EPIC-224 SLICE-224-3: /api/commerce/* task-centric routes (in-memory fallback when DATABASE_ENABLED off)
+  app.route("/", createCommerceRoutes(createCommerceService(getDatabase().commerce)));
   app.route("/", discoveryManifestRoutes);
   app.route("/", wellKnownRoutes);
   app.route("/", agentCardRoutes);

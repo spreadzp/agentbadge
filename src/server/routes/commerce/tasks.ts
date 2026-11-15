@@ -1,0 +1,203 @@
+/**
+ * SLICE-224-3 (EPIC-224): task routes — create/list/detail/PATCH/cancel.
+ */
+
+import { Hono } from "hono";
+import { describeRoute } from "hono-openapi";
+import z from "zod";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import type { CommerceService } from "../../lib/commerce";
+import {
+  commerceError,
+  created,
+  errs,
+  idemKey,
+  jsonBody,
+  ok,
+  patchTaskSchema,
+  readJson,
+  requireWallet,
+  row,
+  taskCreateSchema,
+} from "./shared";
+
+export function createTaskRoutes(service: CommerceService): Hono {
+  const r = new Hono();
+
+  // POST /api/commerce/tasks — create (DRAFT | OPEN)
+  r.post(
+    "/api/commerce/tasks",
+    describeRoute({
+      tags: ["Commerce"],
+      summary: "Create commerce task",
+      description:
+        "Creates a commerce task owned by the signing wallet (buyer). status OPEN makes it discoverable for offers; DRAFT stays private until PATCH {status:OPEN}. Idempotent on idempotency_key header.",
+      requestBody: jsonBody(taskCreateSchema),
+      responses: {
+        ...created(z.object({ task: row, duplicate: z.boolean() }), "Task created"),
+        ...errs(400, 401, 409),
+      },
+    }),
+    async (c) => {
+      const auth = await requireWallet(c);
+      if (auth instanceof Response) return auth;
+      const body = await readJson(c);
+      if (body instanceof Response) return body;
+      try {
+        const { task, duplicate } = await service.tasks.create(
+          auth.wallet,
+          body as unknown as Parameters<CommerceService["tasks"]["create"]>[1],
+          idemKey(c),
+        );
+        return c.json({ task, duplicate }, duplicate ? 200 : 201);
+      } catch (err) {
+        return commerceError(c, err);
+      }
+    },
+  );
+
+  // GET /api/commerce/tasks — list (status|buyer|open|limit)
+  r.get(
+    "/api/commerce/tasks",
+    describeRoute({
+      tags: ["Commerce"],
+      summary: "List commerce tasks",
+      description:
+        "Public list. Filters: status, buyer (wallet), open=true (shortcut for status=OPEN), limit (default 50, max 200).",
+      responses: { ...ok(z.object({ tasks: z.array(row) })), ...errs(400) },
+    }),
+    async (c) => {
+      const status = c.req.query("status");
+      const open = c.req.query("open");
+      const buyer = c.req.query("buyer");
+      const limitRaw = c.req.query("limit");
+      let limit: number | undefined;
+      if (limitRaw !== undefined) {
+        limit = Number(limitRaw);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+          return errorResponse(
+            c,
+            400,
+            ErrorCodes.INVALID_INPUT,
+            "limit must be integer 1..200",
+          );
+        }
+      }
+      const tasks = await service.tasks.list({
+        status: open === "true" ? "OPEN" : status,
+        buyerWallet: buyer?.toLowerCase(),
+        limit,
+      });
+      return c.json({ tasks });
+    },
+  );
+
+  // GET /api/commerce/tasks/:id — detail with embedded graph
+  r.get(
+    "/api/commerce/tasks/:id",
+    describeRoute({
+      tags: ["Commerce"],
+      summary: "Commerce task detail",
+      description:
+        "Task with embedded offers, agreement, RECORD_ONLY payment and submissions (D-224-10).",
+      responses: {
+        ...ok(
+          z.object({
+            task: row,
+            offers: z.array(row),
+            agreement: row.nullable(),
+            payment: row.nullable(),
+            submissions: z.array(row),
+          }),
+        ),
+        ...errs(404),
+      },
+    }),
+    async (c) => {
+      const id = c.req.param("id");
+      const task = await service.tasks.get(id);
+      if (!task) {
+        return errorResponse(
+          c,
+          404,
+          ErrorCodes.RESOURCE_NOT_FOUND,
+          `task ${id} not found`,
+        );
+      }
+      const offers = await service.offers.listByTask(id);
+      const agreement = await service.agreements.getByTaskId(id);
+      const payment = agreement
+        ? await service.payments.getByAgreement(agreement.id)
+        : null;
+      const submissions = agreement
+        ? await service.submissions.listByAgreement(agreement.id)
+        : [];
+      return c.json({ task, offers, agreement, payment, submissions });
+    },
+  );
+
+  // PATCH /api/commerce/tasks/:id — DRAFT → OPEN
+  r.patch(
+    "/api/commerce/tasks/:id",
+    describeRoute({
+      tags: ["Commerce"],
+      summary: "Open a DRAFT task",
+      description:
+        "Buyer-only transition DRAFT→OPEN. Field updates on drafts are not supported in v1 (append-only stores).",
+      requestBody: jsonBody(patchTaskSchema),
+      responses: {
+        ...ok(z.object({ task: row })),
+        ...errs(400, 401, 403, 404, 409),
+      },
+    }),
+    async (c) => {
+      const auth = await requireWallet(c);
+      if (auth instanceof Response) return auth;
+      const body = await readJson(c);
+      if (body instanceof Response) return body;
+      const parsed = patchTaskSchema.safeParse(body);
+      if (!parsed.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          'only {"status":"OPEN"} transition is supported in v1',
+        );
+      }
+      try {
+        const task = await service.tasks.open(auth.wallet, c.req.param("id"));
+        return c.json({ task });
+      } catch (err) {
+        return commerceError(c, err);
+      }
+    },
+  );
+
+  // POST /api/commerce/tasks/:id/cancel — buyer
+  r.post(
+    "/api/commerce/tasks/:id/cancel",
+    describeRoute({
+      tags: ["Commerce"],
+      summary: "Cancel task",
+      description:
+        "Buyer-only. Cancels the task; cascades CANCELLED to an ACTIVE agreement. Payment status is independent (D-224-4).",
+      responses: {
+        ...ok(z.object({ task: row })),
+        ...errs(401, 403, 404, 409),
+      },
+    }),
+    async (c) => {
+      const auth = await requireWallet(c);
+      if (auth instanceof Response) return auth;
+      try {
+        const task = await service.tasks.cancel(auth.wallet, c.req.param("id"));
+        return c.json({ task });
+      } catch (err) {
+        return commerceError(c, err);
+      }
+    },
+  );
+
+  return r;
+}

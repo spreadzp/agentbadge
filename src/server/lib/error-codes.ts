@@ -128,6 +128,10 @@ export const ErrorCodes = {
   CHECKOUT_IDEMPOTENCY_CONFLICT: "idempotency_conflict",
   RECEIPT_NOT_FOUND: "receipt_not_found",
 
+  // 400/403/404/409 — agent commerce (EPIC-224)
+  INVALID_TRANSITION: "INVALID_TRANSITION",
+  CONFLICT: "CONFLICT",
+
   // 500 — server
   INTERNAL_ERROR: "INTERNAL_ERROR",
   INVALID_STATE: "INVALID_STATE",
