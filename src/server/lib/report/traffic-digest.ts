@@ -9,6 +9,7 @@
  */
 
 import type { Store } from "@agentbadge/database";
+import { withTimeout } from "./digest-budget";
 import {
   formatTelegramReport,
   formatTextReport,
@@ -80,9 +81,12 @@ export async function fetchTrafficRows(
 
 export type DigestResponse = {
   sent: boolean;
-  reason?: "no_creds" | "telegram_error";
+  /** SLICE-234-3: "timeout" = overall handler budget exceeded (partial). */
+  reason?: "no_creds" | "telegram_error" | "timeout";
   error?: string;
   messageId?: number;
+  /** SLICE-234-3: set on budget-exceeded responses — stats may be zeros. */
+  partial?: boolean;
   window: { preset: DigestWindowPreset; hours: number; from: string; until: string };
   totalRequests: number;
   errorTotal: number;
@@ -105,6 +109,9 @@ export async function runDigest(opts: {
   preset: DigestWindowPreset;
   business?: BusinessStats | null;
   sendTelegram?: (text: string) => Promise<number>;
+  /** SLICE-234-3: bound on the TG send — a hung Bot API must not hang
+   *  the HTTP handler. Default 10s; timeout lands in telegram_error. */
+  sendTimeoutMs?: number;
 }): Promise<DigestResponse> {
   const { stats, hours, preset, sendTelegram } = opts;
   const business = opts.business ?? null;
@@ -126,7 +133,10 @@ export async function runDigest(opts: {
     send = { sent: false, reason: "no_creds" };
   } else {
     try {
-      const messageId = await sendTelegram(tgText);
+      const messageId = await withTimeout(
+        sendTelegram(tgText),
+        opts.sendTimeoutMs ?? 10_000,
+      );
       send = { sent: true, messageId };
     } catch (e) {
       send = {

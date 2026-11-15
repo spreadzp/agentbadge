@@ -18,6 +18,7 @@ import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 import { resolver } from "hono-openapi";
 import { opsBearerAuth } from "../middleware/ops-auth";
+import type { PrismaDb, Store } from "@agentbadge/database";
 import { getDatabase } from "../lib/database";
 import {
   sendTelegramMessage,
@@ -26,19 +27,84 @@ import {
 import { collectStats } from "../lib/report/traffic-format";
 import { collectBusinessStats } from "../lib/report/business-stats";
 import { revenuePayTo } from "../lib/report/revenue-aggregate";
+import { KeyedDedupeCache, sleep } from "../lib/report/digest-budget";
 import {
   fetchTrafficRows,
   parseDigestWindow,
   runDigest,
+  type DigestResponse,
 } from "../lib/report/traffic-digest";
 
 export const opsStatsRoutes = new Hono();
 
+/** SLICE-234-3 budgets: 60s replay window, 25s overall soft-cap.
+ *  (Fly proxy ~60s; TG send has its own 10s race inside runDigest.) */
+const DIGEST_CACHE_TTL_MS = 60_000;
+const DIGEST_BUDGET_MS = 25_000;
+const digestCache = new KeyedDedupeCache<DigestResponse>(DIGEST_CACHE_TTL_MS);
+
+/** 200 response when the compute pipeline exceeds DIGEST_BUDGET_MS —
+ *  carries valid shape with zeroed stats, never a bare proxy timeout. */
+const partialDigest = (
+  preset: DigestResponse["window"]["preset"],
+  hours: number,
+): DigestResponse => {
+  const until = new Date();
+  return {
+    sent: false,
+    reason: "timeout",
+    partial: true,
+    error: `stats-digest exceeded ${DIGEST_BUDGET_MS}ms budget`,
+    window: {
+      preset,
+      hours,
+      from: new Date(until.getTime() - hours * 3600_000).toISOString(),
+      until: until.toISOString(),
+    },
+    totalRequests: 0,
+    errorTotal: 0,
+    topPaths: [],
+    business: null,
+    reportText: `stats-digest ${preset}: exceeded ${DIGEST_BUDGET_MS}ms budget — partial response`,
+  };
+};
+
+/** The full digest pipeline — fetch + stats + business + TG send.
+ *  Rejects only on store failure (→ 503); TG errors degrade inside
+ *  runDigest to sent:false. */
+async function computeDigest(
+  prisma: PrismaDb,
+  events: Pick<Store, "list">,
+  preset: DigestResponse["window"]["preset"],
+  hours: number,
+): Promise<DigestResponse> {
+  const rows = await fetchTrafficRows(events, hours);
+  const stats = collectStats(rows, hours);
+
+  // SLICE-217-2: business aggregates over the same window. Failure
+  // degrades to null — never fails the traffic digest.
+  const business = await collectBusinessStats(
+    prisma,
+    new Date(Date.now() - hours * 3600_000).toISOString(),
+    { payTo: revenuePayTo() }, // 242-11: x402Revenue section
+  ).catch(() => null);
+
+  const tg = telegramFromEnv();
+  return runDigest({
+    stats,
+    hours,
+    preset,
+    business,
+    sendTelegram: tg ? (text) => sendTelegramMessage(text, tg) : undefined,
+  });
+}
+
 const digestResponseSchema = z.object({
   sent: z.boolean(),
-  reason: z.enum(["no_creds", "telegram_error"]).optional(),
+  reason: z.enum(["no_creds", "telegram_error", "timeout"]).optional(),
   error: z.string().optional(),
   messageId: z.number().optional(),
+  partial: z.boolean().optional(),
   window: z.object({
     preset: z.enum(["24h", "7d", "30d"]),
     hours: z.number().int(),
@@ -108,9 +174,18 @@ opsStatsRoutes.get(
 
     const { preset, hours } = parseDigestWindow(c.req.query("window"));
 
-    let rows;
+    // SLICE-234-3: dedupe + 60s cache around the whole pipeline.
+    // Concurrent same-window requests share one compute; a compute
+    // exceeding DIGEST_BUDGET_MS yields a partial 200 (still cached —
+    // avoids recompute storms on a hot window).
+    let outcome;
     try {
-      rows = await fetchTrafficRows(db.events, hours);
+      outcome = await digestCache.get(preset, () =>
+        Promise.race<DigestResponse>([
+          computeDigest(db.db!, db.events, preset, hours),
+          sleep(DIGEST_BUDGET_MS).then(() => partialDigest(preset, hours)),
+        ]),
+      );
     } catch {
       return c.json(
         telemetryUnavailable(
@@ -119,28 +194,7 @@ opsStatsRoutes.get(
         503,
       );
     }
-
-    const stats = collectStats(rows, hours);
-
-    // SLICE-217-2: business aggregates over the same window. Failure
-    // degrades to null — never fails the traffic digest.
-    const business = await collectBusinessStats(
-      db.db,
-      new Date(Date.now() - hours * 3600_000).toISOString(),
-      { payTo: revenuePayTo() }, // 242-11: x402Revenue section
-    ).catch(() => null);
-
-    const tg = telegramFromEnv();
-    const result = await runDigest({
-      stats,
-      hours,
-      preset,
-      business,
-      sendTelegram: tg
-        ? (text) => sendTelegramMessage(text, tg)
-        : undefined,
-    });
-
-    return c.json(result, 200);
+    c.header("X-Cache", outcome.state);
+    return c.json(outcome.res, 200);
   },
 );
