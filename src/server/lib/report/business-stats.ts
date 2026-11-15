@@ -11,6 +11,7 @@
  */
 
 import type { PrismaDb } from "@agentbadge/database";
+import { param } from "@agentbadge/database";
 import {
   aggregatePayLegs,
   type PayLegRow,
@@ -45,14 +46,8 @@ export type BusinessStats = {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-function countBy<T>(rows: T[], key: (r: T) => string): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const r of rows) {
-    const k = key(r);
-    out[k] = (out[k] ?? 0) + 1;
-  }
-  return out;
-}
+const sumValues = (by: Record<string, number>) =>
+  Object.values(by).reduce((a, b) => a + b, 0);
 
 function topKinds(byKind: Record<string, number>, n: number): [string, number][] {
   return Object.entries(byKind)
@@ -60,33 +55,41 @@ function topKinds(byKind: Record<string, number>, n: number): [string, number][]
     .slice(0, n);
 }
 
-/** Loose row shape — orm rows are opaque models; we only touch these. */
-interface BizRow {
-  createdAt?: unknown;
-  state?: unknown;
-  status?: unknown;
-  kind?: unknown;
-  amountUsd?: unknown;
-  amountUsdc?: unknown;
-  counterparty?: unknown;
-  at?: unknown;
-  payload?: unknown;
-}
+type RawPlan = Parameters<ReturnType<PrismaDb["runtime"]>["query"]>[0];
+
+/** Loose query result — raw rows are opaque; we only touch these keys. */
+interface CountRow { c: unknown }
+interface GroupRow { k: unknown; c: unknown }
+interface AggRow { c: unknown; s: unknown }
+
+const CNT_SPEC = { c: "pg/int4@1" } as const;
+const GROUP_SPEC = {
+  k: { codecId: "pg/text@1", nullable: true },
+  c: "pg/int4@1",
+} as const;
+const AGG_SPEC = { c: "pg/int4@1", s: "pg/float8@1" } as const;
+const LEG_SPEC = {
+  kind: "pg/text@1",
+  counterparty: { codecId: "pg/text@1", nullable: true },
+  amountUsdc: { codecId: "pg/text@1", nullable: true },
+  at: "pg/text@1",
+  payload: "pg/json@1",
+} as const;
 
 /**
- * Pull business aggregates for `createdAt >= cutoffIso`. Each model is
- * scanned with `.all()` and filtered client-side — same pattern as
- * forensics-edge-repository.listWindow; business volumes are far below
- * http_traffic (landmine: revisit with SQL count/groupBy if they grow).
- * A single model failure degrades that group to zeroes, never throws.
+ * Pull business aggregates for `createdAt >= cutoffIso`.
+ *
+ * SLICE-234-2: no `.all()` — every group is a raw-SQL count/groupBy
+ * against the table directly (contract ORM `where` is equality-only —
+ * range predicates go through `db.raw` + `param`, econ-ledger
+ * precedent). One failing query degrades that group to zeroes, never
+ * throws — same degraded-zeroes contract as the old `safe()` scan.
  */
 export async function collectBusinessStats(
   db: PrismaDb,
   cutoffIso: string,
   opts?: { payTo?: string },
 ): Promise<BusinessStats> {
-  const pub = db.orm.public;
-  const within = (r: BizRow) => String(r.createdAt) >= cutoffIso;
   const stats: BusinessStats = {
     scans: 0,
     spend: { total: 0, amountUsd: 0, byState: {}, topKinds: [] },
@@ -97,66 +100,89 @@ export async function collectBusinessStats(
     a2a: { tasks: 0, byStatus: {} },
   };
 
-  // `.all()` yields AsyncIterableResult (thenable) — awaiting gives rows.
-  const safe = async (fn: () => PromiseLike<unknown[]>): Promise<BizRow[]> => {
+  const ts = () => param(cutoffIso, { codecId: "pg/timestamptz-string@1" });
+  const num = async (plan: RawPlan): Promise<number> => {
     try {
-      return ((await fn()) as BizRow[]).filter(within);
+      const rows = (await db.runtime().query(plan)) as CountRow[];
+      return Number(rows[0]?.c ?? 0);
+    } catch {
+      return 0;
+    }
+  };
+  const group = async (plan: RawPlan): Promise<Record<string, number>> => {
+    try {
+      const rows = (await db.runtime().query(plan)) as GroupRow[];
+      const out: Record<string, number> = {};
+      for (const r of rows) out[String(r.k ?? "unknown")] = Number(r.c ?? 0);
+      return out;
+    } catch {
+      return {};
+    }
+  };
+  const agg = async (plan: RawPlan): Promise<{ c: number; s: number }> => {
+    try {
+      const rows = (await db.runtime().query(plan)) as AggRow[];
+      return { c: Number(rows[0]?.c ?? 0), s: Number(rows[0]?.s ?? 0) };
+    } catch {
+      return { c: 0, s: 0 };
+    }
+  };
+  const legs = async (plan: RawPlan): Promise<PayLegRow[]> => {
+    try {
+      return (await db.runtime().query(plan)) as PayLegRow[];
     } catch {
       return [];
     }
   };
 
-  const [scans, spends, reqs, verdicts, jobs, events, bounties, claims, cards, entries, tasks] =
+  const [scans, spendAgg, spendByState, spendByKind, eaasByStatus, verdicts, jobs, econAgg, econByKind, bountyByStatus, claims, cards, entries, a2aByStatus, payLegs] =
     await Promise.all([
-      safe(() => pub.ScanResult.all()),
-      safe(() => pub.SpendEvent.all()),
-      safe(() => pub.EaasRequest.all()),
-      safe(() => pub.EaasVerdict.all()),
-      safe(() => pub.EaasEvalJob.all()),
-      safe(() => pub.EconomicEvent.all()),
-      safe(() => pub.Bounty.all()),
-      safe(() => pub.BountyClaim.all()),
-      safe(() => pub.BoardCard.all()),
-      safe(() => pub.BoardEntry.all()),
-      safe(() => pub.A2ATask.all()),
+      num(db.raw.sql`SELECT count(*)::int AS c FROM "scanResult" WHERE "createdAt" >= ${ts()}`.returnsRow(CNT_SPEC).build()),
+      agg(db.raw.sql`SELECT count(*)::int AS c, coalesce(sum("amountUsd"),0)::float8 AS s FROM "spendEvent" WHERE "createdAt" >= ${ts()}`.returnsRow(AGG_SPEC).build()),
+      group(db.raw.sql`SELECT "state" AS k, count(*)::int AS c FROM "spendEvent" WHERE "createdAt" >= ${ts()} GROUP BY "state"`.returnsRow(GROUP_SPEC).build()),
+      group(db.raw.sql`SELECT "kind" AS k, count(*)::int AS c FROM "spendEvent" WHERE "createdAt" >= ${ts()} GROUP BY "kind"`.returnsRow(GROUP_SPEC).build()),
+      group(db.raw.sql`SELECT "status" AS k, count(*)::int AS c FROM "eaasRequest" WHERE "createdAt" >= ${ts()} GROUP BY "status"`.returnsRow(GROUP_SPEC).build()),
+      num(db.raw.sql`SELECT count(*)::int AS c FROM "eaasVerdict" WHERE "createdAt" >= ${ts()}`.returnsRow(CNT_SPEC).build()),
+      num(db.raw.sql`SELECT count(*)::int AS c FROM "eaasEvalJob" WHERE "createdAt" >= ${ts()}`.returnsRow(CNT_SPEC).build()),
+      agg(db.raw.sql`SELECT count(*)::int AS c, coalesce(sum("amountUsdc"),0)::float8 AS s FROM "economicEvent" WHERE "createdAt" >= ${ts()}`.returnsRow(AGG_SPEC).build()),
+      group(db.raw.sql`SELECT "kind" AS k, count(*)::int AS c FROM "economicEvent" WHERE "createdAt" >= ${ts()} GROUP BY "kind"`.returnsRow(GROUP_SPEC).build()),
+      group(db.raw.sql`SELECT "status" AS k, count(*)::int AS c FROM "bounty" WHERE "createdAt" >= ${ts()} GROUP BY "status"`.returnsRow(GROUP_SPEC).build()),
+      num(db.raw.sql`SELECT count(*)::int AS c FROM "bountyClaim" WHERE "createdAt" >= ${ts()}`.returnsRow(CNT_SPEC).build()),
+      num(db.raw.sql`SELECT count(*)::int AS c FROM "boardCard" WHERE "createdAt" >= ${ts()}`.returnsRow(CNT_SPEC).build()),
+      num(db.raw.sql`SELECT count(*)::int AS c FROM "boardEntry" WHERE "createdAt" >= ${ts()}`.returnsRow(CNT_SPEC).build()),
+      group(db.raw.sql`SELECT "status" AS k, count(*)::int AS c FROM "a2ATask" WHERE "createdAt" >= ${ts()} GROUP BY "status"`.returnsRow(GROUP_SPEC).build()),
+      // x402 pay legs: same filters as the old client-side path —
+      // createdAt >= cutoff (within()) AND at >= cutoff AND kind='pay'
+      // AND counterparty=payTo (case-insensitive, ILIKE-equivalent via lower()).
+      opts?.payTo
+        ? legs(db.raw.sql`SELECT "kind","counterparty","amountUsdc"::text AS "amountUsdc","at","payload" FROM "economicEvent" WHERE "createdAt" >= ${ts()} AND "kind" = 'pay' AND "at" >= ${param(cutoffIso, { codecId: "pg/text@1" })} AND lower("counterparty") = ${param(opts.payTo.toLowerCase(), { codecId: "pg/text@1" })}`.returnsRow(LEG_SPEC).build())
+        : Promise.resolve([] as PayLegRow[]),
     ]);
 
-  stats.scans = scans.length;
+  stats.scans = scans;
   stats.spend = {
-    total: spends.length,
-    amountUsd: round2(spends.reduce((s, r) => s + Number(r.amountUsd ?? 0), 0)),
-    byState: countBy(spends, (r) => String(r.state ?? "unknown")),
-    topKinds: topKinds(countBy(spends, (r) => String(r.kind ?? "unknown")), 3),
+    total: spendAgg.c,
+    amountUsd: round2(spendAgg.s),
+    byState: spendByState,
+    topKinds: topKinds(spendByKind, 3),
   };
   stats.eaas = {
-    requests: reqs.length,
-    byStatus: countBy(reqs, (r) => String(r.status ?? "unknown")),
-    verdicts: verdicts.length,
-    evalJobs: jobs.length,
+    requests: sumValues(eaasByStatus),
+    byStatus: eaasByStatus,
+    verdicts,
+    evalJobs: jobs,
   };
   stats.ledger = {
-    events: events.length,
-    amountUsdc: round2(events.reduce((s, r) => s + Number(r.amountUsdc ?? 0), 0)),
-    byKind: countBy(events, (r) => String(r.kind ?? "unknown")),
+    events: econAgg.c,
+    amountUsdc: round2(econAgg.s),
+    byKind: econByKind,
   };
-  stats.bounties = {
-    byStatus: countBy(bounties, (r) => String(r.status ?? "unknown")),
-    claims: claims.length,
-  };
-  stats.board = { cards: cards.length, entries: entries.length };
-  stats.a2a = {
-    tasks: tasks.length,
-    byStatus: countBy(tasks, (r) => String(r.status ?? "unknown")),
-  };
+  stats.bounties = { byStatus: bountyByStatus, claims };
+  stats.board = { cards, entries };
+  stats.a2a = { tasks: sumValues(a2aByStatus), byStatus: a2aByStatus };
 
-  // SLICE-242-11: revenue rollup over the SAME already-scanned
-  // EconomicEvent rows — no second listByAgent pass needed (the digest
-  // window is short; payTo absent → section simply absent).
   if (opts?.payTo) {
-    const roll = aggregatePayLegs(events as unknown as PayLegRow[], {
-      payTo: opts.payTo,
-      since: cutoffIso,
-    });
+    const roll = aggregatePayLegs(payLegs, { payTo: opts.payTo, since: cutoffIso });
     stats.x402Revenue =
       roll.total.count > 0
         ? {

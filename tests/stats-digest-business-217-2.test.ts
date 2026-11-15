@@ -21,20 +21,86 @@ const NOW = Date.parse("2026-11-11T12:00:00Z");
 const iso = (ageMs = 0) => new Date(NOW - ageMs).toISOString();
 const cutoff = new Date(NOW - 24 * 3600_000).toISOString();
 
-const emptyOrm = () => {
-  const pub: Record<string, { all: () => Promise<unknown[]> }> = {};
-  for (const m of [
-    "ScanResult", "SpendEvent", "EaasRequest", "EaasVerdict", "EaasEvalJob",
-    "EconomicEvent", "Bounty", "BountyClaim", "BoardCard", "BoardEntry", "A2ATask",
-  ]) pub[m] = { all: async () => [] };
-  return { orm: { public: pub } } as never;
+/**
+ * SLICE-234-2: collectBusinessStats runs raw-SQL count/groupBy via
+ * db.raw.sql + db.runtime().query — no `.all()` anywhere. The fake
+ * below emulates the tiny subset of SQL the implementation emits:
+ * `createdAt >= cutoff` row filter (uses the test's `cutoff` const),
+ * GROUP BY k/c, count+sum agg, plain count, and the pay-legs SELECT.
+ */
+type FakeRow = Record<string, unknown>;
+
+interface RawPlanFake {
+  text: string;
+}
+
+const MODELS = [
+  "ScanResult", "SpendEvent", "EaasRequest", "EaasVerdict", "EaasEvalJob",
+  "EconomicEvent", "Bounty", "BountyClaim", "BoardCard", "BoardEntry", "A2ATask",
+] as const;
+
+const makeRunner = (
+  data: Record<string, FakeRow[]>,
+  fails: ReadonlySet<string>,
+  log: string[],
+) => {
+  return async (plan: RawPlanFake): Promise<FakeRow[]> => {
+    const text = plan.text;
+    log.push(text);
+    const table = /FROM "(\w+)"/.exec(text)?.[1] ?? "";
+    const model = table.charAt(0).toUpperCase() + table.slice(1);
+    if (!MODELS.includes(model as (typeof MODELS)[number]))
+      throw new Error(`unknown table ${table}`);
+    if (fails.has(model)) throw new Error("boom");
+    const rows = (data[model] ?? []).filter(
+      (r) => String(r.createdAt ?? "") >= cutoff,
+    );
+    // pay legs: WHERE kind='pay' AND at >= cutoff (+ counterparty bound —
+    // re-checked by aggregatePayLegs downstream, parity preserved).
+    if (/"kind" = 'pay'/.test(text)) {
+      return rows
+        .filter((r) => r.kind === "pay" && String(r.at ?? "") >= cutoff)
+        .map((r) => ({
+          kind: r.kind, counterparty: r.counterparty,
+          amountUsdc: r.amountUsdc, at: r.at, payload: r.payload,
+        }));
+    }
+    const g = /GROUP BY "(\w+)"/.exec(text);
+    if (g) {
+      const col = g[1];
+      const counts = new Map<string, number>();
+      for (const r of rows) {
+        const k = String(r[col] ?? "unknown");
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+      return [...counts].map(([k, c]) => ({ k, c }));
+    }
+    const s = /sum\("(\w+)"\)/.exec(text);
+    if (s) {
+      const col = s[1];
+      return [{ c: rows.length, s: rows.reduce((a, r) => a + Number(r[col] ?? 0), 0) }];
+    }
+    return [{ c: rows.length }];
+  };
 };
 
-const fakeDb = (rows: Record<string, Record<string, unknown>[]>) => {
-  const base = emptyOrm() as { orm: { public: Record<string, { all: () => Promise<unknown[]> }> } };
-  for (const [k, v] of Object.entries(rows)) base.orm.public[k] = { all: async () => v };
-  return base;
+const fakeDb = (
+  rows: Record<string, FakeRow[]>,
+  opts?: { fails?: ReadonlySet<string>; log?: string[] },
+) => {
+  const log = opts?.log ?? [];
+  const run = makeRunner(rows, opts?.fails ?? new Set(), log);
+  return {
+    raw: {
+      sql: (strings: TemplateStringsArray, ..._v: unknown[]) => ({
+        returnsRow: (_spec: unknown) => ({ build: () => ({ text: strings.join("?") }) }),
+      }),
+    },
+    runtime: () => ({ query: run }),
+  };
 };
+
+const emptyOrm = () => fakeDb({}) as never;
 
 describe("collectBusinessStats", () => {
   it("aggregates counts, sums and groupings inside the window", async () => {
@@ -92,14 +158,28 @@ describe("collectBusinessStats", () => {
   });
 
   it("a failing model degrades to zeros, others still count", async () => {
-    const db = emptyOrm() as { orm: { public: Record<string, { all: () => Promise<unknown[]> }> } };
-    db.orm.public.ScanResult.all = async () => [{ createdAt: iso() }];
-    db.orm.public.SpendEvent.all = async () => {
-      throw new Error("boom");
-    };
+    const db = fakeDb(
+      { ScanResult: [{ createdAt: iso() }] },
+      { fails: new Set(["SpendEvent"]) },
+    );
     const b = await collectBusinessStats(db as never, cutoff);
     expect(b.scans).toBe(1);
     expect(b.spend.total).toBe(0);
+  });
+
+  it("every query bounds createdAt — no .all() scans (SLICE-234-2)", async () => {
+    const log: string[] = [];
+    await collectBusinessStats(fakeDb({}, { log }) as never, cutoff);
+    expect(log.length).toBeGreaterThanOrEqual(14);
+    for (const q of log) expect(q).toContain(`"createdAt" >=`);
+    // legs query only runs when payTo is set
+    const log2: string[] = [];
+    await collectBusinessStats(
+      fakeDb({}, { log: log2 }) as never,
+      cutoff,
+      { payTo: "0xabc" },
+    );
+    expect(log2.some((q) => /"kind" = 'pay'/.test(q))).toBe(true);
   });
 
   it("never leaks wallet/address/txHash fields", async () => {
