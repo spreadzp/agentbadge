@@ -27,9 +27,29 @@ import {
 let instance: IdentityService | null = null;
 
 const PASSPORT_TOKEN_RE = /^\d{1,78}$/;
+/** ERC-721 tokenId is uint256 — values ≥ 2^256 pass the
+ *  78-digit regex but make viem's encoder throw (round-4 N-6),
+ *  which the caller reads as "unknown" → 503 for a malformed
+ *  input. Check the bound before BigInt→viem. */
+const UINT256_MAX = 1n << 256n;
 
-/** Commerce-backed verifier for non-payment fact refs. */
+/**
+ * Commerce-backed verifier for non-payment fact refs.
+ *
+ * Round-4 N-1: party-of-record is necessary but not sufficient —
+ * the fact type binds BOTH the actor's role on the record and the
+ * record's state, otherwise any party could mint TASK_COMPLETED on
+ * a CANCELLED agreement or SUBMISSION_ACCEPTED on a rejected one:
+ *   TASK_COMPLETED      → provider AND agreement.status=COMPLETED
+ *   DISPUTE             → any party AND agreement.status=DISPUTED
+ *   SUBMISSION_ACCEPTED → provider AND submission.status=ACCEPTED
+ *   EVIDENCE_SUPPLIED   → supplier (submission provider, or
+ *                         agreement party for agreement-level rows)
+ * `payment:` refs already passed the verifyPayment port — the
+ * extra verifySource AND (facts.ts) must not deny them here.
+ */
 const commerceVerifySource: FactSourceVerifier = async ({
+  factType,
   sourceRef,
   actorWallet,
 }) => {
@@ -37,6 +57,7 @@ const commerceVerifySource: FactSourceVerifier = async ({
   const prefix = sep > 0 ? sourceRef.slice(0, sep) : "";
   const refId = sep > 0 ? sourceRef.slice(sep + 1) : "";
   if (refId === "") return false;
+  if (prefix === "payment") return true;
   const commerce = getDatabase().commerce;
   const w = actorWallet.toLowerCase();
   const isParty = (a: {
@@ -48,18 +69,32 @@ const commerceVerifySource: FactSourceVerifier = async ({
 
   if (prefix === "agreement") {
     const a = await commerce.agreements.getById(refId);
-    return a !== null && isParty(a);
+    if (a === null) return false;
+    // N-13: `?.` on every wallet — a null side can never match.
+    if (factType === "TASK_COMPLETED")
+      return (
+        a.providerWallet?.toLowerCase() === w && a.status === "COMPLETED"
+      );
+    if (factType === "DISPUTE")
+      return isParty(a) && a.status === "DISPUTED";
+    // Other agreement-anchored fact types: a party on a live row.
+    return isParty(a) && a.status !== "CANCELLED";
   }
   if (prefix === "submission") {
     const s = await commerce.submissions.getById(refId);
-    return s !== null && s.providerWallet.toLowerCase() === w;
+    if (s === null) return false;
+    if (factType === "SUBMISSION_ACCEPTED")
+      return (
+        s.providerWallet?.toLowerCase() === w && s.status === "ACCEPTED"
+      );
+    return s.providerWallet?.toLowerCase() === w;
   }
   if (prefix === "evidence") {
     const e = await commerce.evidence.getById(refId);
     if (e === null) return false;
     if (e.submissionId) {
       const s = await commerce.submissions.getById(e.submissionId);
-      if (s !== null) return s.providerWallet.toLowerCase() === w;
+      if (s !== null) return s.providerWallet?.toLowerCase() === w;
     }
     if (e.agreementId) {
       const a = await commerce.agreements.getById(e.agreementId);
@@ -98,7 +133,11 @@ export function getIdentityService(): IdentityService {
       // "lookup failed" with "not the owner".
       async ownerOf(tokenId) {
         if (!PASSPORT_TOKEN_RE.test(tokenId)) return null;
-        return getMarketplaceOps().passportOwner(BigInt(tokenId));
+        const id = BigInt(tokenId);
+        // N-6: ≥2^256 can never be an onchain token → unowned,
+        // not "unknown" (avoids the encoder throw → 503 path).
+        if (id >= UINT256_MAX) return null;
+        return getMarketplaceOps().passportOwner(id);
       },
     },
     verifySource: commerceVerifySource,

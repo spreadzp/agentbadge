@@ -1,42 +1,86 @@
 /**
- * EPIC-225 (audit round-3 F-4): identity entitlement sweeper —
- * timer wrapper over `IdentityService.sweep()` (D-225-4 poll-based
- * activation + expiry + reversal revocation).
+ * EPIC-225 (audit round-3 F-4, round-4 N-2/N-7/N-10/N-11):
+ * identity entitlement sweeper — timer wrapper over
+ * `IdentityService.sweep()` (D-225-4 poll-based activation +
+ * expiry + reversal revocation).
  *
  * Timer pattern mirrors bounty-lease-sweeper.ts: env gate
  * (IDENTITY_SWEEPER_ENABLED, default on), first tick +30s after
- * boot, setTimeout chain with ±30s jitter, errors logged not
+ * boot, setTimeout chain with ±15s jitter, errors logged not
  * thrown. The service instance is the shared singleton from
  * wiring/identity-service.ts — the same one the REST routes use,
  * so the rotating reversal cursor persists across ticks.
+ *
+ * Round-4 hardening:
+ * - N-2: each tick races sweep() against a deadline — a hung RPC
+ *   or DB read can no longer wedge the chain forever; reschedule
+ *   happens in `finally` either way.
+ * - N-7: `stopped` flag is checked before rescheduling, so an
+ *   in-flight tick cannot resurrect the sweeper after stop().
+ * - N-10: material ticks log durationMs + the first few error
+ *   messages (result.errors is already capped at MAX_ERRORS), so
+ *   a permanently failing feed is diagnosable, not just counted.
+ * - N-11: gate accepts "false"/"0"/"off" (case-insensitive);
+ *   interval is clamped to >=10s; timers are unref'd so test
+ *   processes can exit.
  */
 import { logger } from "@agentbadge/passport/logger";
 
 import { getIdentityService } from "../wiring/identity-service";
 
 let sweeperTimer: ReturnType<typeof setTimeout> | null = null;
+let stopped = true;
 
 const DEFAULT_INTERVAL_MS = 60_000;
+const MIN_INTERVAL_MS = 10_000;
 const JITTER_MS = 30_000;
+const TICK_DEADLINE_MS = 5 * 60_000;
+
+/** Values that disable the sweeper (N-11 — not just "false"). */
+const DISABLED = new Set(["false", "0", "off", "no"]);
+
+const schedule = (fn: () => void, ms: number) => {
+  const t = setTimeout(fn, ms);
+  if (typeof t === "object" && "unref" in t) t.unref();
+  return t;
+};
 
 export function startIdentitySweeper(opts?: {
   intervalMs?: number;
 }): void {
-  const enabled = process.env.IDENTITY_SWEEPER_ENABLED !== "false";
+  const enabled = !DISABLED.has(
+    (process.env.IDENTITY_SWEEPER_ENABLED ?? "").toLowerCase(),
+  );
   if (!enabled) {
-    logger.info("Identity sweeper disabled (IDENTITY_SWEEPER_ENABLED=false)");
+    logger.info("Identity sweeper disabled (IDENTITY_SWEEPER_ENABLED)");
     return;
   }
   if (sweeperTimer) {
     logger.warn("Identity sweeper already running");
     return;
   }
-  const baseInterval =
+  stopped = false;
+  const envMs = Number(process.env.IDENTITY_SWEEPER_INTERVAL_MS);
+  const baseInterval = Math.max(
+    MIN_INTERVAL_MS,
     opts?.intervalMs ??
-    (Number(process.env.IDENTITY_SWEEPER_INTERVAL_MS) || DEFAULT_INTERVAL_MS);
+      (Number.isFinite(envMs) && envMs > 0 ? envMs : DEFAULT_INTERVAL_MS),
+  );
+
   const tick = async () => {
+    const startedAt = Date.now();
     try {
-      const result = await getIdentityService().sweep();
+      // N-2: deadline race — a hung sweep() rejects the race, the
+      // error is logged, and the chain still reschedules below.
+      const result = await Promise.race([
+        getIdentityService().sweep(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("sweep tick deadline exceeded")),
+            TICK_DEADLINE_MS,
+          ),
+        ),
+      ]);
       if (
         result.granted > 0 ||
         result.expired > 0 ||
@@ -53,22 +97,38 @@ export function startIdentitySweeper(opts?: {
           revoked: result.revoked,
           reactivated: result.reactivated,
           errors: result.errorsCount,
+          durationMs: Date.now() - startedAt,
         });
+        // N-10: surface the first few error messages — a standing
+        // failure must be diagnosable from logs, not just counted.
+        for (const e of result.errors.slice(0, 3)) {
+          logger.warn("Identity sweeper item error", {
+            stage: e.stage,
+            error: e.message,
+          });
+        }
       }
     } catch (err) {
       logger.error("Identity sweeper error", {
         error: err instanceof Error ? err.message : String(err),
+        durationMs: Date.now() - startedAt,
       });
+    } finally {
+      // N-7: never resurrect a stopped sweeper; reschedule always
+      // (an exception above must not kill the chain — N-2).
+      if (!stopped) {
+        const jitter = Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2;
+        sweeperTimer = schedule(tick, Math.max(1000, baseInterval + jitter));
+      }
     }
-    const jitter = Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2;
-    sweeperTimer = setTimeout(tick, Math.max(1000, baseInterval + jitter));
   };
   // First tick +30s after boot (pattern: escrow-reconciler).
-  sweeperTimer = setTimeout(tick, 30_000);
+  sweeperTimer = schedule(tick, 30_000);
   logger.info("Identity sweeper started", { intervalMs: baseInterval });
 }
 
 export function stopIdentitySweeper(): void {
+  stopped = true;
   if (sweeperTimer) {
     clearTimeout(sweeperTimer);
     sweeperTimer = null;

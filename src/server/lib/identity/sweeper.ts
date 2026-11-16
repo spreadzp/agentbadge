@@ -78,9 +78,6 @@ export interface EntitlementSweepResult {
 export interface EntitlementSweepDeps {
   entitlements: EntitlementService;
   payments: PaymentStores;
-  /** Actor service — lazy-create the grantee row before grant
-   *  (M-4; no dangling owner references). */
-  actors?: { resolveOrCreate(wallet: string): Promise<unknown> };
   /**
    * Resolve the grantee wallet for a confirmed payment. Default:
    * `customerId` when it is an EVM wallet. The resolver may only
@@ -242,6 +239,20 @@ export async function runEntitlementSweep(
         );
         continue;
       }
+      // Round-4 N-15: the composite key is bounded by the store's
+      // idempotency-key column — an overlong key throws per attempt
+      // and the grant is skipped each tick. Guard + error entry
+      // instead of silently burning ticks on an ungrantable row.
+      const idemKey = `${ownerNorm}|${payment.id}|${productCode}`;
+      if (idemKey.length > 128) {
+        err(
+          `grant:${payment.id}`,
+          new Error(
+            `idempotency key ${idemKey.length}ch > 128 (payment id too long)`,
+          ),
+        );
+        continue;
+      }
       // N-7: actor upsert moved into grant() — it runs only on NEW
       // inserts, so deduped candidates cost no external calls.
       const grantResult = await deps.entitlements.grant({
@@ -249,7 +260,7 @@ export async function runEntitlementSweep(
         productCode,
         sourcePaymentId: payment.id,
         // Owner-bound dedupe key (audit v2 N-11).
-        idempotencyKey: `${ownerNorm}|${payment.id}|${productCode}`,
+        idempotencyKey: idemKey,
         validFromMs: attempt.confirmedAtMs ?? now(),
         payload: { activatedBy: "entitlement-sweep" },
       });

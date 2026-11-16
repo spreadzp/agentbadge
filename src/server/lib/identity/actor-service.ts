@@ -203,7 +203,11 @@ export function createActorService(
     //  stale read would let writes race a just-changed registry.
     let regsPromise: Promise<RegList | null> | null = null;
     const listOnce = () => {
-      regsPromise ??= registrations?.list() ?? Promise.resolve(null);
+      // N-4: a rejecting registry read maps to `null` (unavailable)
+      // — the same tri-state as an absent port. Without the catch
+      // every write failed 500, including wallets with no agent link.
+      regsPromise ??= (registrations?.list() ?? Promise.resolve(null))
+        .catch(() => null);
       return regsPromise;
     };
 

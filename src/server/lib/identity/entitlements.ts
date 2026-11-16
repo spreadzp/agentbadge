@@ -90,13 +90,13 @@ export interface EntitlementService {
    *  the transitioned rows (sweeper feed). */
   expireOverdue(nowMs?: number): Promise<EntitlementRow[]>;
   /** ACTIVE rows that carry a source payment — the sweeper's
-   *  reversal feed (audit H-5 / v2 N-4). `afterId` resumes
+   *  reversal feed (audit H-5 / v2 N-4). `afterKey` resumes
    *  strictly after that row in (createdAt, id) order — a
    *  rotating keyset window; caller resets to undefined when a
    *  short batch arrives. */
   listActiveWithSource(
     limit?: number,
-    afterId?: string,
+    afterKey?: string,
   ): Promise<EntitlementRow[]>;
 }
 
@@ -281,7 +281,7 @@ export function createEntitlementService(
       return out;
     },
 
-    listActiveWithSource: (limit, afterId) =>
-      entitlements.listActiveWithSource(limit, afterId),
+    listActiveWithSource: (limit, afterKey) =>
+      entitlements.listActiveWithSource(limit, afterKey),
   };
 }

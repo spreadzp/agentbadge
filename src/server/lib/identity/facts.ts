@@ -165,6 +165,11 @@ export function createFactService(
       });
     }
     const sourceRef = assertNonEmpty(input.sourceRef, "sourceRef");
+    // Round-4 N-14: bounded length — an unbounded ref inflates the
+    // dedupe key and the stored row for no functional reason.
+    if (sourceRef.length > 256) {
+      throw invalid("sourceRef exceeds 256 chars", { field: "sourceRef" });
+    }
     if (SOURCE_REF_BAD.test(sourceRef)) {
       throw invalid("sourceRef must not contain whitespace or control characters", {
         field: "sourceRef",

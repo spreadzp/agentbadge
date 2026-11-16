@@ -140,7 +140,6 @@ export function createIdentityService(
       const result = await runEntitlementSweep({
         entitlements,
         payments,
-        actors,
         ownerFor,
         nowMs: now,
         reversalCursor,

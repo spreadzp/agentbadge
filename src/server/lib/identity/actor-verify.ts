@@ -28,14 +28,6 @@ export type RegList = ReadonlyArray<RegEntry> | null;
 export type RegState = "available" | "unavailable";
 
 export interface ActorVerifier {
-  /**
-   * Registration-registry availability (round-3 F-2). `null` from
-   * `list()` means the backing store is not published yet — that is
-   * UNKNOWN, not "no registrations".
-   */
-  registrationsState(
-    listOnce: () => Promise<RegList>,
-  ): Promise<RegState>;
   /** Active registration owned by `wallet` (REGISTERED_AGENT proof).
    *  `undefined` on unavailable registry too — no proof either way. */
   ownedRegistration(
@@ -86,12 +78,6 @@ export function createActorVerifier(
   registrations?: ActorRegistrationPort,
   passports?: PassportVerificationPort,
 ): ActorVerifier {
-  async function registrationsState(
-    listOnce: () => Promise<RegList>,
-  ): Promise<RegState> {
-    if (!registrations) return "unavailable";
-    return (await listOnce()) === null ? "unavailable" : "available";
-  }
 
   async function ownedRegistration(
     wallet: string,
@@ -149,13 +135,32 @@ export function createActorVerifier(
     passportVerified: boolean,
     passportStateOfStored: "owned" | "unowned" | "unknown" = "unowned",
     listOnce: () => Promise<RegList> = async () =>
-      registrations?.list() ?? null,
+      (await registrations?.list().catch(() => null)) ?? null,
   ): Promise<ActorType> {
     // 1. REGISTERED_AGENT — live proof via the registry.
     if (await ownedRegistration(wallet, listOnce)) return "REGISTERED_AGENT";
 
     // 2. REGISTERED_USER — verified passport.
     if (passportVerified) return "REGISTERED_USER";
+
+    // 2b. Stored REGISTERED_* beats an explicit hint while its
+    //     proof is merely UNKNOWN — an EXTERNAL/ORGANIZATION hint
+    //     must not self-downgrade during a registry/RPC blip
+    //     (round-4 N-5). Mirrors the step-4 unknown-keep rules.
+    if (existing) {
+      const stored = existing.type as ActorType;
+      if (
+        stored === "REGISTERED_AGENT" &&
+        (!registrations || (await listOnce()) === null)
+      )
+        return stored;
+      if (
+        stored === "REGISTERED_USER" &&
+        ((!passports && !!existing.passportTokenId) ||
+          passportStateOfStored === "unknown")
+      )
+        return stored;
+    }
 
     // 3. Explicit hints (ORGANIZATION requires orgId — validated by
     //    the caller before resolveType runs).
@@ -199,7 +204,6 @@ export function createActorVerifier(
   }
 
   return {
-    registrationsState,
     ownedRegistration,
     ownsAgent,
     passportState,
