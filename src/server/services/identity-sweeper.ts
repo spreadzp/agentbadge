@@ -69,17 +69,22 @@ export function startIdentitySweeper(opts?: {
 
   const tick = async () => {
     const startedAt = Date.now();
+    let deadline: ReturnType<typeof setTimeout> | null = null;
     try {
       // N-2: deadline race — a hung sweep() rejects the race, the
       // error is logged, and the chain still reschedules below.
+      // The deadline timer is unref'd + cleared on settle: a
+      // resolved sweep must not hold the process for 5 minutes.
       const result = await Promise.race([
         getIdentityService().sweep(),
-        new Promise<never>((_, reject) =>
-          setTimeout(
+        new Promise<never>((_, reject) => {
+          deadline = setTimeout(
             () => reject(new Error("sweep tick deadline exceeded")),
             TICK_DEADLINE_MS,
-          ),
-        ),
+          );
+          if (typeof deadline === "object" && "unref" in deadline)
+            deadline.unref();
+        }),
       ]);
       if (
         result.granted > 0 ||
@@ -114,6 +119,9 @@ export function startIdentitySweeper(opts?: {
         durationMs: Date.now() - startedAt,
       });
     } finally {
+      // Drop the (already-fired or still-pending) deadline timer —
+      // a resolved sweep must not leave a 5-minute handle behind.
+      if (deadline) clearTimeout(deadline);
       // N-7: never resurrect a stopped sweeper; reschedule always
       // (an exception above must not kill the chain — N-2).
       if (!stopped) {
