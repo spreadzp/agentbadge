@@ -26,6 +26,9 @@ import { commerceCatalogRoutes } from "./commerce-catalog";
 import { paymentsApiRoutes } from "./payments-api";
 import { createCommerceRoutes } from "./commerce";
 import { createCommerceService } from "../lib/commerce";
+import { createIdentityRoutes } from "./identity-api";
+import { createIdentityService } from "../lib/identity";
+import { getAgentRegistrationStore } from "../lib/agent-registration/store";
 import { discoveryManifestRoutes } from "./discovery";
 import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
@@ -140,6 +143,23 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", paymentsApiRoutes); // EPIC-221 SLICE-221-2: /api/v1/payments*
   // EPIC-224 SLICE-224-3: /api/commerce/* task-centric routes (in-memory fallback when DATABASE_ENABLED off)
   app.route("/", createCommerceRoutes(createCommerceService(getDatabase().commerce)));
+  // EPIC-225 SLICE-225-3: /api/v1/{actors,entitlements,reputation} — thin reads + owner enrich + admin revoke (D-225-6)
+  app.route(
+    "/",
+    createIdentityRoutes(
+      createIdentityService({
+        identity: getDatabase().identity,
+        payments: getDatabase().payments,
+        registrations: {
+          // Lazy port — wireAgentRegistration publishes the active
+          // store AFTER registerApiRoutes; resolve at call time.
+          async list() {
+            return (await getAgentRegistrationStore()?.list()) ?? [];
+          },
+        },
+      }),
+    ),
+  );
   app.route("/", discoveryManifestRoutes);
   app.route("/", wellKnownRoutes);
   app.route("/", agentCardRoutes);

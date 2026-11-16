@@ -20,6 +20,7 @@ import { getConfig } from "../../config/env";
 import {
   createJsonAgentRegistrationStore,
   createMemoryAgentRegistrationStore,
+  setAgentRegistrationStore,
 } from "../lib/agent-registration/store";
 import { initAgentKeyAuth } from "../middleware/agent-key-auth";
 import { tryGetCache } from "../lib/cache";
@@ -37,6 +38,8 @@ export function wireAgentRegistration(app: Hono): void {
     cfg?.store === "memory"
       ? createMemoryAgentRegistrationStore()
       : createJsonAgentRegistrationStore();
+  // SLICE-225-3: publish for read-only consumers (identity actor types).
+  setAgentRegistrationStore(store);
 
   // SLICE-184-3: Bearer agb_ enrichment — shares this store instance so
   // revocations are visible instantly; 60s cache busted on revoke.

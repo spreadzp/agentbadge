@@ -176,6 +176,24 @@ export function createJsonAgentRegistrationStore(
   };
 }
 
+/* --------------------- process-wide active store ------------------------ */
+
+/**
+ * The registration store instance wired by `wireAgentRegistration`
+ * (SLICE-225-3): modules that only READ registrations (identity
+ * actor-type precedence) resolve it lazily at call time — wiring
+ * order in index.ts doesn't matter.
+ */
+let activeStore: AgentRegistrationStore | null = null;
+
+export function setAgentRegistrationStore(s: AgentRegistrationStore): void {
+  activeStore = s;
+}
+
+export function getAgentRegistrationStore(): AgentRegistrationStore | null {
+  return activeStore;
+}
+
 /* ------------------------------- memory -------------------------------- */
 
 export function createMemoryAgentRegistrationStore(): AgentRegistrationStore {
