@@ -48,7 +48,9 @@ export function createFlowRoutes(service: CommerceService): Hono {
       },
     }),
     async (c) => {
-      const auth = await requireWallet(c);
+      // Idempotent write — store-level dedupe resolves a keyed
+      // replay to duplicate:200, so the nonce guard exempts it.
+      const auth = await requireWallet(c, { allowIdemReplay: true });
       if (auth instanceof Response) return auth;
       const body = await readJson(c);
       if (body instanceof Response) return body;
@@ -162,7 +164,9 @@ export function createFlowRoutes(service: CommerceService): Hono {
       },
     }),
     async (c) => {
-      const auth = await requireWallet(c);
+      // Idempotent write — store-level dedupe resolves a keyed
+      // replay to duplicate:200, so the nonce guard exempts it.
+      const auth = await requireWallet(c, { allowIdemReplay: true });
       if (auth instanceof Response) return auth;
       const body = await readJson(c);
       if (body instanceof Response) return body;

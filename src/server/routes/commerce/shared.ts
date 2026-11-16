@@ -4,13 +4,14 @@
  */
 
 import { isAddress } from "viem";
-import { createHash } from "node:crypto";
 import type { Context } from "hono";
 import { verifyWalletSignature } from "../../middleware/agent-auth";
-import { IdempotencyConflictError } from "../../lib/contract-guards";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes, type ErrorCode } from "../../lib/error-codes";
-import { CommerceError } from "../../lib/commerce";
+import { BODY_HASH_KEY, ensureRawBody } from "./shared-utils";
+
+// Re-exported so route files keep a single "./shared" import surface.
+export { commerceError, readJson, redactRow } from "./shared-utils";
 
 // ─── Signed-request auth (SLICE-224-6 / H2) ─────────────────────
 //
@@ -29,21 +30,6 @@ import { CommerceError } from "../../lib/commerce";
 //   aud:agentbadge-commerce-api
 
 const MAX_SKEW_SECONDS = 300;
-const RAW_BODY_KEY = "commerce.rawBody";
-const BODY_HASH_KEY = "commerce.bodyHash";
-
-export const sha256Hex = (s: string): string =>
-  createHash("sha256").update(s).digest("hex");
-
-/** Read the raw request body exactly once and cache it on the context. */
-async function ensureRawBody(c: Context): Promise<string> {
-  const cached = c.get(RAW_BODY_KEY);
-  if (typeof cached === "string") return cached;
-  const raw = await c.req.raw.text();
-  c.set(RAW_BODY_KEY, raw);
-  c.set(BODY_HASH_KEY, raw.length ? sha256Hex(raw) : "-");
-  return raw;
-}
 
 export interface SignedWalletParams {
   wallet: string;
@@ -103,8 +89,10 @@ type WalletCheck =
 
 interface SignedWalletOpts {
   /** Exempt requests carrying an idempotency_key from the nonce
-   *  replay guard (default true — store-level dedupe resolves
-   *  them). Pass false where no dedupe exists (audit H-2). */
+   *  replay guard. Audit v2 N-15: default is DENY — callers opt in
+   *  per-route only where store-level dedupe resolves replays
+   *  (idempotentWrite). Surfaces without dedupe must not pass true.
+   */
   allowIdemReplay?: boolean;
 }
 
@@ -130,9 +118,9 @@ async function checkSignedWallet(
   if (idemHeader !== undefined && !IDEM_KEY_RE.test(idemHeader)) {
     return {
       ok: false,
-      status: 400 as 401,
+      status: 400,
       code: ErrorCodes.INVALID_INPUT,
-      message: "idempotency_key must match [A-Za-z0-9_-]{8,128}",
+      message: `idempotency_key must match ${IDEM_KEY_RE.source}`,
     };
   }
   if (
@@ -184,8 +172,11 @@ async function checkSignedWallet(
     c.req.path,
     nonce,
   ].join("|");
+  // N-15: replay deny-by-default — only routes that explicitly
+  //  opt in (backed by store-level idempotentWrite) exempt a
+  //  request carrying an idempotency_key.
   if (
-    (opts.allowIdemReplay === false || idemKey(c) === undefined) &&
+    !(opts.allowIdemReplay === true && idemKey(c) !== undefined) &&
     isReplay(replayKey)
   ) {
     return {
@@ -234,8 +225,10 @@ export function idemKey(c: Context): string | undefined {
   return c.req.header(IDEM_HEADER) ?? undefined;
 }
 
-/** Contract-guard shape for the idempotency header (audit H-2). */
-export const IDEM_KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+/** Contract-guard shape for the idempotency header (audit H-2 /
+ *  v2 N-15 — the contract bounds length only; the charset allows
+ *  composite keys `owner|payment|product` style separators). */
+export const IDEM_KEY_RE = /^[A-Za-z0-9_.:|-]{8,128}$/;
 
 /** sha256 of the raw request body — binds idempotentWrite to body content. */
 export async function requestFingerprint(c: Context): Promise<string> {
@@ -243,55 +236,4 @@ export async function requestFingerprint(c: Context): Promise<string> {
   return c.get(BODY_HASH_KEY) as string;
 }
 
-/** H4: payload is opaque per-entity private data — non-parties never see it. */
-export function redactRow<T extends { payload: unknown }>(
-  row: T,
-  parties: readonly (string | null | undefined)[],
-  viewer: string | null,
-  sensitiveFields: readonly (keyof T)[] = [],
-): T {
-  if (viewer !== null && parties.includes(viewer)) return row;
-  const redacted = { ...row, payload: null };
-  for (const field of sensitiveFields) {
-    (redacted as Record<string, unknown>)[field as string] = null;
-  }
-  return redacted;
-}
-
-export async function readJson(
-  c: Context,
-): Promise<Record<string, unknown> | Response> {
-  try {
-    const raw = await ensureRawBody(c);
-    const body = JSON.parse(raw || "null") as unknown;
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "JSON object body required");
-    }
-    return body as Record<string, unknown>;
-  } catch {
-    return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "invalid JSON body");
-  }
-}
-
-/** Map CommerceError → canonical error shape; rethrows unknown errors. */
-export function commerceError(c: Context, err: unknown): Response {
-  if (err instanceof IdempotencyConflictError) {
-    return errorResponse(c, 409, ErrorCodes.CONFLICT, err.message);
-  }
-  if (err instanceof CommerceError) {
-    switch (err.code) {
-      case "NOT_FOUND":
-        return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, err.message);
-      case "FORBIDDEN":
-        return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER, err.message);
-      case "INVALID_TRANSITION":
-        return errorResponse(c, 409, ErrorCodes.INVALID_TRANSITION, err.message);
-      case "GUARD_REJECTED":
-        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, err.message);
-      case "CONFLICT":
-        return errorResponse(c, 409, ErrorCodes.CONFLICT, err.message);
-    }
-  }
-  throw err;
-}
 

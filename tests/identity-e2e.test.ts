@@ -53,6 +53,9 @@ beforeEach(() => {
         return tokenId === "pass_77" ? W_OWNER : null;
       },
     },
+    // v2 N-3: non-payment fact emits deny-by-default without a
+    // source verifier — tests stub it.
+    verifySource: async () => true,
     nowMs: () => clock,
   });
   app = new Hono();

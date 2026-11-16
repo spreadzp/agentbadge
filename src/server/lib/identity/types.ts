@@ -34,10 +34,13 @@ export type EntitlementStatus = (typeof ENTITLEMENT_STATUSES)[number];
  * DIRECTORY_LISTING, scan packs) never produce entitlements.
  *
  * `validityMs` — grant duration; undefined = perpetual until revoked.
- * `minAmount`/`currency` — payment binding (audit C-2): when
- * declared, the sweeper only activates payments that paid at least
- * `minAmount` in `currency`. Entries without a declared price bind
- * only on productId + CONFIRMED status (see decisions D-225-8).
+ * `minAmount`/`currency` — payment binding (audit C-2 / v2 N-1):
+ * the sweeper only activates payments that paid at least `minAmount`
+ * in exactly `currency`. Entries WITHOUT a declared price are
+ * deny-by-default — the sweeper never grants them (manual `grant()`
+ * calls still work). USD floors mirror PRODUCT_SEEDS in
+ * lib/commerce-catalog (kept literal here to keep this module a pure
+ * leaf; a drift-guard test asserts parity).
  */
 export interface EntitlementCatalogEntry {
   productCode: string;
@@ -48,10 +51,14 @@ export interface EntitlementCatalogEntry {
 }
 
 export const ENTITLEMENT_PRODUCTS: readonly EntitlementCatalogEntry[] = [
-  { productCode: "PASSPORT_BRONZE" },
-  { productCode: "PASSPORT_SILVER" },
-  { productCode: "PASSPORT_GOLD" },
-  { productCode: "PASSPORT_PLATINUM" },
+  // Purchasable via checkout — priced (USD floors from
+  // PRODUCT_SEEDS, see lib/commerce-catalog/index.ts).
+  { productCode: "PASSPORT_BRONZE", minAmount: "9.99", currency: "USD" },
+  { productCode: "PASSPORT_SILVER", minAmount: "49.99", currency: "USD" },
+  { productCode: "PASSPORT_GOLD", minAmount: "199.99", currency: "USD" },
+  { productCode: "PASSPORT_PLATINUM", minAmount: "499.99", currency: "USD" },
+  // Reserved codes — no checkout product yet; unpriced ⇒
+  // deny-by-default in the sweeper (payments cannot mint them).
   { productCode: "READINESS_BASIC" },
   { productCode: "READINESS_PREMIUM" },
   { productCode: "API_ACCESS_STANDARD" },

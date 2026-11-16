@@ -38,6 +38,11 @@ const passports = {
 
 let clock = 1_700_000_000_000;
 
+/** Non-payment source verifier stub — audit v2 N-3 deny-by-default
+ *  means TASK_COMPLETED/DISPUTE/… emits REQUIRE a configured
+ *  verifier for their ref prefix. */
+const verifySourceStub = async () => true;
+
 beforeEach(() => {
   identity = createInMemoryIdentityStores();
   payments = createInMemoryPaymentStores();
@@ -49,6 +54,7 @@ beforeEach(() => {
     payments,
     registrations,
     passports,
+    verifySource: verifySourceStub,
     nowMs: () => clock,
   });
 });
@@ -270,7 +276,8 @@ describe("entitlement service", () => {
     expect(deduped).toBe(false);
     expect(row.status).toBe("ACTIVE");
     expect(row.activeSlot).toBe(`${W_A}|PASSPORT_BRONZE`);
-    expect(row.idempotencyKey).toBe("pay_1|PASSPORT_BRONZE");
+    // v2 N-11: default dedupe key is owner-bound.
+    expect(row.idempotencyKey).toBe(`${W_A}|pay_1|PASSPORT_BRONZE`);
   });
 
   it("grant is idempotent via idempotencyKey", async () => {
@@ -518,39 +525,32 @@ describe("entitlement sweeper", () => {
     expect(actor?.type).toBe("EXTERNAL_AGENT");
   });
 
-  it("C-2: declared catalog price/currency binds the payment", async () => {
-    const { ENTITLEMENT_PRODUCTS } = await import(
-      "../src/server/lib/identity/types.js"
-    );
-    const entry = ENTITLEMENT_PRODUCTS.find(
-      (e) => e.productCode === "PASSPORT_BRONZE",
-    )!;
-    (entry as { minAmount?: string; currency?: string }).minAmount = "9.99";
-    entry.currency = "USD";
-    try {
-      // Underpayment → skipped, no grant.
-      const cheap = await confirmedPayment({
-        customerId: W_A,
-        amount: "0.01",
-      });
-      // Full price → grant.
-      const fair = await confirmedPayment({
-        customerId: W_B,
-        amount: "9.99",
-      });
-      const r = await svc.sweep({ sinceMs: 0 });
-      expect(r.granted).toBe(1);
-      expect(r.skippedCount).toBeGreaterThanOrEqual(1);
-      expect(await svc.entitlements.check(W_A, "PASSPORT_BRONZE")).toBeNull();
-      expect(
-        await svc.entitlements.check(W_B, "PASSPORT_BRONZE"),
-      ).not.toBeNull();
-      void cheap;
-      void fair;
-    } finally {
-      delete (entry as { minAmount?: string; currency?: string }).minAmount;
-      delete (entry as { currency?: string }).currency;
-    }
+  it("N-1: priced catalog binds amount/currency; unpriced denies", async () => {
+    // PASSPORT_BRONZE floor is 9.99 USD — underpayment and wrong
+    // currency skip; full price grants.
+    await confirmedPayment({ customerId: W_A, amount: "9.98" });
+    await confirmedPayment({
+      customerId: W_B,
+      amount: "9.99",
+      currency: "EUR",
+    });
+    await confirmedPayment({ customerId: W_A, amount: "9.99" });
+    // Unpriced catalog entries are deny-by-default — a payment for
+    // READINESS_* can never mint an entitlement.
+    await confirmedPayment({
+      customerId: W_B,
+      productId: "READINESS_BASIC",
+      amount: "9999.99",
+    });
+    const r = await svc.sweep({ sinceMs: 0 });
+    expect(r.granted).toBe(1);
+    const reasons = r.skipped.map((s) => s.reason).join("|");
+    expect(reasons).toContain("< catalog min");
+    expect(reasons).toContain("!= USD");
+    expect(reasons).toContain("unpriced — deny-by-default");
+    expect(
+      await svc.entitlements.check(W_B, "READINESS_BASIC"),
+    ).toBeNull();
   });
 
   it("C-2: ownerFor cannot reroute the grant off the payer", async () => {
@@ -708,5 +708,230 @@ describe("reputation fact emitters", () => {
       }),
     );
     expect(e2.code).toBe("INVALID");
+  });
+});
+
+// ---------- audit v2 round-2 regressions ----------
+
+describe("audit v2 round-2", () => {
+  it("N-4: reversal feed rotates through the cursor window", async () => {
+    // Two sourced ACTIVE rows; maxReversals=1 → only one row per
+    // tick. The persisted cursor must move the window each tick.
+    const payA = await confirmedPayment({ customerId: W_A });
+    const payB = await confirmedPayment({ customerId: W_B });
+    const { row: rA } = await svc.entitlements.grant({
+      ownerId: W_A,
+      productCode: "PASSPORT_BRONZE",
+      sourcePaymentId: payA.id,
+    });
+    const { row: rB } = await svc.entitlements.grant({
+      ownerId: W_B,
+      productCode: "PASSPORT_BRONZE",
+      sourcePaymentId: payB.id,
+    });
+    // Flip only the SECOND payment — a starved feed that always
+    // starts at row A would never see it.
+    await payments.payments.applyStatus(
+      payB.id,
+      "CONFIRMED",
+      "REFUNDED",
+      clock,
+    );
+    const t1 = await svc.sweep({ sinceMs: 0, maxReversals: 1 });
+    expect(t1.reversalCursor).not.toBeNull();
+    const t2 = await svc.sweep({ sinceMs: 0, maxReversals: 1 });
+    // (createdAt,id) ordering at equal clocks is id-tiebroken —
+    // the REFUNDED row may be visited on tick 1 or 2; the point is
+    // the window covers every row across ticks.
+    expect(t1.revoked + t2.revoked).toBe(1);
+    expect(
+      (await svc.entitlements.getById(rB.id))?.status,
+    ).toBe("REVOKED");
+    expect(
+      (await svc.entitlements.getById(rA.id))?.status,
+    ).toBe("ACTIVE");
+    // Third tick wraps (no more sourced rows after cursor).
+    const t3 = await svc.sweep({ sinceMs: 0, maxReversals: 1 });
+    expect(t3.reversalCursor).toBeNull();
+  });
+
+  it("N-5: a missing payment row retains the grant", async () => {
+    const { row } = await svc.entitlements.grant({
+      ownerId: W_A,
+      productCode: "PASSPORT_BRONZE",
+      sourcePaymentId: "pay_ghost_never_created",
+    });
+    const r = await svc.sweep({ sinceMs: 0 });
+    expect(r.revoked).toBe(0);
+    expect((await svc.entitlements.getById(row.id))?.status).toBe(
+      "ACTIVE",
+    );
+  });
+
+  it("N-6: CONFIRMED→REFUNDED→CONFIRMED revokes then reactivates", async () => {
+    const pay = await confirmedPayment({ customerId: W_A });
+    await svc.sweep({ sinceMs: 0 });
+    const granted = await svc.entitlements.check(W_A, "PASSPORT_BRONZE");
+    expect(granted).not.toBeNull();
+    await payments.payments.applyStatus(
+      pay.id,
+      "CONFIRMED",
+      "REFUNDED",
+      clock,
+    );
+    const r1 = await svc.sweep({ sinceMs: 0 });
+    expect(r1.revoked).toBe(1);
+    const revoked = await svc.entitlements.getById(granted!.id);
+    expect(revoked?.status).toBe("REVOKED");
+    expect(
+      (revoked?.payload as { reversedBy?: string })?.reversedBy,
+    ).toBe("payment-reversal");
+    // Payment flips back to CONFIRMED — the dedupe hit on the
+    // reversal-marked row reactivates instead of staying dead.
+    await payments.payments.applyStatus(
+      pay.id,
+      "REFUNDED",
+      "CONFIRMED",
+      clock,
+    );
+    const r2 = await svc.sweep({ sinceMs: 0 });
+    expect(r2.reactivated).toBe(1);
+    expect(
+      (await svc.entitlements.getById(granted!.id))?.status,
+    ).toBe("ACTIVE");
+  });
+
+  it("N-6: admin-revoked rows never reactivate", async () => {
+    const { row } = await svc.entitlements.grant({
+      ownerId: W_A,
+      productCode: "PASSPORT_BRONZE",
+      sourcePaymentId: "pay_admin_rev",
+    });
+    await svc.entitlements.revoke(row.id);
+    const e = await err(() => svc.entitlements.reactivate(row.id));
+    expect(e.code).toBe("CONFLICT");
+  });
+
+  it("N-7: ownerOf throw = unknown — 503 on write, stored type kept", async () => {
+    // Establish a REGISTERED_USER with a proven passport.
+    passportOwners.set("p1", W_A);
+    const a = await svc.actors.resolveOrCreate(W_A, {
+      passportTokenId: "p1",
+    });
+    expect(a.type).toBe("REGISTERED_USER");
+    // ownerOf now throws — a transient lookup failure must not
+    // downgrade the stored type.
+    const flaky = {
+      ownerOf: async () => {
+        throw new Error("rpc boom");
+      },
+    };
+    const svc2 = createIdentityService({
+      identity,
+      payments,
+      registrations,
+      passports: flaky,
+      verifySource: verifySourceStub,
+      nowMs: () => clock,
+    });
+    const kept = await svc2.actors.resolveOrCreate(W_A);
+    expect(kept.type).toBe("REGISTERED_USER");
+    // …and a NEW passport write fails 503, not silent-deny.
+    const e = await err(() =>
+      svc2.actors.enrich(W_A, { passportTokenId: "p2" }),
+    );
+    expect(e.httpStatus).toBe(503);
+  });
+
+  it("N-9: orgId whitespace rejected; cleared orgId downgrades ORG", async () => {
+    const e = await err(() =>
+      svc.actors.enrich(W_A, { type: "ORGANIZATION", orgId: "   " }),
+    );
+    expect(e.code).toBe("INVALID");
+    const org = await svc.actors.resolveOrCreate(W_A, {
+      type: "ORGANIZATION",
+      orgId: "acme",
+    });
+    expect(org.type).toBe("ORGANIZATION");
+    const downgraded = await svc.actors.resolveOrCreate(W_A, {
+      orgId: null,
+    });
+    expect(downgraded.type).not.toBe("ORGANIZATION");
+  });
+
+  it("N-9: did must match did:<method>:<id>", async () => {
+    const e = await err(() =>
+      svc.actors.enrich(W_A, { did: "not-a-did" }),
+    );
+    expect(e.code).toBe("INVALID");
+    const ok = await svc.actors.enrich(W_A, {
+      did: "did:ethr:0xabc123",
+    });
+    expect(ok.did).toBe("did:ethr:0xabc123");
+  });
+
+  it("N-12: fact emit lazy-creates the actor row", async () => {
+    expect(await svc.actors.get(W_B)).toBeNull();
+    await svc.facts.taskCompleted(W_B, "ag_new");
+    const actor = await svc.actors.get(W_B);
+    expect(actor).not.toBeNull();
+  });
+
+  it("N-16: atMs rejects negative and non-integer", async () => {
+    const neg = await err(() =>
+      svc.facts.emit({
+        actorWallet: W_A,
+        factType: "ATTESTATION",
+        sourceRef: "attestation:x",
+        atMs: -1,
+      }),
+    );
+    expect(neg.code).toBe("INVALID");
+    const frac = await err(() =>
+      svc.facts.emit({
+        actorWallet: W_A,
+        factType: "ATTESTATION",
+        sourceRef: "attestation:x",
+        atMs: clock - 0.5,
+      }),
+    );
+    expect(frac.code).toBe("INVALID");
+  });
+
+  it("N-3: non-payment emits deny-by-default without verifySource", async () => {
+    const bare = createIdentityService({
+      identity,
+      payments,
+      registrations,
+      passports,
+      // no verifySource
+      nowMs: () => clock,
+    });
+    const e = await err(() =>
+      bare.facts.emit({
+        actorWallet: W_A,
+        factType: "TASK_COMPLETED",
+        sourceRef: "agreement:ag_1",
+        subjectId: "ag_1",
+      }),
+    );
+    expect(e.code).toBe("INVALID");
+    expect(e.message).toContain("verifier");
+    // …but payment refs still verify via the default payments port.
+    const pay = await confirmedPayment({ customerId: W_A });
+    const ok = await bare.facts.paymentVerified(W_A, pay.id);
+    expect(ok?.factType).toBe("PAYMENT_VERIFIED");
+  });
+
+  it("N-3: wrong-prefix sourceRef rejected before verification", async () => {
+    const e = await err(() =>
+      svc.facts.emit({
+        actorWallet: W_A,
+        factType: "PAYMENT_VERIFIED",
+        // PAYMENT_VERIFIED requires payment: prefix
+        sourceRef: "agreement:ag_1",
+      }),
+    );
+    expect(e.code).toBe("INVALID");
   });
 });

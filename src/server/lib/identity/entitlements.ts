@@ -9,11 +9,17 @@
  *   activeSlot unique key; `grant` is idempotent: repeat activation
  *   for the same pair returns the existing row with `deduped: true`
  * - `idempotencyKey` is required (8-128, contract guard) — derived
- *   as `sourcePaymentId|productCode` for purchase activations
+ *   as `sourcePaymentId|productCode` for purchase activations; the
+ *   sweeper passes an explicit `owner|payment|product` key (audit
+ *   v2 N-11) so a key-hit is owner-bound by construction
  * - `check()` honors validUntil: an ACTIVE row past its deadline is
  *   lazily transitioned to EXPIRED and no longer answers
  * - sourcePaymentId provenance: the sweeper only grants from
  *   CONFIRMED payments (invariant; the store can't prove it)
+ * - audit v2 N-6: a REVOKED row revoked by the reversal pass
+ *   (`payload.reversedBy === "payment-reversal"`) is re-activatable
+ *   via `reactivate()` when the payment flips back to CONFIRMED;
+ *   admin revokes carry no marker and stay permanent
  */
 import type { EntitlementRow, EntitlementStore } from "@agentbadge/database";
 import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
@@ -30,6 +36,7 @@ import {
   invalid,
   notFound,
 } from "./types";
+import { createEntitlementReversal } from "./entitlement-reversal";
 
 export interface GrantInput {
   ownerId: string;
@@ -55,8 +62,18 @@ export interface EntitlementService {
   grant(input: GrantInput): Promise<GrantResult>;
   /** ACTIVE → EXPIRED (manual; the sweeper also expires in bulk). */
   expire(id: string): Promise<EntitlementRow>;
-  /** ACTIVE → REVOKED (ops action). */
+  /** ACTIVE → REVOKED (ops action — no marker; permanent). */
   revoke(id: string): Promise<EntitlementRow>;
+  /** ACTIVE → REVOKED by the reversal pass — stamps
+   *  `payload.reversedBy = "payment-reversal"` so `reactivate()`
+   *  can undo it when the payment flips back to CONFIRMED
+   *  (audit v2 N-6). */
+  revokeForReversal(id: string): Promise<EntitlementRow>;
+  /** REVOKED → ACTIVE — ONLY for rows the reversal pass revoked
+   *  (`payload.reversedBy === "payment-reversal"`). Used by the
+   *  sweeper when the source payment is CONFIRMED again (audit
+   *  v2 N-6). Admin revocations (no marker) cannot reactivate. */
+  reactivate(id: string): Promise<EntitlementRow>;
   /**
    * The enforcement read (D-225-6): ACTIVE row for (wallet, code)
    * honoring validUntil — returns null when absent or expired
@@ -73,12 +90,22 @@ export interface EntitlementService {
    *  the transitioned rows (sweeper feed). */
   expireOverdue(nowMs?: number): Promise<EntitlementRow[]>;
   /** ACTIVE rows that carry a source payment — the sweeper's
-   *  reversal feed (audit H-5: refund/chargeback ⇒ revoke). */
-  listActiveWithSource(limit?: number): Promise<EntitlementRow[]>;
+   *  reversal feed (audit H-5 / v2 N-4). `afterId` resumes
+   *  strictly after that row in (createdAt, id) order — a
+   *  rotating keyset window; caller resets to undefined when a
+   *  short batch arrives. */
+  listActiveWithSource(
+    limit?: number,
+    afterId?: string,
+  ): Promise<EntitlementRow[]>;
 }
 
 export interface EntitlementServiceDeps {
   nowMs?: () => number;
+  /** Audit v2 N-12 — lazy actor upsert before a NEW grant insert
+   *  (FK safety for direct grant() callers; dedupe hits skip it).
+   *  Wired to `actors.resolveOrCreate` in the service bundle. */
+  ensureActor?: (wallet: string) => Promise<unknown>;
 }
 
 export function createEntitlementService(
@@ -86,6 +113,7 @@ export function createEntitlementService(
   deps: EntitlementServiceDeps = {},
 ): EntitlementService {
   const now = deps.nowMs ?? Date.now;
+  const reversal = createEntitlementReversal(entitlements, now);
 
   async function grant(input: GrantInput): Promise<GrantResult> {
     const ownerId = assertWallet(input.ownerId, "ownerId");
@@ -97,10 +125,12 @@ export function createEntitlementService(
         { field: "productCode" },
       );
     }
+    // Default key binds owner+payment+product (audit v2 N-11) — a
+    // replay is only possible for the SAME triple.
     const key =
       input.idempotencyKey ??
       (input.sourcePaymentId
-        ? `${input.sourcePaymentId}|${productCode}`
+        ? `${ownerId}|${input.sourcePaymentId}|${productCode}`
         : undefined);
     if (key === undefined) {
       throw invalid(
@@ -135,6 +165,9 @@ export function createEntitlementService(
         : catalog.validityMs !== undefined
           ? validFromMs + catalog.validityMs
           : null;
+    // Actor row must exist for the FK before a NEW insert (audit
+    // v2 N-12 — also covers direct grant() callers).
+    await deps.ensureActor?.(ownerId);
     const row = await entitlements.grant({
       id: newId("ent"),
       ownerId,
@@ -147,11 +180,24 @@ export function createEntitlementService(
       payload: input.payload ?? {},
     });
     if (!row) {
-      // Lost a race — the winner's row is authoritative.
+      // Lost a race — re-check the binding before trusting the
+      // winner's row (audit v2 N-11): a key-hit for a DIFFERENT
+      // (ownerId, productCode) is a collision, not a replay.
       const winner =
         (await entitlements.getByIdempotencyKey(key)) ??
         (await entitlements.getActive(ownerId, productCode));
-      if (winner) return { row: winner, deduped: true };
+      if (winner) {
+        if (
+          winner.ownerId !== ownerId ||
+          winner.productCode !== productCode
+        ) {
+          throw conflict(
+            "idempotencyKey collision — bound to a different (ownerId, productCode)",
+            { ownerId, productCode, idempotencyKey: key },
+          );
+        }
+        return { row: winner, deduped: true };
+      }
       throw conflict("entitlement grant lost a write race", {
         ownerId,
         productCode,
@@ -182,6 +228,9 @@ export function createEntitlementService(
 
     expire: (id) => applyGuarded(id, "EXPIRED"),
     revoke: (id) => applyGuarded(id, "REVOKED"),
+
+    revokeForReversal: reversal.revokeForReversal,
+    reactivate: reversal.reactivate,
 
     async check(wallet, productCode) {
       const ownerId = assertWallet(wallet, "wallet");
@@ -232,7 +281,7 @@ export function createEntitlementService(
       return out;
     },
 
-    listActiveWithSource: (limit) =>
-      entitlements.listActiveWithSource(limit),
+    listActiveWithSource: (limit, afterId) =>
+      entitlements.listActiveWithSource(limit, afterId),
   };
 }

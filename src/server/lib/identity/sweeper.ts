@@ -15,17 +15,25 @@
  * Also expires overdue ACTIVE entitlements (check()'s lazy expiry
  * covers reads; this keeps the stored state converged).
  *
- * SLICE-225-6 audit fixes:
- * - C-2: catalog payment binding — when a catalog entry declares
- *   `minAmount`/`currency`, the payment must cover it (string-equal
- *   productId alone proved nothing); `customerId` must also match
- *   the resolved owner (no gift/squat grants).
+ * SLICE-225-6/7 audit fixes:
+ * - C-2 / v2 N-1: catalog payment binding is DENY-BY-DEFAULT — an
+ *   entry without a declared `minAmount`/`currency` can never be
+ *   granted from a payment (unpriced codes stay ops-only). The
+ *   payment must cover the declared floor in EXACTLY the declared
+ *   currency (no implicit USD); `customerId` must also match the
+ *   resolved owner (no gift/squat grants).
  * - H-4: only NEW grants count against `maxGrants` — deduped rows
- *   no longer starve real candidates; `skipped[]` is capped.
- * - H-5: reversal pass — ACTIVE entitlements whose source payment
- *   is no longer CONFIRMED (refund/chargeback) are revoked.
- * - M-4: the actor row is ensured (lazy resolveOrCreate) before a
- *   grant, so FK'd or join-reading consumers never see orphans.
+ *   no longer starve real candidates; `skipped[]` and `errors[]`
+ *   are capped (v2 N-10).
+ * - H-5 / v2 N-4..N-6: reversal pass — ACTIVE entitlements whose
+ *   source payment carries an explicit REVERSAL status are revoked
+ *   (marked `reversedBy: payment-reversal` in payload). Missing
+ *   payments and ambiguous statuses RETAIN the grant. The feed
+ *   iterates a rotating keyset cursor so every sourced row is
+ *   re-checked; a reversal-revoked row re-activates when the
+ *   payment is CONFIRMED again.
+ * - M-4 / v2 N-7: the actor row is ensured inside `grant()` on
+ *   NEW inserts only — deduped candidates cost no external calls.
  */
 import type {
   PaymentAttemptRow,
@@ -35,6 +43,11 @@ import type {
 
 import type { EntitlementService } from "./entitlements";
 import { entitlementCatalogEntry } from "./types";
+import {
+  amountAtLeast,
+  defaultOwnerFor,
+} from "./sweeper-helpers";
+import { runReversalPass } from "./sweeper-reversal";
 
 export interface EntitlementSweepResult {
   attemptsScanned: number;
@@ -47,10 +60,19 @@ export interface EntitlementSweepResult {
   skipped: { paymentId: string; reason: string }[];
   skippedCount: number;
   expired: number;
-  /** ACTIVE entitlements revoked because their source payment lost
-   *  CONFIRMED status (refund/chargeback) — audit H-5. */
+  /** ACTIVE entitlements revoked because their source payment
+   *  carries an explicit reversal status — audit H-5 / v2 N-5. */
   revoked: number;
+  /** Reversal-revoked rows re-activated on CONFIRMED payment
+   *  (audit v2 N-6). */
+  reactivated: number;
   errors: { stage: string; message: string }[];
+  /** Capped at MAX_ERRORS — `errorsCount` stays exact. */
+  errorsCount: number;
+  /** Rotating keyset cursor for the reversal feed (audit v2 N-4) —
+   *  pass it back via `deps.reversalCursor` on the next tick; null
+   *  when the window wrapped (all rows re-checked). */
+  reversalCursor: string | null;
 }
 
 export interface EntitlementSweepDeps {
@@ -61,13 +83,16 @@ export interface EntitlementSweepDeps {
   actors?: { resolveOrCreate(wallet: string): Promise<unknown> };
   /**
    * Resolve the grantee wallet for a confirmed payment. Default:
-   * `customerId` when it is an EVM wallet; callers plug in
-   * agentId→registration→owner resolution for non-wallet customers.
-   * Whatever it returns must still equal `payment.customerId`
-   * (C-2 — the grantee IS the payer of record; resolver output
-   * that disagrees is an error, not a grant).
+   * `customerId` when it is an EVM wallet. The resolver may only
+   * NARROW `customerId` to a wallet — whatever it returns MUST
+   * equal `payment.customerId` (C-2: the grantee IS the payer of
+   * record; any other resolution is an error, not a grant).
    */
   ownerFor?: (payment: PaymentRow) => Promise<string | null> | string | null;
+  /** Rotating keyset cursor for the reversal feed (audit v2 N-4) —
+   *  the value returned as `result.reversalCursor` on the previous
+   *  tick. Undefined = start of the window. */
+  reversalCursor?: string;
   /** Window for `listRecentTerminal` when `sinceMs` is absent. */
   lookbackMs?: number;
   sinceMs?: number;
@@ -79,26 +104,11 @@ export interface EntitlementSweepDeps {
   maxReversals?: number;
 }
 
-const WALLET_RE = /^0x[0-9a-f]{40}$/;
 const MAX_SKIPPED = 200;
+const MAX_ERRORS = 200;
 
 const errMsg = (e: unknown): string =>
   e instanceof Error ? e.message.slice(0, 300) : String(e);
-
-function defaultOwnerFor(payment: PaymentRow): string | null {
-  const c = payment.customerId;
-  if (typeof c === "string" && WALLET_RE.test(c.toLowerCase())) {
-    return c.toLowerCase();
-  }
-  return null;
-}
-
-/** Decimal-string compare without floats: ≥ returns true. */
-function amountAtLeast(amount: string, min: string): boolean {
-  const a = Number(amount);
-  const m = Number(min);
-  return Number.isFinite(a) && Number.isFinite(m) && a >= m;
-}
 
 export async function runEntitlementSweep(
   deps: EntitlementSweepDeps,
@@ -119,7 +129,10 @@ export async function runEntitlementSweep(
     skippedCount: 0,
     expired: 0,
     revoked: 0,
+    reactivated: 0,
     errors: [],
+    errorsCount: 0,
+    reversalCursor: null,
   };
 
   const skip = (paymentId: string, reason: string) => {
@@ -128,13 +141,19 @@ export async function runEntitlementSweep(
       result.skipped.push({ paymentId, reason });
     }
   };
+  const err = (stage: string, e: unknown) => {
+    result.errorsCount++;
+    if (result.errors.length < MAX_ERRORS) {
+      result.errors.push({ stage, message: errMsg(e) });
+    }
+  };
 
   // 1) Expiry pass — converges stored state for overdue ACTIVE rows.
   try {
     const expired = await deps.entitlements.expireOverdue(now());
     result.expired = expired.length;
   } catch (e) {
-    result.errors.push({ stage: "expire", message: errMsg(e) });
+    err("expire", e);
   }
 
   // 2) Activation pass — CONFIRMED attempts → CONFIRMED payments.
@@ -142,7 +161,7 @@ export async function runEntitlementSweep(
   try {
     attempts = await deps.payments.attempts.listRecentTerminal(sinceMs);
   } catch (e) {
-    result.errors.push({ stage: "attempt-feed", message: errMsg(e) });
+    err("attempt-feed", e);
     attempts = [];
   }
   result.attemptsScanned = attempts.length;
@@ -179,22 +198,25 @@ export async function runEntitlementSweep(
         );
         continue;
       }
-      // C-2 payment binding: declared catalog price/currency must be
-      // covered — a bare productId string proves nothing.
-      if (
-        entry.currency !== undefined &&
-        (payment.currency ?? "USD") !== entry.currency
-      ) {
+      // C-2 / v2 N-1 payment binding, DENY-BY-DEFAULT: an
+      // unpriced catalog entry is never granted from a payment;
+      // currency must match EXACTLY (no implicit USD); the amount
+      // must cover the declared floor.
+      if (entry.currency === undefined || entry.minAmount === undefined) {
+        skip(
+          payment.id,
+          `catalog entry ${productCode} is unpriced — deny-by-default`,
+        );
+        continue;
+      }
+      if (payment.currency !== entry.currency) {
         skip(
           payment.id,
           `payment currency ${payment.currency ?? "null"} != ${entry.currency}`,
         );
         continue;
       }
-      if (
-        entry.minAmount !== undefined &&
-        !amountAtLeast(payment.amount, entry.minAmount)
-      ) {
+      if (!amountAtLeast(payment.amount, entry.minAmount)) {
         skip(
           payment.id,
           `payment amount ${payment.amount} < catalog min ${entry.minAmount}`,
@@ -209,60 +231,55 @@ export async function runEntitlementSweep(
       // C-2: grantee must be the payer of record — the resolver can
       // only NARROW customerId, never reroute the grant elsewhere.
       if (payment.customerId?.toLowerCase() !== owner) {
-        result.errors.push({
-          stage: `attempt:${attempt.id}`,
-          message: `ownerFor resolved ${owner} but payment.customerId is ${payment.customerId ?? "null"} — refusing grant`,
-        });
+        err(
+          `attempt:${attempt.id}`,
+          new Error(
+            `ownerFor resolved ${owner} but payment.customerId is ${payment.customerId ?? "null"} — refusing grant`,
+          ),
+        );
         continue;
       }
-      // M-4: ensure the actor row exists before granting (FK/read
-      // joins downstream must not see dangling owners).
-      if (deps.actors) {
-        await deps.actors.resolveOrCreate(owner);
-      }
-      const { deduped } = await deps.entitlements.grant({
+      // N-7: actor upsert moved into grant() — it runs only on NEW
+      // inserts, so deduped candidates cost no external calls.
+      const grantResult = await deps.entitlements.grant({
         ownerId: owner,
         productCode,
         sourcePaymentId: payment.id,
+        // Owner-bound dedupe key (audit v2 N-11).
+        idempotencyKey: `${owner}|${payment.id}|${productCode}`,
         validFromMs: attempt.confirmedAtMs ?? now(),
         payload: { activatedBy: "entitlement-sweep" },
       });
-      if (deduped) result.deduped++;
-      else result.granted++;
+      if (grantResult.deduped) {
+        // N-6: a REVOKED row the reversal pass revoked
+        // (`reversedBy: payment-reversal`) re-activates when the
+        // payment is CONFIRMED again — a payment that flips
+        // CONFIRMED→FAILED→CONFIRMED keeps its grant.
+        if (
+          grantResult.row.status === "REVOKED" &&
+          (grantResult.row.payload as Record<string, unknown> | null)
+            ?.reversedBy === "payment-reversal"
+        ) {
+          try {
+            await deps.entitlements.reactivate(grantResult.row.id);
+            result.reactivated++;
+          } catch (e) {
+            err(`reactivate:${grantResult.row.id}`, e);
+          }
+        } else {
+          result.deduped++;
+        }
+      } else {
+        result.granted++;
+      }
     } catch (e) {
-      result.errors.push({
-        stage: `attempt:${attempt.id}`,
-        message: errMsg(e),
-      });
+      err(`attempt:${attempt.id}`, e);
     }
   }
 
-  // 3) Reversal pass (audit H-5) — an ACTIVE entitlement whose
-  // source payment lost CONFIRMED status (refund/chargeback/changed
-  // record) is revoked; the dedupe key on the revoked row also
-  // blocks re-activation of the same payment.
-  try {
-    const active = await deps.entitlements.listActiveWithSource?.(
-      maxReversals,
-    );
-    for (const row of active ?? []) {
-      const payment = row.sourcePaymentId
-        ? await deps.payments.payments.getById(row.sourcePaymentId)
-        : null;
-      if (payment && payment.status === "CONFIRMED") continue;
-      try {
-        await deps.entitlements.revoke(row.id);
-        result.revoked++;
-      } catch (e) {
-        result.errors.push({
-          stage: `reversal:${row.id}`,
-          message: errMsg(e),
-        });
-      }
-    }
-  } catch (e) {
-    result.errors.push({ stage: "reversal-feed", message: errMsg(e) });
-  }
+  // 3) Reversal pass (audit H-5 / v2 N-4..N-6) — extracted to
+  // sweeper-reversal.ts (max-lines split); same semantics.
+  await runReversalPass(deps, result, maxReversals, err);
 
   return result;
 }

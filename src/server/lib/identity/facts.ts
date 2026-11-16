@@ -6,18 +6,22 @@
  * paymentId, verdictId, txHash) so a reader can verify the claim
  * against the source of truth.
  *
- * dedupeKey is computed internally — sha256 of
- * `factType:subjectId:actorWallet:sourceRef` (audit M-7: the raw
- * joined string collided on attacker-controlled delimiters;
- * caller-supplied keys are dropped, audit H-3). Replays (sweeper
- * retries, event re-emits) collapse to a single row via the
- * store's unique key.
+ * dedupeKey is computed internally — sha256 of the canonical JSON
+ * encoding `[factType, subjectId, actorWallet, sourceRef]` (audit
+ * M-7/N-2: concatenation without delimiters let distinct inputs
+ * collide; caller-supplied keys are dropped, audit H-3). Replays
+ * (sweeper retries, event re-emits) collapse to a single row via
+ * the store's unique key.
  *
- * SLICE-225-6 (audit H-3): an optional `verifySource` port proves
- * the referenced record exists before a fact is appended — wired
- * for `payment:` refs against the payments store. Types without a
- * configured verifier pass through (documented D-225-9). `atMs`
- * may not be future-dated beyond a small clock-skew allowance.
+ * SLICE-225-6/7 (audit H-3 / v2 N-3): verification is
+ * deny-by-default — every fact must carry a `sourceRef` of the
+ * `prefix:id` shape bound to its factType by FACT_SOURCE_PREFIXES;
+ * `subjectId`, when given, must equal the id part. `payment:` refs
+ * are proven by the `verifyPayment` port (required for PAYMENT_*);
+ * any other prefix requires a `verifySource` port. A fact whose
+ * prefix has no configured verifier is REJECTED — unverified facts
+ * cannot be minted. `atMs` must be a non-negative integer not
+ * future-dated beyond a small clock-skew allowance.
  */
 import { createHash } from "node:crypto";
 import type { ReputationFactRow, ReputationFactStore } from "@agentbadge/database";
@@ -99,11 +103,32 @@ export interface FactService {
 
 export interface FactServiceDeps {
   nowMs?: () => number;
-  /** Audit H-3 — proves the sourceRef record exists/relates before
-   *  append. Absent ⇒ refs are stored unverified (same as pre-fix;
-   *  callers remain the trust boundary). */
+  /** Audit v2 N-3 — existence proof for `payment:` refs. Required
+   *  to emit PAYMENT_VERIFIED facts (wired to the payments store;
+   *  verify customerId === actorWallet + CONFIRMED status). */
+  verifyPayment?: FactSourceVerifier;
+  /** Audit v2 N-3 — existence proof for every OTHER ref prefix
+   *  (agreement:, submission:, evidence:, attestation:). Required
+   *  for non-payment facts; a custom verifier COMPOSES with the
+   *  registry/prefix checks (AND), it never replaces them. */
   verifySource?: FactSourceVerifier;
+  /** Audit v2 N-12 — lazy actor upsert before append (FK safety
+   *  for fact emitters about actors that have no row yet). Wired
+   *  to `actors.resolveOrCreate` in the service bundle. */
+  ensureActor?: (wallet: string) => Promise<unknown>;
 }
+
+/** factType → required sourceRef prefix (audit v2 N-3 registry).
+ *  A sourceRef whose prefix differs — or parses to nothing —
+ *  rejects before any verifier runs. */
+export const FACT_SOURCE_PREFIXES: Readonly<Record<FactType, string>> = {
+  TASK_COMPLETED: "agreement",
+  SUBMISSION_ACCEPTED: "submission",
+  EVIDENCE_SUPPLIED: "evidence",
+  PAYMENT_VERIFIED: "payment",
+  DISPUTE: "agreement",
+  ATTESTATION: "attestation",
+};
 
 function dedupeKeyFor(
   factType: FactType,
@@ -111,8 +136,12 @@ function dedupeKeyFor(
   actorWallet: string,
   sourceRef: string,
 ): string {
+  // Canonical JSON encoding — fields can contain `:`/"-" freely;
+  // only tuple identity defines the dedupe key (audit v2 N-2).
   return createHash("sha256")
-    .update(`${factType}${subjectId ?? "-"}${actorWallet}${sourceRef}`)
+    .update(
+      JSON.stringify([factType, subjectId ?? null, actorWallet, sourceRef]),
+    )
     .digest("hex");
 }
 
@@ -131,22 +160,72 @@ export function createFactService(
     }
     const sourceRef = assertNonEmpty(input.sourceRef, "sourceRef");
     const atMs = input.atMs ?? now();
+    if (!Number.isInteger(atMs) || atMs < 0) {
+      throw invalid("atMs must be a non-negative integer (epoch ms)", {
+        field: "atMs",
+      });
+    }
     if (atMs > now() + FUTURE_SKEW_MS) {
       throw invalid("atMs may not be future-dated", { field: "atMs" });
     }
-    if (deps.verifySource) {
-      const ok = await deps.verifySource({
+
+    // --- deny-by-default source verification (audit v2 N-3) ---
+    // 1. Prefix must match the factType registry entry.
+    const sep = sourceRef.indexOf(":");
+    const prefix = sep > 0 ? sourceRef.slice(0, sep) : "";
+    const refId = sep > 0 ? sourceRef.slice(sep + 1) : "";
+    if (prefix !== FACT_SOURCE_PREFIXES[input.factType] || refId === "") {
+      throw invalid(
+        `sourceRef for ${input.factType} must be ` +
+        `"${FACT_SOURCE_PREFIXES[input.factType]}:<id>"`,
+        { field: "sourceRef" },
+      );
+    }
+    // 2. subjectId binds to the referenced record — one ref can
+    //    only mint facts about ONE subject.
+    if (input.subjectId != null && input.subjectId !== refId) {
+      throw invalid("subjectId must equal the sourceRef id", {
+        field: "subjectId",
+      });
+    }
+    // 3. Existence proof — the verifier for this prefix is
+    //    REQUIRED (deny by default); a custom verifySource
+    //    composes AND on top of verifyPayment.
+    const verifier =
+      prefix === "payment" ? deps.verifyPayment : deps.verifySource;
+    if (!verifier) {
+      throw invalid(
+        `sourceRef prefix "${prefix}" has no configured verifier — ` +
+        `${input.factType} facts are rejected`,
+        { field: "sourceRef" },
+      );
+    }
+    const verified = await verifier({
+      factType: input.factType,
+      sourceRef,
+      subjectId: input.subjectId ?? null,
+      actorWallet,
+    });
+    if (!verified) {
+      throw invalid(`sourceRef ${sourceRef} failed verification`, {
+        field: "sourceRef",
+      });
+    }
+    if (prefix === "payment" && deps.verifySource) {
+      const extra = await deps.verifySource({
         factType: input.factType,
         sourceRef,
         subjectId: input.subjectId ?? null,
         actorWallet,
       });
-      if (!ok) {
+      if (!extra) {
         throw invalid(`sourceRef ${sourceRef} failed verification`, {
           field: "sourceRef",
         });
       }
     }
+    // Actor row must exist before append (FK — audit v2 N-12).
+    await deps.ensureActor?.(actorWallet);
     return facts.append({
       id: newId("rf"),
       actorWallet,
@@ -164,6 +243,19 @@ export function createFactService(
     });
   }
 
+  // Typed emitters — one factory per (factType, sourceRef prefix);
+  // subjectId binds to the ref id (FACT_SOURCE_PREFIXES registry).
+  const typed =
+    (factType: FactType, prefix: string) =>
+      (actorWallet: string, subjectId: string, payload?: JsonValue) =>
+        emit({
+          actorWallet,
+          factType,
+          subjectId,
+          sourceRef: `${prefix}:${subjectId}`,
+          payload,
+        });
+
   return {
     emit,
     getById: (id) => facts.getById(assertNonEmpty(id, "id")),
@@ -172,53 +264,11 @@ export function createFactService(
     countsByActor: (actorWallet) =>
       facts.countsByActor(assertWallet(actorWallet, "actorWallet")),
 
-    taskCompleted: (actorWallet, agreementId, payload) =>
-      emit({
-        actorWallet,
-        factType: "TASK_COMPLETED",
-        subjectId: agreementId,
-        sourceRef: `agreement:${agreementId}`,
-        payload,
-      }),
-    submissionAccepted: (actorWallet, submissionId, payload) =>
-      emit({
-        actorWallet,
-        factType: "SUBMISSION_ACCEPTED",
-        subjectId: submissionId,
-        sourceRef: `submission:${submissionId}`,
-        payload,
-      }),
-    evidenceSupplied: (actorWallet, evidenceId, payload) =>
-      emit({
-        actorWallet,
-        factType: "EVIDENCE_SUPPLIED",
-        subjectId: evidenceId,
-        sourceRef: `evidence:${evidenceId}`,
-        payload,
-      }),
-    paymentVerified: (actorWallet, paymentId, payload) =>
-      emit({
-        actorWallet,
-        factType: "PAYMENT_VERIFIED",
-        subjectId: paymentId,
-        sourceRef: `payment:${paymentId}`,
-        payload,
-      }),
-    dispute: (actorWallet, agreementId, payload) =>
-      emit({
-        actorWallet,
-        factType: "DISPUTE",
-        subjectId: agreementId,
-        sourceRef: `agreement:${agreementId}`,
-        payload,
-      }),
-    attestation: (actorWallet, attestationId, payload) =>
-      emit({
-        actorWallet,
-        factType: "ATTESTATION",
-        subjectId: attestationId,
-        sourceRef: `attestation:${attestationId}`,
-        payload,
-      }),
+    taskCompleted: typed("TASK_COMPLETED", "agreement"),
+    submissionAccepted: typed("SUBMISSION_ACCEPTED", "submission"),
+    evidenceSupplied: typed("EVIDENCE_SUPPLIED", "evidence"),
+    paymentVerified: typed("PAYMENT_VERIFIED", "payment"),
+    dispute: typed("DISPUTE", "agreement"),
+    attestation: typed("ATTESTATION", "attestation"),
   };
 }

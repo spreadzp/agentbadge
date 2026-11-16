@@ -159,17 +159,17 @@ export function registerCoreRoutes(app: Hono): void {
           },
         },
         passports: {
-          // Audit C-1: passportTokenId writes must prove ownership —
-          // onchain ownerOf via the marketplace ops read (returns a
-          // wallet or throws → null ⇒ unverifiable, write rejected).
+          // Audit C-1 / v2 N-7: passportTokenId writes must prove
+          // ownership — onchain ownerOf via the marketplace ops
+          // read. The actor service distinguishes outcomes:
+          //   wallet  → "owned"   (proof holds)
+          //   null    → "unowned" (lookup ran; different owner)
+          //   throw   → "unknown" (transient RPC failure ⇒ 503 on
+          //             writes, stored REGISTERED_USER retained).
+          // Errors must propagate — catch→null would conflate
+          // "lookup failed" with "not the owner".
           async ownerOf(tokenId) {
-            try {
-              return await getMarketplaceOps().passportOwner(
-                BigInt(tokenId),
-              );
-            } catch {
-              return null;
-            }
+            return getMarketplaceOps().passportOwner(BigInt(tokenId));
           },
         },
       }),

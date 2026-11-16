@@ -13,13 +13,11 @@
  */
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import type { Context } from "hono";
-import z from "zod";
 
 import { adminAuth } from "../middleware/adminAuth";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
-import { IdentityError, type IdentityService } from "../lib/identity";
+import type { IdentityService } from "../lib/identity";
 import {
   errs,
   jsonBody,
@@ -27,61 +25,22 @@ import {
 } from "./commerce/schemas";
 import { readJson, requireWallet } from "./commerce/shared";
 import {
+  actorSchema,
+  entitlementListSchema,
+  enrichSchema,
+  mapIdentityError,
   parseBody,
   parseLimit,
   publicActor,
   publicEntitlement,
   publicFact,
+  reputationSchema,
+  revokeSchema,
 } from "./identity-dtos";
 import {
   ENTITLEMENT_STATUSES,
   FACT_TYPES,
 } from "../lib/identity/types";
-
-// ---------- response/error plumbing ----------
-
-const actorSchema = z.record(z.string(), z.unknown());
-const entitlementListSchema = z.object({
-  wallet: z.string(),
-  entitlements: z.array(z.record(z.string(), z.unknown())),
-});
-const reputationSchema = z.object({
-  wallet: z.string(),
-  counts: z.record(z.string(), z.number()),
-  facts: z.array(z.record(z.string(), z.unknown())),
-});
-const enrichSchema = z
-  .object({
-    agentId: z.string().nullable().optional(),
-    passportTokenId: z.string().nullable().optional(),
-    did: z.string().nullable().optional(),
-    orgId: z.string().nullable().optional(),
-    // Audit H-1: `tier` is an internal association (passport/grant
-    // flows write it) — never self-asserted via this surface.
-    type: z
-      .enum(["EXTERNAL_AGENT", "EXTERNAL_HUMAN", "ORGANIZATION"])
-      .optional(),
-  })
-  .strict();
-const revokeSchema = z.object({
-  productCode: z.string().min(1),
-});
-
-type HttpStatus = 400 | 401 | 403 | 404 | 409;
-
-function mapError(c: Context, e: unknown): Response {
-  if (e instanceof IdentityError) {
-    const status = (e.httpStatus as HttpStatus) ?? 400;
-    const code =
-      e.code === "NOT_FOUND"
-        ? ErrorCodes.RESOURCE_NOT_FOUND
-        : e.code === "CONFLICT"
-          ? ErrorCodes.CONFLICT
-          : ErrorCodes.INVALID_INPUT;
-    return errorResponse(c, status, code, e.message);
-  }
-  throw e;
-}
 
 // ---------- route factory ----------
 
@@ -115,7 +74,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         }
         return c.json({ actor: publicActor(actor) });
       } catch (e) {
-        return mapError(c, e);
+        return mapIdentityError(c, e);
       }
     },
   );
@@ -127,7 +86,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
       tags: ["Identity"],
       summary: "Entitlements for a wallet",
       description:
-        "Public read: entitlement rows for a wallet — status, productCode, validFrom/Until, sourcePaymentId provenance. Optional ?status=ACTIVE|EXPIRED|REVOKED and ?productCode= filters.",
+        "Public read: entitlement rows for a wallet — status, productCode, validFrom/Until. Optional ?status=ACTIVE|EXPIRED|REVOKED and ?productCode= filters. (sourcePaymentId / idempotencyKey / payload are internal rails — redacted, audit H-6.)",
       responses: {
         ...ok(entitlementListSchema, "Entitlement list"),
         ...errs(400),
@@ -167,7 +126,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         });
         return c.json({ wallet, entitlements: rows.map(publicEntitlement) });
       } catch (e) {
-        return mapError(c, e);
+        return mapIdentityError(c, e);
       }
     },
   );
@@ -204,7 +163,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         ]);
         return c.json({ wallet, counts, facts: facts.map(publicFact) });
       } catch (e) {
-        return mapError(c, e);
+        return mapIdentityError(c, e);
       }
     },
   );
@@ -221,7 +180,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
       requestBody: jsonBody(enrichSchema),
       responses: {
         ...ok(actorSchema, "Updated actor record"),
-        ...errs(400, 401, 409),
+        ...errs(400, 401, 409, 503),
       },
     }),
     async (c) => {
@@ -248,7 +207,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         const actor = await service.actors.enrich(target, body);
         return c.json({ actor: publicActor(actor) });
       } catch (e) {
-        return mapError(c, e);
+        return mapIdentityError(c, e);
       }
     },
   );
@@ -291,7 +250,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         const row = await service.entitlements.revoke(active[0].id);
         return c.json({ entitlement: publicEntitlement(row) });
       } catch (e) {
-        return mapError(c, e);
+        return mapIdentityError(c, e);
       }
     },
   );

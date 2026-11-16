@@ -21,14 +21,21 @@
  * rows, no way to re-prove).
  *
  * A bare `resolveOrCreate(wallet)` keeps a stored type unless the
- * proof is now disproven — EXTERNAL_* / ORGANIZATION are sticky,
- * REGISTERED_* must hold the underlying link to survive.
+ * proof is now disproven — EXTERNAL_* / ORGANIZATION are sticky
+ * (ORGANIZATION additionally requires a non-empty orgId; a cleared
+ * orgId downgrades it, audit v2 N-9), REGISTERED_* must hold the
+ * underlying link to survive. A transient verification error
+ * (ownerOf throws / registry list fails) is UNKNOWN, not "not
+ * owned" — it never downgrades a stored REGISTERED_* type and
+ * rejects new link writes with 503 (audit v2 N-7). Concurrent
+ * writes for the same wallet are serialized per-wallet (v2 N-17).
  */
 import type { ActorRow, ActorStore } from "@agentbadge/database";
 import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
 
 import { assertWallet } from "./guards";
-import { invalid, type ActorType } from "./types";
+import { createActorVerifier, type RegList } from "./actor-verify";
+import { IdentityError, invalid, type ActorType } from "./types";
 
 /** Minimal port over the ERC-8004 registration registry (184). */
 export interface ActorRegistrationPort {
@@ -54,14 +61,17 @@ export interface PassportVerificationPort {
 export interface ActorHints {
   /** Caller-asserted type — EXTERNAL_* or ORGANIZATION only; the
    *  REGISTERED_* types are derived, never asserted (they come from
-   *  real registrations/passports). */
+   *  real registrations/passports). ORGANIZATION requires a
+   *  non-empty orgId (audit v2 N-9). */
   type?: ActorType;
   /** Write requires proof: active registration owned by the wallet. */
   agentId?: string | null;
   /** Write requires proof: passport owned by the wallet (passports
    *  port). */
   passportTokenId?: string | null;
+  /** `did:<method>:<id>` shape, ≤256 chars (audit v2 N-9). */
   did?: string | null;
+  /** Trimmed non-empty string, ≤128 chars (audit v2 N-9). */
   orgId?: string | null;
   /** Internal tier association — set by trusted internal callers
    *  (passport/grant flows), never via the public enrich surface. */
@@ -82,88 +92,35 @@ export interface ActorService {
   list(opts?: { type?: string; limit?: number }): Promise<ActorRow[]>;
 }
 
+/** Bound on agentId/did/orgId/passportTokenId hint strings (v2 N-9). */
+const HINT_MAX = 256;
+/** `did:<method>:<method-specific-id>` — loose W3C DID shape. */
+const DID_RE = /^did:[a-zA-Z0-9]+:[A-Za-z0-9._:%-]{1,240}$/;
+
 export function createActorService(
   actors: ActorStore,
   registrations?: ActorRegistrationPort,
   passports?: PassportVerificationPort,
 ): ActorService {
-  /** Active registration owned by `wallet` (REGISTERED_AGENT proof). */
-  async function ownedRegistration(wallet: string) {
-    if (!registrations) return undefined;
-    const regs = await registrations.list();
-    return regs.find(
-      (r) =>
-        r.status === "active" &&
-        typeof r.owner === "string" &&
-        r.owner.toLowerCase() === wallet,
+  const verify = createActorVerifier(registrations, passports);
+
+  // N-17: per-wallet mutex — concurrent resolveOrCreate for the
+  //  same wallet must not interleave type computation + upsert.
+  const walletLocks = new Map<string, Promise<unknown>>();
+  function withWalletLock<T>(wallet: string, fn: () => Promise<T>) {
+    const prev = walletLocks.get(wallet) ?? Promise.resolve();
+    const next = prev.then(fn, fn);
+    walletLocks.set(
+      wallet,
+      next.then(
+        () => undefined,
+        () => undefined,
+      ),
     );
+    return next;
   }
 
-  /** Wallet owns `agentId` via an ACTIVE registration (link proof). */
-  async function ownsAgent(wallet: string, agentId: string) {
-    if (!registrations) return false;
-    const regs = await registrations.list();
-    return regs.some(
-      (r) =>
-        r.status === "active" &&
-        r.agentId === agentId &&
-        typeof r.owner === "string" &&
-        r.owner.toLowerCase() === wallet,
-    );
-  }
-
-  /** Passport `tokenId` is owned by `wallet` (link + type proof). */
-  async function passportOwned(wallet: string, tokenId: string) {
-    if (!passports) return false;
-    const owner = await passports.ownerOf(tokenId);
-    return typeof owner === "string" && owner.toLowerCase() === wallet;
-  }
-
-  /**
-   * Recompute the actor type from verifiable facts (audit M-1 — no
-   * one-way ratchet: a lost proof downgrades). A stored REGISTERED_*
-   * type survives only while its proof is verifiable — or while its
-   * verification port is absent entirely (legacy rows we cannot
-   * re-prove; never self-minted post-fix since writes are gated).
-   */
-  async function resolveType(
-    wallet: string,
-    existing: ActorRow | null,
-    hints: ActorHints,
-    passportVerified: boolean,
-  ): Promise<ActorType> {
-    // 1. REGISTERED_AGENT — live proof via the registry.
-    if (await ownedRegistration(wallet)) return "REGISTERED_AGENT";
-
-    // 2. REGISTERED_USER — verified passport.
-    if (passportVerified) return "REGISTERED_USER";
-
-    // 3. Explicit hints (ORGANIZATION requires orgId — validated by
-    //    the caller before resolveType runs).
-    const hinted = hints.type;
-    if (hinted === "ORGANIZATION") return "ORGANIZATION";
-    if (hinted === "EXTERNAL_HUMAN") return "EXTERNAL_HUMAN";
-    if (hinted === "EXTERNAL_AGENT") return "EXTERNAL_AGENT";
-    // REGISTERED_* hints are ignored — they must be proven.
-
-    // 4. Previously stored type.
-    if (existing) {
-      const stored = existing.type as ActorType;
-      if (stored === "REGISTERED_AGENT") {
-        // Keep only when the registry isn't wired (cannot re-prove).
-        if (!registrations) return stored;
-        // Proof gone — downgrade.
-      } else if (stored === "REGISTERED_USER") {
-        // Keep only when the passport port isn't wired.
-        if (!passports && existing.passportTokenId) return stored;
-      } else {
-        return stored;
-      }
-    }
-    return "EXTERNAL_AGENT";
-  }
-
-  async function resolveOrCreate(
+  async function resolveOrCreateInner(
     wallet: string,
     hints: ActorHints = {},
   ): Promise<ActorRow> {
@@ -179,40 +136,79 @@ export function createActorService(
     }
     const existing = await actors.getById(w);
 
+    // ----- link field shape guards (audit v2 N-9 / N-13) -----
+    const bound = (v: string | null | undefined, field: string) => {
+      if (typeof v === "string" && (v.trim() === "" || v.length > HINT_MAX)) {
+        throw invalid(`${field} must be a non-empty string ≤ ${HINT_MAX} chars`, {
+          field,
+        });
+      }
+      return typeof v === "string" ? v.trim() : v;
+    };
+    const orgIdNorm = bound(hints.orgId, "orgId");
+    const didNorm = bound(hints.did, "did");
+    const agentIdNorm = bound(hints.agentId, "agentId");
+    const passportNorm = bound(hints.passportTokenId, "passportTokenId");
+    if (typeof didNorm === "string" && !DID_RE.test(didNorm)) {
+      throw invalid("did must match did:<method>:<id>", { field: "did" });
+    }
+
     // ----- link write verification (audit C-1 / H-1) -----
     // Ownership claims are proven, not asserted. `null` (clearing a
     // link) is always allowed — it can only remove status.
     let passportVerified = false;
     const effectivePassport =
-      hints.passportTokenId !== undefined
-        ? hints.passportTokenId
+      passportNorm !== undefined
+        ? passportNorm
         : (existing?.passportTokenId ?? null);
 
-    if (hints.passportTokenId != null) {
+    let passportStateOfStored: "owned" | "unowned" | "unknown" = "unknown";
+    if (passportNorm != null) {
       if (!passports) {
         throw invalid(
           "passportTokenId writes require passport verification — passports port not configured",
           { field: "passportTokenId" },
         );
       }
-      if (!(await passportOwned(w, hints.passportTokenId))) {
+      const state = await verify.passportState(w, passportNorm);
+      if (state === "unknown") {
+        // Audit v2 N-7: a transient lookup failure is not proof
+        // of non-ownership — fail the write as unavailable.
+        throw new IdentityError(
+          "INVALID",
+          "passport ownership could not be verified (lookup unavailable)",
+          503,
+          { field: "passportTokenId" },
+        );
+      }
+      if (state === "unowned") {
         throw invalid("passportTokenId is not owned by this wallet", {
           field: "passportTokenId",
         });
       }
       passportVerified = true;
     } else if (effectivePassport && passports) {
-      passportVerified = await passportOwned(w, effectivePassport);
+      passportStateOfStored = await verify.passportState(w, effectivePassport);
+      passportVerified = passportStateOfStored === "owned";
     }
 
-    if (hints.agentId != null) {
+    // N-7: one registrations.list() per write — the link check
+    //  and the type derivation share it. No cross-call caching: a
+    //  stale read would let writes race a just-changed registry.
+    let regsPromise: Promise<RegList> | null = null;
+    const listOnce = () => {
+      regsPromise ??= registrations?.list() ?? Promise.resolve([] as const);
+      return regsPromise;
+    };
+
+    if (agentIdNorm != null) {
       if (!registrations) {
         throw invalid(
           "agentId writes require registration verification — registrations port not configured",
           { field: "agentId" },
         );
       }
-      if (!(await ownsAgent(w, hints.agentId))) {
+      if (!(await verify.ownsAgent(w, agentIdNorm, listOnce))) {
         throw invalid("agentId is not an active registration owned by this wallet", {
           field: "agentId",
         });
@@ -221,34 +217,49 @@ export function createActorService(
 
     if (hints.type === "ORGANIZATION") {
       const orgId =
-        hints.orgId !== undefined ? hints.orgId : (existing?.orgId ?? null);
-      if (!orgId) {
+        orgIdNorm !== undefined ? orgIdNorm : (existing?.orgId ?? null);
+      if (typeof orgId !== "string" || orgId.trim() === "") {
         throw invalid("type ORGANIZATION requires orgId", {
           field: "orgId",
         });
       }
     }
 
-    const type = await resolveType(w, existing, hints, passportVerified);
+    const type = await verify.resolveType(
+      w,
+      existing,
+      hints,
+      passportVerified,
+      passportStateOfStored,
+      listOnce,
+    );
     return actors.upsert({
       wallet: w,
       type,
-      agentId: hints.agentId,
-      passportTokenId: hints.passportTokenId,
-      did: hints.did,
-      orgId: hints.orgId,
+      agentId: agentIdNorm,
+      passportTokenId: passportNorm,
+      did: didNorm,
+      orgId: orgIdNorm,
       tier: hints.tier,
       payload: hints.payload ?? existing?.payload ?? {},
     });
   }
 
+  // N-17: every write path serializes the check-compute-upsert
+  //  sequence per wallet — concurrent writes must not interleave
+  //  type derivation.
+  const resolveOrCreateLocked = (wallet: string, hints?: ActorHints) =>
+    withWalletLock(wallet.toLowerCase(), () =>
+      resolveOrCreateInner(wallet, hints),
+    );
+
   return {
-    resolveOrCreate,
+    resolveOrCreate: resolveOrCreateLocked,
 
     async enrich(wallet, links) {
       // enrich == resolveOrCreate — same upsert semantics; kept as a
       // separate surface for call-site readability.
-      return resolveOrCreate(wallet, links);
+      return resolveOrCreateLocked(wallet, links);
     },
 
     async get(wallet) {

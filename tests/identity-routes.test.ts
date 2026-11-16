@@ -29,6 +29,9 @@ beforeEach(() => {
   process.env.ADMIN_API_KEY = ADMIN_KEY;
   service = createIdentityService({
     identity: createInMemoryIdentityStores(),
+    // v2 N-3: non-payment fact emits deny-by-default without a
+    // source verifier — tests stub it.
+    verifySource: async () => true,
   });
   app = new Hono();
   app.route("/", createIdentityRoutes(service));

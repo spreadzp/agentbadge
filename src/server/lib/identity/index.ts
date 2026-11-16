@@ -43,6 +43,8 @@ export interface IdentityService {
     sinceMs?: number;
     lookbackMs?: number;
     maxGrants?: number;
+    /** Reversal-feed window size per tick (default 200). */
+    maxReversals?: number;
   }): Promise<EntitlementSweepResult>;
 }
 
@@ -56,15 +58,20 @@ export interface IdentityServiceDeps {
   /** Passport ownership lookup (audit C-1). Absent ⇒ passportTokenId
    *  writes are rejected and REGISTERED_USER is unverifiable. */
   passports?: PassportVerificationPort;
-  /** db.payments bundle — required for `sweep()` only. Also backs
-   *  the default `verifySource` for `payment:` fact refs. */
+  /** db.payments bundle — required for `sweep()`. Also backs the
+   *  deny-by-default `verifyPayment` proof for `payment:` fact refs
+   *  (audit v2 N-3 — absent ⇒ PAYMENT_VERIFIED facts reject). */
   payments?: PaymentStores;
   /** Custom payment→owner resolution (default: customerId wallet). */
   ownerFor?: EntitlementSweepDeps["ownerFor"];
-  /** Fact sourceRef verifier (audit H-3). Defaults to a payments-
-   *  backed verifier when `payments` is present; pass explicitly to
-   *  extend coverage to other ref prefixes. */
+  /** Existence proof for non-`payment:` fact refs — REQUIRED for
+   *  TASK_COMPLETED/SUBMISSION_ACCEPTED/EVIDENCE_SUPPLIED/DISPUTE/
+   *  ATTESTATION emits (audit v2 N-3 deny-by-default). */
   verifySource?: FactSourceVerifier;
+  /** Custom existence proof for `payment:` refs — defaults to the
+   *  payments-store check (exists + CONFIRMED + customerId ===
+   *  actorWallet). Overrides that default when provided. */
+  verifyPayment?: FactSourceVerifier;
   nowMs?: () => number;
 }
 
@@ -79,19 +86,24 @@ export function createIdentityService(
     deps.registrations,
     deps.passports,
   );
+  // N-12: lazy actor upsert — grant()/emit() call this before a
+  // NEW insert only, so dedupe hits cost no external calls.
+  const ensureActor = (wallet: string) => actors.resolveOrCreate(wallet);
+
   const entitlements = createEntitlementService(identity.entitlements, {
     nowMs: now,
+    ensureActor,
   });
   const facts = createFactService(identity.facts, {
     nowMs: now,
-    // H-3 default: prove `payment:` refs against the payments store
-    // (exists + CONFIRMED + paid by the fact's actor). Other ref
-    // prefixes pass through — extend via deps.verifySource.
-    verifySource:
-      deps.verifySource ??
+    ensureActor,
+    // N-3 default: prove `payment:` refs against the payments
+    // store (exists + CONFIRMED + paid by the fact's actor).
+    // Non-payment refs require deps.verifySource — absent ⇒ reject.
+    verifyPayment:
+      deps.verifyPayment ??
       (payments
         ? async ({ sourceRef, actorWallet }) => {
-          if (!sourceRef.startsWith("payment:")) return true;
           const p = await payments.payments.getById(
             sourceRef.slice("payment:".length),
           );
@@ -103,26 +115,38 @@ export function createIdentityService(
           );
         }
         : undefined),
+    verifySource: deps.verifySource,
   });
+
+  // N-4: rotating keyset cursor for the reversal feed — persisted
+  // in the service closure across ticks (per-process watermark;
+  // restarts re-walk from the oldest row, which is safe).
+  let reversalCursor: string | undefined;
 
   return {
     actors,
     entitlements,
     facts,
-    sweep: (opts = {}) => {
+    sweep: async (opts = {}) => {
       if (!payments) {
         throw new Error(
           "identity.sweep requires the payments store bundle (deps.payments)",
         );
       }
-      return runEntitlementSweep({
+      const result = await runEntitlementSweep({
         entitlements,
         payments,
         actors,
         ownerFor,
         nowMs: now,
-        ...opts,
+        reversalCursor,
+        sinceMs: opts.sinceMs,
+        lookbackMs: opts.lookbackMs,
+        maxGrants: opts.maxGrants,
+        maxReversals: opts.maxReversals,
       });
+      reversalCursor = result.reversalCursor ?? undefined;
+      return result;
     },
   };
 }
