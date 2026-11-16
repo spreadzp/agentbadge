@@ -6,16 +6,30 @@
  * paymentId, verdictId, txHash) so a reader can verify the claim
  * against the source of truth.
  *
- * dedupeKey = `factType:subjectId:actorWallet:sourceRef` unless the
- * emitter supplies one — replays (sweeper retries, event re-emits)
- * collapse to a single row via the store's unique key.
+ * dedupeKey is computed internally — sha256 of
+ * `factType:subjectId:actorWallet:sourceRef` (audit M-7: the raw
+ * joined string collided on attacker-controlled delimiters;
+ * caller-supplied keys are dropped, audit H-3). Replays (sweeper
+ * retries, event re-emits) collapse to a single row via the
+ * store's unique key.
+ *
+ * SLICE-225-6 (audit H-3): an optional `verifySource` port proves
+ * the referenced record exists before a fact is appended — wired
+ * for `payment:` refs against the payments store. Types without a
+ * configured verifier pass through (documented D-225-9). `atMs`
+ * may not be future-dated beyond a small clock-skew allowance.
  */
+import { createHash } from "node:crypto";
 import type { ReputationFactRow, ReputationFactStore } from "@agentbadge/database";
 import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
 
 import { newId } from "../commerce/guards";
 import { assertNonEmpty, assertWallet } from "./guards";
 import { FACT_TYPES, invalid, type FactType } from "./types";
+
+/** Future-timestamp allowance for `atMs` (clock skew between
+ *  producers), audit H-3. */
+const FUTURE_SKEW_MS = 60_000;
 
 export interface FactInput {
   actorWallet: string;
@@ -24,10 +38,22 @@ export interface FactInput {
   subjectId?: string | null;
   /** → auditable record (verifiability anchor, D-225-5). */
   sourceRef: string;
-  dedupeKey?: string;
   atMs?: number;
   payload?: JsonValue;
 }
+
+/**
+ * Source-reference verifier (audit H-3). Return false ⇒ the fact is
+ * rejected. The port receives the parsed fact, so a verifier can
+ * check existence AND the actor's relation to the record (e.g.
+ * payment.customerId === actorWallet).
+ */
+export type FactSourceVerifier = (input: {
+  factType: FactType;
+  sourceRef: string;
+  subjectId: string | null;
+  actorWallet: string;
+}) => Promise<boolean>;
 
 export interface FactService {
   /** `null` on dedupe hit (idempotent). */
@@ -73,6 +99,21 @@ export interface FactService {
 
 export interface FactServiceDeps {
   nowMs?: () => number;
+  /** Audit H-3 — proves the sourceRef record exists/relates before
+   *  append. Absent ⇒ refs are stored unverified (same as pre-fix;
+   *  callers remain the trust boundary). */
+  verifySource?: FactSourceVerifier;
+}
+
+function dedupeKeyFor(
+  factType: FactType,
+  subjectId: string | null,
+  actorWallet: string,
+  sourceRef: string,
+): string {
+  return createHash("sha256")
+    .update(`${factType}${subjectId ?? "-"}${actorWallet}${sourceRef}`)
+    .digest("hex");
 }
 
 export function createFactService(
@@ -89,17 +130,36 @@ export function createFactService(
       });
     }
     const sourceRef = assertNonEmpty(input.sourceRef, "sourceRef");
-    const dedupeKey =
-      input.dedupeKey ??
-      `${input.factType}:${input.subjectId ?? "-"}:${actorWallet}:${sourceRef}`;
+    const atMs = input.atMs ?? now();
+    if (atMs > now() + FUTURE_SKEW_MS) {
+      throw invalid("atMs may not be future-dated", { field: "atMs" });
+    }
+    if (deps.verifySource) {
+      const ok = await deps.verifySource({
+        factType: input.factType,
+        sourceRef,
+        subjectId: input.subjectId ?? null,
+        actorWallet,
+      });
+      if (!ok) {
+        throw invalid(`sourceRef ${sourceRef} failed verification`, {
+          field: "sourceRef",
+        });
+      }
+    }
     return facts.append({
       id: newId("rf"),
       actorWallet,
       factType: input.factType,
       subjectId: input.subjectId ?? null,
       sourceRef,
-      dedupeKey,
-      atMs: input.atMs ?? now(),
+      dedupeKey: dedupeKeyFor(
+        input.factType,
+        input.subjectId ?? null,
+        actorWallet,
+        sourceRef,
+      ),
+      atMs,
       payload: input.payload ?? {},
     });
   }

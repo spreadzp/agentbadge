@@ -47,6 +47,12 @@ beforeEach(() => {
     identity,
     payments,
     registrations: createMemoryAgentRegistrationStore(),
+    passports: {
+      // Fake onchain ownerOf — pass_77 belongs to the test owner.
+      async ownerOf(tokenId: string) {
+        return tokenId === "pass_77" ? W_OWNER : null;
+      },
+    },
     nowMs: () => clock,
   });
   app = new Hono();
@@ -141,7 +147,12 @@ describe("e2e: purchase → entitlement → gated access", () => {
     const gate = await gatedAccess(W_OWNER, "PASSPORT_BRONZE");
     expect(gate.allowed).toBe(true);
 
-    // REST read shows the ACTIVE row with payment provenance.
+    // Provenance is bound at the service layer…
+    const stored = await svc.entitlements.check(W_OWNER, "PASSPORT_BRONZE");
+    expect(stored?.sourcePaymentId).toBe(payment.id);
+
+    // …but H-6 redacts it (and other internal fields) from the
+    // public REST row.
     const res = await app.request(
       `/api/v1/entitlements/${W_OWNER}`,
     );
@@ -151,7 +162,9 @@ describe("e2e: purchase → entitlement → gated access", () => {
     const row = body.entitlements[0];
     expect(row.status).toBe("ACTIVE");
     expect(row.productCode).toBe("PASSPORT_BRONZE");
-    expect(row.sourcePaymentId).toBe(payment.id);
+    expect(row.sourcePaymentId).toBeUndefined();
+    expect(row.idempotencyKey).toBeUndefined();
+    expect(row.payload).toBeUndefined();
     expect(row.validFromMs).toBeGreaterThan(0);
   });
 

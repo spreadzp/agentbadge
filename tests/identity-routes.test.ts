@@ -192,12 +192,116 @@ describe("POST /api/v1/actors/:wallet/enrich", () => {
   it("200 — owner enriches own links", async () => {
     const res = await req("POST", `/api/v1/actors/${owner.address}/enrich`, {
       account: owner,
-      body: { did: "did:web:me", tier: "gold" },
+      body: { did: "did:web:me" },
     });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.actor.did).toBe("did:web:me");
-    expect(body.actor.tier).toBe("gold");
+    // H-6: payload never leaves via the public surface.
+    expect(body.actor.payload).toBeUndefined();
+  });
+
+  it("400 — tier/unknown fields rejected by strict schema (H-1)", async () => {
+    const res = await req("POST", `/api/v1/actors/${owner.address}/enrich`, {
+      account: owner,
+      body: { tier: "gold" },
+    });
+    expect(res.status).toBe(400);
+    const res2 = await req("POST", `/api/v1/actors/${owner.address}/enrich`, {
+      account: owner,
+      body: { did: "did:web:x", sneaky: true },
+    });
+    expect(res2.status).toBe(400);
+  });
+
+  it("400 — passportTokenId without a passports port fails closed (C-1)", async () => {
+    // service was created without the passports dep → writes of the
+    // verified link must not self-mint REGISTERED_USER.
+    const res = await req("POST", `/api/v1/actors/${owner.address}/enrich`, {
+      account: owner,
+      body: { passportTokenId: "pass_1" },
+    });
+    expect(res.status).toBe(400);
+    const actor = await service.actors.get(owner.address.toLowerCase());
+    expect(actor?.type ?? null).not.toBe("REGISTERED_USER");
+  });
+
+  it("400 — malformed body is INVALID_INPUT, not a 500 (M-6)", async () => {
+    const res = await req("POST", `/api/v1/actors/${owner.address}/enrich`, {
+      account: owner,
+      body: { type: "REGISTERED_USER" },
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("409 — nonce replay is rejected even with idempotency_key (H-2)", async () => {
+    // Identity enrich has no store-level idem dedupe, so the nonce
+    // must be fresh every request — an idem header doesn't exempt.
+    const path = `/api/v1/actors/${owner.address}/enrich`;
+    const rawBody = JSON.stringify({ did: "did:web:me" });
+    const timestamp = Math.floor(Date.now() / 1000);
+    const nonce = randomUUID();
+    const message = buildCommerceChallenge({
+      wallet: owner.address,
+      method: "POST",
+      path,
+      timestamp,
+      nonce,
+      bodyHash: createHash("sha256").update(rawBody).digest("hex"),
+      idemKey: "req_idem_001",
+    });
+    const signature = await owner.signMessage({ message });
+    const headers = {
+      "x-wallet": owner.address,
+      "x-sig": signature,
+      "x-timestamp": String(timestamp),
+      "x-nonce": nonce,
+      idempotency_key: "req_idem_001",
+      "content-type": "application/json",
+    };
+    const first = await app.request(path, {
+      method: "POST",
+      body: rawBody,
+      headers,
+    });
+    expect(first.status).toBe(200);
+    const replay = await app.request(path, {
+      method: "POST",
+      body: rawBody,
+      headers,
+    });
+    expect(replay.status).toBe(409);
+  });
+
+  it("400 — junk status/productCode filters are validated (M-6)", async () => {
+    const res = await app.request(
+      `/api/v1/entitlements/${owner.address}?status=HACKED`,
+    );
+    expect(res.status).toBe(400);
+    const res2 = await app.request(
+      `/api/v1/entitlements/${owner.address}?productCode=bad%20code`,
+    );
+    expect(res2.status).toBe(400);
+  });
+
+  it("H-6 — entitlements list strips payload/idempotencyKey/sourcePaymentId", async () => {
+    await service.entitlements.grant({
+      ownerId: owner.address.toLowerCase(),
+      productCode: "PASSPORT_BRONZE",
+      sourcePaymentId: "pay_secret",
+      idempotencyKey: "route_test_key",
+    });
+    const res = await app.request(
+      `/api/v1/entitlements/${owner.address}`,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.entitlements).toHaveLength(1);
+    const row = body.entitlements[0];
+    expect(row.status).toBe("ACTIVE");
+    expect(row.payload).toBeUndefined();
+    expect(row.idempotencyKey).toBeUndefined();
+    expect(row.sourcePaymentId).toBeUndefined();
   });
 });
 

@@ -1,7 +1,6 @@
 /**
  * SLICE-225-3 (EPIC-225): identity REST routes — thin reads over the
- * domain services (D-225-6) + the two write surfaces the slice
- * allows: owner enrich (EIP-191 sig) and admin revoke.
+ * domain services (D-225-6) + owner enrich (EIP-191 sig) + admin revoke.
  *
  *   GET  /api/v1/actors/:wallet              — actor + type + links
  *   GET  /api/v1/entitlements/:wallet        — entitlement rows
@@ -27,7 +26,17 @@ import {
   ok,
 } from "./commerce/schemas";
 import { readJson, requireWallet } from "./commerce/shared";
-import { FACT_TYPES } from "../lib/identity/types";
+import {
+  parseBody,
+  parseLimit,
+  publicActor,
+  publicEntitlement,
+  publicFact,
+} from "./identity-dtos";
+import {
+  ENTITLEMENT_STATUSES,
+  FACT_TYPES,
+} from "../lib/identity/types";
 
 // ---------- response/error plumbing ----------
 
@@ -41,16 +50,19 @@ const reputationSchema = z.object({
   counts: z.record(z.string(), z.number()),
   facts: z.array(z.record(z.string(), z.unknown())),
 });
-const enrichSchema = z.object({
-  agentId: z.string().nullable().optional(),
-  passportTokenId: z.string().nullable().optional(),
-  did: z.string().nullable().optional(),
-  orgId: z.string().nullable().optional(),
-  tier: z.string().nullable().optional(),
-  type: z
-    .enum(["EXTERNAL_AGENT", "EXTERNAL_HUMAN", "ORGANIZATION"])
-    .optional(),
-});
+const enrichSchema = z
+  .object({
+    agentId: z.string().nullable().optional(),
+    passportTokenId: z.string().nullable().optional(),
+    did: z.string().nullable().optional(),
+    orgId: z.string().nullable().optional(),
+    // Audit H-1: `tier` is an internal association (passport/grant
+    // flows write it) — never self-asserted via this surface.
+    type: z
+      .enum(["EXTERNAL_AGENT", "EXTERNAL_HUMAN", "ORGANIZATION"])
+      .optional(),
+  })
+  .strict();
 const revokeSchema = z.object({
   productCode: z.string().min(1),
 });
@@ -101,7 +113,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
             `actor ${wallet} not found`,
           );
         }
-        return c.json({ actor });
+        return c.json({ actor: publicActor(actor) });
       } catch (e) {
         return mapError(c, e);
       }
@@ -126,16 +138,34 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         const wallet = c.req.param("wallet").toLowerCase();
         const status = c.req.query("status") ?? undefined;
         const productCode = c.req.query("productCode") ?? undefined;
-        const limit = Math.min(
-          Number(c.req.query("limit") ?? 100) || 100,
-          500,
-        );
+        // Audit M-6: validate query filters — junk values used to
+        // reach the store unvalidated.
+        if (
+          status !== undefined &&
+          !ENTITLEMENT_STATUSES.includes(status as never)
+        ) {
+          return errorResponse(
+            c,
+            400,
+            ErrorCodes.INVALID_INPUT,
+            `status must be one of ${ENTITLEMENT_STATUSES.join("|")}`,
+          );
+        }
+        if (productCode !== undefined && !/^[A-Z0-9_]{2,64}$/.test(productCode)) {
+          return errorResponse(
+            c,
+            400,
+            ErrorCodes.INVALID_INPUT,
+            "productCode must match ^[A-Z0-9_]{2,64}$",
+          );
+        }
+        const limit = parseLimit(c.req.query("limit"));
         const rows = await service.entitlements.listByOwner(wallet, {
           status,
           productCode,
           limit,
         });
-        return c.json({ wallet, entitlements: rows });
+        return c.json({ wallet, entitlements: rows.map(publicEntitlement) });
       } catch (e) {
         return mapError(c, e);
       }
@@ -167,15 +197,12 @@ export function createIdentityRoutes(service: IdentityService): Hono {
             `factType must be one of ${FACT_TYPES.join("|")}`,
           );
         }
-        const limit = Math.min(
-          Number(c.req.query("limit") ?? 100) || 100,
-          500,
-        );
+        const limit = parseLimit(c.req.query("limit"));
         const [facts, counts] = await Promise.all([
           service.facts.listByActor(wallet, { factType, limit }),
           service.facts.countsByActor(wallet),
         ]);
-        return c.json({ wallet, counts, facts });
+        return c.json({ wallet, counts, facts: facts.map(publicFact) });
       } catch (e) {
         return mapError(c, e);
       }
@@ -199,7 +226,9 @@ export function createIdentityRoutes(service: IdentityService): Hono {
     }),
     async (c) => {
       try {
-        const auth = await requireWallet(c);
+        // H-2: no store-level idem dedupe here — the nonce must be
+        // fresh even when an idempotency_key header rides along.
+        const auth = await requireWallet(c, { allowIdemReplay: false });
         if (auth instanceof Response) return auth;
         const target = c.req.param("wallet").toLowerCase();
         if (auth.wallet !== target) {
@@ -214,9 +243,10 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         // parse via the shared readJson helper, not c.req.json().
         const raw = await readJson(c);
         if (raw instanceof Response) return raw;
-        const body = enrichSchema.parse(raw);
+        const body = parseBody(c, enrichSchema, raw);
+        if (body instanceof Response) return body;
         const actor = await service.actors.enrich(target, body);
-        return c.json({ actor });
+        return c.json({ actor: publicActor(actor) });
       } catch (e) {
         return mapError(c, e);
       }
@@ -243,7 +273,8 @@ export function createIdentityRoutes(service: IdentityService): Hono {
         const wallet = c.req.param("wallet").toLowerCase();
         const raw = await readJson(c);
         if (raw instanceof Response) return raw;
-        const body = revokeSchema.parse(raw);
+        const body = parseBody(c, revokeSchema, raw);
+        if (body instanceof Response) return body;
         const active = await service.entitlements.listByOwner(wallet, {
           status: "ACTIVE",
           productCode: body.productCode,
@@ -258,7 +289,7 @@ export function createIdentityRoutes(service: IdentityService): Hono {
           );
         }
         const row = await service.entitlements.revoke(active[0].id);
-        return c.json({ entitlement: row });
+        return c.json({ entitlement: publicEntitlement(row) });
       } catch (e) {
         return mapError(c, e);
       }

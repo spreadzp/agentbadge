@@ -72,6 +72,9 @@ export interface EntitlementService {
   /** Bulk expiry — transitions every overdue ACTIVE row; returns
    *  the transitioned rows (sweeper feed). */
   expireOverdue(nowMs?: number): Promise<EntitlementRow[]>;
+  /** ACTIVE rows that carry a source payment — the sweeper's
+   *  reversal feed (audit H-5: refund/chargeback ⇒ revoke). */
+  listActiveWithSource(limit?: number): Promise<EntitlementRow[]>;
 }
 
 export interface EntitlementServiceDeps {
@@ -109,9 +112,19 @@ export function createEntitlementService(
 
     // Idempotent replay — dedupe key first (exact re-emit), then the
     // ACTIVE slot (a second purchase for the same product does NOT
-    // stack — spec: one ACTIVE per pair).
+    // stack — spec: one ACTIVE per pair). The key binds to
+    // (ownerId, productCode) (audit M-2): a hit for a different pair
+    // is a collision, not a replay.
     const byKey = await entitlements.getByIdempotencyKey(key);
-    if (byKey) return { row: byKey, deduped: true };
+    if (byKey) {
+      if (byKey.ownerId !== ownerId || byKey.productCode !== productCode) {
+        throw conflict(
+          "idempotencyKey collision — bound to a different (ownerId, productCode)",
+          { ownerId, productCode, idempotencyKey: key },
+        );
+      }
+      return { row: byKey, deduped: true };
+    }
     const active = await entitlements.getActive(ownerId, productCode);
     if (active) return { row: active, deduped: true };
 
@@ -175,6 +188,8 @@ export function createEntitlementService(
       const code = assertNonEmpty(productCode, "productCode");
       const row = await entitlements.getActive(ownerId, code);
       if (!row) return null;
+      // Future-dated grants are not honored yet (audit nit).
+      if (row.validFromMs > now()) return null;
       if (row.validUntilMs != null && row.validUntilMs <= now()) {
         // Lazy expiry — keeps check() honest without waiting for the
         // sweeper tick (D-225-4 poll cadence).
@@ -216,5 +231,8 @@ export function createEntitlementService(
       }
       return out;
     },
+
+    listActiveWithSource: (limit) =>
+      entitlements.listActiveWithSource(limit),
   };
 }

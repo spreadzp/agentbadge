@@ -99,9 +99,19 @@ export function resetCommerceReplayCache(): void {
 
 type WalletCheck =
   | { ok: true; wallet: string }
-  | { ok: false; status: 401 | 409; code: ErrorCode; message: string };
+  | { ok: false; status: 400 | 401 | 409; code: ErrorCode; message: string };
 
-async function checkSignedWallet(c: Context): Promise<WalletCheck> {
+interface SignedWalletOpts {
+  /** Exempt requests carrying an idempotency_key from the nonce
+   *  replay guard (default true — store-level dedupe resolves
+   *  them). Pass false where no dedupe exists (audit H-2). */
+  allowIdemReplay?: boolean;
+}
+
+async function checkSignedWallet(
+  c: Context,
+  opts: SignedWalletOpts = {},
+): Promise<WalletCheck> {
   const wallet = c.req.header("x-wallet");
   const signature = c.req.header("x-sig");
   const timestampRaw = c.req.header("x-timestamp");
@@ -112,6 +122,17 @@ async function checkSignedWallet(c: Context): Promise<WalletCheck> {
       status: 401,
       code: ErrorCodes.WRONG_SIGNER,
       message: "valid X-Wallet/X-Sig/X-Timestamp/X-Nonce required",
+    };
+  }
+  // Malformed idempotency_key must not reach the dedupe rails — it is
+  // part of the challenge, so reject at the gate with a 400.
+  const idemHeader = c.req.header(IDEM_HEADER);
+  if (idemHeader !== undefined && !IDEM_KEY_RE.test(idemHeader)) {
+    return {
+      ok: false,
+      status: 400 as 401,
+      code: ErrorCodes.INVALID_INPUT,
+      message: "idempotency_key must match [A-Za-z0-9_-]{8,128}",
     };
   }
   if (
@@ -156,16 +177,17 @@ async function checkSignedWallet(c: Context): Promise<WalletCheck> {
       message: "signature does not verify against the v2 challenge",
     };
   }
-  // Replay = a nonce the wallet already used on this scope. Idempotent
-  // retries are exempt: they replay deliberately and the dedupe store
-  // resolves them (cached response, or 409 on fingerprint mismatch).
+  // Replay = a nonce already used on this scope (audit H-2).
   const replayKey = [
     wallet.toLowerCase(),
     c.req.method.toUpperCase(),
     c.req.path,
     nonce,
   ].join("|");
-  if (idemKey(c) === undefined && isReplay(replayKey)) {
+  if (
+    (opts.allowIdemReplay === false || idemKey(c) === undefined) &&
+    isReplay(replayKey)
+  ) {
     return {
       ok: false,
       status: 409,
@@ -176,11 +198,12 @@ async function checkSignedWallet(c: Context): Promise<WalletCheck> {
   return { ok: true, wallet: wallet.toLowerCase() };
 }
 
-/** EIP-191 sig gate for writes — returns lowercase wallet or 401/409. */
+/** EIP-191 sig gate for writes — lowercase wallet or 400/401/409. */
 export async function requireWallet(
   c: Context,
+  opts: SignedWalletOpts = {},
 ): Promise<{ wallet: string } | Response> {
-  const check = await checkSignedWallet(c);
+  const check = await checkSignedWallet(c, opts);
   if (!check.ok) {
     return errorResponse(
       c,
@@ -192,11 +215,8 @@ export async function requireWallet(
   return { wallet: check.wallet };
 }
 
-/**
- * Optional auth for reads: verifies headers when present (same rules —
- * invalid sig still 401s), returns null when no headers at all. Lets
- * GET endpoints scope private data without breaking anonymous browse.
- */
+/** Optional auth for reads: verifies headers when present,
+ *  returns null when none. */
 export async function scopedWallet(c: Context): Promise<string | null | Response> {
   const any =
     c.req.header("x-wallet") ?? c.req.header("x-sig") ?? c.req.header("x-timestamp");
@@ -214,16 +234,16 @@ export function idemKey(c: Context): string | undefined {
   return c.req.header(IDEM_HEADER) ?? undefined;
 }
 
+/** Contract-guard shape for the idempotency header (audit H-2). */
+export const IDEM_KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+
 /** sha256 of the raw request body — binds idempotentWrite to body content. */
 export async function requestFingerprint(c: Context): Promise<string> {
   await ensureRawBody(c);
   return c.get(BODY_HASH_KEY) as string;
 }
 
-/**
- * H4: payload is opaque per-entity private data — non-parties see the
- * row's public fields (title/status/wallets/amounts) but never payload.
- */
+/** H4: payload is opaque per-entity private data — non-parties never see it. */
 export function redactRow<T extends { payload: unknown }>(
   row: T,
   parties: readonly (string | null | undefined)[],

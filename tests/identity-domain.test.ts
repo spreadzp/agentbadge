@@ -28,20 +28,45 @@ let payments: PaymentStores;
 let registrations: ReturnType<typeof createMemoryAgentRegistrationStore>;
 let svc: ReturnType<typeof createIdentityService>;
 
+/** Fake passport registry — tokenId → owner wallet (audit C-1). */
+const passportOwners = new Map<string, string>();
+const passports = {
+  async ownerOf(tokenId: string): Promise<string | null> {
+    return passportOwners.get(tokenId) ?? null;
+  },
+};
+
 let clock = 1_700_000_000_000;
 
 beforeEach(() => {
   identity = createInMemoryIdentityStores();
   payments = createInMemoryPaymentStores();
   registrations = createMemoryAgentRegistrationStore();
+  passportOwners.clear();
   clock = 1_700_000_000_000;
   svc = createIdentityService({
     identity,
     payments,
     registrations,
+    passports,
     nowMs: () => clock,
   });
 });
+
+/** Active ERC-8004 registration owned by `owner` for `agentId`. */
+async function registerAgent(agentId: string, owner: `0x${string}`) {
+  await registrations.put({
+    agentId,
+    registryAddress: "0x00000000000000000000000000000000000000aa",
+    registryTx: `0x${"ef".repeat(32)}`,
+    name: `agent-${agentId}`,
+    keyHash: "k".repeat(64),
+    tier: "observer",
+    status: "active",
+    createdAt: clock,
+    owner,
+  });
+}
 
 const err = async (fn: () => Promise<unknown>) => {
   try {
@@ -110,7 +135,8 @@ describe("actor service", () => {
     expect(a.type).toBe("EXTERNAL_HUMAN");
   });
 
-  it("passport link resolves REGISTERED_USER", async () => {
+  it("verified passport link resolves REGISTERED_USER", async () => {
+    passportOwners.set("pass_123", W_A);
     const a = await svc.actors.resolveOrCreate(W_A, {
       passportTokenId: "pass_123",
     });
@@ -118,18 +144,75 @@ describe("actor service", () => {
     expect(a.passportTokenId).toBe("pass_123");
   });
 
-  it("AgentRegistration outranks passport → REGISTERED_AGENT", async () => {
-    await registrations.put({
-      agentId: "eip155:5042002:0xreg:7",
-      registryAddress: "0x00000000000000000000000000000000000000aa",
-      registryTx: `0x${"ab".repeat(32)}`,
-      name: "agent-7",
-      keyHash: "k".repeat(64),
-      tier: "observer",
-      status: "active",
-      createdAt: clock,
-      owner: W_A,
+  it("C-1: unowned passportTokenId is rejected — no self-mint", async () => {
+    passportOwners.set("pass_123", W_B); // someone else's passport
+    const e = await err(() =>
+      svc.actors.resolveOrCreate(W_A, { passportTokenId: "pass_123" }),
+    );
+    expect(e.code).toBe("INVALID");
+    const unknown = await err(() =>
+      svc.actors.resolveOrCreate(W_A, { passportTokenId: "pass_404" }),
+    );
+    expect(unknown.code).toBe("INVALID");
+  });
+
+  it("C-1: passportTokenId write fails closed without a passports port", async () => {
+    const noPort = createIdentityService({
+      identity: createInMemoryIdentityStores(),
+      registrations,
+      nowMs: () => clock,
     });
+    const e = await err(() =>
+      noPort.actors.resolveOrCreate(W_A, { passportTokenId: "pass_1" }),
+    );
+    expect(e.code).toBe("INVALID");
+  });
+
+  it("M-1: clearing the passport downgrades REGISTERED_USER", async () => {
+    passportOwners.set("p1", W_A);
+    await svc.actors.resolveOrCreate(W_A, { passportTokenId: "p1" });
+    const a = await svc.actors.resolveOrCreate(W_A);
+    expect(a.type).toBe("REGISTERED_USER");
+    // Passport transferred away → proof gone → downgrade.
+    passportOwners.set("p1", W_B);
+    const b = await svc.actors.resolveOrCreate(W_A);
+    expect(b.type).toBe("EXTERNAL_AGENT");
+    // Clearing the link also downgrades.
+    passportOwners.set("p1", W_A);
+    const c = await svc.actors.enrich(W_A, { passportTokenId: null });
+    expect(c.type).toBe("EXTERNAL_AGENT");
+    expect(c.passportTokenId).toBeNull();
+  });
+
+  it("H-1: agentId write requires an owned ACTIVE registration", async () => {
+    // ag-1 belongs to W_B → W_A cannot claim it.
+    await registerAgent("ag-1", W_B);
+    const e = await err(() => svc.actors.enrich(W_A, { agentId: "ag-1" }));
+    expect(e.code).toBe("INVALID");
+    // Owned registration → accepted.
+    await registerAgent("ag-2", W_A);
+    const a = await svc.actors.enrich(W_A, { agentId: "ag-2" });
+    expect(a.agentId).toBe("ag-2");
+    // Clearing is always allowed.
+    const cleared = await svc.actors.enrich(W_A, { agentId: null });
+    expect(cleared.agentId).toBeNull();
+  });
+
+  it("H-1: ORGANIZATION hint requires orgId", async () => {
+    const e = await err(() =>
+      svc.actors.resolveOrCreate(W_A, { type: "ORGANIZATION" }),
+    );
+    expect(e.code).toBe("INVALID");
+    const a = await svc.actors.resolveOrCreate(W_A, {
+      type: "ORGANIZATION",
+      orgId: "org:acme",
+    });
+    expect(a.type).toBe("ORGANIZATION");
+  });
+
+  it("AgentRegistration outranks passport → REGISTERED_AGENT", async () => {
+    await registerAgent("eip155:5042002:0xreg:7", W_A);
+    passportOwners.set("pass_123", W_A);
     const a = await svc.actors.resolveOrCreate(W_A, {
       passportTokenId: "pass_123",
     });
@@ -152,7 +235,8 @@ describe("actor service", () => {
     expect(a.type).toBe("EXTERNAL_AGENT");
   });
 
-  it("registered type never downgrades to EXTERNAL", async () => {
+  it("registered type stays while its proof verifies", async () => {
+    passportOwners.set("p1", W_A);
     await svc.actors.resolveOrCreate(W_A, { passportTokenId: "p1" });
     const a = await svc.actors.resolveOrCreate(W_A);
     expect(a.type).toBe("REGISTERED_USER");
@@ -160,6 +244,7 @@ describe("actor service", () => {
 
   it("enrich merges links; undefined keeps, null clears", async () => {
     await svc.actors.resolveOrCreate(W_A, { did: "did:web:x", tier: "gold" });
+    await registerAgent("ag-1", W_A);
     const a = await svc.actors.enrich(W_A, { agentId: "ag-1" });
     expect(a.did).toBe("did:web:x");
     expect(a.agentId).toBe("ag-1");
@@ -392,6 +477,126 @@ describe("entitlement sweeper", () => {
     const stored = await svc.entitlements.getById(row.id);
     expect(stored?.status).toBe("EXPIRED");
   });
+
+  it("H-4: deduped replays do not consume the maxGrants cap", async () => {
+    await confirmedPayment({ customerId: W_A });
+    await svc.sweep({ sinceMs: 0 }); // first tick grants
+    await confirmedPayment({ customerId: W_B });
+    // maxGrants=1: the deduped replay of the first payment must not
+    // starve the new one.
+    const r = await svc.sweep({ sinceMs: 0, maxGrants: 1 });
+    expect(r.deduped).toBe(1);
+    expect(r.granted).toBe(1);
+  });
+
+  it("H-5: reversal pass revokes grants whose payment lost CONFIRMED", async () => {
+    const pay = await confirmedPayment({ customerId: W_A });
+    const first = await svc.sweep({ sinceMs: 0 });
+    expect(first.granted).toBe(1);
+    expect(
+      await svc.entitlements.check(W_A, "PASSPORT_BRONZE"),
+    ).not.toBeNull();
+    // Refund/chargeback — payment leaves CONFIRMED.
+    await payments.payments.applyStatus(
+      pay.id,
+      "CONFIRMED",
+      "REFUNDED",
+      clock,
+    );
+    const r = await svc.sweep({ sinceMs: 0 });
+    expect(r.revoked).toBe(1);
+    expect(await svc.entitlements.check(W_A, "PASSPORT_BRONZE")).toBeNull();
+    // And the revoked row's dedupe key blocks re-activation.
+    const third = await svc.sweep({ sinceMs: 0 });
+    expect(third.granted + third.deduped).toBe(0);
+  });
+
+  it("M-4: sweep lazy-creates the grantee actor row", async () => {
+    await confirmedPayment({ customerId: W_A });
+    await svc.sweep({ sinceMs: 0 });
+    const actor = await svc.actors.get(W_A);
+    expect(actor?.type).toBe("EXTERNAL_AGENT");
+  });
+
+  it("C-2: declared catalog price/currency binds the payment", async () => {
+    const { ENTITLEMENT_PRODUCTS } = await import(
+      "../src/server/lib/identity/types.js"
+    );
+    const entry = ENTITLEMENT_PRODUCTS.find(
+      (e) => e.productCode === "PASSPORT_BRONZE",
+    )!;
+    (entry as { minAmount?: string; currency?: string }).minAmount = "9.99";
+    entry.currency = "USD";
+    try {
+      // Underpayment → skipped, no grant.
+      const cheap = await confirmedPayment({
+        customerId: W_A,
+        amount: "0.01",
+      });
+      // Full price → grant.
+      const fair = await confirmedPayment({
+        customerId: W_B,
+        amount: "9.99",
+      });
+      const r = await svc.sweep({ sinceMs: 0 });
+      expect(r.granted).toBe(1);
+      expect(r.skippedCount).toBeGreaterThanOrEqual(1);
+      expect(await svc.entitlements.check(W_A, "PASSPORT_BRONZE")).toBeNull();
+      expect(
+        await svc.entitlements.check(W_B, "PASSPORT_BRONZE"),
+      ).not.toBeNull();
+      void cheap;
+      void fair;
+    } finally {
+      delete (entry as { minAmount?: string; currency?: string }).minAmount;
+      delete (entry as { currency?: string }).currency;
+    }
+  });
+
+  it("C-2: ownerFor cannot reroute the grant off the payer", async () => {
+    await confirmedPayment({ customerId: W_A });
+    const evil = createIdentityService({
+      identity,
+      payments,
+      registrations,
+      passports,
+      ownerFor: () => W_B, // resolver tries to redirect the grant
+      nowMs: () => clock,
+    });
+    const r = await evil.sweep({ sinceMs: 0 });
+    expect(r.granted).toBe(0);
+    expect(r.errors.some((e) => e.message.includes("customerId"))).toBe(true);
+    expect(await svc.entitlements.check(W_B, "PASSPORT_BRONZE")).toBeNull();
+  });
+
+  it("M-2: idempotencyKey hit for a different pair conflicts", async () => {
+    await svc.entitlements.grant({
+      ownerId: W_A,
+      productCode: "PASSPORT_BRONZE",
+      idempotencyKey: "shared_key_123",
+    });
+    const e = await err(() =>
+      svc.entitlements.grant({
+        ownerId: W_B,
+        productCode: "PASSPORT_SILVER",
+        idempotencyKey: "shared_key_123",
+      }),
+    );
+    expect(e.code).toBe("CONFLICT");
+  });
+
+  it("M-5: stored rows don't share caller payload references", async () => {
+    const payload = { note: "orig" };
+    const { row } = await svc.entitlements.grant({
+      ownerId: W_A,
+      productCode: "PASSPORT_BRONZE",
+      idempotencyKey: "m5_payload_key",
+      payload,
+    });
+    payload.note = "mutated";
+    const stored = await svc.entitlements.getById(row.id);
+    expect((stored?.payload as { note: string }).note).toBe("orig");
+  });
 });
 
 // ---------- fact emitters ----------
@@ -405,7 +610,10 @@ describe("reputation fact emitters", () => {
     expect(f2?.factType).toBe("SUBMISSION_ACCEPTED");
     const f3 = await svc.facts.evidenceSupplied(W_A, "ev_1");
     expect(f3?.factType).toBe("EVIDENCE_SUPPLIED");
-    const f4 = await svc.facts.paymentVerified(W_A, "pay_1");
+    // H-3: paymentVerified refs are proven against the payments
+    // store — needs a real CONFIRMED payment owned by the actor.
+    const pay = await confirmedPayment({ customerId: W_A });
+    const f4 = await svc.facts.paymentVerified(W_A, pay.id);
     expect(f4?.factType).toBe("PAYMENT_VERIFIED");
     const f5 = await svc.facts.dispute(W_A, "ag_2");
     expect(f5?.factType).toBe("DISPUTE");
@@ -439,6 +647,48 @@ describe("reputation fact emitters", () => {
       factType: "TASK_COMPLETED",
     });
     expect(tasks).toHaveLength(2);
+  });
+
+  it("H-3: emit rejects unverifiable sourceRefs", async () => {
+    // payment: refs must point at a CONFIRMED payment paid by the
+    // actor — nonexistent, another payer, or non-CONFIRMED fail.
+    const ghost = await err(() =>
+      svc.facts.emit({
+        actorWallet: W_A,
+        factType: "PAYMENT_VERIFIED",
+        sourceRef: "payment:does-not-exist",
+      }),
+    );
+    expect(ghost.code).toBe("INVALID");
+    const others = await confirmedPayment({ customerId: W_B });
+    const stolen = await err(() =>
+      svc.facts.emit({
+        actorWallet: W_A,
+        factType: "PAYMENT_VERIFIED",
+        sourceRef: `payment:${others.id}`,
+      }),
+    );
+    expect(stolen.code).toBe("INVALID");
+    // Non-payment refs pass through (no verifier configured yet).
+    const ok = await svc.facts.emit({
+      actorWallet: W_A,
+      factType: "TASK_COMPLETED",
+      sourceRef: "agreement:ag_9",
+      subjectId: "ag_9",
+    });
+    expect(ok?.sourceRef).toBe("agreement:ag_9");
+  });
+
+  it("H-3: atMs may not be future-dated", async () => {
+    const e = await err(() =>
+      svc.facts.emit({
+        actorWallet: W_A,
+        factType: "ATTESTATION",
+        sourceRef: "attestation:x",
+        atMs: clock + 10 * 60_000,
+      }),
+    );
+    expect(e.code).toBe("INVALID");
   });
 
   it("rejects empty sourceRef and bad wallet", async () => {

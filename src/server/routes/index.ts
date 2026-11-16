@@ -29,6 +29,7 @@ import { createCommerceService } from "../lib/commerce";
 import { createIdentityRoutes } from "./identity-api";
 import { createIdentityService } from "../lib/identity";
 import { getAgentRegistrationStore } from "../lib/agent-registration/store";
+import { getMarketplaceOps } from "../lib/marketplace/ops";
 import { discoveryManifestRoutes } from "./discovery";
 import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
@@ -155,6 +156,20 @@ export function registerCoreRoutes(app: Hono): void {
           // store AFTER registerApiRoutes; resolve at call time.
           async list() {
             return (await getAgentRegistrationStore()?.list()) ?? [];
+          },
+        },
+        passports: {
+          // Audit C-1: passportTokenId writes must prove ownership —
+          // onchain ownerOf via the marketplace ops read (returns a
+          // wallet or throws → null ⇒ unverifiable, write rejected).
+          async ownerOf(tokenId) {
+            try {
+              return await getMarketplaceOps().passportOwner(
+                BigInt(tokenId),
+              );
+            } catch {
+              return null;
+            }
           },
         },
       }),

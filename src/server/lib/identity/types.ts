@@ -34,10 +34,17 @@ export type EntitlementStatus = (typeof ENTITLEMENT_STATUSES)[number];
  * DIRECTORY_LISTING, scan packs) never produce entitlements.
  *
  * `validityMs` — grant duration; undefined = perpetual until revoked.
+ * `minAmount`/`currency` — payment binding (audit C-2): when
+ * declared, the sweeper only activates payments that paid at least
+ * `minAmount` in `currency`. Entries without a declared price bind
+ * only on productId + CONFIRMED status (see decisions D-225-8).
  */
 export interface EntitlementCatalogEntry {
   productCode: string;
   validityMs?: number;
+  /** Decimal-string floor in `currency` units — e.g. "9.99". */
+  minAmount?: string;
+  currency?: string;
 }
 
 export const ENTITLEMENT_PRODUCTS: readonly EntitlementCatalogEntry[] = [
