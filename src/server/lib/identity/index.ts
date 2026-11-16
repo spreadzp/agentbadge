@@ -86,9 +86,13 @@ export function createIdentityService(
     deps.registrations,
     deps.passports,
   );
-  // N-12: lazy actor upsert — grant()/emit() call this before a
-  // NEW insert only, so dedupe hits cost no external calls.
-  const ensureActor = (wallet: string) => actors.resolveOrCreate(wallet);
+  // N-12 + round-3 F-5: cheap ensure — an existing actor row is
+  // returned untouched (no re-type, no registry/passport RPCs);
+  // resolveOrCreate runs only for wallets with no row yet.
+  const ensureActor = async (wallet: string) => {
+    const existing = await actors.get(wallet);
+    return existing ?? actors.resolveOrCreate(wallet);
+  };
 
   const entitlements = createEntitlementService(identity.entitlements, {
     nowMs: now,

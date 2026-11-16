@@ -222,7 +222,7 @@ describe("POST /api/v1/actors/:wallet/enrich", () => {
     // verified link must not self-mint REGISTERED_USER.
     const res = await req("POST", `/api/v1/actors/${owner.address}/enrich`, {
       account: owner,
-      body: { passportTokenId: "pass_1" },
+      body: { passportTokenId: "1" },
     });
     expect(res.status).toBe(400);
     const actor = await service.actors.get(owner.address.toLowerCase());

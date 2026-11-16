@@ -14,22 +14,44 @@ import type {
   PassportVerificationPort,
 } from "./actor-service";
 
-export type RegList = Awaited<
-  ReturnType<ActorRegistrationPort["list"]>
->;
+export type RegEntry = {
+  agentId: string;
+  owner?: string;
+  status: string;
+};
+export type RegList = ReadonlyArray<RegEntry> | null;
+
+/** Tri-state for registry lookups (audit round-3 F-2): a port that
+ *  is present but UNAVAILABLE (store not yet published, list()
+ *  returned null) is "unknown" — never "unowned". Unknown keeps a
+ *  stored REGISTERED_AGENT and rejects new agentId writes with 503. */
+export type RegState = "available" | "unavailable";
 
 export interface ActorVerifier {
-  /** Active registration owned by `wallet` (REGISTERED_AGENT proof). */
+  /**
+   * Registration-registry availability (round-3 F-2). `null` from
+   * `list()` means the backing store is not published yet — that is
+   * UNKNOWN, not "no registrations".
+   */
+  registrationsState(
+    listOnce: () => Promise<RegList>,
+  ): Promise<RegState>;
+  /** Active registration owned by `wallet` (REGISTERED_AGENT proof).
+   *  `undefined` on unavailable registry too — no proof either way. */
   ownedRegistration(
     wallet: string,
     listOnce: () => Promise<RegList>,
-  ): Promise<RegList[number] | undefined>;
-  /** Wallet owns `agentId` via an ACTIVE registration (link proof). */
+  ): Promise<RegEntry | undefined>;
+  /**
+   * Wallet owns `agentId` via an ACTIVE registration (link proof) —
+   * tri-state like passportState: "unknown" when the registry is
+   * unavailable (reject the write as 503, never as unowned).
+   */
   ownsAgent(
     wallet: string,
     agentId: string,
     listOnce: () => Promise<RegList>,
-  ): Promise<boolean>;
+  ): Promise<"owned" | "unowned" | "unknown">;
   /**
    * Passport `tokenId` ownership proof — tri-state (audit v2 N-7):
    *   "owned"   — onchain owner === wallet
@@ -64,12 +86,20 @@ export function createActorVerifier(
   registrations?: ActorRegistrationPort,
   passports?: PassportVerificationPort,
 ): ActorVerifier {
+  async function registrationsState(
+    listOnce: () => Promise<RegList>,
+  ): Promise<RegState> {
+    if (!registrations) return "unavailable";
+    return (await listOnce()) === null ? "unavailable" : "available";
+  }
+
   async function ownedRegistration(
     wallet: string,
     listOnce: () => Promise<RegList>,
   ) {
     if (!registrations) return undefined;
     const regs = await listOnce();
+    if (regs === null) return undefined;
     return regs.find(
       (r) =>
         r.status === "active" &&
@@ -82,16 +112,19 @@ export function createActorVerifier(
     wallet: string,
     agentId: string,
     listOnce: () => Promise<RegList>,
-  ) {
-    if (!registrations) return false;
+  ): Promise<"owned" | "unowned" | "unknown"> {
+    if (!registrations) return "unknown";
     const regs = await listOnce();
+    if (regs === null) return "unknown";
     return regs.some(
       (r) =>
         r.status === "active" &&
         r.agentId === agentId &&
         typeof r.owner === "string" &&
         r.owner.toLowerCase() === wallet,
-    );
+    )
+      ? "owned"
+      : "unowned";
   }
 
   async function passportState(
@@ -114,9 +147,9 @@ export function createActorVerifier(
     existing: ActorRow | null,
     hints: ActorHints,
     passportVerified: boolean,
-    passportStateOfStored: "owned" | "unowned" | "unknown" = "unknown",
+    passportStateOfStored: "owned" | "unowned" | "unknown" = "unowned",
     listOnce: () => Promise<RegList> = async () =>
-      registrations?.list() ?? [],
+      registrations?.list() ?? null,
   ): Promise<ActorType> {
     // 1. REGISTERED_AGENT — live proof via the registry.
     if (await ownedRegistration(wallet, listOnce)) return "REGISTERED_AGENT";
@@ -136,8 +169,10 @@ export function createActorVerifier(
     if (existing) {
       const stored = existing.type as ActorType;
       if (stored === "REGISTERED_AGENT") {
-        // Keep only when the registry isn't wired (cannot re-prove).
+        // Keep when the registry isn't wired (cannot re-prove) OR
+        // when it is unavailable — unknown is not disproof (F-2).
         if (!registrations) return stored;
+        if ((await listOnce()) === null) return stored;
         // Proof gone — downgrade.
       } else if (stored === "REGISTERED_USER") {
         // Keep when the passport port isn't wired (legacy rows),
@@ -163,5 +198,11 @@ export function createActorVerifier(
     return "EXTERNAL_AGENT";
   }
 
-  return { ownedRegistration, ownsAgent, passportState, resolveType };
+  return {
+    registrationsState,
+    ownedRegistration,
+    ownsAgent,
+    passportState,
+    resolveType,
+  };
 }

@@ -27,9 +27,7 @@ import { paymentsApiRoutes } from "./payments-api";
 import { createCommerceRoutes } from "./commerce";
 import { createCommerceService } from "../lib/commerce";
 import { createIdentityRoutes } from "./identity-api";
-import { createIdentityService } from "../lib/identity";
-import { getAgentRegistrationStore } from "../lib/agent-registration/store";
-import { getMarketplaceOps } from "../lib/marketplace/ops";
+import { getIdentityService } from "../wiring/identity-service";
 import { discoveryManifestRoutes } from "./discovery";
 import { wellKnownRoutes } from "./well-known";
 import { agentCardRoutes } from "./agent-card";
@@ -145,36 +143,9 @@ export function registerCoreRoutes(app: Hono): void {
   // EPIC-224 SLICE-224-3: /api/commerce/* task-centric routes (in-memory fallback when DATABASE_ENABLED off)
   app.route("/", createCommerceRoutes(createCommerceService(getDatabase().commerce)));
   // EPIC-225 SLICE-225-3: /api/v1/{actors,entitlements,reputation} — thin reads + owner enrich + admin revoke (D-225-6)
-  app.route(
-    "/",
-    createIdentityRoutes(
-      createIdentityService({
-        identity: getDatabase().identity,
-        payments: getDatabase().payments,
-        registrations: {
-          // Lazy port — wireAgentRegistration publishes the active
-          // store AFTER registerApiRoutes; resolve at call time.
-          async list() {
-            return (await getAgentRegistrationStore()?.list()) ?? [];
-          },
-        },
-        passports: {
-          // Audit C-1 / v2 N-7: passportTokenId writes must prove
-          // ownership — onchain ownerOf via the marketplace ops
-          // read. The actor service distinguishes outcomes:
-          //   wallet  → "owned"   (proof holds)
-          //   null    → "unowned" (lookup ran; different owner)
-          //   throw   → "unknown" (transient RPC failure ⇒ 503 on
-          //             writes, stored REGISTERED_USER retained).
-          // Errors must propagate — catch→null would conflate
-          // "lookup failed" with "not the owner".
-          async ownerOf(tokenId) {
-            return getMarketplaceOps().passportOwner(BigInt(tokenId));
-          },
-        },
-      }),
-    ),
-  );
+  // Round-3 F-4: service instance shared with the background
+  // sweeper via wiring/identity-service.ts (verifySource wired).
+  app.route("/", createIdentityRoutes(getIdentityService()));
   app.route("/", discoveryManifestRoutes);
   app.route("/", wellKnownRoutes);
   app.route("/", agentCardRoutes);

@@ -132,18 +132,24 @@ export const FACT_SOURCE_PREFIXES: Readonly<Record<FactType, string>> = {
 
 function dedupeKeyFor(
   factType: FactType,
-  subjectId: string | null,
   actorWallet: string,
   sourceRef: string,
 ): string {
   // Canonical JSON encoding — fields can contain `:`/"-" freely;
   // only tuple identity defines the dedupe key (audit v2 N-2).
+  // Round-3 F-3: subjectId is DERIVED from sourceRef (always the
+  // ref id), so the tuple is [factType, actorWallet, sourceRef] —
+  // `emit({sourceRef:"a:X"})` and `emit({sourceRef:"a:X",
+  // subjectId:"X"})` can no longer mint two rows.
   return createHash("sha256")
-    .update(
-      JSON.stringify([factType, subjectId ?? null, actorWallet, sourceRef]),
-    )
+    .update(JSON.stringify([factType, actorWallet, sourceRef]))
     .digest("hex");
 }
+
+/** sourceRef charset — no whitespace/control chars (round-3 F-3):
+ *  a verifier that trims or case-folds must not be able to mint a
+ *  second dedupe key for the same record. */
+const SOURCE_REF_BAD = /[\s\x00-\x1f\x7f]/;
 
 export function createFactService(
   facts: ReputationFactStore,
@@ -159,6 +165,11 @@ export function createFactService(
       });
     }
     const sourceRef = assertNonEmpty(input.sourceRef, "sourceRef");
+    if (SOURCE_REF_BAD.test(sourceRef)) {
+      throw invalid("sourceRef must not contain whitespace or control characters", {
+        field: "sourceRef",
+      });
+    }
     const atMs = input.atMs ?? now();
     if (!Number.isInteger(atMs) || atMs < 0) {
       throw invalid("atMs must be a non-negative integer (epoch ms)", {
@@ -182,12 +193,14 @@ export function createFactService(
       );
     }
     // 2. subjectId binds to the referenced record — one ref can
-    //    only mint facts about ONE subject.
+    //    only mint facts about ONE subject. The STORED subjectId is
+    //    always the ref id (canonical — round-3 F-3).
     if (input.subjectId != null && input.subjectId !== refId) {
       throw invalid("subjectId must equal the sourceRef id", {
         field: "subjectId",
       });
     }
+    const subjectId = refId;
     // 3. Existence proof — the verifier for this prefix is
     //    REQUIRED (deny by default); a custom verifySource
     //    composes AND on top of verifyPayment.
@@ -203,7 +216,7 @@ export function createFactService(
     const verified = await verifier({
       factType: input.factType,
       sourceRef,
-      subjectId: input.subjectId ?? null,
+      subjectId,
       actorWallet,
     });
     if (!verified) {
@@ -215,7 +228,7 @@ export function createFactService(
       const extra = await deps.verifySource({
         factType: input.factType,
         sourceRef,
-        subjectId: input.subjectId ?? null,
+        subjectId,
         actorWallet,
       });
       if (!extra) {
@@ -230,14 +243,9 @@ export function createFactService(
       id: newId("rf"),
       actorWallet,
       factType: input.factType,
-      subjectId: input.subjectId ?? null,
+      subjectId,
       sourceRef,
-      dedupeKey: dedupeKeyFor(
-        input.factType,
-        input.subjectId ?? null,
-        actorWallet,
-        sourceRef,
-      ),
+      dedupeKey: dedupeKeyFor(input.factType, actorWallet, sourceRef),
       atMs,
       payload: input.payload ?? {},
     });

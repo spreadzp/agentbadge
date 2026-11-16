@@ -14,6 +14,7 @@ import { startRequestInboxNotifier } from "../services/request-inbox-notifier";
 import { startBountyQaRunner } from "../services/bounty-qa-runner";
 import { startUsdcPaymentMonitor } from "../services/usdc-payment-monitor";
 import { startUsdcReconciliation } from "../services/usdc-reconciliation";
+import { startIdentitySweeper } from "../services/identity-sweeper";
 import { startVenueBillingSweeper } from "../lib/venue/billing";
 import { startBoardOutboxDispatcher } from "../lib/board/dispatch";
 import { startArchiveWorkers } from "./archive-workers";
@@ -88,6 +89,11 @@ export function startBackgroundJobs(): void {
   // USDC_MONITOR_ENABLED + ARC_RPC_URL; off = zero behavior change.
   startUsdcPaymentMonitor();
   startUsdcReconciliation();
+
+  // 225 (round-3 F-4): identity entitlement sweeper — expire,
+  // activate CONFIRMED-payment grants, revoke reversed payments.
+  // Self-gates on IDENTITY_SWEEPER_ENABLED (default on).
+  startIdentitySweeper();
 
   // 217-8/217-9: TG archive workers (daily digest + weekly rollup doc).
   // Self-gates on DATABASE_ENABLED + TG creds; logs skip-reason.

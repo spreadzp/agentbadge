@@ -37,14 +37,18 @@ import { assertWallet } from "./guards";
 import { createActorVerifier, type RegList } from "./actor-verify";
 import { IdentityError, invalid, type ActorType } from "./types";
 
-/** Minimal port over the ERC-8004 registration registry (184). */
+/** Minimal port over the ERC-8004 registration registry (184).
+ *  `null` = registry UNAVAILABLE (store not published yet) — the
+ *  service treats it as unknown, never as "no registrations"
+ *  (audit round-3 F-2). */
 export interface ActorRegistrationPort {
   list(): Promise<
-    ReadonlyArray<{
+    | ReadonlyArray<{
       agentId: string;
       owner?: string;
       status: string;
     }>
+    | null
   >;
 }
 
@@ -162,7 +166,9 @@ export function createActorService(
         ? passportNorm
         : (existing?.passportTokenId ?? null);
 
-    let passportStateOfStored: "owned" | "unowned" | "unknown" = "unknown";
+    // Round-3 F-1: default "unowned" — "unknown" only when a lookup
+    // actually ran and failed. A cleared/absent passport is disproof.
+    let passportStateOfStored: "owned" | "unowned" | "unknown" = "unowned";
     if (passportNorm != null) {
       if (!passports) {
         throw invalid(
@@ -195,9 +201,9 @@ export function createActorService(
     // N-7: one registrations.list() per write — the link check
     //  and the type derivation share it. No cross-call caching: a
     //  stale read would let writes race a just-changed registry.
-    let regsPromise: Promise<RegList> | null = null;
+    let regsPromise: Promise<RegList | null> | null = null;
     const listOnce = () => {
-      regsPromise ??= registrations?.list() ?? Promise.resolve([] as const);
+      regsPromise ??= registrations?.list() ?? Promise.resolve(null);
       return regsPromise;
     };
 
@@ -208,7 +214,18 @@ export function createActorService(
           { field: "agentId" },
         );
       }
-      if (!(await verify.ownsAgent(w, agentIdNorm, listOnce))) {
+      const agentState = await verify.ownsAgent(w, agentIdNorm, listOnce);
+      if (agentState === "unknown") {
+        // Round-3 F-2: registry unavailable — not proof of
+        // non-ownership; fail the write as unavailable (503).
+        throw new IdentityError(
+          "INVALID",
+          "registration registry unavailable — agentId could not be verified",
+          503,
+          { field: "agentId" },
+        );
+      }
+      if (agentState === "unowned") {
         throw invalid("agentId is not an active registration owned by this wallet", {
           field: "agentId",
         });
@@ -248,10 +265,14 @@ export function createActorService(
   // N-17: every write path serializes the check-compute-upsert
   //  sequence per wallet — concurrent writes must not interleave
   //  type derivation.
-  const resolveOrCreateLocked = (wallet: string, hints?: ActorHints) =>
-    withWalletLock(wallet.toLowerCase(), () =>
-      resolveOrCreateInner(wallet, hints),
+  const resolveOrCreateLocked = (wallet: string, hints?: ActorHints) => {
+    // Round-3 F-7: validate BEFORE lowercasing — a non-string input
+    // must 400, not TypeError→500.
+    const w = assertWallet(wallet, "wallet");
+    return withWalletLock(w.toLowerCase(), () =>
+      resolveOrCreateInner(w, hints),
     );
+  };
 
   return {
     resolveOrCreate: resolveOrCreateLocked,

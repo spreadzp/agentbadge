@@ -48,9 +48,9 @@ beforeEach(() => {
     payments,
     registrations: createMemoryAgentRegistrationStore(),
     passports: {
-      // Fake onchain ownerOf — pass_77 belongs to the test owner.
+      // Fake onchain ownerOf — token 77 belongs to the test owner.
       async ownerOf(tokenId: string) {
-        return tokenId === "pass_77" ? W_OWNER : null;
+        return tokenId === "77" ? W_OWNER : null;
       },
     },
     // v2 N-3: non-payment fact emits deny-by-default without a
@@ -298,7 +298,7 @@ describe("e2e: actor lifecycle via REST", () => {
     // Owner enriches via the signed write.
     const path = `/api/v1/actors/${W_OWNER}/enrich`;
     const rawBody = JSON.stringify({
-      passportTokenId: "pass_77",
+      passportTokenId: "77",
       did: "did:web:enriched",
     });
     const res = await app.request(path, {
@@ -311,7 +311,7 @@ describe("e2e: actor lifecycle via REST", () => {
     // GET reflects the enrichment — passport flips type.
     const get1 = await app.request(`/api/v1/actors/${W_OWNER}`);
     const actor = (await get1.json()).actor;
-    expect(actor.passportTokenId).toBe("pass_77");
+    expect(actor.passportTokenId).toBe("77");
     expect(actor.did).toBe("did:web:enriched");
     expect(actor.type).toBe("REGISTERED_USER");
 

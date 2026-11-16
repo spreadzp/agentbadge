@@ -8,7 +8,7 @@ import type { Context } from "hono";
 import { verifyWalletSignature } from "../../middleware/agent-auth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes, type ErrorCode } from "../../lib/error-codes";
-import { BODY_HASH_KEY, ensureRawBody } from "./shared-utils";
+import { BODY_HASH_KEY, ensureRawBody, sha256Hex } from "./shared-utils";
 
 // Re-exported so route files keep a single "./shared" import surface.
 export { commerceError, readJson, redactRow } from "./shared-utils";
@@ -230,10 +230,13 @@ export function idemKey(c: Context): string | undefined {
  *  composite keys `owner|payment|product` style separators). */
 export const IDEM_KEY_RE = /^[A-Za-z0-9_.:|-]{8,128}$/;
 
-/** sha256 of the raw request body — binds idempotentWrite to body content. */
+/** sha256 of method|path|raw-body — binds idempotentWrite to the
+ *  exact request target AND content (round-3 F-12: the same body
+ *  under a different `:id` path must not collide). */
 export async function requestFingerprint(c: Context): Promise<string> {
   await ensureRawBody(c);
-  return c.get(BODY_HASH_KEY) as string;
+  const bodyHash = c.get(BODY_HASH_KEY) as string;
+  return sha256Hex(`${c.req.method}|${c.req.path}|${bodyHash}`);
 }
 
 

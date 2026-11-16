@@ -228,9 +228,12 @@ export async function runEntitlementSweep(
         skip(payment.id, "no resolvable owner wallet");
         continue;
       }
+      // Round-3 F-8: normalize case — a checksummed resolver result
+      // must not fail the identity comparison as an error.
+      const ownerNorm = owner.toLowerCase();
       // C-2: grantee must be the payer of record — the resolver can
       // only NARROW customerId, never reroute the grant elsewhere.
-      if (payment.customerId?.toLowerCase() !== owner) {
+      if (payment.customerId?.toLowerCase() !== ownerNorm) {
         err(
           `attempt:${attempt.id}`,
           new Error(
@@ -242,11 +245,11 @@ export async function runEntitlementSweep(
       // N-7: actor upsert moved into grant() — it runs only on NEW
       // inserts, so deduped candidates cost no external calls.
       const grantResult = await deps.entitlements.grant({
-        ownerId: owner,
+        ownerId: ownerNorm,
         productCode,
         sourcePaymentId: payment.id,
         // Owner-bound dedupe key (audit v2 N-11).
-        idempotencyKey: `${owner}|${payment.id}|${productCode}`,
+        idempotencyKey: `${ownerNorm}|${payment.id}|${productCode}`,
         validFromMs: attempt.confirmedAtMs ?? now(),
         payload: { activatedBy: "entitlement-sweep" },
       });

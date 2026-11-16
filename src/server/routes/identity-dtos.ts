@@ -139,7 +139,13 @@ export const enrichSchema = z
     // Audit v2 N-13: bounded strings — the service re-checks, the
     // route rejects junk early.
     agentId: z.string().min(1).max(256).nullable().optional(),
-    passportTokenId: z.string().min(1).max(256).nullable().optional(),
+    // Round-3 F-10: numeric token id only — a non-numeric value is
+    // a 400 here, not a BigInt SyntaxError → 503 downstream.
+    passportTokenId: z
+      .string()
+      .regex(/^\d{1,78}$/, "passportTokenId must be a numeric token id")
+      .nullable()
+      .optional(),
     did: z
       .string()
       .min(4)
@@ -169,7 +175,9 @@ export function mapIdentityError(c: Context, e: unknown): Response {
         ? ErrorCodes.RESOURCE_NOT_FOUND
         : e.code === "CONFLICT"
           ? ErrorCodes.CONFLICT
-          : ErrorCodes.INVALID_INPUT;
+          : e.httpStatus === 503
+            ? ErrorCodes.DATA_UNAVAILABLE
+            : ErrorCodes.INVALID_INPUT;
     return errorResponse(c, status, code, e.message);
   }
   throw e;
