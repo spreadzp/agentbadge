@@ -5,10 +5,35 @@
 
 import { isAddress } from "viem";
 import type { Context } from "hono";
+import { logger } from "@agentbadge/passport/logger";
 import { verifyWalletSignature } from "../../middleware/agent-auth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes, type ErrorCode } from "../../lib/error-codes";
 import { BODY_HASH_KEY, ensureRawBody, sha256Hex } from "./shared-utils";
+
+/**
+ * SLICE-234-16 (bug): post-auth hook on every successful signed write.
+ * Wired at mount time from routes/index.ts — routes can't import
+ * wiring (arch boundary), so the hook arrives via this setter.
+ * Used for the D-225-3 lazy actor upsert. Best-effort only: a hook
+ * failure logs a warn and must never fail the write itself.
+ */
+let onSignedWrite: ((wallet: string) => Promise<unknown>) | null = null;
+export function setSignedWriteHook(
+  fn: ((wallet: string) => Promise<unknown>) | null,
+): void {
+  onSignedWrite = fn;
+}
+async function fireSignedWriteHook(wallet: string): Promise<void> {
+  if (!onSignedWrite) return;
+  try {
+    await onSignedWrite(wallet);
+  } catch (err) {
+    logger.warn("signed-write hook failed (actor touch skipped)", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 // Re-exported so route files keep a single "./shared" import surface.
 export { commerceError, readJson, redactRow } from "./shared-utils";
@@ -203,6 +228,8 @@ export async function requireWallet(
       check.message,
     );
   }
+  // SLICE-234-16: lazy actor upsert on the first signed write (D-225-3).
+  await fireSignedWriteHook(check.wallet);
   return { wallet: check.wallet };
 }
 

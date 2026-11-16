@@ -74,6 +74,11 @@ const descriptorSchema = z.object({
     payment_mode: z.string(),
     reads_public: z.boolean(),
   }),
+  identity: z.object({
+    base: z.string(),
+    reads_public: z.boolean(),
+    endpoints: z.array(z.string()),
+  }),
 });
 
 machineDescriptorRoutes.get(

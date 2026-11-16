@@ -7,7 +7,11 @@
  * — the stores bundle is always non-null (in-memory fallback when
  * DATABASE_ENABLED is off). REST surface arrives in SLICE-225-3.
  */
-import type { IdentityStores, PaymentStores } from "@agentbadge/database";
+import type {
+  ActorRow,
+  IdentityStores,
+  PaymentStores,
+} from "@agentbadge/database";
 
 import {
   createActorService,
@@ -34,6 +38,13 @@ export interface IdentityService {
   actors: ActorService;
   entitlements: EntitlementService;
   facts: FactService;
+  /**
+   * Cheap ensure (N-12 + round-3 F-5): an existing actor row is
+   * returned untouched (no re-type, no registry/passport RPCs);
+   * `actors.resolveOrCreate` runs only for wallets with no row.
+   * For "touch the actor" callers like signed-write upsert (D-225-3).
+   */
+  ensureActor(wallet: string): Promise<ActorRow>;
   /**
    * One sweep tick (D-225-4): expire overdue ACTIVE rows, then grant
    * entitlements for CONFIRMED payments with catalog productIds.
@@ -131,6 +142,7 @@ export function createIdentityService(
     actors,
     entitlements,
     facts,
+    ensureActor,
     sweep: async (opts = {}) => {
       if (!payments) {
         throw new Error(

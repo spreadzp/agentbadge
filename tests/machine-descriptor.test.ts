@@ -51,6 +51,20 @@ describe("SLICE-206-1 machine descriptor", () => {
       "ESCROWED",
       "PAID",
     ]);
+
+    // SLICE-234-18: identity surface advertised (was missing vs openapi).
+    expect(d.identity.base).toBe("/api/v1");
+    expect(d.identity.reads_public).toBe(true);
+    expect(d.identity.endpoints).toEqual([
+      "GET /api/v1/actors/:wallet",
+      "GET /api/v1/entitlements/:wallet",
+      "GET /api/v1/reputation/:wallet",
+      "POST /api/v1/actors/:wallet/enrich",
+    ]);
+    // task-lifecycle endpoint list stays unchanged — identity lives in
+    // its own section, not inside endpoints[] (which is ordered by phase)
+    const epPaths = d.endpoints.map((e: { path: string }) => e.path);
+    expect(epPaths.every((p: string) => !p.startsWith("/api/v1/"))).toBe(true);
   });
 
   it("immutable cache header, JSON only (no secrets)", async () => {

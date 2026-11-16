@@ -151,6 +151,23 @@ export function buildMachineDescriptor() {
       payment_mode: "RECORD_ONLY",
       reads_public: true,
     },
+    /**
+     * EPIC-225 (SLICE-234-18): identity/entitlements/reputation surface.
+     * GET routes are keyless public reads; `POST .../enrich` is an
+     * owner write under the top-level sig-auth (v1 challenge above).
+     * `POST /api/v1/entitlements/:wallet/revoke` is admin-gated and
+     * deliberately not advertised to foreign agents.
+     */
+    identity: {
+      base: "/api/v1",
+      reads_public: true,
+      endpoints: [
+        "GET /api/v1/actors/:wallet",
+        "GET /api/v1/entitlements/:wallet",
+        "GET /api/v1/reputation/:wallet",
+        "POST /api/v1/actors/:wallet/enrich",
+      ],
+    },
   } as const;
 }
 

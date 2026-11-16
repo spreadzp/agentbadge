@@ -25,6 +25,7 @@ import { servicesCatalogRoutes } from "./services-catalog";
 import { commerceCatalogRoutes } from "./commerce-catalog";
 import { paymentsApiRoutes } from "./payments-api";
 import { createCommerceRoutes } from "./commerce";
+import { setSignedWriteHook } from "./commerce/shared";
 import { createCommerceService } from "../lib/commerce";
 import { createIdentityRoutes } from "./identity-api";
 import { getIdentityService } from "../wiring/identity-service";
@@ -141,7 +142,29 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", commerceCatalogRoutes); // EPIC-221 SLICE-221-1: /api/v1/catalog/*
   app.route("/", paymentsApiRoutes); // EPIC-221 SLICE-221-2: /api/v1/payments*
   // EPIC-224 SLICE-224-3: /api/commerce/* task-centric routes (in-memory fallback when DATABASE_ENABLED off)
-  app.route("/", createCommerceRoutes(createCommerceService(getDatabase().commerce)));
+  // SLICE-234-16: lazy actor upsert (D-225-3) — a successful signed
+  // write touches the Actor row. Cheap path: existing row untouched.
+  setSignedWriteHook((wallet) => getIdentityService().ensureActor(wallet));
+  app.route(
+    "/",
+    createCommerceRoutes(
+      createCommerceService(getDatabase().commerce, {
+        // SLICE-234-17: commerce completion → ReputationFacts (D-225-5).
+        // Post-commit: both emits go through commerceVerifySource
+        // (role + record state) — provider on COMPLETED agreement /
+        // ACCEPTED submission.
+        onSubmissionAccepted: async ({
+          submissionId,
+          agreementId,
+          providerWallet,
+        }) => {
+          const facts = getIdentityService().facts;
+          await facts.submissionAccepted(providerWallet, submissionId);
+          await facts.taskCompleted(providerWallet, agreementId);
+        },
+      }),
+    ),
+  );
   // EPIC-225 SLICE-225-3: /api/v1/{actors,entitlements,reputation} — thin reads + owner enrich + admin revoke (D-225-6)
   // Round-3 F-4: service instance shared with the background
   // sweeper via wiring/identity-service.ts (verifySource wired).

@@ -10,6 +10,7 @@
 import type { CommerceEventRow, CommerceStores } from "@agentbadge/database";
 
 import { CommerceEventEmitter } from "./events";
+import type { CommerceHooks } from "./services/ctx";
 import { createAgreementService, type AgreementService } from "./services/agreement-service";
 import { createEvidenceService, type EvidenceService } from "./services/evidence-service";
 import { createOfferService, type OfferService } from "./services/offer-service";
@@ -36,8 +37,15 @@ export interface CommerceService {
   };
 }
 
-export function createCommerceService(stores: CommerceStores): CommerceService {
-  const ctx = { stores, emit: new CommerceEventEmitter(stores.events) };
+export function createCommerceService(
+  stores: CommerceStores,
+  hooks?: CommerceHooks,
+): CommerceService {
+  const ctx = {
+    stores,
+    emit: new CommerceEventEmitter(stores.events),
+    hooks,
+  };
   return {
     tasks: createTaskService(ctx),
     offers: createOfferService(ctx),

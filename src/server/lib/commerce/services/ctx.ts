@@ -14,6 +14,24 @@ import { assertTransition } from "../state-machines";
 export interface CommerceCtx {
   stores: CommerceStores;
   emit: CommerceEventEmitter;
+  /** Optional post-commit hooks (SLICE-234-17) — wired by the
+   *  composition root (routes/index.ts) to identity fact emitters.
+   *  Best-effort: hook errors must never fail the transition. */
+  hooks?: CommerceHooks;
+}
+
+export interface CommerceHooks {
+  /**
+   * Fired after submission ACCEPTED → task+agreement COMPLETED commit.
+   * Input carries the terminal rows' ids + provider wallet so the
+   * caller can emit SUBMISSION_ACCEPTED / TASK_COMPLETED facts.
+   */
+  onSubmissionAccepted?(input: {
+    submissionId: string;
+    agreementId: string;
+    taskId: string;
+    providerWallet: string;
+  }): Promise<void> | void;
 }
 
 export interface TransitionOpts {

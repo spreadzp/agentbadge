@@ -9,6 +9,7 @@ import type {
   CommerceSubmissionRow,
   CommerceTaskRow,
 } from "@agentbadge/database";
+import { logger } from "@agentbadge/passport/logger";
 import { idempotentWrite } from "../../contract-guards";
 import {
   assertEvidenceRefs,
@@ -168,7 +169,7 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
       // C2: preconditions + all graph transitions inside one atomic
       // section — the verdict can never persist without its task/
       // agreement graph updates.
-      return stores.atomic(async (tx) => {
+      const result = await stores.atomic(async (tx) => {
         const txCtx = { ...ctx, stores: tx };
         const submission = mustGet(
           await tx.submissions.getById(submissionId),
@@ -270,6 +271,24 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
         }
         return { submission: reviewed, task: taskRow, agreement: agreementRow };
       });
+
+      // SLICE-234-17: post-commit fact emission (best-effort — a hook
+      // failure logs a warn and never rolls back the transition).
+      if (verdict === "ACCEPTED" && ctx.hooks?.onSubmissionAccepted) {
+        try {
+          await ctx.hooks.onSubmissionAccepted({
+            submissionId: result.submission.id,
+            agreementId: result.agreement.id,
+            taskId: result.task.id,
+            providerWallet: result.agreement.providerWallet,
+          });
+        } catch (err) {
+          logger.warn("onSubmissionAccepted hook failed (facts skipped)", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      return result;
     },
 
     listByAgreement: (agreementId) =>
