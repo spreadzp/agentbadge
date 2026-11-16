@@ -1,0 +1,413 @@
+[
+  {
+    "id": "table.spendApproval",
+    "label": "Create table \"spendApproval\"",
+    "summary": "Creates table \"spendApproval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "spendApproval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"spendApproval\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"spendApproval\"",
+        "sql": "CREATE TABLE \"public\".\"spendApproval\" (\n  \"amountUsd\" numeric NOT NULL,\n  \"consumedAtMs\" int8,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"decidedAtMs\" int8,\n  \"decidedBy\" text,\n  \"expiresAtMs\" int8 NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"refId\" text NOT NULL,\n  \"state\" text DEFAULT 'pending' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"venueId\" text,\n  \"wallet\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"spendApproval\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentWallet.allowedKinds",
+    "label": "Add column \"allowedKinds\" to \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "allowedKinds",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"allowedKinds\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "allowedKinds"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"allowedKinds\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD COLUMN \"allowedKinds\" json"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"allowedKinds\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "allowedKinds"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentWallet.approvalAboveUsd",
+    "label": "Add column \"approvalAboveUsd\" to \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "approvalAboveUsd",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"approvalAboveUsd\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "approvalAboveUsd"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"approvalAboveUsd\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD COLUMN \"approvalAboveUsd\" numeric"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"approvalAboveUsd\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "approvalAboveUsd"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentWallet.maxAmountPerHour",
+    "label": "Add column \"maxAmountPerHour\" to \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "maxAmountPerHour",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"maxAmountPerHour\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "maxAmountPerHour"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"maxAmountPerHour\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD COLUMN \"maxAmountPerHour\" numeric"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"maxAmountPerHour\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "maxAmountPerHour"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentWallet.maxTxPerHour",
+    "label": "Add column \"maxTxPerHour\" to \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "maxTxPerHour",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"maxTxPerHour\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "maxTxPerHour"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"maxTxPerHour\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD COLUMN \"maxTxPerHour\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"maxTxPerHour\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "maxTxPerHour"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentWallet.suspended",
+    "label": "Add column \"suspended\" to \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "suspended",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"suspended\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "suspended"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"suspended\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD COLUMN \"suspended\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"suspended\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "suspended"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentWallet.suspendedAt",
+    "label": "Add column \"suspendedAt\" to \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "suspendedAt",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"suspendedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "suspendedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"suspendedAt\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD COLUMN \"suspendedAt\" int8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"suspendedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "suspendedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentWallet.suspendedBy",
+    "label": "Add column \"suspendedBy\" to \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "suspendedBy",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"suspendedBy\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "suspendedBy"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"suspendedBy\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD COLUMN \"suspendedBy\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"suspendedBy\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentWallet",
+          "suspendedBy"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.spendApproval.spendApproval_wallet_createdAtMs_idx_70458d62",
+    "label": "Create index \"spendApproval_wallet_createdAtMs_idx_70458d62\" on \"spendApproval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "spendApproval_wallet_createdAtMs_idx_70458d62",
+        "table": "spendApproval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"spendApproval_wallet_createdAtMs_idx_70458d62\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval_wallet_createdAtMs_idx_70458d62\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"spendApproval_wallet_createdAtMs_idx_70458d62\"",
+        "sql": "CREATE INDEX \"spendApproval_wallet_createdAtMs_idx_70458d62\" ON \"public\".\"spendApproval\" (\"wallet\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"spendApproval_wallet_createdAtMs_idx_70458d62\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval_wallet_createdAtMs_idx_70458d62\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.spendApproval.spendApproval_wallet_state_idx_68707ee0",
+    "label": "Create index \"spendApproval_wallet_state_idx_68707ee0\" on \"spendApproval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "spendApproval_wallet_state_idx_68707ee0",
+        "table": "spendApproval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"spendApproval_wallet_state_idx_68707ee0\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval_wallet_state_idx_68707ee0\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"spendApproval_wallet_state_idx_68707ee0\"",
+        "sql": "CREATE INDEX \"spendApproval_wallet_state_idx_68707ee0\" ON \"public\".\"spendApproval\" (\"wallet\", \"state\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"spendApproval_wallet_state_idx_68707ee0\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval_wallet_state_idx_68707ee0\""
+        ]
+      }
+    ]
+  }
+]

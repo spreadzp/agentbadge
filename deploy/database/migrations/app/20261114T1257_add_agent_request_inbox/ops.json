@@ -1,0 +1,596 @@
+[
+  {
+    "id": "table.agentQAPair",
+    "label": "Create table \"agentQAPair\"",
+    "summary": "Creates table \"agentQAPair\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "agentQAPair"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"agentQAPair\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentQAPair\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"agentQAPair\"",
+        "sql": "CREATE TABLE \"public\".\"agentQAPair\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"id\" text NOT NULL,\n  \"question\" text NOT NULL,\n  \"questionHash\" text NOT NULL,\n  \"response\" json NOT NULL,\n  \"sourceRequestId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"uses\" int4 DEFAULT 0 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"agentQAPair\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentQAPair\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.agentRequest",
+    "label": "Create table \"agentRequest\"",
+    "summary": "Creates table \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"agentRequest\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"agentRequest\"",
+        "sql": "CREATE TABLE \"public\".\"agentRequest\" (\n  \"agentId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"expiresAtMs\" int8 NOT NULL,\n  \"fingerprint\" json NOT NULL,\n  \"fpHash\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"kind\" text,\n  \"payload\" json,\n  \"respondedAtMs\" int8,\n  \"response\" json,\n  \"spamFlag\" bool DEFAULT false NOT NULL,\n  \"state\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verified\" bool DEFAULT false NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"agentRequest\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.agentSurvey",
+    "label": "Create table \"agentSurvey\"",
+    "summary": "Creates table \"agentSurvey\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "agentSurvey"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"agentSurvey\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentSurvey\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"agentSurvey\"",
+        "sql": "CREATE TABLE \"public\".\"agentSurvey\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"closesAtMs\" int8,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"id\" text NOT NULL,\n  \"questions\" json NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"agentSurvey\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentSurvey\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.surveyAnswer",
+    "label": "Create table \"surveyAnswer\"",
+    "summary": "Creates table \"surveyAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "surveyAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"surveyAnswer\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"surveyAnswer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"surveyAnswer\"",
+        "sql": "CREATE TABLE \"public\".\"surveyAnswer\" (\n  \"agentId\" text,\n  \"answers\" json NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"fpHash\" text,\n  \"id\" text NOT NULL,\n  \"rated\" bool DEFAULT false NOT NULL,\n  \"surveyId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"surveyAnswer\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"surveyAnswer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.agentQAPair.agentQAPair_questionHash_key",
+    "label": "Add unique constraint on \"agentQAPair\" (questionHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "agentQAPair_questionHash_key",
+        "table": "agentQAPair"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"agentQAPair_questionHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentQAPair_questionHash_key",
+          "public",
+          "\"public\".\"agentQAPair\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"agentQAPair_questionHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"agentQAPair\" ADD CONSTRAINT \"agentQAPair_questionHash_key\" UNIQUE (\"questionHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"agentQAPair_questionHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentQAPair_questionHash_key",
+          "public",
+          "\"public\".\"agentQAPair\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.agentRequest.agentRequest_idempotencyKey_fpHash_key",
+    "label": "Add unique constraint on \"agentRequest\" (idempotencyKey, fpHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "agentRequest_idempotencyKey_fpHash_key",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"agentRequest_idempotencyKey_fpHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentRequest_idempotencyKey_fpHash_key",
+          "public",
+          "\"public\".\"agentRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"agentRequest_idempotencyKey_fpHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD CONSTRAINT \"agentRequest_idempotencyKey_fpHash_key\" UNIQUE (\"idempotencyKey\", \"fpHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"agentRequest_idempotencyKey_fpHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentRequest_idempotencyKey_fpHash_key",
+          "public",
+          "\"public\".\"agentRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.surveyAnswer.surveyAnswer_surveyId_agentId_key",
+    "label": "Add unique constraint on \"surveyAnswer\" (surveyId, agentId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "surveyAnswer_surveyId_agentId_key",
+        "table": "surveyAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"surveyAnswer_surveyId_agentId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "surveyAnswer_surveyId_agentId_key",
+          "public",
+          "\"public\".\"surveyAnswer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"surveyAnswer_surveyId_agentId_key\"",
+        "sql": "ALTER TABLE \"public\".\"surveyAnswer\" ADD CONSTRAINT \"surveyAnswer_surveyId_agentId_key\" UNIQUE (\"surveyId\", \"agentId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"surveyAnswer_surveyId_agentId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "surveyAnswer_surveyId_agentId_key",
+          "public",
+          "\"public\".\"surveyAnswer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentQAPair.agentQAPair_question_idx_191eccf6",
+    "label": "Create index \"agentQAPair_question_idx_191eccf6\" on \"agentQAPair\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentQAPair_question_idx_191eccf6",
+        "table": "agentQAPair"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentQAPair_question_idx_191eccf6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentQAPair_question_idx_191eccf6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentQAPair_question_idx_191eccf6\"",
+        "sql": "CREATE INDEX \"agentQAPair_question_idx_191eccf6\" ON \"public\".\"agentQAPair\" (\"question\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentQAPair_question_idx_191eccf6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentQAPair_question_idx_191eccf6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentQAPair.agentQAPair_sourceRequestId_idx_949a5766",
+    "label": "Create index \"agentQAPair_sourceRequestId_idx_949a5766\" on \"agentQAPair\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentQAPair_sourceRequestId_idx_949a5766",
+        "table": "agentQAPair"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentQAPair_sourceRequestId_idx_949a5766\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentQAPair_sourceRequestId_idx_949a5766\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentQAPair_sourceRequestId_idx_949a5766\"",
+        "sql": "CREATE INDEX \"agentQAPair_sourceRequestId_idx_949a5766\" ON \"public\".\"agentQAPair\" (\"sourceRequestId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentQAPair_sourceRequestId_idx_949a5766\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentQAPair_sourceRequestId_idx_949a5766\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRequest.agentRequest_agentId_idx_8d0ba4f0",
+    "label": "Create index \"agentRequest_agentId_idx_8d0ba4f0\" on \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRequest_agentId_idx_8d0ba4f0",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRequest_agentId_idx_8d0ba4f0\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRequest_agentId_idx_8d0ba4f0\"",
+        "sql": "CREATE INDEX \"agentRequest_agentId_idx_8d0ba4f0\" ON \"public\".\"agentRequest\" (\"agentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRequest_agentId_idx_8d0ba4f0\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRequest.agentRequest_expiresAtMs_idx_89d46aa4",
+    "label": "Create index \"agentRequest_expiresAtMs_idx_89d46aa4\" on \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRequest_expiresAtMs_idx_89d46aa4",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRequest_expiresAtMs_idx_89d46aa4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_expiresAtMs_idx_89d46aa4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRequest_expiresAtMs_idx_89d46aa4\"",
+        "sql": "CREATE INDEX \"agentRequest_expiresAtMs_idx_89d46aa4\" ON \"public\".\"agentRequest\" (\"expiresAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRequest_expiresAtMs_idx_89d46aa4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_expiresAtMs_idx_89d46aa4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRequest.agentRequest_fpHash_idx_7a44a30a",
+    "label": "Create index \"agentRequest_fpHash_idx_7a44a30a\" on \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRequest_fpHash_idx_7a44a30a",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRequest_fpHash_idx_7a44a30a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_fpHash_idx_7a44a30a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRequest_fpHash_idx_7a44a30a\"",
+        "sql": "CREATE INDEX \"agentRequest_fpHash_idx_7a44a30a\" ON \"public\".\"agentRequest\" (\"fpHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRequest_fpHash_idx_7a44a30a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_fpHash_idx_7a44a30a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRequest.agentRequest_state_createdAt_idx_f9712fdb",
+    "label": "Create index \"agentRequest_state_createdAt_idx_f9712fdb\" on \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRequest_state_createdAt_idx_f9712fdb",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRequest_state_createdAt_idx_f9712fdb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_state_createdAt_idx_f9712fdb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRequest_state_createdAt_idx_f9712fdb\"",
+        "sql": "CREATE INDEX \"agentRequest_state_createdAt_idx_f9712fdb\" ON \"public\".\"agentRequest\" (\"state\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRequest_state_createdAt_idx_f9712fdb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_state_createdAt_idx_f9712fdb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentSurvey.agentSurvey_active_createdAt_idx_7cd57621",
+    "label": "Create index \"agentSurvey_active_createdAt_idx_7cd57621\" on \"agentSurvey\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentSurvey_active_createdAt_idx_7cd57621",
+        "table": "agentSurvey"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentSurvey_active_createdAt_idx_7cd57621\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentSurvey_active_createdAt_idx_7cd57621\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentSurvey_active_createdAt_idx_7cd57621\"",
+        "sql": "CREATE INDEX \"agentSurvey_active_createdAt_idx_7cd57621\" ON \"public\".\"agentSurvey\" (\"active\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentSurvey_active_createdAt_idx_7cd57621\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentSurvey_active_createdAt_idx_7cd57621\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.surveyAnswer.surveyAnswer_surveyId_fpHash_idx_114d0920",
+    "label": "Create index \"surveyAnswer_surveyId_fpHash_idx_114d0920\" on \"surveyAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "surveyAnswer_surveyId_fpHash_idx_114d0920",
+        "table": "surveyAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"surveyAnswer_surveyId_fpHash_idx_114d0920\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"surveyAnswer_surveyId_fpHash_idx_114d0920\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"surveyAnswer_surveyId_fpHash_idx_114d0920\"",
+        "sql": "CREATE INDEX \"surveyAnswer_surveyId_fpHash_idx_114d0920\" ON \"public\".\"surveyAnswer\" (\"surveyId\", \"fpHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"surveyAnswer_surveyId_fpHash_idx_114d0920\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"surveyAnswer_surveyId_fpHash_idx_114d0920\""
+        ]
+      }
+    ]
+  }
+]

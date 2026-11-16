@@ -1,0 +1,1194 @@
+model Event {
+  id        String            @id @default(uuid())
+  type      String
+  payload   Json
+  source    String?
+  wallet    String?
+  venueId   String?
+  at        BigInt?
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  @@index([type, createdAt])
+  @@index([wallet, at])
+  @@index([venueId, at])
+}
+
+model ScanResult {
+  id             String            @id @default(uuid())
+  domain         String
+  url            String
+  score          Int?
+  report         Json
+  rulesetVersion String?
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([domain, createdAt])
+}
+
+model ChatSubscription {
+  id        String            @id @default(uuid())
+  chatId    BigInt            @unique
+  username  String            @unique
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model VenueJob {
+  id        String            @id @default(uuid())
+  jobId     String            @unique
+  status    String
+  client    String
+  provider  String?
+  payload   Json
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  @@index([status, createdAt])
+  @@index([client])
+}
+
+model VenueOffer {
+  id              String            @id
+  providerAddress String
+  active          Boolean           @default(true)
+  payload         Json
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@index([providerAddress, active])
+}
+
+model VenueMeta {
+  key       String            @id
+  value     Json
+  updatedAt temporal.updatedAtString()
+}
+
+model AgentWallet {
+  id           String            @id @default(uuid())
+  address      String            @unique
+  agentId      String?
+  venueId      String?
+  label        String
+  kind         String
+  registeredBy String
+  active       Boolean           @default(true)
+  // EPIC-176 owner controls — queryable mirror of payload fields
+  suspended        Boolean  @default(false)
+  suspendedAt      BigInt?
+  suspendedBy      String?
+  approvalAboveUsd Decimal?
+  maxTxPerHour     Int?
+  maxAmountPerHour Decimal?
+  allowedKinds     Json?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([venueId, active])
+  @@index([agentId])
+  @@index([active, createdAt])
+}
+
+model SpendEvent {
+  id           String            @id
+  wallet       String
+  venueId      String?
+  kind         String
+  amountUsd    Decimal
+  state        String
+  refId        String
+  txHash       String?
+  sourceChain  String?
+  denialReason String?
+  at           BigInt
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([wallet, at])
+  @@index([txHash])
+  @@index([venueId, at])
+  @@index([state, at])
+  @@index([denialReason, at])
+}
+
+// EPIC-176-11: durable parked-intent permits. Domain timestamps are
+// epoch-ms int8 with Ms suffix so createdAt/updatedAt stay the
+// conventional temporal audit columns (SpendEvent precedent: `at`).
+model SpendApproval {
+  id           String   @id
+  wallet       String
+  venueId      String?
+  amountUsd    Decimal
+  kind         String
+  refId        String
+  state        String   @default("pending")
+  decidedBy    String?
+  decidedAtMs  BigInt?
+  consumedAtMs BigInt?
+  expiresAtMs  BigInt
+  createdAtMs  BigInt
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([wallet, state])
+  @@index([wallet, createdAtMs])
+}
+
+model DelegateRecord {
+  id           String            @id
+  ownerWallet  String
+  delegate     String
+  chain        String
+  spendCapUsd  Decimal
+  authorizedAt BigInt
+  revokedAt    BigInt?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([ownerWallet])
+  @@index([revokedAt])
+}
+
+model EaasAnchor {
+  verdictId    String            @id
+  memoId       String
+  artifactHash String
+  status       String
+  attempts     Int               @default(0)
+  txHash       String?
+  blockNumber  String?
+  lastError    String?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([status])
+}
+
+model EaasRequest {
+  id            String            @id
+  kind          String
+  status        String
+  wallet        String?
+  attempts      Int               @default(0)
+  webhookStatus String?
+  reqCreatedAt  String
+  completedAt   String?
+  payload       Json
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@index([status])
+  @@index([wallet])
+}
+
+model EaasVerdict {
+  verdictId       String            @id
+  deliverableHash String?
+  consumerWallet  String?
+  paymentTx       String?
+  payload         Json
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@index([deliverableHash])
+  @@index([consumerWallet, createdAt])
+}
+
+model EaasSubscription {
+  wallet    String            @id
+  tier      String
+  expiresAt BigInt
+  quotaUsed Int               @default(0)
+  resetAt   BigInt
+  paymentTx String?
+  mintTx    String?
+  payload   Json
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  @@index([expiresAt])
+}
+
+model EaasContract {
+  id          String            @id
+  address     String
+  chainId     Int
+  ownerWallet String
+  active      Boolean           @default(true)
+  probedAt    BigInt
+  payload     Json
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([ownerWallet])
+  @@index([active])
+}
+
+model EaasEvalJob {
+  key        String            @id
+  contract   String
+  chainId    Int
+  jobId      String
+  verdictId  String
+  feedbackTx String?
+  paymentTx  String?
+  payload    Json
+  createdAt  TimestamptzString @default(now())
+  updatedAt  temporal.updatedAtString()
+
+  @@index([contract])
+  @@index([verdictId])
+}
+
+model MarketplaceService {
+  serviceId String            @id
+  payload   Json
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+// ─── EPIC-197: Agent Bounties ────────────────────────────────
+// Queryable columns only for what routes/sweepers filter on —
+// everything else rides in `payload` (catalog precedent).
+
+model Bounty {
+  bountyId     String            @id
+  status       String // open|claimed|submitted|passed|failed|rejected
+  onchainJobId String? // active ERC-8183 job; provider=0x0 until claim
+  jobAttempt   Int               @default(1) // one job = one attempt (Q37/Q38-A)
+  budgetUsdc   Decimal?
+  createdBy    String?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([status, createdAt])
+  @@index([onchainJobId])
+}
+
+model BountyClaim {
+  id           String            @id @default(uuid())
+  bountyId     String
+  jobAttempt   Int
+  passportId   String
+  payoutWallet String
+  state        String            @default("open") // open|expired|consumed
+  claimedAtMs  BigInt
+  leaseUntilMs BigInt
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@unique([bountyId, jobAttempt])
+  @@index([passportId, createdAt])
+  @@index([state, leaseUntilMs])
+}
+
+model BountyTransition {
+  id       String            @id @default(uuid())
+  bountyId String
+  actor    String
+  from     String
+  to       String
+  reason   String?
+  atMs     BigInt
+  payload  Json
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  @@index([bountyId, atMs])
+}
+
+model BountyOutcome {
+  id             String            @id @default(uuid())
+  bountyId       String
+  jobAttempt     Int
+  passportId     String?
+  verdict        String // pass|fail|timeout
+  reasonCodes    Json?
+  verdictMemoTx  String?
+  verdictRejectTx String?
+  commitSha      String?
+  payload        Json
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@unique([bountyId, jobAttempt])
+  @@index([passportId, createdAt])
+  @@index([verdict, createdAt])
+}
+
+// O7: AgentPassportNFT has no ERC721Enumerable — owners indexed from
+// Transfer events; row = latest observed owner per passport.
+model PassportOwner {
+  passportId  String            @id
+  owner       String
+  blockNumber BigInt
+  logIndex    Int?
+  payload     Json
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([owner])
+}
+
+model MarketplaceMeta {
+  hash      String            @id
+  payload   Json
+  createdAt TimestamptzString @default(now())
+}
+
+// ─── EPIC-199: Arc Task Board ────────────────────────────────────
+// BoardCard = bounty + board metadata, 1:1 with Bounty (no @@relation —
+// store is pluggable json|prisma, integrity enforced by tests).
+// `column` is a denormalized materialized column; source of truth is the
+// BoardEntry journal — reconciler alerts on drift (never auto-fixes).
+// specHash is immutable: written at create, never updated (D-199-4).
+model BoardCard {
+  cardId            String            @id // board-<ulid>
+  bountyId          String            @unique // → Bounty.bountyId (1:1)
+  column            String // todo|in_progress|testing|review|done|bug|cancelled
+  title             String
+  budgetUsdc        Decimal?
+  specHash          String // keccak256(spec) — immutable after create
+  createdBy         String? // ops actor
+  currentPassportId String? // passport of the active executor
+  fixDeadlineMs     BigInt? // Bug column: fix-resubmit TTL (199-09)
+  payload           Json // spec, labels, escrow refs
+  createdAt         TimestamptzString @default(now())
+  updatedAt         temporal.updatedAtString()
+
+  @@index([column, createdAt]) // board listing per column
+  @@index([currentPassportId]) // "my tasks" in agent cabinet
+  @@index([fixDeadlineMs]) // sweeper: expired Bug deadlines
+}
+
+// Append-only board journal — audit + source of truth for column
+// reconciliation (BountyTransition analogue, but board events not
+// lifecycle transitions). INSERT only, unique(cardId, seq).
+model BoardEntry {
+  id        String            @id @default(uuid())
+  cardId    String
+  seq       Int // monotonic per card
+  attempt   Int               @default(1)
+  kind      String // create|claim|submit|qa|review|bug|reopen|done|cancel|rating|note
+  actor     String // passportId|reviewer wallet|"ops"|"sweeper"|"qa"
+  txHash    String?
+  payload   Json // signatures, reasonCodes, score
+  atMs      BigInt
+  createdAt TimestamptzString @default(now())
+
+  @@unique([cardId, seq])
+  @@index([cardId, atMs])
+  @@index([kind, atMs])
+}
+
+// Universal ERC-8004 reputation write ledger (absorbs 197-13).
+// Idempotent: unique(sourceType, sourceId, jobAttempt) — retry never
+// duplicates giveFeedback. venue-jobs and board-cards share the table,
+// sourceType distinguishes the channel.
+model ReputationWrite {
+  id           String            @id @default(uuid())
+  sourceType   String // "board"|"venue"
+  sourceId     String // cardId | venue jobId
+  jobAttempt   Int               @default(1)
+  passportId   String
+  agentId      String? // ERC-8004 id; null → onchain skip (ledger-only)
+  score        Int // board: max(0,5-(attempt-1)); venue: +1/-1
+  status       String // pending|sent|skipped|failed
+  feedbackUri  String? // data:application/json proof package
+  feedbackHash String?
+  txHash       String? // giveFeedback tx
+  attempts     Int               @default(0) // retry counter
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@unique([sourceType, sourceId, jobAttempt])
+  @@index([passportId, createdAt]) // agent reputation aggregate
+  @@index([status, updatedAt]) // retry-worker: failed → resend
+  @@index([agentId])
+}
+
+// Outbox queue for ops-signer chain transactions (D-199-7).
+// Source of truth for retry after crash/reject; audit journal.
+// idempotencyKey unique → retry never duplicates an onchain write;
+// crash between journal and tx shows as `pending` for the worker.
+model ChainTxOutbox {
+  id             String            @id @default(uuid())
+  kind           String // createJob|setProvider|fund|submit|complete|
+  //                        // reject|claimRefund|giveFeedback
+  cardId         String? // → BoardCard (null for venue giveFeedback)
+  jobAttempt     Int?
+  idempotencyKey String            @unique // "board:{cardId}:{attempt}:{kind}"
+  status         String // pending|sent|confirmed|failed
+  txHash         String?
+  attempts       Int               @default(0)
+  lastError      String?
+  payload        Json // call args, gas, nonce
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([status, createdAt]) // worker: pending/failed → resend
+  @@index([cardId])
+}
+
+// EPIC-203: A2A v1.0 protocol — durable task/message/artifact store for the
+// passport tier (D-203-4, D-203-11). Anonymous-tier tasks live ONLY in Redis
+// with TTL — no model, never anchored (self-cleaning anti-spam).
+// Postgres rows are NEVER deleted after anchoring (D-203-12): anchoredAt /
+// anchorSeq flag the Merkle batch proof; task + artifacts are never pruned.
+model A2ATask {
+  id           String            @id @default(uuid())
+  contextId    String // A2A context — groups tasks in a conversation
+  status       String // submitted|working|completed|failed|canceled|input-required|rejected|auth-required
+  ownerAgentId String // ERC-8004 agentId of the owning/passport agent (tenant isolation: foreign taskId → 404)
+  tenant       String // venue/tenant namespace
+  anchoredAt   BigInt? // epoch-ms when the Merkle batch anchor tx confirmed
+  anchorSeq    BigInt? // position inside the anchored batch
+  payload      Json // full SDK Task shape — queryable cols above are the mirror
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([contextId])
+  @@index([tenant, ownerAgentId])
+  @@index([anchoredAt])
+}
+
+model A2AMessage {
+  id          String            @id @default(uuid())
+  taskId      String // → A2ATask.id
+  role        String // user|agent
+  partsJson   Json // A2A Message.parts (text/file/data parts)
+  fromAgentId String? // sender agentId (null for anonymous tier originators)
+  toAgentId   String? // recipient agentId — passport ext inbox/outbox
+  readAt      BigInt? // epoch-ms mark-read (passport ext, D-203-13)
+  createdAt   TimestamptzString @default(now())
+
+  @@index([taskId])
+  @@index([toAgentId, readAt])
+  @@index([fromAgentId])
+}
+
+model A2AArtifact {
+  id        String            @id @default(uuid())
+  taskId    String // → A2ATask.id
+  name      String?
+  partsJson Json // A2A Artifact.parts
+  createdAt TimestamptzString @default(now())
+
+  @@index([taskId])
+}
+
+// EPIC-204: payment-graph forensics index (SLICE-204-3).
+// Append-only settle edges. unique(chain,txHash,payer,seller) keeps
+// backfill re-runs and reorg retries idempotent — dup insert is a no-op.
+model ForensicsEdge {
+  id           String            @id @default(uuid())
+  chain        String            // "5042" mainnet | "5042002" testnet
+  payer        String            // lowercase 0x… — AuthUsed topics[1]
+  seller       String            // lowercase 0x…
+  amountAtomic BigInt            // USDC atomic units (decimals=6)
+  txHash       String
+  blockNumber  BigInt
+  source       String            // chain|seam
+  ts           BigInt            // block timestamp, epoch-sec
+  createdAt    TimestamptzString @default(now())
+
+  @@unique([chain, txHash, payer, seller])
+  @@index([chain, seller, blockNumber])
+  @@index([chain, payer])
+}
+
+// First-observed funding event per wallet — the forensics rule only
+// looks at the FIRST funder. unique(chain,funded): indexer inserts the
+// earliest funding; later events for the same wallet are dropped.
+model ForensicsFunding {
+  id             String            @id @default(uuid())
+  chain          String
+  funded         String            // lowercase 0x…
+  funder         String            // lowercase 0x…
+  txHash         String
+  blockNumber    BigInt
+  isPublicSource Boolean           @default(false)
+  sourceKind     String?           // exchange|bridge|custody_provider|contract
+  createdAt      TimestamptzString @default(now())
+
+  @@unique([chain, funded])
+  @@index([chain, funder])
+}
+
+// Indexer progress — one row per chain, upserted at each committed batch.
+// Resume = read lastBlock; advisory-lock on the batch tx (143 pattern).
+model ForensicsCursor {
+  id        String   @id @default(uuid())
+  chain     String   @unique
+  lastBlock BigInt
+  updatedAt temporal.updatedAtString()
+}
+
+// TG archive pipeline watermark (EPIC-217, D-217-8): one row per
+// stream — "traffic-daily" | "traffic-weekly" | "forensics-weekly" |
+// custom. throughAt = exclusive upper bound (unix ms) of the last
+// window sent to Telegram; committed ONLY after a successful send
+// (at-least-once — a failed send leaves the cursor behind and the
+// window retries on the next tick). No FKs — autonomous table.
+model ArchiveCursor {
+  id            String   @id @default(uuid())
+  stream        String   @unique
+  throughAt     BigInt
+  lastMessageId BigInt?
+  note          String?
+  updatedAt     temporal.updatedAtString()
+}
+
+// ─── EPIC-207: Economic Event ledger (SLICE-207-2) ────────────────
+// Append-only SoT for agent economic facts. Typed core columns mirror
+// @agentbadge/econ-events EconomicEvent; kind-specific data rides in
+// `payload`. unique(idempotencyKey) → dedupe→duplicate:true on retry.
+// ledgerSeq = global append order (serial) — stable cursor for scan();
+// per-stream order is (source, sourceId, seq), also unique.
+// NO update/delete paths in repositories — append-only enforced.
+model EconomicEvent {
+  ledgerSeq      BigInt   @default(autoincrement())
+  id             String   @id
+  spec           String
+  source         String
+  sourceId       String
+  seq            Int
+  kind           String
+  actor          String
+  counterparty   String?
+  amountUsdc     Decimal?
+  at             String            // ISO-8601 UTC (canonical event clock)
+  idempotencyKey String   @unique  // ev:{source}:{sourceId}:{seq}
+  payload        Json
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@unique([source, sourceId, seq])
+  @@unique([ledgerSeq])
+  @@index([actor, ledgerSeq])
+  @@index([counterparty, ledgerSeq])
+  @@index([kind, ledgerSeq])
+}
+
+// SLICE-207-4 (D-207-5): eager materialized trust-graph projection.
+// One row per (fromAgent, toAgent, kind) — updated in the SAME
+// transaction as the event append (appendInTx hook). The event log is
+// the source of truth; this table is a rebuildable fold — never store
+// authoritative fields here that are absent from the log.
+model AgentTrustEdge {
+  id          String   @id @default(uuid())
+  fromAgent   String   // event.actor
+  toAgent     String   // event.counterparty (events without one make no edge)
+  kind        String   // canonical event kind (work_accept, deliver, pay, verify, …)
+  eventCount  Int      // fold: +1 per event
+  totalUsd    Decimal  // fold: += amountUsdc (0 when absent)
+  firstEventAt String? // `at` of the lowest-ledgerSeq contributing event (207-5 API needs firstAt); null until first rebuild
+  firstEventSeq BigInt? // fold: min(ledgerSeq)
+  lastEventAt String   // `at` of the highest-ledgerSeq contributing event
+  lastEventSeq BigInt  // fold: max(ledgerSeq)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@unique([fromAgent, toAgent, kind])
+  @@index([toAgent, lastEventSeq])
+}
+
+// ─── EPIC-220: Payment Infrastructure Foundation (SLICE-220-2) ───────
+// Unified payment domain: Product/Price catalog projection + Payment
+// intent + per-rail PaymentAttempt + immutable PaymentReceipt +
+// append-only PaymentEvent audit. Money = Decimal (never float);
+// domain epoch-ms timestamps use Ms-suffix BigInt columns; typed
+// columns only for queryable filters — full entity rides in `payload`.
+//
+// Entity-level idempotency (D-220-8):
+// - Payment.reference @unique — business-level dedupe
+// - Payment.idempotencyKey @unique — client Idempotency-Key dedupe
+// - Attempt @@unique(provider, providerReference) — provider-side dedupe
+// - Attempt @@unique(provider, transactionHash) — replay protection
+// - Receipt @@unique(provider, externalReference) — evidence dedupe
+// Status transitions are domain-controlled (@agentbadge/payments);
+// repos persist only via expected-from guarded ops — no UPDATE in
+// the wild (D-220-6, spec 0.4).
+
+model PaymentProduct {
+  id          String            @id @default(uuid())
+  code        String            @unique // service-catalog SKU (D-220-5)
+  name        String
+  description String?
+  category    String // PASSPORT|SUBSCRIPTION|API_ACCESS|SCANNER|VERIFICATION|TASK|CUSTOM
+  active      Boolean           @default(true)
+  payload     Json
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([category, active])
+  @@index([active])
+}
+
+model PaymentPrice {
+  id          String            @id @default(uuid())
+  productId   String // → PaymentProduct.id
+  amount      Decimal // USD decimal, string-serialized at the edge
+  currency    String            @default("USD")
+  billingType String // ONE_TIME|RECURRING|USAGE_BASED
+  interval    String? // MONTH|YEAR
+  active      Boolean           @default(true)
+  payload     Json
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([productId, active])
+}
+
+model Payment {
+  id             String            @id
+  reference      String            @unique // business-level reference
+  idempotencyKey String?           @unique // client Idempotency-Key
+  customerId     String?
+  agentId        String?
+  productId      String?
+  orderId        String?
+  amount         Decimal // USD decimal-string at the edge
+  currency       String            @default("USD")
+  status         String // PENDING|PROCESSING|CONFIRMED|FAILED|EXPIRED|REFUNDED|DISPUTED
+  purpose        String // PASSPORT|SUBSCRIPTION|API_USAGE|TASK|CUSTOM
+  expiresAtMs    BigInt? // domain expiry deadline (D-220-12 lazy+sweeper)
+  createdAtMs    BigInt // domain timestamp from @agentbadge/payments entity
+  updatedAtMs    BigInt // last controlled-transition timestamp
+  payload        Json
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([status, createdAtMs])
+  @@index([customerId])
+  @@index([agentId])
+  @@index([productId])
+  @@index([orderId])
+  @@index([expiresAtMs]) // expiry sweeper
+}
+
+model PaymentAttempt {
+  id                String            @id
+  paymentId         String // → Payment.id
+  provider          String // STRIPE|DIRECT_USDC|X402|HEDERA
+  network           String? // eip155:8453, stripe, ...
+  token             String?
+  amount            Decimal // in `currency` units, decimal-string at edge
+  currency          String // USD|USDC
+  status            String // CREATED|PENDING|PROCESSING|CONFIRMED|FAILED|EXPIRED
+  providerReference String? // Stripe session id / provider payment id
+  transactionHash   String?
+  expiresAtMs       BigInt?
+  confirmedAtMs     BigInt?
+  payload           Json
+  createdAt         TimestamptzString @default(now())
+  updatedAt         temporal.updatedAtString()
+
+  @@unique([provider, providerReference])
+  @@unique([provider, transactionHash])
+  @@index([paymentId])
+  @@index([status, expiresAtMs]) // expiry sweeper
+  @@index([transactionHash])
+}
+
+// Immutable payment evidence — append-only, never updated/deleted.
+model PaymentReceipt {
+  id                String            @id
+  paymentId         String
+  attemptId         String
+  provider          String
+  externalReference String
+  network           String?
+  transactionHash   String?
+  payer             String?
+  recipient         String?
+  amount            Decimal
+  asset             String
+  verifiedAtMs      BigInt
+  payload           Json // verificationData rides here
+  createdAt         TimestamptzString @default(now())
+
+  @@unique([provider, externalReference])
+  @@index([paymentId])
+  @@index([attemptId])
+  @@index([transactionHash])
+}
+
+// 222-4: durable ops/reconciliation exception queue. Append-only
+// facts; lifecycle OPEN → RESOLVED|IGNORED.
+model PaymentException {
+  id             String            @id
+  paymentId      String?
+  attemptId      String?
+  kind           String // failureReason enum + RECONCILIATION_MISMATCH
+  severity       String // INFO|WARN|CRITICAL
+  details        Json? // {expected, actual, txHash, block, payer, …}
+  status         String // OPEN|RESOLVED|IGNORED
+  createdAtMs    BigInt
+  resolvedAtMs   BigInt?
+  resolutionNote String?
+  createdAt      TimestamptzString @default(now())
+
+  @@index([status, createdAtMs])
+  @@index([paymentId])
+  @@index([attemptId])
+  @@index([kind])
+}
+
+// Append-only audit of every controlled state transition (spec 0.4).
+model PaymentEvent {
+  id        String            @id
+  entity    String // PAYMENT|PAYMENT_ATTEMPT
+  paymentId String
+  attemptId String?
+  from      String
+  to        String
+  actor     String
+  reason    String?
+  atMs      BigInt
+  payload   Json
+  createdAt TimestamptzString @default(now())
+
+  @@index([paymentId, atMs])
+  @@index([attemptId, atMs])
+  @@index([entity, atMs])
+}
+
+// 223-1: per-paid-request usage record written by the x402 gateway for
+// every settled call (spec 3.5 — mandatory). Append-only; requestId is
+// the idempotency anchor deduping client retries (D-223-3).
+model UsageRecord {
+  id           String            @id
+  paymentId    String // → Payment.id
+  agentId      String? // payer-binding resolution; null when unbound (D-223-6)
+  resource     String // paid-resource id, e.g. "passport-request"
+  requestId    String            @unique // per-request idempotency anchor
+  amount       Decimal // USDC atomic units, decimal-string at edge
+  currency     String            @default("USDC")
+  network      String // CAIP-2, e.g. eip155:1874
+  payerAddress String
+  txHash       String?
+  createdAtMs  BigInt
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+
+  @@index([paymentId])
+  @@index([agentId, createdAtMs])
+  @@index([resource, createdAtMs])
+  @@index([payerAddress])
+  @@index([txHash])
+}
+
+// 208-1c (D-208-39): internal analytics for rescue CLI runs. Minimal,
+// no PII, no secrets — schema-validated + rate-limited at the route.
+// public registry (208-8) is a separate explicit-approval flow.
+model RescueTelemetryEvent {
+  id           String   @id @default(uuid())
+  executionId  String?  // optional — telemetry never requires it
+  routeFrom    String
+  routeTo      String
+  asset        String
+  amountUsdc   String   // raw base units; no Decimal to keep ingest trivial
+  status       String
+  txHashes     Json     // {approve?, burn?, mint?, refuel?}
+  cliVersion   String
+  ref          String?
+  uaHash       String?  // sha256(ua) truncated — no raw UA (PII hygiene)
+  createdAt    TimestamptzString @default(now())
+
+  @@index([routeTo, createdAt])
+  @@index([status, createdAt])
+}
+
+// ─── EPIC-252: Agent Request Inbox (SLICE-252-1) ──────────────────
+// Free async mailbox for agents (D-252-Q1). State vocabulary is
+// A2A-compatible: submitted|working|completed|failed.
+//
+// - fpHash = sha256(ip+ua+env-salt) — typed column because it keys the
+//   idempotency pair (D-252-Q5) and the 252-2 rate-limit. The full
+//   fingerprint snapshot (ua/referer/src/headers minus secrets) rides in
+//   `fingerprint` Json. Raw IP is NEVER stored.
+// - (idempotencyKey, fpHash) unique → client retry dedupe; rows without a
+//   key keep key=null so they always create new records (Postgres treats
+//   NULLs as distinct — the dedupe check is the app-level findByIdempotency).
+// - expiresAtMs: row TTL — janitor hard-deletes expired rows (410 contract).
+// - payload purge: janitor nulls `payload` on completed/failed rows older
+//   than retention (metadata/state/response/fingerprint stay).
+model AgentRequest {
+  id             String            @id @default(uuid())
+  state          String // submitted|working|completed|failed
+  kind           String?
+  payload        Json? // ≤256KB original prompt — purged by janitor
+  fingerprint    Json  // {ua, referer, src, headers} — secrets stripped
+  fpHash         String
+  agentId        String?
+  verified       Boolean           @default(false)
+  response       Json?
+  spamFlag       Boolean           @default(false)
+  idempotencyKey String?
+  expiresAtMs    BigInt
+  createdAtMs    BigInt
+  respondedAtMs  BigInt?
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@unique([idempotencyKey, fpHash])
+  @@index([state, createdAt])
+  @@index([fpHash])
+  @@index([agentId])
+  @@index([expiresAtMs])
+}
+
+// Open surveys agents can answer (D-252-Q6). `questions` Json holds the
+// survey definition; rating lands in ReputationWrite (existing model) only
+// for verified agents — anonymous answers stay unrated.
+model AgentSurvey {
+  id         String            @id @default(uuid())
+  title      String
+  questions  Json
+  active     Boolean           @default(true)
+  closesAtMs BigInt?
+  createdAtMs BigInt
+  createdAt  TimestamptzString @default(now())
+  updatedAt  temporal.updatedAtString()
+
+  @@index([active, createdAt])
+}
+
+// One answer row per (surveyId, agentId); anonymous answers dedupe
+// app-level on (surveyId, fpHash) — nullable unique columns can't.
+model SurveyAnswer {
+  id          String            @id @default(uuid())
+  surveyId    String
+  agentId     String?
+  fpHash      String?
+  softFpHash  String?
+  answers     Json
+  rated       Boolean           @default(false)
+  flag        String?
+  createdAtMs BigInt
+  createdAt   TimestamptzString @default(now())
+
+  @@unique([surveyId, agentId])
+  @@index([surveyId, fpHash])
+  @@index([surveyId, softFpHash])
+}
+
+// D-252-Q7: accumulated Q&A corpus — materialized when a request reaches
+// `completed`. questionHash = sha256(normalized question). The corpus
+// survives payload purge (it is the value, not a copy of the prompt).
+// v1 = exact/normalized hash + substring search; embeddings are phase 2.
+model AgentQAPair {
+  id              String            @id @default(uuid())
+  questionHash    String            @unique
+  question        String // normalized question text
+  response        Json
+  sourceRequestId String
+  uses            Int               @default(0)
+  createdAtMs     BigInt
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@index([question])
+  @@index([sourceRequestId])
+}
+
+// ─── EPIC-224: Agent Commerce (SLICE-224-1) ────────────────────
+// Task/Offer/Agreement/Submission/Evidence/Event/Payment for
+// agent↔human↔provider commerce. Actors are EVM wallets
+// (lowercase) — canonical actor id (D-224-3); *AgentId columns are
+// the optional Passport link. Money = Decimal (decimal-string at
+// the edge, never float). No escrow: CommercePayment is
+// RECORD_ONLY (D-224-4/D-224-15). market.ts / GEC rails untouched
+// (D-224-6). Arc-only — no HCS/Hedera (D-224-13).
+
+model CommerceTask {
+  id            String            @id @default(uuid())
+  buyerWallet   String // EVM lowercase — canonical actor (D-224-3)
+  buyerAgentId  String? // optional Passport link
+  title         String
+  description   String
+  requirements  Json? // spec Task.requirements record
+  budget        Decimal? // USD decimal; null = zero-budget OK
+  currency      String            @default("USD")
+  expiresAtMs   BigInt? // informational only — manual cancel (D-224-12)
+  status        String // DRAFT|OPEN|IN_PROGRESS|SUBMITTED|UNDER_REVIEW|COMPLETED|CANCELLED
+  payload       Json
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@index([status, createdAt])
+  @@index([buyerWallet, createdAt])
+  @@index([buyerAgentId])
+}
+
+model CommerceOffer {
+  id              String            @id @default(uuid())
+  taskId          String // → CommerceTask.id
+  providerWallet  String
+  providerAgentId String?
+  price           Decimal // decimal-string at edge
+  currency        String            @default("USD")
+  eta             String? // spec estimatedDuration
+  proposal        String
+  status          String // PENDING|ACCEPTED|REJECTED|WITHDRAWN
+  payload         Json
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@index([taskId, status])
+  @@index([providerWallet, createdAt])
+}
+
+model CommerceAgreement {
+  id                 String            @id @default(uuid())
+  taskId             String            @unique // one agreement per task (single-round, D-224-9)
+  offerId            String            @unique // accepted offer → agreement
+  buyerWallet        String
+  providerWallet     String
+  agreedAmount       Decimal
+  currency           String            @default("USD")
+  acceptanceCriteria Json?
+  status             String // ACTIVE|COMPLETED|CANCELLED|DISPUTED
+  completedAtMs      BigInt?
+  payload            Json
+  createdAt          TimestamptzString @default(now())
+  updatedAt          temporal.updatedAtString()
+
+  @@index([buyerWallet])
+  @@index([providerWallet])
+  @@index([status])
+}
+
+model CommerceSubmission {
+  id             String            @id @default(uuid())
+  agreementId    String // → CommerceAgreement.id
+  providerWallet String
+  summary        String // ≤4000 chars — contract guard (EPIC-206)
+  resultUrl      String?
+  status         String // SUBMITTED|ACCEPTED|REJECTED|REVISION_REQUIRED
+  reviewNote     String?
+  submittedAtMs  BigInt
+  reviewedAtMs   BigInt?
+  payload        Json
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([agreementId, createdAt])
+  @@index([status])
+  @@index([providerWallet])
+}
+
+// Append-only evidence rows (D-224-11: FILE = url+sha256 only).
+model CommerceEvidence {
+  id           String            @id @default(uuid())
+  submissionId String? // spec primary anchor
+  agreementId  String? // or agreement-level evidence
+  type         String // URL|FILE|HASH|TRANSACTION|API_RESPONSE|ATTESTATION
+  url          String?
+  hash         String? // sha256 (FILE/HASH) or txHash (TRANSACTION)
+  content      String? // API_RESPONSE snippet etc.
+  metadata     Json?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+
+  @@index([submissionId])
+  @@index([agreementId])
+  @@index([type])
+}
+
+// Append-only hash-chain journal (D-224-7, EPIC-172 pattern):
+// eventSeq gives total order; hash = hashCanonical(prevHash ‖ entry).
+model CommerceEvent {
+  eventSeq    BigInt            @default(autoincrement())
+  id          String            @id
+  entityType  String // task|offer|agreement|submission|evidence|payment
+  entityId    String
+  eventType   String // e.g. task.created, offer.accepted
+  actorWallet String?
+  prevHash    String // genesis sentinel on first row
+  hash        String
+  payload     Json
+  createdAt   TimestamptzString @default(now())
+
+  @@unique([eventSeq])
+  // SLICE-224-6 / H7: one row per chain predecessor — concurrent
+  // emitters on the same entity stream cannot both append (fork).
+  @@unique([entityType, entityId, prevHash])
+  @@index([entityType, entityId, eventSeq])
+  @@index([hash])
+  @@index([eventType, eventSeq])
+}
+
+// RECORD_ONLY payment mirror (D-224-4/D-224-15): payment status is
+// independent of task status. paymentId links to Payment.id only in
+// future AGENTBADGE_CHECKOUT mode.
+model CommercePayment {
+  id           String            @id @default(uuid())
+  agreementId  String            @unique // one payment record per agreement
+  mode         String            @default("RECORD_ONLY")
+  status       String // NOT_PAID|PAYMENT_RECORDED|PAYMENT_VERIFIED
+  amount       Decimal?
+  currency     String            @default("USD")
+  paymentId    String? // future → Payment.id (checkout mode)
+  recordedBy   String?
+  recordedAtMs BigInt?
+  verifiedBy   String?
+  verifiedAtMs BigInt?
+  note         String?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([status])
+}
+
+// ─── EPIC-226: Admin FinOps (SLICE-226-1) ──────────────────────────
+// Admin dashboard persistence: append-only AdminAction audit trail
+// (D-226-3), RefundIntent manual-complete work queue (D-226-4),
+// ReconciliationException resolve flow (D-226-6). Money = Decimal
+// (decimal-string at the edge, never float); domain epoch-ms use
+// Ms-suffix BigInt columns. Typed columns only for queryable filters.
+
+// Append-only audit of EVERY manual admin action — written before/with
+// the effect (spec: audit trail always). No update/delete path.
+model AdminAction {
+  id          String            @id @default(uuid())
+  action      String // REVIEW|RETRY_VERIFY|MARK_EXTERNAL_REVIEWED|REFUND|RESOLVE_EXCEPTION
+  subjectType String // payment|attempt|receipt|exception|refund_intent|agreement
+  subjectId   String
+  operator    String // required label (ADMIN_OPERATORS env or body)
+  evidence    Json? // free-form refs: txHash, url, note, report link
+  createdAtMs BigInt // domain timestamp
+  createdAt   TimestamptzString @default(now())
+
+  @@index([subjectType, subjectId, createdAtMs])
+  @@index([action, createdAtMs])
+  @@index([operator, createdAtMs])
+}
+
+// Manual refund work queue (D-226-4): Stripe refunds complete
+// automatically via provider API; on-chain (USDC/x402) refunds are
+// intents completed manually with a real verified txHash — never a
+// fabricated confirmation.
+model RefundIntent {
+  id            String            @id @default(uuid())
+  paymentId     String // → Payment.id
+  payee         String // destination wallet
+  amount        Decimal // decimal-string at the edge
+  currency      String            @default("USDC")
+  reason        String
+  evidence      Json?
+  status        String // OPEN|COMPLETED
+  txHash        String? // completion proof — verified on-chain read upstream
+  operator      String // creator label
+  createdAtMs   BigInt
+  completedAtMs BigInt?
+  completedBy   String?
+  payload       Json
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@index([paymentId])
+  @@index([status, createdAtMs])
+  @@index([payee])
+  @@index([txHash])
+}
+
+// Persistent reconciliation work queue (D-226-6). Deterministic ids
+// dedupe re-scans; OPEN → RESOLVED with resolution enum + resolvedBy —
+// every resolve also emits an AdminAction (service layer).
+model ReconciliationException {
+  id           String            @id
+  type         String // AMOUNT_MISMATCH|MISSING_TX|ORPHAN_TX|REVERTED
+  subjectRef   String // paymentId | txHash
+  details      Json?
+  status       String // OPEN|RESOLVED
+  resolution   String? // MATCHED|IGNORED|MANUAL_ADJUSTED|REFUNDED
+  resolvedBy   String?
+  resolvedAtMs BigInt?
+  createdAtMs  BigInt
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([status, createdAtMs])
+  @@index([type, createdAtMs])
+  @@index([subjectRef])
+}
+
+// ─── EPIC-225: Identity, Entitlements & Reputation (SLICE-225-1) ──
+// Actor = single table keyed by wallet (D-225-3): canonical actor id is
+// the EVM wallet (lowercase); nullable links to ERC-8004 agentId,
+// passport token, DID and org are enrichment — never required for
+// participation (spec: external executors without Passport).
+// Entitlement = grant layer only (D-225-2); ServicePass stays the
+// enforcement surface. ReputationFact = append-only verifiable facts
+// (D-225-5) — never an opaque score.
+
+model Actor {
+  wallet          String            @id // EVM wallet lowercase — canonical key (D-225-3)
+  type            String // REGISTERED_USER|REGISTERED_AGENT|EXTERNAL_AGENT|EXTERNAL_HUMAN|ORGANIZATION
+  agentId         String? // ERC-8004 id (EPIC-184/190)
+  passportTokenId String?
+  did             String?
+  orgId           String?
+  tier            String? // identity-tier association (not purchase — D-225-2)
+  payload         Json
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@index([type, createdAt])
+  @@index([agentId])
+  @@index([orgId])
+}
+
+model Entitlement {
+  id              String            @id @default(uuid())
+  ownerId         String // → Actor.wallet
+  productCode     String // catalog code: PASSPORT_BRONZE|READINESS_PREMIUM|API_ACCESS_*|MARKETPLACE_PARTICIPANT|MULTI_AGENT|...
+  sourcePaymentId String? // → Payment.id — VERIFIED payments only (invariant)
+  status          String // ACTIVE|EXPIRED|REVOKED
+  validFromMs     BigInt
+  validUntilMs    BigInt?
+  idempotencyKey  String            @unique // sweeper dedupe (e.g. paymentId|productCode)
+  // One ACTIVE row per (ownerId, productCode) enforced at DB level:
+  // activeSlot = `ownerId|productCode` while status=ACTIVE, else null.
+  activeSlot      String?           @unique
+  payload         Json
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@index([ownerId, productCode, status])
+  @@index([status, validUntilMs]) // expiry sweeper
+  @@index([sourcePaymentId])
+}
+
+// Append-only verifiable facts (D-225-5): sourceRef points at an
+// auditable record (agreementId, paymentId, verdictId, txHash) — the
+// fact stays verifiable without a hash-chain of its own. dedupeKey
+// makes emitters idempotent (sweeper retries, replays).
+model ReputationFact {
+  id          String            @id @default(uuid())
+  actorWallet String // → Actor.wallet
+  factType    String // TASK_COMPLETED|SUBMISSION_ACCEPTED|EVIDENCE_SUPPLIED|PAYMENT_VERIFIED|DISPUTE|ATTESTATION
+  subjectId   String? // taskId/submissionId/evidenceId/...
+  sourceRef   String // → auditable record
+  dedupeKey   String            @unique // emitter idempotency
+  atMs        BigInt // domain timestamp (insertion = createdAt)
+  payload     Json
+  createdAt   TimestamptzString @default(now())
+
+  @@index([actorWallet, factType, createdAt])
+  @@index([sourceRef])
+  @@index([subjectId])
+}

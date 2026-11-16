@@ -1,0 +1,200 @@
+[
+  {
+    "id": "table.agentWallet",
+    "label": "Create table \"agentWallet\"",
+    "summary": "Creates table \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"agentWallet\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"agentWallet\"",
+        "sql": "CREATE TABLE \"public\".\"agentWallet\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"address\" text NOT NULL,\n  \"agentId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"label\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"registeredBy\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"venueId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"agentWallet\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.agentWallet.agentWallet_address_key",
+    "label": "Add unique constraint on \"agentWallet\" (address)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "agentWallet_address_key",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"agentWallet_address_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentWallet_address_key",
+          "public",
+          "\"public\".\"agentWallet\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"agentWallet_address_key\"",
+        "sql": "ALTER TABLE \"public\".\"agentWallet\" ADD CONSTRAINT \"agentWallet_address_key\" UNIQUE (\"address\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"agentWallet_address_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentWallet_address_key",
+          "public",
+          "\"public\".\"agentWallet\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentWallet.agentWallet_active_createdAt_idx_7cd57621",
+    "label": "Create index \"agentWallet_active_createdAt_idx_7cd57621\" on \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentWallet_active_createdAt_idx_7cd57621",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentWallet_active_createdAt_idx_7cd57621\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet_active_createdAt_idx_7cd57621\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentWallet_active_createdAt_idx_7cd57621\"",
+        "sql": "CREATE INDEX \"agentWallet_active_createdAt_idx_7cd57621\" ON \"public\".\"agentWallet\" (\"active\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentWallet_active_createdAt_idx_7cd57621\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet_active_createdAt_idx_7cd57621\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentWallet.agentWallet_agentId_idx_8d0ba4f0",
+    "label": "Create index \"agentWallet_agentId_idx_8d0ba4f0\" on \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentWallet_agentId_idx_8d0ba4f0",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentWallet_agentId_idx_8d0ba4f0\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentWallet_agentId_idx_8d0ba4f0\"",
+        "sql": "CREATE INDEX \"agentWallet_agentId_idx_8d0ba4f0\" ON \"public\".\"agentWallet\" (\"agentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentWallet_agentId_idx_8d0ba4f0\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentWallet.agentWallet_venueId_active_idx_51915f5b",
+    "label": "Create index \"agentWallet_venueId_active_idx_51915f5b\" on \"agentWallet\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentWallet_venueId_active_idx_51915f5b",
+        "table": "agentWallet"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentWallet_venueId_active_idx_51915f5b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet_venueId_active_idx_51915f5b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentWallet_venueId_active_idx_51915f5b\"",
+        "sql": "CREATE INDEX \"agentWallet_venueId_active_idx_51915f5b\" ON \"public\".\"agentWallet\" (\"venueId\", \"active\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentWallet_venueId_active_idx_51915f5b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentWallet_venueId_active_idx_51915f5b\""
+        ]
+      }
+    ]
+  }
+]

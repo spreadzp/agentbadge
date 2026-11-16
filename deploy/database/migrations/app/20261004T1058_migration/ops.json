@@ -1,0 +1,1025 @@
+[
+  {
+    "id": "table.delegateRecord",
+    "label": "Create table \"delegateRecord\"",
+    "summary": "Creates table \"delegateRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "delegateRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"delegateRecord\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delegateRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"delegateRecord\"",
+        "sql": "CREATE TABLE \"public\".\"delegateRecord\" (\n  \"authorizedAt\" int8 NOT NULL,\n  \"chain\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"delegate\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"ownerWallet\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"revokedAt\" int8,\n  \"spendCapUsd\" numeric NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"delegateRecord\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delegateRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.eaasAnchor",
+    "label": "Create table \"eaasAnchor\"",
+    "summary": "Creates table \"eaasAnchor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "eaasAnchor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"eaasAnchor\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasAnchor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"eaasAnchor\"",
+        "sql": "CREATE TABLE \"public\".\"eaasAnchor\" (\n  \"artifactHash\" text NOT NULL,\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"blockNumber\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"lastError\" text,\n  \"memoId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"status\" text NOT NULL,\n  \"txHash\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verdictId\" text NOT NULL,\n  PRIMARY KEY (\"verdictId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"eaasAnchor\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasAnchor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.eaasContract",
+    "label": "Create table \"eaasContract\"",
+    "summary": "Creates table \"eaasContract\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "eaasContract"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"eaasContract\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasContract\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"eaasContract\"",
+        "sql": "CREATE TABLE \"public\".\"eaasContract\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"address\" text NOT NULL,\n  \"chainId\" int4 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"ownerWallet\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"probedAt\" int8 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"eaasContract\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasContract\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.eaasEvalJob",
+    "label": "Create table \"eaasEvalJob\"",
+    "summary": "Creates table \"eaasEvalJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "eaasEvalJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"eaasEvalJob\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasEvalJob\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"eaasEvalJob\"",
+        "sql": "CREATE TABLE \"public\".\"eaasEvalJob\" (\n  \"chainId\" int4 NOT NULL,\n  \"contract\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"feedbackTx\" text,\n  \"jobId\" text NOT NULL,\n  \"key\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"paymentTx\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verdictId\" text NOT NULL,\n  PRIMARY KEY (\"key\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"eaasEvalJob\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasEvalJob\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.eaasRequest",
+    "label": "Create table \"eaasRequest\"",
+    "summary": "Creates table \"eaasRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "eaasRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"eaasRequest\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"eaasRequest\"",
+        "sql": "CREATE TABLE \"public\".\"eaasRequest\" (\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"completedAt\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"reqCreatedAt\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"wallet\" text,\n  \"webhookStatus\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"eaasRequest\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.eaasSubscription",
+    "label": "Create table \"eaasSubscription\"",
+    "summary": "Creates table \"eaasSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "eaasSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"eaasSubscription\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasSubscription\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"eaasSubscription\"",
+        "sql": "CREATE TABLE \"public\".\"eaasSubscription\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"expiresAt\" int8 NOT NULL,\n  \"mintTx\" text,\n  \"payload\" json NOT NULL,\n  \"paymentTx\" text,\n  \"quotaUsed\" int4 DEFAULT 0 NOT NULL,\n  \"resetAt\" int8 NOT NULL,\n  \"tier\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"wallet\" text NOT NULL,\n  PRIMARY KEY (\"wallet\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"eaasSubscription\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasSubscription\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.eaasVerdict",
+    "label": "Create table \"eaasVerdict\"",
+    "summary": "Creates table \"eaasVerdict\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "eaasVerdict"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"eaasVerdict\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasVerdict\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"eaasVerdict\"",
+        "sql": "CREATE TABLE \"public\".\"eaasVerdict\" (\n  \"consumerWallet\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"deliverableHash\" text,\n  \"payload\" json NOT NULL,\n  \"paymentTx\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verdictId\" text NOT NULL,\n  PRIMARY KEY (\"verdictId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"eaasVerdict\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasVerdict\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.marketplaceMeta",
+    "label": "Create table \"marketplaceMeta\"",
+    "summary": "Creates table \"marketplaceMeta\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "marketplaceMeta"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"marketplaceMeta\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"marketplaceMeta\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"marketplaceMeta\"",
+        "sql": "CREATE TABLE \"public\".\"marketplaceMeta\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"hash\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  PRIMARY KEY (\"hash\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"marketplaceMeta\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"marketplaceMeta\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.marketplaceService",
+    "label": "Create table \"marketplaceService\"",
+    "summary": "Creates table \"marketplaceService\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "marketplaceService"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"marketplaceService\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"marketplaceService\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"marketplaceService\"",
+        "sql": "CREATE TABLE \"public\".\"marketplaceService\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"payload\" json NOT NULL,\n  \"serviceId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"serviceId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"marketplaceService\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"marketplaceService\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.event.at",
+    "label": "Add column \"at\" to \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "at",
+        "table": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"at\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "event",
+          "at"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"at\"",
+        "sql": "ALTER TABLE \"public\".\"event\" ADD COLUMN \"at\" int8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"at\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "event",
+          "at"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.event.venueId",
+    "label": "Add column \"venueId\" to \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "venueId",
+        "table": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"venueId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "event",
+          "venueId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"venueId\"",
+        "sql": "ALTER TABLE \"public\".\"event\" ADD COLUMN \"venueId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"venueId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "event",
+          "venueId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.event.wallet",
+    "label": "Add column \"wallet\" to \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "wallet",
+        "table": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"wallet\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "event",
+          "wallet"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"wallet\"",
+        "sql": "ALTER TABLE \"public\".\"event\" ADD COLUMN \"wallet\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"wallet\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "event",
+          "wallet"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.delegateRecord.delegateRecord_ownerWallet_idx_63c6ac04",
+    "label": "Create index \"delegateRecord_ownerWallet_idx_63c6ac04\" on \"delegateRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "delegateRecord_ownerWallet_idx_63c6ac04",
+        "table": "delegateRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"delegateRecord_ownerWallet_idx_63c6ac04\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delegateRecord_ownerWallet_idx_63c6ac04\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"delegateRecord_ownerWallet_idx_63c6ac04\"",
+        "sql": "CREATE INDEX \"delegateRecord_ownerWallet_idx_63c6ac04\" ON \"public\".\"delegateRecord\" (\"ownerWallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"delegateRecord_ownerWallet_idx_63c6ac04\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delegateRecord_ownerWallet_idx_63c6ac04\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.delegateRecord.delegateRecord_revokedAt_idx_f1d8e6b3",
+    "label": "Create index \"delegateRecord_revokedAt_idx_f1d8e6b3\" on \"delegateRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "delegateRecord_revokedAt_idx_f1d8e6b3",
+        "table": "delegateRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"delegateRecord_revokedAt_idx_f1d8e6b3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delegateRecord_revokedAt_idx_f1d8e6b3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"delegateRecord_revokedAt_idx_f1d8e6b3\"",
+        "sql": "CREATE INDEX \"delegateRecord_revokedAt_idx_f1d8e6b3\" ON \"public\".\"delegateRecord\" (\"revokedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"delegateRecord_revokedAt_idx_f1d8e6b3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"delegateRecord_revokedAt_idx_f1d8e6b3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasAnchor.eaasAnchor_status_idx_e98638ab",
+    "label": "Create index \"eaasAnchor_status_idx_e98638ab\" on \"eaasAnchor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasAnchor_status_idx_e98638ab",
+        "table": "eaasAnchor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasAnchor_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasAnchor_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasAnchor_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"eaasAnchor_status_idx_e98638ab\" ON \"public\".\"eaasAnchor\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasAnchor_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasAnchor_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasContract.eaasContract_active_idx_8af4daed",
+    "label": "Create index \"eaasContract_active_idx_8af4daed\" on \"eaasContract\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasContract_active_idx_8af4daed",
+        "table": "eaasContract"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasContract_active_idx_8af4daed\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasContract_active_idx_8af4daed\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasContract_active_idx_8af4daed\"",
+        "sql": "CREATE INDEX \"eaasContract_active_idx_8af4daed\" ON \"public\".\"eaasContract\" (\"active\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasContract_active_idx_8af4daed\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasContract_active_idx_8af4daed\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasContract.eaasContract_ownerWallet_idx_63c6ac04",
+    "label": "Create index \"eaasContract_ownerWallet_idx_63c6ac04\" on \"eaasContract\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasContract_ownerWallet_idx_63c6ac04",
+        "table": "eaasContract"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasContract_ownerWallet_idx_63c6ac04\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasContract_ownerWallet_idx_63c6ac04\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasContract_ownerWallet_idx_63c6ac04\"",
+        "sql": "CREATE INDEX \"eaasContract_ownerWallet_idx_63c6ac04\" ON \"public\".\"eaasContract\" (\"ownerWallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasContract_ownerWallet_idx_63c6ac04\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasContract_ownerWallet_idx_63c6ac04\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasEvalJob.eaasEvalJob_contract_idx_b7d987ca",
+    "label": "Create index \"eaasEvalJob_contract_idx_b7d987ca\" on \"eaasEvalJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasEvalJob_contract_idx_b7d987ca",
+        "table": "eaasEvalJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasEvalJob_contract_idx_b7d987ca\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasEvalJob_contract_idx_b7d987ca\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasEvalJob_contract_idx_b7d987ca\"",
+        "sql": "CREATE INDEX \"eaasEvalJob_contract_idx_b7d987ca\" ON \"public\".\"eaasEvalJob\" (\"contract\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasEvalJob_contract_idx_b7d987ca\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasEvalJob_contract_idx_b7d987ca\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasEvalJob.eaasEvalJob_verdictId_idx_49590bc8",
+    "label": "Create index \"eaasEvalJob_verdictId_idx_49590bc8\" on \"eaasEvalJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasEvalJob_verdictId_idx_49590bc8",
+        "table": "eaasEvalJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasEvalJob_verdictId_idx_49590bc8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasEvalJob_verdictId_idx_49590bc8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasEvalJob_verdictId_idx_49590bc8\"",
+        "sql": "CREATE INDEX \"eaasEvalJob_verdictId_idx_49590bc8\" ON \"public\".\"eaasEvalJob\" (\"verdictId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasEvalJob_verdictId_idx_49590bc8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasEvalJob_verdictId_idx_49590bc8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasRequest.eaasRequest_status_idx_e98638ab",
+    "label": "Create index \"eaasRequest_status_idx_e98638ab\" on \"eaasRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasRequest_status_idx_e98638ab",
+        "table": "eaasRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasRequest_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasRequest_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasRequest_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"eaasRequest_status_idx_e98638ab\" ON \"public\".\"eaasRequest\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasRequest_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasRequest_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasRequest.eaasRequest_wallet_idx_df52cf87",
+    "label": "Create index \"eaasRequest_wallet_idx_df52cf87\" on \"eaasRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasRequest_wallet_idx_df52cf87",
+        "table": "eaasRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasRequest_wallet_idx_df52cf87\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasRequest_wallet_idx_df52cf87\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasRequest_wallet_idx_df52cf87\"",
+        "sql": "CREATE INDEX \"eaasRequest_wallet_idx_df52cf87\" ON \"public\".\"eaasRequest\" (\"wallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasRequest_wallet_idx_df52cf87\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasRequest_wallet_idx_df52cf87\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasSubscription.eaasSubscription_expiresAt_idx_6b6b8c10",
+    "label": "Create index \"eaasSubscription_expiresAt_idx_6b6b8c10\" on \"eaasSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasSubscription_expiresAt_idx_6b6b8c10",
+        "table": "eaasSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasSubscription_expiresAt_idx_6b6b8c10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasSubscription_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasSubscription_expiresAt_idx_6b6b8c10\"",
+        "sql": "CREATE INDEX \"eaasSubscription_expiresAt_idx_6b6b8c10\" ON \"public\".\"eaasSubscription\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasSubscription_expiresAt_idx_6b6b8c10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasSubscription_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasVerdict.eaasVerdict_consumerWallet_createdAt_idx_6aaca527",
+    "label": "Create index \"eaasVerdict_consumerWallet_createdAt_idx_6aaca527\" on \"eaasVerdict\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasVerdict_consumerWallet_createdAt_idx_6aaca527",
+        "table": "eaasVerdict"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasVerdict_consumerWallet_createdAt_idx_6aaca527\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasVerdict_consumerWallet_createdAt_idx_6aaca527\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasVerdict_consumerWallet_createdAt_idx_6aaca527\"",
+        "sql": "CREATE INDEX \"eaasVerdict_consumerWallet_createdAt_idx_6aaca527\" ON \"public\".\"eaasVerdict\" (\"consumerWallet\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasVerdict_consumerWallet_createdAt_idx_6aaca527\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasVerdict_consumerWallet_createdAt_idx_6aaca527\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eaasVerdict.eaasVerdict_deliverableHash_idx_ed37c457",
+    "label": "Create index \"eaasVerdict_deliverableHash_idx_ed37c457\" on \"eaasVerdict\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eaasVerdict_deliverableHash_idx_ed37c457",
+        "table": "eaasVerdict"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eaasVerdict_deliverableHash_idx_ed37c457\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasVerdict_deliverableHash_idx_ed37c457\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eaasVerdict_deliverableHash_idx_ed37c457\"",
+        "sql": "CREATE INDEX \"eaasVerdict_deliverableHash_idx_ed37c457\" ON \"public\".\"eaasVerdict\" (\"deliverableHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eaasVerdict_deliverableHash_idx_ed37c457\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eaasVerdict_deliverableHash_idx_ed37c457\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.event.event_venueId_at_idx_6ab90d05",
+    "label": "Create index \"event_venueId_at_idx_6ab90d05\" on \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "event_venueId_at_idx_6ab90d05",
+        "table": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"event_venueId_at_idx_6ab90d05\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event_venueId_at_idx_6ab90d05\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"event_venueId_at_idx_6ab90d05\"",
+        "sql": "CREATE INDEX \"event_venueId_at_idx_6ab90d05\" ON \"public\".\"event\" (\"venueId\", \"at\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"event_venueId_at_idx_6ab90d05\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event_venueId_at_idx_6ab90d05\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.event.event_wallet_at_idx_b76ec1ce",
+    "label": "Create index \"event_wallet_at_idx_b76ec1ce\" on \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "event_wallet_at_idx_b76ec1ce",
+        "table": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"event_wallet_at_idx_b76ec1ce\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event_wallet_at_idx_b76ec1ce\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"event_wallet_at_idx_b76ec1ce\"",
+        "sql": "CREATE INDEX \"event_wallet_at_idx_b76ec1ce\" ON \"public\".\"event\" (\"wallet\", \"at\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"event_wallet_at_idx_b76ec1ce\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event_wallet_at_idx_b76ec1ce\""
+        ]
+      }
+    ]
+  }
+]

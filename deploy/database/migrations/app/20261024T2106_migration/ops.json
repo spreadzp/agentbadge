@@ -1,0 +1,284 @@
+[
+  {
+    "id": "table.economicEvent",
+    "label": "Create table \"economicEvent\"",
+    "summary": "Creates table \"economicEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "economicEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"economicEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"economicEvent\"",
+        "sql": "CREATE TABLE \"public\".\"economicEvent\" (\n  \"actor\" text NOT NULL,\n  \"amountUsdc\" numeric,\n  \"at\" text NOT NULL,\n  \"counterparty\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"ledgerSeq\" BIGSERIAL NOT NULL,\n  \"payload\" json NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"source\" text NOT NULL,\n  \"sourceId\" text NOT NULL,\n  \"spec\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"economicEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.economicEvent.economicEvent_idempotencyKey_key",
+    "label": "Add unique constraint on \"economicEvent\" (idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "economicEvent_idempotencyKey_key",
+        "table": "economicEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"economicEvent_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "economicEvent_idempotencyKey_key",
+          "public",
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"economicEvent_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"economicEvent\" ADD CONSTRAINT \"economicEvent_idempotencyKey_key\" UNIQUE (\"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"economicEvent_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "economicEvent_idempotencyKey_key",
+          "public",
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.economicEvent.economicEvent_source_sourceId_seq_key",
+    "label": "Add unique constraint on \"economicEvent\" (source, sourceId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "economicEvent_source_sourceId_seq_key",
+        "table": "economicEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"economicEvent_source_sourceId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "economicEvent_source_sourceId_seq_key",
+          "public",
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"economicEvent_source_sourceId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"economicEvent\" ADD CONSTRAINT \"economicEvent_source_sourceId_seq_key\" UNIQUE (\"source\", \"sourceId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"economicEvent_source_sourceId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "economicEvent_source_sourceId_seq_key",
+          "public",
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.economicEvent.economicEvent_ledgerSeq_key",
+    "label": "Add unique constraint on \"economicEvent\" (ledgerSeq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "economicEvent_ledgerSeq_key",
+        "table": "economicEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"economicEvent_ledgerSeq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "economicEvent_ledgerSeq_key",
+          "public",
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"economicEvent_ledgerSeq_key\"",
+        "sql": "ALTER TABLE \"public\".\"economicEvent\" ADD CONSTRAINT \"economicEvent_ledgerSeq_key\" UNIQUE (\"ledgerSeq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"economicEvent_ledgerSeq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "economicEvent_ledgerSeq_key",
+          "public",
+          "\"public\".\"economicEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.economicEvent.economicEvent_actor_ledgerSeq_idx_c13dd6fa",
+    "label": "Create index \"economicEvent_actor_ledgerSeq_idx_c13dd6fa\" on \"economicEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "economicEvent_actor_ledgerSeq_idx_c13dd6fa",
+        "table": "economicEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"economicEvent_actor_ledgerSeq_idx_c13dd6fa\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent_actor_ledgerSeq_idx_c13dd6fa\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"economicEvent_actor_ledgerSeq_idx_c13dd6fa\"",
+        "sql": "CREATE INDEX \"economicEvent_actor_ledgerSeq_idx_c13dd6fa\" ON \"public\".\"economicEvent\" (\"actor\", \"ledgerSeq\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"economicEvent_actor_ledgerSeq_idx_c13dd6fa\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent_actor_ledgerSeq_idx_c13dd6fa\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.economicEvent.economicEvent_counterparty_ledgerSeq_idx_0c96cd61",
+    "label": "Create index \"economicEvent_counterparty_ledgerSeq_idx_0c96cd61\" on \"economicEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "economicEvent_counterparty_ledgerSeq_idx_0c96cd61",
+        "table": "economicEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"economicEvent_counterparty_ledgerSeq_idx_0c96cd61\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent_counterparty_ledgerSeq_idx_0c96cd61\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"economicEvent_counterparty_ledgerSeq_idx_0c96cd61\"",
+        "sql": "CREATE INDEX \"economicEvent_counterparty_ledgerSeq_idx_0c96cd61\" ON \"public\".\"economicEvent\" (\"counterparty\", \"ledgerSeq\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"economicEvent_counterparty_ledgerSeq_idx_0c96cd61\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent_counterparty_ledgerSeq_idx_0c96cd61\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.economicEvent.economicEvent_kind_ledgerSeq_idx_82590d81",
+    "label": "Create index \"economicEvent_kind_ledgerSeq_idx_82590d81\" on \"economicEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "economicEvent_kind_ledgerSeq_idx_82590d81",
+        "table": "economicEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"economicEvent_kind_ledgerSeq_idx_82590d81\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent_kind_ledgerSeq_idx_82590d81\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"economicEvent_kind_ledgerSeq_idx_82590d81\"",
+        "sql": "CREATE INDEX \"economicEvent_kind_ledgerSeq_idx_82590d81\" ON \"public\".\"economicEvent\" (\"kind\", \"ledgerSeq\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"economicEvent_kind_ledgerSeq_idx_82590d81\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"economicEvent_kind_ledgerSeq_idx_82590d81\""
+        ]
+      }
+    ]
+  }
+]

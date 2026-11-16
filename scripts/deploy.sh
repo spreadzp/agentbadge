@@ -28,42 +28,23 @@ echo "  GIT_COMMIT=${GIT_COMMIT}"
 echo "  BUILD_DATE=${BUILD_DATE}"
 echo ""
 
-# ── Vendor file: workspace deps ─────────────────────────────────────
-# package.json references ../../packages/* via file: links, but the Docker
-# build context is hackathon/server — those paths don't exist inside it.
-# Vendor the needed packages into .docker-packages/; the Dockerfile copies
-# them to /packages/* so `file:../../packages/x` resolves correctly.
-VENDOR_DIR=".docker-packages"
-rm -rf "$VENDOR_DIR"
-
-# @agentbadge/payments ships dist/ (gitignored) — build before vendoring.
-if [ -d "../../packages/payments" ]; then
-  (cd ../../packages/payments && bun run build)
-fi
-
-for pkg in a2a payment-forensics econ-events database payments; do
-  src="../../packages/$pkg"
-  if [ -d "$src" ]; then
-    mkdir -p "$VENDOR_DIR"
-    rsync -a --delete --exclude node_modules --exclude .git --exclude '*.tsbuildinfo' --exclude graphify-out --exclude tests \
-      "$src/" "$VENDOR_DIR/$pkg/"
-  fi
-done
-
-# DB migrations for fly release_command (TCP 5432 is firewalled on dev net;
-# the release machine reaches db.prisma.io). Prisma CLI is fetched by bunx.
+# ── Sync prisma migration assets → tracked deploy/database/ ─────────
+# Migrations run on the fly release machine from /app/deploy/database
+# (see fly.toml release_command). The dir is COMMITTED — CI checkouts must
+# carry it too, so commit the diff after syncing schema/migration changes.
+DEPLOY_DB="deploy/database"
 if [ -d "../../packages/database" ]; then
-  mkdir -p "$VENDOR_DIR/database/src/prisma"
+  mkdir -p "$DEPLOY_DB/src"
   # prisma db migrate needs the full emit output (contract.prisma + emitted
-  # contract.json/contract.d.ts/db.ts) — vendor the whole dir, file-by-file
+  # contract.json/contract.d.ts/db.ts) — sync the whole dir, file-by-file
   # copies kept hitting missing-artifact errors on the release machine.
-  rsync -a "../../packages/database/src/prisma/" "$VENDOR_DIR/database/src/prisma/"
+  rsync -a --delete "../../packages/database/src/prisma/" "$DEPLOY_DB/src/prisma/"
   # Migration graph lives in migrations/: app/<name>/ edges + refs/db.json
   # pointers + snapshots/<hash>/ contract snapshots. Without it prisma sees
   # an empty graph and fails with MIGRATION.MARKER_MISMATCH.
-  rsync -a --delete "../../packages/database/migrations/" "$VENDOR_DIR/database/migrations/"
-  rsync -a "../../packages/database/package.json" "$VENDOR_DIR/database/"
-  cat > "$VENDOR_DIR/database/prisma.config.ts" <<'EOF'
+  rsync -a --delete "../../packages/database/migrations/" "$DEPLOY_DB/migrations/"
+  rsync -a "../../packages/database/package.json" "$DEPLOY_DB/"
+  cat > "$DEPLOY_DB/prisma.config.ts" <<'EOF'
 import { definePrismaConfig } from '@prisma/cli-engine';
 import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "table.scanResult",
+    "label": "Create table \"scanResult\"",
+    "summary": "Creates table \"scanResult\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "scanResult"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"scanResult\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"scanResult\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"scanResult\"",
+        "sql": "CREATE TABLE \"public\".\"scanResult\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"domain\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"report\" json NOT NULL,\n  \"rulesetVersion\" text,\n  \"score\" int4,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"url\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"scanResult\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"scanResult\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.scanResult.scanResult_domain_createdAt_idx_c5bd4696",
+    "label": "Create index \"scanResult_domain_createdAt_idx_c5bd4696\" on \"scanResult\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "scanResult_domain_createdAt_idx_c5bd4696",
+        "table": "scanResult"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"scanResult_domain_createdAt_idx_c5bd4696\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"scanResult_domain_createdAt_idx_c5bd4696\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"scanResult_domain_createdAt_idx_c5bd4696\"",
+        "sql": "CREATE INDEX \"scanResult_domain_createdAt_idx_c5bd4696\" ON \"public\".\"scanResult\" (\"domain\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"scanResult_domain_createdAt_idx_c5bd4696\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"scanResult_domain_createdAt_idx_c5bd4696\""
+        ]
+      }
+    ]
+  }
+]

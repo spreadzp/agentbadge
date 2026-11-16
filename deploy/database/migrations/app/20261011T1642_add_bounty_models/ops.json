@@ -1,0 +1,593 @@
+[
+  {
+    "id": "table.bounty",
+    "label": "Create table \"bounty\"",
+    "summary": "Creates table \"bounty\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "bounty"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"bounty\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bounty\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"bounty\"",
+        "sql": "CREATE TABLE \"public\".\"bounty\" (\n  \"bountyId\" text NOT NULL,\n  \"budgetUsdc\" numeric,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text,\n  \"jobAttempt\" int4 DEFAULT 1 NOT NULL,\n  \"onchainJobId\" text,\n  \"payload\" json NOT NULL,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"bountyId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"bounty\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bounty\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.bountyClaim",
+    "label": "Create table \"bountyClaim\"",
+    "summary": "Creates table \"bountyClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "bountyClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"bountyClaim\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyClaim\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"bountyClaim\"",
+        "sql": "CREATE TABLE \"public\".\"bountyClaim\" (\n  \"bountyId\" text NOT NULL,\n  \"claimedAtMs\" int8 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"jobAttempt\" int4 NOT NULL,\n  \"leaseUntilMs\" int8 NOT NULL,\n  \"passportId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"payoutWallet\" text NOT NULL,\n  \"state\" text DEFAULT 'open' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"bountyClaim\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyClaim\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.bountyOutcome",
+    "label": "Create table \"bountyOutcome\"",
+    "summary": "Creates table \"bountyOutcome\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "bountyOutcome"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"bountyOutcome\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyOutcome\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"bountyOutcome\"",
+        "sql": "CREATE TABLE \"public\".\"bountyOutcome\" (\n  \"bountyId\" text NOT NULL,\n  \"commitSha\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"jobAttempt\" int4 NOT NULL,\n  \"passportId\" text,\n  \"payload\" json NOT NULL,\n  \"reasonCodes\" json,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verdict\" text NOT NULL,\n  \"verdictMemoTx\" text,\n  \"verdictRejectTx\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"bountyOutcome\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyOutcome\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.bountyTransition",
+    "label": "Create table \"bountyTransition\"",
+    "summary": "Creates table \"bountyTransition\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "bountyTransition"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"bountyTransition\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyTransition\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"bountyTransition\"",
+        "sql": "CREATE TABLE \"public\".\"bountyTransition\" (\n  \"actor\" text NOT NULL,\n  \"atMs\" int8 NOT NULL,\n  \"bountyId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"from\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"reason\" text,\n  \"to\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"bountyTransition\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyTransition\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.passportOwner",
+    "label": "Create table \"passportOwner\"",
+    "summary": "Creates table \"passportOwner\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "passportOwner"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"passportOwner\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"passportOwner\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"passportOwner\"",
+        "sql": "CREATE TABLE \"public\".\"passportOwner\" (\n  \"blockNumber\" int8 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"logIndex\" int4,\n  \"owner\" text NOT NULL,\n  \"passportId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"passportId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"passportOwner\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"passportOwner\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.bountyClaim.bountyClaim_bountyId_jobAttempt_key",
+    "label": "Add unique constraint on \"bountyClaim\" (bountyId, jobAttempt)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "bountyClaim_bountyId_jobAttempt_key",
+        "table": "bountyClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"bountyClaim_bountyId_jobAttempt_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "bountyClaim_bountyId_jobAttempt_key",
+          "public",
+          "\"public\".\"bountyClaim\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"bountyClaim_bountyId_jobAttempt_key\"",
+        "sql": "ALTER TABLE \"public\".\"bountyClaim\" ADD CONSTRAINT \"bountyClaim_bountyId_jobAttempt_key\" UNIQUE (\"bountyId\", \"jobAttempt\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"bountyClaim_bountyId_jobAttempt_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "bountyClaim_bountyId_jobAttempt_key",
+          "public",
+          "\"public\".\"bountyClaim\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.bountyOutcome.bountyOutcome_bountyId_jobAttempt_key",
+    "label": "Add unique constraint on \"bountyOutcome\" (bountyId, jobAttempt)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "bountyOutcome_bountyId_jobAttempt_key",
+        "table": "bountyOutcome"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"bountyOutcome_bountyId_jobAttempt_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "bountyOutcome_bountyId_jobAttempt_key",
+          "public",
+          "\"public\".\"bountyOutcome\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"bountyOutcome_bountyId_jobAttempt_key\"",
+        "sql": "ALTER TABLE \"public\".\"bountyOutcome\" ADD CONSTRAINT \"bountyOutcome_bountyId_jobAttempt_key\" UNIQUE (\"bountyId\", \"jobAttempt\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"bountyOutcome_bountyId_jobAttempt_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "bountyOutcome_bountyId_jobAttempt_key",
+          "public",
+          "\"public\".\"bountyOutcome\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.bounty.bounty_onchainJobId_idx_83264b2c",
+    "label": "Create index \"bounty_onchainJobId_idx_83264b2c\" on \"bounty\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "bounty_onchainJobId_idx_83264b2c",
+        "table": "bounty"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"bounty_onchainJobId_idx_83264b2c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bounty_onchainJobId_idx_83264b2c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"bounty_onchainJobId_idx_83264b2c\"",
+        "sql": "CREATE INDEX \"bounty_onchainJobId_idx_83264b2c\" ON \"public\".\"bounty\" (\"onchainJobId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"bounty_onchainJobId_idx_83264b2c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bounty_onchainJobId_idx_83264b2c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.bounty.bounty_status_createdAt_idx_58610442",
+    "label": "Create index \"bounty_status_createdAt_idx_58610442\" on \"bounty\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "bounty_status_createdAt_idx_58610442",
+        "table": "bounty"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"bounty_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bounty_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"bounty_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"bounty_status_createdAt_idx_58610442\" ON \"public\".\"bounty\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"bounty_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bounty_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.bountyClaim.bountyClaim_passportId_createdAt_idx_a5f8836c",
+    "label": "Create index \"bountyClaim_passportId_createdAt_idx_a5f8836c\" on \"bountyClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "bountyClaim_passportId_createdAt_idx_a5f8836c",
+        "table": "bountyClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"bountyClaim_passportId_createdAt_idx_a5f8836c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyClaim_passportId_createdAt_idx_a5f8836c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"bountyClaim_passportId_createdAt_idx_a5f8836c\"",
+        "sql": "CREATE INDEX \"bountyClaim_passportId_createdAt_idx_a5f8836c\" ON \"public\".\"bountyClaim\" (\"passportId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"bountyClaim_passportId_createdAt_idx_a5f8836c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyClaim_passportId_createdAt_idx_a5f8836c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.bountyClaim.bountyClaim_state_leaseUntilMs_idx_adce2f36",
+    "label": "Create index \"bountyClaim_state_leaseUntilMs_idx_adce2f36\" on \"bountyClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "bountyClaim_state_leaseUntilMs_idx_adce2f36",
+        "table": "bountyClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"bountyClaim_state_leaseUntilMs_idx_adce2f36\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyClaim_state_leaseUntilMs_idx_adce2f36\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"bountyClaim_state_leaseUntilMs_idx_adce2f36\"",
+        "sql": "CREATE INDEX \"bountyClaim_state_leaseUntilMs_idx_adce2f36\" ON \"public\".\"bountyClaim\" (\"state\", \"leaseUntilMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"bountyClaim_state_leaseUntilMs_idx_adce2f36\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyClaim_state_leaseUntilMs_idx_adce2f36\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.bountyOutcome.bountyOutcome_passportId_createdAt_idx_a5f8836c",
+    "label": "Create index \"bountyOutcome_passportId_createdAt_idx_a5f8836c\" on \"bountyOutcome\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "bountyOutcome_passportId_createdAt_idx_a5f8836c",
+        "table": "bountyOutcome"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"bountyOutcome_passportId_createdAt_idx_a5f8836c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyOutcome_passportId_createdAt_idx_a5f8836c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"bountyOutcome_passportId_createdAt_idx_a5f8836c\"",
+        "sql": "CREATE INDEX \"bountyOutcome_passportId_createdAt_idx_a5f8836c\" ON \"public\".\"bountyOutcome\" (\"passportId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"bountyOutcome_passportId_createdAt_idx_a5f8836c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyOutcome_passportId_createdAt_idx_a5f8836c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.bountyOutcome.bountyOutcome_verdict_createdAt_idx_f4d0e5d2",
+    "label": "Create index \"bountyOutcome_verdict_createdAt_idx_f4d0e5d2\" on \"bountyOutcome\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "bountyOutcome_verdict_createdAt_idx_f4d0e5d2",
+        "table": "bountyOutcome"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"bountyOutcome_verdict_createdAt_idx_f4d0e5d2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyOutcome_verdict_createdAt_idx_f4d0e5d2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"bountyOutcome_verdict_createdAt_idx_f4d0e5d2\"",
+        "sql": "CREATE INDEX \"bountyOutcome_verdict_createdAt_idx_f4d0e5d2\" ON \"public\".\"bountyOutcome\" (\"verdict\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"bountyOutcome_verdict_createdAt_idx_f4d0e5d2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyOutcome_verdict_createdAt_idx_f4d0e5d2\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.bountyTransition.bountyTransition_bountyId_atMs_idx_ef8ffca4",
+    "label": "Create index \"bountyTransition_bountyId_atMs_idx_ef8ffca4\" on \"bountyTransition\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "bountyTransition_bountyId_atMs_idx_ef8ffca4",
+        "table": "bountyTransition"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"bountyTransition_bountyId_atMs_idx_ef8ffca4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyTransition_bountyId_atMs_idx_ef8ffca4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"bountyTransition_bountyId_atMs_idx_ef8ffca4\"",
+        "sql": "CREATE INDEX \"bountyTransition_bountyId_atMs_idx_ef8ffca4\" ON \"public\".\"bountyTransition\" (\"bountyId\", \"atMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"bountyTransition_bountyId_atMs_idx_ef8ffca4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"bountyTransition_bountyId_atMs_idx_ef8ffca4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.passportOwner.passportOwner_owner_idx_01158e2c",
+    "label": "Create index \"passportOwner_owner_idx_01158e2c\" on \"passportOwner\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "passportOwner_owner_idx_01158e2c",
+        "table": "passportOwner"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"passportOwner_owner_idx_01158e2c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"passportOwner_owner_idx_01158e2c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"passportOwner_owner_idx_01158e2c\"",
+        "sql": "CREATE INDEX \"passportOwner_owner_idx_01158e2c\" ON \"public\".\"passportOwner\" (\"owner\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"passportOwner_owner_idx_01158e2c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"passportOwner_owner_idx_01158e2c\""
+        ]
+      }
+    ]
+  }
+]

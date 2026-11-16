@@ -1,0 +1,1145 @@
+[
+  {
+    "id": "table.commerceAgreement",
+    "label": "Create table \"commerceAgreement\"",
+    "summary": "Creates table \"commerceAgreement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"commerceAgreement\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"commerceAgreement\"",
+        "sql": "CREATE TABLE \"public\".\"commerceAgreement\" (\n  \"acceptanceCriteria\" json,\n  \"agreedAmount\" numeric NOT NULL,\n  \"buyerWallet\" text NOT NULL,\n  \"completedAtMs\" int8,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USD' NOT NULL,\n  \"id\" text NOT NULL,\n  \"offerId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"providerWallet\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"taskId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"commerceAgreement\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.commerceEvent",
+    "label": "Create table \"commerceEvent\"",
+    "summary": "Creates table \"commerceEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "commerceEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"commerceEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"commerceEvent\"",
+        "sql": "CREATE TABLE \"public\".\"commerceEvent\" (\n  \"actorWallet\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"entityId\" text NOT NULL,\n  \"entityType\" text NOT NULL,\n  \"eventSeq\" BIGSERIAL NOT NULL,\n  \"eventType\" text NOT NULL,\n  \"hash\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"prevHash\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"commerceEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.commerceEvidence",
+    "label": "Create table \"commerceEvidence\"",
+    "summary": "Creates table \"commerceEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "commerceEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"commerceEvidence\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"commerceEvidence\"",
+        "sql": "CREATE TABLE \"public\".\"commerceEvidence\" (\n  \"agreementId\" text,\n  \"content\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"hash\" text,\n  \"id\" text NOT NULL,\n  \"metadata\" json,\n  \"payload\" json NOT NULL,\n  \"submissionId\" text,\n  \"type\" text NOT NULL,\n  \"url\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"commerceEvidence\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.commerceOffer",
+    "label": "Create table \"commerceOffer\"",
+    "summary": "Creates table \"commerceOffer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "commerceOffer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"commerceOffer\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceOffer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"commerceOffer\"",
+        "sql": "CREATE TABLE \"public\".\"commerceOffer\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USD' NOT NULL,\n  \"eta\" text,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"price\" numeric NOT NULL,\n  \"proposal\" text NOT NULL,\n  \"providerAgentId\" text,\n  \"providerWallet\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"taskId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"commerceOffer\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceOffer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.commercePayment",
+    "label": "Create table \"commercePayment\"",
+    "summary": "Creates table \"commercePayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "commercePayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"commercePayment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commercePayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"commercePayment\"",
+        "sql": "CREATE TABLE \"public\".\"commercePayment\" (\n  \"agreementId\" text NOT NULL,\n  \"amount\" numeric,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USD' NOT NULL,\n  \"id\" text NOT NULL,\n  \"mode\" text DEFAULT 'RECORD_ONLY' NOT NULL,\n  \"note\" text,\n  \"payload\" json NOT NULL,\n  \"paymentId\" text,\n  \"recordedAtMs\" int8,\n  \"recordedBy\" text,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verifiedAtMs\" int8,\n  \"verifiedBy\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"commercePayment\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commercePayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.commerceSubmission",
+    "label": "Create table \"commerceSubmission\"",
+    "summary": "Creates table \"commerceSubmission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "commerceSubmission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"commerceSubmission\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"commerceSubmission\"",
+        "sql": "CREATE TABLE \"public\".\"commerceSubmission\" (\n  \"agreementId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"providerWallet\" text NOT NULL,\n  \"resultUrl\" text,\n  \"reviewNote\" text,\n  \"reviewedAtMs\" int8,\n  \"status\" text NOT NULL,\n  \"submittedAtMs\" int8 NOT NULL,\n  \"summary\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"commerceSubmission\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.commerceTask",
+    "label": "Create table \"commerceTask\"",
+    "summary": "Creates table \"commerceTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "commerceTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"commerceTask\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"commerceTask\"",
+        "sql": "CREATE TABLE \"public\".\"commerceTask\" (\n  \"budget\" numeric,\n  \"buyerAgentId\" text,\n  \"buyerWallet\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USD' NOT NULL,\n  \"description\" text NOT NULL,\n  \"expiresAtMs\" int8,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"requirements\" json,\n  \"status\" text NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"commerceTask\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.commerceAgreement.commerceAgreement_taskId_key",
+    "label": "Add unique constraint on \"commerceAgreement\" (taskId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "commerceAgreement_taskId_key",
+        "table": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"commerceAgreement_taskId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceAgreement_taskId_key",
+          "public",
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"commerceAgreement_taskId_key\"",
+        "sql": "ALTER TABLE \"public\".\"commerceAgreement\" ADD CONSTRAINT \"commerceAgreement_taskId_key\" UNIQUE (\"taskId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"commerceAgreement_taskId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceAgreement_taskId_key",
+          "public",
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.commerceAgreement.commerceAgreement_offerId_key",
+    "label": "Add unique constraint on \"commerceAgreement\" (offerId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "commerceAgreement_offerId_key",
+        "table": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"commerceAgreement_offerId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceAgreement_offerId_key",
+          "public",
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"commerceAgreement_offerId_key\"",
+        "sql": "ALTER TABLE \"public\".\"commerceAgreement\" ADD CONSTRAINT \"commerceAgreement_offerId_key\" UNIQUE (\"offerId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"commerceAgreement_offerId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceAgreement_offerId_key",
+          "public",
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.commerceEvent.commerceEvent_eventSeq_key",
+    "label": "Add unique constraint on \"commerceEvent\" (eventSeq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "commerceEvent_eventSeq_key",
+        "table": "commerceEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"commerceEvent_eventSeq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceEvent_eventSeq_key",
+          "public",
+          "\"public\".\"commerceEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"commerceEvent_eventSeq_key\"",
+        "sql": "ALTER TABLE \"public\".\"commerceEvent\" ADD CONSTRAINT \"commerceEvent_eventSeq_key\" UNIQUE (\"eventSeq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"commerceEvent_eventSeq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceEvent_eventSeq_key",
+          "public",
+          "\"public\".\"commerceEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.commercePayment.commercePayment_agreementId_key",
+    "label": "Add unique constraint on \"commercePayment\" (agreementId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "commercePayment_agreementId_key",
+        "table": "commercePayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"commercePayment_agreementId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commercePayment_agreementId_key",
+          "public",
+          "\"public\".\"commercePayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"commercePayment_agreementId_key\"",
+        "sql": "ALTER TABLE \"public\".\"commercePayment\" ADD CONSTRAINT \"commercePayment_agreementId_key\" UNIQUE (\"agreementId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"commercePayment_agreementId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commercePayment_agreementId_key",
+          "public",
+          "\"public\".\"commercePayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceAgreement.commerceAgreement_buyerWallet_idx_1d31fe7c",
+    "label": "Create index \"commerceAgreement_buyerWallet_idx_1d31fe7c\" on \"commerceAgreement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceAgreement_buyerWallet_idx_1d31fe7c",
+        "table": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceAgreement_buyerWallet_idx_1d31fe7c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_buyerWallet_idx_1d31fe7c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceAgreement_buyerWallet_idx_1d31fe7c\"",
+        "sql": "CREATE INDEX \"commerceAgreement_buyerWallet_idx_1d31fe7c\" ON \"public\".\"commerceAgreement\" (\"buyerWallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceAgreement_buyerWallet_idx_1d31fe7c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_buyerWallet_idx_1d31fe7c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceAgreement.commerceAgreement_providerWallet_idx_fa866d84",
+    "label": "Create index \"commerceAgreement_providerWallet_idx_fa866d84\" on \"commerceAgreement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceAgreement_providerWallet_idx_fa866d84",
+        "table": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceAgreement_providerWallet_idx_fa866d84\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_providerWallet_idx_fa866d84\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceAgreement_providerWallet_idx_fa866d84\"",
+        "sql": "CREATE INDEX \"commerceAgreement_providerWallet_idx_fa866d84\" ON \"public\".\"commerceAgreement\" (\"providerWallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceAgreement_providerWallet_idx_fa866d84\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_providerWallet_idx_fa866d84\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceAgreement.commerceAgreement_status_idx_e98638ab",
+    "label": "Create index \"commerceAgreement_status_idx_e98638ab\" on \"commerceAgreement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceAgreement_status_idx_e98638ab",
+        "table": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceAgreement_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceAgreement_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"commerceAgreement_status_idx_e98638ab\" ON \"public\".\"commerceAgreement\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceAgreement_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceEvent.commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d",
+    "label": "Create index \"commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d\" on \"commerceEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d",
+        "table": "commerceEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d\"",
+        "sql": "CREATE INDEX \"commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d\" ON \"public\".\"commerceEvent\" (\"entityType\", \"entityId\", \"eventSeq\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent_entityType_entityId_eventSeq_idx_97af9b5d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceEvent.commerceEvent_eventType_eventSeq_idx_c614719e",
+    "label": "Create index \"commerceEvent_eventType_eventSeq_idx_c614719e\" on \"commerceEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceEvent_eventType_eventSeq_idx_c614719e",
+        "table": "commerceEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceEvent_eventType_eventSeq_idx_c614719e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent_eventType_eventSeq_idx_c614719e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceEvent_eventType_eventSeq_idx_c614719e\"",
+        "sql": "CREATE INDEX \"commerceEvent_eventType_eventSeq_idx_c614719e\" ON \"public\".\"commerceEvent\" (\"eventType\", \"eventSeq\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceEvent_eventType_eventSeq_idx_c614719e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent_eventType_eventSeq_idx_c614719e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceEvent.commerceEvent_hash_idx_d25bc543",
+    "label": "Create index \"commerceEvent_hash_idx_d25bc543\" on \"commerceEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceEvent_hash_idx_d25bc543",
+        "table": "commerceEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceEvent_hash_idx_d25bc543\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent_hash_idx_d25bc543\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceEvent_hash_idx_d25bc543\"",
+        "sql": "CREATE INDEX \"commerceEvent_hash_idx_d25bc543\" ON \"public\".\"commerceEvent\" (\"hash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceEvent_hash_idx_d25bc543\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvent_hash_idx_d25bc543\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceEvidence.commerceEvidence_agreementId_idx_ab6426ca",
+    "label": "Create index \"commerceEvidence_agreementId_idx_ab6426ca\" on \"commerceEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceEvidence_agreementId_idx_ab6426ca",
+        "table": "commerceEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceEvidence_agreementId_idx_ab6426ca\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence_agreementId_idx_ab6426ca\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceEvidence_agreementId_idx_ab6426ca\"",
+        "sql": "CREATE INDEX \"commerceEvidence_agreementId_idx_ab6426ca\" ON \"public\".\"commerceEvidence\" (\"agreementId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceEvidence_agreementId_idx_ab6426ca\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence_agreementId_idx_ab6426ca\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceEvidence.commerceEvidence_submissionId_idx_89cd3f4e",
+    "label": "Create index \"commerceEvidence_submissionId_idx_89cd3f4e\" on \"commerceEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceEvidence_submissionId_idx_89cd3f4e",
+        "table": "commerceEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceEvidence_submissionId_idx_89cd3f4e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence_submissionId_idx_89cd3f4e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceEvidence_submissionId_idx_89cd3f4e\"",
+        "sql": "CREATE INDEX \"commerceEvidence_submissionId_idx_89cd3f4e\" ON \"public\".\"commerceEvidence\" (\"submissionId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceEvidence_submissionId_idx_89cd3f4e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence_submissionId_idx_89cd3f4e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceEvidence.commerceEvidence_type_idx_b6b604ea",
+    "label": "Create index \"commerceEvidence_type_idx_b6b604ea\" on \"commerceEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceEvidence_type_idx_b6b604ea",
+        "table": "commerceEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceEvidence_type_idx_b6b604ea\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence_type_idx_b6b604ea\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceEvidence_type_idx_b6b604ea\"",
+        "sql": "CREATE INDEX \"commerceEvidence_type_idx_b6b604ea\" ON \"public\".\"commerceEvidence\" (\"type\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceEvidence_type_idx_b6b604ea\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceEvidence_type_idx_b6b604ea\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceOffer.commerceOffer_providerWallet_createdAt_idx_06369974",
+    "label": "Create index \"commerceOffer_providerWallet_createdAt_idx_06369974\" on \"commerceOffer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceOffer_providerWallet_createdAt_idx_06369974",
+        "table": "commerceOffer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceOffer_providerWallet_createdAt_idx_06369974\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceOffer_providerWallet_createdAt_idx_06369974\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceOffer_providerWallet_createdAt_idx_06369974\"",
+        "sql": "CREATE INDEX \"commerceOffer_providerWallet_createdAt_idx_06369974\" ON \"public\".\"commerceOffer\" (\"providerWallet\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceOffer_providerWallet_createdAt_idx_06369974\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceOffer_providerWallet_createdAt_idx_06369974\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceOffer.commerceOffer_taskId_status_idx_2ab445eb",
+    "label": "Create index \"commerceOffer_taskId_status_idx_2ab445eb\" on \"commerceOffer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceOffer_taskId_status_idx_2ab445eb",
+        "table": "commerceOffer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceOffer_taskId_status_idx_2ab445eb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceOffer_taskId_status_idx_2ab445eb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceOffer_taskId_status_idx_2ab445eb\"",
+        "sql": "CREATE INDEX \"commerceOffer_taskId_status_idx_2ab445eb\" ON \"public\".\"commerceOffer\" (\"taskId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceOffer_taskId_status_idx_2ab445eb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceOffer_taskId_status_idx_2ab445eb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commercePayment.commercePayment_status_idx_e98638ab",
+    "label": "Create index \"commercePayment_status_idx_e98638ab\" on \"commercePayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commercePayment_status_idx_e98638ab",
+        "table": "commercePayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commercePayment_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commercePayment_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commercePayment_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"commercePayment_status_idx_e98638ab\" ON \"public\".\"commercePayment\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commercePayment_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commercePayment_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceSubmission.commerceSubmission_agreementId_createdAt_idx_2d9f80d4",
+    "label": "Create index \"commerceSubmission_agreementId_createdAt_idx_2d9f80d4\" on \"commerceSubmission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceSubmission_agreementId_createdAt_idx_2d9f80d4",
+        "table": "commerceSubmission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceSubmission_agreementId_createdAt_idx_2d9f80d4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_agreementId_createdAt_idx_2d9f80d4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceSubmission_agreementId_createdAt_idx_2d9f80d4\"",
+        "sql": "CREATE INDEX \"commerceSubmission_agreementId_createdAt_idx_2d9f80d4\" ON \"public\".\"commerceSubmission\" (\"agreementId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceSubmission_agreementId_createdAt_idx_2d9f80d4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_agreementId_createdAt_idx_2d9f80d4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceSubmission.commerceSubmission_providerWallet_idx_fa866d84",
+    "label": "Create index \"commerceSubmission_providerWallet_idx_fa866d84\" on \"commerceSubmission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceSubmission_providerWallet_idx_fa866d84",
+        "table": "commerceSubmission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceSubmission_providerWallet_idx_fa866d84\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_providerWallet_idx_fa866d84\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceSubmission_providerWallet_idx_fa866d84\"",
+        "sql": "CREATE INDEX \"commerceSubmission_providerWallet_idx_fa866d84\" ON \"public\".\"commerceSubmission\" (\"providerWallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceSubmission_providerWallet_idx_fa866d84\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_providerWallet_idx_fa866d84\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceSubmission.commerceSubmission_status_idx_e98638ab",
+    "label": "Create index \"commerceSubmission_status_idx_e98638ab\" on \"commerceSubmission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceSubmission_status_idx_e98638ab",
+        "table": "commerceSubmission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceSubmission_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceSubmission_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"commerceSubmission_status_idx_e98638ab\" ON \"public\".\"commerceSubmission\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceSubmission_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceTask.commerceTask_buyerAgentId_idx_2205cb37",
+    "label": "Create index \"commerceTask_buyerAgentId_idx_2205cb37\" on \"commerceTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceTask_buyerAgentId_idx_2205cb37",
+        "table": "commerceTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceTask_buyerAgentId_idx_2205cb37\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask_buyerAgentId_idx_2205cb37\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceTask_buyerAgentId_idx_2205cb37\"",
+        "sql": "CREATE INDEX \"commerceTask_buyerAgentId_idx_2205cb37\" ON \"public\".\"commerceTask\" (\"buyerAgentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceTask_buyerAgentId_idx_2205cb37\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask_buyerAgentId_idx_2205cb37\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceTask.commerceTask_buyerWallet_createdAt_idx_081de507",
+    "label": "Create index \"commerceTask_buyerWallet_createdAt_idx_081de507\" on \"commerceTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceTask_buyerWallet_createdAt_idx_081de507",
+        "table": "commerceTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceTask_buyerWallet_createdAt_idx_081de507\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask_buyerWallet_createdAt_idx_081de507\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceTask_buyerWallet_createdAt_idx_081de507\"",
+        "sql": "CREATE INDEX \"commerceTask_buyerWallet_createdAt_idx_081de507\" ON \"public\".\"commerceTask\" (\"buyerWallet\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceTask_buyerWallet_createdAt_idx_081de507\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask_buyerWallet_createdAt_idx_081de507\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceTask.commerceTask_status_createdAt_idx_58610442",
+    "label": "Create index \"commerceTask_status_createdAt_idx_58610442\" on \"commerceTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceTask_status_createdAt_idx_58610442",
+        "table": "commerceTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceTask_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceTask_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"commerceTask_status_createdAt_idx_58610442\" ON \"public\".\"commerceTask\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceTask_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceTask_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  }
+]

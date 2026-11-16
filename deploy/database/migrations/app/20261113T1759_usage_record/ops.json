@@ -1,0 +1,473 @@
+[
+  {
+    "id": "table.paymentException",
+    "label": "Create table \"paymentException\"",
+    "summary": "Creates table \"paymentException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "paymentException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"paymentException\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"paymentException\"",
+        "sql": "CREATE TABLE \"public\".\"paymentException\" (\n  \"attemptId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"details\" json,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"paymentId\" text,\n  \"resolutionNote\" text,\n  \"resolvedAtMs\" int8,\n  \"severity\" text NOT NULL,\n  \"status\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"paymentException\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.usageRecord",
+    "label": "Create table \"usageRecord\"",
+    "summary": "Creates table \"usageRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "usageRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"usageRecord\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"usageRecord\"",
+        "sql": "CREATE TABLE \"public\".\"usageRecord\" (\n  \"agentId\" text,\n  \"amount\" numeric NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"currency\" text DEFAULT 'USDC' NOT NULL,\n  \"id\" text NOT NULL,\n  \"network\" text NOT NULL,\n  \"payerAddress\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"paymentId\" text NOT NULL,\n  \"requestId\" text NOT NULL,\n  \"resource\" text NOT NULL,\n  \"txHash\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"usageRecord\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.usageRecord.usageRecord_requestId_key",
+    "label": "Add unique constraint on \"usageRecord\" (requestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "usageRecord_requestId_key",
+        "table": "usageRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"usageRecord_requestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "usageRecord_requestId_key",
+          "public",
+          "\"public\".\"usageRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"usageRecord_requestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"usageRecord\" ADD CONSTRAINT \"usageRecord_requestId_key\" UNIQUE (\"requestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"usageRecord_requestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "usageRecord_requestId_key",
+          "public",
+          "\"public\".\"usageRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentException.paymentException_attemptId_idx_94f50eb9",
+    "label": "Create index \"paymentException_attemptId_idx_94f50eb9\" on \"paymentException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentException_attemptId_idx_94f50eb9",
+        "table": "paymentException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentException_attemptId_idx_94f50eb9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_attemptId_idx_94f50eb9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentException_attemptId_idx_94f50eb9\"",
+        "sql": "CREATE INDEX \"paymentException_attemptId_idx_94f50eb9\" ON \"public\".\"paymentException\" (\"attemptId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentException_attemptId_idx_94f50eb9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_attemptId_idx_94f50eb9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentException.paymentException_kind_idx_c9ca668f",
+    "label": "Create index \"paymentException_kind_idx_c9ca668f\" on \"paymentException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentException_kind_idx_c9ca668f",
+        "table": "paymentException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentException_kind_idx_c9ca668f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_kind_idx_c9ca668f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentException_kind_idx_c9ca668f\"",
+        "sql": "CREATE INDEX \"paymentException_kind_idx_c9ca668f\" ON \"public\".\"paymentException\" (\"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentException_kind_idx_c9ca668f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_kind_idx_c9ca668f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentException.paymentException_paymentId_idx_b2fe9a10",
+    "label": "Create index \"paymentException_paymentId_idx_b2fe9a10\" on \"paymentException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentException_paymentId_idx_b2fe9a10",
+        "table": "paymentException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentException_paymentId_idx_b2fe9a10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentException_paymentId_idx_b2fe9a10\"",
+        "sql": "CREATE INDEX \"paymentException_paymentId_idx_b2fe9a10\" ON \"public\".\"paymentException\" (\"paymentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentException_paymentId_idx_b2fe9a10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentException.paymentException_status_createdAtMs_idx_95013a06",
+    "label": "Create index \"paymentException_status_createdAtMs_idx_95013a06\" on \"paymentException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentException_status_createdAtMs_idx_95013a06",
+        "table": "paymentException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentException_status_createdAtMs_idx_95013a06\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentException_status_createdAtMs_idx_95013a06\"",
+        "sql": "CREATE INDEX \"paymentException_status_createdAtMs_idx_95013a06\" ON \"public\".\"paymentException\" (\"status\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentException_status_createdAtMs_idx_95013a06\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentException_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.usageRecord.usageRecord_agentId_createdAtMs_idx_be65b811",
+    "label": "Create index \"usageRecord_agentId_createdAtMs_idx_be65b811\" on \"usageRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "usageRecord_agentId_createdAtMs_idx_be65b811",
+        "table": "usageRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"usageRecord_agentId_createdAtMs_idx_be65b811\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_agentId_createdAtMs_idx_be65b811\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"usageRecord_agentId_createdAtMs_idx_be65b811\"",
+        "sql": "CREATE INDEX \"usageRecord_agentId_createdAtMs_idx_be65b811\" ON \"public\".\"usageRecord\" (\"agentId\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"usageRecord_agentId_createdAtMs_idx_be65b811\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_agentId_createdAtMs_idx_be65b811\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.usageRecord.usageRecord_payerAddress_idx_de0e56a9",
+    "label": "Create index \"usageRecord_payerAddress_idx_de0e56a9\" on \"usageRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "usageRecord_payerAddress_idx_de0e56a9",
+        "table": "usageRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"usageRecord_payerAddress_idx_de0e56a9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_payerAddress_idx_de0e56a9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"usageRecord_payerAddress_idx_de0e56a9\"",
+        "sql": "CREATE INDEX \"usageRecord_payerAddress_idx_de0e56a9\" ON \"public\".\"usageRecord\" (\"payerAddress\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"usageRecord_payerAddress_idx_de0e56a9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_payerAddress_idx_de0e56a9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.usageRecord.usageRecord_paymentId_idx_b2fe9a10",
+    "label": "Create index \"usageRecord_paymentId_idx_b2fe9a10\" on \"usageRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "usageRecord_paymentId_idx_b2fe9a10",
+        "table": "usageRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"usageRecord_paymentId_idx_b2fe9a10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"usageRecord_paymentId_idx_b2fe9a10\"",
+        "sql": "CREATE INDEX \"usageRecord_paymentId_idx_b2fe9a10\" ON \"public\".\"usageRecord\" (\"paymentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"usageRecord_paymentId_idx_b2fe9a10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.usageRecord.usageRecord_resource_createdAtMs_idx_0a23f75d",
+    "label": "Create index \"usageRecord_resource_createdAtMs_idx_0a23f75d\" on \"usageRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "usageRecord_resource_createdAtMs_idx_0a23f75d",
+        "table": "usageRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"usageRecord_resource_createdAtMs_idx_0a23f75d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_resource_createdAtMs_idx_0a23f75d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"usageRecord_resource_createdAtMs_idx_0a23f75d\"",
+        "sql": "CREATE INDEX \"usageRecord_resource_createdAtMs_idx_0a23f75d\" ON \"public\".\"usageRecord\" (\"resource\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"usageRecord_resource_createdAtMs_idx_0a23f75d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_resource_createdAtMs_idx_0a23f75d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.usageRecord.usageRecord_txHash_idx_3fbe8b55",
+    "label": "Create index \"usageRecord_txHash_idx_3fbe8b55\" on \"usageRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "usageRecord_txHash_idx_3fbe8b55",
+        "table": "usageRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"usageRecord_txHash_idx_3fbe8b55\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_txHash_idx_3fbe8b55\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"usageRecord_txHash_idx_3fbe8b55\"",
+        "sql": "CREATE INDEX \"usageRecord_txHash_idx_3fbe8b55\" ON \"public\".\"usageRecord\" (\"txHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"usageRecord_txHash_idx_3fbe8b55\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"usageRecord_txHash_idx_3fbe8b55\""
+        ]
+      }
+    ]
+  }
+]

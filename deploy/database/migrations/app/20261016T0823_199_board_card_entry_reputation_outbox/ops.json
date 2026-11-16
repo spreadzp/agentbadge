@@ -1,0 +1,716 @@
+[
+  {
+    "id": "table.boardCard",
+    "label": "Create table \"boardCard\"",
+    "summary": "Creates table \"boardCard\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "boardCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"boardCard\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"boardCard\"",
+        "sql": "CREATE TABLE \"public\".\"boardCard\" (\n  \"bountyId\" text NOT NULL,\n  \"budgetUsdc\" numeric,\n  \"cardId\" text NOT NULL,\n  \"column\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text,\n  \"currentPassportId\" text,\n  \"fixDeadlineMs\" int8,\n  \"payload\" json NOT NULL,\n  \"specHash\" text NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"cardId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"boardCard\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.boardEntry",
+    "label": "Create table \"boardEntry\"",
+    "summary": "Creates table \"boardEntry\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "boardEntry"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"boardEntry\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardEntry\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"boardEntry\"",
+        "sql": "CREATE TABLE \"public\".\"boardEntry\" (\n  \"actor\" text NOT NULL,\n  \"atMs\" int8 NOT NULL,\n  \"attempt\" int4 DEFAULT 1 NOT NULL,\n  \"cardId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"txHash\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"boardEntry\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardEntry\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.chainTxOutbox",
+    "label": "Create table \"chainTxOutbox\"",
+    "summary": "Creates table \"chainTxOutbox\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "chainTxOutbox"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"chainTxOutbox\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"chainTxOutbox\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"chainTxOutbox\"",
+        "sql": "CREATE TABLE \"public\".\"chainTxOutbox\" (\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"cardId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text NOT NULL,\n  \"jobAttempt\" int4,\n  \"kind\" text NOT NULL,\n  \"lastError\" text,\n  \"payload\" json NOT NULL,\n  \"status\" text NOT NULL,\n  \"txHash\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"chainTxOutbox\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"chainTxOutbox\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reputationWrite",
+    "label": "Create table \"reputationWrite\"",
+    "summary": "Creates table \"reputationWrite\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reputationWrite"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reputationWrite\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reputationWrite\"",
+        "sql": "CREATE TABLE \"public\".\"reputationWrite\" (\n  \"agentId\" text,\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"feedbackHash\" text,\n  \"feedbackUri\" text,\n  \"id\" text NOT NULL,\n  \"jobAttempt\" int4 DEFAULT 1 NOT NULL,\n  \"passportId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"score\" int4 NOT NULL,\n  \"sourceId\" text NOT NULL,\n  \"sourceType\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"txHash\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reputationWrite\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.boardCard.boardCard_bountyId_key",
+    "label": "Add unique constraint on \"boardCard\" (bountyId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "boardCard_bountyId_key",
+        "table": "boardCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"boardCard_bountyId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "boardCard_bountyId_key",
+          "public",
+          "\"public\".\"boardCard\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"boardCard_bountyId_key\"",
+        "sql": "ALTER TABLE \"public\".\"boardCard\" ADD CONSTRAINT \"boardCard_bountyId_key\" UNIQUE (\"bountyId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"boardCard_bountyId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "boardCard_bountyId_key",
+          "public",
+          "\"public\".\"boardCard\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.boardEntry.boardEntry_cardId_seq_key",
+    "label": "Add unique constraint on \"boardEntry\" (cardId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "boardEntry_cardId_seq_key",
+        "table": "boardEntry"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"boardEntry_cardId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "boardEntry_cardId_seq_key",
+          "public",
+          "\"public\".\"boardEntry\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"boardEntry_cardId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"boardEntry\" ADD CONSTRAINT \"boardEntry_cardId_seq_key\" UNIQUE (\"cardId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"boardEntry_cardId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "boardEntry_cardId_seq_key",
+          "public",
+          "\"public\".\"boardEntry\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.chainTxOutbox.chainTxOutbox_idempotencyKey_key",
+    "label": "Add unique constraint on \"chainTxOutbox\" (idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "chainTxOutbox_idempotencyKey_key",
+        "table": "chainTxOutbox"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"chainTxOutbox_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "chainTxOutbox_idempotencyKey_key",
+          "public",
+          "\"public\".\"chainTxOutbox\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"chainTxOutbox_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"chainTxOutbox\" ADD CONSTRAINT \"chainTxOutbox_idempotencyKey_key\" UNIQUE (\"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"chainTxOutbox_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "chainTxOutbox_idempotencyKey_key",
+          "public",
+          "\"public\".\"chainTxOutbox\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.reputationWrite.reputationWrite_sourceType_sourceId_jobAttempt_key",
+    "label": "Add unique constraint on \"reputationWrite\" (sourceType, sourceId, jobAttempt)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "reputationWrite_sourceType_sourceId_jobAttempt_key",
+        "table": "reputationWrite"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"reputationWrite_sourceType_sourceId_jobAttempt_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reputationWrite_sourceType_sourceId_jobAttempt_key",
+          "public",
+          "\"public\".\"reputationWrite\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"reputationWrite_sourceType_sourceId_jobAttempt_key\"",
+        "sql": "ALTER TABLE \"public\".\"reputationWrite\" ADD CONSTRAINT \"reputationWrite_sourceType_sourceId_jobAttempt_key\" UNIQUE (\"sourceType\", \"sourceId\", \"jobAttempt\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"reputationWrite_sourceType_sourceId_jobAttempt_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reputationWrite_sourceType_sourceId_jobAttempt_key",
+          "public",
+          "\"public\".\"reputationWrite\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.boardCard.boardCard_column_createdAt_idx_c11dd38f",
+    "label": "Create index \"boardCard_column_createdAt_idx_c11dd38f\" on \"boardCard\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "boardCard_column_createdAt_idx_c11dd38f",
+        "table": "boardCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"boardCard_column_createdAt_idx_c11dd38f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard_column_createdAt_idx_c11dd38f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"boardCard_column_createdAt_idx_c11dd38f\"",
+        "sql": "CREATE INDEX \"boardCard_column_createdAt_idx_c11dd38f\" ON \"public\".\"boardCard\" (\"column\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"boardCard_column_createdAt_idx_c11dd38f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard_column_createdAt_idx_c11dd38f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.boardCard.boardCard_currentPassportId_idx_74315c25",
+    "label": "Create index \"boardCard_currentPassportId_idx_74315c25\" on \"boardCard\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "boardCard_currentPassportId_idx_74315c25",
+        "table": "boardCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"boardCard_currentPassportId_idx_74315c25\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard_currentPassportId_idx_74315c25\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"boardCard_currentPassportId_idx_74315c25\"",
+        "sql": "CREATE INDEX \"boardCard_currentPassportId_idx_74315c25\" ON \"public\".\"boardCard\" (\"currentPassportId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"boardCard_currentPassportId_idx_74315c25\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard_currentPassportId_idx_74315c25\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.boardCard.boardCard_fixDeadlineMs_idx_16e741bf",
+    "label": "Create index \"boardCard_fixDeadlineMs_idx_16e741bf\" on \"boardCard\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "boardCard_fixDeadlineMs_idx_16e741bf",
+        "table": "boardCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"boardCard_fixDeadlineMs_idx_16e741bf\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard_fixDeadlineMs_idx_16e741bf\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"boardCard_fixDeadlineMs_idx_16e741bf\"",
+        "sql": "CREATE INDEX \"boardCard_fixDeadlineMs_idx_16e741bf\" ON \"public\".\"boardCard\" (\"fixDeadlineMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"boardCard_fixDeadlineMs_idx_16e741bf\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardCard_fixDeadlineMs_idx_16e741bf\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.boardEntry.boardEntry_cardId_atMs_idx_7d4652e6",
+    "label": "Create index \"boardEntry_cardId_atMs_idx_7d4652e6\" on \"boardEntry\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "boardEntry_cardId_atMs_idx_7d4652e6",
+        "table": "boardEntry"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"boardEntry_cardId_atMs_idx_7d4652e6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardEntry_cardId_atMs_idx_7d4652e6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"boardEntry_cardId_atMs_idx_7d4652e6\"",
+        "sql": "CREATE INDEX \"boardEntry_cardId_atMs_idx_7d4652e6\" ON \"public\".\"boardEntry\" (\"cardId\", \"atMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"boardEntry_cardId_atMs_idx_7d4652e6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardEntry_cardId_atMs_idx_7d4652e6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.boardEntry.boardEntry_kind_atMs_idx_c87599e9",
+    "label": "Create index \"boardEntry_kind_atMs_idx_c87599e9\" on \"boardEntry\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "boardEntry_kind_atMs_idx_c87599e9",
+        "table": "boardEntry"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"boardEntry_kind_atMs_idx_c87599e9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardEntry_kind_atMs_idx_c87599e9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"boardEntry_kind_atMs_idx_c87599e9\"",
+        "sql": "CREATE INDEX \"boardEntry_kind_atMs_idx_c87599e9\" ON \"public\".\"boardEntry\" (\"kind\", \"atMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"boardEntry_kind_atMs_idx_c87599e9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"boardEntry_kind_atMs_idx_c87599e9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.chainTxOutbox.chainTxOutbox_cardId_idx_c511c1e1",
+    "label": "Create index \"chainTxOutbox_cardId_idx_c511c1e1\" on \"chainTxOutbox\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "chainTxOutbox_cardId_idx_c511c1e1",
+        "table": "chainTxOutbox"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"chainTxOutbox_cardId_idx_c511c1e1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"chainTxOutbox_cardId_idx_c511c1e1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"chainTxOutbox_cardId_idx_c511c1e1\"",
+        "sql": "CREATE INDEX \"chainTxOutbox_cardId_idx_c511c1e1\" ON \"public\".\"chainTxOutbox\" (\"cardId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"chainTxOutbox_cardId_idx_c511c1e1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"chainTxOutbox_cardId_idx_c511c1e1\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.chainTxOutbox.chainTxOutbox_status_createdAt_idx_58610442",
+    "label": "Create index \"chainTxOutbox_status_createdAt_idx_58610442\" on \"chainTxOutbox\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "chainTxOutbox_status_createdAt_idx_58610442",
+        "table": "chainTxOutbox"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"chainTxOutbox_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"chainTxOutbox_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"chainTxOutbox_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"chainTxOutbox_status_createdAt_idx_58610442\" ON \"public\".\"chainTxOutbox\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"chainTxOutbox_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"chainTxOutbox_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reputationWrite.reputationWrite_agentId_idx_8d0ba4f0",
+    "label": "Create index \"reputationWrite_agentId_idx_8d0ba4f0\" on \"reputationWrite\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reputationWrite_agentId_idx_8d0ba4f0",
+        "table": "reputationWrite"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reputationWrite_agentId_idx_8d0ba4f0\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reputationWrite_agentId_idx_8d0ba4f0\"",
+        "sql": "CREATE INDEX \"reputationWrite_agentId_idx_8d0ba4f0\" ON \"public\".\"reputationWrite\" (\"agentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reputationWrite_agentId_idx_8d0ba4f0\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reputationWrite.reputationWrite_passportId_createdAt_idx_a5f8836c",
+    "label": "Create index \"reputationWrite_passportId_createdAt_idx_a5f8836c\" on \"reputationWrite\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reputationWrite_passportId_createdAt_idx_a5f8836c",
+        "table": "reputationWrite"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reputationWrite_passportId_createdAt_idx_a5f8836c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite_passportId_createdAt_idx_a5f8836c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reputationWrite_passportId_createdAt_idx_a5f8836c\"",
+        "sql": "CREATE INDEX \"reputationWrite_passportId_createdAt_idx_a5f8836c\" ON \"public\".\"reputationWrite\" (\"passportId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reputationWrite_passportId_createdAt_idx_a5f8836c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite_passportId_createdAt_idx_a5f8836c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reputationWrite.reputationWrite_status_updatedAt_idx_29f913bb",
+    "label": "Create index \"reputationWrite_status_updatedAt_idx_29f913bb\" on \"reputationWrite\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reputationWrite_status_updatedAt_idx_29f913bb",
+        "table": "reputationWrite"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reputationWrite_status_updatedAt_idx_29f913bb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite_status_updatedAt_idx_29f913bb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reputationWrite_status_updatedAt_idx_29f913bb\"",
+        "sql": "CREATE INDEX \"reputationWrite_status_updatedAt_idx_29f913bb\" ON \"public\".\"reputationWrite\" (\"status\", \"updatedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reputationWrite_status_updatedAt_idx_29f913bb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationWrite_status_updatedAt_idx_29f913bb\""
+        ]
+      }
+    ]
+  }
+]

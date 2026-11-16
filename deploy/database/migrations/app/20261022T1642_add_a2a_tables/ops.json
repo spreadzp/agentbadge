@@ -1,0 +1,392 @@
+[
+  {
+    "id": "table.a2AArtifact",
+    "label": "Create table \"a2AArtifact\"",
+    "summary": "Creates table \"a2AArtifact\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "a2AArtifact"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"a2AArtifact\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AArtifact\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"a2AArtifact\"",
+        "sql": "CREATE TABLE \"public\".\"a2AArtifact\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text,\n  \"partsJson\" json NOT NULL,\n  \"taskId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"a2AArtifact\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AArtifact\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.a2AMessage",
+    "label": "Create table \"a2AMessage\"",
+    "summary": "Creates table \"a2AMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "a2AMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"a2AMessage\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"a2AMessage\"",
+        "sql": "CREATE TABLE \"public\".\"a2AMessage\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"fromAgentId\" text,\n  \"id\" text NOT NULL,\n  \"partsJson\" json NOT NULL,\n  \"readAt\" int8,\n  \"role\" text NOT NULL,\n  \"taskId\" text NOT NULL,\n  \"toAgentId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"a2AMessage\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.a2ATask",
+    "label": "Create table \"a2ATask\"",
+    "summary": "Creates table \"a2ATask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "a2ATask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"a2ATask\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"a2ATask\"",
+        "sql": "CREATE TABLE \"public\".\"a2ATask\" (\n  \"anchorSeq\" int8,\n  \"anchoredAt\" int8,\n  \"contextId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"ownerAgentId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"status\" text NOT NULL,\n  \"tenant\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"a2ATask\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.a2AArtifact.a2AArtifact_taskId_idx_4965c936",
+    "label": "Create index \"a2AArtifact_taskId_idx_4965c936\" on \"a2AArtifact\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "a2AArtifact_taskId_idx_4965c936",
+        "table": "a2AArtifact"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"a2AArtifact_taskId_idx_4965c936\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AArtifact_taskId_idx_4965c936\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"a2AArtifact_taskId_idx_4965c936\"",
+        "sql": "CREATE INDEX \"a2AArtifact_taskId_idx_4965c936\" ON \"public\".\"a2AArtifact\" (\"taskId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"a2AArtifact_taskId_idx_4965c936\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AArtifact_taskId_idx_4965c936\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.a2AMessage.a2AMessage_fromAgentId_idx_f948ee59",
+    "label": "Create index \"a2AMessage_fromAgentId_idx_f948ee59\" on \"a2AMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "a2AMessage_fromAgentId_idx_f948ee59",
+        "table": "a2AMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"a2AMessage_fromAgentId_idx_f948ee59\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage_fromAgentId_idx_f948ee59\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"a2AMessage_fromAgentId_idx_f948ee59\"",
+        "sql": "CREATE INDEX \"a2AMessage_fromAgentId_idx_f948ee59\" ON \"public\".\"a2AMessage\" (\"fromAgentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"a2AMessage_fromAgentId_idx_f948ee59\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage_fromAgentId_idx_f948ee59\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.a2AMessage.a2AMessage_taskId_idx_4965c936",
+    "label": "Create index \"a2AMessage_taskId_idx_4965c936\" on \"a2AMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "a2AMessage_taskId_idx_4965c936",
+        "table": "a2AMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"a2AMessage_taskId_idx_4965c936\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage_taskId_idx_4965c936\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"a2AMessage_taskId_idx_4965c936\"",
+        "sql": "CREATE INDEX \"a2AMessage_taskId_idx_4965c936\" ON \"public\".\"a2AMessage\" (\"taskId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"a2AMessage_taskId_idx_4965c936\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage_taskId_idx_4965c936\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.a2AMessage.a2AMessage_toAgentId_readAt_idx_5be374e1",
+    "label": "Create index \"a2AMessage_toAgentId_readAt_idx_5be374e1\" on \"a2AMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "a2AMessage_toAgentId_readAt_idx_5be374e1",
+        "table": "a2AMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"a2AMessage_toAgentId_readAt_idx_5be374e1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage_toAgentId_readAt_idx_5be374e1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"a2AMessage_toAgentId_readAt_idx_5be374e1\"",
+        "sql": "CREATE INDEX \"a2AMessage_toAgentId_readAt_idx_5be374e1\" ON \"public\".\"a2AMessage\" (\"toAgentId\", \"readAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"a2AMessage_toAgentId_readAt_idx_5be374e1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2AMessage_toAgentId_readAt_idx_5be374e1\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.a2ATask.a2ATask_anchoredAt_idx_893527a5",
+    "label": "Create index \"a2ATask_anchoredAt_idx_893527a5\" on \"a2ATask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "a2ATask_anchoredAt_idx_893527a5",
+        "table": "a2ATask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"a2ATask_anchoredAt_idx_893527a5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask_anchoredAt_idx_893527a5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"a2ATask_anchoredAt_idx_893527a5\"",
+        "sql": "CREATE INDEX \"a2ATask_anchoredAt_idx_893527a5\" ON \"public\".\"a2ATask\" (\"anchoredAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"a2ATask_anchoredAt_idx_893527a5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask_anchoredAt_idx_893527a5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.a2ATask.a2ATask_contextId_idx_b3ef67fd",
+    "label": "Create index \"a2ATask_contextId_idx_b3ef67fd\" on \"a2ATask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "a2ATask_contextId_idx_b3ef67fd",
+        "table": "a2ATask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"a2ATask_contextId_idx_b3ef67fd\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask_contextId_idx_b3ef67fd\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"a2ATask_contextId_idx_b3ef67fd\"",
+        "sql": "CREATE INDEX \"a2ATask_contextId_idx_b3ef67fd\" ON \"public\".\"a2ATask\" (\"contextId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"a2ATask_contextId_idx_b3ef67fd\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask_contextId_idx_b3ef67fd\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.a2ATask.a2ATask_tenant_ownerAgentId_idx_2c464bde",
+    "label": "Create index \"a2ATask_tenant_ownerAgentId_idx_2c464bde\" on \"a2ATask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "a2ATask_tenant_ownerAgentId_idx_2c464bde",
+        "table": "a2ATask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"a2ATask_tenant_ownerAgentId_idx_2c464bde\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask_tenant_ownerAgentId_idx_2c464bde\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"a2ATask_tenant_ownerAgentId_idx_2c464bde\"",
+        "sql": "CREATE INDEX \"a2ATask_tenant_ownerAgentId_idx_2c464bde\" ON \"public\".\"a2ATask\" (\"tenant\", \"ownerAgentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"a2ATask_tenant_ownerAgentId_idx_2c464bde\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"a2ATask_tenant_ownerAgentId_idx_2c464bde\""
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,362 @@
+[
+  {
+    "id": "table.forensicsCursor",
+    "label": "Create table \"forensicsCursor\"",
+    "summary": "Creates table \"forensicsCursor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "forensicsCursor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"forensicsCursor\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsCursor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"forensicsCursor\"",
+        "sql": "CREATE TABLE \"public\".\"forensicsCursor\" (\n  \"chain\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"lastBlock\" int8 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"forensicsCursor\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsCursor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.forensicsEdge",
+    "label": "Create table \"forensicsEdge\"",
+    "summary": "Creates table \"forensicsEdge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "forensicsEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"forensicsEdge\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsEdge\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"forensicsEdge\"",
+        "sql": "CREATE TABLE \"public\".\"forensicsEdge\" (\n  \"amountAtomic\" int8 NOT NULL,\n  \"blockNumber\" int8 NOT NULL,\n  \"chain\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"payer\" text NOT NULL,\n  \"seller\" text NOT NULL,\n  \"source\" text NOT NULL,\n  \"ts\" int8 NOT NULL,\n  \"txHash\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"forensicsEdge\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsEdge\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.forensicsFunding",
+    "label": "Create table \"forensicsFunding\"",
+    "summary": "Creates table \"forensicsFunding\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "forensicsFunding"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"forensicsFunding\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsFunding\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"forensicsFunding\"",
+        "sql": "CREATE TABLE \"public\".\"forensicsFunding\" (\n  \"blockNumber\" int8 NOT NULL,\n  \"chain\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"funded\" text NOT NULL,\n  \"funder\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"isPublicSource\" bool DEFAULT false NOT NULL,\n  \"sourceKind\" text,\n  \"txHash\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"forensicsFunding\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsFunding\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.forensicsCursor.forensicsCursor_chain_key",
+    "label": "Add unique constraint on \"forensicsCursor\" (chain)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "forensicsCursor_chain_key",
+        "table": "forensicsCursor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"forensicsCursor_chain_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forensicsCursor_chain_key",
+          "public",
+          "\"public\".\"forensicsCursor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"forensicsCursor_chain_key\"",
+        "sql": "ALTER TABLE \"public\".\"forensicsCursor\" ADD CONSTRAINT \"forensicsCursor_chain_key\" UNIQUE (\"chain\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"forensicsCursor_chain_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forensicsCursor_chain_key",
+          "public",
+          "\"public\".\"forensicsCursor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.forensicsEdge.forensicsEdge_chain_txHash_payer_seller_key",
+    "label": "Add unique constraint on \"forensicsEdge\" (chain, txHash, payer, seller)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "forensicsEdge_chain_txHash_payer_seller_key",
+        "table": "forensicsEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"forensicsEdge_chain_txHash_payer_seller_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forensicsEdge_chain_txHash_payer_seller_key",
+          "public",
+          "\"public\".\"forensicsEdge\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"forensicsEdge_chain_txHash_payer_seller_key\"",
+        "sql": "ALTER TABLE \"public\".\"forensicsEdge\" ADD CONSTRAINT \"forensicsEdge_chain_txHash_payer_seller_key\" UNIQUE (\"chain\", \"txHash\", \"payer\", \"seller\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"forensicsEdge_chain_txHash_payer_seller_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forensicsEdge_chain_txHash_payer_seller_key",
+          "public",
+          "\"public\".\"forensicsEdge\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.forensicsFunding.forensicsFunding_chain_funded_key",
+    "label": "Add unique constraint on \"forensicsFunding\" (chain, funded)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "forensicsFunding_chain_funded_key",
+        "table": "forensicsFunding"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"forensicsFunding_chain_funded_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forensicsFunding_chain_funded_key",
+          "public",
+          "\"public\".\"forensicsFunding\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"forensicsFunding_chain_funded_key\"",
+        "sql": "ALTER TABLE \"public\".\"forensicsFunding\" ADD CONSTRAINT \"forensicsFunding_chain_funded_key\" UNIQUE (\"chain\", \"funded\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"forensicsFunding_chain_funded_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forensicsFunding_chain_funded_key",
+          "public",
+          "\"public\".\"forensicsFunding\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forensicsEdge.forensicsEdge_chain_payer_idx_5562e861",
+    "label": "Create index \"forensicsEdge_chain_payer_idx_5562e861\" on \"forensicsEdge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forensicsEdge_chain_payer_idx_5562e861",
+        "table": "forensicsEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forensicsEdge_chain_payer_idx_5562e861\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsEdge_chain_payer_idx_5562e861\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forensicsEdge_chain_payer_idx_5562e861\"",
+        "sql": "CREATE INDEX \"forensicsEdge_chain_payer_idx_5562e861\" ON \"public\".\"forensicsEdge\" (\"chain\", \"payer\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forensicsEdge_chain_payer_idx_5562e861\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsEdge_chain_payer_idx_5562e861\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forensicsEdge.forensicsEdge_chain_seller_blockNumber_idx_cdb637ae",
+    "label": "Create index \"forensicsEdge_chain_seller_blockNumber_idx_cdb637ae\" on \"forensicsEdge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forensicsEdge_chain_seller_blockNumber_idx_cdb637ae",
+        "table": "forensicsEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forensicsEdge_chain_seller_blockNumber_idx_cdb637ae\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsEdge_chain_seller_blockNumber_idx_cdb637ae\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forensicsEdge_chain_seller_blockNumber_idx_cdb637ae\"",
+        "sql": "CREATE INDEX \"forensicsEdge_chain_seller_blockNumber_idx_cdb637ae\" ON \"public\".\"forensicsEdge\" (\"chain\", \"seller\", \"blockNumber\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forensicsEdge_chain_seller_blockNumber_idx_cdb637ae\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsEdge_chain_seller_blockNumber_idx_cdb637ae\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forensicsFunding.forensicsFunding_chain_funder_idx_03f1cda3",
+    "label": "Create index \"forensicsFunding_chain_funder_idx_03f1cda3\" on \"forensicsFunding\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forensicsFunding_chain_funder_idx_03f1cda3",
+        "table": "forensicsFunding"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forensicsFunding_chain_funder_idx_03f1cda3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsFunding_chain_funder_idx_03f1cda3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forensicsFunding_chain_funder_idx_03f1cda3\"",
+        "sql": "CREATE INDEX \"forensicsFunding_chain_funder_idx_03f1cda3\" ON \"public\".\"forensicsFunding\" (\"chain\", \"funder\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forensicsFunding_chain_funder_idx_03f1cda3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forensicsFunding_chain_funder_idx_03f1cda3\""
+        ]
+      }
+    ]
+  }
+]

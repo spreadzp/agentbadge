@@ -1,0 +1,1103 @@
+[
+  {
+    "id": "table.actor",
+    "label": "Create table \"actor\"",
+    "summary": "Creates table \"actor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "actor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"actor\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"actor\"",
+        "sql": "CREATE TABLE \"public\".\"actor\" (\n  \"agentId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"did\" text,\n  \"orgId\" text,\n  \"passportTokenId\" text,\n  \"payload\" json NOT NULL,\n  \"tier\" text,\n  \"type\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"wallet\" text NOT NULL,\n  PRIMARY KEY (\"wallet\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"actor\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.adminAction",
+    "label": "Create table \"adminAction\"",
+    "summary": "Creates table \"adminAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "adminAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"adminAction\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"adminAction\"",
+        "sql": "CREATE TABLE \"public\".\"adminAction\" (\n  \"action\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"evidence\" json,\n  \"id\" text NOT NULL,\n  \"operator\" text NOT NULL,\n  \"subjectId\" text NOT NULL,\n  \"subjectType\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"adminAction\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.entitlement",
+    "label": "Create table \"entitlement\"",
+    "summary": "Creates table \"entitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"entitlement\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"entitlement\"",
+        "sql": "CREATE TABLE \"public\".\"entitlement\" (\n  \"activeSlot\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text NOT NULL,\n  \"ownerId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"productCode\" text NOT NULL,\n  \"sourcePaymentId\" text,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"validFromMs\" int8 NOT NULL,\n  \"validUntilMs\" int8,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"entitlement\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reconciliationException",
+    "label": "Create table \"reconciliationException\"",
+    "summary": "Creates table \"reconciliationException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reconciliationException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reconciliationException\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reconciliationException\"",
+        "sql": "CREATE TABLE \"public\".\"reconciliationException\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"details\" json,\n  \"id\" text NOT NULL,\n  \"resolution\" text,\n  \"resolvedAtMs\" int8,\n  \"resolvedBy\" text,\n  \"status\" text NOT NULL,\n  \"subjectRef\" text NOT NULL,\n  \"type\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reconciliationException\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.refundIntent",
+    "label": "Create table \"refundIntent\"",
+    "summary": "Creates table \"refundIntent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "refundIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"refundIntent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"refundIntent\"",
+        "sql": "CREATE TABLE \"public\".\"refundIntent\" (\n  \"amount\" numeric NOT NULL,\n  \"completedAtMs\" int8,\n  \"completedBy\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"currency\" text DEFAULT 'USDC' NOT NULL,\n  \"evidence\" json,\n  \"id\" text NOT NULL,\n  \"operator\" text NOT NULL,\n  \"payee\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"paymentId\" text NOT NULL,\n  \"reason\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"txHash\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"refundIntent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reputationFact",
+    "label": "Create table \"reputationFact\"",
+    "summary": "Creates table \"reputationFact\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reputationFact"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reputationFact\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reputationFact\"",
+        "sql": "CREATE TABLE \"public\".\"reputationFact\" (\n  \"actorWallet\" text NOT NULL,\n  \"atMs\" int8 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"dedupeKey\" text NOT NULL,\n  \"factType\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"sourceRef\" text NOT NULL,\n  \"subjectId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reputationFact\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.entitlement.entitlement_idempotencyKey_key",
+    "label": "Add unique constraint on \"entitlement\" (idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "entitlement_idempotencyKey_key",
+        "table": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"entitlement_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "entitlement_idempotencyKey_key",
+          "public",
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"entitlement_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"entitlement\" ADD CONSTRAINT \"entitlement_idempotencyKey_key\" UNIQUE (\"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"entitlement_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "entitlement_idempotencyKey_key",
+          "public",
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.entitlement.entitlement_activeSlot_key",
+    "label": "Add unique constraint on \"entitlement\" (activeSlot)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "entitlement_activeSlot_key",
+        "table": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"entitlement_activeSlot_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "entitlement_activeSlot_key",
+          "public",
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"entitlement_activeSlot_key\"",
+        "sql": "ALTER TABLE \"public\".\"entitlement\" ADD CONSTRAINT \"entitlement_activeSlot_key\" UNIQUE (\"activeSlot\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"entitlement_activeSlot_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "entitlement_activeSlot_key",
+          "public",
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.reputationFact.reputationFact_dedupeKey_key",
+    "label": "Add unique constraint on \"reputationFact\" (dedupeKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "reputationFact_dedupeKey_key",
+        "table": "reputationFact"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"reputationFact_dedupeKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reputationFact_dedupeKey_key",
+          "public",
+          "\"public\".\"reputationFact\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"reputationFact_dedupeKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"reputationFact\" ADD CONSTRAINT \"reputationFact_dedupeKey_key\" UNIQUE (\"dedupeKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"reputationFact_dedupeKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reputationFact_dedupeKey_key",
+          "public",
+          "\"public\".\"reputationFact\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.actor.actor_agentId_idx_8d0ba4f0",
+    "label": "Create index \"actor_agentId_idx_8d0ba4f0\" on \"actor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "actor_agentId_idx_8d0ba4f0",
+        "table": "actor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"actor_agentId_idx_8d0ba4f0\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"actor_agentId_idx_8d0ba4f0\"",
+        "sql": "CREATE INDEX \"actor_agentId_idx_8d0ba4f0\" ON \"public\".\"actor\" (\"agentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"actor_agentId_idx_8d0ba4f0\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor_agentId_idx_8d0ba4f0\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.actor.actor_orgId_idx_c5e5aabe",
+    "label": "Create index \"actor_orgId_idx_c5e5aabe\" on \"actor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "actor_orgId_idx_c5e5aabe",
+        "table": "actor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"actor_orgId_idx_c5e5aabe\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor_orgId_idx_c5e5aabe\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"actor_orgId_idx_c5e5aabe\"",
+        "sql": "CREATE INDEX \"actor_orgId_idx_c5e5aabe\" ON \"public\".\"actor\" (\"orgId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"actor_orgId_idx_c5e5aabe\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor_orgId_idx_c5e5aabe\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.actor.actor_type_createdAt_idx_00d94001",
+    "label": "Create index \"actor_type_createdAt_idx_00d94001\" on \"actor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "actor_type_createdAt_idx_00d94001",
+        "table": "actor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"actor_type_createdAt_idx_00d94001\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor_type_createdAt_idx_00d94001\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"actor_type_createdAt_idx_00d94001\"",
+        "sql": "CREATE INDEX \"actor_type_createdAt_idx_00d94001\" ON \"public\".\"actor\" (\"type\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"actor_type_createdAt_idx_00d94001\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"actor_type_createdAt_idx_00d94001\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminAction.adminAction_action_createdAtMs_idx_d9318111",
+    "label": "Create index \"adminAction_action_createdAtMs_idx_d9318111\" on \"adminAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminAction_action_createdAtMs_idx_d9318111",
+        "table": "adminAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminAction_action_createdAtMs_idx_d9318111\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction_action_createdAtMs_idx_d9318111\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminAction_action_createdAtMs_idx_d9318111\"",
+        "sql": "CREATE INDEX \"adminAction_action_createdAtMs_idx_d9318111\" ON \"public\".\"adminAction\" (\"action\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminAction_action_createdAtMs_idx_d9318111\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction_action_createdAtMs_idx_d9318111\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminAction.adminAction_operator_createdAtMs_idx_cb0bc76e",
+    "label": "Create index \"adminAction_operator_createdAtMs_idx_cb0bc76e\" on \"adminAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminAction_operator_createdAtMs_idx_cb0bc76e",
+        "table": "adminAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminAction_operator_createdAtMs_idx_cb0bc76e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction_operator_createdAtMs_idx_cb0bc76e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminAction_operator_createdAtMs_idx_cb0bc76e\"",
+        "sql": "CREATE INDEX \"adminAction_operator_createdAtMs_idx_cb0bc76e\" ON \"public\".\"adminAction\" (\"operator\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminAction_operator_createdAtMs_idx_cb0bc76e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction_operator_createdAtMs_idx_cb0bc76e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminAction.adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106",
+    "label": "Create index \"adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106\" on \"adminAction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106",
+        "table": "adminAction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106\"",
+        "sql": "CREATE INDEX \"adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106\" ON \"public\".\"adminAction\" (\"subjectType\", \"subjectId\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminAction_subjectType_subjectId_createdAtMs_idx_15fe9106\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.entitlement.entitlement_ownerId_productCode_status_idx_d133f171",
+    "label": "Create index \"entitlement_ownerId_productCode_status_idx_d133f171\" on \"entitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "entitlement_ownerId_productCode_status_idx_d133f171",
+        "table": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"entitlement_ownerId_productCode_status_idx_d133f171\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_ownerId_productCode_status_idx_d133f171\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"entitlement_ownerId_productCode_status_idx_d133f171\"",
+        "sql": "CREATE INDEX \"entitlement_ownerId_productCode_status_idx_d133f171\" ON \"public\".\"entitlement\" (\"ownerId\", \"productCode\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"entitlement_ownerId_productCode_status_idx_d133f171\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_ownerId_productCode_status_idx_d133f171\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.entitlement.entitlement_sourcePaymentId_idx_423bfc4f",
+    "label": "Create index \"entitlement_sourcePaymentId_idx_423bfc4f\" on \"entitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "entitlement_sourcePaymentId_idx_423bfc4f",
+        "table": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"entitlement_sourcePaymentId_idx_423bfc4f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_sourcePaymentId_idx_423bfc4f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"entitlement_sourcePaymentId_idx_423bfc4f\"",
+        "sql": "CREATE INDEX \"entitlement_sourcePaymentId_idx_423bfc4f\" ON \"public\".\"entitlement\" (\"sourcePaymentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"entitlement_sourcePaymentId_idx_423bfc4f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_sourcePaymentId_idx_423bfc4f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.entitlement.entitlement_status_validUntilMs_idx_3dda2d9c",
+    "label": "Create index \"entitlement_status_validUntilMs_idx_3dda2d9c\" on \"entitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "entitlement_status_validUntilMs_idx_3dda2d9c",
+        "table": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"entitlement_status_validUntilMs_idx_3dda2d9c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_status_validUntilMs_idx_3dda2d9c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"entitlement_status_validUntilMs_idx_3dda2d9c\"",
+        "sql": "CREATE INDEX \"entitlement_status_validUntilMs_idx_3dda2d9c\" ON \"public\".\"entitlement\" (\"status\", \"validUntilMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"entitlement_status_validUntilMs_idx_3dda2d9c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_status_validUntilMs_idx_3dda2d9c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reconciliationException.reconciliationException_status_createdAtMs_idx_95013a06",
+    "label": "Create index \"reconciliationException_status_createdAtMs_idx_95013a06\" on \"reconciliationException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reconciliationException_status_createdAtMs_idx_95013a06",
+        "table": "reconciliationException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reconciliationException_status_createdAtMs_idx_95013a06\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reconciliationException_status_createdAtMs_idx_95013a06\"",
+        "sql": "CREATE INDEX \"reconciliationException_status_createdAtMs_idx_95013a06\" ON \"public\".\"reconciliationException\" (\"status\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reconciliationException_status_createdAtMs_idx_95013a06\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reconciliationException.reconciliationException_subjectRef_idx_6307adf9",
+    "label": "Create index \"reconciliationException_subjectRef_idx_6307adf9\" on \"reconciliationException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reconciliationException_subjectRef_idx_6307adf9",
+        "table": "reconciliationException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reconciliationException_subjectRef_idx_6307adf9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException_subjectRef_idx_6307adf9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reconciliationException_subjectRef_idx_6307adf9\"",
+        "sql": "CREATE INDEX \"reconciliationException_subjectRef_idx_6307adf9\" ON \"public\".\"reconciliationException\" (\"subjectRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reconciliationException_subjectRef_idx_6307adf9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException_subjectRef_idx_6307adf9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reconciliationException.reconciliationException_type_createdAtMs_idx_8d1ab589",
+    "label": "Create index \"reconciliationException_type_createdAtMs_idx_8d1ab589\" on \"reconciliationException\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reconciliationException_type_createdAtMs_idx_8d1ab589",
+        "table": "reconciliationException"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reconciliationException_type_createdAtMs_idx_8d1ab589\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException_type_createdAtMs_idx_8d1ab589\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reconciliationException_type_createdAtMs_idx_8d1ab589\"",
+        "sql": "CREATE INDEX \"reconciliationException_type_createdAtMs_idx_8d1ab589\" ON \"public\".\"reconciliationException\" (\"type\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reconciliationException_type_createdAtMs_idx_8d1ab589\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reconciliationException_type_createdAtMs_idx_8d1ab589\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.refundIntent.refundIntent_payee_idx_30918ee6",
+    "label": "Create index \"refundIntent_payee_idx_30918ee6\" on \"refundIntent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "refundIntent_payee_idx_30918ee6",
+        "table": "refundIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"refundIntent_payee_idx_30918ee6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_payee_idx_30918ee6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"refundIntent_payee_idx_30918ee6\"",
+        "sql": "CREATE INDEX \"refundIntent_payee_idx_30918ee6\" ON \"public\".\"refundIntent\" (\"payee\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"refundIntent_payee_idx_30918ee6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_payee_idx_30918ee6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.refundIntent.refundIntent_paymentId_idx_b2fe9a10",
+    "label": "Create index \"refundIntent_paymentId_idx_b2fe9a10\" on \"refundIntent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "refundIntent_paymentId_idx_b2fe9a10",
+        "table": "refundIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"refundIntent_paymentId_idx_b2fe9a10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"refundIntent_paymentId_idx_b2fe9a10\"",
+        "sql": "CREATE INDEX \"refundIntent_paymentId_idx_b2fe9a10\" ON \"public\".\"refundIntent\" (\"paymentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"refundIntent_paymentId_idx_b2fe9a10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.refundIntent.refundIntent_status_createdAtMs_idx_95013a06",
+    "label": "Create index \"refundIntent_status_createdAtMs_idx_95013a06\" on \"refundIntent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "refundIntent_status_createdAtMs_idx_95013a06",
+        "table": "refundIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"refundIntent_status_createdAtMs_idx_95013a06\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"refundIntent_status_createdAtMs_idx_95013a06\"",
+        "sql": "CREATE INDEX \"refundIntent_status_createdAtMs_idx_95013a06\" ON \"public\".\"refundIntent\" (\"status\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"refundIntent_status_createdAtMs_idx_95013a06\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.refundIntent.refundIntent_txHash_idx_3fbe8b55",
+    "label": "Create index \"refundIntent_txHash_idx_3fbe8b55\" on \"refundIntent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "refundIntent_txHash_idx_3fbe8b55",
+        "table": "refundIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"refundIntent_txHash_idx_3fbe8b55\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_txHash_idx_3fbe8b55\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"refundIntent_txHash_idx_3fbe8b55\"",
+        "sql": "CREATE INDEX \"refundIntent_txHash_idx_3fbe8b55\" ON \"public\".\"refundIntent\" (\"txHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"refundIntent_txHash_idx_3fbe8b55\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_txHash_idx_3fbe8b55\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reputationFact.reputationFact_actorWallet_factType_createdAt_idx_0e9b7994",
+    "label": "Create index \"reputationFact_actorWallet_factType_createdAt_idx_0e9b7994\" on \"reputationFact\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reputationFact_actorWallet_factType_createdAt_idx_0e9b7994",
+        "table": "reputationFact"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reputationFact_actorWallet_factType_createdAt_idx_0e9b7994\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact_actorWallet_factType_createdAt_idx_0e9b7994\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reputationFact_actorWallet_factType_createdAt_idx_0e9b7994\"",
+        "sql": "CREATE INDEX \"reputationFact_actorWallet_factType_createdAt_idx_0e9b7994\" ON \"public\".\"reputationFact\" (\"actorWallet\", \"factType\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reputationFact_actorWallet_factType_createdAt_idx_0e9b7994\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact_actorWallet_factType_createdAt_idx_0e9b7994\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reputationFact.reputationFact_sourceRef_idx_f97a6e5c",
+    "label": "Create index \"reputationFact_sourceRef_idx_f97a6e5c\" on \"reputationFact\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reputationFact_sourceRef_idx_f97a6e5c",
+        "table": "reputationFact"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reputationFact_sourceRef_idx_f97a6e5c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact_sourceRef_idx_f97a6e5c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reputationFact_sourceRef_idx_f97a6e5c\"",
+        "sql": "CREATE INDEX \"reputationFact_sourceRef_idx_f97a6e5c\" ON \"public\".\"reputationFact\" (\"sourceRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reputationFact_sourceRef_idx_f97a6e5c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact_sourceRef_idx_f97a6e5c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reputationFact.reputationFact_subjectId_idx_84df2a1d",
+    "label": "Create index \"reputationFact_subjectId_idx_84df2a1d\" on \"reputationFact\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reputationFact_subjectId_idx_84df2a1d",
+        "table": "reputationFact"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reputationFact_subjectId_idx_84df2a1d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact_subjectId_idx_84df2a1d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reputationFact_subjectId_idx_84df2a1d\"",
+        "sql": "CREATE INDEX \"reputationFact_subjectId_idx_84df2a1d\" ON \"public\".\"reputationFact\" (\"subjectId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reputationFact_subjectId_idx_84df2a1d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reputationFact_subjectId_idx_84df2a1d\""
+        ]
+      }
+    ]
+  }
+]

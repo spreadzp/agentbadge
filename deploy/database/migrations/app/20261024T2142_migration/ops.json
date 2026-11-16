@@ -1,0 +1,122 @@
+[
+  {
+    "id": "table.agentTrustEdge",
+    "label": "Create table \"agentTrustEdge\"",
+    "summary": "Creates table \"agentTrustEdge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "agentTrustEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"agentTrustEdge\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentTrustEdge\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"agentTrustEdge\"",
+        "sql": "CREATE TABLE \"public\".\"agentTrustEdge\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"eventCount\" int4 NOT NULL,\n  \"fromAgent\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"lastEventAt\" text NOT NULL,\n  \"lastEventSeq\" int8 NOT NULL,\n  \"toAgent\" text NOT NULL,\n  \"totalUsd\" numeric NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"agentTrustEdge\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentTrustEdge\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.agentTrustEdge.agentTrustEdge_fromAgent_toAgent_kind_key",
+    "label": "Add unique constraint on \"agentTrustEdge\" (fromAgent, toAgent, kind)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "agentTrustEdge_fromAgent_toAgent_kind_key",
+        "table": "agentTrustEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"agentTrustEdge_fromAgent_toAgent_kind_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentTrustEdge_fromAgent_toAgent_kind_key",
+          "public",
+          "\"public\".\"agentTrustEdge\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"agentTrustEdge_fromAgent_toAgent_kind_key\"",
+        "sql": "ALTER TABLE \"public\".\"agentTrustEdge\" ADD CONSTRAINT \"agentTrustEdge_fromAgent_toAgent_kind_key\" UNIQUE (\"fromAgent\", \"toAgent\", \"kind\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"agentTrustEdge_fromAgent_toAgent_kind_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "agentTrustEdge_fromAgent_toAgent_kind_key",
+          "public",
+          "\"public\".\"agentTrustEdge\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentTrustEdge.agentTrustEdge_toAgent_lastEventSeq_idx_94a10541",
+    "label": "Create index \"agentTrustEdge_toAgent_lastEventSeq_idx_94a10541\" on \"agentTrustEdge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentTrustEdge_toAgent_lastEventSeq_idx_94a10541",
+        "table": "agentTrustEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentTrustEdge_toAgent_lastEventSeq_idx_94a10541\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentTrustEdge_toAgent_lastEventSeq_idx_94a10541\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentTrustEdge_toAgent_lastEventSeq_idx_94a10541\"",
+        "sql": "CREATE INDEX \"agentTrustEdge_toAgent_lastEventSeq_idx_94a10541\" ON \"public\".\"agentTrustEdge\" (\"toAgent\", \"lastEventSeq\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentTrustEdge_toAgent_lastEventSeq_idx_94a10541\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentTrustEdge_toAgent_lastEventSeq_idx_94a10541\""
+        ]
+      }
+    ]
+  }
+]

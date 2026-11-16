@@ -1,0 +1,83 @@
+[
+  {
+    "id": "table.archiveCursor",
+    "label": "Create table \"archiveCursor\"",
+    "summary": "Creates table \"archiveCursor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "archiveCursor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"archiveCursor\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"archiveCursor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"archiveCursor\"",
+        "sql": "CREATE TABLE \"public\".\"archiveCursor\" (\n  \"id\" text NOT NULL,\n  \"lastMessageId\" int8,\n  \"note\" text,\n  \"stream\" text NOT NULL,\n  \"throughAt\" int8 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"archiveCursor\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"archiveCursor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.archiveCursor.archiveCursor_stream_key",
+    "label": "Add unique constraint on \"archiveCursor\" (stream)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "archiveCursor_stream_key",
+        "table": "archiveCursor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"archiveCursor_stream_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "archiveCursor_stream_key",
+          "public",
+          "\"public\".\"archiveCursor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"archiveCursor_stream_key\"",
+        "sql": "ALTER TABLE \"public\".\"archiveCursor\" ADD CONSTRAINT \"archiveCursor_stream_key\" UNIQUE (\"stream\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"archiveCursor_stream_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "archiveCursor_stream_key",
+          "public",
+          "\"public\".\"archiveCursor\""
+        ]
+      }
+    ]
+  }
+]

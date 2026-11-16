@@ -1,0 +1,86 @@
+[
+  {
+    "id": "column.public.agentTrustEdge.firstEventAt",
+    "label": "Add column \"firstEventAt\" to \"agentTrustEdge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "firstEventAt",
+        "table": "agentTrustEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"firstEventAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentTrustEdge",
+          "firstEventAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"firstEventAt\"",
+        "sql": "ALTER TABLE \"public\".\"agentTrustEdge\" ADD COLUMN \"firstEventAt\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"firstEventAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentTrustEdge",
+          "firstEventAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentTrustEdge.firstEventSeq",
+    "label": "Add column \"firstEventSeq\" to \"agentTrustEdge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "firstEventSeq",
+        "table": "agentTrustEdge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"firstEventSeq\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentTrustEdge",
+          "firstEventSeq"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"firstEventSeq\"",
+        "sql": "ALTER TABLE \"public\".\"agentTrustEdge\" ADD COLUMN \"firstEventSeq\" int8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"firstEventSeq\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentTrustEdge",
+          "firstEventSeq"
+        ]
+      }
+    ]
+  }
+]

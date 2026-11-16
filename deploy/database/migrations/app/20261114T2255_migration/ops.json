@@ -1,0 +1,125 @@
+[
+  {
+    "id": "column.public.surveyAnswer.flag",
+    "label": "Add column \"flag\" to \"surveyAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "flag",
+        "table": "surveyAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"flag\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "surveyAnswer",
+          "flag"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"flag\"",
+        "sql": "ALTER TABLE \"public\".\"surveyAnswer\" ADD COLUMN \"flag\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"flag\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "surveyAnswer",
+          "flag"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.surveyAnswer.softFpHash",
+    "label": "Add column \"softFpHash\" to \"surveyAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "softFpHash",
+        "table": "surveyAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"softFpHash\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "surveyAnswer",
+          "softFpHash"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"softFpHash\"",
+        "sql": "ALTER TABLE \"public\".\"surveyAnswer\" ADD COLUMN \"softFpHash\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"softFpHash\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "surveyAnswer",
+          "softFpHash"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.surveyAnswer.surveyAnswer_surveyId_softFpHash_idx_0ed584c4",
+    "label": "Create index \"surveyAnswer_surveyId_softFpHash_idx_0ed584c4\" on \"surveyAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "surveyAnswer_surveyId_softFpHash_idx_0ed584c4",
+        "table": "surveyAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"surveyAnswer_surveyId_softFpHash_idx_0ed584c4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"surveyAnswer_surveyId_softFpHash_idx_0ed584c4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"surveyAnswer_surveyId_softFpHash_idx_0ed584c4\"",
+        "sql": "CREATE INDEX \"surveyAnswer_surveyId_softFpHash_idx_0ed584c4\" ON \"public\".\"surveyAnswer\" (\"surveyId\", \"softFpHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"surveyAnswer_surveyId_softFpHash_idx_0ed584c4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"surveyAnswer_surveyId_softFpHash_idx_0ed584c4\""
+        ]
+      }
+    ]
+  }
+]

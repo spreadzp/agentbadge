@@ -1,0 +1,278 @@
+[
+  {
+    "id": "table.venueJob",
+    "label": "Create table \"venueJob\"",
+    "summary": "Creates table \"venueJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "venueJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"venueJob\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueJob\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"venueJob\"",
+        "sql": "CREATE TABLE \"public\".\"venueJob\" (\n  \"client\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"jobId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"provider\" text,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"venueJob\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueJob\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.venueMeta",
+    "label": "Create table \"venueMeta\"",
+    "summary": "Creates table \"venueMeta\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "venueMeta"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"venueMeta\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueMeta\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"venueMeta\"",
+        "sql": "CREATE TABLE \"public\".\"venueMeta\" (\n  \"key\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"value\" json NOT NULL,\n  PRIMARY KEY (\"key\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"venueMeta\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueMeta\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.venueOffer",
+    "label": "Create table \"venueOffer\"",
+    "summary": "Creates table \"venueOffer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "venueOffer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"venueOffer\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueOffer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"venueOffer\"",
+        "sql": "CREATE TABLE \"public\".\"venueOffer\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"providerAddress\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"venueOffer\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueOffer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.venueJob.venueJob_jobId_key",
+    "label": "Add unique constraint on \"venueJob\" (jobId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "venueJob_jobId_key",
+        "table": "venueJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"venueJob_jobId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "venueJob_jobId_key",
+          "public",
+          "\"public\".\"venueJob\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"venueJob_jobId_key\"",
+        "sql": "ALTER TABLE \"public\".\"venueJob\" ADD CONSTRAINT \"venueJob_jobId_key\" UNIQUE (\"jobId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"venueJob_jobId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "venueJob_jobId_key",
+          "public",
+          "\"public\".\"venueJob\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.venueJob.venueJob_client_idx_135b7ce5",
+    "label": "Create index \"venueJob_client_idx_135b7ce5\" on \"venueJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "venueJob_client_idx_135b7ce5",
+        "table": "venueJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"venueJob_client_idx_135b7ce5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueJob_client_idx_135b7ce5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"venueJob_client_idx_135b7ce5\"",
+        "sql": "CREATE INDEX \"venueJob_client_idx_135b7ce5\" ON \"public\".\"venueJob\" (\"client\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"venueJob_client_idx_135b7ce5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueJob_client_idx_135b7ce5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.venueJob.venueJob_status_createdAt_idx_58610442",
+    "label": "Create index \"venueJob_status_createdAt_idx_58610442\" on \"venueJob\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "venueJob_status_createdAt_idx_58610442",
+        "table": "venueJob"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"venueJob_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueJob_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"venueJob_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"venueJob_status_createdAt_idx_58610442\" ON \"public\".\"venueJob\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"venueJob_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueJob_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.venueOffer.venueOffer_providerAddress_active_idx_bf5e414c",
+    "label": "Create index \"venueOffer_providerAddress_active_idx_bf5e414c\" on \"venueOffer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "venueOffer_providerAddress_active_idx_bf5e414c",
+        "table": "venueOffer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"venueOffer_providerAddress_active_idx_bf5e414c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueOffer_providerAddress_active_idx_bf5e414c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"venueOffer_providerAddress_active_idx_bf5e414c\"",
+        "sql": "CREATE INDEX \"venueOffer_providerAddress_active_idx_bf5e414c\" ON \"public\".\"venueOffer\" (\"providerAddress\", \"active\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"venueOffer_providerAddress_active_idx_bf5e414c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"venueOffer_providerAddress_active_idx_bf5e414c\""
+        ]
+      }
+    ]
+  }
+]
