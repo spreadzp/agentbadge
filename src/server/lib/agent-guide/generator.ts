@@ -36,7 +36,7 @@ Follow each step in order. Each step includes the tool call, expected parameters
 6. Agent Types & Connection Methods
 7. Available Tiers
 8. Blockchain IDs
-9. MCP Tools (38)
+9. MCP Tools (${toolCount})
 10. Request Passport
 11. Verify Passport
 12. Register in Directory
@@ -437,7 +437,7 @@ Expected output: \`38\`
 
 Both interfaces provide identical functionality. MCP tools are a wrapper around the REST API — choose based on your agent's capabilities.
 
-### Available MCP Tools (38)
+### Available MCP Tools (${toolCount})
 
 **Passport & Identity (7):**
 
