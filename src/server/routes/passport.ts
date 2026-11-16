@@ -20,6 +20,10 @@ import { errorResponse } from "../lib/error-response";
 import { chainDisabled, passportChainEnabled } from "../lib/passport-chain-gate";
 import { passportLinks } from "../lib/hateoas";
 import type { NextCall } from "../lib/next-call";
+import { getCatalog } from "@agentbadge/hedera-core";
+import { PassportRequestForm } from "../../views/passport-request-form";
+import { Layout } from "../../views/layout";
+import { PageMeta } from "../lib/page-meta";
 
 /** Request body for POST /passport/request. */
 export interface PassportRequestBody {
@@ -102,6 +106,41 @@ export async function passportRequestHandler(c: Context) {
     return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR, `Passport issuance failed: ${message}`, { retryable: true });
   }
 }
+
+/**
+ * GET /passport/request — public passport-request form (SEO/indexable).
+ *
+ * The L402/MPP/x402 payment gates are scoped to POST (middleware), so this
+ * handler renders the tier-selection form for browsers and crawlers while
+ * POST keeps the paid issuance contract unchanged.
+ */
+passportRoutes.get(
+  "/passport/request",
+  describeRoute({
+    tags: ["Content"],
+    summary: "Passport request form",
+    description:
+      "Public page for requesting an AgentBadge passport: pick a tier, fill agent details, submit via POST /passport/request (x402 payment).",
+    responses: {
+      200: { description: "HTML passport request form" },
+    },
+  }),
+  (c) => {
+    const tier = c.req.query("tier") ?? "bronze";
+    const tiers = getCatalog();
+    return c.html(
+      Layout(
+        PassportRequestForm({
+          tiers,
+          selectedTier: tier,
+          formPath: "/passport/request",
+        }).toString(),
+        PageMeta["/passport/request"].title,
+        PageMeta["/passport/request"],
+      ),
+    );
+  },
+);
 
 passportRoutes.post(
   "/passport/request",

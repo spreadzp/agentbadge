@@ -74,11 +74,15 @@ export function createCheckoutPageRoutes(
         "Server-rendered checkout: product summary, metadata form per catalog schema, payment-method (Card/USDC) and network (Arc/Base/Solana) selects. Client JS drives POST /api/v1/payments → attempts → instructions/status/receipt.",
       responses: {
         200: { description: "HTML checkout page" },
+        301: { description: "Bare /checkout (no product) redirects to /pricing" },
         404: { description: "Unknown product" },
       },
     }),
     (c) => {
       const rawCode = c.req.query("product")?.trim() ?? "";
+      // Bare /checkout has nothing to sell — send crawlers and stray links
+      // to the catalog instead of a dead-end 404 (GSC "not found" bucket).
+      if (!rawCode) return c.redirect("/pricing", 301);
       const code = productCodeForLegacyId(rawCode) ?? rawCode.toUpperCase();
       const product = code ? getCommerceProduct(code) : undefined;
       if (!product || !product.active) {

@@ -32,9 +32,12 @@ const TIER_STYLES: Record<string, { border: string; badge: string; label: string
 export function PassportRequestForm({
   tiers,
   selectedTier,
+  formPath = "/ui/passport/request",
 }: {
   tiers: TierEntry[];
   selectedTier?: string;
+  /** Base path for tier-picker links — public page uses /passport/request. */
+  formPath?: string;
 }) {
   const tier = selectedTier ?? "bronze";
   const style = TIER_STYLES[tier] ?? TIER_STYLES.bronze;
@@ -158,7 +161,7 @@ export function PassportRequestForm({
         ${tiers.map(
     (t) =>
       html`<a
-              href="/ui/passport/request?tier=${t.name}"
+              href="${formPath}?tier=${t.name}"
               class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700 ${t.name === tier ? "ring-1 ring-emerald-500" : ""}"
             >
               ${TIER_STYLES[t.name]?.label ?? t.name} · ${formatPrice(t.price)}

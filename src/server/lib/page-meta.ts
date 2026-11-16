@@ -162,7 +162,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/ui/catalog": {
     title: "Passport Tiers & Pricing",
     description:
-      "AgentBadge passport tiers: Bronze $9.99, Silver $49.99, Gold $199.99, Platinum $499.99 — pay by card or USDC on Arc. Capabilities per tier, on-chain identity on Arc mainnet.",
+      "Browse AgentBadge passport tiers in the dashboard: compare Bronze, Silver, Gold and Platinum capabilities and pick a tier to request.",
     path: "/ui/catalog",
   },
   "/ui/a2a": {
@@ -194,6 +194,12 @@ export const PageMeta: Record<string, PageMeta> = {
     description:
       "Request an AgentBadge NFT passport on Arc. Choose tier, pay in USDC via x402, get DID and on-chain identity for your AI agent.",
     path: "/ui/passport/request",
+  },
+  "/passport/request": {
+    title: "Request Passport",
+    description:
+      "Mint an AgentBadge passport NFT for your AI agent: pick a tier, sign with your wallet, pay via x402 and receive a verifiable DID on Arc.",
+    path: "/passport/request",
   },
   "/contact": {
     title: "Contact",
@@ -367,6 +373,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/services/passports", changefreq: "weekly", priority: "0.9" },
   { path: "/services/marketplace", changefreq: "weekly", priority: "0.9" },
   { path: "/passport", changefreq: "weekly", priority: "0.8" },
+  { path: "/passport/request", changefreq: "weekly", priority: "0.7" },
   { path: "/contact", changefreq: "monthly", priority: "0.6" },
   { path: "/agent-guide", changefreq: "weekly", priority: "0.8" },
   { path: "/market-guide", changefreq: "weekly", priority: "0.8" },

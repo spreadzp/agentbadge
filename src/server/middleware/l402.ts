@@ -204,6 +204,13 @@ export function l402PaymentMiddleware(config: L402Config): MiddlewareHandler {
   const issuedMacaroons = new Map<string, string>();
 
   return async (c, next) => {
+    // Paid surface is POST only — GET /passport/request serves the public
+    // request form (SEO/indexable page), HEAD/OPTIONS pass through untouched.
+    if (c.req.method !== "POST") {
+      await next();
+      return;
+    }
+
     const authHeader = c.req.header("authorization");
 
     // Check for existing x402 payment (don't interfere with x402)

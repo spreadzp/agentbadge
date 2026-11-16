@@ -74,6 +74,13 @@ function buildX402Challenge(config: MppConfig) {
  */
 export function mppPaymentMiddleware(config: MppConfig): MiddlewareHandler {
   return async (c, next) => {
+    // Paid surface is POST only — GET /passport/request serves the public
+    // request form (SEO/indexable page), not a payment challenge.
+    if (c.req.method !== "POST") {
+      await next();
+      return;
+    }
+
     const paymentHeader = c.req.header("X-PAYMENT");
 
     if (paymentHeader) {
