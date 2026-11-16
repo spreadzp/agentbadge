@@ -6,7 +6,7 @@ const app = new Hono();
 app.route("/", agentGuideRoutes);
 
 async function fetchGuide(): Promise<string> {
-  const res = await app.request("/agent-guide", {
+  const res = await app.request("/marketplace-guide", {
     headers: { Accept: "text/markdown" },
   });
   expect(res.status).toBe(200);
@@ -15,7 +15,7 @@ async function fetchGuide(): Promise<string> {
 
 describe("GET /agent-guide (updated for EPIC-27)", () => {
   it("returns 200 with markdown content-type", async () => {
-    const res = await app.request("/agent-guide", {
+    const res = await app.request("/marketplace-guide", {
       headers: { Accept: "text/markdown" },
     });
     expect(res.status).toBe(200);
@@ -57,9 +57,10 @@ describe("GET /agent-guide (updated for EPIC-27)", () => {
     expect(text).toContain("/medical-guide");
   });
 
-  it("updated tool count to 38", async () => {
+  it("shows live MCP tool count", async () => {
     const text = await fetchGuide();
-    expect(text).toContain("MCP Tools (38)");
+    const { listTools } = await import("@agentbadge/mcp");
+    expect(text).toContain(`MCP Tools (${listTools().length})`);
   });
 
   it("mentions escrow MCP tools (get_escrow_status, cancel_escrow)", async () => {
