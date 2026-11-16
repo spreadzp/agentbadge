@@ -55,6 +55,7 @@ import { article as arcC48DirectUsdcEngine } from "./arc-c48-direct-usdc-engine"
 import { article as arcC49AgentRequestInbox } from "./arc-c49-agent-request-inbox";
 import { article as arcC50X402Gateway } from "./arc-c50-x402-gateway";
 import { article as arcC51AgentCommerce } from "./arc-c51-agent-commerce";
+import { article as arcC52AgentTrustLayers } from "./arc-c52-agent-trust-layers";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -112,5 +113,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC49AgentRequestInbox,
   arcC50X402Gateway,
   arcC51AgentCommerce,
+  arcC52AgentTrustLayers,
   devinCloudAudit,
 ];
