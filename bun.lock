@@ -9,12 +9,12 @@
         "@agentbadge/bstock-tracker": "0.1.7",
         "@agentbadge/cache": "^0.2.1",
         "@agentbadge/circle-payments": "0.1.20",
-        "@agentbadge/database": "0.6.9",
+        "@agentbadge/database": "0.6.10",
         "@agentbadge/econ-events": "^0.1.4",
         "@agentbadge/evm-core": "^0.1.2",
         "@agentbadge/hedera-core": "^0.2.1",
         "@agentbadge/keeperhub": "^0.1.1",
-        "@agentbadge/mcp": "0.3.5",
+        "@agentbadge/mcp": "0.3.6",
         "@agentbadge/pass-auth": "^0.1.1",
         "@agentbadge/passport": "^0.3.0",
         "@agentbadge/payment-forensics": "^0.1.1",
@@ -85,7 +85,7 @@
 
     "@agentbadge/circle-payments": ["@agentbadge/circle-payments@0.1.20", "", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" }, "bin": { "agentbadge-pay": "dist/cli/pay.js" } }, "sha512-o8ilYktCnr9YxiQ9JHu5e1uyLepbMTznByo8rbzg5l3Mto222tX8j5Nrfqyl8cGwmsLhgkmvwUp+Yk9yI7JGUA=="],
 
-    "@agentbadge/database": ["@agentbadge/database@0.6.9", "", { "dependencies": { "@agentbadge/econ-events": "^0.1.3", "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-wYsMI7rYumuETCAwMkOaNJQkiOwvMKfCn+aZoraWjY9sbRCOQNMbz0/EFbYq6bleBp5Dk0OBOXJeczWopPwhdQ=="],
+    "@agentbadge/database": ["@agentbadge/database@0.6.10", "", { "dependencies": { "@agentbadge/econ-events": "^0.1.3", "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-UbKSryFC80BjsLgRRVbWoOQxB5uTAruqA4TKN1IgMlnzelVa+2RVYcM80mFLNcn+7rYXs3mkeOYWrxRpayztQA=="],
 
     "@agentbadge/econ-events": ["@agentbadge/econ-events@0.1.4", "", { "dependencies": { "zod": "^4.0.0" } }, "sha512-mjCvKhywG5H8ThfjbHf6ORO5e3RRWNFsKuhlX2mSfehcGUZR8L3aWlMy+dUi5zEhaipbe+iThmYk15MrquwCgw=="],
 
@@ -95,7 +95,7 @@
 
     "@agentbadge/keeperhub": ["@agentbadge/keeperhub@0.1.1", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GYFT9LUCNFUA/0qyH6iJStoVlqVz3WYxLzlTyPNGg0iLOOhPFPZNyTohRybZ+/t3EzkZMSkZTXgy6kAbKoH4Qw=="],
 
-    "@agentbadge/mcp": ["@agentbadge/mcp@0.3.5", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "@agentbadge/passport": "^0.3.0", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "bin": { "agentbadge-mcp": "dist/entry.js" } }, "sha512-aME5emYlTXHcvUkqltbpPaHnss+ZC+xTv/FxIW0gk3x/iT9mMOYv35cWRQqYSNhlw+kXj6eNL3wdwORtFAx0bA=="],
+    "@agentbadge/mcp": ["@agentbadge/mcp@0.3.6", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "@agentbadge/passport": "^0.3.0", "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" }, "bin": { "agentbadge-mcp": "dist/entry.js" } }, "sha512-7BCWHsDCnPlZxdSp0J8KVraiSnO3KR8CQU33I1BvvYuTlKGZYua6Q4EUF9c30PQ7TPIhNHZCVLa56dI4imqvtg=="],
 
     "@agentbadge/pass-auth": ["@agentbadge/pass-auth@0.1.1", "", { "dependencies": { "viem": "^2.0.0" } }, "sha512-NfDIFKHviNr0XH/9v18ozJnoJGcncG8NEMpSe3yrVhT2/yAZyM0XKWkC1czq+d4lghbHL9ufRtjJ3r9EaUNq1Q=="],
 
