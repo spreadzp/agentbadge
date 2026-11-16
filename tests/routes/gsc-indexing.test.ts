@@ -65,6 +65,23 @@ describe("GSC indexing fixes", () => {
     expect(res.headers.get("location")).toBe("/pricing");
   });
 
+  it("lowercase /rules/ab-061 redirects to canonical /rules/AB-061 (301)", async () => {
+    const res = await app.request("/rules/ab-061", { redirect: "manual" });
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/rules/AB-061");
+  });
+
+  it("mixed-case /rules/aB-061.json redirects to canonical JSON (301)", async () => {
+    const res = await app.request("/rules/aB-061.json", { redirect: "manual" });
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/rules/AB-061.json");
+  });
+
+  it("unknown lowercase id /rules/zz-999 still 404s (no redirect loop)", async () => {
+    const res = await app.request("/rules/zz-999");
+    expect(res.status).toBe(404);
+  });
+
   it("noindex checkout page emits no .md alternate link", async () => {
     const res = await app.request("/checkout?product=PASSPORT_BRONZE");
     if (res.status === 200) {

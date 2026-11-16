@@ -199,6 +199,10 @@ contentPageRoutes.get(
   }),
   (c) => {
     const ruleId = c.req.param("id").replace(/\.json$/, "");
+    const canonicalId = ruleId.toUpperCase();
+    if (canonicalId !== ruleId && buildRuleApiResponse(canonicalId)) {
+      return c.redirect(`/rules/${canonicalId}.json`, 301);
+    }
     const rule = buildRuleApiResponse(ruleId);
     if (!rule) {
       return c.json({ error: "Rule not found", rule_id: ruleId }, 404);
@@ -223,6 +227,10 @@ contentPageRoutes.get(
   }),
   (c) => {
     const ruleId = c.req.param("id");
+    const canonicalId = ruleId.toUpperCase();
+    if (canonicalId !== ruleId && getRuleDescription(canonicalId)) {
+      return c.redirect(`/rules/${canonicalId}`, 301);
+    }
     const rule = getRuleDescription(ruleId);
     if (!rule) {
       return c.html(Layout("Rule not found", "404 — Rule Not Found", { title: "404", description: "Rule not found", path: "/404" }, defaultCoreSchemas()), 404);
