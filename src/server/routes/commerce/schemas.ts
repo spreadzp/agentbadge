@@ -17,7 +17,11 @@ import { errorSchema } from "../../openapi";
 export const taskCreateSchema = z.object({
   title: z.string(),
   description: z.string().max(4000),
-  requirements: z.unknown().optional(),
+  // SLICE-234-23: object/array/null only — the pg/json@1 codec rejects
+  // bare scalars (string/number/bool) with a 500. Honest 400 instead.
+  requirements: z
+    .union([z.record(z.string(), z.unknown()), z.array(z.unknown()), z.null()])
+    .optional(),
   budget: z.string().nullable().optional(),
   currency: z.string().optional(),
   expiresAtMs: z.number().nullable().optional(),

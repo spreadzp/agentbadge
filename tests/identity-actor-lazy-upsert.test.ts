@@ -123,6 +123,41 @@ describe("SLICE-234-16: lazy actor upsert on signed writes", () => {
   });
 });
 
+// ─── SLICE-234-23: requirements scalar → 400, not 500 ─────────────
+
+describe("SLICE-234-23: task requirements scalar rejection", () => {
+  afterEach(() => setSignedWriteHook(null));
+
+  it.each([
+    ["string", "DEVIN-TEST string"],
+    ["number", 42],
+    ["boolean", true],
+  ])("requirements %s → 400 INVALID_INPUT", async (_label, value) => {
+    const app = makeApp();
+    const r = await signedPost(app, buyer, "/api/commerce/tasks", {
+      title: "scalar req",
+      description: "rejected",
+      requirements: value,
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe("INVALID_INPUT");
+  });
+
+  it.each([
+    ["object", { a: 1 }],
+    ["array", ["x"]],
+    ["null", null],
+  ])("requirements %s → 201", async (_label, value) => {
+    const app = makeApp();
+    const r = await signedPost(app, buyer, "/api/commerce/tasks", {
+      title: "ok req",
+      description: "accepted",
+      requirements: value,
+    });
+    expect(r.status).toBe(201);
+  });
+});
+
 // ─── SLICE-234-17: commerce completion → ReputationFacts ───────────
 
 const PROVIDER_KEY =
