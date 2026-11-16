@@ -130,6 +130,7 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
                 class="w-full"
                 loading="eager"
                 fetchpriority="high"
+                data-zoomable
               />
             </div>`
       : ""
@@ -203,6 +204,25 @@ export function BlogArticlePage(article: BlogArticle, related?: BlogArticle[]) {
           </a>
         </div>
       </footer>
+      <style>
+        .prose img, article img[data-zoomable] { cursor: zoom-in; }
+        .medium-zoom-overlay { cursor: zoom-out; }
+        .medium-zoom-image--opened { cursor: zoom-out; }
+      </style>
+      <script src="https://unpkg.com/medium-zoom@1.1.0/dist/medium-zoom.min.js" defer></script>
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          if (typeof mediumZoom !== 'function') return;
+          var imgs = Array.from(
+            document.querySelectorAll('.prose img, article img[data-zoomable]')
+          ).filter(function (img) { return !img.closest('a'); });
+          mediumZoom(imgs, {
+            background: 'rgba(2, 6, 23, 0.95)',
+            margin: 24,
+            scrollOffset: 40
+          });
+        });
+      </script>
     </article>
   </div>`;
 }
