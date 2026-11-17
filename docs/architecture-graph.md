@@ -190,6 +190,7 @@ flowchart LR
   views["views"] --> agent_readiness_rule_engine["agent-readiness/rule-engine"]
   views["views"] --> agent_readiness_scoring["agent-readiness/scoring"]
   views["views"] --> agent_readiness_trust["agent-readiness/trust"]
+  views["views"] --> pkg_database["pkg: database"]
   views["views"] --> pkg_hedera_core["pkg: hedera-core"]
   views["views"] --> pkg_mcp["pkg: mcp"]
   views["views"] --> pkg_passport["pkg: passport"]

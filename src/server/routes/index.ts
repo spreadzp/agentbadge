@@ -17,6 +17,7 @@ import { verifyRoutes } from "./verify";
 import { didRoutes } from "./did";
 import { agentRoutes } from "./agents";
 import { adminRoutes } from "./admin";
+import { createFinopsRoutes } from "./finops";
 import { upgradeRoutes } from "./upgrade";
 import { auditRoutes } from "./audit";
 import { eventsRoutes } from "./events";
@@ -134,6 +135,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", didRoutes);
   app.route("/", agentRoutes);
   app.route("/", adminRoutes);
+  app.route("/", createFinopsRoutes()); // EPIC-226 SLICE-226-3: /admin/finance/*
   app.route("/", upgradeRoutes);
   app.route("/", auditRoutes);
   app.route("/", eventsRoutes);
