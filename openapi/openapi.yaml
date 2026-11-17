@@ -361,6 +361,16 @@ components:
       additionalProperties: false
 paths:
   /passport/request:
+    get:
+      operationId: getPassportRequest
+      tags:
+        - Content
+      summary: Passport request form
+      description: "Public page for requesting an AgentBadge passport: pick a tier,
+        fill agent details, submit via POST /passport/request (x402 payment)."
+      responses:
+        "200":
+          description: HTML passport request form
     post:
       operationId: postPassportRequest
       tags:
@@ -1125,6 +1135,214 @@ paths:
                 required:
                   - error
                   - code
+  /admin/finance/payments:
+    get:
+      operationId: getAdminFinancePayments
+      tags:
+        - Admin FinOps
+      summary: Payments list (admin)
+      responses:
+        "200":
+          description: Payments page or table fragment
+  /admin/finance/payments/{id}:
+    get:
+      operationId: getAdminFinancePaymentsById
+      tags:
+        - Admin FinOps
+      summary: Payment detail + trace (admin)
+      responses:
+        "200":
+          description: Detail page
+        "404":
+          description: Payment not found
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/finance/exceptions:
+    get:
+      operationId: getAdminFinanceExceptions
+      tags:
+        - Admin FinOps
+      summary: Reconciliation exceptions queue (admin)
+      responses:
+        "200":
+          description: Exceptions page
+  /admin/finance/reports:
+    get:
+      operationId: getAdminFinanceReports
+      tags:
+        - Admin FinOps
+      summary: Financial report (admin)
+      description: Gross/net, fee estimates, splits. ?format=csv export.
+      responses:
+        "200":
+          description: Report page or CSV
+  /admin/finance/audit:
+    get:
+      operationId: getAdminFinanceAudit
+      tags:
+        - Admin FinOps
+      summary: Admin action trail (admin)
+      responses:
+        "200":
+          description: Audit page
+  /admin/finance/payments/{id}/review:
+    post:
+      operationId: postAdminFinancePaymentsByIdReview
+      tags:
+        - Admin FinOps
+      summary: Mark payment reviewed
+      responses:
+        "200":
+          description: AdminAction recorded
+        "400":
+          description: Missing operator / oversized evidence
+        "401":
+          description: Unauthorized
+        "404":
+          description: Payment not found
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/finance/payments/{id}/retry-verification:
+    post:
+      operationId: postAdminFinancePaymentsByIdRetryVerification
+      tags:
+        - Admin FinOps
+      summary: Record a verification retry for the payment's open attempts
+      responses:
+        "200":
+          description: AdminAction + retryable attempts
+        "400":
+          description: Missing operator
+        "401":
+          description: Unauthorized
+        "404":
+          description: Payment not found
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/finance/payments/{id}/review-external:
+    post:
+      operationId: postAdminFinancePaymentsByIdReviewExternal
+      tags:
+        - Admin FinOps
+      summary: Mark an external/off-chain subject reviewed (evidence required)
+      responses:
+        "200":
+          description: AdminAction recorded
+        "400":
+          description: Missing operator/evidence/subject
+        "401":
+          description: Unauthorized
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/finance/payments/{id}/refund:
+    post:
+      operationId: postAdminFinancePaymentsByIdRefund
+      tags:
+        - Admin FinOps
+      summary: Refund a payment — Stripe auto (provider call) or manual intent
+      responses:
+        "200":
+          description: Stripe refund id or RefundIntent
+        "400":
+          description: Missing operator/reason/amount
+        "401":
+          description: Unauthorized
+        "404":
+          description: Payment not found
+        "409":
+          description: Payment not CONFIRMED
+        "503":
+          description: Stripe/refund path not configured
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/finance/refunds:
+    get:
+      operationId: getAdminFinanceRefunds
+      tags:
+        - Admin FinOps
+      summary: Refund intents list (admin)
+      responses:
+        "200":
+          description: Refund intents, newest first
+  /admin/finance/refunds/{id}/complete:
+    post:
+      operationId: postAdminFinanceRefundsByIdComplete
+      tags:
+        - Admin FinOps
+      summary: Complete a refund intent behind verified txHash
+      responses:
+        "200":
+          description: Intent COMPLETED
+        "400":
+          description: Missing operator/txHash
+        "401":
+          description: Unauthorized
+        "404":
+          description: Intent not found
+        "503":
+          description: Tx verification not configured
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/finance/exceptions/detect:
+    post:
+      operationId: postAdminFinanceExceptionsDetect
+      tags:
+        - Admin FinOps
+      summary: Scan for reconciliation exceptions (audited)
+      responses:
+        "200":
+          description: Created + skipped exception ids
+        "400":
+          description: Missing operator
+        "401":
+          description: Unauthorized
+  /admin/finance/exceptions/{id}/resolve:
+    post:
+      operationId: postAdminFinanceExceptionsByIdResolve
+      tags:
+        - Admin FinOps
+      summary: Resolve an exception — MATCHED|IGNORED|MANUAL_ADJUSTED|REFUNDED
+      responses:
+        "200":
+          description: Exception RESOLVED + audit
+        "400":
+          description: Missing operator/resolution
+        "401":
+          description: Unauthorized
+        "404":
+          description: Exception not found
+        "409":
+          description: Already resolved
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /passport/{tokenId}/{serial}/upgrade:
     post:
       operationId: postPassportByTokenIdBySerialUpgrade
@@ -1953,7 +2171,15 @@ paths:
                 description:
                   type: string
                   maxLength: 4000
-                requirements: {}
+                requirements:
+                  anyOf:
+                    - type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                    - type: array
+                      items: {}
+                    - type: "null"
                 budget:
                   anyOf:
                     - type: string
@@ -3904,6 +4130,455 @@ paths:
             type: string
           in: path
           name: id
+          required: true
+  /api/v1/actors/{wallet}:
+    get:
+      operationId: getApiV1ActorsByWallet
+      tags:
+        - Identity
+      summary: Actor record
+      description: "Public read: the wallet-keyed Actor — type
+        (REGISTERED_USER/REGISTERED_AGENT/EXTERNAL_*/ORGANIZATION), identity
+        links (agentId, passportTokenId, did, orgId), tier. 404 when the wallet
+        has no actor row."
+      responses:
+        "200":
+          description: Actor record
+          content:
+            application/json:
+              schema:
+                type: object
+                propertyNames:
+                  type: string
+                additionalProperties: {}
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: wallet
+          required: true
+  /api/v1/entitlements/{wallet}:
+    get:
+      operationId: getApiV1EntitlementsByWallet
+      tags:
+        - Identity
+      summary: Entitlements for a wallet
+      description: "Public read: entitlement rows for a wallet — status, productCode,
+        validFrom/Until. Optional ?status=ACTIVE|EXPIRED|REVOKED and
+        ?productCode= filters. (sourcePaymentId / idempotencyKey / payload are
+        internal rails — redacted, audit H-6.)"
+      responses:
+        "200":
+          description: Entitlement list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallet:
+                    type: string
+                  entitlements:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - wallet
+                  - entitlements
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: wallet
+          required: true
+  /api/v1/reputation/{wallet}:
+    get:
+      operationId: getApiV1ReputationByWallet
+      tags:
+        - Identity
+      summary: Reputation facts for a wallet
+      description: "Public read: append-only ReputationFact rows for a wallet with
+        per-factType counts. Optional ?factType= filter and ?limit= (default
+        100, max 500). Facts are verifiable — each carries sourceRef to the
+        auditable record."
+      responses:
+        "200":
+          description: Reputation facts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallet:
+                    type: string
+                  counts:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: number
+                  facts:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - wallet
+                  - counts
+                  - facts
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: wallet
+          required: true
+  /api/v1/actors/{wallet}/enrich:
+    post:
+      operationId: postApiV1ActorsByWalletEnrich
+      tags:
+        - Identity
+      summary: Enrich actor identity links
+      description: "Signed write (X-Wallet/X-Sig/X-Timestamp/X-Nonce — commerce v2
+        challenge): the wallet owner attaches identity links — agentId,
+        passportTokenId, did, orgId, tier — or clears them with null. Signer
+        must equal the path wallet. `type` accepts EXTERNAL_* / ORGANIZATION
+        hints only; REGISTERED_* is derived from registrations/passports."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agentId:
+                  anyOf:
+                    - type: string
+                      minLength: 1
+                      maxLength: 256
+                    - type: "null"
+                passportTokenId:
+                  anyOf:
+                    - type: string
+                      pattern: ^\d{1,78}$
+                    - type: "null"
+                did:
+                  anyOf:
+                    - type: string
+                      minLength: 4
+                      maxLength: 256
+                      pattern: ^did:[a-zA-Z0-9]+:[A-Za-z0-9._:%-]+$
+                    - type: "null"
+                orgId:
+                  anyOf:
+                    - type: string
+                      minLength: 1
+                      maxLength: 128
+                    - type: "null"
+                type:
+                  type: string
+                  enum:
+                    - EXTERNAL_AGENT
+                    - EXTERNAL_HUMAN
+                    - ORGANIZATION
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated actor record
+          content:
+            application/json:
+              schema:
+                type: object
+                propertyNames:
+                  type: string
+                additionalProperties: {}
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "503":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: wallet
+          required: true
+  /api/v1/entitlements/{wallet}/revoke:
+    post:
+      operationId: postApiV1EntitlementsByWalletRevoke
+      tags:
+        - Identity
+      summary: Revoke an entitlement (admin)
+      description: "Admin-only manual revoke: transitions the ACTIVE entitlement for
+        (wallet, productCode) to REVOKED. 404 when no ACTIVE row exists."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productCode:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+              required:
+                - productCode
+      responses:
+        "200":
+          description: Revoked entitlement
+          content:
+            application/json:
+              schema:
+                type: object
+                propertyNames:
+                  type: string
+                additionalProperties: {}
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: wallet
           required: true
   /.well-known/api-catalog:
     get:
@@ -6846,6 +7521,8 @@ paths:
       responses:
         "200":
           description: HTML checkout page
+        "301":
+          description: Bare /checkout (no product) redirects to /pricing
         "404":
           description: Unknown product
   /checkout/success:
