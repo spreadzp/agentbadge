@@ -7,12 +7,15 @@
 //   own terminal (OTP goes to their email — we never see it). Pure
 //   transform: registered-wallet check + monotonic validation, no sig.
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import {
+  accessBodyHash,
+  verifyWalletSigRequest,
+} from "../../middleware/agent-auth";
 import { requireVenueAccess } from "../../middleware/venue-auth";
 import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
 import { validateCaps } from "../../lib/agent-wallet/envelope";
@@ -255,6 +258,8 @@ async function sigWallet(c: {
     wallet,
     signature: c.req.header("x-sig"),
     timestamp: c.req.header("x-timestamp"),
+    nonce: c.req.header("x-nonce"),
+    bodyHash: await accessBodyHash(c as Context),
     method: c.req.method,
     path: c.req.path,
   });

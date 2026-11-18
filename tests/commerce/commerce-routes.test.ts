@@ -2,7 +2,7 @@
  * SLICE-224-3 (EPIC-224): commerce REST routes — auth, authz,
  * happy-path flows, guard and error paths.
  *
- * Sig-auth headers follow the shared agentbadge-access:v1 challenge:
+ * Sig-auth headers follow the shared agentbadge-access:v2 challenge:
  *   X-Wallet, X-Sig (EIP-191 over challenge), X-Timestamp (±300s).
  */
 
@@ -54,7 +54,7 @@ async function sigHeaders(
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
-    "x-nonce": nonce,
+        "x-nonce": nonce,
     "content-type": "application/json",
   };
 }
@@ -141,6 +141,7 @@ describe("sig-auth on writes", () => {
         "x-wallet": buyer.address,
         "x-sig": "0xdeadbeef",
         "x-timestamp": String(Math.floor(Date.now() / 1000)),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(r.status).toBe(401);
@@ -490,7 +491,7 @@ describe("guards + events", () => {
           "x-wallet": buyer.address,
           "x-sig": signature,
           "x-timestamp": String(ts),
-          "x-nonce": nonce,
+                    "x-nonce": nonce,
           "content-type": "application/json",
         },
         body: raw,

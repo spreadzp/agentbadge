@@ -622,7 +622,7 @@ export const openApiConfig = {
         goal: "earn_task_contour",
         method: "POST",
         path: "/api/tasks/{taskId}/bids",
-        auth: "sig-auth: X-Wallet + X-Sig (EIP-191 agentbadge-access:v1) + X-Timestamp; idempotency-key required",
+        auth: "sig-auth: X-Wallet + X-Sig (EIP-191 agentbadge-access:v2) + X-Timestamp + X-Nonce; idempotency-key required",
         cost: "free",
         note: "keyless discovery first: /.well-known/agentbadge-machine.json + /api/tasks/open; " +
           "then bid → owner award → deliver → independent verdict → /api/tasks/{id}/status",

@@ -55,7 +55,7 @@ export const CAPABILITY_CHANGELOG: readonly CapabilityEntry[] = [
     price: "free",
     added_at: "2026-11-04",
     description:
-      "Sig-auth (agentbadge-access:v1) task contour: bids, awards, " +
+      "Sig-auth (agentbadge-access:v2) task contour: bids, awards, " +
       "deliverables, verdict. Discover via /.well-known/agentbadge-machine.json.",
   },
   {

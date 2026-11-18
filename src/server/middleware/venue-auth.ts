@@ -17,7 +17,7 @@
 import type { Context } from "hono";
 import { getAddress, isAddress } from "viem";
 
-import { verifyWalletSigRequest, checkAccess } from "./agent-auth";
+import { verifySignedRequest, checkAccess } from "./agent-auth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { getVenue, type VenueRecord } from "../lib/venue/venues";
@@ -53,16 +53,13 @@ export async function requireVenueAccess(
   }
 
   const walletHdr = c.req.header("x-wallet");
-  const sig = await verifyWalletSigRequest({
-    wallet: walletHdr,
-    signature: c.req.header("x-sig"),
-    timestamp: c.req.header("x-timestamp"),
-    method: c.req.method,
-    path: c.req.path,
-  });
+  const sig = await verifySignedRequest(c);
+  if (sig === "replay") {
+    return errorResponse(c, 409, ErrorCodes.CONFLICT, "replayed signed request");
+  }
   if (sig !== "valid" || !walletHdr || !isAddress(walletHdr)) {
     return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
-      "valid X-Wallet/X-Sig/X-Timestamp required");
+      "valid X-Wallet/X-Sig/X-Timestamp/X-Nonce required");
   }
   const wallet = getAddress(walletHdr);
 

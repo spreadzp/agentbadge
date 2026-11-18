@@ -72,6 +72,7 @@ function boundHeaders(
     "x-wallet": wallet,
     "x-sig": s.signature,
     "x-timestamp": String(s.timestamp),
+    "x-nonce": crypto.randomUUID(),
   }));
 }
 

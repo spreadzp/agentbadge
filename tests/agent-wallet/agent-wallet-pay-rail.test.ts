@@ -205,6 +205,7 @@ describe("GET /api/wallets/:a/spend", () => {
     "x-wallet": wallet,
     "x-sig": "0xdead",
     "x-timestamp": String(Math.floor(Date.now() / 1000)),
+    "x-nonce": crypto.randomUUID(),
   });
 
   async function spendApp() {

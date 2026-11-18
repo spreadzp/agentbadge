@@ -10,7 +10,7 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { verifySignedRequest } from "../../middleware/agent-auth";
 import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
 import {
   validateDelegateInput,
@@ -34,13 +34,7 @@ async function ownerOrNull(c: Context): Promise<string | null> {
   const addr = c.req.param("addr")?.toLowerCase();
   const wallet = c.req.header("x-wallet");
   if (!addr || !wallet || wallet.toLowerCase() !== addr) return null;
-  const sig = await verifyWalletSigRequest({
-    wallet,
-    signature: c.req.header("x-sig"),
-    timestamp: c.req.header("x-timestamp"),
-    method: c.req.method,
-    path: c.req.path,
-  });
+  const sig = await verifySignedRequest(c);
   return sig === "valid" ? addr : null;
 }
 

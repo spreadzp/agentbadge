@@ -18,7 +18,7 @@ import {
   aggregateSpend,
   type SpendAlertStore,
 } from "../../lib/agent-wallet/audit";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { verifySignedRequest } from "../../middleware/agent-auth";
 import { requireVenueAccess } from "../../middleware/venue-auth";
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
@@ -114,18 +114,12 @@ export function createSpendAuditRoutes(deps: SpendAuditDeps): Hono {
           "wallet not registered");
       }
       const walletHdr = c.req.header("x-wallet");
-      const sig = await verifyWalletSigRequest({
-        wallet: walletHdr,
-        signature: c.req.header("x-sig"),
-        timestamp: c.req.header("x-timestamp"),
-        method: c.req.method,
-        path: c.req.path,
-      });
+      const sig = await verifySignedRequest(c);
       const caller =
         sig === "valid" && walletHdr ? walletHdr.toLowerCase() : null;
       if (!caller) {
         return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
-          "valid X-Wallet/X-Sig/X-Timestamp required");
+          "valid X-Wallet/X-Sig/X-Timestamp/X-Nonce required");
       }
       const allowed =
         caller === rec.address.toLowerCase() ||

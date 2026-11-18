@@ -84,12 +84,7 @@ export function venueNewJobPage(net: VenueNetwork, prefill: JobPrefill = {}): st
           const fd = new FormData(ev.target);
           const wallet = await venueConnect("${chainHex}");
           st.textContent = "Signing job record…";
-          const headers = Object.assign(
-            { "content-type": "application/json" },
-            await venueSign(wallet, "POST", "/api/venue/jobs"));
-          const r = await fetch("/api/venue/jobs", {
-            method: "POST", headers,
-            body: JSON.stringify({
+          const jobBody = JSON.stringify({
               title: fd.get("title"), description: fd.get("description"),
               budgetUsdc: Number(fd.get("budgetUsdc")),
               category: fd.get("category") || undefined,
@@ -97,7 +92,12 @@ export function venueNewJobPage(net: VenueNetwork, prefill: JobPrefill = {}): st
               privateDetails: (fd.get("privateDescription") || fd.get("privateTerms"))
                 ? { descriptionFull: fd.get("privateDescription") || undefined,
                     terms: fd.get("privateTerms") || undefined }
-                : undefined })});
+                : undefined });
+          const headers = Object.assign(
+            { "content-type": "application/json" },
+            await venueSign(wallet, "POST", "/api/venue/jobs", jobBody));
+          const r = await fetch("/api/venue/jobs", {
+            method: "POST", headers, body: jobBody });
           if (!r.ok) throw new Error((await r.json()).error ?? "HTTP " + r.status);
           const out = await r.json();
           st.textContent = "Broadcasting createJob — confirm in wallet…";
@@ -207,17 +207,17 @@ export function venueNewProviderPage(net: VenueNetwork): string {
           const fd = new FormData(ev.target);
           const wallet = await venueConnect("${chainHex}");
           st.textContent = "Signing + verifying ownership…";
-          const headers = Object.assign(
-            { "content-type": "application/json" },
-            await venueSign(wallet, "POST", "/api/venue/offers"));
-          const r = await fetch("/api/venue/offers", {
-            method: "POST", headers,
-            body: JSON.stringify({
+          const offerBody = JSON.stringify({
               agentId: fd.get("agentId") === "" || fd.get("agentId") == null ? undefined : Number(fd.get("agentId")),
               name: fd.get("name"),
               description: fd.get("description"), endpoint: fd.get("endpoint") || undefined,
               priceUsdc: fd.get("priceUsdc") ? Number(fd.get("priceUsdc")) : undefined,
-              categories: String(fd.get("categories") || "").split(",").map(s => s.trim()).filter(Boolean) })});
+              categories: String(fd.get("categories") || "").split(",").map(s => s.trim()).filter(Boolean) });
+          const headers = Object.assign(
+            { "content-type": "application/json" },
+            await venueSign(wallet, "POST", "/api/venue/offers", offerBody));
+          const r = await fetch("/api/venue/offers", {
+            method: "POST", headers, body: offerBody });
           const out = await r.json();
           if (!r.ok) throw new Error(out.error ?? "HTTP " + r.status);
           st.textContent = "";

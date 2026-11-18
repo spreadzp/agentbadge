@@ -33,7 +33,7 @@ import {
   type ActionCtx,
   type LifecycleDeps,
 } from "./venue-api-lifecycle-core";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { verifySignedRequest } from "../../middleware/agent-auth";
 import { getVenue, venueIdOf } from "../../lib/venue/venues";
 import { venueHasRole } from "../../lib/venue/members";
 import {
@@ -210,13 +210,7 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
     const venue = job.venueId ? getVenue(job.venueId) : undefined;
     let privateDetails: PrivateJobPayload | undefined;
     if (venue?.kind === "business") {
-      const sig = await verifyWalletSigRequest({
-        wallet: c.req.header("x-wallet"),
-        signature: c.req.header("x-sig"),
-        timestamp: c.req.header("x-timestamp"),
-        method: "GET",
-        path: c.req.path,
-      });
+      const sig = await verifySignedRequest(c);
       const wallet = sig === "valid" ? c.req.header("x-wallet") : undefined;
       const member = !!wallet && venueHasRole(venue, wallet, "viewer");
       if (!member && venue.clientPolicy !== "open") {

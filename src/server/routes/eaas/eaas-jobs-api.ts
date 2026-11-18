@@ -21,7 +21,10 @@
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import {
+  accessBodyHash,
+  verifyWalletSigRequest,
+} from "../../middleware/agent-auth";
 import type { PaymentMiddleware } from "../identity/identity";
 import {
   ContractRegistryError,
@@ -85,6 +88,8 @@ async function signerWallet(c: {
     wallet,
     signature: c.req.header("x-sig"),
     timestamp: c.req.header("x-timestamp"),
+    nonce: c.req.header("x-nonce"),
+    bodyHash: await accessBodyHash(c as Context),
     method: c.req.method,
     path: c.req.path,
   });

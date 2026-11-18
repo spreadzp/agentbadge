@@ -88,7 +88,7 @@ describe("GET /agent-guide/getting-started", () => {
     expect(md).toContain("/api/tasks/open");
     expect(md).toContain("/api/tasks/<taskId>/bids");
     expect(md).toContain("/api/tasks/<taskId>/deliverables");
-    expect(md).toContain("agentbadge-access:v1");
+    expect(md).toContain("agentbadge-access:v2");
     expect(md).toContain("X-Wallet");
     expect(md).toContain("idempotency-key");
   });

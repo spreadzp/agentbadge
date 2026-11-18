@@ -31,6 +31,7 @@ import {
   eaasQuotaGate,
   type EaasQuotaDeps,
 } from "../../lib/eaas/subscription";
+import { accessBodyHash } from "../../middleware/agent-auth";
 import {
   respondAsync,
   type EaasAsyncDeps,
@@ -133,10 +134,10 @@ export function createEaasRoutes(
       },
     }),
     async (c, next) => {
+      await accessBodyHash(c); // 234-21: hash raw body before parseBody consumes it
       const parsed = await parseBody(c, deps.maxBytes, deps.registry);
       if (parsed instanceof Response) return parsed;
-      c.set("eaasReq", parsed);
-      return next();
+      c.set("eaasReq", parsed); return next();
     },
     async (c, next) => {
       if (!limiter.allow(consumerKey(c))) {

@@ -108,17 +108,15 @@ marketplaceApiRoutes.post(
     }
     // Signature was verified pre-payment by onProtectedRequest; re-check
     // cheaply here since the wallet is the mint target.
-    const { verifyWalletSigRequest } = await import(
+    // Signature was verified pre-payment by onProtectedRequest; re-check
+    // cheaply here since the wallet is the mint target. The nonce is
+    // already consumed by that first check → "replay" is the expected
+    // result for the SAME legitimate request — accept both outcomes.
+    const { verifySignedRequest } = await import(
       "../../middleware/agent-auth"
     );
-    const sig = await verifyWalletSigRequest({
-      wallet,
-      signature: c.req.header("x-sig"),
-      timestamp: c.req.header("x-timestamp"),
-      method: c.req.method,
-      path: c.req.path,
-    });
-    if (sig !== "valid") {
+    const sig = await verifySignedRequest(c);
+    if (sig !== "valid" && sig !== "replay") {
       return errorResponse(
         c,
         401,

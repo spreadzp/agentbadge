@@ -101,6 +101,7 @@ function sigHeaders(wallet = WALLET): Record<string, string> {
     "x-wallet": wallet,
     "x-sig": "0xsig",
     "x-timestamp": String(Math.floor(Date.now() / 1000)),
+    "x-nonce": crypto.randomUUID(),
   };
 }
 

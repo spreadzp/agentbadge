@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import { verifyMessage } from "viem";
@@ -229,19 +230,23 @@ function makeFakeChain(): FakeChain {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────
-async function sigHeaders(account: typeof biz, method: string, path: string) {
+async function sigHeaders(account: typeof biz, method: string, path: string, body = "") {
   const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = crypto.randomUUID();
   const message = buildAccessChallenge({
     wallet: account.address,
     method,
     path,
     timestamp,
+    nonce,
+    bodyHash: body ? createHash("sha256").update(body).digest("hex") : "-",
   });
   const signature = await account.signMessage({ message });
   return {
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
+    "x-nonce": nonce,
     "content-type": "application/json",
   };
 }
@@ -348,7 +353,7 @@ describe.skipIf(!hasPassAuthDemo)("SLICE-138-7: marketplace e2e", () => {
     const app = makeApp();
     const pRes = await app.request("/api/market/passport", {
       method: "POST",
-      headers: await sigHeaders(biz, "POST", "/api/market/passport"),
+      headers: await sigHeaders(biz, "POST", "/api/market/passport", JSON.stringify(PASSPORT_META)),
       body: JSON.stringify(PASSPORT_META),
     });
     expect(pRes.status).toBe(200);
@@ -357,7 +362,7 @@ describe.skipIf(!hasPassAuthDemo)("SLICE-138-7: marketplace e2e", () => {
 
     const sRes = await app.request("/api/market/services", {
       method: "POST",
-      headers: await sigHeaders(biz, "POST", "/api/market/services"),
+      headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(SERVICE_META)),
       body: JSON.stringify(SERVICE_META),
     });
     expect(sRes.status).toBe(200);
@@ -533,7 +538,7 @@ describe.skipIf(!hasPassAuthDemo)("SLICE-138-7: marketplace e2e", () => {
     // New service registration blocked (passportValid → false).
     const regRes = await app.request("/api/market/services", {
       method: "POST",
-      headers: await sigHeaders(biz, "POST", "/api/market/services"),
+      headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify({ ...SERVICE_META, subId: "api2" })),
       body: JSON.stringify({ ...SERVICE_META, subId: "api2" }),
     });
     expect(regRes.status).toBe(403);
@@ -561,7 +566,7 @@ describe.skipIf(!hasPassAuthDemo)("SLICE-138-7: marketplace e2e", () => {
     // Register without passport → 403.
     const regRes = await app.request("/api/market/services", {
       method: "POST",
-      headers: await sigHeaders(biz, "POST", "/api/market/services"),
+      headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(SERVICE_META)),
       body: JSON.stringify(SERVICE_META),
     });
     expect(regRes.status).toBe(403);

@@ -50,6 +50,7 @@ const STRANGER = stranger.address;
 async function signedGet(path: string, wallet = W) {
   const account = wallet === W ? agent : stranger;
   const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = crypto.randomUUID();
   const signature = await account.signMessage({
     message: buildAccessChallenge({
       wallet: account.address,
@@ -57,12 +58,15 @@ async function signedGet(path: string, wallet = W) {
       // Route signs c.req.path (no query string)
       path: path.split("?")[0],
       timestamp,
+      nonce,
+      bodyHash: "-",
     }),
   });
   return {
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
+    "x-nonce": nonce,
   };
 }
 

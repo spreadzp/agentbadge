@@ -69,13 +69,14 @@ export const EAAS_EVALUATE_X_EXAMPLES = {
 
 /**
  * Agent-native task contour (EPIC-206-6). Every write needs sig-auth
- * headers (X-Wallet/X-Sig/X-Timestamp over the agentbadge-access:v1
+ * headers (X-Wallet/X-Sig/X-Timestamp/X-Nonce over the agentbadge-access:v2
  * challenge) + idempotency-key — shown once here.
  */
 const SIG_AUTH_HEADERS = {
   "x-wallet": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
   "x-timestamp": "1762800000",
-  "x-sig": "0x<eip191-signature-over-agentbadge-access:v1-challenge>",
+  "x-nonce": "8c9d2f1a",
+  "x-sig": "0x<eip191-signature-over-agentbadge-access:v2-challenge>",
   "idempotency-key": "bid-3f9c2a81",
 } as const;
 

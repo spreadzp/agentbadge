@@ -25,7 +25,7 @@ totalScanRoutes.post(
     description:
       "Streams scan progress and results via Server-Sent Events. Returns progress events during fetch/evaluate phases, then a result event with the full report, then a done event. " +
       "Optional `packs: string[]` scopes the scan to rule bundles (see GET /api/scan-packs for valid ids; legacy pack aliases accepted). " +
-      "Auth: access pass via X-Wallet/X-Sig/X-Timestamp (EIP-191 signature over the agentbadge-access:v1 challenge — see docs/agent-access.md), or x402 payment.",
+      "Auth: access pass via X-Wallet/X-Sig/X-Timestamp/X-Nonce (EIP-191 signature over the agentbadge-access:v2 challenge — see docs/agent-access.md), or x402 payment.",
     parameters: [
       {
         name: "X-Wallet",
@@ -39,7 +39,7 @@ totalScanRoutes.post(
         in: "header",
         required: false,
         schema: { type: "string" },
-        description: "EIP-191 signature over the canonical challenge (agentbadge-access:v1, wallet, method, path, timestamp)",
+        description: "EIP-191 signature over the canonical challenge (agentbadge-access:v2, wallet, method, path, timestamp, nonce, bodyHash, aud)",
       },
       {
         name: "X-Timestamp",

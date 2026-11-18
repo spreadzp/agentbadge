@@ -34,6 +34,7 @@ function sig(wallet: string) {
     "x-wallet": wallet,
     "x-sig": "0xdeadbeef",
     "x-timestamp": String(Math.floor(Date.now() / 1000)),
+    "x-nonce": crypto.randomUUID(),
   };
 }
 

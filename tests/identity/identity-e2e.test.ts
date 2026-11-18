@@ -127,7 +127,7 @@ async function sigHeaders(
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
-    "x-nonce": nonce,
+        "x-nonce": nonce,
     "content-type": "application/json",
   };
 }

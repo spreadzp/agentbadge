@@ -15,7 +15,7 @@ import { getConfig } from "../../config/env";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import { getDatabase } from "../lib/database";
 import { initMarketplaceDbBackend } from "../lib/marketplace/db-backend";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
+import { verifySignedRequest } from "../middleware/agent-auth";
 import { marketplaceApiRoutes } from "../routes/marketplace/marketplace-api";
 import { marketplacePageRoutes } from "../routes/marketplace/marketplace-pages";
 import {
@@ -62,16 +62,10 @@ function buyPrice(c: Context): string {
 /** Passport preFlight — same checks as legacy onProtectedRequest:
  *  valid wallet signature + valid passport metadata BEFORE the 402. */
 async function passportPreCheck(c: Context): Promise<Response | void> {
-  const sig = await verifyWalletSigRequest({
-    wallet: c.req.header("x-wallet"),
-    signature: c.req.header("x-sig"),
-    timestamp: c.req.header("x-timestamp"),
-    method: c.req.method,
-    path: c.req.path,
-  });
+  const sig = await verifySignedRequest(c);
   if (sig !== "valid") {
     return c.json(
-      { error: "valid X-Wallet/X-Sig/X-Timestamp required", detail: sig },
+      { error: "valid X-Wallet/X-Sig/X-Timestamp/X-Nonce required", detail: sig },
       400,
     );
   }

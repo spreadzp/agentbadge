@@ -238,6 +238,7 @@ const SIG = {
   "x-wallet": OWNER,
   "x-sig": "0x" + "aa".repeat(65),
   "x-timestamp": String(Math.floor(Date.now() / 1000)),
+  "x-nonce": crypto.randomUUID(),
 };
 const PAID = { "payment-signature": "sig" };
 

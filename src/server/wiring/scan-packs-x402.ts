@@ -25,7 +25,7 @@ import {
   packsToClassMask,
   CLASS_FULL,
 } from "../lib/access-pass-minter";
-import { checkAccessPassRequest } from "../middleware/agent-auth";
+import { accessBodyHash, checkAccessPassRequest } from "../middleware/agent-auth";
 import { scanPacksApiRoutes } from "../routes/scan/scan-packs-api";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type { CirclePaymentsRuntime, PaymentForOpts } from "../lib/circle-payments";
@@ -83,6 +83,8 @@ async function accessPassChallenge(c: Context) {
     wallet,
     signature,
     timestamp,
+    nonce: c.req.header("x-nonce"),
+    bodyHash: await accessBodyHash(c),
     method: c.req.method,
     path: c.req.path,
     cls: requiredClass(await readBody(c)),

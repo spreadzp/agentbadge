@@ -72,6 +72,7 @@ async function boundHeaders(
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
+    "x-nonce": crypto.randomUUID(),
   };
 }
 

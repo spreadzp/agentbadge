@@ -8,7 +8,7 @@ import { describeRoute } from "hono-openapi";
 import { getAddress, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { opsKey } from "../../lib/eaas/keys";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { verifySignedRequest } from "../../middleware/agent-auth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 
@@ -66,13 +66,7 @@ export async function walletSig(
   c: Context,
 ): Promise<{ valid: true; wallet: `0x${string}` } | { valid: false }> {
   const wallet = c.req.header("x-wallet");
-  const sig = await verifyWalletSigRequest({
-    wallet,
-    signature: c.req.header("x-sig"),
-    timestamp: c.req.header("x-timestamp"),
-    method: c.req.method,
-    path: c.req.path,
-  });
+  const sig = await verifySignedRequest(c);
   if (sig !== "valid" || !wallet || !isAddress(wallet)) return { valid: false };
   return { valid: true, wallet: getAddress(wallet) };
 }

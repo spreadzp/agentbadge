@@ -38,15 +38,22 @@ async function venueConnect(chainIdHex) {
   }
   return from;
 }
-async function venueSign(wallet, method, path) {
+async function sha256Hex(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function venueSign(wallet, method, path, body) {
   const ts = Math.floor(Date.now() / 1000);
-  const msg = ["agentbadge-access:v1", "wallet:" + wallet.toLowerCase(),
-    "method:" + method.toUpperCase(), "path:" + path, "timestamp:" + ts].join("\\n");
+  const nonce = crypto.randomUUID();
+  const bodyHash = body ? await sha256Hex(body) : "-";
+  const msg = ["agentbadge-access:v2", "wallet:" + wallet.toLowerCase(),
+    "method:" + method.toUpperCase(), "path:" + path, "timestamp:" + ts,
+    "nonce:" + nonce, "bodyHash:" + bodyHash, "aud:agentbadge-access-api"].join("\\n");
   const sig = await ethereum.request({
     method: "personal_sign",
     params: ["0x" + Array.from(new TextEncoder().encode(msg)).map(b => b.toString(16).padStart(2, "0")).join(""), wallet]
   });
-  return { "x-wallet": wallet, "x-sig": sig, "x-timestamp": String(ts) };
+  return { "x-wallet": wallet, "x-sig": sig, "x-timestamp": String(ts), "x-nonce": nonce };
 }
 `;
 

@@ -26,7 +26,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { logger } from "@agentbadge/passport/logger";
-import { verifyWalletSigRequest, CLASS_EAAS } from "../../middleware/agent-auth";
+import { verifySignedRequest, CLASS_EAAS } from "../../middleware/agent-auth";
 
 export const EAAS_QUOTA_WINDOW_SEC = 30 * 86_400;
 
@@ -189,13 +189,7 @@ export async function checkEaasQuotaAccess(
   deps: EaasQuotaDeps,
 ): Promise<EaasAccess> {
   const wallet = c.req.header("x-wallet");
-  const sig = await verifyWalletSigRequest({
-    wallet,
-    signature: c.req.header("x-sig"),
-    timestamp: c.req.header("x-timestamp"),
-    method: c.req.method,
-    path: c.req.path,
-  });
+  const sig = await verifySignedRequest(c);
   if (sig === "invalid") {
     return {
       kind: "deny",

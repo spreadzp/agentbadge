@@ -207,6 +207,8 @@ export interface BriefAccessDeps {
     wallet: string | undefined;
     signature: string | undefined;
     timestamp: string | undefined;
+    nonce: string | undefined;
+    bodyHash: string;
     method: string;
     path: string;
   }) => Promise<WalletSigCheck>;
@@ -232,6 +234,8 @@ export async function checkBriefAccess(args: {
   wallet?: string;
   signature?: string;
   timestamp?: string;
+  nonce?: string;
+  bodyHash?: string;
   method: string;
   path: string;
 }, deps: BriefAccessDeps = {}): Promise<{
@@ -250,6 +254,8 @@ export async function checkBriefAccess(args: {
     wallet: args.wallet,
     signature: args.signature,
     timestamp: args.timestamp,
+    nonce: args.nonce,
+    bodyHash: args.bodyHash ?? "-",
     method: args.method,
     path: args.path,
   });

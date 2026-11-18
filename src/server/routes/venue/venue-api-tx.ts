@@ -10,7 +10,7 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { dr, str, TX_PHASES } from "./venue-api-helpers";
 import { recordVenueEvent } from "../../services/venue-events";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { verifySignedRequest } from "../../middleware/agent-auth";
 import type { LifecycleDeps } from "./venue-api-lifecycle-core";
 
 export function registerTxAttachRoutes(app: Hono, deps: LifecycleDeps): void {
@@ -34,16 +34,13 @@ export function registerTxAttachRoutes(app: Hono, deps: LifecycleDeps): void {
       // 234-19: evalFee attach sets paid=true — require the job client's
       // wallet signature, otherwise anyone could mark the fee paid with
       // an arbitrary 0x-hash and skip the evaluator-fee gate (S-audit).
-      const sig = await verifyWalletSigRequest({
-        wallet: c.req.header("x-wallet"),
-        signature: c.req.header("x-sig"),
-        timestamp: c.req.header("x-timestamp"),
-        method: c.req.method,
-        path: c.req.path,
-      });
+      const sig = await verifySignedRequest(c);
+      if (sig === "replay") {
+        return errorResponse(c, 409, ErrorCodes.CONFLICT, "replayed signed request");
+      }
       if (sig !== "valid") {
         return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
-          "evalFee attach requires a valid X-Wallet/X-Sig/X-Timestamp");
+          "evalFee attach requires a valid X-Wallet/X-Sig/X-Timestamp/X-Nonce");
       }
       const wallet = c.req.header("x-wallet")!.toLowerCase();
       if (wallet !== job.client.toLowerCase()) {

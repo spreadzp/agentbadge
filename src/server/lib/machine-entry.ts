@@ -72,7 +72,7 @@ export const ENDPOINT_TEMPLATE: readonly EndpointDef[] = [
 // ─── Global descriptor (well-known doc) ──────────────────────────
 
 const SIG_CHALLENGE_FORMAT =
-  "agentbadge-access:v1\\nwallet:<lowercased>\\nmethod:<UPPER>\\npath:<path>\\ntimestamp:<unix_seconds>";
+  "agentbadge-access:v2\\nwallet:<lowercased>\\nmethod:<UPPER>\\npath:<path>\\ntimestamp:<unix_seconds>\\nnonce:<8-128 chars>\\nbodyHash:<sha256 of raw body or ->\\naud:agentbadge-access-api";
 
 export function buildMachineDescriptor() {
   return {

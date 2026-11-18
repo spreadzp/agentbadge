@@ -23,7 +23,7 @@ import { BASE_URL } from "../lib/page-meta";
 const HINTS: Record<number, Record<string, unknown>> = {
   401: {
     how_to_fix:
-      "Provide valid credentials: Authorization: Bearer agb_<key> for keyed endpoints, X-Wallet/X-Sig/X-Timestamp EIP-191 (agentbadge-access:v1) for task writes and pass-gated endpoints, or X-AgentBadge-* DID headers for legacy writes. See /agent-guide/getting-started.",
+      "Provide valid credentials: Authorization: Bearer agb_<key> for keyed endpoints, X-Wallet/X-Sig/X-Timestamp/X-Nonce EIP-191 (agentbadge-access:v2) for task writes and pass-gated endpoints, or X-AgentBadge-* DID headers for legacy writes. See /agent-guide/getting-started.",
     register: "/api/v1/agents/register",
     docs: "/agent-guide/getting-started",
     machine_entry: "/.well-known/agentbadge-machine.json",

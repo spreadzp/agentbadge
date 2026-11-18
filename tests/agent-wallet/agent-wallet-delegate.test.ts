@@ -6,6 +6,7 @@
  *  - sig auth: 401 no-sig, owner-only (x-wallet must equal :addr)
  */
 import { describe, it, expect, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { privateKeyToAccount } from "viem/accounts";
 import { buildAccessChallenge } from "../../src/server/middleware/agent-auth";
 
@@ -44,20 +45,25 @@ async function signed(
   method: string,
   path: string,
   account = owner,
+  body = "",
 ): Promise<Record<string, string>> {
   const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = crypto.randomUUID();
   const signature = await account.signMessage({
     message: buildAccessChallenge({
       wallet: account.address,
       method,
       path,
       timestamp,
+      nonce,
+      bodyHash: body ? createHash("sha256").update(body).digest("hex") : "-",
     }),
   });
   return {
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
+    "x-nonce": nonce,
   };
 }
 
@@ -166,7 +172,7 @@ describe("delegate routes", () => {
     const res = await app.request(path, {
       method: "POST",
       headers: {
-        ...await signed("POST", path),
+        ...await signed("POST", path, owner, JSON.stringify({ chain: CHAIN, spendCapUsd: 10 })),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ chain: CHAIN, spendCapUsd: 10 }),
@@ -186,7 +192,7 @@ describe("delegate routes", () => {
     const res = await app.request(path, {
       method: "POST",
       headers: {
-        ...await signed("POST", path, stranger),
+        ...await signed("POST", path, stranger, JSON.stringify({ chain: CHAIN, spendCapUsd: 1 })),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ chain: CHAIN, spendCapUsd: 1 }),
@@ -201,7 +207,7 @@ describe("delegate routes", () => {
       app.request(reg, {
         method: "POST",
         headers: {
-          ...await signed("POST", reg),
+          ...await signed("POST", reg, owner, JSON.stringify({ chain: CHAIN, spendCapUsd: 10 })),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ chain: CHAIN, spendCapUsd: 10 }),
@@ -218,7 +224,7 @@ describe("delegate routes", () => {
     const revRes = await app.request(revoke, {
       method: "POST",
       headers: {
-        ...await signed("POST", revoke),
+        ...await signed("POST", revoke, owner, JSON.stringify({ chain: CHAIN })),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ chain: CHAIN }),
@@ -232,7 +238,7 @@ describe("delegate routes", () => {
         await app.request(revoke, {
           method: "POST",
           headers: {
-            ...await signed("POST", revoke),
+            ...await signed("POST", revoke, owner, JSON.stringify({ chain: CHAIN })),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ chain: CHAIN }),

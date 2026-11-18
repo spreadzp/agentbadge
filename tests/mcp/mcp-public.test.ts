@@ -125,6 +125,7 @@ describe("POST /mcp/public JSON-RPC", () => {
         "x-wallet": "0x" + "a".repeat(40),
         "x-sig": "0x" + "b".repeat(130),
         "x-timestamp": "1",
+        "x-nonce": crypto.randomUUID(),
         "mcp-session-id": "bogus",
       },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),

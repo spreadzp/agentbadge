@@ -30,7 +30,7 @@ describe("SLICE-206-1 machine descriptor", () => {
       signature: "X-Sig",
       timestamp: "X-Timestamp",
     });
-    expect(d.auth.challenge_format).toContain("agentbadge-access:v1");
+    expect(d.auth.challenge_format).toContain("agentbadge-access:v2");
     expect(d.auth.timestamp_skew_seconds).toBe(300);
     expect(d.auth.chains).toContain("eip155:5042002");
     // endpoints: ordered discover → … → verify-status

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -142,11 +143,15 @@ async function signedPost(
   const path = opts.path ?? PATH;
   const timestamp = opts.timestamp ?? Math.floor(Date.now() / 1000);
   const wallet = opts.wallet ?? opts.signer.address;
+  const nonce = crypto.randomUUID();
+  const body = "{}";
   const message = buildAccessChallenge({
     wallet,
     method: "POST",
     path,
     timestamp,
+    nonce,
+    bodyHash: createHash("sha256").update(body).digest("hex"),
   });
   let signature = await opts.signer.signMessage({ message });
   if (opts.wrap6492) {
@@ -163,8 +168,9 @@ async function signedPost(
       "X-Wallet": wallet,
       "X-Sig": signature,
       "X-Timestamp": String(timestamp),
+      "X-Nonce": nonce,
     },
-    body: "{}",
+    body,
   });
 }
 

@@ -15,7 +15,7 @@ import type { Context, Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
 
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { verifySignedRequest } from "../../middleware/agent-auth";
 import { requireVenueAccess } from "../../middleware/venue-auth";
 import {
   addVenueMember,
@@ -85,16 +85,13 @@ export function registerVenueInstanceRoutes(app: Hono): void {
       409: { description: "Slug taken or limit reached" }
     },
   }), async (c) => {
-    const check = await verifyWalletSigRequest({
-      wallet: c.req.header("x-wallet"),
-      signature: c.req.header("x-sig"),
-      timestamp: c.req.header("x-timestamp"),
-      method: "POST",
-      path: "/api/venue/instances",
-    });
+    const check = await verifySignedRequest(c);
+    if (check === "replay") {
+      return errorResponse(c, 409, ErrorCodes.CONFLICT, "replayed signed request");
+    }
     if (check !== "valid") {
       return errorResponse(c, 401, ErrorCodes.WRONG_SIGNER,
-        "wallet signature required (x-wallet/x-sig/x-timestamp)");
+        "wallet signature required (x-wallet/x-sig/x-timestamp/x-nonce)");
     }
     const body = (await c.req.json().catch(() => null)) as
       | Record<string, unknown>

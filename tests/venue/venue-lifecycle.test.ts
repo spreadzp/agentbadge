@@ -133,6 +133,7 @@ const post = (a: Hono, path: string, wallet: string, body: object = {}) =>
       "x-wallet": wallet,
       "x-sig": "0xdead",
       "x-timestamp": String(Math.floor(Date.now() / 1000)),
+      "x-nonce": crypto.randomUUID(),
       "content-type": "application/json",
     },
     body: JSON.stringify(body),

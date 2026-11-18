@@ -39,18 +39,21 @@ function makeApp(cls = CLASS_MEDIUM) {
 
 async function signFor(
   account: typeof agent,
-  opts: { method?: string; path?: string; timestamp?: number; wallet?: string } = {},
+  opts: { method?: string; path?: string; timestamp?: number; wallet?: string; nonce?: string } = {},
 ) {
   const timestamp = opts.timestamp ?? Math.floor(Date.now() / 1000);
   const wallet = opts.wallet ?? account.address;
+  const nonce = opts.nonce ?? crypto.randomUUID();
   const message = buildAccessChallenge({
     wallet,
     method: opts.method ?? "POST",
     path: opts.path ?? PATH,
     timestamp,
+    nonce,
+    bodyHash: "-",
   });
   const signature = await account.signMessage({ message });
-  return { signature, timestamp, wallet };
+  return { signature, timestamp, wallet, nonce };
 }
 
 function post(app: ReturnType<typeof makeApp>, headers: Record<string, string>) {
@@ -75,13 +78,13 @@ describe("SLICE-137-3: agentAuth middleware", () => {
 
   describe("header validation", () => {
     it("401 MISSING_FIELDS when X-Wallet absent", async () => {
-      const res = await post(makeApp(), { "x-sig": "0x1234", "x-timestamp": "1" });
+      const res = await post(makeApp(), { "x-sig": "0x1234", "x-timestamp": "1", "x-nonce": crypto.randomUUID() });
       expect(res.status).toBe(401);
       expect((await res.json()).code).toBe("MISSING_FIELDS");
     });
 
     it("401 MISSING_FIELDS when X-Sig absent", async () => {
-      const res = await post(makeApp(), { "x-wallet": agent.address, "x-timestamp": "1" });
+      const res = await post(makeApp(), { "x-wallet": agent.address, "x-timestamp": "1", "x-nonce": crypto.randomUUID() });
       expect(res.status).toBe(401);
       expect((await res.json()).code).toBe("MISSING_FIELDS");
     });
@@ -91,6 +94,7 @@ describe("SLICE-137-3: agentAuth middleware", () => {
         "x-wallet": "not-an-address",
         "x-sig": "0x1234",
         "x-timestamp": String(Math.floor(Date.now() / 1000)),
+        "x-nonce": crypto.randomUUID(),
       });
       expect(res.status).toBe(401);
     });
@@ -99,22 +103,24 @@ describe("SLICE-137-3: agentAuth middleware", () => {
   describe("timestamp skew", () => {
     it("401 when timestamp too old", async () => {
       const stale = Math.floor(Date.now() / 1000) - 600; // 10min ago
-      const { signature, timestamp, wallet } = await signFor(agent, { timestamp: stale });
+      const { signature, timestamp, wallet, nonce } = await signFor(agent, { timestamp: stale });
       const res = await post(makeApp(), {
         "x-wallet": wallet,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": nonce,
       });
       expect(res.status).toBe(401);
     });
 
     it("401 when timestamp in the future beyond skew", async () => {
       const future = Math.floor(Date.now() / 1000) + 600;
-      const { signature, timestamp, wallet } = await signFor(agent, { timestamp: future });
+      const { signature, timestamp, wallet, nonce } = await signFor(agent, { timestamp: future });
       const res = await post(makeApp(), {
         "x-wallet": wallet,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": nonce,
       });
       expect(res.status).toBe(401);
     });
@@ -126,6 +132,7 @@ describe("SLICE-137-3: agentAuth middleware", () => {
         "x-wallet": agent.address,
         "x-sig": "0xdeadbeef",
         "x-timestamp": String(Math.floor(Date.now() / 1000)),
+        "x-nonce": crypto.randomUUID(),
       });
       expect(res.status).toBe(401);
       expect((await res.json()).code).toBe("INVALID_INPUT");
@@ -133,21 +140,23 @@ describe("SLICE-137-3: agentAuth middleware", () => {
 
     it("401 when signature was made by a different wallet", async () => {
       // other signs, but claims agent's wallet
-      const { signature, timestamp } = await signFor(other, { wallet: agent.address });
+      const { signature, timestamp, nonce } = await signFor(other, { wallet: agent.address });
       const res = await post(makeApp(), {
         "x-wallet": agent.address,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": nonce,
       });
       expect(res.status).toBe(401);
     });
 
     it("401 when signature covers a different path (replay across routes)", async () => {
-      const { signature, timestamp, wallet } = await signFor(agent, { path: "/api/other" });
+      const { signature, timestamp, wallet, nonce } = await signFor(agent, { path: "/api/other" });
       const res = await post(makeApp(), {
         "x-wallet": wallet,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": nonce,
       });
       expect(res.status).toBe(401);
     });
@@ -155,11 +164,12 @@ describe("SLICE-137-3: agentAuth middleware", () => {
 
   describe("hasAccess gate", () => {
     it("200 + agentWallet set when signature valid and pass active", async () => {
-      const { signature, timestamp, wallet } = await signFor(agent);
+      const { signature, timestamp, wallet, nonce } = await signFor(agent);
       const res = await post(makeApp(), {
         "x-wallet": wallet,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": nonce,
       });
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -173,22 +183,24 @@ describe("SLICE-137-3: agentAuth middleware", () => {
 
     it("402 PAYMENT_REQUIRED when wallet has no valid pass", async () => {
       hasAccessSpy.mockResolvedValue(false);
-      const { signature, timestamp, wallet } = await signFor(agent);
+      const { signature, timestamp, wallet, nonce } = await signFor(agent);
       const res = await post(makeApp(), {
         "x-wallet": wallet,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": nonce,
       });
       expect(res.status).toBe(402);
       expect((await res.json()).code).toBe("PAYMENT_REQUIRED");
     });
 
     it("queries the class bit the middleware was configured with", async () => {
-      const { signature, timestamp, wallet } = await signFor(agent);
+      const { signature, timestamp, wallet, nonce } = await signFor(agent);
       const res = await post(makeApp(CLASS_HEAVY), {
         "x-wallet": wallet,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": nonce,
       });
       expect(res.status).toBe(200);
       expect(hasAccessSpy).toHaveBeenCalledWith(expect.anything(), CLASS_HEAVY);
@@ -200,8 +212,8 @@ describe("SLICE-137-3: agentAuth middleware", () => {
       const app = makeApp();
       const s1 = await signFor(agent);
       const s2 = await signFor(agent);
-      await post(app, { "x-wallet": s1.wallet, "x-sig": s1.signature, "x-timestamp": String(s1.timestamp) });
-      await post(app, { "x-wallet": s2.wallet, "x-sig": s2.signature, "x-timestamp": String(s2.timestamp) });
+      await post(app, { "x-wallet": s1.wallet, "x-sig": s1.signature, "x-timestamp": String(s1.timestamp), "x-nonce": s1.nonce });
+      await post(app, { "x-wallet": s2.wallet, "x-sig": s2.signature, "x-timestamp": String(s2.timestamp), "x-nonce": s2.nonce });
       expect(hasAccessSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -209,8 +221,8 @@ describe("SLICE-137-3: agentAuth middleware", () => {
       const app = makeApp();
       const s1 = await signFor(agent);
       const s2 = await signFor(other);
-      await post(app, { "x-wallet": s1.wallet, "x-sig": s1.signature, "x-timestamp": String(s1.timestamp) });
-      await post(app, { "x-wallet": s2.wallet, "x-sig": s2.signature, "x-timestamp": String(s2.timestamp) });
+      await post(app, { "x-wallet": s1.wallet, "x-sig": s1.signature, "x-timestamp": String(s1.timestamp), "x-nonce": s1.nonce });
+      await post(app, { "x-wallet": s2.wallet, "x-sig": s2.signature, "x-timestamp": String(s2.timestamp), "x-nonce": s2.nonce });
       expect(hasAccessSpy).toHaveBeenCalledTimes(2);
     });
   });

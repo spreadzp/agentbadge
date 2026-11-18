@@ -12,6 +12,7 @@ import { Hono } from "hono";
 import { isAddress } from "viem";
 
 import { dr, str } from "../venue/venue-api-helpers";
+import { accessBodyHash } from "../../middleware/agent-auth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { claimBounty, type ClaimDeps } from "../../lib/bounties/claim";
@@ -91,6 +92,8 @@ export function createBountyRoutes(deps: BountyRouteDeps = {}) {
         wallet: c.req.header("x-wallet"),
         signature: c.req.header("x-sig"),
         timestamp: c.req.header("x-timestamp"),
+        nonce: c.req.header("x-nonce"),
+        bodyHash: await accessBodyHash(c),
         method: c.req.method,
         path: c.req.path,
       },

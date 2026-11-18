@@ -61,7 +61,7 @@ async function sigHeaders(
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
-    "x-nonce": nonce,
+        "x-nonce": nonce,
     "content-type": "application/json",
   };
 }
@@ -258,7 +258,7 @@ describe("POST /api/v1/actors/:wallet/enrich", () => {
       "x-wallet": owner.address,
       "x-sig": signature,
       "x-timestamp": String(timestamp),
-      "x-nonce": nonce,
+            "x-nonce": nonce,
       idempotency_key: "req_idem_001",
       "content-type": "application/json",
     };

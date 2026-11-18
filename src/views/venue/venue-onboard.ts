@@ -68,18 +68,18 @@ export function venueNewVenuePage(net: VenueNetwork, trialDays: number): string 
           const fd = new FormData(ev.target);
           const wallet = await venueConnect("${chainHex}");
           st.textContent = "Signing venue record…";
-          const headers = Object.assign(
-            { "content-type": "application/json" },
-            await venueSign(wallet, "POST", "/api/venue/instances"));
-          const r = await fetch("/api/venue/instances", {
-            method: "POST", headers,
-            body: JSON.stringify({
+          const venueBody = JSON.stringify({
               name: fd.get("name"), slug: fd.get("slug"),
               description: fd.get("description") || undefined,
               clientPolicy: fd.get("clientPolicy"),
               evaluator: fd.get("evaluator"),
               takeRateBps: fd.get("takeRateBps")
-                ? Number(fd.get("takeRateBps")) : undefined })});
+                ? Number(fd.get("takeRateBps")) : undefined });
+          const headers = Object.assign(
+            { "content-type": "application/json" },
+            await venueSign(wallet, "POST", "/api/venue/instances", venueBody));
+          const r = await fetch("/api/venue/instances", {
+            method: "POST", headers, body: venueBody });
           const out = await r.json();
           if (!r.ok) throw new Error((out.error && out.error.message) || out.error || "HTTP " + r.status);
           st.textContent = "";

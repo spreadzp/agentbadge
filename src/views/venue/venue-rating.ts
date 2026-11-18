@@ -38,11 +38,12 @@ const RATE_SCRIPT = `
       }
       status.textContent = "signing…";
       var path = "/api/venue/jobs/" + JOB + "/rate";
-      var hdr = await venueSign(acc, "POST", path);
+      var rateBody = JSON.stringify({ score: score,
+        comment: document.getElementById("rate-comment").value || undefined });
+      var hdr = await venueSign(acc, "POST", path, rateBody);
       hdr["content-type"] = "application/json";
       var res = await fetch(path, { method: "POST", headers: hdr,
-        body: JSON.stringify({ score: score,
-          comment: document.getElementById("rate-comment").value || undefined }) });
+        body: rateBody });
       var out = await res.json();
       if (!res.ok) {
         status.textContent = (out.error && out.error.message) || "rate failed " + res.status;

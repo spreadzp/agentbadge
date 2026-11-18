@@ -260,10 +260,10 @@ export function venueAdminPage(
       const st = document.getElementById("adm-status");
       async function call(method, path, body) {
         const wallet = await venueConnect("${chainHex}");
+        const raw = body ? JSON.stringify(body) : undefined;
         const headers = Object.assign({ "content-type": "application/json" },
-          await venueSign(wallet, method, path));
-        const r = await fetch(path, { method, headers,
-          body: body ? JSON.stringify(body) : undefined });
+          await venueSign(wallet, method, path, raw));
+        const r = await fetch(path, { method, headers, body: raw });
         if (!r.ok) throw new Error((await r.json()).error ?? "HTTP " + r.status);
         return r.json();
       }

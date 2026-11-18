@@ -12,7 +12,7 @@ import { logger } from "@agentbadge/passport/logger";
 
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
-import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { verifySignedRequest } from "../../middleware/agent-auth";
 import { requireVenueAccess } from "../../middleware/venue-auth";
 import { getVenue } from "../../lib/venue/venues";
 import { venueRole } from "../../lib/venue/members";
@@ -39,13 +39,7 @@ export const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 /** Wallet-sig check shared by POST/DELETE/suspend; returns caller wallet or null. */
 export async function sigWallet(c: Context): Promise<string | null> {
   const wallet = c.req.header("x-wallet");
-  const sig = await verifyWalletSigRequest({
-    wallet,
-    signature: c.req.header("x-sig"),
-    timestamp: c.req.header("x-timestamp"),
-    method: c.req.method,
-    path: c.req.path,
-  });
+  const sig = await verifySignedRequest(c);
   return sig === "valid" && wallet ? wallet.toLowerCase() : null;
 }
 

@@ -85,12 +85,13 @@ afterEach(() => {
   resetConfigCache();
 });
 
-const signedHeaders = {
+const signedHeaders = () => ({
   "x-wallet": WALLET,
   "x-sig": "0xdead",
   "x-timestamp": String(Math.floor(Date.now() / 1000)),
+  "x-nonce": crypto.randomUUID(),
   "content-type": "application/json",
-};
+});
 
 // ─── Store ───────────────────────────────────────────────────────
 
@@ -168,7 +169,7 @@ describe("venue api", () => {
   it("POST /api/venue/jobs creates record + returns createJob calldata", async () => {
     const res = await apiApp().request("/api/venue/jobs", {
       method: "POST",
-      headers: signedHeaders,
+      headers: signedHeaders(),
       body: JSON.stringify({
         title: "Bounty job",
         description: "do the thing",
@@ -193,7 +194,7 @@ describe("venue api", () => {
   it("POST /api/venue/jobs validates budget", async () => {
     const res = await apiApp().request("/api/venue/jobs", {
       method: "POST",
-      headers: signedHeaders,
+      headers: signedHeaders(),
       body: JSON.stringify({ title: "t", description: "d", budgetUsdc: -1 }),
     });
     expect(res.status).toBe(400);
@@ -248,14 +249,14 @@ describe("venue api", () => {
     });
     const bad = await apiApp(async () => OTHER).request("/api/venue/offers", {
       method: "POST",
-      headers: signedHeaders,
+      headers: signedHeaders(),
       body: payload,
     });
     expect(bad.status).toBe(403);
 
     const good = await apiApp(async () => WALLET).request("/api/venue/offers", {
       method: "POST",
-      headers: signedHeaders,
+      headers: signedHeaders(),
       body: payload,
     });
     expect(good.status).toBe(200);
@@ -267,7 +268,7 @@ describe("venue api", () => {
     // trigger a job.created event (fire-and-forget write — settle via flush)
     const res = await app.request("/api/venue/jobs", {
       method: "POST",
-      headers: signedHeaders,
+      headers: signedHeaders(),
       body: JSON.stringify({ title: "FeedJob", description: "d", budgetUsdc: 1 }),
     });
     expect(res.status).toBe(200);

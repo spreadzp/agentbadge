@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import { verifyMessage } from "viem";
@@ -72,19 +73,24 @@ async function sigHeaders(
   account: typeof biz,
   method: string,
   path: string,
+  body = "",
 ): Promise<Record<string, string>> {
   const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = crypto.randomUUID();
   const message = buildAccessChallenge({
     wallet: account.address,
     method,
     path,
     timestamp,
+    nonce,
+    bodyHash: body ? createHash("sha256").update(body).digest("hex") : "-",
   });
   const signature = await account.signMessage({ message });
   return {
     "x-wallet": account.address,
     "x-sig": signature,
     "x-timestamp": String(timestamp),
+    "x-nonce": nonce,
     "content-type": "application/json",
   };
 }
@@ -281,7 +287,7 @@ describe("SLICE-138-3: marketplace backend", () => {
     it("rejects invalid metadata", async () => {
       const res = await makeApp().request("/api/market/passport", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/passport"),
+        headers: await sigHeaders(biz, "POST", "/api/market/passport", JSON.stringify({ name: "x" })),
         body: JSON.stringify({ name: "x" }),
       });
       expect(res.status).toBe(400);
@@ -290,7 +296,7 @@ describe("SLICE-138-3: marketplace backend", () => {
     it("mints passport to the signing wallet", async () => {
       const res = await makeApp().request("/api/market/passport", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/passport"),
+        headers: await sigHeaders(biz, "POST", "/api/market/passport", JSON.stringify(VALID_PASSPORT_META)),
         body: JSON.stringify(VALID_PASSPORT_META),
       });
       expect(res.status).toBe(200);
@@ -320,7 +326,7 @@ describe("SLICE-138-3: marketplace backend", () => {
     it("rejects non-owner wallet", async () => {
       const res = await makeApp().request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(other, "POST", "/api/market/services"),
+        headers: await sigHeaders(other, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
       expect(res.status).toBe(403);
@@ -332,7 +338,7 @@ describe("SLICE-138-3: marketplace backend", () => {
       configureMarketplaceForTesting({ ops });
       const res = await makeApp().request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/services"),
+        headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
       expect(res.status).toBe(403);
@@ -341,7 +347,7 @@ describe("SLICE-138-3: marketplace backend", () => {
     it("registers service on-chain + catalogs it", async () => {
       const res = await makeApp().request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/services"),
+        headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
       expect(res.status).toBe(200);
@@ -363,7 +369,7 @@ describe("SLICE-138-3: marketplace backend", () => {
     beforeEach(async () => {
       await makeApp().request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/services"),
+        headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
     });
@@ -421,7 +427,7 @@ describe("SLICE-138-3: marketplace backend", () => {
 
       await app.request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/services"),
+        headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
       const res = await app.request(`/api/market/buy/${SVC_ID}`, {
@@ -451,7 +457,7 @@ describe("SLICE-138-3: marketplace backend", () => {
       const app = makeApp();
       await app.request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/services"),
+        headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
       const res = await app.request(`/api/market/passes/${BUYER}`);
@@ -469,7 +475,7 @@ describe("SLICE-138-3: marketplace backend", () => {
       const app = makeApp();
       await app.request("/api/market/passport", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/passport"),
+        headers: await sigHeaders(biz, "POST", "/api/market/passport", JSON.stringify(VALID_PASSPORT_META)),
         body: JSON.stringify(VALID_PASSPORT_META),
       });
       const hash = (ops.mintPassport as ReturnType<typeof vi.fn>).mock
@@ -503,7 +509,7 @@ describe("SLICE-138-3: marketplace backend", () => {
       const app = makeApp();
       await app.request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/services"),
+        headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
       await createMarketplaceMintOnSettleHook()(settleCtx());
@@ -551,7 +557,7 @@ describe("SLICE-138-3: marketplace backend", () => {
       const app = makeApp();
       await app.request("/api/market/services", {
         method: "POST",
-        headers: await sigHeaders(biz, "POST", "/api/market/services"),
+        headers: await sigHeaders(biz, "POST", "/api/market/services", JSON.stringify(VALID_SERVICE_META)),
         body: JSON.stringify(VALID_SERVICE_META),
       });
       await expect(

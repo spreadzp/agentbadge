@@ -243,15 +243,22 @@ async function x402Fetch(url, opts) {
   return fetch(url, opts);
 }
 
-async function signAccessChallenge(wallet, method, path) {
+async function sha256Hex(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function signAccessChallenge(wallet, method, path, body) {
   const ts = Math.floor(Date.now() / 1000);
-  const msg = ["agentbadge-access:v1", "wallet:" + wallet.toLowerCase(),
-    "method:" + method.toUpperCase(), "path:" + path, "timestamp:" + ts].join("\\n");
+  const nonce = crypto.randomUUID();
+  const bodyHash = body ? await sha256Hex(body) : "-";
+  const msg = ["agentbadge-access:v2", "wallet:" + wallet.toLowerCase(),
+    "method:" + method.toUpperCase(), "path:" + path, "timestamp:" + ts,
+    "nonce:" + nonce, "bodyHash:" + bodyHash, "aud:agentbadge-access-api"].join("\\n");
   const sig = await ethereum.request({
     method: "personal_sign",
     params: ["0x" + Array.from(new TextEncoder().encode(msg)).map(b => b.toString(16).padStart(2, "0")).join(""), wallet]
   });
-  return { "x-wallet": wallet, "x-sig": sig, "x-timestamp": String(ts) };
+  return { "x-wallet": wallet, "x-sig": sig, "x-timestamp": String(ts), "x-nonce": nonce };
 }
 `;
 
@@ -443,12 +450,13 @@ export function marketSellPage(): string {
         try {
           const wallet = await connectWallet();
           const path = "/api/market/passport";
-          const sig = await signAccessChallenge(wallet, "POST", path);
+          const body = JSON.stringify(formData(e.target));
+          const sig = await signAccessChallenge(wallet, "POST", path, body);
           st.textContent = "Paying passport fee…";
           const res = await x402Fetch(path, {
             method: "POST",
             headers: Object.assign({ "content-type": "application/json" }, sig),
-            body: JSON.stringify(formData(e.target)),
+            body,
           });
           const json = await res.json();
           if (!res.ok) throw new Error(json.error?.message || json.error || "HTTP " + res.status);
@@ -465,12 +473,13 @@ export function marketSellPage(): string {
         try {
           const wallet = await connectWallet();
           const path = "/api/market/services";
-          const sig = await signAccessChallenge(wallet, "POST", path);
+          const body = JSON.stringify(formData(e.target));
+          const sig = await signAccessChallenge(wallet, "POST", path, body);
           st.textContent = "Registering on-chain…";
           const res = await fetch(path, {
             method: "POST",
             headers: Object.assign({ "content-type": "application/json" }, sig),
-            body: JSON.stringify(formData(e.target)),
+            body,
           });
           const json = await res.json();
           if (!res.ok) throw new Error(json.error?.message || json.error || "HTTP " + res.status);

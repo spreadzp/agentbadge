@@ -148,6 +148,7 @@ describe("SLICE-171-2: payer-binding middleware", () => {
         "x-wallet": payer.address,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(res.status).toBe(200);
@@ -169,6 +170,7 @@ describe("SLICE-171-2: payer-binding middleware", () => {
         "x-wallet": payer.address, // claiming the victim's wallet
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(res.status).toBe(403);
@@ -185,6 +187,7 @@ describe("SLICE-171-2: payer-binding middleware", () => {
         "x-wallet": payer.address,
         "x-sig": signature,
         "x-timestamp": String(stale),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(res.status).toBe(403);
@@ -203,6 +206,7 @@ describe("SLICE-171-2: payer-binding middleware", () => {
         "x-wallet": sniper.address,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(res.status).toBe(403);
@@ -222,6 +226,7 @@ describe("SLICE-171-2: payer-binding middleware", () => {
         "x-wallet": payer.address,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(res.status).toBe(200);
@@ -241,6 +246,7 @@ describe("SLICE-171-2: payer-binding middleware", () => {
         "x-wallet": payer.address,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(res.status).toBe(200);
@@ -256,6 +262,7 @@ describe("SLICE-171-2: payer-binding middleware", () => {
       "x-wallet": payer.address,
       "x-sig": signature,
       "x-timestamp": String(timestamp),
+      "x-nonce": crypto.randomUUID(),
     };
     await app.request(PATH, { headers });
     await app.request(PATH, { headers });
@@ -316,6 +323,7 @@ describe("SLICE-171-2: snipe fixture (dedup slot not burned)", () => {
         "x-wallet": sniper.address,
         "x-sig": signature,
         "x-timestamp": String(timestamp),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(snipe2.status).toBe(403);
@@ -333,6 +341,7 @@ describe("SLICE-171-2: snipe fixture (dedup slot not burned)", () => {
         "x-wallet": payer.address,
         "x-sig": legit.signature,
         "x-timestamp": String(legit.timestamp),
+        "x-nonce": crypto.randomUUID(),
       },
     });
     expect(ok.status).toBe(200);

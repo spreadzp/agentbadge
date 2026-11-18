@@ -82,12 +82,13 @@ afterEach(() => {
   resetConfigCache();
 });
 
-const signedHeaders = {
+const signedHeaders = () => ({
   "x-wallet": WALLET,
   "x-sig": "0xdead",
   "x-timestamp": String(Math.floor(Date.now() / 1000)),
+  "x-nonce": crypto.randomUUID(),
   "content-type": "application/json",
-};
+});
 
 function offerFixture(over: Partial<VenueOffer> = {}): VenueOffer {
   return {
@@ -178,7 +179,7 @@ describe("venue offers api (152-1)", () => {
   const postOffer = (app: Hono, body: Record<string, unknown>) =>
     app.request("/api/venue/offers", {
       method: "POST",
-      headers: signedHeaders,
+      headers: signedHeaders(),
       body: JSON.stringify(body),
     });
 
