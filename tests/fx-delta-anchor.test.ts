@@ -21,8 +21,8 @@ import {
   resetFxDeltaAnchor,
   type FxDeltaView,
 } from "../src/server/lib/fx-delta";
-import { fxDeltaRoutes } from "../src/server/routes/fx-delta-api";
-import { fxDeltaVerifyRoutes } from "../src/server/routes/fx-delta-verify";
+import { fxDeltaRoutes } from "../src/server/routes/fx-delta/fx-delta-api";
+import { fxDeltaVerifyRoutes } from "../src/server/routes/fx-delta/fx-delta-verify";
 
 const view = (over: Partial<FxDeltaView> = {}): FxDeltaView => ({
   corridor: "USDT-NGN",

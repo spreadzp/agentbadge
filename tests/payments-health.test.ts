@@ -15,7 +15,7 @@ import {
 import {
   createPaymentsHealthRoutes,
   type FacilitatorHealth,
-} from "../src/server/routes/payments-health";
+} from "../src/server/routes/payments/payments-health";
 import {
   createFacilitatorProbe,
 } from "../src/server/lib/circle-payments-probe";

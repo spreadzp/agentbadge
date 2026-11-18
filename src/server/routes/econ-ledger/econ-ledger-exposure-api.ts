@@ -15,11 +15,11 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import type { Database } from "@agentbadge/database";
-import { getDatabase } from "../lib/database";
-import { createRateLimiter } from "../middleware/rate-limit";
-import { assessExposure } from "../lib/econ-ledger/exposure";
-import { assessAddress, type RiskVerdict } from "../lib/forensics/risk-service";
-import { ADDRESS_RE, errJson } from "../lib/econ-ledger/api-utils";
+import { getDatabase } from "../../lib/database";
+import { createRateLimiter } from "../../middleware/rate-limit";
+import { assessExposure } from "../../lib/econ-ledger/exposure";
+import { assessAddress, type RiskVerdict } from "../../lib/forensics/risk-service";
+import { ADDRESS_RE, errJson } from "../../lib/econ-ledger/api-utils";
 
 const ledgerLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 

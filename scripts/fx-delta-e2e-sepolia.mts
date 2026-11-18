@@ -47,7 +47,7 @@ process.env.CELO_RPC_URL =
   "https://forno.celo-sepolia.celo-testnet.org";
 
 // imports AFTER env — facilitator singleton is lazy but routes read env too
-const { fxDeltaRoutes } = await import("../src/server/routes/fx-delta-api");
+const { fxDeltaRoutes } = await import("../src/server/routes/fx-delta/fx-delta-api");
 const { setFxDeltaRuntime } = await import("../src/server/lib/fx-delta");
 const { CELO_SEPOLIA_X402_ASSETS, CELO_X402_NETWORK_SEPOLIA } =
   await import("../src/server/lib/fx-delta/celo-assets");

@@ -10,7 +10,7 @@ import {
   CELO_X402_ASSETS,
 } from "../src/server/lib/fx-delta/celo-settle";
 import { resetFxDeltaFacilitator } from "../src/server/lib/fx-delta/facilitator-env";
-import { fxDeltaRoutes } from "../src/server/routes/fx-delta-api";
+import { fxDeltaRoutes } from "../src/server/routes/fx-delta/fx-delta-api";
 import {
   setFxDeltaRuntime,
   resetFxDeltaRuntime,

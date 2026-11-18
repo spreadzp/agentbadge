@@ -5,7 +5,7 @@
  * audit + exception RESOLVED.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { createPaymentsApiRoutes } from "../src/server/routes/payments-api";
+import { createPaymentsApiRoutes } from "../src/server/routes/payments/payments-api";
 import type { PaymentsCheckout } from "../src/server/lib/payments-api";
 
 const ADMIN_KEY = "test-admin-key-2226";

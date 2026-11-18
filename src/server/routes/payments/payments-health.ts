@@ -13,13 +13,13 @@
 
 import { Hono } from "hono";
 import type { FailureStore } from "@agentbadge/circle-payments";
-import { opsBearerAuth } from "../middleware/ops-auth";
-import type { CrosschainPaymentsStore } from "../lib/crosschain-payments";
-import type { FacilitatorHealth } from "../lib/circle-payments-probe";
+import { opsBearerAuth } from "../../middleware/ops-auth";
+import type { CrosschainPaymentsStore } from "../../lib/crosschain-payments";
+import type { FacilitatorHealth } from "../../lib/circle-payments-probe";
 import {
   facilitatorUp,
   gatewayTransfersPending,
-} from "../metrics/payments";
+} from "../../metrics/payments";
 
 export type { FacilitatorHealth };
 

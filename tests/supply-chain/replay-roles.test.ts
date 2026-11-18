@@ -20,7 +20,7 @@ import {
   shipmentState,
 } from "../../src/server/lib/econ-ledger/supply-chain/shipment";
 import { InMemoryHopExecutor } from "../../src/server/lib/econ-ledger/supply-chain/executor";
-import { createEconLedgerShipmentsRoutes } from "../../src/server/routes/econ-ledger-shipments-api";
+import { createEconLedgerShipmentsRoutes } from "../../src/server/routes/econ-ledger/econ-ledger-shipments-api";
 import type { HopSpec } from "../../src/server/lib/econ-ledger/supply-chain/types";
 
 const CLIENT = "0x" + "aa".repeat(20) as `0x${string}`;

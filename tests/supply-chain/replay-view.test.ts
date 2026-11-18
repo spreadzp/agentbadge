@@ -19,7 +19,7 @@ import {
   seqFor,
   SHIPMENT_SOURCE,
 } from "../../src/server/lib/econ-ledger/supply-chain/state";
-import { createEconLedgerShipmentsRoutes } from "../../src/server/routes/econ-ledger-shipments-api";
+import { createEconLedgerShipmentsRoutes } from "../../src/server/routes/econ-ledger/econ-ledger-shipments-api";
 import {
   makeChain,
   type ChainHopCtx,

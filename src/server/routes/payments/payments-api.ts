@@ -16,21 +16,21 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import {
   attemptJson,
   createAttemptSchema,
   createPaymentSchema,
   idempotencyKeySchema,
   paymentJson,
-} from "../lib/payments-api/api-schemas";
+} from "../../lib/payments-api/api-schemas";
 import {
   CheckoutError,
   getPaymentsCheckout,
   type PaymentsCheckout,
-} from "../lib/payments-api";
-import { CONTRACT_LIMITS } from "../lib/machine-entry";
+} from "../../lib/payments-api";
+import { CONTRACT_LIMITS } from "../../lib/machine-entry";
 import { createPaymentsReadRoutes } from "./payments-read-routes";
 import { createPaymentsRefundRoutes } from "./payments-refund-route";
 

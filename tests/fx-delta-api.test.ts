@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import {
   fxDeltaRoutes,
   resetFxDeltaFreeTier,
-} from "../src/server/routes/fx-delta-api";
+} from "../src/server/routes/fx-delta/fx-delta-api";
 import {
   setFxDeltaRuntime,
   resetFxDeltaRuntime,

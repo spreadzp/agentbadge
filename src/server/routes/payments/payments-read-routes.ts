@@ -9,11 +9,11 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { paymentJson } from "../lib/payments-api/api-schemas";
-import type { PaymentsCheckout } from "../lib/payments-api";
-import { adminAuth } from "../middleware/adminAuth";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { paymentJson } from "../../lib/payments-api/api-schemas";
+import type { PaymentsCheckout } from "../../lib/payments-api";
+import { adminAuth } from "../../middleware/adminAuth";
 
 export function createPaymentsReadRoutes(
   getCheckout: () => PaymentsCheckout,

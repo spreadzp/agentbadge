@@ -24,7 +24,7 @@ import { eventsRoutes } from "./events";
 import { catalogRoutes } from "./catalog";
 import { servicesCatalogRoutes } from "./services-catalog";
 import { commerceCatalogRoutes } from "./commerce-catalog";
-import { paymentsApiRoutes } from "./payments-api";
+import { paymentsApiRoutes } from "./payments/payments-api";
 import { createCommerceRoutes } from "./commerce";
 import { setSignedWriteHook } from "./commerce/shared";
 import { createCommerceService } from "../lib/commerce";
@@ -37,10 +37,10 @@ import { feedRoutes } from "./feed";
 import { feedDirectoryRoutes } from "./feed-directory";
 import { mcpRoutes } from "./mcp";
 import { riskRoutes } from "./risk-api";
-import { econLedgerRoutes } from "./econ-ledger-api";
-import { econLedgerRevenueRoutes } from "./econ-ledger-revenue-api";
-import { econLedgerExposureRoutes } from "./econ-ledger-exposure-api";
-import { econLedgerShipmentsRoutes } from "./econ-ledger-shipments-api";
+import { econLedgerRoutes } from "./econ-ledger/econ-ledger-api";
+import { econLedgerRevenueRoutes } from "./econ-ledger/econ-ledger-revenue-api";
+import { econLedgerExposureRoutes } from "./econ-ledger/econ-ledger-exposure-api";
+import { econLedgerShipmentsRoutes } from "./econ-ledger/econ-ledger-shipments-api";
 
 import { landingRoutes } from "./landing";
 import { authorityRoutes } from "./authority";
@@ -102,8 +102,8 @@ import {
   ARC_TESTNET,
 } from "@agentbadge/circle-payments";
 import { venueApiRoutes } from "./venue/venue-api";
-import { fxDeltaRoutes } from "./fx-delta-api";
-import { fxDeltaVerifyRoutes } from "./fx-delta-verify";
+import { fxDeltaRoutes } from "./fx-delta/fx-delta-api";
+import { fxDeltaVerifyRoutes } from "./fx-delta/fx-delta-verify";
 import { bountyApiRoutes } from "./bounty-api";
 import { boardApiRoutes } from "./board-api";
 import { createBoardReadRoutes } from "./board-api-read";

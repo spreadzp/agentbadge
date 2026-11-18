@@ -10,10 +10,10 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { adminAuth } from "../middleware/adminAuth";
-import type { PaymentsCheckout } from "../lib/payments-api";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { adminAuth } from "../../middleware/adminAuth";
+import type { PaymentsCheckout } from "../../lib/payments-api";
 
 export function createPaymentsRefundRoutes(
   getCheckout: () => PaymentsCheckout,

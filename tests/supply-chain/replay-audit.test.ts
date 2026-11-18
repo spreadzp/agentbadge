@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
 import { Hono, type Context } from "hono";
 import { buildEconomicEvent } from "@agentbadge/econ-events";
 import { createDatabase, type Database } from "@agentbadge/database";
-import { createEconLedgerShipmentsRoutes } from "../../src/server/routes/econ-ledger-shipments-api";
+import { createEconLedgerShipmentsRoutes } from "../../src/server/routes/econ-ledger/econ-ledger-shipments-api";
 import {
   REPLAY_MAX_EVENTS,
   shipmentReplay,

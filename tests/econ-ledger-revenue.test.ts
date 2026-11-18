@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemoryEconLedgerStore, type Database } from "@agentbadge/database";
 import { emitEconomicBatch } from "../src/server/lib/econ-ledger/emit.js";
 import type { BuildEventInput } from "@agentbadge/econ-events";
-import { createRevenueRoutes } from "../src/server/routes/econ-ledger-revenue-api";
+import { createRevenueRoutes } from "../src/server/routes/econ-ledger/econ-ledger-revenue-api";
 
 const PAY_TO = "0x23ddc6a1f4b8d7c9e0a2b3c4d5e6f7a8b9c0d51b3"
   .padEnd(42, "0")

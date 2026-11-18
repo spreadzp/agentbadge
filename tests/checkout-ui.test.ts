@@ -26,7 +26,7 @@ import {
   DirectUsdcStubProvider,
   type UsdcNetworks,
 } from "../src/server/lib/payments-api";
-import { createPaymentsApiRoutes } from "../src/server/routes/payments-api";
+import { createPaymentsApiRoutes } from "../src/server/routes/payments/payments-api";
 import { createCheckoutPageRoutes } from "../src/server/routes/checkout-pages";
 
 // ---------------------------------------------------------------------------

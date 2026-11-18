@@ -28,15 +28,15 @@ import {
   type Database,
   type EconEventStored,
 } from "@agentbadge/database";
-import { getDatabase } from "../lib/database";
-import { createRateLimiter } from "../middleware/rate-limit";
+import { getDatabase } from "../../lib/database";
+import { createRateLimiter } from "../../middleware/rate-limit";
 import {
   ADDRESS_RE,
   emptyEdges,
   emptyPage,
   errJson,
   pageArgs,
-} from "../lib/econ-ledger/api-utils";
+} from "../../lib/econ-ledger/api-utils";
 
 const ledgerLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 

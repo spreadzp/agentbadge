@@ -7,14 +7,14 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { ErrorCodes } from "../lib/error-codes";
-import { errorResponse } from "../lib/error-response";
-import { getFxDeltaAnchorQueue } from "../lib/fx-delta";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
+import { getFxDeltaAnchorQueue } from "../../lib/fx-delta";
 import {
   verdictCanonical,
   verdictHash,
-} from "../lib/fx-delta/anchor";
-import { ARC_EXPLORER } from "../lib/fx-delta/arc-writer";
+} from "../../lib/fx-delta/anchor";
+import { ARC_EXPLORER } from "../../lib/fx-delta/arc-writer";
 
 export const fxDeltaVerifyRoutes = new Hono();
 

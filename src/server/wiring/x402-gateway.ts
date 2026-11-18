@@ -36,7 +36,7 @@ import {
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
 import { passportRequestHandler } from "../routes/passport";
-import { fxDeltaV1Routes } from "../routes/fx-delta-v1";
+import { fxDeltaV1Routes } from "../routes/fx-delta/fx-delta-v1";
 
 export interface X402GatewayWiringDeps {
   runtime?: CirclePaymentsRuntime;

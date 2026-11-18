@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { ShipmentReplayResponseSchema } from "../src/server/lib/econ-ledger/supply-chain/replay-types";
 import { createDatabase, type Database } from "@agentbadge/database";
-import { createEconLedgerShipmentsRoutes } from "../src/server/routes/econ-ledger-shipments-api";
+import { createEconLedgerShipmentsRoutes } from "../src/server/routes/econ-ledger/econ-ledger-shipments-api";
 import {
   acceptShipment,
   createShipment,

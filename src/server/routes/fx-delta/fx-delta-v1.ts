@@ -9,11 +9,11 @@
 
 import { Hono } from "hono";
 
-import { ErrorCodes } from "../lib/error-codes";
-import { errorResponse } from "../lib/error-response";
-import { getFxDeltaRuntime } from "../lib/fx-delta";
-import { X402_PAYMENT_KEY } from "../lib/x402-gateway";
-import type { SettleSeamResult } from "../lib/x402-settle-seam";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
+import { getFxDeltaRuntime } from "../../lib/fx-delta";
+import { X402_PAYMENT_KEY } from "../../lib/x402-gateway";
+import type { SettleSeamResult } from "../../lib/x402-settle-seam";
 import { viewJson } from "./fx-delta-api";
 
 export const fxDeltaV1Routes = new Hono<{

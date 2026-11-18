@@ -19,15 +19,15 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import type { Database } from "@agentbadge/database";
-import { getDatabase } from "../lib/database";
-import { createRateLimiter } from "../middleware/rate-limit";
-import { opsBearerAuth } from "../middleware/ops-auth";
-import { errJson } from "../lib/econ-ledger/api-utils";
+import { getDatabase } from "../../lib/database";
+import { createRateLimiter } from "../../middleware/rate-limit";
+import { opsBearerAuth } from "../../middleware/ops-auth";
+import { errJson } from "../../lib/econ-ledger/api-utils";
 import {
   aggregatePayLegs,
   collectPayLegs,
   revenuePayTo,
-} from "../lib/report/revenue-aggregate";
+} from "../../lib/report/revenue-aggregate";
 
 const ledgerLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 

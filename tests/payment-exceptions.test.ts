@@ -5,7 +5,7 @@
  * 501 when the persistence backend lacks the exceptions port.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { createPaymentsReadRoutes } from "../src/server/routes/payments-read-routes";
+import { createPaymentsReadRoutes } from "../src/server/routes/payments/payments-read-routes";
 import type { PaymentsCheckout } from "../src/server/lib/payments-api";
 
 const ADMIN_KEY = "test-admin-key-2224";

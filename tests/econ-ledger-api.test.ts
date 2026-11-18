@@ -14,8 +14,8 @@ import {
   LedgerEventsPageSchema,
 } from "@agentbadge/econ-events";
 import { createDatabase, type Database } from "@agentbadge/database";
-import { createEconLedgerRoutes } from "../src/server/routes/econ-ledger-api";
-import { createEconLedgerExposureRoutes } from "../src/server/routes/econ-ledger-exposure-api";
+import { createEconLedgerRoutes } from "../src/server/routes/econ-ledger/econ-ledger-api";
+import { createEconLedgerExposureRoutes } from "../src/server/routes/econ-ledger/econ-ledger-exposure-api";
 import {
   computeExposure,
   type ExposureWeights,

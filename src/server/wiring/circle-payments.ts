@@ -16,7 +16,7 @@ import {
 import { createIdentityRoutes } from "../routes/identity";
 import { createDemoRoutes } from "../routes/demo";
 import { createGatewayDepositRoutes } from "../routes/pay-gateway";
-import { createPaymentsHealthRoutes } from "../routes/payments-health";
+import { createPaymentsHealthRoutes } from "../routes/payments/payments-health";
 import { createFacilitatorProbe } from "../lib/circle-payments-probe";
 import { createPaymentAlertSink } from "../lib/payment-alerts";
 import {

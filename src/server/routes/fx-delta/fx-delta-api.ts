@@ -15,19 +15,19 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { ErrorCodes } from "../lib/error-codes";
-import { errorResponse } from "../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 import {
   getFxDeltaRuntime,
   getFxDeltaAnchorQueue,
   type FxDeltaView,
-} from "../lib/fx-delta";
-import { fxDeltaPremiumGate } from "../lib/fx-delta/premium-gate";
-import { freeTierGate } from "../lib/fx-delta/free-tier";
-import { signalJson } from "../lib/fx-delta/signal";
+} from "../../lib/fx-delta";
+import { fxDeltaPremiumGate } from "../../lib/fx-delta/premium-gate";
+import { freeTierGate } from "../../lib/fx-delta/free-tier";
+import { signalJson } from "../../lib/fx-delta/signal";
 
 // Test-compat re-export (moved to lib/fx-delta/free-tier.ts, file cap).
-export { resetFxDeltaFreeTier } from "../lib/fx-delta/free-tier";
+export { resetFxDeltaFreeTier } from "../../lib/fx-delta/free-tier";
 
 // Premium gate (191-6) in premium-gate.ts; free tier (191-5) in
 // lib/fx-delta/free-tier.ts.
