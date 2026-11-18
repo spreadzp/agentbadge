@@ -3,6 +3,8 @@ import { describeRoute } from "hono-openapi";
 import { getRegistry } from "../../registry/loader";
 import { ServicesPage } from "../../../views/pages/services-page";
 import { WorkWithUsPage } from "../../../views/pages/work-with-us-page";
+import { JoinPage } from "../../../views/pages/join-page";
+import { PageMeta } from "../../lib/page-meta";
 import { pageCoreSchemas, breadcrumbFor, collectionPageLd, webPageLd } from "../../lib/json-ld";
 
 export const teamPageRoutes = new Hono();
@@ -85,4 +87,45 @@ teamPageRoutes.get(
       );
     }
   },
+);
+
+// SLICE-234-31: /join onboarding hub — 7d prod: /join ×9, /join-us ×9
+// → 404. Three audiences (developers/businesses/agents) + the real
+// "list your agent" flow (passport mint → automatic /ui/agents
+// listing). No fake forms.
+teamPageRoutes.get(
+  "/join",
+  describeRoute({
+    tags: ["Team"],
+    summary: "Join AgentBadge — onboarding hub",
+    description:
+      "Three audiences (developers, businesses, agents) + how to list " +
+      "your agent in the discovery directory (passport → /ui/agents).",
+    responses: { 200: { description: "HTML join page" } },
+  }),
+  (c) => {
+    const meta = PageMeta["/join"];
+    const schemas = [
+      ...pageCoreSchemas(),
+      webPageLd({
+        title: meta.title,
+        description: meta.description,
+        path: "/join",
+      }),
+      breadcrumbFor("/join", "Join"),
+    ];
+    return c.html(JoinPage(meta, schemas));
+  },
+);
+
+// /join-us — real alias probed ×9 in prod logs.
+teamPageRoutes.get(
+  "/join-us",
+  describeRoute({
+    tags: ["Team"],
+    summary: "301 redirect to /join",
+    description: "Alias probed by users/agents — canonical page is /join.",
+    responses: { 301: { description: "Redirect to /join" } },
+  }),
+  (c) => c.redirect("/join", 301),
 );

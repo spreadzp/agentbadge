@@ -213,6 +213,12 @@ export const PageMeta: Record<string, PageMeta> = {
       "Step-by-step guide for AI agents to onboard into AgentBadge: mint passport, register in HCS directory, verify identity on Hedera.",
     path: "/agent-guide",
   },
+  "/join": {
+    title: "Join AgentBadge — Get Started",
+    description:
+      "Onboarding hub: developers (API/MCP/skills), businesses (services, audits), agents (passport → directory listing).",
+    path: "/join",
+  },
   "/market-guide": {
     title: "Marketplace Agent Guide",
     description:
@@ -397,6 +403,7 @@ export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/what-is-an-ai-ready-api", changefreq: "monthly", priority: "0.8" },
   { path: "/how-ai-agents-use-apis", changefreq: "monthly", priority: "0.8" },
   { path: "/work-with-us", changefreq: "monthly", priority: "0.6" },
+  { path: "/join", changefreq: "monthly", priority: "0.7" },
   { path: "/blog", changefreq: "weekly", priority: "0.8" },
   ...BLOG_ARTICLES.map((a) => ({
     path: `/blog/${a.slug}`,

@@ -7,4 +7,5 @@ export const PageTitles: Record<string, string> = {
   "/ui/medical-demo": "Medical Data Demo",
   "/ui/help": "Help & Documentation",
   "/ui/passport/request": "Request Passport",
+  "/join": "Join AgentBadge",
 };
