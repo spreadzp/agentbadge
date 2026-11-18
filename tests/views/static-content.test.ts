@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { FaqPage, getFaqEntries } from "../../src/views/faq-page";
-import { HelpPage } from "../../src/views/help-page";
-import { UseCasesPage } from "../../src/views/use-cases-page";
+import { FaqPage, getFaqEntries } from "../../src/views/pages/faq-page";
+import { HelpPage } from "../../src/views/pages/help-page";
+import { UseCasesPage } from "../../src/views/pages/use-cases-page";
 
 // Mock chain-ui to control output per chain
 vi.mock("../../src/server/lib/chain-ui.js", () => ({

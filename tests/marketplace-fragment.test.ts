@@ -93,7 +93,7 @@ vi.mock("../src/server/lib/market-task.js", () => ({
 }));
 
 import { marketGet as get, listTasks } from "@agentbadge/passport";
-import { MarketplaceTaskBoardFragment, TaskDetailsFragment } from "../src/views/marketplace-fragment";
+import { MarketplaceTaskBoardFragment, TaskDetailsFragment } from "../src/views/fragments/marketplace-fragment";
 import { uiRoutes } from "../src/server/routes/ui";
 
 const mockedGet = vi.mocked(get);

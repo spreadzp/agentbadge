@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { Layout } from "../../src/views/layout";
+import { Layout } from "../../src/views/chrome/layout";
 import { LandingLayout } from "../../src/views/landing/layout";
-import { GuideLayout } from "../../src/views/guide-layout";
+import { GuideLayout } from "../../src/views/chrome/guide-layout";
 
 // ─── Lib unit tests ──────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ import { describeRoute } from "hono-openapi";
 import type { Database } from "@agentbadge/database";
 
 import { getDatabase } from "../../lib/database";
-import { Layout } from "../../../views/layout";
+import { Layout } from "../../../views/chrome/layout";
 import { auditPage } from "../../../views/finops/audit";
 import { paymentDetailPage } from "../../../views/finops/detail";
 import { exceptionsPage } from "../../../views/finops/exceptions";

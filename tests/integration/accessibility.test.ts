@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { Layout } from "../../src/views/layout";
+import { Layout } from "../../src/views/chrome/layout";
 import { LandingLayout } from "../../src/views/landing/layout";
-import { Footer } from "../../src/views/footer";
+import { Footer } from "../../src/views/chrome/footer";
 
 describe("SLICE-76-1: Image alt text — all <img> tags have alt", () => {
   it("dashboard layout has no <img> without alt", () => {

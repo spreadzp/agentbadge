@@ -18,9 +18,9 @@ import {
   listVenues,
   PUBLIC_VENUE_ID,
 } from "../../lib/venue/venues";
-import { venueInstancePage, venuePrivatePage } from "../../../views/venue-instance";
-import { venueNewVenuePage } from "../../../views/venue-onboard";
-import { venueAdminPage } from "../../../views/venue-admin";
+import { venueInstancePage, venuePrivatePage } from "../../../views/venue/venue-instance";
+import { venueNewVenuePage } from "../../../views/venue/venue-onboard";
+import { venueAdminPage } from "../../../views/venue/venue-admin";
 import { venueHasRole, listVenueMembers, venueRole } from "../../lib/venue/members";
 import { venueEvaluator } from "./venue-api-helpers";
 import {

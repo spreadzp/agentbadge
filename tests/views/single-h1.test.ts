@@ -31,21 +31,21 @@ vi.mock("../../src/server/lib/chain-templates.js", () => ({
   })),
 }));
 
-import { Layout } from "../../src/views/layout";
+import { Layout } from "../../src/views/chrome/layout";
 import { LandingLayout } from "../../src/views/landing/layout";
-import { FaqPage, getFaqEntries } from "../../src/views/faq-page";
-import { AboutPage } from "../../src/views/about-page";
-import { PricingPage } from "../../src/views/pricing-page";
-import { TermsPage } from "../../src/views/terms-page";
-import { PrivacyPage } from "../../src/views/privacy-page";
-import { UseCasesPage } from "../../src/views/use-cases-page";
-import { contactPage } from "../../src/views/contact-page";
-import { ServicesPage } from "../../src/views/services-page";
-import { WorkWithUsPage } from "../../src/views/work-with-us-page";
-import { TeamPage } from "../../src/views/team-page";
-import { Dashboard } from "../../src/views/dashboard";
-import { BlogListPage } from "../../src/views/blog-list";
-import { RulesCatalogPage } from "../../src/views/rules-catalog-page";
+import { FaqPage, getFaqEntries } from "../../src/views/pages/faq-page";
+import { AboutPage } from "../../src/views/pages/about-page";
+import { PricingPage } from "../../src/views/pages/pricing-page";
+import { TermsPage } from "../../src/views/pages/terms-page";
+import { PrivacyPage } from "../../src/views/pages/privacy-page";
+import { UseCasesPage } from "../../src/views/pages/use-cases-page";
+import { contactPage } from "../../src/views/pages/contact-page";
+import { ServicesPage } from "../../src/views/pages/services-page";
+import { WorkWithUsPage } from "../../src/views/pages/work-with-us-page";
+import { TeamPage } from "../../src/views/pages/team-page";
+import { Dashboard } from "../../src/views/components/dashboard";
+import { BlogListPage } from "../../src/views/blog/blog-list";
+import { RulesCatalogPage } from "../../src/views/pages/rules-catalog-page";
 import { PageMeta } from "../../src/server/lib/page-meta";
 import type { RegistryIndex } from "../../src/server/registry/types";
 

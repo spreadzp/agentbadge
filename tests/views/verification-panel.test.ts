@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { VerificationPanel } from "../../src/views/marketplace-fragment";
+import { VerificationPanel } from "../../src/views/fragments/marketplace-fragment";
 import { normalizeTask } from "../../src/server/lib/market-task";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
 

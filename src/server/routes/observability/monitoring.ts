@@ -18,7 +18,7 @@
 import { Hono } from "hono";
 import { randomUUID } from "node:crypto";
 import type { MonitoringStore } from "../../../agent-readiness/monitoring/monitoring-store";
-import type { MonitoredProject, RunRecord, RegressionItem } from "../../../agent-readiness/monitoring/monitoring-types";
+import type { MonitoredProject, RegressionItem } from "../../../agent-readiness/monitoring/monitoring-types";
 import { validateProjectInput } from "../../../agent-readiness/monitoring/monitoring-types";
 import { computeNextRun } from "../../../agent-readiness/monitoring/scheduler";
 import { executeMonitoredRun, getTimeline } from "../../../agent-readiness/monitoring/run-pipeline";
@@ -30,11 +30,9 @@ import {
   checkProjectLimit,
   checkScheduleAllowed,
   checkChannelsAllowed,
-  type Plan,
 } from "../../../agent-readiness/monitoring/tiers";
 import type { ScanReport } from "../../../agent-readiness/report-formatter";
-import { MonitoringPage, MonitoringProjectDetail, type MonitoringPageData, type MonitoringDetailData } from "../../../views/monitoring-page";
-
+import { MonitoringPage, MonitoringProjectDetail, type MonitoringDetailData } from "../../../views/pages/monitoring-page";
 export interface MonitoringAppDeps {
   store: MonitoringStore;
   now: () => Date;

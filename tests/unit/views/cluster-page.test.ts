@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { CLUSTER_PAGES, getClusterPage, type ClusterPageData } from "../../../src/server/lib/cluster-data";
 import { RULE_DESCRIPTIONS } from "../../../src/agent-readiness/rule-descriptions";
-import { ClusterPage } from "../../../src/views/cluster-page";
+import { ClusterPage } from "../../../src/views/pages/cluster-page";
 
 describe("SLICE-116-1: ClusterPage View + CLUSTER_PAGES Metadata", () => {
   // ─── cluster-data.ts ───

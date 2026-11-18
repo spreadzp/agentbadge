@@ -5,7 +5,7 @@ import { getRegistry } from "../src/server/registry/loader";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 import type { RegistryIndex } from "../src/server/registry/types";
 import { BLOG_ARTICLES } from "../src/server/lib/blog-data";
-import { BlogArticlePage } from "../src/views/blog-article";
+import { BlogArticlePage } from "../src/views/blog/blog-article";
 
 setupMockEnv();
 const app = makeTestApp();

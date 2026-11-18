@@ -7,7 +7,7 @@ import {
   MonitoringAddForm,
   type MonitoringPageData,
   type MonitoringDetailData,
-} from "../../src/views/monitoring-page";
+} from "../../src/views/pages/monitoring-page";
 
 /**
  * SLICE-99-8: Web monitoring dashboard view tests.

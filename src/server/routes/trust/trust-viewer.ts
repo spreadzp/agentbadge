@@ -5,7 +5,7 @@
  */
 
 import { Hono } from "hono";
-import { TrustViewer, TrustViewerNotFound, TrustViewerError } from "../../../views/trust-viewer";
+import { TrustViewer, TrustViewerNotFound, TrustViewerError } from "../../../views/components/trust-viewer";
 import { verifySnapshot } from "../../../agent-readiness/trust/snapshot-verifier";
 import { fetchTrustSnapshot } from "../../../agent-readiness/trust/trust-api-client";
 

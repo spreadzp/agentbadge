@@ -15,7 +15,7 @@ import { rateLimitMiddleware } from "../src/server/middleware/rate-limit";
 import { signatureVerificationMiddleware } from "../src/server/middleware/signature-verification";
 import { BUILD_DATE, GIT_COMMIT } from "../src/server/lib/build-info";
 import { softwareApplicationLd, webSiteLd, faqPageLd } from "../src/server/lib/json-ld";
-import { Dashboard } from "../src/views/dashboard";
+import { Dashboard } from "../src/views/components/dashboard";
 import { PUBLIC_PAGES } from "../src/server/lib/page-meta";
 
 function makeTestApp(): Hono {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Layout } from "../src/views/layout";
+import { Layout } from "../src/views/chrome/layout";
 import { LandingLayout } from "../src/views/landing/layout";
 import { PageMeta, BASE_URL, SITE_DESCRIPTION } from "../src/server/lib/page-meta";
 import {

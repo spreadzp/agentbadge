@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RulesCatalogPage } from "../../../src/views/rules-catalog-page";
+import { RulesCatalogPage } from "../../../src/views/pages/rules-catalog-page";
 import { CATEGORY_DESCRIPTIONS } from "../../../src/agent-readiness/rule-descriptions";
 import { CATEGORY_TO_PILLAR, PILLAR_LABELS } from "../../../src/agent-readiness/scoring/pillar-map";
 

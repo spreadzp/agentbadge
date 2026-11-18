@@ -11,7 +11,7 @@ import { trustRoutes } from "../../../src/server/routes/trust/trust";
 import { trustViewerRoutes } from "../../../src/server/routes/trust/trust-viewer";
 import { verifySnapshot } from "../../../src/agent-readiness/trust/snapshot-verifier";
 import { renderSnapshotMarkdown } from "../../../src/agent-readiness/trust/snapshot-markdown";
-import { TrustViewer } from "../../../src/views/trust-viewer";
+import { TrustViewer } from "../../../src/views/components/trust-viewer";
 import { makeValidSnapshot, makeTamperedHashSnapshot, makeExpiredOwnershipSnapshot } from "./fixtures/verification-fixtures";
 import * as fs from "fs";
 import * as path from "path";

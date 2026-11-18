@@ -24,8 +24,8 @@ import { errorResponse } from "../../lib/error-response";
 import { captureError } from "../../lib/sentry";
 import { logger } from "@agentbadge/passport/logger";
 import { checkoutResponseSchema, errorSchema } from "../../openapi";
-import { renderPaymentSuccess, renderPaymentError } from "../../../views/payment-success";
-import { renderPaymentCanceled } from "../../../views/payment-canceled";
+import { renderPaymentSuccess, renderPaymentError } from "../../../views/pages/payment-success";
+import { renderPaymentCanceled } from "../../../views/pages/payment-canceled";
 
 const webhookLedger = new EventLedger();
 

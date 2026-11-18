@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { FaqPage, getFaqEntries } from "../../../src/views/faq-page";
-import { AboutPage } from "../../../src/views/about-page";
-import { PricingPage } from "../../../src/views/pricing-page";
-import { UseCasesPage } from "../../../src/views/use-cases-page";
+import { FaqPage, getFaqEntries } from "../../../src/views/pages/faq-page";
+import { AboutPage } from "../../../src/views/pages/about-page";
+import { PricingPage } from "../../../src/views/pages/pricing-page";
+import { UseCasesPage } from "../../../src/views/pages/use-cases-page";
 
 describe("SLICE-113-5: Content pages cross-links", () => {
   it("FAQ page has RelatedLinks with /about, /pricing, /use-cases, /blog", () => {

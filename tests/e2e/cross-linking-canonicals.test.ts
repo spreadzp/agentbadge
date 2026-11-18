@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ServicePageView } from "../../src/views/service-page";
+import { ServicePageView } from "../../src/views/pages/service-page";
 import { AGENCY_SERVICES, getAgencyService } from "../../src/server/lib/agency-config";
 import { LandingLayout } from "../../src/views/landing/layout";
 import { PageMeta as PageMetaRegistry } from "../../src/server/lib/page-meta";

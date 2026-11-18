@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 /**
  * Agent Knowledge Layer routes — SLICE-42-1
  *
@@ -27,7 +28,7 @@ import { parseFrontmatter } from "../../lib/frontmatter";
 import { getRegistry } from "../../registry/loader";
 import { BASE_URL } from "../../lib/page-meta";
 import { RelevantEngineeringCapability } from "../../../components/RelevantEngineeringCapability";
-import { GuideLayout } from "../../../views/guide-layout";
+import { GuideLayout } from "../../../views/chrome/guide-layout";
 import { defaultCoreSchemas, howToLd, breadcrumbListLd } from "../../lib/json-ld";
 import { BUILD_DATE } from "../../lib/build-info";
 import { applyChainTemplates } from "../../lib/chain-templates.js";

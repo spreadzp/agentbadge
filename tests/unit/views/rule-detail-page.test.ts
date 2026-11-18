@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { RuleDetailPage, getRuleDescription } from "../../../src/views/rule-detail-page";
-import { RulesCatalogPage } from "../../../src/views/rules-catalog-page";
+import { RuleDetailPage, getRuleDescription } from "../../../src/views/pages/rule-detail-page";
+import { RulesCatalogPage } from "../../../src/views/pages/rules-catalog-page";
 import { RULE_DESCRIPTIONS } from "../../../src/agent-readiness/rule-descriptions";
 
 describe("SLICE-94-11: RuleDetailPage — evidence expected line", () => {

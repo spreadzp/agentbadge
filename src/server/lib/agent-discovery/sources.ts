@@ -14,7 +14,7 @@ import { getCatalog, type TierEntry } from "@agentbadge/hedera-core";
 import { BLOG_ARTICLES, type BlogArticle } from "../blog-data";
 import { didAuthSectionCompact } from "../did-auth-docs";
 import { BASE_URL } from "../page-meta";
-import { getFaqEntries, type QaPair } from "../../../views/faq-page";
+import { getFaqEntries, type QaPair } from "../../../views/pages/faq-page";
 import { openApiConfig } from "../../openapi";
 import { getNamespace, listTools } from "@agentbadge/mcp";
 import { allSkus, defaultSources as catalogSources } from "../service-catalog";

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { Layout } from "../../src/views/layout";
+import { Layout } from "../../src/views/chrome/layout";
 
 // Mock chain-ui to control chainDisplayName and chainBadgeColor
 vi.mock("../../src/server/lib/chain-ui.js", () => ({

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getRegistry } from "../src/server/registry/loader";
-import { getFaqEntries } from "../src/views/faq-page";
+import { getFaqEntries } from "../src/views/pages/faq-page";
 import { applyChainTemplates } from "../src/server/lib/chain-templates";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 

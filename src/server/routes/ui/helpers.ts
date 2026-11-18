@@ -1,6 +1,6 @@
 // EPIC-140 (SLICE-140-15): shared UI helpers extracted from routes/ui.ts.
 import { type Context } from "hono";
-import { Layout } from "../../../views/layout";
+import { Layout } from "../../../views/chrome/layout";
 import { type PageMeta } from "../../lib/page-meta";
 
 /** Check if request is from HTMX (partial) vs direct browser access (full page). */

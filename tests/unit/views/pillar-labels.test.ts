@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { RulesCatalogPage } from "../../../src/views/rules-catalog-page";
-import { RuleDetailPage } from "../../../src/views/rule-detail-page";
+import { RulesCatalogPage } from "../../../src/views/pages/rules-catalog-page";
+import { RuleDetailPage } from "../../../src/views/pages/rule-detail-page";
 import { PILLAR_LABELS, PILLAR_QUESTIONS, CATEGORY_TO_PILLAR } from "../../../src/agent-readiness/scoring/pillar-map";
 import { RULE_DESCRIPTIONS } from "../../../src/agent-readiness/rule-descriptions";
 

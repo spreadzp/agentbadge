@@ -4,7 +4,7 @@
 // with wallet-sig, wire approve/reject + suspend/resume to the right
 // endpoints, expose the new cap fields, and render the SUSPENDED badge.
 import { describe, it, expect } from "vitest";
-import { walletsPage } from "../src/views/wallets-page";
+import { walletsPage } from "../src/views/pages/wallets-page";
 
 const page = () => walletsPage("0xa4b1", "arc-testnet");
 

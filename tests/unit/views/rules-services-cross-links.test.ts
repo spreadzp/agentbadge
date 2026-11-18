@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { RulesCatalogPage } from "../../../src/views/rules-catalog-page";
-import { RuleDetailPage, getRuleDescription } from "../../../src/views/rule-detail-page";
-import { ServicesPage } from "../../../src/views/services-page";
-import { ServicePageView } from "../../../src/views/service-page";
+import { RulesCatalogPage } from "../../../src/views/pages/rules-catalog-page";
+import { RuleDetailPage, getRuleDescription } from "../../../src/views/pages/rule-detail-page";
+import { ServicesPage } from "../../../src/views/pages/services-page";
+import { ServicePageView } from "../../../src/views/pages/service-page";
 import type { AgencyService } from "../../../src/server/lib/agency-config";
 import type { RegistryIndex } from "../../../src/server/registry/types";
 

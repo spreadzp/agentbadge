@@ -1,8 +1,8 @@
 // EPIC-140 (SLICE-140-15): A2A inbox/outbox + conversation — extracted from routes/ui.ts.
 import { Hono } from "hono";
 import { html, raw } from "hono/html";
-import { A2AInboxFragment } from "../../../views/a2a-fragment";
-import { Layout } from "../../../views/layout";
+import { A2AInboxFragment } from "../../../views/fragments/a2a-fragment";
+import { Layout } from "../../../views/chrome/layout";
 import { PageTitles } from "../../lib/page-titles";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { getMessagesByTo as getA2AMessagesByTo, getMessagesByFrom as getA2AMessagesByFrom, getConversation as getA2AConversation } from "@agentbadge/passport";

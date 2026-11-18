@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { PricingPage } from "../src/views/pricing-page";
+import { PricingPage } from "../src/views/pages/pricing-page";
 
 describe("PricingPage — Stripe pay buttons", () => {
   it("renders a /checkout form for each tier", () => {

@@ -9,7 +9,7 @@
 
 import { Hono } from "hono";
 import { workRequestStore } from "../../services/work-request-store";
-import { WorkRequestDetailPage } from "../../../views/work-request-detail-page";
+import { WorkRequestDetailPage } from "../../../views/pages/work-request-detail-page";
 
 export const workRequestUiRoutes = new Hono();
 

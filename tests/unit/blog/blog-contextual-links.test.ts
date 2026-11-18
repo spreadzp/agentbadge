@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BLOG_ARTICLES } from "../../../src/server/lib/blog-data";
-import { BlogArticlePage } from "../../../src/views/blog-article";
+import { BlogArticlePage } from "../../../src/views/blog/blog-article";
 
 describe("SLICE-113-3: Blog article contextual links", () => {
   it("first article has relatedLinks populated", () => {

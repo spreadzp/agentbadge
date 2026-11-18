@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ChecklistPage } from "../../../src/views/checklist-page";
+import { ChecklistPage } from "../../../src/views/pages/checklist-page";
 import { RULE_DESCRIPTIONS } from "../../../src/agent-readiness/rule-descriptions";
 import { CORE_RULE_IDS } from "../../../src/agent-readiness/core-rules";
 

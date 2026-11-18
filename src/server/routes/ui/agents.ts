@@ -1,11 +1,11 @@
 // EPIC-140 (SLICE-140-15): agent directory + profile + search — extracted from routes/ui.ts.
 import { Hono } from "hono";
 import { html, raw } from "hono/html";
-import { AgentsFragment, AgentRow, AgentWithActive } from "../../../views/agents-fragment";
-import { SearchForm, SearchResults, parseSearchQuery } from "../../../views/search-fragment";
-import { AgentProfilePage } from "../../../views/agent-profile";
-import { Layout } from "../../../views/layout";
-import { PageHeader } from "../../../views/page-header";
+import { AgentsFragment, AgentRow, AgentWithActive } from "../../../views/fragments/agents-fragment";
+import { SearchForm, SearchResults, parseSearchQuery } from "../../../views/fragments/search-fragment";
+import { AgentProfilePage } from "../../../views/components/agent-profile";
+import { Layout } from "../../../views/chrome/layout";
+import { PageHeader } from "../../../views/chrome/page-header";
 import { PageTitles } from "../../lib/page-titles";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { passportLd, profilePageLd, defaultCoreSchemas } from "../../lib/json-ld";

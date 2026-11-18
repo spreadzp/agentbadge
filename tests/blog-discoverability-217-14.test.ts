@@ -24,7 +24,7 @@ import {
   BLOG_CHANNELS,
   paginateArticles,
 } from "../src/server/lib/blog-data";
-import { getFaqEntries } from "../src/views/faq-page";
+import { getFaqEntries } from "../src/views/pages/faq-page";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 
 setupMockEnv();

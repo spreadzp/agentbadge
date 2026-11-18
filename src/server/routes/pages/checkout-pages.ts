@@ -29,8 +29,8 @@ import {
   productCodeForLegacyId,
 } from "../../lib/commerce-catalog";
 import type { UsdcNetworks } from "../../lib/payments-api";
-import { CheckoutPage } from "../../../views/checkout-page";
-import { Layout } from "../../../views/layout";
+import { CheckoutPage } from "../../../views/pages/checkout-page";
+import { Layout } from "../../../views/chrome/layout";
 import { PageMeta } from "../../lib/page-meta";
 
 export interface CheckoutPageRouteDeps {

@@ -13,8 +13,8 @@ import { ReadinessPricingSection } from "./sections/readiness-pricing";
 import { ReadinessThesisSection } from "./sections/readiness-thesis";
 import { EngineeringCtaSection } from "./engineering-cta";
 import { ScrollNavButtons } from "./scroll-nav";
-import { RelatedLinks } from "../related-links";
-import { HOMEPAGE_FAQ } from "../faq-page";
+import { RelatedLinks } from "../blog/related-links";
+import { HOMEPAGE_FAQ } from "../pages/faq-page";
 import { faqPageLd } from "../../server/lib/json-ld";
 import { applyChainTemplates } from "../../server/lib/chain-templates.js";
 

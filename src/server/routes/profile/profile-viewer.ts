@@ -5,7 +5,7 @@
  */
 
 import { Hono } from "hono";
-import { ProfileViewer } from "../../../views/profile-viewer";
+import { ProfileViewer } from "../../../views/components/profile-viewer";
 import { getLatestScanForDomain, normalizeDomain } from "../../profile/profile-store";
 import { buildProfile } from "../../../agent-readiness/profile/profile-builder";
 

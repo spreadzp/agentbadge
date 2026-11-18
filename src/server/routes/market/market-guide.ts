@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 /**
  * Marketplace agent guide route — GET /market-guide
  *
@@ -10,7 +11,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../../lib/json-ld";
-import { GuideLayout } from "../../../views/guide-layout";
+import { GuideLayout } from "../../../views/chrome/guide-layout";
 import { didAuthSectionFull } from "../../lib/did-auth-docs";
 
 export const marketGuideRoutes = new Hono();

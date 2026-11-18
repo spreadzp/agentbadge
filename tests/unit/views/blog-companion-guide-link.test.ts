@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { BlogArticle } from "../../../src/server/lib/blog-data";
 import { toKnowledgeObject } from "../../../src/server/lib/blog/knowledge-object";
-import { AgentContextBlock } from "../../../src/views/blog-agent-context";
+import { AgentContextBlock } from "../../../src/views/blog/blog-agent-context";
 
 const BASE: BlogArticle = {
   slug: "test-article",

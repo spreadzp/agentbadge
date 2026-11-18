@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DataHubLinks } from "../../src/views/marketplace-fragment";
+import { DataHubLinks } from "../../src/views/fragments/marketplace-fragment";
 
 describe("DataHubLinks", () => {
   it("returns empty string when no datasetUrn", () => {

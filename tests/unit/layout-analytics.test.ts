@@ -7,8 +7,8 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { LandingLayout } from "../../src/views/landing/layout";
-import { GuideLayout } from "../../src/views/guide-layout";
-import { Layout } from "../../src/views/layout";
+import { GuideLayout } from "../../src/views/chrome/guide-layout";
+import { Layout } from "../../src/views/chrome/layout";
 
 describe("SLICE-130-10: Layout analytics injection", () => {
   const originalEnv = { ...process.env };

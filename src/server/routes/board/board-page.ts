@@ -16,8 +16,8 @@ import {
   renderBoardPage,
   renderBoardCardDetail,
   BOARD_COLUMNS,
-} from "../../../views/board-page";
-import { Layout } from "../../../views/layout";
+} from "../../../views/pages/board-page";
+import { Layout } from "../../../views/chrome/layout";
 import {
   canSeeSpec,
   type AgentCtx,

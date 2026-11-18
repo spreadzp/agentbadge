@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { formatScanReport } from "../../src/agent-readiness/report-formatter";
 import type { RuleEngineResult } from "../../src/agent-readiness/rule-engine/rule-engine";
 import type { Assertion } from "../../src/agent-readiness/rule-engine/assertion-builder";
-import { PLATFORM_NAMES } from "../../src/views/blog-article";
+import { PLATFORM_NAMES } from "../../src/views/blog/blog-article";
 import type { BlogExternalLink } from "../../src/server/lib/blog-data";
 
 function makeAssertion(overrides: Partial<Assertion> & { rule_id: string }): Assertion {

@@ -175,7 +175,7 @@ describe("SLICE-218-5: canonical consolidation — what is agent readiness (F7)"
 
   it("hero/FAQ link the canonical URL, not consolidated pages", () => {
     const hero = readFileSync("src/views/landing/sections/readiness-hero.ts", "utf8");
-    const faq = readFileSync("src/views/faq-page/categories.ts", "utf8");
+    const faq = readFileSync("src/views/pages/faq-page/categories.ts", "utf8");
     expect(hero).not.toContain("/agent-guide/articles/what-is-agent-readiness");
     expect(faq).not.toContain('href="/what-is-an-ai-ready-api"');
     expect(faq).not.toContain('href="/blog/what-is-agent-readiness"');

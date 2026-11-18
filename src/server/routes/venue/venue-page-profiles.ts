@@ -20,8 +20,8 @@ import {
 import {
   venueNewProviderPage,
   venueProvidersPage,
-} from "../../../views/venue-forms";
-import { venueProviderDetailPage } from "../../../views/venue-profiles";
+} from "../../../views/venue/venue-forms";
+import { venueProviderDetailPage } from "../../../views/venue/venue-profiles";
 
 export function registerVenueProfilePageRoutes(
   app: Hono,

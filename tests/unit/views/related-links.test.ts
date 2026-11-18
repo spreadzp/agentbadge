@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { RelatedLinks, type RelatedLinkItem } from "../../../src/views/related-links";
-import { RelatedArticles } from "../../../src/views/related-articles";
+import { RelatedLinks, type RelatedLinkItem } from "../../../src/views/blog/related-links";
+import { RelatedArticles } from "../../../src/views/blog/related-articles";
 
 describe("SLICE-113-1: RelatedLinks component", () => {
   it("renders correct HTML with title, links, descriptions", () => {

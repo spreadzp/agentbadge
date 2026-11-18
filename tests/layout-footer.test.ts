@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Layout } from "../src/views/layout";
+import { Layout } from "../src/views/chrome/layout";
 
 describe("Layout — footer", () => {
   it("renders footer with social links", () => {

@@ -26,7 +26,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { getMessagesByTo } from "@agentbadge/passport";
-import { A2AInboxFragment } from "../src/views/a2a-fragment";
+import { A2AInboxFragment } from "../src/views/fragments/a2a-fragment";
 import { uiRoutes } from "../src/server/routes/ui";
 
 const mockedGetMessagesByTo = vi.mocked(getMessagesByTo);

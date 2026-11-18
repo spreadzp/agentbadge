@@ -1,8 +1,8 @@
 // EPIC-140 (SLICE-140-15): marketplace task board + medical demo — extracted from routes/ui.ts.
 import { Hono } from "hono";
 import { html } from "hono/html";
-import { MedicalDemoPage } from "../../../views/medical-demo-page";
-import { MarketplaceTaskBoardFragment, TaskDetailsFragment, TaskMessagesFragment, EscrowPanel } from "../../../views/marketplace-fragment";
+import { MedicalDemoPage } from "../../../views/pages/medical-demo-page";
+import { MarketplaceTaskBoardFragment, TaskDetailsFragment, TaskMessagesFragment, EscrowPanel } from "../../../views/fragments/marketplace-fragment";
 import { normalizeTask, normalizeTasks } from "../../lib/market-task.js";
 import { PageTitles } from "../../lib/page-titles";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";

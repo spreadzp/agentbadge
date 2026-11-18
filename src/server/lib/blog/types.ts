@@ -2,7 +2,7 @@
 // (file exceeded eslint max-lines=300). Re-exported from blog-data,
 // so existing `import { BlogArticle } from "../lib/blog-data"` call
 // sites keep working unchanged.
-import type { RelatedLinkItem } from "../../../views/related-links";
+import type { RelatedLinkItem } from "../../../views/blog/related-links";
 
 export interface BlogExternalLink {
   platform:

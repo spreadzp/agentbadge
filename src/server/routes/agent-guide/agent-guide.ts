@@ -10,7 +10,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../../lib/json-ld";
-import { GuideLayout } from "../../../views/guide-layout";
+import { GuideLayout } from "../../../views/chrome/guide-layout";
 import { generateAgentGuide } from "../../lib/agent-guide/generator";
 
 export const agentGuideRoutes = new Hono();

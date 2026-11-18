@@ -34,7 +34,7 @@ vi.mock("../src/server/lib/chain-ui.js", () => ({
   accountPlaceholder: () => "0.0.xxxx",
 }));
 
-import { TaskMessagesFragment } from "../src/views/marketplace-fragment";
+import { TaskMessagesFragment } from "../src/views/fragments/marketplace-fragment";
 
 const VIEWER_DID = "did:hcs:0.0.123:5";
 const POSTER_DID = "did:hcs:0.0.456:10";

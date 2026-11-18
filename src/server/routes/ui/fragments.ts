@@ -1,12 +1,12 @@
 // EPIC-140 (SLICE-140-15): polling fragments + static pages — extracted from routes/ui.ts.
 import { Hono } from "hono";
 import { html, raw } from "hono/html";
-import { StatsFragment } from "../../../views/stats-fragment";
+import { StatsFragment } from "../../../views/fragments/stats-fragment";
 import { LandingStatsFragment } from "../../../views/landing/landing-stats-fragment";
-import { AuditFragment, AuditRow, AuditEventWithTx } from "../../../views/audit-fragment";
-import { CatalogFragment } from "../../../views/catalog-fragment";
-import { HelpPage } from "../../../views/help-page";
-import { PageHeader } from "../../../views/page-header";
+import { AuditFragment, AuditRow, AuditEventWithTx } from "../../../views/fragments/audit-fragment";
+import { CatalogFragment } from "../../../views/fragments/catalog-fragment";
+import { HelpPage } from "../../../views/pages/help-page";
+import { PageHeader } from "../../../views/chrome/page-header";
 import { PageTitles } from "../../lib/page-titles";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { getAcceptedFormat } from "../../lib/content-negotiation";

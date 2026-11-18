@@ -21,8 +21,8 @@ import { chainDisabled, passportChainEnabled } from "../../lib/passport-chain-ga
 import { passportLinks } from "../../lib/hateoas";
 import type { NextCall } from "../../lib/next-call";
 import { getCatalog } from "@agentbadge/hedera-core";
-import { PassportRequestForm } from "../../../views/passport-request-form";
-import { Layout } from "../../../views/layout";
+import { PassportRequestForm } from "../../../views/components/passport-request-form";
+import { Layout } from "../../../views/chrome/layout";
 import { PageMeta } from "../../lib/page-meta";
 
 /** Request body for POST /passport/request. */

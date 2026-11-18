@@ -9,7 +9,7 @@
  */
 import { Hono } from "hono";
 import { LandingLayout } from "../../../views/landing/layout";
-import { AgentReadinessPage, type SelfScanState } from "../../../views/agent-readiness-page";
+import { AgentReadinessPage, type SelfScanState } from "../../../views/pages/agent-readiness-page";
 import { BASE_URL } from "../../lib/page-meta";
 import type { ScanReport } from "../../../agent-readiness/report-formatter";
 

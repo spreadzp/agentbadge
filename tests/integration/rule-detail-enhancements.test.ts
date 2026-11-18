@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getRuleDescription, RuleDetailPage } from "../../src/views/rule-detail-page";
+import { getRuleDescription, RuleDetailPage } from "../../src/views/pages/rule-detail-page";
 
 describe("SLICE-115-4: HTML rule detail page enhancements", () => {
   const desc = getRuleDescription("AB-001")!;

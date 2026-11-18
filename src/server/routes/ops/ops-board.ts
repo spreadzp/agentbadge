@@ -15,8 +15,8 @@ import {
   type BoardFilters,
   type BoardSort,
 } from "../../lib/ops-board/store";
-import { renderOpsBoard } from "../../../views/ops-board";
-import { Layout } from "../../../views/layout";
+import { renderOpsBoard } from "../../../views/components/ops-board";
+import { Layout } from "../../../views/chrome/layout";
 
 const SORTS: ReadonlySet<string> = new Set([
   "priority",

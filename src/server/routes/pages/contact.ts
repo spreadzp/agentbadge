@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { contactPage, contactSuccessFragment, contactErrorFragment } from "../../../views/contact-page";
+import { contactPage, contactSuccessFragment, contactErrorFragment } from "../../../views/pages/contact-page";
 import {
   sendDiscordMessage,
   sendTelegramMessage,

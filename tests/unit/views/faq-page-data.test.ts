@@ -5,7 +5,7 @@ import {
   HOMEPAGE_FAQ,
   slugifyQuestion,
   getFaqEntries,
-} from "../../../src/views/faq-page";
+} from "../../../src/views/pages/faq-page";
 
 describe("SLICE-118-1: FAQ data expansion", () => {
   describe("RAW_FAQ_ENTRIES", () => {

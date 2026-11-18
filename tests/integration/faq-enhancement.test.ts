@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getFaqEntries, FaqPage, FAQ_CATEGORIES } from "../../src/views/faq-page";
+import { getFaqEntries, FaqPage, FAQ_CATEGORIES } from "../../src/views/pages/faq-page";
 import { faqPageLd, pageCoreSchemas, breadcrumbFor } from "../../src/server/lib/json-ld";
 
 describe("SLICE-118-2: FAQ page category layout", () => {

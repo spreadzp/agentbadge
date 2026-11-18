@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ServicePageView } from "../../src/views/service-page";
-import { ServicesPage } from "../../src/views/services-page";
+import { ServicePageView } from "../../src/views/pages/service-page";
+import { ServicesPage } from "../../src/views/pages/services-page";
 import { AGENCY_SERVICES } from "../../src/server/lib/agency-config";
 import { servicesJsonLd, breadcrumbListLd } from "../../src/server/lib/json-ld";
 import type { RegistryIndex } from "../../src/server/registry/types";

@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { BLOG_ARTICLES, type BlogArticle } from "../src/server/lib/blog-data";
 import { findInvalidRuleIds } from "../src/server/lib/blog/article-rules";
-import { BlogArticlePage } from "../src/views/blog-article";
+import { BlogArticlePage } from "../src/views/blog/blog-article";
 
 const BASE: BlogArticle = {
   slug: "test-article",

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { BlogArticle } from "../src/server/lib/blog-data";
-import { BlogArticlePage } from "../src/views/blog-article";
+import { BlogArticlePage } from "../src/views/blog/blog-article";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
 
 setupMockEnv();

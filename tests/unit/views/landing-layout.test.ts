@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Layout } from "../../../src/views/layout";
-import { Footer } from "../../../src/views/footer";
+import { Layout } from "../../../src/views/chrome/layout";
+import { Footer } from "../../../src/views/chrome/footer";
 import { LandingHeader } from "../../../src/views/landing/header";
 import { LandingLayout } from "../../../src/views/landing/layout";
 import { PageMeta, BASE_URL, SITE_DESCRIPTION } from "../../../src/server/lib/page-meta";

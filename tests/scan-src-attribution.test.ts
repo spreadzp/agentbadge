@@ -10,7 +10,7 @@ import {
 import { auditStore } from "../src/server/lib/keeperhub-audit-store";
 import { BLOG_ARTICLES, type BlogArticle } from "../src/server/lib/blog-data";
 import { toKnowledgeObject } from "../src/server/lib/blog/knowledge-object";
-import { BlogArticlePage } from "../src/views/blog-article";
+import { BlogArticlePage } from "../src/views/blog/blog-article";
 
 afterEach(() => vi.restoreAllMocks());
 

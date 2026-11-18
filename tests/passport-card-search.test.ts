@@ -27,7 +27,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 import { getNftInfo, getNftsForToken } from "@agentbadge/hedera-core";
 import { retrieveMetadata } from "@agentbadge/passport";
 import { uiRoutes } from "../src/server/routes/ui";
-import { parseSearchQuery } from "../src/views/search-fragment";
+import { parseSearchQuery } from "../src/views/fragments/search-fragment";
 import * as directoryCache from "@agentbadge/passport";
 
 const mockedGetNftInfo = vi.mocked(getNftInfo);

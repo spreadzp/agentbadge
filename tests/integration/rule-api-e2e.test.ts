@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildRuleApiResponse, buildRuleListApiResponse } from "../../src/server/lib/rule-api-builder";
-import { getRuleDescription, RuleDetailPage } from "../../src/views/rule-detail-page";
+import { getRuleDescription, RuleDetailPage } from "../../src/views/pages/rule-detail-page";
 import { RULE_DESCRIPTIONS } from "../../src/agent-readiness/rule-descriptions";
 import { categoryEnum } from "../../src/agent-readiness/shared.schema";
 

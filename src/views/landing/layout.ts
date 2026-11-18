@@ -5,7 +5,7 @@ import { getPlausibleScript } from "../../server/lib/plausible";
 import { getGA4Script } from "../../server/lib/ga4-script";
 import { getGscVerificationMeta } from "../../server/lib/gsc-verification";
 import { LandingHeader } from "./header";
-import { Footer } from "../footer";
+import { Footer } from "../chrome/footer";
 
 /**
  * LandingLayout — HTML shell for the landing page.

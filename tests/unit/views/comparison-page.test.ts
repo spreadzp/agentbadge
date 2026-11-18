@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { COMPARISON_PAGES, getComparisonPage } from "../../../src/server/lib/comparison-data";
-import { ComparisonPage } from "../../../src/views/comparison-page";
-import { ComparisonHubPage } from "../../../src/views/comparison-hub-page";
+import { ComparisonPage } from "../../../src/views/pages/comparison-page";
+import { ComparisonHubPage } from "../../../src/views/pages/comparison-hub-page";
 
 describe("SLICE-117-1: comparison-data", () => {
   it("getComparisonPage('agentbadge-vs-mcp') returns ComparisonPageData", () => {

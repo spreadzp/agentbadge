@@ -37,7 +37,7 @@ import {
   type VenueStore,
 } from "../../lib/attestation-store";
 import type { ArcAttestationWriter } from "../../lib/arc-attestation";
-import { AttestationsPage } from "../../../views/attestations";
+import { AttestationsPage } from "../../../views/pages/attestations";
 
 export interface AttestationScanResult {
   score: number;

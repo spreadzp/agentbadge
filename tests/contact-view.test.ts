@@ -3,7 +3,7 @@ import {
   contactPage,
   contactSuccessFragment,
   contactErrorFragment,
-} from "../src/views/contact-page";
+} from "../src/views/pages/contact-page";
 
 describe("Contact View", () => {
   describe("contactPage()", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Layout } from "../src/views/layout";
+import { Layout } from "../src/views/chrome/layout";
 import { PageTitles } from "../src/server/lib/page-titles";
 
 describe("SLICE-17-8: Per-page <title> tags", () => {

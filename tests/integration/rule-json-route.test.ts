@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildRuleApiResponse } from "../../src/server/lib/rule-api-builder";
-import { getRuleDescription } from "../../src/views/rule-detail-page";
-import { RuleDetailPage } from "../../src/views/rule-detail-page";
+import { getRuleDescription } from "../../src/views/pages/rule-detail-page";
+import { RuleDetailPage } from "../../src/views/pages/rule-detail-page";
 
 describe("SLICE-115-3: /rules/:id.json content-negotiated route", () => {
   it("buildRuleApiResponse returns same data as /api/rules/:id", () => {

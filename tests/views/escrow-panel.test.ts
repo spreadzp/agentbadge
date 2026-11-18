@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { EscrowPanel } from "../../src/views/marketplace-fragment";
+import { EscrowPanel } from "../../src/views/fragments/marketplace-fragment";
 import type { MarketTask } from "../../src/server/lib/market-task.js";
 
 vi.mock("../../src/server/lib/chain-ui.js", () => ({

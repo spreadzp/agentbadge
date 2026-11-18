@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { PassportRequestForm } from "../../src/views/passport-request-form";
+import { PassportRequestForm } from "../../src/views/components/passport-request-form";
 import type { TierEntry } from "@agentbadge/hedera-core";
 
 // Mock chain-ui to control output per chain

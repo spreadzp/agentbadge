@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Hono } from "hono";
 import { trustViewerRoutes } from "../../../src/server/routes/trust/trust-viewer";
-import { TrustViewer, TrustViewerNotFound, TrustViewerError } from "../../../src/views/trust-viewer";
+import { TrustViewer, TrustViewerNotFound, TrustViewerError } from "../../../src/views/components/trust-viewer";
 import { makeValidSnapshot } from "./fixtures/verification-fixtures";
 import {
   createAutoAttestHook,

@@ -1,11 +1,11 @@
 // EPIC-140 (SLICE-140-15): dashboard + passport views — extracted from routes/ui.ts.
 import { Hono } from "hono";
 import { html, raw } from "hono/html";
-import { Dashboard, DashboardSsrData } from "../../../views/dashboard";
-import { PassportCard } from "../../../views/feed-fragment";
-import { PassportDetailCard, PassportNotFound } from "../../../views/passport-card";
-import { AuditEventWithTx } from "../../../views/audit-fragment";
-import { PassportRequestForm } from "../../../views/passport-request-form";
+import { Dashboard, DashboardSsrData } from "../../../views/components/dashboard";
+import { PassportCard } from "../../../views/fragments/feed-fragment";
+import { PassportDetailCard, PassportNotFound } from "../../../views/components/passport-card";
+import { AuditEventWithTx } from "../../../views/fragments/audit-fragment";
+import { PassportRequestForm } from "../../../views/components/passport-request-form";
 import { PageTitles } from "../../lib/page-titles";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { getCatalog, getNftsForToken, getNftInfo, getTopicMessages, type NftInfo, type Tier, type Capability, type AuditMessage } from "@agentbadge/hedera-core";

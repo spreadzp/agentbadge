@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getFaqEntries, FaqPage, FAQ_CATEGORIES, HOMEPAGE_FAQ } from "../../src/views/faq-page";
+import { getFaqEntries, FaqPage, FAQ_CATEGORIES, HOMEPAGE_FAQ } from "../../src/views/pages/faq-page";
 import { ReadinessLandingPage, getHomepageFaqJsonLd } from "../../src/views/landing/readiness-landing-page";
 import { faqPageLd, pageCoreSchemas, breadcrumbFor } from "../../src/server/lib/json-ld";
 

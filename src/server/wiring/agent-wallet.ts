@@ -56,7 +56,7 @@ import {
   getSpendAlertStore,
   initSpendAlerts,
 } from "../lib/agent-wallet/audit";
-import { walletsPage } from "../../views/wallets-page";
+import { walletsPage } from "../../views/pages/wallets-page";
 import { resolveVenueNetwork } from "../lib/venue/chain";
 import { venueMonthlyPriceAtomic } from "../lib/venue/billing";
 

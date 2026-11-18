@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { PrivacyPage } from "../../src/views/privacy-page";
+import { PrivacyPage } from "../../src/views/pages/privacy-page";
 
 describe("SLICE-130-13: Privacy page analytics disclosure", () => {
   const originalEnv = { ...process.env };

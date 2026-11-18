@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { makeTestApp, setupMockEnv } from "./e2e/helpers";
-import { GuideLayout } from "../src/views/guide-layout";
+import { GuideLayout } from "../src/views/chrome/guide-layout";
 
 setupMockEnv();
 const app = makeTestApp();

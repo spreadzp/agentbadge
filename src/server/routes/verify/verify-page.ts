@@ -8,7 +8,7 @@
 
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
-import { VerifyPage } from "../../../views/verify-page";
+import { VerifyPage } from "../../../views/pages/verify-page";
 import {
   lookupVerdict,
   resolveVerdictInput,

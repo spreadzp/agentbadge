@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { LandingLayout } from "../../src/views/landing/layout";
-import { Layout } from "../../src/views/layout";
-import { GuideLayout } from "../../src/views/guide-layout";
+import { Layout } from "../../src/views/chrome/layout";
+import { GuideLayout } from "../../src/views/chrome/guide-layout";
 import { PageMeta, BASE_URL } from "../../src/server/lib/page-meta";
 
 describe("SLICE-121-1: AI-Agent Discovery meta tags", () => {

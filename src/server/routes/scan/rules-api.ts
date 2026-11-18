@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { RULE_DESCRIPTIONS, CATEGORY_DESCRIPTIONS } from "../../../agent-readiness/rule-descriptions";
 import { categoryEnum } from "../../../agent-readiness/shared.schema";
-import { getRuleDescription } from "../../../views/rule-detail-page";
+import { getRuleDescription } from "../../../views/pages/rule-detail-page";
 
 export const rulesApiRoutes = new Hono();
 

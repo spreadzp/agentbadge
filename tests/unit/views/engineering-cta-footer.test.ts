@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { EngineeringCtaSection } from "../../../src/views/landing/engineering-cta";
-import { Footer } from "../../../src/views/footer";
+import { Footer } from "../../../src/views/chrome/footer";
 
 describe("SLICE-46-8: Engineering CTA + Footer links", () => {
   describe("EngineeringCtaSection()", () => {

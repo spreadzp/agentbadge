@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { Layout } from "../../src/views/layout";
-import { Footer } from "../../src/views/footer";
+import { Layout } from "../../src/views/chrome/layout";
+import { Footer } from "../../src/views/chrome/footer";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 
 const app = new Hono();

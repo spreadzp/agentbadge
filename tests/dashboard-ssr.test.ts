@@ -64,7 +64,7 @@ const { signatureVerificationMiddleware } = await import("../src/server/middlewa
 
 import { marketUpsert, marketClear } from "@agentbadge/passport";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
-import { Dashboard } from "../src/views/dashboard";
+import { Dashboard } from "../src/views/components/dashboard";
 
 function makeTestApp(): Hono {
   const app = new Hono();

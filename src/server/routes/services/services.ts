@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { LandingLayout } from "../../../views/landing/layout";
-import { ServicePageView } from "../../../views/service-page";
+import { ServicePageView } from "../../../views/pages/service-page";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { servicesJsonLd } from "../../lib/json-ld";
 import { AGENCY_SERVICES, getAgencyService } from "../../lib/agency-config";

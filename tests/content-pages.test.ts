@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { contentPageRoutes } from "../src/server/routes/pages/content-pages";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { FaqPage, getFaqEntries } from "../src/views/faq-page";
-import { UseCasesPage, getUseCases } from "../src/views/use-cases-page";
-import { AboutPage } from "../src/views/about-page";
-import { PricingPage } from "../src/views/pricing-page";
-import { TermsPage } from "../src/views/terms-page";
-import { PrivacyPage } from "../src/views/privacy-page";
+import { FaqPage, getFaqEntries } from "../src/views/pages/faq-page";
+import { UseCasesPage, getUseCases } from "../src/views/pages/use-cases-page";
+import { AboutPage } from "../src/views/pages/about-page";
+import { PricingPage } from "../src/views/pages/pricing-page";
+import { TermsPage } from "../src/views/pages/terms-page";
+import { PrivacyPage } from "../src/views/pages/privacy-page";
 import { faqPageLd, articleLd } from "../src/server/lib/json-ld";
 import { PUBLIC_PAGES, PageMeta } from "../src/server/lib/page-meta";
 
@@ -442,7 +442,7 @@ describe("FaqPage: single-page rendering", () => {
 
 describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   it("has no duplicate questions", async () => {
-    const mod = await import("../src/views/faq-page");
+    const mod = await import("../src/views/pages/faq-page");
     const allEntries = mod.getFaqEntries();
     const questions = allEntries.map((qa) => qa.question);
     const unique = new Set(questions);
@@ -450,7 +450,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   });
 
   it("page 1 contains brand question 'What is AgentBadge?'", async () => {
-    const mod = await import("../src/views/faq-page");
+    const mod = await import("../src/views/pages/faq-page");
     const allEntries = mod.getFaqEntries();
     const items = allEntries;
     const questions = items.map((qa) => qa.question);
@@ -458,7 +458,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   });
 
   it("page 1 contains brand question 'What is AgentBadge NOT?'", async () => {
-    const mod = await import("../src/views/faq-page");
+    const mod = await import("../src/views/pages/faq-page");
     const allEntries = mod.getFaqEntries();
     const items = allEntries;
     const questions = items.map((qa) => qa.question);
@@ -466,7 +466,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   });
 
   it("page 1 contains service question 'What does it cost?'", async () => {
-    const mod = await import("../src/views/faq-page");
+    const mod = await import("../src/views/pages/faq-page");
     const allEntries = mod.getFaqEntries();
     const items = allEntries;
     const questions = items.map((qa) => qa.question);
@@ -474,7 +474,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   });
 
   it("page 1 contains quick-win question 'How do I integrate via MCP?'", async () => {
-    const mod = await import("../src/views/faq-page");
+    const mod = await import("../src/views/pages/faq-page");
     const allEntries = mod.getFaqEntries();
     const items = allEntries;
     const questions = items.map((qa) => qa.question);
@@ -482,7 +482,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   });
 
   it("page 1 contains quick-win question 'Is this on testnet or mainnet?'", async () => {
-    const mod = await import("../src/views/faq-page");
+    const mod = await import("../src/views/pages/faq-page");
     const allEntries = mod.getFaqEntries();
     const items = allEntries;
     const questions = items.map((qa) => qa.question);
@@ -490,7 +490,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   });
 
   it("includes deep concept questions on the single page", async () => {
-    const mod = await import("../src/views/faq-page");
+    const mod = await import("../src/views/pages/faq-page");
     const questions = mod.getFaqEntries().map((qa) => qa.question);
     expect(questions).toContain("What is an ExecutionTrace in AgentBadge's runtime testing?");
     expect(questions).toContain("What is Agent Success Rate (ASR) in AgentBadge?");

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { TaskCard, TaskDetailsFragment, MarketplaceTaskBoardFragment, EscrowPanel } from "../../src/views/marketplace-fragment";
+import { TaskCard, TaskDetailsFragment, MarketplaceTaskBoardFragment, EscrowPanel } from "../../src/views/fragments/marketplace-fragment";
 import type { MarketTask } from "../../src/server/lib/market-task";
 
 // Mock chain-ui to control explorer URLs

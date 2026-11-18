@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { LandingLayout } from "../../../views/landing/layout";
-import { BlogListPage } from "../../../views/blog-list";
-import { BlogArticlePage } from "../../../views/blog-article";
+import { BlogListPage } from "../../../views/blog/blog-list";
+import { BlogArticlePage } from "../../../views/blog/blog-article";
 import {
   BLOG_ARTICLES,
   generateBlogIndexMarkdown,

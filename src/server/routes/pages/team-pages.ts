@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getRegistry } from "../../registry/loader";
-import { ServicesPage } from "../../../views/services-page";
-import { WorkWithUsPage } from "../../../views/work-with-us-page";
+import { ServicesPage } from "../../../views/pages/services-page";
+import { WorkWithUsPage } from "../../../views/pages/work-with-us-page";
 import { pageCoreSchemas, breadcrumbFor, collectionPageLd, webPageLd } from "../../lib/json-ld";
 
 export const teamPageRoutes = new Hono();

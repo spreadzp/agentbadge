@@ -30,21 +30,21 @@ import { sharedVenueStore } from "../../lib/attestation-store";
 import {
   venueActivityFragment,
   venueStubPage,
-} from "../../../views/venue-feed";
+} from "../../../views/venue/venue-feed";
 import {
   venueHubPage,
   venueJobDetailPage,
   venueJobsFragment,
   venueJobsPage,
-} from "../../../views/venue-pages";
+} from "../../../views/venue/venue-pages";
 import {
   venueAttestationsPage,
   venueNewJobPage,
-} from "../../../views/venue-forms";
+} from "../../../views/venue/venue-forms";
 import { registerVenueProfilePageRoutes } from "./venue-page-profiles";
 import { registerVenueInstancePageRoutes } from "./venue-page-instances";
 import type { ProviderProfileDeps } from "../../lib/venue/profiles";
-import { venueServicesPage } from "../../../views/venue-services";
+import { venueServicesPage } from "../../../views/venue/venue-services";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import {
