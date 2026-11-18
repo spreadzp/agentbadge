@@ -32,8 +32,13 @@ import { GuideLayout } from "../../../views/chrome/guide-layout";
 import { defaultCoreSchemas, howToLd, breadcrumbListLd } from "../../lib/json-ld";
 import { BUILD_DATE } from "../../lib/build-info";
 import { applyChainTemplates } from "../../lib/chain-templates.js";
+import { BLOG_ARTICLES } from "../../lib/blog/articles/index";
 
 export const agentKnowledgeRoutes = new Hono();
+
+// SLICE-234-34: 404-pointer — crawler-guessed concept/capability/article
+// names self-correct to the index + knowledge-map instead of dead-ending.
+const AGENT_GUIDE_SUGGESTIONS = ["/agent-guide", "/agent-guide/knowledge-map.json"];
 
 // SLICE-206-12: ?src= attribution on every /agent-guide* entry point.
 agentKnowledgeRoutes.use(srcAttribution());
@@ -43,6 +48,7 @@ const BASE_DIR = join(__dirname, "../../agent-knowledge");
 
 async function serveMarkdownFile(
   filePath: string,
+  notFoundExtra?: Record<string, unknown>,
 ): Promise<Response> {
   try {
     const content = await readFile(filePath, "utf-8");
@@ -58,6 +64,7 @@ async function serveMarkdownFile(
       JSON.stringify({
         error: "File not found",
         code: ErrorCodes.RESOURCE_NOT_FOUND,
+        ...(notFoundExtra ?? {}),
       }),
       {
         status: 404,
@@ -370,10 +377,19 @@ agentKnowledgeRoutes.get("/agent-guide/concepts/:name", async (c) => {
     }
     return new Response(output, { headers });
   } catch {
+    // SLICE-234-34: cross-namespace alias — a capability name probed under
+    // /concepts/ redirects to the canonical capability page (x402 case).
+    try {
+      await readFile(join(BASE_DIR, "capabilities", `${name}.md`), "utf-8");
+      return c.redirect(`/agent-guide/capabilities/${name}`, 301);
+    } catch {
+      // fall through to 404
+    }
     return new Response(
       JSON.stringify({
         error: "File not found",
         code: ErrorCodes.RESOURCE_NOT_FOUND,
+        suggestions: AGENT_GUIDE_SUGGESTIONS,
       }),
       {
         status: 404,
@@ -385,7 +401,9 @@ agentKnowledgeRoutes.get("/agent-guide/concepts/:name", async (c) => {
 
 agentKnowledgeRoutes.get("/agent-guide/capabilities/:name", (c) => {
   const name = c.req.param("name");
-  return serveMarkdownFile(join(BASE_DIR, "capabilities", `${name}.md`));
+  return serveMarkdownFile(join(BASE_DIR, "capabilities", `${name}.md`), {
+    suggestions: AGENT_GUIDE_SUGGESTIONS,
+  });
 });
 
 agentKnowledgeRoutes.get("/agent-guide/articles/:slug", async (c) => {
@@ -421,10 +439,16 @@ agentKnowledgeRoutes.get("/agent-guide/articles/:slug", async (c) => {
     }
     return new Response(output, { headers });
   } catch {
+    // SLICE-234-34: namespace-confusion alias — a blog slug probed under
+    // /agent-guide/articles/ redirects to the canonical /blog/ page.
+    if (BLOG_ARTICLES.some((a) => a.slug === slug)) {
+      return c.redirect(`/blog/${slug}`, 301);
+    }
     return new Response(
       JSON.stringify({
         error: "File not found",
         code: ErrorCodes.RESOURCE_NOT_FOUND,
+        suggestions: AGENT_GUIDE_SUGGESTIONS,
       }),
       {
         status: 404,
