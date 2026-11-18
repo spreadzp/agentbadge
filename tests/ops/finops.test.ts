@@ -70,13 +70,15 @@ const mkAttempt = (
 ): PaymentAttemptInsert => ({
   id: uid("att"),
   paymentId,
-  provider: "STRIPE",
-  network: "stripe",
+  // N4/226-6r2: intents require an on-chain confirmed attempt —
+  // STRIPE must be opted into explicitly by stripe-path tests.
+  provider: "DIRECT_USDC",
+  network: "base",
   token: null,
   amount: "19.99",
   currency: "USD",
   status: "CREATED",
-  providerReference: uid("pi"),
+  providerReference: uid("tx"),
   transactionHash: null,
   expiresAtMs: null,
   confirmedAtMs: null,
@@ -104,7 +106,11 @@ const seedConfirmed = async (
 describe("finops read-models", () => {
   it("listPayments filters by status/provider and paginates", async () => {
     const db = createDatabase({ enabled: false });
-    const a = await seedConfirmed(db);
+    const a = await seedConfirmed(db, {}, {
+      provider: "STRIPE",
+      network: "stripe",
+      providerReference: "pi_a",
+    });
     const b = await seedConfirmed(db, { status: "FAILED" });
     await seedConfirmed(db);
     // provider filter via attempts
@@ -128,7 +134,11 @@ describe("finops read-models", () => {
 
   it("getPaymentDetail rolls up attempts/receipts/events/refunds/actions", async () => {
     const db = createDatabase({ enabled: false });
-    const p = await seedConfirmed(db);
+    const p = await seedConfirmed(db, {}, {
+      provider: "STRIPE",
+      network: "stripe",
+      providerReference: "pi_det",
+    });
     await db.payments.events.append({
       id: uid("ev"),
       entity: "PAYMENT",
@@ -217,7 +227,11 @@ describe("finops reports", () => {
 
   it("excludes RECORD_ONLY commerce mirrors from revenue", async () => {
     const db = createDatabase({ enabled: false });
-    await seedConfirmed(db, { amount: "25.00" });
+    await seedConfirmed(db, { amount: "25.00" }, {
+      provider: "STRIPE",
+      network: "stripe",
+      providerReference: "pi_ro",
+    });
     // RECORD_ONLY mirror of an external "payment" — never revenue.
     await db.commerce.payments.create({
       id: uid("cpay"),
@@ -253,6 +267,10 @@ describe("finops reports", () => {
     const stripePay = await seedConfirmed(db, {
       amount: "10.00",
       productId: "prod_a",
+    }, {
+      provider: "STRIPE",
+      network: "stripe",
+      providerReference: "pi_report",
     });
     const usdcPay = mkPayment({
       status: "CONFIRMED",
@@ -448,7 +466,11 @@ describe("finops refund intents", () => {
 
   it("stripeRefund calls provider, audits, marks REFUNDED", async () => {
     const db = createDatabase({ enabled: false });
-    const p = await seedConfirmed(db, { amount: "10.00" });
+    const p = await seedConfirmed(db, { amount: "10.00" }, {
+      provider: "STRIPE",
+      network: "stripe",
+      providerReference: "pi_stripe_1",
+    });
     const calls: string[] = [];
     const r = await stripeRefund(
       db,
@@ -457,7 +479,7 @@ describe("finops refund intents", () => {
         refunds: {
           create: async (input) => {
             calls.push(input.payment_intent);
-            return { id: "re_test_1" };
+            return { id: "re_test_1", status: "succeeded" };
           },
         },
       },

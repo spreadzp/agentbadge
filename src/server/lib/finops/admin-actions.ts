@@ -42,13 +42,9 @@ const EXTERNAL_SUBJECT_TYPES = new Set([
   "order",
 ]);
 
-let actionSeq = 0;
-
 /** Unique action id — actions are events, not dedupe keys. */
 const nextActionId = (): string =>
-  `aa_${Date.now()}_${(actionSeq += 1)}_${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
+  `aa_${Date.now()}_${crypto.randomUUID()}`;
 
 export interface RecordAdminActionInput {
   action: string; // AdminActionKind
@@ -186,6 +182,12 @@ export async function markExternalReviewed(
       "BAD_INPUT",
       `subjectType must be one of ${[...EXTERNAL_SUBJECT_TYPES].join("|")}`,
     );
+  }
+  // N19: a "reviewed" marker on a non-existent payment is a lying
+  // audit row — payment subjects must resolve.
+  if (subjType === "payment") {
+    const missing = await requirePayment(db, subjId);
+    if (missing) return missing;
   }
   return recordAdminAction(db, {
     action: "MARK_EXTERNAL_REVIEWED",

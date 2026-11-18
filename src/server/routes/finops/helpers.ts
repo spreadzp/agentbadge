@@ -146,5 +146,5 @@ export function parseEvidence(v: unknown): unknown {
 export function listLimit(v: unknown, fallback = 200, max = 500): number {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return fallback;
-  return Math.min(Math.floor(n), max);
+  return Math.min(Math.max(1, Math.floor(n)), max);
 }

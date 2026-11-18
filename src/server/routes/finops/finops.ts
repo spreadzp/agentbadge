@@ -110,7 +110,13 @@ export function createFinopsRoutes(deps: FinopsRouteDeps = {}): Hono {
           fail("BAD_INPUT", "invalid date — expected YYYY-MM-DD"),
         );
       }
-      const perPage = Number(q.get("perPage"));
+      // N5: only read perPage when the param is present — Number(null)
+      // is 0 and would clamp the default page size down to 1.
+      const perPageRaw = q.get("perPage");
+      const perPage =
+        perPageRaw !== null && perPageRaw.trim() !== ""
+          ? Number(perPageRaw)
+          : undefined;
       const filter = {
         provider: str(q.get("provider")),
         status: str(q.get("status")),
@@ -120,13 +126,15 @@ export function createFinopsRoutes(deps: FinopsRouteDeps = {}): Hono {
         ...(sinceMs !== undefined ? { sinceMs } : {}),
         ...(untilMs !== undefined ? { untilMs } : {}),
         page: Math.max(1, Number(q.get("page")) || 1),
-        ...(Number.isFinite(perPage)
-          ? { perPage: Math.min(Math.max(1, perPage), 200) }
+        ...(perPage !== undefined && Number.isFinite(perPage)
+          ? { perPage: Math.min(Math.max(1, Math.floor(perPage)), 200) }
           : {}),
       };
       const result = await listPayments(getDb(), filter);
       return isHtmxRequest(c)
-        ? c.html(paymentsTable(result).toString())
+        ? c.html(paymentsTable(result).toString(), 200, {
+            "Cache-Control": "no-store",
+          })
         : page(c, paymentsPage(result, filter).toString(), "Payments");
     },
   );
@@ -158,6 +166,7 @@ export function createFinopsRoutes(deps: FinopsRouteDeps = {}): Hono {
             true,
           ),
           404,
+          { "Cache-Control": "no-store" },
         );
       }
       const trace = await tracePayment(getDb(), id);

@@ -48,7 +48,9 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
         ...(status ? { status } : {}),
         limit: listLimit(q.get("limit")),
       });
-      return c.json({ items: rows });
+      return c.json({ items: rows }, 200, {
+        "Cache-Control": "no-store",
+      });
     },
   );
 
@@ -113,17 +115,25 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
         typeof b.operator === "string" ? b.operator : "";
       const op = requireOperator(operator);
       if (op) return respond(c, op);
-      const res = await detectFromPaymentExceptions(getDb());
+      const res = await detectFromPaymentExceptions(getDb(), {
+        limit: listLimit(b.limit, 100, 100),
+      });
       if (!res.ok) return respond(c, res);
+      // N3: bounded evidence — counts + a capped id sample; full id
+      // lists can exceed the 4 KB audit cap and break the audit write
+      // permanently once the backlog is large.
+      const createdIds = res.value.created.map((r) => r.id);
       const audit = await recordAdminAction(getDb(), {
         action: "DETECT_EXCEPTIONS",
-        subjectType: "exceptions",
+        subjectType: "exception",
         subjectId: "scan",
         operator,
         evidence: {
-          createdCount: res.value.created.length,
-          createdIds: res.value.created.map((r) => r.id),
-          skipped: res.value.skipped,
+          createdCount: createdIds.length,
+          skippedCount: res.value.skipped.length,
+          createdIds: createdIds.slice(0, 50),
+          idsTruncated: createdIds.length > 50,
+          skipped: res.value.skipped.slice(0, 50),
         },
       });
       return respond(c, audit.ok ? res : audit);

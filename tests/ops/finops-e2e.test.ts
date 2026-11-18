@@ -154,7 +154,7 @@ beforeEach(() => {
         refunds: {
           create: async (input) => {
             stripeCalls.push(input.payment_intent);
-            return { id: "re_e2e_1" };
+            return { id: "re_e2e_1", status: "succeeded" };
           },
         },
       },

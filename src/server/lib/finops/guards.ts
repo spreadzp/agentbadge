@@ -24,17 +24,24 @@ export const MAX_CURRENCY_LEN = 16;
 export const MAX_AMOUNT_LEN = 40;
 
 /**
- * H5/226-6: canonical operator label — NFKC, format/control chars
- * stripped (zero-width, bidi, hangul filler), whitespace collapsed,
- * capped at 64 code points. Stored and filtered in this form.
+ * H5/226-6 + N6: canonical operator label — controls collapse to
+ * spaces, default-ignorable + blank-lookalike code points (zero-width,
+ * bidi, hangul/braille fillers) are stripped, whitespace collapsed,
+ * capped at 64 code points. Idempotent: normalize(normalize(x)) ===
+ * normalize(x), so callers and the audit filter agree on stored form.
  */
+const IGNORABLE_OR_BLANK =
+  /[\p{Cf}\p{Default_Ignorable_Code_Point}\u115F\u1160\u3164\uFFA0\u2800]/gu;
+
 export function normalizeOperator(v: string): string {
-  const cleaned = v
-    .normalize("NFKC")
-    .replace(/[\p{Cf}\p{Cc}\p{Cs}]/gu, "")
+  const strip = (s: string): string =>
+    s
+      .replace(/[\p{Cc}\p{Cs}]/gu, " ")
+      .replace(IGNORABLE_OR_BLANK, "");
+  const cleaned = strip(strip(v).normalize("NFKC"))
     .replace(/\s+/g, " ")
     .trim();
-  return [...cleaned].slice(0, OPERATOR_MAX_LEN).join("");
+  return [...cleaned].slice(0, OPERATOR_MAX_LEN).join("").trimEnd();
 }
 
 /** `null` when the operator label is usable; error result otherwise. */
@@ -80,9 +87,12 @@ export function isMeaningfulEvidence(v: unknown): boolean {
   return false;
 }
 
-/** `0x` + 40 hex — EVM payout destination. */
+/** `0x` + 40 hex — EVM payout destination (zero address is not one). */
 export function isEvmAddress(v: string): boolean {
-  return /^0x[0-9a-fA-F]{40}$/.test(v);
+  return (
+    /^0x[0-9a-fA-F]{40}$/.test(v) &&
+    v.toLowerCase() !== "0x0000000000000000000000000000000000000000"
+  );
 }
 
 const TX_HASH_RE = /^0x[0-9a-f]{64}$/;
@@ -127,6 +137,27 @@ export function checkEvidence(evidence: unknown): FinOpsErrorResult | null {
   return null;
 }
 
+/**
+ * N1/226-6 round 2: bound a value's serialized size for audit
+ * evidence. Caller evidence passes `checkEvidence` at ≤4 KB on its
+ * own, but WRAPPED into a larger audit object it can push the row
+ * over the store cap — write a `{truncated,size}` marker instead.
+ */
+export function boundedEvidence(
+  v: unknown,
+  budget: number,
+): unknown {
+  if (v === undefined || v === null) return null;
+  let size: number;
+  try {
+    size = JSON.stringify(v).length;
+  } catch {
+    return { truncated: true, unserializable: true };
+  }
+  if (size <= budget) return v;
+  return { truncated: true, sizeBytes: size, budget };
+}
+
 /** Run both guards; returns a FinOps error result or null. */
 export function guardAction(
   operator: string | undefined | null,
@@ -142,7 +173,9 @@ export function guardAction(
 // ---------- decimal-string money (6dp micro-unit BigInt math) ----------
 
 const MICRO = 1_000_000n;
-const DECIMAL_RE = /^-?\d+(\.\d{1,12})?$/;
+// N16: 6dp max — all arithmetic truncates to micros, so accepting
+// 12dp would let "100.0000009" pass a `<= 100` check.
+const DECIMAL_RE = /^-?\d+(\.\d{1,6})?$/;
 
 /** `9.99` → true; `abc` / `1.2.3` / `1e5` / 10⁹-digit strings → false. */
 export function isDecimalString(v: unknown): v is string {

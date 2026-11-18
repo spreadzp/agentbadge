@@ -87,7 +87,7 @@ beforeEach(() => {
         refunds: {
           create: async () => {
             stripeCalls += 1;
-            return { id: "re_test_1" };
+            return { id: "re_test_1", status: "succeeded" };
           },
         },
       },
@@ -414,12 +414,21 @@ describe("SLICE-226-6 hardening", () => {
     expect((await db.payments.payments.getById(p.id))!.status).toBe(
       "CONFIRMED",
     );
-    // The initiated audit row is the honest trail of the failed attempt.
+    // INITIATED + terminal FAILED row (N4) — the failure closes the
+    // in-flight lock and keeps the refund id on the trail.
     const refunds = await db.finops.adminActions.list({ action: "REFUND" });
-    expect(refunds).toHaveLength(1);
+    expect(refunds).toHaveLength(2);
+    const kinds = refunds.map(
+      (r) => (r.evidence as { kind: string }).kind,
+    );
+    expect(kinds).toContain("STRIPE_REFUND_INITIATED");
+    expect(kinds).toContain("STRIPE_REFUND_FAILED");
+    const failed = refunds.find(
+      (r) => (r.evidence as { kind: string }).kind === "STRIPE_REFUND_FAILED",
+    );
     expect(
-      (refunds[0]!.evidence as { kind: string }).kind,
-    ).toBe("STRIPE_REFUND_INITIATED");
+      (failed!.evidence as { stripeRefundId: string }).stripeRefundId,
+    ).toBe("re_pend");
   });
 
   it("txHash replay across intents → 409 TX_REUSED (C3)", async () => {

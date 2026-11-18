@@ -23,8 +23,10 @@ import {
   requireOperator,
   sumDecimals,
 } from "./guards";
+import { withPaymentLock } from "./payment-mutex";
 import {
   type FinOpsResult,
+  type RefundTxCheck,
   type VerifyRefundTx,
   fail,
   ok,
@@ -42,6 +44,45 @@ export async function completeRefundIntent(
   input: CompleteRefundIntentInput,
   verifyTx: VerifyRefundTx,
 ): Promise<FinOpsResult<RefundIntentRow>> {
+  // N8: serialize refund mutations per payment — the cap and the
+  // replay guard are check-then-write and must not interleave.
+  // The lock key is resolved cheaply before the critical section.
+  const intent = await db.finops.refundIntents.getById(input.intentId);
+  const key = intent?.paymentId ?? input.intentId;
+  return withPaymentLock(key, () =>
+    completeRefundIntentInner(db, input, verifyTx, intent ?? undefined),
+  );
+}
+
+/** N12: rejected completions are security events — bound + audit. */
+async function auditRejectedCompletion(
+  db: Database,
+  input: CompleteRefundIntentInput,
+  intent: RefundIntentRow | undefined,
+  txHash: string | null,
+  reason: string,
+): Promise<void> {
+  if (!intent) return;
+  await recordAdminAction(db, {
+    action: "REFUND",
+    subjectType: "payment",
+    subjectId: intent.paymentId,
+    operator: normalizeOperator(input.operator),
+    evidence: {
+      kind: "INTENT_COMPLETE_REJECTED",
+      intentId: input.intentId,
+      txHash: txHash ?? "invalid",
+      reason: reason.slice(0, 200),
+    },
+  });
+}
+
+async function completeRefundIntentInner(
+  db: Database,
+  input: CompleteRefundIntentInput,
+  verifyTx: VerifyRefundTx,
+  prefetchedIntent?: RefundIntentRow,
+): Promise<FinOpsResult<RefundIntentRow>> {
   const op = requireOperator(input.operator);
   if (op) return op as FinOpsResult<never>;
   const txHash =
@@ -54,7 +95,9 @@ export async function completeRefundIntent(
       "txHash must be a 0x-prefixed 64-hex transaction hash",
     );
   }
-  const intent = await db.finops.refundIntents.getById(input.intentId);
+  const intent = prefetchedIntent
+    ? prefetchedIntent
+    : await db.finops.refundIntents.getById(input.intentId);
   if (!intent) {
     return fail("NOT_FOUND", `refund intent not found: ${input.intentId}`);
   }
@@ -71,6 +114,9 @@ export async function completeRefundIntent(
   });
   const bound = completed.find((r) => r.txHash === txHash);
   if (bound) {
+    await auditRejectedCompletion(
+      db, input, intent, txHash, `replay — bound to ${bound.id}`,
+    );
     return fail(
       "TX_REUSED",
       `txHash already bound to refund intent ${bound.id} — replay rejected`,
@@ -101,35 +147,59 @@ export async function completeRefundIntent(
       `cumulative refunds ${total} would exceed payment amount ${payment.amount} (already completed ${used})`,
     );
   }
-  const expectedCurrency = intent.currency ?? payment.currency ?? "USDC";
-  const check = await verifyTx(txHash, {
-    payee: intent.payee,
-    amount: intent.amount,
-    currency: expectedCurrency,
-    notBeforeMs: intent.createdAtMs,
-  });
-  if (!check.verified) {
+  const expectedCurrency = (
+    intent.currency ??
+    payment.currency ??
+    "USDC"
+  ).toUpperCase();
+  // N11: the RPC call can throw — a verifier outage is PROVIDER_ERROR,
+  // not a 500. `notBeforeMs` gets a 1s tolerance: block timestamps are
+  // second-granular, so a tx mined in the same second as intent
+  // creation must not be rejected permanently.
+  let check: RefundTxCheck;
+  try {
+    check = await verifyTx(txHash, {
+      payee: intent.payee,
+      amount: intent.amount,
+      currency: expectedCurrency,
+      notBeforeMs: intent.createdAtMs - 1000,
+    });
+  } catch (e) {
     return fail(
-      "TX_UNVERIFIED",
-      check.reason ??
-      "on-chain read did not confirm the refund tx — not completing",
+      "PROVIDER_ERROR",
+      `verifier call failed: ${e instanceof Error ? e.message : String(e)}`,
     );
+  }
+  if (!check || check.verified !== true) {
+    const reason =
+      check && typeof check.reason === "string"
+        ? check.reason
+        : "on-chain read did not confirm the refund tx — not completing";
+    await auditRejectedCompletion(db, input, intent, txHash, reason);
+    return fail("TX_UNVERIFIED", reason);
   }
   // H4: cross-check verifier-reported facts — `verified: true` alone
   // is not enough to trust the adapter bound the right tx.
-  if (check.payer !== undefined && check.payer !== "") {
+  if (typeof check.payer === "string" && check.payer.trim() !== "") {
     const payer = check.payer.trim().toLowerCase();
     if (payer === intent.payee.toLowerCase()) {
+      await auditRejectedCompletion(
+        db, input, intent, txHash, "sender equals payee — self-transfer",
+      );
       return fail(
         "TX_UNVERIFIED",
         "refund tx sender equals the payee — self-transfer is not a payout",
       );
     }
   }
-  if (check.asset !== undefined && check.asset !== "") {
+  if (typeof check.asset === "string" && check.asset.trim() !== "") {
     if (
       check.asset.trim().toUpperCase() !== expectedCurrency.toUpperCase()
     ) {
+      await auditRejectedCompletion(
+        db, input, intent, txHash,
+        `asset ${check.asset} ≠ ${expectedCurrency}`,
+      );
       return fail(
         "TX_UNVERIFIED",
         `verifier reports asset ${check.asset}, expected ${expectedCurrency}`,
@@ -149,14 +219,15 @@ export async function completeRefundIntent(
       "refund intent transitioned or txHash was bound concurrently — not completing",
     );
   }
-  // Full-amount intent → payment leaves revenue as REFUNDED (guarded).
-  // The audit row below records whether the flip applied.
+  // N10: cumulative flip — the payment leaves revenue when TOTAL
+  // completed refunds reach the payment amount, not when this one
+  // intent alone covers it (60+40 on 100 must flip).
   let flipApplied = false;
   const current = await db.payments.payments.getById(intent.paymentId);
   if (
     current &&
     current.status === "CONFIRMED" &&
-    decimalLte(current.amount, intent.amount)
+    decimalLte(current.amount, total)
   ) {
     flipApplied =
       (await db.payments.payments.applyStatus(

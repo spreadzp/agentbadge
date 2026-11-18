@@ -55,9 +55,11 @@ function buildSplits(
   stripeEstimated: string;
   facilitatorEstimated: string;
 } {
-  const byProvider: Record<string, string> = {};
-  const byProduct: Record<string, string> = {};
-  const byNetwork: Record<string, string> = {};
+  // N13: null-prototype maps — a DB key like "__proto__" must not
+  // silently drop volume or pollute the prototype chain.
+  const byProvider: Record<string, string> = Object.create(null);
+  const byProduct: Record<string, string> = Object.create(null);
+  const byNetwork: Record<string, string> = Object.create(null);
   const providerAmounts = new Map<string, string[]>();
   for (const p of revenue) {
     const att = confirmedByPayment.get(p.id) ?? null;

@@ -28,7 +28,6 @@ import {
   markExternalReviewed,
   recordAdminAction,
   reviewPayment,
-  stripeRefund,
 } from "../../src/server/lib/finops";
 
 let seq = 0;
@@ -64,13 +63,15 @@ const mkAttempt = (
 ): PaymentAttemptInsert => ({
   id: uid("att"),
   paymentId,
-  provider: "STRIPE",
-  network: "stripe",
+  // N4/226-6r2: intents require an on-chain confirmed attempt —
+  // STRIPE must be opted into explicitly by stripe-path tests.
+  provider: "DIRECT_USDC",
+  network: "base",
   token: null,
   amount: "19.99",
   currency: "USD",
   status: "CREATED",
-  providerReference: uid("pi"),
+  providerReference: uid("tx"),
   transactionHash: null,
   expiresAtMs: null,
   confirmedAtMs: null,
@@ -146,31 +147,6 @@ describe("SLICE-226-6 audit fixes", () => {
     await db.close();
   });
 
-  it("C2: stripe path refused while manual intents exist", async () => {
-    const db = createDatabase({ enabled: false });
-    const p = await seedConfirmed(db, { amount: "10.00" }, {
-      provider: "STRIPE",
-      providerReference: "pi_c2",
-      network: "stripe",
-      transactionHash: null,
-    });
-    const i = await createRefundIntent(db, {
-      paymentId: p.id, payee: PAYEE, amount: "4.00",
-      reason: "r", operator: "ops",
-    });
-    expect(i.ok).toBe(true);
-    let stripeCalled = 0;
-    const r = await stripeRefund(
-      db,
-      { paymentId: p.id, operator: "ops" },
-      { refunds: { create: async () => { stripeCalled += 1; return { id: "re_x" }; } } },
-    );
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe("INVALID_STATE");
-    expect(stripeCalled).toBe(0);
-    await db.close();
-  });
-
   it("C3: one tx binds one intent — replay + case variant rejected", async () => {
     const db = createDatabase({ enabled: false });
     const p1 = await seedConfirmed(db, { amount: "5.00" });
@@ -236,7 +212,8 @@ describe("SLICE-226-6 audit fixes", () => {
       },
     );
     expect(seen.currency).toBe("USD");
-    expect(seen.notBeforeMs).toBe(i.value.createdAtMs);
+    // N11: 1s tolerance — block timestamps are second-granular.
+    expect(seen.notBeforeMs).toBe(i.value.createdAtMs - 1000);
     await db.close();
   });
 

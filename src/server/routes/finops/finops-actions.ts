@@ -17,13 +17,13 @@ import { getDatabase } from "../../lib/database";
 import { getStripeClient, isStripeConfigured } from "../../lib/stripe-client";
 import {
   createRefundIntent,
+  fail,
   markExternalReviewed,
   retryVerification,
   reviewPayment,
   stripeRefund,
 } from "../../lib/finops/index";
 import type { StripeRefundClient } from "../../lib/finops/types";
-import { fail } from "../../lib/finops/index";
 import { adminAuth } from "../../middleware/adminAuth";
 import type { FinopsRouteDeps } from "./helpers";
 import { parseEvidence, readBody, respond } from "./helpers";

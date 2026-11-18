@@ -108,6 +108,7 @@ flowchart LR
   server_middleware["server/middleware"] --> pkg_circle_payments["pkg: circle-payments"]
   server_middleware["server/middleware"] --> pkg_hedera_core["pkg: hedera-core"]
   server_middleware["server/middleware"] --> pkg_passport_logger["pkg: passport/logger"]
+  server_middleware["server/middleware"] --> pkg_webmcp["pkg: webmcp"]
   server_middleware["server/middleware"] --> server_lib["server/lib"]
   server_middleware["server/middleware"] --> server_metrics["server/metrics"]
   server_middleware["server/middleware"] --> server_services["server/services"]

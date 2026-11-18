@@ -32,13 +32,11 @@ import {
   requireOperator,
   sumDecimals,
 } from "./guards";
+import { withPaymentLock } from "./payment-mutex";
 import { type FinOpsResult, fail, ok } from "./types";
 
-let intentSeq = 0;
 const nextIntentId = (paymentId: string): string =>
-  `ri_${paymentId}_${(intentSeq += 1)}_${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
+  `ri_${paymentId}_${crypto.randomUUID()}`;
 
 export interface CreateRefundIntentInput {
   paymentId: string;
@@ -53,17 +51,66 @@ export interface CreateRefundIntentInput {
 }
 
 /** Total refund exposure already reserved on the payment — every
- *  intent row (OPEN reserves, COMPLETED spent) counts (C2). */
+ *  non-cancelled intent row (OPEN reserves, COMPLETED spent)
+ *  counts (C2). */
 export async function refundUsage(
   db: Database,
   paymentId: string,
 ): Promise<{ usage: string; count: number }> {
-  const intents = await db.finops.refundIntents.listByPayment(paymentId);
+  const intents = (await db.finops.refundIntents.listByPayment(
+    paymentId,
+  )).filter((i) => i.status !== "CANCELLED");
   return { usage: sumDecimals(intents.map((i) => i.amount)), count: intents.length };
+}
+
+/** Terminal kinds that close a Stripe refund attempt in the trail. */
+const STRIPE_TERMINAL_KINDS = new Set([
+  "STRIPE_REFUND",
+  "STRIPE_REFUND_FAILED",
+]);
+
+/**
+ * N4: a STRIPE_REFUND_INITIATED row without a matching terminal row
+ * means a provider refund may be in flight (pending, crashed, or the
+ * response was lost). The payment's refund capacity stays locked
+ * until a terminal row exists — the manual intent path must not
+ * double-pay meanwhile.
+ */
+async function stripeRefundInFlight(
+  db: Database,
+  paymentId: string,
+): Promise<boolean> {
+  const rows = await db.finops.adminActions.listBySubject(
+    "payment",
+    paymentId,
+  );
+  let initiated = false;
+  for (const r of rows) {
+    const kind =
+      r.evidence !== null &&
+      typeof r.evidence === "object" &&
+      !Array.isArray(r.evidence)
+        ? (r.evidence as Record<string, unknown>).kind
+        : undefined;
+    if (kind === "STRIPE_REFUND_INITIATED") initiated = true;
+    else if (typeof kind === "string" && STRIPE_TERMINAL_KINDS.has(kind)) {
+      initiated = false;
+    }
+  }
+  return initiated;
 }
 
 /** Open a refund intent on a CONFIRMED payment + audit row. */
 export async function createRefundIntent(
+  db: Database,
+  input: CreateRefundIntentInput,
+): Promise<FinOpsResult<RefundIntentRow>> {
+  return withPaymentLock(input.paymentId, () =>
+    createRefundIntentInner(db, input),
+  );
+}
+
+async function createRefundIntentInner(
   db: Database,
   input: CreateRefundIntentInput,
 ): Promise<FinOpsResult<RefundIntentRow>> {
@@ -102,6 +149,36 @@ export async function createRefundIntent(
       `refund intent requires CONFIRMED payment, got ${payment.status}`,
     );
   }
+  // N4: the intent path is the ON-CHAIN refund arm — a card-paid
+  // Stripe payment would get a second full refund to an EVM wallet.
+  const attempts = await db.payments.attempts.listByPayment(payment.id);
+  const confirmedAttempt = attempts.find((a) => a.status === "CONFIRMED");
+  if (confirmedAttempt?.provider === "STRIPE") {
+    return fail(
+      "INVALID_STATE",
+      "payment settled via Stripe — use the stripe refund mode, not a manual intent",
+    );
+  }
+  // N4: an initiated Stripe refund without a terminal audit row may
+  // still be moving money — the capacity stays locked.
+  if (await stripeRefundInFlight(db, payment.id)) {
+    return fail(
+      "INVALID_STATE",
+      "a Stripe refund is in flight for this payment — resolve it before opening an intent",
+    );
+  }
+  // N11: the intent's asset must match the payment's — a USDC payment
+  // cannot be refunded in another asset on operator say-so.
+  const currency = (input.currency ?? payment.currency ?? "USDC")
+    .trim()
+    .toUpperCase();
+  const paymentCurrency = (payment.currency ?? "USDC").toUpperCase();
+  if (currency !== paymentCurrency) {
+    return fail(
+      "BAD_INPUT",
+      `intent currency ${currency} must match payment currency ${paymentCurrency}`,
+    );
+  }
   // Amount beyond the payment is invalid input regardless of state.
   if (!decimalLte(input.amount, payment.amount)) {
     return fail(
@@ -125,7 +202,7 @@ export async function createRefundIntent(
     paymentId: input.paymentId,
     payee,
     amount: input.amount,
-    currency: input.currency ?? payment.currency,
+    currency,
     reason,
     evidence: (input.evidence ?? null) as RefundIntentRow["evidence"],
     status: "OPEN",

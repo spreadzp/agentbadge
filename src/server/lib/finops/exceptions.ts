@@ -16,7 +16,12 @@ import type {
   ReconciliationExceptionRow,
 } from "@agentbadge/database";
 
-import { guardAction, normalizeOperator } from "./guards";
+import {
+  MAX_TEXT_FIELD,
+  checkTextField,
+  guardAction,
+  normalizeOperator,
+} from "./guards";
 import { recordAdminAction } from "./admin-actions";
 import {
   type DetectResult,
@@ -108,7 +113,9 @@ export async function detectFromPaymentExceptions(
   const open = await db.payments.exceptions.list({
     status: "OPEN",
     sinceMs: opts.sinceMs,
-    limit: opts.limit,
+    // N3: bounded scan — an unbounded backlog makes the audit evidence
+    // overflow permanently (ids are deterministic, never shrink).
+    limit: opts.limit ?? DETECT_SCAN_LIMIT,
   });
   const candidates: ExceptionCandidate[] = [];
   for (const e of open) {
@@ -138,6 +145,9 @@ export async function detectFromPaymentExceptions(
   return detectExceptions(db, candidates);
 }
 
+/** N3: max rows one scan converts — keeps audit evidence bounded. */
+const DETECT_SCAN_LIMIT = 100;
+
 export interface ResolveExceptionInput {
   id: string;
   /** MATCHED|IGNORED|MANUAL_ADJUSTED|REFUNDED */
@@ -157,6 +167,13 @@ export async function resolveException(
 ): Promise<FinOpsResult<ReconciliationExceptionRow>> {
   const guard = guardAction(input.operator, { note: input.note });
   if (guard) return guard;
+  // N2: cap the note BEFORE the transition — it is echoed into the
+  // audit evidence next to resolution/type/subjectRef, and an
+  // uncapped note can overflow the row after the resolve landed.
+  if (input.note !== undefined) {
+    const cap = checkTextField(input.note, "note", MAX_TEXT_FIELD);
+    if (cap) return cap;
+  }
   if (!VALID_RESOLUTIONS.has(input.resolution)) {
     return fail(
       "BAD_INPUT",
