@@ -32,7 +32,7 @@ import {
   deliverableBodySchema,
 } from "../src/server/lib/tasks/bids";
 import { verdictBodySchema } from "../src/server/lib/tasks/verdict";
-import { REGISTER_X_EXAMPLES } from "../src/server/routes/agents-register-examples";
+import { REGISTER_X_EXAMPLES } from "../src/server/routes/agents/agents-register-examples";
 import { workRequestRoutes } from "../src/server/routes/api/work-requests";
 import { validateEvaluate } from "../src/server/lib/eaas/eval-request";
 

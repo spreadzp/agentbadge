@@ -27,7 +27,7 @@ import { tryGetCache } from "../lib/cache";
 import { gasCappedWallet } from "../lib/eaas/settle";
 import { resolveVenueNetwork, publicClient } from "../lib/venue/chain";
 import { arcMainnet, arcTestnet } from "../lib/marketplace/chain";
-import { createAgentRegisterRoutes } from "../routes/agents-register-api";
+import { createAgentRegisterRoutes } from "../routes/agents/agents-register-api";
 
 export function wireAgentRegistration(app: Hono): void {
   const cfg = getConfig().agentRegistration;

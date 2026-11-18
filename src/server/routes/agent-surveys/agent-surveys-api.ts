@@ -17,23 +17,23 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
-import { adminAuth } from "../middleware/adminAuth";
-import { resolveClientIp } from "../middleware/rate-limit";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { buildFingerprint } from "../lib/request-inbox/fingerprint";
+import { adminAuth } from "../../middleware/adminAuth";
+import { resolveClientIp } from "../../middleware/rate-limit";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { buildFingerprint } from "../../lib/request-inbox/fingerprint";
 import {
   createSubmitLanes,
   hasJsonbUnsafe,
   headerSnapshot,
   readBodyCap,
-} from "../lib/request-inbox/intake";
-import { SurveyAnswerDuplicateError } from "../lib/request-inbox/survey-store";
-import type { RequestInboxStores } from "../lib/request-inbox/store";
-import type { RequestInboxEnvConfig } from "../../config/env/request-inbox-types";
-import type { ReputationWriteRecord } from "../lib/board/types";
-import { newReputationId } from "../lib/board/types";
-import { boardStore } from "../lib/board/store";
+} from "../../lib/request-inbox/intake";
+import { SurveyAnswerDuplicateError } from "../../lib/request-inbox/survey-store";
+import type { RequestInboxStores } from "../../lib/request-inbox/store";
+import type { RequestInboxEnvConfig } from "../../../config/env/request-inbox-types";
+import type { ReputationWriteRecord } from "../../lib/board/types";
+import { newReputationId } from "../../lib/board/types";
+import { boardStore } from "../../lib/board/store";
 
 export interface AgentSurveyRoutesDeps {
   stores: RequestInboxStores;

@@ -11,7 +11,7 @@ vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
 
 import { getNftInfo } from "@agentbadge/hedera-core";
 import { upsert, clear, type DirectoryEntry } from "@agentbadge/passport";
-import { agentRoutes } from "../src/server/routes/agents";
+import { agentRoutes } from "../src/server/routes/agents/agents";
 
 const mockedGetNftInfo = vi.mocked(getNftInfo);
 

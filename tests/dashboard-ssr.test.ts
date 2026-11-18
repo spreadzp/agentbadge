@@ -53,7 +53,7 @@ process.env.AUDIT_TOPIC_ID = "0.0.555";
 const { uiRoutes } = await import("../src/server/routes/ui");
 const { searchRoutes } = await import("../src/server/routes/search");
 const { contactRoutes } = await import("../src/server/routes/contact");
-const { agentGuideRoutes } = await import("../src/server/routes/agent-guide");
+const { agentGuideRoutes } = await import("../src/server/routes/agent-guide/agent-guide");
 const { marketGuideRoutes } = await import("../src/server/routes/market-guide");
 const { medicalGuideRoutes } = await import("../src/server/routes/medical-guide");
 const { catalogRoutes } = await import("../src/server/routes/catalog");
@@ -64,12 +64,12 @@ const { signatureVerificationMiddleware } = await import("../src/server/middlewa
 
 import { marketUpsert, marketClear } from "@agentbadge/passport";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
-import { Dashboard, type DashboardSsrData } from "../src/views/dashboard";
+import { Dashboard } from "../src/views/dashboard";
 
 function makeTestApp(): Hono {
   const app = new Hono();
   app.use(corsMiddleware());
-  app.use((c, next) => signatureVerificationMiddleware(c as any, next));
+  app.use((c, next) => signatureVerificationMiddleware(c, next));
   app.use(rateLimitMiddleware());
   app.route("/", catalogRoutes);
   app.route("/", wellKnownRoutes);

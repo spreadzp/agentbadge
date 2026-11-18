@@ -12,19 +12,19 @@
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { resolveClientIp } from "../middleware/rate-limit";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { resolveClientIp } from "../../middleware/rate-limit";
 import {
   buildFingerprint,
   normalizeQuestion,
   questionHashFor,
-} from "../lib/request-inbox/fingerprint";
+} from "../../lib/request-inbox/fingerprint";
 import {
   contentHashFor,
   payloadQuestionText,
   canonicalJson,
-} from "../lib/request-inbox/qa";
+} from "../../lib/request-inbox/qa";
 import {
   createSubmitLanes,
   headerSnapshot,
@@ -34,9 +34,9 @@ import {
   BODY_MAX,
   PAYLOAD_MAX,
   META_MAX,
-} from "../lib/request-inbox/intake";
-import type { RequestInboxStores } from "../lib/request-inbox/store";
-import type { RequestInboxEnvConfig } from "../../config/env/types";
+} from "../../lib/request-inbox/intake";
+import type { RequestInboxStores } from "../../lib/request-inbox/store";
+import type { RequestInboxEnvConfig } from "../../../config/env/types";
 
 const DEFAULT_SUBMIT_WINDOW_MS = 2 * 60 * 60_000; // ~2h (D-252-Q6)
 const DEFAULT_SUBMIT_MAX = 1;

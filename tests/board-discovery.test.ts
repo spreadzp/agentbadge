@@ -18,7 +18,7 @@ import { useMemoryBoardStoreForTesting } from "../src/server/lib/board/json-stor
 import { boardStore } from "../src/server/lib/board/store";
 import { computeSpecHash } from "../src/server/lib/board/types";
 import { createBoardReadRoutes } from "../src/server/routes/board-api-read";
-import { createBoardGuideRoutes } from "../src/server/routes/agent-guide-hire";
+import { createBoardGuideRoutes } from "../src/server/routes/agent-guide/agent-guide-hire";
 import { registerBoardTools } from "../src/mcp/board-tools";
 import { buildAgentCard } from "../src/server/lib/agent-discovery";
 import { collectSources } from "../src/server/lib/agent-discovery/sources";

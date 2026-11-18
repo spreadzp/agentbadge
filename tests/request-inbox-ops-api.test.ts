@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
-import { createAgentRequestOpsRoutes } from "../src/server/routes/agent-requests-ops-api";
-import { createAgentRequestRoutes } from "../src/server/routes/agent-requests-api";
+import { createAgentRequestOpsRoutes } from "../src/server/routes/agent-requests/agent-requests-ops-api";
+import { createAgentRequestRoutes } from "../src/server/routes/agent-requests/agent-requests-api";
 import { createMemoryRequestInboxStores } from "../src/server/lib/request-inbox/db-stores";
 import {
   buildDigestMessage,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
-import { createAgentRequestRoutes } from "../src/server/routes/agent-requests-api";
+import { createAgentRequestRoutes } from "../src/server/routes/agent-requests/agent-requests-api";
 import { createMemoryRequestInboxStores } from "../src/server/lib/request-inbox/db-stores";
 import {
   fpHashFor,

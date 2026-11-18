@@ -12,9 +12,9 @@ import {
 } from "../src/server/lib/request-inbox/intake";
 import { runInboxJanitor } from "../src/server/lib/request-inbox/janitor";
 import { createMemoryRequestInboxStores } from "../src/server/lib/request-inbox/db-stores";
-import { createAgentRequestRoutes } from "../src/server/routes/agent-requests-api";
-import { createAgentRequestOpsRoutes } from "../src/server/routes/agent-requests-ops-api";
-import { createAgentSurveyRoutes } from "../src/server/routes/agent-surveys-api";
+import { createAgentRequestRoutes } from "../src/server/routes/agent-requests/agent-requests-api";
+import { createAgentRequestOpsRoutes } from "../src/server/routes/agent-requests/agent-requests-ops-api";
+import { createAgentSurveyRoutes } from "../src/server/routes/agent-surveys/agent-surveys-api";
 import { canonicalJson } from "../src/server/lib/request-inbox/qa";
 import { adminAuth } from "../src/server/middleware/adminAuth";
 import type { ReputationWriteRecord } from "../src/server/lib/board/types";

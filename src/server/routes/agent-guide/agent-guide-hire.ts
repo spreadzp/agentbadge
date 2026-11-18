@@ -10,13 +10,13 @@ import { Hono } from "hono";
 import { readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ErrorCodes } from "../lib/error-codes";
-import { errorResponse } from "../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PAGE_PATH = join(
   __dirname,
-  "../agent-knowledge/hire-or-get-hired.md",
+  "../../agent-knowledge/hire-or-get-hired.md",
 );
 
 const PAGE_JSON = {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { createAgentRegisterRoutes } from "../src/server/routes/agents-register-api";
+import { createAgentRegisterRoutes } from "../src/server/routes/agents/agents-register-api";
 import { createMemoryAgentRegistrationStore } from "../src/server/lib/agent-registration/store";
 import { createDailyLimiter } from "../src/server/lib/agent-registration/daily-bucket";
 import {

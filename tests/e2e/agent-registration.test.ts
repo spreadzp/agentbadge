@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { InMemoryCache } from "@agentbadge/cache";
 
-import { createAgentRegisterRoutes } from "../../src/server/routes/agents-register-api";
+import { createAgentRegisterRoutes } from "../../src/server/routes/agents/agents-register-api";
 import {
   agentKeyAuth,
   initAgentKeyAuth,

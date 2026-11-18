@@ -12,7 +12,7 @@ import { catalogRoutes } from "../../src/server/routes/catalog";
 import { uiRoutes } from "../../src/server/routes/ui";
 import { searchRoutes } from "../../src/server/routes/search";
 import { contactRoutes } from "../../src/server/routes/contact";
-import { agentGuideRoutes } from "../../src/server/routes/agent-guide";
+import { agentGuideRoutes } from "../../src/server/routes/agent-guide/agent-guide";
 import { marketGuideRoutes } from "../../src/server/routes/market-guide";
 import { medicalGuideRoutes } from "../../src/server/routes/medical-guide";
 import { contentPageRoutes } from "../../src/server/routes/content-pages";
@@ -25,7 +25,7 @@ import { MCP_TOOLS_INDEX, getLlmsTxt } from "@agentbadge/hedera-core";
 function makeCrawlerApp(): Hono {
   const app = new Hono();
   app.use(corsMiddleware());
-  app.use((c, next) => signatureVerificationMiddleware(c as any, next));
+  app.use((c, next) => signatureVerificationMiddleware(c, next));
   app.use(rateLimitMiddleware());
   app.route("/", catalogRoutes);
   app.route("/", wellKnownRoutes);

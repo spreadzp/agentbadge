@@ -34,7 +34,7 @@ process.env.PASSPORT_TOKEN_ID = "0.0.999";
 const { uiRoutes } = await import("../src/server/routes/ui");
 const { searchRoutes } = await import("../src/server/routes/search");
 const { contactRoutes } = await import("../src/server/routes/contact");
-const { agentGuideRoutes } = await import("../src/server/routes/agent-guide");
+const { agentGuideRoutes } = await import("../src/server/routes/agent-guide/agent-guide");
 const { marketGuideRoutes } = await import("../src/server/routes/market-guide");
 const { medicalGuideRoutes } = await import("../src/server/routes/medical-guide");
 const { catalogRoutes } = await import("../src/server/routes/catalog");
@@ -50,7 +50,7 @@ import type { CachedMarketTask } from "@agentbadge/hedera-core";
 function makeTestApp(): Hono {
   const app = new Hono();
   app.use(corsMiddleware());
-  app.use((c, next) => signatureVerificationMiddleware(c as any, next));
+  app.use((c, next) => signatureVerificationMiddleware(c, next));
   app.use(rateLimitMiddleware());
   app.route("/", catalogRoutes);
   app.route("/", wellKnownRoutes);

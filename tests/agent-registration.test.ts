@@ -16,7 +16,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { Hono } from "hono";
-import { agentRoutes } from "../src/server/routes/agents";
+import { agentRoutes } from "../src/server/routes/agents/agents";
 import { getNftInfo } from "@agentbadge/hedera-core";
 import { submitAuditMessage, submitDirectoryMessage } from "@agentbadge/hedera-core";
 import { upsert } from "@agentbadge/passport";

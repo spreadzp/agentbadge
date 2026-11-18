@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { agentGuideRoutes } from "../../src/server/routes/agent-guide";
+import { agentGuideRoutes } from "../../src/server/routes/agent-guide/agent-guide";
 import { Hono } from "hono";
 
 const app = new Hono();

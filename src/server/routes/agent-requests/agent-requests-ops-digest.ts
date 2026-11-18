@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { adminAuth } from "../middleware/adminAuth";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { telegramFromEnv } from "../lib/notify/telegram";
-import { sendInboxDigest } from "../lib/request-inbox/tg-digest";
-import type { RequestInboxStores } from "../lib/request-inbox/store";
+import { adminAuth } from "../../middleware/adminAuth";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { telegramFromEnv } from "../../lib/notify/telegram";
+import { sendInboxDigest } from "../../lib/request-inbox/tg-digest";
+import type { RequestInboxStores } from "../../lib/request-inbox/store";
 
 /**
  * EPIC-252: on-demand inbox TG digest - manual trigger only.

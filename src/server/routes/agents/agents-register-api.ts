@@ -9,33 +9,33 @@ import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { logger } from "@agentbadge/passport/logger";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { tryGetCache } from "../lib/cache";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { tryGetCache } from "../../lib/cache";
 import type { CacheProvider } from "@agentbadge/cache";
 import {
   hashApiKey,
   revokeApiKey,
-} from "../lib/agent-registration/api-keys";
-import { bustAgentKeyCache } from "../middleware/agent-key-auth";
-import { adminAuth } from "../middleware/adminAuth";
+} from "../../lib/agent-registration/api-keys";
+import { bustAgentKeyCache } from "../../middleware/agent-key-auth";
+import { adminAuth } from "../../middleware/adminAuth";
 import {
   createDailyBucket,
   createDailyLimiter,
-} from "../lib/agent-registration/daily-bucket";
+} from "../../lib/agent-registration/daily-bucket";
 import {
   registerAgent,
   RegistrationError,
   type MintFn,
   type SponsoredMintFn,
-} from "../lib/agent-registration/register";
+} from "../../lib/agent-registration/register";
 import {
   gateSponsoredRequest,
   type SponsoredBody,
-} from "../lib/agent-registration/sponsored-gate";
-import { publicRecord } from "../lib/agent-registration/public-view";
-import { meGate } from "../lib/agent-registration/me-gate";
-import type { AgentRegistrationStore } from "../lib/agent-registration/store";
+} from "../../lib/agent-registration/sponsored-gate";
+import { publicRecord } from "../../lib/agent-registration/public-view";
+import { meGate } from "../../lib/agent-registration/me-gate";
+import type { AgentRegistrationStore } from "../../lib/agent-registration/store";
 import { REGISTER_X_EXAMPLES } from "./agents-register-examples";
 
 export interface AgentRegisterRoutesDeps {

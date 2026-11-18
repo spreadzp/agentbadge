@@ -12,7 +12,7 @@ import {
 import { createSubmitLanes } from "../src/server/lib/request-inbox/intake";
 import { runInboxJanitor } from "../src/server/lib/request-inbox/janitor";
 import { createMemoryRequestInboxStores } from "../src/server/lib/request-inbox/db-stores";
-import { createAgentRequestRoutes } from "../src/server/routes/agent-requests-api";
+import { createAgentRequestRoutes } from "../src/server/routes/agent-requests/agent-requests-api";
 import { payloadQuestionText } from "../src/server/lib/request-inbox/qa";
 import type { SubmitInput } from "../src/server/lib/request-inbox/store";
 
