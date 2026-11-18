@@ -20,7 +20,7 @@ import { resetVenueEventsForTests } from "../src/server/services/venue-events";
 import {
   createVenueApiRoutes,
   type VenueDeps,
-} from "../src/server/routes/venue-api";
+} from "../src/server/routes/venue/venue-api";
 import type { VenueNetwork } from "../src/server/lib/venue/chain";
 import { ERC8183_ACP_ABI } from "@agentbadge/circle-payments";
 import {

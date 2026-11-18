@@ -24,7 +24,7 @@ import {
 import {
   createVenueApiRoutes,
   type VenueDeps,
-} from "../src/server/routes/venue-api";
+} from "../src/server/routes/venue/venue-api";
 import { createVenueStore } from "../src/server/lib/attestation-store";
 import type { VenueNetwork } from "../src/server/lib/venue/chain";
 import { ERC8183_ACP_ABI } from "@agentbadge/circle-payments";

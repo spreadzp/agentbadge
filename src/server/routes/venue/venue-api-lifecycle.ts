@@ -5,13 +5,13 @@
  */
 import type { Hono } from "hono";
 import { keccak256, toBytes } from "viem";
-import { getJob, upsertJob, type VenueJob } from "../lib/venue/store";
-import type { VenueNetwork } from "../lib/venue/chain";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { disclosureExtra } from "../lib/disclosure";
+import { getJob, upsertJob, type VenueJob } from "../../lib/venue/store";
+import type { VenueNetwork } from "../../lib/venue/chain";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { disclosureExtra } from "../../lib/disclosure";
 import { dr, str, ERC8183_STATUS, TX_PHASES } from "./venue-api-helpers";
-import { projectWitnessDelivery } from "../lib/witness/jobs";
+import { projectWitnessDelivery } from "../../lib/witness/jobs";
 import {
   buildActionTxs,
   deliverableHash,
@@ -19,12 +19,12 @@ import {
   type OnchainJobRaw,
   type PreparedTx,
   type VenueRole,
-} from "../lib/venue/lifecycle";
-import { recordVenueEvent } from "../services/venue-events";
+} from "../../lib/venue/lifecycle";
+import { recordVenueEvent } from "../../services/venue-events";
 import {
   resolveFeeMode,
   venueEconomics,
-} from "../lib/venue/economics";
+} from "../../lib/venue/economics";
 import {
   handleAction,
   maybeFeedback,
@@ -32,15 +32,15 @@ import {
   type ActionCtx,
   type LifecycleDeps,
 } from "./venue-api-lifecycle-core";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { getVenue, venueIdOf } from "../lib/venue/venues";
-import { venueHasRole } from "../lib/venue/members";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { getVenue, venueIdOf } from "../../lib/venue/venues";
+import { venueHasRole } from "../../lib/venue/members";
 import {
   getPrivateJob,
   updatePrivateJob,
   privateLimit,
   type PrivateJobPayload,
-} from "../lib/venue/private-jobs";
+} from "../../lib/venue/private-jobs";
 
 export type { LifecycleDeps } from "./venue-api-lifecycle-core";
 

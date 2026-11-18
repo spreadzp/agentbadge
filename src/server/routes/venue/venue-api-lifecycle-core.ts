@@ -6,10 +6,10 @@
 import type { Context } from "hono";
 import type { Hex } from "viem";
 import { logger } from "@agentbadge/passport/logger";
-import { getJob, upsertJob, type VenueJob } from "../lib/venue/store";
-import type { VenueNetwork } from "../lib/venue/chain";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+import { getJob, upsertJob, type VenueJob } from "../../lib/venue/store";
+import type { VenueNetwork } from "../../lib/venue/chain";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import { signedJson, ERC8183_STATUS } from "./venue-api-helpers";
 import {
   ACTION_ROLE,
@@ -20,20 +20,20 @@ import {
   type OnchainJobRaw,
   type PreparedTx,
   type VenueRole,
-} from "../lib/venue/lifecycle";
-import { recordVenueEvent } from "../services/venue-events";
-import { getVenue, venueIdOf } from "../lib/venue/venues";
-import { venueHasRole } from "../lib/venue/members";
+} from "../../lib/venue/lifecycle";
+import { recordVenueEvent } from "../../services/venue-events";
+import { getVenue, venueIdOf } from "../../lib/venue/venues";
+import { venueHasRole } from "../../lib/venue/members";
 import {
   ensureVenueFeedback,
   type FeedbackSender,
-} from "../lib/venue/reputation-loop";
+} from "../../lib/venue/reputation-loop";
 import {
   buildFeeSweepTx,
   feeQuote,
   resolveFeeMode,
   venueEconomics,
-} from "../lib/venue/economics";
+} from "../../lib/venue/economics";
 
 const PHASE_BY_ACTION: Partial<Record<LifecycleAction, keyof VenueJob["chainTxs"]>> = {
   claim: "claimed",

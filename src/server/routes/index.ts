@@ -101,7 +101,7 @@ import {
   ARC_MAINNET_CONTRACTS,
   ARC_TESTNET,
 } from "@agentbadge/circle-payments";
-import { venueApiRoutes } from "./venue-api";
+import { venueApiRoutes } from "./venue/venue-api";
 import { fxDeltaRoutes } from "./fx-delta-api";
 import { fxDeltaVerifyRoutes } from "./fx-delta-verify";
 import { bountyApiRoutes } from "./bounty-api";
@@ -119,7 +119,7 @@ import { createReceiptRoutes } from "./board-api-receipt";
 import { createReceiptSigner } from "../lib/board/task-receipt";
 import { createBoardGuideRoutes } from "./agent-guide-hire";
 import { createBoardPageRoutes } from "./board-page";
-import { venuePageRoutes } from "./venue-pages";
+import { venuePageRoutes } from "./venue/venue-pages";
 import { seedVenueOffers } from "../lib/venue/store";
 
 import { metricsApp } from "./metrics";

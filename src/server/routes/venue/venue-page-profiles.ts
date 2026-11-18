@@ -12,16 +12,16 @@ import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
 import type { VenuePageDeps } from "./venue-pages";
-import type { VenueNetwork } from "../lib/venue/chain";
+import type { VenueNetwork } from "../../lib/venue/chain";
 import {
   getProviderProfile,
   listProviderSummaries,
-} from "../lib/venue/profiles";
+} from "../../lib/venue/profiles";
 import {
   venueNewProviderPage,
   venueProvidersPage,
-} from "../../views/venue-forms";
-import { venueProviderDetailPage } from "../../views/venue-profiles";
+} from "../../../views/venue-forms";
+import { venueProviderDetailPage } from "../../../views/venue-profiles";
 
 export function registerVenueProfilePageRoutes(
   app: Hono,

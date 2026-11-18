@@ -7,10 +7,10 @@ import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { getAddress, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { opsKey } from "../lib/eaas/keys";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+import { opsKey } from "../../lib/eaas/keys";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 
 export const ERC8183_STATUS: Record<number, string> = {
   0: "open", 1: "funded", 2: "submitted",

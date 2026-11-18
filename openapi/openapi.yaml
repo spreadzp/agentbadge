@@ -8027,7 +8027,7 @@ paths:
       tags:
         - API
       summary: List all rule descriptions
-      description: All 147 agent readiness rules with full metadata, categories, and
+      description: All 156 agent readiness rules with full metadata, categories, and
         fix hints.
       responses:
         "200":

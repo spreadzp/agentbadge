@@ -9,14 +9,14 @@
  * tests inject `profiles.agentLookup`/`reputationRead` to avoid RPC.
  */
 import type { Hono } from "hono";
-import type { ProviderProfileDeps } from "../lib/venue/profiles";
+import type { ProviderProfileDeps } from "../../lib/venue/profiles";
 import {
   getClientProfile,
   getProviderProfile,
   listProviderSummaries,
-} from "../lib/venue/profiles";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+} from "../../lib/venue/profiles";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import { dr } from "./venue-api-helpers";
 
 export interface VenueProfileRoutesDeps {

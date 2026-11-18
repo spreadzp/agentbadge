@@ -25,7 +25,7 @@ import {
 import {
   createVenueApiRoutes,
   type VenueDeps,
-} from "../src/server/routes/venue-api";
+} from "../src/server/routes/venue/venue-api";
 import { createVenueStore } from "../src/server/lib/attestation-store";
 import { resetVenueEventsForTests } from "../src/server/services/venue-events";
 import { resetDatabaseForTests } from "../src/server/lib/database";

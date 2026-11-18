@@ -14,7 +14,7 @@ import {
 import {
   createVenueApiRoutes,
   type VenueDeps,
-} from "../src/server/routes/venue-api";
+} from "../src/server/routes/venue/venue-api";
 import {
   assertTransition,
   buildActionTxs,

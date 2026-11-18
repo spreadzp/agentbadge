@@ -21,8 +21,8 @@ import { resetVenueEventsForTests } from "../src/server/services/venue-events";
 import {
   createVenueApiRoutes,
   type VenueDeps,
-} from "../src/server/routes/venue-api";
-import { createVenuePageRoutes } from "../src/server/routes/venue-pages";
+} from "../src/server/routes/venue/venue-api";
+import { createVenuePageRoutes } from "../src/server/routes/venue/venue-pages";
 import {
   getJob,
   listJobs,

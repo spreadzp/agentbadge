@@ -11,7 +11,7 @@
 import { Hono } from "hono";
 import { isAddress } from "viem";
 
-import { dr, str } from "./venue-api-helpers";
+import { dr, str } from "./venue/venue-api-helpers";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
 import { claimBounty, type ClaimDeps } from "../lib/bounties/claim";

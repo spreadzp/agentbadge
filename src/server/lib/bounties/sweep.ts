@@ -23,7 +23,7 @@ import {
   type VenueNetwork,
 } from "../venue/chain";
 import type { PreparedTx } from "../venue/lifecycle";
-import { ERC8183_STATUS } from "../../routes/venue-api-helpers";
+import { ERC8183_STATUS } from "../../routes/venue/venue-api-helpers";
 import { CLAIM_TTL_MS } from "./claim";
 import {
   defaultSweepAlert,

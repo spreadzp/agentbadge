@@ -9,10 +9,10 @@
  * Extracted from venue-api.ts (max-lines). Deps flow through VenueDeps.
  */
 import type { Hono } from "hono";
-import type { VenueIndexerDeps } from "../lib/venue/indexer";
-import { runVenueIndexer, venueIndexerHealth } from "../lib/venue/indexer";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+import type { VenueIndexerDeps } from "../../lib/venue/indexer";
+import { runVenueIndexer, venueIndexerHealth } from "../../lib/venue/indexer";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import { dr } from "./venue-api-helpers";
 
 export interface VenueIndexerRouteDeps {

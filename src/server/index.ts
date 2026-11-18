@@ -13,7 +13,7 @@ import { registerMcpNamespaces, wireMcpNamespaceRoutes, registerDefaultMcpTools 
 import { wireCirclePayments } from "./wiring/circle-payments";
 import { wireEaas } from "./wiring/eaas";
 import { wireDemoX402 } from "./wiring/demo-x402";
-import { configureVenueBilling } from "./routes/venue-api";
+import { configureVenueBilling } from "./routes/venue/venue-api";
 import { createSettleSeam } from "./lib/x402-settle-seam";
 import { venueMonthlyPriceAtomic } from "./lib/venue/billing";
 import { wireAgentWallet, wireSpendEnvelopeGates } from "./wiring/agent-wallet";

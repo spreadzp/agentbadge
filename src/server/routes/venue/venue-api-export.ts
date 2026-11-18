@@ -19,13 +19,13 @@ import { describeRoute } from "hono-openapi";
 import { encodeFunctionData, toHex } from "viem";
 import { MEMO_ABI, memoIdFor } from "@agentbadge/circle-payments";
 
-import { requireVenueAccess } from "../middleware/venue-auth";
-import { listJobs } from "../lib/venue/store";
-import { listVenueMembers } from "../lib/venue/members";
-import { listAdminAudit, type VenueRecord } from "../lib/venue/venues";
-import { listVenuePayments, subscriptionStatus } from "../lib/venue/billing";
-import type { VenueNetwork } from "../lib/venue/chain";
-import { recordVenueEvent } from "../services/venue-events";
+import { requireVenueAccess } from "../../middleware/venue-auth";
+import { listJobs } from "../../lib/venue/store";
+import { listVenueMembers } from "../../lib/venue/members";
+import { listAdminAudit, type VenueRecord } from "../../lib/venue/venues";
+import { listVenuePayments, subscriptionStatus } from "../../lib/venue/billing";
+import type { VenueNetwork } from "../../lib/venue/chain";
+import { recordVenueEvent } from "../../services/venue-events";
 
 /** Recursively key-sorted deep copy — canonical form for the manifest. */
 function canon(v: unknown): unknown {

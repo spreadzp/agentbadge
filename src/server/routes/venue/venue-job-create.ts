@@ -17,12 +17,12 @@ import {
 } from "viem";
 import { MEMO_ABI } from "@agentbadge/circle-payments";
 
-import type { VenueNetwork } from "../lib/venue/chain";
-import type { VenueJob } from "../lib/venue/store";
-import { upsertJob } from "../lib/venue/store";
-import { getVenue } from "../lib/venue/venues";
-import { venueEconomics, resolveFeeMode } from "../lib/venue/economics";
-import { subscriptionBlocksWrites } from "../lib/venue/billing";
+import type { VenueNetwork } from "../../lib/venue/chain";
+import type { VenueJob } from "../../lib/venue/store";
+import { upsertJob } from "../../lib/venue/store";
+import { getVenue } from "../../lib/venue/venues";
+import { venueEconomics, resolveFeeMode } from "../../lib/venue/economics";
+import { subscriptionBlocksWrites } from "../../lib/venue/billing";
 import {
   buildPrivateJob,
   memoLinkEnabled,
@@ -31,11 +31,11 @@ import {
   privateTag,
   savePrivateJob,
   type PrivateJobPayload,
-} from "../lib/venue/private-jobs";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { recordVenueEvent } from "../services/venue-events";
-import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../lib/witness/jobs";
+} from "../../lib/venue/private-jobs";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { recordVenueEvent } from "../../services/venue-events";
+import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../../lib/witness/jobs";
 import {
   resolveVenueEvaluator,
   signedJson,

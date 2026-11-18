@@ -9,26 +9,26 @@
 import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { listJobs, listOffers } from "../lib/venue/store";
-import type { VenueNetwork } from "../lib/venue/chain";
-import { resolveVenueNetwork } from "../lib/venue/chain";
+import { listJobs, listOffers } from "../../lib/venue/store";
+import type { VenueNetwork } from "../../lib/venue/chain";
+import { resolveVenueNetwork } from "../../lib/venue/chain";
 import {
   getVenue,
   listAdminAudit,
   listVenues,
   PUBLIC_VENUE_ID,
-} from "../lib/venue/venues";
-import { venueInstancePage, venuePrivatePage } from "../../views/venue-instance";
-import { venueNewVenuePage } from "../../views/venue-onboard";
-import { venueAdminPage } from "../../views/venue-admin";
-import { venueHasRole, listVenueMembers, venueRole } from "../lib/venue/members";
+} from "../../lib/venue/venues";
+import { venueInstancePage, venuePrivatePage } from "../../../views/venue-instance";
+import { venueNewVenuePage } from "../../../views/venue-onboard";
+import { venueAdminPage } from "../../../views/venue-admin";
+import { venueHasRole, listVenueMembers, venueRole } from "../../lib/venue/members";
 import { venueEvaluator } from "./venue-api-helpers";
 import {
   listVenuePayments,
   venueMonthlyPriceAtomic,
-} from "../lib/venue/billing";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+} from "../../lib/venue/billing";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 
 export interface VenueInstancePageDeps {
   network?: () => VenueNetwork;

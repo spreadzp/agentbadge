@@ -10,12 +10,12 @@ import {
   listOffers,
   upsertOffer,
   type VenueOffer,
-} from "../lib/venue/store";
-import type { VenueNetwork } from "../lib/venue/chain";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+} from "../../lib/venue/store";
+import type { VenueNetwork } from "../../lib/venue/chain";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import { dr, signedJson, str } from "./venue-api-helpers";
-import { recordVenueEvent } from "../services/venue-events";
+import { recordVenueEvent } from "../../services/venue-events";
 
 export interface OfferRouteDeps {
   network: () => VenueNetwork;

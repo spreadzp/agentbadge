@@ -143,7 +143,7 @@ async function fetchPinnedNode(
             headers.set(key, Array.isArray(value) ? value.join(", ") : value);
           }
         }
-        const body = Readable.toWeb(res) as ReadableStream;
+        const body = Readable.toWeb(res) as unknown as ReadableStream;
         resolve(
           new Response(body, {
             status: res.statusCode ?? 0,

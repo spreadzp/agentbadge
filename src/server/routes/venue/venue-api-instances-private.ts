@@ -13,15 +13,15 @@
 import type { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { getVenue } from "../lib/venue/venues";
-import { getJob } from "../lib/venue/store";
-import type { VenueNetwork } from "../lib/venue/chain";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { getVenue } from "../../lib/venue/venues";
+import { getJob } from "../../lib/venue/store";
+import type { VenueNetwork } from "../../lib/venue/chain";
 import {
   computeCommitment,
   getPrivateJob,
-} from "../lib/venue/private-jobs";
+} from "../../lib/venue/private-jobs";
 import { createVenueJob } from "./venue-job-create";
 
 /** Fixed-window rate buckets for verify-commitment (per venue+ip, 20/min). */

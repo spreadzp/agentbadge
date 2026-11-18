@@ -60,7 +60,7 @@ async function profileHandler(_args: ParsedArgs, flags: ParsedFlags): Promise<Co
   try {
     let scanReport: ScanReport;
     let assertions: Assertion[];
-    let scoreResult: ScoreResult;
+    let scoreResult: ScoreResult | undefined;
     let reportId: string | undefined;
 
     if (reportPath) {

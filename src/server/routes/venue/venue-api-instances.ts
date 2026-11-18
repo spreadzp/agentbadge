@@ -15,24 +15,24 @@ import type { Context, Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
 
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { requireVenueAccess } from "../middleware/venue-auth";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { requireVenueAccess } from "../../middleware/venue-auth";
 import {
   addVenueMember,
   listVenueMembers,
   revokeVenueMember,
   venueRole,
-} from "../lib/venue/members";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+} from "../../lib/venue/members";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import {
   createVenue,
   getVenue,
   listVenues,
   PUBLIC_VENUE_ID,
   type VenueCreateInput,
-} from "../lib/venue/venues";
-import { listJobs, listOffers } from "../lib/venue/store";
+} from "../../lib/venue/venues";
+import { listJobs, listOffers } from "../../lib/venue/store";
 
 /**
  * 153-1 tenancy scope: id-or-slug → venue.id.

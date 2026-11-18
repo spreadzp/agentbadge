@@ -15,8 +15,8 @@ import {
   useMemoryStoreForTesting,
   type VenueJob,
 } from "../src/server/lib/venue/store";
-import { createVenueApiRoutes, type VenueDeps } from "../src/server/routes/venue-api";
-import { createVenuePageRoutes } from "../src/server/routes/venue-pages";
+import { createVenueApiRoutes, type VenueDeps } from "../src/server/routes/venue/venue-api";
+import { createVenuePageRoutes } from "../src/server/routes/venue/venue-pages";
 import { resetVenueEventsForTests } from "../src/server/services/venue-events";
 import { resetDatabaseForTests } from "../src/server/lib/database";
 import { resetConfigCache } from "../src/config/env";

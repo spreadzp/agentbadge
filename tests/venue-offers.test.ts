@@ -19,7 +19,7 @@ import {
 import {
   createVenueApiRoutes,
   type VenueDeps,
-} from "../src/server/routes/venue-api";
+} from "../src/server/routes/venue/venue-api";
 import { resetVenueEventsForTests } from "../src/server/services/venue-events";
 import { resetDatabaseForTests } from "../src/server/lib/database";
 import { resetConfigCache } from "../src/config/env";

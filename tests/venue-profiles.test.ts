@@ -20,8 +20,8 @@ import {
   listProviderSummaries,
   type ProviderProfileDeps,
 } from "../src/server/lib/venue/profiles";
-import { createVenueApiRoutes } from "../src/server/routes/venue-api";
-import { createVenuePageRoutes } from "../src/server/routes/venue-pages";
+import { createVenueApiRoutes } from "../src/server/routes/venue/venue-api";
+import { createVenuePageRoutes } from "../src/server/routes/venue/venue-pages";
 import { createVenueStore } from "../src/server/lib/attestation-store";
 import type { VenueNetwork } from "../src/server/lib/venue/chain";
 import { ERC8183_ACP_ABI } from "@agentbadge/circle-payments";

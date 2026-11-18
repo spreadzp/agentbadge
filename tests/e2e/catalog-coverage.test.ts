@@ -29,7 +29,7 @@ import { passportRoutes } from "../../src/server/routes/passport";
 import { createEaasRoutes } from "../../src/server/routes/eaas-api";
 import { createEaasJobsRoutes } from "../../src/server/routes/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../../src/server/routes/eaas-billing-api";
-import { registerVenueBillingRoutes } from "../../src/server/routes/venue-api-billing";
+import { registerVenueBillingRoutes } from "../../src/server/routes/venue/venue-api-billing";
 import type { PaymentMiddleware } from "../../src/server/routes/identity";
 
 /** Deterministic fixture sources — registry assertions stay env-free. */

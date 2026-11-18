@@ -14,18 +14,18 @@ import type { Context, Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
 
-import { requireVenueAccess, type VenueAccess } from "../middleware/venue-auth";
-import { listVenueMembers } from "../lib/venue/members";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+import { requireVenueAccess, type VenueAccess } from "../../middleware/venue-auth";
+import { listVenueMembers } from "../../lib/venue/members";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import {
   appendAdminAudit,
   listAdminAudit,
   updateVenue,
   type VenuePolicies,
   type VenueRecord,
-} from "../lib/venue/venues";
-import { listJobs } from "../lib/venue/store";
+} from "../../lib/venue/venues";
+import { listJobs } from "../../lib/venue/store";
 import { venueEvaluator } from "./venue-api-helpers";
 
 const EVALUATOR_RE = /^(server|owner|custom:0x[0-9a-fA-F]{40})$/;

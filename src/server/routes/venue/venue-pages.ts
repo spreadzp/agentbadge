@@ -16,42 +16,42 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { listJobs, listOffers, getJob, upsertJob } from "../lib/venue/store";
-import { listVenues, getVenue } from "../lib/venue/venues";
-import { venueHasRole } from "../lib/venue/members";
-import { getPrivateJob } from "../lib/venue/private-jobs";
+import { listJobs, listOffers, getJob, upsertJob } from "../../lib/venue/store";
+import { listVenues, getVenue } from "../../lib/venue/venues";
+import { venueHasRole } from "../../lib/venue/members";
+import { getPrivateJob } from "../../lib/venue/private-jobs";
 import {
   fetchOnchainJob,
   resolveVenueNetwork,
   type VenueNetwork,
-} from "../lib/venue/chain";
-import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
-import { sharedVenueStore } from "../lib/attestation-store";
+} from "../../lib/venue/chain";
+import type { VenueStore as AttestationVenueStore } from "../../lib/attestation-store";
+import { sharedVenueStore } from "../../lib/attestation-store";
 import {
   venueActivityFragment,
   venueStubPage,
-} from "../../views/venue-feed";
+} from "../../../views/venue-feed";
 import {
   venueHubPage,
   venueJobDetailPage,
   venueJobsFragment,
   venueJobsPage,
-} from "../../views/venue-pages";
+} from "../../../views/venue-pages";
 import {
   venueAttestationsPage,
   venueNewJobPage,
-} from "../../views/venue-forms";
+} from "../../../views/venue-forms";
 import { registerVenueProfilePageRoutes } from "./venue-page-profiles";
 import { registerVenueInstancePageRoutes } from "./venue-page-instances";
-import type { ProviderProfileDeps } from "../lib/venue/profiles";
-import { venueServicesPage } from "../../views/venue-services";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+import type { ProviderProfileDeps } from "../../lib/venue/profiles";
+import { venueServicesPage } from "../../../views/venue-services";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import {
   listVenueActivity,
   recordVenueEvent,
   type VenueActivityItem,
-} from "../services/venue-events";
+} from "../../services/venue-events";
 
 const ERC8183_STATUS: Record<number, string> = {
   0: "open",

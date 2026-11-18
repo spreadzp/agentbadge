@@ -19,23 +19,23 @@
 import type { Context, Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { getJob, upsertJob } from "../lib/venue/store";
-import { getVenue, venueIdOf } from "../lib/venue/venues";
-import type { VenueNetwork } from "../lib/venue/chain";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+import { getJob, upsertJob } from "../../lib/venue/store";
+import { getVenue, venueIdOf } from "../../lib/venue/venues";
+import type { VenueNetwork } from "../../lib/venue/chain";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 import {
   dr,
   ERC8183_STATUS,
   signedJson,
   str,
 } from "./venue-api-helpers";
-import type { OnchainJobRaw } from "../lib/venue/lifecycle";
+import type { OnchainJobRaw } from "../../lib/venue/lifecycle";
 import {
   buildClientRatingTx,
   composeClientRating,
-} from "../lib/venue/reputation";
-import { recordVenueEvent } from "../services/venue-events";
+} from "../../lib/venue/reputation";
+import { recordVenueEvent } from "../../services/venue-events";
 
 export interface RatingDeps {
   network: () => VenueNetwork;

@@ -5,33 +5,33 @@
  */
 import { Hono } from "hono";
 import type { Hex } from "viem";
-import type { VenueStore as AttestationVenueStore } from "../lib/attestation-store";
-import { sharedVenueStore } from "../lib/attestation-store";
+import type { VenueStore as AttestationVenueStore } from "../../lib/attestation-store";
+import { sharedVenueStore } from "../../lib/attestation-store";
 import {
   getJob,
   listJobs,
   listOffers,
   upsertJob,
   type VenueJob,
-} from "../lib/venue/store";
-import { listVenues } from "../lib/venue/venues";
+} from "../../lib/venue/store";
+import { listVenues } from "../../lib/venue/venues";
 import { registerOfferRoutes } from "./venue-api-offers";
 import { registerLifecycleRoutes } from "./venue-api-lifecycle";
-import type { PreparedTx, VenueRole } from "../lib/venue/lifecycle";
-import type { FeedbackSender } from "../lib/venue/reputation-loop";
+import type { PreparedTx, VenueRole } from "../../lib/venue/lifecycle";
+import type { FeedbackSender } from "../../lib/venue/reputation-loop";
 import {
   fetchAgentOwner,
   fetchCreatedJobId,
   fetchOnchainJob,
   resolveVenueNetwork,
   type VenueNetwork,
-} from "../lib/venue/chain";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { venueEconomics } from "../lib/venue/economics";
-import type { VenueIndexerDeps } from "../lib/venue/indexer";
-import { venueStats } from "../lib/venue/indexer";
-import type { ProviderProfileDeps } from "../lib/venue/profiles";
+} from "../../lib/venue/chain";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { venueEconomics } from "../../lib/venue/economics";
+import type { VenueIndexerDeps } from "../../lib/venue/indexer";
+import { venueStats } from "../../lib/venue/indexer";
+import type { ProviderProfileDeps } from "../../lib/venue/profiles";
 import { registerVenueIndexerRoutes } from "./venue-api-indexer";
 import { registerVenueProfileRoutes } from "./venue-api-profiles";
 import {
@@ -51,7 +51,7 @@ import {
 import {
   listVenueActivity,
   recordVenueEvent,
-} from "../services/venue-events";
+} from "../../services/venue-events";
 
 /** Injectable seam — tests stub onchain reads. */
 export interface VenueDeps {
