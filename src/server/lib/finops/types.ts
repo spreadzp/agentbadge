@@ -34,6 +34,7 @@ export const FINOPS_ERRORS = [
   "INVALID_STATE",
   "BAD_INPUT",
   "TX_UNVERIFIED",
+  "TX_REUSED",
   "PROVIDER_ERROR",
 ] as const;
 export type FinOpsErrorCode = (typeof FINOPS_ERRORS)[number];
@@ -68,23 +69,49 @@ export interface RefundTxCheck {
   verified: boolean;
   reason?: string;
   network?: string;
+  /** Sender of the refund tx (treasury) — cross-checked when returned. */
   payer?: string;
+  /** Asset/currency the verifier observed being transferred. */
+  asset?: string;
   confirmations?: number;
+}
+
+/**
+ * What the verifier must prove (H4/226-6): beyond payee+amount the
+ * expectation carries the asset, the intent creation time (a payout
+ * predating the intent can never satisfy it) and — when configured —
+ * the expected sender/chain so the adapter binds the tx to treasury
+ * and network, not just to "someone paid this wallet".
+ */
+export interface RefundTxExpectation {
+  payee: string;
+  amount: string;
+  /** Asset/currency symbol the payout must move (e.g. USDC). */
+  currency: string;
+  /** tx must be included at/after intent creation. */
+  notBeforeMs?: number;
+  /** Expected sender when the treasury wallet is configured. */
+  from?: string;
+  /** Expected chain/network id when the adapter pins one. */
+  chainId?: string;
 }
 export type VerifyRefundTx = (
   txHash: string,
-  expected: { payee: string; amount: string },
+  expected: RefundTxExpectation,
 ) => Promise<RefundTxCheck>;
 
 /** Stripe client seam — tests pass a stub, prod passes the SDK. */
 export interface StripeRefundClient {
   refunds: {
-    create(input: {
-      payment_intent: string;
-      amount?: number;
-      reason?: string;
-      metadata?: Record<string, string>;
-    }): Promise<{ id: string }>;
+    create(
+      input: {
+        payment_intent: string;
+        amount?: number;
+        reason?: string;
+        metadata?: Record<string, string>;
+      },
+      opts?: { idempotencyKey?: string },
+    ): Promise<{ id: string; status?: string }>;
   };
 }
 

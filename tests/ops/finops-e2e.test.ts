@@ -22,6 +22,8 @@ import { createFinopsRoutes } from "../../src/server/routes/finops/finops";
 
 const KEY = "test-admin-key";
 const auth = { "X-Admin-Key": KEY };
+const PAYEE = "0x" + "a".repeat(40);
+const TX1 = "0x" + "d".repeat(64);
 
 let db: Database;
 let app: Hono;
@@ -267,7 +269,7 @@ describe("e2e — refund lifecycle", () => {
     const i = await post(`/admin/finance/payments/${usdc.id}/refund`, {
       operator: "ops.e2e",
       mode: "intent",
-      payee: "0xpayee",
+      payee: PAYEE,
       amount: "8.00",
       reason: "customer request",
     });
@@ -281,10 +283,10 @@ describe("e2e — refund lifecycle", () => {
     // Complete only behind the verified txHash → COMPLETED + REFUNDED.
     const done = await post(`/admin/finance/refunds/${intentId}/complete`, {
       operator: "ops.e2e",
-      txHash: "0xbeef",
+      txHash: TX1,
     });
     expect(done.status).toBe(200);
-    expect(verifyCalls.map((v) => v.txHash)).toEqual(["0xbeef"]);
+    expect(verifyCalls.map((v) => v.txHash)).toEqual([TX1]);
     expect((await db.finops.refundIntents.getById(intentId))!.status).toBe(
       "COMPLETED",
     );
@@ -292,9 +294,10 @@ describe("e2e — refund lifecycle", () => {
       "REFUNDED",
     );
 
-    // Audit: REFUND action on intent create + complete + stripe path.
+    // Audit: STRIPE_REFUND_INITIATED + STRIPE_REFUND + INTENT_OPENED +
+    // INTENT_COMPLETED — one row per audited step (226-6).
     const refunds = await db.finops.adminActions.list({ action: "REFUND" });
-    expect(refunds).toHaveLength(3);
+    expect(refunds).toHaveLength(4);
     expect(refunds.every((a) => a.operator === "ops.e2e")).toBe(true);
   });
 
@@ -434,7 +437,7 @@ describe("e2e — audit trail", () => {
     await post(`/admin/finance/payments/${p.id}/refund`, {
       operator: "ops.e2e",
       mode: "intent",
-      payee: "0xp",
+      payee: PAYEE,
       amount: "5.00",
       reason: "x",
     });

@@ -23,9 +23,10 @@ import {
   stripeRefund,
 } from "../../lib/finops/index";
 import type { StripeRefundClient } from "../../lib/finops/types";
+import { fail } from "../../lib/finops/index";
 import { adminAuth } from "../../middleware/adminAuth";
-import type { FinopsRouteDeps } from "./finops";
-import { parseEvidence, readBody, respond } from "./finops";
+import type { FinopsRouteDeps } from "./helpers";
+import { parseEvidence, readBody, respond } from "./helpers";
 
 const TAG = { tags: ["Admin FinOps"] };
 
@@ -136,8 +137,28 @@ export function createFinopsActionRoutes(
       const b = await readBody(c);
       const operator =
         typeof b.operator === "string" ? b.operator : "";
-      const mode = b.mode === "stripe" ? "stripe" : "intent";
-      if (mode === "stripe") {
+      const modeRaw = typeof b.mode === "string" ? b.mode : "intent";
+      if (modeRaw !== "stripe" && modeRaw !== "intent") {
+        return respond(
+          c,
+          fail("BAD_INPUT", "mode must be stripe|intent"),
+        );
+      }
+      if (modeRaw === "stripe") {
+        // H3: Stripe refunds are always full-amount — a caller-supplied
+        // amount/payee is silently ignored today; reject instead.
+        if (
+          (typeof b.amount === "string" && b.amount.trim() !== "") ||
+          (typeof b.payee === "string" && b.payee.trim() !== "")
+        ) {
+          return respond(
+            c,
+            fail(
+              "BAD_INPUT",
+              "stripe refunds are full-amount — amount/payee are not accepted",
+            ),
+          );
+        }
         if (!stripe) {
           return c.json(
             {
@@ -157,6 +178,7 @@ export function createFinopsActionRoutes(
             ...(typeof b.reason === "string" && b.reason.trim() !== ""
               ? { reason: b.reason }
               : {}),
+            evidence: parseEvidence(b.evidence),
           },
           stripe,
         );

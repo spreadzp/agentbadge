@@ -9,14 +9,38 @@
  * real effect (retry returns the re-verifiable attempts).
  */
 
-import type {
-  AdminActionRow,
-  Database,
-  PaymentAttemptRow,
+import {
+  ADMIN_ACTIONS,
+  type AdminActionRow,
+  type Database,
+  type PaymentAttemptRow,
 } from "@agentbadge/database";
 
-import { guardAction } from "./guards";
+import {
+  MAX_ID_FIELD,
+  checkTextField,
+  guardAction,
+  isMeaningfulEvidence,
+  normalizeOperator,
+} from "./guards";
 import { type FinOpsResult, fail, ok } from "./types";
+
+// Server-side vocabulary — the published store const plus the action
+// added in 226-6 (DETECT_EXCEPTIONS). The Set dedupes when the
+// package const catches up.
+const KNOWN_ACTIONS = new Set<string>([
+  ...ADMIN_ACTIONS,
+  "DETECT_EXCEPTIONS",
+]);
+
+/** External-review subjects — closed vocabulary (M1/226-6). */
+const EXTERNAL_SUBJECT_TYPES = new Set([
+  "payment",
+  "attempt",
+  "agreement",
+  "exception",
+  "order",
+]);
 
 let actionSeq = 0;
 
@@ -34,11 +58,20 @@ export interface RecordAdminActionInput {
   evidence?: unknown;
 }
 
-/** Audit append — guards operator + evidence, then writes the row. */
+/** Audit append — guards operator + evidence, then writes the row.
+ *  `action` must come from the ADMIN_ACTIONS vocabulary; the operator
+ *  label is stored in its normalized form (H5). */
 export async function recordAdminAction(
   db: Database,
   input: RecordAdminActionInput,
 ): Promise<FinOpsResult<AdminActionRow>> {
+  if (!KNOWN_ACTIONS.has(input.action)) {
+    return fail("BAD_INPUT", `unknown admin action: ${input.action}`);
+  }
+  const cap =
+    checkTextField(input.subjectType, "subjectType", MAX_ID_FIELD) ??
+    checkTextField(input.subjectId, "subjectId", MAX_ID_FIELD);
+  if (cap) return cap;
   const guard = guardAction(input.operator, input.evidence);
   if (guard) return guard;
   const row = await db.finops.adminActions.append({
@@ -46,7 +79,7 @@ export async function recordAdminAction(
     action: input.action,
     subjectType: input.subjectType,
     subjectId: input.subjectId,
-    operator: input.operator.trim(),
+    operator: normalizeOperator(input.operator),
     evidence: (input.evidence ?? null) as AdminActionRow["evidence"],
     createdAtMs: Date.now(),
   });
@@ -134,30 +167,30 @@ export async function markExternalReviewed(
   operator: string,
   evidence: unknown,
 ): Promise<FinOpsResult<AdminActionRow>> {
-  if (
-    evidence === undefined ||
-    evidence === null ||
-    (typeof evidence === "object" &&
-      !Array.isArray(evidence) &&
-      Object.keys(evidence as object).length === 0)
-  ) {
+  // H1: meaningful evidence is required — "reviewed" without proof is
+  // an audit gap; empty objects/blank strings do not count.
+  if (!isMeaningfulEvidence(evidence)) {
     return fail(
       "BAD_INPUT",
-      "markExternalReviewed requires non-empty evidence",
+      "markExternalReviewed requires meaningful evidence",
     );
   }
-  if (
-    typeof subjectType !== "string" ||
-    subjectType.trim() === "" ||
-    typeof subjectId !== "string" ||
-    subjectId.trim() === ""
-  ) {
+  const subjType =
+    typeof subjectType === "string" ? subjectType.trim() : "";
+  const subjId = typeof subjectId === "string" ? subjectId.trim() : "";
+  if (subjType === "" || subjId === "") {
     return fail("BAD_INPUT", "subjectType and subjectId are required");
+  }
+  if (!EXTERNAL_SUBJECT_TYPES.has(subjType)) {
+    return fail(
+      "BAD_INPUT",
+      `subjectType must be one of ${[...EXTERNAL_SUBJECT_TYPES].join("|")}`,
+    );
   }
   return recordAdminAction(db, {
     action: "MARK_EXTERNAL_REVIEWED",
-    subjectType: subjectType.trim(),
-    subjectId: subjectId.trim(),
+    subjectType: subjType,
+    subjectId: subjId,
     operator,
     evidence,
   });

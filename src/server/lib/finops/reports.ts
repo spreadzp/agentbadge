@@ -112,12 +112,24 @@ function buildSplits(
 async function refundTotals(
   db: Database,
   terminal: readonly { id: string; status: string; amount: string }[],
+  period: ReportPeriod,
 ): Promise<{ refundsTotal: string; refundedPayments: number }> {
   const completedIntents = await db.finops.refundIntents.list({
     status: "COMPLETED",
   });
+  // H6: only refunds completed INSIDE the report window count — an
+  // intent completed outside the period is that period's number.
+  const windowed = completedIntents.filter(
+    (ri) =>
+      ri.completedAtMs !== null &&
+      ri.completedAtMs !== undefined &&
+      (period.sinceMs === undefined ||
+        ri.completedAtMs >= period.sinceMs) &&
+      (period.untilMs === undefined ||
+        ri.completedAtMs <= period.untilMs),
+  );
   const intentByPayment = new Map<string, string[]>();
-  for (const ri of completedIntents) {
+  for (const ri of windowed) {
     intentByPayment.set(ri.paymentId, [
       ...(intentByPayment.get(ri.paymentId) ?? []),
       ri.amount,
@@ -139,7 +151,11 @@ async function refundTotals(
       refundsTotal = sumDecimals([refundsTotal, sumDecimals(amounts)]);
     }
   }
-  return { refundsTotal, refundedPayments: refundedIds.size };
+  return {
+    // Canonical money form — an empty window still reports "0.00".
+    refundsTotal: sumDecimals([refundsTotal]),
+    refundedPayments: refundedIds.size,
+  };
 }
 
 /**
@@ -167,6 +183,7 @@ export async function finReport(
   const { refundsTotal, refundedPayments } = await refundTotals(
     db,
     payments,
+    period,
   );
   const grossVolume = sumDecimals(revenue.map((p) => p.amount));
   const feesTotal = sumDecimals([

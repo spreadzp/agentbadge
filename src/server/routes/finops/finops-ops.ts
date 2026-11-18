@@ -20,11 +20,12 @@ import {
   detectFromPaymentExceptions,
   listRefundIntents,
   recordAdminAction,
+  requireOperator,
   resolveException,
 } from "../../lib/finops/index";
 import { adminAuth } from "../../middleware/adminAuth";
-import type { FinopsRouteDeps } from "./finops";
-import { readBody, respond } from "./finops";
+import type { FinopsRouteDeps } from "./helpers";
+import { listLimit, readBody, respond } from "./helpers";
 
 const TAG = { tags: ["Admin FinOps"] };
 
@@ -45,7 +46,7 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
       const status = q.get("status");
       const rows = await listRefundIntents(getDb(), {
         ...(status ? { status } : {}),
-        limit: Math.min(Number(q.get("limit")) || 200, 500),
+        limit: listLimit(q.get("limit")),
       });
       return c.json({ items: rows });
     },
@@ -106,18 +107,23 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
     adminAuth,
     async (c) => {
       const b = await readBody(c);
+      // C4: operator validated BEFORE the scan — a missing operator
+      // must not create exception rows with no audit behind them.
       const operator =
         typeof b.operator === "string" ? b.operator : "";
+      const op = requireOperator(operator);
+      if (op) return respond(c, op);
       const res = await detectFromPaymentExceptions(getDb());
       if (!res.ok) return respond(c, res);
       const audit = await recordAdminAction(getDb(), {
-        action: "REVIEW",
+        action: "DETECT_EXCEPTIONS",
         subjectType: "exceptions",
         subjectId: "scan",
         operator,
         evidence: {
-          created: res.value.created.length,
-          skipped: res.value.skipped.length,
+          createdCount: res.value.created.length,
+          createdIds: res.value.created.map((r) => r.id),
+          skipped: res.value.skipped,
         },
       });
       return respond(c, audit.ok ? res : audit);

@@ -41,6 +41,10 @@ import {
 let seq = 0;
 const uid = (p: string) => `${p}_${Date.now()}_${(seq += 1)}`;
 
+const PAYEE = "0x" + "a".repeat(40);
+const TX1 = "0x" + "d".repeat(64);
+const TX2 = "0x" + "e".repeat(64);
+
 const mkPayment = (over: Partial<PaymentInsert> = {}): PaymentInsert => ({
   id: uid("pay"),
   reference: uid("ref"),
@@ -360,7 +364,7 @@ describe("finops refund intents", () => {
     await db.payments.payments.create(pend);
     const bad = await createRefundIntent(db, {
       paymentId: pend.id,
-      payee: "0xabc",
+      payee: PAYEE,
       amount: "1.00",
       reason: "test",
       operator: "ops",
@@ -371,7 +375,7 @@ describe("finops refund intents", () => {
     const conf = await seedConfirmed(db, { amount: "10.00" });
     const tooBig = await createRefundIntent(db, {
       paymentId: conf.id,
-      payee: "0xabc",
+      payee: PAYEE,
       amount: "11.00",
       reason: "test",
       operator: "ops",
@@ -381,7 +385,7 @@ describe("finops refund intents", () => {
 
     const good = await createRefundIntent(db, {
       paymentId: conf.id,
-      payee: "0xabc",
+      payee: PAYEE,
       amount: "10.00",
       reason: "customer request",
       operator: "ops",
@@ -396,7 +400,7 @@ describe("finops refund intents", () => {
     const p = await seedConfirmed(db, { amount: "10.00" });
     const intent = await createRefundIntent(db, {
       paymentId: p.id,
-      payee: "0xpayee",
+      payee: PAYEE,
       amount: "10.00",
       reason: "test",
       operator: "ops",
@@ -405,7 +409,7 @@ describe("finops refund intents", () => {
     // Unverified tx — no completion, no fabricated confirmation.
     const bad = await completeRefundIntent(
       db,
-      { intentId: intent.value.id, txHash: "0xdead", operator: "ops" },
+      { intentId: intent.value.id, txHash: TX1, operator: "ops" },
       async () => ({ verified: false, reason: "tx not found" }),
     );
     expect(bad.ok).toBe(false);
@@ -416,9 +420,9 @@ describe("finops refund intents", () => {
     // Verified tx — completes + audits + payment flips REFUNDED.
     const good = await completeRefundIntent(
       db,
-      { intentId: intent.value.id, txHash: "0xbeef", operator: "ops" },
+      { intentId: intent.value.id, txHash: TX2, operator: "ops" },
       async (_tx, exp) => ({
-        verified: exp.payee === "0xpayee",
+        verified: exp.payee === PAYEE,
         network: "eip155:1874",
         confirmations: 12,
       }),
@@ -426,7 +430,7 @@ describe("finops refund intents", () => {
     expect(good.ok).toBe(true);
     if (good.ok) {
       expect(good.value.status).toBe("COMPLETED");
-      expect(good.value.txHash).toBe("0xbeef");
+      expect(good.value.txHash).toBe(TX2);
     }
     expect((await db.payments.payments.getById(p.id))?.status).toBe(
       "REFUNDED",
@@ -434,7 +438,7 @@ describe("finops refund intents", () => {
     // Second completion — guarded transition refuses.
     const again = await completeRefundIntent(
       db,
-      { intentId: intent.value.id, txHash: "0xbeef", operator: "ops" },
+      { intentId: intent.value.id, txHash: TX2, operator: "ops" },
       async () => ({ verified: true }),
     );
     expect(again.ok).toBe(false);
@@ -465,7 +469,7 @@ describe("finops refund intents", () => {
       "REFUNDED",
     );
     const actions = await listAdminActions(db, { action: "REFUND" });
-    expect(actions.length).toBe(1);
+    expect(actions.length).toBe(2); // INITIATED + STRIPE_REFUND
     // No STRIPE attempt → hard fail.
     const usdc = mkPayment({ status: "CONFIRMED" });
     await db.payments.payments.create(usdc);
@@ -491,7 +495,7 @@ describe("finops refund intents", () => {
     const p = await seedConfirmed(db, { amount: "10.00" });
     await createRefundIntent(db, {
       paymentId: p.id,
-      payee: "0x1",
+      payee: PAYEE,
       amount: "5.00",
       reason: "a",
       operator: "ops",

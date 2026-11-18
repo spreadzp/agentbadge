@@ -7,14 +7,44 @@
 import {
   EVIDENCE_MAX_BYTES,
   type FinOpsResult,
+  fail,
   ok,
 } from "./types";
+
+/** Operator label cap — H5/226-6: normalized labels stay bounded. */
+export const OPERATOR_MAX_LEN = 64;
+/** Generic free-text cap — applied BEFORE any effect (C1). */
+export const MAX_TEXT_FIELD = 512;
+/** subjectRef / ids / references. */
+export const MAX_ID_FIELD = 128;
+/** EVM wallet address length incl. 0x (42) — headroom for checksummed. */
+export const MAX_PAYEE_LEN = 42;
+export const MAX_CURRENCY_LEN = 16;
+/** Decimal-string length cap — unbounded digit strings stall BigInt (M7). */
+export const MAX_AMOUNT_LEN = 40;
+
+/**
+ * H5/226-6: canonical operator label — NFKC, format/control chars
+ * stripped (zero-width, bidi, hangul filler), whitespace collapsed,
+ * capped at 64 code points. Stored and filtered in this form.
+ */
+export function normalizeOperator(v: string): string {
+  const cleaned = v
+    .normalize("NFKC")
+    .replace(/[\p{Cf}\p{Cc}\p{Cs}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [...cleaned].slice(0, OPERATOR_MAX_LEN).join("");
+}
 
 /** `null` when the operator label is usable; error result otherwise. */
 export function requireOperator(
   operator: string | undefined | null,
 ): FinOpsErrorResult | null {
-  if (typeof operator !== "string" || operator.trim().length === 0) {
+  if (
+    typeof operator !== "string" ||
+    normalizeOperator(operator).length === 0
+  ) {
     return {
       ok: false,
       error: {
@@ -24,6 +54,45 @@ export function requireOperator(
     };
   }
   return null;
+}
+
+/** `null` when `v` fits the field cap — run BEFORE any effect (C1). */
+export function checkTextField(
+  v: string,
+  name: string,
+  max: number,
+): FinOpsResult<never> | null {
+  if (v.length > max) {
+    return fail("BAD_INPUT", `${name} exceeds ${max} characters`);
+  }
+  return null;
+}
+
+/**
+ * H1/226-6: evidence must carry content — non-blank string, non-empty
+ * array, or an object with keys. Bare scalars/empties are not evidence.
+ */
+export function isMeaningfulEvidence(v: unknown): boolean {
+  if (v === undefined || v === null) return false;
+  if (typeof v === "string") return v.trim() !== "";
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return Object.keys(v as object).length > 0;
+  return false;
+}
+
+/** `0x` + 40 hex — EVM payout destination. */
+export function isEvmAddress(v: string): boolean {
+  return /^0x[0-9a-fA-F]{40}$/.test(v);
+}
+
+const TX_HASH_RE = /^0x[0-9a-f]{64}$/;
+/**
+ * C3/226-6: canonical lowercase `0x`+64-hex form, or null — replay
+ * checks and the unique index only work on normalized hashes.
+ */
+export function normalizeTxHash(v: string): string | null {
+  const h = v.trim().toLowerCase();
+  return TX_HASH_RE.test(h) ? h : null;
 }
 
 interface FinOpsErrorResult {
@@ -75,13 +144,22 @@ export function guardAction(
 const MICRO = 1_000_000n;
 const DECIMAL_RE = /^-?\d+(\.\d{1,12})?$/;
 
-/** `9.99` → true; `abc` / `1.2.3` / `1e5` → false. */
+/** `9.99` → true; `abc` / `1.2.3` / `1e5` / 10⁹-digit strings → false. */
 export function isDecimalString(v: unknown): v is string {
-  return typeof v === "string" && DECIMAL_RE.test(v);
+  return (
+    typeof v === "string" &&
+    v.length <= MAX_AMOUNT_LEN &&
+    DECIMAL_RE.test(v)
+  );
 }
 
-/** Decimal string → signed micro-unit BigInt (6dp, frac padded/truncated). */
+/** Decimal string → signed micro-unit BigInt (6dp, frac padded/truncated).
+ *  Throws on non-decimal input — `BigInt("0x10")` silently parses hex
+ *  (M3); callers validating via isDecimalString are unaffected. */
 export function decimalToMicro(amount: string): bigint {
+  if (!isDecimalString(amount)) {
+    throw new Error(`not a decimal string: ${JSON.stringify(amount)}`);
+  }
   const neg = amount.startsWith("-");
   const s = neg ? amount.slice(1) : amount;
   const dot = s.indexOf(".");

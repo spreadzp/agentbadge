@@ -16,7 +16,7 @@ import type {
   ReconciliationExceptionRow,
 } from "@agentbadge/database";
 
-import { guardAction } from "./guards";
+import { guardAction, normalizeOperator } from "./guards";
 import { recordAdminAction } from "./admin-actions";
 import {
   type DetectResult,
@@ -112,7 +112,11 @@ export async function detectFromPaymentExceptions(
   });
   const candidates: ExceptionCandidate[] = [];
   for (const e of open) {
-    const type = TYPE_BY_REASON[e.kind];
+    // C4b: own-property check — `kind` values like "constructor" or
+    // "__proto__" must not reach through the prototype chain.
+    const type = Object.hasOwn(TYPE_BY_REASON, e.kind)
+      ? TYPE_BY_REASON[e.kind]
+      : undefined;
     if (type === undefined) {
       // Unknown kind — keep the work visible as a generic mismatch.
       candidates.push({
@@ -169,23 +173,13 @@ export async function resolveException(
       `exception ${input.id} is ${existing.status}, not OPEN`,
     );
   }
-  const audit = await recordAdminAction(db, {
-    action: "RESOLVE_EXCEPTION",
-    subjectType: "exception",
-    subjectId: input.id,
-    operator: input.operator,
-    evidence: {
-      resolution: input.resolution,
-      note: input.note ?? null,
-      type: existing.type,
-      subjectRef: existing.subjectRef,
-    },
-  });
-  if (!audit.ok) return audit;
+  // Guarded transition first — losing the race returns INVALID_STATE
+  // without a lying audit row; the audit then records what happened.
+  const operator = normalizeOperator(input.operator);
   const resolved = await db.finops.exceptions.resolve(
     input.id,
     input.resolution,
-    input.operator.trim(),
+    operator,
     Date.now(),
   );
   if (!resolved) {
@@ -194,6 +188,19 @@ export async function resolveException(
       "exception transitioned concurrently — not resolved",
     );
   }
+  const audit = await recordAdminAction(db, {
+    action: "RESOLVE_EXCEPTION",
+    subjectType: "exception",
+    subjectId: input.id,
+    operator,
+    evidence: {
+      resolution: input.resolution,
+      note: input.note ?? null,
+      type: existing.type,
+      subjectRef: existing.subjectRef,
+    },
+  });
+  if (!audit.ok) return audit;
   return ok(resolved);
 }
 
