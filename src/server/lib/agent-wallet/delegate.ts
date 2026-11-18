@@ -17,6 +17,7 @@
  * stops all spends immediately — checked before every kit call.
  */
 import { isAddress, getAddress } from "viem";
+import type { AgentWalletStore } from "./registry";
 
 export interface DelegateRecord {
   /** Owner wallet — unified balance depositor (checksummed). */
@@ -64,12 +65,17 @@ export function createMemoryDelegateStore(): DelegateStore {
   };
 }
 
-/** Throws on invalid register input (client-safe messages). */
+/** Throws on invalid register input (client-safe messages).
+ *  SLICE-234-32: `ownerPerTxUsd` clamps spendCapUsd to the owner's live
+ *  envelope perTxUsd — a delegate can never be registered wider than
+ *  the owner's current per-tx cap (non-widening invariant). */
 export function validateDelegateInput(input: {
   ownerWallet: string;
   delegate: string;
   chain: string;
   spendCapUsd: number;
+  /** Owner's current envelope.perTxUsd — clamps the delegate cap. */
+  ownerPerTxUsd?: number;
 }): DelegateRecord {
   if (!isAddress(input.ownerWallet)) throw new Error("invalid owner wallet");
   if (!isAddress(input.delegate)) throw new Error("invalid delegate address");
@@ -81,11 +87,15 @@ export function validateDelegateInput(input: {
     input.spendCapUsd > 1_000_000
   )
     throw new Error("spendCapUsd must be in (0, 1e6]");
+  const spendCapUsd =
+    input.ownerPerTxUsd !== undefined
+      ? Math.min(input.spendCapUsd, input.ownerPerTxUsd)
+      : input.spendCapUsd;
   return {
     ownerWallet: getAddress(input.ownerWallet),
     delegate: getAddress(input.delegate),
     chain: input.chain,
-    spendCapUsd: input.spendCapUsd,
+    spendCapUsd,
     authorizedAt: Date.now(),
   };
 }
@@ -117,11 +127,11 @@ export type DelegateSpendResult =
 
 /**
  * Server-side spend from a delegate-authorized owner. Enforces (in
- * order): record exists & not revoked → per-tx cap → onchain delegate
- * status is 'ready'. Envelope parity: spendCapUsd mirrors the owner's
- * envelope perTxUsd — server-initiated spends don't pass through the
- * request-context envelope (no Hono context), the registry cap is
- * the enforcement point documented in the slice.
+ * order): record exists & not revoked → owner active & not suspended
+ * → effective cap min(rec.spendCapUsd, owner.envelope.perTxUsd) →
+ * onchain delegate status is 'ready'. SLICE-234-32: the stored
+ * spendCapUsd is frozen at register-time; the live owner envelope is
+ * resolved per spend so owner-side tightening propagates (non-widening).
  */
 export async function spendAsDelegate(
   store: DelegateStore,
@@ -131,14 +141,31 @@ export async function spendAsDelegate(
     chain: string;
     amountUsd: string;
     to: { chain: string; recipientAddress: string };
+    /** SLICE-234-32: live owner wallet lookup — required so the
+     *  effective cap can never exceed the owner's CURRENT envelope
+     *  (the stored spendCapUsd is frozen at register-time and goes
+     *  stale when the owner tightens their envelope). */
+    walletStore: Pick<AgentWalletStore, "get">;
   },
 ): Promise<DelegateSpendResult> {
   const rec = store.get(args.ownerWallet, args.chain);
   if (!rec || rec.revokedAt !== undefined) {
     return { ok: false, reason: "no-active-delegate" };
   }
+  // Owner kill-switch parity (234-32): suspended/inactive/unknown owner
+  // blocks delegate spend even while the delegate record is live.
+  const owner = await args.walletStore.get(rec.ownerWallet);
+  if (!owner || !owner.active || owner.suspended) {
+    return { ok: false, reason: "delegate-suspended" };
+  }
   const amount = Number(args.amountUsd);
-  if (!Number.isFinite(amount) || amount <= 0 || amount > rec.spendCapUsd) {
+  // Effective cap = min(stored delegate cap, live owner perTxUsd) —
+  // non-widening: owner tightening propagates to delegate spends.
+  const effectiveCap = Math.min(
+    rec.spendCapUsd,
+    owner.envelope?.perTxUsd ?? rec.spendCapUsd,
+  );
+  if (!Number.isFinite(amount) || amount <= 0 || amount > effectiveCap) {
     return { ok: false, reason: "cap-exceeded" };
   }
   const status = await kit.getDelegateStatus({

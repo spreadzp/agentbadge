@@ -59,7 +59,8 @@ export function createAgentWalletDelegateRoutes(
     async (c) => {
       const owner = await ownerOrNull(c);
       if (!owner) return c.json({ error: "wallet signature required" }, 401);
-      if (deps.requireRegistered && !(await deps.walletStore.get(owner))) {
+      const ownerRec = await deps.walletStore.get(owner);
+      if (deps.requireRegistered && !ownerRec) {
         return c.json({ error: "wallet not registered" }, 403);
       }
       let body: { chain?: string; spendCapUsd?: number };
@@ -75,6 +76,9 @@ export function createAgentWalletDelegateRoutes(
           delegate: deps.delegateAddress,
           chain: body.chain ?? "",
           spendCapUsd: Number(body.spendCapUsd),
+          // 234-32: clamp to the owner's LIVE envelope perTxUsd — a
+          // delegate can never register wider than the owner allows.
+          ownerPerTxUsd: ownerRec?.envelope?.perTxUsd,
         });
       } catch (e) {
         return c.json(

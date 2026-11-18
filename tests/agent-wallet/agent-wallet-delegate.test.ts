@@ -72,6 +72,30 @@ const readyKit = (status: DelegateStatus = "ready"): DelegateSpendKit => ({
   spend: vi.fn(async () => ({ transferId: "tr-1" })),
 });
 
+/** 234-32: owner wallet store with the delegate owner registered —
+ *  envelope/suspended/active overridable for cap + kill-switch tests. */
+async function ownerStore(over: {
+  perTxUsd?: number;
+  suspended?: boolean;
+  active?: boolean;
+  registered?: boolean;
+} = {}) {
+  const ws = createMemoryAgentWalletStore();
+  if (over.registered !== false) {
+    await ws.put({
+      address: W,
+      label: "owner",
+      kind: "eoa",
+      envelope: over.perTxUsd !== undefined ? { perTxUsd: over.perTxUsd } : {},
+      registeredBy: W,
+      createdAt: Date.now(),
+      active: over.active ?? true,
+      suspended: over.suspended,
+    });
+  }
+  return ws;
+}
+
 describe("delegate store + validation", () => {
   it("put/get/list/revoke; revoke idempotent, unknown → false", () => {
     const store = createMemoryDelegateStore();
@@ -98,6 +122,22 @@ describe("delegate store + validation", () => {
       "invalid chain",
     );
   });
+
+  it("234-32: ownerPerTxUsd clamps spendCapUsd at register time", () => {
+    const base = {
+      ownerWallet: W, delegate: DELEGATE, chain: CHAIN, spendCapUsd: 500,
+    };
+    // Owner envelope perTxUsd=10 → delegate cap clamped to 10.
+    expect(
+      validateDelegateInput({ ...base, ownerPerTxUsd: 10 }).spendCapUsd,
+    ).toBe(10);
+    // Owner envelope wider → requested cap stands.
+    expect(
+      validateDelegateInput({ ...base, ownerPerTxUsd: 1000 }).spendCapUsd,
+    ).toBe(500);
+    // No owner envelope → no clamp.
+    expect(validateDelegateInput(base).spendCapUsd).toBe(500);
+  });
 });
 
 describe("spendAsDelegate", () => {
@@ -105,16 +145,21 @@ describe("spendAsDelegate", () => {
     ownerWallet: W, chain: CHAIN, amountUsd: "5.00",
     to: { chain: "Arc_Testnet", recipientAddress: W },
   };
+  const withStore = (ws: Awaited<ReturnType<typeof ownerStore>>) => ({
+    ...args,
+    walletStore: ws,
+  });
 
   it("no record / revoked → no-active-delegate, kit untouched", async () => {
     const store = createMemoryDelegateStore();
     const kit = readyKit();
-    expect(await spendAsDelegate(store, kit, args)).toEqual({
+    const ws = await ownerStore();
+    expect(await spendAsDelegate(store, kit, withStore(ws))).toEqual({
       ok: false,
       reason: "no-active-delegate",
     });
     store.put(rec({ revokedAt: Date.now() }));
-    expect((await spendAsDelegate(store, kit, args)).ok).toBe(false);
+    expect((await spendAsDelegate(store, kit, withStore(ws))).ok).toBe(false);
     expect(kit.spend).not.toHaveBeenCalled();
   });
 
@@ -122,7 +167,8 @@ describe("spendAsDelegate", () => {
     const store = createMemoryDelegateStore();
     store.put(rec({ spendCapUsd: 4 }));
     const kit = readyKit();
-    const res = await spendAsDelegate(store, kit, args);
+    const ws = await ownerStore();
+    const res = await spendAsDelegate(store, kit, withStore(ws));
     expect(res).toEqual({ ok: false, reason: "cap-exceeded" });
     expect(kit.getDelegateStatus).not.toHaveBeenCalled();
   });
@@ -130,7 +176,9 @@ describe("spendAsDelegate", () => {
   it("pending delegate → delegate-pending, no spend", async () => {
     const store = createMemoryDelegateStore();
     store.put(rec());
-    const res = await spendAsDelegate(store, readyKit("pending"), args);
+    const res = await spendAsDelegate(
+      store, readyKit("pending"), withStore(await ownerStore()),
+    );
     expect(res).toEqual({ ok: false, reason: "delegate-pending" });
   });
 
@@ -138,7 +186,9 @@ describe("spendAsDelegate", () => {
     const store = createMemoryDelegateStore();
     store.put(rec());
     const kit = readyKit();
-    const res = await spendAsDelegate(store, kit, args);
+    const res = await spendAsDelegate(
+      store, kit, withStore(await ownerStore()),
+    );
     expect(res).toEqual({ ok: true, transferId: "tr-1" });
     expect(kit.spend).toHaveBeenCalledWith(
       expect.objectContaining({ sourceAccount: W }),
@@ -149,20 +199,89 @@ describe("spendAsDelegate", () => {
     const store = createMemoryDelegateStore();
     store.put(rec());
     const kit = readyKit();
-    expect((await spendAsDelegate(store, kit, args)).ok).toBe(true);
+    const ws = await ownerStore();
+    expect((await spendAsDelegate(store, kit, withStore(ws))).ok).toBe(true);
     store.revoke(W, CHAIN);
-    const res = await spendAsDelegate(store, kit, args);
+    const res = await spendAsDelegate(store, kit, withStore(ws));
     expect(res).toEqual({ ok: false, reason: "no-active-delegate" });
     expect(kit.spend).toHaveBeenCalledTimes(1); // only the first
+  });
+
+  // ─── SLICE-234-32: stale-cap widening + owner kill-switch ───
+
+  it("owner tightened envelope → effective cap = min(stored, live perTxUsd)", async () => {
+    const store = createMemoryDelegateStore();
+    store.put(rec({ spendCapUsd: 500 })); // frozen wide cap
+    const kit = readyKit();
+    // Owner later tightened perTxUsd to 10 — delegate must not widen.
+    const ws = await ownerStore({ perTxUsd: 10 });
+    const over = await spendAsDelegate(store, kit, {
+      ...withStore(ws), amountUsd: "50",
+    });
+    expect(over).toEqual({ ok: false, reason: "cap-exceeded" });
+    const under = await spendAsDelegate(store, kit, {
+      ...withStore(ws), amountUsd: "5",
+    });
+    expect(under.ok).toBe(true);
+  });
+
+  it("owner envelope wider than stored cap → stored cap still binds", async () => {
+    const store = createMemoryDelegateStore();
+    store.put(rec({ spendCapUsd: 10 }));
+    const kit = readyKit();
+    const ws = await ownerStore({ perTxUsd: 500 });
+    const res = await spendAsDelegate(store, kit, {
+      ...withStore(ws), amountUsd: "50",
+    });
+    expect(res).toEqual({ ok: false, reason: "cap-exceeded" });
+  });
+
+  it("owner without perTxUsd envelope → stored delegate cap binds", async () => {
+    const store = createMemoryDelegateStore();
+    store.put(rec({ spendCapUsd: 10 }));
+    const kit = readyKit();
+    const ws = await ownerStore(); // envelope {} — no perTxUsd
+    const res = await spendAsDelegate(store, kit, {
+      ...withStore(ws), amountUsd: "50",
+    });
+    expect(res).toEqual({ ok: false, reason: "cap-exceeded" });
+  });
+
+  it("suspended owner → delegate-suspended even with live record", async () => {
+    const store = createMemoryDelegateStore();
+    store.put(rec());
+    const kit = readyKit();
+    const ws = await ownerStore({ suspended: true });
+    const res = await spendAsDelegate(store, kit, withStore(ws));
+    expect(res).toEqual({ ok: false, reason: "delegate-suspended" });
+    expect(kit.spend).not.toHaveBeenCalled();
+  });
+
+  it("inactive owner → delegate-suspended", async () => {
+    const store = createMemoryDelegateStore();
+    store.put(rec());
+    const kit = readyKit();
+    const ws = await ownerStore({ active: false });
+    const res = await spendAsDelegate(store, kit, withStore(ws));
+    expect(res).toEqual({ ok: false, reason: "delegate-suspended" });
+  });
+
+  it("unregistered owner → delegate-suspended (fail-closed)", async () => {
+    const store = createMemoryDelegateStore();
+    store.put(rec());
+    const kit = readyKit();
+    const ws = await ownerStore({ registered: false });
+    const res = await spendAsDelegate(store, kit, withStore(ws));
+    expect(res).toEqual({ ok: false, reason: "delegate-suspended" });
   });
 });
 
 describe("delegate routes", () => {
-  const routes = () =>
+  const routes = (walletStore = createMemoryAgentWalletStore()) =>
     createAgentWalletDelegateRoutes({
       delegateStore: createMemoryDelegateStore(),
       delegateAddress: DELEGATE,
-      walletStore: createMemoryAgentWalletStore(),
+      walletStore,
       requireRegistered: false,
     });
 
@@ -182,6 +301,24 @@ describe("delegate routes", () => {
     expect(body.record.delegate).toBe(DELEGATE);
     expect(body.addDelegate.params.delegateAddress).toBe(DELEGATE);
     expect(body.addDelegate.params.from.chain).toBe(CHAIN);
+  });
+
+  it("234-32: POST clamps spendCapUsd to owner's live envelope perTxUsd", async () => {
+    const ws = await ownerStore({ perTxUsd: 10 });
+    const app = routes(ws);
+    const path = `/api/wallets/${W}/delegate`;
+    const body = JSON.stringify({ chain: CHAIN, spendCapUsd: 500 });
+    const res = await app.request(path, {
+      method: "POST",
+      headers: {
+        ...await signed("POST", path, owner, body),
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+    expect(res.status).toBe(201);
+    const out = await res.json();
+    expect(out.record.spendCapUsd).toBe(10); // clamped, not 500
   });
 
   it("no sig → 401; x-wallet ≠ :addr → 401; stranger-proof", async () => {
