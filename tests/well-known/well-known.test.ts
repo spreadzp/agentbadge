@@ -388,4 +388,25 @@ describe("Well-known routes", () => {
       expect(Number(cl)).toBeGreaterThan(0);
     });
   });
+
+  // ─── SLICE-234-33: well-known aliases ─────────────────────────
+
+  describe("well-known aliases (SLICE-234-33)", () => {
+    it("GET /.well-known/agent-badges.json → 301 to agent-card.json", async () => {
+      const res = await app.request("/.well-known/agent-badges.json");
+      expect(res.status).toBe(301);
+      expect(res.headers.get("location")).toContain("/.well-known/agent-card.json");
+    });
+
+    it("GET /.well-known/x402-bazaar-discovery.json → 301 to x402.json", async () => {
+      const res = await app.request("/.well-known/x402-bazaar-discovery.json");
+      expect(res.status).toBe(301);
+      expect(res.headers.get("location")).toContain("/.well-known/x402.json");
+    });
+
+    it("GET /.well-known/agent-card.json still 200 (alias did not break canonical)", async () => {
+      const res = await app.request("/.well-known/agent-card.json");
+      expect(res.status).toBe(200);
+    });
+  });
 });

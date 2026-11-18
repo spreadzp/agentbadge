@@ -12,6 +12,7 @@ import { verificationDocsRoutes } from "./verification-docs";
 import { taskReceiptSchemaRoutes } from "./task-receipt-schema";
 import { gecClientRoutes, gecCallbackRoutes } from "./gec-client";
 import { machineDescriptorRoutes } from "./machine-descriptor";
+import { wellKnownAliasRoutes } from "./aliases";
 
 // buildAgentCard moved to lib/agent-discovery (SLICE-178-2) —
 // re-exported for the old import path; new signature takes DiscoverySources
@@ -37,3 +38,4 @@ wellKnownRoutes.route("/", verificationDocsRoutes);
 wellKnownRoutes.route("/", gecClientRoutes); // EPIC-205: /.well-known/gec-client.json CIMD
 wellKnownRoutes.route("/", gecCallbackRoutes); // EPIC-205: /api/gec/callback OAuth stub
 wellKnownRoutes.route("/", machineDescriptorRoutes); // EPIC-206: /.well-known/agentbadge-machine.json
+wellKnownRoutes.route("/", wellKnownAliasRoutes); // SLICE-234-33: probe-variant aliases

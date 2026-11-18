@@ -75,6 +75,14 @@ export const MANIFEST_REGISTRY: ManifestEntry[] = [
     redirectTo: (src) => `${src.baseUrl}/.well-known/agent-card.json`,
   },
   {
+    // SLICE-234-33: brand-name variant probe → canonical agent-card.json.
+    path: "/.well-known/agent-badges.json",
+    publicPath: "",
+    contentType: "application/json",
+    summary: "Brand-name variant — 301 to agent-card.json",
+    redirectTo: (src) => `${src.baseUrl}/.well-known/agent-card.json`,
+  },
+  {
     path: "/.well-known/api-catalog",
     publicPath: ".well-known/api-catalog",
     contentType:

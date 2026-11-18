@@ -55,4 +55,42 @@ describe("Infrastructure", () => {
       || res.headers.get("ratelimit-limit");
     expect(rateLimit).toBeTruthy();
   });
+
+  // ─── SLICE-234-33: well-known method contract ─────────────────
+  // /.well-known/* is read-only (RFC 8615) — unsafe methods get a
+  // structured 405 instead of a generic 404.
+
+  it.each(["POST", "PUT", "PATCH", "DELETE"])(
+    "%s /.well-known/agent-card.json → 405 + Allow: GET, HEAD",
+    async (method) => {
+      const res = await app.request("/.well-known/agent-card.json", { method });
+      expect(res.status).toBe(405);
+      expect(res.headers.get("allow")).toBe("GET, HEAD");
+      expect(res.headers.get("content-type")).toContain("application/json");
+      const body = await res.json();
+      expect(body.error).toBe("method_not_allowed");
+      expect(body.allowed_methods).toEqual(["GET", "HEAD"]);
+      expect(body.documentation).toBe("/agent-guide");
+    },
+  );
+
+  it("POST /.well-known/nonexistent → 405 (namespace is read-only)", async () => {
+    const res = await app.request("/.well-known/never-existed", { method: "POST" });
+    expect(res.status).toBe(405);
+  });
+
+  it("POST /api/nonexistent → still 404 (outside well-known namespace)", async () => {
+    const res = await app.request("/api/nonexistent", {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("GET /.well-known/nonexistent → still 404 (GET untouched)", async () => {
+    const res = await app.request("/.well-known/never-existed", {
+      headers: { Accept: "application/json" },
+    });
+    expect(res.status).toBe(404);
+  });
 });

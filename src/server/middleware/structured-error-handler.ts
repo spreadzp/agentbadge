@@ -23,9 +23,28 @@ export function structuredNotFoundHandler() {
   };
 }
 
+const WELL_KNOWN_READ_ONLY_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 function handleNotFound(c: Context): Response {
   const accept = c.req.header("Accept") ?? "";
   const path = new URL(c.req.url).pathname;
+
+  // SLICE-234-33: well-known namespace is read-only (RFC 8615) — unsafe
+  // methods get a structured 405 instead of a generic 404, so agents can
+  // tell "resource exists, wrong method" from "resource missing".
+  if (path.startsWith("/.well-known/") && !WELL_KNOWN_READ_ONLY_METHODS.has(c.req.method)) {
+    return c.json(
+      {
+        error: "method_not_allowed",
+        message: `Method ${c.req.method} not allowed on ${path}`,
+        path,
+        allowed_methods: ["GET", "HEAD"],
+        documentation: "/agent-guide",
+      },
+      405,
+      { Allow: "GET, HEAD", "Content-Type": "application/json; charset=utf-8" },
+    );
+  }
 
   // Check text/html first — browsers and explicit HTML requests should get HTML
   if (accept.includes("text/html") || !accept) {
