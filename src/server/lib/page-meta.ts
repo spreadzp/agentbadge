@@ -73,9 +73,11 @@ export const PageMeta: Record<string, PageMeta> = {
     description:
       `Scan any API or website with ${PUBLIC_STATS.rules} deterministic agent readiness rules — evidence, fixes, score. Free, no signup.`,
     path: "/",
-    // SLICE-234-25: hreflang pair with the US-localized pilot page.
+    // SLICE-234-25/26: hreflang cluster — / (x-default) ↔ /en-us ↔ /en-gb.
     alternates: [
-      { hreflang: "en-US", href: "/en-us/" },
+      { hreflang: "en", href: "/" },
+      { hreflang: "en-US", href: "/en-us" },
+      { hreflang: "en-GB", href: "/en-gb" },
       { hreflang: "x-default", href: "/" },
     ],
   },
@@ -87,6 +89,21 @@ export const PageMeta: Record<string, PageMeta> = {
     ogLocale: "en_US",
     alternates: [
       { hreflang: "en", href: "/" },
+      { hreflang: "en-US", href: "/en-us" },
+      { hreflang: "en-GB", href: "/en-gb" },
+      { hreflang: "x-default", href: "/" },
+    ],
+  },
+  "/en-gb": {
+    title: "x402 Agent Payments & USDC Micropayments for UK & EU Businesses",
+    description:
+      "UK/EU-focused agent readiness: x402 payments, USDC on Arc, GBP/EUR reference pricing, MiCA/GDPR notes — built for UK and EU businesses.",
+    path: "/en-gb",
+    ogLocale: "en_GB",
+    alternates: [
+      { hreflang: "en", href: "/" },
+      { hreflang: "en-US", href: "/en-us" },
+      { hreflang: "en-GB", href: "/en-gb" },
       { hreflang: "x-default", href: "/" },
     ],
   },
@@ -397,6 +414,7 @@ export interface SitemapEntry {
 export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/en-us", changefreq: "weekly", priority: "0.9" },
+  { path: "/en-gb", changefreq: "weekly", priority: "0.9" },
   { path: "/services/scanner", changefreq: "weekly", priority: "0.9" },
   { path: "/services/passports", changefreq: "weekly", priority: "0.9" },
   { path: "/services/marketplace", changefreq: "weekly", priority: "0.9" },

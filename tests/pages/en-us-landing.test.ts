@@ -54,3 +54,51 @@ describe("SLICE-234-25: /en-us hreflang pilot", () => {
     expect(xml).toContain('hreflang="x-default"');
   });
 });
+
+/**
+ * SLICE-234-26: /en-gb UK/EU pilot — third member of the hreflang
+ * cluster / ↔ /en-us ↔ /en-gb. Content must differ from /en-us
+ * (GBP/EUR, MiCA/GDPR) — anti-cannibalization rule.
+ */
+describe("SLICE-234-26: /en-gb hreflang pilot", () => {
+  it("GET /en-gb → 200 HTML", async () => {
+    const res = await app.request("/en-gb");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+  });
+
+  it("/en-gb emits full cluster: en, en-US, en-GB, x-default + self-canonical", async () => {
+    const html = await (await app.request("/en-gb")).text();
+    expect(html).toContain('hreflang="en"');
+    expect(html).toContain('hreflang="en-US"');
+    expect(html).toContain('hreflang="en-GB"');
+    expect(html).toContain('hreflang="x-default"');
+    expect(html).toContain('rel="canonical" href="https://agentbadge.xyz/en-gb"');
+    expect(html).toContain('og:locale" content="en_GB"');
+  });
+
+  it("/ and /en-us list /en-gb in their alternates (reciprocal cluster)", async () => {
+    for (const path of ["/", "/en-us"]) {
+      const html = await (await app.request(path)).text();
+      expect(html).toContain('hreflang="en-GB"');
+      expect(html).toContain("/en-gb");
+    }
+  });
+
+  it("/en-gb content is UK/EU-localized, distinct from /en-us", async () => {
+    const gb = await (await app.request("/en-gb")).text();
+    expect(gb).toContain("MiCA");
+    expect(gb).toContain("GDPR");
+    expect(gb).toContain("GBP");
+    expect(gb).toContain("UK &amp; EU");
+    const us = await (await app.request("/en-us")).text();
+    expect(us).not.toContain("MiCA");
+    expect(us).not.toContain("GDPR");
+  });
+
+  it("sitemap.xml contains /en-gb with full cluster xhtml:link", () => {
+    const xml = buildSitemap();
+    expect(xml).toContain("/en-gb");
+    expect(xml).toContain('hreflang="en-GB"');
+  });
+});

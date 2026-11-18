@@ -3,6 +3,7 @@ import { LandingLayout } from "../../../views/landing/layout";
 import { LandingPage } from "../../../views/landing/landing-page";
 import { ReadinessLandingPage, getHomepageFaqJsonLd } from "../../../views/landing/readiness-landing-page";
 import { EnUsLandingPage } from "../../../views/landing/en-us-page";
+import { EnGbLandingPage } from "../../../views/landing/en-gb-page";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { landingJsonLd, pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentbadge/hedera-core";
@@ -76,6 +77,32 @@ landingRoutes.get("/en-us", async (c) => {
   return response;
 });
 // /en-us/ → 301 /en-us handled by trailingSlashMiddleware.
+
+/**
+ * GET /en-gb — UK/EU-localized pilot (SLICE-234-26).
+ *
+ * GBP/EUR reference pricing, MiCA/GDPR compliance notes, UK FAQ —
+ * genuinely different from /en-us (anti-cannibalization). hreflang
+ * cluster: / ↔ /en-us ↔ /en-gb, x-default → /.
+ */
+landingRoutes.get("/en-gb", async (c) => {
+  const meta = PageMetaRegistry["/en-gb"];
+  const jsonLd = [
+    ...pageCoreSchemas(),
+    webPageLd({
+      title: meta.title,
+      description: meta.description,
+      path: "/en-gb",
+    }),
+    breadcrumbFor("/en-gb", "UK & EU"),
+  ];
+  const content = EnGbLandingPage().toString();
+  const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
+  const response = await c.html(pageHtml);
+  response.headers.set("Vary", "Accept");
+  return response;
+});
+// /en-gb/ → 301 /en-gb handled by trailingSlashMiddleware.
 
 /**
  * GET /passport — Original Hedera marketplace landing page (preserved).

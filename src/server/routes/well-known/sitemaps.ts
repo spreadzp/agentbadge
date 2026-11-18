@@ -508,11 +508,21 @@ function pageLastmod(path: string): string {
 // emits <xhtml:link rel="alternate" hreflang=...> inside the <url>.
 const SITEMAP_HREFLANG: Record<string, ReadonlyArray<{ hreflang: string; href: string }>> = {
   "/": [
+    { hreflang: "en", href: "/" },
     { hreflang: "en-US", href: "/en-us" },
+    { hreflang: "en-GB", href: "/en-gb" },
     { hreflang: "x-default", href: "/" },
   ],
   "/en-us": [
     { hreflang: "en", href: "/" },
+    { hreflang: "en-US", href: "/en-us" },
+    { hreflang: "en-GB", href: "/en-gb" },
+    { hreflang: "x-default", href: "/" },
+  ],
+  "/en-gb": [
+    { hreflang: "en", href: "/" },
+    { hreflang: "en-US", href: "/en-us" },
+    { hreflang: "en-GB", href: "/en-gb" },
     { hreflang: "x-default", href: "/" },
   ],
 };
