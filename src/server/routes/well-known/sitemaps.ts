@@ -503,17 +503,41 @@ function pageLastmod(path: string): string {
   return STATIC_LASTMOD[path] ?? BUILD_DATE;
 }
 
+// SLICE-234-25: hreflang alternates for sitemap xhtml:link annotations.
+// Paths that have locale/geo variants declare them here; buildSitemap
+// emits <xhtml:link rel="alternate" hreflang=...> inside the <url>.
+const SITEMAP_HREFLANG: Record<string, ReadonlyArray<{ hreflang: string; href: string }>> = {
+  "/": [
+    { hreflang: "en-US", href: "/en-us" },
+    { hreflang: "x-default", href: "/" },
+  ],
+  "/en-us": [
+    { hreflang: "en", href: "/" },
+    { hreflang: "x-default", href: "/" },
+  ],
+};
+
 export function buildSitemap(): string {
   const baseUrl = BASE_URL;
 
-  const urls = PUBLIC_PAGES.map(
-    (p) => `  <url>
+  const urls = PUBLIC_PAGES.map((p) => {
+    const alternates = SITEMAP_HREFLANG[p.path];
+    const hreflangLinks = alternates
+      ? alternates
+          .map(
+            (a) =>
+              `    <xhtml:link rel="alternate" hreflang="${a.hreflang}" href="${baseUrl}${a.href}" />`,
+          )
+          .join("\n")
+      : "";
+    return `  <url>
     <loc>${baseUrl}${p.path}</loc>
     <lastmod>${pageLastmod(p.path)}</lastmod>
     <changefreq>${p.changefreq}</changefreq>
     <priority>${p.priority}</priority>
-  </url>`,
-  ).join("\n");
+${hreflangLinks}
+  </url>`;
+  }).join("\n");
 
   // SLICE-217-14: rubric channel pages are canonical crawl targets —
   // the canonical URL *includes* the ?channel= query param.
@@ -527,7 +551,7 @@ export function buildSitemap(): string {
   ).join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls}
 ${channelUrls}
 </urlset>`;

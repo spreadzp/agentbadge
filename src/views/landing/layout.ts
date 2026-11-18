@@ -59,7 +59,8 @@ export function LandingLayout(
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:site_name" content="${SITE_NAME}" />
-        <meta property="og:locale" content="en_US" />
+        <meta property="og:locale" content="${meta?.ogLocale ?? "en_US"}" />
+        ${meta?.alternates?.map((a) => html`<link rel="alternate" hreflang="${a.hreflang}" href="${BASE_URL}${a.href}" />`) ?? ""}
         <meta name="theme-color" content="#0f172a" />
         <meta name="ai-agent-discovery" content="${BASE_URL}/llms.txt" />
         <meta name="ai-agent-onboarding" content="${BASE_URL}/skill.md" />

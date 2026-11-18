@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { LandingLayout } from "../../../views/landing/layout";
 import { LandingPage } from "../../../views/landing/landing-page";
 import { ReadinessLandingPage, getHomepageFaqJsonLd } from "../../../views/landing/readiness-landing-page";
+import { EnUsLandingPage } from "../../../views/landing/en-us-page";
 import { PageMeta as PageMetaRegistry } from "../../lib/page-meta";
 import { landingJsonLd, pageCoreSchemas, softwareApplicationLd, webPageLd, breadcrumbFor } from "../../lib/json-ld";
 import { getNftsForToken, getTopicMessages, type NftInfo } from "@agentbadge/hedera-core";
@@ -49,6 +50,32 @@ landingRoutes.get("/", async (c) => {
   );
   return response;
 });
+
+/**
+ * GET /en-us/ — US-localized pilot page (SLICE-234-25).
+ *
+ * Genuinely US-framed content (USD pricing, USDC-on-Arc rails, US
+ * compliance notes, US FAQ) — NOT a duplicate of /. hreflang pair:
+ * / ↔ /en-us/, x-default → /.
+ */
+landingRoutes.get("/en-us", async (c) => {
+  const meta = PageMetaRegistry["/en-us"];
+  const jsonLd = [
+    ...pageCoreSchemas(),
+    webPageLd({
+      title: meta.title,
+      description: meta.description,
+      path: "/en-us",
+    }),
+    breadcrumbFor("/en-us", "US"),
+  ];
+  const content = EnUsLandingPage().toString();
+  const pageHtml = LandingLayout(content, undefined, meta, jsonLd);
+  const response = await c.html(pageHtml);
+  response.headers.set("Vary", "Accept");
+  return response;
+});
+// /en-us/ → 301 /en-us handled by trailingSlashMiddleware.
 
 /**
  * GET /passport — Original Hedera marketplace landing page (preserved).

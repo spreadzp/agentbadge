@@ -21,6 +21,11 @@ export interface PageMeta {
   rssUrl?: string;
   prevRel?: string;
   nextRel?: string;
+  // SLICE-234-25: hreflang alternates — paths (layout prefixes BASE_URL).
+  // Always include an x-default entry pointing at the fallback page.
+  alternates?: ReadonlyArray<{ hreflang: string; href: string }>;
+  // og:locale override (default en_US in layouts).
+  ogLocale?: string;
 }
 
 export const SITE_NAME = "AgentBadge";
@@ -68,6 +73,22 @@ export const PageMeta: Record<string, PageMeta> = {
     description:
       `Scan any API or website with ${PUBLIC_STATS.rules} deterministic agent readiness rules — evidence, fixes, score. Free, no signup.`,
     path: "/",
+    // SLICE-234-25: hreflang pair with the US-localized pilot page.
+    alternates: [
+      { hreflang: "en-US", href: "/en-us/" },
+      { hreflang: "x-default", href: "/" },
+    ],
+  },
+  "/en-us": {
+    title: "x402 Agent Payments & USDC Micropayments for US Businesses",
+    description:
+      "US-focused agent readiness: x402 payments, USDC on Arc, USD pricing, and agent passports — built for US businesses and developers.",
+    path: "/en-us",
+    ogLocale: "en_US",
+    alternates: [
+      { hreflang: "en", href: "/" },
+      { hreflang: "x-default", href: "/" },
+    ],
   },
   "/services/scanner": {
     title: "Agent Readiness Scanner",
@@ -375,6 +396,7 @@ export interface SitemapEntry {
 // TODO(18-7): add /faq and /use-cases when those pages exist
 export const PUBLIC_PAGES: SitemapEntry[] = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
+  { path: "/en-us", changefreq: "weekly", priority: "0.9" },
   { path: "/services/scanner", changefreq: "weekly", priority: "0.9" },
   { path: "/services/passports", changefreq: "weekly", priority: "0.9" },
   { path: "/services/marketplace", changefreq: "weekly", priority: "0.9" },
