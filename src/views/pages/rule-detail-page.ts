@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 import { html, raw } from "hono/html";
 import { Layout } from "../chrome/layout";
 import { type PageMeta } from "../../server/lib/page-meta";

@@ -162,7 +162,7 @@ describe("SLICE-85-1: total-scan-api has no inline blocklist", () => {
     const fs = await import("fs");
     const path = await import("path");
     const content = fs.readFileSync(
-      path.resolve(__dirname, "../../../../src/server/routes/total-scan-api.ts"),
+      path.resolve(__dirname, "../../../../src/server/routes/scan/total-scan-api.ts"),
       "utf-8",
     );
 

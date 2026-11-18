@@ -39,22 +39,22 @@ const BEACONS: Beacon[] = [
 /** file → beacon patterns that are legitimate in it. */
 const ALLOWLIST: Record<string, Beacon[]> = {
   // Schema example URL in describeRoute docs — not served data.
-  "agent-knowledge.ts": [{ name: "example.com", re: /your-api\.example\.com/ }],
+  "knowledge/agent-knowledge.ts": [{ name: "example.com", re: /your-api\.example\.com/ }],
   // OpenAPI x-examples / curl docs — documentation payloads, not served data.
-  "agents-register-examples.ts": [
+  "agents/agents-register-examples.ts": [
     { name: "example.com", re: /agent\.example\.com/ },
   ],
-  "openapi-examples.ts": [
+  "api/openapi-examples.ts": [
     { name: "example.com", re: /example\.com/ },
   ],
   "well-known/agent-docs.ts": [
     { name: "example.com", re: /agent\.example\.com/ },
   ],
   // Real on-chain zero address used as a genuine "unset" sentinel.
-  "attestcoin.ts": [{ name: "zero-address", re: ZERO_ADDR }],
-  "trust.ts": [{ name: "zero-address", re: ZERO_ADDR }],
-  "venue-api-helpers.ts": [{ name: "zero-address", re: ZERO_ADDR }],
-  "venue-job-create.ts": [{ name: "zero-address", re: ZERO_ADDR }],
+  "attestation/attestcoin.ts": [{ name: "zero-address", re: ZERO_ADDR }],
+  "trust/trust.ts": [{ name: "zero-address", re: ZERO_ADDR }],
+  "venue/venue-api-helpers.ts": [{ name: "zero-address", re: ZERO_ADDR }],
+  "venue/venue-job-create.ts": [{ name: "zero-address", re: ZERO_ADDR }],
 };
 
 function* walk(dir: string): Generator<string> {

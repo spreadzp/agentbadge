@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 /**
  * SLICE-204-4: payment-forensics indexer — backfill + live-tail + seam seed.
  *
@@ -35,7 +36,6 @@ import {
   http,
   parseAbiItem,
   type Address,
-  type Hex,
 } from "viem";
 import type {
   ForensicsEdgeInsert,

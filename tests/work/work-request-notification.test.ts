@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { formatWorkRequestNotification, notifyWorkRequest } from "../../src/server/services/work-request-notification";
 import { workRequestStore } from "../../src/server/services/work-request-store";
 import type { WorkRequestRecord } from "../../src/server/services/work-request-store";
+import { makeTestApp, setupMockEnv } from "../e2e/helpers";
 
 function mockRecord(overrides?: Partial<WorkRequestRecord>): WorkRequestRecord {
   return {
@@ -158,7 +159,7 @@ describe("SLICE-46-10: Human notification — Telegram/Discord forwarding", () =
     });
 
     it("notification is fire-and-forget — POST still returns 202 even if notification fails", async () => {
-      const { makeTestApp, setupMockEnv } = await import("../e2e/helpers");
+      // makeTestApp/setupMockEnv imported statically above
       setupMockEnv();
       const app = makeTestApp();
 

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 import { html, raw } from "hono/html";
 import { type PageMeta, SITE_NAME, SITE_DESCRIPTION, BASE_URL, pageTitle, markdownAlternatePath } from "../../server/lib/page-meta";
 import { renderJsonLd, defaultCoreSchemas } from "../../server/lib/json-ld";

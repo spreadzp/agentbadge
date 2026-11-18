@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 /**
  * A2A v1.0 protocol surface (EPIC-203, SLICE-203-5).
  *

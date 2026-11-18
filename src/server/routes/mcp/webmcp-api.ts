@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 /**
  * WebMCP API routes — lightweight endpoints for WebMCP tools.
  *

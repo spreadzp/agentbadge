@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 /**
  * Marketplace API routes (EPIC-138, SLICE-138-3).
  *

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 // EPIC-140 (SLICE-140-20): scanner report client-side script (part 1 — helpers, pillar/gap/issue renderers).
 // Injected via raw() into the scanner CTA <script> block; kept verbatim for byte-identical output.
 export const SCANNER_SCRIPT_CORE = `

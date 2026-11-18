@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 /**
  * SLICE-153-4: venue admin console — /market/v/:slug/admin.
  *

@@ -91,7 +91,7 @@ describe("SLICE-84-3: ULID Task IDs", () => {
   describe("No fabricated consensus timestamps", () => {
     it("market.ts does not use Date.now() % 1_000_000_000 for consensusTimestamp", () => {
       const marketContent = fs.readFileSync(
-        path.resolve(__dirname, "../../src/server/routes/market.ts"),
+        path.resolve(__dirname, "../../src/server/routes/market/market.ts"),
         "utf-8",
       );
 
@@ -102,7 +102,7 @@ describe("SLICE-84-3: ULID Task IDs", () => {
 
     it("a2a.ts does not use Date.now() % 1_000_000_000 for consensusTimestamp", () => {
       const a2aContent = fs.readFileSync(
-        path.resolve(__dirname, "../../src/server/routes/a2a.ts"),
+        path.resolve(__dirname, "../../src/server/routes/a2a/a2a.ts"),
         "utf-8",
       );
 
@@ -112,7 +112,7 @@ describe("SLICE-84-3: ULID Task IDs", () => {
 
     it("market.ts does not fabricate consensusTimestamp from new Date(timestamp * 1000)", () => {
       const marketContent = fs.readFileSync(
-        path.resolve(__dirname, "../../src/server/routes/market.ts"),
+        path.resolve(__dirname, "../../src/server/routes/market/market.ts"),
         "utf-8",
       );
 

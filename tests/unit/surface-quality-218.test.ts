@@ -120,8 +120,8 @@ describe("SLICE-218-4: sitemap lastmod + off-topic pruning (F9, F10)", () => {
       expect(sitemap).not.toContain(`>${`https://agentbadge.xyz${p}`}<`);
       expect(sitemap).not.toContain(`loc>https://agentbadge.xyz${p}<`);
     }
-    const footer = readFileSync("src/views/footer.ts", "utf8");
-    const nav = readFileSync("src/views/layout.ts", "utf8");
+    const footer = readFileSync("src/views/chrome/footer.ts", "utf8");
+    const nav = readFileSync("src/views/chrome/layout.ts", "utf8");
     for (const p of OFF_TOPIC) {
       expect(footer).not.toContain(`href="${p}"`);
       expect(nav).not.toContain(`href="${p}"`);

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pre-existing oversized file; split deferred to a dedicated refactor */
 import type { RuleEngineResult } from "./rule-engine/rule-engine";
 import { RULE_DESCRIPTIONS, CATEGORY_DESCRIPTIONS } from "./rule-descriptions";
 import { runScoringEngine } from "./scoring/scoring-engine";
