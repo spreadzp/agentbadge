@@ -5,16 +5,16 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { getActiveTasks, getTaskById } from "@agentbadge/passport";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { srcAttribution } from "../middleware/src-attribution";
-import { BUDGET_STATUSES } from "../lib/machine-entry";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { srcAttribution } from "../../middleware/src-attribution";
+import { BUDGET_STATUSES } from "../../lib/machine-entry";
 import {
   publicTaskDetail,
   publicTaskStatus,
   publicTaskSummary,
   startHerePayload,
-} from "../lib/tasks/public-read";
+} from "../../lib/tasks/public-read";
 
 export const tasksReadRoutes = new Hono();
 

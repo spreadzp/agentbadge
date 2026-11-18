@@ -19,7 +19,7 @@ import {
   useMemoryBountyStoreForTesting,
   type BountyRecord,
 } from "../src/server/lib/bounties/store";
-import { createBountyRoutes } from "../src/server/routes/bounty-api";
+import { createBountyRoutes } from "../src/server/routes/bounty/bounty-api";
 
 const PASSPORT = "897230";
 

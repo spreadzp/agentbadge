@@ -15,9 +15,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { InMemoryCache } from "@agentbadge/cache";
 
-import { createBoardRoutes } from "../src/server/routes/board-api";
-import { createBoardReadRoutes } from "../src/server/routes/board-api-read";
-import { createBoardQaRoutes } from "../src/server/routes/board-api-qa";
+import { createBoardRoutes } from "../src/server/routes/board/board-api";
+import { createBoardReadRoutes } from "../src/server/routes/board/board-api-read";
+import { createBoardQaRoutes } from "../src/server/routes/board/board-api-qa";
 import { boardStore } from "../src/server/lib/board/store";
 import { useMemoryBoardStoreForTesting } from "../src/server/lib/board/json-store";
 import {

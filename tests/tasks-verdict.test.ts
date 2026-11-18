@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { getTaskById, marketClear, marketUpsert } from "@agentbadge/passport";
 import type { TaskWithVerifier } from "../src/server/lib/tasks/verdict";
-import { tasksWriteRoutes } from "../src/server/routes/tasks-write";
+import { tasksWriteRoutes } from "../src/server/routes/tasks/tasks-write";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
 import { setPlatformSignersForTesting } from "../src/server/lib/tasks/verdict";
 import {

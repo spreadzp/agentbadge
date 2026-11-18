@@ -12,17 +12,17 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { getTaskById, transitionTask } from "@agentbadge/passport";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { idempotentWrite, readIdempotencyKey } from "../lib/contract-guards";
-import { requireSigAuth } from "../lib/tasks/sig-auth";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { idempotentWrite, readIdempotencyKey } from "../../lib/contract-guards";
+import { requireSigAuth } from "../../lib/tasks/sig-auth";
 import {
   applyVerdict,
   checkVerifierIndependence,
   verdictBodySchema,
   violationToErrorCode,
-} from "../lib/tasks/verdict";
-import { TASK_VERDICT_X_EXAMPLES } from "./openapi-examples";
+} from "../../lib/tasks/verdict";
+import { TASK_VERDICT_X_EXAMPLES } from "../openapi-examples";
 
 export const tasksWriteRoutes = new Hono();
 

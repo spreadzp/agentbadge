@@ -7,11 +7,11 @@
 import { Hono } from "hono";
 import type { CacheProvider } from "@agentbadge/cache";
 
-import { dr, str } from "./venue/venue-api-helpers";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { tryGetCache } from "../lib/cache";
-import { boardStore } from "../lib/board/store";
+import { dr, str } from "../venue/venue-api-helpers";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { tryGetCache } from "../../lib/cache";
+import { boardStore } from "../../lib/board/store";
 import {
   canSeeSpec,
   publicCard,

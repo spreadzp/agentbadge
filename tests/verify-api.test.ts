@@ -27,7 +27,7 @@ import {
   createMemoryChainStore,
 } from "../src/server/lib/eaas/chain";
 import { createVerifyRoutes } from "../src/server/routes/verify-api";
-import { createBountyRoutes } from "../src/server/routes/bounty-api";
+import { createBountyRoutes } from "../src/server/routes/bounty/bounty-api";
 
 const CHAIN_ID = 5042002;
 const signer = createVerdictSigner(Wallet.createRandom().privateKey, CHAIN_ID);

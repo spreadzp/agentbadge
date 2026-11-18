@@ -15,22 +15,22 @@
 import { Hono, type Context } from "hono";
 import { isAddress } from "viem";
 
-import { dr, str } from "./venue/venue-api-helpers";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { tryGetCache } from "../lib/cache";
-import { createBoardCard } from "../lib/board/create";
-import { claimBoardCard, type BoardClaimDeps } from "../lib/board/claim";
+import { dr, str } from "../venue/venue-api-helpers";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { tryGetCache } from "../../lib/cache";
+import { createBoardCard } from "../../lib/board/create";
+import { claimBoardCard, type BoardClaimDeps } from "../../lib/board/claim";
 import {
   submitBoardReview,
   type BoardReviewDeps,
-} from "../lib/board/review";
-import { submitBoardWork } from "../lib/board/submit";
+} from "../../lib/board/review";
+import { submitBoardWork } from "../../lib/board/submit";
 import {
   BOARD_CLAIM_X_EXAMPLES,
   BOARD_SUBMIT_X_EXAMPLES,
-} from "./openapi-examples";
-import { cancelBoardCard } from "../lib/board/cancel";
+} from "../openapi-examples";
+import { cancelBoardCard } from "../../lib/board/cancel";
 import {
   denyPassport,
   denyRate,

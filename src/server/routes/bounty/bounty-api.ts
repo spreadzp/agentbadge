@@ -11,29 +11,29 @@
 import { Hono } from "hono";
 import { isAddress } from "viem";
 
-import { dr, str } from "./venue/venue-api-helpers";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { claimBounty, type ClaimDeps } from "../lib/bounties/claim";
+import { dr, str } from "../venue/venue-api-helpers";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { claimBounty, type ClaimDeps } from "../../lib/bounties/claim";
 import {
   submitBounty,
   type SubmitDeps,
   type SubmitRequest,
-} from "../lib/bounties/submit";
+} from "../../lib/bounties/submit";
 import {
   checkBriefAccess,
   createBounty,
   publicFeed,
   type BriefAccessDeps,
   type CreateBountyInput,
-} from "../lib/bounties/brief";
-import type { BountyStatus } from "../lib/bounties/lifecycle";
-import { getBounty, getOutcome } from "../lib/bounties/store";
-import { resolveVenueNetwork } from "../lib/venue/chain";
+} from "../../lib/bounties/brief";
+import type { BountyStatus } from "../../lib/bounties/lifecycle";
+import { getBounty, getOutcome } from "../../lib/bounties/store";
+import { resolveVenueNetwork } from "../../lib/venue/chain";
 import {
   fundBounty,
   type FundDeps,
-} from "../lib/bounties/fund";
+} from "../../lib/bounties/fund";
 
 interface AgentCtx {
   agentId: string;

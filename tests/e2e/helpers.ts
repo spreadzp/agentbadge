@@ -31,7 +31,7 @@ import { demandRoutes } from "../../src/server/routes/api/demand";
 import { demandGuideRoutes } from "../../src/server/routes/agent-guide/demand";
 import { agencyJsonRoutes } from "../../src/server/routes/agency-json";
 import { servicesRoutes } from "../../src/server/routes/services";
-import { createBoardPageRoutes } from "../../src/server/routes/board-page";
+import { createBoardPageRoutes } from "../../src/server/routes/board/board-page";
 import { createBoardGuideRoutes } from "../../src/server/routes/agent-guide/agent-guide-hire";
 import { bstockGuideRoutes } from "../../src/server/routes/bstock-guide";
 import { createShowcaseRoutes } from "../../src/server/routes/agent-readiness-showcase";

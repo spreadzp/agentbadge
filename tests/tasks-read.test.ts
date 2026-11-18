@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { marketClear, marketUpsert } from "@agentbadge/passport";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
-import { tasksReadRoutes } from "../src/server/routes/tasks-read";
+import { tasksReadRoutes } from "../src/server/routes/tasks/tasks-read";
 
 const app = new Hono().route("/", tasksReadRoutes);
 

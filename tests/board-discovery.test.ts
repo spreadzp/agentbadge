@@ -17,7 +17,7 @@ import { handleHttpToolCall, listTools } from "@agentbadge/mcp";
 import { useMemoryBoardStoreForTesting } from "../src/server/lib/board/json-store";
 import { boardStore } from "../src/server/lib/board/store";
 import { computeSpecHash } from "../src/server/lib/board/types";
-import { createBoardReadRoutes } from "../src/server/routes/board-api-read";
+import { createBoardReadRoutes } from "../src/server/routes/board/board-api-read";
 import { createBoardGuideRoutes } from "../src/server/routes/agent-guide/agent-guide-hire";
 import { registerBoardTools } from "../src/mcp/board-tools";
 import { buildAgentCard } from "../src/server/lib/agent-discovery";

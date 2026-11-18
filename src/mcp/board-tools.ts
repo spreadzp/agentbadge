@@ -12,7 +12,7 @@ import {
 } from "@agentbadge/mcp";
 
 import { boardStore } from "../server/lib/board/store";
-import { publicCard } from "../server/routes/board-api-helpers";
+import { publicCard } from "../server/routes/board/board-api-helpers";
 import { toTaskSnapshot } from "../server/lib/board/task-model";
 
 function getRegistry(ns?: NamespaceRegistry) {

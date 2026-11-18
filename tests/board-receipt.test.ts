@@ -31,7 +31,7 @@ import {
   RECEIPT_DOMAIN_NAME,
   type TaskReceipt,
 } from "../src/server/lib/board/task-receipt";
-import { createReceiptRoutes } from "../src/server/routes/board-api-receipt";
+import { createReceiptRoutes } from "../src/server/routes/board/board-api-receipt";
 import { ReceiptSchemaV1 } from "../src/server/lib/board/task-receipt-schema";
 
 const SPEC = "## Fix flaky bounty e2e\nRun bunx vitest run until green.";

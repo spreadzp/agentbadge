@@ -17,7 +17,7 @@ import {
 } from "../src/server/lib/bounties/store";
 import { computeSpecHash } from "../src/server/lib/board/types";
 import type { BoardCardRecord } from "../src/server/lib/board/types";
-import { createBoardPageRoutes } from "../src/server/routes/board-page";
+import { createBoardPageRoutes } from "../src/server/routes/board/board-page";
 
 const COLUMNS = [
   "todo",

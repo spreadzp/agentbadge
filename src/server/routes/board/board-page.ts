@@ -7,17 +7,17 @@
  */
 import { Hono } from "hono";
 
-import { dr, str } from "./venue/venue-api-helpers";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { boardStore } from "../lib/board/store";
-import { getBounty } from "../lib/bounties/store";
+import { dr, str } from "../venue/venue-api-helpers";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { boardStore } from "../../lib/board/store";
+import { getBounty } from "../../lib/bounties/store";
 import {
   renderBoardPage,
   renderBoardCardDetail,
   BOARD_COLUMNS,
-} from "../../views/board-page";
-import { Layout } from "../../views/layout";
+} from "../../../views/board-page";
+import { Layout } from "../../../views/layout";
 import {
   canSeeSpec,
   type AgentCtx,

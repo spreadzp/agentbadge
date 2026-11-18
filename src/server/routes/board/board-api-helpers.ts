@@ -6,9 +6,9 @@
 import type { Context } from "hono";
 import type { CacheProvider } from "@agentbadge/cache";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import type { BoardCardRecord } from "../lib/board/types";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import type { BoardCardRecord } from "../../lib/board/types";
 
 export interface AgentCtx {
   agentId: string;

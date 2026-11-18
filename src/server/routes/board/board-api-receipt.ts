@@ -11,14 +11,14 @@ import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import type { CacheProvider } from "@agentbadge/cache";
 
-import { dr } from "./venue/venue-api-helpers";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { tryGetCache } from "../lib/cache";
+import { dr } from "../venue/venue-api-helpers";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { tryGetCache } from "../../lib/cache";
 import {
   buildTaskReceipt,
   type BuildReceiptDeps,
-} from "../lib/board/task-receipt";
+} from "../../lib/board/task-receipt";
 
 const RECEIPT_TTL_SEC = 60 * 60; // immutable after DONE — long TTL is safe
 

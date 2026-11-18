@@ -14,24 +14,24 @@ import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
 import z from "zod";
 import { getTaskById, transitionTask } from "@agentbadge/passport";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { idempotentWrite, readIdempotencyKey } from "../lib/contract-guards";
-import { requireSigAuth } from "../lib/tasks/sig-auth";
-import { identitySet } from "../lib/tasks/verdict";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { idempotentWrite, readIdempotencyKey } from "../../lib/contract-guards";
+import { requireSigAuth } from "../../lib/tasks/sig-auth";
+import { identitySet } from "../../lib/tasks/verdict";
 import {
   addBid,
   addDeliverable,
   awardBodySchema,
   bidBodySchema,
   deliverableBodySchema,
-} from "../lib/tasks/bids";
+} from "../../lib/tasks/bids";
 import {
   TASK_AWARD_X_EXAMPLES,
   TASK_BID_X_EXAMPLES,
   TASK_DELIVERABLE_X_EXAMPLES,
-} from "./openapi-examples";
-import { hasActiveBid, markAwarded } from "../lib/tasks/bids";
+} from "../openapi-examples";
+import { hasActiveBid, markAwarded } from "../../lib/tasks/bids";
 
 export const tasksWriteFlowRoutes = new Hono();
 
