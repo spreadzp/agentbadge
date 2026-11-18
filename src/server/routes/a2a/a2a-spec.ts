@@ -41,6 +41,7 @@ import { getCache } from "../../lib/cache";
 import { getDatabase } from "../../lib/database";
 import { agentCard } from "../../lib/a2a-spec-card";
 import { getArcEventLogWriter } from "../../lib/fx-delta/arc-writer";
+import { getAgentCardManifest } from "../discovery/discovery";
 
 const A2A_SPEC_TAGS = ["A2A v1.0"];
 
@@ -207,6 +208,32 @@ a2aSpecRoutes.get(
     responses: { 200: { description: "Nonce + timestamp issued" } },
   }),
   forward,
+);
+
+a2aSpecRoutes.get(
+  "/",
+  describeRoute({
+    tags: A2A_SPEC_TAGS,
+    summary: "Canonical Agent Card (A2A v1.0)",
+    description:
+      "Same document as GET /.well-known/agent-card.json — served from " +
+      "the shared MANIFEST_REGISTRY pipeline (application/a2a+json). " +
+      "SLICE-234-28: GET /a2a was the top 404 signal (×185/7d).",
+    responses: {
+      200: { description: "Agent Card — `application/a2a+json`" },
+    },
+  }),
+  (c) => {
+    const m = getAgentCardManifest();
+    if (!m) return c.notFound();
+    return new Response(m.body, {
+      status: 200,
+      headers: {
+        "Content-Type": m.contentType,
+        "Cache-Control": `public, max-age=${m.cacheMaxAge}`,
+      },
+    });
+  },
 );
 
 a2aSpecRoutes.post(

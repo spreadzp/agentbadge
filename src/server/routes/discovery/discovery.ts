@@ -43,18 +43,19 @@ function defaultCollect(): DiscoverySources {
  */
 export function createDiscoveryRoutes(
   collect: () => DiscoverySources = defaultCollect,
+  cacheBox?: { current: Map<string, GeneratedManifest> | null },
 ): Hono {
   const routes = new Hono();
-  let cache: Map<string, GeneratedManifest> | null = null;
+  const box = cacheBox ?? { current: null };
 
   // SLICE-178-5: ?src=<registry> attribution on every manifest endpoint.
   routes.use(srcAttribution());
 
   const manifests = () => {
-    if (process.env.DISCOVERY_LIVE === "1" || cache === null) {
-      cache = generateAll(collect());
+    if (process.env.DISCOVERY_LIVE === "1" || box.current === null) {
+      box.current = generateAll(collect());
     }
-    return cache;
+    return box.current;
   };
 
   for (const entry of MANIFEST_REGISTRY) {
@@ -90,6 +91,24 @@ export function createDiscoveryRoutes(
 }
 
 /** Default singleton mounted by routes/index.ts. */
-export const discoveryManifestRoutes = createDiscoveryRoutes();
+const defaultCacheBox: { current: Map<string, GeneratedManifest> | null } = {
+  current: null,
+};
+export const discoveryManifestRoutes = createDiscoveryRoutes(
+  defaultCollect,
+  defaultCacheBox,
+);
+
+/**
+ * SLICE-234-28: canonical agent card for `GET /a2a` — shares the
+ * singleton's manifest cache, so the body is byte-identical to
+ * `GET /.well-known/agent-card.json` (single source, no drift).
+ */
+export function getAgentCardManifest(): GeneratedManifest | undefined {
+  if (process.env.DISCOVERY_LIVE === "1" || defaultCacheBox.current === null) {
+    defaultCacheBox.current = generateAll(defaultCollect());
+  }
+  return defaultCacheBox.current.get("/.well-known/agent-card.json");
+}
 
 export { enumeratePublicRoutes, MANIFEST_REGISTRY };
