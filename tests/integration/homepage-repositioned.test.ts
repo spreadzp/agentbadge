@@ -45,7 +45,7 @@ describe("SLICE-110-9: E2E tests for repositioned homepage", () => {
   it("contains agent-ready proof block", async () => {
     const res = await app.request("/");
     const html = await res.text();
-    expect(html).toContain("Agent-Ready Proof");
+    expect(html).toContain('id="agent-ready-proof"');
     expect(html).toContain("We built AgentBadge");
   });
 
@@ -95,7 +95,7 @@ describe("SLICE-110-9: E2E tests for repositioned homepage", () => {
     const heroIdx = html.indexOf('id="scan"');
     const proofIdx = html.indexOf("Immediate Proof");
     const flowIdx = html.indexOf("Conceptual Model");
-    const agentReadyIdx = html.indexOf("Agent-Ready Proof");
+    const agentReadyIdx = html.indexOf('id="agent-ready-proof"');
     expect(heroIdx).toBeLessThan(proofIdx);
     expect(proofIdx).toBeLessThan(flowIdx);
     expect(flowIdx).toBeLessThan(agentReadyIdx);

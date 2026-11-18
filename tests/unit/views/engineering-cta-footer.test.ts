@@ -20,9 +20,11 @@ describe("SLICE-46-8: Engineering CTA + Footer links", () => {
       expect(html).toMatch(/Need more than a score/i);
     });
 
-    it("contains link to /team", () => {
+    it("contains link to /about", () => {
+      // /team is a permanent 301 redirect to /about (SLICE-55-1);
+      // the CTA links directly to the target.
       const html = EngineeringCtaSection().toString();
-      expect(html).toContain('href="/team"');
+      expect(html).toContain('href="/about"');
     });
 
     it("contains link to /services", () => {
@@ -39,9 +41,9 @@ describe("SLICE-46-8: Engineering CTA + Footer links", () => {
   });
 
   describe("Footer() — Engineering links", () => {
-    it("contains link to /team", () => {
+    it("contains link to /about", () => {
       const html = Footer().toString();
-      expect(html).toContain('href="/team"');
+      expect(html).toContain('href="/about"');
     });
 
     it("contains link to /services", () => {

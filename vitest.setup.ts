@@ -1,9 +1,22 @@
 /// <reference types="node" />
 // Vitest global setup — set env vars for test environment
+// Prefer IPv4 for outbound test fetches — environments with broken IPv6
+// (dual-stack DNS resolves an unreachable AAAA first) make undici fetch
+// time out on live-integration suites (compliance-tool, mcp-openapi-parity).
+import { setDefaultResultOrder } from "node:dns";
+try {
+  setDefaultResultOrder("ipv4first");
+} catch {
+  // older Node without setDefaultResultOrder — ignore
+}
 // Disable DID signature auth middleware (EPIC-83) for unit/integration tests
 // Re-enable per-suite when testing auth behavior specifically
 process.env.DID_AUTH_MODE = "off";
 process.env.ALLOW_KEY_ENDPOINTS = "true";
+// Live Postgres suites (board-store, bounty-store, db-stores-*) gate on
+// DATABASE_ENABLED — without a running DB they hang on 30s timeouts.
+// Default off; run with DATABASE_ENABLED=true to opt in.
+process.env.DATABASE_ENABLED ??= "false";
 // SLICE-169-9: most suites exercise Hedera chain features — default the
 // gate ON for tests. Suites asserting disabled behavior unset it and
 // call resetConfigCache() (see tests/admin-revoke.test.ts).
@@ -15,28 +28,28 @@ if (process.env.PASSPORT_CHAIN_ENABLED === undefined) {
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 try {
-    const envPath = resolve(process.cwd(), ".env");
-    const envContent = readFileSync(envPath, "utf-8");
-    for (const line of envContent.split("\n")) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith("#")) continue;
-        const eqIdx = trimmed.indexOf("=");
-        if (eqIdx === -1) continue;
-        const key = trimmed.slice(0, eqIdx).trim();
-        let value = trimmed.slice(eqIdx + 1).trim();
-        // Strip matching surrounding quotes (dotenv semantics) —
-        // KEEPERHUB_API_KEY="kh_…" must validate as kh_-prefixed.
-        if (
-          value.length >= 2 &&
-          ((value.startsWith('"') && value.endsWith('"')) ||
-            (value.startsWith("'") && value.endsWith("'")))
-        ) {
-          value = value.slice(1, -1);
-        }
-        if (!process.env[key]) process.env[key] = value;
+  const envPath = resolve(process.cwd(), ".env");
+  const envContent = readFileSync(envPath, "utf-8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx === -1) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    let value = trimmed.slice(eqIdx + 1).trim();
+    // Strip matching surrounding quotes (dotenv semantics) —
+    // KEEPERHUB_API_KEY="kh_…" must validate as kh_-prefixed.
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1);
     }
+    if (!process.env[key]) process.env[key] = value;
+  }
 } catch {
-    // .env not found — skip
+  // .env not found — skip
 }
 
 // Placeholder values for the env vars getConfig() requires, so suites run in a

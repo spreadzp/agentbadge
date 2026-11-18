@@ -65,17 +65,17 @@ describe("SLICE-72-10: MCP Namespace unit tests", () => {
     expect(ns!.listTools().length).toBe(12);
   });
 
-  it("audit namespace has 29 tools (2 audit-catalog + 1 compliance + 26 parity)", () => {
+  it("audit namespace has 30 tools (2 audit-catalog + 1 compliance + 27 parity)", () => {
     const ns = getNamespace("audit");
     expect(ns).toBeDefined();
-    expect(ns!.listTools().length).toBe(29);
+    expect(ns!.listTools().length).toBe(30);
   });
 
-  it("all namespace has 65 tools (aggregator)", () => {
+  it("all namespace has 66 tools (aggregator)", () => {
     setupAllNamespaces();
     const ns = getNamespace("all");
     expect(ns).toBeDefined();
-    expect(ns!.listTools().length).toBe(65);
+    expect(ns!.listTools().length).toBe(66);
   });
 
   it("no tool appears in two namespaces (passport, market, discovery, audit are disjoint)", () => {
@@ -96,18 +96,18 @@ describe("SLICE-72-10: MCP Namespace unit tests", () => {
       }
     }
 
-    // 16 + 8 + 12 + 29 = 65 unique tools
-    expect(seen.size).toBe(65);
+    // 16 + 8 + 12 + 30 = 66 unique tools
+    expect(seen.size).toBe(66);
   });
 
-  it("total tools across namespaces equals 65 (no regression)", () => {
+  it("total tools across namespaces equals 66 (no regression)", () => {
     setupAllNamespaces();
     const nsNames = ["passport", "market", "discovery", "audit"] as const;
     let total = 0;
     for (const nsName of nsNames) {
       total += getNamespace(nsName)!.listTools().length;
     }
-    expect(total).toBe(65);
+    expect(total).toBe(66);
   });
 
   it("all namespace contains every tool from every other namespace", () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { VerificationPanel } from "../../src/views/marketplace-fragment";
+import { normalizeTask } from "../../src/server/lib/market-task";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
 
 function makeTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
@@ -21,7 +22,7 @@ function makeTask(overrides: Partial<CachedMarketTask> = {}): CachedMarketTask {
 describe("VerificationPanel", () => {
   it("returns empty when no verification data", () => {
     const task = makeTask({ status: "posted", verificationAttempts: 0, verifierType: "noop" });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toBe("");
   });
 
@@ -31,7 +32,7 @@ describe("VerificationPanel", () => {
       verificationAttempts: 1,
       verifierType: "datahub",
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("DataHub Verification");
     expect(result).toContain("passed");
   });
@@ -42,7 +43,7 @@ describe("VerificationPanel", () => {
       verificationAttempts: 2,
       verifierType: "datahub",
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("retrying");
     expect(result).toContain("2/3");
   });
@@ -53,7 +54,7 @@ describe("VerificationPanel", () => {
       verificationAttempts: 3,
       verifierType: "datahub",
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("failed");
   });
 
@@ -63,7 +64,7 @@ describe("VerificationPanel", () => {
       verificationAttempts: 2,
       verifierType: "datahub",
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("Attempts:");
     expect(result).toContain("2/3");
   });
@@ -74,7 +75,7 @@ describe("VerificationPanel", () => {
       verificationAttempts: 1,
       verifierType: "datahub",
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("Verifier:");
     expect(result).toContain("datahub");
   });
@@ -92,7 +93,7 @@ describe("VerificationPanel", () => {
       verifierType: "datahub",
       verificationReport: report,
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("mean_glucose");
     expect(result).toContain("✓");
     expect(result).toContain("correlation_check");
@@ -111,7 +112,7 @@ describe("VerificationPanel", () => {
       verifierType: "datahub",
       verificationReport: report,
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("Glossary Terms");
     expect(result).toContain("hyperglycemia");
     expect(result).toContain("hypoglycemia");
@@ -124,7 +125,7 @@ describe("VerificationPanel", () => {
       verifierType: "datahub",
       verificationReport: "All checks passed. Mean glucose in range.",
     });
-    const result = VerificationPanel(task).toString();
+    const result = VerificationPanel(normalizeTask(task)).toString();
     expect(result).toContain("All checks passed");
   });
 });

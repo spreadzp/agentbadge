@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { LandingLayout } from "../src/views/landing/layout";
 import { PageMeta } from "../src/server/lib/page-meta";
+import { PUBLIC_STATS } from "../src/server/lib/public-stats";
 import { landingJsonLd } from "../src/server/lib/json-ld";
 import { ReadinessHeroSection } from "../src/views/landing/sections/readiness-hero";
 import { ReadinessImmediateProofSection } from "../src/views/landing/sections/readiness-immediate-proof";
@@ -163,7 +164,7 @@ describe("SLICE-110-6: Section repositioning", () => {
     expect(html).toContain('id="scan"');
     expect(html).toContain("Immediate Proof");
     expect(html).toContain("Conceptual Model");
-    expect(html).toContain("Agent-Ready Proof");
+    expect(html).toContain('id="agent-ready-proof"');
     expect(html).toContain('id="pricing"');
   });
 
@@ -173,7 +174,7 @@ describe("SLICE-110-6: Section repositioning", () => {
     const proofIdx = html.indexOf("Immediate Proof");
     const flowIdx = html.indexOf("Conceptual Model");
     const howIdx = html.indexOf('id="how"');
-    const agentReadyIdx = html.indexOf("Agent-Ready Proof");
+    const agentReadyIdx = html.indexOf('id="agent-ready-proof"');
     expect(heroIdx).toBeLessThan(proofIdx);
     expect(proofIdx).toBeLessThan(flowIdx);
     expect(flowIdx).toBeLessThan(howIdx);
@@ -206,14 +207,14 @@ describe("SLICE-110-1: PageMeta & SEO metadata for /", () => {
     const meta = PageMeta["/"];
     expect(meta).toBeDefined();
     expect(meta.title).toContain("Agent Readiness Scanner");
-    expect(meta.title).toContain("AgentBadge");
+    expect(meta.title).toContain("Evidence-Based Scoring");
   });
 
-  it("PageMeta / description mentions 145+ checks and evidence-based scoring", () => {
+  it("PageMeta / description mentions rule count and evidence-based scoring", () => {
     const meta = PageMeta["/"];
-    expect(meta.description).toContain("145+");
-    expect(meta.description).toContain("evidence-based");
-    expect(meta.description).toContain("scan");
+    expect(meta.description).toContain(`${PUBLIC_STATS.rules}`);
+    expect(meta.description).toContain("evidence");
+    expect(meta.description).toContain("Scan");
   });
 
   it("PageMeta / path is /", () => {

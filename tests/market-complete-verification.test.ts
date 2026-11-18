@@ -34,6 +34,8 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   listTasks: vi.fn(),
   marketClear: vi.fn(),
   marketRebuildFromHcs: vi.fn(),
+  reserveTask: vi.fn(),
+  transitionTask: vi.fn(),
 }));
 
 vi.mock("../src/verifiers", async (importOriginal) => {
@@ -61,6 +63,8 @@ import {
   setEscrowStatus,
   returnTaskToMarket,
   updateTaskVerificationAttempts,
+  reserveTask,
+  transitionTask,
 } from "@agentbadge/passport";
 import { runVerification } from "../src/verifiers";
 import { marketRoutes } from "../src/server/routes/market";
@@ -72,6 +76,8 @@ const mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
 const mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
 const mockedReturnTaskToMarket = vi.mocked(returnTaskToMarket);
 const mockedUpdateTaskVerificationAttempts = vi.mocked(updateTaskVerificationAttempts);
+const mockedReserveTask = vi.mocked(reserveTask);
+const mockedTransitionTask = vi.mocked(transitionTask);
 const mockedSubmitTaskMessage = vi.mocked(submitTaskMessage);
 const mockedRunVerification = vi.mocked(runVerification);
 const mockedSignScheduledTransaction = vi.mocked(signScheduledTransaction);
@@ -138,6 +144,8 @@ beforeEach(() => {
   mockedSetEscrowStatus.mockReturnValue(true);
   mockedReturnTaskToMarket.mockReturnValue(true);
   mockedUpdateTaskVerificationAttempts.mockReturnValue(true);
+  mockedReserveTask.mockReturnValue({ ok: true, currentStatus: null });
+  mockedTransitionTask.mockReturnValue({ ok: true, currentStatus: null });
 });
 
 describe("SLICE-24-9: POST /market/tasks/:taskId/complete — verification gate + escrow", () => {
@@ -159,8 +167,9 @@ describe("SLICE-24-9: POST /market/tasks/:taskId/complete — verification gate 
     expect(mockedRunVerification).toHaveBeenCalledOnce();
     expect(mockedSignScheduledTransaction).toHaveBeenCalledWith(FAKE_SCHEDULE_ID, POSTER_PK);
     expect(mockedSetEscrowStatus).toHaveBeenCalledWith("task-complete-001", "released");
-    expect(mockedUpdateTaskStatus).toHaveBeenCalledWith(
+    expect(mockedTransitionTask).toHaveBeenCalledWith(
       "task-complete-001",
+      ["completing"],
       "completed",
       expect.objectContaining({ paymentTxId: "0.0.999@schedule-sign" }),
     );

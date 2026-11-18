@@ -5,6 +5,7 @@ import { Layout } from "../../src/views/layout";
 vi.mock("../../src/server/lib/chain-ui.js", () => ({
   chainDisplayName: vi.fn(() => "Hedera Testnet"),
   chainBadgeColor: vi.fn(() => "purple"),
+  chainBadgeIcon: vi.fn(() => ""),
   explorerName: vi.fn(() => "HashScan"),
   explorerTxUrl: vi.fn((txId: string) => `https://hashscan.io/testnet/tx/${txId}`),
   explorerNftUrl: vi.fn(() => ""),

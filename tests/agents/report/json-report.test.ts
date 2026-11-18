@@ -76,7 +76,7 @@ describe("generateJsonReport", () => {
     const { report, metadata } = makeReport();
     const json = generateJsonReport(report, metadata, CONFIG, TASK);
     const parsed: JsonReport = JSON.parse(json);
-    expect(parsed.correlations).toBeArray();
+    expect(parsed.correlations).toBeInstanceOf(Array);
     // All correlations should have required fields
     for (const c of parsed.correlations) {
       expect(c.columnX).toBeTruthy();
@@ -90,11 +90,11 @@ describe("generateJsonReport", () => {
     const { report, metadata } = makeReport();
     const json = generateJsonReport(report, metadata, CONFIG, TASK);
     const parsed: JsonReport = JSON.parse(json);
-    expect(parsed.riskFactors).toBeArray();
+    expect(parsed.riskFactors).toBeInstanceOf(Array);
     for (const rf of parsed.riskFactors) {
       expect(rf.factorName).toBeTruthy();
       expect(rf.severity).toMatch(/minimal|low|moderate|high/);
-      expect(rf.glossaryTerms).toBeArray();
+      expect(rf.glossaryTerms).toBeInstanceOf(Array);
       expect(rf.glossaryTerms.length).toBeGreaterThan(0);
     }
   });

@@ -432,6 +432,7 @@ Disallow: /ui/a2a/inbox/fragment`;
     const body = `User-agent: *
 Allow: /
 ${disallows}
+Crawl-delay: 1
 
 # Content-Signal (D-218-2): crawlers below may READ (allowlist answers
 # "who may fetch"), this signal answers "what may be done with content":
@@ -465,6 +466,8 @@ User-agent: Bytespider
 Disallow: /
 
 Sitemap: ${baseUrl}/sitemap.xml
+Sitemap: ${baseUrl}/ai-sitemap.xml
+Sitemap: https://agentbadge.gitbook.io/agentbadge-docs/sitemap.xml
 `;
     return new Response(body, {
       headers: {

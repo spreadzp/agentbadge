@@ -89,9 +89,8 @@ describe("submitA2AMessage (mock)", () => {
       timestamp: Math.floor(Date.now() / 1000),
     };
 
-    const txId = await submitA2AMessage(message);
-    expect(typeof txId).toBe("string");
-    expect(txId).toContain("@");
+    const receipt = await submitA2AMessage(message);
+    expect(receipt.txId).toContain("@");
   });
 
   it("persists message to mock topic store for cache rebuild", async () => {

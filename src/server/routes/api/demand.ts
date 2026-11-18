@@ -9,20 +9,24 @@ import { Hono } from "hono";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
 import { demandStore } from "../../services/demand-registry";
-import { createRateLimiter } from "../../middleware/rate-limit";
+import { createRateLimiter, MemoryStore } from "../../middleware/rate-limit";
 
 export const demandRoutes = new Hono();
 
 // ─── Rate limiting (unified, SLICE-86-3) ─────────────────
 
+// Own the store so tests can reset the bucket (sweep with a far-future
+// "now" deletes every entry whose resetAt <= now — i.e. all of them).
+const demandStore_ = new MemoryStore();
 const demandLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10,
   routes: ["/api/demand/request"],
+  store: demandStore_,
 });
 
 export function resetDemandRateLimits(): void {
-  // No-op — unified limiter handles its own store
+  demandStore_.sweep(Number.MAX_SAFE_INTEGER);
 }
 
 // ─── Validation ──────────────────────────────────────────

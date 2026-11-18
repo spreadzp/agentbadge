@@ -6,19 +6,22 @@ import { describe, it, expect } from "vitest";
 import { PricingPage } from "../src/views/pricing-page";
 
 describe("PricingPage — Stripe pay buttons", () => {
-  it("renders 'Pay with Card' button for each tier", () => {
+  it("renders a /checkout form for each tier", () => {
     const html = PricingPage().toString();
 
-    // Should have 4 "Pay with Card" buttons (one per tier)
-    const matches = html.match(/Pay with Card/g);
-    expect(matches).toBeTruthy();
-    expect(matches!.length).toBe(4);
+    // One unified checkout form per tier — method select (Card/USDC) +
+    // network select + Checkout submit posting to /checkout.
+    const forms = html.match(/data-checkout-form/g);
+    expect(forms).toBeTruthy();
+    expect(forms!.length).toBe(4);
+    const submits = html.match(/>\s*Checkout\s*</g);
+    expect(submits!.length).toBe(4);
   });
 
-  it("includes 'Powered by Stripe' text", () => {
+  it("mentions the Stripe card rail", () => {
     const html = PricingPage().toString();
 
-    expect(html).toContain("Powered by Stripe");
+    expect(html).toContain("Card via Stripe");
   });
 
   it("includes USD price alongside HBAR price", () => {
@@ -30,13 +33,13 @@ describe("PricingPage — Stripe pay buttons", () => {
     expect(html).toContain("HBAR");
   });
 
-  it("includes data-product-id attributes for Stripe checkout", () => {
+  it("includes product hidden inputs for checkout", () => {
     const html = PricingPage().toString();
 
-    expect(html).toContain("data-product-id=\"passport-bronze\"");
-    expect(html).toContain("data-product-id=\"passport-silver\"");
-    expect(html).toContain("data-product-id=\"passport-gold\"");
-    expect(html).toContain("data-product-id=\"passport-platinum\"");
+    expect(html).toContain('name="product" value="passport-bronze"');
+    expect(html).toContain('name="product" value="passport-silver"');
+    expect(html).toContain('name="product" value="passport-gold"');
+    expect(html).toContain('name="product" value="passport-platinum"');
   });
 
   it("loads the payment.js script", () => {

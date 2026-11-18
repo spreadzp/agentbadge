@@ -12,11 +12,15 @@ describe("Mirror Node query timeout — SLICE-7-8", () => {
 
   beforeEach(() => {
     process.env.HEDERA_NETWORK = "testnet";
+    // vitest.setup defaults MOCK_HEDERA=true — the service dispatcher would
+    // return mockMirror (null, no fetch) instead of the real mirror path.
+    process.env.MOCK_HEDERA = "false";
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
     delete process.env.MIRROR_NODE_TIMEOUT_MS;
+    process.env.MOCK_HEDERA = "true";
   });
 
   function makeSlowFetch(): typeof fetch {

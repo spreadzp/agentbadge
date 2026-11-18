@@ -78,7 +78,12 @@ describe("SLICE-101-2: buildProfile — service section", () => {
       scanReport: makeFixtureScanReport(),
       assertions: makeFixtureAssertions(),
     });
-    expect(profile.service.verified_at).toBe("2026-09-01T10:00:00Z");
+    const latest = makeFixtureAssertions()
+      .map((a) => a.verified_at ?? a.timestamp)
+      .filter(Boolean)
+      .sort()
+      .at(-1);
+    expect(profile.service.verified_at).toBe(latest);
   });
 
   it("sets scan_id from reportId", () => {

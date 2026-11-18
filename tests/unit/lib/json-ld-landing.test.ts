@@ -238,21 +238,21 @@ describe("SLICE-19-3: JSON-LD for landing (5 schemas)", () => {
       for (const item of items) {
         expect(item["@type"]).toBe("Offer");
         expect(item.price).toBeDefined();
-        expect(item.priceCurrency).toBe("HBAR");
+        expect(item.priceCurrency).toBe("USD");
         expect(item.name).toBeDefined();
         expect(item.description).toBeDefined();
         expect(item.url).toBeDefined();
       }
     });
 
-    it("OfferCatalog includes Bronze (10 HBAR), Silver (50), Gold (200), Platinum (500)", () => {
+    it("OfferCatalog includes Bronze ($9.99), Silver ($49.99), Gold ($199.99), Platinum ($499.99)", () => {
       const schema = softwareApplicationLd() as Record<string, unknown>;
       const items = (schema.offers as Record<string, unknown>).itemListElement as Record<string, unknown>[];
       const prices = items.map((i) => i.price);
-      expect(prices).toContain("10");
-      expect(prices).toContain("50");
-      expect(prices).toContain("200");
-      expect(prices).toContain("500");
+      expect(prices).toContain("9.99");
+      expect(prices).toContain("49.99");
+      expect(prices).toContain("199.99");
+      expect(prices).toContain("499.99");
     });
 
     it("each Offer has url pointing to /pricing", () => {

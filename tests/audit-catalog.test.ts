@@ -13,6 +13,7 @@ import { registerAuditCatalogTools, getAuditTrail } from "@agentbadge/mcp";
 import { handleHttpToolCall, listTools } from "@agentbadge/mcp";
 import { auditRoutes } from "../src/server/routes/audit";
 import { catalogRoutes } from "../src/server/routes/catalog";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery";
 import type { TopicMessage } from "@agentbadge/hedera-core";
 
 // ─── Catalog Module ───────────────────────────────────────────
@@ -193,6 +194,7 @@ describe("REST routes", () => {
     app = new Hono();
     app.route("/", auditRoutes);
     app.route("/", catalogRoutes);
+    app.route("/", discoveryManifestRoutes);
   });
 
   it("GET /catalog returns 4 tiers as JSON", async () => {
@@ -208,8 +210,8 @@ describe("REST routes", () => {
     const res = await app.request("/llms.txt");
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toContain("# Agent Passport on Hedera");
-    expect(text).toContain("/passport/request");
+    expect(text).toContain("# AgentBadge — Agent Readiness Scanner");
+    expect(text).toContain("/api/v1/services");
   });
 
   it("GET /audit returns all audit events", async () => {

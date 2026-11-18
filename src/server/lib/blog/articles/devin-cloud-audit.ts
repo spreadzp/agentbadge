@@ -156,12 +156,23 @@ export const article: BlogArticle = {
       id: "devin-audit-f4-confirmed",
       status: "VERIFIED",
       text: "Committed build artifacts and planning docs: agentbadge-report.json (854KB) and coverage/coverage-summary.json are in git, plus ~10 hackathon-era markdown docs in the repo root.",
-      evidence: [],
+      evidence: [
+        {
+          type: "github",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/agentbadge-report.json",
+        },
+      ],
     },
     {
       id: "devin-audit-methodology-caveat",
       status: "VERIFIED",
       text: "The agent's numeric counts (310 tsc errors, 272/830 failing test files, ~620 env-validation failures) come from a Node.js run and were not reproduced locally; the suite is Bun-native and the agent itself noted Bun's runtime breaks vi.mocked. Direction confirmed, exact numbers unverified.",
+      evidence: [
+        {
+          type: "github",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/agentbadge-report.json",
+        },
+      ],
     },
   ],
   externalLinks: [],

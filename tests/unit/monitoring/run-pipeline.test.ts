@@ -70,8 +70,8 @@ function makeFakeScanReport(overrides?: Partial<ScanReport>): ScanReport {
     floorReason: null,
     assertions: [],
     gaps: [
-      { gap_id: "gap-001", rule_id: "AB-001", type: "documentation", priority: "HIGH", title: "Missing llms.txt", hint: "Add llms.txt", status: "open", artifacts: [], fix_hint: "", effort_hint: "", estimated_cost: "" },
-      { gap_id: "gap-002", rule_id: "AB-003", type: "semantic", priority: "MEDIUM", title: "Missing error codes", hint: "Document error codes", status: "open", artifacts: [], fix_hint: "", effort_hint: "", estimated_cost: "" },
+      { gap_id: "gap-001", type: "documentation", priority: "HIGH", title: "Missing llms.txt", description: "Add llms.txt", priority_reason: "", related_rules: ["AB-001"], evidence_refs: [], fix_hint: "deterministic", fix_artifacts: [], pillar: "understandability", category: "documentation", frequency: 0 },
+      { gap_id: "gap-002", type: "semantic", priority: "MEDIUM", title: "Missing error codes", description: "Document error codes", priority_reason: "", related_rules: ["AB-003"], evidence_refs: [], fix_hint: "deterministic", fix_artifacts: [], pillar: "understandability", category: "documentation", frequency: 0 },
     ],
     gap_summary: {
       total: 2,
@@ -105,10 +105,9 @@ describe("SLICE-99-4: summarizeScanResult — pure function", () => {
   it("includes ASR when runtime present", () => {
     const report = makeFakeScanReport({
       runtime: {
-        asr: { success: 7, partial: 1, failed: 0, rate: 0.875 },
-        per_category: {},
+        asr: { total: 8, successful: 7, partial: 1, failed: 0, asr: 0.875, per_category: {} },
         traces: [],
-        conflicts_generated: [],
+        conflicts: [],
       } as never,
     });
     const summary = summarizeScanResult(report);

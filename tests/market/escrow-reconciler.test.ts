@@ -89,7 +89,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
         return { scheduleId: "0.0.555", scheduleTxId: "0.0.555-tx" };
       });
 
-      vi.mocked(submitTaskMessage).mockImplementation(async (msg: { type: string }) => {
+      vi.mocked(submitTaskMessage).mockImplementation((async (msg: { type: string }) => {
         if (msg.type === "task_escrow_created") {
           callOrder.push("submitTaskMessage:escrow");
           // At this point, scheduleId should already be in cache
@@ -97,7 +97,7 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
           expect(cached?.scheduleId).toBe("0.0.555");
         }
         return `tx-${msg.type}`;
-      });
+      }) as never);
 
       // Simulate claim flow
       reserveTask("wal-1", ["posted"], "claiming");
@@ -134,10 +134,10 @@ describe("SLICE-84-2: Escrow Reconciler & Failure Events", () => {
       vi.mocked(createScheduledTransfer).mockRejectedValueOnce(new Error("Hedera timeout"));
 
       const submittedMessages: string[] = [];
-      vi.mocked(submitTaskMessage).mockImplementation(async (msg: { type: string }) => {
+      vi.mocked(submitTaskMessage).mockImplementation((async (msg: { type: string }) => {
         submittedMessages.push(msg.type);
         return `tx-${msg.type}`;
-      });
+      }) as never);
 
       // Simulate claim flow up to escrow failure
       reserveTask("fail-1", ["posted"], "claiming");

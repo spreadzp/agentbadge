@@ -62,7 +62,9 @@ describe("ops auth (SLICE-252-3)", () => {
 describe("GET /api/ops/requests (SLICE-252-3)", () => {
   it("pull: state filter + payload+fingerprint (fpHash, no raw ip)", async () => {
     const { app } = mkApp();
-    await post(app, { kind: "k", payload: { prompt: "p1" } });
+    // kind must be a documented REQUEST_KINDS value — bogus kinds 400 at the
+    // schema edge (re-audit fix) and never reach the store.
+    await post(app, { kind: "question", payload: { prompt: "p1" } });
     const res = await app.request("/api/ops/requests?state=submitted", {
       headers: opsHeaders,
     });

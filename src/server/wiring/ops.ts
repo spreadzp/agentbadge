@@ -8,7 +8,10 @@ import type { Hono } from "hono";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { openAPIRouteHandler } from "hono-openapi";
+import {
+  openAPIRouteHandler,
+  type GenerateSpecOptions,
+} from "hono-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { stringify as yamlStringify } from "yaml";
 import { openApiConfig } from "../openapi";
@@ -48,7 +51,7 @@ export function wireStaticOps(app: Hono): void {
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     return next();
   }, serveStatic({ root: "./public" }));
-  app.use("/images/*", (c, next) => {
+  app.use("/images/*", async (c, next) => {
     // Legacy crawlers replay .jpeg/.png URLs that were replaced by .webp —
     // 301 to the webp twin when the requested file is gone but the webp exists.
     const p = c.req.path;
@@ -81,7 +84,8 @@ export function wireStaticOps(app: Hono): void {
 // call time, so this MUST run after every route mount (last wire before onError).
 export function wireOpenApi(app: Hono): void {
   const openApiSpecHandler = openAPIRouteHandler(app, {
-    documentation: openApiConfig,
+    documentation:
+      openApiConfig as unknown as GenerateSpecOptions["documentation"],
     exclude: ["/docs", "/api/specs", "/openapi.json", "/openapi.yaml", "/swagger.json", "/ui", /^\/ui\//, "/metrics", "/api/telemetry"],
     excludeMethods: ["OPTIONS"],
   });

@@ -52,6 +52,7 @@ function makeAssertion(overrides: Record<string, unknown> = {}): Assertion {
 
 function makeResult(assertions: Assertion[]): RuleEngineResult {
   return {
+    bundles: [],
     assertions,
     rulesetVersion: "1.0.0",
     scannedAt: "2025-06-10T00:00:00Z",

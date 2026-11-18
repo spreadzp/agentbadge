@@ -124,7 +124,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
   });
 
   describe("POST /mcp/audit", () => {
-    it("tools/list returns only 29 audit tools", async () => {
+    it("tools/list returns only 30 audit tools", async () => {
       const app = makeApp();
       const res = await app.request("/mcp/audit", {
         method: "POST",
@@ -133,12 +133,12 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       });
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.result.tools.length).toBe(29);
+      expect(data.result.tools.length).toBe(30);
     });
   });
 
   describe("POST /mcp (aggregator)", () => {
-    it("tools/list returns all 65 tools", async () => {
+    it("tools/list returns all 66 tools", async () => {
       const app = makeApp();
       const res = await app.request("/mcp", {
         method: "POST",
@@ -147,7 +147,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       });
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.result.tools.length).toBe(65);
+      expect(data.result.tools.length).toBe(66);
     });
   });
 
@@ -165,7 +165,7 @@ describe("SLICE-72-10: JSON-RPC namespace endpoints", () => {
       const res = await app.request("/mcp/audit/tools");
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.tools.length).toBe(29);
+      expect(data.tools.length).toBe(30);
     });
   });
 });

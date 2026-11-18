@@ -25,6 +25,8 @@ const view = (over: Partial<DeltaView> = {}): DeltaView => ({
   stale: false,
   inAlert: true,
   lastUpdateMs: 1000,
+  spreadPct: null,
+  bookDepth: null,
   ...over,
 });
 
@@ -119,7 +121,7 @@ describe("webhook", () => {
     const reg = new ChatRegistry();
     const bot = createBstockTelegramBot({
       registry: reg,
-      send: async () => {},
+      send: async () => { },
       engine: { listDeltas: () => [], getEvents: () => [] },
     });
     const app = new Hono();
@@ -132,7 +134,9 @@ describe("webhook", () => {
       }),
     });
     expect(res.status).toBe(200);
-    expect(reg.list()).toEqual([{ chatId: 777, username: "carol" }]);
+    // Registry hydrates from the shared ChatSubscriptionStore — entries
+    // from earlier tests may also be present; assert carol is registered.
+    expect(reg.list()).toContainEqual({ chatId: 777, username: "carol" });
   });
 
   it("/digest replies with the digest to that chat", async () => {

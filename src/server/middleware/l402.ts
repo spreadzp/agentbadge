@@ -151,6 +151,14 @@ function verifyL402Auth(
 
 export type L402Mode = "disabled" | "test" | "production";
 
+declare module "hono" {
+  interface ContextVariableMap {
+    /** Set once a valid L402 Lightning payment authorized this request —
+     *  lets later payment gates on the same route skip their challenge. */
+    l402Paid: boolean;
+  }
+}
+
 /**
  * SLICE-83-4: Resolve L402 mode from config + env.
  *
@@ -223,6 +231,9 @@ export function l402PaymentMiddleware(config: L402Config): MiddlewareHandler {
     // If L402 auth header present, verify it
     if (authHeader && authHeader.startsWith("L402 ")) {
       if (verifyL402Auth(authHeader, rootKey, testMode)) {
+        // Payment rails are alternatives: a satisfied L402 payment must not be
+        // re-challenged by the x402/MPP gates mounted later on the same route.
+        c.set("l402Paid", true);
         await next();
         return;
       }

@@ -115,7 +115,7 @@ describe("SLICE-19-2: Routing — landing.ts + /dashboard", () => {
 
     it('"/" description mentions agent readiness scanning', () => {
       expect(PageMeta["/"].description).toContain("agent readiness");
-      expect(PageMeta["/"].description).toContain("scan");
+      expect(PageMeta["/"].description.toLowerCase()).toContain("scan");
     });
   });
 
@@ -127,9 +127,9 @@ describe("SLICE-19-2: Routing — landing.ts + /dashboard", () => {
       expect(entry!.priority).toBe("1.0");
     });
 
-    it('contains "/dashboard"', () => {
+    it('does not include "/dashboard" (app page, not SEO)', () => {
       const entry = PUBLIC_PAGES.find((p) => p.path === "/dashboard");
-      expect(entry).toBeDefined();
+      expect(entry).toBeUndefined();
     });
   });
 

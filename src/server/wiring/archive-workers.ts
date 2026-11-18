@@ -56,7 +56,11 @@ export class InMemoryArchiveCursorFallback implements ArchiveCursorFacade {
 
   async commit(
     stream: string,
-    u: { throughAt: bigint },
+    u: {
+      throughAt: bigint;
+      messageId?: number | bigint | null;
+      note?: string | null;
+    },
   ): Promise<void> {
     this.rows.set(stream, u.throughAt);
   }

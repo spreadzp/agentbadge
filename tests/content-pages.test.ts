@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { contentPageRoutes } from "../src/server/routes/content-pages";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { FaqPage, FAQ_ENTRIES, getFaqEntries } from "../src/views/faq-page";
+import { FaqPage, getFaqEntries } from "../src/views/faq-page";
 import { UseCasesPage, getUseCases } from "../src/views/use-cases-page";
 import { AboutPage } from "../src/views/about-page";
 import { PricingPage } from "../src/views/pricing-page";
@@ -22,10 +22,10 @@ function allFaqContent(): string {
 
 describe("FaqPage unit", () => {
   it("renders >= 8 Q&A pairs in raw HTML (page 1)", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
     // Count <details> elements = Q&A pairs on page 1
     const detailsCount = (html.match(/<details/g) || []).length;
-    expect(detailsCount).toBe(8);
+    expect(detailsCount).toBe(getFaqEntries().length);
   });
 
   it("includes all question texts in FAQ entries", () => {
@@ -77,7 +77,7 @@ describe("FaqPage unit", () => {
 
 describe("FaqPage SLICE-105-1: Core scanner EPIC Q&A", () => {
   it("has >= 26 Q&A pairs (16 original + 10 new)", () => {
-    expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(26);
+    expect(getFaqEntries().length).toBeGreaterThanOrEqual(26);
   });
 
   it("includes four scoring pillars question", () => {
@@ -201,7 +201,7 @@ describe("FaqPage SLICE-105-1: Core scanner EPIC Q&A", () => {
 
 describe("FaqPage SLICE-105-2: Platform EPIC Q&A", () => {
   it("has >= 34 Q&A pairs (26 from SLICE-105-1 + 8 new)", () => {
-    expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(34);
+    expect(getFaqEntries().length).toBeGreaterThanOrEqual(34);
   });
 
   it("includes ChainAdapter question", () => {
@@ -285,7 +285,7 @@ describe("FaqPage SLICE-105-2: Platform EPIC Q&A", () => {
 
 describe("FaqPage SLICE-105-3: Blog article Q&A", () => {
   it("has >= 44 Q&A pairs (34 from SLICE-105-2 + 10 new)", () => {
-    expect(FAQ_ENTRIES.length).toBeGreaterThanOrEqual(44);
+    expect(getFaqEntries().length).toBeGreaterThanOrEqual(44);
   });
 
   it("includes Agent Readiness definition question", () => {
@@ -392,122 +392,49 @@ describe("FaqPage SLICE-105-3: Blog article Q&A", () => {
   });
 });
 
-// ─── Unit: FAQ SLICE-105-4 — Pagination ───────────────────────
+// ─── Unit: FAQ single-page contract (post-140-20 split) ─────
 
-describe("FaqPage SLICE-105-4: Pagination", () => {
-  it("exports FAQ_PER_PAGE = 8", async () => {
-    const mod = await import("../src/views/faq-page");
-    expect(mod.FAQ_PER_PAGE).toBe(8);
+describe("FaqPage: single-page rendering", () => {
+  it("renders every FAQ entry as <details> on one page", () => {
+    const html = FaqPage(getFaqEntries(), []).toString();
+    const detailsCount = (html.match(/<details/g) || []).length;
+    expect(detailsCount).toBe(getFaqEntries().length);
   });
 
-  it("paginateFaqEntries returns correct meta for page 1", async () => {
-    const mod = await import("../src/views/faq-page");
-    const allEntries = mod.getFaqEntries();
-    const { items, meta } = mod.paginateFaqEntries(allEntries, 1);
-    expect(meta.currentPage).toBe(1);
-    expect(meta.totalArticles).toBe(allEntries.length);
-    expect(meta.totalPages).toBe(Math.ceil(allEntries.length / 8));
-    expect(items.length).toBe(8);
-    expect(meta.hasPrev).toBe(false);
-    expect(meta.hasNext).toBe(true);
-  });
-
-  it("paginateFaqEntries returns correct meta for last page", async () => {
-    const mod = await import("../src/views/faq-page");
-    const allEntries = mod.getFaqEntries();
-    const totalPages = Math.ceil(allEntries.length / 8);
-    const { items, meta } = mod.paginateFaqEntries(allEntries, totalPages);
-    expect(meta.currentPage).toBe(totalPages);
-    expect(meta.hasNext).toBe(false);
-    expect(meta.hasPrev).toBe(true);
-    expect(items.length).toBe(allEntries.length - (totalPages - 1) * 8);
-  });
-
-  it("paginateFaqEntries clamps invalid page values", async () => {
-    const mod = await import("../src/views/faq-page");
-    const allEntries = mod.getFaqEntries();
-    const totalPages = Math.ceil(allEntries.length / 8);
-    const { meta: metaZero } = mod.paginateFaqEntries(allEntries, 0);
-    expect(metaZero.currentPage).toBe(1);
-    const { meta: metaNeg } = mod.paginateFaqEntries(allEntries, -5);
-    expect(metaNeg.currentPage).toBe(1);
-    const { meta: metaHuge } = mod.paginateFaqEntries(allEntries, 9999);
-    expect(metaHuge.currentPage).toBe(totalPages);
-    const { meta: metaUndef } = mod.paginateFaqEntries(allEntries, undefined);
-    expect(metaUndef.currentPage).toBe(1);
-    const { meta: metaNaN } = mod.paginateFaqEntries(allEntries, NaN);
-    expect(metaNaN.currentPage).toBe(1);
-  });
-
-  it("FaqPage renders pagination nav with page links", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain('aria-label="Pagination"');
-    expect(html).toContain("/faq?page=");
-  });
-
-  it("FaqPage renders prev/next buttons", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain("← Prev");
-    expect(html).toContain("Next →");
-  });
-
-  it("GET /faq returns page 1 with 8 Q&A items", async () => {
+  it("GET /faq renders the full single-page FAQ", async () => {
     const res = await app.request("/faq");
     const html = await res.text();
     expect(html).toContain("Frequently Asked Questions");
-    // Should contain pagination
-    expect(html).toContain('aria-label="Pagination"');
+    const detailsCount = (html.match(/<details/g) || []).length;
+    expect(detailsCount).toBe(getFaqEntries().length);
   });
 
-  it("GET /faq?page=2 returns second page", async () => {
-    const res = await app.request("/faq?page=2");
-    const html = await res.text();
-    expect(html).toContain('aria-label="Pagination"');
-    // Page 1 link is /faq (not /faq?page=1), matching blog pattern
-    expect(html).toContain('href="/faq"');
-    expect(html).toContain("/faq?page=3");
-  });
-
-  it("GET /faq?page=0 clamps to page 1", async () => {
-    const res = await app.request("/faq?page=0");
-    expect(res.status).toBe(200);
-    const html = await res.text();
-    expect(html).toContain('aria-current="page"');
-  });
-
-  it("GET /faq?page=9999 clamps to last page", async () => {
-    const res = await app.request("/faq?page=9999");
-    expect(res.status).toBe(200);
-    const html = await res.text();
-    expect(html).toContain('aria-label="Pagination"');
-  });
-
-  it("canonical URL is /faq for page 1", async () => {
+  it("GET /faq canonical is /faq (no ?page= variants)", async () => {
     const res = await app.request("/faq");
     const html = await res.text();
-    expect(html).toContain('<link rel="canonical" href="');
-    // Should contain /faq without ?page=
     const canonicalMatch = html.match(/rel="canonical" href="([^"]+)"/);
     expect(canonicalMatch).toBeDefined();
     expect(canonicalMatch![1]).toContain("/faq");
     expect(canonicalMatch![1]).not.toContain("?page=");
   });
 
-  it("canonical URL is /faq?page=N for page > 1", async () => {
-    const res = await app.request("/faq?page=2");
-    const html = await res.text();
-    const canonicalMatch = html.match(/rel="canonical" href="([^"]+)"/);
-    expect(canonicalMatch).toBeDefined();
-    expect(canonicalMatch![1]).toContain("/faq?page=2");
+  it("?page= param is ignored — same single-page content", async () => {
+    const res1 = await app.request("/faq");
+    const res2 = await app.request("/faq?page=2");
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    expect(await res2.text()).toBe(await res1.text());
   });
 
-  it("JSON-LD FAQPage contains only current page Q&A pairs", async () => {
-    const mod = await import("../src/views/faq-page");
-    const allEntries = mod.getFaqEntries();
-    const { items } = mod.paginateFaqEntries(allEntries, 1);
-    // JSON-LD should only have items from page 1, not all entries
-    expect(items.length).toBe(8);
-    expect(items.length).toBeLessThan(allEntries.length);
+  it("JSON-LD FAQPage contains all entries", async () => {
+    const res = await app.request("/faq");
+    const html = await res.text();
+    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    expect(match).not.toBeNull();
+    const schemas = JSON.parse(match![1]);
+    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    expect(faqSchema).toBeDefined();
+    expect(faqSchema.mainEntity.length).toBe(getFaqEntries().length);
   });
 });
 
@@ -525,7 +452,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   it("page 1 contains brand question 'What is AgentBadge?'", async () => {
     const mod = await import("../src/views/faq-page");
     const allEntries = mod.getFaqEntries();
-    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const items = allEntries;
     const questions = items.map((qa) => qa.question);
     expect(questions).toContain("What is AgentBadge?");
   });
@@ -533,7 +460,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   it("page 1 contains brand question 'What is AgentBadge NOT?'", async () => {
     const mod = await import("../src/views/faq-page");
     const allEntries = mod.getFaqEntries();
-    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const items = allEntries;
     const questions = items.map((qa) => qa.question);
     expect(questions).toContain("What is AgentBadge NOT?");
   });
@@ -541,7 +468,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   it("page 1 contains service question 'What does it cost?'", async () => {
     const mod = await import("../src/views/faq-page");
     const allEntries = mod.getFaqEntries();
-    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const items = allEntries;
     const questions = items.map((qa) => qa.question);
     expect(questions).toContain("What does it cost?");
   });
@@ -549,7 +476,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   it("page 1 contains quick-win question 'How do I integrate via MCP?'", async () => {
     const mod = await import("../src/views/faq-page");
     const allEntries = mod.getFaqEntries();
-    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const items = allEntries;
     const questions = items.map((qa) => qa.question);
     expect(questions).toContain("How do I integrate via MCP?");
   });
@@ -557,61 +484,53 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
   it("page 1 contains quick-win question 'Is this on testnet or mainnet?'", async () => {
     const mod = await import("../src/views/faq-page");
     const allEntries = mod.getFaqEntries();
-    const { items } = mod.paginateFaqEntries(allEntries, 1);
+    const items = allEntries;
     const questions = items.map((qa) => qa.question);
     expect(questions).toContain("Is this on testnet or mainnet?");
   });
 
-  it("page 1 does NOT contain deep concept questions", async () => {
+  it("includes deep concept questions on the single page", async () => {
     const mod = await import("../src/views/faq-page");
-    const allEntries = mod.getFaqEntries();
-    const { items } = mod.paginateFaqEntries(allEntries, 1);
-    const questions = items.map((qa) => qa.question);
-    expect(questions).not.toContain("What is an ExecutionTrace in AgentBadge's runtime testing?");
-    expect(questions).not.toContain("What is Agent Success Rate (ASR) in AgentBadge?");
-    expect(questions).not.toContain("What is the difference between SEO and GEO?");
+    const questions = mod.getFaqEntries().map((qa) => qa.question);
+    expect(questions).toContain("What is an ExecutionTrace in AgentBadge's runtime testing?");
+    expect(questions).toContain("What is Agent Success Rate (ASR) in AgentBadge?");
+    expect(questions).toContain("What is the difference between SEO and GEO?");
   });
 
   it("renders agent resource footer with llms.txt link", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
     expect(html).toContain('href="/llms.txt"');
   });
 
   it("renders agent resource footer with llms-full.txt link", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
     expect(html).toContain('href="/llms-full.txt"');
   });
 
   it("renders agent resource footer with agent-guide link", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
     expect(html).toContain('href="/agent-guide"');
   });
 
   it("renders agent resource footer with sitemap.xml link", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
     expect(html).toContain('href="/sitemap.xml"');
   });
 
   it("renders agent resource footer with ai-plugin.json link", () => {
-    const html = FaqPage().toString();
-    expect(html).toContain('href="/.well-known/ai-plugin.json"');
+    const html = FaqPage(getFaqEntries(), []).toString();
+    expect(html).toContain('href="/.well-known/agent-card.json"');
   });
 
   it("renders agent resource footer with blog link", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
     expect(html).toContain('href="/blog"');
   });
 
-  it("agent resource footer appears on every page", async () => {
-    const mod = await import("../src/views/faq-page");
-    const allEntries = mod.getFaqEntries();
-    const totalPages = Math.ceil(allEntries.length / 8);
-    for (let p = 1; p <= totalPages; p++) {
-      const { items, meta } = mod.paginateFaqEntries(allEntries, p);
-      const html = FaqPage(items, meta, []).toString();
-      expect(html).toContain('href="/llms.txt"');
-      expect(html).toContain('href="/agent-guide"');
-    }
+  it("agent resource footer renders on the single page", () => {
+    const html = FaqPage(getFaqEntries(), []).toString();
+    expect(html).toContain('href="/llms.txt"');
+    expect(html).toContain('href="/agent-guide"');
   });
 
   it("GET /faq includes agent resource footer", async () => {
@@ -619,7 +538,7 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
     const html = await res.text();
     expect(html).toContain('href="/llms.txt"');
     expect(html).toContain('href="/llms-full.txt"');
-    expect(html).toContain('href="/.well-known/ai-plugin.json"');
+    expect(html).toContain('href="/.well-known/agent-card.json"');
   });
 
   it("GET /faq?page=2 includes agent resource footer", async () => {
@@ -632,121 +551,53 @@ describe("FaqPage SLICE-105-5: Content + Pagination UI", () => {
 
 // ─── SLICE-105-6: Pagination & JSON-LD Verification ──────────
 
-describe("SLICE-105-6: Pagination integration tests", () => {
-  it("GET /faq?page=-1 clamps to page 1", async () => {
-    const res = await app.request("/faq?page=-1");
-    expect(res.status).toBe(200);
-    const html = await res.text();
-    // Page 1 should be marked as current
-    const currentMatch = html.match(/aria-current="page"[^>]*>.*?(\d+)</s);
-    expect(currentMatch).toBeDefined();
-    expect(currentMatch![1]).toBe("1");
+describe("SLICE-105-6: FAQ integration (single-page)", () => {
+  it("GET /faq?page=N returns identical single-page content", async () => {
+    for (const page of ["-1", "0", "abc", "2", "9999"]) {
+      const res = await app.request(`/faq?page=${page}`);
+      expect(res.status).toBe(200);
+    }
+    const base = await (await app.request("/faq")).text();
+    const paged = await (await app.request("/faq?page=2")).text();
+    expect(paged).toBe(base);
   });
 
-  it("GET /faq?page=abc treats as page 1", async () => {
-    const res = await app.request("/faq?page=abc");
-    expect(res.status).toBe(200);
-    const html = await res.text();
-    const currentMatch = html.match(/aria-current="page"[^>]*>.*?(\d+)</s);
-    expect(currentMatch).toBeDefined();
-    expect(currentMatch![1]).toBe("1");
-  });
-
-  it("GET /faq?page=1 has no active prev button (disabled)", async () => {
+  it("GET /faq renders all Q&A pairs in one response", async () => {
     const res = await app.request("/faq");
     const html = await res.text();
-    // Prev button should be disabled (aria-disabled="true")
-    expect(html).toContain('aria-disabled="true"');
-    // Should NOT have rel="prev" on page 1
-    expect(html).not.toContain('rel="prev"');
-  });
-
-  it("GET /faq?page=last has no active next button (disabled)", async () => {
-    const mod = await import("../src/views/faq-page");
-    const allEntries = mod.getFaqEntries();
-    const totalPages = Math.ceil(allEntries.length / mod.FAQ_PER_PAGE);
-    const res = await app.request(`/faq?page=${totalPages}`);
-    const html = await res.text();
-    // Next button should be disabled on last page
-    expect(html).toContain('aria-disabled="true"');
-    // Should NOT have rel="next" on last page
-    expect(html).not.toContain('rel="next"');
-  });
-
-  it("GET /faq?page=2 returns different Q&A pairs than page 1", async () => {
-    const res1 = await app.request("/faq");
-    const html1 = await res1.text();
-    const res2 = await app.request("/faq?page=2");
-    const html2 = await res2.text();
-    // Extract first question from each page
-    const q1Match = html1.match(/<summary[^>]*>\s*<span>([^<]+)<\/span>/);
-    const q2Match = html2.match(/<summary[^>]*>\s*<span>([^<]+)<\/span>/);
-    expect(q1Match).toBeDefined();
-    expect(q2Match).toBeDefined();
-    expect(q1Match![1]).not.toBe(q2Match![1]);
-  });
-
-  it("GET /faq includes pagination nav when totalPages > 1", async () => {
-    const res = await app.request("/faq");
-    const html = await res.text();
-    expect(html).toContain('aria-label="Pagination"');
-    // Should have page number links
-    expect(html).toContain('aria-current="page"');
+    const detailsCount = (html.match(/<details/g) || []).length;
+    expect(detailsCount).toBe(getFaqEntries().length);
   });
 });
 
-describe("SLICE-105-6: JSON-LD per-page verification", () => {
-  it("FAQPage schema present on page 1 with datePublished and dateModified", async () => {
+describe("SLICE-105-6: JSON-LD verification", () => {
+  const faqJsonLd = async () => {
     const res = await app.request("/faq");
     const html = await res.text();
     const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
     expect(match).not.toBeNull();
     const schemas = JSON.parse(match![1]);
-    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    return schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+  };
+
+  it("FAQPage schema has datePublished and dateModified", async () => {
+    const faqSchema = await faqJsonLd();
     expect(faqSchema).toBeDefined();
     expect(faqSchema.datePublished).toBeDefined();
     expect(faqSchema.dateModified).toBeDefined();
   });
 
-  it("FAQPage schema present on page 2 with datePublished and dateModified", async () => {
-    const res = await app.request("/faq?page=2");
-    const html = await res.text();
-    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
-    expect(match).not.toBeNull();
-    const schemas = JSON.parse(match![1]);
-    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
-    expect(faqSchema).toBeDefined();
-    expect(faqSchema.datePublished).toBeDefined();
-    expect(faqSchema.dateModified).toBeDefined();
-  });
-
-  it("mainEntity count matches <details> count on page 1", async () => {
+  it("mainEntity count matches <details> count", async () => {
     const res = await app.request("/faq");
     const html = await res.text();
-    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
-    const schemas = JSON.parse(match![1]);
-    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+    const faqSchema = await faqJsonLd();
     const detailsCount = (html.match(/<details/g) || []).length;
     expect(faqSchema.mainEntity.length).toBe(detailsCount);
-    expect(faqSchema.mainEntity.length).toBe(8);
+    expect(faqSchema.mainEntity.length).toBe(getFaqEntries().length);
   });
 
-  it("mainEntity count matches <details> count on page 2", async () => {
-    const res = await app.request("/faq?page=2");
-    const html = await res.text();
-    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
-    const schemas = JSON.parse(match![1]);
-    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
-    const detailsCount = (html.match(/<details/g) || []).length;
-    expect(faqSchema.mainEntity.length).toBe(detailsCount);
-  });
-
-  it("each Question has name and acceptedAnswer.text on page 1", async () => {
-    const res = await app.request("/faq");
-    const html = await res.text();
-    const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
-    const schemas = JSON.parse(match![1]);
-    const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
+  it("each Question has name and acceptedAnswer.text", async () => {
+    const faqSchema = await faqJsonLd();
     for (const entity of faqSchema.mainEntity) {
       expect(entity["@type"]).toBe("Question");
       expect(entity.name).toBeDefined();
@@ -758,24 +609,6 @@ describe("SLICE-105-6: JSON-LD per-page verification", () => {
       expect(typeof entity.acceptedAnswer.text).toBe("string");
       expect(entity.acceptedAnswer.text.length).toBeGreaterThan(0);
     }
-  });
-
-  it("page 1 and page 2 JSON-LD contain different Q&A pairs", async () => {
-    const res1 = await app.request("/faq");
-    const html1 = await res1.text();
-    const res2 = await app.request("/faq?page=2");
-    const html2 = await res2.text();
-    const match1 = html1.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
-    const match2 = html2.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
-    const schemas1 = JSON.parse(match1![1]);
-    const schemas2 = JSON.parse(match2![1]);
-    const faq1 = schemas1.find((s: { "@type": string }) => s["@type"] === "FAQPage");
-    const faq2 = schemas2.find((s: { "@type": string }) => s["@type"] === "FAQPage");
-    const names1 = faq1.mainEntity.map((e: { name: string }) => e.name);
-    const names2 = faq2.mainEntity.map((e: { name: string }) => e.name);
-    // No overlap between page 1 and page 2 questions
-    const overlap = names1.filter((n: string) => names2.includes(n));
-    expect(overlap.length).toBe(0);
   });
 });
 
@@ -850,7 +683,7 @@ describe("Content pages integration", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     const detailsCount = (html.match(/<details/g) || []).length;
-    expect(detailsCount).toBe(8);
+    expect(detailsCount).toBe(getFaqEntries().length);
   });
 
   it("GET /faq includes FAQPage JSON-LD with matching Question count", async () => {
@@ -863,8 +696,8 @@ describe("Content pages integration", () => {
     const schemas = JSON.parse(match![1]);
     const faqSchema = schemas.find((s: { "@type": string }) => s["@type"] === "FAQPage");
     expect(faqSchema).toBeDefined();
-    // JSON-LD should only contain current page's Q&A (8 per page)
-    expect(faqSchema.mainEntity.length).toBe(8);
+    // JSON-LD lists every FAQ entry (single-page render)
+    expect(faqSchema.mainEntity.length).toBe(getFaqEntries().length);
   });
 
   it("GET /faq has unique title and meta description", async () => {
@@ -988,9 +821,9 @@ describe("PricingPage unit", () => {
   it("includes upgrade pricing table", () => {
     const html = PricingPage().toString();
     expect(html).toContain("Upgrade");
-    expect(html).toContain("+40");
-    expect(html).toContain("+150");
-    expect(html).toContain("+300");
+    expect(html).toContain("+$40");
+    expect(html).toContain("+$150");
+    expect(html).toContain("+$300");
   });
 
   it("includes comparison table", () => {
@@ -1086,16 +919,16 @@ describe("Epic 20: Static content pages integration", () => {
     expect(html).not.toContain("Loading");
   });
 
-  it("GET /about includes Article JSON-LD", async () => {
+  it("GET /about includes AboutPage JSON-LD", async () => {
     const res = await app.request("/about");
     const html = await res.text();
     expect(html).toContain("application/ld+json");
     const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
     expect(match).not.toBeNull();
     const schemas = JSON.parse(match![1]);
-    const article = schemas.find((s: { "@type": string }) => s["@type"] === "Article");
-    expect(article).toBeDefined();
-    expect(article.headline).toContain("AgentBadge");
+    const aboutPage = schemas.find((s: { "@type": string }) => s["@type"] === "AboutPage");
+    expect(aboutPage).toBeDefined();
+    expect(aboutPage.name).toContain("AgentBadge");
   });
 
   it("GET /pricing returns 200 with tier prices", async () => {
@@ -1108,15 +941,15 @@ describe("Epic 20: Static content pages integration", () => {
     expect(html).not.toContain("Loading");
   });
 
-  it("GET /pricing includes Article JSON-LD", async () => {
+  it("GET /pricing includes WebPage JSON-LD", async () => {
     const res = await app.request("/pricing");
     const html = await res.text();
     const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
     expect(match).not.toBeNull();
     const schemas = JSON.parse(match![1]);
-    const article = schemas.find((s: { "@type": string }) => s["@type"] === "Article");
-    expect(article).toBeDefined();
-    expect(article.headline).toContain("Pricing");
+    const webPage = schemas.find((s: { "@type": string }) => s["@type"] === "WebPage");
+    expect(webPage).toBeDefined();
+    expect(webPage.name).toContain("Pricing");
   });
 
   it("GET /terms returns 200 with legal content", async () => {

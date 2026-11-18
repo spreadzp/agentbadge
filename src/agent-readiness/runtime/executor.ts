@@ -89,11 +89,13 @@ export async function runTask(
 
   let authBlocked = false;
   let errorUnrecoverable = false;
+  let budgetExhausted = false;
 
   for (const taskStep of task.steps) {
     // Check budget before each step
     if (!guard.canStep()) {
       builder.setStopReason("budget_exhausted");
+      budgetExhausted = true;
       break;
     }
     guard.recordStep();
@@ -114,6 +116,7 @@ export async function runTask(
     // Check budget for request
     if (!guard.canRequest()) {
       builder.setStopReason("budget_exhausted");
+      budgetExhausted = true;
       builder.addStep({
         phase: taskStep.phase,
         action: taskStep.action,
@@ -235,6 +238,8 @@ export async function runTask(
   // Determine outcome
   let outcome: TraceOutcome;
   if (authBlocked) {
+    outcome = "partial";
+  } else if (budgetExhausted) {
     outcome = "partial";
   } else if (errorUnrecoverable) {
     outcome = "failed";

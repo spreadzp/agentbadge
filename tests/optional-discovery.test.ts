@@ -42,8 +42,10 @@ describe("Optional discovery files", () => {
     const res = await app.request("/.well-known/webmcp.json");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.name).toBeTruthy();
-    expect(body.version).toBeTruthy();
+    // Discovery contract: { tools: [{ name, description, inputSchema, ... }] }
     expect(body.tools).toBeInstanceOf(Array);
+    expect(body.tools.length).toBeGreaterThan(0);
+    expect(body.tools[0].name).toBeTruthy();
+    expect(body.tools[0].inputSchema).toBeTruthy();
   });
 });

@@ -147,7 +147,7 @@ describe("OpenApiParser", () => {
     const evidence = OpenApiParser.parseToEvidence(spec30, "https://example.com/openapi.json");
 
     expect(evidence.type).toBe("openapi");
-    expect(evidence.paths).toHaveLength(3);
+    expect((evidence as unknown as { paths: unknown[] }).paths).toHaveLength(3);
   });
 
   it("handles paths with non-method keys (parameters, summary)", () => {

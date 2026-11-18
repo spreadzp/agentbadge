@@ -59,6 +59,8 @@ const originalEnv = { ...process.env };
  *  then answers a stub 402. */
 function spyRuntime() {
   const calls: { route: string; price: unknown; opts?: PaymentForOpts }[] = [];
+  const routerCalls: { payTo: string }[] = [];
+  const acceptsCalls: { amount: string }[] = [];
   const runtime = {
     router: {} as never,
     paymentForPrice(price: unknown, opts?: PaymentForOpts) {
@@ -73,8 +75,19 @@ function spyRuntime() {
     paymentFor(_k: string, _o?: PaymentForOpts) {
       throw new Error("not used");
     },
+    routerFor(payTo: string, _perRailPayTo?: unknown) {
+      routerCalls.push({ payTo });
+      return {
+        acceptsFor: (amount: string) => {
+          acceptsCalls.push({ amount });
+          return [];
+        },
+        verify: async () => ({ ok: true }),
+        settle: async () => ({ ok: true }),
+      };
+    },
   };
-  return { runtime: runtime as unknown as CirclePaymentsRuntime, calls };
+  return { runtime: runtime as unknown as CirclePaymentsRuntime, calls, routerCalls, acceptsCalls };
 }
 
 function buildApp(runtime: CirclePaymentsRuntime) {
@@ -90,6 +103,7 @@ function buildApp(runtime: CirclePaymentsRuntime) {
 
 beforeEach(() => {
   process.env = { ...originalEnv };
+  process.env.DATABASE_ENABLED = "";
   useMemoryStoreForTesting();
   upsertService(SVC);
 });
@@ -102,19 +116,19 @@ afterEach(() => {
 
 describe("SLICE-157-3: marketplace runtime wiring", () => {
   it("passport route: static price, treasury payTo, sig+meta preCheck", async () => {
-    const { runtime, calls } = spyRuntime();
+    const { runtime, routerCalls } = spyRuntime();
     const app = buildApp(runtime);
-    await app.request("/api/market/passport", {
+    const res = await app.request("/api/market/passport", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{}",
     });
-    const c = calls.find((x) => x.route === "/api/market/passport");
-    expect(c).toBeDefined();
-    expect(c!.price).toBe("$10");
-    expect(c!.opts?.payTo).toBe(TREASURY);
-    expect(c!.opts?.methods).toEqual(["POST"]);
-    expect(typeof c!.opts?.onBeforeChallenge).toBe("function");
+    // SLICE-223-5: passport mint runs through the gateway seam —
+    // routerFor(treasury) resolves the router once at wiring; payerBinding
+    // + passportPreCheck gate the request before any 402 challenge.
+    expect(routerCalls).toContainEqual({ payTo: TREASURY });
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toContain("X-Wallet");
   });
 
   it("buy route: splitter payTo + perRailPayTo arcSelfSettle→treasury", async () => {
@@ -125,7 +139,7 @@ describe("SLICE-157-3: marketplace runtime wiring", () => {
     expect(c).toBeDefined();
     expect(c!.opts?.payTo).toBe(SPLITTER);
     expect(c!.opts?.perRailPayTo).toEqual({ arcSelfSettle: TREASURY });
-    expect(typeof c!.opts?.price ?? c!.price).not.toBeUndefined();
+    expect(typeof c!.price).not.toBeUndefined();
     expect(typeof c!.opts?.onBeforeChallenge).toBe("function");
     expect(typeof c!.opts?.onSettleResult).toBe("function");
   });
@@ -152,7 +166,7 @@ describe("SLICE-157-3: marketplace runtime wiring", () => {
     expect((await res.json()).error).toBe("unknown serviceId");
   });
 
-  it("passport: missing wallet sig → 400 without payment challenge", async () => {
+  it("passport: missing wallet sig → 401 without payment challenge", async () => {
     const { runtime } = spyRuntime();
     const app = buildApp(runtime);
     const res = await app.request("/api/market/passport", {
@@ -160,7 +174,7 @@ describe("SLICE-157-3: marketplace runtime wiring", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
     expect((await res.json()).error).toContain("X-Wallet");
   });
 

@@ -20,9 +20,9 @@ import {
 } from "../../src/server/lib/chain-ui.js";
 
 const tiers: TierEntry[] = [
-  { name: "bronze", price: 5, capabilities: ["task-claim"] },
-  { name: "silver", price: 20, capabilities: ["task-claim", "task-create"] },
-  { name: "gold", price: 50, capabilities: ["task-claim", "task-create", "escrow-manage"] },
+  { name: "bronze", price: 5, priceUsd: 5, capabilities: ["task-claim"] },
+  { name: "silver", price: 20, priceUsd: 20, capabilities: ["task-claim", "task-create"] },
+  { name: "gold", price: 50, priceUsd: 50, capabilities: ["task-claim", "task-create", "escrow-manage"] },
 ];
 
 function renderForm(selectedTier?: string) {

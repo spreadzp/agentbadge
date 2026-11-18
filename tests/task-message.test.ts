@@ -144,9 +144,9 @@ describe("submitTaskMessage (mock)", () => {
       timestamp: Math.floor(Date.now() / 1000),
     };
 
-    const txId = await submitTaskMessage(message);
-    expect(typeof txId).toBe("string");
-    expect(txId).toContain("@");
+    const receipt = await submitTaskMessage(message);
+    expect(typeof receipt.txId).toBe("string");
+    expect(receipt.txId).toContain("@");
   });
 
   it("persists message to mock topic store for retrieval", async () => {

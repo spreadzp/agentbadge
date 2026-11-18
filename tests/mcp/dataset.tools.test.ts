@@ -3,7 +3,7 @@ import { listTools, registerDatasetTools, downloadDatasetHandler, uploadResultHa
 
 describe("download_dataset", () => {
   beforeEach(() => {
-    vi.restore();
+    vi.restoreAllMocks();
     process.env.OPERATOR_ID = "0.0.1001";
     process.env.OPERATOR_KEY = "302e0201000a";
   });
@@ -72,7 +72,7 @@ describe("download_dataset", () => {
 
 describe("upload_result", () => {
   beforeEach(() => {
-    vi.restore();
+    vi.restoreAllMocks();
   });
 
   it("uploads and returns CID + URI", async () => {

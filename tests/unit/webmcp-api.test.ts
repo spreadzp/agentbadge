@@ -4,6 +4,8 @@ import { describe, it, expect, vi } from "vitest";
 const mockConfig = {
   chainMode: "hedera" as string,
   hederaNetwork: "testnet",
+  // SLICE-169-9: Hedera reads are gated on passportChain.enabled
+  passportChain: { enabled: true },
   ui: {
     currencySymbol: "ℏ",
     chainName: "Hedera Testnet",

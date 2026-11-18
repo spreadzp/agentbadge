@@ -89,6 +89,48 @@ export interface ScanReport {
     }>;
     fullScanPrice: { amount: string; currency: string };
   };
+  /** Spec v0.6 A.7: optional runtime-testing payload (ASR + traces + conflicts). */
+  runtime?: RuntimeReportData;
+}
+
+/** Spec v0.6 A.7 — serialized runtime-testing section of the scan report.
+ *  `asr` mirrors runtime/success-rate AsrResult; traces/conflicts are the
+ *  report-serialized subset of the internal execution records. */
+export interface RuntimeReportData {
+  asr: {
+    total: number;
+    successful: number;
+    failed: number;
+    partial: number;
+    asr: number;
+    per_category: Record<
+      string,
+      {
+        total: number;
+        successful: number;
+        failed: number;
+        partial: number;
+        asr: number;
+      }
+    >;
+  };
+  traces: Array<{
+    task_id: string;
+    target: string;
+    outcome: string;
+    stop_reason: string;
+    steps: Array<{
+      seq: number;
+      phase: string;
+      action: string;
+      outcome: string;
+    }>;
+  }>;
+  conflicts: Array<{
+    rule_id: string;
+    status: string;
+    reason: string;
+  }>;
 }
 
 export interface CategoryReport {

@@ -1,0 +1,80 @@
+{
+  "run": "dogfood-1794257054489",
+  "reference": "dogfood-1794257054489-64cd5476",
+  "rail": "stripe-testmode",
+  "amount": "1.00",
+  "result": "complete",
+  "steps": [
+    {
+      "step": "create",
+      "at": "2026-11-09T20:44:16.177Z",
+      "paymentId": "pay_0b005225-60f9-4a58-a20d-ab6a226c0ae6",
+      "paymentStatus": "PROCESSING",
+      "attemptId": "att_aea1c033-3c19-4f36-b718-5f7dcd4631fe",
+      "attemptStatus": "PENDING",
+      "providerReference": "cs_test_a1VtHe8FxYMU9K9iKbSytIq1AVreFvxtTmrovIo2RT7ReQixX0n6JIMQGP",
+      "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_test_a1VtHe8FxYMU9K9iKbSytIq1AVreFvxtTmrovIo2RT7ReQixX0n6JIMQGP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNSknZHVsTmB8Jz8ndW5acWB2cVpEVmIyUWFoSk1MNH0yRjx%2Fd0FzZDJTcnM1NTxqQHNcREFfJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCd4JSUl"
+    },
+    {
+      "step": "edge-dedupe",
+      "at": "2026-11-09T20:44:16.237Z",
+      "deduped": true,
+      "samePaymentId": true
+    },
+    {
+      "step": "edge-fiat-network-guard",
+      "at": "2026-11-09T20:44:16.307Z",
+      "guardRejected": true
+    },
+    {
+      "step": "edge-fingerprint-conflict",
+      "at": "2026-11-09T20:44:16.308Z",
+      "deduped": false,
+      "conflict": "reference \"dogfood-1794257054489-64cd5476\" already bound to a different request",
+      "error": null
+    },
+    {
+      "step": "confirm",
+      "at": "2026-11-09T20:45:04.698Z",
+      "status": "CONFIRMED",
+      "deduped": false
+    },
+    {
+      "step": "state",
+      "at": "2026-11-09T20:45:04.699Z",
+      "paymentStatus": "CONFIRMED",
+      "attemptStatus": "CONFIRMED",
+      "receipts": 1,
+      "receiptExternalRef": "cs_test_a1VtHe8FxYMU9K9iKbSytIq1AVreFvxtTmrovIo2RT7ReQixX0n6JIMQGP",
+      "receiptTxHash": "pi_3UZzR1K84Am2sMrt1Y6iuI1j"
+    },
+    {
+      "step": "edge-reconfirm",
+      "at": "2026-11-09T20:45:04.699Z",
+      "status": "CONFIRMED",
+      "deduped": true,
+      "receipts": 1
+    },
+    {
+      "step": "refund",
+      "at": "2026-11-09T20:45:06.108Z",
+      "status": "REFUNDED",
+      "refundReference": "re_3UZzR1K84Am2sMrt1uxL6SzD"
+    },
+    {
+      "step": "edge-rerefund",
+      "at": "2026-11-09T20:45:06.513Z",
+      "status": "REFUNDED",
+      "concurrent": [
+        "REFUNDED",
+        "REFUNDED"
+      ],
+      "railRefundCount": 1
+    },
+    {
+      "step": "final",
+      "at": "2026-11-09T20:45:06.513Z",
+      "paymentStatus": "REFUNDED"
+    }
+  ]
+}

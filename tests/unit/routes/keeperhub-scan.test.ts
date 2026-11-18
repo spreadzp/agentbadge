@@ -54,6 +54,8 @@ const mockClient = {
   listWorkflows: vi.fn().mockResolvedValue([]),
   executeWorkflow: mockExecuteWorkflow,
   pollExecution: mockPollExecution,
+  // KeeperHubClient.txHashes(exec) — extracts tx hashes from the execution result
+  txHashes: vi.fn((exec: { txHashes?: string[] } | null) => exec?.txHashes ?? []),
 };
 
 vi.mock("../../../src/server/lib/keeperhub.js", () => ({

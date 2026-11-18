@@ -8,7 +8,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
-import { buildAccessChallenge } from "../src/server/middleware/agent-auth";
+import { verifyMessage } from "viem";
+import {
+  buildAccessChallenge,
+  configureAgentAuthForTesting,
+  resetAgentAuthForTesting,
+} from "../src/server/middleware/agent-auth";
 
 import {
   createMemorySpendLedger,
@@ -49,7 +54,8 @@ async function signedGet(path: string, wallet = W) {
     message: buildAccessChallenge({
       wallet: account.address,
       method: "GET",
-      path,
+      // Route signs c.req.path (no query string)
+      path: path.split("?")[0],
       timestamp,
     }),
   });
@@ -86,9 +92,20 @@ const entry = (over: Partial<SpendEntry> = {}): SpendEntry => ({
 beforeEach(() => {
   resetConfigCache();
   initSpendAlerts({ store: createMemorySpendAlertStore() });
+  // Default verifier does an ERC-6492 eth_call over RPC — hangs offline.
+  // viem verifyMessage recovers locally for EOAs.
+  configureAgentAuthForTesting({
+    verifier: (wallet, message, signature) =>
+      verifyMessage({
+        address: wallet as `0x${string}`,
+        message,
+        signature: signature as `0x${string}`,
+      }),
+  });
 });
 afterEach(() => {
   initSpendAlerts(null);
+  resetAgentAuthForTesting();
   resetConfigCache();
 });
 

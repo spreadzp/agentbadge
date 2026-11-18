@@ -316,7 +316,7 @@ describe.skipIf(!E2E)("board E2E — Arc testnet", () => {
     for (
       let i = 0;
       i < 30 &&
-      ![REF_STATUS.Rejected, REF_STATUS.Expired].includes(rejected.status);
+      ![REF_STATUS.Rejected, REF_STATUS.Expired].includes(rejected.status as 4 | 5);
       i++
     ) {
       await new Promise((r) => setTimeout(r, 2000));

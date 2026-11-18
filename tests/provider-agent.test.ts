@@ -105,6 +105,7 @@ describe("SLICE-11-5: MedicalDataProviderAgent", () => {
       const claimed = await agent.claimTask("task-medical-123");
       expect(updateTaskStatus).toHaveBeenCalledWith("task-medical-123", "claimed", {
         claimerDid: "did:hcs:0.0.0:2",
+        claimTxId: expect.any(String),
       });
     });
 
@@ -172,6 +173,7 @@ describe("SLICE-11-5: MedicalDataProviderAgent", () => {
       expect(updateTaskStatus).toHaveBeenCalledWith("task-medical-123", "delivered", {
         resultBody: "<html>report</html>",
         resultIpfs: undefined,
+        deliverTxId: expect.any(String),
       });
     });
 
@@ -185,6 +187,7 @@ describe("SLICE-11-5: MedicalDataProviderAgent", () => {
       expect(updateTaskStatus).toHaveBeenCalledWith("task-medical-123", "delivered", {
         resultBody: largeReport,
         resultIpfs: undefined,
+        deliverTxId: expect.any(String),
       });
     });
 

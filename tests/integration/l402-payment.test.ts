@@ -12,7 +12,9 @@ import { describe, it, expect } from "vitest";
 
 const BASE_URL = process.env.E2E_TARGET_URL ?? "http://localhost:4021";
 
-describe("L402 Lightning payment", () => {
+// Live suite: needs a running server. Opt in via E2E_TARGET_URL
+// (same convention as circle-e2e / keeperhub-live).
+describe.skipIf(!process.env.E2E_TARGET_URL)("L402 Lightning payment", () => {
   it("paid endpoint returns 402 with L402 challenge", async () => {
     const resp = await fetch(`${BASE_URL}/passport/request`, {
       method: "POST",

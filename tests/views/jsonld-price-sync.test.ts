@@ -74,7 +74,7 @@ describe("SLICE-80-1: JSON-LD price sync with catalog", () => {
     for (const tier of catalog) {
       const tierName = tier.name.charAt(0).toUpperCase() + tier.name.slice(1);
       const expectedPattern = new RegExp(
-        `${tierName}.*?\\(${tier.price} HBAR\\)`,
+        `${tierName}.*?\\(\\$${tier.priceUsd} USD\\)`,
         "i",
       );
       expect(answerText).toMatch(expectedPattern);
@@ -98,9 +98,9 @@ describe("SLICE-80-1: JSON-LD price sync with catalog", () => {
 
     expect(freeQa).toBeDefined();
 
-    const bronzePrice = tiersByName["bronze"].price;
+    const bronzePriceUsd = tiersByName["bronze"].priceUsd;
     expect(freeQa!.acceptedAnswer.text).toContain(
-      `from ${bronzePrice} HBAR`,
+      `from $${bronzePriceUsd} USD`,
     );
   });
 
@@ -117,8 +117,9 @@ describe("SLICE-80-1: JSON-LD price sync with catalog", () => {
       value: string;
     };
 
-    const bronzePrice = tiersByName["bronze"].price;
-    expect(estimatedCost.value).toBe(String(bronzePrice));
+    const bronzePriceUsd = tiersByName["bronze"].priceUsd;
+    expect(estimatedCost.currency).toBe("USD");
+    expect(estimatedCost.value).toBe(String(bronzePriceUsd));
   });
 
   it("SoftwareApplication OfferCatalog prices match catalog", () => {
@@ -144,7 +145,7 @@ describe("SLICE-80-1: JSON-LD price sync with catalog", () => {
         o.name.toLowerCase().startsWith(tier.name.toLowerCase()),
       );
       expect(offer).toBeDefined();
-      expect(offer!.price).toBe(String(tier.price));
+      expect(offer!.price).toBe(String(tier.priceUsd));
     }
   });
 });

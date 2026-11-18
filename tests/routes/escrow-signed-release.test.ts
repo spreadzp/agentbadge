@@ -43,6 +43,17 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   getTaskById: vi.fn(),
   updateTaskStatus: vi.fn(),
   setEscrowStatus: vi.fn(),
+  // SLICE-84-1: the complete flow uses the atomic CAS state machine —
+  // mirror its contract (ok + currentStatus) instead of the real
+  // marketplace cache, which is empty under unit tests.
+  reserveTask: vi.fn((_taskId: string, _from: string[], transitional: string) => ({
+    ok: true,
+    currentStatus: transitional,
+  })),
+  transitionTask: vi.fn((_taskId: string, _from: string[], to: string) => ({
+    ok: true,
+    currentStatus: to,
+  })),
   returnTaskToMarket: vi.fn(),
   updateTaskVerificationAttempts: vi.fn(),
   listTasks: vi.fn(),

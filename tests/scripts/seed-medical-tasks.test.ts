@@ -32,19 +32,19 @@ describe("seed-medical-tasks", () => {
   });
 
   it("creates 3 tasks", async () => {
-    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "fake-key", "http://localhost:3001", 5);
+    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "0x1111111111111111111111111111111111111111111111111111111111111111" /* secret-scan:allow */, "http://localhost:3001", 5);
     expect(results.length).toBe(3);
   });
 
   it("each task has status posted", async () => {
-    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "fake-key", "http://localhost:3001", 5);
+    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "0x1111111111111111111111111111111111111111111111111111111111111111" /* secret-scan:allow */, "http://localhost:3001", 5);
     for (const r of results) {
       expect(r.status).toBe("posted");
     }
   });
 
   it("each task has a taskId", async () => {
-    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "fake-key", "http://localhost:3001", 5);
+    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "0x1111111111111111111111111111111111111111111111111111111111111111" /* secret-scan:allow */, "http://localhost:3001", 5);
     for (const r of results) {
       expect(r.taskId).toBeDefined();
       expect(r.taskId).toContain("task-medical-");
@@ -52,14 +52,14 @@ describe("seed-medical-tasks", () => {
   });
 
   it("each task has correct title", async () => {
-    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "fake-key", "http://localhost:3001", 5);
+    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "0x1111111111111111111111111111111111111111111111111111111111111111" /* secret-scan:allow */, "http://localhost:3001", 5);
     expect(results[0].title).toContain("Pima");
     expect(results[1].title).toContain("Heart Disease");
     expect(results[2].title).toContain("Breast Cancer");
   });
 
   it("each task has correct price", async () => {
-    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "fake-key", "http://localhost:3001", 10);
+    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "0x1111111111111111111111111111111111111111111111111111111111111111" /* secret-scan:allow */, "http://localhost:3001", 10);
     for (const r of results) {
       expect(r.priceHbar).toBe(10);
     }
@@ -70,13 +70,13 @@ describe("seed-medical-tasks", () => {
       { ok: false, status: 500, json: () => Promise.resolve({}), text: () => Promise.resolve("Server error") },
     ]) as unknown as typeof fetch;
 
-    expect(async () => {
-      await seedMedicalTasks("did:hcs:0.0.1001:1", "fake-key", "http://localhost:3001", 5);
-    }).toThrow();
+    await expect(
+      seedMedicalTasks("did:hcs:0.0.1001:1", "0x1111111111111111111111111111111111111111111111111111111111111111" /* secret-scan:allow */, "http://localhost:3001", 5),
+    ).rejects.toThrow();
   });
 
   it("returns SeedResult type with all fields", async () => {
-    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "fake-key", "http://localhost:3001", 5);
+    const results = await seedMedicalTasks("did:hcs:0.0.1001:1", "0x1111111111111111111111111111111111111111111111111111111111111111" /* secret-scan:allow */, "http://localhost:3001", 5);
     const r: SeedResult = results[0];
     expect(r.taskId).toBeDefined();
     expect(r.title).toBeDefined();

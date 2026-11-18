@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ReadinessLandingPage } from "../../src/views/landing/readiness-landing-page";
-import { FaqPage } from "../../src/views/faq-page";
+import { FaqPage, getFaqEntries } from "../../src/views/faq-page";
 import { AboutPage } from "../../src/views/about-page";
 import { PricingPage } from "../../src/views/pricing-page";
 import { UseCasesPage } from "../../src/views/use-cases-page";
@@ -82,7 +82,7 @@ describe("SLICE-113-8: Internal linking E2E", () => {
   });
 
   describe("FAQ cross-links", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
 
     it("RelatedLinks section with /about, /pricing, /use-cases, /blog", () => {
       assertLinkExists(html, "/about");

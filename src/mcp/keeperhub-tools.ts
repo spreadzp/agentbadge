@@ -7,7 +7,12 @@ export function registerKeeperhubTools(): number {
   if (!ctx) return 0;
   for (const tool of allKeeperhubTools) {
     const handler = tool.createHandler(ctx);
-    registerTool(tool.name, tool.description, tool.inputSchema, handler);
+    registerTool(
+      tool.name,
+      tool.description,
+      tool.inputSchema,
+      handler as Parameters<typeof registerTool>[3],
+    );
   }
   return allKeeperhubTools.length;
 }

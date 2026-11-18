@@ -61,6 +61,16 @@ done
 
 echo "✅ Lint passed for staged files"
 
+# ─── Token limit check ───────────────────────────────────────────
+# Block staged files over 5,000 tokens (20KB). Shared script lives in
+# the workspace-root .windsurf/hooks dir (outside this git repo).
+TOKEN_CHECK="$(git rev-parse --show-toplevel)/../../.windsurf/hooks/token-limit-check.sh"
+if [ -x "$TOKEN_CHECK" ]; then
+  "$TOKEN_CHECK" || exit 1
+else
+  echo "⚠️  token-limit-check.sh not found — skipping size check"
+fi
+
 # ─── Architecture graph auto-sync ────────────────────────────────
 # If staged changes touch src/ modules or the graph generator itself,
 # regenerate docs/architecture-graph.md and stage it so the commit

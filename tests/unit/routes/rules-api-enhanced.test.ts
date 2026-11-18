@@ -11,7 +11,7 @@ describe("SLICE-115-2: Enhanced API endpoints", () => {
 
     it("each rule has severity, pillar, check_type", () => {
       for (const rule of list) {
-        expect(rule.severity).toMatch(/^(high|medium|low)$/);
+        expect(rule.severity).toMatch(/^(critical|high|medium|low)$/);
         expect(rule.pillar).toBeDefined();
         expect(rule.check_type).toBeDefined();
       }

@@ -14,7 +14,7 @@ export const checkerSupportPathDeclared: SemanticChecker = (sources) => {
   // Check guide for support field
   const guideBody = guideSnap?.body ?? "";
   if (guideBody) {
-    const guideJson = parseJsonBody(guideSnap) as Record<string, unknown> | null;
+    const guideJson = parseJsonBody(guideSnap!) as Record<string, unknown> | null;
     if (guideJson) {
       const support = (guideJson as Record<string, unknown>).support as Record<string, unknown> | string | undefined;
       if (support) {

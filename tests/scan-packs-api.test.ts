@@ -62,8 +62,8 @@ describe("GET /api/scan-packs (SLICE-133-14)", () => {
     const body = await res.json();
     const light = (body.packs as PackEntry[]).find((p) => p.costClass === "light");
     const heavy = (body.packs as PackEntry[]).find((p) => p.costClass === "heavy");
-    expect(light.price).toEqual({ amount: "0.15", currency: "USDC" });
-    expect(heavy.price).toEqual({ amount: "0.90", currency: "USDC" });
+    expect(light!.price).toEqual({ amount: "0.15", currency: "USDC" });
+    expect(heavy!.price).toEqual({ amount: "0.90", currency: "USDC" });
     expect(body.fullScan.price).toEqual({ amount: "4.50", currency: "USDC" });
   });
 

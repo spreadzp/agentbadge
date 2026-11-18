@@ -23,7 +23,7 @@ const NEW_FETCHER_RESOURCES = [
 
 describe("E2E: SLICE-75-7 Rules expansion integration", () => {
   it("ruleset version is 2.2.0", () => {
-    expect(AGENT_READINESS_RULESET.version).toBe("1.6.0");
+    expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
   });
 
   it("has 156 total rules (incl. Phase-B, EPIC-125, EPIC-146 additions)", () => {

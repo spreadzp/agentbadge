@@ -139,7 +139,7 @@ const disabledConfig = {
 };
 
 function setConfig(cfg: Record<string, unknown>) {
-  vi.mocked(getConfig).mockReturnValue(cfg);
+  vi.mocked(getConfig).mockReturnValue(cfg as never);
 }
 
 function jsonHeaders() {

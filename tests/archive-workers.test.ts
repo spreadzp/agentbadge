@@ -1,3 +1,4 @@
+import type { TelegramConfig } from "../src/server/lib/notify/telegram";
 /**
  * SLICE-217-8 + 217-9 tests: archive-workers wiring.
  *
@@ -36,8 +37,8 @@ const tg = { token: "tok", chatId: "-100" };
 
 describe("archive-workers — SLICE-217-8/9", () => {
   it("daily job: fetches window rows → stats → sendMessage → returns messageId+note", async () => {
-    const sendMessage = vi.fn(async () => 77);
-    const sendDocument = vi.fn(async () => 0);
+    const sendMessage = vi.fn(async (_text: string, _cfg: TelegramConfig) => 77);
+    const sendDocument = vi.fn(async (_cfg: TelegramConfig, _doc: { filename: string; data: Uint8Array | string; caption?: string }) => 0);
     const jobs = buildArchiveJobs({
       events: trafficEvents([row({ path: "/a" }), row({ path: "/b" })]),
       telegram: tg,
@@ -58,8 +59,8 @@ describe("archive-workers — SLICE-217-8/9", () => {
   });
 
   it("weekly job: buildExport → sendDocument(filename, data, caption)", async () => {
-    const sendMessage = vi.fn(async () => 0);
-    const sendDocument = vi.fn(async () => 99);
+    const sendMessage = vi.fn(async (_text: string, _cfg: TelegramConfig) => 0);
+    const sendDocument = vi.fn(async (_cfg: TelegramConfig, _doc: { filename: string; data: Uint8Array | string; caption?: string }) => 99);
     const jobs = buildArchiveJobs({
       events: trafficEvents([row({ path: "/x" }), row({ path: "/y" })]),
       telegram: tg,
@@ -82,8 +83,8 @@ describe("archive-workers — SLICE-217-8/9", () => {
   });
 
   it("oversized weekly → fallback alert message; returns messageId+oversized note (cursor commits)", async () => {
-    const sendMessage = vi.fn(async () => 55);
-    const sendDocument = vi.fn(async () => 0);
+    const sendMessage = vi.fn(async (_text: string, _cfg: TelegramConfig) => 55);
+    const sendDocument = vi.fn(async (_cfg: TelegramConfig, _doc: { filename: string; data: Uint8Array | string; caption?: string }) => 0);
     const huge = Array.from({ length: 300 }, (_, i) =>
       row({ path: `/p${i}`, status: i % 5 ? 200 : 500 }),
     );
@@ -107,8 +108,8 @@ describe("archive-workers — SLICE-217-8/9", () => {
   });
 
   it("forensics-weekly: JSONL doc + per-chain counts in caption, own stream", async () => {
-    const sendMessage = vi.fn(async () => 0);
-    const sendDocument = vi.fn(async () => 66);
+    const sendMessage = vi.fn(async (_text: string, _cfg: TelegramConfig) => 0);
+    const sendDocument = vi.fn(async (_cfg: TelegramConfig, _doc: { filename: string; data: Uint8Array | string; caption?: string }) => 66);
     const edge = (chain: string, txHash: string) => ({
       chain, txHash, payer: "0xp", seller: "0xs",
       amountAtomic: 1n, blockNumber: 9n, createdAt: "2026-11-05T00:00:00Z",
@@ -167,7 +168,7 @@ describe("archive-workers — SLICE-217-8/9", () => {
   it("resolveArchiveCursors: present archiveCursors → adapts get/commit", async () => {
     const store = {
       getCursor: vi.fn(async () => ({ throughAt: 123n })),
-      commitCursor: vi.fn(async () => {}),
+      commitCursor: vi.fn(async () => { }),
     };
     const c = resolveArchiveCursors({ archiveCursors: store } as never, vi.fn());
     expect(await c.get("s")).toEqual({ throughAt: 123n });

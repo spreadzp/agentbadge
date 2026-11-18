@@ -126,9 +126,11 @@ describe("CLI integration: scan → verify-report → fix → badge", () => {
 
     const result = await runCommand(["scan", "--json", "https://example.com"]);
     expect(result.exitCode).toBe(0);
-    const report = JSON.parse(result.stdout);
-    expect(report.report_id).toBeTruthy();
-    expect(report.integrity.content_hash).toHaveLength(64);
+    // SLICE-96-7: --json emits { results, gaps, gap_summary }; the full
+    // signed report with report_id/integrity goes to the --output file.
+    const payload = JSON.parse(result.stdout);
+    expect(payload.results).toBeInstanceOf(Array);
+    expect(payload.gap_summary).toBeDefined();
   });
 
   it("unknown command returns helpful error", async () => {

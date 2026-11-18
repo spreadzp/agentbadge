@@ -140,7 +140,7 @@ describe("POST /api/venue/jobs/:id/rate", () => {
     });
     expect(decoded.functionName).toBe("giveFeedback");
     const [agentId, value, decimals, tag1, tag2, endpoint, uri, hash] =
-      decoded.args as unknown[];
+      decoded.args as unknown as unknown[];
     expect(agentId).toBe(42n);
     expect(value).toBe(5n);
     expect(decimals).toBe(0);

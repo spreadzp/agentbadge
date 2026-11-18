@@ -111,12 +111,12 @@ function emittedInputSchema(ext: Record<string, unknown> | undefined) {
   return bazaar?.schema?.properties?.input?.properties?.body;
 }
 
-/** PaymentForOpts.extensions is Record | async-getter — we always pass
- *  the Record form, so narrow for assertions. */
-function asExt(
+/** PaymentForOpts.extensions is Record | async-getter — withPayerBindDecl
+ *  wraps opts.extensions into an async getter, so resolve it for assertions. */
+async function asExt(
   ext: PaymentForOpts["extensions"] | undefined,
-): Record<string, unknown> | undefined {
-  return typeof ext === "function" ? undefined : ext;
+): Promise<Record<string, unknown> | undefined> {
+  return typeof ext === "function" ? await ext() : ext;
 }
 
 /** Spy runtime — captures (price, opts) at registration time. */
@@ -126,6 +126,9 @@ function spyRuntime() {
     new Response("pay", { status: 402 });
   const runtime = {
     router: {} as never,
+    routerFor(_cfg: unknown) {
+      return {} as never;
+    },
     paymentForPrice(price: unknown, opts?: PaymentForOpts) {
       calls.push({ price, opts });
       return stub;
@@ -175,15 +178,15 @@ describe("SLICE-179-3: SKU → bazaar extension drift contract", () => {
 });
 
 describe("SLICE-179-3: gate wiring", () => {
-  it("scan-packs: buildTotalScanPaymentOpts carries bazaar", () => {
+  it("scan-packs: buildTotalScanPaymentOpts carries bazaar", async () => {
     const opts = buildTotalScanPaymentOpts(ADDR("a"));
-    expect(asExt(opts.extensions)?.bazaar).toBeDefined();
-    expect(emittedInputSchema(asExt(opts.extensions))).toEqual(
+    expect((await asExt(opts.extensions))?.bazaar).toBeDefined();
+    expect(emittedInputSchema(await asExt(opts.extensions))).toEqual(
       inputSchemaOf(skuById("scan:full")!),
     );
   });
 
-  it("keeperhub: premium gate passes keeperhub:scan-premium extension", () => {
+  it("keeperhub: premium gate passes keeperhub:scan-premium extension", async () => {
     process.env.KEEPERHUB_ENABLED = "true";
     process.env.KEEPERHUB_API_KEY = "kh_testkey";
     process.env.KEEPERHUB_X402_ENABLED = "true";
@@ -193,13 +196,17 @@ describe("SLICE-179-3: gate wiring", () => {
     const { runtime, calls } = spyRuntime();
     wireKeeperhubX402(new Hono(), { runtime });
     expect(calls.length).toBe(1);
-    expect(asExt(calls[0].opts?.extensions)?.bazaar).toBeDefined();
-    expect(emittedInputSchema(asExt(calls[0].opts?.extensions))).toEqual(
+    expect((await asExt(calls[0].opts?.extensions))?.bazaar).toBeDefined();
+    expect(emittedInputSchema(await asExt(calls[0].opts?.extensions))).toEqual(
       inputSchemaOf(skuById("keeperhub:scan-premium")!),
     );
   });
 
-  it("marketplace: passport-mint + service-buy gates carry extensions", () => {
+  it("marketplace: service-buy gate carries extensions (mint → EPIC-223 gateway)", async () => {
+    // SLICE-223-5: passport mint moved to x402GatewayMiddleware via
+    // runtime.routerFor — only service-buy registers through
+    // paymentForPrice. The mint SKU schema is covered by the per-SKU
+    // loop above and by gatewayExtensionsFor (bazaarExtensionFor).
     process.env.MARKETPLACE_ENABLED = "true";
     process.env.MARKETPLACE_NFT = ADDR("c");
     process.env.MARKETPLACE_SPLITTER = ADDR("d");
@@ -207,19 +214,15 @@ describe("SLICE-179-3: gate wiring", () => {
     resetConfigCache();
     const { runtime, calls } = spyRuntime();
     wireMarketplace(new Hono(), { runtime });
-    expect(calls.length).toBeGreaterThanOrEqual(2);
-    const schemas = calls.map((c) => emittedInputSchema(asExt(c.opts?.extensions)));
-    expect(schemas).toContainEqual(
-      inputSchemaOf(skuById("marketplace:passport-mint")!),
-    );
-    expect(schemas).toContainEqual(
+    expect(calls.length).toBe(1);
+    expect(emittedInputSchema(await asExt(calls[0].opts?.extensions))).toEqual(
       inputSchemaOf(skuById("marketplace:service-buy")!),
     );
   });
 
   it("mpp: 402 body carries the passport bazaar declaration", async () => {
     const app = new Hono();
-    app.get(
+    app.post(
       "/x",
       mppPaymentMiddleware({
         secretKey: "k",
@@ -228,7 +231,7 @@ describe("SLICE-179-3: gate wiring", () => {
       }),
       (c) => c.json({ ok: true }),
     );
-    const res = await app.request("/x");
+    const res = await app.request("/x", { method: "POST" });
     expect(res.status).toBe(402);
     const body = (await res.json()) as {
       extensions?: { bazaar?: { info?: unknown } };
@@ -396,12 +399,12 @@ describe("SLICE-179-3: EaaS gates", () => {
 describe("SLICE-179-3: documented exceptions", () => {
   it("l402: macaroon+invoice challenge — no JSON extension slot", async () => {
     const app = new Hono();
-    app.get(
+    app.post(
       "/x",
       l402PaymentMiddleware({ amountSats: 100, testMode: true }),
       (c) => c.json({ ok: true }),
     );
-    const res = await app.request("/x");
+    const res = await app.request("/x", { method: "POST" });
     expect(res.status).toBe(402);
     expect(res.headers.get("WWW-Authenticate")).toContain("L402");
   });

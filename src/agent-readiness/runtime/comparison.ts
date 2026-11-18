@@ -60,8 +60,11 @@ const RULE_FAMILY_ORDER: FactFamily[] = [
 
 function buildRuntimeEvidence(observed: ObservedFact): Evidence {
   return {
-    source: "runtime",
-    detail: `RuntimeEvidence: task=${observed.task_id} step=${observed.step_seq} observed=${observed.observed_detail} ref=${observed.response_ref}`,
+    type: "manual_confirmation",
+    source_class: "runtime",
+    confirmed_by: "runtime-probe",
+    confirmed_at: new Date().toISOString(),
+    note: `RuntimeEvidence: task=${observed.task_id} step=${observed.step_seq} observed=${observed.observed_detail} ref=${observed.response_ref}`,
   };
 }
 
@@ -83,7 +86,7 @@ function buildConflictAssertion(
     name: `Runtime comparison: ${declared.family}`,
     claim: declared.claim,
     verified_at: new Date().toISOString(),
-    review_level: "auto",
+    review_level: "automatic",
   };
 }
 
@@ -101,7 +104,7 @@ function buildGapAssertion(observed: ObservedFact): Assertion {
     name: `Runtime gap: ${observed.family}`,
     claim: `No static assertion covers this runtime failure`,
     verified_at: new Date().toISOString(),
-    review_level: "auto",
+    review_level: "automatic",
   };
 }
 

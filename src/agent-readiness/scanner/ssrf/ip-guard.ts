@@ -95,7 +95,29 @@ export function isBlockedIp(ip: string): boolean {
  * Resolves hostname to IP, then validates via assertSafeIp.
  * Use this at API entry points instead of ad-hoc string blocklists.
  */
+// Well-known local-name suffixes that resolve to loopback/link-local.
+// Hostnames like `localhost` never reach resolveAndPin in tests and are a
+// trivial private-target alias in prod — reject at the entry point.
+const LOCAL_NAME_SUFFIXES = [
+  "localhost",
+  ".localhost",
+  ".local",
+  ".internal",
+  ".lan",
+  ".home",
+  ".home.arpa",
+  ".corp",
+  ".intranet",
+];
+
 export function assertSafeTarget(hostname: string): void {
+  const lower = hostname.toLowerCase();
+  for (const suffix of LOCAL_NAME_SUFFIXES) {
+    if (suffix === "localhost" ? lower === suffix : lower.endsWith(suffix)) {
+      throw new Error(`Blocked local hostname: ${hostname}`);
+    }
+  }
+
   // If it's already an IP, validate directly
   if (isIPv4(hostname) || isIPv6(hostname)) {
     assertSafeIp(hostname);

@@ -22,11 +22,11 @@ export const checkerSandboxDeclared: SemanticChecker = (sources) => {
         sandboxUrl = true;
       }
       // Check guide JSON for sandbox/testEnvironment field
-      const guideJson = parseJsonBody(guideSnap) as Record<string, unknown> | null;
+      const guideJson = parseJsonBody(guideSnap!) as Record<string, unknown> | null;
       if (guideJson) {
-        const sandbox = (guideJson as Record<string, unknown>).sandbox as Record<string, unknown> | undefined;
-        const testEnv = (guideJson as Record<string, unknown>).testEnvironment as Record<string, unknown> | undefined;
-        const staging = (guideJson as Record<string, unknown>).staging as Record<string, unknown> | undefined;
+        const sandbox = (guideJson as Record<string, unknown>).sandbox as unknown;
+        const testEnv = (guideJson as Record<string, unknown>).testEnvironment as unknown;
+        const staging = (guideJson as Record<string, unknown>).staging as unknown;
         const sandboxObj = sandbox ?? testEnv ?? staging;
         if (sandboxObj) {
           if (typeof sandboxObj === "string" && sandboxObj.includes("http")) sandboxUrl = true;

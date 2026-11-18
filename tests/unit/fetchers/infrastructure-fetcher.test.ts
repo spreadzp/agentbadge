@@ -18,7 +18,7 @@ describe("SLICE-48-6: infrastructure-fetcher", () => {
       });
     });
 
-    const result = await fetchInfrastructure("https://example.com", mockFetch);
+    const result = await fetchInfrastructure("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.source).toBe("infrastructure");
     expect(result.data.httpsRedirect).toBe(true);
     expect(result.data.cacheHeaders).toBe(true);
@@ -31,7 +31,7 @@ describe("SLICE-48-6: infrastructure-fetcher", () => {
       if (url.includes("/nonexistent")) return new Response("<html>404</html>", { status: 404, headers: { "content-type": "text/html" } });
       return new Response("OK");
     });
-    const result = await fetchInfrastructure("https://example.com", mockFetch);
+    const result = await fetchInfrastructure("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.structuredErrors).toBe(false);
   });
 });

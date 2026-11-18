@@ -13,7 +13,12 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
 import { getAddress, isAddress } from "viem";
-import { ERC8183_ABI, type ReadClient } from "@agentbadge/circle-payments";
+import {
+  ERC8183_ABI,
+  ERC8183_ACP_ABI,
+  ERC8183_REF_ABI,
+  type ReadClient,
+} from "@agentbadge/circle-payments";
 
 export interface EaasContract {
   address: `0x${string}`;
@@ -23,8 +28,9 @@ export interface EaasContract {
   active: boolean;
   probedAt: number;
   /** ABI flavor detected at probe: "circle" getJob has id+description;
-   *  "acp" has token + getDescription(). Drives escrowFor ABI choice. */
-  variant?: "circle" | "acp";
+   *  "acp" has token + getDescription(); "ref" is the erc8183-ref
+   *  13-field packed Job struct. Drives escrowFor ABI choice. */
+  variant?: "circle" | "acp" | "ref";
   terms?: { feeBps?: number; policyDefault?: string; noFeedback?: boolean };
 }
 
@@ -89,19 +95,32 @@ export function createJsonContractStore(file: string): EaasContractStore {
 /* --------------------------------- probe --------------------------------- */
 
 /**
- * ABI-compat probe: call getJob(1) on the candidate address.
- * - decodes → contract speaks ERC-8183 ("circle" flavor tuple) → ok
+ * ABI-compat probe: call getJob(1) on the candidate address, trying the
+ * known tuple layouts in a discriminating order:
+ *   circle (9-field, description inline) → ref (13-field erc8183-ref
+ *   packed Job) → acp (8-field, description via getDescription()).
+ * Order matters: ref data decoded with the acp ABI yields a garbage
+ * all-static tuple without throwing, so acp is tried last.
+ * - decodes → contract speaks ERC-8183 → ok (+ detected variant)
  * - reverts WITH data / "execution reverted" → function exists, job
  *   absent → still ERC-8183-compatible (fail-open on revert, the
  *   evaluate-time getJob is the real gate)
- * - resolves to garbage decode or returns no data → not compatible
+ * - all layouts fail to decode or no data → not compatible
  * - empty bytecode (EOA) → rejected
  */
 export interface ProbeResult {
   ok: boolean;
-  variant?: "circle" | "acp";
+  variant?: "circle" | "acp" | "ref";
   error?: string;
 }
+
+const PROBE_CANDIDATES = [
+  { variant: "circle", abi: ERC8183_ABI },
+  { variant: "ref", abi: ERC8183_REF_ABI },
+  { variant: "acp", abi: ERC8183_ACP_ABI },
+] as const;
+
+const REVERTISH = /revert|not found|does not exist|invalid/i;
 
 export async function probeErc8183(
   read: ReadClient & { getBytecode?(a: { address: `0x${string}` }): Promise<unknown> },
@@ -114,32 +133,29 @@ export async function probeErc8183(
       return { ok: false, error: "no contract code at address" };
     }
   }
-  try {
-    const raw = await read.readContract({
-      address,
-      abi: ERC8183_ABI,
-      functionName: "getJob",
-      args: [1n],
-    });
-    // Must decode to a struct with a numeric status field.
-    const rec = raw as { status?: unknown; description?: unknown } | null;
-    const s = rec?.status;
-    if (typeof s !== "number" && typeof s !== "bigint") {
-      return { ok: false, error: "getJob(1) decoded without a status field" };
+  let lastError = "probe failed";
+  for (const { variant, abi } of PROBE_CANDIDATES) {
+    try {
+      const raw = await read.readContract({
+        address,
+        abi,
+        functionName: "getJob",
+        args: [1n],
+      });
+      // Must decode to a struct with a numeric status field.
+      const rec = raw as { status?: unknown } | null;
+      const s = rec?.status;
+      if (typeof s !== "number" && typeof s !== "bigint") continue;
+      return { ok: true, variant };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // Function exists but job 1 is absent → revert is still 8183-speak.
+      if (REVERTISH.test(msg)) return { ok: true };
+      // Decode mismatch (e.g. string offset out of range) → next layout.
+      lastError = msg;
     }
-    // "circle" tuple carries id+description; "acp" doesn't (separate
-    // getDescription + token field). Absent decode info → keep variant
-    // unset and let escrowFor fall back to the network default.
-    const variant = typeof rec?.description === "string" ? "circle" : undefined;
-    return { ok: true, ...(variant ? { variant } : {}) };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    // Function exists but job 1 is absent → revert is still 8183-speak.
-    if (/revert|not found|does not exist|invalid/i.test(msg)) {
-      return { ok: true };
-    }
-    return { ok: false, error: `probe failed: ${msg}` };
   }
+  return { ok: false, error: `probe failed: ${lastError}` };
 }
 
 /* ------------------------------- registry -------------------------------- */

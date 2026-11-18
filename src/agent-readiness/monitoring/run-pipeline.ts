@@ -47,7 +47,7 @@ export function summarizeScanResult(report: ScanReport): RunSummary {
       by_type: { ...report.gap_summary.by_type },
     },
     status_counts,
-    asr: report.runtime?.asr?.rate ?? null,
+    asr: report.runtime?.asr?.asr ?? null,
   };
 }
 

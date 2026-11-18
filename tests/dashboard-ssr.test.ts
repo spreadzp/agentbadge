@@ -211,8 +211,10 @@ describe("SLICE-18-6: Dashboard SSR unit tests", () => {
     it("never contains 'Loading' text", () => {
       const html = Dashboard().toString();
 
-      expect(html).not.toContain("Loading");
-      expect(html).not.toContain("loading");
+      // 'loading=' is a legit img attribute (loading="eager"/"lazy");
+      // assert on rendered text content only
+      expect(html).not.toMatch(/>\s*Loading/i);
+      expect(html).not.toContain("Loading…");
     });
   });
 
@@ -243,15 +245,15 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
   });
 
   it("GET / returns 200 and does not contain 'Loading'", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).not.toContain("Loading");
-    expect(html).not.toContain("loading");
+    expect(html).not.toMatch(/>\s*Loading/i);
+    expect(html).not.toContain("Loading…");
   });
 
   it("GET / contains all 5 section markers", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     expect(html).toContain('id="stats"');
@@ -262,7 +264,7 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
   });
 
   it("GET / contains HTMX polling attributes", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     expect(html).toContain('hx-get="/ui/stats"');
@@ -272,7 +274,7 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
   });
 
   it("GET / contains SSR stats data (numbers from mock)", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     // Mock returns 3 NFTs: 2 active, 1 revoked
@@ -282,7 +284,7 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
   });
 
   it("GET / contains SSR feed data (passport cards)", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     expect(html).toContain("#3"); // highest serial first
@@ -290,7 +292,7 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
   });
 
   it("GET / contains SSR audit data", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     expect(html).toContain("passport_issued");
@@ -298,7 +300,7 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
   });
 
   it("GET / contains informative A2A description", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     expect(html).toContain("Agent-to-Agent messaging");
@@ -307,11 +309,11 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
 
   it("GET / with empty market cache shows empty state, not 'Loading'", async () => {
     marketClear();
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     expect(html).toContain("No marketplace tasks available");
-    expect(html).not.toContain("Loading");
+    expect(html).not.toMatch(/>\s*Loading/i);
   });
 
   it("GET / with market tasks shows task data", async () => {
@@ -329,7 +331,7 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
     };
     marketUpsert(task);
 
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const html = await res.text();
 
     expect(html).toContain("Integration SSR Task");
@@ -337,7 +339,7 @@ describe("SLICE-18-6: Dashboard SSR integration", () => {
   });
 
   it("GET / has >=300 chars of meaningful body content", async () => {
-    const res = await app.request("/");
+    const res = await app.request("/dashboard");
     const fullHtml = await res.text();
     const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/);
     const body = bodyMatch ? bodyMatch[1] : fullHtml;

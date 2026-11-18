@@ -13,7 +13,7 @@ export const checkerBusinessConstraintsDocumented: SemanticChecker = (sources) =
   // Check guide for per-capability constraints
   const guideBody = guideSnap?.body ?? "";
   if (guideBody) {
-    const guideJson = parseJsonBody(guideSnap) as Record<string, unknown> | null;
+    const guideJson = parseJsonBody(guideSnap!) as Record<string, unknown> | null;
     if (guideJson) {
       const capabilities = (guideJson as Record<string, unknown>).capabilities as unknown[] | undefined;
       const endpoints = (guideJson as Record<string, unknown>).endpoints as unknown[] | undefined;

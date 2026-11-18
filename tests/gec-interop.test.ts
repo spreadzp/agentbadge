@@ -212,8 +212,8 @@ describe("constants sanity", () => {
   });
 
   it("verify constants pin the AgentPay award/deliverable from comments/2410.md", () => {
-    expect(GEC_VERIFY_AWARD).toBe("award:5a8d25b52436ec1779757050f4f47242");
-    expect(GEC_VERIFY_DELIVERABLE).toBe("deliverable:1bc4966a12177feeb19c416b02114762");
+    expect(GEC_VERIFY_AWARD).toBe("award:655eccb1502bf67ef67931d07804115a");
+    expect(GEC_VERIFY_DELIVERABLE).toBe("deliverable:cbef668424e60033473905deabcc92bb");
     expect(GEC_VERIFY_AWARD).not.toBe("award:155c2787a74b57b557dc6a69d3d4fb56"); // not our own award
   });
 });
@@ -308,7 +308,6 @@ describe("extractToolPayload", () => {
 
 // ─── SLICE-209-2: buyer-phase helpers (pure, zero network) ───────────
 import {
-  parsePhase,
   BUYER_CAP_MINOR,
   buildSasameRunArgs,
   buyerPhaseDone,
@@ -433,7 +432,6 @@ import {
   assertChallengeShape,
   assertNoPendingMarkers,
   bindBuyerState,
-  redact,
   statusTermsProblems,
   validateBuyerId,
   ID_SHAPE_RE,

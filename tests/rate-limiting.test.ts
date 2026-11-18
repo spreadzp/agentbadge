@@ -94,6 +94,10 @@ describe("rateLimitMiddleware — SLICE-7-3", () => {
   });
 
   it("rate limits per-IP (different IPs have separate limits)", async () => {
+    // 215-5: X-Forwarded-For is honored only when TRUST_PROXY_HEADERS=true
+    const prev = process.env.TRUST_PROXY_HEADERS;
+    process.env.TRUST_PROXY_HEADERS = "true";
+    try {
     const app = makeApp();
 
     // IP 1: 3 requests (at limit)
@@ -108,6 +112,10 @@ describe("rateLimitMiddleware — SLICE-7-3", () => {
       body: "{}",
     });
     expect(res.status).toBe(200);
+    } finally {
+      if (prev === undefined) delete process.env.TRUST_PROXY_HEADERS;
+      else process.env.TRUST_PROXY_HEADERS = prev;
+    }
   });
 
   it("applies only to POST /mcp/tools/:name, not GET /mcp/tools", async () => {

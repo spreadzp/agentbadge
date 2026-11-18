@@ -8,6 +8,7 @@ import type { GapSummary } from "../../src/agent-readiness/gap-engine/gap-engine
 
 export function makeMockRuleEngineResult(): RuleEngineResult {
   return {
+    bundles: [],
     assertions: [
       {
         rule_id: "AB-001",
@@ -139,5 +140,36 @@ export function makeMockGapSummary(): GapSummary {
     total: 1,
     by_priority: { CRITICAL: 0, HIGH: 0, MEDIUM: 1, LOW: 0 },
     by_type: { documentation: 1, semantic: 0, capability: 0, evidence: 0 },
+  };
+}
+
+export function createTestRecord(over: {
+  score?: number;
+  grade?: "A" | "B" | "C" | "D" | "F";
+  gap_ids?: string[];
+} & Partial<import("../../src/agent-readiness/corpus/corpus-record.schema").ScanSummary> & Partial<import("../../src/agent-readiness/corpus/corpus-record.schema").CorpusRecord> = {}): import("../../src/agent-readiness/corpus/corpus-record.schema").CorpusRecord {
+  const { score = 80, grade = "B", gap_ids = [], pillar_scores, status_counts, ...rest } = over;
+  return {
+    record_id: "01J00000000000000000000000",
+    timestamp: "2025-10-01T00:00:00.000Z",
+    ruleset_version: "1.0.0",
+    schema_version: "1.0.0",
+    scan_summary: {
+      score,
+      grade,
+      total_rules: 10,
+      applicable_rules: 10,
+      status_counts: status_counts ?? { VERIFIED: 6, INFERRED: 0, GAP: 4, CONFLICT: 0, NOT_APPLICABLE: 0 },
+      ...(pillar_scores ? { pillar_scores } : {}),
+    },
+    category_scores: {},
+    gap_pattern: {
+      gap_ids,
+      gap_types: {},
+      gap_priorities: { CRITICAL: 0, HIGH: gap_ids.length, MEDIUM: 0, LOW: 0 },
+    },
+    conflict_rules: [],
+    has_runtime_trace: false,
+    ...rest,
   };
 }

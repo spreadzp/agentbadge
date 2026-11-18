@@ -4,7 +4,7 @@
  * GET /api/attestations, GET /attestations page. Gate: ARC_ATTESTATION_ENABLED.
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterAll } from "vitest";
 import { Hono } from "hono";
 import {
   attestationRoutes,
@@ -51,7 +51,13 @@ function app(cfg: AttestationRouteConfig) {
 }
 
 describe("POST /api/attestations", () => {
+  const prevX402 = process.env.ATTESTATION_X402_ENABLED;
+  process.env.ATTESTATION_X402_ENABLED = "false"; // .env enables the paid gate
   beforeEach(() => setAttestationRouteConfig(undefined as never));
+  afterAll(() => {
+    if (prevX402 === undefined) delete process.env.ATTESTATION_X402_ENABLED;
+    else process.env.ATTESTATION_X402_ENABLED = prevX402;
+  });
 
   it("valid url → scan → chain write → explorer links", async () => {
     const { cfg, writeAttestation, scan, store } = makeCfg();

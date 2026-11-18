@@ -63,8 +63,8 @@ interface Mirror {
   meta: Map<string, unknown>;
 }
 
-function parseRows<T>(rows: { payload: string }[]): T[] {
-  return rows.map((r) => JSON.parse(r.payload) as T);
+function parseRows<T>(rows: unknown[]): T[] {
+  return (rows as { payload: string }[]).map((r) => JSON.parse(r.payload) as T);
 }
 
 export class PrismaBoardStore implements BoardStoreBackend {

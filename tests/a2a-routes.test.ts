@@ -122,26 +122,35 @@ describe("POST /a2a/send", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 403 when sender passport not found", async () => {
+  it("returns 403 when sender passport not found (send-with-key)", async () => {
+    // /a2a/send no longer does an explicit sender-passport lookup — sender
+    // identity is enforced by DID-signature middleware. The sender check
+    // lives on /a2a/send-with-key.
     mockedVerifyA2ADid
       .mockResolvedValueOnce(false) // sender
       .mockResolvedValueOnce(true); // recipient
 
     const app = makeApp();
-    const res = await postSend(app, {
-      from: DID_A,
-      to: DID_B,
-      body: "Hello",
+    const req = new Request("http://localhost/a2a/send-with-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: DID_A,
+        to: DID_B,
+        body: "Hello",
+        fromAccountId: "0.0.1234",
+        privateKey: "302e020100300506032b657004220420deadbeef",
+      }),
     });
+    const res = await app.fetch(req);
     expect(res.status).toBe(403);
     const json = await res.json();
     expect(json.error).toContain("Sender passport");
   });
 
   it("returns 403 when recipient passport not found", async () => {
-    mockedVerifyA2ADid
-      .mockResolvedValueOnce(true) // sender
-      .mockResolvedValueOnce(false); // recipient
+    // /a2a/send verifies the recipient passport only (sender = DID-sig).
+    mockedVerifyA2ADid.mockResolvedValueOnce(false); // recipient
 
     const app = makeApp();
     const res = await postSend(app, {

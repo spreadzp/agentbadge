@@ -78,11 +78,8 @@ describe("C-1 round-2: extended IP-carrier headers dropped", () => {
       agentId: null,
       verified: false,
       idempotencyKey: null,
-      spamFlag: false,
       expiresAtMs: Date.now() + 60_000,
       createdAtMs: Date.now(),
-      respondedAtMs: null,
-      response: null,
     });
     const res = await app.request("/api/ops/requests", {
       headers: { "X-Admin-Key": ADMIN },

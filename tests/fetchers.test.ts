@@ -124,6 +124,8 @@ describe("fetchOpenApi", () => {
   });
 
   it("falls back to /swagger.json", async () => {
+    // PROBE_PATHS: /openapi.json → /openapi.yaml → /api/specs → /swagger.json
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(404, ""));
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(404, ""));
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(404, ""));
     vi.mocked(fetch).mockResolvedValueOnce(
@@ -139,6 +141,8 @@ describe("fetchOpenApi", () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(500, ""));
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(500, ""));
     // /openapi.yaml returns 404
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(404, ""));
+    // /api/specs returns 404
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(404, ""));
     // /swagger.json returns 200
     vi.mocked(fetch).mockResolvedValueOnce(

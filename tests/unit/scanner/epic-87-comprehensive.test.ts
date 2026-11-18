@@ -168,7 +168,7 @@ describe("EPIC-87 comprehensive E2E", () => {
     };
     const scoreResult = runScoringEngine({
       assertions: result.assertions as any,
-      rulesetManifest: manifest,
+      rulesetManifest: manifest as never,
     });
 
     const categoryScores: Record<string, number> = {};

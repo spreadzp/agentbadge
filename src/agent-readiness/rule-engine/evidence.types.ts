@@ -93,7 +93,12 @@ export interface CrossEvidence {
   source_class?: SourceClass;
 }
 
-export type SemanticOutcome = "found" | "partial" | "absent" | "no_source";
+export type SemanticOutcome =
+  | "found"
+  | "partial"
+  | "absent"
+  | "no_source"
+  | "not_applicable";
 
 export type Evidence =
   | (HttpEvidence & { semantic_outcome?: SemanticOutcome })

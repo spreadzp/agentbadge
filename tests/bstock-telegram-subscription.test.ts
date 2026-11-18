@@ -118,6 +118,8 @@ describe("alert delivery", () => {
             stale: false,
             inAlert: true,
             lastUpdateMs: 1,
+            spreadPct: null,
+            bookDepth: null,
           },
         ],
         getEvents: () => [],

@@ -46,10 +46,10 @@ describe("SLICE-72-8: Well-known namespace descriptors", () => {
     expect(ns!.listTools().length).toBe(12);
   });
 
-  it("audit namespace has 29 tools (2 audit-catalog + 1 compliance + 26 parity)", () => {
+  it("audit namespace has 30 tools (2 audit-catalog + 1 compliance + 27 parity)", () => {
     const ns = getNamespace("audit");
     expect(ns).toBeDefined();
-    expect(ns!.listTools().length).toBe(29);
+    expect(ns!.listTools().length).toBe(30);
   });
 
   it("listAllNamespaces returns all 4 namespaces", () => {

@@ -1,0 +1,36 @@
+{
+  "session": {
+    "id": "cs_test_a1lCXjgOrZJBwhDSZJcxrKmG8hdln7n9zge9kVeeutWtYJPo12Kn1cJHcD",
+    "status": "complete",
+    "payment_status": "paid",
+    "amount_subtotal": 100,
+    "amount_total": 100,
+    "currency": "usd",
+    "client_reference_id": "dogfood-1794249430271-dce13195",
+    "metadata": {
+      "productName": "EPIC-220 dogfood (test mode)",
+      "reference": "dogfood-1794249430271-dce13195",
+      "slice": "220-10"
+    }
+  },
+  "paymentIntent": {
+    "id": "pi_3UZxSNK84Am2sMrt1u6C60WB",
+    "status": "succeeded",
+    "amount": 100,
+    "currency": "usd"
+  },
+  "charge": {
+    "id": "ch_3UZxSNK84Am2sMrt1p5QgMoy",
+    "status": "succeeded",
+    "paid": true,
+    "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xRzlZd1dLODRBbTJzTXJ0KMimyNcGMgb7MYaI3TA6LBapGpux__S_LKBRnfw5eIsH_mLtzScl2NroQXCJHbEYy6piPoJ68CgX0I6r"
+  },
+  "refunds": [
+    {
+      "id": "re_3UZxSNK84Am2sMrt1hWQWfFI",
+      "status": "succeeded",
+      "amount": 100
+    }
+  ],
+  "note": "stripe test mode — ids are test-only, safe to publish"
+}

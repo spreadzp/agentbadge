@@ -6,6 +6,7 @@ import {
   MonitoringEmptyState,
   MonitoringAddForm,
   type MonitoringPageData,
+  type MonitoringDetailData,
 } from "../../src/views/monitoring-page";
 
 /**
@@ -22,6 +23,8 @@ function makeProjectData(overrides?: Partial<MonitoringPageData["projects"][0]>)
     schedule: { kind: "daily", hour_utc: 6 },
     channels: [{ type: "webhook", target: "https://hook.example.com" }],
     thresholds: { score_drop: 5, asr_drop: 0.1, cooldown_hours: 24, min_severity: "warning" },
+    created_at: "2026-09-01T00:00:00Z",
+    updated_at: "2026-09-03T00:00:00Z",
     next_run_at: "2026-09-04T06:00:00Z",
     latest_score: 72,
     latest_grade: "C",
@@ -111,7 +114,7 @@ describe("SLICE-99-8: MonitoringProjectCard", () => {
 });
 
 describe("SLICE-99-8: MonitoringProjectDetail", () => {
-  function makeDetailData() {
+  function makeDetailData(): MonitoringDetailData {
     return {
       project: makeProjectData(),
       runs: [

@@ -59,8 +59,11 @@ vi.mock("../../../src/server/lib/keeperhub-audit-store.js", () => ({
 import { keeperhubApiRoutes } from "../../../src/server/routes/keeperhub-api";
 
 const mockClient = {
+  // Route calls await client.connect() before triggerWorkflow
+  connect: vi.fn().mockResolvedValue(undefined),
   pollExecution: vi.fn(),
-  txHashes: vi.fn().mockReturnValue([]),
+  // KeeperHubClient.txHashes(exec) — extracts hashes from the poll result
+  txHashes: vi.fn((exec: { txHashes?: string[] } | null) => exec?.txHashes ?? []),
 };
 
 function setupScanMocks(score = 85, grade = "A", rulesPassed = 140, rulesTotal = 145) {

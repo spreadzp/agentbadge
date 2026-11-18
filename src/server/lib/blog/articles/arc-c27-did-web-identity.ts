@@ -13,7 +13,8 @@ export const article: BlogArticle = {
   readingTime: "6 min",
   shortAnswer:
     "AgentBadge's platform identity is did:web:agentbadge.xyz — a domain-anchored W3C DID surviving chain migrations, with a signed DID Configuration verifiable via jose. One DID_SIGNING_KEY backs did.json and jwks.json; Arc ERC-8004 refs live in alsoKnownAs (eip155:5042002).",
-  agentGuideSlug: "arc-c27-did-web-identity",
+  // agentGuideSlug omitted — no agent-guide .md exists yet for this article
+  // (knowledge-index degrades gracefully when the field is absent).
   heroImage: "/images/blog/arc-c27-did-web-identity-hero.webp",
   ogImage: "/images/blog/arc-c27-did-web-identity-og.jpeg",
   content: `<p>Ask any agent in our network "who are you?" and it can now answer with a signature anyone can verify — no registry account, no API key, no trust in us required. This week we gave AgentBadge a real platform identity: <code>did:web:agentbadge.xyz</code> — a W3C DID anchored to our domain, backed by a signed DID Configuration that any client can check with about twenty lines of <code>jose</code>.</p>

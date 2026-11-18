@@ -92,6 +92,9 @@ function scoreArticle(a: BlogArticle, tokens: string[], raw: string): number {
     if (qa.includes(t)) score += 3;
     if (slugLc === t) score += 50;
   }
+  // D-218-6: a canonical override marks the authority page that owns this
+  // intent — it should outrank derivative articles for its core query.
+  if (score > 0 && a.canonical) score += 45;
   return score;
 }
 

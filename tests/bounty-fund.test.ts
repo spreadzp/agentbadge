@@ -41,7 +41,7 @@ function net(variant: "circle" | "acp" = "circle"): VenueNetwork {
     abi: variant === "acp" ? ERC8183_ACP_ABI : ERC8183_ABI,
     explorerTx: (h: string) => `https://explorer/tx/${h}`,
     explorerAddr: (a: string) => `https://explorer/address/${a}`,
-  } as VenueNetwork;
+  } as unknown as VenueNetwork;
 }
 
 function bounty(over: Partial<BountyRecord> = {}): BountyRecord {

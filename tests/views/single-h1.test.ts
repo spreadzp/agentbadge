@@ -33,7 +33,7 @@ vi.mock("../../src/server/lib/chain-templates.js", () => ({
 
 import { Layout } from "../../src/views/layout";
 import { LandingLayout } from "../../src/views/landing/layout";
-import { FaqPage } from "../../src/views/faq-page";
+import { FaqPage, getFaqEntries } from "../../src/views/faq-page";
 import { AboutPage } from "../../src/views/about-page";
 import { PricingPage } from "../../src/views/pricing-page";
 import { TermsPage } from "../../src/views/terms-page";
@@ -69,7 +69,7 @@ function wrapInLayout(content: string, title?: string): string {
 
 describe("SLICE-80-3: Single H1 per page", () => {
   const pages: { name: string; html: string }[] = [
-    { name: "/faq", html: wrapInLayout(FaqPage().toString(), PageMeta["/faq"].title) },
+    { name: "/faq", html: wrapInLayout(FaqPage(getFaqEntries(), []).toString(), PageMeta["/faq"].title) },
     { name: "/about", html: wrapInLayout(AboutPage().toString(), PageMeta["/about"].title) },
     { name: "/pricing", html: wrapInLayout(PricingPage().toString(), PageMeta["/pricing"].title) },
     { name: "/terms", html: wrapInLayout(TermsPage().toString(), PageMeta["/terms"].title) },

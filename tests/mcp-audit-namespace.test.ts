@@ -23,7 +23,7 @@ describe("SLICE-72-7: Audit namespace wiring", () => {
   it("registerParityTools(ns) registers tools in the given namespace", () => {
     const testNs = createNamespace("test-parity");
     registerParityTools(testNs);
-    expect(testNs.listTools().length).toBe(26);
+    expect(testNs.listTools().length).toBe(27);
   });
 
   it("calling registerAuditCatalogTools() without args still works (backward compat)", () => {
@@ -47,12 +47,12 @@ describe("SLICE-72-7: Audit namespace wiring", () => {
     expect(after).toBeGreaterThanOrEqual(before);
   });
 
-  it("audit namespace has all audit tools (2 audit-catalog + 1 compliance + 26 parity = 29)", () => {
+  it("audit namespace has all audit tools (2 audit-catalog + 1 compliance + 27 parity = 30)", () => {
     const auditNs = createNamespace("audit");
     registerAuditCatalogTools(auditNs);
     registerComplianceTools(auditNs);
     registerParityTools(auditNs);
-    expect(auditNs.listTools().length).toBe(29);
+    expect(auditNs.listTools().length).toBe(30);
   });
 
   it("audit tools do not appear in other namespaces", () => {

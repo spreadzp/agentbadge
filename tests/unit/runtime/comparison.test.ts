@@ -30,7 +30,7 @@ describe("SLICE-98-5: Declared vs Observed comparison engine", () => {
       expect(results[0].assertion.rule_id).toBe("AB-007");
       expect(results[0].assertion.confidence).toBeGreaterThanOrEqual(0.9);
       expect(results[0].assertion.evidence).toHaveLength(1);
-      expect(results[0].assertion.evidence[0].source).toBe("runtime");
+      expect(results[0].assertion.evidence[0].source_class).toBe("runtime");
     });
 
     it("No assertion when auth schemes match", () => {
@@ -203,7 +203,7 @@ describe("SLICE-98-5: Declared vs Observed comparison engine", () => {
       expect(results).toHaveLength(1);
       expect(results[0].status).toBe("GAP");
       expect(results[0].assertion.confidence).toBeGreaterThanOrEqual(0.9);
-      expect(results[0].assertion.evidence[0].source).toBe("runtime");
+      expect(results[0].assertion.evidence[0].source_class).toBe("runtime");
     });
   });
 
@@ -245,7 +245,7 @@ describe("SLICE-98-5: Declared vs Observed comparison engine", () => {
       };
 
       const results = compareDeclaredVsObserved([declared], [observed]);
-      expect(results[0].assertion.evidence[0].source).toBe("runtime");
+      expect(results[0].assertion.evidence[0].source_class).toBe("runtime");
       expect(results[0].assertion.confidence).toBeGreaterThanOrEqual(0.9);
     });
   });

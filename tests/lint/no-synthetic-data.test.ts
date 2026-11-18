@@ -40,6 +40,16 @@ const BEACONS: Beacon[] = [
 const ALLOWLIST: Record<string, Beacon[]> = {
   // Schema example URL in describeRoute docs — not served data.
   "agent-knowledge.ts": [{ name: "example.com", re: /your-api\.example\.com/ }],
+  // OpenAPI x-examples / curl docs — documentation payloads, not served data.
+  "agents-register-examples.ts": [
+    { name: "example.com", re: /agent\.example\.com/ },
+  ],
+  "openapi-examples.ts": [
+    { name: "example.com", re: /example\.com/ },
+  ],
+  "well-known/agent-docs.ts": [
+    { name: "example.com", re: /agent\.example\.com/ },
+  ],
   // Real on-chain zero address used as a genuine "unset" sentinel.
   "attestcoin.ts": [{ name: "zero-address", re: ZERO_ADDR }],
   "trust.ts": [{ name: "zero-address", re: ZERO_ADDR }],

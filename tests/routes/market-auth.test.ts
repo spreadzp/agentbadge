@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 
 vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
@@ -35,10 +35,12 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   setEscrowStatus: vi.fn(),
   returnTaskToMarket: vi.fn(),
   updateTaskVerificationAttempts: vi.fn(),
+  reserveTask: vi.fn(),
+  transitionTask: vi.fn(),
 }));
 
 import { submitTaskMessage, verifyA2ADid, didToAccountId, createScheduledTransfer } from "@agentbadge/hedera-core";
-import { getTaskById, updateTaskStatus, setEscrowStatus, marketUpsert as upsert } from "@agentbadge/passport";
+import { getTaskById, updateTaskStatus, setEscrowStatus, marketUpsert as upsert, reserveTask, transitionTask } from "@agentbadge/passport";
 import { marketRoutes } from "../../src/server/routes/market";
 import {
   configureDidAuthForTesting,
@@ -54,6 +56,8 @@ const _mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
 const _mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
 const mockedCreateScheduledTransfer = vi.mocked(createScheduledTransfer);
 const _mockedUpsert = vi.mocked(upsert);
+const mockedReserveTask = vi.mocked(reserveTask);
+const mockedTransitionTask = vi.mocked(transitionTask);
 
 const POSTER_DID = "did:hcs:0.0.123:1";
 const CLAIMER_DID = "did:hcs:0.0.456:2";
@@ -89,6 +93,8 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // vitest.setup.ts forces DID_AUTH_MODE=off; these tests exercise enforce
+    process.env.DID_AUTH_MODE = "enforce";
     app = new Hono();
     app.route("/", marketRoutes);
 
@@ -97,6 +103,8 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
     vi.mocked(mockVerifier).mockResolvedValue(true);
 
     // Default mocks
+    mockedReserveTask.mockReturnValue({ ok: true, currentStatus: null });
+    mockedTransitionTask.mockReturnValue({ ok: true, currentStatus: null });
     mockedVerify.mockResolvedValue(true);
     mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
     mockedDidToAccountId.mockResolvedValue("0.0.123");
@@ -104,6 +112,10 @@ describe("Marketplace DID auth enforcement (SLICE-82-2)", () => {
       scheduleId: "0.0.555",
       scheduleTxId: "0.0.555@1234567890",
     });
+  });
+
+  afterEach(() => {
+    process.env.DID_AUTH_MODE = "off";
   });
 
   // ─── POST /market/tasks ──────────────────────────────────────────

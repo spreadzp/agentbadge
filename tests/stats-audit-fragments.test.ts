@@ -237,12 +237,20 @@ describe("Audit Fragment — GET /ui/audit", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
     const html = await res.text();
     expect(html).not.toContain("<html");
-    // All 5 event types should be present
-    expect(html).toContain("passport_issued");
-    expect(html).toContain("tier_upgraded");
+    // Page size is 4 — passport_issued (oldest) paginates to the next page
+    expect(html).toContain("agent_deregistered");
     expect(html).toContain("passport_revoked");
     expect(html).toContain("agent_registered");
-    expect(html).toContain("agent_deregistered");
+    expect(html).toContain("tier_upgraded");
+    expect(html).toContain("/ui/audit?offset=4");
+
+    // passport_issued shows up on the second page
+    mockedGetTopicMessages.mockResolvedValueOnce(mockAuditMessages);
+    const res2 = await app.request("/ui/audit?offset=4", {
+      method: "GET",
+      headers: { "HX-Request": "true" },
+    });
+    expect(await res2.text()).toContain("passport_issued");
   });
 
   it("shows old/new tier info for tier_upgraded events", async () => {

@@ -145,7 +145,7 @@ import { AB187 } from "./rules/AB187";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
-  version: "1.6.0",
+  version: "2.2.0",
   scoring: {
     pillars: {
       weights: { discovery: 20, understandability: 25, executability: 30, verifiability: 25 },

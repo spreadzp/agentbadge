@@ -13,7 +13,7 @@ describe("SLICE-48-11: bot-auth-fetcher", () => {
         return new Response("-----BEGIN PUBLIC KEY-----", { status: 200 });
       return new Response(null, { status: 404 });
     });
-    const result = await fetchBotAuth("https://example.com", mockFetch);
+    const result = await fetchBotAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.source).toBe("bot-auth");
     expect(result.data.found).toBe(true);
     expect(result.data.members).toHaveLength(1);
@@ -22,7 +22,7 @@ describe("SLICE-48-11: bot-auth-fetcher", () => {
 
   it("handles 404", async () => {
     const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
-    const result = await fetchBotAuth("https://example.com", mockFetch);
+    const result = await fetchBotAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.found).toBe(false);
   });
 });

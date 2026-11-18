@@ -104,11 +104,23 @@ export const article: BlogArticle = {
       id: "c45-stripe-live-dogfood",
       status: "VERIFIED",
       text: "Live Stripe test-mode run: create → pay → CONFIRMED → REFUNDED with two concurrent refund calls producing exactly one rail refund (railRefundCount:1). The run caught a fiat-rail network-expectation bug (220-10-F1) that prompted a second audit.",
+      evidence: [
+        {
+          type: "github",
+          url: "https://github.com/spreadzp/agentbadge/tree/main/tests",
+        },
+      ],
     },
     {
       id: "c45-double-audit-resolved",
       status: "VERIFIED",
       text: "Two adversarial audit rounds — BLOCK (5 Critical, 6 High, 11 Medium) then REQUEST CHANGES (1 Critical, 6 High, 8 Medium) — all findings fixed and re-verified; 114/114 tests green.",
+      evidence: [
+        {
+          type: "github",
+          url: "https://github.com/spreadzp/agentbadge/tree/main/tests",
+        },
+      ],
     },
   ],
   externalLinks: [

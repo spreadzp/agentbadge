@@ -130,24 +130,27 @@ describe("marketplaceCache", () => {
   });
 
   describe("updateTaskStatus", () => {
-    it("transitions posted → claimed", () => {
+    it("transitions posted → claiming → claimed", () => {
       upsert(makeTask({ status: "posted" }));
+      expect(updateTaskStatus("task-001", "claiming")).toBe(true);
       const result = updateTaskStatus("task-001", "claimed", { claimerDid: "did:hcs:0.0.456:2" });
       expect(result).toBe(true);
       expect(get("task-001")?.status).toBe("claimed");
       expect(get("task-001")?.claimerDid).toBe("did:hcs:0.0.456:2");
     });
 
-    it("transitions claimed → delivered", () => {
+    it("transitions claimed → delivering → delivered", () => {
       upsert(makeTask({ status: "claimed", claimerDid: "did:hcs:0.0.456:2" }));
+      expect(updateTaskStatus("task-001", "delivering")).toBe(true);
       const result = updateTaskStatus("task-001", "delivered", { resultBody: "Done" });
       expect(result).toBe(true);
       expect(get("task-001")?.status).toBe("delivered");
       expect(get("task-001")?.resultBody).toBe("Done");
     });
 
-    it("transitions delivered → completed", () => {
+    it("transitions delivered → completing → completed", () => {
       upsert(makeTask({ status: "delivered", resultBody: "Done" }));
+      expect(updateTaskStatus("task-001", "completing")).toBe(true);
       const result = updateTaskStatus("task-001", "completed", { paymentTxId: "0.0.2@tx" });
       expect(result).toBe(true);
       expect(get("task-001")?.status).toBe("completed");

@@ -37,7 +37,7 @@ function makeNft(overrides: Partial<NftInfo> = {}): NftInfo {
   };
 }
 
-describe("Dashboard — GET /", () => {
+describe("Dashboard — GET /dashboard", () => {
   let app: Hono;
 
   beforeEach(() => {
@@ -47,26 +47,26 @@ describe("Dashboard — GET /", () => {
   });
 
   it("returns 200 HTML", async () => {
-    const res = await app.request("/", { method: "GET" });
+    const res = await app.request("/dashboard", { method: "GET" });
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
   });
 
   it("includes HTMX CDN script tag", async () => {
-    const res = await app.request("/", { method: "GET" });
+    const res = await app.request("/dashboard", { method: "GET" });
     const html = await res.text();
     expect(html).toContain("htmx.org");
   });
 
   it("includes prebuilt Tailwind CSS link", async () => {
-    const res = await app.request("/", { method: "GET" });
+    const res = await app.request("/dashboard", { method: "GET" });
     const html = await res.text();
     expect(html).toContain('/css/tailwind.css');
     expect(html).not.toContain('cdn.tailwindcss.com');
   });
 
   it("contains feed container with hx-get='/ui/feed' and hx-trigger='load, every 5s'", async () => {
-    const res = await app.request("/", { method: "GET" });
+    const res = await app.request("/dashboard", { method: "GET" });
     const html = await res.text();
     expect(html).toContain('hx-get="/ui/feed"');
     expect(html).toContain("every 5s");

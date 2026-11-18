@@ -30,11 +30,11 @@ describe("SLICE-48-3: mcp-probe-fetcher", () => {
       return new Response(null, { status: 405 });
     });
 
-    const result = await fetchMcpProbe("https://example.com", mockFetch);
+    const result = await fetchMcpProbe("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.source).toBe("mcp-probe");
     expect(result.data.initialize.status).toBe(200);
     expect(result.data.initialize.protocolVersion).toBe("2024-11-05");
-    expect(result.data.initialize.serverInfo.name).toBe("AgentBadge");
+    expect(result.data.initialize?.serverInfo?.name).toBe("AgentBadge");
     expect(result.data.toolsList.tools).toHaveLength(1);
     expect(result.data.cors.allowOrigin).toBe("*");
     expect(result.data.sse.supported).toBe(true);
@@ -42,7 +42,7 @@ describe("SLICE-48-3: mcp-probe-fetcher", () => {
 
   it("handles 405 (endpoint exists but method not allowed)", async () => {
     const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 405 }));
-    const result = await fetchMcpProbe("https://example.com", mockFetch);
+    const result = await fetchMcpProbe("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.initialize.status).toBe(405);
   });
 });

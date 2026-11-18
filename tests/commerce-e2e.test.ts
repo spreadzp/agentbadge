@@ -11,9 +11,14 @@
  * size guards (summary >4000, evidenceRefs >50), unsigned writes → 401.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
+import { verifyMessage } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import {
+  configureAgentAuthForTesting,
+  resetAgentAuthForTesting,
+} from "../src/server/middleware/agent-auth";
 import { createInMemoryCommerceStores } from "@agentbadge/database";
 import { createCommerceService } from "../src/server/lib/commerce";
 import {
@@ -50,6 +55,23 @@ function makeApp() {
   app.route("/", createCommerceRoutes(service));
   return { app, stores };
 }
+
+beforeEach(() => {
+  // Default verifier does an ERC-6492 eth_call over RPC — hangs offline.
+  // viem verifyMessage recovers locally for EOAs.
+  configureAgentAuthForTesting({
+    verifier: (wallet, message, signature) =>
+      verifyMessage({
+        address: wallet as `0x${string}`,
+        message,
+        signature: signature as `0x${string}`,
+      }),
+  });
+});
+
+afterEach(() => {
+  resetAgentAuthForTesting();
+});
 
 async function sigHeaders(
   account: Account,

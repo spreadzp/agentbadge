@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { FaqPage } from "../../../src/views/faq-page";
+import { FaqPage, getFaqEntries } from "../../../src/views/faq-page";
 import { AboutPage } from "../../../src/views/about-page";
 import { PricingPage } from "../../../src/views/pricing-page";
 import { UseCasesPage } from "../../../src/views/use-cases-page";
 
 describe("SLICE-113-5: Content pages cross-links", () => {
   it("FAQ page has RelatedLinks with /about, /pricing, /use-cases, /blog", () => {
-    const html = FaqPage().toString();
+    const html = FaqPage(getFaqEntries(), []).toString();
     expect(html).toContain("Explore More");
     expect(html).toContain('href="/about"');
     expect(html).toContain('href="/pricing"');

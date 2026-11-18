@@ -16,7 +16,9 @@ describe("Agency Config (SLICE-51-1)", () => {
       expect(s.name).toBeTruthy();
       expect(s.tagline).toBeTruthy();
       expect(s.description).toBeTruthy();
-      expect(s.url).toMatch(/^\/services\//);
+      // Post-deploy sweep: services may link to guide concepts when no
+      // dedicated /services/ page exists (e.g. KeeperHub on-chain recording).
+      expect(s.url).toMatch(/^\/(services|agent-guide)\//);
       expect(s.icon).toBeTruthy();
       expect(s.features.length).toBeGreaterThan(0);
     }

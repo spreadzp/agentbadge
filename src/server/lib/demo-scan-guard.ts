@@ -137,6 +137,8 @@ export async function pinnedDispatcher(
   addrs: { address: string }[],
 ): Promise<{ dispatcher?: unknown }> {
   try {
+    // @ts-expect-error — undici is an optional runtime dep; absent types fall
+    // back to the catch below (best-effort dispatcher pinning).
     const { Agent } = await import("undici");
     const agent = new Agent({
       connect: {

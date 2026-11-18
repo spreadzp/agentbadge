@@ -17,6 +17,9 @@ vi.mock("../../../src/agent-readiness/ruleset", () => ({
     name: "agent-readiness",
     version: "1.4.0",
     scoring: { model: "v2-pillars" },
+    // EPIC-96: handler reads .rules for the gap roadmap — empty list
+    // yields zero gaps, which the pillar assertions don't care about.
+    rules: [],
   },
 }));
 

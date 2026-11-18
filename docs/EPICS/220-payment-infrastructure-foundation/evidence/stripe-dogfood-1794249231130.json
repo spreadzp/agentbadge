@@ -1,0 +1,32 @@
+{
+  "run": "dogfood-1794249231130",
+  "reference": "dogfood-1794249231130-cf6944e8",
+  "rail": "stripe-testmode",
+  "amount": "1.00",
+  "result": "aborted",
+  "steps": [
+    {
+      "step": "create",
+      "at": "2026-11-09T18:33:52.282Z",
+      "paymentId": "pay_e74cbd3b-a528-464f-9f29-51e8ec8c5cb7",
+      "paymentStatus": "PROCESSING",
+      "attemptId": "att_385e5665-a9b3-40d6-ae83-8d3cdcb98b4b",
+      "attemptStatus": "PENDING",
+      "providerReference": "cs_test_a1KjroL8KvGHMRtyDXCPntLnPJNtBUP0aZXI2dXuUIkBT0IXWztJ0YLfGE",
+      "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_test_a1KjroL8KvGHMRtyDXCPntLnPJNtBUP0aZXI2dXuUIkBT0IXWztJ0YLfGE#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNSknZHVsTmB8Jz8ndW5acWB2cVpEVmIyUWFoSk1MNH0yRjx%2Fd0FzZDJTcnM1NTxqQHNcREFfJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCd4JSUl"
+    },
+    {
+      "step": "edge-dedupe",
+      "at": "2026-11-09T18:33:52.289Z",
+      "deduped": true,
+      "samePaymentId": true
+    },
+    {
+      "step": "edge-fingerprint-conflict",
+      "at": "2026-11-09T18:33:52.289Z",
+      "deduped": false,
+      "conflict": "reference \"dogfood-1794249231130-cf6944e8\" already bound to a different request",
+      "error": null
+    }
+  ]
+}

@@ -38,8 +38,11 @@ export function makeFixtureScanReport(): ScanReport {
 }
 
 export function makeFixtureAssertions(): Assertion[] {
-  const baseTimestamp = "2026-09-01T10:00:00Z";
-  const olderTimestamp = "2026-08-29T10:00:00Z";
+  // Dynamic timestamps — fixed dates go stale as real time passes and the
+  // profile command then exits 2 (stale sections warning) instead of 0.
+  const now = Date.now();
+  const baseTimestamp = new Date(now - 24 * 3600 * 1000).toISOString();
+  const olderTimestamp = new Date(now - 3 * 24 * 3600 * 1000).toISOString();
 
   const make = (overrides: Partial<Assertion> & { rule_id: string; category: string; status: Assertion["status"] }): Assertion => ({
     rule_id: overrides.rule_id,

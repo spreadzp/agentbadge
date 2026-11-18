@@ -49,8 +49,8 @@ describe("SLICE-118-1: FAQ data expansion", () => {
   });
 
   describe("FAQ_CATEGORIES", () => {
-    it("has 8 categories", () => {
-      expect(FAQ_CATEGORIES.length).toBe(8);
+    it("has 10 categories", () => {
+      expect(FAQ_CATEGORIES.length).toBe(10);
     });
 
     it("every questionSlug matches a slugified question in RAW_FAQ_ENTRIES", () => {

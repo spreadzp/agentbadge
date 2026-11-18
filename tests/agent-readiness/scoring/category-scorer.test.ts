@@ -13,6 +13,11 @@ function mockAssertion(ruleId: string, status: Assertion["status"]): Assertion {
     timestamp: new Date().toISOString(),
     reason: "test",
     source_url: null,
+    category: "discovery",
+    name: "t",
+    claim: "t",
+    verified_at: "",
+    review_level: "automatic",
   };
 }
 

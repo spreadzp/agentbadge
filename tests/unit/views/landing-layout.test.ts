@@ -11,7 +11,7 @@ describe("SLICE-19-1: Footer (shared)", () => {
     const html = Footer().toString();
     expect(html).toContain("<footer");
     expect(html).toContain("AgentBadge");
-    expect(html).toContain("On-chain identity for AI agents on Hedera");
+    expect(html).toContain("Agency for the agentic web — agent-ready infrastructure on Arc");
   });
 
   it("contains guide links", () => {
@@ -38,7 +38,7 @@ describe("SLICE-19-1: LandingHeader", () => {
     const html = LandingHeader().toString();
     expect(html).toContain("<header");
     expect(html).toContain("AgentBadge");
-    expect(html).toContain('/icons/logo-32.png');
+    expect(html).toContain('/icons/logo-32.webp');
   });
 
   it("contains marketing nav links", () => {
@@ -79,7 +79,7 @@ describe("SLICE-19-1: LandingLayout", () => {
   it("contains Footer", () => {
     const html = LandingLayout("<p>test</p>").toString();
     expect(html).toContain("<footer");
-    expect(html).toContain("On-chain identity for AI agents on Hedera");
+    expect(html).toContain("Agency for the agentic web — agent-ready infrastructure on Arc");
   });
 
   it("does NOT contain sidebar", () => {
@@ -196,7 +196,7 @@ describe("SLICE-19-1: Layout regression after Footer extraction", () => {
     const html = Layout("<p>test</p>").toString();
     expect(html).toContain("<footer");
     expect(html).toContain("AgentBadge");
-    expect(html).toContain("On-chain identity for AI agents on Hedera");
+    expect(html).toContain("Agency for the agentic web — agent-ready infrastructure on Arc");
   });
 
   it("Layout still renders sidebar", () => {
@@ -252,7 +252,7 @@ describe("SLICE-21-8: Layout Enhancements", () => {
     it("noscript contains product name and /dashboard link", () => {
       const html = LandingLayout("<p>test</p>").toString();
       expect(html).toContain("<noscript>");
-      expect(html).toContain("AgentBadge — On-Chain Identity for AI Agents");
+      expect(html).toContain("AgentBadge — Agency for the Agentic Web");
       expect(html).toContain('href="/dashboard"');
     });
   });
@@ -287,7 +287,7 @@ describe("SLICE-21-8: Layout Enhancements", () => {
     it("noscript contains product name and /dashboard link", () => {
       const html = Layout("<p>test</p>").toString();
       expect(html).toContain("<noscript>");
-      expect(html).toContain("AgentBadge — On-Chain Identity for AI Agents");
+      expect(html).toContain("AgentBadge — Agency for the Agentic Web");
       expect(html).toContain('href="/dashboard"');
     });
   });
@@ -297,7 +297,7 @@ describe("SLICE-21-8: Layout Enhancements", () => {
       const html = Footer().toString();
       expect(html).toContain("© 2026 AgentBadge");
       expect(html).toContain("MIT License");
-      expect(html).toContain("Built on Hedera");
+      expect(html).toContain("Built on Arc");
     });
   });
 });

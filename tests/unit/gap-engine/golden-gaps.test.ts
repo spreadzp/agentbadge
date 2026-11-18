@@ -73,7 +73,7 @@ const EXPECTED_GAPS: ExpectedGap[] = [
   { gap_id: "gap:evidence:actionability", priority: "CRITICAL", type: "evidence", frequency: 1, related_rules: ["AB-007"], fix_hint: "manual" },
   { gap_id: "gap:capability:bot_auth", priority: "CRITICAL", type: "capability", frequency: 17, related_rules: ["AB-023", "AB-128", "AB-129", "AB-130", "AB-131", "AB-132", "AB-133", "AB-134", "AB-136", "AB-137", "AB-138", "AB-139", "AB-141", "AB-142", "AB-143", "AB-145", "AB-153"], fix_hint: "manual" },
   { gap_id: "gap:semantic:actionability", priority: "HIGH", type: "semantic", frequency: 2, related_rules: ["AB-074", "AB-075"], fix_hint: "assisted" },
-  { gap_id: "gap:documentation:discovery", priority: "HIGH", type: "documentation", frequency: 2, related_rules: ["AB-111", "AB-114"], fix_hint: "deterministic" },
+  { gap_id: "gap:documentation:discovery", priority: "CRITICAL", type: "documentation", frequency: 3, related_rules: ["AB-111", "AB-114", "AB-161"], fix_hint: "deterministic" },
   { gap_id: "gap:semantic:error_semantics", priority: "HIGH", type: "semantic", frequency: 1, related_rules: ["AB-149"], fix_hint: "assisted" },
   { gap_id: "gap:semantic:verification", priority: "HIGH", type: "semantic", frequency: 1, related_rules: ["AB-152"], fix_hint: "assisted" },
   { gap_id: "gap:semantic:agent_policy", priority: "MEDIUM", type: "semantic", frequency: 1, related_rules: ["AB-157"], fix_hint: "assisted" },
@@ -86,7 +86,7 @@ const EXPECTED_GAPS: ExpectedGap[] = [
 
 const EXPECTED_SUMMARY: GapSummary = {
   total: 12,
-  by_priority: { CRITICAL: 2, HIGH: 4, MEDIUM: 5, LOW: 1 },
+  by_priority: { CRITICAL: 3, HIGH: 3, MEDIUM: 5, LOW: 1 },
   by_type: { documentation: 3, semantic: 6, capability: 2, evidence: 1 },
 };
 

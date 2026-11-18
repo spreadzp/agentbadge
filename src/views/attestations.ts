@@ -82,7 +82,7 @@ export function AttestationsPage(
     </main>
   `;
 
-  return Layout(content, "Attestations", {
+  return Layout(content.toString(), "Attestations", {
     title: "Onchain Attestations — AgentBadge",
     description:
       "Website readiness scans attested on Arc blockchain as ERC-8004 reputation feedback with explorer-verifiable proof.",

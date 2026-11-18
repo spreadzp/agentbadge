@@ -1,7 +1,7 @@
 /**
  * SLICE-130-15: Blog Article JSON-LD tests.
  *
- * Verifies that blog article pages contain valid BlogPosting
+ * Verifies that blog article pages contain valid TechArticle
  * and BreadcrumbList structured data.
  */
 
@@ -55,56 +55,56 @@ describe("SLICE-130-15: Blog Article JSON-LD", () => {
     process.env = { ...originalEnv };
   });
 
-  it("/blog/:slug contains BlogPosting JSON-LD", async () => {
+  it("/blog/:slug contains TechArticle JSON-LD", async () => {
     const res = await blogRoutes.request("/blog/what-is-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const blogPosting = blocks.find((b) => b["@type"] === "BlogPosting");
+    const blogPosting = blocks.find((b) => b["@type"] === "TechArticle");
     expect(blogPosting).toBeDefined();
   });
 
-  it("BlogPosting has headline, author, datePublished, dateModified", async () => {
+  it("TechArticle has headline, author, datePublished, dateModified", async () => {
     const res = await blogRoutes.request("/blog/what-is-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const bp = blocks.find((b) => b["@type"] === "BlogPosting") as Record<string, unknown>;
+    const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
     expect(bp.headline).toBeDefined();
     expect(bp.author).toBeDefined();
     expect(bp.datePublished).toBeDefined();
     expect(bp.dateModified).toBeDefined();
   });
 
-  it("BlogPosting author is Person type", async () => {
+  it("TechArticle author is Person type", async () => {
     const res = await blogRoutes.request("/blog/what-is-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const bp = blocks.find((b) => b["@type"] === "BlogPosting") as Record<string, unknown>;
+    const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
     const author = bp.author as Record<string, unknown>;
     expect(author["@type"]).toBe("Person");
     expect(author.name).toBeDefined();
   });
 
-  it("BlogPosting has image field", async () => {
+  it("TechArticle has image field", async () => {
     const res = await blogRoutes.request("/blog/what-is-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const bp = blocks.find((b) => b["@type"] === "BlogPosting") as Record<string, unknown>;
+    const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
     expect(bp.image).toBeDefined();
   });
 
-  it("BlogPosting has mainEntityOfPage", async () => {
+  it("TechArticle has mainEntityOfPage", async () => {
     const res = await blogRoutes.request("/blog/what-is-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const bp = blocks.find((b) => b["@type"] === "BlogPosting") as Record<string, unknown>;
+    const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
     expect(bp.mainEntityOfPage).toBeDefined();
   });
 
-  it("BlogPosting has publisher with Organization type", async () => {
+  it("TechArticle has publisher with Organization type", async () => {
     const res = await blogRoutes.request("/blog/what-is-agent-readiness");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const bp = blocks.find((b) => b["@type"] === "BlogPosting") as Record<string, unknown>;
+    const bp = blocks.find((b) => b["@type"] === "TechArticle") as Record<string, unknown>;
     const publisher = bp.publisher as Record<string, unknown>;
     expect(publisher).toBeDefined();
     expect(publisher["@type"]).toBe("Organization");

@@ -137,7 +137,9 @@ async function scanHandler(args: ParsedArgs, flags: ParsedFlags): Promise<Comman
     };
     const scoreResult = runScoringEngine({
       assertions: ruleEngineResult.assertions as Assertion[],
-      rulesetManifest: manifest,
+      rulesetManifest: manifest as unknown as Parameters<
+        typeof runScoringEngine
+      >[0]["rulesetManifest"],
     });
 
     // Step 4: Compute gaps (EPIC-96)

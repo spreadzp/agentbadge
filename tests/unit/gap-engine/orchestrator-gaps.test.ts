@@ -41,6 +41,7 @@ function makeRuleEngineResult(assertions: Assertion[]): RuleEngineResult {
     scannedAt: new Date().toISOString(),
     totalRules: assertions.length,
     applicableRules: assertions.length,
+    bundles: [],
   };
 }
 

@@ -56,7 +56,7 @@ describe("scan command", () => {
   });
 
   it("runs full scan pipeline and returns report JSON with --json", async () => {
-    vi.mocked(fetch).mockImplementation(async (url: string) => {
+    vi.mocked(fetch).mockImplementation(async (url: RequestInfo | URL) => {
       const u = String(url);
       if (u.includes("robots.txt")) return mockResponse(200, "User-agent: *", { "content-type": "text/plain" });
       if (u.includes("sitemap.xml")) return mockResponse(200, "<urlset/>", { "content-type": "application/xml" });
@@ -70,17 +70,15 @@ describe("scan command", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBeTruthy();
     const report = JSON.parse(result.stdout);
-    expect(report.report_id).toBeTruthy();
-    expect(report.schema_version).toBe("0.4.0");
-    expect(report.ruleset.name).toBe("agent-readiness");
-    expect(report.score.overall).toBeTypeOf("number");
-    expect(report.assertions).toBeInstanceOf(Array);
-    expect(report.integrity).toBeDefined();
-    expect(report.integrity.content_hash).toBeTruthy();
+    // --json emits {results: assertions[], gaps, gap_summary}
+    expect(report.results).toBeInstanceOf(Array);
+    expect(report.results.length).toBeGreaterThan(0);
+    expect(report.results[0].rule_id).toBeTypeOf("string");
+    expect(report.gap_summary).toBeDefined();
   });
 
   it("writes report file without --json flag", async () => {
-    vi.mocked(fetch).mockImplementation(async (url: string) => {
+    vi.mocked(fetch).mockImplementation(async (url: RequestInfo | URL) => {
       const u = String(url);
       if (u.includes("robots.txt")) return mockResponse(200, "User-agent: *", { "content-type": "text/plain" });
       if (u.includes("sitemap.xml")) return mockResponse(200, "<urlset/>", { "content-type": "application/xml" });
@@ -98,9 +96,10 @@ describe("scan command", () => {
 
   it("handles scan errors gracefully", async () => {
     vi.mocked(fetch).mockRejectedValue(new Error("Network error"));
-
+    // resource fetch rejections are tolerated — the scan completes with
+    // degraded evidence instead of failing the whole command
     const result = await runCommand(["scan", "--json", "https://example.com"]);
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Error");
+    expect(result.exitCode).toBe(0);
+    expect(() => JSON.parse(result.stdout)).not.toThrow();
   });
 });

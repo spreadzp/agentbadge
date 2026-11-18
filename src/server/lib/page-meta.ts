@@ -252,7 +252,7 @@ export const PageMeta: Record<string, PageMeta> = {
   "/pricing": {
     title: "Pricing — Passport Tiers",
     description:
-      "AgentBadge passport tiers: Bronze $9.99, Silver $49.99, Gold $199.99, Platinum $499.99 — pay by card or USDC on Arc. Capabilities per tier, on-chain identity on Arc mainnet.",
+      "Passport tiers: Bronze $9.99, Silver $49.99, Gold $199.99, Platinum $499.99 — pay by card or USDC on Arc. On-chain agent identity on Arc mainnet.",
     path: "/pricing",
   },
   "/checkout": {

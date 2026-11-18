@@ -29,6 +29,7 @@ import {
   createReceiptSigner,
   verifyTaskReceiptSignature,
   RECEIPT_DOMAIN_NAME,
+  type TaskReceipt,
 } from "../src/server/lib/board/task-receipt";
 import { createReceiptRoutes } from "../src/server/routes/board-api-receipt";
 import { ReceiptSchemaV1 } from "../src/server/lib/board/task-receipt-schema";
@@ -125,12 +126,12 @@ describe("buildTaskReceipt", () => {
 
   it("projects a DONE card into a full receipt", async () => {
     seedDoneCard();
-    const r = await buildTaskReceipt("board_receipt1", {
+    const r = (await buildTaskReceipt("board_receipt1", {
       signer: SIGNER,
       chainId: CHAIN_ID,
       agentRegistry: REGISTRY,
       escrowAddress: ESCROW,
-    });
+    })) as TaskReceipt | null;
     expect(r).not.toBeNull();
     expect(r!.task.id).toBe("board_receipt1");
     expect(r!.task.title).toBe("Fix flaky e2e");
@@ -138,8 +139,8 @@ describe("buildTaskReceipt", () => {
     expect(r!.agent.agentId).toBe("8004-agent-99");
     expect(r!.agent.agentRegistry).toBe(REGISTRY);
     expect(r!.payment?.to).toBe(PAYOUT);
-    expect(r!.payment.txHash).toBe(COMPLETE_TX);
-    expect(r!.payment.chainId).toBe(CHAIN_ID);
+    expect(r!.payment?.txHash).toBe(COMPLETE_TX);
+    expect(r!.payment?.chainId).toBe(CHAIN_ID);
     expect(r!.evidence.txHashes).toContain(SUBMIT_TX);
     expect(r!.signature).toMatch(/^0x[0-9a-f]{130}$/);
   });
@@ -203,7 +204,7 @@ describe("EIP-712 signature", () => {
     });
     expect(r && "task" in r && verifyTaskReceiptSignature(r as never)).toBe(true);
     // independent ethers recover — the external verifier path
-    const body = (r as { body: Record<string, bigint | string> }).body;
+    const body = (r as unknown as { body: Record<string, bigint | string> }).body;
     const recovered = ethers.verifyTypedData(
       buildReceiptDomain(CHAIN_ID),
       {
@@ -230,7 +231,7 @@ describe("EIP-712 signature", () => {
       chainId: CHAIN_ID,
       agentRegistry: REGISTRY,
       escrowAddress: ESCROW,
-    })) as { task: { specHash: string }; body: Record<string, unknown>; signature: Hex };
+    })) as unknown as { task: { specHash: string }; body: Record<string, unknown>; signature: Hex };
     const tampered = {
       ...r,
       body: { ...r.body, specHash: `0x${"00".repeat(32)}` },

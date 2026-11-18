@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import { Hono } from "hono";
 
 vi.mock("@agentbadge/hedera-core", async (importOriginal) => {
@@ -54,12 +54,21 @@ function makeAuthHeaders(did: string, nonce: string): Record<string, string> {
 }
 
 describe("A2A DID auth enforcement (SLICE-82-2)", () => {
+  afterAll(() => {
+    if (prevAuthMode === undefined) delete process.env.DID_AUTH_MODE;
+    else process.env.DID_AUTH_MODE = prevAuthMode;
+  });
+
   let app: Hono;
   let testNonceStore: NonceStore;
   const mockVerifier: VerifySignatureFn = vi.fn();
 
+  const prevAuthMode = process.env.DID_AUTH_MODE;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // vitest.setup sets DID_AUTH_MODE=off globally; this suite tests enforcement
+    process.env.DID_AUTH_MODE = "enforce";
     app = new Hono();
     app.route("/", a2aRoutes);
 

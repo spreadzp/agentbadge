@@ -27,11 +27,14 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   marketRebuildFromHcs: vi.fn(),
   setEscrowStatus: vi.fn(),
   returnTaskToMarket: vi.fn(),
+  reserveTask: vi.fn(),
+  transitionTask: vi.fn(),
+  updateTaskVerificationAttempts: vi.fn(),
 }));
 
 import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, createScheduledTransfer } from "@agentbadge/hedera-core";
 import { didToAccountId } from "@agentbadge/hedera-core";
-import { marketUpsert as upsert, marketGet as get, getTaskById, updateTaskStatus, listTasks, setEscrowStatus, returnTaskToMarket } from "@agentbadge/passport";
+import { marketUpsert as upsert, marketGet as get, getTaskById, updateTaskStatus, listTasks, setEscrowStatus, returnTaskToMarket, reserveTask, transitionTask } from "@agentbadge/passport";
 import { marketRoutes } from "../src/server/routes/market";
 
 const mockedSubmit = vi.mocked(submitTaskMessage);
@@ -49,6 +52,8 @@ const mockedGet = vi.mocked(get);
 const mockedGetTaskById = vi.mocked(getTaskById);
 const mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
 const mockedListTasks = vi.mocked(listTasks);
+const mockedReserveTask = vi.mocked(reserveTask);
+const mockedTransitionTask = vi.mocked(transitionTask);
 
 const POSTER_DID = "did:hcs:0.0.123:1";
 const CLAIMER_DID = "did:hcs:0.0.456:2";
@@ -77,13 +82,15 @@ describe("Marketplace REST API", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Lifecycle handlers use atomic reserve/transition — default to success
+    mockedReserveTask.mockReturnValue({ ok: true, currentStatus: null });
+    mockedTransitionTask.mockReturnValue({ ok: true, currentStatus: null });
     app = new Hono();
     app.route("/", marketRoutes);
   });
 
   describe("POST /market/tasks", () => {
     it("returns 200 with txId and taskId on valid input", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
 
       const res = await app.request("/market/tasks", {
@@ -103,7 +110,8 @@ describe("Marketplace REST API", () => {
       expect(data.txId).toBe("0.0.111@1234567890.000000001");
       expect(data.taskId).toBeTypeOf("string");
       expect(data.timestamp).toBeTypeOf("number");
-      expect(mockedVerify).toHaveBeenCalledWith(POSTER_DID);
+      // did:hcs posters skip the Base-only checkPassportType; DID auth is the
+      // requireDidSignature middleware's job (off in tests)
       expect(mockedSubmit).toHaveBeenCalledOnce();
       expect(mockedUpsert).toHaveBeenCalledOnce();
     });
@@ -156,7 +164,7 @@ describe("Marketplace REST API", () => {
       expect(data.error).toContain("capabilities");
     });
 
-    it("returns 400 on non-positive priceHbar", async () => {
+    it("returns 400 on negative priceHbar (0 is allowed for reputation-only tasks)", async () => {
       const res = await app.request("/market/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,7 +172,7 @@ describe("Marketplace REST API", () => {
           posterDid: POSTER_DID,
           title: "Test",
           description: "Test",
-          priceHbar: 0,
+          priceHbar: -1,
           capabilities: ["api_call"],
         }),
       });
@@ -174,8 +182,10 @@ describe("Marketplace REST API", () => {
       expect(data.error).toContain("priceHbar");
     });
 
-    it("returns 403 when poster passport is invalid", async () => {
-      mockedVerify.mockResolvedValue(false);
+    it("proceeds for did:hcs posters (Base passport check skipped)", async () => {
+      // checkPassportType only applies to did:eip155/Base DIDs; a did:hcs
+      // poster passes validation without an on-chain passport lookup
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@t", consensusTimestamp: null });
 
       const res = await app.request("/market/tasks", {
         method: "POST",
@@ -189,13 +199,11 @@ describe("Marketplace REST API", () => {
         }),
       });
 
-      expect(res.status).toBe(403);
-      const data = await res.json();
-      expect(data.error).toContain("passport");
+      expect(res.status).toBe(200);
+      expect(mockedUpsert).toHaveBeenCalledOnce();
     });
 
     it("returns 500 on HCS submission failure", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedSubmit.mockRejectedValue(new Error("HCS network error"));
 
       const res = await app.request("/market/tasks", {
@@ -212,7 +220,8 @@ describe("Marketplace REST API", () => {
 
       expect(res.status).toBe(500);
       const data = await res.json();
-      expect(data.error).toContain("HCS network error");
+      // handler sanitizes internal errors to the generic error-map message
+      expect(data.error).toContain("Message submission failed");
     });
 
     it("returns 400 on invalid JSON body", async () => {
@@ -297,10 +306,8 @@ describe("Marketplace REST API", () => {
 
   describe("POST /market/tasks/:taskId/claim", () => {
     it("returns 200 with taskId and txId on valid claim", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockTask);
       mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000001", consensusTimestamp: null });
-      mockedUpdateTaskStatus.mockReturnValue(true);
       mockedDidToAccountId.mockImplementation(async (did: string) => {
         if (did === POSTER_DID) return "0.0.123";
         if (did === CLAIMER_DID) return "0.0.456";
@@ -319,9 +326,8 @@ describe("Marketplace REST API", () => {
       expect(data.taskId).toBe("task-001");
       expect(data.txId).toBe("0.0.111@1234567890.000000001");
       expect(data.timestamp).toBeTypeOf("number");
-      expect(mockedVerify).toHaveBeenCalledWith(CLAIMER_DID);
       expect(mockedSubmit).toHaveBeenCalledTimes(2);
-      expect(mockedUpdateTaskStatus).toHaveBeenCalledWith("task-001", "claimed", { claimerDid: CLAIMER_DID, claimTxId: "0.0.111@1234567890.000000001" });
+      expect(mockedTransitionTask).toHaveBeenCalledWith("task-001", ["claiming"], "claimed", { claimerDid: CLAIMER_DID, claimTxId: "0.0.111@1234567890.000000001" });
     });
 
     it("returns 400 on invalid JSON body", async () => {
@@ -348,8 +354,11 @@ describe("Marketplace REST API", () => {
       expect(data.error).toContain("Invalid claimerDid");
     });
 
-    it("returns 403 when claimer passport is invalid", async () => {
-      mockedVerify.mockResolvedValue(false);
+    it("proceeds for did:hcs claimers (Base passport check skipped)", async () => {
+      mockedGetTaskById.mockReturnValue(mockTask);
+      mockedSubmit.mockResolvedValue({ txId: "0.0.111@t", consensusTimestamp: null });
+      mockedDidToAccountId.mockResolvedValue("0.0.123");
+      mockedCreateScheduledTransfer.mockResolvedValue({ scheduleId: "0.0.888@1", scheduleTxId: "0.0.999@1" });
 
       const res = await app.request("/market/tasks/task-001/claim", {
         method: "POST",
@@ -357,13 +366,10 @@ describe("Marketplace REST API", () => {
         body: JSON.stringify({ claimerDid: CLAIMER_DID }),
       });
 
-      expect(res.status).toBe(403);
-      const data = await res.json();
-      expect(data.error).toContain("passport");
+      expect(res.status).toBe(200);
     });
 
     it("returns 404 when task not found", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(null);
 
       const res = await app.request("/market/tasks/nonexistent/claim", {
@@ -378,8 +384,8 @@ describe("Marketplace REST API", () => {
     });
 
     it("returns 409 when task is already claimed", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockClaimedTask);
+      mockedReserveTask.mockReturnValueOnce({ ok: false, currentStatus: "claimed" });
 
       const res = await app.request("/market/tasks/task-001/claim", {
         method: "POST",
@@ -393,7 +399,6 @@ describe("Marketplace REST API", () => {
     });
 
     it("returns 500 on HCS submission failure", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockTask);
       mockedSubmit.mockRejectedValue(new Error("HCS network error"));
 
@@ -405,16 +410,14 @@ describe("Marketplace REST API", () => {
 
       expect(res.status).toBe(500);
       const data = await res.json();
-      expect(data.error).toContain("HCS network error");
+      expect(data.error).toContain("Message submission failed");
     });
   });
 
   describe("POST /market/tasks/:taskId/deliver", () => {
     it("returns 200 with taskId and txId on valid delivery", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockClaimedTask);
       mockedSubmit.mockResolvedValue({ txId: "0.0.111@1234567890.000000002", consensusTimestamp: null });
-      mockedUpdateTaskStatus.mockReturnValue(true);
 
       const res = await app.request("/market/tasks/task-001/deliver", {
         method: "POST",
@@ -427,8 +430,9 @@ describe("Marketplace REST API", () => {
       expect(data.taskId).toBe("task-001");
       expect(data.txId).toBe("0.0.111@1234567890.000000002");
       expect(data.timestamp).toBeTypeOf("number");
-      expect(mockedUpdateTaskStatus).toHaveBeenCalledWith(
+      expect(mockedTransitionTask).toHaveBeenCalledWith(
         "task-001",
+        ["delivering"],
         "delivered",
         { resultIpfs: undefined, resultBody: "Task completed successfully", deliverTxId: "0.0.111@1234567890.000000002" },
       );
@@ -473,7 +477,6 @@ describe("Marketplace REST API", () => {
     });
 
     it("returns 403 when claimer does not match", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockClaimedTask);
 
       const res = await app.request("/market/tasks/task-001/deliver", {
@@ -488,7 +491,6 @@ describe("Marketplace REST API", () => {
     });
 
     it("returns 404 when task not found", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(null);
 
       const res = await app.request("/market/tasks/nonexistent/deliver", {
@@ -503,8 +505,8 @@ describe("Marketplace REST API", () => {
     });
 
     it("returns 409 when task is not in claimed status", async () => {
-      mockedVerify.mockResolvedValue(true);
-      mockedGetTaskById.mockReturnValue(mockTask);
+      mockedGetTaskById.mockReturnValue(mockClaimedTask);
+      mockedReserveTask.mockReturnValueOnce({ ok: false, currentStatus: "posted" });
 
       const res = await app.request("/market/tasks/task-001/deliver", {
         method: "POST",
@@ -518,7 +520,6 @@ describe("Marketplace REST API", () => {
     });
 
     it("returns 500 on HCS submission failure", async () => {
-      mockedVerify.mockResolvedValue(true);
       mockedGetTaskById.mockReturnValue(mockClaimedTask);
       mockedSubmit.mockRejectedValue(new Error("HCS network error"));
 
@@ -530,7 +531,7 @@ describe("Marketplace REST API", () => {
 
       expect(res.status).toBe(500);
       const data = await res.json();
-      expect(data.error).toContain("HCS network error");
+      expect(data.error).toContain("Message submission failed");
     });
   });
 
@@ -543,7 +544,6 @@ describe("Marketplace REST API", () => {
 
     beforeEach(() => {
       mockedGetTaskById.mockReturnValue(mockDeliveredTask);
-      mockedVerify.mockResolvedValue(true);
       mockedDidToAccountId.mockImplementation(async (did: string) => {
         if (did === POSTER_DID) return "0.0.123";
         if (did === CLAIMER_DID) return "0.0.456";
@@ -629,20 +629,6 @@ describe("Marketplace REST API", () => {
       expect(data.error).toContain("poster");
     });
 
-    it("returns 403 when poster passport is revoked", async () => {
-      mockedVerify.mockResolvedValue(false);
-
-      const res = await app.request("/market/tasks/task-001/prepare-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ posterDid: POSTER_DID }),
-      });
-
-      expect(res.status).toBe(403);
-      const data = await res.json();
-      expect(data.error).toContain("passport");
-    });
-
     it("returns 400 when task is not in delivered status", async () => {
       mockedGetTaskById.mockReturnValue({
         ...mockTask,
@@ -690,7 +676,7 @@ describe("Marketplace REST API", () => {
 
       expect(res.status).toBe(500);
       const data = await res.json();
-      expect(data.error).toContain("Network error");
+      expect(data.error).toContain("Internal error occurred");
     });
   });
 
@@ -703,7 +689,6 @@ describe("Marketplace REST API", () => {
 
     beforeEach(() => {
       mockedGetTaskById.mockReturnValue(mockDeliveredTask);
-      mockedVerify.mockResolvedValue(true);
       mockedDidToAccountId.mockImplementation(async (did: string) => {
         if (did === POSTER_DID) return "0.0.123";
         if (did === CLAIMER_DID) return "0.0.456";
@@ -717,7 +702,6 @@ describe("Marketplace REST API", () => {
         txId: "0.0.123@1234567890.000000001",
       });
       mockedSubmit.mockResolvedValue({ txId: "0.0.888@1234567890.000000001", consensusTimestamp: null });
-      mockedUpdateTaskStatus.mockReturnValue(true);
     });
 
     it("returns 200 with paymentTxId on successful completion (legacy private key)", async () => {
@@ -818,8 +802,9 @@ describe("Marketplace REST API", () => {
         body: JSON.stringify({ posterDid: POSTER_DID, posterPrivateKey: "test-key" }),
       });
 
-      expect(mockedUpdateTaskStatus).toHaveBeenCalledWith(
+      expect(mockedTransitionTask).toHaveBeenCalledWith(
         "task-001",
+        ["completing"],
         "completed",
         expect.objectContaining({ paymentTxId: "0.0.999@1234567890.000000001" }),
       );
@@ -863,20 +848,6 @@ describe("Marketplace REST API", () => {
       expect(res.status).toBe(403);
       const data = await res.json();
       expect(data.error).toContain("poster");
-    });
-
-    it("returns 403 when poster passport is revoked", async () => {
-      mockedVerify.mockResolvedValue(false);
-
-      const res = await app.request("/market/tasks/task-001/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ posterDid: POSTER_DID }),
-      });
-
-      expect(res.status).toBe(403);
-      const data = await res.json();
-      expect(data.error).toContain("passport");
     });
 
     it("returns 400 when task has no claimer", async () => {
@@ -932,7 +903,7 @@ describe("Marketplace REST API", () => {
 
       expect(res.status).toBe(500);
       const data = await res.json();
-      expect(data.error).toContain("Insufficient balance");
+      expect(data.error).toContain("Internal error occurred");
     });
 
     it("returns 500 on HCS submission failure after transfer", async () => {
@@ -946,7 +917,7 @@ describe("Marketplace REST API", () => {
 
       expect(res.status).toBe(500);
       const data = await res.json();
-      expect(data.error).toContain("HCS network error");
+      expect(data.error).toContain("Message submission failed");
     });
 
     it("does not submit HCS message when transfer fails", async () => {
@@ -965,7 +936,6 @@ describe("Marketplace REST API", () => {
   describe("Full REST API lifecycle: post → claim → deliver → complete", () => {
     it("Agent A posts 'What is 2+2?' → Agent B finds, claims, delivers '4' → Agent A completes + pays", async () => {
       // ─── Step 1: Agent A posts a paid task ───
-      mockedVerify.mockResolvedValue(true);
       mockedSubmit.mockResolvedValue({ txId: "0.0.111@post-tx", consensusTimestamp: null });
 
       const postRes = await app.request("/market/tasks", {
@@ -1026,7 +996,7 @@ describe("Marketplace REST API", () => {
       expect(claimRes.status).toBe(200);
       const claimData = await claimRes.json();
       expect(claimData).toHaveProperty("txId");
-      expect(mockedUpdateTaskStatus).toHaveBeenCalledWith(taskId, "claimed", { claimerDid: CLAIMER_DID, claimTxId: claimData.txId });
+      expect(mockedTransitionTask).toHaveBeenCalledWith(taskId, ["claiming"], "claimed", { claimerDid: CLAIMER_DID, claimTxId: claimData.txId });
 
       // ─── Step 4: Agent B delivers the result ───
       const claimedTask = { ...postedTask, status: "claimed" as const, claimerDid: CLAIMER_DID };
@@ -1045,7 +1015,7 @@ describe("Marketplace REST API", () => {
       expect(deliverRes.status).toBe(200);
       const deliverData = await deliverRes.json();
       expect(deliverData).toHaveProperty("txId");
-      expect(mockedUpdateTaskStatus).toHaveBeenCalledWith(taskId, "delivered", {
+      expect(mockedTransitionTask).toHaveBeenCalledWith(taskId, ["delivering"], "delivered", {
         resultIpfs: undefined,
         resultBody: "4",
         deliverTxId: deliverData.txId,
@@ -1073,14 +1043,13 @@ describe("Marketplace REST API", () => {
       expect(completeData).toHaveProperty("paymentTxId");
       expect(completeData.paymentTxId).toBe("0.0.111@payment-tx");
       expect(mockedTransferHbarWithKey).toHaveBeenCalledWith("0.0.123", "test-key", "0.0.123", 5);
-      expect(mockedUpdateTaskStatus).toHaveBeenCalledWith(taskId, "completed", {
+      expect(mockedTransitionTask).toHaveBeenCalledWith(taskId, ["completing"], "completed", {
         paymentTxId: "0.0.111@payment-tx",
         completedTxId: "0.0.111@complete-tx",
       });
 
       // ─── Verify full lifecycle: 5 HCS messages submitted (post, claim, escrow_created, deliver, complete) ───
       expect(mockedSubmit).toHaveBeenCalledTimes(5);
-      expect(mockedVerify).toHaveBeenCalled();
     });
   });
 });

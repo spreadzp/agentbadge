@@ -150,8 +150,16 @@ describe("SLICE-86-3: Unified Rate Limiter v2", () => {
   });
 
   describe("Bounded memory — TTL eviction + max-entries cap", () => {
-    beforeEach(() => vi.useFakeTimers());
-    afterEach(() => vi.useRealTimers());
+    beforeEach(() => {
+      vi.useFakeTimers();
+      // fly-client-ip is trusted only on Fly.io runtime — emulate it so the
+      // tests below get distinct per-IP buckets instead of shared "unknown".
+      process.env.FLY_MACHINE_ID = "test-machine";
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+      delete process.env.FLY_MACHINE_ID;
+    });
 
     it("evicts expired entries on sweep", async () => {
       const limiter = createRateLimiter({

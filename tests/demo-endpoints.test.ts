@@ -19,6 +19,7 @@ const CFG: CirclePaymentsConfig = {
   identity: true,
   escrow: false,
   gatewayApiUrl: "https://gateway-api-testnet.circle.com",
+  gatewayMinDepositUsd: "1.00",
   arcRpcUrl: "https://rpc.testnet.arc.network",
   arcChainId: 5042002,
   arcMainnet: false,

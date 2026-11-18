@@ -7,6 +7,7 @@
  *  - read-only: cursor commit never called
  */
 import { describe, it, expect, vi } from "vitest";
+import type { TelegramConfig } from "../src/server/lib/notify/telegram";
 
 import { runTgDigest, parseTgDigestArgs } from "../scripts/tg-digest";
 import { runTgStatus, formatStatusTable } from "../scripts/tg-status";
@@ -43,7 +44,7 @@ describe("tg-digest — SLICE-217-11", () => {
   });
 
   it("composition: window rows → stats → formatTelegramReport → sendMessage", async () => {
-    const sendMessage = vi.fn(async () => 88);
+    const sendMessage = vi.fn(async (_text: string, _cfg: TelegramConfig) => 88);
     const printed: string[] = [];
     const code = await runTgDigest(
       ["--from", "2026-11-08", "--to", "2026-11-10"],
@@ -129,7 +130,7 @@ describe("tg-status — SLICE-217-11", () => {
     const lines: string[] = [];
     const now = Date.parse("2026-11-11T12:00:00Z");
     await runTgStatus([], {
-      cursors: { get: async () => null, commit: vi.fn() },
+      cursors: { get: async () => null },
       events: trafficEvents([]),
       streams: [{ stream: "traffic-daily", kind: "daily" }],
       now: () => now,

@@ -144,16 +144,16 @@ describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
       expect(body).toContain("search-rules");
     });
 
-    it("contains Chrome flag instructions", async () => {
+    it("contains Try It Now demo instructions", async () => {
       const res = await app.request("/hackathon/webmcp");
       const body = await res.text();
-      expect(body).toContain("chrome://flags");
+      expect(body).toContain("Try It Now");
     });
 
-    it("contains ChatGPT browser instructions", async () => {
+    it("contains curl examples for tool endpoints", async () => {
       const res = await app.request("/hackathon/webmcp");
       const body = await res.text();
-      expect(body).toContain("ChatGPT");
+      expect(body).toContain("curl -s");
     });
 
     it("contains document.modelContext.registerTool calls", async () => {

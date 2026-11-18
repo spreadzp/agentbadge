@@ -41,7 +41,7 @@ function makeMockAssertions(count: number): Assertion[] {
       category: categories[i % categories.length],
       name: `Rule ${i + 1}`,
       fix: { eligible: true, type: "create_file", note: "Fix hint" },
-    });
+    } as unknown as Assertion);
   }
   return assertions;
 }
@@ -162,7 +162,7 @@ describe("AgentGrade CLI Parity", () => {
         category: "discovery",
         name: "robots.txt",
         fix: { eligible: true, type: "create_file", note: "Add robots.txt at /robots.txt" },
-      },
+      } as unknown as Assertion,
     ];
     const json = formatJsonApiOutput({
       url: "https://agentbadge.xyz",

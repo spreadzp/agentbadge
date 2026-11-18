@@ -99,127 +99,127 @@ describe("SLICE-121-6: skill.json JSON-LD endpoint", () => {
   });
 
   it("has @context field", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("@context");
   });
 
   it("has @type field", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("@type");
   });
 
   it("@type is SoftwareApplication", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["@type"]).toBe("SoftwareApplication");
   });
 
   it("has name field set to agentbadge", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data.name).toBe("agentbadge");
   });
 
   it("has version field", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data.version).toBe("1.0.0");
   });
 
   it("has description field", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("description");
   });
 
   it("has url field", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("url");
   });
 
   it("has ab:capabilities array", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("ab:capabilities");
     expect(Array.isArray(data["ab:capabilities"])).toBe(true);
   });
 
   it("capabilities include agent_identity", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:capabilities"]).toContain("agent_identity");
   });
 
   it("capabilities include marketplace", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:capabilities"]).toContain("marketplace");
   });
 
   it("has ab:endpoints object", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("ab:endpoints");
     expect(typeof data["ab:endpoints"]).toBe("object");
   });
 
   it("endpoints include api", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:endpoints"]).toHaveProperty("api");
   });
 
   it("endpoints include mcp", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:endpoints"]).toHaveProperty("mcp");
   });
 
   it("endpoints include llms_txt", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:endpoints"]).toHaveProperty("llms_txt");
   });
 
   it("endpoints include skill_md", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:endpoints"]).toHaveProperty("skill_md");
   });
 
   it("endpoints include heartbeat_md", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:endpoints"]).toHaveProperty("heartbeat_md");
   });
 
   it("has ab:auth object", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("ab:auth");
   });
 
   it("auth type is none", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:auth"].type).toBe("none");
   });
 
   it("has ab:payment object", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("ab:payment");
   });
 
   it("payment protocol is x402", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:payment"].protocol).toBe("x402");
   });
 
   it("has ab:mcp_tools array", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("ab:mcp_tools");
     expect(Array.isArray(data["ab:mcp_tools"])).toBe(true);
   });
 
   it("mcp_tools include request_passport", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data["ab:mcp_tools"]).toContain("request_passport");
   });
 
   it("has ab:linked_files array", async () => {
-    const data = await getParsed();
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
     expect(data).toHaveProperty("ab:linked_files");
     expect(Array.isArray(data["ab:linked_files"])).toBe(true);
   });
 
   it("linked_files include skill.md entry", async () => {
-    const data = await getParsed();
-    const files = data["ab:linked_files"] as Array<{ file: string }>;
+    const data = (await getParsed()) as Record<string, Record<string, unknown>>;
+    const files = data["ab:linked_files"] as unknown as Array<{ file: string }>;
     expect(files.some((f) => f.file === "skill.md")).toBe(true);
   });
 });

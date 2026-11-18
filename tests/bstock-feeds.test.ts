@@ -38,10 +38,11 @@ const stubClient = (
 describe("probeLiveAssets", () => {
   it("keeps only assets with a non-empty quote", async () => {
     const assets = [asset("MUB"), asset("TSLAB"), asset("SPYB")];
+    // Quotes are probed by underlyingSymbol (MUB→MU, TSLAB→TSLA, SPYB→SPY)
     const client = stubClient({
-      MUB: quote(102, 104),
-      TSLAB: null, // empty body — no market
-      SPYB: quote(14, 42),
+      MU: quote(102, 104),
+      TSLA: null, // empty body — no market
+      SPY: quote(14, 42),
     });
     const live = await probeLiveAssets(client, assets);
     expect(live.map((a) => a.assetCode)).toEqual(["MUB", "SPYB"]);
@@ -50,8 +51,8 @@ describe("probeLiveAssets", () => {
   it("drops zero-bid/ask quotes (dead book)", async () => {
     const assets = [asset("DEADB"), asset("LIVEB")];
     const client = stubClient({
-      DEADB: quote(0, 0),
-      LIVEB: quote(10, 11),
+      DEAD: quote(0, 0),
+      LIVE: quote(10, 11),
     });
     const live = await probeLiveAssets(client, assets);
     expect(live.map((a) => a.assetCode)).toEqual(["LIVEB"]);
@@ -59,7 +60,7 @@ describe("probeLiveAssets", () => {
 
   it("drops assets whose quote request throws", async () => {
     const assets = [asset("ERRB"), asset("OKB")];
-    const client = stubClient({ ERRB: "throw", OKB: quote(1, 2) });
+    const client = stubClient({ ERR: "throw", OK: quote(1, 2) });
     const live = await probeLiveAssets(client, assets);
     expect(live.map((a) => a.assetCode)).toEqual(["OKB"]);
   });
@@ -70,7 +71,7 @@ describe("probeLiveAssets", () => {
     );
     const map: Record<string, BinanceQuote | null> = {};
     for (const a of assets) {
-      map[a.assetCode] = a.assetCode === "S7B" ? null : quote(1, 2);
+      map[a.underlyingSymbol] = a.assetCode === "S7B" ? null : quote(1, 2);
     }
     const live = await probeLiveAssets(stubClient(map), assets);
     expect(live).toHaveLength(24);

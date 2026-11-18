@@ -65,35 +65,43 @@ export async function wirePaymentGates(app: Hono): Promise<void> {
         new ExactHederaScheme(),
       );
 
-      app.use(
-        paymentMiddleware(
-          {
-            "POST /passport/request": {
-              accepts: {
-                scheme: "exact",
-                price: (ctx) => {
-                  const body = ctx.adapter.getBody?.() as Record<string, unknown> | undefined;
-                  const tier = (body?.tier as string) ?? "bronze";
-                  const tinybars = getPrice(tier);
-                  return { amount: String(tinybars), asset: "0.0.0" };
-                },
-                network: networkId,
-                payTo,
-                extra: {
-                  asset: "0.0.0",
-                  feePayer: process.env.x402_FEE_PAYER ?? payTo,
-                },
+      const x402Gate = paymentMiddleware(
+        {
+          "POST /passport/request": {
+            accepts: {
+              scheme: "exact",
+              price: (ctx) => {
+                const body = ctx.adapter.getBody?.() as Record<string, unknown> | undefined;
+                const tier = (body?.tier as string) ?? "bronze";
+                const tinybars = getPrice(tier);
+                return { amount: String(tinybars), asset: "0.0.0" };
               },
-              description: "Agent Passport NFT issuance",
-              mimeType: "application/json",
-              // 179-3: bazaar declaration — all passport tiers share the
-              // same input schema, bronze stands in as representative.
-              extensions: bazaarExtensionFor("passport:bronze"),
+              network: networkId,
+              payTo,
+              extra: {
+                asset: "0.0.0",
+                feePayer: process.env.x402_FEE_PAYER ?? payTo,
+              },
             },
+            description: "Agent Passport NFT issuance",
+            mimeType: "application/json",
+            // 179-3: bazaar declaration — all passport tiers share the
+            // same input schema, bronze stands in as representative.
+            extensions: bazaarExtensionFor("passport:bronze"),
           },
-          resourceServer,
-        ),
+        },
+        resourceServer,
       );
+
+      // L402 is an alternative rail: the L402 middleware runs earlier on this
+      // route and sets c.var.l402Paid after a valid Lightning payment.
+      app.use(async (c, next) => {
+        if (c.get("l402Paid")) {
+          await next();
+          return;
+        }
+        await x402Gate(c, next);
+      });
     } catch (e) {
       console.warn(
         "[Server] x402 Hedera gate skipped — @x402/hedera/@x402/hono not installed (optional deps omitted):",
@@ -108,15 +116,19 @@ export async function wirePaymentGates(app: Hono): Promise<void> {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? "";
 
   if (mppSecretKey || mppRecipient) {
-    app.use(
-      "/passport/request",
-      mppPaymentMiddleware({
-        secretKey: mppSecretKey,
-        recipientAddress: mppRecipient,
-        amount: mppAmount,
-        stripeSecretKey,
-      }),
-    );
+    const mppGate = mppPaymentMiddleware({
+      secretKey: mppSecretKey,
+      recipientAddress: mppRecipient,
+      amount: mppAmount,
+      stripeSecretKey,
+    });
+    app.use("/passport/request", async (c, next) => {
+      if (c.get("l402Paid")) {
+        await next();
+        return;
+      }
+      await mppGate(c, next);
+    });
   }
 
   // SLICE-90-11: Start event indexer when CHAIN_MODE=base (base chain stack,

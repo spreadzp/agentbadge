@@ -18,6 +18,8 @@ import { renderProfileYaml } from "../../profile/renderers/yaml-renderer";
 import { scanDomain } from "../../scanner/orchestrator";
 import { RuleEngine } from "../../rule-engine/rule-engine";
 import { runScoringEngine } from "../../scoring/scoring-engine";
+import type { ScoreResult } from "../../scoring/scoring-types";
+import type { RulesetManifest } from "../../scoring/scoring-config";
 import { assembleReport } from "../../integrity/report-serializer";
 import { AGENT_READINESS_RULESET } from "../../ruleset";
 import type { Assertion } from "../../rule-engine/assertion-builder";
@@ -58,7 +60,7 @@ async function profileHandler(_args: ParsedArgs, flags: ParsedFlags): Promise<Co
   try {
     let scanReport: ScanReport;
     let assertions: Assertion[];
-    let scoreResult: any;
+    let scoreResult: ScoreResult;
     let reportId: string | undefined;
 
     if (reportPath) {
@@ -100,7 +102,7 @@ async function profileHandler(_args: ParsedArgs, flags: ParsedFlags): Promise<Co
 
       scoreResult = runScoringEngine({
         assertions: ruleEngineResult.assertions as Assertion[],
-        rulesetManifest: manifest as any,
+        rulesetManifest: manifest as RulesetManifest,
       });
 
       const parsedUrl = new URL(url!);
@@ -115,7 +117,12 @@ async function profileHandler(_args: ParsedArgs, flags: ParsedFlags): Promise<Co
         scoreResult: {
           total: scoreResult.total,
           categories: Object.fromEntries(
-            Object.entries(scoreResult.categories).map(([k, v]) => [k, { score: v.score }]),
+            (
+              Object.entries(scoreResult.categories) as [
+                string,
+                { score: number },
+              ][]
+            ).map(([k, v]) => [k, { score: v.score }]),
           ),
           pillars: scoreResult.pillars,
           delta: scoreResult.delta ? { totalDelta: scoreResult.delta.totalDelta ?? 0 } : null,

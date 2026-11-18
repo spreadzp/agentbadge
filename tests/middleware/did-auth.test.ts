@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ethers } from "ethers";
 import { Hono } from "hono";
 
@@ -121,6 +121,8 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // vitest.setup.ts forces DID_AUTH_MODE=off; these tests exercise enforce
+    process.env.DID_AUTH_MODE = "enforce";
     testWallet = ethers.Wallet.createRandom();
     nonceStore = new NonceStore();
 
@@ -149,6 +151,10 @@ describe("SLICE-82-1: requireDidSignature middleware", () => {
       return c.json({ ok: true, verifiedDid });
     });
     app.get("/market/tasks", (c) => c.json({ ok: true }));
+  });
+
+  afterEach(() => {
+    process.env.DID_AUTH_MODE = "off";
   });
 
   it("returns 401 when X-AgentBadge-Signature header is missing", async () => {

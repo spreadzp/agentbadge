@@ -86,9 +86,9 @@ describe("Context block (201-11)", () => {
   it("links capabilities to /agent-guide/capabilities/:name", () => {
     const html = BlogArticlePage({
       ...BASE,
-      capabilities: ["x402-payment"],
+      capabilities: ["scanner"],
     }).toString();
-    expect(html).toContain('href="/agent-guide/capabilities/x402-payment"');
+    expect(html).toContain('href="/agent-guide/capabilities/scanner"');
   });
 
   it("renders technologies in context", () => {

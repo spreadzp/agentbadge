@@ -19,7 +19,7 @@ describe("aauth-fetcher", () => {
       }
       return new Response(null, { status: 404 });
     });
-    const result = await fetchAAuth("https://example.com", mockFetch);
+    const result = await fetchAAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.source).toBe("aauth");
     expect(result.data.aauthFound).toBe(true);
     expect(result.data.scopeDescriptions).toHaveLength(1);
@@ -42,7 +42,7 @@ describe("aauth-fetcher", () => {
       }
       return new Response(null, { status: 404 });
     });
-    const result = await fetchAAuth("https://example.com", mockFetch);
+    const result = await fetchAAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.aauthFound).toBe(false);
     expect(result.data.agentGrantSupported).toBe(true);
     expect(result.data.tokenEndpoint).toBe("https://auth.example.com/token");
@@ -69,7 +69,7 @@ describe("aauth-fetcher", () => {
       }
       return new Response(null, { status: 404 });
     });
-    const result = await fetchAAuth("https://example.com", mockFetch);
+    const result = await fetchAAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.aauthFound).toBe(true);
     expect(result.data.agentGrantSupported).toBe(true);
     expect(result.data.scopeDescriptions).toHaveLength(2);
@@ -77,7 +77,7 @@ describe("aauth-fetcher", () => {
 
   it("handles 404 gracefully for both endpoints", async () => {
     const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
-    const result = await fetchAAuth("https://example.com", mockFetch);
+    const result = await fetchAAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.aauthFound).toBe(false);
     expect(result.data.agentGrantSupported).toBe(false);
     expect(result.data.scopeDescriptions).toEqual([]);
@@ -86,7 +86,7 @@ describe("aauth-fetcher", () => {
 
   it("handles network errors gracefully", async () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error("network error"));
-    const result = await fetchAAuth("https://example.com", mockFetch);
+    const result = await fetchAAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.aauthFound).toBe(false);
     expect(result.data.agentGrantSupported).toBe(false);
     expect(result.data.scopeDescriptions).toEqual([]);
@@ -100,7 +100,7 @@ describe("aauth-fetcher", () => {
       }
       return new Response(null, { status: 404 });
     });
-    const result = await fetchAAuth("https://example.com", mockFetch);
+    const result = await fetchAAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.aauthFound).toBe(false);
     expect(result.data.scopeDescriptions).toEqual([]);
   });
@@ -114,7 +114,7 @@ describe("aauth-fetcher", () => {
       }
       return new Response(null, { status: 404 });
     });
-    const result = await fetchAAuth("https://example.com", mockFetch);
+    const result = await fetchAAuth("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.agentGrantSupported).toBe(false);
     expect(result.data.tokenEndpoint).toBe("https://auth.example.com/token");
   });

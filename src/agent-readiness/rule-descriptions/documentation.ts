@@ -178,7 +178,7 @@ export const documentationRules: RuleDescription[] = [
     short_description: "OpenAPI operations include example requests and responses.",
     user_value: "Examples let agents construct valid requests without trial-and-error.",
     wrong_example: "responses: { '200': { description: 'OK' } }",
-    right_example: "responses: { '200': { content: { 'application/json': { example: { id: 'ch_123', amount: 5000 } } } } }",
+    right_example: "responses: { '200': { content: with an example body { id: 'ch_123', amount: 5000 } } }",
     effort_hint: "quick",
     estimated_cost: "$0",
     severity: "medium",

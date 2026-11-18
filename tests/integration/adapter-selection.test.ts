@@ -68,12 +68,14 @@ describe("Chain Adapter Factory (SLICE-90-16)", () => {
     it("returns HederaChainAdapter when CHAIN_MODE=hedera", async () => {
       process.env.CHAIN_MODE = "hedera";
       const adapter = await getChainAdapter();
-      expect(adapter.constructor.name).toBe("HederaChainAdapter");
+      // constructor.name is minified in the built package — assert on
+      // chain metadata instead (id 295 = Hedera Testnet).
+      expect(adapter.chain.name).toContain("Hedera");
     });
 
     it("returns HederaChainAdapter when CHAIN_MODE not set (default)", async () => {
       const adapter = await getChainAdapter();
-      expect(adapter.constructor.name).toBe("HederaChainAdapter");
+      expect(adapter.chain.name).toContain("Hedera");
     });
 
     it("caches the adapter instance", async () => {
@@ -99,12 +101,12 @@ describe("Chain Adapter Factory (SLICE-90-16)", () => {
     it("clears cache so next call creates new instance", async () => {
       process.env.CHAIN_MODE = "hedera";
       const adapter1 = await getChainAdapter();
-      expect(adapter1.constructor.name).toBe("HederaChainAdapter");
+      expect(adapter1.chain.name).toContain("Hedera");
       resetChainAdapter();
       const adapter2 = await getChainAdapter();
       // Both are HederaChainAdapter singletons from hedera-core, so same instance
       // But the cache was reset — the key test is that it doesn't throw
-      expect(adapter2.constructor.name).toBe("HederaChainAdapter");
+      expect(adapter2.chain.name).toContain("Hedera");
     });
   });
 });

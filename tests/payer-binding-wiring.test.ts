@@ -109,6 +109,14 @@ type FakeHandle = ReturnType<typeof fakeHandle>;
 function fakeRuntime(handle: FakeHandle): CirclePaymentsRuntime {
   return {
     arcSelfSettle: handle as never,
+    // EPIC-223: passport-mint gateway resolves a treasury router — dispatch
+    // to the same fake handle so inspect/verify ordering stays observable.
+    routerFor: (_payTo: string) =>
+      ({
+        acceptsFor: (_amount: string) => [],
+        verify: (p: unknown, r: unknown) => handle.verify(p, r),
+        settle: (p: unknown, r: unknown) => handle.settle(p, r),
+      }) as never,
     paymentForPrice: (_price: PriceResolver, opts?: PaymentForOpts) => {
       const mw: MiddlewareHandler = async (c, next) => {
         const sig = c.req.header("payment-signature");

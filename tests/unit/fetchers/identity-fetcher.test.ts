@@ -7,7 +7,7 @@ describe("SLICE-48-10: identity-fetcher", () => {
       if (url.includes("/webfinger")) return new Response(JSON.stringify({ subject: "acct:foo@example.com" }), { status: 200 });
       return new Response(null, { status: 404 });
     });
-    const result = await fetchIdentity("https://example.com", mockFetch);
+    const result = await fetchIdentity("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.source).toBe("identity");
     expect(result.data.webfinger).toBe(true);
     expect(result.data.hostMeta).toBe(false);
@@ -18,7 +18,7 @@ describe("SLICE-48-10: identity-fetcher", () => {
 
   it("detects all endpoints present", async () => {
     const mockFetch = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
-    const result = await fetchIdentity("https://example.com", mockFetch);
+    const result = await fetchIdentity("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.webfinger).toBe(true);
     expect(result.data.hostMeta).toBe(true);
     expect(result.data.did).toBe(true);

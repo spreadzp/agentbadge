@@ -62,7 +62,11 @@ export function createOpsBoardRoutes(opts: {
       Layout(
         body,
         "Ops Board",
-        { path: "/ops/board", description: "Ops taskboard — Backlog.md kanban" },
+        {
+          path: "/ops/board",
+          title: "Ops Board",
+          description: "Ops taskboard — Backlog.md kanban",
+        },
         [],
         true,
       ),

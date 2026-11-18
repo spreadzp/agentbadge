@@ -42,8 +42,8 @@ describe("SLICE-80-4: Artifact sync — no hardcoded tool counts", () => {
   });
 
   it("organizationLd logo points at >=112px asset, not logo-32.png", () => {
-    const ld = organizationLd() as { logo: string };
-    expect(ld.logo).not.toContain("logo-32");
-    expect(ld.logo).toContain("logo-512");
+    const ld = organizationLd() as { logo: { url: string } };
+    expect(ld.logo.url).not.toContain("logo-32");
+    expect(ld.logo.url).toContain("logo-512");
   });
 });

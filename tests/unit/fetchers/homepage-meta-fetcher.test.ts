@@ -18,7 +18,7 @@ describe("SLICE-48-4: homepage-meta-fetcher", () => {
       return new Response(html, { headers: { "content-type": "text/html" } });
     });
 
-    const result = await fetchHomepageMeta("https://example.com", mockFetch);
+    const result = await fetchHomepageMeta("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.source).toBe("homepage-meta");
     expect(result.data.jsonLd).toHaveLength(1);
     expect(result.data.ogImage).toBe("https://example.com/og.png");
@@ -34,7 +34,7 @@ describe("SLICE-48-4: homepage-meta-fetcher", () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response("<html></html>", { headers: { "content-type": "text/html" } }),
     );
-    const result = await fetchHomepageMeta("https://example.com", mockFetch);
+    const result = await fetchHomepageMeta("https://example.com", mockFetch as unknown as typeof fetch);
     expect(result.data.jsonLd).toEqual([]);
     expect(result.data.ogImage).toBeNull();
   });

@@ -24,11 +24,25 @@ import {
   validatePassportMeta,
 } from "../lib/marketplace";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
-import { payerBinding } from "../middleware/payer-binding";
+import {
+  payerBinding,
+  PAYER_BINDING_DECLARATION,
+} from "../middleware/payer-binding";
 import {
   createArcPayerPeek,
   withPayerBindDecl,
 } from "../lib/payer-binding-arc";
+import { InMemoryUsageRecordStore } from "@agentbadge/payments";
+import {
+  createDbAgentWalletStore,
+  createJsonAgentWalletStore,
+} from "../lib/agent-wallet/registry.js";
+import { createX402PaymentService } from "../lib/x402-gateway/service.js";
+import { x402GatewayMiddleware } from "../lib/x402-gateway/middleware.js";
+import {
+  acceptsFor as gatewayAcceptsFor,
+  createGatewayRegistry,
+} from "../lib/x402-gateway/seed.js";
 
 const BUY_PATH_RE = /\/api\/market\/buy\/(0x[0-9a-fA-F]{64})/;
 
@@ -107,17 +121,36 @@ export function wireMarketplace(
       "/api/market/passport",
       payerBinding({ group: "marketplace", resolvePayer: arcPayerPeek }),
     );
+    // SLICE-223-5: passport mint migrates to the EPIC-223 gateway —
+    // registry-driven 402 + seam settle + UsageRecord, same preCheck and
+    // payerBinding chain. Treasury router keeps the original payTo.
+    const treasuryRouter = runtime.routerFor(marketplaceCfg.treasury);
+    const db = getDatabase();
+    const gatewayExtensionsFor = (resourceId: string) => ({
+      ...(bazaarExtensionFor("marketplace:passport-mint") ?? {}),
+      payerBinding: PAYER_BINDING_DECLARATION,
+      resourceId,
+    });
+    const gatewayService = createX402PaymentService({
+      router: treasuryRouter,
+      // v1 usage persistence is in-memory until @agentbadge/database
+      // ships UsageRecordRepository (server dep bump pending).
+      usageRecords: new InMemoryUsageRecordStore(),
+      walletStore: db.agentWallets
+        ? createDbAgentWalletStore(db.agentWallets)
+        : createJsonAgentWalletStore(),
+      recipient: marketplaceCfg.treasury,
+      bazaarExtensionFor: gatewayExtensionsFor,
+    });
     app.use(
       "/api/market/passport",
-      runtime.paymentForPrice(`$${marketplaceCfg.passportPriceUsd}`, withPayerBindDecl({
-        payTo: marketplaceCfg.treasury,
-        methods: ["POST"],
-        description:
-          "AgentBadge Business Passport — yearly marketplace access",
-        mimeType: "application/json",
-        extensions: bazaarExtensionFor("marketplace:passport-mint"),
-        onBeforeChallenge: passportPreCheck,
-      }, "marketplace")) as MiddlewareHandler,
+      x402GatewayMiddleware({
+        service: gatewayService,
+        registry: createGatewayRegistry(),
+        serviceAcceptsFor: (amountAtomic) =>
+          gatewayAcceptsFor(treasuryRouter, amountAtomic),
+        preCheck: passportPreCheck,
+      }),
     );
 
     app.use(

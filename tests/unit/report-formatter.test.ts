@@ -21,6 +21,7 @@ function makeAssertion(overrides: Partial<Assertion>): Assertion {
 
 function makeResult(assertions: Assertion[]): RuleEngineResult {
   return {
+    bundles: [],
     assertions,
     rulesetVersion: "1.0.0",
     scannedAt: "2026-01-01T00:00:00Z",

@@ -24,7 +24,8 @@ function mockAssertion(
 
 function mockScoreResult(score: number): ScoreResult {
   return {
-    total: { rawScore: score, score, floorTriggered: false, floorReason: null },
+    total: { rawScore: score, score, grade: "B", floorTriggered: false, floorReason: null },
+    pillars: {} as never,
     categories: {} as any,
     delta: null,
     config: DEFAULT_SCORING_CONFIG,

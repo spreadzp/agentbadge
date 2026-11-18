@@ -181,7 +181,7 @@ describe("runScanLite — fetch guards (post-audit)", () => {
   const pub = new URL("https://93.184.216.34/");
 
   it("extracts og + signals from html", async () => {
-    const r = await runScanLite(pub, { fetchFn: fakeFetch });
+    const r = await runScanLite(pub, { fetchFn: fakeFetch as unknown as typeof fetch });
     expect(typeof r).not.toBe("string");
     if (typeof r === "string") return;
     expect(r.og.title).toBe("Shop");
@@ -193,7 +193,7 @@ describe("runScanLite — fetch guards (post-audit)", () => {
     const bin = vi.fn(async () =>
       new Response("{}", { status: 200, headers: { "content-type": "application/json" } }),
     );
-    expect(await runScanLite(pub, { fetchFn: bin })).toBe("not_html");
+    expect(await runScanLite(pub, { fetchFn: bin as unknown as typeof fetch })).toBe("not_html");
   });
 
   it("redirect to a private host is refused at the hop", async () => {
@@ -203,7 +203,7 @@ describe("runScanLite — fetch guards (post-audit)", () => {
         headers: { location: "http://169.254.169.254/latest/meta-data" },
       }),
     );
-    expect(await runScanLite(pub, { fetchFn: bounce })).toBe("blocked_host");
+    expect(await runScanLite(pub, { fetchFn: bounce as unknown as typeof fetch })).toBe("blocked_host");
   });
 
   it("hostname resolving to a private A record → dns_private", async () => {
@@ -212,7 +212,7 @@ describe("runScanLite — fetch guards (post-audit)", () => {
     const hostname = new URL("https://rebind.example/");
     expect(
       await runScanLite(hostname, {
-        fetchFn: fakeFetch,
+        fetchFn: fakeFetch as unknown as typeof fetch,
         lookupFn: evilLookup,
       }),
     ).toBe("dns_private");
@@ -226,7 +226,7 @@ describe("runScanLite — fetch guards (post-audit)", () => {
         headers: { location: "https://93.184.216.34/" },
       }),
     );
-    expect(await runScanLite(pub, { fetchFn: loop })).toBe("too_many_redirects");
+    expect(await runScanLite(pub, { fetchFn: loop as unknown as typeof fetch })).toBe("too_many_redirects");
     expect(loop).toHaveBeenCalledTimes(4); // initial + 3 hops
   });
 
@@ -243,14 +243,14 @@ describe("runScanLite — fetch guards (post-audit)", () => {
             headers: { "content-type": "text/html" },
           }),
     );
-    const r = await runScanLite(pub, { fetchFn: hop });
+    const r = await runScanLite(pub, { fetchFn: hop as unknown as typeof fetch });
     expect(typeof r).not.toBe("string");
     expect(hop).toHaveBeenCalledTimes(2);
   });
 
   it("public hostname resolves public → fetch proceeds", async () => {
     const r = await runScanLite(new URL("https://x.example/"), {
-      fetchFn: fakeFetch,
+      fetchFn: fakeFetch as unknown as typeof fetch,
       lookupFn: publicLookup,
     });
     expect(typeof r).not.toBe("string");
@@ -267,7 +267,7 @@ describe("runScanLite — fetch guards (post-audit)", () => {
       { address: "10.0.0.9" }, // would be dns_private if consulted
     ]);
     const r = await runScanLite(pre.url, {
-      fetchFn: fakeFetch,
+      fetchFn: fakeFetch as unknown as typeof fetch,
       lookupFn: counting,
       pinned: pre.addrs,
     });

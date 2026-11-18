@@ -23,8 +23,8 @@ delete process.env.ATTESTCOIN_ENABLED;
 
 const { servicesRoutes } = await import("../../src/server/routes/services");
 
-function extractJsonLdBlocks(html: string): object[] {
-  const blocks: object[] = [];
+function extractJsonLdBlocks(html: string): Record<string, unknown>[] {
+  const blocks: Record<string, unknown>[] = [];
   const regex = /<script type="application\/ld\+json">(.*?)<\/script>/gs;
   let match;
   while ((match = regex.exec(html)) !== null) {
@@ -47,7 +47,7 @@ describe("SLICE-130-16: Service page Service JSON-LD", () => {
     const res = await servicesRoutes.request("/services/scanner");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const service = blocks.find((b: Record<string, unknown>) => b["@type"] === "Service");
+    const service = blocks.find((b) => b["@type"] === "Service")!;
     expect(service).toBeDefined();
   });
 
@@ -55,7 +55,7 @@ describe("SLICE-130-16: Service page Service JSON-LD", () => {
     const res = await servicesRoutes.request("/services/scanner");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const service = blocks.find((b: Record<string, unknown>) => b["@type"] === "Service");
+    const service = blocks.find((b) => b["@type"] === "Service")!;
     expect(service.serviceType).toBeDefined();
     expect(service.serviceType).toContain("Audit");
   });
@@ -64,17 +64,18 @@ describe("SLICE-130-16: Service page Service JSON-LD", () => {
     const res = await servicesRoutes.request("/services/scanner");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const service = blocks.find((b: Record<string, unknown>) => b["@type"] === "Service");
+    const service = blocks.find((b) => b["@type"] === "Service")!;
     expect(service.provider).toBeDefined();
-    expect(service.provider["@type"]).toBe("Organization");
-    expect(service.provider.name).toBe("AgentBadge");
+    const provider = service.provider as Record<string, unknown>;
+    expect(provider["@type"]).toBe("Organization");
+    expect(provider.name).toBe("AgentBadge");
   });
 
   it("Service has areaServed Worldwide", async () => {
     const res = await servicesRoutes.request("/services/scanner");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const service = blocks.find((b: Record<string, unknown>) => b["@type"] === "Service");
+    const service = blocks.find((b) => b["@type"] === "Service")!;
     expect(service.areaServed).toBe("Worldwide");
   });
 
@@ -82,16 +83,16 @@ describe("SLICE-130-16: Service page Service JSON-LD", () => {
     const res = await servicesRoutes.request("/services/scanner");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const service = blocks.find((b: Record<string, unknown>) => b["@type"] === "Service");
+    const service = blocks.find((b) => b["@type"] === "Service")!;
     expect(service.audience).toBeDefined();
-    expect(service.audience["@type"]).toBe("Audience");
+    expect((service.audience as Record<string, unknown>)["@type"]).toBe("Audience");
   });
 
   it("/services/passports contains Service JSON-LD with serviceType", async () => {
     const res = await servicesRoutes.request("/services/passports");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const service = blocks.find((b: Record<string, unknown>) => b["@type"] === "Service");
+    const service = blocks.find((b) => b["@type"] === "Service")!;
     expect(service).toBeDefined();
     expect(service.serviceType).toBeDefined();
   });
@@ -100,7 +101,7 @@ describe("SLICE-130-16: Service page Service JSON-LD", () => {
     const res = await servicesRoutes.request("/services/marketplace");
     const html = await res.text();
     const blocks = extractJsonLdBlocks(html);
-    const service = blocks.find((b: Record<string, unknown>) => b["@type"] === "Service");
+    const service = blocks.find((b) => b["@type"] === "Service")!;
     expect(service).toBeDefined();
     expect(service.serviceType).toBeDefined();
   });

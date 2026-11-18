@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Hono } from "hono";
-import demo from "../../src/server/routes/demo";
+import { createDemoRoutes } from "../../src/server/routes/demo";
+import type { PaymentMiddleware } from "../../src/server/routes/identity";
 import { seedMedicalTasks } from "../../src/scripts/seed-medical-tasks";
 import { marketUpsert as upsert, marketGet as getTask, listTasks } from "@agentbadge/passport";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
+
+const payMw: PaymentMiddleware = async (_c, next) => next();
+const demo = createDemoRoutes({ verifiedPayment: payMw, rawPayment: payMw });
 
 const app = new Hono();
 app.route("/api/demo", demo);

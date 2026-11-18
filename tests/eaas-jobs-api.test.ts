@@ -30,6 +30,15 @@ import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import type { PolicyFn } from "../src/server/lib/eaas/policies";
 import type { PaymentMiddleware } from "../src/server/routes/identity";
 import type { Erc8183, JobView, WriteClient } from "@agentbadge/circle-payments";
+
+/** getJob tuple component count per known ERC-8183 ABI flavor —
+ *  used by probe mocks instead of module identity (the installed
+ *  package can resolve to a separate copy under bun). */
+const getJobFields = (abi: unknown): number => {
+  const items = abi as readonly { name?: string; outputs?: { components?: unknown[] }[] }[];
+  const getJob = items.find((x) => x.name === "getJob");
+  return getJob?.outputs?.[0]?.components?.length ?? -1;
+};
 import {
   configureAgentAuthForTesting,
   resetAgentAuthForTesting,
@@ -147,6 +156,11 @@ function mkApp(opts: {
   estimateGas?: () => Promise<bigint>;
   register?: boolean;
   probeOk?: boolean;
+  probeRead?: {
+    readContract: (a: { abi: unknown }) => Promise<unknown>;
+    getBytecode?: () => Promise<string>;
+    getTransactionReceipt?: () => Promise<unknown>;
+  };
   resolveAgentId?: (p: `0x${string}`) => Promise<bigint | null>;
 }): Fixture {
   const dir = mkdtempSync(join(tmpdir(), "eaas-jobs-"));
@@ -158,7 +172,7 @@ function mkApp(opts: {
   const gasCalls: { n: number } = { n: 0 };
   const sentTxs: { to: string; data: Hex }[] = [];
 
-  const read = {
+  const read = opts.probeRead ?? {
     readContract: async () => {
       if (opts.probeOk === false) return { status: "not-a-number" };
       return { status: 2, description: "job" }; // "circle" shape
@@ -274,6 +288,53 @@ describe("contract registry", () => {
     const { app } = mkApp({ probeOk: false });
     const res = await registerEscrow(app);
     expect(res.status).toBe(422);
+  });
+
+  it("detects erc8183-ref variant when circle decode overflows (regression)", async () => {
+    configureAgentAuthForTesting({ verifier: async () => true });
+    const { app } = mkApp({
+      probeRead: {
+        getBytecode: async () => "0x6001",
+        getTransactionReceipt: async () => ({ status: "ok", logs: [] }),
+        readContract: async ({ abi }) => {
+          // ref-encoded getJob fails decode under the circle tuple
+          // (providerAgentId misread as description offset → throw).
+          const n = getJobFields(abi);
+          if (n === 9) {
+            throw new Error(
+              'Number "1175031n" is not in safe integer range',
+            );
+          }
+          if (n === 8) throw new Error("decode failed");
+          return { status: 1 }; // ref layout (13 fields) decodes
+        },
+      },
+    });
+    const res = await registerEscrow(app);
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.contract.variant).toBe("ref");
+  });
+
+  it("detects acp variant after circle+ref layouts fail to decode", async () => {
+    configureAgentAuthForTesting({ verifier: async () => true });
+    const { app } = mkApp({
+      probeRead: {
+        getBytecode: async () => "0x6001",
+        getTransactionReceipt: async () => ({ status: "ok", logs: [] }),
+        readContract: async ({ abi }) => {
+          const n = getJobFields(abi);
+          if (n === 9 || n === 13) {
+            throw new Error("position out of bounds");
+          }
+          return { status: 2 }; // acp layout (8 fields) decodes
+        },
+      },
+    });
+    const res = await registerEscrow(app);
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.contract.variant).toBe("acp");
   });
 
   it("lists registered contracts publicly", async () => {

@@ -262,7 +262,9 @@ export function MonitoringProjectDetail(data: MonitoringDetailData): ReturnType<
   </div>`;
 }
 
-export function MonitoringPage(data: MonitoringPageData): string {
+export function MonitoringPage(
+  data: MonitoringPageData,
+): ReturnType<typeof Layout> {
   const { projects } = data;
 
   const projectsHtml =

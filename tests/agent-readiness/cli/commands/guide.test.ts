@@ -20,6 +20,9 @@ function makeAssertion(overrides: Partial<Assertion> = {}): Assertion {
     reason: "robots.txt not found",
     category: "discovery",
     name: "robots.txt present",
+    claim: "has robots.txt",
+    verified_at: "",
+    review_level: "automatic",
     ...overrides,
   };
 }

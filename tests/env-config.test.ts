@@ -10,6 +10,14 @@ describe("loadConfig", () => {
     delete process.env.MOCK_X402;
     delete process.env.MOCK_IPFS;
     delete process.env.CHAIN_MODE;
+    // .env leaks UI overrides (CHAIN_DISPLAY_NAME=Arc Mainnet) — per-mode
+    // defaults are what these tests assert
+    delete process.env.CHAIN_DISPLAY_NAME;
+    delete process.env.CURRENCY_SYMBOL;
+    delete process.env.CURRENCY_DECIMALS;
+    delete process.env.EXPLORER_NAME;
+    delete process.env.ACCOUNT_LABEL;
+    delete process.env.ACCOUNT_PLACEHOLDER;
     resetConfigCache();
   });
 

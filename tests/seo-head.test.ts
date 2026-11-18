@@ -49,7 +49,7 @@ describe("SLICE-18-1: SEO Head Layer", () => {
 
     it("renders auto-discovery alternate links", () => {
       const html = Layout("<p>test</p>", "Test").toString();
-      expect(html).toContain('rel="alternate" type="text/plain" title="LLM Context"');
+      expect(html).toContain('rel="alternate" type="text/markdown" title="LLM Context"');
       expect(html).toContain('rel="alternate" type="application/json" title="Agent Card (A2A)"');
       expect(html).toContain('rel="service-desc"');
     });
@@ -108,14 +108,14 @@ describe("SLICE-18-4: JSON-LD Core Schemas", () => {
   });
 
   describe("webSiteLd()", () => {
-    it("returns valid WebSite schema with SearchAction", () => {
+    it("returns valid WebSite schema", () => {
       const schema = webSiteLd() as Record<string, unknown>;
       expect(schema["@context"]).toBe("https://schema.org");
       expect(schema["@type"]).toBe("WebSite");
       expect(schema.name).toBe("AgentBadge");
       expect(schema.url).toBe(BASE_URL);
-      const action = schema.potentialAction as Record<string, unknown>;
-      expect(action["@type"]).toBe("SearchAction");
+      // potentialAction SearchAction was dropped — no site search endpoint
+      expect(schema.documentation).toBeDefined();
     });
   });
 
@@ -126,7 +126,9 @@ describe("SLICE-18-4: JSON-LD Core Schemas", () => {
       expect(schema["@type"]).toBe("Organization");
       expect(schema.name).toBe("AgentBadge");
       expect(schema.url).toBe(BASE_URL);
-      expect(schema.logo).toContain("/icons/logo-32.png");
+      const logo = schema.logo as Record<string, unknown>;
+      expect(logo["@type"]).toBe("ImageObject");
+      expect(logo.url).toContain("/icons/logo-512.png");
     });
   });
 

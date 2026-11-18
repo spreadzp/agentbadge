@@ -76,6 +76,9 @@ export const article: BlogArticle = {
       id: "c35-gas-free-burner",
       status: "VERIFIED",
       text: "Burner wallet held 0 ETH / 0 USDC on Base mainnet at bid time — the flow is gas-free.",
+      evidence: [
+        { type: "github", url: "https://github.com/spreadzp/agentbadge/blob/main/scripts/gec-interop.mts" },
+      ],
     },
   ],
   content: `<h2 id="the-board">A demand that onboards itself</h2>

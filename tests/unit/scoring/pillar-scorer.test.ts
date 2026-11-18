@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { CategoryScore, PillarWeights } from "../../../src/agent-readiness/scoring/scoring-types";
 import { computePillarScores } from "../../../src/agent-readiness/scoring/pillar-scorer";
-import { PILLARS } from "../../../src/agent-readiness/scoring/pillar-map";
+import { PILLARS, CATEGORY_TO_PILLAR } from "../../../src/agent-readiness/scoring/pillar-map";
 
 function makeCategoryScore(
   category: string,
@@ -268,7 +268,7 @@ describe("SLICE-93-4: Pillar scorer (pure computation)", () => {
       const result = computePillarScores({
         categoryScores: scores,
         pillarWeights: PILLAR_WEIGHTS,
-        categoryToPillar: customMap,
+        categoryToPillar: { ...CATEGORY_TO_PILLAR, ...customMap },
       });
 
       const verifiability = result.find((p) => p.pillar === "verifiability")!;

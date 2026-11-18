@@ -59,7 +59,7 @@ tasksWriteRoutes.post(
       404: { description: "Task not found" },
     },
     "x-examples": TASK_VERDICT_X_EXAMPLES,
-  }),
+  } as Parameters<typeof describeRoute>[0]),
   async (c) => {
     // 1. sig-auth — the verifier is the signer, not a body field.
     const auth = await requireSigAuth(c);

@@ -119,6 +119,7 @@ describe("service-catalog registry", () => {
     expect(ids).toEqual([
       "scan:discovery-crawling",
       "scan:full",
+      "scan:demo-scan-lite",
       "passport:bronze",
       "passport:gold",
       "marketplace:passport-mint",

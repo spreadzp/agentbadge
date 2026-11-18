@@ -75,12 +75,13 @@ export const GEC_TARGET_DEMAND = "demand:owner:aefcd63292d520374a1c2ac7fca6a8a5"
 export const GEC_BID_AMOUNT_MINOR = "5000000"; // 5 USDC = max_budget_minor
 export const GEC_TARGET_AWARD = "award:155c2787a74b57b557dc6a69d3d4fb56";
 
-// SLICE-205-10: reciprocal INDEPENDENT_AGENT verification — Shawn/AgentPay's
-// award on the external-revenue demand (request: comments/2410.md, 2026-10-24).
-// Our wallet is verifier here (≠ owner, ≠ worker) — worker on our own award,
-// verifier on theirs.
-export const GEC_VERIFY_AWARD = "award:5a8d25b52436ec1779757050f4f47242";
-export const GEC_VERIFY_DELIVERABLE = "deliverable:1bc4966a12177feeb19c416b02114762";
+// SLICE-205-10: reciprocal INDEPENDENT_AGENT verification.
+// 2026-10-24: Shawn/AgentPay award:5a8d25b5… → verdict FAIL (verification:4de78f6a…).
+// 2026-10-25: Overwatch Dominion's 20-row Kalshi settlement check, delivered
+// by Darpone Revenue Agent (request: comments/2510.md). Our wallet is
+// verifier (≠ owner, ≠ worker).
+export const GEC_VERIFY_AWARD = "award:655eccb1502bf67ef67931d07804115a";
+export const GEC_VERIFY_DELIVERABLE = "deliverable:cbef668424e60033473905deabcc92bb";
 
 export const GEC_CLIENT_DOC_PATH = "/.well-known/gec-client.json";
 export const GEC_CALLBACK_PATH = "/api/gec/callback";

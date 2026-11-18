@@ -23,6 +23,8 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   listTasks: vi.fn(),
   marketClear: vi.fn(),
   marketRebuildFromHcs: vi.fn(),
+  reserveTask: vi.fn(),
+  transitionTask: vi.fn(),
 }));
 
 import {
@@ -36,6 +38,8 @@ import {
   getTaskById,
   updateTaskStatus,
   setEscrowStatus,
+  reserveTask,
+  transitionTask,
 } from "@agentbadge/passport";
 import { marketRoutes } from "../src/server/routes/market";
 
@@ -44,6 +48,8 @@ const mockedDidToAccountId = vi.mocked(didToAccountId);
 const mockedGetTaskById = vi.mocked(getTaskById);
 const mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
 const mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
+const mockedReserveTask = vi.mocked(reserveTask);
+const mockedTransitionTask = vi.mocked(transitionTask);
 const mockedSubmitTaskMessage = vi.mocked(submitTaskMessage);
 const mockedCreateScheduledTransfer = vi.mocked(createScheduledTransfer);
 const mockedDeleteScheduledTransaction = vi.mocked(deleteScheduledTransaction);
@@ -86,6 +92,8 @@ beforeEach(() => {
   });
   mockedUpdateTaskStatus.mockReturnValue(true);
   mockedSetEscrowStatus.mockReturnValue(true);
+  mockedReserveTask.mockReturnValue({ ok: true, currentStatus: null });
+  mockedTransitionTask.mockReturnValue({ ok: true, currentStatus: null });
 });
 
 // ─── POST /market/tasks/:taskId/cancel ───────────────────────────
@@ -108,7 +116,7 @@ describe("POST /market/tasks/:taskId/cancel", () => {
     const data = await res.json();
     expect(data.taskId).toBe("task-1");
     expect(data.hbarReturned).toBe(0);
-    expect(mockedUpdateTaskStatus).toHaveBeenCalledWith("task-1", "cancelled");
+    expect(mockedTransitionTask).toHaveBeenCalledWith("task-1", ["cancelling"], "cancelled");
     expect(mockedSubmitTaskMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: "task_cancelled", taskId: "task-1" }),
     );
@@ -135,7 +143,7 @@ describe("POST /market/tasks/:taskId/cancel", () => {
     expect(data.hbarReturned).toBe(10);
     expect(mockedDeleteScheduledTransaction).toHaveBeenCalledWith("0.0.555");
     expect(mockedSetEscrowStatus).toHaveBeenCalledWith("task-1", "cancelled");
-    expect(mockedUpdateTaskStatus).toHaveBeenCalledWith("task-1", "cancelled");
+    expect(mockedTransitionTask).toHaveBeenCalledWith("task-1", ["cancelling"], "cancelled");
   });
 
   it("returns 403 if caller is not the poster", async () => {

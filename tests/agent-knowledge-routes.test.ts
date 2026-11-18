@@ -26,8 +26,9 @@ const app = makeTestApp();
 
 describe("Agent Knowledge Layer Routes", () => {
   describe("Base guides", () => {
-    it("GET /agent-guide/ (index) → 200 + text/markdown with links", async () => {
-      const res = await app.request("/agent-guide/");
+    it("GET /agent-guide (index) → 200 + text/markdown with links", async () => {
+      // /agent-guide/ 301-redirects to the canonical slashless path
+      const res = await app.request("/agent-guide");
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/markdown");
       const text = await res.text();
@@ -37,7 +38,7 @@ describe("Agent Knowledge Layer Routes", () => {
     });
 
     it("index auto-discovers all articles from articles/ directory (SLICE-59-9)", async () => {
-      const res = await app.request("/agent-guide/");
+      const res = await app.request("/agent-guide");
       const text = await res.text();
       expect(text).toContain("/agent-guide/articles/what-is-agent-readiness");
       expect(text).toContain("/agent-guide/articles/ai-agent-architecture-patterns");

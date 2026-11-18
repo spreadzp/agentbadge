@@ -46,7 +46,7 @@ function getClient(): PublicClient {
     publicClient = createPublicClient({
       chain: { ...baseSepolia, id: cfg.base?.chainId ?? 84532, rpcUrls: { default: { http: [rpcUrl] } } },
       transport: http(rpcUrl),
-    });
+    }) as unknown as PublicClient;
   }
   return publicClient;
 }

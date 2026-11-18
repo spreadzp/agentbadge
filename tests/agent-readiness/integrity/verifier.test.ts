@@ -47,7 +47,7 @@ describe("SLICE-36-8: Report Verifier — Offline Integrity Check", () => {
     const tampered = { ...signed, assertions: [{ rule_id: "AB-001", status: "GAP" }] };
     const result = verifyReport(JSON.stringify(tampered), key.publicKey);
     expect(result.verified).toBe(false);
-    expect(result.reason).toBe("hash_mismatch");
+    expect("reason" in result && result.reason).toBe("hash_mismatch");
   });
 
   it("wrong public key → verified: false, reason: invalid_signature", () => {
@@ -55,14 +55,14 @@ describe("SLICE-36-8: Report Verifier — Offline Integrity Check", () => {
     const wrongKey = generateSigningKey("wrong-key");
     const result = verifyReport(JSON.stringify(signed), wrongKey.publicKey);
     expect(result.verified).toBe(false);
-    expect(result.reason).toBe("invalid_signature");
+    expect("reason" in result && result.reason).toBe("invalid_signature");
   });
 
   it("malformed JSON → verified: false, reason: malformed_report", () => {
     const { key } = createSignedReport();
     const result = verifyReport("{ invalid json }", key.publicKey);
     expect(result.verified).toBe(false);
-    expect(result.reason).toBe("malformed_report");
+    expect("reason" in result && result.reason).toBe("malformed_report");
   });
 
   it("all checks have name and passed fields", () => {
@@ -86,7 +86,7 @@ describe("SLICE-36-8: Report Verifier — Offline Integrity Check", () => {
     const { integrity, ...withoutIntegrity } = signed;
     const result = verifyReport(JSON.stringify(withoutIntegrity), key.publicKey);
     expect(result.verified).toBe(false);
-    expect(result.reason).toBe("malformed_report");
+    expect("reason" in result && result.reason).toBe("malformed_report");
   });
 
   it("tampered score → hash_mismatch", () => {
@@ -97,7 +97,7 @@ describe("SLICE-36-8: Report Verifier — Offline Integrity Check", () => {
     };
     const result = verifyReport(JSON.stringify(tampered), key.publicKey);
     expect(result.verified).toBe(false);
-    expect(result.reason).toBe("hash_mismatch");
+    expect("reason" in result && result.reason).toBe("hash_mismatch");
   });
 
   it("tampered content_hash → hash_mismatch", () => {
@@ -111,7 +111,7 @@ describe("SLICE-36-8: Report Verifier — Offline Integrity Check", () => {
     };
     const result = verifyReport(JSON.stringify(tampered), key.publicKey);
     expect(result.verified).toBe(false);
-    expect(result.reason).toBe("hash_mismatch");
+    expect("reason" in result && result.reason).toBe("hash_mismatch");
   });
 
   it("checks array contains canonicalization, content_hash, and signature", () => {

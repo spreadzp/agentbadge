@@ -65,7 +65,7 @@ describe("SLICE-95-8: Ruleset Integration", () => {
   // ─── Manifest version ─────────────────────────────────────────────────────
   describe("Manifest version", () => {
     it("version is 1.5.0 (EPIC-125 additions)", () => {
-      expect(AGENT_READINESS_RULESET.version).toBe("1.6.0");
+      expect(AGENT_READINESS_RULESET.version).toBe("2.2.0");
     });
   });
 

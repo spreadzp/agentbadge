@@ -23,7 +23,8 @@ export const article: BlogArticle = {
   readingTime: "6 min",
   shortAnswer:
     "Agent interop means every entry point an agent needs is machine-readable and curlable: /.well-known/agentbadge.json for the deployment descriptor, /api/tasks/open for free work evaluation, /api/v1/services + /pricing.json for exact USDC prices, /feed.json for capability changes (typed {_type:'capability', _endpoint, _method, _price, _added_at} items), and GET /api/v1/demo/scan-lite?url= — a $0.001 x402 call that lets any agent verify the payment roundtrip itself. Measured traffic: 587 ElevenLabs requests, 92 MCP discovery calls, 42 MoneyAgentPoller hits on /api/venue/jobs, 18 agent-card fetches, 23 APEX-Watchtower probes — in one 24h window. After the machine surface shipped (Nov 5→6): 7,389 requests (×4.9), manifest fetches ×10.8–13.6, and the first 402 payment challenges answered on day one.",
-  agentGuideSlug: "arc-c40-agent-interop",
+  // agentGuideSlug omitted — no agent-guide .md exists yet for this article
+  // (knowledge-index degrades gracefully when the field is absent).
   heroImage: "/images/blog/arc-c40-agent-interop-hero.webp",
   ogImage: "/images/blog/arc-c40-agent-interop-og.jpeg",
   status: "PRODUCTION",

@@ -61,14 +61,14 @@ describe("Report Integrity Integration", () => {
     it("3-report chain walks correctly", () => {
       const chain = createChainReports();
       const manager = new HashChainManager("/tmp/test-chain-integration");
-      const result = manager.verifyChain(chain);
+      const result = manager.verifyChain(chain as never);
       expect(result.valid).toBe(true);
     });
 
     it("broken chain detected at correct position", () => {
       const broken = createBrokenChainReports();
       const manager = new HashChainManager("/tmp/test-chain-integration");
-      const result = manager.verifyChain(broken);
+      const result = manager.verifyChain(broken as never);
       expect(result.valid).toBe(false);
       expect(result.brokenAt).toBe(2);
     });
@@ -129,7 +129,7 @@ describe("Report Integrity Integration", () => {
       await manager.updateChain(scopeKey, r2.report_id, r2.integrity.content_hash, r2.scanned_at);
 
       // Verify chain
-      const chainResult = manager.verifyChain([r0, r1, r2]);
+      const chainResult = manager.verifyChain([r0, r1, r2] as never);
       expect(chainResult.valid).toBe(true);
 
       // Verify each report individually
@@ -258,7 +258,7 @@ describe("Report Integrity Integration", () => {
 
       // Verify chain
       const manager = new HashChainManager("/tmp/pipeline-test");
-      const chainResult = manager.verifyChain([r0, r1, r2]);
+      const chainResult = manager.verifyChain([r0, r1, r2] as never);
       expect(chainResult.valid).toBe(true);
     });
   });

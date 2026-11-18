@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { FaqPage } from "../../src/views/faq-page";
+import { FaqPage, getFaqEntries } from "../../src/views/faq-page";
 import { HelpPage } from "../../src/views/help-page";
 import { UseCasesPage } from "../../src/views/use-cases-page";
 
@@ -7,6 +7,8 @@ import { UseCasesPage } from "../../src/views/use-cases-page";
 vi.mock("../../src/server/lib/chain-ui.js", () => ({
   chainDisplayName: vi.fn(() => "Hedera Testnet"),
   chainBadgeColor: vi.fn(() => "purple"),
+  chainBadgeIcon: vi.fn(() => ""),
+  explorerNftUrl: vi.fn((token: string, serial: string) => `https://hashscan.io/testnet/token/${token}/${serial}`),
   explorerName: vi.fn(() => "HashScan"),
   explorerTxUrl: vi.fn((txId: string) => `https://hashscan.io/testnet/tx/${txId}`),
   formatPrice: vi.fn((n: number) => `${n} HBAR`),
@@ -132,14 +134,14 @@ describe("FaqPage — chain-agnostic content", () => {
   });
 
   it("renders without hardcoded HBAR in template areas", () => {
-    const html = renderPage(FaqPage());
+    const html = renderPage(FaqPage(getFaqEntries(), []));
     // FAQ entries should use template variables, not hardcoded HBAR
     // The FAQ_ENTRIES array should not contain raw "HBAR" outside of template vars
     expect(html).toBeTruthy();
   });
 
   it("renders FAQ page successfully", () => {
-    const html = renderPage(FaqPage());
+    const html = renderPage(FaqPage(getFaqEntries(), []));
     expect(html).toContain("Frequently Asked Questions");
   });
 });

@@ -40,6 +40,9 @@ describe("SLICE-24-6: runVerification", () => {
     registry = VerifierRegistry.getInstance();
     registry.register(new NoopVerifier());
     vi.mocked(submitTaskMessage).mockClear();
+    // afterEach's restoreAllMocks wipes the factory-level mockResolvedValue —
+    // re-seed the receipt shape (returns HcsMessageReceipt, not a string).
+    vi.mocked(submitTaskMessage).mockResolvedValue({ txId: "0.0.999@1.1", consensusTimestamp: null });
   });
 
   afterEach(() => {

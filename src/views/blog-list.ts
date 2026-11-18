@@ -27,7 +27,7 @@ export function BlogListPage(items: BlogArticle[], meta: PaginationMeta, tagFilt
   const activeLabel = tagFilter?.activeTag
     ? `tagged: <span class="font-semibold text-emerald-400">${tagFilter.activeTag}</span>`
     : tagFilter?.activeChannel
-      ? `in channel: <span class="font-semibold text-emerald-400">${tagFilter.channels.find((c) => c.key === tagFilter.activeChannel)?.label ?? tagFilter.activeChannel}</span>`
+      ? `in channel: <span class="font-semibold text-emerald-400">${tagFilter.channels?.find((c) => c.key === tagFilter.activeChannel)?.label ?? tagFilter.activeChannel}</span>`
       : "";
   const filterNotice = activeLabel
     ? `<div class="mx-auto max-w-6xl mb-6 text-sm text-slate-400">Showing articles ${activeLabel} · <a href="/blog" class="text-emerald-400 underline hover:text-emerald-300">Clear filter</a></div>`

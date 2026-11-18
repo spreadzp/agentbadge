@@ -23,6 +23,8 @@ describe("ipfs/upload", () => {
   let fetchSpy: any;
 
   beforeEach(() => {
+    // vitest.setup defaults MOCK_IPFS=true — exercise the real Pinata path.
+    vi.stubEnv("MOCK_IPFS", "false");
     vi.stubEnv("IPFS_API_KEY", "test-key");
     vi.stubEnv("IPFS_API_SECRET", "test-secret");
     fetchSpy = vi

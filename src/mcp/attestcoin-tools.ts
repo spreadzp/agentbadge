@@ -153,7 +153,7 @@ export const listVerifiedTasksHandler: ToolHandler = async (args) => {
 };
 
 const getTaskStatusArgsSchema = z.object({
-  taskId: z.string().min("1"),
+  taskId: z.string().min(1),
 });
 
 export const getTaskStatusHandler: ToolHandler = async (args) => {

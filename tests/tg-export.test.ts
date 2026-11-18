@@ -21,6 +21,7 @@ import {
   EXIT_EMPTY,
 } from "../scripts/tg-export";
 import type { TrafficRow } from "../src/server/lib/report/traffic-format";
+import type { TelegramConfig } from "../src/server/lib/notify/telegram";
 
 const row = (p: Partial<TrafficRow["payload"]> = {}, createdAt = "2026-11-03T10:00:00Z"): TrafficRow => ({
   payload: { method: "GET", path: "/a", status: 200, ...p },
@@ -38,7 +39,7 @@ const trafficEvents = (rows: TrafficRow[]) => ({
 
 const deps = (over: Record<string, unknown> = {}) => ({
   events: trafficEvents([row({ path: "/a" }), row({ path: "/b", status: 404 })]),
-  sendDocument: vi.fn(async () => 42),
+  sendDocument: vi.fn(async (_cfg: TelegramConfig, _doc: { filename: string; data: Uint8Array | string; caption?: string }) => 42),
   writeFile: vi.fn(async () => {}),
   telegram: { token: "tok", chatId: "-100" },
   ...over,

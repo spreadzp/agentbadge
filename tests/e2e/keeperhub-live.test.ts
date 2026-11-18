@@ -21,7 +21,7 @@ describe.skipIf(!LIVE)("SLICE-126-18: Tier 2 — KeeperHub live e2e (env-gated)"
     const workflows = await client.listWorkflows();
     expect(workflows).toBeDefined();
     expect(Array.isArray(workflows)).toBe(true);
-    const names = workflows.map((w: { name?: string; id?: string }) => w.name ?? w.id ?? String(w));
+    const names = workflows.map((w) => { const o = w as { name?: string; id?: string }; return o.name ?? o.id ?? String(w); });
     expect(names.some((n: string) => n.includes("agentbadge"))).toBe(true);
   });
 

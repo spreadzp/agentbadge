@@ -87,7 +87,9 @@ describe("SLICE-TX-1: Task Transaction Trail", () => {
         description: "Desc",
         priceHbar: 5,
         capabilities: ["api_call"],
-        status: "posted",
+        // claiming is the transitional state — updateTaskStatus commits to
+        // claimed only from here (posted → claiming via reserveTask).
+        status: "claiming" as CachedMarketTask["status"],
         txId: "0.0.2@100.000",
         consensusTimestamp: new Date().toISOString(),
         createdAt: Date.now(),
@@ -113,7 +115,7 @@ describe("SLICE-TX-1: Task Transaction Trail", () => {
         description: "Desc",
         priceHbar: 5,
         capabilities: ["api_call"],
-        status: "claimed",
+        status: "delivering" as CachedMarketTask["status"],
         claimerDid: "did:hcs:0.0.456:2",
         txId: "0.0.2@100.000",
         claimTxId: "0.0.2@101.000",
@@ -141,7 +143,7 @@ describe("SLICE-TX-1: Task Transaction Trail", () => {
         description: "Desc",
         priceHbar: 5,
         capabilities: ["api_call"],
-        status: "delivered",
+        status: "completing" as CachedMarketTask["status"],
         txId: "0.0.2@100.000",
         claimTxId: "0.0.2@101.000",
         deliverTxId: "0.0.2@102.000",

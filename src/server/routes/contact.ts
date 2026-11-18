@@ -7,18 +7,22 @@ import {
 } from "../services/contact.service";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
-import { createRateLimiter } from "../middleware/rate-limit";
+import { createRateLimiter, MemoryStore } from "../middleware/rate-limit";
 
 export const contactRoutes = new Hono();
 
+// Own the store so tests can reset the bucket (sweep with a far-future
+// "now" deletes every entry whose resetAt <= now — i.e. all of them).
+const contactStore = new MemoryStore();
 const contactLimiter = createRateLimiter({
   windowMs: 60_000,
   max: 1,
   routes: ["/contact"],
+  store: contactStore,
 });
 
 export function resetRateLimit(): void {
-  // No-op — unified limiter handles its own store
+  contactStore.sweep(Number.MAX_SAFE_INTEGER);
 }
 
 function isHtmxRequest(c: import("hono").Context): boolean {

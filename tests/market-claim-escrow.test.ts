@@ -31,6 +31,8 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   listTasks: vi.fn(),
   marketClear: vi.fn(),
   marketRebuildFromHcs: vi.fn(),
+  reserveTask: vi.fn(),
+  transitionTask: vi.fn(),
 }));
 
 import {
@@ -47,6 +49,8 @@ import {
   updateTaskStatus,
   setEscrowStatus,
   returnTaskToMarket,
+  reserveTask,
+  transitionTask,
 } from "@agentbadge/passport";
 import { marketRoutes } from "../src/server/routes/market";
 
@@ -59,6 +63,8 @@ const mockedGetTaskById = vi.mocked(getTaskById);
 const mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
 const mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
 const mockedReturnTaskToMarket = vi.mocked(returnTaskToMarket);
+const mockedReserveTask = vi.mocked(reserveTask);
+const mockedTransitionTask = vi.mocked(transitionTask);
 const mockedSubmitTaskMessage = vi.mocked(submitTaskMessage);
 const mockedCreateScheduledTransfer = vi.mocked(createScheduledTransfer);
 
@@ -104,11 +110,13 @@ beforeEach(() => {
     scheduleTxId: FAKE_SCHEDULE_TX_ID,
   });
   mockedPrepareTopic.mockResolvedValue({ txBytes: FAKE_TX_BYTES, txId: "0.0.999@prepare" });
-  mockedSubmitSigned.mockResolvedValue({ txId: "0.0.999@signed-submit", consensusTimestamp: null });
+  mockedSubmitSigned.mockResolvedValue("0.0.999@signed-submit");
   mockedSignTxBytes.mockReturnValue({ signature: FAKE_SIGNATURE, publicKey: FAKE_PUBLIC_KEY });
   mockedUpdateTaskStatus.mockReturnValue(true);
   mockedSetEscrowStatus.mockReturnValue(true);
   mockedReturnTaskToMarket.mockReturnValue(true);
+  mockedReserveTask.mockReturnValue({ ok: true, currentStatus: "claiming" });
+  mockedTransitionTask.mockReturnValue({ ok: true, currentStatus: "claimed" });
 });
 
 describe("SLICE-24-8: POST /market/tasks/:taskId/claim — escrow creation", () => {
@@ -194,6 +202,7 @@ describe("SLICE-24-8: POST /market/tasks/:taskId/claim — escrow creation", () 
 
   it("still works with 409 for non-posted task", async () => {
     mockedGetTaskById.mockReturnValue({ ...mockPostedTask(), status: "claimed" } as any);
+    mockedReserveTask.mockReturnValue({ ok: false, currentStatus: "claimed" });
 
     const app = makeApp();
     const res = await app.request("/market/tasks/task-escrow-001/claim", {

@@ -92,23 +92,23 @@ describe("SLICE-19-13: Landing page integration — meta, JSON-LD, no-JS, full n
     });
 
     it("contains SSR content (Hero section present)", () => {
-      expect(landingHtml).toContain('id="hero"');
+      expect(landingHtml).toContain('id="scan"');
     });
 
-    it("contains SSR content (Problem-Solution section present)", () => {
-      expect(landingHtml).toContain('id="problem-solution"');
+    it("contains SSR content (Thesis section present)", () => {
+      expect(landingHtml).toContain('id="thesis"');
     });
 
-    it("contains SSR content (Features section present)", () => {
-      expect(landingHtml).toContain('id="features"');
+    it("contains SSR content (Evidence section present)", () => {
+      expect(landingHtml).toContain('id="evidence"');
     });
 
-    it("contains SSR content (How It Works section present)", () => {
-      expect(landingHtml).toContain('id="how-it-works"');
+    it("contains SSR content (How section present)", () => {
+      expect(landingHtml).toContain('id="how"');
     });
 
-    it("contains SSR content (CTA Footer section present)", () => {
-      expect(landingHtml).toContain('id="cta-footer"');
+    it("contains SSR content (Engineering CTA section present)", () => {
+      expect(landingHtml).toContain('id="engineering-cta"');
     });
 
     it("contains noscript tag", () => {
@@ -123,19 +123,20 @@ describe("SLICE-19-13: Landing page integration — meta, JSON-LD, no-JS, full n
     });
   });
 
-  // ─── All 9 sections present ───────────────────────────────
-  describe("All 9 sections present in HTML", () => {
+  // ─── All named sections present ──────────────────────────
+  describe("All named sections present in HTML", () => {
     it("contains all section ids", () => {
       const ids = [
-        "hero",
-        "landing-stats",
-        "problem-solution",
-        "features",
-        "how-it-works",
-        "for-who",
-        "architecture",
+        "scan",
+        "agent-ready-proof",
+        "how",
+        "evidence",
+        "fix",
+        "workflow",
+        "agents",
         "pricing",
-        "cta-footer",
+        "thesis",
+        "engineering-cta",
       ];
       for (const id of ids) {
         expect(landingHtml).toContain(`id="${id}"`);

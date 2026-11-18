@@ -83,7 +83,7 @@ async function handleRate(
     return errorResponse(c, 500, ErrorCodes.INTERNAL_ERROR,
       "onchain getJob read failed — retry");
   }
-  if (raw.client.toLowerCase() !== s.wallet.toLowerCase()) {
+  if (!raw.client || raw.client.toLowerCase() !== s.wallet.toLowerCase()) {
     return errorResponse(c, 403, ErrorCodes.WRONG_SIGNER,
       "only the job client can rate");
   }

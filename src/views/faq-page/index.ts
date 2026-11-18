@@ -34,7 +34,7 @@ export function getFaqEntries(): QaPair[] {
 export function FaqPage(
   entries: QaPair[],
   jsonLd?: object[],
-): string {
+): ReturnType<typeof Layout> {
   const faqMeta = PageMeta["/faq"];
   const schemas = jsonLd;
 
@@ -48,6 +48,19 @@ export function FaqPage(
     return { name: cat.name, slug: cat.slug, items };
   }).filter((cat) => cat.items.length > 0);
 
+  // Entries not covered by any category slug must still render —
+  // silently dropping them hides content while FAQPage JSON-LD lists all.
+  const matchedAnchors = new Set(
+    categorized.flatMap((cat) => cat.items.map((item) => item.anchor)),
+  );
+  const unmatched = entries
+    .filter((e) => !matchedAnchors.has(slugifyQuestion(e.question)))
+    .map((e) => ({ ...e, anchor: slugifyQuestion(e.question) }));
+  const groups =
+    unmatched.length > 0
+      ? [...categorized, { name: "Other", slug: "other", items: unmatched }]
+      : categorized;
+
   const content = html`<section class="rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8">
     <span class="inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">FAQ</span>
     <h1 class="mt-4 text-3xl font-semibold text-white sm:text-4xl">Frequently Asked Questions</h1>
@@ -58,7 +71,7 @@ export function FaqPage(
       <!-- Sidebar (desktop) -->
       <nav class="hidden md:block w-48 flex-shrink-0">
         <div class="sticky top-8 space-y-1">
-          ${raw(FAQ_CATEGORIES.map((cat) => html`
+          ${raw(groups.map((cat) => html`
             <a href="#${cat.slug}" class="block rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
               ${cat.name}
             </a>
@@ -69,7 +82,7 @@ export function FaqPage(
       <!-- Mobile tabs -->
       <div class="md:hidden -mx-4 px-4 overflow-x-auto">
         <div class="flex gap-2 pb-2">
-          ${raw(FAQ_CATEGORIES.map((cat) => html`
+          ${raw(groups.map((cat) => html`
             <a href="#${cat.slug}" class="whitespace-nowrap rounded-lg border border-slate-800 px-3 py-1.5 text-xs text-slate-400 hover:border-emerald-500 hover:text-emerald-400">
               ${cat.name}
             </a>
@@ -79,7 +92,7 @@ export function FaqPage(
 
       <!-- FAQ Content -->
       <div class="flex-1 min-w-0">
-        ${raw(categorized.map((cat) => html`
+        ${raw(groups.map((cat) => html`
           <section id="${cat.slug}" class="mb-12 scroll-mt-8">
             <h2 class="text-xl font-semibold text-white mb-4">${cat.name}</h2>
             <div class="space-y-3">
@@ -126,5 +139,5 @@ export function FaqPage(
 
   ${raw(RelatedLinks("Explore More", faqCrossLinks))}`;
 
-  return Layout(content.toString(), faqMeta.title, faqMeta, schemas);
+  return Layout(String(content), faqMeta.title, faqMeta, schemas);
 }

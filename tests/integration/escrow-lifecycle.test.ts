@@ -34,6 +34,8 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
   listTasks: vi.fn(),
   marketClear: vi.fn(),
   marketRebuildFromHcs: vi.fn(),
+  reserveTask: vi.fn(),
+  transitionTask: vi.fn(),
 }));
 
 vi.mock("../../src/verifiers", async (importOriginal) => {
@@ -62,6 +64,8 @@ import {
   setEscrowStatus,
   returnTaskToMarket,
   updateTaskVerificationAttempts,
+  reserveTask,
+  transitionTask,
 } from "@agentbadge/passport";
 import { runVerification } from "../../src/verifiers";
 import { marketRoutes } from "../../src/server/routes/market";
@@ -73,6 +77,8 @@ const mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
 const mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
 const mockedReturnTaskToMarket = vi.mocked(returnTaskToMarket);
 const mockedUpdateTaskVerificationAttempts = vi.mocked(updateTaskVerificationAttempts);
+const mockedReserveTask = vi.mocked(reserveTask);
+const mockedTransitionTask = vi.mocked(transitionTask);
 const mockedSubmitTaskMessage = vi.mocked(submitTaskMessage);
 const mockedRunVerification = vi.mocked(runVerification);
 const mockedCreateScheduledTransfer = vi.mocked(createScheduledTransfer);
@@ -146,6 +152,8 @@ beforeEach(() => {
   mockedSetEscrowStatus.mockReturnValue(true);
   mockedReturnTaskToMarket.mockReturnValue(true);
   mockedUpdateTaskVerificationAttempts.mockReturnValue(true);
+  mockedReserveTask.mockReturnValue({ ok: true, currentStatus: null });
+  mockedTransitionTask.mockReturnValue({ ok: true, currentStatus: null });
 });
 
 // ─── Scenario 1: Happy path (noop verifier) ───────────────────────
@@ -227,8 +235,8 @@ describe("SLICE-24-13 Scenario 1: Happy path — full lifecycle with escrow", ()
     expect(mockedRunVerification).toHaveBeenCalledOnce();
     expect(mockedSignScheduledTransaction).toHaveBeenCalledWith(SCHEDULE_ID_1, POSTER_PK);
     expect(mockedSetEscrowStatus).toHaveBeenCalledWith("task-int-001", "released");
-    expect(mockedUpdateTaskStatus).toHaveBeenCalledWith(
-      "task-int-001", "completed",
+    expect(mockedTransitionTask).toHaveBeenCalledWith(
+      "task-int-001", ["completing"], "completed",
       expect.objectContaining({ paymentTxId: "0.0.999@schedule-sign" }),
     );
     expect(hcsMessageTypes()).toContain("task_completed");
@@ -370,7 +378,7 @@ describe("SLICE-24-13 Scenario 4: Cancel by poster — escrow cancelled", () => 
 
     expect(mockedDeleteScheduledTransaction).toHaveBeenCalledWith(SCHEDULE_ID_1);
     expect(mockedSetEscrowStatus).toHaveBeenCalledWith("task-int-001", "cancelled");
-    expect(mockedUpdateTaskStatus).toHaveBeenCalledWith("task-int-001", "cancelled");
+    expect(mockedTransitionTask).toHaveBeenCalledWith("task-int-001", ["cancelling"], "cancelled");
     expect(hcsMessageTypes()).toContain("task_cancelled");
   });
 });

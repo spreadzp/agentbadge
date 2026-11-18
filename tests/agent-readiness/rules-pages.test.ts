@@ -14,7 +14,7 @@ describe("Rules Catalog Page (SLICE-50-2)", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("What We Check");
-    expect(html).toContain("121 rules");
+    expect(html).toContain(`${RULE_DESCRIPTIONS.length} rules`);
     expect(html).toContain("25 categories");
   });
 
@@ -39,7 +39,6 @@ describe("Rules Catalog Page (SLICE-50-2)", () => {
       "Infrastructure",
       "SEO / AEO",
       "Accessibility",
-      "Active Probing",
       "Pricing",
       "Rate Limits",
       "Error Semantics",
@@ -61,11 +60,11 @@ describe("Rules Catalog Page (SLICE-50-2)", () => {
     expect(html).toContain('href="/rules/AB-056"');
   });
 
-  it("includes FAQPage JSON-LD structured data", async () => {
+  it("includes CollectionPage JSON-LD structured data", async () => {
     const res = await app.request("/rules");
     const html = await res.text();
-    expect(html).toContain('"@type":"FAQPage"');
-    expect(html).toContain("What is the Discovery category?");
+    // SLICE-112-9: FAQPage schema moved to /faq; /rules carries CollectionPage
+    expect(html).toContain('"@type":"CollectionPage"');
   });
 
   it("has canonical URL and og tags", async () => {

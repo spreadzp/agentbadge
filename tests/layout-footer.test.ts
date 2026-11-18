@@ -10,7 +10,7 @@ describe("Layout — footer", () => {
 
     // Social links — Discord/Telegram now point to /contact (internal)
     expect(html).toContain('href="/contact"');
-    expect(html).toContain('href="https://github.com/hashgraph"');
+    expect(html).toContain('href="https://raw.githubusercontent.com/spreadzp/agentbadge/refs/heads/main/AGENT-REFERENCE.md"');
 
     // Old external links should NOT be present
     expect(html).not.toContain('href="https://discord.gg/hedera"');
