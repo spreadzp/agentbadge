@@ -119,5 +119,29 @@ describe("DID resolution routes", () => {
       const body = await res.json();
       expect(body.service).toEqual([]);
     });
+
+    // SLICE-234-36: mirror 400/404 = not found → 404; outage → 503.
+    it("mirror 400 → 404 PASSPORT_NOT_FOUND", async () => {
+      vi.mocked(getPassportInfo).mockRejectedValueOnce(
+        new Error("Mirror Node error 400: https://testnet.mirrornode.hedera.com/api/v1/tokens/0.0.999/nfts/1"),
+      );
+
+      const res = await app.request("/did/did:hcs:0.0.999:1");
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.code).toBe("PASSPORT_NOT_FOUND");
+    });
+
+    it("mirror timeout → 503 MIRROR_NODE_UNAVAILABLE retryable", async () => {
+      vi.mocked(getPassportInfo).mockRejectedValueOnce(
+        new Error("Mirror Node timeout after 10000ms: https://testnet.mirrornode.hedera.com/api/v1/tokens/0.0.123/nfts/1"),
+      );
+
+      const res = await app.request("/did/did:hcs:0.0.123:1");
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.code).toBe("MIRROR_NODE_UNAVAILABLE");
+      expect(body.retryable).toBe(true);
+    });
   });
 });

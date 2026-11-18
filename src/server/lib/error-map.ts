@@ -42,3 +42,15 @@ export function toPublicError(err: unknown): PublicError {
     safeMessage: SAFE_MESSAGES[ErrorCodes.INTERNAL_ERROR],
   };
 }
+
+/**
+ * SLICE-234-36: Hedera mirror node returns HTTP 400 (not 404) for a
+ * nonexistent token/serial — fetchMirrorNode throws "Mirror Node error
+ * 400: <url>". That is a NOT-FOUND signal, not an outage: callers should
+ * map it to 404, not 500/503 retryable. 5xx/timeouts still throw and
+ * stay retryable upstream errors.
+ */
+export function isChainNotFound(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  return /Mirror Node error (400|404)/.test(message);
+}

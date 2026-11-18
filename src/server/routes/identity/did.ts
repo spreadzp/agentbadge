@@ -11,6 +11,7 @@ import { describeRoute } from "hono-openapi";
 import { getPassportInfo, type PassportInfo } from "@agentbadge/passport";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
+import { isChainNotFound } from "../../lib/error-map";
 import { chainDisabled, passportChainEnabled } from "../../lib/passport-chain-gate";
 import { collectSources } from "../../lib/agent-discovery/sources";
 import { buildDidWebDocument } from "../../lib/agent-discovery/did";
@@ -90,7 +91,17 @@ didRoutes.get(
       return errorResponse(c, 400, ErrorCodes.INVALID_DID_FORMAT, "Invalid DID format");
     }
 
-    const info = await getPassportInfo(parsed.tokenId, parsed.serial);
+    let info;
+    try {
+      info = await getPassportInfo(parsed.tokenId, parsed.serial);
+    } catch (err) {
+      // SLICE-234-36: mirror 400/404 = token/serial not found → 404.
+      if (isChainNotFound(err)) {
+        return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, "DID not found or revoked");
+      }
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return errorResponse(c, 503, ErrorCodes.MIRROR_NODE_UNAVAILABLE, `Verification failed: ${message}`, { retryable: true });
+    }
 
     if (!info || !info.active) {
       return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, "DID not found or revoked");

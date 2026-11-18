@@ -19,6 +19,7 @@ import {
 } from "@agentbadge/passport";
 import { ErrorCodes } from "../../lib/error-codes";
 import { errorResponse } from "../../lib/error-response";
+import { isChainNotFound } from "../../lib/error-map";
 import { chainDisabled, passportChainEnabled } from "../../lib/passport-chain-gate";
 import { passportLinks } from "../../lib/hateoas";
 
@@ -56,8 +57,12 @@ verifyRoutes.get(
       const passports = await listPassportsByAddress(address);
       return c.json({ passports }, 200);
     } catch (err) {
+      // SLICE-234-36: mirror 400/404 = not found → 404, not 500.
+      if (isChainNotFound(err)) {
+        return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, "No passports for address");
+      }
       const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.MIRROR_NODE_UNAVAILABLE, `Retrieval failed: ${message}`, { retryable: true });
+      return errorResponse(c, 503, ErrorCodes.MIRROR_NODE_UNAVAILABLE, `Retrieval failed: ${message}`, { retryable: true });
     }
   },
 );
@@ -107,8 +112,12 @@ verifyRoutes.get(
       }
       return c.json({ ...info, _links: passportLinks(tokenId, serial) }, 200);
     } catch (err) {
+      // SLICE-234-36: mirror 400/404 = token/serial not found → 404.
+      if (isChainNotFound(err)) {
+        return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, "Passport not found");
+      }
       const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.MIRROR_NODE_UNAVAILABLE, `Verification failed: ${message}`, { retryable: true });
+      return errorResponse(c, 503, ErrorCodes.MIRROR_NODE_UNAVAILABLE, `Verification failed: ${message}`, { retryable: true });
     }
   },
 );
@@ -143,8 +152,12 @@ verifyRoutes.get(
       const passports = await listAllPassports(tokenId);
       return c.json({ passports }, 200);
     } catch (err) {
+      // SLICE-234-36: mirror 400/404 = token not found → 404.
+      if (isChainNotFound(err)) {
+        return errorResponse(c, 404, ErrorCodes.PASSPORT_NOT_FOUND, "Passport token not found");
+      }
       const message = err instanceof Error ? err.message : "Unknown error";
-      return errorResponse(c, 500, ErrorCodes.MIRROR_NODE_UNAVAILABLE, `Retrieval failed: ${message}`, { retryable: true });
+      return errorResponse(c, 503, ErrorCodes.MIRROR_NODE_UNAVAILABLE, `Retrieval failed: ${message}`, { retryable: true });
     }
   },
 );

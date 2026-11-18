@@ -91,6 +91,57 @@ describe("verify routes", () => {
       expect(body.tier).toBeNull();
       expect(body.capabilities).toEqual([]);
     });
+
+    // SLICE-234-36: mirror 400/404 = not found → 404, not 500/503.
+    it("mirror 400 (bad tokenId) → 404 PASSPORT_NOT_FOUND", async () => {
+      vi.mocked(getPassportInfo).mockRejectedValueOnce(
+        new Error("Mirror Node error 400: https://testnet.mirrornode.hedera.com/api/v1/tokens/tokenId/nfts/1"),
+      );
+
+      const res = await app.request("/passport/tokenId/6774409789354266387");
+
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.code).toBe("PASSPORT_NOT_FOUND");
+    });
+
+    it("mirror 404 → 404 PASSPORT_NOT_FOUND", async () => {
+      vi.mocked(getPassportInfo).mockRejectedValueOnce(
+        new Error("Mirror Node error 404: https://testnet.mirrornode.hedera.com/api/v1/tokens/0.0.999/nfts/1"),
+      );
+
+      const res = await app.request("/passport/0.0.999/1");
+
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.code).toBe("PASSPORT_NOT_FOUND");
+    });
+
+    it("mirror 500 → 503 MIRROR_NODE_UNAVAILABLE retryable", async () => {
+      vi.mocked(getPassportInfo).mockRejectedValueOnce(
+        new Error("Mirror Node error 500: https://testnet.mirrornode.hedera.com/api/v1/tokens/0.0.123/nfts/1"),
+      );
+
+      const res = await app.request("/passport/0.0.123/1");
+
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.code).toBe("MIRROR_NODE_UNAVAILABLE");
+      expect(body.retryable).toBe(true);
+    });
+
+    it("mirror timeout → 503 MIRROR_NODE_UNAVAILABLE retryable", async () => {
+      vi.mocked(getPassportInfo).mockRejectedValueOnce(
+        new Error("Mirror Node timeout after 10000ms: https://testnet.mirrornode.hedera.com/api/v1/tokens/0.0.123/nfts/1"),
+      );
+
+      const res = await app.request("/passport/0.0.123/1");
+
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.code).toBe("MIRROR_NODE_UNAVAILABLE");
+      expect(body.retryable).toBe(true);
+    });
   });
 
   describe("GET /passport/address/:address", () => {
@@ -118,6 +169,32 @@ describe("verify routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.passports).toEqual([]);
+    });
+
+    // SLICE-234-36: mirror 400/404 → 404, outage → 503.
+    it("mirror 400 → 404 PASSPORT_NOT_FOUND", async () => {
+      vi.mocked(listPassportsByAddress).mockRejectedValueOnce(
+        new Error("Mirror Node error 400: https://testnet.mirrornode.hedera.com/api/v1/accounts/0.0.999"),
+      );
+
+      const res = await app.request("/passport/address/0.0.999");
+
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.code).toBe("PASSPORT_NOT_FOUND");
+    });
+
+    it("mirror timeout → 503 MIRROR_NODE_UNAVAILABLE", async () => {
+      vi.mocked(listPassportsByAddress).mockRejectedValueOnce(
+        new Error("Mirror Node timeout after 10000ms: https://testnet.mirrornode.hedera.com/api/v1/accounts/0.0.456"),
+      );
+
+      const res = await app.request("/passport/address/0.0.456");
+
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.code).toBe("MIRROR_NODE_UNAVAILABLE");
+      expect(body.retryable).toBe(true);
     });
   });
 
@@ -164,6 +241,32 @@ describe("verify routes", () => {
       await app.request("/passports");
 
       expect(listAllPassports).toHaveBeenCalledWith("0.0.555");
+    });
+
+    // SLICE-234-36: mirror 400/404 → 404, outage → 503.
+    it("mirror 404 → 404 PASSPORT_NOT_FOUND", async () => {
+      vi.mocked(listAllPassports).mockRejectedValueOnce(
+        new Error("Mirror Node error 404: https://testnet.mirrornode.hedera.com/api/v1/tokens/0.0.999/nfts"),
+      );
+
+      const res = await app.request("/passports?tokenId=0.0.999");
+
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.code).toBe("PASSPORT_NOT_FOUND");
+    });
+
+    it("mirror 500 → 503 MIRROR_NODE_UNAVAILABLE", async () => {
+      vi.mocked(listAllPassports).mockRejectedValueOnce(
+        new Error("Mirror Node error 500: https://testnet.mirrornode.hedera.com/api/v1/tokens/0.0.123/nfts"),
+      );
+
+      const res = await app.request("/passports");
+
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.code).toBe("MIRROR_NODE_UNAVAILABLE");
+      expect(body.retryable).toBe(true);
     });
   });
 });
