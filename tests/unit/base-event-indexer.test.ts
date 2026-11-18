@@ -45,6 +45,7 @@ import {
   startBaseEventIndexer,
   stopBaseEventIndexer,
   getBaseEventIndexer,
+  isBaseEventIndexerStarted,
 } from "../../src/server/lib/base-event-indexer";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -103,6 +104,25 @@ describe("getBaseEventIndexer", () => {
     const indexer = getBaseEventIndexer();
     expect(indexer).toBeDefined();
     expect(typeof indexer.getIndexedEvents).toBe("function");
+  });
+});
+
+// SLICE-234-37: isBaseEventIndexerStarted gate for /events 503 contract.
+describe("isBaseEventIndexerStarted", () => {
+  it("false before start, true after start, false after stop", () => {
+    expect(isBaseEventIndexerStarted()).toBe(false);
+    process.env.CHAIN_MODE = "base";
+    process.env.BASE_OPERATOR_KEY = "0x" + "ab".repeat(32);
+    startBaseEventIndexer();
+    expect(isBaseEventIndexerStarted()).toBe(true);
+    stopBaseEventIndexer();
+    expect(isBaseEventIndexerStarted()).toBe(false);
+  });
+
+  it("false when CHAIN_MODE=hedera (prod mode)", () => {
+    process.env.CHAIN_MODE = "hedera";
+    startBaseEventIndexer();
+    expect(isBaseEventIndexerStarted()).toBe(false);
   });
 });
 

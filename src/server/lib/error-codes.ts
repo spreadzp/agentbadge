@@ -66,6 +66,8 @@ export const ErrorCodes = {
   SPEND_CAP: "spend_cap",
   BOUNTY_DISABLED: "bounty_disabled",
   PASSPORT_CHAIN_DISABLED: "passport_chain_disabled",
+  // 503 — events indexer gated to CHAIN_MODE=base (SLICE-234-37)
+  EVENTS_INDEXER_DISABLED: "events_indexer_disabled",
 
   // 409 — bounty lifecycle (EPIC-197)
   BOUNTY_ALREADY_CLAIMED: "bounty_already_claimed",

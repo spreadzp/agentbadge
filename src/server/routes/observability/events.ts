@@ -47,6 +47,10 @@ eventsRoutes.get(
         description: "Failed to fetch events",
         content: { "application/json": { schema: resolver(errorSchema) } },
       },
+      503: {
+        description: "Event indexer not enabled in this deployment (CHAIN_MODE=base required)",
+        content: { "application/json": { schema: resolver(errorSchema) } },
+      },
     },
   }),
   async (c) => {
@@ -57,7 +61,20 @@ eventsRoutes.get(
     const limit = c.req.query("limit");
 
     try {
-      const { getBaseEventIndexer } = await import("../../lib/base-event-indexer");
+      const { getBaseEventIndexer, isBaseEventIndexerStarted } = await import("../../lib/base-event-indexer");
+
+      // SLICE-234-37: indexer only runs under CHAIN_MODE=base — in hedera
+      // mode it never starts, so answer an honest 503 instead of 500.
+      if (!isBaseEventIndexerStarted()) {
+        return errorResponse(
+          c,
+          503,
+          ErrorCodes.EVENTS_INDEXER_DISABLED,
+          "Event indexer is not enabled in this deployment (requires CHAIN_MODE=base)",
+          { retryable: false },
+        );
+      }
+
       const indexer = getBaseEventIndexer() as unknown as { getIndexedEvents: () => unknown[] };
 
       let events: Record<string, unknown>[] = indexer.getIndexedEvents() as Record<string, unknown>[];

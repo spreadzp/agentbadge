@@ -15,6 +15,11 @@ import {
 
 let indexer: EventIndexer | null = null;
 
+/** SLICE-234-37: true once startBaseEventIndexer() ran (CHAIN_MODE=base). */
+export function isBaseEventIndexerStarted(): boolean {
+  return indexer !== null;
+}
+
 export function getBaseEventIndexer(): EventIndexer {
   if (!indexer) {
     throw new Error("Base event indexer not started — call startBaseEventIndexer() first");
