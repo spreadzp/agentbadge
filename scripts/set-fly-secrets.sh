@@ -99,6 +99,9 @@ OPTIONAL_SECRETS=(
   ALPACA_API_KEY
   ALPACA_API_SECRET
   TELEGRAM_BOT_BSTOK_TOKEN
+  # SLICE-234-22: webhook secret-token guard on /telegram/* (must match
+  # secret_token passed to Telegram setWebhook)
+  TELEGRAM_WEBHOOK_SECRET
   X402_PAY_TO
   X402_USDC_ADDRESS
   X402_FACILITATOR_URL
