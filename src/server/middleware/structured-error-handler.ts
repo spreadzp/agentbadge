@@ -7,6 +7,7 @@
  * Usage: app.notFound(structuredNotFoundHandler())
  */
 import type { Context } from "hono";
+import { notFoundSuggestions } from "../lib/not-found-hints";
 
 export function structuredErrorHandler() {
   return async (c: Context, next: () => Promise<void>): Promise<Response | void> => {
@@ -46,12 +47,16 @@ function handleNotFound(c: Context): Response {
   }
 
   if (accept.includes("application/json") || accept.includes("*/*")) {
+    // SLICE-234-30: intent-aware suggestions — whitelist only, live
+    // endpoints only (guard-test), excluded probes get bare 404.
+    const suggestions = notFoundSuggestions(path);
     return c.json(
       {
         error: "not_found",
         message: `Resource not found: ${path}`,
         path,
         status: 404,
+        ...(suggestions ? { suggestions } : {}),
       },
       404,
       { "Content-Type": "application/json; charset=utf-8" },
