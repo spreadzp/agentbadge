@@ -67,6 +67,24 @@ describe("SLICE-234-30: not-found suggestions", () => {
     });
   });
 
+  describe("whitelist — /join* probes (SLICE-234-31 follow-up)", () => {
+    it.each(["/join/foo", "/join-us-x", "/join/team"])(
+      "%s → 404 + /join suggestion",
+      async (path) => {
+        const res = await json404(path);
+        expect(res.status).toBe(404);
+        const body = (await res.json()) as Record<string, unknown>;
+        expect(body.suggestions).toEqual(["/join"]);
+      },
+    );
+
+    it("/join/careers stays excluded (career probe, not join intent)", async () => {
+      const res = await json404("/join/careers");
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).not.toHaveProperty("suggestions");
+    });
+  });
+
   describe("excluded probes → bare 404", () => {
     it.each([
       "/.env",

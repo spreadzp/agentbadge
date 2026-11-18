@@ -43,6 +43,13 @@ export const NOT_FOUND_HINTS: NotFoundHint[] = [
     suggestions: ["/api/meta/trust-tiers", "/api/v1/services", "/agent-guide"],
   },
   {
+    // /join* probes — /join itself is live (SLICE-234-31); aliases and
+    // subpaths get pointed at the canonical page. Career probes
+    // (/join/careers etc.) stay excluded — checked before hints.
+    match: /^\/join(?!$)/,
+    suggestions: ["/join"],
+  },
+  {
     // IDE/agent MCP-config probes — the real manifest is
     // /.well-known/mcp.json (SLICE-44-6); /mcp/public is the keyless
     // JSON-RPC facade (EPIC-206); agentbadge-machine.json is the
