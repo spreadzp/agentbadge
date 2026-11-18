@@ -4,10 +4,21 @@ import { handleHttpToolCall, listTools, handleHttpRequest } from "@agentbadge/mc
 export const mcpRoutes = new Hono();
 
 // SSE transport: GET /mcp with Accept: text/event-stream
+// SLICE-234-29: structured 406 contract — status unchanged, body now
+// tells the client exactly what to send (transport 2025-06-18 keeps
+// GET+SSE; the "GET→405" advice applies to a newer revision we don't run).
 mcpRoutes.get("/mcp", (c) => {
   const accept = c.req.header("Accept") ?? "";
   if (!accept.includes("text/event-stream")) {
-    return c.json({ error: "Not Acceptable: Client must accept text/event-stream" }, 406);
+    return c.json(
+      {
+        error: "not_acceptable",
+        requires: ["text/event-stream"],
+        allowed_methods: ["GET", "POST"],
+        documentation: "/agent-guide",
+      },
+      406,
+    );
   }
   return new Response("event: ping\ndata: {}\n\n", {
     status: 200,
@@ -18,6 +29,24 @@ mcpRoutes.get("/mcp", (c) => {
     },
   });
 });
+
+// SLICE-234-29: explicit 405 for non-GET/POST methods — MUST be
+// registered before mcpRoutes.all so DELETE/PUT/PATCH don't fall into
+// the JSON-RPC catch-all (c.req.json() throws → handleHttpRequest →
+// unpredictable SDK-transport response; DELETE /mcp ×7 in prod logs).
+mcpRoutes.on(["DELETE", "PUT", "PATCH"], "/mcp", (c) =>
+  c.json(
+    {
+      error: "method_not_allowed",
+      allowed_methods: ["GET", "POST"],
+      message:
+        "MCP JSON-RPC requests must use HTTP POST; GET opens the SSE stream",
+      documentation: "/agent-guide",
+    },
+    405,
+    { Allow: "GET, POST" },
+  ),
+);
 
 mcpRoutes.all("/mcp", async (c) => {
   let body: Record<string, unknown>;
