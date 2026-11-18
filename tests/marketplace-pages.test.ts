@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { marketplacePageRoutes } from "../src/server/routes/marketplace-pages";
+import { marketplacePageRoutes } from "../src/server/routes/marketplace/marketplace-pages";
 import {
   upsertService,
   useMemoryStoreForTesting,

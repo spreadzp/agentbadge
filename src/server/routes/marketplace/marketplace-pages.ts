@@ -19,10 +19,10 @@ import {
   marketCheckoutPage,
   marketSellPage,
   marketPassesPage,
-} from "../../views/marketplace-pages";
-import { getService, listServices } from "../lib/marketplace";
-import { ErrorCodes } from "../lib/error-codes";
-import { errorResponse } from "../lib/error-response";
+} from "../../../views/marketplace-pages";
+import { getService, listServices } from "../../lib/marketplace";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 
 export const marketplacePageRoutes = new Hono();
 

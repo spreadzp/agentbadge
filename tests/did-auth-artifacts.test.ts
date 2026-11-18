@@ -13,7 +13,7 @@ import {
   createDiscoveryRoutes,
   discoveryManifestRoutes,
 } from "../src/server/routes/discovery";
-import { marketGuideRoutes } from "../src/server/routes/market-guide";
+import { marketGuideRoutes } from "../src/server/routes/market/market-guide";
 import { agentGuideRoutes } from "../src/server/routes/agent-guide/agent-guide";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
 

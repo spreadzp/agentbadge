@@ -42,7 +42,7 @@ vi.mock("@agentbadge/evm-core", () => ({
   },
 }));
 
-import { checkPassportType, checkSessionCap } from "../../src/server/routes/market";
+import { checkPassportType, checkSessionCap } from "../../src/server/routes/market/market";
 
 const HEDERA_DID = "did:hedera:testnet:passport:0.0.123456";
 const BASE_DID = "did:eip155:84532:passport:0x68ca4d1a9ff24f86328f2fb3a30d81e503d367f5:42";

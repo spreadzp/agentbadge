@@ -20,7 +20,7 @@ import { createMemoryRequestStore } from "../src/server/lib/eaas/requests";
 import { createEaasMetrics } from "../src/server/lib/eaas/metrics";
 import { createJsonChainStore, createChainService } from "../src/server/lib/eaas/chain";
 import { createChainFlusher } from "../src/server/lib/eaas/chain-flush";
-import { createEaasFeedsRoutes } from "../src/server/routes/eaas-feeds-api";
+import { createEaasFeedsRoutes } from "../src/server/routes/eaas/eaas-feeds-api";
 import { issueVerdict } from "../src/server/lib/eaas/index";
 import { artifactHashOf } from "../src/server/lib/eaas/anchor";
 

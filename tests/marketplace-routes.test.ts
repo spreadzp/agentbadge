@@ -35,22 +35,22 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 import { submitTaskMessage, verifyA2ADid, transferHbar, transferHbarWithKey, prepareTransferTransaction, transferHbarWithSignature, createScheduledTransfer } from "@agentbadge/hedera-core";
 import { didToAccountId } from "@agentbadge/hedera-core";
 import { marketUpsert as upsert, marketGet as get, getTaskById, updateTaskStatus, listTasks, setEscrowStatus, returnTaskToMarket, reserveTask, transitionTask } from "@agentbadge/passport";
-import { marketRoutes } from "../src/server/routes/market";
+import { marketRoutes } from "../src/server/routes/market/market";
 
 const mockedSubmit = vi.mocked(submitTaskMessage);
-const mockedVerify = vi.mocked(verifyA2ADid);
+const _mockedVerify = vi.mocked(verifyA2ADid);
 const mockedTransferHbar = vi.mocked(transferHbar);
 const mockedTransferHbarWithKey = vi.mocked(transferHbarWithKey);
 const mockedPrepareTransfer = vi.mocked(prepareTransferTransaction);
 const mockedTransferWithSignature = vi.mocked(transferHbarWithSignature);
 const mockedDidToAccountId = vi.mocked(didToAccountId);
 const mockedCreateScheduledTransfer = vi.mocked(createScheduledTransfer);
-const mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
-const mockedReturnTaskToMarket = vi.mocked(returnTaskToMarket);
+const _mockedSetEscrowStatus = vi.mocked(setEscrowStatus);
+const _mockedReturnTaskToMarket = vi.mocked(returnTaskToMarket);
 const mockedUpsert = vi.mocked(upsert);
 const mockedGet = vi.mocked(get);
 const mockedGetTaskById = vi.mocked(getTaskById);
-const mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
+const _mockedUpdateTaskStatus = vi.mocked(updateTaskStatus);
 const mockedListTasks = vi.mocked(listTasks);
 const mockedReserveTask = vi.mocked(reserveTask);
 const mockedTransitionTask = vi.mocked(transitionTask);

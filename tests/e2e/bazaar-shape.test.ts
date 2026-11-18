@@ -33,18 +33,18 @@ import { mppPaymentMiddleware } from "../../src/server/middleware/mpp";
 import { l402PaymentMiddleware } from "../../src/server/middleware/l402";
 import { bstockFreemium } from "../../src/server/middleware/bstock-freemium";
 import { createSettleSeam } from "../../src/server/lib/x402-settle-seam";
-import { createEaasRoutes } from "../../src/server/routes/eaas-api";
-import { createEaasBillingRoutes } from "../../src/server/routes/eaas-billing-api";
-import { createEaasJobsRoutes } from "../../src/server/routes/eaas-jobs-api";
+import { createEaasRoutes } from "../../src/server/routes/eaas/eaas-api";
+import { createEaasBillingRoutes } from "../../src/server/routes/eaas/eaas-billing-api";
+import { createEaasJobsRoutes } from "../../src/server/routes/eaas/eaas-jobs-api";
 import { resetConfigCache } from "../../src/config/env";
 import type {
   CirclePaymentsRuntime,
   PaymentForOpts,
 } from "../../src/server/lib/circle-payments";
 import type { PaymentMiddleware } from "../../src/server/routes/identity";
-import type { EaasJobsRoutesDeps } from "../../src/server/routes/eaas-jobs-api";
-import type { EaasBillingDeps } from "../../src/server/routes/eaas-billing-api";
-import type { EaasRoutesDeps } from "../../src/server/routes/eaas-api";
+import type { EaasJobsRoutesDeps } from "../../src/server/routes/eaas/eaas-jobs-api";
+import type { EaasBillingDeps } from "../../src/server/routes/eaas/eaas-billing-api";
+import type { EaasRoutesDeps } from "../../src/server/routes/eaas/eaas-api";
 import type { PaymentRouter } from "@agentbadge/circle-payments";
 
 const ADDR = (c: string) => `0x${c.repeat(40)}`;

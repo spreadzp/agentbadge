@@ -16,7 +16,7 @@ import type { Context, Next } from "hono";
 import { Wallet } from "ethers";
 import type { Hex } from "viem";
 
-import { createEaasJobsRoutes } from "../src/server/routes/eaas-jobs-api";
+import { createEaasJobsRoutes } from "../src/server/routes/eaas/eaas-jobs-api";
 import {
   createContractRegistry,
   createMemoryContractStore,

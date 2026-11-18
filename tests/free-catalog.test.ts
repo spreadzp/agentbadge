@@ -15,7 +15,7 @@ import { resetConfigCache } from "../src/config/env";
 import { servicesCatalogRoutes } from "../src/server/routes/services-catalog";
 import { opsRoutes } from "../src/server/routes/ops";
 import { scanPacksApiRoutes } from "../src/server/routes/scan-packs-api";
-import { marketplaceApiRoutes } from "../src/server/routes/marketplace-api";
+import { marketplaceApiRoutes } from "../src/server/routes/marketplace/marketplace-api";
 import { keeperhubApiRoutes } from "../src/server/routes/keeperhub-api";
 import {
   useMemoryStoreForTesting,

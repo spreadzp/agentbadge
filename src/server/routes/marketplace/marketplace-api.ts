@@ -21,14 +21,14 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
 import { logger } from "@agentbadge/passport/logger";
-import { getConfig } from "../../config/env";
-import { ErrorCodes } from "../lib/error-codes";
-import { errorResponse } from "../lib/error-response";
-import { legacyWriteDeprecation } from "../lib/contract-guards";
+import { getConfig } from "../../../config/env";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
+import { legacyWriteDeprecation } from "../../lib/contract-guards";
 import {
   requireWalletSig,
   type AgentAuthVariables,
-} from "../middleware/agent-auth";
+} from "../../middleware/agent-auth";
 import {
   getMarketplaceOps,
   getService,
@@ -41,7 +41,7 @@ import {
   usdToBaseUnits,
   validatePassportMeta,
   validateServiceMeta,
-} from "../lib/marketplace";
+} from "../../lib/marketplace";
 
 const DAY_SEC = 86_400;
 
@@ -108,7 +108,7 @@ marketplaceApiRoutes.post(
     // Signature was verified pre-payment by onProtectedRequest; re-check
     // cheaply here since the wallet is the mint target.
     const { verifyWalletSigRequest } = await import(
-      "../middleware/agent-auth"
+      "../../middleware/agent-auth"
     );
     const sig = await verifyWalletSigRequest({
       wallet,

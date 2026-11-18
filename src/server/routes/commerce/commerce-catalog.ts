@@ -15,9 +15,9 @@ import { z } from "zod";
 import {
   getCommerceProduct,
   listCommerceProducts,
-} from "../lib/commerce-catalog";
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
+} from "../../lib/commerce-catalog";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
 
 export const commerceCatalogRoutes = new Hono();
 

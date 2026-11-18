@@ -14,7 +14,7 @@ import { openAPIRouteHandler } from "hono-openapi";
 import { makeTestApp } from "./e2e/helpers";
 import { openApiConfig } from "../src/server/openapi";
 import { paymentsApiRoutes } from "../src/server/routes/payments/payments-api";
-import { commerceCatalogRoutes } from "../src/server/routes/commerce-catalog";
+import { commerceCatalogRoutes } from "../src/server/routes/commerce/commerce-catalog";
 
 const SUNSET = "Thu, 31 Dec 2026 00:00:00 GMT";
 

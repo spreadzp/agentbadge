@@ -18,7 +18,7 @@ import { decodeFunctionData } from "viem";
 import type { Hex } from "viem";
 import { MEMO_ABI, MEMO_CONTRACT, memoIdFor } from "@agentbadge/circle-payments";
 
-import { createEaasRoutes } from "../src/server/routes/eaas-api";
+import { createEaasRoutes } from "../src/server/routes/eaas/eaas-api";
 import {
   createVerdictSigner,
   type VerdictArtifact,

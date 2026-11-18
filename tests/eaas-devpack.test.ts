@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { Wallet } from "ethers";
 import { keccak256, toBytes, type Hex } from "viem";
 
-import { createEaasFeedsRoutes } from "../src/server/routes/eaas-feeds-api";
+import { createEaasFeedsRoutes } from "../src/server/routes/eaas/eaas-feeds-api";
 import { createVerdictSigner, type VerdictArtifact } from "../src/server/lib/eaas/verdict";
 import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import { createMemoryRequestStore } from "../src/server/lib/eaas/requests";

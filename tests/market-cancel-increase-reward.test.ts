@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test mock fixtures use untyped partials */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
@@ -41,7 +42,7 @@ import {
   reserveTask,
   transitionTask,
 } from "@agentbadge/passport";
-import { marketRoutes } from "../src/server/routes/market";
+import { marketRoutes } from "../src/server/routes/market/market";
 
 const mockedVerify = vi.mocked(verifyA2ADid);
 const mockedDidToAccountId = vi.mocked(didToAccountId);

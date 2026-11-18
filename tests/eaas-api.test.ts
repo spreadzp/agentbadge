@@ -16,7 +16,7 @@ import { join } from "node:path";
 import { Wallet } from "ethers";
 import type { Hex } from "viem";
 
-import { createEaasRoutes } from "../src/server/routes/eaas-api";
+import { createEaasRoutes } from "../src/server/routes/eaas/eaas-api";
 import { createVerdictSigner, hashDeliverable } from "../src/server/lib/eaas/verdict";
 import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import type { PolicyFn } from "../src/server/lib/eaas/policies";

@@ -9,9 +9,9 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../lib/json-ld";
-import { GuideLayout } from "../../views/guide-layout";
-import { didAuthSectionFull } from "../lib/did-auth-docs";
+import { howToLd, breadcrumbListLd, defaultCoreSchemas } from "../../lib/json-ld";
+import { GuideLayout } from "../../../views/guide-layout";
+import { didAuthSectionFull } from "../../lib/did-auth-docs";
 
 export const marketGuideRoutes = new Hono();
 

@@ -8,7 +8,7 @@ import {
   resetAgentAuthForTesting,
   type AgentAuthVariables,
 } from "../src/server/middleware/agent-auth";
-import { marketplaceApiRoutes } from "../src/server/routes/marketplace-api";
+import { marketplaceApiRoutes } from "../src/server/routes/marketplace/marketplace-api";
 import {
   configureMarketplaceForTesting,
   resetMarketplaceForTesting,

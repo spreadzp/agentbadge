@@ -8,7 +8,7 @@ import { uiRoutes } from "../src/server/routes/ui";
 import { searchRoutes } from "../src/server/routes/search";
 import { contactRoutes } from "../src/server/routes/contact";
 import { agentGuideRoutes } from "../src/server/routes/agent-guide/agent-guide";
-import { marketGuideRoutes } from "../src/server/routes/market-guide";
+import { marketGuideRoutes } from "../src/server/routes/market/market-guide";
 import { medicalGuideRoutes } from "../src/server/routes/medical-guide";
 import { corsMiddleware } from "../src/server/middleware/cors";
 import { rateLimitMiddleware } from "../src/server/middleware/rate-limit";

@@ -13,21 +13,21 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { legacyWriteDeprecation } from "../lib/contract-guards";
-import { requireDidSignature } from "../middleware/did-auth";
-import { keyEndpointGate } from "../middleware/key-endpoint-gate";
+import { legacyWriteDeprecation } from "../../lib/contract-guards";
+import { requireDidSignature } from "../../middleware/did-auth";
+import { keyEndpointGate } from "../../middleware/key-endpoint-gate";
 import {
   postTask, listMarketTasks, getTask, claimTask, deliverTask, completeTask,
-} from "../lib/market-handlers-lifecycle";
+} from "../../lib/market-handlers-lifecycle";
 import {
   claimTaskWithKey, deliverTaskWithKey, completeTaskWithKey, signTx, postSignedTask,
-} from "../lib/market-handlers-signed";
+} from "../../lib/market-handlers-signed";
 import {
   preparePayment, cancelTask, increaseReward, escrowStatus, verifyTask,
-} from "../lib/market-handlers-manage";
+} from "../../lib/market-handlers-manage";
 
 // Re-exported for backward-compat import path (tests import helpers from routes/market).
-export { checkPassportType, checkSessionCap } from "../lib/market-auth";
+export { checkPassportType, checkSessionCap } from "../../lib/market-auth";
 
 export const marketRoutes = new Hono();
 

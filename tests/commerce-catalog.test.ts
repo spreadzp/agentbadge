@@ -20,7 +20,7 @@ import {
   productCodeForLegacyId,
   type CommerceProduct,
 } from "../src/server/lib/commerce-catalog";
-import { commerceCatalogRoutes } from "../src/server/routes/commerce-catalog";
+import { commerceCatalogRoutes } from "../src/server/routes/commerce/commerce-catalog";
 import {
   FIAT_PRODUCTS,
   getFiatProduct,

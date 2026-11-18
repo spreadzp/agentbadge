@@ -1,7 +1,7 @@
 /**
  * SLICE-154-2: request-side helpers for the verdict API —
  * body validation (400 before payment) + sliding-window rate limit
- * (429 before settle). Extracted from routes/eaas-api.ts (max-lines).
+ * (429 before settle). Extracted from routes/eaas/eaas-api.ts (max-lines).
  */
 
 import type { Context } from "hono";

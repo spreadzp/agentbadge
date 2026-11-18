@@ -16,8 +16,8 @@ import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import { getDatabase } from "../lib/database";
 import { initMarketplaceDbBackend } from "../lib/marketplace/db-backend";
 import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { marketplaceApiRoutes } from "../routes/marketplace-api";
-import { marketplacePageRoutes } from "../routes/marketplace-pages";
+import { marketplaceApiRoutes } from "../routes/marketplace/marketplace-api";
+import { marketplacePageRoutes } from "../routes/marketplace/marketplace-pages";
 import {
   createMarketplaceMintOnPaymentSettled,
   getService as getMarketService,

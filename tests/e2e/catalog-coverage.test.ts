@@ -23,12 +23,12 @@ import {
 } from "../../src/server/lib/service-catalog";
 import { bazaarExtensionOf } from "../../src/server/lib/service-catalog/bazaar";
 import { totalScanRoutes } from "../../src/server/routes/total-scan-api";
-import { marketplaceApiRoutes } from "../../src/server/routes/marketplace-api";
+import { marketplaceApiRoutes } from "../../src/server/routes/marketplace/marketplace-api";
 import { keeperhubApiRoutes } from "../../src/server/routes/keeperhub-api";
 import { passportRoutes } from "../../src/server/routes/passport";
-import { createEaasRoutes } from "../../src/server/routes/eaas-api";
-import { createEaasJobsRoutes } from "../../src/server/routes/eaas-jobs-api";
-import { createEaasBillingRoutes } from "../../src/server/routes/eaas-billing-api";
+import { createEaasRoutes } from "../../src/server/routes/eaas/eaas-api";
+import { createEaasJobsRoutes } from "../../src/server/routes/eaas/eaas-jobs-api";
+import { createEaasBillingRoutes } from "../../src/server/routes/eaas/eaas-billing-api";
 import { registerVenueBillingRoutes } from "../../src/server/routes/venue/venue-api-billing";
 import type { PaymentMiddleware } from "../../src/server/routes/identity";
 
@@ -84,11 +84,11 @@ const GATE_TABLE: { gate: string; method: string; path: string; skus: string[] }
   // wiring/marketplace-x402.ts — passport mint + service buy
   { gate: "marketplace-x402:mint", method: "POST", path: "/api/market/passport", skus: ["marketplace:passport-mint"] },
   { gate: "marketplace-x402:buy", method: "POST", path: "/api/market/buy/:serviceId", skus: ["marketplace:service-buy", "bstock:service-pass"] },
-  // routes/eaas-api.ts — per-call verdicts + readiness scan
+  // routes/eaas/eaas-api.ts — per-call verdicts + readiness scan
   { gate: "eaas:verdicts", method: "POST", path: "/api/eaas/verdicts", skus: ["eaas:verdict", "eaas:readiness-scan"] },
-  // routes/eaas-jobs-api.ts — external job evaluation
+  // routes/eaas/eaas-jobs-api.ts — external job evaluation
   { gate: "eaas:jobs", method: "POST", path: "/api/eaas/jobs/evaluate", skus: ["eaas:jobs-evaluate"] },
-  // routes/eaas-billing-api.ts — subscription tiers
+  // routes/eaas/eaas-billing-api.ts — subscription tiers
   { gate: "eaas:subscribe", method: "POST", path: "/api/eaas/subscribe", skus: ["eaas:subscribe-basic", "eaas:subscribe-pro"] },
   // routes/venue-api-billing.ts + settle seam in index.ts
   { gate: "venue:subscribe", method: "POST", path: "/api/venue/instances/:id/subscribe", skus: ["venue:instance-subscription"] },

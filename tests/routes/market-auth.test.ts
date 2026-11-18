@@ -41,7 +41,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 
 import { submitTaskMessage, verifyA2ADid, didToAccountId, createScheduledTransfer } from "@agentbadge/hedera-core";
 import { getTaskById, updateTaskStatus, setEscrowStatus, marketUpsert as upsert, reserveTask, transitionTask } from "@agentbadge/passport";
-import { marketRoutes } from "../../src/server/routes/market";
+import { marketRoutes } from "../../src/server/routes/market/market";
 import {
   configureDidAuthForTesting,
   NonceStore,

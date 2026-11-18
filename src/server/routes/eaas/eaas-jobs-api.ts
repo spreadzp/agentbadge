@@ -21,19 +21,19 @@
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import type { PaymentMiddleware } from "./identity";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import type { PaymentMiddleware } from "../identity";
 import {
   ContractRegistryError,
   type EaasContract,
   type EaasContractRegistry,
-} from "../lib/eaas/contracts";
-import type { EvaluateJobDeps } from "../lib/eaas/eval";
-import type { EaasVariables } from "../lib/eaas/request";
-import type { EaasQuotaDeps } from "../lib/eaas/subscription";
-import type { EaasAsyncDeps } from "../lib/eaas/requests";
-import type { EvalInput } from "../lib/eaas/eval-request";
-import type { PaymentHandle } from "../lib/x402-settle-seam";
+} from "../../lib/eaas/contracts";
+import type { EvaluateJobDeps } from "../../lib/eaas/eval";
+import type { EaasVariables } from "../../lib/eaas/request";
+import type { EaasQuotaDeps } from "../../lib/eaas/subscription";
+import type { EaasAsyncDeps } from "../../lib/eaas/requests";
+import type { EvalInput } from "../../lib/eaas/eval-request";
+import type { PaymentHandle } from "../../lib/x402-settle-seam";
 import { registerEvaluateRoute } from "./eaas-evaluate";
 
 export interface EaasJobsVariables extends EaasVariables {

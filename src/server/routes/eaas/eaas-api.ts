@@ -14,31 +14,31 @@
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import type { Hex } from "viem";
-import type { PolicyFn } from "../lib/eaas/policies";
-import type { VerdictStoreBackend } from "../lib/eaas/store";
+import type { PolicyFn } from "../../lib/eaas/policies";
+import type { VerdictStoreBackend } from "../../lib/eaas/store";
 import {
   verifyVerdictSignature,
   type VerdictSigner,
-} from "../lib/eaas/verdict";
+} from "../../lib/eaas/verdict";
 import type {
   AnchorStore,
   FindAnchorFn,
   VerdictAnchorer,
-} from "../lib/eaas/anchor";
-import { verifyReceipt } from "../lib/verify/receipt";
-import { chainProofOf, type ChainService } from "../lib/eaas/chain";
+} from "../../lib/eaas/anchor";
+import { verifyReceipt } from "../../lib/verify/receipt";
+import { chainProofOf, type ChainService } from "../../lib/eaas/chain";
 import {
   eaasQuotaGate,
   type EaasQuotaDeps,
-} from "../lib/eaas/subscription";
+} from "../../lib/eaas/subscription";
 import {
   respondAsync,
   type EaasAsyncDeps,
-} from "../lib/eaas/requests";
+} from "../../lib/eaas/requests";
 import {
   issueVerdict,
   type EaasServiceDeps,
-} from "../lib/eaas/index";
+} from "../../lib/eaas/index";
 import {
   bad,
   consumerKey,
@@ -48,9 +48,9 @@ import {
   parseBody,
   type EaasVariables,
   type ParsedVerdictRequest,
-} from "../lib/eaas/request";
-import type { PaymentMiddleware } from "./identity";
-import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
+} from "../../lib/eaas/request";
+import type { PaymentMiddleware } from "../identity";
+import { bazaarExtensionFor } from "../../lib/service-catalog/bazaar";
 
 export interface EaasRoutesDeps {
   /** Explicit-price payment middleware factory (CirclePaymentsRuntime.paymentForPrice); opts.extensions carries the per-SKU bazaar declaration (179-3). */

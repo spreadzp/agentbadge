@@ -21,8 +21,8 @@ import {
   createMemoryChainStore,
   VERDICT_CHAIN_DOMAIN,
 } from "../src/server/lib/eaas/chain";
-import { createEaasFeedsRoutes } from "../src/server/routes/eaas-feeds-api";
-import { createEaasRoutes } from "../src/server/routes/eaas-api";
+import { createEaasFeedsRoutes } from "../src/server/routes/eaas/eaas-feeds-api";
+import { createEaasRoutes } from "../src/server/routes/eaas/eaas-api";
 import { issueVerdict } from "../src/server/lib/eaas/index";
 
 const signer = createVerdictSigner(Wallet.createRandom().privateKey, 5042002);

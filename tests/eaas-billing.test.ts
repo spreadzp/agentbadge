@@ -18,8 +18,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Wallet } from "ethers";
 
-import { createEaasRoutes } from "../src/server/routes/eaas-api";
-import { createEaasBillingRoutes } from "../src/server/routes/eaas-billing-api";
+import { createEaasRoutes } from "../src/server/routes/eaas/eaas-api";
+import { createEaasBillingRoutes } from "../src/server/routes/eaas/eaas-billing-api";
 import { createVerdictSigner } from "../src/server/lib/eaas/verdict";
 import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import {

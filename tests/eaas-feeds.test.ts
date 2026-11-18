@@ -23,9 +23,9 @@ import { join } from "node:path";
 import { Wallet } from "ethers";
 import { createHmac } from "node:crypto";
 
-import { createEaasRoutes } from "../src/server/routes/eaas-api";
-import { createEaasFeedsRoutes } from "../src/server/routes/eaas-feeds-api";
-import { createEaasJobsRoutes } from "../src/server/routes/eaas-jobs-api";
+import { createEaasRoutes } from "../src/server/routes/eaas/eaas-api";
+import { createEaasFeedsRoutes } from "../src/server/routes/eaas/eaas-feeds-api";
+import { createEaasJobsRoutes } from "../src/server/routes/eaas/eaas-jobs-api";
 import { createVerdictSigner } from "../src/server/lib/eaas/verdict";
 import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import { createMemoryRequestStore } from "../src/server/lib/eaas/requests";

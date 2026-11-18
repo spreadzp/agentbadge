@@ -23,19 +23,19 @@ import {
   CLASS_EAAS,
   durationSecondsForAmount,
   type MinterFn,
-} from "../lib/access-pass-minter";
+} from "../../lib/access-pass-minter";
 import {
   createRateLimiter,
   consumerKey,
   type EaasVariables,
-} from "../lib/eaas/request";
+} from "../../lib/eaas/request";
 import {
   recordSubscription,
   type EaasSubscriptionStore,
   type EaasTierMap,
-} from "../lib/eaas/subscription";
-import type { PaymentMiddleware } from "./identity";
-import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
+} from "../../lib/eaas/subscription";
+import type { PaymentMiddleware } from "../identity";
+import { bazaarExtensionFor } from "../../lib/service-catalog/bazaar";
 
 export interface EaasBillingDeps {
   /** tier → "$x.xx" price (built from cfg.tierBasicUsd/tierProUsd). */

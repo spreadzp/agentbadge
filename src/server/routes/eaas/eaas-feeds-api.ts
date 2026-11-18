@@ -12,13 +12,13 @@
 
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import type { VerdictStoreBackend } from "../lib/eaas/store";
-import type { EaasRequestStore } from "../lib/eaas/requests";
-import type { EaasMetrics } from "../lib/eaas/metrics";
-import type { EaasSubscriptionStore } from "../lib/eaas/subscription";
-import type { AnchorStore } from "../lib/eaas/anchor";
-import { consumerKey, createRateLimiter, bad, HEX32_RE } from "../lib/eaas/request";
-import type { ChainService } from "../lib/eaas/chain";
+import type { VerdictStoreBackend } from "../../lib/eaas/store";
+import type { EaasRequestStore } from "../../lib/eaas/requests";
+import type { EaasMetrics } from "../../lib/eaas/metrics";
+import type { EaasSubscriptionStore } from "../../lib/eaas/subscription";
+import type { AnchorStore } from "../../lib/eaas/anchor";
+import { consumerKey, createRateLimiter, bad, HEX32_RE } from "../../lib/eaas/request";
+import type { ChainService } from "../../lib/eaas/chain";
 import type { Hex } from "viem";
 
 export interface EaasFeedsDeps {

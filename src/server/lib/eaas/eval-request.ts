@@ -1,6 +1,6 @@
 /**
  * SLICE-154-3/6: evaluate-request validation — extracted from
- * routes/eaas-jobs-api.ts (max-lines). Runs before rate-limit/allowlist:
+ * routes/eaas/eaas-jobs-api.ts (max-lines). Runs before rate-limit/allowlist:
  * malformed input and unsafe webhook URLs get 400 ahead of any payment.
  */
 import type { Context } from "hono";
