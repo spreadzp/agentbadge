@@ -25,7 +25,7 @@ const STATUS_BADGE: Record<ContentStatus, string> = {
  * links are rendered only for names that actually have a page (404 fix:
  * article metadata may list concepts/capabilities without a doc yet).
  */
-const AGENT_KNOWLEDGE_DIR = join(__dirname, "../server/agent-knowledge");
+const AGENT_KNOWLEDGE_DIR = join(__dirname, "../../server/agent-knowledge");
 const knowledgePageCache = new Map<string, Set<string>>();
 type KnowledgeKind = "concepts" | "capabilities" | "articles";
 
