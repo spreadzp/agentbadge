@@ -1,0 +1,22 @@
+/** Public contract for lib/board — external consumers import from this barrel (SLICE-234-12). */
+export * from "./bug-loop";
+export * from "./bug-sweep";
+export * from "./cancel";
+export * from "./claim";
+export * from "./claim-sweep";
+export * from "./columns";
+export * from "./create";
+export * from "./db-store";
+export * from "./dispatch";
+export * from "./erc8183-ref";
+export * from "./json-store";
+export * from "./qa";
+export * from "./rating";
+export * from "./review";
+export * from "./store";
+export * from "./submit";
+export * from "./task-model";
+export * from "./task-receipt";
+export * from "./task-receipt-schema";
+export * from "./types";
+export type { SweepResult } from "./bug-sweep";
