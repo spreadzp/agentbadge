@@ -17,7 +17,7 @@ import {
   createMemoryAgentWalletStore,
   type AgentWalletRecord,
 } from "../src/server/lib/agent-wallet/registry";
-import { createAgentWalletBalanceRoutes } from "../src/server/routes/agent-wallet-balance-api";
+import { createAgentWalletBalanceRoutes } from "../src/server/routes/agent-wallet/agent-wallet-balance-api";
 import { resetConfigCache } from "../src/config/env";
 
 const W = "0x00000000000000000000000000000000000000b1" as `0x${string}`;

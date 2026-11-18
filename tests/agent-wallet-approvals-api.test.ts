@@ -33,7 +33,7 @@ import {
   createMemoryApprovalStore,
   type ApprovalStore,
 } from "../src/server/lib/agent-wallet/approvals";
-import { createAgentWalletApprovalsRoutes } from "../src/server/routes/agent-wallet-approvals-api";
+import { createAgentWalletApprovalsRoutes } from "../src/server/routes/agent-wallet/agent-wallet-approvals-api";
 import {
   configureAgentAuthForTesting,
   resetAgentAuthForTesting,

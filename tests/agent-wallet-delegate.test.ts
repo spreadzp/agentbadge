@@ -18,7 +18,7 @@ import {
   type DelegateStatus,
 } from "../src/server/lib/agent-wallet/delegate";
 import { createMemoryAgentWalletStore } from "../src/server/lib/agent-wallet/registry";
-import { createAgentWalletDelegateRoutes } from "../src/server/routes/agent-wallet-delegate-api";
+import { createAgentWalletDelegateRoutes } from "../src/server/routes/agent-wallet/agent-wallet-delegate-api";
 
 // Hardhat accounts — well-known test keys, never hold real funds.
 const owner = privateKeyToAccount(

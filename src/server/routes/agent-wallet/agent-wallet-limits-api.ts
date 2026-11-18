@@ -10,13 +10,13 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { requireVenueAccess } from "../middleware/venue-auth";
-import type { AgentWalletStore } from "../lib/agent-wallet/registry";
-import { validateCaps } from "../lib/agent-wallet/envelope";
-import { windowUsage, WINDOW_SEC, type SpendLedger } from "../lib/agent-wallet/ledger";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { requireVenueAccess } from "../../middleware/venue-auth";
+import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
+import { validateCaps } from "../../lib/agent-wallet/envelope";
+import { windowUsage, WINDOW_SEC, type SpendLedger } from "../../lib/agent-wallet/ledger";
 import type { CircleCliClient, PolicyCaps } from "@agentbadge/circle-payments";
 import { CliUnavailableError } from "@agentbadge/circle-payments";
 

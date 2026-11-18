@@ -36,14 +36,14 @@ import {
   spendEnvelopeGate,
 } from "../lib/agent-wallet/enforcer";
 import { initBuyGate } from "../lib/buy/gateway";
-import { createAgentWalletRoutes } from "../routes/agent-wallet-api";
-import { createAgentWalletKillswitchRoutes } from "../routes/agent-wallet-killswitch-api";
-import { createAgentWalletApprovalsRoutes } from "../routes/agent-wallet-approvals-api";
-import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet-envelope-api";
-import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet-limits-api";
-import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet-balance-api";
-import { createSpendAuditRoutes } from "../routes/agent-wallet-audit-api";
-import { createAgentWalletDelegateRoutes } from "../routes/agent-wallet-delegate-api";
+import { createAgentWalletRoutes } from "../routes/agent-wallet/agent-wallet-api";
+import { createAgentWalletKillswitchRoutes } from "../routes/agent-wallet/agent-wallet-killswitch-api";
+import { createAgentWalletApprovalsRoutes } from "../routes/agent-wallet/agent-wallet-approvals-api";
+import { createAgentWalletEnvelopeRoutes } from "../routes/agent-wallet/agent-wallet-envelope-api";
+import { createAgentWalletLimitsRoutes } from "../routes/agent-wallet/agent-wallet-limits-api";
+import { createAgentWalletBalanceRoutes } from "../routes/agent-wallet/agent-wallet-balance-api";
+import { createSpendAuditRoutes } from "../routes/agent-wallet/agent-wallet-audit-api";
+import { createAgentWalletDelegateRoutes } from "../routes/agent-wallet/agent-wallet-delegate-api";
 import { createMemoryDelegateStore } from "../lib/agent-wallet/delegate";
 import { createDbDelegateStore } from "../lib/agent-wallet/delegate-db";
 import { createDbSpendAlertStore } from "../lib/agent-wallet/alert-db";

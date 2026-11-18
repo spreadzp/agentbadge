@@ -14,8 +14,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 
-import { createAgentWalletRoutes } from "../src/server/routes/agent-wallet-api";
-import { createAgentWalletKillswitchRoutes } from "../src/server/routes/agent-wallet-killswitch-api";
+import { createAgentWalletRoutes } from "../src/server/routes/agent-wallet/agent-wallet-api";
+import { createAgentWalletKillswitchRoutes } from "../src/server/routes/agent-wallet/agent-wallet-killswitch-api";
 import { createMemoryAgentWalletStore } from "../src/server/lib/agent-wallet/registry";
 import { createMemorySpendLedger, windowUsage } from "../src/server/lib/agent-wallet/ledger";
 import {

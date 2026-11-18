@@ -10,13 +10,13 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import type { AgentWalletStore } from "../lib/agent-wallet/registry";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
 import {
   validateDelegateInput,
   type DelegateSpendKit,
   type DelegateStore,
-} from "../lib/agent-wallet/delegate";
+} from "../../lib/agent-wallet/delegate";
 
 export interface DelegateRoutesDeps {
   delegateStore: DelegateStore;

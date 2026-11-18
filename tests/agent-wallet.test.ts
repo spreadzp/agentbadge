@@ -23,7 +23,7 @@ import { join } from "node:path";
 import {
   createAgentWalletRoutes,
   type AgentWalletRoutesDeps,
-} from "../src/server/routes/agent-wallet-api";
+} from "../src/server/routes/agent-wallet/agent-wallet-api";
 import {
   createMemoryAgentWalletStore,
   createJsonAgentWalletStore,

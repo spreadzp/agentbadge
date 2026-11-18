@@ -11,7 +11,7 @@ import {
   createMemoryAgentWalletStore,
   type AgentWalletRecord,
 } from "../src/server/lib/agent-wallet/registry";
-import { createAgentWalletLimitsRoutes } from "../src/server/routes/agent-wallet-limits-api";
+import { createAgentWalletLimitsRoutes } from "../src/server/routes/agent-wallet/agent-wallet-limits-api";
 import type { CircleCliClient, PolicyCaps } from "@agentbadge/circle-payments";
 import { CliUnavailableError } from "@agentbadge/circle-payments";
 import { resetConfigCache } from "../src/config/env";

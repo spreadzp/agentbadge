@@ -10,19 +10,19 @@ import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { logger } from "@agentbadge/passport/logger";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { requireVenueAccess } from "../middleware/venue-auth";
-import { getVenue } from "../lib/venue/venues";
-import { venueRole } from "../lib/venue/members";
-import { createRateLimiter } from "../lib/eaas/request";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { requireVenueAccess } from "../../middleware/venue-auth";
+import { getVenue } from "../../lib/venue/venues";
+import { venueRole } from "../../lib/venue/members";
+import { createRateLimiter } from "../../lib/eaas/request";
 import {
   validateWalletInput,
   type AgentWalletInput,
   type AgentWalletRecord,
   type AgentWalletStore,
-} from "../lib/agent-wallet/registry";
+} from "../../lib/agent-wallet/registry";
 import type { CircleCliClient } from "@agentbadge/circle-payments";
 import { CliUnavailableError } from "@agentbadge/circle-payments";
 

@@ -13,12 +13,12 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import type { AgentWalletStore } from "../lib/agent-wallet/registry";
-import type { ApprovalStore, ApprovalState } from "../lib/agent-wallet/approvals";
-import { emitSpendAlert } from "../lib/agent-wallet/audit";
-import { requireVenueAccess } from "../middleware/venue-auth";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
+import type { ApprovalStore, ApprovalState } from "../../lib/agent-wallet/approvals";
+import { emitSpendAlert } from "../../lib/agent-wallet/audit";
+import { requireVenueAccess } from "../../middleware/venue-auth";
 import {
   ADDRESS_RE,
   sigWallet,

@@ -25,7 +25,7 @@ import {
   createMemoryAgentWalletStore,
   type AgentWalletRecord,
 } from "../src/server/lib/agent-wallet/registry";
-import { createAgentWalletLimitsRoutes } from "../src/server/routes/agent-wallet-limits-api";
+import { createAgentWalletLimitsRoutes } from "../src/server/routes/agent-wallet/agent-wallet-limits-api";
 import {
   configureAgentAuthForTesting,
   resetAgentAuthForTesting,

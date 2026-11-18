@@ -32,7 +32,7 @@ import {
   initSpendAlerts,
   getSpendAlertStore,
 } from "../src/server/lib/agent-wallet/audit";
-import { createSpendAuditRoutes } from "../src/server/routes/agent-wallet-audit-api";
+import { createSpendAuditRoutes } from "../src/server/routes/agent-wallet/agent-wallet-audit-api";
 import { createSpendEnforcer } from "../src/server/lib/agent-wallet/enforcer";
 import { resetConfigCache } from "../src/config/env";
 

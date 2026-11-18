@@ -8,12 +8,12 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { logger } from "@agentbadge/passport/logger";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import type { AgentWalletStore } from "../lib/agent-wallet/registry";
-import type { SpendLedger } from "../lib/agent-wallet/ledger";
-import { suspendWallet } from "../lib/agent-wallet/lifecycle";
-import { emitSpendAlert } from "../lib/agent-wallet/audit";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
+import type { SpendLedger } from "../../lib/agent-wallet/ledger";
+import { suspendWallet } from "../../lib/agent-wallet/lifecycle";
+import { emitSpendAlert } from "../../lib/agent-wallet/audit";
 import {
   ADDRESS_RE,
   sigWallet,

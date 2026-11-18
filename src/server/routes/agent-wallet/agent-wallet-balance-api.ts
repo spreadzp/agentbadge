@@ -8,10 +8,10 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { toString as qrToString } from "qrcode";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import type { AgentWalletStore } from "../lib/agent-wallet/registry";
-import type { WalletBalance } from "../lib/agent-wallet/balance";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
+import type { WalletBalance } from "../../lib/agent-wallet/balance";
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 

@@ -36,10 +36,10 @@ import {
   createMemoryApprovalStore,
   type ApprovalStore,
 } from "../src/server/lib/agent-wallet/approvals";
-import { createAgentWalletRoutes } from "../src/server/routes/agent-wallet-api";
-import { createAgentWalletKillswitchRoutes } from "../src/server/routes/agent-wallet-killswitch-api";
-import { createAgentWalletApprovalsRoutes } from "../src/server/routes/agent-wallet-approvals-api";
-import { createSpendAuditRoutes } from "../src/server/routes/agent-wallet-audit-api";
+import { createAgentWalletRoutes } from "../src/server/routes/agent-wallet/agent-wallet-api";
+import { createAgentWalletKillswitchRoutes } from "../src/server/routes/agent-wallet/agent-wallet-killswitch-api";
+import { createAgentWalletApprovalsRoutes } from "../src/server/routes/agent-wallet/agent-wallet-approvals-api";
+import { createSpendAuditRoutes } from "../src/server/routes/agent-wallet/agent-wallet-audit-api";
 import {
   configureAgentAuthForTesting,
   resetAgentAuthForTesting,

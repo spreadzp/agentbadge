@@ -40,7 +40,7 @@ import {
   createMemoryAgentWalletStore,
   type AgentWalletRecord,
 } from "../src/server/lib/agent-wallet/registry";
-import { createAgentWalletEnvelopeRoutes } from "../src/server/routes/agent-wallet-envelope-api";
+import { createAgentWalletEnvelopeRoutes } from "../src/server/routes/agent-wallet/agent-wallet-envelope-api";
 import {
   configureAgentAuthForTesting,
   resetAgentAuthForTesting,

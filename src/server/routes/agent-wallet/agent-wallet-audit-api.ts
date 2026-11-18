@@ -10,16 +10,16 @@
 import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 
-import { errorResponse } from "../lib/error-response";
-import { ErrorCodes } from "../lib/error-codes";
-import type { AgentWalletStore } from "../lib/agent-wallet/registry";
-import type { SpendEntry, SpendLedger } from "../lib/agent-wallet/ledger";
+import { errorResponse } from "../../lib/error-response";
+import { ErrorCodes } from "../../lib/error-codes";
+import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
+import type { SpendEntry, SpendLedger } from "../../lib/agent-wallet/ledger";
 import {
   aggregateSpend,
   type SpendAlertStore,
-} from "../lib/agent-wallet/audit";
-import { verifyWalletSigRequest } from "../middleware/agent-auth";
-import { requireVenueAccess } from "../middleware/venue-auth";
+} from "../../lib/agent-wallet/audit";
+import { verifyWalletSigRequest } from "../../middleware/agent-auth";
+import { requireVenueAccess } from "../../middleware/venue-auth";
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const MAX_LIMIT = 200;
