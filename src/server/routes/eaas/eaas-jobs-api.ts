@@ -33,6 +33,8 @@ import {
 } from "../../lib/eaas/contracts";
 import type { EvaluateJobDeps } from "../../lib/eaas/eval";
 import type { EaasVariables } from "../../lib/eaas/request";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 import type { EaasQuotaDeps } from "../../lib/eaas/subscription";
 import type { EaasAsyncDeps } from "../../lib/eaas/requests";
 import type { EvalInput } from "../../lib/eaas/eval-request";
@@ -114,9 +116,9 @@ export function createEaasJobsRoutes(
       const body = (await c.req.json().catch(() => null)) as
         | Record<string, unknown>
         | null;
-      if (!body) return c.json({ error: "invalid JSON body" }, 400);
+      if (!body) return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "invalid JSON body");
       if (typeof body.address !== "string" || !isAddress(body.address)) {
-        return c.json({ error: "address (0x…) required" }, 400);
+        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "address (0x…) required");
       }
       const chainId =
         typeof body.chainId === "number" ? body.chainId : deps.chainId;
@@ -155,7 +157,7 @@ export function createEaasJobsRoutes(
       const owner = await signerWallet(c);
       if (!owner) return c.json({ error: "wallet signature required" }, 401);
       const address = c.req.param("address");
-      if (!isAddress(address)) return c.json({ error: "invalid address" }, 400);
+      if (!isAddress(address)) return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid address");
       try {
         const removed = deps.contracts.remove(address, deps.chainId, owner);
         return c.json({ contract: removed });

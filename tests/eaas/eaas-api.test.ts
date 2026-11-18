@@ -166,6 +166,28 @@ describe("POST /api/eaas/verdicts", () => {
     expect(pay.calls).toEqual([]);
   });
 
+  // SLICE-234-35: 400 responses carry structured {error, code} contract.
+  it("400 responses carry ErrorCode (SLICE-234-35)", async () => {
+    const pay = makePayMock();
+    const { app } = mkApp({ pay });
+    const cases: [string, unknown, string][] = [
+      ["bad json", "{oops", "INVALID_JSON"],
+      ["no policy", { deliverable: { data: 1 } }, "MISSING_FIELDS"],
+      ["unknown policy", { policy: "nope", deliverable: { data: 1 } }, "INVALID_INPUT"],
+      ["no deliverable", { policy: "deliverable-present" }, "MISSING_FIELDS"],
+      ["bad uri", { policy: "deliverable-present", deliverable: { uri: "ftp://x" } }, "INVALID_ENDPOINT_URL"],
+      ["hash-match w/o expectedHash", { policy: "hash-match", deliverable: { data: 1 } }, "MISSING_FIELDS"],
+    ];
+    for (const [label, body, code] of cases) {
+      const res = await post(app, body, PAID);
+      expect(res.status, label).toBe(400);
+      const json = await res.json();
+      expect(json.code, label).toBe(code);
+      expect(json.error, label).toBeTruthy();
+    }
+    expect(pay.calls).toEqual([]);
+  });
+
   it("hash-match: wrong expectedHash → paid reject verdict", async () => {
     const pay = makePayMock();
     const { app } = mkApp({ pay });

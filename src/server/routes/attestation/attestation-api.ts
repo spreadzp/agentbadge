@@ -37,6 +37,8 @@ import {
   type VenueStore,
 } from "../../lib/attestation-store";
 import type { ArcAttestationWriter } from "../../lib/arc-attestation";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 import { AttestationsPage } from "../../../views/pages/attestations";
 
 export interface AttestationScanResult {
@@ -155,12 +157,12 @@ attestationRoutes.post(
     try {
       body = await c.req.json();
     } catch {
-      return c.json({ error: "Invalid JSON body" }, 400);
+      return errorResponse(c, 400, ErrorCodes.INVALID_JSON, "Invalid JSON body");
     }
 
     const raw = (body as Record<string, unknown>)?.url;
     if (!raw || typeof raw !== "string") {
-      return c.json({ error: "URL is required" }, 400);
+      return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "URL is required");
     }
     let normalizedUrl = raw.trim();
     if (!normalizedUrl.match(/^https?:\/\//)) {
@@ -170,7 +172,7 @@ attestationRoutes.post(
     try {
       hostname = new URL(normalizedUrl).hostname;
     } catch {
-      return c.json({ error: `Invalid URL: ${normalizedUrl}` }, 400);
+      return errorResponse(c, 400, ErrorCodes.INVALID_ENDPOINT_URL, `Invalid URL: ${normalizedUrl}`);
     }
     try {
       assertSafeTarget(hostname);
@@ -184,7 +186,7 @@ attestationRoutes.post(
       try {
         agentId = BigInt(String(agentIdRaw));
       } catch {
-        return c.json({ error: "agentId must be a decimal integer" }, 400);
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "agentId must be a decimal integer");
       }
     }
 

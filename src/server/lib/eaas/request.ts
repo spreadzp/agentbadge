@@ -8,6 +8,8 @@ import type { Context } from "hono";
 import type { Hex } from "viem";
 import { getPolicy, UnknownPolicyError, type PolicyFn } from "./policies";
 import { assertWebhookUrl, WebhookSsrfError } from "./webhooks";
+import { ErrorCodes, type ErrorCode } from "../error-codes";
+import { errorResponse } from "../error-response";
 
 export const HEX32_RE = /^0x[0-9a-fA-F]{64}$/;
 
@@ -87,8 +89,14 @@ export interface EaasVariables {
   eaasQuota?: { wallet: string; tier: string; quotaLeft: number };
 }
 
-function bad(c: Context, error: string): Response {
-  return c.json({ error }, 400);
+function bad(
+  c: Context,
+  error: string,
+  code: ErrorCode = ErrorCodes.INVALID_INPUT,
+): Response {
+  // SLICE-234-35: structured 400 contract — {error, code} like the rest
+  // of the API surface, so agents can branch on error type.
+  return errorResponse(c, 400, code, error);
 }
 
 export { bad };
@@ -102,42 +110,42 @@ export async function parseBody(
   try {
     body = (await c.req.json()) as VerdictRequestBody;
   } catch {
-    return bad(c, "invalid JSON body");
+    return bad(c, "invalid JSON body", ErrorCodes.INVALID_JSON);
   }
 
   if (typeof body.policy !== "string" || body.policy.length === 0) {
-    return bad(c, "policy is required");
+    return bad(c, "policy is required", ErrorCodes.MISSING_FIELDS);
   }
   try {
     getPolicy(body.policy, registry);
   } catch (e) {
     if (e instanceof UnknownPolicyError) {
-      return bad(c, `unknown policy "${body.policy}"`);
+      return bad(c, `unknown policy "${body.policy}"`, ErrorCodes.INVALID_INPUT);
     }
     throw e;
   }
 
   const d = body.deliverable;
   if (typeof d !== "object" || d === null) {
-    return bad(c, 'deliverable object required: {"uri"|"data"}');
+    return bad(c, 'deliverable object required: {"uri"|"data"}', ErrorCodes.MISSING_FIELDS);
   }
   const hasUri = typeof d.uri === "string" && d.uri.length > 0;
   const hasData = d.data !== undefined;
   if (hasUri === hasData) {
-    return bad(c, 'exactly one of deliverable.uri or deliverable.data required');
+    return bad(c, 'exactly one of deliverable.uri or deliverable.data required', ErrorCodes.INVALID_INPUT);
   }
   if (hasUri) {
     try {
       const u = new URL(d.uri as string);
       if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error();
     } catch {
-      return bad(c, "deliverable.uri must be an http(s) URL");
+      return bad(c, "deliverable.uri must be an http(s) URL", ErrorCodes.INVALID_ENDPOINT_URL);
     }
   }
   if (hasData) {
     const size = new TextEncoder().encode(JSON.stringify(d.data)).length;
     if (size > maxBytes) {
-      return bad(c, `deliverable.data exceeds ${maxBytes} bytes`);
+      return bad(c, `deliverable.data exceeds ${maxBytes} bytes`, ErrorCodes.INVALID_INPUT);
     }
   }
 
@@ -147,18 +155,18 @@ export async function parseBody(
       typeof body.expectedHash !== "string" ||
       !HEX32_RE.test(body.expectedHash)
     ) {
-      return bad(c, "expectedHash must be a 0x-prefixed 32-byte hex");
+      return bad(c, "expectedHash must be a 0x-prefixed 32-byte hex", ErrorCodes.INVALID_INPUT);
     }
     expectedHash = body.expectedHash as Hex;
   }
   if (body.policy === "hash-match" && !expectedHash) {
-    return bad(c, "expectedHash required for hash-match policy");
+    return bad(c, "expectedHash required for hash-match policy", ErrorCodes.MISSING_FIELDS);
   }
 
   let nonce: string | undefined;
   if (body.nonce !== undefined) {
     if (typeof body.nonce !== "string" && typeof body.nonce !== "number") {
-      return bad(c, "nonce must be a string or number");
+      return bad(c, "nonce must be a string or number", ErrorCodes.INVALID_INPUT);
     }
     nonce = String(body.nonce);
   }
@@ -168,7 +176,7 @@ export async function parseBody(
   let webhookUrl: string | undefined;
   if (body.webhookUrl !== undefined) {
     if (typeof body.webhookUrl !== "string") {
-      return bad(c, "webhookUrl must be a string");
+      return bad(c, "webhookUrl must be a string", ErrorCodes.INVALID_INPUT);
     }
     try {
       webhookUrl = assertWebhookUrl(body.webhookUrl).toString();
@@ -178,7 +186,7 @@ export async function parseBody(
         e instanceof WebhookSsrfError ? e.message : "invalid webhookUrl",
       );
     }
-    if (!async_) return bad(c, "webhookUrl requires async:true");
+    if (!async_) return bad(c, "webhookUrl requires async:true", ErrorCodes.INVALID_INPUT);
   }
 
   return {

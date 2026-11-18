@@ -3,6 +3,8 @@ import { describeRoute } from "hono-openapi";
 import { resolver } from "hono-openapi";
 import { z } from "zod";
 import { JsonRpcProvider, Contract } from "ethers";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 
 export const attestcoinRoutes = new Hono();
 
@@ -219,7 +221,7 @@ attestcoinRoutes.post(
     const txHash = body?.txHash;
 
     if (!txHash || typeof txHash !== "string" || !/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
-      return c.json({ error: "Invalid txHash" }, 400);
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "Invalid txHash");
     }
 
     return c.json({

@@ -80,22 +80,37 @@ describe("POST /api/attestations", () => {
     expect(store.list()[0].domain).toBe("example.com");
   });
 
-  it("missing url → 400", async () => {
+  it("missing url → 400 + MISSING_FIELDS code (SLICE-234-35)", async () => {
     const res = await app(makeCfg().cfg).request("/api/attestations", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("MISSING_FIELDS");
   });
 
-  it("invalid url → 400", async () => {
+  it("invalid url → 400 + INVALID_ENDPOINT_URL code (SLICE-234-35)", async () => {
     const res = await app(makeCfg().cfg).request("/api/attestations", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ url: "http://[" }),
     });
     expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("INVALID_ENDPOINT_URL");
+  });
+
+  it("invalid JSON body → 400 + INVALID_JSON code (SLICE-234-35)", async () => {
+    const res = await app(makeCfg().cfg).request("/api/attestations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{oops",
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("INVALID_JSON");
   });
 
   it("private host → 403 (SSRF guard)", async () => {

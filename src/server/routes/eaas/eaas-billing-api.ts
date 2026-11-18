@@ -29,6 +29,8 @@ import {
   consumerKey,
   type EaasVariables,
 } from "../../lib/eaas/request";
+import { ErrorCodes } from "../../lib/error-codes";
+import { errorResponse } from "../../lib/error-response";
 import {
   recordSubscription,
   type EaasSubscriptionStore,
@@ -93,9 +95,11 @@ export function createEaasBillingRoutes(
         | null;
       const tier = typeof body?.tier === "string" ? body.tier : "basic";
       if (!deps.tierPrices[tier]) {
+        // SLICE-234-35: keep `tiers` hint, add structured `code`.
         return c.json(
           {
             error: `unknown tier "${tier}"`,
+            code: ErrorCodes.INVALID_INPUT,
             tiers: Object.keys(deps.tierPrices),
           },
           400,
@@ -187,7 +191,7 @@ export function createEaasBillingRoutes(
     (c) => {
       const wallet = c.req.query("wallet");
       if (!wallet || !isAddress(wallet)) {
-        return c.json({ error: "wallet=0x… query param required" }, 400);
+        return errorResponse(c, 400, ErrorCodes.MISSING_FIELDS, "wallet=0x… query param required");
       }
       const sub = deps.store.get(wallet.toLowerCase());
       if (!sub) return c.json({ subscribed: false });
