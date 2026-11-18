@@ -10,7 +10,8 @@ import type { VenueNetwork } from "../../lib/venue/chain";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { disclosureExtra } from "../../lib/disclosure";
-import { dr, str, ERC8183_STATUS, TX_PHASES } from "./venue-api-helpers";
+import { dr, str, ERC8183_STATUS } from "./venue-api-helpers";
+import { registerTxAttachRoutes } from "./venue-api-tx";
 import { projectWitnessDelivery } from "../../lib/witness/jobs";
 import {
   buildActionTxs,
@@ -195,58 +196,9 @@ export function registerLifecycleRoutes(app: Hono, deps: LifecycleDeps): void {
     })),
   );
 
-  // POST /api/venue/jobs/:id/tx — attach broadcast tx hash for a phase.
-  // Moved here from venue-api.ts (max-lines split); evalFee phase is
-  // 152-4: client's upfront USDC transfer to treasury gating evaluate.
-  app.post("/api/venue/jobs/:id/tx", dr("Attach tx hash to job phase"), async (c) => {
-    const job = getJob(c.req.param("id") ?? "");
-    if (!job) {
-      return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "unknown jobId");
-    }
-    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
-    const hash = str(body?.hash, 66);
-    const phase = str(body?.phase, 20);
-    if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash)) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "hash must be 0x<64hex>");
-    }
-    if (phase === "evalFee") {
-      job.evalFee = {
-        required: true,
-        paid: true,
-        amountAtomic: job.evalFee?.amountAtomic,
-        tx: hash,
-      };
-      upsertJob(job);
-      recordVenueEvent({
-        action: "job.evalfee",
-        text: `job ${job.jobId} — evaluator fee paid`,
-        jobId: job.jobId,
-        tx: hash,
-        dedupeKey: `job.evalfee:${job.jobId}`,
-      });
-      return c.json({ job });
-    }
-    if (!phase || !(TX_PHASES as readonly string[]).includes(phase)) {
-      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT,
-        "phase ∈ {created,funded,submitted,completed,evalFee}");
-    }
-    job.chainTxs[phase as keyof VenueJob["chainTxs"]] = hash;
-    if (phase === "rated" && job.rating) job.rating.txHash = hash; // 153-6
-    if (phase === "created" && job.status === "pending") job.status = "open";
-    if (phase === "created" && job.onchainJobId == null && deps.txJobId) {
-      const id = await deps.txJobId(hash as `0x${string}`, net());
-      if (id != null) job.onchainJobId = id;
-    }
-    upsertJob(job);
-    recordVenueEvent({
-      action: "job.tx",
-      text: `job ${job.jobId} — ${phase} tx confirmed`,
-      jobId: job.jobId,
-      tx: hash,
-      dedupeKey: `job.tx:${job.jobId}:${phase}`,
-    });
-    return c.json({ job });
-  });
+  // POST /api/venue/jobs/:id/tx — moved to venue-api-tx.ts (max-lines
+  // split, SLICE-234-19); evalFee sig+client guard lives there.
+  registerTxAttachRoutes(app, deps);
 
   // GET /api/venue/jobs/:id — merged store + onchain tuple + verdict.
   app.get("/api/venue/jobs/:id", dr("Job detail (store + onchain merge)"), async (c) => {

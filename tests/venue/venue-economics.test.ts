@@ -297,10 +297,10 @@ describe("venue economics routes", () => {
     seedJob({ evalFee: { required: true, paid: false, amountAtomic: "100000" } });
     const a = app(async (_r, txs) =>
       txs.map((_, i) => `0x${String(i + 1).padStart(64, "0")}`) as `0x${string}`[]);
-    const attach = await a.request("/api/venue/jobs/vj_econ1/tx", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ hash: `0x${"77".repeat(32)}`, phase: "evalFee" }),
+    // 234-19: evalFee attach now requires the job client's signature.
+    const attach = await post(a, "/api/venue/jobs/vj_econ1/tx", CLIENT, {
+      hash: `0x${"77".repeat(32)}`,
+      phase: "evalFee",
     });
     expect(attach.status).toBe(200);
     expect(getJob("vj_econ1")!.evalFee?.paid).toBe(true);

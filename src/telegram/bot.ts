@@ -16,6 +16,7 @@ import type { DeltaView, DeltaEvent } from "@agentbadge/bstock-tracker";
 import { formatAlert, formatEvent, buildDigest } from "./format";
 import { ChatRegistry } from "./registry";
 import type { TelegramSubscriptions } from "./subscriptions";
+import { checkWebhookSecret, WEBHOOK_SECRET_HEADER } from "./webhook-secret";
 
 export interface BstockTelegramEngine {
   listDeltas(): DeltaView[];
@@ -35,6 +36,12 @@ export interface BstockTelegramBotOptions {
    * them (back-compat with 141-9 tests).
    */
   subscriptions?: TelegramSubscriptions;
+  /**
+   * SLICE-234-22: expected X-Telegram-Bot-Api-Secret-Token value.
+   * Set via TELEGRAM_WEBHOOK_SECRET in production; unset = check
+   * skipped (dev/test back-compat).
+   */
+  webhookSecret?: string;
 }
 
 interface TgMessage {
@@ -58,7 +65,7 @@ export function makeTelegramSender(botToken: string): TelegramSend {
 }
 
 export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
-  const { registry, engine, send, subscriptions } = opts;
+  const { registry, engine, send, subscriptions, webhookSecret } = opts;
   let lastEventCount = 0;
 
   /** Delivery targets: subscribed chats only when subscriptions exist. */
@@ -81,6 +88,11 @@ export function createBstockTelegramBot(opts: BstockTelegramBotOptions) {
     "/help — this message";
 
   routes.post("/telegram/bstock", async (c) => {
+    // 234-22: forged-update guard — Telegram signs deliveries when
+    // setWebhook was configured with secret_token.
+    if (!checkWebhookSecret(c.req.header(WEBHOOK_SECRET_HEADER), webhookSecret)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
     const update = (await c.req.json()) as TgUpdate;
     const msg = update.message;
     const chatId = msg?.chat?.id;

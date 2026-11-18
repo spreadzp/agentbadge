@@ -344,3 +344,69 @@ describe("venue lifecycle api", () => {
     expect(missing.status).toBe(404);
   });
 });
+
+// ─── SLICE-234-19: evalFee attach auth ───────────────────────────
+
+describe("evalFee attach auth (234-19)", () => {
+  const TX = `0x${"cd".repeat(32)}`;
+  const feeJob = () =>
+    seedJob({
+      provider: PROVIDER,
+      status: "submitted",
+      evalFee: { required: true, paid: false, amountAtomic: "1000000" },
+    });
+
+  it("attach without valid signature → 401 (forged hash rejected)", async () => {
+    feeJob();
+    configureAgentAuthForTesting({ verifier: async () => false });
+    const res = await post(app(), "/api/venue/jobs/vj_test1/tx", CLIENT, {
+      hash: TX,
+      phase: "evalFee",
+    });
+    expect(res.status).toBe(401);
+    expect(getJob("vj_test1")!.evalFee!.paid).toBe(false);
+  });
+
+  it("attach signed by non-client wallet → 403", async () => {
+    feeJob();
+    const res = await post(app(), "/api/venue/jobs/vj_test1/tx", STRANGER, {
+      hash: TX,
+      phase: "evalFee",
+    });
+    expect(res.status).toBe(403);
+    expect(getJob("vj_test1")!.evalFee!.paid).toBe(false);
+  });
+
+  it("attach by job client → 200, paid + payer recorded", async () => {
+    feeJob();
+    const res = await post(app(), "/api/venue/jobs/vj_test1/tx", CLIENT, {
+      hash: TX,
+      phase: "evalFee",
+    });
+    expect(res.status).toBe(200);
+    const job = getJob("vj_test1")!;
+    expect(job.evalFee!.paid).toBe(true);
+    expect(job.evalFee!.tx).toBe(TX);
+    expect(job.evalFee!.payer).toBe(CLIENT.toLowerCase());
+  });
+
+  it("evaluate on unpaid required fee → 402 (gate intact)", async () => {
+    feeJob();
+    rawJob = { status: S.submitted, client: CLIENT, provider: PROVIDER, evaluator: EVALUATOR };
+    const res = await post(app(), "/api/venue/jobs/vj_test1/evaluate", EVALUATOR, {
+      verdict: "approve",
+    });
+    expect(res.status).toBe(402);
+  });
+
+  it("non-evalFee phases unaffected by the new guard", async () => {
+    feeJob();
+    // Other tx-attach phases keep the legacy open semantics.
+    const res = await post(app(), "/api/venue/jobs/vj_test1/tx", STRANGER, {
+      hash: TX,
+      phase: "funded",
+    });
+    expect(res.status).toBe(200);
+    expect(getJob("vj_test1")!.chainTxs.funded).toBe(TX);
+  });
+});

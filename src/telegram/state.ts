@@ -53,6 +53,9 @@ export function getBstockTelegramBot(engine: BstockTelegramEngine) {
     subscriptions: getTelegramSubscriptions(),
     engine,
     send: makeTelegramSender(token),
+    // 234-22: webhook forged-update guard (set secret_token at
+    // setWebhook time; prod env required).
+    webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
   });
 }
 
@@ -86,6 +89,8 @@ export function getFxDeltaTelegramBot(engine: FxDeltaTelegramEngine) {
     subscriptions: getFxDeltaTelegramSubscriptions(),
     engine,
     send: makeFxDeltaTelegramSender(token),
+    // 234-22: webhook forged-update guard.
+    webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
     // 191-9: verdict proof link in alert lines.
     verifyUrlFor: (corridor) => {
       const rec = getFxDeltaAnchorQueue()?.latestFor(corridor);

@@ -20,6 +20,7 @@ import {
 } from "./fxdelta-format";
 import { ChatRegistry } from "./registry";
 import type { TelegramSubscriptions } from "./subscriptions";
+import { checkWebhookSecret, WEBHOOK_SECRET_HEADER } from "./webhook-secret";
 
 export interface FxDeltaTelegramEngine {
   getAll(): FxDeltaView[];
@@ -44,6 +45,12 @@ export interface FxDeltaTelegramBotOptions {
    * corridor has an Arc anchor (verifyUrl → /api/fx-delta/verify/:id).
    */
   verifyUrlFor?: (corridor: string) => string | undefined;
+  /**
+   * SLICE-234-22: expected X-Telegram-Bot-Api-Secret-Token value.
+   * Set via TELEGRAM_WEBHOOK_SECRET in production; unset = check
+   * skipped (dev/test back-compat).
+   */
+  webhookSecret?: string;
 }
 
 interface TgMessage {
@@ -67,7 +74,7 @@ export function makeFxDeltaTelegramSender(botToken: string): TelegramSend {
 }
 
 export function createFxDeltaTelegramBot(opts: FxDeltaTelegramBotOptions) {
-  const { registry, engine, send, subscriptions, verifyUrlFor } = opts;
+  const { registry, engine, send, subscriptions, verifyUrlFor, webhookSecret } = opts;
   let lastEventCount = 0;
   /** Corridors pushed since last digestTick — digest skips them (AC3). */
   let alertedSinceDigest = new Set<string>();
@@ -93,6 +100,11 @@ export function createFxDeltaTelegramBot(opts: FxDeltaTelegramBotOptions) {
     "/help — this message";
 
   routes.post("/telegram/fxdelta", async (c) => {
+    // 234-22: forged-update guard — Telegram signs deliveries when
+    // setWebhook was configured with secret_token.
+    if (!checkWebhookSecret(c.req.header(WEBHOOK_SECRET_HEADER), webhookSecret)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
     const update = (await c.req.json()) as TgUpdate;
     const msg = update.message;
     const chatId = msg?.chat?.id;

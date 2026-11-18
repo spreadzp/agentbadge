@@ -178,9 +178,29 @@ export function wireMarketplace(
       "x402 middleware wired for marketplace (passport mint + service buy) via circle-payments runtime",
     );
   } else {
+    // SLICE-234-20: fail-closed — without the payment rail the passport
+    // mint and service buy handlers would run ungated (free mint →
+    // registerService → paid surface bypass). EaaS pattern (wireEaas):
+    // mount 503 stubs on the paid writes instead of exposing them.
     logger.warn(
-      "marketplace: circle-payments runtime or splitter unavailable — /api/market paid routes unprotected",
+      "marketplace: circle-payments runtime or splitter unavailable — /api/market paid routes mounted as 503 (fail-closed)",
     );
+    const paidUnavailable = (c: Context) =>
+      c.json(
+        {
+          error: "service_unavailable",
+          message: "Payment rail not configured — paid routes disabled",
+        },
+        503,
+      );
+    app.use("/api/market/passport", async (c, next) => {
+      if (c.req.method === "POST") return paidUnavailable(c);
+      return next();
+    });
+    app.use("/api/market/buy/:serviceId", async (c, next) => {
+      if (c.req.method === "POST") return paidUnavailable(c);
+      return next();
+    });
   }
 
   // Routes registered AFTER the payment middleware — Hono runs handlers in

@@ -178,7 +178,7 @@ describe("SLICE-157-3: marketplace runtime wiring", () => {
     expect((await res.json()).error).toContain("X-Wallet");
   });
 
-  it("no runtime → routes mount ungated (dev semantics), no throw", () => {
+  it("no runtime → wiring does not throw (dev semantics)", () => {
     process.env.MARKETPLACE_ENABLED = "true";
     process.env.MARKETPLACE_NFT = "0x1111111111111111111111111111111111111111";
     process.env.MARKETPLACE_SPLITTER = SPLITTER;
@@ -186,6 +186,34 @@ describe("SLICE-157-3: marketplace runtime wiring", () => {
     resetConfigCache();
     const a = new Hono();
     expect(() => wireMarketplace(a)).not.toThrow();
+  });
+
+  it("SLICE-234-20: no runtime → paid writes fail closed 503, public GETs live", async () => {
+    process.env.MARKETPLACE_ENABLED = "true";
+    process.env.MARKETPLACE_NFT = "0x1111111111111111111111111111111111111111";
+    process.env.MARKETPLACE_SPLITTER = SPLITTER;
+    process.env.MARKETPLACE_TREASURY = TREASURY;
+    resetConfigCache();
+    const a = new Hono();
+    wireMarketplace(a); // deps.runtime undefined
+
+    // Paid writes must NOT reach the mint/buy handlers.
+    for (const [method, path] of [
+      ["POST", "/api/market/passport"],
+      ["POST", `/api/market/buy/${SVC_ID}`],
+    ] as const) {
+      const res = await a.request(path, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      expect(res.status, `${method} ${path}`).toBe(503);
+      expect((await res.json()).error).toBe("service_unavailable");
+    }
+
+    // Public GETs stay mounted.
+    const get = await a.request("/api/market/services");
+    expect(get.status).toBe(200);
   });
 });
 

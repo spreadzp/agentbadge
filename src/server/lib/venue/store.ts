@@ -83,6 +83,8 @@ export interface VenueJob {
     paid: boolean;
     amountAtomic?: string;
     tx?: string;
+    /** 234-19: wallet that signed the fee-attach (audit; must == client). */
+    payer?: string;
   };
   /** 153-6: subjective client rating (ERC-8004, client-signed). */
   rating?: { score: number; comment?: string; txHash?: string; at: string };
