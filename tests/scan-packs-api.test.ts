@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { scanPacksApiRoutes } from "../src/server/routes/scan-packs-api";
+import { scanPacksApiRoutes } from "../src/server/routes/scan/scan-packs-api";
 import { resetConfigCache } from "../src/config/env";
 
 interface PackEntry {

@@ -20,7 +20,7 @@ import {
   fetchTrafficRows,
   runDigest,
 } from "../src/server/lib/report/traffic-digest";
-import { opsStatsRoutes } from "../src/server/routes/ops-stats";
+import { opsStatsRoutes } from "../src/server/routes/ops/ops-stats";
 import { getDatabase } from "../src/server/lib/database";
 import type { TrafficRow } from "../src/server/lib/report/traffic-format";
 

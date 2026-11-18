@@ -37,7 +37,7 @@ vi.mock("../../src/agent-readiness/ruleset", () => ({
   },
 }));
 
-const { totalScanRoutes } = await import("../../src/server/routes/total-scan-api");
+const { totalScanRoutes } = await import("../../src/server/routes/scan/total-scan-api");
 
 const app = new Hono();
 app.route("/api", totalScanRoutes);

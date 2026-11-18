@@ -1,6 +1,6 @@
 /** H-7 telemetry hardening regression tests. */
 import { describe, expect, it } from "vitest";
-import { validateTelemetryPayload } from "../src/server/routes/rescue-telemetry.js";
+import { validateTelemetryPayload } from "../src/server/routes/observability/rescue-telemetry.js";
 
 const OK = {
   schema: "rescue-telemetry/1", route: "base→arc", asset: "USDC",

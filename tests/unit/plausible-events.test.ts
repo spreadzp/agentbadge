@@ -66,7 +66,7 @@ vi.mock("../../src/agent-readiness/badge/svg-generator", () => ({
 
 vi.mock("Bun", { spy: true });
 
-const { webmcpApiRoutes } = await import("../../src/server/routes/webmcp-api");
+const { webmcpApiRoutes } = await import("../../src/server/routes/mcp/webmcp-api");
 
 describe("SLICE-130-12: Plausible events in routes", () => {
   const originalEnv = { ...process.env };

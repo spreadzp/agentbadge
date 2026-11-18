@@ -29,7 +29,7 @@ import {
   createChainService,
   createMemoryChainStore,
 } from "../../src/server/lib/eaas/chain";
-import { createVerifyRoutes } from "../../src/server/routes/verify-api";
+import { createVerifyRoutes } from "../../src/server/routes/verify/verify-api";
 
 // Level-2 package (separate repo, no server dep).
 import { verifyVerdict, type VerdictReadClient } from "@agentbadge/verify-verdict";

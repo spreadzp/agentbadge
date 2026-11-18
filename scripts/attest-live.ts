@@ -7,7 +7,7 @@ import {
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import {
   attestationRoutes, setAttestationRouteConfig,
-} from "../src/server/routes/attestation-api";
+} from "../src/server/routes/attestation/attestation-api";
 import { createArcAttestationWriter } from "../src/server/lib/arc-attestation";
 import { createVenueStore } from "../src/server/lib/attestation-store";
 import { ARC_CONTRACTS } from "@agentbadge/circle-payments";

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { createCirclePaymentsRuntime } from "../src/server/lib/circle-payments";
-import { createIdentityRoutes } from "../src/server/routes/identity";
+import { createIdentityRoutes } from "../src/server/routes/identity/identity";
 import type { CirclePaymentsConfig } from "../src/config/env";
 
 const SELLER = "0x1111111111111111111111111111111111111111";

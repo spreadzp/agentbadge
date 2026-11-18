@@ -27,7 +27,7 @@ import {
   type UsdcNetworks,
 } from "../src/server/lib/payments-api";
 import { createPaymentsApiRoutes } from "../src/server/routes/payments/payments-api";
-import { createCheckoutPageRoutes } from "../src/server/routes/checkout-pages";
+import { createCheckoutPageRoutes } from "../src/server/routes/pages/checkout-pages";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -232,7 +232,7 @@ describe("/pricing page", () => {
   it("shows method dropdown with Card+USDC and network options", async () => {
     const app = new Hono();
     const { contentPageRoutes } = await import(
-      "../src/server/routes/content-pages"
+      "../src/server/routes/pages/content-pages"
     );
     app.route("/", contentPageRoutes);
     const res = await app.request("/pricing");

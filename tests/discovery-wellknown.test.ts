@@ -15,7 +15,7 @@ import {
   buildOauthProtectedResource,
   buildSecurityTxt,
 } from "../src/server/lib/agent-discovery";
-import { createDiscoveryRoutes } from "../src/server/routes/discovery";
+import { createDiscoveryRoutes } from "../src/server/routes/discovery/discovery";
 import type { DiscoverySources } from "../src/server/lib/agent-discovery";
 
 const BASE = "https://staging.agentbadge.xyz";

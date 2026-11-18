@@ -15,7 +15,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { wireDemoX402 } from "../src/server/wiring/demo-x402";
-import { demoApiRoutes } from "../src/server/routes/demo-api";
+import { demoApiRoutes } from "../src/server/routes/demo/demo-api";
 import { scanSkus } from "../src/server/lib/service-catalog/entries/scan";
 import {
   demoScanPriceTag,

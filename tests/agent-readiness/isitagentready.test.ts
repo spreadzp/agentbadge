@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
-import { landingRoutes } from "../../src/server/routes/landing";
-import { hackathonRoutes } from "../../src/server/routes/hackathon";
-import { createDiscoveryRoutes } from "../../src/server/routes/discovery";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
+import { hackathonRoutes } from "../../src/server/routes/pages/hackathon";
+import { createDiscoveryRoutes } from "../../src/server/routes/discovery/discovery";
 import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 
 let app: Hono;

@@ -22,7 +22,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { Hono } from "hono";
-import { a2aRoutes } from "../src/server/routes/a2a";
+import { a2aRoutes } from "../src/server/routes/a2a/a2a";
 import {
   prepareA2ATopicMessage,
   signTransactionBytes,

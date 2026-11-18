@@ -11,9 +11,9 @@ import { getTopicMessages } from "@agentbadge/hedera-core";
 import { getCatalog, getLlmsTxt } from "@agentbadge/hedera-core";
 import { registerAuditCatalogTools, getAuditTrail } from "@agentbadge/mcp";
 import { handleHttpToolCall, listTools } from "@agentbadge/mcp";
-import { auditRoutes } from "../src/server/routes/audit";
-import { catalogRoutes } from "../src/server/routes/catalog";
-import { discoveryManifestRoutes } from "../src/server/routes/discovery";
+import { auditRoutes } from "../src/server/routes/observability/audit";
+import { catalogRoutes } from "../src/server/routes/services/catalog";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery/discovery";
 import type { TopicMessage } from "@agentbadge/hedera-core";
 
 // ─── Catalog Module ───────────────────────────────────────────

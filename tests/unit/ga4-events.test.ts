@@ -62,7 +62,7 @@ vi.mock("../../src/agent-readiness/badge/svg-generator", () => ({
 
 vi.mock("Bun", { spy: true });
 
-const { webmcpApiRoutes } = await import("../../src/server/routes/webmcp-api");
+const { webmcpApiRoutes } = await import("../../src/server/routes/mcp/webmcp-api");
 
 describe("SLICE-130-11: GA4 custom events", () => {
   const originalEnv = { ...process.env };

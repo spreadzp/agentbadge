@@ -21,7 +21,7 @@ import { mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { createWitnessRoutes } from "../src/server/routes/witness-api";
+import { createWitnessRoutes } from "../src/server/routes/witness/witness-api";
 import {
   createMemoryWitnessStore,
   type WitnessAttestation,

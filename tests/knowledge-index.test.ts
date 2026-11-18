@@ -14,8 +14,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { knowledgeRoutes } from "../src/server/routes/knowledge";
-import { blogRoutes } from "../src/server/routes/blog";
+import { knowledgeRoutes } from "../src/server/routes/knowledge/knowledge";
+import { blogRoutes } from "../src/server/routes/pages/blog";
 import { BLOG_ARTICLES } from "../src/server/lib/blog-data";
 
 const app = new Hono();

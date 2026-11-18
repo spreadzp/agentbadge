@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
-import { z } from "zod";
+import { z as _z } from "zod";
 import { Hono } from "hono";
-import { createNamespaceRoutes } from "../src/server/routes/mcp-namespace";
+import { createNamespaceRoutes } from "../src/server/routes/mcp/mcp-namespace";
 import {
   createNamespace,
-  getNamespace,
+  getNamespace as _getNamespace,
   registerPassportTools,
   registerSigningTools,
   registerEscrowTools,
@@ -16,8 +16,8 @@ import {
   registerA2ATools,
   registerAuditCatalogTools,
   registerAllTools,
-  registerTool,
-  type ToolResult,
+  registerTool as _registerTool,
+  type ToolResult as _ToolResult,
 } from "@agentbadge/mcp";
 import { registerComplianceTools } from "../src/mcp/compliance-tools";
 import { registerParityTools } from "../src/mcp/parity-tools";

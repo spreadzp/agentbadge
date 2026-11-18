@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
-import { createWitnessRoutes } from "../src/server/routes/witness-api";
+import { createWitnessRoutes } from "../src/server/routes/witness/witness-api";
 import {
   createMemoryWitnessStore,
   type WitnessStore,

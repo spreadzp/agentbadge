@@ -22,15 +22,15 @@ import {
   type ServiceSku,
 } from "../../src/server/lib/service-catalog";
 import { bazaarExtensionOf } from "../../src/server/lib/service-catalog/bazaar";
-import { totalScanRoutes } from "../../src/server/routes/total-scan-api";
+import { totalScanRoutes } from "../../src/server/routes/scan/total-scan-api";
 import { marketplaceApiRoutes } from "../../src/server/routes/marketplace/marketplace-api";
 import { keeperhubApiRoutes } from "../../src/server/routes/keeperhub-api";
-import { passportRoutes } from "../../src/server/routes/passport";
+import { passportRoutes } from "../../src/server/routes/identity/passport";
 import { createEaasRoutes } from "../../src/server/routes/eaas/eaas-api";
 import { createEaasJobsRoutes } from "../../src/server/routes/eaas/eaas-jobs-api";
 import { createEaasBillingRoutes } from "../../src/server/routes/eaas/eaas-billing-api";
 import { registerVenueBillingRoutes } from "../../src/server/routes/venue/venue-api-billing";
-import type { PaymentMiddleware } from "../../src/server/routes/identity";
+import type { PaymentMiddleware } from "../../src/server/routes/identity/identity";
 
 /** Deterministic fixture sources — registry assertions stay env-free. */
 const SRC: CatalogSources = {

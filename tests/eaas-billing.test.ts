@@ -35,7 +35,7 @@ import {
   configureAgentAuthForTesting,
   resetAgentAuthForTesting,
 } from "../src/server/middleware/agent-auth";
-import type { PaymentMiddleware } from "../src/server/routes/identity";
+import type { PaymentMiddleware } from "../src/server/routes/identity/identity";
 
 const CHAIN_ID = 5042002;
 const signer = createVerdictSigner(Wallet.createRandom().privateKey, CHAIN_ID);

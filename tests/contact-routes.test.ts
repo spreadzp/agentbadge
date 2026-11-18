@@ -8,7 +8,7 @@ vi.mock("../src/server/services/contact.service", () => ({
 }));
 
 import { sendDiscordMessage, sendTelegramMessage, sendEmailMessage } from "../src/server/services/contact.service";
-import { contactRoutes, resetRateLimit } from "../src/server/routes/contact";
+import { contactRoutes, resetRateLimit } from "../src/server/routes/pages/contact";
 import { contactPage, contactSuccessFragment, contactErrorFragment } from "../src/views/contact-page";
 
 const mockedSendDiscord = vi.mocked(sendDiscordMessage);

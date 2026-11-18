@@ -12,8 +12,8 @@ import {
   registerSigningTools,
   registerDiscoveryTools,
 } from "@agentbadge/mcp";
-import { catalogRoutes } from "../src/server/routes/catalog";
-import { discoveryManifestRoutes } from "../src/server/routes/discovery";
+import { catalogRoutes } from "../src/server/routes/services/catalog";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery/discovery";
 
 describe("SLICE-18-8: llms.txt upgrade", () => {
   describe("Unit: getLlmsTxt()", () => {

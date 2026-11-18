@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { metaRoutes } from "../src/server/routes/meta";
+import { metaRoutes } from "../src/server/routes/meta/meta";
 import { ERROR_CATALOG } from "../src/server/lib/error-catalog";
 import {
   REFUSAL_MATRIX,

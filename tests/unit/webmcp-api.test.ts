@@ -41,7 +41,7 @@ vi.mock("@agentbadge/passport", () => ({
 }));
 
 // Mock local did.ts parseDid (real implementation)
-vi.mock("../../src/server/routes/did", () => ({
+vi.mock("../../src/server/routes/identity/did", () => ({
   parseDid: vi.fn((did: string) => {
     const match = /^did:hcs:(\d+\.\d+\.\d+):(\d+)$/.exec(did);
     if (!match) return null;
@@ -125,7 +125,7 @@ vi.mock("../../src/agent-readiness/scanner/ssrf/ip-guard", () => ({
 }));
 
 import { Hono } from "hono";
-import { webmcpApiRoutes } from "../../src/server/routes/webmcp-api";
+import { webmcpApiRoutes } from "../../src/server/routes/mcp/webmcp-api";
 
 describe("SLICE-91-9: WebMCP API Endpoints", () => {
   const app = new Hono();

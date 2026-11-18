@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test mock fixtures use untyped partials */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../src/server/middleware/signature-verification", () => ({
@@ -30,8 +31,8 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 
 import { Hono } from "hono";
 import { signatureVerificationMiddleware } from "../src/server/middleware/signature-verification";
-import { passportRoutes } from "../src/server/routes/passport";
-import { verifyWalletOwnership, issuePassport } from "@agentbadge/passport";
+import { passportRoutes } from "../src/server/routes/identity/passport";
+import { verifyWalletOwnership, issuePassport as _issuePassport } from "@agentbadge/passport";
 
 describe("POST /passport/request", () => {
   let app: Hono;

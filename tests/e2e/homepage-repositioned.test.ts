@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { landingRoutes } from "../../src/server/routes/landing";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
 
 const app = new Hono();
 app.route("/", landingRoutes);

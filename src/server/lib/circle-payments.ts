@@ -34,7 +34,7 @@ import {
   type PaymentMetricsHooks,
 } from "@agentbadge/circle-payments";
 import type { CirclePaymentsConfig } from "../../config/env";
-import type { PaymentMiddleware } from "../routes/identity";
+import type { PaymentMiddleware } from "../routes/identity/identity";
 import { createSpendX402Hooks } from "./agent-wallet/x402-hooks";
 import { buildCircleOpsLookups } from "./circle-payments-ops";
 import {

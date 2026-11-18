@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { discoveryManifestRoutes } from "../src/server/routes/discovery";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery/discovery";
 
 describe("llms-full.txt", () => {
   let app: Hono;

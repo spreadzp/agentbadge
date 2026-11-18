@@ -29,7 +29,7 @@ import { submitBoardWork } from "../../lib/board/submit";
 import {
   BOARD_CLAIM_X_EXAMPLES,
   BOARD_SUBMIT_X_EXAMPLES,
-} from "../openapi-examples";
+} from "../api/openapi-examples";
 import { cancelBoardCard } from "../../lib/board/cancel";
 import {
   denyPassport,

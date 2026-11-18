@@ -6,7 +6,7 @@ import {
   InMemoryForensicsFundingStore,
 } from "@agentbadge/database";
 import { assessAddress } from "../src/server/lib/forensics/risk-service";
-import { riskRoutes } from "../src/server/routes/risk-api";
+import { riskRoutes } from "../src/server/routes/scan/risk-api";
 
 const CHAIN = "5042";
 const SELLER = "0x0000000000000000000000000000000000000a01";

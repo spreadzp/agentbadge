@@ -35,7 +35,7 @@ import {
 } from "../lib/passport-chain-gate";
 import { ErrorCodes } from "../lib/error-codes";
 import { errorResponse } from "../lib/error-response";
-import { passportRequestHandler } from "../routes/passport";
+import { passportRequestHandler } from "../routes/identity/passport";
 import { fxDeltaV1Routes } from "../routes/fx-delta/fx-delta-v1";
 
 export interface X402GatewayWiringDeps {

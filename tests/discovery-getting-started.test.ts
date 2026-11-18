@@ -17,7 +17,7 @@ import {
   buildLlmsTxt,
   type DiscoverySources,
 } from "../src/server/lib/agent-discovery";
-import { agentKnowledgeRoutes } from "../src/server/routes/agent-knowledge";
+import { agentKnowledgeRoutes } from "../src/server/routes/knowledge/agent-knowledge";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KNOWLEDGE_DIR = join(HERE, "../src/server/agent-knowledge");

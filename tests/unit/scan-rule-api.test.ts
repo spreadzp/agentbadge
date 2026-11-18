@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { scanRuleRoutes } from "../../src/server/routes/scan-rule-api";
+import { scanRuleRoutes } from "../../src/server/routes/scan/scan-rule-api";
 
 // Mock the scanner + rule engine pipeline
 vi.mock("../../src/agent-readiness/scanner/orchestrator", () => ({

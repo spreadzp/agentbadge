@@ -10,7 +10,7 @@ import {
   attestationRoutes,
   setAttestationRouteConfig,
   type AttestationRouteConfig,
-} from "../src/server/routes/attestation-api";
+} from "../src/server/routes/attestation/attestation-api";
 import { createVenueStore } from "../src/server/lib/attestation-store";
 
 const FEEDBACK_TX =
@@ -179,6 +179,15 @@ describe("GET /api/attestations + /attestations page", () => {
 });
 
 describe("gate off", () => {
+  const prevX402 = process.env.ATTESTATION_X402_ENABLED;
+  beforeEach(() => {
+    process.env.ATTESTATION_X402_ENABLED = "false"; // .env enables the paid gate
+  });
+  afterAll(() => {
+    if (prevX402 === undefined) delete process.env.ATTESTATION_X402_ENABLED;
+    else process.env.ATTESTATION_X402_ENABLED = prevX402;
+  });
+
   it("no config → POST 503; registerCoreRoutes skips mount entirely", async () => {
     setAttestationRouteConfig(undefined);
     const plain = new Hono();

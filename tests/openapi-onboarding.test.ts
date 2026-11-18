@@ -25,7 +25,7 @@ import {
   TASK_AWARD_X_EXAMPLES,
   TASK_DELIVERABLE_X_EXAMPLES,
   TASK_VERDICT_X_EXAMPLES,
-} from "../src/server/routes/openapi-examples";
+} from "../src/server/routes/api/openapi-examples";
 import {
   awardBodySchema,
   bidBodySchema,

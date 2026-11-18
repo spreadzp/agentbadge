@@ -49,7 +49,7 @@ import {
   type EaasVariables,
   type ParsedVerdictRequest,
 } from "../../lib/eaas/request";
-import type { PaymentMiddleware } from "../identity";
+import type { PaymentMiddleware } from "../identity/identity";
 import { bazaarExtensionFor } from "../../lib/service-catalog/bazaar";
 
 export interface EaasRoutesDeps {

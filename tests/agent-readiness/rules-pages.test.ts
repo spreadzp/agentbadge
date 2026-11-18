@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { contentPageRoutes } from "../../src/server/routes/content-pages";
-import { rulesApiRoutes } from "../../src/server/routes/rules-api";
+import { contentPageRoutes } from "../../src/server/routes/pages/content-pages";
+import { rulesApiRoutes } from "../../src/server/routes/scan/rules-api";
 import { RULE_DESCRIPTIONS } from "../../src/agent-readiness/rule-descriptions";
 
 const app = new Hono();

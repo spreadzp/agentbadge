@@ -1,0 +1,434 @@
+/**
+ * Agent Knowledge Layer routes — SLICE-42-1
+ *
+ * Serves Markdown content from src/server/agent-knowledge/ directory
+ * to AI agents and humans.
+ *
+ * Routes:
+ *   GET /agent-guide                    → text/markdown or application/json (content negotiation)
+ *   GET /agent-guide/                   → text/markdown or application/json (content negotiation)
+ *   GET /.well-known/agent-guide.json   → application/json (structured guide for scanners)
+ *   GET /agent-guide/context            → text/markdown
+ *   GET /agent-guide/learn              → text/markdown
+ *   GET /agent-guide/knowledge-map.json → application/json
+ *   GET /agent-guide/concepts/:name     → text/markdown (200 or 404)
+ *   GET /agent-guide/capabilities/:name → text/markdown (200 or 404)
+ *   GET /agent-guide/articles/:slug     → text/markdown (200 or 404)
+ */
+
+import { Hono, type Context } from "hono";
+import { readFile, readdir } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { ErrorCodes } from "../../lib/error-codes";
+import { srcAttribution } from "../../middleware/src-attribution";
+import { errorResponse } from "../../lib/error-response";
+import { parseFrontmatter } from "../../lib/frontmatter";
+import { getRegistry } from "../../registry/loader";
+import { BASE_URL } from "../../lib/page-meta";
+import { RelevantEngineeringCapability } from "../../../components/RelevantEngineeringCapability";
+import { GuideLayout } from "../../../views/guide-layout";
+import { defaultCoreSchemas, howToLd, breadcrumbListLd } from "../../lib/json-ld";
+import { BUILD_DATE } from "../../lib/build-info";
+import { applyChainTemplates } from "../../lib/chain-templates.js";
+
+export const agentKnowledgeRoutes = new Hono();
+
+// SLICE-206-12: ?src= attribution on every /agent-guide* entry point.
+agentKnowledgeRoutes.use(srcAttribution());
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const BASE_DIR = join(__dirname, "../../agent-knowledge");
+
+async function serveMarkdownFile(
+  filePath: string,
+): Promise<Response> {
+  try {
+    const content = await readFile(filePath, "utf-8");
+    // D-218-1: resolve {{RULE_COUNT}}/{{CATEGORY_COUNT}}/etc. at serve time
+    return new Response(applyChainTemplates(content), {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=300",
+      },
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        error: "File not found",
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+}
+
+async function discoverArticles(): Promise<{ slug: string; title: string }[]> {
+  const articlesDir = join(BASE_DIR, "articles");
+  const files = await readdir(articlesDir).catch(() => []);
+  const articles: { slug: string; title: string }[] = [];
+  for (const file of files) {
+    if (!file.endsWith(".md")) continue;
+    const slug = file.replace(".md", "");
+    try {
+      const content = await readFile(join(articlesDir, file), "utf-8");
+      const { frontmatter } = parseFrontmatter(content);
+      articles.push({ slug, title: (frontmatter.title as string) ?? slug });
+    } catch {
+      articles.push({ slug, title: slug });
+    }
+  }
+  return articles;
+}
+
+async function serveIndexMarkdown(): Promise<string> {
+  let md = await readFile(join(BASE_DIR, "index.md"), "utf-8");
+  const articles = await discoverArticles();
+  if (articles.length > 0) {
+    const articlesSection = `\n## Articles\n\n${articles
+      .map((a) => `- [${a.title}](/agent-guide/articles/${a.slug})`)
+      .join("\n")}\n`;
+    md = md.replace(/## Articles[\s\S]*?(?=## |$)/, articlesSection);
+  }
+  return applyChainTemplates(md);
+}
+
+agentKnowledgeRoutes.get("/agent-guide", async (c) => {
+  const accept = c.req.header("Accept") ?? "";
+  if (accept.includes("application/json")) {
+    return serveAgentGuideJson(c);
+  }
+  const md = await serveIndexMarkdown();
+  const wantsHtml = accept.includes("text/html");
+  if (!wantsHtml) {
+    return new Response(md, { headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=300", "Vary": "Accept" } });
+  }
+  const schemas = [
+    ...defaultCoreSchemas(),
+    howToLd({
+      name: "AgentBadge Agent Guide",
+      description: "Machine-readable guide for AI agents to understand and use AgentBadge.",
+      path: "/agent-guide",
+      totalTime: "PT10M",
+      steps: [
+        { name: "Read the guide", text: "Fetch /agent-guide for the full knowledge index." },
+        { name: "Get context", text: "Read /agent-guide/context for background." },
+        { name: "Follow learning path", text: "Use /agent-guide/learn for step-by-step onboarding." },
+      ],
+    }),
+    breadcrumbListLd([
+      { name: "Home", path: "/" },
+      { name: "Agent Guide", path: "/agent-guide" },
+    ]),
+  ].map((s) => (s as Record<string, unknown>)["@type"] === "HowTo" ? { ...(s as Record<string, unknown>), dateModified: BUILD_DATE } : s);
+  return c.html(GuideLayout("Agent Guide", md, schemas, "/agent-guide", BUILD_DATE, [
+    { term: "Agent Passport", definition: "An NFT on Hedera that serves as on-chain identity for an AI agent, enabling verifiable interactions and directory registration." },
+    { term: "HCS Directory", definition: "Hedera Consensus Service topic used as a public registry where agents publish their passport DIDs and service endpoints." },
+    { term: "MCP Server", definition: "Model Context Protocol server exposing tools, resources, and prompts that AI agents can discover and invoke at runtime." },
+    { term: "Agent Readiness", definition: "The degree to which an API or service is discoverable, understandable, and usable by autonomous AI agents without human intervention." },
+    { term: "llms.txt", definition: "A machine-readable file at the root of a domain that provides LLMs with curated context about the site's content and API." },
+    { term: "A2A Protocol", definition: "Agent-to-Agent communication protocol enabling agents to discover, negotiate, and transact with each other directly." },
+    { term: "x402 Payment", definition: "HTTP 402-based payment protocol where agents autonomously pay for API access using cryptocurrency (HBAR on Hedera)." },
+  ]));
+});
+
+agentKnowledgeRoutes.get("/.well-known/agent-guide.json", async (c) => {
+  return serveAgentGuideJson(c);
+});
+
+agentKnowledgeRoutes.get("/agent-guide.json", async (c) => {
+  return serveAgentGuideJson(c);
+});
+
+async function serveAgentGuideJson(c: Context): Promise<Response> {
+  try {
+    const indexContent = await readFile(join(BASE_DIR, "index.md"), "utf-8");
+    let knowledgeMap: Record<string, unknown> = {};
+    try {
+      const kmContent = await readFile(join(BASE_DIR, "knowledge-map.json"), "utf-8");
+      knowledgeMap = JSON.parse(kmContent);
+    } catch { /* optional */ }
+
+    const guide = {
+      schema: "agentbadge.agent-guide.v1",
+      name: "AgentBadge Agent Guide",
+      description: "Machine-readable guide for AI agents to understand and use AgentBadge",
+      base_url: BASE_URL,
+      endpoints: {
+        context: "/agent-guide/context",
+        learn: "/agent-guide/learn",
+        knowledge_map: "/agent-guide/knowledge-map.json",
+        marketplace_guide: "/marketplace-guide",
+        llms_txt: "/llms.txt",
+        openapi: "/api/specs",
+        team_capabilities: "/agent-guide/team/capabilities",
+        team_services: "/agent-guide/team/services",
+        team_contact: "/agent-guide/team/contact",
+        work_requests: "/api/work-requests",
+      },
+      api_endpoints: [
+        "GET /passport/request",
+        "GET /passport/address/{address}",
+        "GET /passport/{tokenId}/{serial}",
+        "GET /passports",
+        "GET /did/{did}",
+        "GET /agents",
+        "GET /agents/{did}",
+        "POST /agents/register",
+        "POST /admin/revoke",
+        "POST /admin/rebuild-cache",
+        "POST /passport/{tokenId}/{serial}/upgrade",
+        "GET /audit/{tokenId}/{serial}",
+        "GET /catalog",
+        "GET /.well-known/oauth-authorization-server",
+        "GET /feed",
+        "GET /marketplace-guide",
+        "POST /a2a/send",
+        "POST /a2a/send-with-key",
+        "POST /a2a/send-signed",
+        "GET /a2a/inbox",
+        "GET /a2a/conversation",
+        "GET /market/tasks",
+        "GET /market/tasks/{taskId}",
+        "POST /market/tasks",
+        "POST /market/tasks/{taskId}/claim",
+        "POST /market/tasks/{taskId}/deliver",
+        "POST /market/tasks/{taskId}/claim-with-key",
+        "POST /market/tasks/{taskId}/deliver-with-key",
+        "POST /market/tasks/{taskId}/prepare-payment",
+        "POST /market/tasks/{taskId}/complete",
+        "POST /market/sign",
+        "POST /market/tasks/{taskId}/complete-with-key",
+        "POST /market/tasks/signed",
+        "POST /market/tasks/{taskId}/cancel",
+        "POST /market/tasks/{taskId}/increase-reward",
+        "GET /market/tasks/{taskId}/escrow-status",
+        "POST /market/tasks/{taskId}/verify",
+        "GET /api/search",
+        "GET /market-guide",
+        "GET /medical-guide",
+        "GET /faq",
+        "GET /use-cases",
+        "GET /about",
+        "GET /pricing",
+        "GET /terms",
+        "GET /privacy",
+        "GET /team",
+        "GET /services",
+        "GET /work-with-us",
+        "GET /api/work-requests",
+        "GET /api/work-requests/{id}",
+        "GET /changelog",
+      ],
+      concepts: ["agent-readiness", "scoring", "badge", "ruleset"],
+      capabilities: ["scanner", "cli"],
+      // EPIC-133 (D2): machine-readable scan-pack catalog pointer —
+      // prices live in GET /api/scan-packs (single source of truth).
+      scan_packs: {
+        description:
+          "Scoped agent-readiness scans: pay only for the rule bundles you need. " +
+          "Fetch GET /api/scan-packs for the live catalog (ids, names, helpText, prices, rule counts).",
+        catalog_endpoint: "GET /api/scan-packs",
+        scan_endpoint: "POST /api/total-scan",
+        usage: {
+          url: "https://your-api.example.com",
+          packs: ["payments-x402", "live-verification"],
+        },
+        bundle_ids: [
+          "discovery-crawling",
+          "page-meta-seo",
+          "skills-agent-ux",
+          "content-negotiation",
+          "openapi-docs",
+          "mcp-webmcp",
+          "payments-x402",
+          "auth-identity",
+          "semantic-policy",
+          "live-verification",
+        ],
+        legacy_aliases: {
+          safety: "auth-identity",
+          discovery: "discovery-crawling",
+          docs: "openapi-docs",
+          payments: "payments-x402",
+        },
+        notes:
+          "Omit packs for a full scan (all bundles, discounted flat price). " +
+          "Unknown ids return 400 with validIds. Legacy aliases resolve with a warning.",
+      },
+      engineering_capabilities: [
+        "ai-agent-architecture",
+        "mcp-development",
+        "geo-optimization",
+        "blockchain-development",
+        "backend-development",
+      ],
+      team_endpoints: [
+        "GET /agent-guide/team/capabilities",
+        "GET /agent-guide/team/services",
+        "GET /agent-guide/team/contact",
+        "POST /api/work-requests",
+      ],
+      articles: [
+        "what-is-agent-readiness",
+        "seo-vs-agent-readiness",
+        "web-becoming-agentic-api-discovery",
+        "seo-geo-agent-readiness",
+        "why-ai-agents-fail-apis",
+        "what-ai-agent-needs-to-understand-api",
+        "hedera-blockchain-for-agents",
+        "ai-agent-architecture-patterns",
+        "geo-optimization-for-ai-discovery",
+        "how-do-you-measure-agent-readiness",
+        "why-openapi-isnt-enough",
+        "inside-an-agent-readiness-scanner",
+      ],
+      knowledge_map: knowledgeMap,
+      index_markdown: indexContent,
+    };
+    return c.json(guide, 200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    });
+  } catch {
+    return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "Agent guide not found");
+  }
+}
+
+agentKnowledgeRoutes.get("/agent-guide/context", () => {
+  return serveMarkdownFile(join(BASE_DIR, "context.md"));
+});
+
+// SLICE-206-8: onboarding tutorial — register → auth → pay or earn.
+agentKnowledgeRoutes.get("/agent-guide/getting-started", () => {
+  return serveMarkdownFile(join(BASE_DIR, "getting-started.md"));
+});
+
+// SLICE-206-17: earnings + post-task guides (Markdown, agent-facing).
+agentKnowledgeRoutes.get("/agent-guide/earnings", () => {
+  return serveMarkdownFile(join(BASE_DIR, "earnings.md"));
+});
+
+agentKnowledgeRoutes.get("/agent-guide/post-task", () => {
+  return serveMarkdownFile(join(BASE_DIR, "post-task.md"));
+});
+
+agentKnowledgeRoutes.get("/agent-guide/success-stories/:slug", (c) => {
+  const slug = c.req.param("slug");
+  return serveMarkdownFile(join(BASE_DIR, "success-stories", `${slug}.md`));
+});
+
+agentKnowledgeRoutes.get("/agent-guide/learn", () => {
+  return serveMarkdownFile(join(BASE_DIR, "learn.md"));
+});
+
+agentKnowledgeRoutes.get("/agent-guide/knowledge-map.json", async (c) => {
+  try {
+    const content = await readFile(join(BASE_DIR, "knowledge-map.json"), "utf-8");
+    return c.json(JSON.parse(content), 200, {
+      "Cache-Control": "public, max-age=300",
+    });
+  } catch {
+    return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "Knowledge map not found");
+  }
+});
+
+agentKnowledgeRoutes.get("/agent-guide/concepts/:name", async (c) => {
+  const name = c.req.param("name");
+  const filePath = join(BASE_DIR, "concepts", `${name}.md`);
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    const { frontmatter, body } = parseFrontmatter(raw);
+
+    let ctaHtml = "";
+    if (frontmatter.related_capabilities && frontmatter.related_capabilities.length > 0) {
+      try {
+        const registry = await getRegistry();
+        ctaHtml = RelevantEngineeringCapability(frontmatter, registry);
+      } catch {
+        // registry unavailable — skip CTA
+      }
+    }
+
+    const output = ctaHtml
+      ? `${applyChainTemplates(body)}\n\n${ctaHtml}`
+      : applyChainTemplates(body);
+    // SLICE-218-5 (D-218-6): markdown has no <head>, so consolidated
+    // articles signal their canonical HTML page via a Link header
+    // (RFC 6596 — the same mechanism Google honors for non-HTML docs).
+    const canonical = frontmatter.canonical as string | undefined;
+    const headers: Record<string, string> = {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    };
+    if (canonical) {
+      headers.Link = `<${BASE_URL}${canonical}>; rel="canonical"`;
+    }
+    return new Response(output, { headers });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        error: "File not found",
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+});
+
+agentKnowledgeRoutes.get("/agent-guide/capabilities/:name", (c) => {
+  const name = c.req.param("name");
+  return serveMarkdownFile(join(BASE_DIR, "capabilities", `${name}.md`));
+});
+
+agentKnowledgeRoutes.get("/agent-guide/articles/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  const filePath = join(BASE_DIR, "articles", `${slug}.md`);
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    const { frontmatter, body } = parseFrontmatter(raw);
+
+    let ctaHtml = "";
+    if (frontmatter.related_capabilities && frontmatter.related_capabilities.length > 0) {
+      try {
+        const registry = await getRegistry();
+        ctaHtml = RelevantEngineeringCapability(frontmatter, registry);
+      } catch {
+        // registry unavailable — skip CTA
+      }
+    }
+
+    const output = ctaHtml
+      ? `${applyChainTemplates(body)}\n\n${ctaHtml}`
+      : applyChainTemplates(body);
+    // SLICE-218-5 (D-218-6): markdown has no <head>, so consolidated
+    // articles signal their canonical HTML page via a Link header
+    // (RFC 6596 — the same mechanism Google honors for non-HTML docs).
+    const canonical = frontmatter.canonical as string | undefined;
+    const headers: Record<string, string> = {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    };
+    if (canonical) {
+      headers.Link = `<${BASE_URL}${canonical}>; rel="canonical"`;
+    }
+    return new Response(output, { headers });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        error: "File not found",
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+});

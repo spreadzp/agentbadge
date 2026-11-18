@@ -31,7 +31,7 @@ import { eaasQuotaGate } from "../../lib/eaas/subscription";
 import { signerHealthGate } from "../../middleware/signer-health";
 import { respondAsync } from "../../lib/eaas/requests";
 import { validateEvaluate, type EvalInput } from "../../lib/eaas/eval-request";
-import { EAAS_EVALUATE_X_EXAMPLES } from "../openapi-examples";
+import { EAAS_EVALUATE_X_EXAMPLES } from "../api/openapi-examples";
 import { upsertWitnessJob, WITNESS_JOBS_PATH } from "../../lib/witness/jobs";
 import { bazaarExtensionFor } from "../../lib/service-catalog/bazaar";
 import type {

@@ -7,7 +7,7 @@ import { PageMeta, PUBLIC_PAGES } from "../../src/server/lib/page-meta";
 import { BLOG_ARTICLES } from "../../src/server/lib/blog-data";
 import { BUILD_DATE } from "../../src/server/lib/build-info";
 import { getClusterPage } from "../../src/server/lib/cluster-data";
-import { agentKnowledgeRoutes } from "../../src/server/routes/agent-knowledge";
+import { agentKnowledgeRoutes } from "../../src/server/routes/knowledge/agent-knowledge";
 import type { DiscoverySources } from "../../src/server/lib/agent-discovery";
 
 /**

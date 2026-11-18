@@ -207,7 +207,7 @@ describe("honest-zero sweep (D-181-5)", () => {
       const mod = await importOriginal<typeof import("@agentbadge/mcp")>();
       return { ...mod, getAuditTrail: async () => [] };
     });
-    const { auditRoutes } = await import("../src/server/routes/audit");
+    const { auditRoutes } = await import("../src/server/routes/observability/audit");
     const app = new Hono().route("/", auditRoutes);
     const res = await app.request("/audit");
     expect(res.status).toBe(200);
@@ -228,7 +228,7 @@ describe("honest-zero sweep (D-181-5)", () => {
       },
     }));
     const { benchmarkRoutes } = await import(
-      "../src/server/routes/benchmark-api"
+      "../src/server/routes/benchmark/benchmark-api"
     );
     const app = new Hono().route("/", benchmarkRoutes);
     const res = await app.request("/api/benchmarks");

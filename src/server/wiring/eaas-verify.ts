@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import { getVerdictStore } from "../lib/eaas/store";
-import { createVerifyRoutes } from "../routes/verify-api";
-import { createVerifyPageRoutes } from "../routes/verify-page";
+import { createVerifyRoutes } from "../routes/verify/verify-api";
+import { createVerifyPageRoutes } from "../routes/verify/verify-page";
 
 /**
  * SLICE-180-5: public read-only verify facade — mounted even when EaaS

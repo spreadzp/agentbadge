@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { feedRoutes } from "../src/server/routes/feed";
+import { feedRoutes } from "../src/server/routes/discovery/feed";
 import { LandingLayout } from "../src/views/landing/layout";
 
 describe("Optional discovery files", () => {

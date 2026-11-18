@@ -8,7 +8,7 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { createNamespace } from "@agentbadge/mcp";
 import { registerBstockTelegramTools } from "@agentbadge/mcp";
-import { createNamespaceRoutes } from "../src/server/routes/mcp-namespace";
+import { createNamespaceRoutes } from "../src/server/routes/mcp/mcp-namespace";
 import { ChatRegistry } from "../src/telegram/registry";
 import { TelegramSubscriptions } from "../src/telegram/subscriptions";
 import { createBstockTelegramBot } from "../src/telegram/bot";

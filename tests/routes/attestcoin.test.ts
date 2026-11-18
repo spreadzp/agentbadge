@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { attestcoinRoutes, setAttestcoinRouteConfig, setWorkerStatus } from "../../src/server/routes/attestcoin";
+import { attestcoinRoutes, setAttestcoinRouteConfig, setWorkerStatus } from "../../src/server/routes/attestation/attestcoin";
 
 function makeApp() {
   const app = new Hono();

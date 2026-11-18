@@ -6,7 +6,7 @@ import { createServer as httpCreateServer, type Server as HttpServer } from "nod
 import { createHmac } from "node:crypto";
 import { Hono } from "hono";
 import { createMonitoringStore } from "../../src/agent-readiness/monitoring/monitoring-store";
-import { createMonitoringRoutes, type MonitoringAppDeps } from "../../src/server/routes/monitoring";
+import { createMonitoringRoutes, type MonitoringAppDeps } from "../../src/server/routes/observability/monitoring";
 import { startMonitoringScheduler } from "../../src/agent-readiness/monitoring/scheduler";
 import type { ScanReport } from "../../src/agent-readiness/report-formatter";
 import type { Gap } from "../../src/agent-readiness/gap-engine/gap-types";

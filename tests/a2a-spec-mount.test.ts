@@ -20,8 +20,8 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { Hono } from "hono";
-import { a2aRoutes } from "../src/server/routes/a2a";
-import { a2aSpecRoutes } from "../src/server/routes/a2a-spec";
+import { a2aRoutes } from "../src/server/routes/a2a/a2a";
+import { a2aSpecRoutes } from "../src/server/routes/a2a/a2a-spec";
 import { getMessagesByTo } from "@agentbadge/passport";
 
 const mockedGetMessagesByTo = vi.mocked(getMessagesByTo);

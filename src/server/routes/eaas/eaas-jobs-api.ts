@@ -22,7 +22,7 @@ import { Hono, type Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { isAddress } from "viem";
 import { verifyWalletSigRequest } from "../../middleware/agent-auth";
-import type { PaymentMiddleware } from "../identity";
+import type { PaymentMiddleware } from "../identity/identity";
 import {
   ContractRegistryError,
   type EaasContract,

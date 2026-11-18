@@ -7,7 +7,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { revokePassport } from "@agentbadge/passport";
-import { adminRoutes } from "../src/server/routes/admin";
+import { adminRoutes } from "../src/server/routes/ops/admin";
 import { resetConfigCache } from "../src/config/env";
 
 const ORIGINAL_API_KEY = process.env.ADMIN_API_KEY;

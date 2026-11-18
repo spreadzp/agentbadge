@@ -37,7 +37,7 @@ mockResolve4.mockResolvedValue(["127.0.0.1"] as never);
 mockResolve6.mockResolvedValue([] as never);
 
 import { makeTestApp } from "./helpers";
-import { createDiscoveryRoutes } from "../../src/server/routes/discovery";
+import { createDiscoveryRoutes } from "../../src/server/routes/discovery/discovery";
 import { MANIFEST_REGISTRY } from "../../src/server/lib/agent-discovery";
 import { auditStore } from "../../src/server/services/audit-store";
 import {

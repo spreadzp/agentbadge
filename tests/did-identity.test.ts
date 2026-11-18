@@ -16,10 +16,10 @@ import {
   createLocalJWKSet,
   decodeJwt,
 } from "jose";
-import { createDiscoveryRoutes } from "../src/server/routes/discovery";
+import { createDiscoveryRoutes } from "../src/server/routes/discovery/discovery";
 import { identityRoutes } from "../src/server/routes/well-known/identity";
-import { metaRoutes } from "../src/server/routes/meta";
-import { didRoutes } from "../src/server/routes/did";
+import { metaRoutes } from "../src/server/routes/meta/meta";
+import { didRoutes } from "../src/server/routes/identity/did";
 import { collectSources } from "../src/server/lib/agent-discovery";
 
 const DID = "did:web:agentbadge.xyz";

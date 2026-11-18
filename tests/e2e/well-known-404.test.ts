@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { agentKnowledgeRoutes } from "../../src/server/routes/agent-knowledge";
+import { agentKnowledgeRoutes } from "../../src/server/routes/knowledge/agent-knowledge";
 
 const app = new Hono();
 app.route("/", agentKnowledgeRoutes);

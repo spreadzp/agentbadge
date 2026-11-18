@@ -11,7 +11,7 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
 
 import { Hono } from "hono";
 import { createNamespace, registerTool } from "@agentbadge/mcp";
-import { createNamespaceRoutes } from "../src/server/routes/mcp-namespace";
+import { createNamespaceRoutes } from "../src/server/routes/mcp/mcp-namespace";
 
 describe("Namespace HTTP routes — tools/list", () => {
   let app: Hono;

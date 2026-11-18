@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { ClientFactory } from "@a2a-js/sdk/client";
 import { Role, TaskState, type Task } from "@a2a-js/sdk";
 
-import { a2aSpecRoutes } from "../../src/server/routes/a2a-spec";
+import { a2aSpecRoutes } from "../../src/server/routes/a2a/a2a-spec";
 import { buildAgentCard } from "../../src/server/lib/agent-discovery/agent-card";
 
 /**

@@ -13,9 +13,9 @@ import {
   markdownMirrorRoutes,
   setMirrorApp,
 } from "../../src/server/middleware/markdown-negotiation";
-import { landingRoutes } from "../../src/server/routes/landing";
-import { servicesRoutes } from "../../src/server/routes/services";
-import { blogRoutes } from "../../src/server/routes/blog";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
+import { servicesRoutes } from "../../src/server/routes/services/services";
+import { blogRoutes } from "../../src/server/routes/pages/blog";
 import { BLOG_ARTICLES, getChannelCounts } from "../../src/server/lib/blog-data";
 import { markdownAlternatePath } from "../../src/server/lib/page-meta";
 

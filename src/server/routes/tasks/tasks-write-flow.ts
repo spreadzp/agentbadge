@@ -30,7 +30,7 @@ import {
   TASK_AWARD_X_EXAMPLES,
   TASK_BID_X_EXAMPLES,
   TASK_DELIVERABLE_X_EXAMPLES,
-} from "../openapi-examples";
+} from "../api/openapi-examples";
 import { hasActiveBid, markAwarded } from "../../lib/tasks/bids";
 
 export const tasksWriteFlowRoutes = new Hono();

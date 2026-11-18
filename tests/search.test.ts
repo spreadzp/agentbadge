@@ -9,8 +9,8 @@ vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
 }));
 
 import { upsert, clear, type DirectoryEntry } from "@agentbadge/passport";
-import { marketUpsert, marketClear, listTasks } from "@agentbadge/passport";
-import { searchRoutes } from "../src/server/routes/search";
+import { marketUpsert, marketClear, listTasks as _listTasks } from "@agentbadge/passport";
+import { searchRoutes } from "../src/server/routes/discovery/search";
 
 function makeEntry(did: string, overrides: Partial<DirectoryEntry> = {}): DirectoryEntry {
   return {

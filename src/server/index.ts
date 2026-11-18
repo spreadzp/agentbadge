@@ -36,9 +36,9 @@ import { markdownMirrorRoutes, setMirrorApp } from "./middleware/markdown-negoti
 import { hostNormalizationMiddleware, trailingSlashMiddleware } from "./middleware/canonical-redirects";
 import { structuredNotFoundHandler } from "./middleware/structured-error-handler";
 import { ga4Pageview } from "./middleware/ga4-pageview";
-import { opsRoutes } from "./routes/ops";
-import { rescueTelemetryRoutes } from "./routes/rescue-telemetry";
-import { linkedinRoutes } from "./routes/linkedin";
+import { opsRoutes } from "./routes/ops/ops";
+import { rescueTelemetryRoutes } from "./routes/observability/rescue-telemetry";
+import { linkedinRoutes } from "./routes/pages/linkedin";
 import { getDatabase } from "./lib/database";
 import {
   registerCoreRoutes,
@@ -49,7 +49,7 @@ import {
 } from "./routes";
 import { loadConfig, getConfig } from "../config/env";
 import { VerifierRegistry, NoopVerifier, DataHubVerifier } from "../verifiers";
-import { setDiscoveryApp } from "./routes/discovery";
+import { setDiscoveryApp } from "./routes/discovery/discovery";
 
 // Register verifiers (SLICE-24-4, SLICE-24-5)
 const verifierRegistry = VerifierRegistry.getInstance();

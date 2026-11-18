@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { medicalGuideRoutes } from "../../src/server/routes/medical-guide";
+import { medicalGuideRoutes } from "../../src/server/routes/guides/medical-guide";
 
 async function fetchGuide(): Promise<string> {
   const res = await medicalGuideRoutes.request("/medical-guide", {

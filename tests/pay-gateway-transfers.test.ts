@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import type { PaymentInfo, PaymentStatus } from "@agentbadge/circle-payments";
-import { createGatewayDepositRoutes } from "../src/server/routes/pay-gateway";
+import { createGatewayDepositRoutes } from "../src/server/routes/payments/pay-gateway";
 import {
   createCrosschainPaymentsStore,
   recordPayment,

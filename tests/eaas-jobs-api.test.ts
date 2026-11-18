@@ -28,7 +28,7 @@ import {
 import { createVerdictSigner } from "../src/server/lib/eaas/verdict";
 import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import type { PolicyFn } from "../src/server/lib/eaas/policies";
-import type { PaymentMiddleware } from "../src/server/routes/identity";
+import type { PaymentMiddleware } from "../src/server/routes/identity/identity";
 import type { Erc8183, JobView, WriteClient } from "@agentbadge/circle-payments";
 
 /** getJob tuple component count per known ERC-8183 ABI flavor —

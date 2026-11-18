@@ -26,7 +26,7 @@ import {
   CLASS_FULL,
 } from "../lib/access-pass-minter";
 import { checkAccessPassRequest } from "../middleware/agent-auth";
-import { scanPacksApiRoutes } from "../routes/scan-packs-api";
+import { scanPacksApiRoutes } from "../routes/scan/scan-packs-api";
 import { bazaarExtensionFor } from "../lib/service-catalog/bazaar";
 import type { CirclePaymentsRuntime, PaymentForOpts } from "../lib/circle-payments";
 import { payerBinding } from "../middleware/payer-binding";

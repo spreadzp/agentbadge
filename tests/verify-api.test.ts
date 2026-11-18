@@ -26,7 +26,7 @@ import {
   createChainService,
   createMemoryChainStore,
 } from "../src/server/lib/eaas/chain";
-import { createVerifyRoutes } from "../src/server/routes/verify-api";
+import { createVerifyRoutes } from "../src/server/routes/verify/verify-api";
 import { createBountyRoutes } from "../src/server/routes/bounty/bounty-api";
 
 const CHAIN_ID = 5042002;

@@ -145,7 +145,7 @@ describe("ops-stats route dedupe + budget (module mocks)", () => {
 
   it("concurrent same-window requests share one fetch; X-Cache marks hit/inflight", async () => {
     const { Hono } = await import("hono");
-    const { opsStatsRoutes } = await import("../src/server/routes/ops-stats");
+    const { opsStatsRoutes } = await import("../src/server/routes/ops/ops-stats");
     process.env.METRICS_BEARER_TOKEN = "t";
     const app = new Hono();
     app.route("/", opsStatsRoutes);
@@ -174,7 +174,7 @@ describe("ops-stats route dedupe + budget (module mocks)", () => {
 
   it("different windows compute separately", async () => {
     const { Hono } = await import("hono");
-    const { opsStatsRoutes } = await import("../src/server/routes/ops-stats");
+    const { opsStatsRoutes } = await import("../src/server/routes/ops/ops-stats");
     process.env.METRICS_BEARER_TOKEN = "t";
     const app = new Hono();
     app.route("/", opsStatsRoutes);

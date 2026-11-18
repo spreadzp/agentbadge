@@ -12,9 +12,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
 import { setupMockEnv } from "./e2e/helpers";
 import { resetConfigCache } from "../src/config/env";
-import { servicesCatalogRoutes } from "../src/server/routes/services-catalog";
-import { opsRoutes } from "../src/server/routes/ops";
-import { scanPacksApiRoutes } from "../src/server/routes/scan-packs-api";
+import { servicesCatalogRoutes } from "../src/server/routes/services/services-catalog";
+import { opsRoutes } from "../src/server/routes/ops/ops";
+import { scanPacksApiRoutes } from "../src/server/routes/scan/scan-packs-api";
 import { marketplaceApiRoutes } from "../src/server/routes/marketplace/marketplace-api";
 import { keeperhubApiRoutes } from "../src/server/routes/keeperhub-api";
 import {

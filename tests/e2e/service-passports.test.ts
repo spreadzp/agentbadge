@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { servicesRoutes } from "../../src/server/routes/services";
+import { servicesRoutes } from "../../src/server/routes/services/services";
 
 const app = new Hono();
 app.route("/", servicesRoutes);

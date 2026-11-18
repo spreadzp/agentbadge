@@ -14,7 +14,7 @@ import {
   type ToolResult,
 } from "@agentbadge/mcp";
 import { Hono } from "hono";
-import { mcpRoutes } from "../src/server/routes/mcp";
+import { mcpRoutes } from "../src/server/routes/mcp/mcp";
 import { makeTestApp } from "./e2e/helpers";
 
 const dummyHandler = vi.fn(async (args: Record<string, unknown>): Promise<ToolResult> => ({

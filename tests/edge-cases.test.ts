@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { NftInfo } from "@agentbadge/hedera-core";
+import type { NftInfo as _NftInfo } from "@agentbadge/hedera-core";
 
 vi.mock("@agentbadge/hedera-core", async (importOriginal) => ({
   ...await importOriginal(),
@@ -47,7 +47,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { upgradeRoutes } from "../src/server/routes/upgrade";
-import { passportRoutes } from "../src/server/routes/passport";
+import { passportRoutes } from "../src/server/routes/identity/passport";
 import {
   issuePassport,
   upgradeTier,

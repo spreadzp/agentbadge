@@ -11,7 +11,7 @@
 import type { Hono, MiddlewareHandler } from "hono";
 import { logger } from "@agentbadge/passport/logger";
 import { demoScanPriceTag, precheckTarget } from "../lib/demo-scan";
-import { demoApiRoutes } from "../routes/demo-api";
+import { demoApiRoutes } from "../routes/demo/demo-api";
 import type { CirclePaymentsRuntime } from "../lib/circle-payments";
 
 export function wireDemoX402(

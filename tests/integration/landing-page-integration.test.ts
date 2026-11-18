@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
 import { setupMockEnv } from "../e2e/helpers";
-import { landingRoutes } from "../../src/server/routes/landing";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
 import type { Hono as HonoType } from "hono";
 
 describe("SLICE-19-13: Landing page integration — meta, JSON-LD, no-JS, full navigation", () => {

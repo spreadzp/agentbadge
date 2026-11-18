@@ -19,8 +19,8 @@ vi.mock("../../src/config/env.js", () => ({
 }));
 
 import { Hono } from "hono";
-import { hackathonRoutes } from "../../src/server/routes/hackathon";
-import { landingRoutes } from "../../src/server/routes/landing";
+import { hackathonRoutes } from "../../src/server/routes/pages/hackathon";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
 import { PageMeta } from "../../src/server/lib/page-meta";
 
 describe("SLICE-91-1: Hackathon Routing Structure", () => {

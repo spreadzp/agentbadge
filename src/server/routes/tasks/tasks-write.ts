@@ -22,7 +22,7 @@ import {
   verdictBodySchema,
   violationToErrorCode,
 } from "../../lib/tasks/verdict";
-import { TASK_VERDICT_X_EXAMPLES } from "../openapi-examples";
+import { TASK_VERDICT_X_EXAMPLES } from "../api/openapi-examples";
 
 export const tasksWriteRoutes = new Hono();
 

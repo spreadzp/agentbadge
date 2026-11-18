@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { createShowcaseRoutes } from "../src/server/routes/agent-readiness-showcase";
+import { createShowcaseRoutes } from "../src/server/routes/pages/agent-readiness-showcase";
 import type { ScanReport } from "../src/agent-readiness/report-formatter";
 
 const MOCK_REPORT: ScanReport = {

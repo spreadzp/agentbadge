@@ -29,7 +29,7 @@ import {
 import { getFxDeltaTelegramBot } from "../../telegram/state";
 import { getArcEventLogWriter } from "../lib/fx-delta/arc-writer";
 import { AnchorQueue, createAlertAnchor } from "../lib/fx-delta/anchor";
-import { createNamespaceRoutes } from "../routes/mcp-namespace";
+import { createNamespaceRoutes } from "../routes/mcp/mcp-namespace";
 
 export function wireFxDeltaNamespace(app: Hono): void {
   if (process.env.FXDELTA_ENABLED !== "true" || !getFxDeltaRuntime()) {

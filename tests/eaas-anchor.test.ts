@@ -34,7 +34,7 @@ import {
   verdictMemoId,
   type SendAnchorFn,
 } from "../src/server/lib/eaas/anchor";
-import type { PaymentMiddleware } from "../src/server/routes/identity";
+import type { PaymentMiddleware } from "../src/server/routes/identity/identity";
 
 const CHAIN_ID = 5042002;
 const SIGNER_KEY = Wallet.createRandom().privateKey;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { contentPageRoutes } from "../src/server/routes/content-pages";
+import { contentPageRoutes } from "../src/server/routes/pages/content-pages";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
 import { FaqPage, getFaqEntries } from "../src/views/faq-page";
 import { UseCasesPage, getUseCases } from "../src/views/use-cases-page";

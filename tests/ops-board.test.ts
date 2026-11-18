@@ -19,7 +19,7 @@ import {
   scanBoard,
   sortTasks,
 } from "../src/server/lib/ops-board/store";
-import { createOpsBoardRoutes } from "../src/server/routes/ops-board";
+import { createOpsBoardRoutes } from "../src/server/routes/ops/ops-board";
 
 const FIXTURE = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -191,7 +191,7 @@ describe("routes e2e", () => {
   it("route absent when OPS_BOARD_DIR unset (mount gate)", async () => {
     vi.stubEnv("OPS_BOARD_DIR", "");
     vi.resetModules();
-    const { opsRoutes } = await import("../src/server/routes/ops");
+    const { opsRoutes } = await import("../src/server/routes/ops/ops");
     const a = new Hono();
     a.route("/", opsRoutes);
     const res = await a.fetch(new Request("http://x/ops/board"));

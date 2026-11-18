@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { bstockGuideRoutes } from "../src/server/routes/bstock-guide";
+import { bstockGuideRoutes } from "../src/server/routes/guides/bstock-guide";
 
 function makeApp() {
   const app = new Hono();

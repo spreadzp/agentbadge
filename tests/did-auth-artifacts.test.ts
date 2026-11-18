@@ -8,11 +8,11 @@
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { catalogRoutes } from "../src/server/routes/catalog";
+import { catalogRoutes } from "../src/server/routes/services/catalog";
 import {
   createDiscoveryRoutes,
   discoveryManifestRoutes,
-} from "../src/server/routes/discovery";
+} from "../src/server/routes/discovery/discovery";
 import { marketGuideRoutes } from "../src/server/routes/market/market-guide";
 import { agentGuideRoutes } from "../src/server/routes/agent-guide/agent-guide";
 import { wellKnownRoutes } from "../src/server/routes/well-known";

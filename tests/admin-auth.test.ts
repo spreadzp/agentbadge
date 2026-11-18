@@ -9,7 +9,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 
 import { revokePassport } from "@agentbadge/passport";
 import { rebuildFromHcs } from "@agentbadge/passport";
-import { adminRoutes } from "../src/server/routes/admin";
+import { adminRoutes } from "../src/server/routes/ops/admin";
 
 const ORIGINAL_API_KEY = process.env.ADMIN_API_KEY;
 
@@ -107,7 +107,7 @@ describe("Admin API key authentication — SLICE-7-11", () => {
 
   it("uses timing-safe comparison to prevent timing attacks", async () => {
     const { adminAuth } = await import("../src/server/middleware/adminAuth");
-    const crypto = await import("node:crypto");
+    const _crypto = await import("node:crypto");
 
     // Verify the middleware uses timingSafeEqual internally
     // We can't easily test timing, but we can verify it doesn't throw on different-length keys

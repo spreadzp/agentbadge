@@ -26,7 +26,7 @@ import type { Hono } from "hono";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { logger } from "@agentbadge/passport/logger";
-import { createWitnessRoutes } from "../routes/witness-api";
+import { createWitnessRoutes } from "../routes/witness/witness-api";
 import { createMemoryWitnessStore } from "../lib/witness/store";
 import { createJsonWitnessStore } from "../lib/witness/store-json";
 import { createJsonAgentRegistrationStore } from "../lib/agent-registration/store";

@@ -27,7 +27,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 
 import { submitA2AMessage, verifyA2ADid, didToAccountId } from "@agentbadge/hedera-core";
 import { a2aUpsert as upsert } from "@agentbadge/passport";
-import { a2aRoutes } from "../../src/server/routes/a2a";
+import { a2aRoutes } from "../../src/server/routes/a2a/a2a";
 import {
   configureDidAuthForTesting,
   NonceStore,

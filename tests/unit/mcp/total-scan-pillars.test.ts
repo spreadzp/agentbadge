@@ -53,7 +53,7 @@ import { computeGrade } from "../../../src/agent-readiness/scoring/grade-compute
 let app: Hono;
 
 beforeAll(async () => {
-  const { totalScanRoutes } = await import("../../../src/server/routes/total-scan-api");
+  const { totalScanRoutes } = await import("../../../src/server/routes/scan/total-scan-api");
   app = new Hono();
   app.route("/api", totalScanRoutes);
 });

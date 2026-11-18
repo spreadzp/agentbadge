@@ -12,7 +12,7 @@ vi.mock("@agentbadge/mcp", async (importOriginal) => ({
 
 import { handleHttpToolCall } from "@agentbadge/mcp";
 import { rateLimitMiddleware } from "../src/server/middleware/rate-limit";
-import { mcpRoutes } from "../src/server/routes/mcp";
+import { mcpRoutes } from "../src/server/routes/mcp/mcp";
 
 const mockedHandleToolCall = vi.mocked(handleHttpToolCall);
 

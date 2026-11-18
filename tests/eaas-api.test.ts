@@ -20,7 +20,7 @@ import { createEaasRoutes } from "../src/server/routes/eaas/eaas-api";
 import { createVerdictSigner, hashDeliverable } from "../src/server/lib/eaas/verdict";
 import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import type { PolicyFn } from "../src/server/lib/eaas/policies";
-import type { PaymentMiddleware } from "../src/server/routes/identity";
+import type { PaymentMiddleware } from "../src/server/routes/identity/identity";
 
 const CHAIN_ID = 5042002;
 const SIGNER_KEY = Wallet.createRandom().privateKey;

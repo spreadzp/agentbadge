@@ -24,7 +24,7 @@ import {
   createChainService,
   createMemoryChainStore,
 } from "../src/server/lib/eaas/chain";
-import { createVerifyPageRoutes } from "../src/server/routes/verify-page";
+import { createVerifyPageRoutes } from "../src/server/routes/verify/verify-page";
 
 const CHAIN_ID = 5042002;
 const signer = createVerdictSigner(Wallet.createRandom().privateKey, CHAIN_ID);

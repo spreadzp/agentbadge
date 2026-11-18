@@ -19,7 +19,7 @@ import {
   type RateLimitEntry,
 } from "../../middleware/rate-limit";
 import { logger } from "@agentbadge/passport/logger";
-import { WORK_REQUEST_X_EXAMPLES } from "../openapi-examples";
+import { WORK_REQUEST_X_EXAMPLES } from "../api/openapi-examples";
 
 export const workRequestRoutes = new Hono();
 

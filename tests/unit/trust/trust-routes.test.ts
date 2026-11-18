@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
-import { trustRoutes } from "../../../src/server/routes/trust";
+import { trustRoutes } from "../../../src/server/routes/trust/trust";
 import { deriveChallengeToken, getChallengeEpoch } from "../../../src/agent-readiness/trust/challenge";
 import { resetTrustConfigCache } from "../../../src/config/env/trust";
 
@@ -95,7 +95,7 @@ describe("SLICE-102-7: Trust endpoints", () => {
       const before = await getChallengeToken("api.example.com");
       resetTrustConfigCache();
       vi.resetModules();
-      const { trustRoutes: freshRoutes } = await import("../../../src/server/routes/trust");
+      const { trustRoutes: freshRoutes } = await import("../../../src/server/routes/trust/trust");
       const freshApp = new Hono();
       freshApp.route("/", freshRoutes);
       const res = await freshApp.request("/api/trust/api.example.com/challenge");

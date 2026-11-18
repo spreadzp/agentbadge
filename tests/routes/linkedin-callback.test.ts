@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
-import { linkedinRoutes } from "../../src/server/routes/linkedin";
+import { linkedinRoutes } from "../../src/server/routes/pages/linkedin";
 
 // Capture console output to verify no token logging
 let consoleOutput: string[] = [];

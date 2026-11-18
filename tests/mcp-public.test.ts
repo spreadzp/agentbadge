@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { marketClear, marketUpsert } from "@agentbadge/passport";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";
-import { mcpPublicRoutes } from "../src/server/routes/mcp-public";
+import { mcpPublicRoutes } from "../src/server/routes/mcp/mcp-public";
 
 const app = new Hono().route("/", mcpPublicRoutes);
 

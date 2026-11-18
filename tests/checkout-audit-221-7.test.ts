@@ -43,7 +43,7 @@ import {
   type CheckoutSessionLike,
 } from "../src/server/lib/payments-api/webhook-dispatch";
 import { createPaymentsApiRoutes } from "../src/server/routes/payments/payments-api";
-import { checkoutPageRoutes } from "../src/server/routes/checkout-pages";
+import { checkoutPageRoutes } from "../src/server/routes/pages/checkout-pages";
 
 // ---------------------------------------------------------------------------
 // Fixtures

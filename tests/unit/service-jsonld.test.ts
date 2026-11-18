@@ -21,7 +21,7 @@ process.env.IPFS_API_SECRET = "test-ipfs-secret";
 delete process.env.KEEPERHUB_ENABLED;
 delete process.env.ATTESTCOIN_ENABLED;
 
-const { servicesRoutes } = await import("../../src/server/routes/services");
+const { servicesRoutes } = await import("../../src/server/routes/services/services");
 
 function extractJsonLdBlocks(html: string): Record<string, unknown>[] {
   const blocks: Record<string, unknown>[] = [];

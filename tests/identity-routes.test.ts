@@ -9,7 +9,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { createInMemoryIdentityStores } from "@agentbadge/database";
 
 import { createIdentityService } from "../src/server/lib/identity/index.js";
-import { createIdentityRoutes } from "../src/server/routes/identity-api.js";
+import { createIdentityRoutes } from "../src/server/routes/identity/identity-api.js";
 import { buildCommerceChallenge } from "../src/server/routes/commerce/shared";
 
 const OWNER_KEY =

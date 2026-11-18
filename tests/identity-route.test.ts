@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { requirePayment } from "@agentbadge/circle-payments";
-import { createIdentityRoutes } from "../src/server/routes/identity";
+import { createIdentityRoutes } from "../src/server/routes/identity/identity";
 
 const SELLER = "0x1111111111111111111111111111111111111111";
 const AGENT = "0x2222222222222222222222222222222222222222";

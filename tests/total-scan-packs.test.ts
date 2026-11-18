@@ -7,7 +7,7 @@ vi.mock("node:dns/promises", () => ({
 
 import { resolve4, resolve6 } from "node:dns/promises";
 import { Hono } from "hono";
-import { totalScanRoutes } from "../src/server/routes/total-scan-api";
+import { totalScanRoutes } from "../src/server/routes/scan/total-scan-api";
 import { resetConfigCache } from "../src/config/env";
 
 const mockResolve4 = vi.mocked(resolve4);

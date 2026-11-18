@@ -8,7 +8,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { createDatabase, type Database } from "@agentbadge/database";
 
-import { createFinopsRoutes } from "../src/server/routes/finops";
+import { createFinopsRoutes } from "../src/server/routes/finops/finops";
 
 const KEY = "test-admin-key";
 

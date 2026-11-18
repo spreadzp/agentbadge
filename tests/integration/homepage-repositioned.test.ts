@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
 import { setupMockEnv } from "../e2e/helpers";
-import { landingRoutes } from "../../src/server/routes/landing";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
 import { uiRoutes } from "../../src/server/routes/ui";
 
 describe("SLICE-110-9: E2E tests for repositioned homepage", () => {

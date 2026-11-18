@@ -7,7 +7,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { Hono } from "hono";
 import { createNamespace, registerBstockTools } from "@agentbadge/mcp";
 import type { BstockEngineLike } from "@agentbadge/mcp";
-import { createNamespaceRoutes } from "../src/server/routes/mcp-namespace";
+import { createNamespaceRoutes } from "../src/server/routes/mcp/mcp-namespace";
 import {
   bstockAuth,
   bstockRateLimit,

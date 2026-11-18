@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { contentPageRoutes } from "../../src/server/routes/content-pages";
-import { servicesRoutes } from "../../src/server/routes/services";
-import { landingRoutes } from "../../src/server/routes/landing";
+import { contentPageRoutes } from "../../src/server/routes/pages/content-pages";
+import { servicesRoutes } from "../../src/server/routes/services/services";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
 
 const app = new Hono();
 app.route("/", landingRoutes);

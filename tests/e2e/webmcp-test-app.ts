@@ -5,8 +5,8 @@
  * avoiding the Bun.serve() side effect in src/server/index.ts.
  */
 import { Hono } from "hono";
-import { hackathonRoutes } from "../../src/server/routes/hackathon";
-import { webmcpApiRoutes } from "../../src/server/routes/webmcp-api";
+import { hackathonRoutes } from "../../src/server/routes/pages/hackathon";
+import { webmcpApiRoutes } from "../../src/server/routes/mcp/webmcp-api";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 import { corsMiddleware } from "../../src/server/middleware/cors";
 

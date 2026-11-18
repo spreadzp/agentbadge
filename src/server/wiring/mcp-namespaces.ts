@@ -61,7 +61,7 @@ import { registerParityTools } from "../../mcp/parity-tools";
 import { registerBoardTools } from "../../mcp/board-tools";
 import { registerKnowledgeTools } from "../../mcp/knowledge-tools";
 import { registerKeeperhubTools } from "../../mcp/keeperhub-tools";
-import { createNamespaceRoutes } from "../routes/mcp-namespace";
+import { createNamespaceRoutes } from "../routes/mcp/mcp-namespace";
 
 export interface McpNamespaces {
   passportNs: NamespaceRegistry;

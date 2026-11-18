@@ -31,7 +31,7 @@ import { createJsonVerdictStore } from "../src/server/lib/eaas/store";
 import { createMemoryRequestStore } from "../src/server/lib/eaas/requests";
 import { createEaasMetrics } from "../src/server/lib/eaas/metrics";
 import type { EaasAsyncDeps } from "../src/server/lib/eaas/requests";
-import type { PaymentMiddleware } from "../src/server/routes/identity";
+import type { PaymentMiddleware } from "../src/server/routes/identity/identity";
 
 const CHAIN_ID = 5042002;
 const signer = createVerdictSigner(Wallet.createRandom().privateKey, CHAIN_ID);

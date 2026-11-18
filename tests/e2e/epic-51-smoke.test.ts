@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { landingRoutes } from "../../src/server/routes/landing";
-import { servicesRoutes } from "../../src/server/routes/services";
-import { contentPageRoutes } from "../../src/server/routes/content-pages";
-import { agentKnowledgeRoutes } from "../../src/server/routes/agent-knowledge";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
+import { servicesRoutes } from "../../src/server/routes/services/services";
+import { contentPageRoutes } from "../../src/server/routes/pages/content-pages";
+import { agentKnowledgeRoutes } from "../../src/server/routes/knowledge/agent-knowledge";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
 
 const app = new Hono();

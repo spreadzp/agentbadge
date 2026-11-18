@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { hackathonRoutes } from "../../src/server/routes/hackathon";
+import { hackathonRoutes } from "../../src/server/routes/pages/hackathon";
 
 function makeApp() {
   const app = new Hono();

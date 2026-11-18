@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { scanRuleRoutes } from "../../src/server/routes/scan-rule-api";
+import { scanRuleRoutes } from "../../src/server/routes/scan/scan-rule-api";
 
 const app = new Hono();
 app.route("/api", scanRuleRoutes);

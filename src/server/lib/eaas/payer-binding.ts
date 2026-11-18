@@ -20,7 +20,7 @@ import {
   withPayerBindDecl,
 } from "../payer-binding-arc";
 import type { CirclePaymentsRuntime } from "../circle-payments";
-import type { PaymentMiddleware } from "../../routes/identity";
+import type { PaymentMiddleware } from "../../routes/identity/identity";
 
 /** Route factories' narrow paymentForPrice dep shape (priceUsd + bazaar
  *  extensions only). The wrapper still accepts the full PaymentForOpts

@@ -17,7 +17,7 @@ import {
   MANIFEST_REGISTRY,
   type DiscoverySources,
 } from "../src/server/lib/agent-discovery";
-import { createDiscoveryRoutes } from "../src/server/routes/discovery";
+import { createDiscoveryRoutes } from "../src/server/routes/discovery/discovery";
 
 function mockSources(overrides: Partial<DiscoverySources> = {}): DiscoverySources {
   return {

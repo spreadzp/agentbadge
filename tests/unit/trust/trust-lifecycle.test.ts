@@ -7,8 +7,8 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { trustRoutes } from "../../../src/server/routes/trust";
-import { trustViewerRoutes } from "../../../src/server/routes/trust-viewer";
+import { trustRoutes } from "../../../src/server/routes/trust/trust";
+import { trustViewerRoutes } from "../../../src/server/routes/trust/trust-viewer";
 import { verifySnapshot } from "../../../src/agent-readiness/trust/snapshot-verifier";
 import { renderSnapshotMarkdown } from "../../../src/agent-readiness/trust/snapshot-markdown";
 import { TrustViewer } from "../../../src/views/trust-viewer";

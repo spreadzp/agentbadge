@@ -10,7 +10,7 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import { decodeFunctionData, keccak256, toBytes } from "viem";
-import { createWitnessRoutes } from "../../src/server/routes/witness-api";
+import { createWitnessRoutes } from "../../src/server/routes/witness/witness-api";
 import {
   createMemoryWitnessStore,
   type WitnessStore,

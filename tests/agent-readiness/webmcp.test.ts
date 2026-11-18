@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hackathonRoutes } from "../../src/server/routes/hackathon";
+import { hackathonRoutes } from "../../src/server/routes/pages/hackathon";
 
 const app = hackathonRoutes;
 

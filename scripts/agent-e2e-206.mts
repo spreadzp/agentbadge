@@ -24,7 +24,7 @@ import { wellKnownRoutes } from "../src/server/routes/well-known";
 import { tasksReadRoutes } from "../src/server/routes/tasks-read";
 import { tasksWriteRoutes } from "../src/server/routes/tasks-write";
 import { tasksWriteFlowRoutes } from "../src/server/routes/tasks-write-flow";
-import { mcpPublicRoutes } from "../src/server/routes/mcp-public";
+import { mcpPublicRoutes } from "../src/server/routes/mcp/mcp-public";
 import { buildAccessChallenge } from "../src/server/middleware/agent-auth";
 import { resetBidStoresForTesting } from "../src/server/lib/tasks/bids";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";

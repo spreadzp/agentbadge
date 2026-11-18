@@ -12,7 +12,7 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio", () => ({
 import { registerTool, type ToolResult } from "@agentbadge/mcp";
 import { Hono } from "hono";
 import { corsMiddleware } from "../src/server/middleware/cors";
-import { mcpRoutes } from "../src/server/routes/mcp";
+import { mcpRoutes } from "../src/server/routes/mcp/mcp";
 
 const dummyHandler = vi.fn(async (args: Record<string, unknown>): Promise<ToolResult> => ({
   content: [{ type: "text", text: JSON.stringify(args) }],

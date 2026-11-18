@@ -34,7 +34,7 @@ import {
   type EaasSubscriptionStore,
   type EaasTierMap,
 } from "../../lib/eaas/subscription";
-import type { PaymentMiddleware } from "../identity";
+import type { PaymentMiddleware } from "../identity/identity";
 import { bazaarExtensionFor } from "../../lib/service-catalog/bazaar";
 
 export interface EaasBillingDeps {

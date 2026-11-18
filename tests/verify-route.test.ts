@@ -8,7 +8,7 @@ vi.mock("@agentbadge/passport", async (importOriginal) => ({
 }));
 
 import { Hono } from "hono";
-import { verifyRoutes } from "../src/server/routes/verify";
+import { verifyRoutes } from "../src/server/routes/verify/verify";
 import {
   getPassportInfo,
   listPassportsByAddress,

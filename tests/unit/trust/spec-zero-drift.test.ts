@@ -11,8 +11,8 @@
 import { describe, it, expect } from "vitest";
 import { trustSnapshotSchema, trustSnapshotForHashingSchema } from "../../../src/agent-readiness/trust/trust-schema";
 import { agentPassportNFTAbi } from "../../../src/agent-readiness/trust/contract-abi";
-import { trustRoutes } from "../../../src/server/routes/trust";
-import { trustViewerRoutes } from "../../../src/server/routes/trust-viewer";
+import { trustRoutes } from "../../../src/server/routes/trust/trust";
+import { trustViewerRoutes } from "../../../src/server/routes/trust/trust-viewer";
 
 describe("SLICE-102-10: Spec Zero-Drift", () => {
   describe("Zod schema fields", () => {

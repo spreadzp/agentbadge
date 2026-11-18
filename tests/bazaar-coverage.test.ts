@@ -33,7 +33,7 @@ import type {
   CirclePaymentsRuntime,
   PaymentForOpts,
 } from "../src/server/lib/circle-payments";
-import type { PaymentMiddleware } from "../src/server/routes/identity";
+import type { PaymentMiddleware } from "../src/server/routes/identity/identity";
 import type { EaasJobsRoutesDeps } from "../src/server/routes/eaas/eaas-jobs-api";
 import type { EaasBillingDeps } from "../src/server/routes/eaas/eaas-billing-api";
 import type { EaasRoutesDeps } from "../src/server/routes/eaas/eaas-api";

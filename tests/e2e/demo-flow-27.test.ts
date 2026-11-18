@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Hono } from "hono";
-import { createDemoRoutes } from "../../src/server/routes/demo";
-import type { PaymentMiddleware } from "../../src/server/routes/identity";
+import { createDemoRoutes } from "../../src/server/routes/demo/demo";
+import type { PaymentMiddleware } from "../../src/server/routes/identity/identity";
 import { seedMedicalTasks } from "../../src/scripts/seed-medical-tasks";
 import { marketUpsert as upsert, marketGet as getTask, listTasks } from "@agentbadge/passport";
 import type { CachedMarketTask } from "@agentbadge/hedera-core";

@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { blogRoutes } from "../src/server/routes/blog";
+import { blogRoutes } from "../src/server/routes/pages/blog";
 import { registry } from "../src/server/metrics/metrics";
 import { classifyUserAgent } from "../src/server/lib/ua-classify";
 import { BLOG_ARTICLES } from "../src/server/lib/blog-data";

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { profileRoutes } from "../../src/server/routes/profile";
-import { profileViewerRoutes } from "../../src/server/routes/profile-viewer";
+import { profileRoutes } from "../../src/server/routes/profile/profile";
+import { profileViewerRoutes } from "../../src/server/routes/profile/profile-viewer";
 import { cacheScanData, clearScanCache } from "../../src/server/profile/profile-store";
 import { resetConfigCache } from "../../src/config/env";
 import { buildProfile } from "../../src/agent-readiness/profile/profile-builder";

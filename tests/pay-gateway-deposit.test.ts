@@ -15,7 +15,7 @@ import {
 import {
   createGatewayDepositRoutes,
   gatewayChainsFor,
-} from "../src/server/routes/pay-gateway";
+} from "../src/server/routes/payments/pay-gateway";
 import type { CirclePaymentsConfig } from "../src/config/env";
 
 const SELLER = "0x1111111111111111111111111111111111111111";

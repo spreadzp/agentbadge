@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { profileViewerRoutes } from "../../../src/server/routes/profile-viewer";
+import { profileViewerRoutes } from "../../../src/server/routes/profile/profile-viewer";
 import { cacheScanData, clearScanCache } from "../../../src/server/profile/profile-store";
 import { resetConfigCache } from "../../../src/config/env";
 import { makeFixtureScanReport, makeFixtureAssertions } from "../profile/fixtures/scan-report-fixture";

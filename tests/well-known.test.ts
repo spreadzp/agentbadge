@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { createDiscoveryRoutes } from "../src/server/routes/discovery";
+import { createDiscoveryRoutes } from "../src/server/routes/discovery/discovery";
 import type { DiscoverySources } from "../src/server/lib/agent-discovery";
 
 const TEST_SOURCES: DiscoverySources = {

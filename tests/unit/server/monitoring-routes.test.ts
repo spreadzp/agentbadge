@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Hono } from "hono";
 import { createMonitoringStore } from "../../../src/agent-readiness/monitoring/monitoring-store";
-import { createMonitoringRoutes, type MonitoringAppDeps } from "../../../src/server/routes/monitoring";
+import { createMonitoringRoutes, type MonitoringAppDeps } from "../../../src/server/routes/observability/monitoring";
 import { FREE_LIMITS, resolvePlan, checkProjectLimit, checkScheduleAllowed, checkChannelsAllowed } from "../../../src/agent-readiness/monitoring/tiers";
 
 /**

@@ -23,7 +23,7 @@ import {
 } from "@agentbadge/database";
 
 import { createIdentityService } from "../src/server/lib/identity/index.js";
-import { createIdentityRoutes } from "../src/server/routes/identity-api.js";
+import { createIdentityRoutes } from "../src/server/routes/identity/identity-api.js";
 import { buildCommerceChallenge } from "../src/server/routes/commerce/shared";
 import { createMemoryAgentRegistrationStore } from "../src/server/lib/agent-registration/store.js";
 

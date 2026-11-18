@@ -18,7 +18,7 @@ vi.mock("../../../src/config/env.js", () => ({
 }));
 
 import { Hono } from "hono";
-import { hackathonRoutes } from "../../../src/server/routes/hackathon";
+import { hackathonRoutes } from "../../../src/server/routes/pages/hackathon";
 
 const app = new Hono();
 app.route("/", hackathonRoutes);

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
 import { setupMockEnv, makeTestApp } from "./helpers";
-import { landingRoutes } from "../../src/server/routes/landing";
+import { landingRoutes } from "../../src/server/routes/pages/landing";
 import { wellKnownRoutes } from "../../src/server/routes/well-known";
-import { uiRoutes } from "../../src/server/routes/ui";
+import { uiRoutes as _uiRoutes } from "../../src/server/routes/ui";
 import type { Hono as HonoType } from "hono";
 
 /**

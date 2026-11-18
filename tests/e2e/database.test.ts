@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { resetConfigCache } from "../../src/config/env";
 import { resetDatabaseForTests } from "../../src/server/lib/database";
-import { opsRoutes } from "../../src/server/routes/ops";
+import { opsRoutes } from "../../src/server/routes/ops/ops";
 import { setupMockEnv } from "./helpers";
 
 /**

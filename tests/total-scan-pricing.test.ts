@@ -7,7 +7,7 @@ vi.mock("node:dns/promises", () => ({
 import { resolve4, resolve6 } from "node:dns/promises";
 import { Hono } from "hono";
 import { createPaymentRouter, requirePayment } from "@agentbadge/circle-payments";
-import { totalScanRoutes } from "../src/server/routes/total-scan-api";
+import { totalScanRoutes } from "../src/server/routes/scan/total-scan-api";
 import {
   buildTotalScanPaymentOpts,
   wireScanPacksX402,

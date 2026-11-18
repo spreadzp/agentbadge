@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { Tier, Capability } from "@agentbadge/hedera-core";
+import type { Tier as _Tier, Capability as _Capability } from "@agentbadge/hedera-core";
 
 vi.mock("@agentbadge/passport", async (importOriginal) => ({
   ...await importOriginal(),
   getPassportInfo: vi.fn(),
 }));
 
-import { verifyRoutes } from "../src/server/routes/verify";
-import { didRoutes } from "../src/server/routes/did";
+import { verifyRoutes } from "../src/server/routes/verify/verify";
+import { didRoutes } from "../src/server/routes/identity/did";
 import { getPassportInfo } from "@agentbadge/passport";
 import type { PassportInfo } from "@agentbadge/passport";
 
@@ -38,7 +38,7 @@ describe("DID resolution routes", () => {
 
   describe("parseDid", () => {
     it("parses valid did:hcs:{tokenId}:{serial}", async () => {
-      const { parseDid } = await import("../src/server/routes/did");
+      const { parseDid } = await import("../src/server/routes/identity/did");
       expect(parseDid("did:hcs:0.0.123:1")).toEqual({
         tokenId: "0.0.123",
         serial: 1,
@@ -46,7 +46,7 @@ describe("DID resolution routes", () => {
     });
 
     it("parses valid did with large serial number", async () => {
-      const { parseDid } = await import("../src/server/routes/did");
+      const { parseDid } = await import("../src/server/routes/identity/did");
       expect(parseDid("did:hcs:0.0.999:42")).toEqual({
         tokenId: "0.0.999",
         serial: 42,
@@ -54,17 +54,17 @@ describe("DID resolution routes", () => {
     });
 
     it("returns null for malformed DID", async () => {
-      const { parseDid } = await import("../src/server/routes/did");
+      const { parseDid } = await import("../src/server/routes/identity/did");
       expect(parseDid("not-a-did")).toBeNull();
     });
 
     it("returns null for missing serial", async () => {
-      const { parseDid } = await import("../src/server/routes/did");
+      const { parseDid } = await import("../src/server/routes/identity/did");
       expect(parseDid("did:hcs:0.0.123")).toBeNull();
     });
 
     it("returns null for wrong method", async () => {
-      const { parseDid } = await import("../src/server/routes/did");
+      const { parseDid } = await import("../src/server/routes/identity/did");
       expect(parseDid("did:web:0.0.123:1")).toBeNull();
     });
   });

@@ -48,8 +48,8 @@ import {
   clearScanCache,
   getLatestScanForDomain,
 } from "../../../src/server/profile/profile-store";
-import { profileRoutes } from "../../../src/server/routes/profile";
-import { totalScanRoutes } from "../../../src/server/routes/total-scan-api";
+import { profileRoutes } from "../../../src/server/routes/profile/profile";
+import { totalScanRoutes } from "../../../src/server/routes/scan/total-scan-api";
 import {
   latestScanResult,
   recordScanResult,

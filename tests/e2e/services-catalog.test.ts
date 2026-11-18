@@ -7,8 +7,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
 import { makeTestApp, setupMockEnv } from "./helpers";
-import { metaRoutes } from "../../src/server/routes/meta";
-import { catalogRoutes } from "../../src/server/routes/catalog";
+import { metaRoutes } from "../../src/server/routes/meta/meta";
+import { catalogRoutes } from "../../src/server/routes/services/catalog";
 import {
   allSkus,
   defaultSources,

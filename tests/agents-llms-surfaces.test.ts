@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { wellKnownRoutes } from "../src/server/routes/well-known";
-import { discoveryManifestRoutes } from "../src/server/routes/discovery";
+import { discoveryManifestRoutes } from "../src/server/routes/discovery/discovery";
 
 describe("SLICE-56-6: agents.txt and llms.txt surfaces", () => {
   let app: Hono;

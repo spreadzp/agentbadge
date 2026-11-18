@@ -7,8 +7,8 @@ vi.mock("node:dns/promises", () => ({
 
 import { resolve4, resolve6 } from "node:dns/promises";
 import { Hono } from "hono";
-import { totalScanRoutes } from "../src/server/routes/total-scan-api";
-import { scanPacksApiRoutes } from "../src/server/routes/scan-packs-api";
+import { totalScanRoutes } from "../src/server/routes/scan/total-scan-api";
+import { scanPacksApiRoutes } from "../src/server/routes/scan/scan-packs-api";
 import { resetConfigCache } from "../src/config/env";
 import { BUNDLE_IDS, RULE_BUNDLES, totalPrice, bundlePrice } from "../src/agent-readiness/rule-bundles";
 

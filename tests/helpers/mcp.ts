@@ -4,7 +4,7 @@
  * Works with Hono app.request() — no running server needed.
  */
 
-import { mcpRoutes } from "../../src/server/routes/mcp";
+import { mcpRoutes } from "../../src/server/routes/mcp/mcp";
 import {
   listTools,
   registerAllTools,
