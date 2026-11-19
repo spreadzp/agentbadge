@@ -1,0 +1,83 @@
+[
+  {
+    "id": "dropIndex.refundIntent.refundIntent_txHash_idx_3fbe8b55",
+    "label": "Drop index \"refundIntent_txHash_idx_3fbe8b55\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "refundIntent_txHash_idx_3fbe8b55",
+        "table": "refundIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"refundIntent_txHash_idx_3fbe8b55\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_txHash_idx_3fbe8b55\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"refundIntent_txHash_idx_3fbe8b55\"",
+        "sql": "DROP INDEX \"public\".\"refundIntent_txHash_idx_3fbe8b55\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"refundIntent_txHash_idx_3fbe8b55\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"refundIntent_txHash_idx_3fbe8b55\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.refundIntent.refundIntent_txHash_key",
+    "label": "Add unique constraint on \"refundIntent\" (txHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "refundIntent_txHash_key",
+        "table": "refundIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"refundIntent_txHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "refundIntent_txHash_key",
+          "public",
+          "\"public\".\"refundIntent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"refundIntent_txHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"refundIntent\" ADD CONSTRAINT \"refundIntent_txHash_key\" UNIQUE (\"txHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"refundIntent_txHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "refundIntent_txHash_key",
+          "public",
+          "\"public\".\"refundIntent\""
+        ]
+      }
+    ]
+  }
+]

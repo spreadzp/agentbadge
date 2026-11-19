@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'174bbe13adcd8dd1ef05efb4b4ab5e7a9b30646347d508ceedf1f228d4298d7b'>;
+  StorageHashBase<'44914cdb9d22e153491d56bf480c7bdb5fdbc38b06ef48083e57ad30d332e07f'>;
 export type ExecutionHash =
   ExecutionHashBase<'cda992afecb515ff2c2dd351b5c0b83fb88ef1603d7125472d90da7e198b024b'>;
 export type ProfileHash =
@@ -300,6 +300,8 @@ export type FieldOutputTypes = {
       readonly response: CodecTypes['pg/json@1']['output'];
       readonly sourceRequestId: CodecTypes['pg/text@1']['output'];
       readonly uses: CodecTypes['pg/int4@1']['output'];
+      readonly retractedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly retractReason: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -315,6 +317,7 @@ export type FieldOutputTypes = {
       readonly verified: CodecTypes['pg/bool@1']['output'];
       readonly response: CodecTypes['pg/json@1']['output'] | null;
       readonly spamFlag: CodecTypes['pg/bool@1']['output'];
+      readonly publishToQa: CodecTypes['pg/bool@1']['output'];
       readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
       readonly expiresAtMs: CodecTypes['pg/int8@1']['output'];
       readonly createdAtMs: CodecTypes['pg/int8@1']['output'];
@@ -1072,6 +1075,8 @@ export type FieldInputTypes = {
       readonly response: CodecTypes['pg/json@1']['input'];
       readonly sourceRequestId: CodecTypes['pg/text@1']['input'];
       readonly uses: CodecTypes['pg/int4@1']['input'];
+      readonly retractedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly retractReason: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -1087,6 +1092,7 @@ export type FieldInputTypes = {
       readonly verified: CodecTypes['pg/bool@1']['input'];
       readonly response: CodecTypes['pg/json@1']['input'] | null;
       readonly spamFlag: CodecTypes['pg/bool@1']['input'];
+      readonly publishToQa: CodecTypes['pg/bool@1']['input'];
       readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
       readonly expiresAtMs: CodecTypes['pg/int8@1']['input'];
       readonly createdAtMs: CodecTypes['pg/int8@1']['input'];
@@ -1844,6 +1850,8 @@ export type StorageColumnTypes = {
       readonly question: CodecTypes['pg/text@1']['output'];
       readonly questionHash: CodecTypes['pg/text@1']['output'];
       readonly response: CodecTypes['pg/json@1']['output'];
+      readonly retractedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+      readonly retractReason: CodecTypes['pg/text@1']['output'] | null;
       readonly sourceRequestId: CodecTypes['pg/text@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly uses: CodecTypes['pg/int4@1']['output'];
@@ -1859,6 +1867,7 @@ export type StorageColumnTypes = {
       readonly idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
       readonly kind: CodecTypes['pg/text@1']['output'] | null;
       readonly payload: CodecTypes['pg/json@1']['output'] | null;
+      readonly publishToQa: CodecTypes['pg/bool@1']['output'];
       readonly respondedAtMs: CodecTypes['pg/int8@1']['output'] | null;
       readonly response: CodecTypes['pg/json@1']['output'] | null;
       readonly spamFlag: CodecTypes['pg/bool@1']['output'];
@@ -2616,6 +2625,8 @@ export type StorageColumnInputTypes = {
       readonly question: CodecTypes['pg/text@1']['input'];
       readonly questionHash: CodecTypes['pg/text@1']['input'];
       readonly response: CodecTypes['pg/json@1']['input'];
+      readonly retractedAtMs: CodecTypes['pg/int8@1']['input'] | null;
+      readonly retractReason: CodecTypes['pg/text@1']['input'] | null;
       readonly sourceRequestId: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly uses: CodecTypes['pg/int4@1']['input'];
@@ -2631,6 +2642,7 @@ export type StorageColumnInputTypes = {
       readonly idempotencyKey: CodecTypes['pg/text@1']['input'] | null;
       readonly kind: CodecTypes['pg/text@1']['input'] | null;
       readonly payload: CodecTypes['pg/json@1']['input'] | null;
+      readonly publishToQa: CodecTypes['pg/bool@1']['input'];
       readonly respondedAtMs: CodecTypes['pg/int8@1']['input'] | null;
       readonly response: CodecTypes['pg/json@1']['input'] | null;
       readonly spamFlag: CodecTypes['pg/bool@1']['input'];
@@ -3926,6 +3938,7 @@ export namespace Models {
     verified: CodecTypes['pg/bool@1']['output'];
     response: CodecTypes['pg/json@1']['output'] | null;
     spamFlag: CodecTypes['pg/bool@1']['output'];
+    publishToQa: CodecTypes['pg/bool@1']['output'];
     idempotencyKey: CodecTypes['pg/text@1']['output'] | null;
     expiresAtMs: CodecTypes['pg/int8@1']['output'];
     createdAtMs: CodecTypes['pg/int8@1']['output'];
@@ -3965,6 +3978,8 @@ export namespace Models {
     response: CodecTypes['pg/json@1']['output'];
     sourceRequestId: CodecTypes['pg/text@1']['output'];
     uses: CodecTypes['pg/int4@1']['output'];
+    retractedAtMs: CodecTypes['pg/int8@1']['output'] | null;
+    retractReason: CodecTypes['pg/text@1']['output'] | null;
     createdAtMs: CodecTypes['pg/int8@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -4616,6 +4631,16 @@ type ContractBase = Omit<
                     readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
                   };
                 };
+                readonly retractedAtMs: {
+                  readonly nativeType: 'int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: true;
+                };
+                readonly retractReason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
                 readonly createdAtMs: {
                   readonly nativeType: 'int8';
                   readonly codecId: 'pg/int8@1';
@@ -4703,6 +4728,15 @@ type ContractBase = Omit<
                   readonly nullable: true;
                 };
                 readonly spamFlag: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly publishToQa: {
                   readonly nativeType: 'bool';
                   readonly codecId: 'pg/bool@1';
                   readonly nullable: false;
@@ -9599,6 +9633,14 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
+              readonly retractedAtMs: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly retractReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly createdAtMs: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
@@ -9629,6 +9671,8 @@ type ContractBase = Omit<
                 readonly response: { readonly column: 'response' };
                 readonly sourceRequestId: { readonly column: 'sourceRequestId' };
                 readonly uses: { readonly column: 'uses' };
+                readonly retractedAtMs: { readonly column: 'retractedAtMs' };
+                readonly retractReason: { readonly column: 'retractReason' };
                 readonly createdAtMs: { readonly column: 'createdAtMs' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
@@ -9674,6 +9718,10 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
               };
               readonly spamFlag: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly publishToQa: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
@@ -9723,6 +9771,7 @@ type ContractBase = Omit<
                 readonly verified: { readonly column: 'verified' };
                 readonly response: { readonly column: 'response' };
                 readonly spamFlag: { readonly column: 'spamFlag' };
+                readonly publishToQa: { readonly column: 'publishToQa' };
                 readonly idempotencyKey: { readonly column: 'idempotencyKey' };
                 readonly expiresAtMs: { readonly column: 'expiresAtMs' };
                 readonly createdAtMs: { readonly column: 'createdAtMs' };

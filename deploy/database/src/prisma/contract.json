@@ -766,6 +766,20 @@
                   "kind": "scalar"
                 }
               },
+              "retractReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "retractedAtMs": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
               "sourceRequestId": {
                 "nullable": false,
                 "type": {
@@ -808,6 +822,12 @@
                 },
                 "response": {
                   "column": "response"
+                },
+                "retractReason": {
+                  "column": "retractReason"
+                },
+                "retractedAtMs": {
+                  "column": "retractedAtMs"
                 },
                 "sourceRequestId": {
                   "column": "sourceRequestId"
@@ -895,6 +915,13 @@
                   "kind": "scalar"
                 }
               },
+              "publishToQa": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "respondedAtMs": {
                 "nullable": true,
                 "type": {
@@ -970,6 +997,9 @@
                 },
                 "payload": {
                   "column": "payload"
+                },
+                "publishToQa": {
+                  "column": "publishToQa"
                 },
                 "respondedAtMs": {
                   "column": "respondedAtMs"
@@ -7825,6 +7855,16 @@
                   "nativeType": "json",
                   "nullable": false
                 },
+                "retractReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "retractedAtMs": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": true
+                },
                 "sourceRequestId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -7932,6 +7972,15 @@
                   "codecId": "pg/json@1",
                   "nativeType": "json",
                   "nullable": true
+                },
+                "publishToQa": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
                 },
                 "respondedAtMs": {
                   "codecId": "pg/int8@1",
@@ -13172,7 +13221,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "174bbe13adcd8dd1ef05efb4b4ab5e7a9b30646347d508ceedf1f228d4298d7b"
+    "storageHash": "44914cdb9d22e153491d56bf480c7bdb5fdbc38b06ef48083e57ad30d332e07f"
   },
   "execution": {
     "executionHash": "cda992afecb515ff2c2dd351b5c0b83fb88ef1603d7125472d90da7e198b024b",

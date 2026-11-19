@@ -835,6 +835,9 @@ model AgentRequest {
   verified       Boolean           @default(false)
   response       Json?
   spamFlag       Boolean           @default(false)
+  // D-256-Q13: opt-in consent to publish the completed Q&A into the
+  // public corpus. Default false — in-flight rows stay unlisted.
+  publishToQa    Boolean           @default(false)
   idempotencyKey String?
   expiresAtMs    BigInt
   createdAtMs    BigInt
@@ -895,6 +898,10 @@ model AgentQAPair {
   response        Json
   sourceRequestId String
   uses            Int               @default(0)
+  // D-256-Q14: soft retract — record + reason kept for audit; retracted
+  // pairs are excluded from search AND the intake fast-path.
+  retractedAtMs   BigInt?
+  retractReason   String?
   createdAtMs     BigInt
   createdAt       TimestamptzString @default(now())
   updatedAt       temporal.updatedAtString()

@@ -1,0 +1,128 @@
+[
+  {
+    "id": "column.public.agentQAPair.retractReason",
+    "label": "Add column \"retractReason\" to \"agentQAPair\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "retractReason",
+        "table": "agentQAPair"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"retractReason\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentQAPair",
+          "retractReason"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"retractReason\"",
+        "sql": "ALTER TABLE \"public\".\"agentQAPair\" ADD COLUMN \"retractReason\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"retractReason\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentQAPair",
+          "retractReason"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentQAPair.retractedAtMs",
+    "label": "Add column \"retractedAtMs\" to \"agentQAPair\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "retractedAtMs",
+        "table": "agentQAPair"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"retractedAtMs\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentQAPair",
+          "retractedAtMs"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"retractedAtMs\"",
+        "sql": "ALTER TABLE \"public\".\"agentQAPair\" ADD COLUMN \"retractedAtMs\" int8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"retractedAtMs\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentQAPair",
+          "retractedAtMs"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.publishToQa",
+    "label": "Add column \"publishToQa\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "publishToQa",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"publishToQa\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "publishToQa"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"publishToQa\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"publishToQa\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"publishToQa\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "publishToQa"
+        ]
+      }
+    ]
+  }
+]
