@@ -84,12 +84,6 @@ export async function acceptOffer(
       );
     }
 
-    const accepted = await transitionRow(
-      txCtx, "offer", offer, "ACCEPTED",
-      (from) => tx.offers.applyStatus(offer.id, from, "ACCEPTED"),
-      { actorWallet: actor },
-    );
-
     // M-5: provider-authored milestone terms ride the offer payload —
     // validate them before any write (a bad vector would brick every
     // plan create + milestone-bound review downstream), and snapshot
@@ -111,6 +105,13 @@ export async function acceptOffer(
         );
       }
     }
+
+    const accepted = await transitionRow(
+      txCtx, "offer", offer, "ACCEPTED",
+      (from) => tx.offers.applyStatus(offer.id, from, "ACCEPTED"),
+      { actorWallet: actor },
+    );
+
     // one agreement per offer; ≤maxProviders per task (D-227)
     const agreement = await tx.agreements.create({
       id: newId("ag"),

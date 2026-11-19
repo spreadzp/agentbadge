@@ -51,8 +51,12 @@ const resolveBody = z.object({
   note: z.string().max(4000).optional(),
   resolverRef: z.string().max(128).optional(),
 });
+// R4-M4: force-approve is a buyer-bypassing, payout-authorizing
+// action — a reason is mandatory evidence, not decoration.
 const operatorBody = z.object({
   operator: z.string().min(1).max(128),
+  reason: z.string().min(1).max(4000),
+  submissionRef: z.string().max(128).optional(),
 });
 export function createSettlementAdminRoutes(
   deps: SettlementRouteDeps = {},
@@ -205,8 +209,10 @@ export function createSettlementAdminRoutes(
       description:
         "Transitions a READY milestone to APPROVED and opens its payout " +
         "intent when the buyer path cannot (stranded post-commit state, " +
-        "EVALUATOR_VERDICT legacy plan). Idempotent on APPROVED; an OPEN " +
-        "dispute on the milestone 409s. The event records admin:true.",
+        "EVALUATOR_VERDICT legacy plan). Idempotent on APPROVED only " +
+        "while the intent is OPEN; an OPEN dispute on the milestone " +
+        "409s. Requires a reason; writes an AdminAction and the event " +
+        "records admin:true.",
       requestBody: jsonBody(operatorBody),
       responses: {
         200: {
@@ -219,7 +225,7 @@ export function createSettlementAdminRoutes(
             },
           },
         },
-        400: { description: "Missing operator" },
+        400: { description: "Missing operator / reason" },
         401: { description: "Unauthorized" },
         404: { description: "Milestone not found" },
         409: { description: "Invalid state / open dispute" },
@@ -250,7 +256,11 @@ export function createSettlementAdminRoutes(
       const res = await forceApproveMilestone(
         createSettlementCtx(getDb()),
         c.req.param("id"),
-        b.data.operator,
+        {
+          operator: b.data.operator,
+          reason: b.data.reason,
+          submissionRef: b.data.submissionRef,
+        },
       );
       return respond(c, res);
     },

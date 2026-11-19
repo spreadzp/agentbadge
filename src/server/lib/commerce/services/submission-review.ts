@@ -30,6 +30,7 @@ import {
   type SubmissionVerdict,
 } from "../types";
 import { mustGet, transitionRow, type CommerceCtx } from "./ctx";
+import { postCommitSettlementSync } from "./review-postcommit";
 import { resolveSettlementGate } from "./review-settlement";
 
 export async function reviewSubmission(
@@ -64,7 +65,13 @@ export async function reviewSubmission(
   // C2: preconditions + all graph transitions inside one atomic
   // section — the verdict can never persist without its task/
   // agreement graph updates.
-  const result = await stores.atomic(async (tx) => {
+  let result: {
+    submission: CommerceSubmissionRow;
+    task: CommerceTaskRow;
+    agreement: CommerceAgreementRow;
+  };
+  try {
+    result = await stores.atomic(async (tx) => {
     const txCtx = { ...ctx, stores: tx };
     const submission = mustGet(
       await tx.submissions.getById(submissionId),
@@ -167,50 +174,33 @@ export async function reviewSubmission(
       );
     }
     return { submission: reviewed, task: taskRow, agreement: agreementRow };
-  });
+    });
+  } catch (err) {
+    // R4-H1: this gate's own pre-commit approve landed but the verdict
+    // didn't — revert APPROVED→READY and cancel the intent so the
+    // failed request leaves no payment authorization behind. Only OUR
+    // approve reverts — a sibling review's APPROVED belongs to its
+    // committed verdict.
+    if (gate.approvedByUs === true && ctx.settlement) {
+      try {
+        await ctx.settlement.revertApproval(settleMilestoneId, actor);
+      } catch (revertErr) {
+        logger.error("settlement approval revert failed", {
+          milestoneRowId: settleMilestoneId,
+          error:
+            revertErr instanceof Error ? revertErr.message : String(revertErr),
+        });
+      }
+    }
+    throw err;
+  }
 
-  // SLICE-227-5: post-commit — the bound milestone was approved
-  // PRE-commit (R3-H3), so this is only a resync for the narrow
-  // pre-read-race window + the M-1 completion pass for agreements
-  // still ACTIVE (concurrent reviews on sibling milestones).
-  if (verdict === "ACCEPTED" && ctx.settlement) {
-    if (result.submission.milestoneRef && settleMilestoneId !== undefined) {
-      try {
-        const now = await ctx.settlement.findMilestone(
-          result.agreement.id,
-          result.submission.milestoneRef,
-        );
-        if (now && now.status !== "APPROVED" && now.status !== "RELEASED") {
-          await ctx.settlement.approveMilestone(now.id, actor);
-        }
-      } catch (err) {
-        logger.warn("settlement approveMilestone resync failed", {
-          milestoneRef: result.submission.milestoneRef,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
-    // M-1: pendingAfter was pre-commit — a concurrent sibling review
-    // may have finished the last milestone in between. Re-check and
-    // complete the agreement (+ task) if it now reads zero.
-    if (result.agreement.status === "ACTIVE") {
-      try {
-        const pending = await ctx.settlement.pendingMilestoneCount(
-          result.agreement.id,
-        );
-        if (pending === 0) {
-          await completeAgreementIfClear(
-            ctx,
-            result.agreement.id,
-          );
-        }
-      } catch (err) {
-        logger.warn("settlement completion pass failed", {
-          agreementId: result.agreement.id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
+  // Post-commit settlement sync — milestone release on reject (R4-M5),
+  // approve resync for the pre-read race window, and the M-1 completion
+  // pass for agreements stranded ACTIVE by concurrent sibling reviews.
+  // Extracted to review-settlement.ts under the 300-line cap.
+  if (ctx.settlement) {
+    await postCommitSettlementSync(ctx, actor, verdict, result, settleMilestoneId);
   }
   // SLICE-234-17: post-commit fact emission (best-effort — a hook
   // failure logs a warn and never rolls back the transition).
@@ -229,44 +219,4 @@ export async function reviewSubmission(
     }
   }
   return result;
-}
-
-/**
- * M-1 completion pass — runs AFTER the review commit when the agreement
- * is still ACTIVE but the settlement plan now reads zero not-yet-
- * accepted milestones (a concurrent sibling review, or an earlier
- * swallowed state, can strand it). Completes the agreement, and the
- * task when it was the last live agreement.
- */
-export async function completeAgreementIfClear(
-  ctx: CommerceCtx,
-  agreementId: string,
-): Promise<void> {
-  const { stores } = ctx;
-  await stores.atomic(async (tx) => {
-    const txCtx = { ...ctx, stores: tx };
-    const agreement = await tx.agreements.getById(agreementId);
-    if (!agreement || agreement.status !== "ACTIVE") return;
-    const done = await transitionRow(
-      txCtx,
-      "agreement",
-      agreement,
-      "COMPLETED",
-      (from) =>
-        tx.agreements.applyStatus(agreement.id, from, "COMPLETED", {
-          completedAtMs: Date.now(),
-        }),
-    );
-    if (!done) return;
-    const task = await tx.tasks.getById(agreement.taskId);
-    if (!task) return;
-    const remaining = await tx.agreements.countByTaskId(task.id, {
-      excludeStatuses: ["CANCELLED", "COMPLETED"],
-    });
-    if (remaining === 0) {
-      await transitionRow(txCtx, "task", task, "COMPLETED", (from) =>
-        tx.tasks.applyStatus(task.id, from, "COMPLETED"),
-      );
-    }
-  });
 }

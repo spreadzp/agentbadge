@@ -230,6 +230,11 @@ export function checkMilestoneInputs(
   const seen = new Set<string>();
   for (const [i, m] of ms.entries()) {
     const label = `milestones[${i}]`;
+    // R4 nit: provider-authored JSON entries — null/scalars throw a
+    // TypeError (500) instead of a typed 400 without this guard.
+    if (m === null || typeof m !== "object") {
+      return fail("BAD_INPUT", `${label} must be an object`);
+    }
     const idCheck = checkField(
       m.milestoneId,
       `${label}.milestoneId`,

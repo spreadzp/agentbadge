@@ -33,6 +33,7 @@ export {
 } from "./services/plan-service.js";
 export {
   approveMilestone,
+  reopenMilestone,
   submitForReview,
   transitionMilestone,
 } from "./services/milestone-service.js";
@@ -40,17 +41,18 @@ export {
   forceApproveMilestone,
   type ApproveEffect,
 } from "./services/milestone-approve.js";
+export { revertApproval } from "./services/milestone-revert.js";
 export { markLegPaid } from "./services/payout-service.js";
 export {
   getIntentView,
   listIntents,
 } from "./services/payout-queries.js";
 export type { MarkPaidResult } from "./services/payout-service.js";
+export { raiseDispute } from "./services/dispute-service.js";
 export {
   getDispute,
   listDisputes,
-  raiseDispute,
-} from "./services/dispute-service.js";
+} from "./services/dispute-scope.js";
 export { resolveDispute } from "./services/dispute-resolve.js";
 export { getSettlementReceipt } from "./services/receipt.js";
 export {
@@ -85,7 +87,21 @@ import type { Database } from "@agentbadge/database";
 import { createSettlementEmitter } from "./events.js";
 import type { SettlementCtx } from "./services/ctx.js";
 
-/** Composition seam — routes/tests build one ctx per Database. */
+// R4-M7: the emitter serializes appends through an instance-level
+// promise queue — a ctx-per-request means per-request emitters whose
+// concurrent flushes can read the same prevHash and fork a stream's
+// hash chain. Cache one ctx per Database so every caller shares the
+// same serialized queue.
+const ctxCache = new WeakMap<Database, SettlementCtx>();
+
+/** Composition seam — routes/tests share one ctx per Database. */
 export function createSettlementCtx(db: Database): SettlementCtx {
-  return { db, emit: createSettlementEmitter(db.commerce.events) };
+  const cached = ctxCache.get(db);
+  if (cached) return cached;
+  const ctx: SettlementCtx = {
+    db,
+    emit: createSettlementEmitter(db.commerce.events),
+  };
+  ctxCache.set(db, ctx);
+  return ctx;
 }

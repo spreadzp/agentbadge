@@ -164,20 +164,47 @@ export function registerSettlementRoutes(app: Hono): void {
   }
   deps.expectedPayer = treasury;
   const usdcPin = process.env.ARC_SETTLEMENT_USDC_TOKEN;
-  if (usdcPin && !/^0x[0-9a-fA-F]{40}$/.test(usdcPin)) {
+  const usdcPinValid = !usdcPin || /^0x[0-9a-fA-F]{40}$/.test(usdcPin);
+  if (!usdcPinValid) {
     logger.error(
       "settlement: ARC_SETTLEMENT_USDC_TOKEN is not an EVM address — token pin disabled",
     );
   }
-  deps.usdcToken = usdcPin && /^0x[0-9a-fA-F]{40}$/.test(usdcPin) ? usdcPin : undefined;
+  deps.usdcToken =
+    usdcPin && usdcPinValid ? usdcPin : undefined;
   deps.requireVerification =
     process.env.ARC_SETTLEMENT_REQUIRE_VERIFY === "1";
-  if (chainId) {
-    deps.verifyTx = createViemPayoutVerifier(publicClient(net), {
+  if (!chainId) {
+    // nit: a missing chain pin silently downgrades verification —
+    // make the gap loud even when verification is not required.
+    logger.warn(
+      "settlement: no Arc chain id resolved — payout verification runs without a chain pin",
+    );
+  } else {
+    const client = publicClient(net);
+    deps.verifyTx = createViemPayoutVerifier(client, {
       networkLabel: "arc",
       chainId: String(chainId),
       usdcToken: deps.usdcToken as `0x${string}` | undefined,
     });
+    // R4-M1: observe the RPC's real chain once at boot — the pin is a
+    // tautology if the reported id only echoes config. The adapter
+    // still compares per-call; this catches a divergent network
+    // before the first payout rather than at it.
+    void client
+      .getChainId()
+      .then((id) => {
+        if (String(id) !== String(chainId)) {
+          logger.error(
+            `settlement: venue RPC serves chain ${id}, expected ${chainId} — payout verification will fail closed on every leg`,
+          );
+        }
+      })
+      .catch((e: unknown) => {
+        logger.warn("settlement: startup chain-id probe failed", {
+          error: e instanceof Error ? e.message : String(e),
+        });
+      });
   }
   // R3-H1/M-6: fail-closed means fail CLOSED — REQUIRE_VERIFY without a
   // working adapter or treasury pin would attest any same-amount
@@ -192,6 +219,11 @@ export function registerSettlementRoutes(app: Hono): void {
     if (!deps.expectedPayer) {
       throw new Error(
         "settlement: ARC_SETTLEMENT_REQUIRE_VERIFY=1 requires ARC_SETTLEMENT_TREASURY_WALLET — without a payer pin any transfer to the payee satisfies a leg",
+      );
+    }
+    if (!usdcPinValid) {
+      throw new Error(
+        "settlement: ARC_SETTLEMENT_REQUIRE_VERIFY=1 but ARC_SETTLEMENT_USDC_TOKEN is malformed — a configured-but-disabled pin would fail every ERC-20 leg",
       );
     }
   }

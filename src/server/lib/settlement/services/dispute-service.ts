@@ -31,6 +31,7 @@ import { newDisputeId } from "./ctx.js";
 
 import {
   type FreezeMap,
+  openSubjectDispute,
   resolveScope,
 } from "./dispute-scope.js";
 export {
@@ -83,11 +84,11 @@ export async function raiseDispute(
     );
   }
   // Dedupe — an OPEN dispute on this subject already froze it.
-  const open = await ctx.db.settlement.disputes.listBySubject(
+  const existing = await openSubjectDispute(
+    ctx.db.settlement,
     input.subjectType,
     input.subjectRef,
   );
-  const existing = open.find((d) => d.status === "OPEN");
   if (existing) {
     return ok({
       dispute: existing,
@@ -119,11 +120,11 @@ export async function raiseDispute(
     res = await ctx.db.settlement.atomic(async (s) => {
     // H3: dedupe inside the critical section — two concurrent disputes
     // on the same subject must not both pass the pre-check.
-    const racing = await s.disputes.listBySubject(
+    const dup = await openSubjectDispute(
+      s,
       input.subjectType,
       input.subjectRef,
     );
-    const dup = racing.find((d) => d.status === "OPEN");
     if (dup) {
       return ok({
         dispute: dup,
@@ -167,6 +168,22 @@ export async function raiseDispute(
       "DISPUTED",
     );
     if (!claimed) {
+      // A competing dispute may have won the plan CAS for THIS same
+      // subject — re-read so callers get the documented duplicate
+      // shape, not a bare 409.
+      const stillRacing = await openSubjectDispute(
+        s,
+        input.subjectType,
+        input.subjectRef,
+      );
+      if (stillRacing) {
+        return ok({
+          dispute: stillRacing,
+          frozenIntents: 0,
+          frozenLegs: 0,
+          duplicate: true,
+        });
+      }
       return fail(
         "INVALID_STATE",
         `plan is ${scope.plan.status} — dispute scope already claimed or closed`,
@@ -177,10 +194,21 @@ export async function raiseDispute(
       // H3: re-read inside the section — no stale statuses.
       const m = (await s.milestones.getById(scoped.id)) ?? scoped;
       // Only pre-release work freezes; RELEASED/CANCELLED stand.
+      // R4-M3: a lost CAS = the milestone moved between re-read and
+      // write — freezing its intent without the milestone strands
+      // work FOR_BUYER can't reach. Throw → whole dispute rolls back.
       if (["PENDING", "READY", "APPROVED"].includes(m.status)) {
         const d = await s.milestones.applyStatus(m.id, m.status, "DISPUTED");
-        if (d) freeze.milestones[m.id] = m.status;
+        if (!d) {
+          throw new SettlementConflictError(
+            `milestone ${m.id} moved during dispute freeze — aborting`,
+          );
+        }
+        freeze.milestones[m.id] = m.status;
       }
+      // R4-M3: never freeze an intent whose milestone this dispute did
+      // not freeze — its lifecycle follows the milestone.
+      if (freeze.milestones[m.id] === undefined) continue;
       const intent = await s.payoutIntents.getByMilestone(m.id);
       if (intent && intent.status === "OPEN") {
         const f = await s.payoutIntents.applyStatus(intent.id, "OPEN", "FROZEN");
@@ -205,15 +233,13 @@ export async function raiseDispute(
           });
         }
       }
-      if (freeze.milestones[m.id] !== undefined) {
-        buf.emit({
-          entityType: "milestone",
-          entityId: m.id,
-          eventType: "milestone.disputed",
-          actorWallet: input.raisedBy,
-          payload: { from: freeze.milestones[m.id] },
-        });
-      }
+      buf.emit({
+        entityType: "milestone",
+        entityId: m.id,
+        eventType: "milestone.disputed",
+        actorWallet: input.raisedBy,
+        payload: { from: freeze.milestones[m.id] },
+      });
     }
     const dispute = await s.disputes.create({
       id: newDisputeId(),
@@ -264,17 +290,4 @@ export async function raiseDispute(
   }
   if (res.ok) await buf.flush();
   return res;
-}
-
-// ---------- queries ----------
-
-export async function getDispute(ctx: SettlementCtx, disputeId: string) {
-  return ctx.db.settlement.disputes.getById(disputeId);
-}
-
-export async function listDisputes(
-  ctx: SettlementCtx,
-  opts?: { status?: string; limit?: number },
-) {
-  return ctx.db.settlement.disputes.list(opts);
 }

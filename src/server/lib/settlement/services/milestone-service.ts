@@ -99,6 +99,34 @@ export async function submitForReview(
 }
 
 /**
+ * R4-M5: release a milestone whose bound submission was rejected —
+ * READY→PENDING and the submissionRef clears so the resubmission
+ * round can rebind it (a REJECT/REVISION_REQUIRED verdict never
+ * reverted the milestone, which bricked every later submit: bound
+ * submits need PENDING, auto-bind skipped READY).
+ */
+export async function reopenMilestone(
+  ctx: SettlementCtx,
+  milestoneRowId: string,
+  actorWallet: string,
+): Promise<SettlementResult<MilestoneRow>> {
+  const milestone = await ctx.db.settlement.milestones.getById(
+    milestoneRowId,
+  );
+  if (!milestone) {
+    return fail("NOT_FOUND", `milestone not found: ${milestoneRowId}`);
+  }
+  // Idempotent — only READY unbinds; any other state belongs to a
+  // different flow (approved, disputed, already released).
+  if (milestone.status !== "READY") {
+    return ok(milestone);
+  }
+  return transitionMilestone(ctx, milestone, "PENDING", actorWallet, {
+    submissionRef: null,
+  });
+}
+
+/**
  * Buyer accepts the milestone work → APPROVED + PayoutIntent OPEN with
  * legs (template from plan create, else a single PROVIDER leg of the
  * full amount to the provider wallet — D-227-5 default).

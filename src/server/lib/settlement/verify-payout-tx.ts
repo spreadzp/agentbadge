@@ -175,15 +175,16 @@ export async function verifyLegTx(
   // not escape decimalToMicro's throw as a 500.
   if (check.amount !== undefined) {
     let micro: bigint | null = null;
+    let expectedMicro: bigint | null = null;
     try {
       micro = decimalToMicro(check.amount);
+      expectedMicro = decimalToMicro(expected.amount);
     } catch {
+      // M-A: a malformed amount on either side fails closed — never
+      // a thrown 500 out of the compare.
       micro = null;
     }
-    if (
-      micro === null ||
-      micro !== decimalToMicro(expected.amount)
-    ) {
+    if (micro === null || micro !== expectedMicro) {
       return fail(
         "TX_UNVERIFIED",
         `verifier reports amount ${check.amount}, expected ${expected.amount}`,
@@ -211,18 +212,23 @@ export async function verifyLegTx(
       `verifier reports payer ${check.payer}, expected treasury ${expected.expectedPayer}`,
     );
   }
-  // M-6: when a token contract is pinned, an ERC-20 Transfer from any
-  // other contract cannot satisfy the leg — a fake "USDC" symbol is
-  // not proof of payment.
-  if (
-    expected.token !== undefined &&
-    check.token !== undefined &&
-    check.token.toLowerCase() !== expected.token.toLowerCase()
-  ) {
-    return fail(
-      "TX_UNVERIFIED",
-      `verifier reports token ${check.token}, expected ${expected.token}`,
-    );
+  // M-6/R4-M2: the rails differ. "native" is Arc's gas token (USDC) —
+  // always a valid leg rail, pinned or not. An ERC-20 token fact is
+  // only meaningful against a configured pin: no pin → unverifiable
+  // (fail closed, not ignored); pin → must match exactly.
+  if (check.token !== undefined && check.token !== "native") {
+    if (expected.token === undefined) {
+      return fail(
+        "TX_UNVERIFIED",
+        `verifier reports token ${check.token} but no token pin is configured — cannot validate`,
+      );
+    }
+    if (check.token.toLowerCase() !== expected.token.toLowerCase()) {
+      return fail(
+        "TX_UNVERIFIED",
+        `verifier reports token ${check.token}, expected ${expected.token}`,
+      );
+    }
   }
   // R2-H2: chain id and network label are DISTINCT fields — comparing
   // check.network to both can never hold, and would DoS every mark-paid.

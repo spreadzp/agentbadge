@@ -15,6 +15,13 @@ import type {
   MilestoneRow,
 } from "@agentbadge/database";
 
+import { recordPostEffectAudit } from "../../finops/admin-actions.js";
+import {
+  checkTextField,
+  normalizeOperator,
+  requireOperator,
+} from "../../finops/guards.js";
+import { MAX_REASON_FIELD } from "../invariants.js";
 import { isLegalTransition } from "../state-machines.js";
 import {
   type PayoutLegInput,
@@ -162,14 +169,27 @@ export async function doApprove(
  * R3-H3 operator fallback — force-approve a READY milestone when the
  * buyer path is unreachable (pre-R3 swallowed commit, EVALUATOR verdict
  * on a legacy plan). Bypasses the buyer + releasePolicy checks; the
- * event records `admin: true` + the operator. Idempotent: an already
- * APPROVED milestone returns its existing intent.
+ * event records `admin: true` + the normalized operator, and every
+ * landed effect writes an append-only AdminAction (R4-M4: a
+ * buyer-bypassing, payout-authorizing call must leave an audit row —
+ * `reason` is mandatory evidence). Idempotent on APPROVED only while
+ * the intent is still OPEN.
  */
 export async function forceApproveMilestone(
   ctx: SettlementCtx,
   milestoneRowId: string,
-  operator: string,
-): Promise<SettlementResult<ApproveEffect>> {
+  opts: { operator: string; reason: string; submissionRef?: string },
+): Promise<
+  SettlementResult<ApproveEffect & { auditRecorded: boolean }>
+> {
+  const op = requireOperator(opts.operator);
+  if (op) return op as SettlementResult<never>;
+  if (typeof opts.reason !== "string" || opts.reason.trim().length === 0) {
+    return fail("BAD_INPUT", "reason is required for a force-approve");
+  }
+  const rc = checkTextField(opts.reason, "reason", MAX_REASON_FIELD);
+  if (rc) return rc as SettlementResult<never>;
+  const operator = normalizeOperator(opts.operator);
   const milestone = await ctx.db.settlement.milestones.getById(
     milestoneRowId,
   );
@@ -184,7 +204,10 @@ export async function forceApproveMilestone(
     const existing = await ctx.db.settlement.payoutIntents.getByMilestone(
       milestone.id,
     );
-    if (existing) {
+    // R4-M4: idempotent only while the intent is payable — an
+    // APPROVED milestone whose intent CANCELLED/COMPLETED must not
+    // replay as "ok".
+    if (existing && existing.status === "OPEN") {
       const legs = await ctx.db.settlement.payoutLegs.listByIntent(
         existing.id,
       );
@@ -192,11 +215,14 @@ export async function forceApproveMilestone(
         milestone,
         intentId: existing.id,
         legs: legs.map((l) => l.id),
+        auditRecorded: false,
       });
     }
     return fail(
       "INVALID_STATE",
-      "milestone APPROVED but payout intent missing — needs repair",
+      existing
+        ? `intent ${existing.id} is ${existing.status} — force-approve closed`
+        : "milestone APPROVED but payout intent missing — needs repair",
     );
   }
   if (milestone.status !== "READY") {
@@ -221,5 +247,29 @@ export async function forceApproveMilestone(
       "milestone has an OPEN dispute — resolve it first",
     );
   }
-  return doApprove(ctx, plan, milestone, operator, { admin: true });
+  const effect = await doApprove(ctx, plan, milestone, operator, {
+    admin: true,
+    reason: opts.reason,
+    submissionRef: opts.submissionRef ?? null,
+  });
+  if (!effect.ok) return effect;
+  const audit = await recordPostEffectAudit(
+    ctx.db,
+    {
+      action: "FORCE_APPROVE_MILESTONE",
+      subjectType: "milestone",
+      subjectId: milestone.id,
+      operator,
+      evidence: {
+        milestoneId: milestone.milestoneId,
+        planId: plan.id,
+        agreementRef: plan.agreementRef,
+        intentId: effect.value.intentId,
+        reason: opts.reason,
+        submissionRef: opts.submissionRef ?? null,
+      },
+    },
+    { milestoneId: milestone.milestoneId, outcome: "APPROVED" },
+  );
+  return ok({ ...effect.value, auditRecorded: audit.ok });
 }

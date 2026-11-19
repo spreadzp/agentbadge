@@ -4,6 +4,7 @@
  * set; `FreezeMap` is what a dispute snapshot-restores on resolve.
  */
 import type {
+  DisputeRow,
   MilestonePlanRow,
   MilestoneRow,
 } from "@agentbadge/database";
@@ -41,4 +42,28 @@ export async function resolveScope(
   const plan = await ctx.db.settlement.plans.getById(milestone.planId);
   if (!plan) return null;
   return { plan, milestones: [milestone] };
+}
+
+// ---------- queries ----------
+
+export async function getDispute(ctx: SettlementCtx, disputeId: string) {
+  return ctx.db.settlement.disputes.getById(disputeId);
+}
+
+export async function listDisputes(
+  ctx: SettlementCtx,
+  opts?: { status?: string; limit?: number },
+) {
+  return ctx.db.settlement.disputes.list(opts);
+}
+
+/** The OPEN dispute on a subject, if any — shared dedupe lookup. */
+export async function openSubjectDispute(
+  s: Pick<SettlementCtx["db"]["settlement"], "disputes">,
+  subjectType: string,
+  subjectRef: string,
+): Promise<DisputeRow | undefined> {
+  return (await s.disputes.listBySubject(subjectType, subjectRef)).find(
+    (d) => d.status === "OPEN",
+  );
 }

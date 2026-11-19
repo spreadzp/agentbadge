@@ -38,6 +38,8 @@ interface Source {
   latest?: bigint;
   blockTs?: bigint;
   chainId?: number;
+  /** R4-M1: what eth_chainId actually serves — observed, not echoed. */
+  rpcChainId?: number;
 }
 
 function stubClient(s: Source): PayoutTxSource {
@@ -46,6 +48,7 @@ function stubClient(s: Source): PayoutTxSource {
     getTransactionReceipt: async () => s.receipt ?? null,
     getBlockNumber: async () => s.latest ?? 200n,
     getBlock: async () => ({ timestamp: s.blockTs ?? 1_800_000_000n }),
+    getChainId: async () => s.rpcChainId ?? s.chainId ?? 0,
     chain: { id: s.chainId },
   };
 }
@@ -171,6 +174,139 @@ describe("createViemPayoutVerifier (R3-H1)", () => {
     });
     expect(check.verified).toBe(false);
     expect(check.reason).toContain("before intent");
+  });
+
+  it("R4-M1: reports the RPC's observed chain id, not the configured pin", async () => {
+    const v = createViemPayoutVerifier(
+      stubClient({
+        tx: { to: PAYEE as `0x${string}`, from: TREASURY as `0x${string}`, value: 7_500_000_000_000_000_000n },
+        receipt: okReceipt,
+        rpcChainId: 1, // RPC actually serves a different chain
+      }),
+      { networkLabel: "arc", chainId: "5042002" },
+    );
+    const check = await v(TX, {
+      payee: PAYEE,
+      amount: "7.5",
+      currency: "USDC",
+      chainId: "5042002",
+    });
+    expect(check.verified).toBe(true);
+    expect(check.chainId).toBe("1"); // observed, not echoed
+    // …and verifyLegTx's compare fails closed on the mismatch:
+    const res = await verifyLegTx(v, TX, {
+      payee: PAYEE,
+      amount: "7.5",
+      currency: "USDC",
+      chainId: "5042002",
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.code).toBe("TX_UNVERIFIED");
+  });
+
+  it("R4-M2: a token pin does not break the native rail", async () => {
+    // markLegPaid always forwards deps.usdcToken as expected.token —
+    // a native payout must still verify while the pin is configured.
+    const v = createViemPayoutVerifier(
+      stubClient({
+        tx: { to: PAYEE as `0x${string}`, from: TREASURY as `0x${string}`, value: 7_500_000_000_000_000_000n },
+        receipt: okReceipt,
+        rpcChainId: 5042002,
+      }),
+      { usdcToken: USDC_TOKEN as `0x${string}` },
+    );
+    const res = await verifyLegTx(v, TX, {
+      payee: PAYEE,
+      amount: "7.5",
+      currency: "USDC",
+      token: USDC_TOKEN,
+      expectedPayer: TREASURY,
+    });
+    expect(res.ok).toBe(true);
+  });
+
+  it("R4 nit: an ERC-20 token fact with no pin configured fails closed", async () => {
+    const res = await verifyLegTx(
+      async () => ({
+        verified: true,
+        network: "arc",
+        payer: TREASURY,
+        payee: PAYEE,
+        asset: "USDC",
+        amount: "7.5",
+        token: USDC_TOKEN, // adapter claims an ERC-20 transfer
+        confirmations: 3,
+      }),
+      TX,
+      { payee: PAYEE, amount: "7.5", currency: "USDC" },
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.code).toBe("TX_UNVERIFIED");
+  });
+
+  it("R4 nit: ERC-20 Transfer must originate from the tx sender", async () => {
+    const STRANGER = "0x5555555555555555555555555555555555555555";
+    const v = createViemPayoutVerifier(
+      stubClient({
+        tx: { to: USDC_TOKEN as `0x${string}`, from: STRANGER as `0x${string}`, value: 0n },
+        receipt: {
+          ...okReceipt,
+          logs: [
+            {
+              address: USDC_TOKEN,
+              // transfer FROM treasury — but tx.from is the stranger
+              topics: [TRANSFER_TOPIC, topicFor(TREASURY), topicFor(PAYEE)],
+              data: `0x${(7_500_000n).toString(16).padStart(64, "0")}`,
+            },
+          ],
+        },
+      }),
+      { usdcToken: USDC_TOKEN as `0x${string}` },
+    );
+    expect(
+      (
+        await v(TX, {
+          payee: PAYEE,
+          amount: "7.5",
+          currency: "USDC",
+          token: USDC_TOKEN,
+        } as never)
+      ).verified,
+    ).toBe(false);
+  });
+
+  it("R4 nit: a 4-topic (ERC-721-shaped) log is not an ERC-20 payout", async () => {
+    const v = createViemPayoutVerifier(
+      stubClient({
+        tx: { to: USDC_TOKEN as `0x${string}`, from: TREASURY as `0x${string}`, value: 0n },
+        receipt: {
+          ...okReceipt,
+          logs: [
+            {
+              address: USDC_TOKEN,
+              topics: [
+                TRANSFER_TOPIC,
+                topicFor(TREASURY),
+                topicFor(PAYEE),
+                `0x${"0".repeat(63)}1` as `0x${string}`, // tokenId
+              ],
+              data: "0x",
+            },
+          ],
+        },
+      }),
+      { usdcToken: USDC_TOKEN as `0x${string}` },
+    );
+    expect(
+      (
+        await v(TX, {
+          payee: PAYEE,
+          amount: "7.5",
+          currency: "USDC",
+          token: USDC_TOKEN,
+        } as never)
+      ).verified,
+    ).toBe(false);
   });
 
   it("treasuryPayerFromEnv validates EVM addresses", () => {

@@ -18,6 +18,9 @@ export type MilestoneTerm = Pick<
 
 /** Nit: localeCompare ties NFC/NFD ids (making order significant) —
  *  sort by code point instead so the vector is canonical. */
+// Total, deterministic order (UTF-16 code units — canonical on both
+// sides of the compare, which is what the term hash needs; "code
+// point" is a name, not a Unicode claim).
 export const byCodePoint = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
 

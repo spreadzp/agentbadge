@@ -31,9 +31,13 @@ const TRANSITIONS: Record<
     // met) → RELEASED when all intent legs completed. DISPUTED from any
     // pre-release state; resolution returns to the pre-dispute status
     // (stored on the dispute row) or CANCELLED for FOR_BUYER.
+    // READY→PENDING releases a milestone whose bound submission was
+    // rejected (R4-M5 resubmission round); APPROVED→READY reverts an
+    // approval whose commerce verdict never committed (R4-H1) — both
+    // are bridge/operator-only edges, never participant paths.
     ["PENDING", ["READY", "DISPUTED", "CANCELLED"]],
-    ["READY", ["APPROVED", "DISPUTED", "CANCELLED"]],
-    ["APPROVED", ["RELEASED", "DISPUTED", "CANCELLED"]],
+    ["READY", ["APPROVED", "DISPUTED", "CANCELLED", "PENDING"]],
+    ["APPROVED", ["RELEASED", "DISPUTED", "CANCELLED", "READY"]],
     ["DISPUTED", ["PENDING", "READY", "APPROVED", "CANCELLED"]],
     ["RELEASED", []],
     ["CANCELLED", []],

@@ -94,9 +94,12 @@ export async function resolveDispute(
     }
     const lt = checkLegTemplate(input.splitLegs, m.amountUsd, "splitLegs");
     if (lt) return lt;
-    // H2: hoist the immutable-leg check above the atomic writes — a
-    // completed leg makes SPLIT impossible, and failing after the
-    // dispute is marked RESOLVED leaves dead FROZEN state.
+  }
+  // H2 (+R4 nit): hoist the immutable-leg check above the atomic
+  // writes — a completed leg already moved money, so neither SPLIT
+  // nor FOR_BUYER may rewrite/cancel it (failing after the dispute is
+  // marked RESOLVED leaves dead FROZEN state).
+  if (input.resolution === "SPLIT" || input.resolution === "FOR_BUYER") {
     for (const intentId of freeze?.intentIds ?? []) {
       for (const leg of await ctx.db.settlement.payoutLegs.listByIntent(
         intentId,
@@ -104,7 +107,7 @@ export async function resolveDispute(
         if (leg.status === "COMPLETED") {
           return fail(
             "INVALID_STATE",
-            "cannot SPLIT — a completed leg is immutable",
+            `cannot ${input.resolution === "SPLIT" ? "SPLIT" : "cancel for the buyer"} — a completed leg is immutable`,
           );
         }
       }

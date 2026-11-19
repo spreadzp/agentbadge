@@ -367,7 +367,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS },
+      { operator: OPS, reason: "test recovery" },
     );
     expect(r.status).toBe(200);
     expect(r.body.intentId).toBeTruthy();
@@ -377,7 +377,7 @@ describe("admin routes", () => {
     const again = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS },
+      { operator: OPS, reason: "test recovery" },
     );
     expect(again.status).toBe(200);
     expect(again.body.intentId).toBe(r.body.intentId);
@@ -412,7 +412,7 @@ describe("admin routes", () => {
     const r = await adminReq(
       "POST",
       `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS },
+      { operator: OPS, reason: "test recovery" },
     );
     expect(r.status).toBe(409);
     expect(r.body.error.code).toBe("INVALID_STATE");

@@ -19,6 +19,8 @@ import {
   createPlan,
   createSettlementCtx,
   getPlanByAgreement,
+  reopenMilestone,
+  revertApproval,
   submitForReview,
   type MilestoneInput,
 } from "../settlement/index.js";
@@ -63,16 +65,30 @@ export interface CommerceSettlementBridge {
     milestoneRowId: string,
     actorWallet: string,
   ): Promise<{ ok: boolean; error?: { code: string; message: string } }>;
+  /** R4-H1: undo a pre-commit approve whose verdict never committed —
+   *  APPROVED→READY + OPEN intent cancelled. Idempotent. */
+  revertApproval(
+    milestoneRowId: string,
+    actorWallet: string,
+  ): Promise<void>;
+  /** R4-M5: READY→PENDING + unbind — a rejected submission frees its
+   *  milestone for the resubmission round. Idempotent. */
+  releaseMilestone(
+    milestoneRowId: string,
+    actorWallet: string,
+  ): Promise<void>;
   /**
    * Milestones in the agreement's plan still needing work or payment,
    * optionally excluding one row — the review path uses it to keep a
    * multi-milestone agreement ACTIVE until its last milestone is
-   * accepted (arc-audit H6).
+   * accepted (arc-audit H6). `null` when NO plan exists — an
+   * unverifiable state the caller must not read as "0 remaining"
+   * (R4-M6: 0 would complete the agreement unpaid).
    */
   pendingMilestoneCount(
     agreementId: string,
     excludingMilestoneRowId?: string,
-  ): Promise<number>;
+  ): Promise<number | null>;
 }
 
 /** Best-effort wrapper — settlement errors log, never throw up. A
@@ -176,7 +192,9 @@ export function createCommerceSettlementBridge(
     // now CONFLICTs loudly instead of being adopted — C1.)
     async pendingMilestoneCount(agreementId, excludingMilestoneRowId) {
       const plan = await getPlanByAgreement(sctx(), agreementId);
-      if (!plan) return 0;
+      // R4-M6: no plan = "cannot prove payable state", NOT "nothing
+      // pending". Returning 0 completes the agreement unpaid.
+      if (!plan) return null;
       const ms = await getDb().settlement.milestones.listByPlan(plan.id);
       // R2-H4: count only work not yet ACCEPTED. APPROVED is awaiting
       // the (intentionally lagging, D-227-4) manual payout — counting
@@ -203,6 +221,20 @@ export function createCommerceSettlementBridge(
       const res = await approveMilestone(sctx(), milestoneRowId, actorWallet);
       settled("approveMilestone", res);
       return res;
+    },
+
+    async revertApproval(milestoneRowId, actorWallet) {
+      settled(
+        "revertApproval",
+        await revertApproval(sctx(), milestoneRowId, actorWallet),
+      );
+    },
+
+    async releaseMilestone(milestoneRowId, actorWallet) {
+      settled(
+        "releaseMilestone",
+        await reopenMilestone(sctx(), milestoneRowId, actorWallet),
+      );
     },
   };
 }

@@ -29,6 +29,9 @@ export interface PayoutTxSource {
   } | null>;
   getBlockNumber(): Promise<bigint>;
   getBlock?(args: { blockNumber: bigint }): Promise<{ timestamp: bigint }>;
+  /** R4-M1: the RPC's own chain id — reported, never echoed from
+   *  config (a pin that only echoes configuration proves nothing). */
+  getChainId?(): Promise<bigint | number>;
   chain?: { id?: number };
 }
 
@@ -73,9 +76,17 @@ export function createViemPayoutVerifier(
     }
     const latest = await client.getBlockNumber();
     const confirmations = Number(latest - receipt.blockNumber) + 1;
+    // R4-M1: report the chain the RPC actually serves — the expected
+    // compare in verifyLegTx fails closed on mismatch; echoing the
+    // configured pin would make the cross-check a tautology.
+    const observedChainId = client.getChainId
+      ? String(await client.getChainId())
+      : client.chain?.id !== undefined
+        ? String(client.chain.id)
+        : undefined;
     // Inclusion-age check — a payout predating the intent can never
     // satisfy it (the seam contract's tx-age clause).
-    if (expected.notBeforeMs !== undefined) {
+    if (typeof expected.notBeforeMs === "number") {
       if (!client.getBlock) {
         return {
           verified: false,
@@ -96,7 +107,7 @@ export function createViemPayoutVerifier(
     const base = {
       verified: true as const,
       network: opts.networkLabel ?? "arc",
-      chainId: opts.chainId ?? String(client.chain?.id ?? ""),
+      chainId: observedChainId,
       payer: tx.from.toLowerCase(),
       confirmations,
     };
@@ -112,13 +123,20 @@ export function createViemPayoutVerifier(
       };
     }
 
-    // ERC-20 USDC fallback — only the pinned contract counts.
+    // ERC-20 USDC fallback — only the pinned contract counts. Exactly
+    // 3 topics scopes to ERC-20 Transfer (ERC-721 has 4 indexed args);
+    // the Transfer's `from` must be the tx sender — a third-party
+    // Transfer to the payee cannot satisfy a treasury payout leg.
     const payeeLower = expected.payee.toLowerCase();
     for (const log of receipt.logs) {
-      if (log.topics[0] !== TRANSFER_TOPIC || log.topics.length < 3) continue;
+      if (log.topics.length !== 3 || log.topics[0] !== TRANSFER_TOPIC) {
+        continue;
+      }
       if (usdcToken && log.address.toLowerCase() !== usdcToken) continue;
+      if (topicAddress(log.topics[1]!) !== tx.from.toLowerCase()) continue;
       const to = topicAddress(log.topics[2]!);
       if (to !== payeeLower) continue;
+      if (log.data === "0x" || log.data === "0x0") continue;
       const amount = formatUnits(BigInt(log.data), 6); // ERC-20 USDC: 6 dec
       return {
         ...base,
