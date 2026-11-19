@@ -191,12 +191,9 @@ export async function raiseDispute(
     }
     const freeze: FreezeMap = { milestones: {}, intentIds: [], legIds: [] };
     for (const scoped of scope.milestones) {
-      // H3: re-read inside the section — no stale statuses.
+      // H3: re-read inside the section — no stale statuses. R4-M3: a
+      // lost CAS aborts the whole dispute (partial freeze strands work).
       const m = (await s.milestones.getById(scoped.id)) ?? scoped;
-      // Only pre-release work freezes; RELEASED/CANCELLED stand.
-      // R4-M3: a lost CAS = the milestone moved between re-read and
-      // write — freezing its intent without the milestone strands
-      // work FOR_BUYER can't reach. Throw → whole dispute rolls back.
       if (["PENDING", "READY", "APPROVED"].includes(m.status)) {
         const d = await s.milestones.applyStatus(m.id, m.status, "DISPUTED");
         if (!d) {
@@ -207,31 +204,40 @@ export async function raiseDispute(
         freeze.milestones[m.id] = m.status;
       }
       // R4-M3: never freeze an intent whose milestone this dispute did
-      // not freeze — its lifecycle follows the milestone.
+      // not freeze — its lifecycle follows the milestone. R5: a lost
+      // intent/leg CAS likewise aborts (something moved it externally).
       if (freeze.milestones[m.id] === undefined) continue;
       const intent = await s.payoutIntents.getByMilestone(m.id);
       if (intent && intent.status === "OPEN") {
         const f = await s.payoutIntents.applyStatus(intent.id, "OPEN", "FROZEN");
-        if (f) {
-          freeze.intentIds.push(intent.id);
-          for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-            if (leg.status === "OPEN") {
-              const fl = await s.payoutLegs.applyStatus(
-                leg.id,
-                "OPEN",
-                "FROZEN",
-              );
-              if (fl) freeze.legIds.push(leg.id);
-            }
-          }
-          buf.emit({
-            entityType: "payout_intent",
-            entityId: intent.id,
-            eventType: "intent.frozen",
-            actorWallet: input.raisedBy,
-            payload: { milestoneRef: m.id },
-          });
+        if (!f) {
+          throw new SettlementConflictError(
+            `intent ${intent.id} moved during dispute freeze — aborting`,
+          );
         }
+        freeze.intentIds.push(intent.id);
+        for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
+          if (leg.status === "OPEN") {
+            const fl = await s.payoutLegs.applyStatus(
+              leg.id,
+              "OPEN",
+              "FROZEN",
+            );
+            if (!fl) {
+              throw new SettlementConflictError(
+                `leg ${leg.id} moved during dispute freeze — aborting`,
+              );
+            }
+            freeze.legIds.push(leg.id);
+          }
+        }
+        buf.emit({
+          entityType: "payout_intent",
+          entityId: intent.id,
+          eventType: "intent.frozen",
+          actorWallet: input.raisedBy,
+          payload: { milestoneRef: m.id },
+        });
       }
       buf.emit({
         entityType: "milestone",

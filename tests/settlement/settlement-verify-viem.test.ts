@@ -244,6 +244,34 @@ describe("createViemPayoutVerifier (R3-H1)", () => {
     if (!res.ok) expect(res.error.code).toBe("TX_UNVERIFIED");
   });
 
+  it("R5-M6: a missing token fact bypasses the configured pin", async () => {
+    const res = await verifyLegTx(
+      async () => ({
+        verified: true,
+        network: "arc",
+        payer: TREASURY,
+        payee: PAYEE,
+        asset: "USDC",
+        amount: "7.5",
+        // no token reported — pin must not be skippable
+        confirmations: 3,
+      }),
+      TX,
+      {
+        payee: PAYEE,
+        amount: "7.5",
+        currency: "USDC",
+        token: USDC_TOKEN,
+        expectedPayer: TREASURY,
+      },
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.code).toBe("TX_UNVERIFIED");
+      expect(res.error.message).toContain("token");
+    }
+  });
+
   it("R4 nit: ERC-20 Transfer must originate from the tx sender", async () => {
     const STRANGER = "0x5555555555555555555555555555555555555555";
     const v = createViemPayoutVerifier(

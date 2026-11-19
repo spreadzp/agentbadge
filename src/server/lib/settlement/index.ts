@@ -37,10 +37,11 @@ export {
   submitForReview,
   transitionMilestone,
 } from "./services/milestone-service.js";
+export { type ApproveEffect } from "./services/milestone-approve.js";
 export {
   forceApproveMilestone,
-  type ApproveEffect,
-} from "./services/milestone-approve.js";
+  forceReopenMilestone,
+} from "./services/milestone-force.js";
 export { revertApproval } from "./services/milestone-revert.js";
 export { markLegPaid } from "./services/payout-service.js";
 export {

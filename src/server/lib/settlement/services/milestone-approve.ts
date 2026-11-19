@@ -15,13 +15,6 @@ import type {
   MilestoneRow,
 } from "@agentbadge/database";
 
-import { recordPostEffectAudit } from "../../finops/admin-actions.js";
-import {
-  checkTextField,
-  normalizeOperator,
-  requireOperator,
-} from "../../finops/guards.js";
-import { MAX_REASON_FIELD } from "../invariants.js";
 import { isLegalTransition } from "../state-machines.js";
 import {
   type PayoutLegInput,
@@ -60,10 +53,28 @@ export async function doApprove(
       }
       // H2: intent-conflict must fail BEFORE the milestone write — an
       // APPROVED milestone without its intent is dead state.
-      if (await s.payoutIntents.getByMilestone(milestone.id)) {
+      const existing = await s.payoutIntents.getByMilestone(milestone.id);
+      if (existing && existing.status !== "CANCELLED") {
         return fail(
           "CONFLICT",
           `payout intent already exists for milestone ${milestone.id}`,
+        );
+      }
+      // R5-H1: a CANCELLED intent with no paid legs is the residue of an
+      // approval revert (verdict_not_committed) — re-open it instead of
+      // failing on the unique-per-milestone slot forever. An intent with
+      // a COMPLETED/FAILED leg means money moved under a cancelled
+      // intent — that needs operator repair, not a silent reopen.
+      const reopenLegs = existing
+        ? await s.payoutLegs.listByIntent(existing.id)
+        : [];
+      if (
+        existing &&
+        reopenLegs.some((l) => ["COMPLETED", "FAILED"].includes(l.status))
+      ) {
+        return fail(
+          "CONFLICT",
+          `cancelled intent ${existing.id} has paid legs — operator repair required`,
         );
       }
       const updated = await s.milestones.applyStatus(
@@ -76,6 +87,60 @@ export async function doApprove(
           "INVALID_STATE",
           "milestone moved concurrently — approve aborted",
         );
+      }
+      if (existing) {
+        const reopened = await s.payoutIntents.applyStatus(
+          existing.id,
+          "CANCELLED",
+          "OPEN",
+        );
+        if (!reopened) {
+          throw new SettlementConflictError(
+            `payout intent ${existing.id} moved during reopen — aborting`,
+          );
+        }
+        const legIds: string[] = [];
+        for (const leg of reopenLegs) {
+          if (leg.status === "CANCELLED") {
+            const rl = await s.payoutLegs.applyStatus(
+              leg.id,
+              "CANCELLED",
+              "OPEN",
+            );
+            if (!rl) {
+              throw new SettlementConflictError(
+                `payout leg ${leg.id} moved during reopen — aborting`,
+              );
+            }
+          }
+          legIds.push(leg.id);
+          buf.emit({
+            entityType: "payout_leg",
+            entityId: leg.id,
+            eventType: "leg.reopened",
+            actorWallet,
+            payload: { intentId: existing.id, payee: leg.payee },
+          });
+        }
+        buf.emit({
+          entityType: "payout_intent",
+          entityId: existing.id,
+          eventType: "intent.reopened",
+          actorWallet,
+          payload: {
+            milestoneRef: milestone.id,
+            reason: "verdict_retried",
+            legs: legIds,
+          },
+        });
+        buf.emit({
+          entityType: "milestone",
+          entityId: milestone.id,
+          eventType: "milestone.approved",
+          actorWallet,
+          payload: { intentId: existing.id, ...eventPayload },
+        });
+        return ok({ milestone: updated, intentId: existing.id, legs: legIds });
       }
       // Leg template from plan-create payload, else default provider leg.
       const template =
@@ -163,113 +228,4 @@ export async function doApprove(
   }
   if (res.ok) await buf.flush();
   return res;
-}
-
-/**
- * R3-H3 operator fallback — force-approve a READY milestone when the
- * buyer path is unreachable (pre-R3 swallowed commit, EVALUATOR verdict
- * on a legacy plan). Bypasses the buyer + releasePolicy checks; the
- * event records `admin: true` + the normalized operator, and every
- * landed effect writes an append-only AdminAction (R4-M4: a
- * buyer-bypassing, payout-authorizing call must leave an audit row —
- * `reason` is mandatory evidence). Idempotent on APPROVED only while
- * the intent is still OPEN.
- */
-export async function forceApproveMilestone(
-  ctx: SettlementCtx,
-  milestoneRowId: string,
-  opts: { operator: string; reason: string; submissionRef?: string },
-): Promise<
-  SettlementResult<ApproveEffect & { auditRecorded: boolean }>
-> {
-  const op = requireOperator(opts.operator);
-  if (op) return op as SettlementResult<never>;
-  if (typeof opts.reason !== "string" || opts.reason.trim().length === 0) {
-    return fail("BAD_INPUT", "reason is required for a force-approve");
-  }
-  const rc = checkTextField(opts.reason, "reason", MAX_REASON_FIELD);
-  if (rc) return rc as SettlementResult<never>;
-  const operator = normalizeOperator(opts.operator);
-  const milestone = await ctx.db.settlement.milestones.getById(
-    milestoneRowId,
-  );
-  if (!milestone) {
-    return fail("NOT_FOUND", `milestone not found: ${milestoneRowId}`);
-  }
-  const plan = await ctx.db.settlement.plans.getById(milestone.planId);
-  if (!plan) {
-    return fail("NOT_FOUND", `plan not found: ${milestone.planId}`);
-  }
-  if (milestone.status === "APPROVED") {
-    const existing = await ctx.db.settlement.payoutIntents.getByMilestone(
-      milestone.id,
-    );
-    // R4-M4: idempotent only while the intent is payable — an
-    // APPROVED milestone whose intent CANCELLED/COMPLETED must not
-    // replay as "ok".
-    if (existing && existing.status === "OPEN") {
-      const legs = await ctx.db.settlement.payoutLegs.listByIntent(
-        existing.id,
-      );
-      return ok({
-        milestone,
-        intentId: existing.id,
-        legs: legs.map((l) => l.id),
-        auditRecorded: false,
-      });
-    }
-    return fail(
-      "INVALID_STATE",
-      existing
-        ? `intent ${existing.id} is ${existing.status} — force-approve closed`
-        : "milestone APPROVED but payout intent missing — needs repair",
-    );
-  }
-  if (milestone.status !== "READY") {
-    return fail(
-      "INVALID_STATE",
-      `milestone is ${milestone.status}, not READY — cannot force-approve`,
-    );
-  }
-  if (plan.status !== "ACTIVE") {
-    return fail(
-      "INVALID_STATE",
-      `plan is ${plan.status} — force-approve closed`,
-    );
-  }
-  const openDisputes = await ctx.db.settlement.disputes.listBySubject(
-    "MILESTONE",
-    milestone.id,
-  );
-  if (openDisputes.some((d) => d.status === "OPEN")) {
-    return fail(
-      "INVALID_STATE",
-      "milestone has an OPEN dispute — resolve it first",
-    );
-  }
-  const effect = await doApprove(ctx, plan, milestone, operator, {
-    admin: true,
-    reason: opts.reason,
-    submissionRef: opts.submissionRef ?? null,
-  });
-  if (!effect.ok) return effect;
-  const audit = await recordPostEffectAudit(
-    ctx.db,
-    {
-      action: "FORCE_APPROVE_MILESTONE",
-      subjectType: "milestone",
-      subjectId: milestone.id,
-      operator,
-      evidence: {
-        milestoneId: milestone.milestoneId,
-        planId: plan.id,
-        agreementRef: plan.agreementRef,
-        intentId: effect.value.intentId,
-        reason: opts.reason,
-        submissionRef: opts.submissionRef ?? null,
-      },
-    },
-    { milestoneId: milestone.milestoneId, outcome: "APPROVED" },
-  );
-  return ok({ ...effect.value, auditRecorded: audit.ok });
 }

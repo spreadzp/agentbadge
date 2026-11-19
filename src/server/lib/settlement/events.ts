@@ -61,10 +61,22 @@ export class SettlementEventEmitter {
   }
 
   /** Best-effort emit: a store outage must not fail the transition the
-   *  event describes (the row itself is the state of record). */
+   *  event describes (the row itself is the state of record). R5 nit:
+   *  a hung store call would stall the shared serialized queue for the
+   *  whole process — bound each append with a timeout. */
   emit(input: SettlementEmitInput): Promise<CommerceEventRow | null> {
     const run = this.tail
-      .then(() => this.append(input))
+      .then(() =>
+        Promise.race<Promise<CommerceEventRow>>([
+          this.append(input),
+          new Promise<CommerceEventRow>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("settlement event append timeout")),
+              15000,
+            ),
+          ),
+        ]),
+      )
       .catch(() => null);
     this.tail = run;
     return run;

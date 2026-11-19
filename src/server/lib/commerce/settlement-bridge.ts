@@ -64,12 +64,19 @@ export interface CommerceSettlementBridge {
   approveMilestone(
     milestoneRowId: string,
     actorWallet: string,
-  ): Promise<{ ok: boolean; error?: { code: string; message: string } }>;
+  ): Promise<{
+    ok: boolean;
+    error?: { code: string; message: string };
+    value?: { intentId?: string };
+  }>;
   /** R4-H1: undo a pre-commit approve whose verdict never committed —
-   *  APPROVED→READY + OPEN intent cancelled. Idempotent. */
+   *  APPROVED→READY + OPEN intent cancelled. Idempotent.
+   *  R5: `intentId` pins the revert to the intent the caller created;
+   *  `release` goes straight to PENDING (committed reject verdict). */
   revertApproval(
     milestoneRowId: string,
     actorWallet: string,
+    opts?: { intentId?: string; release?: boolean },
   ): Promise<void>;
   /** R4-M5: READY→PENDING + unbind — a rejected submission frees its
    *  milestone for the resubmission round. Idempotent. */
@@ -223,10 +230,10 @@ export function createCommerceSettlementBridge(
       return res;
     },
 
-    async revertApproval(milestoneRowId, actorWallet) {
+    async revertApproval(milestoneRowId, actorWallet, opts) {
       settled(
         "revertApproval",
-        await revertApproval(sctx(), milestoneRowId, actorWallet),
+        await revertApproval(sctx(), milestoneRowId, actorWallet, opts),
       );
     },
 

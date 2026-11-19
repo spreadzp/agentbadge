@@ -32,31 +32,35 @@ const TRANSITIONS: Record<
     // pre-release state; resolution returns to the pre-dispute status
     // (stored on the dispute row) or CANCELLED for FOR_BUYER.
     // READY→PENDING releases a milestone whose bound submission was
-    // rejected (R4-M5 resubmission round); APPROVED→READY reverts an
-    // approval whose commerce verdict never committed (R4-H1) — both
-    // are bridge/operator-only edges, never participant paths.
+    // rejected (R4-M5 resubmission round); APPROVED→READY/PENDING reverts
+    // an approval whose commerce verdict never committed (R4-H1, direct
+    // to PENDING when the committed verdict was a reject) — both are
+    // bridge/operator-only edges, never participant paths.
     ["PENDING", ["READY", "DISPUTED", "CANCELLED"]],
     ["READY", ["APPROVED", "DISPUTED", "CANCELLED", "PENDING"]],
-    ["APPROVED", ["RELEASED", "DISPUTED", "CANCELLED", "READY"]],
+    ["APPROVED", ["RELEASED", "DISPUTED", "CANCELLED", "READY", "PENDING"]],
     ["DISPUTED", ["PENDING", "READY", "APPROVED", "CANCELLED"]],
     ["RELEASED", []],
     ["CANCELLED", []],
   ]),
   payout_intent: new Map([
     // Dispute freezes OPEN intents; resolution unfreezes or cancels.
+    // CANCELLED→OPEN re-opens a never-paid intent that an approval
+    // revert cancelled (R5-H1) — only legal while every leg is
+    // unpaid, enforced in doApprove.
     ["OPEN", ["FROZEN", "COMPLETED", "CANCELLED"]],
     ["FROZEN", ["OPEN", "CANCELLED"]],
     // FAILED is reserved (seam) — terminal, no incoming edges in v1.
     ["COMPLETED", []],
     ["FAILED", []],
-    ["CANCELLED", []],
+    ["CANCELLED", ["OPEN"]],
   ]),
   payout_leg: new Map([
     ["OPEN", ["FROZEN", "COMPLETED", "CANCELLED"]],
     ["FROZEN", ["OPEN", "CANCELLED"]],
     ["COMPLETED", []],
     ["FAILED", []],
-    ["CANCELLED", []],
+    ["CANCELLED", ["OPEN"]],
   ]),
   settlement_dispute: new Map([
     ["OPEN", ["RESOLVED"]],

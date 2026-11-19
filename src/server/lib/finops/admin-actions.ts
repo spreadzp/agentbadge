@@ -35,6 +35,7 @@ const KNOWN_ACTIONS = new Set<string>([
   "MARK_PAYOUT_PAID",
   "RESOLVE_SETTLEMENT_DISPUTE",
   "FORCE_APPROVE_MILESTONE",
+  "REOPEN_MILESTONE",
 ]);
 
 /** External-review subjects — closed vocabulary (M1/226-6). */

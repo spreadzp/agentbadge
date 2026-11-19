@@ -49,6 +49,11 @@ export async function reviewSubmission(
   if (!SUBMISSION_VERDICTS.includes(verdict)) {
     throw guardRejected(`verdict must be ${SUBMISSION_VERDICTS.join("|")}`);
   }
+  // R5-M2: the gate's mirror must not miss any check the atomic makes —
+  // a bad note must fail BEFORE the settlement approve, not after.
+  if (reviewNote !== undefined) {
+    assertSummary(reviewNote, "reviewNote");
+  }
   // H6: pre-read (read-only, outside the tx) — does the settlement
   // plan still have payable work after this milestone? The agreement
   // must outlive its first accepted submission on multi-milestone
@@ -181,9 +186,29 @@ export async function reviewSubmission(
     // failed request leaves no payment authorization behind. Only OUR
     // approve reverts — a sibling review's APPROVED belongs to its
     // committed verdict.
-    if (gate.approvedByUs === true && ctx.settlement) {
+    // R5-H2: re-read the submission first — when a sibling verdict
+    // already committed, the approval stays (a committed ACCEPTED needs
+    // its intent; a committed REJECT releases straight to PENDING).
+    if (
+      gate.approvedByUs === true &&
+      ctx.settlement &&
+      settleMilestoneId !== undefined
+    ) {
       try {
-        await ctx.settlement.revertApproval(settleMilestoneId, actor);
+        const sub = await stores.submissions
+          .getById(submissionId)
+          .catch(() => null);
+        if (sub?.status === "ACCEPTED") {
+          // Sibling ACCEPT committed — approval belongs to that verdict.
+        } else {
+          const rejected =
+            sub?.status === "REJECTED" ||
+            sub?.status === "REVISION_REQUIRED";
+          await ctx.settlement.revertApproval(settleMilestoneId, actor, {
+            intentId: gate.intentId,
+            release: rejected,
+          });
+        }
       } catch (revertErr) {
         logger.error("settlement approval revert failed", {
           milestoneRowId: settleMilestoneId,

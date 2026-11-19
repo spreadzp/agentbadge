@@ -6,156 +6,40 @@
  * The app mounts the real route modules over an in-memory Database;
  * domain seeding (submit/approve) goes through lib/settlement services
  * — those lifecycle endpoints are commerce-wired in 227-5, not REST.
+ * Shared setup + request helpers live in route-helpers.ts.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { privateKeyToAccount } from "viem/accounts";
-import { createHash, randomUUID } from "node:crypto";
-import { createDatabase, type Database } from "@agentbadge/database";
+import type { Database } from "@agentbadge/database";
 
-import {
-  approveMilestone,
-  createPlan,
-  createSettlementCtx,
-  raiseDispute,
-  submitForReview,
-} from "../../src/server/lib/settlement/index.js";
-import { listAdminActions } from "../../src/server/lib/finops/index.js";
 import { createSettlementReceiptSigner } from "../../src/server/lib/settlement/index.js";
 import { createSettlementReceiptRoutes } from "../../src/server/routes/settlement/settlement-receipts";
 import { createSettlementRoutes } from "../../src/server/routes/settlement/settlement";
-import { createSettlementAdminRoutes } from "../../src/server/routes/settlement/settlement-admin";
-import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
 import { cacheHeadersMiddleware } from "../../src/server/middleware/cache-headers";
 
-const BUYER_KEY =
-  "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
-const PROVIDER_KEY =
-  "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e87293edff032"; // secret-scan:allow: anvil test fixture
-const STRANGER_KEY =
-  "0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88e2b4ecda4e5"; // secret-scan:allow: anvil test fixture
-
-const buyer = privateKeyToAccount(BUYER_KEY);
-const provider = privateKeyToAccount(PROVIDER_KEY);
-const stranger = privateKeyToAccount(STRANGER_KEY);
-const ADMIN_KEY = "test-settlement-admin-key";
-const OPS = "ops-route-1";
-const TX = `0x${"c".repeat(64)}`;
+import {
+  ADMIN_KEY,
+  adminReq,
+  buyer,
+  initRouteTest,
+  OPS,
+  PLAN_BODY,
+  provider,
+  req,
+  rt,
+  seedApprovedIntent,
+  sigHeaders,
+  stranger,
+  teardownRouteTest,
+  TX,
+} from "./route-helpers.js";
 
 let db: Database;
-let app: Hono;
-
 beforeEach(() => {
-  process.env.ADMIN_API_KEY = ADMIN_KEY;
-  db = createDatabase({ enabled: false });
-  app = new Hono();
-  app.use(cacheHeadersMiddleware());
-  app.route("/", createSettlementRoutes({ getDb: () => db }));
-  app.route("/", createSettlementReceiptRoutes({ getDb: () => db }));
-  app.route("/", createSettlementAdminRoutes({ getDb: () => db }));
+  initRouteTest();
+  db = rt.db;
 });
-
-afterEach(() => {
-  delete process.env.ADMIN_API_KEY;
-});
-
-type Account = ReturnType<typeof privateKeyToAccount>;
-
-async function sigHeaders(
-  account: Account,
-  method: string,
-  path: string,
-  rawBody: string,
-  idemKey?: string,
-): Promise<Record<string, string>> {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const nonce = randomUUID();
-  const message = buildCommerceChallenge({
-    wallet: account.address,
-    method,
-    path,
-    timestamp,
-    nonce,
-    bodyHash: rawBody ? createHash("sha256").update(rawBody).digest("hex") : "-",
-    idemKey: idemKey ?? "-",
-  });
-  return {
-    "x-wallet": account.address,
-    "x-sig": await account.signMessage({ message }),
-    "x-timestamp": String(timestamp),
-    "x-nonce": nonce,
-    "content-type": "application/json",
-    ...(idemKey ? { idempotency_key: idemKey } : {}),
-  };
-}
-
-async function req(
-  method: string,
-  path: string,
-  opts: {
-    account?: Account;
-    body?: unknown;
-    headers?: Record<string, string>;
-    raw?: boolean;
-  } = {},
-) {
-  const rawBody = opts.body !== undefined ? JSON.stringify(opts.body) : "";
-  const headers: Record<string, string> = { ...(opts.headers ?? {}) };
-  if (opts.account) {
-    Object.assign(
-      headers,
-      await sigHeaders(opts.account, method, path, rawBody, headers["idempotency_key"]),
-    );
-  }
-  if (rawBody && !headers["content-type"]) {
-    headers["content-type"] = "application/json";
-  }
-  const res = await app.fetch(
-    new Request(`http://localhost${path}`, {
-      method,
-      headers,
-      body: rawBody || undefined,
-    }),
-  );
-  return {
-    status: res.status,
-    cacheControl: res.headers.get("cache-control"),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    body: (await res.json()) as any,
-  };
-}
-
-const adminReq = (method: string, path: string, body?: unknown, key = ADMIN_KEY) =>
-  req(method, path, { body, headers: { "x-admin-key": key } });
-
-const PLAN_BODY = (agreementRef: string) => ({
-  agreementRef,
-  buyerWallet: buyer.address,
-  providerWallet: provider.address,
-  totalUsd: "10.00",
-  milestones: [{ milestoneId: "m1", title: "phase", amountUsd: "10.00" }],
-});
-
-/** Seed: plan (route) → submit+approve (domain) → OPEN intent. */
-async function seedApprovedIntent() {
-  const agreementRef = `agr-${randomUUID()}`;
-  const ctx = createSettlementCtx(db);
-  const plan = await createPlan(
-    ctx,
-    { ...PLAN_BODY(agreementRef) },
-    buyer.address,
-  );
-  if (!plan.ok) throw new Error("plan seed failed");
-  const m = plan.value.milestones[0]!;
-  await submitForReview(
-    ctx,
-    { milestoneRowId: m.id, submissionRef: "ipfs://w" },
-    provider.address,
-  );
-  const ap = await approveMilestone(ctx, m.id, buyer.address);
-  if (!ap.ok) throw new Error("approve seed failed");
-  return { plan: plan.value.plan, milestone: m, intentId: ap.value.intentId };
-}
+afterEach(teardownRouteTest);
 
 // ---------- public routes ----------
 
@@ -257,167 +141,6 @@ describe("public routes", () => {
   });
 });
 
-// ---------- admin routes ----------
-
-describe("admin routes", () => {
-  it("mark-paid without admin key → 401 UNAUTHORIZED + no-store", async () => {
-    const { intentId } = await seedApprovedIntent();
-    const res = await app.fetch(
-      new Request(`http://localhost/admin/settlement/intents/${intentId}/mark-paid`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ operator: OPS, txHash: TX }),
-      }),
-    );
-    expect(res.status).toBe(401);
-    expect(res.headers.get("cache-control")).toBe("no-store");
-    const body = (await res.json()) as { code?: string; error?: { code?: string } };
-    expect(body.code ?? body.error?.code).toBe("UNAUTHORIZED");
-  });
-
-  it("mark-paid without operator → 400 OPERATOR_REQUIRED, no AdminAction", async () => {
-    const { intentId } = await seedApprovedIntent();
-    const before = (await listAdminActions(db)).length;
-    const r = await adminReq(
-      "POST",
-      `/admin/settlement/intents/${intentId}/mark-paid`,
-      { txHash: TX },
-    );
-    expect(r.status).toBe(400);
-    expect(r.body.error.code).toBe("OPERATOR_REQUIRED");
-    expect((await listAdminActions(db)).length).toBe(before);
-  });
-
-  it("mark-paid on a missing intent → 404, no AdminAction written", async () => {
-    const before = (await listAdminActions(db)).length;
-    const r = await adminReq(
-      "POST",
-      "/admin/settlement/intents/pi_missing/mark-paid",
-      { operator: OPS, txHash: TX },
-    );
-    expect(r.status).toBe(404);
-    expect(r.body.error.code).toBe("NOT_FOUND");
-    expect((await listAdminActions(db)).length).toBe(before);
-  });
-
-  it("mark-paid happy → 200 auditRecorded:true + AdminAction row", async () => {
-    const { intentId } = await seedApprovedIntent();
-    const before = (await listAdminActions(db)).length;
-    const r = await adminReq(
-      "POST",
-      `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX },
-    );
-    expect(r.status).toBe(200);
-    expect(r.body.auditRecorded).toBe(true);
-    expect(r.body.leg.txHash).toBe(TX);
-    expect(r.body.intent.status).toBe("COMPLETED");
-    const actions = await listAdminActions(db);
-    expect(actions.length).toBe(before + 1);
-    expect(actions.at(-1)?.action).toBe("MARK_PAYOUT_PAID");
-    expect(actions.at(-1)?.operator).toBe(OPS);
-    // Replay → 409 INVALID_STATE (code matches status class).
-    const replay = await adminReq(
-      "POST",
-      `/admin/settlement/intents/${intentId}/mark-paid`,
-      { operator: OPS, txHash: TX },
-    );
-    expect(replay.status).toBe(409);
-    expect(replay.body.error.code).toBe("INVALID_STATE");
-  });
-
-  it("dispute resolve happy → 200 auditRecorded:true", async () => {
-    const { plan } = await seedApprovedIntent();
-    const ctx = createSettlementCtx(db);
-    const d = await raiseDispute(ctx, {
-      subjectType: "AGREEMENT",
-      subjectRef: plan.agreementRef,
-      raisedBy: buyer.address,
-      reason: "ops review",
-    });
-    if (!d.ok) throw new Error("raise failed");
-    const r = await adminReq(
-      "POST",
-      `/admin/settlement/disputes/${d.value.dispute.id}/resolve`,
-      { operator: OPS, resolution: "FOR_PROVIDER" },
-    );
-    expect(r.status).toBe(200);
-    expect(r.body.auditRecorded).toBe(true);
-    const actions = await listAdminActions(db);
-    expect(actions.at(-1)?.action).toBe("RESOLVE_SETTLEMENT_DISPUTE");
-  });
-
-  // R3-H3: operator force-approve — the recovery path for milestones
-  // stranded READY (pre-R3 swallowed post-commit, EVALUATOR legacy).
-  it("milestones/:id/approve → READY milestone APPROVED + intent; idempotent", async () => {
-    const ctx = createSettlementCtx(db);
-    const plan = await createPlan(
-      ctx,
-      { ...PLAN_BODY(`agr-${randomUUID()}`) },
-      buyer.address,
-    );
-    if (!plan.ok) throw new Error("seed failed");
-    const m = plan.value.milestones[0]!;
-    await submitForReview(
-      ctx,
-      { milestoneRowId: m.id, submissionRef: "ipfs://w" },
-      provider.address,
-    );
-
-    const r = await adminReq(
-      "POST",
-      `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS, reason: "test recovery" },
-    );
-    expect(r.status).toBe(200);
-    expect(r.body.intentId).toBeTruthy();
-    const intent = await db.settlement.payoutIntents.getByMilestone(m.id);
-    expect(intent?.id).toBe(r.body.intentId);
-    // Idempotent — second call returns the same intent, no error.
-    const again = await adminReq(
-      "POST",
-      `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS, reason: "test recovery" },
-    );
-    expect(again.status).toBe(200);
-    expect(again.body.intentId).toBe(r.body.intentId);
-  });
-
-  it("milestones/:id/approve → 409 on OPEN dispute; 400 missing operator", async () => {
-    const ctx = createSettlementCtx(db);
-    const plan = await createPlan(
-      ctx,
-      { ...PLAN_BODY(`agr-${randomUUID()}`) },
-      buyer.address,
-    );
-    if (!plan.ok) throw new Error("seed failed");
-    const m = plan.value.milestones[0]!;
-    await submitForReview(
-      ctx,
-      { milestoneRowId: m.id, submissionRef: "ipfs://w" },
-      provider.address,
-    );
-    const noOp = await adminReq(
-      "POST",
-      `/admin/settlement/milestones/${m.id}/approve`,
-      {},
-    );
-    expect(noOp.status).toBe(400);
-    await raiseDispute(ctx, {
-      subjectType: "MILESTONE",
-      subjectRef: m.id,
-      raisedBy: buyer.address,
-      reason: "hold",
-    });
-    const r = await adminReq(
-      "POST",
-      `/admin/settlement/milestones/${m.id}/approve`,
-      { operator: OPS, reason: "test recovery" },
-    );
-    expect(r.status).toBe(409);
-    expect(r.body.error.code).toBe("INVALID_STATE");
-  });
-});
 
 // ---------- SLICE-227-4: receipt artifact + anchor ----------
 

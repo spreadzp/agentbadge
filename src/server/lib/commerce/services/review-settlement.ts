@@ -26,6 +26,9 @@ export interface SettlementGate {
    *  (R4-H1: reverting someone else's APPROVED strands a COMPLETED
    *  agreement with a READY milestone). */
   approvedByUs?: boolean;
+  /** Intent this gate created — the revert only cancels THAT row
+   *  (R5-H2: a sibling-created intent is never touched). */
+  intentId?: string;
   /** Not-yet-accepted milestones left after this one — 0 → agreement
    *  may complete. Unbound submissions count the whole plan (R3-H2). */
   pendingAfter: number;
@@ -144,11 +147,16 @@ export async function resolveSettlementGate(
     }
     found = recheck;
   }
+  // R5-M1: the pending count does not depend on the approve — compute
+  // it BEFORE, so nothing after the approve can throw and strand an
+  // APPROVED milestone + OPEN intent outside the revert's scope.
+  const pending = await pendingCount(ctx, pre, found.id);
   // R3-H3: approve BEFORE the verdict commits — a failure here keeps
   // the submission SUBMITTED (retryable) instead of a swallowed
   // post-commit miss with no recovery path. APPROVED pre-read = the
   // prior review's approve landed; skip re-approving.
   let approvedByUs = false;
+  let intentId: string | undefined;
   if (found.status === "READY") {
     // nit: the bridge call itself is guarded — a thrown store error
     // becomes a typed 409, and an empty result is not a success.
@@ -164,13 +172,15 @@ export async function resolveSettlementGate(
       );
     }
     approvedByUs = true;
+    intentId = ap?.value?.intentId;
   }
   // M-D: a pending-count failure fails the review too — completing
   // blind re-opens the unpaid-completion hole.
   return {
     milestoneRowId: found.id,
     approvedByUs,
-    pendingAfter: await pendingCount(ctx, pre, found.id),
+    intentId,
+    pendingAfter: pending,
   };
 }
 

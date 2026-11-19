@@ -20,7 +20,6 @@ import z from "zod";
 import { getDatabase } from "../../lib/database";
 import {
   createSettlementCtx,
-  forceApproveMilestone,
   markLegPaid,
   resolveDispute,
 } from "../../lib/settlement/index.js";
@@ -28,6 +27,7 @@ import { adminAuth } from "../../middleware/adminAuth";
 import { readBody } from "../finops/helpers";
 import { jsonBody } from "../commerce/schemas";
 import { respond, type SettlementRouteDeps } from "./helpers";
+import { settlementMilestoneAdminRoutes } from "./settlement-admin-milestones";
 
 const TAG = { tags: ["Admin Settlement"] };
 
@@ -50,13 +50,6 @@ const resolveBody = z.object({
   splitLegs: z.array(splitLeg).max(32).optional(),
   note: z.string().max(4000).optional(),
   resolverRef: z.string().max(128).optional(),
-});
-// R4-M4: force-approve is a buyer-bypassing, payout-authorizing
-// action — a reason is mandatory evidence, not decoration.
-const operatorBody = z.object({
-  operator: z.string().min(1).max(128),
-  reason: z.string().min(1).max(4000),
-  submissionRef: z.string().max(128).optional(),
 });
 export function createSettlementAdminRoutes(
   deps: SettlementRouteDeps = {},
@@ -197,74 +190,9 @@ export function createSettlementAdminRoutes(
     },
   );
 
-  // R3-H3: operator recovery for a milestone stranded READY — the
-  // buyer approve path is unreachable once a review's post-commit
-  // approve missed (pre-R3) or the policy is EVALUATOR_VERDICT on a
-  // legacy plan. Idempotent on APPROVED; blocked by OPEN disputes.
-  r.post(
-    "/admin/settlement/milestones/:id/approve",
-    describeRoute({
-      ...TAG,
-      summary: "Force-approve a READY milestone (operator recovery)",
-      description:
-        "Transitions a READY milestone to APPROVED and opens its payout " +
-        "intent when the buyer path cannot (stranded post-commit state, " +
-        "EVALUATOR_VERDICT legacy plan). Idempotent on APPROVED only " +
-        "while the intent is OPEN; an OPEN dispute on the milestone " +
-        "409s. Requires a reason; writes an AdminAction and the event " +
-        "records admin:true.",
-      requestBody: jsonBody(operatorBody),
-      responses: {
-        200: {
-          description: "Milestone approved + payout intent",
-          content: {
-            "application/json": {
-              schema: resolver(
-                z.object({ intentId: z.string() }).passthrough(),
-              ),
-            },
-          },
-        },
-        400: { description: "Missing operator / reason" },
-        401: { description: "Unauthorized" },
-        404: { description: "Milestone not found" },
-        409: { description: "Invalid state / open dispute" },
-      },
-    }),
-    adminAuth,
-    async (c) => {
-      const raw = await readBody(c);
-      if (typeof raw.operator !== "string" || raw.operator.length === 0) {
-        return respond(c, {
-          ok: false,
-          error: {
-            code: "OPERATOR_REQUIRED",
-            message: "operator label required",
-          },
-        });
-      }
-      const b = operatorBody.safeParse(raw);
-      if (!b.success) {
-        return respond(c, {
-          ok: false,
-          error: {
-            code: "BAD_INPUT",
-            message: `invalid approve body: ${b.error.issues[0]?.message ?? "schema mismatch"}`,
-          },
-        });
-      }
-      const res = await forceApproveMilestone(
-        createSettlementCtx(getDb()),
-        c.req.param("id"),
-        {
-          operator: b.data.operator,
-          reason: b.data.reason,
-          submissionRef: b.data.submissionRef,
-        },
-      );
-      return respond(c, res);
-    },
-  );
+  // Milestone force-actions (approve R3-H3, reopen R5-M3) live in
+  // settlement-admin-milestones.ts under the 300-line cap.
+  r.route("/", settlementMilestoneAdminRoutes(deps));
 
   return r;
 }

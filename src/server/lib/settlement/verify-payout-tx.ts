@@ -143,6 +143,11 @@ export async function verifyLegTx(
   ) {
     missing.push("confirmations>=1");
   }
+  // R5-M6: a configured pin is meaningless when the adapter omits the
+  // token fact — attest-without-report would bypass it entirely.
+  if (expected.token !== undefined && check.token === undefined) {
+    missing.push("token");
+  }
   if (missing.length) {
     return fail(
       "TX_UNVERIFIED",
