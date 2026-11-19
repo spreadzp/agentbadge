@@ -64,8 +64,8 @@ export {
 } from "./stripe-resolution";
 export {
   detectExceptions,
-  detectFromPaymentExceptions,
   resolveException,
   listExceptions,
   type ResolveExceptionInput,
 } from "./exceptions";
+export { detectFromPaymentExceptions } from "./exception-scan";

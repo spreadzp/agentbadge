@@ -162,10 +162,17 @@ async function createRefundIntentInner(
       "a Stripe refund is in flight for this payment — resolve it before opening an intent",
     );
   }
-  // L4-6: two on-chain settlements in DIFFERENT assets have no single
-  // correct denomination — the sum is meaningless and must not be
-  // silently coerced to "USDC"; reconcile manually. Same for an
-  // attempt that never recorded its currency.
+  // L4-6/N5-2: two on-chain settlements in DIFFERENT assets have no
+  // single correct denomination — the sum is meaningless and must not
+  // be silently coerced to "USDC"; reconcile manually. An attempt
+  // with a null or BLANK currency is just as broken — `{""}` passes a
+  // size-1 set check, so test the settled attempt itself first.
+  if (!settled.currency || settled.currency.trim() === "") {
+    return fail(
+      "INVALID_STATE",
+      "on-chain settlement attempt has no recorded currency — refund needs manual reconciliation",
+    );
+  }
   const onChainCurrencies = new Set(
     confirmed.map((a) => (a.currency ?? "").trim().toUpperCase()),
   );
@@ -178,7 +185,7 @@ async function createRefundIntentInner(
   // M-1/N11: the intent's asset is the settled attempt's currency —
   // `Payment.currency` is the denomination ("USD"), not the on-chain
   // asset the verifier must see moved ("USDC"; USD↔USDC priced 1:1).
-  const asset = settled.currency!.trim().toUpperCase();
+  const asset = settled.currency.trim().toUpperCase();
   const currency = (input.currency ?? asset).trim().toUpperCase();
   if (currency !== asset) {
     return fail(

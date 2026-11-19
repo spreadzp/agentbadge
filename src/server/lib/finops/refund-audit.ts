@@ -173,25 +173,56 @@ export async function finalizeRefundCompletion(
     },
   });
   if (!completing.ok) return completing;
-  const done = await db.finops.refundIntents.complete(
-    intent.id,
-    txHash,
-    operator,
-    Date.now(),
-  );
-  if (!done) {
-    // L4-2: the INTENT_COMPLETING row above would dangle without a
-    // terminal companion — append an explicit abort marker so the
-    // trail never shows a "completing" audit row for an intent that
-    // did not complete.
+  let done: RefundIntentRow | null;
+  try {
+    done = await db.finops.refundIntents.complete(
+      intent.id,
+      txHash,
+      operator,
+      Date.now(),
+    );
+  } catch (e) {
+    // N5-6: a thrown transition leaves the outcome UNKNOWN — pair
+    // the COMPLETING row with an uncertain abort marker (under the
+    // same payment subject so the trail reads as one story) and fail
+    // controlled; ops must verify the row's actual state.
     await recordPostEffectAudit(
       db,
       {
         action: "REFUND",
-        subjectType: "refund-intent",
-        subjectId: intent.id,
+        subjectType: "payment",
+        subjectId: intent.paymentId,
         operator,
-        evidence: { kind: "INTENT_COMPLETE_ABORTED", txHash },
+        evidence: {
+          kind: "INTENT_COMPLETE_ABORTED",
+          intentId: intent.id,
+          txHash,
+          uncertain: true,
+        },
+      },
+      { kind: "INTENT_COMPLETE_ABORTED", intentId: intent.id },
+    );
+    return fail(
+      "PROVIDER_ERROR",
+      `refund transition threw — outcome uncertain, verify intent ${intent.id}: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  if (!done) {
+    // L4-2/N5-6: the INTENT_COMPLETING row above would dangle without
+    // a terminal companion — the abort marker goes under the PAYMENT
+    // subject so the trail pairs completing → aborted on one subject.
+    await recordPostEffectAudit(
+      db,
+      {
+        action: "REFUND",
+        subjectType: "payment",
+        subjectId: intent.paymentId,
+        operator,
+        evidence: {
+          kind: "INTENT_COMPLETE_ABORTED",
+          intentId: intent.id,
+          txHash,
+        },
       },
       { kind: "INTENT_COMPLETE_ABORTED", intentId: intent.id },
     );

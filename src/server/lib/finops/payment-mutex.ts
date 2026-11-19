@@ -36,9 +36,6 @@ export class LockAcquireTimeoutError extends Error {
   }
 }
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((r) => setTimeout(r, ms));
-
 /**
  * Run `fn` serialized per `${scope}:${id}` — later calls queue
  * behind the current holder. The queued caller still runs after a
@@ -64,17 +61,27 @@ export async function withLock<T>(
     skipped ? Promise.reject(new LockAcquireTimeoutError(key)) : fn(),
   );
   locks.set(key, next);
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = await Promise.race([
     acquired.then(() => false),
-    sleep(acquireTimeoutMs).then(() => true),
+    new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(true), acquireTimeoutMs);
+    }),
   ]);
+  clearTimeout(timer);
   if (timedOut) {
     skipped = true;
-    // Absorb the slot's eventual rejection without awaiting it —
-    // `next` is still queued behind the wedged holder, so awaiting
-    // would hang. The slot is a no-op: later callers chain past it.
-    void next.catch(() => {});
-    if (locks.get(key) === next) locks.delete(key);
+    // N5-1: do NOT delete the map entry — the timed-out slot must
+    // stay in the chain as a no-op tail. Deleting it would unlink the
+    // wedged holder and let the next caller run CONCURRENTLY with it.
+    // Absorb the slot's eventual rejection without awaiting (it is
+    // still queued behind the holder), and clean the tail when it
+    // settles so the map does not leak dead entries.
+    void next
+      .catch(() => {})
+      .finally(() => {
+        if (locks.get(key) === next) locks.delete(key);
+      });
     throw new LockAcquireTimeoutError(key);
   }
   try {

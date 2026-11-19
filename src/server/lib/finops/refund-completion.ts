@@ -168,9 +168,12 @@ async function completeRefundIntentInner(
       `cumulative refunds ${total} would exceed payment amount ${payment.amount} (already completed ${used})`,
     );
   }
+  // N5-2: `||` not `??` — a blank-string currency row must fall back,
+  // not reach the verifier as "" (asset cross-check would silently
+  // compare "" === ""). 
   const expectedCurrency = (
-    intent.currency ??
-    payment.currency ??
+    intent.currency ||
+    payment.currency ||
     "USDC"
   ).toUpperCase();
   // N11 + L-2: the RPC call can throw or hang — a verifier outage is

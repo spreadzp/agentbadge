@@ -21,6 +21,7 @@ import { recordAdminAction } from "./admin-actions";
 import {
   boundedEvidence,
   checkEvidence,
+  isMeaningfulEvidence,
   normalizeOperator,
   requireOperator,
 } from "./guards";
@@ -43,6 +44,8 @@ export interface ResolveStripeRefundResult {
   /** first open initiationId the resolution closed. */
   initiationId: string;
   paymentFlip: boolean;
+  /** true when the flip threw — payment may still be CONFIRMED. */
+  needsReconcile?: boolean;
 }
 
 export async function resolveStripeRefund(
@@ -72,9 +75,16 @@ async function resolveStripeRefundInner(
   if (op) return op as FinOpsResult<never>;
   const operator = normalizeOperator(input.operator);
   // Resolving a refund is a consequential claim — the operator must
-  // say what they verified, like review-external.
+  // say what they verified, like review-external. N5-3: a SIZE check
+  // alone is not enough — the row must carry meaningful evidence.
   const ev = checkEvidence(input.evidence);
   if (ev) return ev as FinOpsResult<never>;
+  if (!isMeaningfulEvidence(input.evidence)) {
+    return fail(
+      "BAD_INPUT",
+      "resolveStripeRefund requires meaningful evidence — say what was verified",
+    );
+  }
   const open = await openStripeInitiations(db, input.paymentId);
   if (open.size === 0) {
     return fail(
@@ -85,7 +95,11 @@ async function resolveStripeRefundInner(
   // Every open initiation gets its own paired terminal row — legacy
   // trails can hold more than one (pre-initiationId "legacy" key).
   const kind = input.landed ? "STRIPE_REFUND" : "STRIPE_REFUND_FAILED";
+  // N5-4: a thrown flip must be FLAGGED, not swallowed — the terminal
+  // row closes the initiation either way, so the audit + result have
+  // to carry that the payment may still sit in CONFIRMED revenue.
   let flipped: unknown = null;
+  let flipThrew = false;
   if (input.landed) {
     try {
       flipped = await db.payments.payments.applyStatus(
@@ -95,7 +109,7 @@ async function resolveStripeRefundInner(
         Date.now(),
       );
     } catch {
-      flipped = null;
+      flipThrew = true;
     }
   }
   let firstId = "";
@@ -110,11 +124,16 @@ async function resolveStripeRefundInner(
         initiationId,
         resolvedManually: true,
         paymentFlip: flipped !== null,
+        ...(flipThrew ? { needsReconcile: true } : {}),
         details: boundedEvidence(input.evidence, 1024),
       },
     });
     if (!audit.ok) return audit;
     firstId ||= initiationId;
   }
-  return ok({ initiationId: firstId, paymentFlip: flipped !== null });
+  return ok({
+    initiationId: firstId,
+    paymentFlip: flipped !== null,
+    ...(flipThrew ? { needsReconcile: true } : {}),
+  });
 }
