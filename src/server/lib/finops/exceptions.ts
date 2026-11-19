@@ -205,7 +205,9 @@ export interface ResolveExceptionInput {
 export async function resolveException(
   db: Database,
   input: ResolveExceptionInput,
-): Promise<FinOpsResult<ReconciliationExceptionRow>> {
+): Promise<
+  FinOpsResult<ReconciliationExceptionRow & { auditRecorded: boolean }>
+> {
   const guard = guardAction(input.operator, { note: input.note });
   if (guard) return guard;
   // N2 + M-2: cap the note BEFORE the transition, by SERIALIZED size
