@@ -5,8 +5,60 @@
  * window, and keep every abort/refusal operator-visible (`repair`).
  */
 import { logger } from "@agentbadge/passport/logger";
+import type { RevertReason } from "../../settlement/index.js";
 import type { CommerceCtx } from "./ctx";
 import type { SettlementGate } from "./review-settlement";
+
+/** Bridge-shaped revert outcome — null on abort (the bridge maps any
+ *  `!res.ok` to null after `settled()` logs it). */
+export type BridgeRevertResult = {
+  reverted: boolean;
+  reason?: RevertReason;
+} | null;
+
+/** R9-M2b: the BENIGN whitelist — the approval cycle already moved on
+ *  to another owner (a sibling released it, the resolver owns the row,
+ *  the intent slot belongs to a different cycle). Every other code —
+ *  `released`, `paid_leg`, `intent_state`, and anything added later —
+ *  is dangerous and errors; the default is fail-closed. */
+const BENIGN_REVERT_REASONS: ReadonlySet<RevertReason> = new Set([
+  "not_approved",
+  "epoch_mismatch",
+  "intent_mismatch",
+]);
+
+/**
+ * R8-M2/R9-M2 — the single revert-outcome classifier shared by every
+ * caller (gate revert + reject-release). null abort and dangerous
+ * refusal reasons log ERROR with a stable `repair` key; benign no-ops
+ * log a plain warn so `repair` stays actionable.
+ */
+export function logRevertOutcome(
+  label: string,
+  res: BridgeRevertResult,
+  fields: Record<string, unknown>,
+): void {
+  if (res === null) {
+    logger.error(`${label} — aborted (bridge returned null)`, {
+      repair: "review milestone approval",
+      ...fields,
+    });
+    return;
+  }
+  if (res.reverted) return;
+  if (res.reason !== undefined && BENIGN_REVERT_REASONS.has(res.reason)) {
+    logger.warn(`${label} — approval cycle moved on`, {
+      reason: res.reason,
+      ...fields,
+    });
+    return;
+  }
+  logger.error(`${label} — approval stands`, {
+    repair: "review milestone approval",
+    reason: res.reason ?? "unknown",
+    ...fields,
+  });
+}
 
 /**
  * R4-H1 + R5-H2 + R6-M2 + R7-M4 — undo THIS gate's own pre-commit
@@ -36,6 +88,18 @@ export async function revertGateApproval(
     return;
   }
   const settleMilestoneId = gate.milestoneRowId;
+  // R9 nit 2: fail closed on a missing epoch — `approvedByUs` without
+  // the token means the pin inside revertApproval is silently off and
+  // could undo an `rsv_`/`ops_` approval. Never run unpinned.
+  if (!gate.approvalToken) {
+    logger.error("approval revert skipped — gate has no epoch token", {
+      repair: "review milestone approval",
+      milestoneRowId: settleMilestoneId,
+      submissionId,
+      intentId: gate.intentId,
+    });
+    return;
+  }
   try {
     const sub = await stores.submissions
       .getById(submissionId)
@@ -64,37 +128,11 @@ export async function revertGateApproval(
             sub.status === "REVISION_REQUIRED",
         },
       );
-      // R8-M2: `null` = the bridge swallowed a conflict/fail — the
-      // abort R7-M4 listed; it still leaves APPROVED + OPEN stranded.
-      if (res === null) {
-        logger.error("approval revert aborted — bridge returned null", {
-          repair: "review milestone approval",
-          milestoneRowId: settleMilestoneId,
-          submissionId,
-          intentId: gate.intentId,
-        });
-      } else if (!res.reverted) {
-        // R8-M2: `reverted:false` is overloaded — paid_leg and an
-        // unexpected intent state are the dangerous causes; a moved
-        // milestone or stale epoch/intent pin is a benign no-op (a
-        // sibling already released it, or the dispute owns it now).
-        if (res.reason === "paid_leg" || res.reason === "intent_state") {
-          logger.error("approval revert refused — approval stands", {
-            repair: "review milestone approval",
-            milestoneRowId: settleMilestoneId,
-            submissionId,
-            intentId: gate.intentId,
-            reason: res.reason,
-          });
-        } else {
-          logger.warn("approval revert declined — approval cycle moved on", {
-            milestoneRowId: settleMilestoneId,
-            submissionId,
-            intentId: gate.intentId,
-            reason: res.reason,
-          });
-        }
-      }
+      logRevertOutcome("approval revert", res, {
+        milestoneRowId: settleMilestoneId,
+        submissionId,
+        intentId: gate.intentId,
+      });
       if (res?.reverted) {
         const after = await stores.submissions
           .getById(submissionId)

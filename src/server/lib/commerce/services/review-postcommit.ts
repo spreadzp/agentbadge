@@ -22,6 +22,7 @@ import type {
 import { logger } from "@agentbadge/passport/logger";
 import type { SubmissionVerdict } from "../types";
 import { transitionRow, type CommerceCtx } from "./ctx";
+import { logRevertOutcome } from "./review-revert";
 
 export async function postCommitSettlementSync(
   ctx: CommerceCtx,
@@ -67,6 +68,8 @@ export async function postCommitSettlementSync(
               milestoneRowId: bound.id,
               submissionId: result.submission.id,
               boundSubmissionRef: bound.submissionRef ?? null,
+              // R9-M1: the operator exit — audited APPROVED→PENDING.
+              exit: "POST /admin/settlement/milestones/:id/release",
             },
           );
         } else {
@@ -74,24 +77,27 @@ export async function postCommitSettlementSync(
           // intent in the same atomic. The epoch we just checked is
           // pinned inside the revert's atomic — a resolver re-stamp
           // landing between our read and the CAS is refused, not
-          // erased. R8-M2: the result is checked — a null abort or a
-          // refusal stays error-visible.
+          // erased. R8-M2/R9-M2c: same classifier as the gate revert —
+          // a benign no-op (sibling already released / epoch moved on)
+          // warns, only dangerous leftovers carry `repair`.
           const res = await ctx.settlement!.revertApproval(bound.id, actor, {
             release: true,
             approvalToken: bound.escrowRef ?? undefined,
           });
-          if (res === null || !res.reverted) {
-            logger.error(
-              "reject-release refused/aborted — payable intent stranded",
-              {
-                repair: "review milestone release",
-                milestoneRowId: bound.id,
-                submissionId: result.submission.id,
-                reason: res?.reason,
-              },
-            );
-          }
+          logRevertOutcome("reject-release", res, {
+            milestoneRowId: bound.id,
+            submissionId: result.submission.id,
+          });
         }
+      } else if (bound) {
+        // R9 nit 9: a bound milestone in any other terminal/held state
+        // under a rejected submission — nothing to do, but a line for
+        // forensics costs nothing.
+        logger.info("bound milestone left as-is on rejected submission", {
+          milestoneRowId: bound.id,
+          milestoneStatus: bound.status,
+          submissionId: result.submission.id,
+        });
       }
     } catch (err) {
       logger.error("settlement milestone release failed", {
@@ -100,6 +106,12 @@ export async function postCommitSettlementSync(
         error: err instanceof Error ? err.message : String(err),
       });
     }
+    // R9-M1: the completion pass runs on EVERY verdict — when the
+    // rejected submission's milestone is RELEASED (operator paid a
+    // ruling), CANCELLED (FOR_BUYER), or standing APPROVED under a
+    // non-commerce epoch, no payable work remains and the agreement
+    // must not deadlock ACTIVE forever.
+    await completionPass(ctx, result);
     return;
   }
   if (result.submission.milestoneRef && settleMilestoneId !== undefined) {
@@ -135,10 +147,21 @@ export async function postCommitSettlementSync(
       });
     }
   }
-  // M-1: a concurrent sibling review may have finished the last
-  // milestone after the pre-commit count. Re-check and complete the
-  // agreement (+ task) if it now reads zero. R4-M6: null = no plan →
-  // cannot prove settled → never complete on an unverifiable state.
+  await completionPass(ctx, result);
+}
+
+/**
+ * M-1/R9-M1: a concurrent sibling review may have finished the last
+ * milestone after the pre-commit count; a REJECTED verdict whose bound
+ * milestone is RELEASED/CANCELLED or standing under a non-commerce
+ * epoch has no payable work left either. Re-check and complete the
+ * agreement (+ task) if it now reads zero. R4-M6: null = no plan →
+ * cannot prove settled → never complete on an unverifiable state.
+ */
+async function completionPass(
+  ctx: CommerceCtx,
+  result: { agreement: CommerceAgreementRow },
+): Promise<void> {
   if (result.agreement.status !== "ACTIVE") return;
   try {
     const pending = await ctx.settlement!.pendingMilestoneCount(

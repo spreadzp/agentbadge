@@ -250,4 +250,43 @@ describe("admin routes", () => {
     expect(again.status).toBe(200);
     expect(again.body.reopened).toBe(false);
   });
+
+  // R9-M1: operator release — the audited undo for a standing APPROVED
+  // ruling (`rsv_`/`ops_` epochs a buyer verdict may not touch). This
+  // is the exit the `repair` log key points at.
+  it("milestones/:id/release → APPROVED milestone PENDING + intent cancelled + audit", async () => {
+    const { milestone, intentId } = await seedApprovedIntent();
+    const before = (await listAdminActions(db)).length;
+    const r = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${milestone.id}/release`,
+      { operator: OPS, reason: "undo resolver restore" },
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.released).toBe(true);
+    expect(r.body.auditRecorded).toBe(true);
+    const after = await db.settlement.milestones.getById(milestone.id);
+    expect(after?.status).toBe("PENDING");
+    expect(after?.escrowRef).toBeNull();
+    expect(
+      (await db.settlement.payoutIntents.getById(intentId))?.status,
+    ).toBe("CANCELLED");
+    const actions = await listAdminActions(db);
+    expect(actions.length).toBe(before + 1);
+    expect(actions.at(-1)?.action).toBe("FORCE_RELEASE_MILESTONE");
+    // Guards: no operator → 400; non-APPROVED → 409.
+    const noOp = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${milestone.id}/release`,
+      {},
+    );
+    expect(noOp.status).toBe(400);
+    const again = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${milestone.id}/release`,
+      { operator: OPS, reason: "retry" },
+    );
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe("INVALID_STATE");
+  });
 });

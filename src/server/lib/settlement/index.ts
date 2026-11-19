@@ -42,7 +42,9 @@ export {
   forceApproveMilestone,
   forceReopenMilestone,
 } from "./services/milestone-force.js";
+export { forceReleaseMilestone } from "./services/milestone-release.js";
 export { revertApproval } from "./services/milestone-revert.js";
+export type { RevertReason, RevertResult } from "./services/milestone-revert.js";
 export { markLegPaid } from "./services/payout-service.js";
 export {
   getIntentView,

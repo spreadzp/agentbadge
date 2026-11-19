@@ -54,12 +54,24 @@ export interface RevertOptions {
   approvalToken?: string;
 }
 
+/** R8-M2/R9-M2: closed union of refusal causes — callers whitelist the
+ *  benign ones and default everything else to error+`repair`. Adding a
+ *  new code without touching the classifier is fail-CLOSED (unknown
+ *  codes error). */
+export type RevertReason =
+  | "not_approved"
+  | "released"
+  | "epoch_mismatch"
+  | "intent_mismatch"
+  | "intent_state"
+  | "paid_leg";
+
 export interface RevertResult {
   reverted: boolean;
-  /** R8-M2: why a refusal happened — callers log ERROR only for the
-   *  dangerous codes (paid_leg, unexpected intent state), not for a
-   *  benign no-op like a sibling having already released the row. */
-  reason?: string;
+  /** Why a refusal happened — callers log ERROR only for the dangerous
+   *  codes (released/paid_leg/intent_state), not for a benign no-op
+   *  like a sibling having already released the row. */
+  reason?: RevertReason;
 }
 
 export async function revertApproval(
@@ -79,8 +91,15 @@ export async function revertApproval(
       }
       // Idempotent — anything but APPROVED means the verdict path no
       // longer owns this row (already reverted, disputed, released).
+      // R9-M2a: RELEASED is its own code — a payout landed under a
+      // verdict that never committed; that is operator-visible damage,
+      // not a benign no-op.
       if (milestone.status !== "APPROVED") {
-        return ok({ reverted: false, reason: "not_approved" });
+        return ok({
+          reverted: false,
+          reason:
+            milestone.status === "RELEASED" ? "released" : "not_approved",
+        });
       }
       // R6-M2: the APPROVED on the row must be the one THIS request's
       // gate minted. A resolver-restored or re-landed approval carries

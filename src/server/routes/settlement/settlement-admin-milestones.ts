@@ -5,12 +5,15 @@
  *   POST /admin/settlement/milestones/:id/approve  {operator, reason,
  *                                                   submissionRef?}
  *   POST /admin/settlement/milestones/:id/reopen   {operator, reason}
+ *   POST /admin/settlement/milestones/:id/release  {operator, reason}
  *
  * Force-approve is the recovery seam for a stranded READY milestone
  * (R3-H3); reopen is the safe exit for a milestone stuck READY after a
  * failed/raced reject-release (R5-M3) — it frees the milestone without
- * paying rejected work. Every landed effect writes an append-only
- * AdminAction and surfaces `auditRecorded` in the response.
+ * paying rejected work; release (R9-M1) is the audited undo for a
+ * standing APPROVED ruling (`rsv_`/`ops_` epochs a buyer verdict may
+ * not touch). Every landed effect writes an append-only AdminAction
+ * and surfaces `auditRecorded` in the response.
  */
 import { Hono, type Context } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
@@ -20,6 +23,7 @@ import { getDatabase } from "../../lib/database";
 import {
   createSettlementCtx,
   forceApproveMilestone,
+  forceReleaseMilestone,
   forceReopenMilestone,
 } from "../../lib/settlement/index.js";
 import { adminAuth } from "../../middleware/adminAuth";
@@ -174,6 +178,64 @@ export function settlementMilestoneAdminRoutes(
         });
       }
       const res = await forceReopenMilestone(
+        createSettlementCtx(getDb()),
+        c.req.param("id"),
+        { operator: b.data.operator, reason: b.data.reason },
+      );
+      return respond(c, res);
+    },
+  );
+
+  // R9-M1: the operator exit the `repair` log key points at — audited
+  // APPROVED→PENDING + intent cancel for a ruling that must be undone
+  // (a resolver restore or force-approve left standing under a
+  // rejected submission). Refuses when a leg already paid (that's a
+  // refund path, not a release) or the intent is dispute-frozen.
+  r.post(
+    "/admin/settlement/milestones/:id/release",
+    describeRoute({
+      ...TAG,
+      summary: "Force-release an APPROVED milestone (operator ruling undo)",
+      description:
+        "Releases an APPROVED milestone back to PENDING and cancels its " +
+        "OPEN payout intent — the audited undo for a resolver-restored " +
+        "or force-minted approval a buyer verdict cannot touch. " +
+        "Refuses on a paid leg or a dispute-frozen intent. Requires a " +
+        "reason; writes an AdminAction.",
+      requestBody: jsonBody(reopenBody),
+      responses: {
+        200: {
+          description: "Milestone released to PENDING + AdminAction",
+          content: {
+            "application/json": {
+              schema: resolver(
+                z.object({ released: z.boolean() }).passthrough(),
+              ),
+            },
+          },
+        },
+        400: { description: "Missing operator / reason" },
+        401: { description: "Unauthorized" },
+        404: { description: "Milestone not found" },
+        409: { description: "Not APPROVED / paid leg / frozen intent" },
+      },
+    }),
+    adminAuth,
+    async (c) => {
+      const raw = await readBody(c);
+      const bad = await requireOperatorLabel(c, raw);
+      if (bad) return bad;
+      const b = reopenBody.safeParse(raw);
+      if (!b.success) {
+        return respond(c, {
+          ok: false,
+          error: {
+            code: "BAD_INPUT",
+            message: `invalid release body: ${b.error.issues[0]?.message ?? "schema mismatch"}`,
+          },
+        });
+      }
+      const res = await forceReleaseMilestone(
         createSettlementCtx(getDb()),
         c.req.param("id"),
         { operator: b.data.operator, reason: b.data.reason },

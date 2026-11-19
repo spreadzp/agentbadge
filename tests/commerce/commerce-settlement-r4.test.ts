@@ -30,6 +30,7 @@ import { createCommerceRoutes } from "../../src/server/routes/commerce/index";
 import {
   approveMilestone,
   createSettlementCtx,
+  markLegPaid,
   raiseDispute,
   resolveDispute,
 } from "../../src/server/lib/settlement/index.js";
@@ -378,7 +379,7 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
 
   it("R8-M1: REJECT cannot undo a resolver-restored approval (rsv_ epoch)", async () => {
     const app = makeApp();
-    const { subId, milestone } = await boundSubmission(app);
+    const { agId, subId, milestone } = await boundSubmission(app);
     const sctx = createSettlementCtx(db);
     // Gate-style approve → APPROVED + OPEN intent.
     const ap = await approveMilestone(sctx, milestone.id, buyer.address);
@@ -424,5 +425,49 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
     expect(
       (await db.settlement.payoutIntents.getById(intent!.id))?.status,
     ).toBe("OPEN");
+    // R9-M1: no deadlock — the preserved APPROVED ruling counts as
+    // payable-work-done, so the completion pass finishes the agreement
+    // even though the verdict was REJECTED. The operator pays the OPEN
+    // intent on the settlement side, independent of commerce state.
+    const agreement = await db.commerce.agreements.getById(agId);
+    expect(agreement?.status).toBe("COMPLETED");
+  });
+
+  it("R9-M2: REJECT on an already-RELEASED bound milestone reconciles the agreement", async () => {
+    const app = makeApp();
+    const { agId, subId, milestone } = await boundSubmission(app);
+    const sctx = createSettlementCtx(db);
+    const ap = await approveMilestone(sctx, milestone.id, buyer.address);
+    expect(ap.ok).toBe(true);
+    if (!ap.ok) return;
+    // Operator pays the leg before the verdict commit — the milestone
+    // is RELEASED (money moved) while commerce still shows SUBMITTED.
+    const paid = await markLegPaid(sctx, {
+      intentId: ap.value.intentId,
+      legId: ap.value.legs[0]!,
+      txHash: `0x${"c".repeat(64)}`,
+      operator: "ops-1",
+    });
+    expect(paid.ok).toBe(true);
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("RELEASED");
+
+    const rev = await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${subId}/review`,
+      { account: buyer, body: { verdict: "REJECTED" } },
+    );
+    expect(rev.status).toBe(200);
+    // Money moved — the release path must not touch it; the forensic
+    // line records the terminal bound state, and the completion pass
+    // reconciles the agreement instead of stranding it ACTIVE.
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("RELEASED");
+    expect(
+      (await db.commerce.agreements.getById(agId))?.status,
+    ).toBe("COMPLETED");
   });
 });

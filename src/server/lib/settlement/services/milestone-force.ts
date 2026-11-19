@@ -23,7 +23,7 @@ import type { SettlementCtx } from "./ctx.js";
 import { doApprove, type ApproveEffect } from "./milestone-approve.js";
 import { reopenMilestone } from "./milestone-service.js";
 
-const sha256Hex = async (v: string): Promise<string> =>
+export const sha256Hex = async (v: string): Promise<string> =>
   Buffer.from(
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)),
   ).toString("hex");
@@ -37,7 +37,7 @@ const MAX_FORCE_REASON = 2000;
 /** Operator-supplied submission refs land in evidence + events. */
 const MAX_FORCE_SUBMISSION_REF = 256;
 
-const checkForceInput = (
+export const checkForceInput = (
   opts: { operator: string; reason: string; submissionRef?: string },
 ): SettlementResult<never> | null => {
   const op = requireOperator(opts.operator);
@@ -100,10 +100,20 @@ export async function forceApproveMilestone(
     const existing = await ctx.db.settlement.payoutIntents.getByMilestone(
       milestone.id,
     );
-    // R4-M4: idempotent only while the intent is payable — an
-    // APPROVED milestone whose intent CANCELLED/COMPLETED must not
-    // replay as "ok".
+    // R4-M4 + R9 nit 3: idempotent ONLY when replaying OUR OWN force
+    // (`ops_` epoch). On an `appr_`/`rsv_` milestone the call is a
+    // silent no-op that mints no audit row — the operator believes the
+    // approval is pinned, but a later REJECT can still release an
+    // `appr_` epoch. Refuse so the operator picks the real path
+    // (dispute/resolve, or force-release to undo a ruling).
     if (existing && existing.status === "OPEN") {
+      const epoch = milestone.escrowRef ?? "";
+      if (!epoch.startsWith("ops_")) {
+        return fail(
+          "INVALID_STATE",
+          `milestone already APPROVED by a ${epoch.startsWith("rsv_") ? "resolver" : "commerce"} cycle — refusing a no-op force-approve (use force-release or the dispute path)`,
+        );
+      }
       const legs = await ctx.db.settlement.payoutLegs.listByIntent(
         existing.id,
       );
@@ -112,7 +122,7 @@ export async function forceApproveMilestone(
         intentId: existing.id,
         legs: legs.map((l) => l.id),
         // The existing approval's epoch — the row carries it.
-        approvalToken: milestone.escrowRef ?? "",
+        approvalToken: epoch,
         auditRecorded: false,
         alreadyApproved: true,
       });
@@ -274,3 +284,5 @@ export async function forceReopenMilestone(
   }
   return ok({ reopened: true, auditRecorded: audit.ok });
 }
+
+

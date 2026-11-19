@@ -23,6 +23,7 @@ import {
   revertApproval,
   submitForReview,
   type MilestoneInput,
+  type RevertReason,
 } from "../settlement/index.js";
 
 export interface SettlementPlanInput {
@@ -91,7 +92,7 @@ export interface CommerceSettlementBridge {
     milestoneRowId: string,
     actorWallet: string,
     opts?: { intentId?: string; release?: boolean; approvalToken?: string },
-  ): Promise<{ reverted: boolean; reason?: string } | null>;
+  ): Promise<{ reverted: boolean; reason?: RevertReason } | null>;
   /** R4-M5: READY→PENDING + unbind — a rejected submission frees its
    *  milestone for the resubmission round. Idempotent.
    *  R6 nit 9: `expectedSubmissionRef` makes it compare-and-release —

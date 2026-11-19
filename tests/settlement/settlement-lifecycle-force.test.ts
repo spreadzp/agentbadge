@@ -11,8 +11,10 @@ import {
   approveMilestone,
   createPlan,
   forceApproveMilestone,
+  forceReleaseMilestone,
   forceReopenMilestone,
   isLegalTransition,
+  markLegPaid,
   raiseDispute,
   reopenMilestone,
   revertApproval,
@@ -21,11 +23,13 @@ import {
 import type { SettlementCtx } from "../../src/server/lib/settlement/index.js";
 
 import {
+  approvedIntent,
   BUYER,
   freshCtx,
   openPlan,
   OPS,
   PROVIDER,
+  TX1,
 } from "./helpers.js";
 
 let db: Database;
@@ -412,5 +416,97 @@ describe("R5: revert hardening + intent reopen", () => {
     });
     expect(again.ok).toBe(true);
     if (again.ok) expect(again.value.reopened).toBe(false);
+  });
+});
+
+describe("R9: epoch provenance + force-release", () => {
+  it("force-approve stamps an ops_ epoch; a commerce (appr_) approval refuses the no-op replay", async () => {
+    const { milestones } = await openPlan(ctx);
+    const m = milestones[0]!;
+    await submitForReview(ctx, { milestoneRowId: m.id }, PROVIDER);
+    const ap = await forceApproveMilestone(ctx, m.id, {
+      operator: OPS,
+      reason: "recovery",
+    });
+    expect(ap.ok).toBe(true);
+    const row = await db.settlement.milestones.getById(m.id);
+    expect(row?.escrowRef).toMatch(/^ops_/);
+    // R9 nit 3: an ops_ retry is idempotent (same intent back)…
+    const again = await forceApproveMilestone(ctx, m.id, {
+      operator: OPS,
+      reason: "recovery",
+    });
+    expect(again.ok).toBe(true);
+    if (again.ok) expect(again.value.intentId).toBe(ap.ok ? ap.value.intentId : "");
+  });
+
+  it("force-approve on an appr_ epoch refuses — not the operator's ruling", async () => {
+    const { milestone } = await approvedIntent(ctx);
+    const row = await db.settlement.milestones.getById(milestone.id);
+    expect(row?.escrowRef).toMatch(/^appr_/);
+    // …but on a commerce-minted approval, the "force" would be a silent
+    // no-op minting no audit row — refused so the operator picks the
+    // real path (dispute/resolve or force-release).
+    const r = await forceApproveMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "pin this approval",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("INVALID_STATE");
+    // The commerce epoch is untouched.
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.escrowRef,
+    ).toMatch(/^appr_/);
+  });
+
+  it("forceReleaseMilestone: APPROVED → PENDING + intent cancelled + audit; guards hold", async () => {
+    const { milestone, intentId } = await approvedIntent(ctx);
+    const r = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "undo the ruling",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.released).toBe(true);
+    expect(r.value.auditRecorded).toBe(true);
+    const after = await db.settlement.milestones.getById(milestone.id);
+    expect(after?.status).toBe("PENDING");
+    expect(after?.escrowRef).toBeNull();
+    expect(
+      (await db.settlement.payoutIntents.getById(intentId))?.status,
+    ).toBe("CANCELLED");
+    const actions = await db.finops.adminActions.list({
+      subjectType: "milestone",
+    });
+    expect(
+      actions.find(
+        (a) =>
+          a.subjectId === milestone.id &&
+          a.action === "FORCE_RELEASE_MILESTONE",
+      ),
+    ).toBeTruthy();
+    // Non-APPROVED is a typed refusal — a released milestone is
+    // money-moved, not releasable.
+    const again = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "again",
+    });
+    expect(again.ok).toBe(false);
+    if (!again.ok) expect(again.error.code).toBe("INVALID_STATE");
+  });
+
+  it("forceReleaseMilestone refuses when a leg already paid (RELEASED)", async () => {
+    const { milestone, intentId, legs } = await approvedIntent(ctx);
+    const paid = await markLegPaid(
+      ctx,
+      { intentId, legId: legs[0]!, txHash: TX1, operator: OPS },
+    );
+    expect(paid.ok).toBe(true);
+    const r = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "too late",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("INVALID_STATE");
   });
 });
