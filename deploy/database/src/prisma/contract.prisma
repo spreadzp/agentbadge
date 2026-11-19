@@ -1199,3 +1199,143 @@ model ReputationFact {
   @@index([sourceRef])
   @@index([subjectId])
 }
+
+// ─── EPIC-227: A2A Settlement (SLICE-227-1) ─────────────────────────
+// Settlement layer for agent commerce (D-227-1..8): milestone-structured
+// payment with conditional release, PayoutIntent→legs completed by manual
+// ops with a real txHash, disputes (manual arbitration), and memo anchors
+// for settlement receipts. Money = Decimal (decimal-string at the edge,
+// never float). agreementRef is an EXTERNAL reference — payment state is
+// independent of task state (D-227-2); no FK into commerce tables.
+
+// Ordered milestone structure for one agreement (D-227-3): sum of the
+// milestones' amountUsd equals totalUsd — enforced by the domain layer
+// at creation; the plan row carries the authoritative totals.
+model MilestonePlan {
+  id             String            @id @default(uuid())
+  agreementRef   String            @unique // → CommerceAgreement.id (external ref)
+  buyerWallet    String // EVM wallet
+  providerWallet String // EVM wallet
+  currency       String            @default("USDC")
+  totalUsd       Decimal
+  status         String // ACTIVE|DISPUTED|COMPLETED|CANCELLED
+  payload        Json
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@index([buyerWallet])
+  @@index([providerWallet])
+  @@index([status])
+}
+
+model Milestone {
+  id                 String            @id @default(uuid())
+  planId             String // → MilestonePlan.id
+  milestoneId        String // caller-chosen key — unique within the plan
+  seq                Int // ordered-list position (flat ordered list, D-227-3)
+  title              String
+  amountUsd          Decimal
+  acceptanceCriteria String?
+  dueAtMs            BigInt?
+  releasePolicy      String // BUYER_ACCEPT|EVALUATOR_VERDICT (seam O-227-4)
+  status             String // PENDING|READY|APPROVED|RELEASED|DISPUTED|CANCELLED
+  submissionRef      String? // milestone ↔ Submission 1:1
+  escrowRef          String? // erc8183 seam (O-227-3)
+  payload            Json
+  createdAt          TimestamptzString @default(now())
+  updatedAt          temporal.updatedAtString()
+
+  @@unique([planId, milestoneId])
+  @@index([planId, seq])
+  @@index([status])
+}
+
+// Manual-ops payout work queue (D-227-4): intent is created when a
+// milestone is APPROVED; ops sends the transfers off-band and marks legs
+// paid with the real txHash — never a fabricated confirmation. One
+// intent per milestone (milestoneRef unique).
+model PayoutIntent {
+  id            String            @id @default(uuid())
+  milestoneRef  String            @unique // → Milestone.id
+  executor      String            @default("MANUAL") // MANUAL|WALLET_SERVICE (seam O-227-2)
+  status        String // OPEN|FROZEN|COMPLETED|FAILED|CANCELLED
+  createdAtMs   BigInt
+  completedAtMs BigInt?
+  completedBy   String? // operator label that closed the last leg
+  payload       Json
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@index([status, createdAtMs])
+}
+
+// Payment leg (D-227-5): {payee, amountUsdc, role}; sum(legs) equals the
+// milestone amount at intent creation. txHash is set-once — a completed
+// leg is immutable (append-only proof).
+model PayoutLeg {
+  id            String            @id @default(uuid())
+  intentId      String // → PayoutIntent.id
+  payee         String // EVM wallet destination
+  amountUsdc    Decimal
+  role          String // PROVIDER|COLLABORATOR|PLATFORM_FEE
+  status        String // OPEN|FROZEN|COMPLETED|FAILED
+  txHash        String? // set-once on completion
+  network       String            @default("arc") // replay key = network+hash
+  completedAtMs BigInt?
+  completedBy   String?
+  payload       Json
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@index([intentId])
+  @@index([status])
+  @@index([payee])
+  @@unique([network, txHash]) // one real tx binds at most one leg
+}
+
+// Manual-arbitration dispute (D-227-7): raising a dispute freezes the
+// connected PayoutIntents; only an operator resolves (+ AdminAction in
+// the service layer). resolverRef is the EaaS-verdict seam — evidence
+// input, never an auto-resolution.
+model Dispute {
+  id           String            @id @default(uuid())
+  subjectType  String // AGREEMENT|MILESTONE
+  subjectRef   String // agreementId | Milestone.id
+  raisedBy     String // participant wallet
+  reason       String
+  evidenceRefs Json // string refs ≤50 × ≤1000 (contract guards 206)
+  status       String // OPEN|RESOLVED
+  resolution   String? // FOR_BUYER|FOR_PROVIDER|SPLIT
+  splitAmounts Json? // leg-level amounts for SPLIT
+  resolvedBy   String?
+  resolverRef  String? // EaaS verdict seam
+  createdAtMs  BigInt
+  resolvedAtMs BigInt?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([subjectType, subjectRef])
+  @@index([status, createdAtMs])
+}
+
+// Memo-anchor outbox for settlement-receipt@1 (D-227-8): receiptHash
+// anchored on Arc via a memo tx; ANCHORED only with the real txHash.
+// Dedicated table (O-227-5 resolved): ChainTxOutbox is board-scoped
+// (cardId/kind/idempotencyKey semantics do not fit).
+model SettlementAnchor {
+  id           String            @id @default(uuid())
+  receiptRef   String            @unique // e.g. `${agreementId}:${milestoneId}`
+  receiptHash  String // keccak256 of the canonical receipt body
+  chainId      String
+  txHash       String? // memo tx carrying the anchor — set-once
+  status       String // PENDING|ANCHORED|FAILED
+  attempts     Int               @default(0)
+  lastError    String?
+  anchoredAtMs BigInt?
+  payload      Json
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  @@index([status])
+}

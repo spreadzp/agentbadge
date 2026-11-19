@@ -1,0 +1,914 @@
+[
+  {
+    "id": "table.dispute",
+    "label": "Create table \"dispute\"",
+    "summary": "Creates table \"dispute\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "dispute"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"dispute\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"dispute\"",
+        "sql": "CREATE TABLE \"public\".\"dispute\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"evidenceRefs\" json NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"raisedBy\" text NOT NULL,\n  \"reason\" text NOT NULL,\n  \"resolution\" text,\n  \"resolvedAtMs\" int8,\n  \"resolvedBy\" text,\n  \"resolverRef\" text,\n  \"splitAmounts\" json,\n  \"status\" text NOT NULL,\n  \"subjectRef\" text NOT NULL,\n  \"subjectType\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"dispute\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.milestone",
+    "label": "Create table \"milestone\"",
+    "summary": "Creates table \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"milestone\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"milestone\"",
+        "sql": "CREATE TABLE \"public\".\"milestone\" (\n  \"acceptanceCriteria\" text,\n  \"amountUsd\" numeric NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"dueAtMs\" int8,\n  \"escrowRef\" text,\n  \"id\" text NOT NULL,\n  \"milestoneId\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"planId\" text NOT NULL,\n  \"releasePolicy\" text NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"status\" text NOT NULL,\n  \"submissionRef\" text,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"milestone\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.milestonePlan",
+    "label": "Create table \"milestonePlan\"",
+    "summary": "Creates table \"milestonePlan\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "milestonePlan"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"milestonePlan\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"milestonePlan\"",
+        "sql": "CREATE TABLE \"public\".\"milestonePlan\" (\n  \"agreementRef\" text NOT NULL,\n  \"buyerWallet\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USDC' NOT NULL,\n  \"id\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"providerWallet\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"totalUsd\" numeric NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"milestonePlan\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.payoutIntent",
+    "label": "Create table \"payoutIntent\"",
+    "summary": "Creates table \"payoutIntent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "payoutIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"payoutIntent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutIntent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"payoutIntent\"",
+        "sql": "CREATE TABLE \"public\".\"payoutIntent\" (\n  \"completedAtMs\" int8,\n  \"completedBy\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"executor\" text DEFAULT 'MANUAL' NOT NULL,\n  \"id\" text NOT NULL,\n  \"milestoneRef\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"payoutIntent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutIntent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.payoutLeg",
+    "label": "Create table \"payoutLeg\"",
+    "summary": "Creates table \"payoutLeg\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "payoutLeg"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"payoutLeg\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"payoutLeg\"",
+        "sql": "CREATE TABLE \"public\".\"payoutLeg\" (\n  \"amountUsdc\" numeric NOT NULL,\n  \"completedAtMs\" int8,\n  \"completedBy\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"intentId\" text NOT NULL,\n  \"network\" text DEFAULT 'arc' NOT NULL,\n  \"payee\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"role\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"txHash\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"payoutLeg\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.settlementAnchor",
+    "label": "Create table \"settlementAnchor\"",
+    "summary": "Creates table \"settlementAnchor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "settlementAnchor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"settlementAnchor\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"settlementAnchor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"settlementAnchor\"",
+        "sql": "CREATE TABLE \"public\".\"settlementAnchor\" (\n  \"anchoredAtMs\" int8,\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"chainId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"lastError\" text,\n  \"payload\" json NOT NULL,\n  \"receiptHash\" text NOT NULL,\n  \"receiptRef\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"txHash\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"settlementAnchor\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"settlementAnchor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.milestone.milestone_planId_milestoneId_key",
+    "label": "Add unique constraint on \"milestone\" (planId, milestoneId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "milestone_planId_milestoneId_key",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"milestone_planId_milestoneId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_planId_milestoneId_key",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"milestone_planId_milestoneId_key\"",
+        "sql": "ALTER TABLE \"public\".\"milestone\" ADD CONSTRAINT \"milestone_planId_milestoneId_key\" UNIQUE (\"planId\", \"milestoneId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"milestone_planId_milestoneId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_planId_milestoneId_key",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.milestonePlan.milestonePlan_agreementRef_key",
+    "label": "Add unique constraint on \"milestonePlan\" (agreementRef)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "milestonePlan_agreementRef_key",
+        "table": "milestonePlan"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"milestonePlan_agreementRef_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestonePlan_agreementRef_key",
+          "public",
+          "\"public\".\"milestonePlan\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"milestonePlan_agreementRef_key\"",
+        "sql": "ALTER TABLE \"public\".\"milestonePlan\" ADD CONSTRAINT \"milestonePlan_agreementRef_key\" UNIQUE (\"agreementRef\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"milestonePlan_agreementRef_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestonePlan_agreementRef_key",
+          "public",
+          "\"public\".\"milestonePlan\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.payoutIntent.payoutIntent_milestoneRef_key",
+    "label": "Add unique constraint on \"payoutIntent\" (milestoneRef)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "payoutIntent_milestoneRef_key",
+        "table": "payoutIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payoutIntent_milestoneRef_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payoutIntent_milestoneRef_key",
+          "public",
+          "\"public\".\"payoutIntent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"payoutIntent_milestoneRef_key\"",
+        "sql": "ALTER TABLE \"public\".\"payoutIntent\" ADD CONSTRAINT \"payoutIntent_milestoneRef_key\" UNIQUE (\"milestoneRef\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payoutIntent_milestoneRef_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payoutIntent_milestoneRef_key",
+          "public",
+          "\"public\".\"payoutIntent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.payoutLeg.payoutLeg_network_txHash_key",
+    "label": "Add unique constraint on \"payoutLeg\" (network, txHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "payoutLeg_network_txHash_key",
+        "table": "payoutLeg"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payoutLeg_network_txHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payoutLeg_network_txHash_key",
+          "public",
+          "\"public\".\"payoutLeg\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"payoutLeg_network_txHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"payoutLeg\" ADD CONSTRAINT \"payoutLeg_network_txHash_key\" UNIQUE (\"network\", \"txHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payoutLeg_network_txHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payoutLeg_network_txHash_key",
+          "public",
+          "\"public\".\"payoutLeg\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.settlementAnchor.settlementAnchor_receiptRef_key",
+    "label": "Add unique constraint on \"settlementAnchor\" (receiptRef)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "settlementAnchor_receiptRef_key",
+        "table": "settlementAnchor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"settlementAnchor_receiptRef_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "settlementAnchor_receiptRef_key",
+          "public",
+          "\"public\".\"settlementAnchor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"settlementAnchor_receiptRef_key\"",
+        "sql": "ALTER TABLE \"public\".\"settlementAnchor\" ADD CONSTRAINT \"settlementAnchor_receiptRef_key\" UNIQUE (\"receiptRef\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"settlementAnchor_receiptRef_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "settlementAnchor_receiptRef_key",
+          "public",
+          "\"public\".\"settlementAnchor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dispute.dispute_status_createdAtMs_idx_95013a06",
+    "label": "Create index \"dispute_status_createdAtMs_idx_95013a06\" on \"dispute\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dispute_status_createdAtMs_idx_95013a06",
+        "table": "dispute"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dispute_status_createdAtMs_idx_95013a06\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dispute_status_createdAtMs_idx_95013a06\"",
+        "sql": "CREATE INDEX \"dispute_status_createdAtMs_idx_95013a06\" ON \"public\".\"dispute\" (\"status\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dispute_status_createdAtMs_idx_95013a06\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dispute.dispute_subjectType_subjectRef_idx_aacae306",
+    "label": "Create index \"dispute_subjectType_subjectRef_idx_aacae306\" on \"dispute\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dispute_subjectType_subjectRef_idx_aacae306",
+        "table": "dispute"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dispute_subjectType_subjectRef_idx_aacae306\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_subjectType_subjectRef_idx_aacae306\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dispute_subjectType_subjectRef_idx_aacae306\"",
+        "sql": "CREATE INDEX \"dispute_subjectType_subjectRef_idx_aacae306\" ON \"public\".\"dispute\" (\"subjectType\", \"subjectRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dispute_subjectType_subjectRef_idx_aacae306\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_subjectType_subjectRef_idx_aacae306\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestone.milestone_planId_seq_idx_67ae955b",
+    "label": "Create index \"milestone_planId_seq_idx_67ae955b\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestone_planId_seq_idx_67ae955b",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestone_planId_seq_idx_67ae955b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_planId_seq_idx_67ae955b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestone_planId_seq_idx_67ae955b\"",
+        "sql": "CREATE INDEX \"milestone_planId_seq_idx_67ae955b\" ON \"public\".\"milestone\" (\"planId\", \"seq\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestone_planId_seq_idx_67ae955b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_planId_seq_idx_67ae955b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestone.milestone_status_idx_e98638ab",
+    "label": "Create index \"milestone_status_idx_e98638ab\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestone_status_idx_e98638ab",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestone_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestone_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"milestone_status_idx_e98638ab\" ON \"public\".\"milestone\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestone_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestonePlan.milestonePlan_buyerWallet_idx_1d31fe7c",
+    "label": "Create index \"milestonePlan_buyerWallet_idx_1d31fe7c\" on \"milestonePlan\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestonePlan_buyerWallet_idx_1d31fe7c",
+        "table": "milestonePlan"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestonePlan_buyerWallet_idx_1d31fe7c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan_buyerWallet_idx_1d31fe7c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestonePlan_buyerWallet_idx_1d31fe7c\"",
+        "sql": "CREATE INDEX \"milestonePlan_buyerWallet_idx_1d31fe7c\" ON \"public\".\"milestonePlan\" (\"buyerWallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestonePlan_buyerWallet_idx_1d31fe7c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan_buyerWallet_idx_1d31fe7c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestonePlan.milestonePlan_providerWallet_idx_fa866d84",
+    "label": "Create index \"milestonePlan_providerWallet_idx_fa866d84\" on \"milestonePlan\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestonePlan_providerWallet_idx_fa866d84",
+        "table": "milestonePlan"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestonePlan_providerWallet_idx_fa866d84\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan_providerWallet_idx_fa866d84\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestonePlan_providerWallet_idx_fa866d84\"",
+        "sql": "CREATE INDEX \"milestonePlan_providerWallet_idx_fa866d84\" ON \"public\".\"milestonePlan\" (\"providerWallet\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestonePlan_providerWallet_idx_fa866d84\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan_providerWallet_idx_fa866d84\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestonePlan.milestonePlan_status_idx_e98638ab",
+    "label": "Create index \"milestonePlan_status_idx_e98638ab\" on \"milestonePlan\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestonePlan_status_idx_e98638ab",
+        "table": "milestonePlan"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestonePlan_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestonePlan_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"milestonePlan_status_idx_e98638ab\" ON \"public\".\"milestonePlan\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestonePlan_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestonePlan_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payoutIntent.payoutIntent_status_createdAtMs_idx_95013a06",
+    "label": "Create index \"payoutIntent_status_createdAtMs_idx_95013a06\" on \"payoutIntent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payoutIntent_status_createdAtMs_idx_95013a06",
+        "table": "payoutIntent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payoutIntent_status_createdAtMs_idx_95013a06\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutIntent_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payoutIntent_status_createdAtMs_idx_95013a06\"",
+        "sql": "CREATE INDEX \"payoutIntent_status_createdAtMs_idx_95013a06\" ON \"public\".\"payoutIntent\" (\"status\", \"createdAtMs\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payoutIntent_status_createdAtMs_idx_95013a06\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutIntent_status_createdAtMs_idx_95013a06\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payoutLeg.payoutLeg_intentId_idx_e8967b69",
+    "label": "Create index \"payoutLeg_intentId_idx_e8967b69\" on \"payoutLeg\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payoutLeg_intentId_idx_e8967b69",
+        "table": "payoutLeg"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payoutLeg_intentId_idx_e8967b69\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg_intentId_idx_e8967b69\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payoutLeg_intentId_idx_e8967b69\"",
+        "sql": "CREATE INDEX \"payoutLeg_intentId_idx_e8967b69\" ON \"public\".\"payoutLeg\" (\"intentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payoutLeg_intentId_idx_e8967b69\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg_intentId_idx_e8967b69\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payoutLeg.payoutLeg_payee_idx_30918ee6",
+    "label": "Create index \"payoutLeg_payee_idx_30918ee6\" on \"payoutLeg\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payoutLeg_payee_idx_30918ee6",
+        "table": "payoutLeg"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payoutLeg_payee_idx_30918ee6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg_payee_idx_30918ee6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payoutLeg_payee_idx_30918ee6\"",
+        "sql": "CREATE INDEX \"payoutLeg_payee_idx_30918ee6\" ON \"public\".\"payoutLeg\" (\"payee\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payoutLeg_payee_idx_30918ee6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg_payee_idx_30918ee6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payoutLeg.payoutLeg_status_idx_e98638ab",
+    "label": "Create index \"payoutLeg_status_idx_e98638ab\" on \"payoutLeg\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payoutLeg_status_idx_e98638ab",
+        "table": "payoutLeg"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payoutLeg_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payoutLeg_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"payoutLeg_status_idx_e98638ab\" ON \"public\".\"payoutLeg\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payoutLeg_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payoutLeg_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.settlementAnchor.settlementAnchor_status_idx_e98638ab",
+    "label": "Create index \"settlementAnchor_status_idx_e98638ab\" on \"settlementAnchor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "settlementAnchor_status_idx_e98638ab",
+        "table": "settlementAnchor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"settlementAnchor_status_idx_e98638ab\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"settlementAnchor_status_idx_e98638ab\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"settlementAnchor_status_idx_e98638ab\"",
+        "sql": "CREATE INDEX \"settlementAnchor_status_idx_e98638ab\" ON \"public\".\"settlementAnchor\" (\"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"settlementAnchor_status_idx_e98638ab\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"settlementAnchor_status_idx_e98638ab\""
+        ]
+      }
+    ]
+  }
+]
