@@ -93,6 +93,12 @@ agentCardRoutes.get(
           transport: "http",
           url: `${baseUrl}/mcp`,
         },
+        {
+          // SLICE-256-5: keyless public facade — WebMCP programmatic twin.
+          name: "public",
+          transport: "http",
+          url: `${baseUrl}/mcp/public`,
+        },
       ],
       namespaces: [...MCP_NAMESPACES],
     };

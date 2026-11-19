@@ -32,17 +32,30 @@ describe("GET /.well-known/webmcp.json", () => {
     expect(Array.isArray(body.tools)).toBe(true);
   });
 
-  it("includes all 6 imperative tools", async () => {
+  it("includes all 16 imperative tools (EPIC-256 registry)", async () => {
     const res = await app.request("/.well-known/webmcp.json");
     const body = await res.json();
-    expect(body.tools.length).toBe(6);
+    expect(body.tools.length).toBe(16);
     const names = body.tools.map((t: { name: string }) => t.name);
     expect(names).toContain("agent-readiness-scan");
     expect(names).toContain("badge-generate");
-    expect(names).toContain("passport-issue");
+    expect(names).not.toContain("passport-issue");
     expect(names).toContain("passport-verify");
     expect(names).toContain("get-compliance-score");
     expect(names).toContain("search-rules");
+    // SLICE-256-2 trust / marketplace / onboarding reads
+    expect(names).toContain("verify-verdict");
+    expect(names).toContain("check-address-risk");
+    expect(names).toContain("list-services");
+    expect(names).toContain("browse-tasks");
+    expect(names).toContain("get-task");
+    expect(names).toContain("get-task-status");
+    expect(names).toContain("how-to-register");
+    // SLICE-256-4 interaction
+    expect(names).toContain("submit-request");
+    expect(names).toContain("poll-request");
+    expect(names).toContain("search-agent-qa");
+    expect(names).toContain("list-surveys");
   });
 
   it("each tool has name, description, inputSchema", async () => {

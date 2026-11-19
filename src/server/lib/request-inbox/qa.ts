@@ -5,7 +5,7 @@ import {
   questionHashFor,
 } from "./fingerprint";
 import type { RequestStore } from "./store";
-import type { InboxRequestRecord } from "./types";
+import type { InboxQaPair, InboxRequestRecord } from "./types";
 
 /**
  * EPIC-252 (SLICE-252-2, D-252-Q7): Q&A corpus materialization.
@@ -48,7 +48,14 @@ export function contentHashFor(
 }
 
 /** Wrap `store.transition(id, from, "completed", patch)`; on success
- *  materialize/upsert the QA pair (same questionHash bumps uses). */
+ *  materialize/upsert the QA pair (same questionHash bumps uses).
+ *
+ *  D-256-Q13 consent gate — lives INSIDE this function so both callers
+ *  (ops respond AND manual state→completed) are covered: the pair is
+ *  written only when the requester opted in (`publishToQa === true`),
+ *  the row is not spam-flagged, and a response exists. In-flight rows
+ *  predating the column carry publishToQa=false — privacy-safe default.
+ */
 export async function transitionWithQa(
   store: RequestStore,
   id: string,
@@ -65,13 +72,20 @@ export async function transitionWithQa(
   // Re-audit N-5: a `completed` row with no response must not write a
   // null-answer pair into the corpus — upserts only bump `uses`, so a
   // stale null would persist forever.
-  if (question && record.response != null) {
+  if (
+    question &&
+    record.publishToQa === true &&
+    !record.spamFlag &&
+    record.response != null
+  ) {
     try {
       // Audit M-2: a failed upsert must not 500 the respond — the
       // transition already committed; a missing corpus row is a
       // soft loss, a 409-forever retry is a hard one.
       await store.upsertQaPair({
-        id: `qa_${record.id}`,
+        // D-256-Q14: public qa_id is a fresh uuid — `qa_{requestId}`
+        // leaked the bearer capability id into the public corpus.
+        id: `qa_${crypto.randomUUID().replaceAll("-", "")}`,
         questionHash: questionHashFor(normalizeQuestion(question)),
         question: normalizeQuestion(question),
         response: record.response,
@@ -83,6 +97,50 @@ export async function transitionWithQa(
     }
   }
   return record;
+}
+
+/**
+ * D-256-Q14 provenance — how the pair entered the corpus.
+ * Pairs minted before the consent gate derived their id as
+ * `qa_{sourceRequestId}` ("legacy"); consented pairs mint a fresh
+ * `qa_<uuid>` ("ops_answered").
+ */
+export function qaProvenance(
+  pair: Pick<InboxQaPair, "id" | "sourceRequestId">,
+): "ops_answered" | "legacy" {
+  return pair.id === `qa_${pair.sourceRequestId}` ? "legacy" : "ops_answered";
+}
+
+/** D-256-Q14: public projection of a corpus pair for GET /qa —
+ *  `questionHash`/`sourceRequestId` (a bearer capability id) are
+ *  deliberately NOT included. */
+export function toPublicQaResult(p: InboxQaPair) {
+  return {
+    id: p.id,
+    qa_id: p.id,
+    question: p.question,
+    response: p.response,
+    uses: p.uses,
+    published_at: p.createdAtMs,
+    provenance: qaProvenance(p),
+  };
+}
+
+/** D-256-Q15: POST fast-path body — honest provenance: no new row
+ *  was created; the answer comes from the public corpus. */
+export function qaFastPathBody(pair: InboxQaPair) {
+  return {
+    state: "completed",
+    response: pair.response,
+    qa: true,
+    request_created: false,
+    qa_match: {
+      qa_id: pair.id,
+      match_method: "normalized_exact_hash" as const,
+      published_at: pair.createdAtMs,
+      source: "public_qa" as const,
+    },
+  };
 }
 
 /** JSON.stringify with object keys deep-sorted — Postgres jsonb

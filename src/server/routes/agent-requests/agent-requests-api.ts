@@ -24,7 +24,9 @@ import {
   contentHashFor,
   payloadQuestionText,
   canonicalJson,
+  qaFastPathBody,
 } from "../../lib/request-inbox/qa";
+import { registerQaSearchRoute } from "./agent-requests-qa-api";
 import {
   createSubmitLanes,
   headerSnapshot,
@@ -71,30 +73,9 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
     now,
   });
 
-  // QA corpus search — registered BEFORE /:id so "qa" wins the param slot.
-  app.get(
-    "/api/requests/qa",
-    describeRoute({
-      summary: "Search the request-inbox QA corpus (D-252-Q7)",
-      tags: ["Requests"],
-      responses: { 200: { description: "Matching QA pairs" } },
-    }),
-    async (c) => {
-      const q = c.req.query("q")?.trim();
-      if (!q) {
-        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "q required");
-      }
-      const pairs = await stores.requests.searchQa(normalizeQuestion(q), 25);
-      return c.json({
-        results: pairs.map((p) => ({
-          id: p.id,
-          question: p.question,
-          response: p.response,
-          uses: p.uses,
-        })),
-      });
-    },
-  );
+  // QA corpus search — registered BEFORE /:id so "qa" wins the param
+  // slot (route lives in agent-requests-qa-api.ts — file-size guard).
+  registerQaSearchRoute(app, stores.requests);
 
   app.get(
     "/api/requests/:id",
@@ -118,11 +99,28 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
           { retryable: false },
         );
       }
+      // D-256-Q16: lifecycle visibility — poll hint stays honest
+      // (ops-pull, hours–days; no SLA promised).
+      const lifecycle = {
+        created_at: record.createdAtMs,
+        expires_at: record.expiresAtMs,
+      };
       if (record.state === "submitted" || record.state === "working") {
         c.header("Retry-After", String(RETRY_AFTER_SEC));
-        return c.json({ state: record.state }, 202);
+        return c.json(
+          { state: record.state, ...lifecycle, retry_after: RETRY_AFTER_SEC },
+          202,
+        );
       }
-      return c.json({ state: record.state, response: record.response }, 200);
+      return c.json(
+        {
+          state: record.state,
+          response: record.response,
+          ...lifecycle,
+          retry_after: null,
+        },
+        200,
+      );
     },
   );
 
@@ -157,7 +155,7 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
         }
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "payload required",);
       }
-      const { kind, payload } = intake.body;
+      const { kind, payload, publish_to_qa } = intake.body;
       if (kind != null && hasJsonbUnsafe(kind)) { // re-audit M-8
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "kind unsafe");
       }
@@ -196,7 +194,9 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
           } catch {
             /* uses++ is advisory — never fail the fast path (N-6) */
           }
-          return c.json({ state: "completed", response: pair.response, qa: true }, 200);
+          // D-256-Q15: honest fast-path provenance — no new row was
+          // created; the answer comes from the public corpus.
+          return c.json(qaFastPathBody(pair), 200);
         }
       }
 
@@ -246,6 +246,7 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
           fpHash,
           agentId,
           verified: agentId != null,
+          publishToQa: publish_to_qa ?? false,
           idempotencyKey,
           expiresAtMs: now() + env.requestTtlMs,
         }));

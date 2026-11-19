@@ -128,6 +128,17 @@ export function buildAgentCard(src: DiscoverySources): string {
         examples: ["list open surveys", "answer a survey"],
       },
       {
+        // SLICE-256-5: WebMCP v2 — keyless browser-side tools registered
+        // via document.modelContext on scoped pages; catalog at
+        // /.well-known/webmcp.json, programmatic twin at /mcp/public.
+        id: "webmcp-tools",
+        name: "WebMCP Browser Tools",
+        description:
+          "Keyless in-browser tools via document.modelContext: readiness scan, verdict/risk checks, marketplace browse, async Request Inbox (submit-request → poll-request, ops answers in hours–days), public Q&A search. Tool catalog: /.well-known/webmcp.json",
+        tags: ["webmcp", "browser", "keyless", "tools"],
+        examples: ["submit a request to the inbox", "poll a request"],
+      },
+      {
         // SLICE-203-7: FallbackExecutor over the A2A surface — deterministic
         // ack + data artifact for any message without a scan domain.
         id: "generic",
@@ -165,12 +176,23 @@ export function buildAgentCard(src: DiscoverySources): string {
         "task_receipts",
         "request_inbox",
         "agent_surveys",
+        "webmcp",
       ],
+      // SLICE-256-5: registry-driven WebMCP v2 tool names — honest
+      // inventory, never hand-maintained (absent when source missing).
+      ...(src.webmcp
+        ? {
+            webmcp_tools: src.webmcp.tools.map((t) => t.name),
+            webmcp_tool_count: src.webmcp.tools.length,
+          }
+        : {}),
       endpoints: {
         api: `${b}/api/specs`,
         docs: "https://agentbadge.gitbook.io/agentbadge-docs",
         documentation: "https://agentbadge.gitbook.io/agentbadge-docs",
         mcp: `${b}/mcp`,
+        mcp_public: `${b}/mcp/public`,
+        webmcp_json: `${b}/.well-known/webmcp.json`,
         gitbook_mcp:
           "https://agentbadge.gitbook.io/agentbadge-docs/~gitbook/mcp",
         llms_txt: `${b}/llms.txt`,

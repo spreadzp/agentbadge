@@ -132,7 +132,11 @@ describe("POST respond/state + e2e (SLICE-252-3)", () => {
 
   it("respond without mark_completed → working; completed → QA pair materializes", async () => {
     const { app, stores } = mkApp();
-    const p = await post(app, { payload: { prompt: "q-materialize" } });
+    // QA materialization requires publish-consent (D-256-Q13).
+    const p = await post(app, {
+      payload: { prompt: "q-materialize" },
+      publish_to_qa: true,
+    });
     const { request_id } = await p.json();
     const w = await app.request(`/api/ops/requests/${request_id}/respond`, {
       method: "POST",

@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeAll } from "vitest";
 vi.mock("../../src/config/env.js", () => ({
   getConfig: vi.fn(() => ({
     chainMode: "hedera",
+    passportChain: { enabled: true },
     hederaNetwork: "testnet",
     ui: {
       currencySymbol: "ℏ",
@@ -140,6 +141,7 @@ describe("E2E: WebMCP Tool Execution", () => {
   beforeAll(() => {
     process.env.MOCK_HEDERA = "true";
     process.env.PASSPORT_TOKEN_ID = "0.0.1234567";
+    process.env.PASSPORT_CHAIN_ENABLED = "true"; // SLICE-169-9 gate: Hedera chain reads off by default
     app = makeWebMCPTestApp();
   });
 
@@ -177,7 +179,7 @@ describe("E2E: WebMCP Tool Execution", () => {
     });
 
     it("accepts did parameter", async () => {
-      const res = await app.request("/api/passport/verify?did=did:hedera:0.0.123:0");
+      const res = await app.request("/api/passport/verify?did=did:hcs:0.0.123:0");
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body).toHaveProperty("valid");

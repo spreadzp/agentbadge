@@ -133,15 +133,26 @@ describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
       expect(body).toContain("WebMCP");
     });
 
-    it("contains all 6 imperative tool names", async () => {
+    it("contains the imperative tool names (passport-issue removed in EPIC-256)", async () => {
       const res = await app.request("/hackathon/webmcp");
       const body = await res.text();
       expect(body).toContain("agent-readiness-scan");
       expect(body).toContain("badge-generate");
-      expect(body).toContain("passport-issue");
+      expect(body).not.toContain("passport-issue");
       expect(body).toContain("passport-verify");
       expect(body).toContain("get-compliance-score");
       expect(body).toContain("search-rules");
+      expect(body).toContain("verify-verdict");
+      expect(body).toContain("check-address-risk");
+      expect(body).toContain("list-services");
+      expect(body).toContain("browse-tasks");
+      expect(body).toContain("get-task");
+      expect(body).toContain("get-task-status");
+      expect(body).toContain("how-to-register");
+      expect(body).toContain("submit-request");
+      expect(body).toContain("poll-request");
+      expect(body).toContain("search-agent-qa");
+      expect(body).toContain("list-surveys");
     });
 
     it("contains Try It Now demo instructions", async () => {
@@ -168,11 +179,11 @@ describe("SLICE-91-3: WebMCP Hackathon Page Scaffold", () => {
       expect(body).toContain("await document.modelContext.registerTool");
     });
 
-    it("contains all 6 registerTool calls", async () => {
+    it("contains all 16 registerTool calls", async () => {
       const res = await app.request("/hackathon/webmcp");
       const body = await res.text();
       const matches = body.match(/await document\.modelContext\.registerTool\(/g);
-      expect(matches).toHaveLength(6);
+      expect(matches).toHaveLength(16);
     });
 
     it("contains try/catch for graceful failure", async () => {

@@ -24,26 +24,17 @@ import type {
   InboxSurveyRecord,
 } from "./types";
 
-/**
- * EPIC-252 (SLICE-252-1): Postgres-backed RequestInboxStores adapter.
- * Thin mapper — every method delegates to the repository and converts
- * codec rows (BigInt int8 columns) into plain domain records.
- */
+/** EPIC-252 (SLICE-252-1): Postgres RequestInboxStores adapter — thin
+ *  mapper over the repositories (codec rows → domain records). */
 
-// Row types are derived from the repository signatures — the emitted
+// Row types derive from the repository signatures — the emitted
 // `Models` namespace is not part of the package's public surface.
-type ReqRow = NonNullable<
-  Awaited<ReturnType<AgentRequestRepository["get"]>>
->;
-type QaRow = NonNullable<
-  Awaited<ReturnType<AgentRequestRepository["getQaByHash"]>>
->;
-type SurveyRow = NonNullable<
-  Awaited<ReturnType<AgentSurveyRepository["getSurvey"]>>
->;
-type AnswerRow = NonNullable<
-  Awaited<ReturnType<AgentSurveyRepository["getAnswer"]>>
->;
+type Repo = AgentRequestRepository;
+type SRepo = AgentSurveyRepository;
+type ReqRow = NonNullable<Awaited<ReturnType<Repo["get"]>>>;
+type QaRow = NonNullable<Awaited<ReturnType<Repo["getQaByHash"]>>>;
+type SurveyRow = NonNullable<Awaited<ReturnType<SRepo["getSurvey"]>>>;
+type AnswerRow = NonNullable<Awaited<ReturnType<SRepo["getAnswer"]>>>;
 
 const num = (v: unknown): number => Number(v);
 const numOrNull = (v: unknown): number | null =>
@@ -61,6 +52,7 @@ const toRequest = (r: ReqRow): InboxRequestRecord => ({
   verified: r.verified,
   response: json(r.response),
   spamFlag: r.spamFlag,
+  publishToQa: r.publishToQa,
   idempotencyKey: r.idempotencyKey,
   expiresAtMs: num(r.expiresAtMs),
   createdAtMs: num(r.createdAtMs),
@@ -74,6 +66,8 @@ const toQa = (r: QaRow): InboxQaPair => ({
   response: json(r.response),
   sourceRequestId: r.sourceRequestId,
   uses: r.uses,
+  retractedAtMs: numOrNull(r.retractedAtMs),
+  retractReason: r.retractReason,
   createdAtMs: num(r.createdAtMs),
 });
 
@@ -122,6 +116,7 @@ export function createDbRequestStore(
         fpHash: input.fpHash,
         agentId: input.agentId ?? null,
         verified: input.verified ?? false,
+        publishToQa: input.publishToQa ?? false,
         idempotencyKey: input.idempotencyKey ?? null,
         expiresAtMs: input.expiresAtMs,
         createdAtMs: input.createdAtMs ?? Date.now(),
@@ -174,6 +169,15 @@ export function createDbRequestStore(
         createdAtMs: qa.createdAtMs,
       };
       return toQa(await repo.upsertQaPair(upsert));
+    },
+
+    async retractQaPair(id, reason, retractedAtMs) {
+      const row = await repo.retractQaPair(
+        id,
+        reason,
+        retractedAtMs ?? Date.now(),
+      );
+      return row ? toQa(row) : null;
     },
 
     async getQaByHash(questionHash) {
@@ -289,6 +293,4 @@ export function createDbRequestInboxStores(
     backend: "postgres",
   };
 }
-
-/** SubmitInput re-export kept for route ergonomics. */
 export type { SubmitInput };

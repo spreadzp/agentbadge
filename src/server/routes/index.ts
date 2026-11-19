@@ -90,6 +90,7 @@ import { demandRoutes } from "./api/demand";
 import { demandGuideRoutes } from "./agent-guide/demand";
 import { changelogRoutes } from "./pages/changelog";
 import { agencyJsonRoutes } from "./services/agency-json";
+import { webmcpPageScope } from "../middleware/webmcp-scope";
 import { profileRoutes } from "./profile/profile";
 import { profileViewerRoutes } from "./profile/profile-viewer";
 import { attestcoinRoutes, setAttestcoinRouteConfig } from "./attestation/attestcoin";
@@ -186,6 +187,9 @@ export function registerCoreRoutes(app: Hono): void {
 
 // HTML page routes — mounted after wireMcpNamespaceRoutes.
 export function registerPageRoutes(app: Hono): void {
+  // SLICE-256-5: page-scoped WebMCP toolset injection (registry-driven,
+  // feature-detected no-op outside Chrome OT; no-op on non-HTML).
+  app.use("*", webmcpPageScope());
   app.route("/", landingRoutes);
   app.route("/", authorityRoutes);
   app.route("/", hackathonRoutes);
@@ -263,11 +267,15 @@ export function registerApiRoutes(app: Hono): void {
       ),
     );
   }
+  // One shared store set for all inbox mounts — the factory memoizes
+  // its memory fallback (split stores → 404s); keeping the single
+  // reference here makes the intent explicit regardless of backend.
+  const requestInboxStores = pickRequestInboxStores(getDatabase());
   // 252-2: public async request inbox — POST /api/requests + GET poll.
   app.route(
     "/",
     createAgentRequestRoutes({
-      stores: pickRequestInboxStores(getDatabase()),
+      stores: requestInboxStores,
       env: getConfig().requestInbox,
     }),
   );
@@ -275,27 +283,27 @@ export function registerApiRoutes(app: Hono): void {
   app.route(
     "/",
     createAgentRequestOpsRoutes({
-      stores: pickRequestInboxStores(getDatabase()),
+      stores: requestInboxStores,
     }),
   );
   // 252-4: surveys → rating lane — public open/answer + ops create.
   app.route(
     "/",
     createAgentSurveyRoutes({
-      stores: pickRequestInboxStores(getDatabase()),
+      stores: requestInboxStores,
       env: getConfig().requestInbox,
     }),
   );
   app.route(
     "/",
     createAgentSurveyOpsRoutes({
-      stores: pickRequestInboxStores(getDatabase()),
+      stores: requestInboxStores,
     }),
   );
   app.route(
     "/",
     createInboxOpsDigestRoutes({
-      stores: pickRequestInboxStores(getDatabase()),
+      stores: requestInboxStores,
     }),
   );
   app.route("/", boardApiRoutes); // 199-11: /api/board/cards mutations

@@ -170,6 +170,16 @@ describe("pickRequestInboxStores dual-mode", () => {
     });
     expect(stores.backend).toBe("memory");
   });
+
+  it("memory fallback is a shared singleton — picks never split-brain", () => {
+    // Regression (EPIC-256): each route mount used to get a FRESH memory
+    // store, so intake wrote to one instance while ops/notifier read
+    // empty ones. Two picks must observe the same data.
+    const nullDb = { agentRequests: null, agentSurveys: null };
+    const a = pickRequestInboxStores(nullDb);
+    const b = pickRequestInboxStores(nullDb);
+    expect(a).toBe(b);
+  });
 });
 
 describe("survey store (in-memory)", () => {

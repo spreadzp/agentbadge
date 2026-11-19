@@ -2,7 +2,7 @@
  * SLICE-91-14: E2E Discovery Tests — WebMCP
  *
  * Verifies the full discovery flow:
- * - GET /.well-known/webmcp.json returns 200 with all 6 tools
+ * - GET /.well-known/webmcp.json returns 200 with all registered tools
  * - JSON validates against schema
  * - Link header on /hackathon/webmcp includes webmcp.json reference
  * - Endpoint accessible without authentication
@@ -131,15 +131,10 @@ vi.mock("../../src/agent-readiness/scanner/ssrf/ip-guard", () => ({
 }));
 
 import { makeWebMCPTestApp } from "./webmcp-test-app";
+import { toolsFor } from "@agentbadge/webmcp";
 
-const EXPECTED_TOOL_NAMES = [
-  "agent-readiness-scan",
-  "badge-generate",
-  "passport-issue",
-  "passport-verify",
-  "get-compliance-score",
-  "search-rules",
-];
+// EPIC-256: inventory is registry-driven — never a hand-maintained list.
+const EXPECTED_TOOL_NAMES = toolsFor({ exposure: "webmcp" }).map((t) => t.name);
 
 describe("E2E: WebMCP Discovery", () => {
   let app: ReturnType<typeof makeWebMCPTestApp>;
@@ -173,11 +168,12 @@ describe("E2E: WebMCP Discovery", () => {
       expect(Array.isArray(body.tools)).toBe(true);
     });
 
-    it("includes all 6 imperative tools", async () => {
+    it("includes all registered imperative tools", async () => {
       const res = await app.request("/.well-known/webmcp.json");
       const body = await res.json();
-      expect(body.tools.length).toBe(6);
+      expect(body.tools.length).toBe(EXPECTED_TOOL_NAMES.length);
       const names = body.tools.map((t: { name: string }) => t.name);
+      expect(names).not.toContain("passport-issue");
       for (const expected of EXPECTED_TOOL_NAMES) {
         expect(names).toContain(expected);
       }
@@ -254,7 +250,7 @@ describe("E2E: WebMCP Discovery", () => {
       const discoveryRes = await app.request("/.well-known/webmcp.json");
       expect(discoveryRes.status).toBe(200);
       const discovery = await discoveryRes.json();
-      expect(discovery.tools.length).toBe(6);
+      expect(discovery.tools.length).toBe(EXPECTED_TOOL_NAMES.length);
 
       // Step 2: Navigate to hackathon page
       const pageRes = await app.request("/hackathon/webmcp");

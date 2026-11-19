@@ -19,6 +19,7 @@ import { adminAuth } from "../../middleware/adminAuth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { transitionWithQa } from "../../lib/request-inbox/qa";
+import { registerQaOpsRoutes } from "./agent-requests-qa-ops";
 import { sanitizeHeaders } from "../../lib/request-inbox/fingerprint";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
 import type { InboxRequestRecord } from "../../lib/request-inbox/types";
@@ -276,6 +277,10 @@ export function createAgentRequestOpsRoutes(
       return c.json({ id, spamFlag: parsed.data.spam_flag });
     },
   );
+
+  // D-256-Q14: QA retract route — lives in agent-requests-qa-ops.ts
+  // (file-size guard).
+  registerQaOpsRoutes(app, stores.requests, now);
 
   return app;
 }

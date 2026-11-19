@@ -30,6 +30,9 @@ export interface SubmitInput {
   fpHash: string;
   agentId?: string | null;
   verified?: boolean;
+  /** D-256-Q13: opt-in consent to publish into the QA corpus
+   *  (default false — privacy-safe). */
+  publishToQa?: boolean;
   idempotencyKey?: string | null;
   expiresAtMs: number;
   createdAtMs?: number;
@@ -53,7 +56,17 @@ export interface RequestStore {
   setSpamFlag(id: string, spamFlag: boolean): Promise<boolean>;
   /** QA corpus materialization (D-252-Q7) — same questionHash bumps uses. */
   upsertQaPair(qa: Omit<InboxQaPair, "uses"> & { uses?: number }): Promise<InboxQaPair>;
+  /** D-256-Q14: soft retract — record + reason kept for audit.
+   *  Idempotent: repeat calls return the stored pair unchanged.
+   *  Null when no such pair exists. */
+  retractQaPair(
+    id: string,
+    reason: string,
+    retractedAtMs?: number,
+  ): Promise<InboxQaPair | null>;
+  /** Excludes retracted pairs (D-256-Q14 — also the fast-path gate). */
   getQaByHash(questionHash: string): Promise<InboxQaPair | null>;
+  /** Excludes retracted pairs (D-256-Q14). */
   searchQa(substring: string, limit?: number): Promise<InboxQaPair[]>;
   // janitor legs
   listExpired(nowMs: number, limit?: number): Promise<InboxRequestRecord[]>;
@@ -110,6 +123,7 @@ export function createMemoryRequestStore(): RequestStore {
         verified: input.verified ?? false,
         response: null,
         spamFlag: false,
+        publishToQa: input.publishToQa ?? false,
         idempotencyKey: input.idempotencyKey ?? null,
         expiresAtMs: input.expiresAtMs,
         createdAtMs: input.createdAtMs ?? Date.now(),
@@ -186,16 +200,32 @@ export function createMemoryRequestStore(): RequestStore {
       return { ...pair };
     },
 
+    async retractQaPair(id, reason, retractedAtMs) {
+      const pair = qaPairs.get(id);
+      if (!pair) return null;
+      // Idempotent — a repeat retract returns the stored pair, the
+      // first reason/timestamp wins (audit is append-only).
+      if (pair.retractedAtMs != null) return { ...pair };
+      pair.retractedAtMs = retractedAtMs ?? Date.now();
+      pair.retractReason = reason;
+      return { ...pair };
+    },
+
     async getQaByHash(questionHash) {
       const id = qaByHash.get(questionHash);
       const pair = id ? qaPairs.get(id) : undefined;
-      return pair ? { ...pair } : null;
+      // D-256-Q14: retracted pairs are invisible to the fast-path.
+      return pair && pair.retractedAtMs == null ? { ...pair } : null;
     },
 
     async searchQa(substring, limit = 50) {
       const needle = substring.toLowerCase();
       return [...qaPairs.values()]
-        .filter((p) => p.question.toLowerCase().includes(needle))
+        .filter(
+          (p) =>
+            p.retractedAtMs == null &&
+            p.question.toLowerCase().includes(needle),
+        )
         .sort((a, b) => b.createdAtMs - a.createdAtMs)
         .slice(0, limit)
         .map((p) => ({ ...p }));

@@ -29,6 +29,9 @@ export const REQUEST_KINDS = [
 export const postSchema = z.object({
   kind: z.enum(REQUEST_KINDS).optional(),
   payload: z.unknown(),
+  /** D-256-Q13: opt-in consent to publish the completed Q&A into the
+   *  public corpus. Absent/false = unlisted (bearer-id only). */
+  publish_to_qa: z.boolean().optional(),
   meta: z
     .object({
       name: z.string().optional(),

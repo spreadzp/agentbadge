@@ -25,9 +25,16 @@ export function createMemoryRequestInboxStores(): RequestInboxStores {
   };
 }
 
+// Memory fallback MUST be a process-wide singleton: a fresh store per
+// call splits intake / ops / surveys / QA / notifier across isolated
+// maps (submit writes to one instance, ops reads another → 404s and an
+// always-empty ops digest). DB-backed stores are thin wrappers over
+// shared tables, so per-call construction is safe there.
+let sharedMemoryStores: RequestInboxStores | undefined;
+
 export function pickRequestInboxStores(db: Db): RequestInboxStores {
   if (db.agentRequests && db.agentSurveys) {
     return createDbRequestInboxStores(db.agentRequests, db.agentSurveys);
   }
-  return createMemoryRequestInboxStores();
+  return (sharedMemoryStores ??= createMemoryRequestInboxStores());
 }

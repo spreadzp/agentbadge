@@ -51,7 +51,7 @@ describe("SLICE-119-1: AgentReadyProofSection homepage component", () => {
 
     it("each card has a status badge", () => {
       expect(sectionHtml).toContain("200 OK");
-      expect(sectionHtml).toContain("6 tools");
+      expect(sectionHtml).toContain("16 tools");
       expect(sectionHtml).toContain("Live");
     });
   });

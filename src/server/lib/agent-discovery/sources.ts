@@ -16,13 +16,14 @@ import { didAuthSectionCompact } from "../did-auth-docs";
 import { BASE_URL } from "../page-meta";
 import { getFaqEntries, type QaPair } from "../../../views/pages/faq-page";
 import { openApiConfig } from "../../openapi";
-import { getNamespace, listTools } from "@agentbadge/mcp";
+import { collectWebmcp } from "./webmcp-source";
+import { collectMcpServer } from "./mcp-source";
 import { allSkus, defaultSources as catalogSources } from "../service-catalog";
 import { didKeyMaterialFromEnv, DID_VM_FRAGMENT } from "./did-key";
 
 /** MCP namespaces exposed on /mcp/<ns> — mirrors routes/well-known/agent-card.ts. */
 export const MCP_NAMESPACES = ["passport", "market", "discovery", "audit"] as const;
-const MCP_NAMESPACE_DESCRIPTIONS: Record<string, string> = {
+export const MCP_NAMESPACE_DESCRIPTIONS: Record<string, string> = {
   passport: "Agent identity, signing, and escrow tools",
   market: "Marketplace and dataset tools",
   discovery: "Agent directory, guide, A2A messaging, and discovery tools",
@@ -70,6 +71,15 @@ export interface DiscoverySources {
 
   /** OpenAPI info block (title/version/description) — card metadata. */
   apiInfo?: { title: string; version: string; description: string };
+  /** MCP server introspection (namespaces + tool listing). */
+  webmcp?: {
+    tools: Array<{
+      name: string;
+      description: string;
+      group: string;
+      writeClass: string;
+    }>;
+  };
   /** MCP server introspection (namespaces + tool listing). */
   mcpServer?: {
     name: string;
@@ -189,6 +199,7 @@ export function collectSources(app?: Hono): DiscoverySources {
       description: openApiConfig.info.description,
     },
     mcpServer: collectMcpServer(),
+    webmcp: collectWebmcp(),
     wellKnownEnv: collectWellKnownEnv(),
     didEnabled: didKeyMaterial !== null,
     // SLICE-178-7: DID_SIGNING_KEY → public JWK for the did:web document.
@@ -269,30 +280,3 @@ function collectWellKnownEnv(): NonNullable<DiscoverySources["wellKnownEnv"]> {
   };
 }
 
-/** MCP introspection — namespaces + tool listings from the live registry. */
-// SLICE-217-14: hide ops tools from public catalogs (llms.txt, agent-card) —
-// the [OPS/INTERNAL] description marker plus explicit admin-only names.
-const INTERNAL_TOOL_NAMES = new Set(["rebuild_cache"]);
-const isPublicTool = (t: { name: string; description?: string }) =>
-  !INTERNAL_TOOL_NAMES.has(t.name) && !t.description?.includes("[OPS/INTERNAL]");
-
-function collectMcpServer(): DiscoverySources["mcpServer"] {
-  try {
-    const namespaces = MCP_NAMESPACES.map((nsName) => {
-      const ns = getNamespace(nsName);
-      return {
-        name: nsName,
-        description: MCP_NAMESPACE_DESCRIPTIONS[nsName] ?? `${nsName} MCP namespace`,
-        tools: (ns ? ns.listTools() : []).filter(isPublicTool).map((t) => ({ name: t.name, description: t.description })),
-      };
-    });
-    return {
-      name: "agentbadge",
-      version: openApiConfig.info.version,
-      namespaces,
-      tools: listTools().filter(isPublicTool).map((t) => ({ name: t.name, description: t.description })),
-    };
-  } catch {
-    return undefined;
-  }
-}

@@ -167,7 +167,8 @@ describe("POST /api/requests (SLICE-252-2)", () => {
   it("QA fast-path: same normalized question → 200 qa:true without a new row", async () => {
     const { app, stores } = mkApp();
     const question = "How do I mint a passport?";
-    // Seed: submit + completed transition materializes a QA pair.
+    // Seed: submit + completed transition materializes a QA pair
+    // (publish-consent required since D-256-Q13).
     await stores.requests.submit({
       id: "rq_seed",
       state: "submitted",
@@ -175,6 +176,7 @@ describe("POST /api/requests (SLICE-252-2)", () => {
       payload: { prompt: question },
       fingerprint: { ip: null, ua: "a/1", referer: null, src: null, headers: {} },
       fpHash: "fp_seed",
+      publishToQa: true,
       expiresAtMs: Date.now() + 60_000,
     });
     await transitionWithQa(stores.requests, "rq_seed", "submitted", {
@@ -278,6 +280,7 @@ describe("QA materialization (SLICE-252-2)", () => {
       payload: { prompt: "What is x402?" },
       fingerprint: { ip: null, ua: null, referer: null, src: null, headers: {} },
       fpHash: "f",
+      publishToQa: true, // D-256-Q13: corpus write is consent-gated
       expiresAtMs: Date.now() + 60_000,
     });
     await transitionWithQa(stores.requests, "rq_m", "submitted", {

@@ -3,7 +3,7 @@
  *
  * Verifies the /hackathon/webmcp page:
  * - Returns 200 with WebMCP script
- * - Contains document.modelContext.registerTool for all 6 tools
+ * - Contains document.modelContext.registerTool for all registered tools
  * - Contains declarative form with toolname attribute
  * - Tool descriptions visible
  * - Link to /.well-known/webmcp.json
@@ -90,15 +90,10 @@ vi.mock("../../src/agent-readiness/scanner/ssrf/ip-guard", () => ({
 }));
 
 import { makeWebMCPTestApp } from "./webmcp-test-app";
+import { toolsFor } from "@agentbadge/webmcp";
 
-const EXPECTED_TOOL_NAMES = [
-  "agent-readiness-scan",
-  "badge-generate",
-  "passport-issue",
-  "passport-verify",
-  "get-compliance-score",
-  "search-rules",
-];
+// EPIC-256: inventory is registry-driven — never a hand-maintained list.
+const EXPECTED_TOOL_NAMES = toolsFor({ exposure: "webmcp" }).map((t) => t.name);
 
 describe("E2E: WebMCP Page Rendering", () => {
   let app: ReturnType<typeof makeWebMCPTestApp>;
@@ -134,14 +129,14 @@ describe("E2E: WebMCP Page Rendering", () => {
       expect(html).toContain("await document.modelContext.registerTool");
     });
 
-    it("contains all 6 registerTool calls", async () => {
+    it("contains all registerTool calls", async () => {
       const res = await app.request("/hackathon/webmcp");
       const html = await res.text();
       const matches = html.match(/await document\.modelContext\.registerTool\(/g);
-      expect(matches).toHaveLength(6);
+      expect(matches).toHaveLength(EXPECTED_TOOL_NAMES.length);
     });
 
-    it("contains all 6 tool names on the page", async () => {
+    it("contains all registered tool names on the page", async () => {
       const res = await app.request("/hackathon/webmcp");
       const html = await res.text();
       for (const name of EXPECTED_TOOL_NAMES) {
@@ -154,7 +149,7 @@ describe("E2E: WebMCP Page Rendering", () => {
       const html = await res.text();
       expect(html).toContain("Scan a website for AI agent readiness compliance");
       expect(html).toContain("Generate a compliance badge SVG");
-      expect(html).toContain("Issue an AgentBadge passport NFT");
+      expect(html).toContain("Submit a question or request to the AgentBadge ops inbox");
       expect(html).toContain("Verify an AgentBadge passport");
       expect(html).toContain("Get the agent readiness compliance score");
       expect(html).toContain("Search agent readiness rules");

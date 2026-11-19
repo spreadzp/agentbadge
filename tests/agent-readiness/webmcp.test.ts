@@ -42,10 +42,13 @@ describe("SLICE-49-9: WebMCP browser-side tools", () => {
       expect(html).toContain("badge-generate");
     });
 
-    it("includes passport-issue tool", async () => {
+    it("includes new SLICE-256-2 tools, not removed passport-issue", async () => {
       const res = await app.request("/hackathon/webmcp");
       const html = await res.text();
-      expect(html).toContain("passport-issue");
+      expect(html).not.toContain("passport-issue");
+      expect(html).toContain("verify-verdict");
+      expect(html).toContain("browse-tasks");
+      expect(html).toContain("how-to-register");
     });
 
     it("script is guarded for browsers without WebMCP support", async () => {

@@ -11,7 +11,7 @@
 
 import type { DiscoverySources, DiscoverySku } from "./sources";
 import { honestRefusalSection } from "./refusal-section";
-import { llmsCoreSection, mcpSection } from "./llms-core";
+import { llmsCoreSection, mcpSection, webmcpSection } from "./llms-core";
 import { getChannelCounts } from "../blog-data";
 
 /** Public API section rendered from enumerated app routes. */
@@ -269,6 +269,7 @@ export function buildLlmsTxt(src: DiscoverySources): string {
     paidServicesSection(src),
     honestRefusalSection(),
     mcpSection(src),
+    webmcpSection(src),
     capabilitiesSection(src),
   ]
     .filter((s) => s.length > 0)

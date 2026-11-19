@@ -45,6 +45,10 @@ export interface InboxRequestRecord {
   verified: boolean;
   response: unknown | null;
   spamFlag: boolean;
+  /** D-256-Q13: requester's opt-in consent to publish the completed
+   *  Q&A into the public corpus. Default false — absent consent the
+   *  request stays unlisted (readable only via its bearer id). */
+  publishToQa: boolean;
   idempotencyKey: string | null;
   /** Row TTL — past this the request answers 410 and may be deleted. */
   expiresAtMs: number;
@@ -53,13 +57,22 @@ export interface InboxRequestRecord {
 }
 
 export interface InboxQaPair {
+  /** Public corpus id — `qa_<uuid>` for pairs minted after the
+   *  consent gate (D-256-Q14); legacy pairs carry `qa_{requestId}`.
+   *  Never expose `sourceRequestId` publicly — it is a bearer id. */
   id: string;
   /** sha256(normalized question) — corpus dedupe key. */
   questionHash: string;
   question: string;
   response: unknown;
+  /** Internal audit column — bearer request id, never returned by
+   *  public endpoints (D-256-Q14). */
   sourceRequestId: string;
   uses: number;
+  /** D-256-Q14: soft retract — set means hidden from search AND the
+   *  fast-path; the row + reason are kept for audit. */
+  retractedAtMs?: number | null;
+  retractReason?: string | null;
   createdAtMs: number;
 }
 

@@ -70,56 +70,24 @@ function WebMcpHero() {
 }
 
 function WebMcpTools() {
-  const tools = [
-    {
-      name: "agent-readiness-scan",
-      desc: "Scan a website for AI agent readiness compliance. Returns a compliance score and list of checks.",
-      readOnly: true,
-      untrusted: true,
-      endpoint: "GET /api/scan?url=",
-      icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
-    },
-    {
-      name: "badge-generate",
-      desc: "Generate a compliance badge SVG for a given URL and score.",
-      readOnly: true,
-      untrusted: false,
-      endpoint: "GET /api/badge?url=",
-      icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
-    },
-    {
-      name: "passport-issue",
-      desc: "Issue an AgentBadge passport NFT for a given account on Hedera.",
-      readOnly: false,
-      untrusted: false,
-      endpoint: "POST /passport/request",
-      icon: "M12 4v16m8-8H4",
-    },
-    {
-      name: "passport-verify",
-      desc: "Verify an AgentBadge passport by token ID. Returns on-chain identity and metadata.",
-      readOnly: true,
-      untrusted: false,
-      endpoint: "GET /api/passport/verify?tokenId=",
-      icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
-    },
-    {
-      name: "get-compliance-score",
-      desc: "Get the agent readiness compliance score for a given URL.",
-      readOnly: true,
-      untrusted: true,
-      endpoint: "GET /api/score?url=",
-      icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",
-    },
-    {
-      name: "search-rules",
-      desc: "Search agent readiness rules by keyword. Returns matching rule definitions.",
-      readOnly: true,
-      untrusted: false,
-      endpoint: "GET /api/rules/search?q=",
-      icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
-    },
-  ];
+  // Registry-driven cards (EPIC-256): the inventory is the shared
+  // registry — no hand-maintained list to drift out of sync.
+  const ICONS: Record<string, string> = {
+    "agent-readiness-scan": "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+    "badge-generate": "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+    "passport-verify": "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+    "get-compliance-score": "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",
+    "search-rules": "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+  };
+  const DEFAULT_ICON = "M13 10V3L4 14h7v7l9-11h-7z";
+  const tools = allTools.map((t) => ({
+    name: t.name,
+    desc: t.description,
+    readOnly: t.annotations.readOnlyHint,
+    untrusted: t.annotations.untrustedContentHint,
+    endpoint: `${t.endpoint.method} ${t.endpoint.path}`,
+    icon: ICONS[t.name] ?? DEFAULT_ICON,
+  }));
 
   return html`<section class="border-y border-slate-700/50 bg-slate-900/30">
     <div class="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
