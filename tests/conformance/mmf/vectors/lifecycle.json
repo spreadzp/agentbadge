@@ -1,0 +1,1751 @@
+{
+  "vectors": [
+    {
+      "id": "L01",
+      "desc": "retry after timeout with the same tx_id returns the original decision and reserves nothing",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100,
+          "total_budget": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN",
+            "replayed": false,
+            "status": "AUTHORIZED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1001,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN",
+            "replayed": true,
+            "status": "AUTHORIZED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 40,
+            "at": 1002,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN",
+            "replayed": false,
+            "status": "AUTHORIZED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REPLAY",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L02",
+      "desc": "same tx_id with a different amount is a conflict",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 90,
+            "at": 1001,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "TX_CONFLICT",
+            "replayed": false
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L03",
+      "desc": "same tx_id with a different payee is a conflict",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "tesco.com",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "evil.io",
+            "amount": 10,
+            "at": 1001,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "TX_CONFLICT"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L04",
+      "desc": "void releases reserved budget",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100,
+          "total_budget": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 80,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 50,
+            "at": 1001,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "BUDGET"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "VOIDED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t3",
+            "payee": "x",
+            "amount": 50,
+            "at": 1003,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "VOID",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L05",
+      "desc": "void releases the reserved budget but NOT the velocity slot: velocity counts authorizations issued, so authorize-and-void cycling cannot evade the rate limit",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100,
+          "velocity_limit": 1
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 10,
+            "at": 1001,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "VELOCITY"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "VOIDED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t3",
+            "payee": "x",
+            "amount": 10,
+            "at": 1003,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "VELOCITY"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "VOID",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L06",
+      "desc": "settled transactions keep their budget and cannot be voided; settle requires CLAIMED and is idempotent",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100,
+          "total_budget": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 80,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 80,
+            "currency": "GBP"
+          },
+          "at": 1000.5,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1001,
+          "expect": {
+            "status": "SETTLED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "SETTLED"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1003,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 50,
+            "at": 1004,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "BUDGET"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "REJECTED",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L07",
+      "desc": "a denied transaction cannot be settled or voided",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 500,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "CAP_EXCEEDED",
+            "status": "DENIED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1001,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "error": true
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L08",
+      "desc": "a voided transaction cannot be settled; replay reports VOIDED",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1001,
+          "expect": {
+            "status": "VOIDED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1002,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1003,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN",
+            "replayed": true,
+            "status": "VOIDED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "VOID",
+        "REJECTED",
+        "REPLAY"
+      ]
+    },
+    {
+      "id": "L09",
+      "desc": "a denial replays as the same denial even after the cause is gone",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100,
+          "velocity_limit": 1
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 10,
+            "at": 1001,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "VELOCITY"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "VOIDED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 10,
+            "at": 1003,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "VELOCITY",
+            "replayed": true,
+            "status": "DENIED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "VOID",
+        "REPLAY"
+      ]
+    },
+    {
+      "id": "L10",
+      "desc": "settle/void of an unknown tx_id is rejected",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "settle": "nope",
+          "at": 1000,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "void": "nope",
+          "at": 1001,
+          "expect": {
+            "error": true
+          }
+        }
+      ],
+      "events": [
+        "REJECTED",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L11",
+      "desc": "authorized transaction is claimed once for dispatch then settled",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN",
+            "status": "AUTHORIZED"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "SETTLED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE"
+      ]
+    },
+    {
+      "id": "L12",
+      "desc": "a second dispatcher cannot claim an already-claimed transaction",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1002,
+          "expect": {
+            "error": true
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L13",
+      "desc": "claim with an instruction that does not bind to the authorized request is rejected",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "evil",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 11,
+            "currency": "GBP"
+          },
+          "at": 1002,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1003,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED",
+        "REJECTED",
+        "CLAIM"
+      ]
+    },
+    {
+      "id": "L14",
+      "desc": "a claim permanently consumes the dispatch slot: after the operator confirms the rail was never invoked, void releases the reservation and the retry uses a new tx_id \u2014 the same tx_id can never be claimed again",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "VOIDED"
+          },
+          "cancellation": "rail-decline:pay_1"
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1003,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 10,
+            "at": 1004,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1005,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "settle": "t2",
+          "at": 1006,
+          "expect": {
+            "status": "SETTLED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "VOID",
+        "REJECTED",
+        "DECISION",
+        "CLAIM",
+        "SETTLE"
+      ]
+    },
+    {
+      "id": "L15",
+      "desc": "a claimed transaction can still be voided when the rail declines mid-flight",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "VOIDED"
+          },
+          "cancellation": "rail-decline:pay_1"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "VOID"
+      ]
+    },
+    {
+      "id": "L16",
+      "desc": "a claimed transaction cannot be voided on an uncertain in-flight outcome; it stays CLAIMED until authoritative confirmation releases it",
+      "mandate": {
+        "bounds": {
+          "max_amount": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 10,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "error": true
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1003,
+          "expect": {
+            "status": "VOIDED"
+          },
+          "cancellation": "rail-decline:pay_1"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "REJECTED",
+        "VOID"
+      ]
+    },
+    {
+      "id": "L17",
+      "desc": "an unresolved claim that outlives the budget window keeps consuming budget: the new request is denied until the open claim is resolved",
+      "mandate": {
+        "bounds": {
+          "max_amount": 500,
+          "total_budget": 100,
+          "budget_window_days": 1
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 50,
+            "at": 173800,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "BUDGET"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L18",
+      "desc": "resolved (settled) spend ages out of the rolling window normally: budget is available again after the window passes",
+      "mandate": {
+        "bounds": {
+          "max_amount": 500,
+          "total_budget": 100,
+          "budget_window_days": 1
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "SETTLED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 50,
+            "at": 173800,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L19",
+      "desc": "a reservation that settles after its window ages out by its AUTHORIZATION timestamp: it blocks while unresolved and stops counting the moment it settles",
+      "mandate": {
+        "bounds": {
+          "max_amount": 500,
+          "total_budget": 100,
+          "budget_window_days": 1
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 90000,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 50,
+            "at": 100000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "BUDGET"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 100500,
+          "expect": {
+            "status": "SETTLED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t3",
+            "payee": "x",
+            "amount": 50,
+            "at": 101000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "DECISION",
+        "SETTLE",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L20",
+      "desc": "repeated settle and repeated void on their target states are idempotent no-ops: unchanged result, no evidence record, no rejection",
+      "mandate": {
+        "bounds": {
+          "max_amount": 500,
+          "total_budget": 100
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 30,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 30,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "SETTLED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1003,
+          "expect": {
+            "status": "SETTLED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 30,
+            "at": 1004,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "void": "t2",
+          "at": 1005,
+          "expect": {
+            "status": "VOIDED"
+          }
+        },
+        {
+          "void": "t2",
+          "at": 1006,
+          "expect": {
+            "status": "VOIDED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "DECISION",
+        "VOID"
+      ]
+    },
+    {
+      "id": "L21",
+      "desc": "claim of an expired mandate that is ALSO registry-revoked reports CLAIM:EXPIRED \u2014 claim reports local causes before the registry, intentionally unlike enforce (\u00a75.1)",
+      "mandate": {
+        "mandate_id": "m1",
+        "bounds": {
+          "max_amount": 500,
+          "expires_in_days": 1
+        }
+      },
+      "registry": {
+        "revoked": [
+          "m1"
+        ]
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 90000,
+          "expect": {
+            "error": true,
+            "check": "CLAIM:EXPIRED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L22",
+      "desc": "claim that is binding-mismatched AND registry-revoked reports CLAIM:BINDING, and the REJECTED record carries the ATTEMPTED payee/amount/currency, not the stored authorization's",
+      "mandate": {
+        "mandate_id": "m1",
+        "bounds": {
+          "max_amount": 500,
+          "expires_in_days": 30
+        }
+      },
+      "registry": {
+        "revoked": [
+          "m1"
+        ]
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "evil",
+            "amount": 61,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "error": true,
+            "check": "CLAIM:BINDING",
+            "record": {
+              "payee": "evil",
+              "amount": 61,
+              "currency": "GBP"
+            }
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L23",
+      "desc": "claim with registry-reported revocation only reports CLAIM:REVOKED_REGISTRY",
+      "mandate": {
+        "mandate_id": "m1",
+        "bounds": {
+          "max_amount": 500,
+          "expires_in_days": 30
+        }
+      },
+      "registry": {
+        "revoked": [
+          "m1"
+        ]
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "error": true,
+            "check": "CLAIM:REVOKED_REGISTRY"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L24",
+      "desc": "claim when the registry cannot be consulted fails closed as CLAIM:REGISTRY",
+      "mandate": {
+        "mandate_id": "m1",
+        "bounds": {
+          "max_amount": 500,
+          "expires_in_days": 30
+        }
+      },
+      "registry": {
+        "unavailable": true
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "error": true,
+            "check": "CLAIM:REGISTRY"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L25",
+      "desc": "settle of an AUTHORIZED (never dispatched) transaction is rejected as SETTLE:STATUS",
+      "mandate": {
+        "mandate_id": "m1",
+        "bounds": {
+          "max_amount": 500,
+          "expires_in_days": 30
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1001,
+          "expect": {
+            "error": true,
+            "check": "SETTLE:STATUS"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    {
+      "id": "L26",
+      "desc": "void of a CLAIMED transaction without a cancellation reference is rejected as VOID:CANCELLATION and the transaction stays CLAIMED",
+      "mandate": {
+        "mandate_id": "m1",
+        "bounds": {
+          "max_amount": 500,
+          "expires_in_days": 30
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "void": "t1",
+          "at": 1002,
+          "expect": {
+            "error": true,
+            "check": "VOID:CANCELLATION"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1003,
+          "expect": {
+            "status": "SETTLED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "REJECTED",
+        "SETTLE"
+      ]
+    },
+    {
+      "id": "L27",
+      "desc": "a different mandate reusing an existing tx_id denies TX_CONFLICT; the conflict evidence carries the ATTEMPTING mandate and its submitted instruction, never the stored mandate's, and the stored entry is unchanged",
+      "mandate": {
+        "mandate_id": "mA",
+        "agent": "a",
+        "bounds": {
+          "max_amount": 500
+        }
+      },
+      "mandate2": {
+        "mandate_id": "mB",
+        "agent": "b",
+        "bounds": {
+          "max_amount": 500
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "secret.example",
+            "amount": 123,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "other.example",
+            "amount": 7,
+            "at": 1001,
+            "currency": "GBP",
+            "as": "m2"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "TX_CONFLICT",
+            "status": "DENIED",
+            "record": {
+              "mandate_id": "mB",
+              "agent": "b",
+              "payee": "other.example",
+              "amount": 7,
+              "currency": "GBP",
+              "status": "DENIED",
+              "check": "TX_CONFLICT"
+            }
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "secret.example",
+            "amount": 123,
+            "currency": "GBP"
+          },
+          "at": 1002,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "CLAIM"
+      ]
+    },
+    {
+      "id": "L28",
+      "desc": "the rolling-window lower bound is INCLUSIVE: settled spend authorized at time t still counts at exactly t + window, and stops counting one tick later",
+      "mandate": {
+        "bounds": {
+          "max_amount": 500,
+          "total_budget": 100,
+          "budget_window_days": 1
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "claim": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount": 60,
+            "currency": "GBP"
+          },
+          "at": 1001,
+          "expect": {
+            "status": "CLAIMED"
+          }
+        },
+        {
+          "settle": "t1",
+          "at": 1002,
+          "expect": {
+            "status": "SETTLED"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount": 50,
+            "at": 87400,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "BUDGET"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t3",
+            "payee": "x",
+            "amount": 50,
+            "at": 87401,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    {
+      "id": "L29",
+      "desc": "request equality for amounts: a valid amount equals only the same integer; EVERY invalid amount (1.0, 1e0, 49.99, -7 ...) is one equivalence class \u2014 identical-class retries replay the stored denial, and a valid amount never equals an invalid one",
+      "mandate": {
+        "bounds": {
+          "max_amount": 500
+        }
+      },
+      "steps": [
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount_json": "1",
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": true,
+            "check": "WITHIN"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t1",
+            "payee": "x",
+            "amount_json": "1.0",
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "TX_CONFLICT"
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount_json": "1.0",
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "NON_POSITIVE",
+            "replayed": false
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount_json": "1e0",
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "NON_POSITIVE",
+            "replayed": true
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount_json": "-7",
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "NON_POSITIVE",
+            "replayed": true
+          }
+        },
+        {
+          "tx": {
+            "tx_id": "t2",
+            "payee": "x",
+            "amount_json": "1",
+            "at": 1000,
+            "currency": "GBP"
+          },
+          "expect": {
+            "allowed": false,
+            "check": "TX_CONFLICT"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "DECISION",
+        "REPLAY",
+        "REPLAY",
+        "DECISION"
+      ]
+    }
+  ]
+}

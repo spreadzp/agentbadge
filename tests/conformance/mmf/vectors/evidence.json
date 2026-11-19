@@ -1,0 +1,186 @@
+{
+  "version": "mmf-v0.3.2",
+  "description": "Canonical evidence serialization vectors (MMF-v0.3.2 \u00a75.6). Records chain from the genesis prev_hash (64 '0'). Each expect entry gives the exact canonical payload and its lower-case SHA-256 over UTF-8 NFC; head is the final hash. amount null denotes a non-integer amount, serialized 'invalid'; absent currency/status serialize as the empty string.",
+  "vectors": [
+    {
+      "id": "E01",
+      "desc": "single allowed decision",
+      "records": [
+        {
+          "event": "DECISION",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "tesco.com",
+          "amount": 4999,
+          "allowed": true,
+          "check": "WITHIN",
+          "timestamp": 1000,
+          "currency": "GBP",
+          "status": "AUTHORIZED"
+        }
+      ],
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|7:1000000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+        }
+      ],
+      "head": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+    },
+    {
+      "id": "E02",
+      "desc": "chain: allow, denial with invalid amount, settle, replay; fractional timestamp; UTF-8 payee",
+      "records": [
+        {
+          "event": "DECISION",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a:shopbot",
+          "payee": "caf\u00e9.example",
+          "amount": 1250,
+          "allowed": true,
+          "check": "WITHIN",
+          "timestamp": 1730000000.25,
+          "currency": "GBP",
+          "status": "AUTHORIZED"
+        },
+        {
+          "event": "DECISION",
+          "tx_id": "t2",
+          "mandate_id": "m1",
+          "agent": "a:shopbot",
+          "payee": "caf\u00e9.example",
+          "amount": null,
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "timestamp": 1730000001,
+          "currency": "GBP",
+          "status": "DENIED"
+        },
+        {
+          "event": "SETTLE",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a:shopbot",
+          "payee": "caf\u00e9.example",
+          "amount": 1250,
+          "allowed": true,
+          "check": "WITHIN",
+          "timestamp": 1730000002.5,
+          "currency": "GBP",
+          "status": "SETTLED"
+        },
+        {
+          "event": "REPLAY",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a:shopbot",
+          "payee": "caf\u00e9.example",
+          "amount": 1250,
+          "allowed": true,
+          "check": "WITHIN",
+          "timestamp": 1730000003,
+          "currency": "GBP",
+          "status": "AUTHORIZED"
+        }
+      ],
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|9:a:shopbot|13:caf\u00e9.example|4:1250|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|13:1730000000250|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "749d38411da98bc384393e515779a6550f4e1378bc62fd674ad0879d4f04e381"
+        },
+        {
+          "payload": "8:DECISION|2:t2|2:m1|9:a:shopbot|13:caf\u00e9.example|7:invalid|3:GBP|5:false|12:NON_POSITIVE|6:DENIED|0:|13:1730000001000|64:749d38411da98bc384393e515779a6550f4e1378bc62fd674ad0879d4f04e381",
+          "hash": "faf57c842f9d8d94b9a705daec17f3bc00a7bc395367ce432be63ae33ebc09b9"
+        },
+        {
+          "payload": "6:SETTLE|2:t1|2:m1|9:a:shopbot|13:caf\u00e9.example|4:1250|3:GBP|4:true|6:WITHIN|7:SETTLED|0:|13:1730000002500|64:faf57c842f9d8d94b9a705daec17f3bc00a7bc395367ce432be63ae33ebc09b9",
+          "hash": "9b8958db9ed998e68eea3411bd78e4214558c56aedbab600b91d3dc5b895072c"
+        },
+        {
+          "payload": "6:REPLAY|2:t1|2:m1|9:a:shopbot|13:caf\u00e9.example|4:1250|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|13:1730000003000|64:9b8958db9ed998e68eea3411bd78e4214558c56aedbab600b91d3dc5b895072c",
+          "hash": "2bd4c713473dbc71ed60f816852a3fed3c6aa999e8b3ff69f7ac8c2e6a7955b2"
+        }
+      ],
+      "head": "2bd4c713473dbc71ed60f816852a3fed3c6aa999e8b3ff69f7ac8c2e6a7955b2"
+    },
+    {
+      "id": "E03",
+      "desc": "lifecycle events: claim, rejected second claim, settle \u2014 status and currency hashed",
+      "records": [
+        {
+          "event": "DECISION",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "tesco.com",
+          "amount": 4999,
+          "currency": "GBP",
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED",
+          "timestamp": 1000
+        },
+        {
+          "event": "CLAIM",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "tesco.com",
+          "amount": 4999,
+          "currency": "GBP",
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "CLAIMED",
+          "timestamp": 1001
+        },
+        {
+          "event": "REJECTED",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "evil.example",
+          "amount": 4999,
+          "currency": "GBP",
+          "allowed": false,
+          "check": "CLAIM",
+          "status": "CLAIMED",
+          "timestamp": 1002
+        },
+        {
+          "event": "SETTLE",
+          "tx_id": "t1",
+          "mandate_id": "m1",
+          "agent": "a",
+          "payee": "tesco.com",
+          "amount": 4999,
+          "currency": "GBP",
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "SETTLED",
+          "timestamp": 1003
+        }
+      ],
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|7:1000000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+        },
+        {
+          "payload": "5:CLAIM|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|7:CLAIMED|0:|7:1001000|64:94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675",
+          "hash": "f34cad660ad8ae726d8b14886659e4c1e69c6a50885d2a722bbb12c385ef4dae"
+        },
+        {
+          "payload": "8:REJECTED|2:t1|2:m1|1:a|12:evil.example|4:4999|3:GBP|5:false|5:CLAIM|7:CLAIMED|0:|7:1002000|64:f34cad660ad8ae726d8b14886659e4c1e69c6a50885d2a722bbb12c385ef4dae",
+          "hash": "0be5498d4c33113b3ef12473390a9ff2e38bf2854a669e3cefac774857a8998a"
+        },
+        {
+          "payload": "6:SETTLE|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|7:SETTLED|0:|7:1003000|64:0be5498d4c33113b3ef12473390a9ff2e38bf2854a669e3cefac774857a8998a",
+          "hash": "f8885da97aeb23154632c49758a42ef2b926dca689259899dfbc1c17c33044fb"
+        }
+      ],
+      "head": "f8885da97aeb23154632c49758a42ef2b926dca689259899dfbc1c17c33044fb"
+    }
+  ]
+}
