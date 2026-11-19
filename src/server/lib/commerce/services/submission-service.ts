@@ -19,12 +19,12 @@ import {
   newId,
 } from "../guards";
 import {
-  SUBMISSION_VERDICTS,
   forbidden,
   guardRejected,
   type SubmissionCreateInput,
   type SubmissionVerdict,
 } from "../types";
+import { reviewSubmission } from "./submission-review";
 import { mustGet, transitionRow, type CommerceCtx } from "./ctx";
 
 export interface SubmissionService {
@@ -90,7 +90,7 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
       ): Promise<CommerceSubmissionRow> {
         // C2: every graph write inside one atomic section — a failed
         // precondition or transition rolls back the whole submit.
-        return stores.atomic(async (tx) => {
+        const { submission, milestoneRowId } = await stores.atomic(async (tx) => {
           const txCtx = { ...ctx, stores: tx };
           const agreement = mustGet(
             await tx.agreements.getById(agreementId),
@@ -122,12 +122,43 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
           }
           const summary = assertSummary(input.summary, "summary");
           const evidenceRefs = assertEvidenceRefs(input.evidenceRefs);
+          // D-227: milestoneRef binds the work unit to a settlement
+          // milestone — must resolve inside THIS agreement's plan and
+          // still be payable (PENDING). Foreign/stale refs are rejected
+          // pre-write; an unwired bridge makes the field meaningless.
+          let milestoneRowId: string | null = null;
+          if (input.milestoneRef !== undefined && input.milestoneRef !== null) {
+            if (!ctx.settlement) {
+              throw guardRejected(
+                "milestoneRef requires settlement wiring",
+                { agreementId },
+              );
+            }
+            const found = await ctx.settlement.findMilestone(
+              agreement.id,
+              input.milestoneRef,
+            );
+            if (!found) {
+              throw guardRejected(
+                `milestoneRef ${input.milestoneRef} not in agreement plan`,
+                { agreementId, milestoneRef: input.milestoneRef },
+              );
+            }
+            if (found.status !== "PENDING") {
+              throw guardRejected(
+                `milestone is ${found.status} — cannot submit against it`,
+                { agreementId, milestoneRef: input.milestoneRef },
+              );
+            }
+            milestoneRowId = found.id;
+          }
           const submission = await tx.submissions.create({
             id: newId("sub"),
             agreementId: agreement.id,
             providerWallet: provider,
             summary,
             resultUrl: input.resultUrl ?? null,
+            milestoneRef: input.milestoneRef ?? null,
             status: "SUBMITTED",
             submittedAtMs: Date.now(),
             payload: {
@@ -156,140 +187,31 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
           await transitionRow(txCtx, "task", submitted, "UNDER_REVIEW", (from) =>
             tx.tasks.applyStatus(task.id, from, "UNDER_REVIEW"),
           );
-          return submission;
+          return { submission, milestoneRowId };
         });
+        // SLICE-227-5: post-commit — drive the settlement milestone to
+        // READY. Best-effort: a bridge failure never rolls back the
+        // commerce submission; the provider can resync via the API.
+        if (submission.milestoneRef && ctx.settlement && milestoneRowId) {
+          try {
+            await ctx.settlement.submitMilestone(
+              milestoneRowId,
+              provider,
+              submission.id,
+            );
+          } catch (err) {
+            logger.warn("settlement submitMilestone failed", {
+              milestoneRef: submission.milestoneRef,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        return submission;
       }
     },
 
-    async review(actorWallet, submissionId, verdict, reviewNote) {
-      const actor = assertWallet(actorWallet, "actorWallet");
-      if (!SUBMISSION_VERDICTS.includes(verdict)) {
-        throw guardRejected(`verdict must be ${SUBMISSION_VERDICTS.join("|")}`);
-      }
-      // C2: preconditions + all graph transitions inside one atomic
-      // section — the verdict can never persist without its task/
-      // agreement graph updates.
-      const result = await stores.atomic(async (tx) => {
-        const txCtx = { ...ctx, stores: tx };
-        const submission = mustGet(
-          await tx.submissions.getById(submissionId),
-          "submission",
-          submissionId,
-        );
-        const agreement = mustGet(
-          await tx.agreements.getById(submission.agreementId),
-          "agreement",
-          submission.agreementId,
-        );
-        const task = mustGet(
-          await tx.tasks.getById(agreement.taskId),
-          "task",
-          agreement.taskId,
-        );
-        if (task.buyerWallet !== actor) {
-          throw forbidden("only the buyer can review a submission");
-        }
-        if (reviewNote !== undefined) {
-          assertSummary(reviewNote, "reviewNote");
-        }
-        // Preconditions before any write: the submission is pending and
-        // the task is actually under review.
-        if (submission.status !== "SUBMITTED") {
-          throw guardRejected(
-            `submission is ${submission.status} — already reviewed`,
-            { submissionId, status: submission.status },
-          );
-        }
-        if (task.status !== "UNDER_REVIEW" && task.status !== "SUBMITTED") {
-          throw guardRejected(
-            `task is ${task.status} — no review pending`,
-            { taskId: task.id, status: task.status },
-          );
-        }
-        if (agreement.status !== "ACTIVE") {
-          throw guardRejected(
-            `agreement is ${agreement.status} — review closed`,
-            { agreementId: agreement.id, status: agreement.status },
-          );
-        }
-        const reviewed = await transitionRow(
-          txCtx,
-          "submission",
-          submission,
-          verdict,
-          (from) =>
-            tx.submissions.applyStatus(submission.id, from, verdict, {
-              reviewNote: reviewNote ?? undefined,
-              reviewedAtMs: Date.now(),
-            }),
-          { actorWallet: actor },
-        );
-
-        let taskRow: CommerceTaskRow = task;
-        let agreementRow: CommerceAgreementRow = agreement;
-        if (verdict === "ACCEPTED") {
-          // normalize SUBMITTED → UNDER_REVIEW first when review raced
-          // straight past the marker transition
-          const underReview =
-            task.status === "SUBMITTED"
-              ? await transitionRow(txCtx, "task", task, "UNDER_REVIEW", (from) =>
-                tx.tasks.applyStatus(task.id, from, "UNDER_REVIEW"),
-              )
-              : task;
-          taskRow = await transitionRow(
-            txCtx,
-            "task",
-            underReview,
-            "COMPLETED",
-            (from) => tx.tasks.applyStatus(task.id, from, "COMPLETED"),
-          );
-          agreementRow = await transitionRow(
-            txCtx,
-            "agreement",
-            agreement,
-            "COMPLETED",
-            (from) =>
-              tx.agreements.applyStatus(agreement.id, from, "COMPLETED", {
-                completedAtMs: Date.now(),
-              }),
-          );
-        } else {
-          // REJECTED / REVISION_REQUIRED → resubmission round (D-224-9)
-          const underReview =
-            task.status === "SUBMITTED"
-              ? await transitionRow(txCtx, "task", task, "UNDER_REVIEW", (from) =>
-                tx.tasks.applyStatus(task.id, from, "UNDER_REVIEW"),
-              )
-              : task;
-          taskRow = await transitionRow(
-            txCtx,
-            "task",
-            underReview,
-            "IN_PROGRESS",
-            (from) => tx.tasks.applyStatus(task.id, from, "IN_PROGRESS"),
-          );
-        }
-        return { submission: reviewed, task: taskRow, agreement: agreementRow };
-      });
-
-      // SLICE-234-17: post-commit fact emission (best-effort — a hook
-      // failure logs a warn and never rolls back the transition).
-      if (verdict === "ACCEPTED" && ctx.hooks?.onSubmissionAccepted) {
-        try {
-          await ctx.hooks.onSubmissionAccepted({
-            submissionId: result.submission.id,
-            agreementId: result.agreement.id,
-            taskId: result.task.id,
-            providerWallet: result.agreement.providerWallet,
-          });
-        } catch (err) {
-          logger.warn("onSubmissionAccepted hook failed (facts skipped)", {
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-      return result;
-    },
+    review: (actorWallet, submissionId, verdict, reviewNote) =>
+      reviewSubmission(ctx, actorWallet, submissionId, verdict, reviewNote),
 
     listByAgreement: (agreementId) =>
       stores.submissions.listByAgreement(agreementId),

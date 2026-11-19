@@ -7,6 +7,7 @@ import type { CommerceStores } from "@agentbadge/database";
 import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
 
 import type { CommerceEventEmitter } from "../events";
+import type { CommerceSettlementBridge } from "../settlement-bridge";
 import type { CommerceEntityType } from "../types";
 import { CommerceError, invalidTransition } from "../types";
 import { assertTransition } from "../state-machines";
@@ -18,6 +19,9 @@ export interface CommerceCtx {
    *  composition root (routes/index.ts) to identity fact emitters.
    *  Best-effort: hook errors must never fail the transition. */
   hooks?: CommerceHooks;
+  /** Optional settlement seam (SLICE-227-5) — absent → commerce runs
+   *  without payment-plan side effects. Post-commit, best-effort. */
+  settlement?: CommerceSettlementBridge;
 }
 
 export interface CommerceHooks {

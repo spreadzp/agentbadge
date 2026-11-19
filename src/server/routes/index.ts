@@ -29,6 +29,7 @@ import { paymentsApiRoutes } from "./payments/payments-api";
 import { createCommerceRoutes } from "./commerce";
 import { setSignedWriteHook } from "./commerce/shared";
 import { createCommerceService } from "../lib/commerce";
+import { createCommerceSettlementBridge } from "../lib/commerce/settlement-bridge";
 import { createIdentityRoutes } from "./identity/identity-api";
 import { getIdentityService } from "../wiring/identity-service";
 import { discoveryManifestRoutes } from "./discovery/discovery";
@@ -158,15 +159,19 @@ export function registerCoreRoutes(app: Hono): void {
         // Post-commit: both emits go through commerceVerifySource
         // (role + record state) — provider on COMPLETED agreement /
         // ACCEPTED submission.
-        onSubmissionAccepted: async ({
-          submissionId,
-          agreementId,
-          providerWallet,
-        }) => {
-          const facts = getIdentityService().facts;
-          await facts.submissionAccepted(providerWallet, submissionId);
-          await facts.taskCompleted(providerWallet, agreementId);
+        hooks: {
+          onSubmissionAccepted: async ({
+            submissionId,
+            agreementId,
+            providerWallet,
+          }) => {
+            const facts = getIdentityService().facts;
+            await facts.submissionAccepted(providerWallet, submissionId);
+            await facts.taskCompleted(providerWallet, agreementId);
+          },
         },
+        // SLICE-227-5: accept → auto plan; milestoneRef → READY/APPROVED.
+        settlement: createCommerceSettlementBridge(() => getDatabase()),
       }),
     ),
   );

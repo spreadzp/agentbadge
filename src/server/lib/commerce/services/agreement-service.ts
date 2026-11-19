@@ -10,6 +10,8 @@ import type { CommerceCtx } from "./ctx";
 export interface AgreementService {
   get(agreementId: string): Promise<CommerceAgreementRow | null>;
   getByTaskId(taskId: string): Promise<CommerceAgreementRow | null>;
+  /** Oldest first — all agreements on the task (D-227). */
+  listByTaskId(taskId: string): Promise<CommerceAgreementRow[]>;
   getByOfferId(offerId: string): Promise<CommerceAgreementRow | null>;
 }
 
@@ -18,6 +20,7 @@ export function createAgreementService(ctx: CommerceCtx): AgreementService {
   return {
     get: (id) => stores.agreements.getById(id),
     getByTaskId: (taskId) => stores.agreements.getByTaskId(taskId),
+    listByTaskId: (taskId) => stores.agreements.listByTaskId(taskId),
     getByOfferId: (offerId) => stores.agreements.getByOfferId(offerId),
   };
 }

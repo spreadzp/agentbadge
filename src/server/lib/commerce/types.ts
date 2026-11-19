@@ -149,6 +149,8 @@ export interface TaskCreateInput {
   /** Default OPEN; DRAFT allowed for staged creation. */
   status?: "DRAFT" | "OPEN";
   buyerAgentId?: string | null;
+  /** Parallel provider slots (D-227) — default 1, max 32. */
+  maxProviders?: number | null;
   payload?: JsonValue;
 }
 
@@ -167,6 +169,9 @@ export interface SubmissionCreateInput {
   resultUrl?: string | null;
   /** ≤50 refs × ≤1000 chars (contract guard). */
   evidenceRefs?: string[];
+  /** Settlement milestoneId (business key) inside the agreement's
+   *  plan — binds this work unit to a payable milestone (D-227). */
+  milestoneRef?: string | null;
   payload?: JsonValue;
 }
 

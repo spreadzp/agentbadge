@@ -27,6 +27,9 @@ export const taskCreateSchema = z.object({
   expiresAtMs: z.number().nullable().optional(),
   status: z.enum(["DRAFT", "OPEN"]).optional(),
   buyerAgentId: z.string().nullable().optional(),
+  // D-227: parallel provider slots — accept allowed while
+  // non-terminal agreements < maxProviders.
+  maxProviders: z.number().int().min(1).max(32).optional(),
   payload: z.unknown().optional(),
 });
 
@@ -43,6 +46,8 @@ export const submissionCreateSchema = z.object({
   summary: z.string().max(4000),
   resultUrl: z.string().nullable().optional(),
   evidenceRefs: z.array(z.string()).max(50).optional(),
+  // D-227: milestoneId inside the agreement's settlement plan.
+  milestoneRef: z.string().min(1).max(128).nullable().optional(),
   payload: z.unknown().optional(),
 });
 

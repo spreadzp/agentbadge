@@ -11,6 +11,7 @@ import type { CommerceEventRow, CommerceStores } from "@agentbadge/database";
 
 import { CommerceEventEmitter } from "./events";
 import type { CommerceHooks } from "./services/ctx";
+import type { CommerceSettlementBridge } from "./settlement-bridge";
 import { createAgreementService, type AgreementService } from "./services/agreement-service";
 import { createEvidenceService, type EvidenceService } from "./services/evidence-service";
 import { createOfferService, type OfferService } from "./services/offer-service";
@@ -39,12 +40,18 @@ export interface CommerceService {
 
 export function createCommerceService(
   stores: CommerceStores,
-  hooks?: CommerceHooks,
+  opts?: {
+    hooks?: CommerceHooks;
+    /** SLICE-227-5 settlement seam — wired on prod via
+     *  createCommerceSettlementBridge; absent → pure commerce. */
+    settlement?: CommerceSettlementBridge;
+  },
 ): CommerceService {
   const ctx = {
     stores,
     emit: new CommerceEventEmitter(stores.events),
-    hooks,
+    hooks: opts?.hooks,
+    settlement: opts?.settlement,
   };
   return {
     tasks: createTaskService(ctx),

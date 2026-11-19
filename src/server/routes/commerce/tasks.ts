@@ -161,22 +161,37 @@ export function createTaskRoutes(service: CommerceService): Hono {
         );
       }
       const offers = await service.offers.listByTask(id);
-      const agreement = await service.agreements.getByTaskId(id);
+      // D-227: multi-provider tasks can hold several agreements; the
+      // legacy `agreement` field keeps the oldest for compat, and each
+      // embedded agreement carries settlementRef (= its agreementRef
+      // in /api/settlement/*).
+      const agreements = await service.agreements.listByTaskId(id);
+      const agreement = agreements[0] ?? null;
       const payment = agreement
         ? await service.payments.getByAgreement(agreement.id)
         : null;
       const submissions = agreement
         ? await service.submissions.listByAgreement(agreement.id)
         : [];
-      const parties = agreement
-        ? [agreement.buyerWallet, agreement.providerWallet]
+      const parties = agreements.length
+        ? [
+            task.buyerWallet,
+            ...agreements.map((x) => x.providerWallet),
+          ]
         : [task.buyerWallet];
+      const withSettlementRef = (a: NonNullable<typeof agreement>) =>
+        ({ ...a, settlementRef: a.id });
       return c.json({
         task: redactRow(task, [task.buyerWallet], viewer),
         offers: offers.map((o) =>
           redactRow(o, [o.providerWallet, task.buyerWallet], viewer),
         ),
-        agreement: agreement ? redactRow(agreement, parties, viewer) : null,
+        agreement: agreement
+          ? redactRow(withSettlementRef(agreement), parties, viewer)
+          : null,
+        agreements: agreements.map((a) =>
+          redactRow(withSettlementRef(a), parties, viewer),
+        ),
         payment: payment
           ? redactRow(payment, parties, viewer, [
             "note",

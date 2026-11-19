@@ -191,13 +191,15 @@ describe("SLICE-234-17: facts emit on submission ACCEPTED-complete", () => {
     const commerce = createCommerceService(
       createInMemoryCommerceStores(),
       {
-        onSubmissionAccepted: async ({
-          submissionId,
-          agreementId,
-          providerWallet,
-        }) => {
-          await svc.facts.submissionAccepted(providerWallet, submissionId);
-          await svc.facts.taskCompleted(providerWallet, agreementId);
+        hooks: {
+          onSubmissionAccepted: async ({
+            submissionId,
+            agreementId,
+            providerWallet,
+          }) => {
+            await svc.facts.submissionAccepted(providerWallet, submissionId);
+            await svc.facts.taskCompleted(providerWallet, agreementId);
+          },
         },
       },
     );
@@ -262,8 +264,10 @@ describe("SLICE-234-17: facts emit on submission ACCEPTED-complete", () => {
     const commerce = createCommerceService(
       createInMemoryCommerceStores(),
       {
-        onSubmissionAccepted: async () => {
-          throw new Error("facts store down");
+        hooks: {
+          onSubmissionAccepted: async () => {
+            throw new Error("facts store down");
+          },
         },
       },
     );

@@ -72,6 +72,17 @@ export function createTaskService(ctx: CommerceCtx): TaskService {
           if (initial !== "DRAFT" && initial !== "OPEN") {
             throw forbidden(`create status must be DRAFT or OPEN`);
           }
+          // D-227: parallel provider slots — default 1, hard cap 32.
+          const maxProviders = input.maxProviders ?? 1;
+          if (
+            !Number.isInteger(maxProviders) ||
+            maxProviders < 1 ||
+            maxProviders > 32
+          ) {
+            throw forbidden(
+              `maxProviders must be an integer in 1..32 — got ${input.maxProviders}`,
+            );
+          }
           const task = await tx.tasks.create({
             id: newId("ct"),
             buyerWallet: buyer,
@@ -84,6 +95,7 @@ export function createTaskService(ctx: CommerceCtx): TaskService {
             requirements: input.requirements ?? null,
             budget: input.budget ?? null,
             currency: input.currency ?? "USD",
+            maxProviders,
             expiresAtMs: input.expiresAtMs ?? null,
             status: "DRAFT",
             payload: {
@@ -139,9 +151,10 @@ export function createTaskService(ctx: CommerceCtx): TaskService {
           (from) => tx.tasks.applyStatus(task.id, from, "CANCELLED"),
           { actorWallet: actor },
         );
-        // cascade 1: an ACTIVE agreement on this task dies with it
-        const agreement = await tx.agreements.getByTaskId(task.id);
-        if (agreement && agreement.status === "ACTIVE") {
+        // cascade 1: every ACTIVE agreement on this task dies with it
+        // (D-227: multi-provider tasks can hold several).
+        for (const agreement of await tx.agreements.listByTaskId(task.id)) {
+          if (agreement.status !== "ACTIVE") continue;
           await transitionRow(txCtx, "agreement", agreement, "CANCELLED", (from) =>
             tx.agreements.applyStatus(agreement.id, from, "CANCELLED"),
             { actorWallet: actor },
