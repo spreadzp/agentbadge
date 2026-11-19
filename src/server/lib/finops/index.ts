@@ -56,11 +56,12 @@ export {
   completeRefundIntent,
   type CompleteRefundIntentInput,
 } from "./refund-completion";
+export { stripeRefund } from "./stripe-refunds";
 export {
-  stripeRefund,
-  type StripeRefundInput,
-  type StripeRefundResult,
-} from "./stripe-refunds";
+  resolveStripeRefund,
+  type ResolveStripeRefundInput,
+  type ResolveStripeRefundResult,
+} from "./stripe-resolution";
 export {
   detectExceptions,
   detectFromPaymentExceptions,

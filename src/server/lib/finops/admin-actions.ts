@@ -98,12 +98,22 @@ export async function recordPostEffectAudit(
   input: RecordAdminActionInput,
   minimal: Record<string, unknown>,
 ): Promise<FinOpsResult<AdminActionRow>> {
-  const r = await recordAdminAction(db, input);
-  if (r.ok || r.error.code !== "EVIDENCE_TOO_LARGE") return r;
-  return recordAdminAction(db, {
-    ...input,
-    evidence: { ...minimal, degraded: true },
-  });
+  // N4-2: the store can also fail by THROWING (DB outage — the Prisma
+  // append does not catch). A thrown error after the effect landed is
+  // still just an audit gap — return a typed failure, never throw.
+  try {
+    const r = await recordAdminAction(db, input);
+    if (r.ok || r.error.code !== "EVIDENCE_TOO_LARGE") return r;
+    return await recordAdminAction(db, {
+      ...input,
+      evidence: { ...minimal, degraded: true },
+    });
+  } catch (e) {
+    return fail(
+      "PROVIDER_ERROR",
+      `audit store threw: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
 }
 
 /** Payment must exist for payment-scoped actions — audit lies otherwise. */

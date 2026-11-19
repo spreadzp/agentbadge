@@ -115,6 +115,27 @@ export interface StripeRefundClient {
   };
 }
 
+export interface StripeRefundInput {
+  paymentId: string;
+  operator: string;
+  /** Free-form ops justification — audit evidence + Stripe enum map. */
+  reason?: string;
+  /** Supporting details — audit evidence only, never sent to Stripe. */
+  evidence?: unknown;
+}
+
+export interface StripeRefundResult {
+  stripeRefundId: string;
+  paymentId: string;
+  /** true when the payment left revenue as REFUNDED. */
+  paymentFlip: boolean;
+  /** false when the effect landed but the audit store was down. */
+  auditRecorded: boolean;
+  /** true when the Stripe refund succeeded but the local flip threw —
+   *  the payment must be reconciled manually (audit row marks it). */
+  needsReconcile?: boolean;
+}
+
 export interface FinOpsDeps {
   db: Database;
 }
@@ -234,7 +255,14 @@ export interface FinReport {
    * RECORD_ONLY commerce mirrors — informational only, strictly
    * outside revenue (D-226-5 / spec "revenue ≠ recorded").
    */
-  recordedOnly: { count: number; volume: string; currency: string };
+  recordedOnly: {
+    count: number;
+    volume: string;
+    currency: string;
+    /** N4-4: mirror rows whose amount was not a canonical decimal —
+     *  counted, excluded from volume, never fatal. */
+    invalidAmounts?: number;
+  };
 }
 
 // ---------- exceptions ----------

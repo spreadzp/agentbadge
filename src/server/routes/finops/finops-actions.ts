@@ -19,6 +19,7 @@ import {
   createRefundIntent,
   fail,
   markExternalReviewed,
+  resolveStripeRefund,
   retryVerification,
   reviewPayment,
   stripeRefund,
@@ -199,6 +200,46 @@ export function createFinopsActionRoutes(
         evidence: parseEvidence(b.evidence),
       });
       return respond(c, res, 201);
+    },
+  );
+
+  routes.post(
+    "/admin/finance/payments/:id/refund-resolution",
+    describeRoute({
+      ...TAG,
+      summary:
+        "Resolve an UNCERTAIN Stripe refund — operator confirms out-of-band whether it landed",
+      responses: {
+        200: { description: "Terminal audit row written" },
+        400: { description: "Missing operator/evidence" },
+        401: { description: "Unauthorized" },
+        409: { description: "No open refund initiation" },
+      },
+    }),
+    adminAuth,
+    async (c) => {
+      const b = await readBody(c);
+      // `landed` must be explicit — silently defaulting to "not
+      // landed" would release the in-flight lock on a guess.
+      const landed =
+        b.landed === true || b.landed === "true" || b.landed === "on"
+          ? true
+          : b.landed === false || b.landed === "false"
+            ? false
+            : undefined;
+      if (landed === undefined) {
+        return respond(
+          c,
+          fail("BAD_INPUT", "landed must be true|false"),
+        );
+      }
+      const res = await resolveStripeRefund(getDb(), {
+        paymentId: c.req.param("id"),
+        operator: typeof b.operator === "string" ? b.operator : "",
+        landed,
+        evidence: parseEvidence(b.evidence) ?? b.evidence,
+      });
+      return respond(c, res);
     },
   );
 

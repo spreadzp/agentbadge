@@ -244,12 +244,14 @@ describe("SLICE-226-6 audit fixes", () => {
     );
     if (!done.ok) throw new Error("complete failed");
     const full = await finReport(db);
-    expect(full.refundsTotal).toBe("4.00");
+    if (!full.ok) throw new Error("report failed");
+    expect(full.value.refundsTotal).toBe("4.00");
     // Window ending before the completion — refund is not this period's.
     const past = await finReport(db, {
       untilMs: (done.value.completedAtMs ?? 0) - 1000,
     });
-    expect(past.refundsTotal).toBe("0.00");
+    if (!past.ok) throw new Error("report failed");
+    expect(past.value.refundsTotal).toBe("0.00");
     await db.close();
   });
 

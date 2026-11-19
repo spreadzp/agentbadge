@@ -18,7 +18,14 @@ import {
   recordAdminAction,
   recordPostEffectAudit,
 } from "./admin-actions";
-import { normalizeOperator } from "./guards";
+import { decimalLte, normalizeOperator } from "./guards";
+import {
+  type FinOpsResult,
+  type RefundTxCheck,
+  fail,
+  ok,
+} from "./types";
+import type { RefundIntentRow } from "@agentbadge/database";
 
 /**
  * Terminal/uncertain Stripe outcome row — `initiationId` pairs it
@@ -54,6 +61,58 @@ export async function auditStripeOutcome(
 }
 
 /**
+ * Terminal kinds that RELEASE the in-flight lock. M-6:
+ * STRIPE_REFUND_UNCERTAIN deliberately does NOT — a timeout or
+ * pending status may still be moving money, so capacity stays locked
+ * until a definite success/rejection row exists.
+ */
+const STRIPE_LOCK_RELEASE_KINDS = new Set([
+  "STRIPE_REFUND",
+  "STRIPE_REFUND_FAILED",
+]);
+
+/**
+ * N4 + M-6: STRIPE_REFUND_INITIATED rows without a matching
+ * INITIATION-PAIRED terminal row mean a provider refund may be in
+ * flight — the payment's refund capacity stays locked. Returns the
+ * OPEN initiationIds so the resolution path can write a terminal
+ * row against the exact initiation it closes. Rows are paired by
+ * `initiationId` (not row order — ms-timestamp ties can invert in
+ * Postgres), and only domain-written `action: "REFUND"` rows count:
+ * caller evidence on REVIEW/RESOLVE rows cannot inject a forged
+ * `kind` to spoof or clear the lock.
+ */
+export async function openStripeInitiations(
+  db: Database,
+  paymentId: string,
+): Promise<Set<string>> {
+  const rows = (
+    await db.finops.adminActions.listBySubject("payment", paymentId)
+  ).filter((r) => r.action === "REFUND");
+  // N4-6: two passes — order must not matter (ms-timestamp ties are
+  // unordered in Postgres). An initiation stays open iff no SAME-KEY
+  // terminal row exists anywhere in the trail.
+  const initiated = new Set<string>();
+  const closed = new Set<string>();
+  for (const r of rows) {
+    const e =
+      r.evidence !== null &&
+      typeof r.evidence === "object" &&
+      !Array.isArray(r.evidence)
+        ? (r.evidence as Record<string, unknown>)
+        : null;
+    const kind = e?.kind;
+    const key = typeof e?.initiationId === "string" ? e.initiationId : "legacy";
+    if (kind === "STRIPE_REFUND_INITIATED") initiated.add(key);
+    else if (typeof kind === "string" && STRIPE_LOCK_RELEASE_KINDS.has(kind)) {
+      closed.add(key);
+    }
+  }
+  for (const k of closed) initiated.delete(k);
+  return initiated;
+}
+
+/**
  * N12: rejected refund-intent completions are security events —
  * bound + audit the reason and the (normalized) hash.
  */
@@ -77,4 +136,124 @@ export async function auditRejectedCompletion(
       reason: reason.slice(0, 200),
     },
   });
+}
+
+/**
+ * Verified-transition tail of completeRefundIntent — extracted for
+ * the 300-line cap. Order: INTENT_COMPLETING row (pre-transition, L-6)
+ * → guarded `complete()` → L4-2 abort marker on a lost race → N10
+ * cumulative payment flip → post-effect INTENT_COMPLETED row.
+ */
+export async function finalizeRefundCompletion(
+  db: Database,
+  args: {
+    intent: RefundIntentRow;
+    txHash: string;
+    operator: string;
+    /** completed refunds total INCLUDING this intent (for the flip). */
+    total: string;
+    check: RefundTxCheck;
+  },
+): Promise<FinOpsResult<RefundIntentRow>> {
+  const { intent, txHash, operator, total, check } = args;
+  // L-6: audit the verified transition BEFORE it lands (mirrors the
+  // Stripe INITIATED row) — if the process dies between `complete()`
+  // and the completion row, the trail still shows a verified tx was
+  // accepted for this intent, with the hash that binds it.
+  const completing = await recordAdminAction(db, {
+    action: "REFUND",
+    subjectType: "payment",
+    subjectId: intent.paymentId,
+    operator,
+    evidence: {
+      kind: "INTENT_COMPLETING",
+      intentId: intent.id,
+      txHash,
+      amount: intent.amount,
+    },
+  });
+  if (!completing.ok) return completing;
+  const done = await db.finops.refundIntents.complete(
+    intent.id,
+    txHash,
+    operator,
+    Date.now(),
+  );
+  if (!done) {
+    // L4-2: the INTENT_COMPLETING row above would dangle without a
+    // terminal companion — append an explicit abort marker so the
+    // trail never shows a "completing" audit row for an intent that
+    // did not complete.
+    await recordPostEffectAudit(
+      db,
+      {
+        action: "REFUND",
+        subjectType: "refund-intent",
+        subjectId: intent.id,
+        operator,
+        evidence: { kind: "INTENT_COMPLETE_ABORTED", txHash },
+      },
+      { kind: "INTENT_COMPLETE_ABORTED", intentId: intent.id },
+    );
+    return fail(
+      "INVALID_STATE",
+      "refund intent transitioned or txHash was bound concurrently — not completing",
+    );
+  }
+  // N10 + N4-2: cumulative flip — the payment leaves revenue when
+  // TOTAL completed refunds reach the payment amount. A thrown store
+  // error here must not 500 after the intent already COMPLETED —
+  // record paymentFlip:false and let the reconcile path pick it up.
+  let flipApplied = false;
+  let flipThrew = false;
+  try {
+    const current = await db.payments.payments.getById(intent.paymentId);
+    if (
+      current &&
+      current.status === "CONFIRMED" &&
+      decimalLte(current.amount, total)
+    ) {
+      flipApplied =
+        (await db.payments.payments.applyStatus(
+          current.id,
+          "CONFIRMED",
+          "REFUNDED",
+          Date.now(),
+        )) !== null;
+    }
+  } catch {
+    flipThrew = true;
+  }
+  // M-2/L-3: the intent is COMPLETED — the audit row must degrade to
+  // minimal evidence rather than strand the trail (and verifier-
+  // supplied fields are sliced, they are not trusted-bounded).
+  await recordPostEffectAudit(
+    db,
+    {
+      action: "REFUND",
+      subjectType: "payment",
+      subjectId: intent.paymentId,
+      operator,
+      evidence: {
+        intentId: intent.id,
+        txHash,
+        kind: "INTENT_COMPLETED",
+        network:
+          typeof check.network === "string"
+            ? check.network.slice(0, 128)
+            : null,
+        payer:
+          typeof check.payer === "string"
+            ? check.payer.slice(0, 128)
+            : null,
+        confirmations: check.confirmations ?? null,
+        paymentFlip: flipApplied,
+        ...(flipThrew ? { needsReconcile: true } : {}),
+      },
+    },
+    { kind: "INTENT_COMPLETED", intentId: intent.id, txHash },
+  );
+  // The effect landed — report success even if the audit store was
+  // down; the COMPLETING row above already carries the binding facts.
+  return ok(done);
 }

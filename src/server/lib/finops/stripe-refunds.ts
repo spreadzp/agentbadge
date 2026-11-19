@@ -1,22 +1,18 @@
 /**
  * EPIC-226 / SLICE-226-6 — Stripe refund path (D-226-4 second arm;
- * H3 hardening; round-3 M-2/M-6/M-7).
+ * H3 hardening; round-3 M-2/M-6/M-7, round-4 N4-5/N4-6).
  *
  * The provider call sits between two audit rows on purpose:
- * STRIPE_REFUND_INITIATED (with the idempotency key + initiationId)
- * is written BEFORE the external call — a refund attempt without a
- * trail is impossible without also failing the audit store — and a
- * paired terminal row completes the record. Terminal kinds:
- *   STRIPE_REFUND        — provider reports status "succeeded"
- *   STRIPE_REFUND_FAILED — definite rejection (status failed/canceled)
- *   STRIPE_REFUND_UNCERTAIN — ambiguous outcome (timeout, pending):
- *     money may still be moving, so this does NOT release the
- *     in-flight lock the manual intent path checks.
- * The idempotency key `refund:<paymentId>` makes Stripe-side retries
- * of the same payment collapse into one refund instead of
- * duplicating. A payment with manual refund intents is rejected —
- * the Stripe path refunds the full amount and would silently
- * over-refund otherwise (C2).
+ * STRIPE_REFUND_INITIATED (idempotency key + initiationId) BEFORE
+ * the external call — a refund attempt without a trail is
+ * impossible without also failing the audit store — and a paired
+ * terminal row (STRIPE_REFUND / _FAILED / _UNCERTAIN; UNCERTAIN
+ * does NOT release the in-flight lock — see stripe-resolution.ts
+ * for the manual resolution path). Idempotency key
+ * `refund:<paymentId>` collapses Stripe-side retries. A payment
+ * with manual refund intents is rejected — the Stripe path
+ * refunds the full amount and would over-refund otherwise (C2).
+ * N4-5: requires exactly ONE CONFIRMED Stripe settlement.
  */
 
 import type { Database } from "@agentbadge/database";
@@ -35,52 +31,27 @@ import {
   normalizeOperator,
   requireOperator,
 } from "./guards";
-import { withPaymentLock } from "./payment-mutex";
+import {
+  LockAcquireTimeoutError,
+  withLock,
+} from "./payment-mutex";
 import {
   PROVIDER_TIMEOUT_MS,
   isDefiniteProviderRejection,
+  stripeReason,
   withTimeout,
 } from "./provider-utils";
 import { refundUsage } from "./refund-intents";
 import {
   type FinOpsResult,
   type StripeRefundClient,
+  type StripeRefundInput,
+  type StripeRefundResult,
   fail,
   ok,
 } from "./types";
 
-export interface StripeRefundInput {
-  paymentId: string;
-  operator: string;
-  /** Free-form ops justification — audit evidence + Stripe enum map. */
-  reason?: string;
-  /** Supporting details — audit evidence only, never sent to Stripe. */
-  evidence?: unknown;
-}
-
-export interface StripeRefundResult {
-  stripeRefundId: string;
-  paymentId: string;
-  /** true when the payment left revenue as REFUNDED. */
-  paymentFlip: boolean;
-  /** false when the effect landed but the audit store was down. */
-  auditRecorded: boolean;
-}
-
-const STRIPE_REASONS = new Set([
-  "duplicate",
-  "fraudulent",
-  "requested_by_customer",
-]);
-const stripeReason = (reason?: string): string | undefined =>
-  reason !== undefined && STRIPE_REASONS.has(reason) ? reason : undefined;
-
-/**
- * Stripe auto path — provider API call, refund id is the evidence.
- * Requires a CONFIRMED STRIPE attempt carrying a PaymentIntent id;
- * marks the payment REFUNDED via the guarded transition after the
- * provider call succeeds.
- */
+/** Stripe auto path — provider API call, refund id is the evidence. */
 export async function stripeRefund(
   db: Database,
   input: StripeRefundInput,
@@ -88,9 +59,19 @@ export async function stripeRefund(
 ): Promise<FinOpsResult<StripeRefundResult>> {
   // N8: serialize per payment — a Stripe refund and an intent create
   // racing on the same payment must not interleave past the checks.
-  return withPaymentLock(input.paymentId, () =>
-    stripeRefundInner(db, input, stripe),
-  );
+  try {
+    return await withLock("pay", input.paymentId, () =>
+      stripeRefundInner(db, input, stripe),
+    );
+  } catch (e) {
+    if (e instanceof LockAcquireTimeoutError) {
+      return fail(
+        "PROVIDER_ERROR",
+        `mutation queue busy for payment ${input.paymentId} — retry`,
+      );
+    }
+    throw e;
+  }
 }
 
 async function stripeRefundInner(
@@ -133,15 +114,24 @@ async function stripeRefundInner(
     );
   }
   const attempts = await db.payments.attempts.listByPayment(payment.id);
-  // M-7: only a CONFIRMED STRIPE attempt may be refunded — falling
-  // back to an abandoned/duplicate attempt can refund an unrelated
-  // PaymentIntent while the on-chain settlement stays in treasury.
-  const stripeAttempt = attempts.find(
-    (a) =>
-      a.provider === "STRIPE" &&
-      a.status === "CONFIRMED" &&
-      a.providerReference,
-  );
+  // M-7 + N4-5: exactly ONE CONFIRMED attempt and it must be STRIPE —
+  // a double-paid payment (Stripe + on-chain, or two PaymentIntents)
+  // has no single-refund path; refunding one leg and flipping the
+  // payment would strand the other settlement. Reconcile manually.
+  const confirmed = attempts.filter((a) => a.status === "CONFIRMED");
+  if (
+    confirmed.length !== 1 ||
+    confirmed[0]!.provider !== "STRIPE" ||
+    confirmed.some((a) => a.provider !== "STRIPE")
+  ) {
+    return fail(
+      "INVALID_STATE",
+      "stripe refund requires exactly one CONFIRMED Stripe settlement — mixed/multi-settled payments need manual reconciliation",
+    );
+  }
+  const stripeAttempt = confirmed[0]!.providerReference
+    ? confirmed[0]!
+    : undefined;
   if (!stripeAttempt?.providerReference) {
     return fail(
       "INVALID_STATE",
@@ -249,14 +239,22 @@ async function stripeRefundInner(
       `stripe refund ${refund.id} reports status ${refund.status ?? "unknown"}, not succeeded`,
     );
   }
-  // N1: flip FIRST — the refund already happened at Stripe; an audit
-  // failure must not strand the payment in CONFIRMED revenue.
-  const flipped = await db.payments.payments.applyStatus(
-    payment.id,
-    "CONFIRMED",
-    "REFUNDED",
-    Date.now(),
-  );
+  // N1 + N4-2: flip FIRST — the refund already happened at Stripe; a
+  // failure here must not strand the payment in CONFIRMED revenue nor
+  // 500 after money moved. A thrown store error is reported, not
+  // propagated — the reconcile path finds the needsReconcile flag.
+  let flipped: unknown = null;
+  let flipThrew = false;
+  try {
+    flipped = await db.payments.payments.applyStatus(
+      payment.id,
+      "CONFIRMED",
+      "REFUNDED",
+      Date.now(),
+    );
+  } catch {
+    flipThrew = true;
+  }
   const completionEvidence = {
     stripeRefundId: refund.id,
     attemptId: stripeAttempt.id,
@@ -268,6 +266,7 @@ async function stripeRefundInner(
     // payload wrapped here must not overflow the audit row.
     details: boundedEvidence(input.evidence, 1024),
     paymentFlip: flipped !== null,
+    ...(flipThrew ? { needsReconcile: true } : {}),
     kind: "STRIPE_REFUND",
   };
   const audit = await recordPostEffectAudit(
@@ -293,5 +292,6 @@ async function stripeRefundInner(
     paymentId: payment.id,
     paymentFlip: flipped !== null,
     auditRecorded: audit.ok,
+    ...(flipThrew ? { needsReconcile: true } : {}),
   });
 }

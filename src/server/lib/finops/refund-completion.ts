@@ -16,10 +16,9 @@ import type {
 } from "@agentbadge/database";
 
 import {
-  recordAdminAction,
-  recordPostEffectAudit,
-} from "./admin-actions";
-import { auditRejectedCompletion } from "./refund-audit";
+  auditRejectedCompletion,
+  finalizeRefundCompletion,
+} from "./refund-audit";
 import {
   decimalLte,
   normalizeOperator,
@@ -27,14 +26,16 @@ import {
   requireOperator,
   sumDecimals,
 } from "./guards";
-import { withPaymentLock } from "./payment-mutex";
+import {
+  LockAcquireTimeoutError,
+  withLock,
+} from "./payment-mutex";
 import { PROVIDER_TIMEOUT_MS, withTimeout } from "./provider-utils";
 import {
   type FinOpsResult,
   type RefundTxCheck,
   type VerifyRefundTx,
   fail,
-  ok,
 } from "./types";
 
 export interface CompleteRefundIntentInput {
@@ -65,13 +66,23 @@ export async function completeRefundIntent(
     typeof input.txHash === "string"
       ? normalizeTxHash(input.txHash)
       : null;
-  return withPaymentLock(key, () =>
-    txHash
-      ? withPaymentLock(`tx:${txHash}`, () =>
-          completeRefundIntentInner(db, input, verifyTx),
-        )
-      : completeRefundIntentInner(db, input, verifyTx),
-  );
+  try {
+    return await withLock("pay", key, () =>
+      txHash
+        ? withLock("tx", txHash, () =>
+            completeRefundIntentInner(db, input, verifyTx),
+          )
+        : completeRefundIntentInner(db, input, verifyTx),
+    );
+  } catch (e) {
+    if (e instanceof LockAcquireTimeoutError) {
+      return fail(
+        "PROVIDER_ERROR",
+        `mutation queue busy — retry refund completion ${input.intentId}`,
+      );
+    }
+    throw e;
+  }
 }
 
 async function completeRefundIntentInner(
@@ -102,37 +113,43 @@ async function completeRefundIntentInner(
       `refund intent is ${intent.status}, not OPEN`,
     );
   }
-  // C3: replay guard — one real tx binds at most one intent. The
-  // store-level unique index is the race backstop; this is the check.
-  const completed = await db.finops.refundIntents.list({
-    status: "COMPLETED",
-  });
-  const bound = completed.find((r) => r.txHash === txHash);
-  if (bound) {
-    await auditRejectedCompletion(
-      db, input, intent.paymentId, txHash, `replay — bound to ${bound.id}`,
-    );
-    return fail(
-      "TX_REUSED",
-      `txHash already bound to refund intent ${bound.id} — replay rejected`,
-    );
-  }
-  // C2: re-check payment state + cumulative refunds at completion —
-  // the payment may have been refunded through another path (Stripe)
-  // or another intent while this one was open.
-  const payment = await db.payments.payments.getById(intent.paymentId);
-  if (!payment) {
-    return fail("NOT_FOUND", `payment not found: ${intent.paymentId}`);
-  }
-  if (payment.status !== "CONFIRMED") {
-    return fail(
-      "INVALID_STATE",
-      `payment is ${payment.status}, refund completion requires CONFIRMED`,
-    );
-  }
+  // C3 + N4-4: replay guard — one real tx binds at most one intent.
+  // The unique index is the race backstop; this is the check. The
+  // reads sit inside the try — a corrupt intent row (repo `dec()`
+  // throws) becomes PROVIDER_ERROR instead of a 500.
+  let payment: NonNullable<
+    Awaited<ReturnType<Database["payments"]["payments"]["getById"]>>
+  >;
   let used: string;
   let total: string;
   try {
+    const completed = await db.finops.refundIntents.list({
+      status: "COMPLETED",
+    });
+    const bound = completed.find((r) => r.txHash === txHash);
+    if (bound) {
+      await auditRejectedCompletion(
+        db, input, intent.paymentId, txHash, `replay — bound to ${bound.id}`,
+      );
+      return fail(
+        "TX_REUSED",
+        `txHash already bound to refund intent ${bound.id} — replay rejected`,
+      );
+    }
+    // C2: re-check payment state + cumulative refunds at completion —
+    // the payment may have been refunded through another path (Stripe)
+    // or another intent while this one was open.
+    const p = await db.payments.payments.getById(intent.paymentId);
+    if (!p) {
+      return fail("NOT_FOUND", `payment not found: ${intent.paymentId}`);
+    }
+    if (p.status !== "CONFIRMED") {
+      return fail(
+        "INVALID_STATE",
+        `payment is ${p.status}, refund completion requires CONFIRMED`,
+      );
+    }
+    payment = p;
     used = sumDecimals(
       completed
         .filter((r) => r.paymentId === payment.id)
@@ -142,7 +159,7 @@ async function completeRefundIntentInner(
   } catch (e) {
     return fail(
       "PROVIDER_ERROR",
-      `corrupt amount data: ${e instanceof Error ? e.message : String(e)}`,
+      `corrupt refund data: ${e instanceof Error ? e.message : String(e)}`,
     );
   }
   if (!decimalLte(total, payment.amount)) {
@@ -215,82 +232,11 @@ async function completeRefundIntentInner(
     }
   }
   const operator = normalizeOperator(input.operator);
-  // L-6: audit the verified transition BEFORE it lands (mirrors the
-  // Stripe INITIATED row) — if the process dies between `complete()`
-  // and the completion row, the trail still shows a verified tx was
-  // accepted for this intent, with the hash that binds it.
-  const completing = await recordAdminAction(db, {
-    action: "REFUND",
-    subjectType: "payment",
-    subjectId: intent.paymentId,
-    operator,
-    evidence: {
-      kind: "INTENT_COMPLETING",
-      intentId: intent.id,
-      txHash,
-      amount: intent.amount,
-    },
-  });
-  if (!completing.ok) return completing;
-  const done = await db.finops.refundIntents.complete(
-    intent.id,
+  return finalizeRefundCompletion(db, {
+    intent,
     txHash,
     operator,
-    Date.now(),
-  );
-  if (!done) {
-    return fail(
-      "INVALID_STATE",
-      "refund intent transitioned or txHash was bound concurrently — not completing",
-    );
-  }
-  // N10: cumulative flip — the payment leaves revenue when TOTAL
-  // completed refunds reach the payment amount, not when this one
-  // intent alone covers it (60+40 on 100 must flip).
-  let flipApplied = false;
-  const current = await db.payments.payments.getById(intent.paymentId);
-  if (
-    current &&
-    current.status === "CONFIRMED" &&
-    decimalLte(current.amount, total)
-  ) {
-    flipApplied =
-      (await db.payments.payments.applyStatus(
-        current.id,
-        "CONFIRMED",
-        "REFUNDED",
-        Date.now(),
-      )) !== null;
-  }
-  // M-2/L-3: the intent is COMPLETED — the audit row must degrade to
-  // minimal evidence rather than strand the trail (and verifier-
-  // supplied fields are sliced, they are not trusted-bounded).
-  await recordPostEffectAudit(
-    db,
-    {
-      action: "REFUND",
-      subjectType: "payment",
-      subjectId: intent.paymentId,
-      operator,
-      evidence: {
-        intentId: intent.id,
-        txHash,
-        kind: "INTENT_COMPLETED",
-        network:
-          typeof check.network === "string"
-            ? check.network.slice(0, 128)
-            : null,
-        payer:
-          typeof check.payer === "string"
-            ? check.payer.slice(0, 128)
-            : null,
-        confirmations: check.confirmations ?? null,
-        paymentFlip: flipApplied,
-      },
-    },
-    { kind: "INTENT_COMPLETED", intentId: intent.id, txHash },
-  );
-  // The effect landed — report success even if the audit store was
-  // down; the COMPLETING row above already carries the binding facts.
-  return ok(done);
+    total,
+    check,
+  });
 }

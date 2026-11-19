@@ -1275,6 +1275,28 @@ paths:
           in: path
           name: id
           required: true
+  /admin/finance/payments/{id}/refund-resolution:
+    post:
+      operationId: postAdminFinancePaymentsByIdRefundResolution
+      tags:
+        - Admin FinOps
+      summary: Resolve an UNCERTAIN Stripe refund — operator confirms out-of-band
+        whether it landed
+      responses:
+        "200":
+          description: Terminal audit row written
+        "400":
+          description: Missing operator/evidence
+        "401":
+          description: Unauthorized
+        "409":
+          description: No open refund initiation
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /admin/finance/refunds:
     get:
       operationId: getAdminFinanceRefunds

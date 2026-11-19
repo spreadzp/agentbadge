@@ -226,10 +226,12 @@ export function createFinopsRoutes(deps: FinopsRouteDeps = {}): Hono {
           fail("BAD_INPUT", "`since` must not be after `until`"),
         );
       }
-      const rep = await finReport(getDb(), {
+      const repRes = await finReport(getDb(), {
         ...(sinceMs !== undefined ? { sinceMs } : {}),
         ...(untilMs !== undefined ? { untilMs } : {}),
       });
+      if (!repRes.ok) return respond(c, repRes);
+      const rep = repRes.value;
       if (q.get("format") === "csv") {
         return new Response(reportCsv(rep), {
           headers: {

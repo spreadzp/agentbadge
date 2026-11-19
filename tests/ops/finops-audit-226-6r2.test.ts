@@ -350,7 +350,8 @@ describe("SLICE-226-6 round-2 fixes (re-audit)", () => {
     const db = createDatabase({ enabled: false });
     await seedConfirmed(db, { amount: "5.00", productId: "__proto__" });
     const rep = await finReport(db);
-    expect(rep.byProduct["__proto__"]).toBe("5.00");
+    if (!rep.ok) throw new Error("report failed");
+    expect(rep.value.byProduct["__proto__"]).toBe("5.00");
     await db.close();
   });
 

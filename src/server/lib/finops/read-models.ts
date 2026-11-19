@@ -71,9 +71,15 @@ export async function listPayments(
   db: Database,
   filter: PaymentListFilter = {},
 ): Promise<PaymentListResult> {
-  const page = Math.max(1, filter.page ?? 1);
+  // L4-5: floor to integers — direct domain callers can pass
+  // fractional/NaN pagination that slice() silently misapplies.
+  const page = Math.max(1, Math.floor(filter.page ?? 1) || 1);
   const perPage = Math.min(
-    Math.max(1, filter.perPage ?? FINOPS_DEFAULT_PER_PAGE),
+    Math.max(
+      1,
+      Math.floor(filter.perPage ?? FINOPS_DEFAULT_PER_PAGE) ||
+        FINOPS_DEFAULT_PER_PAGE,
+    ),
     FINOPS_MAX_PER_PAGE,
   );
   const payments = await db.payments.payments.list({

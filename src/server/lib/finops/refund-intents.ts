@@ -32,7 +32,11 @@ import {
   requireOperator,
   sumDecimals,
 } from "./guards";
-import { withPaymentLock } from "./payment-mutex";
+import { openStripeInitiations } from "./refund-audit";
+import {
+  LockAcquireTimeoutError,
+  withLock,
+} from "./payment-mutex";
 import { type FinOpsResult, fail, ok } from "./types";
 
 const nextIntentId = (paymentId: string): string =>
@@ -66,49 +70,11 @@ export async function refundUsage(
 /** Providers that settle on-chain — the intent path refunds these. */
 const ONCHAIN_PROVIDERS = new Set(["DIRECT_USDC", "X402", "HEDERA"]);
 
-/**
- * Terminal kinds that RELEASE the in-flight lock. M-6:
- * STRIPE_REFUND_UNCERTAIN deliberately does NOT — a timeout or
- * pending status may still be moving money, so capacity stays locked
- * until a definite success/rejection row exists.
- */
-const STRIPE_LOCK_RELEASE_KINDS = new Set([
-  "STRIPE_REFUND",
-  "STRIPE_REFUND_FAILED",
-]);
-
-/**
- * N4 + M-6: a STRIPE_REFUND_INITIATED row without a matching
- * INITIATION-PAIRED terminal row means a provider refund may be in
- * flight — the payment's refund capacity stays locked. Rows are
- * paired by `initiationId` (not row order — ms-timestamp ties can
- * invert in Postgres), and only domain-written `action: "REFUND"`
- * rows count: caller evidence on REVIEW/RESOLVE rows cannot inject a
- * forged `kind` to spoof or clear the lock.
- */
 async function stripeRefundInFlight(
   db: Database,
   paymentId: string,
 ): Promise<boolean> {
-  const rows = (
-    await db.finops.adminActions.listBySubject("payment", paymentId)
-  ).filter((r) => r.action === "REFUND");
-  const open = new Set<string>();
-  for (const r of rows) {
-    const e =
-      r.evidence !== null &&
-      typeof r.evidence === "object" &&
-      !Array.isArray(r.evidence)
-        ? (r.evidence as Record<string, unknown>)
-        : null;
-    const kind = e?.kind;
-    const key = typeof e?.initiationId === "string" ? e.initiationId : "legacy";
-    if (kind === "STRIPE_REFUND_INITIATED") open.add(key);
-    else if (typeof kind === "string" && STRIPE_LOCK_RELEASE_KINDS.has(kind)) {
-      open.delete(key);
-    }
-  }
-  return open.size > 0;
+  return (await openStripeInitiations(db, paymentId)).size > 0;
 }
 
 /** Open a refund intent on a CONFIRMED payment + audit row. */
@@ -116,9 +82,19 @@ export async function createRefundIntent(
   db: Database,
   input: CreateRefundIntentInput,
 ): Promise<FinOpsResult<RefundIntentRow>> {
-  return withPaymentLock(input.paymentId, () =>
-    createRefundIntentInner(db, input),
-  );
+  try {
+    return await withLock("pay", input.paymentId, () =>
+      createRefundIntentInner(db, input),
+    );
+  } catch (e) {
+    if (e instanceof LockAcquireTimeoutError) {
+      return fail(
+        "PROVIDER_ERROR",
+        `mutation queue busy for payment ${input.paymentId} — retry`,
+      );
+    }
+    throw e;
+  }
 }
 
 async function createRefundIntentInner(
@@ -186,12 +162,23 @@ async function createRefundIntentInner(
       "a Stripe refund is in flight for this payment — resolve it before opening an intent",
     );
   }
+  // L4-6: two on-chain settlements in DIFFERENT assets have no single
+  // correct denomination — the sum is meaningless and must not be
+  // silently coerced to "USDC"; reconcile manually. Same for an
+  // attempt that never recorded its currency.
+  const onChainCurrencies = new Set(
+    confirmed.map((a) => (a.currency ?? "").trim().toUpperCase()),
+  );
+  if (onChainCurrencies.size !== 1) {
+    return fail(
+      "INVALID_STATE",
+      "on-chain settlements record missing or mixed currencies — refund needs manual reconciliation",
+    );
+  }
   // M-1/N11: the intent's asset is the settled attempt's currency —
   // `Payment.currency` is the denomination ("USD"), not the on-chain
   // asset the verifier must see moved ("USDC"; USD↔USDC priced 1:1).
-  const asset = (settled.currency ?? payment.currency ?? "USDC")
-    .trim()
-    .toUpperCase();
+  const asset = settled.currency!.trim().toUpperCase();
   const currency = (input.currency ?? asset).trim().toUpperCase();
   if (currency !== asset) {
     return fail(

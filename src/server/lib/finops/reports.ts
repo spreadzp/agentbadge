@@ -11,8 +11,19 @@
 
 import type { Database, PaymentAttemptRow } from "@agentbadge/database";
 
-import { decimalSub, feeOf, sumDecimals } from "./guards";
-import type { FinReport, ReportPeriod } from "./types";
+import {
+  decimalSub,
+  feeOf,
+  isDecimalString,
+  sumDecimals,
+} from "./guards";
+import {
+  type FinOpsResult,
+  type FinReport,
+  type ReportPeriod,
+  fail,
+  ok,
+} from "./types";
 
 /** Providers that settle on-chain (USDC) — feed the byNetwork split. */
 const ONCHAIN_PROVIDERS = new Set(["DIRECT_USDC", "X402", "HEDERA"]);
@@ -115,7 +126,9 @@ async function refundTotals(
   db: Database,
   terminal: readonly { id: string; status: string; amount: string }[],
   period: ReportPeriod,
-): Promise<{ refundsTotal: string; refundedPayments: number }> {
+): Promise<
+  FinOpsResult<{ refundsTotal: string; refundedPayments: number }>
+> {
   const completedIntents = await db.finops.refundIntents.list({
     status: "COMPLETED",
   });
@@ -129,16 +142,16 @@ async function refundTotals(
     (period.untilMs === undefined ||
       ri.completedAtMs <= period.untilMs);
   const windowedByPayment = new Map<string, string[]>();
-  // L-5: ALL-TIME intents per payment — a REFUNDED payment whose last
-  // intent completed just before the window boundary still refunded
-  // exactly its intents' total, not `p.amount` (that fallback would
-  // double-count a boundary-straddling partial-refund history).
-  const allTimeByPayment = new Map<string, string[]>();
+  // N4-7: EVERY intent counts by its own completedAtMs window —
+  // refund attribution lives on the intent row, so a payment's
+  // partial refunds land in the windows they completed in. The
+  // p.amount fallback applies only to REFUNDED payments that have NO
+  // intent rows at all (the Stripe path) — an all-time check, not a
+  // windowed one, so a boundary-straddling history isn't double
+  // counted.
+  const hasAnyIntents = new Set<string>();
   for (const ri of completedIntents) {
-    allTimeByPayment.set(ri.paymentId, [
-      ...(allTimeByPayment.get(ri.paymentId) ?? []),
-      ri.amount,
-    ]);
+    hasAnyIntents.add(ri.paymentId);
     if (inWindow(ri)) {
       windowedByPayment.set(ri.paymentId, [
         ...(windowedByPayment.get(ri.paymentId) ?? []),
@@ -151,25 +164,33 @@ async function refundTotals(
   );
   let refundsTotal = "0";
   for (const p of terminal.filter((x) => x.status === "REFUNDED")) {
-    const allTime = allTimeByPayment.get(p.id);
-    // Intents carry exact refunded amounts; `p.amount` only when the
-    // refund went through a path with no intent rows (Stripe).
-    refundsTotal = sumDecimals([
-      refundsTotal,
-      allTime && allTime.length > 0 ? sumDecimals(allTime) : p.amount,
-    ]);
-  }
-  // Still-CONFIRMED payments contribute only their in-window intents.
-  for (const [pid, amounts] of windowedByPayment) {
-    if (!refundedIds.has(pid)) {
-      refundsTotal = sumDecimals([refundsTotal, sumDecimals(amounts)]);
+    if (!hasAnyIntents.has(p.id)) {
+      if (typeof p.amount !== "string" || !isDecimalString(p.amount)) {
+        return fail(
+          "PROVIDER_ERROR",
+          `corrupt amount on refunded payment ${p.id} — manual reconciliation required`,
+        );
+      }
+      refundsTotal = sumDecimals([refundsTotal, p.amount]);
     }
   }
-  return {
+  for (const [pid, amounts] of windowedByPayment) {
+    const bad = amounts.find(
+      (a) => typeof a !== "string" || !isDecimalString(a),
+    );
+    if (bad !== undefined) {
+      return fail(
+        "PROVIDER_ERROR",
+        `corrupt refund intent amount on payment ${pid} — manual reconciliation required`,
+      );
+    }
+    refundsTotal = sumDecimals([refundsTotal, sumDecimals(amounts)]);
+  }
+  return ok({
     // Canonical money form — an empty window still reports "0.00".
     refundsTotal: sumDecimals([refundsTotal]),
     refundedPayments: refundedIds.size,
-  };
+  });
 }
 
 /**
@@ -180,7 +201,7 @@ async function refundTotals(
 export async function finReport(
   db: Database,
   period: ReportPeriod = {},
-): Promise<FinReport> {
+): Promise<FinOpsResult<FinReport>> {
   const payments = await db.payments.payments.list({
     statuses: TERMINAL_PAYMENT_STATUSES,
     updatedSinceMs: period.sinceMs,
@@ -189,16 +210,26 @@ export async function finReport(
   const revenue = payments.filter((p) =>
     REVENUE_STATUSES.includes(p.status),
   );
+  // N4-4: one corrupt revenue row must not crash the report with an
+  // untyped throw — surface the offending payment id in a controlled
+  // PROVIDER_ERROR instead (the row needs manual reconciliation).
+  const corrupt = revenue.find(
+    (p) => typeof p.amount !== "string" || !isDecimalString(p.amount),
+  );
+  if (corrupt) {
+    return fail(
+      "PROVIDER_ERROR",
+      `corrupt amount on revenue payment ${corrupt.id} — manual reconciliation required`,
+    );
+  }
   const attempts = await db.payments.attempts.list({
     statuses: ["CONFIRMED"],
   });
   const confirmedByPayment = groupConfirmedAttempts(attempts);
   const splits = buildSplits(revenue, confirmedByPayment);
-  const { refundsTotal, refundedPayments } = await refundTotals(
-    db,
-    payments,
-    period,
-  );
+  const totals = await refundTotals(db, payments, period);
+  if (!totals.ok) return totals;
+  const { refundsTotal, refundedPayments } = totals.value;
   const grossVolume = sumDecimals(revenue.map((p) => p.amount));
   const feesTotal = sumDecimals([
     splits.stripeEstimated,
@@ -219,18 +250,27 @@ export async function finReport(
   const mirrorCurrencies = new Set(
     mirrors.map((m) => m.currency ?? "USD"),
   );
+  // N4-4: RECORD_ONLY mirrors are externally recorded and
+  // informational — one non-canonical mirror amount must not 500 the
+  // whole revenue report. Malformed entries are counted, not summed.
+  let mirrorVolume = "0";
+  let mirrorInvalid = 0;
+  for (const m of mirrors) {
+    if (typeof m.amount !== "string" || !isDecimalString(m.amount)) {
+      mirrorInvalid += 1;
+      continue;
+    }
+    mirrorVolume = sumDecimals([mirrorVolume, m.amount]);
+  }
   const recordedOnly = {
     count: mirrors.length,
-    volume: sumDecimals(
-      mirrors
-        .map((m) => m.amount)
-        .filter((a): a is string => typeof a === "string"),
-    ),
+    volume: mirrorVolume,
+    ...(mirrorInvalid > 0 ? { invalidAmounts: mirrorInvalid } : {}),
     currency:
       mirrorCurrencies.size === 1 ? [...mirrorCurrencies][0]! : "MIXED",
   };
 
-  return {
+  return ok({
     period: {
       sinceMs: period.sinceMs ?? null,
       untilMs: period.untilMs ?? null,
@@ -252,5 +292,5 @@ export async function finReport(
       refundedPayments,
     },
     recordedOnly,
-  };
+  });
 }

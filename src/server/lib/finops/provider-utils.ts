@@ -34,19 +34,32 @@ export async function withTimeout<T>(
 }
 
 /**
- * M-6: classify a thrown provider error — a definite rejection (HTTP
- * 4xx / StripeInvalidRequestError) means the refund did NOT happen
- * and the in-flight lock may be released; anything else (timeout,
- * 5xx, network) is ambiguous — the provider may still have
- * processed it.
+ * M-6 + N4-6: classify a thrown provider error — a DEFINITE rejection
+ * means the refund did NOT happen and the in-flight lock may be
+ * released. Whitelist, not "any 4xx": 408 (timeout) and 409
+ * (idempotency-key conflict while the original still processes) are
+ * ambiguous — money may still be moving, so they stay UNCERTAIN.
+ * Everything else (5xx, network, no status) is ambiguous too.
  */
+const DEFINITE_STATUSES = new Set([400, 401, 402, 403, 404, 429]);
 export function isDefiniteProviderRejection(e: unknown): boolean {
   const status =
     (e as { statusCode?: number } | null)?.statusCode ??
     (e as { status?: number } | null)?.status;
-  if (typeof status === "number" && status >= 400 && status < 500) {
-    return true;
-  }
+  if (typeof status === "number") return DEFINITE_STATUSES.has(status);
   const type = (e as { type?: string } | null)?.type;
   return type === "StripeInvalidRequestError";
 }
+
+/**
+ * Stripe refund reason enum — free-form ops reasons pass through to
+ * Stripe only when they match the provider's vocabulary; anything
+ * else stays audit-only.
+ */
+const STRIPE_REASONS = new Set([
+  "duplicate",
+  "fraudulent",
+  "requested_by_customer",
+]);
+export const stripeReason = (reason?: string): string | undefined =>
+  reason !== undefined && STRIPE_REASONS.has(reason) ? reason : undefined;

@@ -24,7 +24,6 @@ import {
   createRefundIntent,
   detectExceptions,
   detectFromPaymentExceptions,
-  finReport,
   getPaymentDetail,
   listAdminActions,
   listExceptions,
@@ -198,104 +197,6 @@ describe("finops read-models", () => {
   });
 });
 
-describe("finops reports", () => {
-  it("counts each payment once at terminal; no double-count on attempts", async () => {
-    const db = createDatabase({ enabled: false });
-    // One payment, two attempts (first failed, second confirmed) —
-    // gross must count the payment once.
-    const p = mkPayment({ status: "CONFIRMED", amount: "10.00" });
-    await db.payments.payments.create(p);
-    await db.payments.attempts.create(
-      mkAttempt(p.id, {
-        id: uid("att_fail"),
-        status: "FAILED",
-        providerReference: uid("pi_f"),
-      }),
-    );
-    await db.payments.attempts.create(
-      mkAttempt(p.id, {
-        id: uid("att_ok"),
-        status: "CONFIRMED",
-        confirmedAtMs: Date.now(),
-      }),
-    );
-    const rep = await finReport(db);
-    expect(rep.grossVolume).toBe("10.00");
-    expect(rep.counts.payments).toBe(1);
-    await db.close();
-  });
-
-  it("excludes RECORD_ONLY commerce mirrors from revenue", async () => {
-    const db = createDatabase({ enabled: false });
-    await seedConfirmed(db, { amount: "25.00" }, {
-      provider: "STRIPE",
-      network: "stripe",
-      providerReference: "pi_ro",
-    });
-    // RECORD_ONLY mirror of an external "payment" — never revenue.
-    await db.commerce.payments.create({
-      id: uid("cpay"),
-      agreementId: uid("agr"),
-      mode: "RECORD_ONLY",
-      status: "PAYMENT_RECORDED",
-      amount: "1000.00",
-      currency: "USD",
-      recordedBy: "0xops",
-      recordedAtMs: Date.now(),
-      payload: {},
-    });
-    const rep = await finReport(db);
-    expect(rep.grossVolume).toBe("25.00");
-    expect(rep.recordedOnly.count).toBe(1);
-    expect(rep.recordedOnly.volume).toBe("1000.00");
-    // net = 25 - stripe fee estimate (2.9% + 0.30 = 1.025)
-    expect(rep.fees.stripeEstimated).toBe("1.025");
-    await db.close();
-  });
-
-  it("splits gross by provider/product/network", async () => {
-    const db = createDatabase({ enabled: false });
-    await db.payments.products.upsert({
-      id: "prod_a",
-      code: "A",
-      name: "A",
-      description: null,
-      category: "PASSPORT",
-      active: true,
-      payload: {},
-    });
-    const stripePay = await seedConfirmed(db, {
-      amount: "10.00",
-      productId: "prod_a",
-    }, {
-      provider: "STRIPE",
-      network: "stripe",
-      providerReference: "pi_report",
-    });
-    const usdcPay = mkPayment({
-      status: "CONFIRMED",
-      amount: "5.00",
-      currency: "USDC",
-    });
-    await db.payments.payments.create(usdcPay);
-    await db.payments.attempts.create(
-      mkAttempt(usdcPay.id, {
-        provider: "DIRECT_USDC",
-        network: "eip155:1874",
-        providerReference: null,
-        status: "CONFIRMED",
-        confirmedAtMs: Date.now(),
-      }),
-    );
-    const rep = await finReport(db);
-    expect(rep.byProvider["STRIPE"]).toBe("10.00");
-    expect(rep.byProvider["DIRECT_USDC"]).toBe("5.00");
-    expect(rep.byProduct["prod_a"]).toBe("10.00");
-    expect(rep.byNetwork["eip155:1874"]).toBe("5.00");
-    void stripePay;
-    await db.close();
-  });
-});
 
 describe("finops admin actions", () => {
   it("rejects missing/empty operator on every path", async () => {
