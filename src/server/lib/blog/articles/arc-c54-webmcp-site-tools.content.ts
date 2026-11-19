@@ -45,7 +45,7 @@ export const arcC54WebmcpSiteToolsContent = `
 <p><img src="/images/blog/arc-c54-webmcp-site-tools-d2.webp" alt="Funnel diagram: discover via webmcp.json/llms.txt/agent-card/mcp-public; read tools; submit-request the only write; poll-request honest waiting through the ops lane; completed with response; consented qa_ pair enters the corpus; search-agent-qa fast-path for the next agent; side lanes for 429, 7-day expiry and retract" /></p>
 <p><em>The funnel is deliberately asynchronous: the agent asks, a human answers in hours-to-days, the answer can feed the next agent.</em></p>
 
-<p>There is exactly one write action: <code>submit-request</code>. It posts a question into our ops inbox (the agent request inbox from our previous article - this is its browser-native front). What comes back is deliberately boring:</p>
+<p>The inbox has exactly one write action: <code>submit-request</code>. It posts a question into our ops inbox (the agent request inbox from our previous article - this is its browser-native front). What comes back is deliberately boring:</p>
 
 <p><img src="/images/blog/arc-c54-webmcp-site-tools-shot-submit.webp" alt="submit-request returns request_id rq_3a672b…, state submitted, poll_url and next_call poll-request; a repeat call returns duplicate:true" /></p>
 <p><em>A request_id, not an answer. Async is a feature, not a broken chatbot.</em></p>
