@@ -206,6 +206,15 @@ async function markLegPaidInner(
         "leg moved concurrently or txHash already bound — not completed",
       );
     }
+    // M-C: emit before the rollup so the event stream reads
+    // leg → intent → milestone → plan, not backwards.
+    await ctx.emit.emit({
+      entityType: "payout_leg",
+      entityId: leg.id,
+      eventType: "leg.completed",
+      actorWallet: operator,
+      payload: { intentId: intent.id, txHash, verified },
+    });
     // H1: shared rollup — non-CANCELLED legs all COMPLETED → intent
     // COMPLETED → milestone RELEASED → plan COMPLETED (rollup.ts).
     const rolled = await rollupIntent(
@@ -217,19 +226,15 @@ async function markLegPaidInner(
       operator,
     );
     if (rolled === "MOVED") {
-      return fail(
-        "INVALID_STATE",
-        "intent moved concurrently — rollup aborted",
+      // R2-H3: the leg is already COMPLETED with its txHash bound —
+      // `return fail` would commit a paid leg under a moved (frozen)
+      // intent and poison every retry with TX_REUSED. Throw to roll
+      // the whole atomic back instead.
+      throw new Error(
+        `intent ${live.id} moved concurrently — rollup aborted`,
       );
     }
     const { intent: nextIntent, milestone: nextMilestone } = rolled;
-    await ctx.emit.emit({
-      entityType: "payout_leg",
-      entityId: leg.id,
-      eventType: "leg.completed",
-      actorWallet: operator,
-      payload: { intentId: intent.id, txHash, verified },
-    });
     return ok({ leg: done, intent: nextIntent, milestone: nextMilestone });
   });
   if (!effect.ok) return effect;

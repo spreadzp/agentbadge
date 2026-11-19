@@ -118,6 +118,11 @@ export function createSettlementAdminRoutes(
         {
           verifyTx: deps.verifyTx,
           requireVerification: deps.requireVerification,
+          // R2-H2: forward the full expectation — chain id (string) and
+          // the pinned treasury payer; previously dropped at the seam.
+          chainId:
+            deps.chainId === undefined ? undefined : String(deps.chainId),
+          expectedPayer: deps.expectedPayer,
         },
       );
       return respond(c, res);

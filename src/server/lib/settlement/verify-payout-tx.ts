@@ -52,7 +52,10 @@ export interface PayoutTxCheck {
   /** true only when every mandatory check passed. */
   verified: boolean;
   reason?: string;
+  /** Network label (e.g. "arc") — matched against the leg replay scope. */
   network?: string;
+  /** Numeric chain id — matched against expected.chainId, NOT network. */
+  chainId?: string;
   /** Sender — cross-checked when returned (≠ payee self-pay). */
   payer?: string;
   /** Asset the verifier observed moving. */
@@ -113,6 +116,21 @@ export async function verifyLegTx(
   if (check.payee === undefined) missing.push("payee");
   if (check.amount === undefined) missing.push("amount");
   if (check.network === undefined) missing.push("network");
+  // M-A: when the treasury payer is pinned, an adapter that omits
+  // `payer` cannot prove the treasury paid — attest-without-report
+  // would bypass the pin and the self-pay guard entirely.
+  if (
+    expected.expectedPayer !== undefined &&
+    check.payer === undefined
+  ) {
+    missing.push("payer");
+  }
+  if (
+    expected.chainId !== undefined &&
+    check.chainId === undefined
+  ) {
+    missing.push("chainId");
+  }
   if (
     typeof check.confirmations !== "number" ||
     check.confirmations < 1
@@ -129,7 +147,7 @@ export async function verifyLegTx(
   // the leg expectation is treated as unverified (H4 precedent).
   if (
     check.asset !== undefined &&
-    check.asset !== expected.currency
+    check.asset.toUpperCase() !== expected.currency.toUpperCase()
   ) {
     return fail(
       "TX_UNVERIFIED",
@@ -147,14 +165,24 @@ export async function verifyLegTx(
   }
   // Amounts compare numerically, not lexically — "10.0" === "10.00"
   // (M12: a string compare falsely rejects a real payment).
-  if (
-    check.amount !== undefined &&
-    decimalToMicro(check.amount) !== decimalToMicro(expected.amount)
-  ) {
-    return fail(
-      "TX_UNVERIFIED",
-      `verifier reports amount ${check.amount}, expected ${expected.amount}`,
-    );
+  // M-A: a malformed adapter amount must fail closed (TX_UNVERIFIED),
+  // not escape decimalToMicro's throw as a 500.
+  if (check.amount !== undefined) {
+    let micro: bigint | null = null;
+    try {
+      micro = decimalToMicro(check.amount);
+    } catch {
+      micro = null;
+    }
+    if (
+      micro === null ||
+      micro !== decimalToMicro(expected.amount)
+    ) {
+      return fail(
+        "TX_UNVERIFIED",
+        `verifier reports amount ${check.amount}, expected ${expected.amount}`,
+      );
+    }
   }
   if (
     check.payer !== undefined &&
@@ -177,14 +205,16 @@ export async function verifyLegTx(
       `verifier reports payer ${check.payer}, expected treasury ${expected.expectedPayer}`,
     );
   }
+  // R2-H2: chain id and network label are DISTINCT fields — comparing
+  // check.network to both can never hold, and would DoS every mark-paid.
   if (
     expected.chainId !== undefined &&
-    check.network !== undefined &&
-    check.network !== expected.chainId
+    check.chainId !== undefined &&
+    check.chainId !== expected.chainId
   ) {
     return fail(
       "TX_UNVERIFIED",
-      `verifier reports chain ${check.network}, expected ${expected.chainId}`,
+      `verifier reports chain ${check.chainId}, expected ${expected.chainId}`,
     );
   }
   if (

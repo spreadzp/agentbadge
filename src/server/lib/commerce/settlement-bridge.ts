@@ -66,16 +66,19 @@ export interface CommerceSettlementBridge {
   ): Promise<number>;
 }
 
-/** Best-effort wrapper — settlement errors log, never throw up. */
+/** Best-effort wrapper — settlement errors log, never throw up. A
+ *  CONFLICT means a forged or stale plan won the agreementRef race —
+ *  that's loud (error), not routine warn. */
 function settled(
   what: string,
   res: { ok: boolean; error?: { code: string; message: string } },
 ): void {
-  if (!res.ok) {
-    logger.warn(`settlement bridge: ${what} failed`, {
-      code: res.error?.code,
-      message: res.error?.message,
-    });
+  if (res.ok) return;
+  const fields = { code: res.error?.code, message: res.error?.message };
+  if (res.error?.code === "CONFLICT") {
+    logger.error(`settlement bridge: ${what} CONFLICT — forged or stale plan terms`, fields);
+  } else {
+    logger.warn(`settlement bridge: ${what} failed`, fields);
   }
 }
 
@@ -83,33 +86,36 @@ export function createCommerceSettlementBridge(
   getDb: () => Database,
 ): CommerceSettlementBridge {
   const sctx = () => createSettlementCtx(getDb());
-  return {
-    async ensurePlan(input) {
-      const milestones: MilestoneInput[] = input.milestones?.length
-        ? input.milestones
-        : [
-            {
-              milestoneId: "full",
-              title: "Full delivery",
-              amountUsd: input.agreedAmount,
-            },
-          ];
-      settled(
-        "ensurePlan",
-        await createPlan(
-          sctx(),
+  // Local closure — M-E: method calls via `this.ensurePlan` break the
+  // moment the bridge is destructured, spread or proxied.
+  const ensurePlan: CommerceSettlementBridge["ensurePlan"] = async (input) => {
+    const milestones: MilestoneInput[] = input.milestones?.length
+      ? input.milestones
+      : [
           {
-            agreementRef: input.agreementId,
-            buyerWallet: input.buyerWallet,
-            providerWallet: input.providerWallet,
-            currency: input.currency ?? "USDC",
-            totalUsd: input.agreedAmount,
-            milestones,
+            milestoneId: "full",
+            title: "Full delivery",
+            amountUsd: input.agreedAmount,
           },
-          input.buyerWallet,
-        ),
-      );
-    },
+        ];
+    settled(
+      "ensurePlan",
+      await createPlan(
+        sctx(),
+        {
+          agreementRef: input.agreementId,
+          buyerWallet: input.buyerWallet,
+          providerWallet: input.providerWallet,
+          currency: input.currency ?? "USDC",
+          totalUsd: input.agreedAmount,
+          milestones,
+        },
+        input.buyerWallet,
+      ),
+    );
+  };
+  return {
+    ensurePlan,
 
     async findMilestone(agreementId, milestoneRef) {
       let plan = await getPlanByAgreement(sctx(), agreementId);
@@ -117,13 +123,26 @@ export function createCommerceSettlementBridge(
         // H7: the documented "lazy retry" — a plan missing here means
         // the accept-time ensurePlan failed; heal it from the
         // commerce agreement's own terms and re-resolve once.
+        // R2-H5: heal with the OFFER's declared milestone vector — a
+        // bare "full" plan would permanently mis-shape a multi-milestone
+        // agreement and strand every named milestoneRef.
         const a = await getDb().commerce.agreements.getById(agreementId);
-        if (a) {
-          await this.ensurePlan({
+        // M-D: heal only live agreements — building a plan for a
+        // terminal one is a write on a read path with nothing to gain.
+        if (a && a.status === "ACTIVE") {
+          const offer = await getDb().commerce.offers.getById(a.offerId);
+          const offered =
+            offer?.payload && typeof offer.payload === "object"
+              ? (offer.payload as Record<string, unknown>)["milestones"]
+              : undefined;
+          await ensurePlan({
             agreementId,
             buyerWallet: a.buyerWallet,
             providerWallet: a.providerWallet,
             agreedAmount: a.agreedAmount,
+            milestones: Array.isArray(offered)
+              ? (offered as MilestoneInput[])
+              : null,
           });
           plan = await getPlanByAgreement(sctx(), agreementId);
         }
@@ -144,10 +163,13 @@ export function createCommerceSettlementBridge(
       const plan = await getPlanByAgreement(sctx(), agreementId);
       if (!plan) return 0;
       const ms = await getDb().settlement.milestones.listByPlan(plan.id);
+      // R2-H4: count only work not yet ACCEPTED. APPROVED is awaiting
+      // the (intentionally lagging, D-227-4) manual payout — counting
+      // it deadlocks agreement+task completion forever.
       return ms.filter(
         (m) =>
           m.id !== excludingMilestoneRowId &&
-          !["RELEASED", "CANCELLED"].includes(m.status),
+          !["RELEASED", "CANCELLED", "APPROVED"].includes(m.status),
       ).length;
     },
 

@@ -204,4 +204,80 @@ describe("VerifyPayoutTx seam", () => {
     );
     expect(r.ok && r.value.verified).toBe(true);
   });
+
+  // R2-H2: chain id and the network label are distinct fields —
+  // comparing check.network to expected.chainId can never hold and
+  // DoSes every mark-paid.
+  it("checks chainId against the chain field, not the network label", async () => {
+    const { intentId, legs } = await approvedIntent(ctx);
+    const report = (chainId: string): VerifyPayoutTx =>
+      async (_tx, expected) => ({
+        verified: true,
+        asset: expected.currency,
+        payee: expected.payee,
+        amount: expected.amount,
+        network: expected.network, // "arc" label stays a label
+        chainId,
+        confirmations: 3,
+      });
+    const wrong = await markLegPaid(
+      ctx,
+      { intentId, legId: legs[0]!, txHash: TX1, operator: OPS },
+      { verifyTx: report("999"), chainId: "123" },
+    );
+    expect(codeOf(wrong)).toBe("TX_UNVERIFIED");
+    const leg = await db.settlement.payoutLegs.getById(legs[0]!);
+    expect(leg?.status).toBe("OPEN");
+    expect(leg?.txHash).toBeNull();
+
+    const right = await markLegPaid(
+      ctx,
+      { intentId, legId: legs[0]!, txHash: TX1, operator: OPS },
+      { verifyTx: report("123"), chainId: "123" },
+    );
+    expect(right.ok && right.value.verified).toBe(true);
+  });
+
+  // M-A: an adapter attestation that omits `payer` while the treasury
+  // payer is pinned can't prove the treasury paid — fail closed.
+  it("requires payer from the adapter when a treasury payer is pinned", async () => {
+    const { intentId } = await approvedIntent(ctx);
+    const noPayer: VerifyPayoutTx = async (_tx, expected) => ({
+      verified: true,
+      asset: expected.currency,
+      payee: expected.payee,
+      amount: expected.amount,
+      network: expected.network,
+      confirmations: 3,
+    });
+    const r = await markLegPaid(
+      ctx,
+      { intentId, txHash: TX1, operator: OPS },
+      {
+        verifyTx: noPayer,
+        expectedPayer: "0x9999999999999999999999999999999999999999",
+      },
+    );
+    expect(codeOf(r)).toBe("TX_UNVERIFIED");
+  });
+
+  // M-A: a malformed adapter amount must be TX_UNVERIFIED, never an
+  // uncaught throw from the decimal conversion.
+  it("fails closed on a malformed adapter amount", async () => {
+    const { intentId } = await approvedIntent(ctx);
+    const bad: VerifyPayoutTx = async (_tx, expected) => ({
+      verified: true,
+      asset: expected.currency,
+      payee: expected.payee,
+      amount: "not-a-number",
+      network: expected.network,
+      confirmations: 3,
+    });
+    const r = await markLegPaid(
+      ctx,
+      { intentId, txHash: TX1, operator: OPS },
+      { verifyTx: bad },
+    );
+    expect(codeOf(r)).toBe("TX_UNVERIFIED");
+  });
 });

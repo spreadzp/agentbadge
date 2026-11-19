@@ -95,6 +95,47 @@ describe("raise", () => {
       expect(second.value.dispute.id).toBe(first.value.dispute.id);
     }
   });
+
+  // R2-H6: one OPEN dispute per plan. Overlapping AGREEMENT/MILESTONE
+  // disputes recorded empty freeze maps whose resolves silently
+  // dropped or inverted each other's verdicts.
+  it("rejects a second OPEN dispute on a different subject in the same plan", async () => {
+    const { plan, milestone } = await approvedIntent(ctx);
+    const first = await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: milestone.id,
+      raisedBy: BUYER,
+      reason: "first",
+    });
+    expect(first.ok).toBe(true);
+    const second = await raiseDispute(ctx, {
+      subjectType: "AGREEMENT",
+      subjectRef: plan.agreementRef,
+      raisedBy: PROVIDER,
+      reason: "overlapping",
+    });
+    expect(codeOf(second)).toBe("INVALID_STATE");
+    expect(
+      second.ok ? "" : second.error.message,
+    ).toContain("already covers");
+
+    // Reverse order — agreement-level first, milestone second.
+    const again = await approvedIntent(ctx);
+    const a = await raiseDispute(ctx, {
+      subjectType: "AGREEMENT",
+      subjectRef: again.plan.agreementRef,
+      raisedBy: BUYER,
+      reason: "agreement-level first",
+    });
+    expect(a.ok).toBe(true);
+    const b = await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: again.milestone.id,
+      raisedBy: PROVIDER,
+      reason: "milestone second",
+    });
+    expect(codeOf(b)).toBe("INVALID_STATE");
+  });
 });
 
 describe("resolve", () => {

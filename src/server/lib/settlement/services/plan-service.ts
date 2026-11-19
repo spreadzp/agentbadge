@@ -15,12 +15,13 @@ import {
   assertAmount,
   checkField,
   checkMilestoneInputs,
-  decimalToMicro,
   isEvmAddress,
   isParticipant,
 } from "../invariants.js";
+import { samePlanTerms } from "./plan-terms.js";
 import {
   type CreatePlanInput,
+  type MilestoneInput,
   type SettlementResult,
   fail,
   ok,
@@ -82,22 +83,8 @@ export type VerifyAgreementFn = (input: {
   buyerWallet: string;
   providerWallet: string;
   totalUsd: string;
+  milestones: MilestoneInput[];
 }) => Promise<SettlementResult<never> | null>;
-
-/** Terms equality between a stored plan and a create/ensure request —
- *  a `duplicate:true` plan that disagrees is a CONFLICT, not success
- *  (C1: prevents agreementRef squat with forged terms). */
-function samePlanTerms(
-  plan: { buyerWallet: string; providerWallet: string; totalUsd: string },
-  input: { buyerWallet: string; providerWallet: string; totalUsd: string },
-): boolean {
-  return (
-    plan.buyerWallet.toLowerCase() === input.buyerWallet.toLowerCase() &&
-    plan.providerWallet.toLowerCase() ===
-      input.providerWallet.toLowerCase() &&
-    decimalToMicro(plan.totalUsd) === decimalToMicro(input.totalUsd)
-  );
-}
 
 export async function createPlan(
   ctx: SettlementCtx,
@@ -153,6 +140,7 @@ export async function createPlan(
       buyerWallet: input.buyerWallet,
       providerWallet: input.providerWallet,
       totalUsd: input.totalUsd,
+      milestones: input.milestones,
     });
     if (va) return va;
   }
@@ -161,17 +149,14 @@ export async function createPlan(
     // Natural dedupe — one plan per agreement (unique agreementRef).
     const existing = await s.plans.getByAgreement(input.agreementRef);
     if (existing) {
-      if (!samePlanTerms(existing, input)) {
+      const stored = await s.milestones.listByPlan(existing.id);
+      if (!samePlanTerms(existing, stored, input)) {
         return fail(
           "CONFLICT",
           `plan for ${input.agreementRef} already exists with different terms`,
         );
       }
-      return ok({
-        plan: existing,
-        milestones: await s.milestones.listByPlan(existing.id),
-        duplicate: true,
-      });
+      return ok({ plan: existing, milestones: stored, duplicate: true });
     }
     const plan = await s.plans.create({
       id: newPlanId(),
@@ -187,17 +172,14 @@ export async function createPlan(
       // Lost the unique race — surface the winner, same as dedupe.
       const winner = await s.plans.getByAgreement(input.agreementRef);
       if (winner) {
-        if (!samePlanTerms(winner, input)) {
+        const stored = await s.milestones.listByPlan(winner.id);
+        if (!samePlanTerms(winner, stored, input)) {
           return fail(
             "CONFLICT",
             `plan for ${input.agreementRef} already exists with different terms`,
           );
         }
-        return ok({
-          plan: winner,
-          milestones: await s.milestones.listByPlan(winner.id),
-          duplicate: true,
-        });
+        return ok({ plan: winner, milestones: stored, duplicate: true });
       }
       return fail("PROVIDER_ERROR", "plan insert conflicted");
     }

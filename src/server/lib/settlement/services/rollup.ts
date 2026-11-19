@@ -35,6 +35,17 @@ export async function rollupIntent(
   if (payable.length === 0 || !payable.every((l) => l.status === "COMPLETED")) {
     return { intent, milestone, rolledUp: false };
   }
+  // M-C: gate the milestone BEFORE writing the intent — a live
+  // milestone that can't release (e.g. DISPUTED by a concurrent raise)
+  // must abort the rollup, not strand a COMPLETED intent over a
+  // milestone that can never reach RELEASED.
+  const liveM = await s.milestones.getById(milestone.id);
+  if (
+    liveM?.status !== "APPROVED" ||
+    !isLegalTransition("milestone", "APPROVED", "RELEASED")
+  ) {
+    return "MOVED";
+  }
   const ic = await s.payoutIntents.applyStatus(intent.id, "OPEN", "COMPLETED", {
     completedAtMs: Date.now(),
     completedBy: operator,
@@ -49,26 +60,20 @@ export async function rollupIntent(
   });
 
   let nextMilestone = milestone;
-  const liveM = await s.milestones.getById(milestone.id);
-  if (
-    liveM?.status === "APPROVED" &&
-    isLegalTransition("milestone", "APPROVED", "RELEASED")
-  ) {
-    const rel = await s.milestones.applyStatus(
-      milestone.id,
-      "APPROVED",
-      "RELEASED",
-    );
-    if (rel) {
-      nextMilestone = rel;
-      await ctx.emit.emit({
-        entityType: "milestone",
-        entityId: milestone.id,
-        eventType: "milestone.released",
-        actorWallet: operator,
-        payload: { intentId: intent.id },
-      });
-    }
+  const rel = await s.milestones.applyStatus(
+    milestone.id,
+    "APPROVED",
+    "RELEASED",
+  );
+  if (rel) {
+    nextMilestone = rel;
+    await ctx.emit.emit({
+      entityType: "milestone",
+      entityId: milestone.id,
+      eventType: "milestone.released",
+      actorWallet: operator,
+      payload: { intentId: intent.id },
+    });
   }
 
   if (nextMilestone.status === "RELEASED") {

@@ -24,6 +24,8 @@ export interface SettlementRouteDeps {
   verifyTx?: VerifyPayoutTx;
   /** Fail-closed mode for mark-paid (D-227-4). */
   requireVerification?: boolean;
+  /** Pinned treasury sender — cross-checked by the verifier (H5). */
+  expectedPayer?: string;
   /** EIP-712 receipt signer — absent → artifact omitted (D-227-8 opt-in). */
   signer?: SettlementReceiptSigner;
   /** Arc chain id bound into the receipt + anchor. */

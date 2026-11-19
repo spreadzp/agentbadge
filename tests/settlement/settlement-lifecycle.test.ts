@@ -136,6 +136,75 @@ describe("createPlan", () => {
       expect(second.value.plan.id).toBe(first.value.plan.id);
     }
   });
+
+  // R2-H1: dedupe compares the full milestone vector, not just the
+  // header — a squat plan with matching parties/total but forged
+  // milestone ids, policy, or leg payees must CONFLICT, never be
+  // silently adopted by ensurePlan.
+  it("conflicts a same-header duplicate whose milestone terms differ", async () => {
+    const base = {
+      agreementRef: "agr-vector",
+      buyerWallet: BUYER,
+      providerWallet: PROVIDER,
+      totalUsd: "10.00",
+    };
+    const first = await createPlan(
+      ctx,
+      {
+        ...base,
+        milestones: [
+          { milestoneId: "m1", title: "a", amountUsd: "7.50" },
+          { milestoneId: "m2", title: "b", amountUsd: "2.50" },
+        ],
+      },
+      BUYER,
+    );
+    expect(first.ok).toBe(true);
+
+    const forgedIds = await createPlan(
+      ctx,
+      {
+        ...base,
+        milestones: [{ milestoneId: "zzz", title: "a", amountUsd: "10.00" }],
+      },
+      PROVIDER,
+    );
+    expect(codeOf(forgedIds)).toBe("CONFLICT");
+
+    const forgedLegs = await createPlan(
+      ctx,
+      {
+        ...base,
+        milestones: [
+          {
+            milestoneId: "m1",
+            title: "a",
+            amountUsd: "7.50",
+            legs: [
+              { payee: STRANGER, amountUsdc: "7.50", role: "PROVIDER" as const },
+            ],
+          },
+          { milestoneId: "m2", title: "b", amountUsd: "2.50" },
+        ],
+      },
+      PROVIDER,
+    );
+    expect(codeOf(forgedLegs)).toBe("CONFLICT");
+
+    // Identical vector still dedupes fine.
+    const same = await createPlan(
+      ctx,
+      {
+        ...base,
+        milestones: [
+          { milestoneId: "m1", title: "a", amountUsd: "7.50" },
+          { milestoneId: "m2", title: "b", amountUsd: "2.50" },
+        ],
+      },
+      PROVIDER,
+    );
+    expect(same.ok && same.value.duplicate).toBe(true);
+  });
 });
 
 describe("milestone lifecycle", () => {

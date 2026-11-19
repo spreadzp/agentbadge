@@ -21,6 +21,7 @@ import { logger } from "@agentbadge/passport/logger";
 import { assertSummary, assertWallet } from "../guards";
 import {
   SUBMISSION_VERDICTS,
+  conflict,
   forbidden,
   guardRejected,
   type SubmissionVerdict,
@@ -52,15 +53,61 @@ export async function reviewSubmission(
   if (verdict === "ACCEPTED" && ctx.settlement) {
     const pre = await stores.submissions.getById(submissionId);
     if (pre?.milestoneRef) {
-      const found = await ctx.settlement.findMilestone(
-        pre.agreementId,
-        pre.milestoneRef,
-      );
-      if (found) {
-        settleMilestoneId = found.id;
+      // M-D: the settlement lookup is guarded — a store failure here
+      // becomes a typed 409, not an unhandled throw out of the review.
+      let found: { id: string; status: string } | null;
+      try {
+        found = await ctx.settlement.findMilestone(
+          pre.agreementId,
+          pre.milestoneRef,
+        );
+      } catch (err) {
+        throw conflict(
+          `settlement lookup failed for milestoneRef ${pre.milestoneRef}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      // R2-H5: a bound-but-unresolved milestoneRef must fail the review
+      // — completing the agreement with pendingAfter=0 pays nobody.
+      if (!found) {
+        throw conflict(
+          `milestoneRef ${pre.milestoneRef} does not resolve on the settlement plan for ${pre.agreementId}`,
+        );
+      }
+      if (found.status !== "READY") {
+        // R2-H5 heal: the submit-time bridge call may have failed —
+        // retry it once rather than stranding the milestone.
+        if (found.status === "PENDING") {
+          const agreement = await stores.agreements.getById(
+            pre.agreementId,
+          );
+          if (agreement) {
+            await ctx.settlement.submitMilestone(
+              found.id,
+              agreement.providerWallet,
+              pre.id,
+            );
+          }
+        }
+        const recheck = await ctx.settlement
+          .findMilestone(pre.agreementId, pre.milestoneRef)
+          .catch(() => null);
+        if (recheck?.status !== "READY") {
+          throw conflict(
+            `milestone ${pre.milestoneRef} is ${recheck?.status ?? "missing"}, not READY — review cannot approve it`,
+          );
+        }
+      }
+      settleMilestoneId = found.id;
+      // M-D: a pending-count failure fails the review too — completing
+      // blind re-opens the unpaid-completion hole.
+      try {
         pendingAfter = await ctx.settlement.pendingMilestoneCount(
           pre.agreementId,
           found.id,
+        );
+      } catch (err) {
+        throw conflict(
+          `settlement pending-count failed for ${pre.agreementId}: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }

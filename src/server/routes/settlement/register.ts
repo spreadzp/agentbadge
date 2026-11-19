@@ -13,7 +13,11 @@ import type { Hono } from "hono";
 import { getConfig } from "../../../config/env";
 import { getDatabase } from "../../lib/database";
 import { invariants } from "../../lib/settlement/index.js";
-import { fail } from "../../lib/settlement/types.js";
+import { milestoneVector } from "../../lib/settlement/services/plan-terms.js";
+import {
+  type MilestoneInput,
+  fail,
+} from "../../lib/settlement/types.js";
 import { mkEoaSend } from "../../lib/eaas/anchor";
 import { keyWallet, opsKey } from "../../lib/eaas/keys";
 import { arcChainFor } from "../../lib/marketplace/chain";
@@ -31,25 +35,69 @@ export function registerSettlementRoutes(app: Hono): void {
     // same parties, same total. Anything else is a 403/404 — the plan
     // is the payout contract, it can't be authored around commerce.
     verifyAgreement: async (req) => {
-      const a = await getDatabase().commerce.agreements.getById(
-        req.agreementRef,
-      );
+      // M-H: resolve the DB through the injected seam, not the global.
+      const db = deps.getDb?.() ?? getDatabase();
+      const a = await db.commerce.agreements.getById(req.agreementRef);
       if (!a) {
         return fail(
           "NOT_FOUND",
           `commerce agreement not found: ${req.agreementRef}`,
         );
       }
+      // R2-H1: dead agreements can't grow payout contracts.
+      if (a.status === "CANCELLED") {
+        return fail(
+          "FORBIDDEN",
+          `commerce agreement ${req.agreementRef} is CANCELLED`,
+        );
+      }
+      try {
+        if (
+          a.buyerWallet.toLowerCase() !== req.buyerWallet.toLowerCase() ||
+          a.providerWallet.toLowerCase() !==
+            req.providerWallet.toLowerCase() ||
+          invariants.decimalToMicro(a.agreedAmount) !==
+            invariants.decimalToMicro(req.totalUsd)
+        ) {
+          return fail(
+            "FORBIDDEN",
+            "plan terms do not match the commerce agreement",
+          );
+        }
+      } catch {
+        // M-H: a malformed stored amount can't equal the request —
+        // typed failure, not a 500.
+        return fail(
+          "FORBIDDEN",
+          "commerce agreement amount is unreadable",
+        );
+      }
+      // R2-H1: the milestone/leg/policy vector is part of the contract
+      // — the offer payload's declared milestones are canonical; absent
+      // → the bridge's own "full"-amount default.
+      const offer = await db.commerce.offers.getById(a.offerId);
+      const offered =
+        offer?.payload && typeof offer.payload === "object"
+          ? (offer.payload as Record<string, unknown>)["milestones"]
+          : undefined;
+      const canonical: MilestoneInput[] = Array.isArray(offered)
+        ? (offered as MilestoneInput[]).slice()
+        : [
+            {
+              milestoneId: "full",
+              title: "Full delivery",
+              amountUsd: a.agreedAmount,
+            },
+          ];
+      const sort = (ms: MilestoneInput[]) =>
+        ms.slice().sort((x, y) => x.milestoneId.localeCompare(y.milestoneId));
       if (
-        a.buyerWallet.toLowerCase() !== req.buyerWallet.toLowerCase() ||
-        a.providerWallet.toLowerCase() !==
-          req.providerWallet.toLowerCase() ||
-        invariants.decimalToMicro(a.agreedAmount) !==
-          invariants.decimalToMicro(req.totalUsd)
+        milestoneVector(sort(req.milestones)) !==
+        milestoneVector(sort(canonical))
       ) {
         return fail(
           "FORBIDDEN",
-          "plan terms do not match the commerce agreement",
+          "plan milestone terms do not match the offer",
         );
       }
       return null;
@@ -80,7 +128,12 @@ export function registerSettlementRoutes(app: Hono): void {
       }
     }
   }
+  // R2-H2: admin routes must receive the same seam deps — an unwired
+  // mount silently downgrades mark-paid to blind attestation.
+  deps.expectedPayer = process.env.ARC_SETTLEMENT_TREASURY_WALLET;
+  deps.requireVerification =
+    process.env.ARC_SETTLEMENT_REQUIRE_VERIFY === "1";
   app.route("/", createSettlementRoutes(deps)); // SLICE-227-3: /api/settlement/*
   app.route("/", createSettlementReceiptRoutes(deps)); // SLICE-227-4: receipts + anchor
-  app.route("/", createSettlementAdminRoutes()); // SLICE-227-3: /admin/settlement/*
+  app.route("/", createSettlementAdminRoutes(deps)); // SLICE-227-3: /admin/settlement/*
 }

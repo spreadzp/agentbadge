@@ -204,11 +204,11 @@ export async function approveMilestone(
       payload: { planId: plan.id, milestoneId: milestone.milestoneId },
     });
     if (!intent) {
-      // milestoneRef unique conflict — an intent already exists (retry
-      // path): surface INVALID_STATE rather than double-settle.
-      return fail(
-        "INVALID_STATE",
-        `payout intent already exists for milestone ${milestone.id}`,
+      // R2-H3: milestone is already APPROVED — `return fail` here would
+      // commit approved-without-intent dead state that no transition
+      // can recover. Throw to roll the atomic back.
+      throw new Error(
+        `payout intent insert conflicted for milestone ${milestone.id} — aborting`,
       );
     }
     const legIds: string[] = [];

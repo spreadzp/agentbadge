@@ -154,11 +154,29 @@ export async function raiseDispute(
         duplicate: true,
       });
     }
-    // H2: pre-flight the insert — the row id is fresh, but the only
-    // fallible write must still precede every freeze mutation.
-    const disputeId = newDisputeId();
-    if (await s.disputes.getById(disputeId)) {
-      return fail("PROVIDER_ERROR", "dispute insert conflicted");
+    // R2-H6: one OPEN dispute per PLAN. A second subject on rows the
+    // first dispute froze would record an EMPTY freeze map — its
+    // resolve then runs as a silent no-op (FOR_BUYER lost) or unfreezes
+    // work the other dispute still holds (FOR_PROVIDER wins over it).
+    // Sibling milestone disputes share the plan freeze, so the ban is
+    // plan-wide, not subject-wide.
+    const scopeSubjects: [string, string][] = [
+      ["AGREEMENT", scope.plan.agreementRef],
+      ...(await s.milestones.listByPlan(scope.plan.id)).map(
+        (m): [string, string] => ["MILESTONE", m.id],
+      ),
+    ];
+    for (const [st, sr] of scopeSubjects) {
+      if (st === input.subjectType && sr === input.subjectRef) continue;
+      const other = (await s.disputes.listBySubject(st, sr)).find(
+        (d) => d.status === "OPEN",
+      );
+      if (other) {
+        return fail(
+          "INVALID_STATE",
+          `an OPEN dispute (${other.id}) already covers this scope — resolve it first`,
+        );
+      }
     }
     const freeze: FreezeMap = { milestones: {}, intentIds: [], legIds: [] };
     for (const scoped of scope.milestones) {
@@ -210,6 +228,7 @@ export async function raiseDispute(
     const dispute = await s.disputes.create({
       id: newDisputeId(),
       subjectType: input.subjectType,
+
       subjectRef: input.subjectRef,
       raisedBy: input.raisedBy,
       reason: input.reason,
@@ -222,7 +241,12 @@ export async function raiseDispute(
       } as unknown as JsonValue,
     });
     if (!dispute) {
-      return fail("PROVIDER_ERROR", "dispute insert conflicted");
+      // R2-H3: a conflict AFTER the freeze writes must roll the whole
+      // atomic back — `return fail` commits frozen work with no
+      // dispute row to resolve it (permanent lock).
+      throw new Error(
+        `dispute insert conflicted for ${input.subjectType}:${input.subjectRef} — aborting`,
+      );
     }
     await ctx.emit.emit({
       entityType: "settlement_dispute",

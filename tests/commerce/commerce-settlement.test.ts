@@ -22,6 +22,10 @@ import {
 import { createDatabase, type Database } from "@agentbadge/database";
 import { createCommerceService } from "../../src/server/lib/commerce";
 import { createCommerceSettlementBridge } from "../../src/server/lib/commerce/settlement-bridge";
+import {
+  createSettlementCtx,
+  raiseDispute,
+} from "../../src/server/lib/settlement/index.js";
 import { createCommerceRoutes } from "../../src/server/routes/commerce/index";
 import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
 import { createHash, randomUUID } from "node:crypto";
@@ -330,5 +334,118 @@ describe("commerce → settlement wiring (SLICE-227-5)", () => {
       },
     );
     expect(r.status).toBe(400);
+  });
+
+  // R2-H4: manual payouts lag acceptance by design — an APPROVED
+  // milestone still awaiting its payout must NOT block agreement/task
+  // completion (previously counted as "pending" → permanent ACTIVE).
+  it("agreement completes on last accepted milestone while an earlier one awaits payout", async () => {
+    const app = makeApp();
+    const task = await mkTask(app, { title: "t", description: "d" });
+    const offer = await req(
+      app,
+      "POST",
+      `/api/commerce/tasks/${task.id}/offers`,
+      {
+        account: providerA,
+        body: {
+          price: "10.00",
+          currency: "USD",
+          proposal: "two phases",
+          payload: {
+            milestones: [
+              { milestoneId: "p1", title: "phase 1", amountUsd: "7.50" },
+              { milestoneId: "p2", title: "phase 2", amountUsd: "2.50" },
+            ],
+          },
+        },
+      },
+    );
+    expect(offer.status).toBe(201);
+    const acc = await accept(app, offer.body.offer.id);
+    expect(acc.status).toBe(200);
+    const agId = acc.body.agreement.id;
+    const plan = await db.settlement.plans.getByAgreement(agId);
+    const milestones = await db.settlement.milestones.listByPlan(plan!.id);
+    expect(milestones).toHaveLength(2);
+
+    // Phase 1 accepted → APPROVED + OPEN intent, unpaid by design.
+    const s1 = await req(
+      app,
+      "POST",
+      `/api/commerce/agreements/${agId}/submissions`,
+      { account: providerA, body: { summary: "p1", milestoneRef: "p1" } },
+    );
+    const r1 = await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${s1.body.submission.id}/review`,
+      { account: buyer, body: { verdict: "ACCEPTED" } },
+    );
+    expect(r1.status).toBe(200);
+    expect(r1.body.agreement.status).toBe("ACTIVE"); // p2 still pending
+
+    // Phase 2 accepted → agreement COMPLETED even though p1's payout
+    // intent is still OPEN/unpaid (ops pays it asynchronously).
+    const s2 = await req(
+      app,
+      "POST",
+      `/api/commerce/agreements/${agId}/submissions`,
+      { account: providerA, body: { summary: "p2", milestoneRef: "p2" } },
+    );
+    const r2 = await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${s2.body.submission.id}/review`,
+      { account: buyer, body: { verdict: "ACCEPTED" } },
+    );
+    expect(r2.status).toBe(200);
+    expect(r2.body.agreement.status).toBe("COMPLETED");
+    expect(r2.body.task.status).toBe("COMPLETED");
+  });
+
+  // R2-H5: accepting work whose milestone is not READY (here: frozen by
+  // a dispute raised between submit and review) must fail the review —
+  // the old code swallowed it and completed the agreement unpaid.
+  it("review ACCEPTED → 409 when the bound milestone left READY", async () => {
+    const app = makeApp();
+    const task = await mkTask(app, { title: "t", description: "d" });
+    const offer = await mkOffer(app, task.id, providerA);
+    const acc = await accept(app, offer.id);
+    const agId = acc.body.agreement.id;
+    const sub = await req(
+      app,
+      "POST",
+      `/api/commerce/agreements/${agId}/submissions`,
+      { account: providerA, body: { summary: "done", milestoneRef: "full" } },
+    );
+    expect(sub.status).toBe(201);
+
+    // A dispute lands between submit and review — milestone frozen.
+    const plan = await db.settlement.plans.getByAgreement(agId);
+    const ms = await db.settlement.milestones.listByPlan(plan!.id);
+    const sctx = createSettlementCtx(db);
+    const d = await raiseDispute(sctx, {
+      subjectType: "MILESTONE",
+      subjectRef: ms[0]!.id,
+      raisedBy: buyer.address.toLowerCase(),
+      reason: "quality concern",
+    });
+    expect(d.ok).toBe(true);
+
+    const rev = await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${sub.body.submission.id}/review`,
+      { account: buyer, body: { verdict: "ACCEPTED" } },
+    );
+    expect(rev.status).toBe(409);
+    // The submission stays reviewable — nothing terminal was committed.
+    const stored = await db.commerce.submissions.getById(
+      sub.body.submission.id,
+    );
+    expect(stored?.status).toBe("SUBMITTED");
+    const ag = await db.commerce.agreements.getById(agId);
+    expect(ag?.status).toBe("ACTIVE");
   });
 });
