@@ -236,10 +236,11 @@ describe("SLICE-226-6 round-6 fixes (re-audit v6)", () => {
     excStore.append = dupThrow;
     const bogus = await detectFromPaymentExceptions(db, {});
     excStore.append = orig;
-    expect(bogus.ok).toBe(true);
-    if (bogus.ok) {
-      expect(bogus.value.created.length).toBe(0);
-      expect(bogus.value.errors?.length).toBeGreaterThanOrEqual(1);
+    // F8-4: nothing succeeded — no created row and no confirmed
+    // dedupe — so this is an outage, not an empty scan.
+    expect(bogus.ok).toBe(false);
+    if (!bogus.ok) {
+      expect(bogus.error.code).toBe("PROVIDER_ERROR");
     }
     await db.close();
   });

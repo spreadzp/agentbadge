@@ -14,7 +14,7 @@
 // non-printing, carry no content. Same class as operator labels
 // (N7-4): hangul/braille fillers, Cf, Default_Ignorable, Cc.
 const INVISIBLE_CHARS =
-  /[\p{Cf}\p{Default_Ignorable_Code_Point}\p{Cc}\u115F\u1160\u3164\uFFA0\u2800\u00AD\uFEFF\uFFFC]/gu;
+  /[\p{Cf}\p{Default_Ignorable_Code_Point}\p{Cc}\p{Cs}\u115F\u1160\u3164\uFFA0\u2800\u00AD\uFEFF\uFFFC]/gu;
 
 // JSON-ish empty literals that deserialize to nothing.
 const EMPTY_LITERALS = new Set(["", "null", "undefined", "{}", "[]"]);
@@ -26,7 +26,13 @@ const MAX_EVIDENCE_DEPTH = 64;
 const hasContent = (x: unknown, depth = 0): boolean => {
   if (typeof x === "number" || typeof x === "boolean") return true;
   if (x === undefined || x === null) return false;
-  if (depth >= MAX_EVIDENCE_DEPTH) return true;
+  // F8-1: at the cap only SCALARS still count (a string is evaluated
+  // without recursion) — a container deeper than the cap is NOT
+  // assumed content, so wrappers can't smuggle an empty husk past
+  // the check.
+  if (depth >= MAX_EVIDENCE_DEPTH) {
+    return typeof x === "string" && isMeaningfulEvidence(x);
+  }
   if (typeof x === "string") return isMeaningfulEvidence(x);
   if (Array.isArray(x)) return x.some((m) => hasContent(m, depth + 1));
   if (typeof x === "object") {

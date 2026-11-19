@@ -111,9 +111,20 @@ export async function detectExceptions(
   const skipped: string[] = [];
   // N7-6: a mid-batch store failure must not strand rows already
   // written with no audit row — collect per-row errors and keep
-  // going; the DETECT_EXCEPTIONS audit reflects them.
+  // going; the DETECT_EXCEPTIONS audit reflects them. F8-3: error
+  // strings are bounded — raw driver messages must not overflow the
+  // row or leak into the response unbounded.
   const errors: string[] = [];
+  const err = (id: string, e: unknown): string =>
+    `${id}: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`;
+  // F8-7: consecutive-failure circuit breaker — a persistently down
+  // store must not hold the request open for the whole batch.
+  let consecutiveErrors = 0;
   for (const { id, c } of prepared) {
+    if (consecutiveErrors >= 10) {
+      errors.push(`scan aborted: ${prepared.length - created.length - skipped.length - errors.length} candidates deferred (store unreachable)`);
+      break;
+    }
     let row: ReconciliationExceptionRow | null;
     try {
       row = await db.finops.exceptions.append({
@@ -132,22 +143,43 @@ export async function detectExceptions(
       // echoes "duplicate key" must not be silently reported as
       // dedupe.
       if (!isUniqueViolation(e)) {
-        errors.push(`${id}: ${e instanceof Error ? e.message : String(e)}`);
+        consecutiveErrors += 1;
+        errors.push(err(id, e));
         continue;
       }
-      const existing = await db.finops.exceptions
-        .getById(id)
-        .catch(() => null);
+      // F8-2: getById itself can throw SYNCHRONOUSLY on a broken
+      // store (not just reject) — a bare `.catch` wouldn't see it.
+      let existing: ReconciliationExceptionRow | null = null;
+      try {
+        existing = await db.finops.exceptions.getById(id);
+      } catch (re) {
+        consecutiveErrors += 1;
+        errors.push(err(id, re));
+        continue;
+      }
       if (!existing) {
-        errors.push(
-          `${id}: ${e instanceof Error ? e.message : String(e)}`,
-        );
+        consecutiveErrors += 1;
+        errors.push(err(id, e));
         continue;
       }
       row = null;
     }
     if (row) created.push(row);
     else skipped.push(id);
+    consecutiveErrors = 0;
+  }
+  // F8-4: a scan where NOTHING succeeded — no created row and no
+  // confirmed dedupe — is an outage, not an empty result. A 200 with
+  // zero work would tell ops "all quiet" during a store failure;
+  // mixed skips prove the store responded, so only the zero-work
+  // case fails.
+  if (
+    created.length === 0 &&
+    skipped.length === 0 &&
+    errors.length > 0 &&
+    prepared.length > 0
+  ) {
+    return fail("PROVIDER_ERROR", `exception store unreachable: ${errors[0]}`);
   }
   return ok({
     created,

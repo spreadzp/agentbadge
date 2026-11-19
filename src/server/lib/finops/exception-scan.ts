@@ -74,10 +74,12 @@ export async function detectFromPaymentExceptions(
       // row that triggered the hash above) must be CLAMPED, not left
       // to fail the whole batch again. A row with NO usable reference
       // is skipped — one malformed row must never starve the scan.
-      const subjectRef = (e.paymentId?.trim() || e.id.trim()).slice(
-        0,
-        MAX_ID_FIELD,
-      );
+      // F8-6: corrupt rows may carry non-string ids — a `.trim()`
+      // call on a number would 500 the scan. Type-guard both.
+      const subjectRef = (
+        (typeof e.paymentId === "string" ? e.paymentId.trim() : "") ||
+        (typeof e.id === "string" ? e.id.trim() : "")
+      ).slice(0, MAX_ID_FIELD);
       if (subjectRef === "") continue;
       // C4b: own-property check — `kind` values like "constructor" or
       // "__proto__" must not reach through the prototype chain.
