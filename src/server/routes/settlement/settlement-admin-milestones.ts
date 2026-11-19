@@ -30,11 +30,20 @@ import { respond, type SettlementRouteDeps } from "./helpers";
 const TAG = { tags: ["Admin Settlement"] };
 
 // R4-M4: force actions are payout-authorizing/state-moving — a reason
-// is mandatory evidence, not decoration.
-const operatorBody = z.object({
+// is mandatory evidence, not decoration. R6-M3: 2000 chars keeps the
+// serialized evidence row under its 4 KB cap next to the forensic
+// fields (the service enforces the same serialized bound).
+const approveBody = z.object({
   operator: z.string().min(1).max(128),
-  reason: z.string().min(1).max(4000),
+  reason: z.string().min(1).max(2000),
   submissionRef: z.string().max(128).optional(),
+});
+
+// R6 nit 8: the reopen endpoint takes no submissionRef — a shared
+// schema would silently drop it, so reopen gets its own.
+const reopenBody = z.object({
+  operator: z.string().min(1).max(128),
+  reason: z.string().min(1).max(2000),
 });
 
 const requireOperatorLabel = async (
@@ -72,7 +81,7 @@ export function settlementMilestoneAdminRoutes(
         "while the intent is OPEN; an OPEN dispute on the milestone " +
         "409s. Requires a reason; writes an AdminAction and the event " +
         "records admin:true.",
-      requestBody: jsonBody(operatorBody),
+      requestBody: jsonBody(approveBody),
       responses: {
         200: {
           description: "Milestone approved + payout intent",
@@ -95,7 +104,7 @@ export function settlementMilestoneAdminRoutes(
       const raw = await readBody(c);
       const bad = await requireOperatorLabel(c, raw);
       if (bad) return bad;
-      const b = operatorBody.safeParse(raw);
+      const b = approveBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
           ok: false,
@@ -132,7 +141,7 @@ export function settlementMilestoneAdminRoutes(
         "submissionRef — the safe exit when a reject-verdict release " +
         "failed or raced (R4-M5 residual). Idempotent on non-READY; " +
         "requires a reason; writes an AdminAction.",
-      requestBody: jsonBody(operatorBody),
+      requestBody: jsonBody(reopenBody),
       responses: {
         200: {
           description: "Milestone released to PENDING + AdminAction",
@@ -154,7 +163,7 @@ export function settlementMilestoneAdminRoutes(
       const raw = await readBody(c);
       const bad = await requireOperatorLabel(c, raw);
       if (bad) return bad;
-      const b = operatorBody.safeParse(raw);
+      const b = reopenBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
           ok: false,

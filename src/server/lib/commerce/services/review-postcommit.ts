@@ -39,7 +39,12 @@ export async function postCommitSettlementSync(
         result.submission.milestoneRef,
       );
       if (bound && bound.status === "READY") {
-        await ctx.settlement!.releaseMilestone(bound.id, actor);
+        // R6 nit 9: compare-and-release — only unbind when the
+        // milestone still points at THIS rejected submission; a
+        // newer submission's READY binding must survive.
+        await ctx.settlement!.releaseMilestone(bound.id, actor, {
+          expectedSubmissionRef: result.submission.id,
+        });
       }
     } catch (err) {
       logger.warn("settlement milestone release failed", {

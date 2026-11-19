@@ -307,4 +307,36 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
       (await db.commerce.agreements.getById(agId))?.status,
     ).toBe("ACTIVE");
   });
+
+  it("R6-M6: a RELEASED milestone lets the verdict commit (no dead-end)", async () => {
+    const app = makeApp();
+    const { agId, subId, milestone } = await boundSubmission(app);
+    expect(milestone.status).toBe("READY");
+    // Operator paid the approved intent out-of-band — the milestone
+    // rolled up to RELEASED while the submission still waits for its
+    // verdict. The gate must treat it as a resume state, not a 409.
+    await db.settlement.milestones.applyStatus(
+      milestone.id,
+      "READY",
+      "APPROVED",
+    );
+    await db.settlement.milestones.applyStatus(
+      milestone.id,
+      "APPROVED",
+      "RELEASED",
+    );
+    const rev = await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${subId}/review`,
+      { account: buyer, body: { verdict: "ACCEPTED" } },
+    );
+    expect(rev.status).toBe(200);
+    expect(rev.body.submission.status).toBe("ACCEPTED");
+    // pendingCount excludes RELEASED → the agreement completes.
+    expect(rev.body.agreement.status).toBe("COMPLETED");
+    expect(
+      (await db.commerce.agreements.getById(agId))?.status,
+    ).toBe("COMPLETED");
+  });
 });

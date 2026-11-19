@@ -18,7 +18,6 @@ import {
   normalizeOperator,
   requireOperator,
 } from "../../finops/guards.js";
-import { MAX_REASON_FIELD } from "../invariants.js";
 import { type SettlementResult, fail, ok } from "../types.js";
 import type { SettlementCtx } from "./ctx.js";
 import { doApprove, type ApproveEffect } from "./milestone-approve.js";
@@ -29,19 +28,45 @@ const sha256Hex = async (v: string): Promise<string> =>
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)),
   ).toString("hex");
 
+// R6-M3: the reason cap must leave room for the forensic fields beside
+// it in the 4 KB audit row — wallets, ids, refs and overhead run ~600-
+// 900 serialized bytes, so 2000 binds where the shared 4000 cap did
+// not (a longer reason silently dropped the forensic context into the
+// degraded minimal payload).
+const MAX_FORCE_REASON = 2000;
+/** Operator-supplied submission refs land in evidence + events. */
+const MAX_FORCE_SUBMISSION_REF = 256;
+
 const checkForceInput = (
-  opts: { operator: string; reason: string },
+  opts: { operator: string; reason: string; submissionRef?: string },
 ): SettlementResult<never> | null => {
   const op = requireOperator(opts.operator);
   if (op) return op as SettlementResult<never>;
-  if (typeof opts.reason !== "string" || opts.reason.trim().length === 0) {
+  if (
+    typeof opts.reason !== "string" ||
+    !/[\p{L}\p{N}]/u.test(opts.reason)
+  ) {
+    // R6 nit 5: a reason of only marks/symbols is not "mandatory
+    // evidence" — it must contain a letter or digit like the operator
+    // label does.
     return fail("BAD_INPUT", "reason is required for a force action");
   }
   // R5-M4: bound the reason by SERIALIZED length — raw-length caps let
   // ~4000 control chars expand past the 4 KB evidence row, which drops
   // the justification into the degraded minimal payload.
-  return checkSerialized(opts.reason, "reason", MAX_REASON_FIELD) as
-    SettlementResult<never> | null;
+  const r = checkSerialized(opts.reason, "reason", MAX_FORCE_REASON);
+  if (r) return r as SettlementResult<never>;
+  if (opts.submissionRef !== undefined) {
+    // R6 nit 6: the ref lands in the event payload AND the audit row —
+    // bound it in the core, not only at the route's zod schema.
+    const s = checkSerialized(
+      opts.submissionRef,
+      "submissionRef",
+      MAX_FORCE_SUBMISSION_REF,
+    );
+    if (s) return s as SettlementResult<never>;
+  }
+  return null;
 };
 
 /**
@@ -86,6 +111,8 @@ export async function forceApproveMilestone(
         milestone,
         intentId: existing.id,
         legs: legs.map((l) => l.id),
+        // The existing approval's epoch — the row carries it.
+        approvalToken: milestone.escrowRef ?? "",
         auditRecorded: false,
         alreadyApproved: true,
       });
@@ -153,9 +180,15 @@ export async function forceApproveMilestone(
       },
     },
     {
+      // R6-M3: the two submission refs cannot be rejoined through
+      // intentId — they must survive in the degraded payload too.
       milestoneId: milestone.milestoneId,
       outcome: "APPROVED",
       intentId: effect.value.intentId,
+      submissionRef: opts.submissionRef
+        ? [...opts.submissionRef].slice(0, 128).join("")
+        : null,
+      boundSubmissionRef: milestone.submissionRef ?? null,
       reasonPrefix: [...opts.reason].slice(0, 200).join(""),
       reasonSha256: reasonHash,
     },
@@ -191,6 +224,18 @@ export async function forceReopenMilestone(
   if (milestone.status !== "READY") {
     return ok({ reopened: false, auditRecorded: false });
   }
+  // R6 nit 4: defensive — a live OPEN/FROZEN intent under a READY
+  // milestone is not reachable today, but releasing here would strand
+  // a payable authorization no caller owns. Refuse and surface it.
+  const intent = await ctx.db.settlement.payoutIntents.getByMilestone(
+    milestone.id,
+  );
+  if (intent && ["OPEN", "FROZEN"].includes(intent.status)) {
+    return fail(
+      "INVALID_STATE",
+      `intent ${intent.id} is ${intent.status} — reopen closed, needs operator review`,
+    );
+  }
   const res = await reopenMilestone(ctx, milestoneRowId, operator);
   if (!res.ok) return res;
   const audit = await recordPostEffectAudit(
@@ -213,6 +258,7 @@ export async function forceReopenMilestone(
     {
       milestoneId: milestone.milestoneId,
       outcome: "PENDING",
+      boundSubmissionRef: milestone.submissionRef ?? null,
       reasonPrefix: [...opts.reason].slice(0, 200).join(""),
       reasonSha256: await sha256Hex(opts.reason),
     },

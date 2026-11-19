@@ -1,5 +1,5 @@
 /**
- * EPIC-227 / SLICE-227-8 — approval revert (R4-H1, hardened R5).
+ * EPIC-227 / SLICE-227-8 — approval revert (R4-H1, hardened R5+R6).
  *
  * The review's settlement gate approves a milestone BEFORE the commerce
  * verdict commits (pre-commit approve, R3-H3). When that verdict's
@@ -18,7 +18,24 @@
  * - `release:true` goes APPROVED→PENDING and clears submissionRef in
  *   the same CAS — used when the verdict that raced ahead was a reject
  *   (H-2: avoids the stuck-READY state of R4-M5).
+ *
+ * R6 hardening:
+ * - `approvalToken` (the `escrowRef` epoch stamped by `doApprove`)
+ *   pins the revert to the approval CYCLE — a dispute-resolver's
+ *   restored APPROVED carries a fresh token and is never reverted
+ *   by a stale gate.
+ * - A FROZEN/COMPLETED intent is never cancelled even when the
+ *   milestone reads APPROVED (defensive — dispute-owned rows belong
+ *   to the resolve path).
+ * - The leg set is re-listed AFTER the intent CAS; a leg that paid
+ *   in between rolls the whole revert back (throw → atomic abort).
+ * - A failed intent CAS throws too — the milestone must never move
+ *   while its intent stays OPEN (nit 2).
+ * - `revert_blocked` is logged at error level — the outcome is
+ *   operator-visible, not just a best-effort event (R6-M5).
  */
+import { logger } from "@agentbadge/passport/logger";
+
 import {
   SettlementConflictError,
   type SettlementResult,
@@ -32,6 +49,9 @@ export interface RevertOptions {
   intentId?: string;
   /** Go straight to PENDING + unbind (verdict committed as reject). */
   release?: boolean;
+  /** R6-M2: approval-epoch token from `doApprove` — refuse when the
+   *  row's `escrowRef` moved on to a different approval cycle. */
+  approvalToken?: string;
 }
 
 export async function revertApproval(
@@ -54,6 +74,15 @@ export async function revertApproval(
       if (milestone.status !== "APPROVED") {
         return ok({ reverted: false });
       }
+      // R6-M2: the APPROVED on the row must be the one THIS request's
+      // gate minted. A resolver-restored or re-landed approval carries
+      // a different epoch — leave it (and its intent) untouched.
+      if (
+        opts.approvalToken !== undefined &&
+        milestone.escrowRef !== opts.approvalToken
+      ) {
+        return ok({ reverted: false });
+      }
       const intent = await s.payoutIntents.getByMilestone(milestone.id);
       // H-2: when the caller names the intent it created, a different
       // intent row means the approval belongs to a sibling verdict —
@@ -65,11 +94,27 @@ export async function revertApproval(
       ) {
         return ok({ reverted: false });
       }
+      // R6 nit 3: only an OPEN intent is ours to cancel — CANCELLED is
+      // already undone (milestone still moves back), anything else
+      // (FROZEN = dispute-owned, COMPLETED = paid) means this approval
+      // no longer belongs to a verdict path: refuse.
+      if (intent && !["OPEN", "CANCELLED"].includes(intent.status)) {
+        logger.error("approval revert refused — intent in unexpected state", {
+          milestoneId: milestone.id,
+          intentId: intent.id,
+          intentStatus: intent.status,
+        });
+        return ok({ reverted: false });
+      }
       if (intent && intent.status === "OPEN") {
         const legs = await s.payoutLegs.listByIntent(intent.id);
         // M-5: a paid leg means money already moved under this intent —
         // the approval must stand; operator review decides the rest.
         if (legs.some((l) => ["COMPLETED", "FAILED"].includes(l.status))) {
+          logger.error("approval revert blocked — paid leg present", {
+            milestoneId: milestone.id,
+            intentId: intent.id,
+          });
           buf.emit({
             entityType: "milestone",
             entityId: milestone.id,
@@ -87,7 +132,9 @@ export async function revertApproval(
         milestone.id,
         "APPROVED",
         to,
-        opts.release ? { submissionRef: null } : undefined,
+        opts.release
+          ? { submissionRef: null, escrowRef: null }
+          : { escrowRef: null },
       );
       if (!reverted) {
         throw new SettlementConflictError(
@@ -100,33 +147,50 @@ export async function revertApproval(
           "OPEN",
           "CANCELLED",
         );
-        if (cancelled) {
-          for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-            if (leg.status === "OPEN") {
-              const cl = await s.payoutLegs.applyStatus(
-                leg.id,
-                "OPEN",
-                "CANCELLED",
-              );
-              if (cl) {
-                buf.emit({
-                  entityType: "payout_leg",
-                  entityId: leg.id,
-                  eventType: "leg.cancelled",
-                  actorWallet,
-                  payload: { intentId: intent.id },
-                });
-              }
-            }
-          }
-          buf.emit({
-            entityType: "payout_intent",
-            entityId: intent.id,
-            eventType: "intent.cancelled",
-            actorWallet,
-            payload: { reason: "verdict_not_committed" },
-          });
+        // R6 nit 2: a lost intent CAS must roll the whole revert back —
+        // a READY/PENDING milestone with a live OPEN intent strands an
+        // authorization nothing else owns.
+        if (!cancelled) {
+          throw new SettlementConflictError(
+            `payout intent ${intent.id} moved during revert — aborting`,
+          );
         }
+        // R6 nit 1: re-list AFTER the CAS — a mark-paid that committed
+        // between the guard read and the CAS must abort the revert.
+        const liveLegs = await s.payoutLegs.listByIntent(intent.id);
+        if (liveLegs.some((l) => ["COMPLETED", "FAILED"].includes(l.status))) {
+          throw new SettlementConflictError(
+            `payout leg under intent ${intent.id} paid during revert — aborting`,
+          );
+        }
+        for (const leg of liveLegs) {
+          if (leg.status === "OPEN") {
+            const cl = await s.payoutLegs.applyStatus(
+              leg.id,
+              "OPEN",
+              "CANCELLED",
+            );
+            if (!cl) {
+              throw new SettlementConflictError(
+                `payout leg ${leg.id} moved during revert — aborting`,
+              );
+            }
+            buf.emit({
+              entityType: "payout_leg",
+              entityId: leg.id,
+              eventType: "leg.cancelled",
+              actorWallet,
+              payload: { intentId: intent.id },
+            });
+          }
+        }
+        buf.emit({
+          entityType: "payout_intent",
+          entityId: intent.id,
+          eventType: "intent.cancelled",
+          actorWallet,
+          payload: { reason: "verdict_not_committed" },
+        });
       }
       buf.emit({
         entityType: "milestone",

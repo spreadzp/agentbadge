@@ -17,6 +17,8 @@ import type {
 } from "@agentbadge/database";
 import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
 
+import { logger } from "@agentbadge/passport/logger";
+
 import { GENESIS_HASH, hashEvent } from "./state-machines.js";
 import type { SettlementEntityType } from "./types.js";
 
@@ -46,6 +48,13 @@ export class SettlementEventEmitter {
   /** Serializes appends — one in-flight emit per service instance. */
   private tail: Promise<unknown> = Promise.resolve();
 
+  /** R6-M4: entity keys whose last append timed out. The underlying
+   *  store call may still complete — its promise is kept here so the
+   *  NEXT emit on the same stream awaits it before re-reading
+   *  prevHash. Skipping this would fork the hash chain: both rows
+   *  would carry the same prevHash with no uniqueness to catch it. */
+  private readonly stale = new Map<string, Promise<unknown>>();
+
   constructor(private readonly events: CommerceEventStore) {}
 
   /** Queue events for post-commit emit (M-2). On flush each input
@@ -62,22 +71,48 @@ export class SettlementEventEmitter {
 
   /** Best-effort emit: a store outage must not fail the transition the
    *  event describes (the row itself is the state of record). R5 nit:
-   *  a hung store call would stall the shared serialized queue for the
-   *  whole process — bound each append with a timeout. */
+   *  a hung store call would stall the shared serialized queue —
+   *  bound each append with a timeout. R6-M4: a timed-out append can
+   *  STILL land later, so its entity stream is poisoned — the next
+   *  emit on the same stream awaits the stale append first instead
+   *  of forking the hash chain on a stale prevHash read. Failures
+   *  and timeouts are logged at error level (invisible loss is how
+   *  audit trails die), and the timer is always cleared. */
   emit(input: SettlementEmitInput): Promise<CommerceEventRow | null> {
-    const run = this.tail
-      .then(() =>
-        Promise.race<Promise<CommerceEventRow>>([
-          this.append(input),
-          new Promise<CommerceEventRow>((_, reject) =>
-            setTimeout(
+    const key = `${input.entityType}:${input.entityId}`;
+    const run = this.tail.then(async () => {
+      const pendingStale = this.stale.get(key);
+      if (pendingStale) {
+        this.stale.delete(key);
+        await pendingStale.catch(() => undefined);
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const appending = this.append(input);
+      try {
+        return await Promise.race<CommerceEventRow>([
+          appending,
+          new Promise<CommerceEventRow>((_, reject) => {
+            timer = setTimeout(
               () => reject(new Error("settlement event append timeout")),
               15000,
-            ),
-          ),
-        ]),
-      )
-      .catch(() => null);
+            );
+          }),
+        ]);
+      } catch (err) {
+        logger.error("settlement event emit failed", {
+          entityType: input.entityType,
+          entityId: input.entityId,
+          eventType: input.eventType,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        // Keep the in-flight append — the next emit on this stream
+        // must see its row (or its failure) before hashing again.
+        this.stale.set(key, appending);
+        return null;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    });
     this.tail = run;
     return run;
   }

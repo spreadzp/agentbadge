@@ -109,6 +109,7 @@ export async function reopenMilestone(
   ctx: SettlementCtx,
   milestoneRowId: string,
   actorWallet: string,
+  opts?: { expectedSubmissionRef?: string },
 ): Promise<SettlementResult<MilestoneRow>> {
   const milestone = await ctx.db.settlement.milestones.getById(
     milestoneRowId,
@@ -119,6 +120,15 @@ export async function reopenMilestone(
   // Idempotent — only READY unbinds; any other state belongs to a
   // different flow (approved, disputed, already released).
   if (milestone.status !== "READY") {
+    return ok(milestone);
+  }
+  // R6 nit 9: when the caller names the submission it is releasing,
+  // a different binding means a NEWER submission claimed the slot —
+  // leave it alone.
+  if (
+    opts?.expectedSubmissionRef !== undefined &&
+    milestone.submissionRef !== opts.expectedSubmissionRef
+  ) {
     return ok(milestone);
   }
   return transitionMilestone(ctx, milestone, "PENDING", actorWallet, {

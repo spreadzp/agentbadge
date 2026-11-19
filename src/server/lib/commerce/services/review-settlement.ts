@@ -29,6 +29,10 @@ export interface SettlementGate {
   /** Intent this gate created — the revert only cancels THAT row
    *  (R5-H2: a sibling-created intent is never touched). */
   intentId?: string;
+  /** R6-M2: per-cycle token the approve stamped into the milestone's
+   *  `escrowRef` — the revert compares it inside its atomic, so only
+   *  THIS approval cycle can be undone. */
+  approvalToken?: string;
   /** Not-yet-accepted milestones left after this one — 0 → agreement
    *  may complete. Unbound submissions count the whole plan (R3-H2). */
   pendingAfter: number;
@@ -118,11 +122,13 @@ export async function resolveSettlementGate(
       `milestoneRef ${pre.milestoneRef} does not resolve on the settlement plan for ${pre.agreementId}`,
     );
   }
-  if (found.status !== "READY" && found.status !== "APPROVED") {
+  if (!["READY", "APPROVED", "RELEASED"].includes(found.status)) {
     // R2-H5 heal: the submit-time bridge call may have failed —
     // retry it once rather than stranding the milestone.
     // (APPROVED is a valid resume state — a prior review's approve
-    // landed but its verdict commit did not.)
+    // landed but its verdict commit did not. RELEASED is one too —
+    // R6-M6: the operator already paid it, so the verdict must still
+    // be committable or the submission dead-ends forever.)
     if (found.status === "PENDING") {
       // nit: all bridge/store calls on this path are guarded — a
       // store outage must surface as a typed 409, not a 500.
@@ -140,7 +146,7 @@ export async function resolveSettlementGate(
       pre.agreementId,
       pre.milestoneRef,
     ).catch(() => null);
-    if (recheck?.status !== "READY" && recheck?.status !== "APPROVED") {
+    if (!recheck || !["READY", "APPROVED", "RELEASED"].includes(recheck.status)) {
       throw conflict(
         `milestone ${pre.milestoneRef} is ${recheck?.status ?? "missing"}, not READY — review cannot approve it`,
       );
@@ -154,9 +160,11 @@ export async function resolveSettlementGate(
   // R3-H3: approve BEFORE the verdict commits — a failure here keeps
   // the submission SUBMITTED (retryable) instead of a swallowed
   // post-commit miss with no recovery path. APPROVED pre-read = the
-  // prior review's approve landed; skip re-approving.
+  // prior review's approve landed; skip re-approving. RELEASED = the
+  // operator already paid (R6-M6) — the verdict just commits.
   let approvedByUs = false;
   let intentId: string | undefined;
+  let approvalToken: string | undefined;
   if (found.status === "READY") {
     // nit: the bridge call itself is guarded — a thrown store error
     // becomes a typed 409, and an empty result is not a success.
@@ -173,6 +181,7 @@ export async function resolveSettlementGate(
     }
     approvedByUs = true;
     intentId = ap?.value?.intentId;
+    approvalToken = ap?.value?.approvalToken;
   }
   // M-D: a pending-count failure fails the review too — completing
   // blind re-opens the unpaid-completion hole.
@@ -180,6 +189,7 @@ export async function resolveSettlementGate(
     milestoneRowId: found.id,
     approvedByUs,
     intentId,
+    approvalToken,
     pendingAfter: pending,
   };
 }

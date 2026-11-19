@@ -253,6 +253,10 @@ describe("R5: revert hardening + intent reopen", () => {
     ).toBe("CANCELLED");
 
     // Re-approve re-opens the same intent — no unique-slot brick.
+    // R6-M1: the intent's OLD legs are never revived — fresh legs are
+    // minted from the milestone template while the cancelled ones stay
+    // as the audit trail (reviving them would double-allocate legs a
+    // dispute SPLIT cancelled).
     const ap = await approveMilestone(ctx, m.id, BUYER);
     expect(ap.ok).toBe(true);
     if (!ap.ok) return;
@@ -260,7 +264,47 @@ describe("R5: revert hardening + intent reopen", () => {
     const after = await db.settlement.payoutIntents.getById(intent!.id);
     expect(after?.status).toBe("OPEN");
     const legs = await db.settlement.payoutLegs.listByIntent(intent!.id);
-    expect(legs.every((l) => l.status === "OPEN")).toBe(true);
+    const open = legs.filter((l) => l.status === "OPEN");
+    expect(open.length).toBe(1);
+    expect(open[0]!.amountUsdc).toBe(m.amountUsd);
+    // The reopened leg is a NEW row — the cancelled one is untouched.
+    expect(ap.value.legs).toEqual([open[0]!.id]);
+    expect(legs.filter((l) => l.status === "CANCELLED").length).toBe(1);
+  });
+
+  it("re-approve never revives cancelled legs (R6-M1 double-allocation)", async () => {
+    const { milestones } = await openPlan(ctx);
+    const m = milestones[0]!;
+    await submitForReview(ctx, { milestoneRowId: m.id }, PROVIDER);
+    await approveMilestone(ctx, m.id, BUYER);
+    const intent = await db.settlement.payoutIntents.getByMilestone(m.id);
+    await revertApproval(ctx, m.id, BUYER);
+    // Simulate SPLIT residue: extra CANCELLED legs on the same intent —
+    // a dispute split cancels old legs but adds new ones on THIS row.
+    await db.settlement.payoutLegs.create({
+      id: `leg_residue_${Date.now()}`,
+      intentId: intent!.id,
+      payee: PROVIDER,
+      amountUsdc: m.amountUsd,
+      role: "PROVIDER",
+      status: "CANCELLED",
+      network: "arc",
+      payload: { splitOf: "disp_x" },
+    });
+    const ap = await approveMilestone(ctx, m.id, BUYER);
+    expect(ap.ok).toBe(true);
+    if (!ap.ok) return;
+    const legs = await db.settlement.payoutLegs.listByIntent(intent!.id);
+    const open = legs.filter((l) => l.status === "OPEN");
+    // Only the fresh template leg is payable — old + split-residue
+    // legs stay CANCELLED, so OPEN legs can never sum past the
+    // milestone amount.
+    expect(open.length).toBe(1);
+    expect(open[0]!.amountUsdc).toBe(m.amountUsd);
+    expect(open[0]!.id).toBe(ap.value.legs[0]);
+    expect(
+      legs.filter((l) => l.status === "CANCELLED").length,
+    ).toBe(2);
   });
 
   it("revertApproval release:true goes APPROVED→PENDING and unbinds", async () => {

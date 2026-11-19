@@ -30,6 +30,11 @@ export interface ApproveEffect {
   milestone: MilestoneRow;
   intentId: string;
   legs: string[];
+  /** R6-M2: per-cycle approval token stamped into `escrowRef` — a
+   *  revert compares it inside its atomic, so a request can only undo
+   *  the approval ITS OWN gate landed (a dispute-restore or later
+   *  cycle re-stamps the token and the stale revert is refused). */
+  approvalToken: string;
 }
 
 /** Atomic READY→APPROVED + payout intent/legs — caller pre-checks
@@ -60,87 +65,35 @@ export async function doApprove(
           `payout intent already exists for milestone ${milestone.id}`,
         );
       }
-      // R5-H1: a CANCELLED intent with no paid legs is the residue of an
-      // approval revert (verdict_not_committed) — re-open it instead of
-      // failing on the unique-per-milestone slot forever. An intent with
-      // a COMPLETED/FAILED leg means money moved under a cancelled
-      // intent — that needs operator repair, not a silent reopen.
-      const reopenLegs = existing
-        ? await s.payoutLegs.listByIntent(existing.id)
-        : [];
-      if (
-        existing &&
-        reopenLegs.some((l) => ["COMPLETED", "FAILED"].includes(l.status))
-      ) {
-        return fail(
-          "CONFLICT",
-          `cancelled intent ${existing.id} has paid legs — operator repair required`,
-        );
+      // R5-H1: a CANCELLED intent is the residue of an approval revert
+      // (verdict_not_committed) — re-open it instead of failing on the
+      // unique-per-milestone slot forever. R6-M1: the intent is reopened
+      // but its old legs are NEVER revived — legs cancelled by a dispute
+      // SPLIT live on the same intent row and re-opening them would
+      // double-allocate the milestone. Fresh legs from the milestone
+      // template are minted instead; the cancelled ones stay as the
+      // audit trail of the voided authorization.
+      if (existing) {
+        const oldLegs = await s.payoutLegs.listByIntent(existing.id);
+        if (oldLegs.some((l) => ["COMPLETED", "FAILED"].includes(l.status))) {
+          return fail(
+            "CONFLICT",
+            `cancelled intent ${existing.id} has paid legs — operator repair required`,
+          );
+        }
       }
+      const approvalToken = `appr_${crypto.randomUUID()}`;
       const updated = await s.milestones.applyStatus(
         milestone.id,
         milestone.status,
         "APPROVED",
+        { escrowRef: approvalToken },
       );
       if (!updated) {
         return fail(
           "INVALID_STATE",
           "milestone moved concurrently — approve aborted",
         );
-      }
-      if (existing) {
-        const reopened = await s.payoutIntents.applyStatus(
-          existing.id,
-          "CANCELLED",
-          "OPEN",
-        );
-        if (!reopened) {
-          throw new SettlementConflictError(
-            `payout intent ${existing.id} moved during reopen — aborting`,
-          );
-        }
-        const legIds: string[] = [];
-        for (const leg of reopenLegs) {
-          if (leg.status === "CANCELLED") {
-            const rl = await s.payoutLegs.applyStatus(
-              leg.id,
-              "CANCELLED",
-              "OPEN",
-            );
-            if (!rl) {
-              throw new SettlementConflictError(
-                `payout leg ${leg.id} moved during reopen — aborting`,
-              );
-            }
-          }
-          legIds.push(leg.id);
-          buf.emit({
-            entityType: "payout_leg",
-            entityId: leg.id,
-            eventType: "leg.reopened",
-            actorWallet,
-            payload: { intentId: existing.id, payee: leg.payee },
-          });
-        }
-        buf.emit({
-          entityType: "payout_intent",
-          entityId: existing.id,
-          eventType: "intent.reopened",
-          actorWallet,
-          payload: {
-            milestoneRef: milestone.id,
-            reason: "verdict_retried",
-            legs: legIds,
-          },
-        });
-        buf.emit({
-          entityType: "milestone",
-          entityId: milestone.id,
-          eventType: "milestone.approved",
-          actorWallet,
-          payload: { intentId: existing.id, ...eventPayload },
-        });
-        return ok({ milestone: updated, intentId: existing.id, legs: legIds });
       }
       // Leg template from plan-create payload, else default provider leg.
       const template =
@@ -153,21 +106,45 @@ export async function doApprove(
             role: "PROVIDER" as const,
           },
         ];
-      const intent = await s.payoutIntents.create({
-        id: newIntentId(),
-        milestoneRef: milestone.id,
-        executor: "MANUAL",
-        status: "OPEN",
-        createdAtMs: Date.now(),
-        payload: { planId: plan.id, milestoneId: milestone.milestoneId },
-      });
-      if (!intent) {
-        // R2-H3: milestone is already APPROVED — `return fail` would
-        // commit approved-without-intent dead state that no transition
-        // can recover. Throw to roll the atomic back.
-        throw new SettlementConflictError(
-          `payout intent insert conflicted for milestone ${milestone.id} — aborting`,
+      let intent;
+      if (existing) {
+        intent = await s.payoutIntents.applyStatus(
+          existing.id,
+          "CANCELLED",
+          "OPEN",
         );
+        if (!intent) {
+          throw new SettlementConflictError(
+            `payout intent ${existing.id} moved during reopen — aborting`,
+          );
+        }
+        buf.emit({
+          entityType: "payout_intent",
+          entityId: existing.id,
+          eventType: "intent.reopened",
+          actorWallet,
+          payload: {
+            milestoneRef: milestone.id,
+            reason: "verdict_retried",
+          },
+        });
+      } else {
+        intent = await s.payoutIntents.create({
+          id: newIntentId(),
+          milestoneRef: milestone.id,
+          executor: "MANUAL",
+          status: "OPEN",
+          createdAtMs: Date.now(),
+          payload: { planId: plan.id, milestoneId: milestone.milestoneId },
+        });
+        if (!intent) {
+          // R2-H3: milestone is already APPROVED — `return fail` would
+          // commit approved-without-intent dead state that no transition
+          // can recover. Throw to roll the atomic back.
+          throw new SettlementConflictError(
+            `payout intent insert conflicted for milestone ${milestone.id} — aborting`,
+          );
+        }
       }
       const legIds: string[] = [];
       for (const leg of template) {
@@ -200,17 +177,19 @@ export async function doApprove(
           },
         });
       }
-      buf.emit({
-        entityType: "payout_intent",
-        entityId: intent.id,
-        eventType: "intent.opened",
-        actorWallet,
-        payload: {
-          milestoneRef: milestone.id,
-          executor: intent.executor ?? "MANUAL",
-          legs: legIds,
-        },
-      });
+      if (!existing) {
+        buf.emit({
+          entityType: "payout_intent",
+          entityId: intent.id,
+          eventType: "intent.opened",
+          actorWallet,
+          payload: {
+            milestoneRef: milestone.id,
+            executor: intent.executor ?? "MANUAL",
+            legs: legIds,
+          },
+        });
+      }
       buf.emit({
         entityType: "milestone",
         entityId: milestone.id,
@@ -218,7 +197,12 @@ export async function doApprove(
         actorWallet,
         payload: { intentId: intent.id, ...eventPayload },
       });
-      return ok({ milestone: updated, intentId: intent.id, legs: legIds });
+      return ok({
+        milestone: updated,
+        intentId: intent.id,
+        legs: legIds,
+        approvalToken,
+      });
     });
   } catch (err) {
     if (err instanceof SettlementConflictError) {

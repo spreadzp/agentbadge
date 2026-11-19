@@ -60,29 +60,38 @@ export interface CommerceSettlementBridge {
     submissionRef?: string,
   ): Promise<void>;
   /** Buyer approve → APPROVED + payout intent. Returns the raw result —
-   *  errors still log (settled) but callers can react (R3-H3). */
+   *  errors still log (settled) but callers can react (R3-H3). The
+   *  value carries the per-cycle `approvalToken` (R6-M2) the gate
+   *  needs to pin a later revert to THIS approval. */
   approveMilestone(
     milestoneRowId: string,
     actorWallet: string,
   ): Promise<{
     ok: boolean;
     error?: { code: string; message: string };
-    value?: { intentId?: string };
+    value?: { intentId?: string; approvalToken?: string };
   }>;
   /** R4-H1: undo a pre-commit approve whose verdict never committed —
    *  APPROVED→READY + OPEN intent cancelled. Idempotent.
    *  R5: `intentId` pins the revert to the intent the caller created;
-   *  `release` goes straight to PENDING (committed reject verdict). */
+   *  `release` goes straight to PENDING (committed reject verdict).
+   *  R6-M2: `approvalToken` pins it to the approval CYCLE.
+   *  R6-M5: returns `{reverted}` — a refused revert (paid leg,
+   *  foreign cycle) must reach the caller, not vanish into a
+   *  best-effort event. */
   revertApproval(
     milestoneRowId: string,
     actorWallet: string,
-    opts?: { intentId?: string; release?: boolean },
-  ): Promise<void>;
+    opts?: { intentId?: string; release?: boolean; approvalToken?: string },
+  ): Promise<{ reverted: boolean } | null>;
   /** R4-M5: READY→PENDING + unbind — a rejected submission frees its
-   *  milestone for the resubmission round. Idempotent. */
+   *  milestone for the resubmission round. Idempotent.
+   *  R6 nit 9: `expectedSubmissionRef` makes it compare-and-release —
+   *  a late call can't unbind a NEWER submission's binding. */
   releaseMilestone(
     milestoneRowId: string,
     actorWallet: string,
+    opts?: { expectedSubmissionRef?: string },
   ): Promise<void>;
   /**
    * Milestones in the agreement's plan still needing work or payment,
@@ -231,16 +240,15 @@ export function createCommerceSettlementBridge(
     },
 
     async revertApproval(milestoneRowId, actorWallet, opts) {
-      settled(
-        "revertApproval",
-        await revertApproval(sctx(), milestoneRowId, actorWallet, opts),
-      );
+      const res = await revertApproval(sctx(), milestoneRowId, actorWallet, opts);
+      settled("revertApproval", res);
+      return res.ok ? res.value : null;
     },
 
-    async releaseMilestone(milestoneRowId, actorWallet) {
+    async releaseMilestone(milestoneRowId, actorWallet, opts) {
       settled(
         "releaseMilestone",
-        await reopenMilestone(sctx(), milestoneRowId, actorWallet),
+        await reopenMilestone(sctx(), milestoneRowId, actorWallet, opts),
       );
     },
   };

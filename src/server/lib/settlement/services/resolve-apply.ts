@@ -62,7 +62,12 @@ export async function applyFreezeResolution(
       // FOR_PROVIDER | SPLIT — restore the frozen work to payable.
       if (m.status === "DISPUTED" && prev !== undefined) {
         const to = input.resolution === "SPLIT" ? "APPROVED" : prev;
-        await s.milestones.applyStatus(m.id, "DISPUTED", to);
+        // R6-M2: a restored APPROVED belongs to the RESOLVER's cycle —
+        // re-stamp the approval token so a stale gate revert (whose
+        // token was minted by the pre-dispute approve) is refused.
+        await s.milestones.applyStatus(m.id, "DISPUTED", to, to === "APPROVED"
+          ? { escrowRef: `appr_${crypto.randomUUID()}` }
+          : undefined);
       }
       if (intent && intent.status === "FROZEN") {
         if (input.resolution === "SPLIT") {
