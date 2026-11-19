@@ -216,4 +216,8 @@ export interface PayoutVerifyDeps {
   /** Fail-closed mode: no adapter → VERIFIER_UNAVAILABLE instead of
    *  the manual-ops attestation path (D-227-4 seam contract). */
   requireVerification?: boolean;
+  /** Pin the adapter's chain check (H5 — dead pin no longer). */
+  chainId?: string;
+  /** Treasury/ops wallet the payout must originate from (H5). */
+  expectedPayer?: string;
 }

@@ -15,6 +15,7 @@ import {
   assertAmount,
   checkField,
   checkMilestoneInputs,
+  decimalToMicro,
   isEvmAddress,
   isParticipant,
 } from "../invariants.js";
@@ -69,10 +70,40 @@ export async function getAgreementView(
 
 // ---------- commands ----------
 
+/**
+ * C1 (arc-audit): bind plan creation to the commerce agreement. Wired
+ * by the route layer — reads the agreement by `agreementRef` and must
+ * return a typed failure when the agreement is missing or its
+ * buyer/provider/total disagree with the requested plan. Absent seam =
+ * standalone mode (tests, non-commerce plans).
+ */
+export type VerifyAgreementFn = (input: {
+  agreementRef: string;
+  buyerWallet: string;
+  providerWallet: string;
+  totalUsd: string;
+}) => Promise<SettlementResult<never> | null>;
+
+/** Terms equality between a stored plan and a create/ensure request —
+ *  a `duplicate:true` plan that disagrees is a CONFLICT, not success
+ *  (C1: prevents agreementRef squat with forged terms). */
+function samePlanTerms(
+  plan: { buyerWallet: string; providerWallet: string; totalUsd: string },
+  input: { buyerWallet: string; providerWallet: string; totalUsd: string },
+): boolean {
+  return (
+    plan.buyerWallet.toLowerCase() === input.buyerWallet.toLowerCase() &&
+    plan.providerWallet.toLowerCase() ===
+      input.providerWallet.toLowerCase() &&
+    decimalToMicro(plan.totalUsd) === decimalToMicro(input.totalUsd)
+  );
+}
+
 export async function createPlan(
   ctx: SettlementCtx,
   input: CreatePlanInput,
   actorWallet: string,
+  deps: { verifyAgreement?: VerifyAgreementFn } = {},
 ): Promise<
   SettlementResult<{
     plan: NonNullable<Awaited<ReturnType<typeof getPlanByAgreement>>>;
@@ -97,9 +128,11 @@ export async function createPlan(
   if (input.buyerWallet.toLowerCase() === input.providerWallet.toLowerCase()) {
     return fail("BAD_INPUT", "buyerWallet and providerWallet must differ");
   }
+  // M11: settlement rail is USDC only — a caller-chosen currency would
+  // flow unchecked into the verifier expectation.
   const currency = input.currency ?? "USDC";
-  if (currency.length > 16) {
-    return fail("BAD_INPUT", "currency must be ≤16 chars");
+  if (currency !== "USDC") {
+    return fail("BAD_INPUT", "currency must be USDC");
   }
   const amt = assertAmount(input.totalUsd, "totalUsd");
   if (amt) return amt;
@@ -111,11 +144,29 @@ export async function createPlan(
       "only the agreement buyer or provider may create its milestone plan",
     );
   }
+  // C1: when wired, the agreement must exist and match — a named
+  // participant can no longer author arbitrary terms for someone
+  // else's agreementRef.
+  if (deps.verifyAgreement) {
+    const va = await deps.verifyAgreement({
+      agreementRef: input.agreementRef,
+      buyerWallet: input.buyerWallet,
+      providerWallet: input.providerWallet,
+      totalUsd: input.totalUsd,
+    });
+    if (va) return va;
+  }
 
   return ctx.db.settlement.atomic(async (s) => {
     // Natural dedupe — one plan per agreement (unique agreementRef).
     const existing = await s.plans.getByAgreement(input.agreementRef);
     if (existing) {
+      if (!samePlanTerms(existing, input)) {
+        return fail(
+          "CONFLICT",
+          `plan for ${input.agreementRef} already exists with different terms`,
+        );
+      }
       return ok({
         plan: existing,
         milestones: await s.milestones.listByPlan(existing.id),
@@ -136,6 +187,12 @@ export async function createPlan(
       // Lost the unique race — surface the winner, same as dedupe.
       const winner = await s.plans.getByAgreement(input.agreementRef);
       if (winner) {
+        if (!samePlanTerms(winner, input)) {
+          return fail(
+            "CONFLICT",
+            `plan for ${input.agreementRef} already exists with different terms`,
+          );
+        }
         return ok({
           plan: winner,
           milestones: await s.milestones.listByPlan(winner.id),

@@ -177,11 +177,19 @@ export function checkLegTemplate(
   }
   const seen = new Set<string>();
   for (const [i, leg] of legs.entries()) {
+    // M8: non-object entries reach .payee as TypeError — guard first.
+    if (typeof leg !== "object" || leg === null) {
+      return fail("BAD_INPUT", `${label}[${i}] must be an object leg`);
+    }
     if (!isEvmAddress(leg.payee)) {
       return fail(
         "BAD_INPUT",
         `${label}[${i}].payee must be an EVM address`,
       );
+    }
+    // M11: a leg paying nobody is unspendable and breaks the sums.
+    if (leg.payee.toLowerCase() === "0x0000000000000000000000000000000000000000") {
+      return fail("BAD_INPUT", `${label}[${i}].payee is the zero address`);
     }
     const key = `${leg.payee.toLowerCase()}:${leg.role}`;
     if (seen.has(key)) {

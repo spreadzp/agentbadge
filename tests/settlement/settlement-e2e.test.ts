@@ -393,3 +393,110 @@ describe("contract guards", () => {
     expect((await legsOf(intentId))[1]!.status).toBe("OPEN");
   });
 });
+
+// ---------- SLICE-227-8 audit regressions ----------
+
+describe("audit round-1 regressions (227-8)", () => {
+  it("C1: plan create bound to agreement — forged terms → typed failure", async () => {
+    const ctx = createSettlementCtx(db);
+    const verify = async (r: {
+      agreementRef: string;
+      totalUsd: string;
+    }) =>
+      r.agreementRef === "agr-real" && r.totalUsd === "10.00"
+        ? null
+        : (await import("../../src/server/lib/settlement/index.js")).fail(
+            "FORBIDDEN",
+            "plan terms do not match the commerce agreement",
+          );
+    const forged = await createPlan(
+      ctx,
+      {
+        agreementRef: "agr-squat",
+        buyerWallet: buyer.address,
+        providerWallet: provider.address,
+        totalUsd: "9999.00",
+        milestones: [
+          { milestoneId: "m1", title: "x", amountUsd: "9999.00" },
+        ],
+      },
+      provider.address,
+      { verifyAgreement: verify },
+    );
+    expect(forged.ok).toBe(false);
+    if (!forged.ok) expect(forged.error.code).toBe("FORBIDDEN");
+
+    // Duplicate with different terms → CONFLICT, not silent adoption.
+    const real = await createPlan(
+      ctx,
+      {
+        agreementRef: "agr-real",
+        buyerWallet: buyer.address,
+        providerWallet: provider.address,
+        totalUsd: "10.00",
+        milestones: [{ milestoneId: "m1", title: "x", amountUsd: "10.00" }],
+      },
+      buyer.address,
+      { verifyAgreement: verify },
+    );
+    expect(real.ok).toBe(true);
+    const squat = await createPlan(
+      ctx,
+      {
+        agreementRef: "agr-real",
+        buyerWallet: buyer.address,
+        providerWallet: provider.address,
+        totalUsd: "20.00",
+        milestones: [{ milestoneId: "m1", title: "x", amountUsd: "20.00" }],
+      },
+      buyer.address,
+      { verifyAgreement: async () => null },
+    );
+    expect(squat.ok).toBe(false);
+    if (!squat.ok) expect(squat.error.code).toBe("CONFLICT");
+  });
+
+  it("H1: SPLIT re-leg → new legs paid → intent COMPLETED → RELEASED", async () => {
+    const { milestone, intentId } = await seedIntent();
+    const ctx = createSettlementCtx(db);
+    const d = await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: milestone.id,
+      raisedBy: buyer.address,
+      reason: "split it",
+    });
+    if (!d.ok) throw new Error("dispute failed");
+    const r = await adminReq(
+      "POST",
+      `/admin/settlement/disputes/${d.value.dispute.id}/resolve`,
+      {
+        operator: OPS,
+        resolution: "SPLIT",
+        splitLegs: [
+          { payee: provider.address, amountUsdc: "6.00", role: "PROVIDER" },
+          { payee: buyer.address, amountUsdc: "4.00", role: "PROVIDER" },
+        ],
+      },
+    );
+    expect(r.status).toBe(200);
+
+    const open = (await legsOf(intentId)).filter((l) => l.status === "OPEN");
+    expect(open).toHaveLength(2);
+    for (const [i, leg] of open.entries()) {
+      const p = await adminReq(
+        "POST",
+        `/admin/settlement/intents/${intentId}/mark-paid`,
+        {
+          operator: OPS,
+          txHash: `0x${String(i + 7).repeat(64)}`,
+          legId: leg.id,
+        },
+      );
+      expect(p.status).toBe(200);
+    }
+    const intent = await db.settlement.payoutIntents.getById(intentId);
+    expect(intent?.status).toBe("COMPLETED");
+    const m = await db.settlement.milestones.getById(milestone.id);
+    expect(m?.status).toBe("RELEASED");
+  });
+});

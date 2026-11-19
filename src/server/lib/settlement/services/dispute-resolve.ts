@@ -93,6 +93,21 @@ export async function resolveDispute(
     }
     const lt = checkLegTemplate(input.splitLegs, m.amountUsd, "splitLegs");
     if (lt) return lt;
+    // H2: hoist the immutable-leg check above the atomic writes — a
+    // completed leg makes SPLIT impossible, and failing after the
+    // dispute is marked RESOLVED leaves dead FROZEN state.
+    for (const intentId of freeze?.intentIds ?? []) {
+      for (const leg of await ctx.db.settlement.payoutLegs.listByIntent(
+        intentId,
+      )) {
+        if (leg.status === "COMPLETED") {
+          return fail(
+            "INVALID_STATE",
+            "cannot SPLIT — a completed leg is immutable",
+          );
+        }
+      }
+    }
   }
 
   const operator = normalizeOperator(input.operator);
@@ -116,17 +131,26 @@ export async function resolveDispute(
         "dispute resolved concurrently — not applied",
       );
     }
-    for (const m of scope.milestones) {
+    // H3: operate ONLY on what THIS dispute froze — never on live
+    // status (a second OPEN dispute's freeze must survive resolve).
+    const frozenIntentIds = new Set(freeze?.intentIds ?? []);
+    const frozenLegIds = new Set(freeze?.legIds ?? []);
+    for (const scoped of scope.milestones) {
+      const m = (await s.milestones.getById(scoped.id)) ?? scoped;
       const prev = freeze?.milestones[m.id];
-      const intent = await s.payoutIntents.getByMilestone(m.id);
+      const intent = (
+        await Promise.all(
+          [...frozenIntentIds].map((id) => s.payoutIntents.getById(id)),
+        )
+      ).find((i) => i?.milestoneRef === m.id);
       if (input.resolution === "FOR_BUYER") {
-        if (m.status === "DISPUTED") {
+        if (m.status === "DISPUTED" && prev !== undefined) {
           await s.milestones.applyStatus(m.id, "DISPUTED", "CANCELLED");
         }
         if (intent && intent.status === "FROZEN") {
           await s.payoutIntents.applyStatus(intent.id, "FROZEN", "CANCELLED");
           for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-            if (leg.status === "FROZEN") {
+            if (leg.status === "FROZEN" && frozenLegIds.has(leg.id)) {
               await s.payoutLegs.applyStatus(leg.id, "FROZEN", "CANCELLED");
             }
           }
@@ -141,13 +165,7 @@ export async function resolveDispute(
           if (input.resolution === "SPLIT") {
             // Re-leg: cancel the frozen legs, create the split set.
             for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-              if (leg.status === "COMPLETED") {
-                return fail(
-                  "INVALID_STATE",
-                  "cannot SPLIT — a completed leg is immutable",
-                );
-              }
-              if (leg.status === "FROZEN") {
+              if (leg.status === "FROZEN" && frozenLegIds.has(leg.id)) {
                 await s.payoutLegs.applyStatus(leg.id, "FROZEN", "CANCELLED");
               }
             }
@@ -171,7 +189,7 @@ export async function resolveDispute(
           } else {
             // FOR_PROVIDER — the freeze lifts: legs return to payable.
             for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-              if (leg.status === "FROZEN") {
+              if (leg.status === "FROZEN" && frozenLegIds.has(leg.id)) {
                 await s.payoutLegs.applyStatus(leg.id, "FROZEN", "OPEN");
               }
             }

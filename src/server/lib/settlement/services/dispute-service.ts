@@ -123,10 +123,47 @@ export async function raiseDispute(
     });
   }
 
+  // M2: a dispute on already-terminal work freezes nothing and only
+  // flips the plan to DISPUTED — reject it outright.
+  if (
+    input.subjectType === "MILESTONE" &&
+    scope.milestones.every((m) =>
+      ["RELEASED", "CANCELLED"].includes(m.status),
+    )
+  ) {
+    return fail(
+      "INVALID_STATE",
+      "milestone is terminal — nothing left to dispute",
+    );
+  }
+
   const createdAtMs = Date.now();
   return ctx.db.settlement.atomic(async (s) => {
+    // H3: dedupe inside the critical section — two concurrent disputes
+    // on the same subject must not both pass the pre-check.
+    const racing = await s.disputes.listBySubject(
+      input.subjectType,
+      input.subjectRef,
+    );
+    const dup = racing.find((d) => d.status === "OPEN");
+    if (dup) {
+      return ok({
+        dispute: dup,
+        frozenIntents: 0,
+        frozenLegs: 0,
+        duplicate: true,
+      });
+    }
+    // H2: pre-flight the insert — the row id is fresh, but the only
+    // fallible write must still precede every freeze mutation.
+    const disputeId = newDisputeId();
+    if (await s.disputes.getById(disputeId)) {
+      return fail("PROVIDER_ERROR", "dispute insert conflicted");
+    }
     const freeze: FreezeMap = { milestones: {}, intentIds: [], legIds: [] };
-    for (const m of scope.milestones) {
+    for (const scoped of scope.milestones) {
+      // H3: re-read inside the section — no stale statuses.
+      const m = (await s.milestones.getById(scoped.id)) ?? scoped;
       // Only pre-release work freezes; RELEASED/CANCELLED stand.
       if (["PENDING", "READY", "APPROVED"].includes(m.status)) {
         const d = await s.milestones.applyStatus(m.id, m.status, "DISPUTED");

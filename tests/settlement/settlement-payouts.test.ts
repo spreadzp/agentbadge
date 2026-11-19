@@ -187,7 +187,16 @@ describe("VerifyPayoutTx seam", () => {
 
   it("completes with verified=true when the adapter passes", async () => {
     const { intentId } = await approvedIntent(ctx);
-    const yes: VerifyPayoutTx = async () => ({ verified: true });
+    // H5: verified:true must carry the mandatory reported facts —
+    // an attestation without fields fails closed.
+    const yes: VerifyPayoutTx = async (_tx, expected) => ({
+      verified: true,
+      asset: expected.currency,
+      payee: expected.payee,
+      amount: expected.amount,
+      network: expected.network,
+      confirmations: 3,
+    });
     const r = await markLegPaid(
       ctx,
       { intentId, txHash: TX1, operator: OPS },

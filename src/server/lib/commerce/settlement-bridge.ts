@@ -54,6 +54,16 @@ export interface CommerceSettlementBridge {
   ): Promise<void>;
   /** Buyer approve → APPROVED + payout intent (post-commit). */
   approveMilestone(milestoneRowId: string, actorWallet: string): Promise<void>;
+  /**
+   * Milestones in the agreement's plan still needing work or payment,
+   * optionally excluding one row — the review path uses it to keep a
+   * multi-milestone agreement ACTIVE until its last milestone is
+   * accepted (arc-audit H6).
+   */
+  pendingMilestoneCount(
+    agreementId: string,
+    excludingMilestoneRowId?: string,
+  ): Promise<number>;
 }
 
 /** Best-effort wrapper — settlement errors log, never throw up. */
@@ -102,13 +112,43 @@ export function createCommerceSettlementBridge(
     },
 
     async findMilestone(agreementId, milestoneRef) {
-      const plan = await getPlanByAgreement(sctx(), agreementId);
-      if (!plan) return null;
+      let plan = await getPlanByAgreement(sctx(), agreementId);
+      if (!plan) {
+        // H7: the documented "lazy retry" — a plan missing here means
+        // the accept-time ensurePlan failed; heal it from the
+        // commerce agreement's own terms and re-resolve once.
+        const a = await getDb().commerce.agreements.getById(agreementId);
+        if (a) {
+          await this.ensurePlan({
+            agreementId,
+            buyerWallet: a.buyerWallet,
+            providerWallet: a.providerWallet,
+            agreedAmount: a.agreedAmount,
+          });
+          plan = await getPlanByAgreement(sctx(), agreementId);
+        }
+        if (!plan) return null;
+      }
       const m = await getDb().settlement.milestones.getByPlanMilestone(
         plan.id,
         milestoneRef,
       );
       return m ? { id: m.id, status: m.status } : null;
+    },
+
+    // H7: the documented "lazy retry" — every milestone path re-runs
+    // ensurePlan first so a bridge failure at accept time heals itself.
+    // (ensurePlan is idempotent on agreementRef; a forged-terms plan
+    // now CONFLICTs loudly instead of being adopted — C1.)
+    async pendingMilestoneCount(agreementId, excludingMilestoneRowId) {
+      const plan = await getPlanByAgreement(sctx(), agreementId);
+      if (!plan) return 0;
+      const ms = await getDb().settlement.milestones.listByPlan(plan.id);
+      return ms.filter(
+        (m) =>
+          m.id !== excludingMilestoneRowId &&
+          !["RELEASED", "CANCELLED"].includes(m.status),
+      ).length;
     },
 
     async submitMilestone(milestoneRowId, actorWallet, submissionRef) {

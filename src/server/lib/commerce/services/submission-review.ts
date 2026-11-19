@@ -43,6 +43,28 @@ export async function reviewSubmission(
   if (!SUBMISSION_VERDICTS.includes(verdict)) {
     throw guardRejected(`verdict must be ${SUBMISSION_VERDICTS.join("|")}`);
   }
+  // H6: pre-read (read-only, outside the tx) — does the settlement
+  // plan still have payable work after this milestone? The agreement
+  // must outlive its first accepted submission on multi-milestone
+  // plans, else milestones 2..N can never be approved or paid.
+  let settleMilestoneId: string | undefined;
+  let pendingAfter = 0;
+  if (verdict === "ACCEPTED" && ctx.settlement) {
+    const pre = await stores.submissions.getById(submissionId);
+    if (pre?.milestoneRef) {
+      const found = await ctx.settlement.findMilestone(
+        pre.agreementId,
+        pre.milestoneRef,
+      );
+      if (found) {
+        settleMilestoneId = found.id;
+        pendingAfter = await ctx.settlement.pendingMilestoneCount(
+          pre.agreementId,
+          found.id,
+        );
+      }
+    }
+  }
   // C2: preconditions + all graph transitions inside one atomic
   // section — the verdict can never persist without its task/
   // agreement graph updates.
@@ -113,16 +135,21 @@ export async function reviewSubmission(
           )
         : task;
     if (verdict === "ACCEPTED") {
-      agreementRow = await transitionRow(
-        txCtx,
-        "agreement",
-        agreement,
-        "COMPLETED",
-        (from) =>
-          tx.agreements.applyStatus(agreement.id, from, "COMPLETED", {
-            completedAtMs: Date.now(),
-          }),
-      );
+      // H6: complete only when the plan has no remaining payable
+      // work — earlier milestones of a multi-milestone agreement
+      // keep it ACTIVE until their own acceptance.
+      if (pendingAfter === 0) {
+        agreementRow = await transitionRow(
+          txCtx,
+          "agreement",
+          agreement,
+          "COMPLETED",
+          (from) =>
+            tx.agreements.applyStatus(agreement.id, from, "COMPLETED", {
+              completedAtMs: Date.now(),
+            }),
+        );
+      }
       // D-227: the task completes only when every agreement has
       // settled — a live ACTIVE/DISPUTED agreement sends the task
       // back to IN_PROGRESS (multi-provider relaxes D-224-9).
@@ -155,10 +182,15 @@ export async function reviewSubmission(
     ctx.settlement
   ) {
     try {
-      const found = await ctx.settlement.findMilestone(
-        result.agreement.id,
-        result.submission.milestoneRef,
-      );
+      // H6: reuse the pre-commit lookup — a re-read could race a
+      // dispute; H7's lazy ensurePlan already healed inside find.
+      const found =
+        settleMilestoneId !== undefined
+          ? { id: settleMilestoneId }
+          : await ctx.settlement.findMilestone(
+              result.agreement.id,
+              result.submission.milestoneRef,
+            );
       if (found) {
         await ctx.settlement.approveMilestone(found.id, actor);
       }

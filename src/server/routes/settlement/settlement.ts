@@ -128,6 +128,7 @@ export function createSettlementRoutes(
         createSettlementCtx(getDb()),
         parsed.data,
         auth.wallet,
+        { verifyAgreement: deps.verifyAgreement },
       );
       return res.ok
         ? c.json(res.value, res.value.duplicate ? 200 : 201)

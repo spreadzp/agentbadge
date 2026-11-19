@@ -15,6 +15,7 @@ import type {
   VerifyPayoutTx,
 } from "../../lib/settlement/index.js";
 import type { SendAnchorFn } from "../../lib/eaas/anchor.js";
+import type { VerifyAgreementFn } from "../../lib/settlement/services/plan-service.js";
 
 /** Injected seams — tests pass stubs; prod defaults lazily. */
 export interface SettlementRouteDeps {
@@ -33,6 +34,8 @@ export interface SettlementRouteDeps {
   memo?: `0x${string}`;
   /** Sender EOA used as memo target (self-anchor). */
   selfAddress?: `0x${string}`;
+  /** C1 — binds POST /plans to the commerce agreement (prod-wired). */
+  verifyAgreement?: VerifyAgreementFn;
 }
 
 /** Settlement domain error → HTTP status. */

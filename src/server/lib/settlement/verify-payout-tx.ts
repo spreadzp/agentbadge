@@ -24,6 +24,7 @@
  */
 
 import { PROVIDER_TIMEOUT_MS, withTimeout } from "../finops/provider-utils.js";
+import { decimalToMicro } from "./invariants.js";
 import {
   type SettlementResult,
   fail,
@@ -41,6 +42,8 @@ export interface PayoutTxExpectation {
   network?: string;
   /** Expected chain id when the adapter pins one. */
   chainId?: string;
+  /** Treasury/ops wallet the payout must originate from (H5). */
+  expectedPayer?: string;
   /** tx must be included at/after this time (ms epoch). */
   notBeforeMs?: number;
 }
@@ -102,6 +105,26 @@ export async function verifyLegTx(
       check.reason ?? `tx ${txHash} not verified against leg expectation`,
     );
   }
+  // H5: `verified:true` with missing facts is NOT verifiable — the
+  // mandatory fields must be present and must agree. An adapter that
+  // attests without reporting cannot launder a blind `true`.
+  const missing: string[] = [];
+  if (check.asset === undefined) missing.push("asset");
+  if (check.payee === undefined) missing.push("payee");
+  if (check.amount === undefined) missing.push("amount");
+  if (check.network === undefined) missing.push("network");
+  if (
+    typeof check.confirmations !== "number" ||
+    check.confirmations < 1
+  ) {
+    missing.push("confirmations>=1");
+  }
+  if (missing.length) {
+    return fail(
+      "TX_UNVERIFIED",
+      `verifier attested without reporting ${missing.join(", ")} — failing closed`,
+    );
+  }
   // Fact cross-checks — a verified tx whose reported fields contradict
   // the leg expectation is treated as unverified (H4 precedent).
   if (
@@ -122,9 +145,11 @@ export async function verifyLegTx(
       `verifier reports payee ${check.payee}, expected ${expected.payee}`,
     );
   }
+  // Amounts compare numerically, not lexically — "10.0" === "10.00"
+  // (M12: a string compare falsely rejects a real payment).
   if (
     check.amount !== undefined &&
-    check.amount !== expected.amount
+    decimalToMicro(check.amount) !== decimalToMicro(expected.amount)
   ) {
     return fail(
       "TX_UNVERIFIED",
@@ -138,6 +163,28 @@ export async function verifyLegTx(
     return fail(
       "TX_UNVERIFIED",
       "verifier reports payer == payee — self-pay cannot satisfy a leg",
+    );
+  }
+  // H5: a third-party transfer to the payee is not the ops payout —
+  // when the treasury payer is pinned, it must match.
+  if (
+    expected.expectedPayer !== undefined &&
+    check.payer !== undefined &&
+    check.payer.toLowerCase() !== expected.expectedPayer.toLowerCase()
+  ) {
+    return fail(
+      "TX_UNVERIFIED",
+      `verifier reports payer ${check.payer}, expected treasury ${expected.expectedPayer}`,
+    );
+  }
+  if (
+    expected.chainId !== undefined &&
+    check.network !== undefined &&
+    check.network !== expected.chainId
+  ) {
+    return fail(
+      "TX_UNVERIFIED",
+      `verifier reports chain ${check.network}, expected ${expected.chainId}`,
     );
   }
   if (

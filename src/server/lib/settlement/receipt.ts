@@ -231,11 +231,29 @@ export function settlementReceiptToJson(r: SettlementReceipt) {
  */
 export function verifySettlementReceiptSignature(
   receipt: SettlementReceipt,
+  expectedSigner?: string,
 ): boolean {
   try {
     const { signature, body, ...publicPart } = receipt;
     const recomputed = keccak256(toBytes(canonicalJson(publicPart)));
     if (recomputed.toLowerCase() !== body.receiptHash.toLowerCase()) {
+      return false;
+    }
+    // M6: signature-bound fields must agree with the hash-bound public
+    // part, and the caller must pin the expected signer — recovering
+    // against the embedded `signer` proves consistency, not
+    // authenticity (any key can mint a self-consistent receipt).
+    if (
+      body.agreementId !== receipt.agreement.ref ||
+      body.issuedAt !== receipt.issuedAt ||
+      body.chainId !== BigInt(receipt.chainId)
+    ) {
+      return false;
+    }
+    if (
+      expectedSigner !== undefined &&
+      receipt.signer.toLowerCase() !== expectedSigner.toLowerCase()
+    ) {
       return false;
     }
     const recovered = ethers.verifyTypedData(

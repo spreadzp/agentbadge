@@ -36,6 +36,20 @@ const splitLeg = z.object({
   amountUsdc: z.string().min(1).max(32),
   role: z.enum(["PROVIDER", "COLLABORATOR", "PLATFORM_FEE"]),
 });
+// M8: the declared schemas also validate — a malformed body is a 400,
+// never a TypeError bubbling to a 500.
+const markPaidBody = z.object({
+  operator: z.string().min(1).max(128),
+  txHash: z.string(),
+  legId: z.string().max(128).optional(),
+});
+const resolveBody = z.object({
+  operator: z.string().min(1).max(128),
+  resolution: z.enum(["FOR_BUYER", "FOR_PROVIDER", "SPLIT"]),
+  splitLegs: z.array(splitLeg).max(32).optional(),
+  note: z.string().max(4000).optional(),
+  resolverRef: z.string().max(128).optional(),
+});
 export function createSettlementAdminRoutes(
   deps: SettlementRouteDeps = {},
 ): Hono {
@@ -53,13 +67,7 @@ export function createSettlementAdminRoutes(
         "replay-bound per (network, hash) and bound set-once; when a " +
         "VerifyPayoutTx adapter is wired it must pass. Response carries " +
         "auditRecorded for the append-only AdminAction.",
-      requestBody: jsonBody(
-        z.object({
-          operator: z.string().min(1).max(128),
-          txHash: z.string(),
-          legId: z.string().max(128).optional(),
-        }),
-      ),
+      requestBody: jsonBody(markPaidBody),
       responses: {
         200: {
           description: "Leg completed + AdminAction",
@@ -80,14 +88,32 @@ export function createSettlementAdminRoutes(
     }),
     adminAuth,
     async (c) => {
-      const b = await readBody(c);
+      const raw = await readBody(c);
+      // operator absence keeps its dedicated code (OPERATOR_REQUIRED)
+      // — schema validation covers the rest of the shape.
+      if (typeof raw.operator !== "string" || raw.operator.length === 0) {
+        return respond(c, {
+          ok: false,
+          error: { code: "OPERATOR_REQUIRED", message: "operator label required" },
+        });
+      }
+      const b = markPaidBody.safeParse(raw);
+      if (!b.success) {
+        return respond(c, {
+          ok: false,
+          error: {
+            code: "BAD_INPUT",
+            message: `invalid mark-paid body: ${b.error.issues[0]?.message ?? "schema mismatch"}`,
+          },
+        });
+      }
       const res = await markLegPaid(
         createSettlementCtx(getDb()),
         {
           intentId: c.req.param("id"),
-          legId: typeof b.legId === "string" ? b.legId : undefined,
-          txHash: typeof b.txHash === "string" ? b.txHash : "",
-          operator: typeof b.operator === "string" ? b.operator : "",
+          legId: b.data.legId,
+          txHash: b.data.txHash,
+          operator: b.data.operator,
         },
         {
           verifyTx: deps.verifyTx,
@@ -108,15 +134,7 @@ export function createSettlementAdminRoutes(
         "payable, FOR_BUYER cancels it, SPLIT re-legs the intent with a " +
         "new split that must sum to the milestone amount. Response " +
         "carries auditRecorded for the append-only AdminAction.",
-      requestBody: jsonBody(
-        z.object({
-          operator: z.string().min(1).max(128),
-          resolution: z.enum(["FOR_BUYER", "FOR_PROVIDER", "SPLIT"]),
-          splitLegs: z.array(splitLeg).max(32).optional(),
-          note: z.string().max(4000).optional(),
-          resolverRef: z.string().max(128).optional(),
-        }),
-      ),
+      requestBody: jsonBody(resolveBody),
       responses: {
         200: {
           description: "Dispute resolved + AdminAction",
@@ -136,16 +154,30 @@ export function createSettlementAdminRoutes(
     }),
     adminAuth,
     async (c) => {
-      const b = await readBody(c);
+      const raw = await readBody(c);
+      if (typeof raw.operator !== "string" || raw.operator.length === 0) {
+        return respond(c, {
+          ok: false,
+          error: { code: "OPERATOR_REQUIRED", message: "operator label required" },
+        });
+      }
+      const b = resolveBody.safeParse(raw);
+      if (!b.success) {
+        return respond(c, {
+          ok: false,
+          error: {
+            code: "BAD_INPUT",
+            message: `invalid resolve body: ${b.error.issues[0]?.message ?? "schema mismatch"}`,
+          },
+        });
+      }
       const res = await resolveDispute(createSettlementCtx(getDb()), {
         disputeId: c.req.param("id"),
-        operator: typeof b.operator === "string" ? b.operator : "",
-        resolution: b.resolution as never,
-        splitLegs: Array.isArray(b.splitLegs)
-          ? (b.splitLegs as never)
-          : undefined,
-        note: typeof b.note === "string" ? b.note : undefined,
-        resolverRef: typeof b.resolverRef === "string" ? b.resolverRef : undefined,
+        operator: b.data.operator,
+        resolution: b.data.resolution,
+        splitLegs: b.data.splitLegs,
+        note: b.data.note,
+        resolverRef: b.data.resolverRef,
       });
       return respond(c, res);
     },

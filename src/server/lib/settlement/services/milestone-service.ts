@@ -76,6 +76,20 @@ export async function submitForReview(
   if (actorWallet.toLowerCase() !== plan.providerWallet.toLowerCase()) {
     return fail("FORBIDDEN", "only the provider may submit for a milestone");
   }
+  // M1: participant paths use explicit statuses — DISPUTED→READY is a
+  // resolver-only edge, not a provider one.
+  if (milestone.status !== "PENDING") {
+    return fail(
+      "INVALID_STATE",
+      `milestone is ${milestone.status}, not PENDING — cannot submit`,
+    );
+  }
+  if (plan.status !== "ACTIVE") {
+    return fail(
+      "INVALID_STATE",
+      `plan is ${plan.status} — submissions closed`,
+    );
+  }
   if (input.submissionRef !== undefined) {
     const c = checkField(input.submissionRef, "submissionRef", MAX_ID_FIELD);
     if (c) return c as SettlementResult<never>;
@@ -119,12 +133,44 @@ export async function approveMilestone(
   if (actorWallet.toLowerCase() !== plan.buyerWallet.toLowerCase()) {
     return fail("FORBIDDEN", "only the buyer may approve a milestone");
   }
+  // M1: buyer approve requires submitted work — DISPUTED→APPROVED is
+  // resolver-only, and an OPEN dispute freezes the milestone anyway.
+  if (milestone.status !== "READY") {
+    return fail(
+      "INVALID_STATE",
+      `milestone is ${milestone.status}, not READY — cannot approve`,
+    );
+  }
+  if (plan.status !== "ACTIVE") {
+    return fail(
+      "INVALID_STATE",
+      `plan is ${plan.status} — approvals closed`,
+    );
+  }
+  const openDisputes = await ctx.db.settlement.disputes.listBySubject(
+    "MILESTONE",
+    milestone.id,
+  );
+  if (openDisputes.some((d) => d.status === "OPEN")) {
+    return fail(
+      "INVALID_STATE",
+      "milestone has an OPEN dispute — approvals frozen",
+    );
+  }
 
   return ctx.db.settlement.atomic(async (s) => {
     if (!isLegalTransition("milestone", milestone.status, "APPROVED")) {
       return fail(
         "INVALID_STATE",
         `milestone ${milestone.status} cannot be approved`,
+      );
+    }
+    // H2: intent-conflict must fail BEFORE the milestone write — an
+    // APPROVED milestone without its intent is dead state.
+    if (await s.payoutIntents.getByMilestone(milestone.id)) {
+      return fail(
+        "CONFLICT",
+        `payout intent already exists for milestone ${milestone.id}`,
       );
     }
     const updated = await s.milestones.applyStatus(

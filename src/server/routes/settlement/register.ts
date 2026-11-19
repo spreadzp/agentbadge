@@ -11,6 +11,9 @@
 import type { Hono } from "hono";
 
 import { getConfig } from "../../../config/env";
+import { getDatabase } from "../../lib/database";
+import { invariants } from "../../lib/settlement/index.js";
+import { fail } from "../../lib/settlement/types.js";
 import { mkEoaSend } from "../../lib/eaas/anchor";
 import { keyWallet, opsKey } from "../../lib/eaas/keys";
 import { arcChainFor } from "../../lib/marketplace/chain";
@@ -23,7 +26,35 @@ import { createSettlementReceiptRoutes } from "./settlement-receipts";
 import { createSettlementRoutes } from "./settlement";
 
 export function registerSettlementRoutes(app: Hono): void {
-  const deps: SettlementRouteDeps = {};
+  const deps: SettlementRouteDeps = {
+    // C1 — a public plan must match the commerce agreement it names:
+    // same parties, same total. Anything else is a 403/404 — the plan
+    // is the payout contract, it can't be authored around commerce.
+    verifyAgreement: async (req) => {
+      const a = await getDatabase().commerce.agreements.getById(
+        req.agreementRef,
+      );
+      if (!a) {
+        return fail(
+          "NOT_FOUND",
+          `commerce agreement not found: ${req.agreementRef}`,
+        );
+      }
+      if (
+        a.buyerWallet.toLowerCase() !== req.buyerWallet.toLowerCase() ||
+        a.providerWallet.toLowerCase() !==
+          req.providerWallet.toLowerCase() ||
+        invariants.decimalToMicro(a.agreedAmount) !==
+          invariants.decimalToMicro(req.totalUsd)
+      ) {
+        return fail(
+          "FORBIDDEN",
+          "plan terms do not match the commerce agreement",
+        );
+      }
+      return null;
+    },
+  };
   const evm = getConfig().evm;
   const receiptKey =
     process.env.ARC_RECEIPT_SIGNER_KEY ?? process.env.ARC_OPS_KEY;

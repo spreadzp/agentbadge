@@ -35,7 +35,7 @@ import {
   LockAcquireTimeoutError,
   withLock,
 } from "../../finops/payment-mutex.js";
-import { isLegalTransition } from "../state-machines.js";
+import { rollupIntent } from "./rollup.js";
 import {
   type MarkPaidInput,
   type PayoutVerifyDeps,
@@ -166,6 +166,8 @@ async function markLegPaidInner(
       amount: leg.amountUsdc,
       currency: plan.currency ?? "USDC",
       network: leg.network ?? "arc",
+      chainId: deps.chainId,
+      expectedPayer: deps.expectedPayer,
       notBeforeMs: intent.createdAtMs,
     });
     if (!check.ok) return check as SettlementResult<never>;
@@ -181,6 +183,16 @@ async function markLegPaidInner(
   const operator = normalizeOperator(input.operator);
   const completedAtMs = Date.now();
   const effect = await ctx.db.settlement.atomic(async (s) => {
+    // H2/hoist: re-read the intent inside the critical section BEFORE
+    // writing the leg — a concurrent freeze/cancel must fail here, not
+    // after the leg's txHash is bound.
+    const live = await s.payoutIntents.getById(intent.id);
+    if (!live || live.status !== "OPEN") {
+      return fail(
+        "INVALID_STATE",
+        `payout intent is ${live?.status ?? "gone"} — leg not completed`,
+      );
+    }
     const done = await s.payoutLegs.complete(
       leg.id,
       "OPEN",
@@ -194,67 +206,23 @@ async function markLegPaidInner(
         "leg moved concurrently or txHash already bound — not completed",
       );
     }
-    const allLegs = await s.payoutLegs.listByIntent(intent.id);
-    let nextIntent = intent;
-    let nextMilestone = milestone;
-    if (allLegs.every((l) => l.status === "COMPLETED")) {
-      const ic = await s.payoutIntents.applyStatus(intent.id, "OPEN", "COMPLETED", {
-        completedAtMs,
-        completedBy: operator,
-      });
-      if (!ic) {
-        return fail(
-          "INVALID_STATE",
-          "intent moved concurrently — rollup aborted",
-        );
-      }
-      nextIntent = ic;
-      await ctx.emit.emit({
-        entityType: "payout_intent",
-        entityId: intent.id,
-        eventType: "intent.completed",
-        actorWallet: operator,
-        payload: { milestoneRef: intent.milestoneRef },
-      });
-      if (
-        milestone.status === "APPROVED" &&
-        isLegalTransition("milestone", "APPROVED", "RELEASED")
-      ) {
-        const rel = await s.milestones.applyStatus(
-          milestone.id,
-          "APPROVED",
-          "RELEASED",
-        );
-        if (rel) {
-          nextMilestone = rel;
-          await ctx.emit.emit({
-            entityType: "milestone",
-            entityId: milestone.id,
-            eventType: "milestone.released",
-            actorWallet: operator,
-            payload: { intentId: intent.id },
-          });
-        }
-      }
-      // Plan rollup — every milestone terminal → COMPLETED.
-      const siblings = await s.milestones.listByPlan(plan.id);
-      if (
-        siblings.every((m) =>
-          ["RELEASED", "CANCELLED"].includes(
-            m.id === milestone.id ? "RELEASED" : m.status,
-          ),
-        )
-      ) {
-        await s.plans.applyStatus(plan.id, "ACTIVE", "COMPLETED");
-        await ctx.emit.emit({
-          entityType: "settlement_plan",
-          entityId: plan.id,
-          eventType: "plan.completed",
-          actorWallet: operator,
-          payload: { agreementRef: plan.agreementRef },
-        });
-      }
+    // H1: shared rollup — non-CANCELLED legs all COMPLETED → intent
+    // COMPLETED → milestone RELEASED → plan COMPLETED (rollup.ts).
+    const rolled = await rollupIntent(
+      ctx,
+      s,
+      live,
+      milestone,
+      plan.id,
+      operator,
+    );
+    if (rolled === "MOVED") {
+      return fail(
+        "INVALID_STATE",
+        "intent moved concurrently — rollup aborted",
+      );
     }
+    const { intent: nextIntent, milestone: nextMilestone } = rolled;
     await ctx.emit.emit({
       entityType: "payout_leg",
       entityId: leg.id,
