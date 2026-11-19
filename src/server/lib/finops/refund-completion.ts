@@ -15,7 +15,11 @@ import type {
   RefundIntentRow,
 } from "@agentbadge/database";
 
-import { recordAdminAction } from "./admin-actions";
+import {
+  recordAdminAction,
+  recordPostEffectAudit,
+} from "./admin-actions";
+import { auditRejectedCompletion } from "./refund-audit";
 import {
   decimalLte,
   normalizeOperator,
@@ -24,6 +28,7 @@ import {
   sumDecimals,
 } from "./guards";
 import { withPaymentLock } from "./payment-mutex";
+import { PROVIDER_TIMEOUT_MS, withTimeout } from "./provider-utils";
 import {
   type FinOpsResult,
   type RefundTxCheck,
@@ -44,44 +49,35 @@ export async function completeRefundIntent(
   input: CompleteRefundIntentInput,
   verifyTx: VerifyRefundTx,
 ): Promise<FinOpsResult<RefundIntentRow>> {
-  // N8: serialize refund mutations per payment — the cap and the
-  // replay guard are check-then-write and must not interleave.
-  // The lock key is resolved cheaply before the critical section.
-  const intent = await db.finops.refundIntents.getById(input.intentId);
-  const key = intent?.paymentId ?? input.intentId;
+  // N8 + L-1: serialize refund mutations per payment — the cap and
+  // the replay guard are check-then-write and must not interleave.
+  // The lock key is resolved cheaply; the intent itself is RE-READ
+  // inside the critical section so a queued second completion sees
+  // the post-transition row, not a stale OPEN snapshot.
+  const probe = await db.finops.refundIntents.getById(input.intentId);
+  const key = probe?.paymentId ?? input.intentId;
+  // L-4: also serialize on the normalized txHash — two intents on
+  // DIFFERENT payments completed concurrently with one hash must not
+  // both pass the replay check (the unique index is the last resort,
+  // not the mechanism). Payment lock first, tx lock second — the only
+  // nesting order used anywhere, so no deadlock.
+  const txHash =
+    typeof input.txHash === "string"
+      ? normalizeTxHash(input.txHash)
+      : null;
   return withPaymentLock(key, () =>
-    completeRefundIntentInner(db, input, verifyTx, intent ?? undefined),
+    txHash
+      ? withPaymentLock(`tx:${txHash}`, () =>
+          completeRefundIntentInner(db, input, verifyTx),
+        )
+      : completeRefundIntentInner(db, input, verifyTx),
   );
-}
-
-/** N12: rejected completions are security events — bound + audit. */
-async function auditRejectedCompletion(
-  db: Database,
-  input: CompleteRefundIntentInput,
-  intent: RefundIntentRow | undefined,
-  txHash: string | null,
-  reason: string,
-): Promise<void> {
-  if (!intent) return;
-  await recordAdminAction(db, {
-    action: "REFUND",
-    subjectType: "payment",
-    subjectId: intent.paymentId,
-    operator: normalizeOperator(input.operator),
-    evidence: {
-      kind: "INTENT_COMPLETE_REJECTED",
-      intentId: input.intentId,
-      txHash: txHash ?? "invalid",
-      reason: reason.slice(0, 200),
-    },
-  });
 }
 
 async function completeRefundIntentInner(
   db: Database,
   input: CompleteRefundIntentInput,
   verifyTx: VerifyRefundTx,
-  prefetchedIntent?: RefundIntentRow,
 ): Promise<FinOpsResult<RefundIntentRow>> {
   const op = requireOperator(input.operator);
   if (op) return op as FinOpsResult<never>;
@@ -95,9 +91,8 @@ async function completeRefundIntentInner(
       "txHash must be a 0x-prefixed 64-hex transaction hash",
     );
   }
-  const intent = prefetchedIntent
-    ? prefetchedIntent
-    : await db.finops.refundIntents.getById(input.intentId);
+  // L-1: fresh read inside the lock — never act on a pre-lock snapshot.
+  const intent = await db.finops.refundIntents.getById(input.intentId);
   if (!intent) {
     return fail("NOT_FOUND", `refund intent not found: ${input.intentId}`);
   }
@@ -115,7 +110,7 @@ async function completeRefundIntentInner(
   const bound = completed.find((r) => r.txHash === txHash);
   if (bound) {
     await auditRejectedCompletion(
-      db, input, intent, txHash, `replay — bound to ${bound.id}`,
+      db, input, intent.paymentId, txHash, `replay — bound to ${bound.id}`,
     );
     return fail(
       "TX_REUSED",
@@ -135,12 +130,21 @@ async function completeRefundIntentInner(
       `payment is ${payment.status}, refund completion requires CONFIRMED`,
     );
   }
-  const used = sumDecimals(
-    completed
-      .filter((r) => r.paymentId === payment.id)
-      .map((r) => r.amount),
-  );
-  const total = sumDecimals([used, intent.amount]);
+  let used: string;
+  let total: string;
+  try {
+    used = sumDecimals(
+      completed
+        .filter((r) => r.paymentId === payment.id)
+        .map((r) => r.amount),
+    );
+    total = sumDecimals([used, intent.amount]);
+  } catch (e) {
+    return fail(
+      "PROVIDER_ERROR",
+      `corrupt amount data: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
   if (!decimalLte(total, payment.amount)) {
     return fail(
       "INVALID_STATE",
@@ -152,18 +156,22 @@ async function completeRefundIntentInner(
     payment.currency ??
     "USDC"
   ).toUpperCase();
-  // N11: the RPC call can throw — a verifier outage is PROVIDER_ERROR,
-  // not a 500. `notBeforeMs` gets a 1s tolerance: block timestamps are
-  // second-granular, so a tx mined in the same second as intent
+  // N11 + L-2: the RPC call can throw or hang — a verifier outage is
+  // PROVIDER_ERROR, not a 500, and a hung call must not pin the
+  // payment lock. `notBeforeMs` gets a 1s tolerance: block timestamps
+  // are second-granular, so a tx mined in the same second as intent
   // creation must not be rejected permanently.
   let check: RefundTxCheck;
   try {
-    check = await verifyTx(txHash, {
-      payee: intent.payee,
-      amount: intent.amount,
-      currency: expectedCurrency,
-      notBeforeMs: intent.createdAtMs - 1000,
-    });
+    check = await withTimeout(
+      verifyTx(txHash, {
+        payee: intent.payee,
+        amount: intent.amount,
+        currency: expectedCurrency,
+        notBeforeMs: intent.createdAtMs - 1000,
+      }),
+      PROVIDER_TIMEOUT_MS,
+    );
   } catch (e) {
     return fail(
       "PROVIDER_ERROR",
@@ -175,7 +183,7 @@ async function completeRefundIntentInner(
       check && typeof check.reason === "string"
         ? check.reason
         : "on-chain read did not confirm the refund tx — not completing";
-    await auditRejectedCompletion(db, input, intent, txHash, reason);
+    await auditRejectedCompletion(db, input, intent.paymentId, txHash, reason);
     return fail("TX_UNVERIFIED", reason);
   }
   // H4: cross-check verifier-reported facts — `verified: true` alone
@@ -184,7 +192,7 @@ async function completeRefundIntentInner(
     const payer = check.payer.trim().toLowerCase();
     if (payer === intent.payee.toLowerCase()) {
       await auditRejectedCompletion(
-        db, input, intent, txHash, "sender equals payee — self-transfer",
+        db, input, intent.paymentId, txHash, "sender equals payee — self-transfer",
       );
       return fail(
         "TX_UNVERIFIED",
@@ -197,7 +205,7 @@ async function completeRefundIntentInner(
       check.asset.trim().toUpperCase() !== expectedCurrency.toUpperCase()
     ) {
       await auditRejectedCompletion(
-        db, input, intent, txHash,
+        db, input, intent.paymentId, txHash,
         `asset ${check.asset} ≠ ${expectedCurrency}`,
       );
       return fail(
@@ -207,6 +215,23 @@ async function completeRefundIntentInner(
     }
   }
   const operator = normalizeOperator(input.operator);
+  // L-6: audit the verified transition BEFORE it lands (mirrors the
+  // Stripe INITIATED row) — if the process dies between `complete()`
+  // and the completion row, the trail still shows a verified tx was
+  // accepted for this intent, with the hash that binds it.
+  const completing = await recordAdminAction(db, {
+    action: "REFUND",
+    subjectType: "payment",
+    subjectId: intent.paymentId,
+    operator,
+    evidence: {
+      kind: "INTENT_COMPLETING",
+      intentId: intent.id,
+      txHash,
+      amount: intent.amount,
+    },
+  });
+  if (!completing.ok) return completing;
   const done = await db.finops.refundIntents.complete(
     intent.id,
     txHash,
@@ -237,21 +262,35 @@ async function completeRefundIntentInner(
         Date.now(),
       )) !== null;
   }
-  const audit = await recordAdminAction(db, {
-    action: "REFUND",
-    subjectType: "payment",
-    subjectId: intent.paymentId,
-    operator,
-    evidence: {
-      intentId: intent.id,
-      txHash,
-      kind: "INTENT_COMPLETED",
-      network: check.network ?? null,
-      payer: check.payer ?? null,
-      confirmations: check.confirmations ?? null,
-      paymentFlip: flipApplied,
+  // M-2/L-3: the intent is COMPLETED — the audit row must degrade to
+  // minimal evidence rather than strand the trail (and verifier-
+  // supplied fields are sliced, they are not trusted-bounded).
+  await recordPostEffectAudit(
+    db,
+    {
+      action: "REFUND",
+      subjectType: "payment",
+      subjectId: intent.paymentId,
+      operator,
+      evidence: {
+        intentId: intent.id,
+        txHash,
+        kind: "INTENT_COMPLETED",
+        network:
+          typeof check.network === "string"
+            ? check.network.slice(0, 128)
+            : null,
+        payer:
+          typeof check.payer === "string"
+            ? check.payer.slice(0, 128)
+            : null,
+        confirmations: check.confirmations ?? null,
+        paymentFlip: flipApplied,
+      },
     },
-  });
-  if (!audit.ok) return audit;
+    { kind: "INTENT_COMPLETED", intentId: intent.id, txHash },
+  );
+  // The effect landed — report success even if the audit store was
+  // down; the COMPLETING row above already carries the binding facts.
   return ok(done);
 }

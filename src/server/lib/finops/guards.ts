@@ -44,14 +44,16 @@ export function normalizeOperator(v: string): string {
   return [...cleaned].slice(0, OPERATOR_MAX_LEN).join("").trimEnd();
 }
 
-/** `null` when the operator label is usable; error result otherwise. */
+/** `null` when the operator label is usable; error result otherwise.
+ *  L-9: the normalized label must contain at least one letter or
+ *  digit — a label built only from combining marks/private-use code
+ *  points is non-empty but renders blank in the audit console. */
 export function requireOperator(
   operator: string | undefined | null,
 ): FinOpsErrorResult | null {
-  if (
-    typeof operator !== "string" ||
-    normalizeOperator(operator).length === 0
-  ) {
+  const normalized =
+    typeof operator === "string" ? normalizeOperator(operator) : "";
+  if (normalized.length === 0 || !/[\p{L}\p{N}]/u.test(normalized)) {
     return {
       ok: false,
       error: {
@@ -71,6 +73,26 @@ export function checkTextField(
 ): FinOpsResult<never> | null {
   if (v.length > max) {
     return fail("BAD_INPUT", `${name} exceeds ${max} characters`);
+  }
+  return null;
+}
+
+/**
+ * M-2/round-3: cap a field by its JSON-SERIALIZED length, not raw
+ * characters. `JSON.stringify` amplifies control/format/lone-
+ * surrogate code points up to 6x ("\u00XX"), so a raw-length cap can
+ * still overflow the 4 KB audit row the field lands in.
+ */
+export function checkSerialized(
+  v: string,
+  name: string,
+  maxBytes: number,
+): FinOpsResult<never> | null {
+  if (JSON.stringify(v).length > maxBytes) {
+    return fail(
+      "BAD_INPUT",
+      `${name} exceeds ${maxBytes} serialized bytes`,
+    );
   }
   return null;
 }
@@ -218,11 +240,17 @@ export function microToDecimal(micro: bigint): string {
   return neg ? `-${s}` : s;
 }
 
-/** Σ decimal strings → decimal string. Malformed entries are skipped. */
+/**
+ * Σ decimal strings → decimal string. M-8/round-3: malformed entries
+ * THROW — money sums (refund caps, revenue) must never silently skip
+ * a non-canonical amount and undercount.
+ */
 export function sumDecimals(amounts: readonly string[]): string {
   let acc = 0n;
   for (const a of amounts) {
-    if (!isDecimalString(a)) continue;
+    if (!isDecimalString(a)) {
+      throw new Error(`malformed decimal in sum: ${JSON.stringify(a)}`);
+    }
     acc += decimalToMicro(a);
   }
   return microToDecimal(acc);

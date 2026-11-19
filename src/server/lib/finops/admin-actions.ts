@@ -85,6 +85,27 @@ export async function recordAdminAction(
   return ok(row);
 }
 
+/**
+ * M-2/round-3: audit AFTER an effect already landed must not be
+ * losable to evidence-size overflow. Retry EVIDENCE_TOO_LARGE once
+ * with the domain-built `minimal` evidence (bounded by construction —
+ * kind, ids, outcome flags). Callers of this helper should treat a
+ * non-ok result as "effect landed, audit store down" and still return
+ * success to the operator — money that moved must not look unmoved.
+ */
+export async function recordPostEffectAudit(
+  db: Database,
+  input: RecordAdminActionInput,
+  minimal: Record<string, unknown>,
+): Promise<FinOpsResult<AdminActionRow>> {
+  const r = await recordAdminAction(db, input);
+  if (r.ok || r.error.code !== "EVIDENCE_TOO_LARGE") return r;
+  return recordAdminAction(db, {
+    ...input,
+    evidence: { ...minimal, degraded: true },
+  });
+}
+
 /** Payment must exist for payment-scoped actions — audit lies otherwise. */
 async function requirePayment(
   db: Database,

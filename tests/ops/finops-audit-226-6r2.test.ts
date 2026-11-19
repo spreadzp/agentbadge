@@ -97,7 +97,7 @@ const seedConfirmed = async (
 };
 
 describe("SLICE-226-6 round-2 fixes (re-audit)", () => {
-  it("N1: ~4KB caller evidence still flips + audits (bounded details)", async () => {
+  it("N1/L-7: >1KB caller evidence rejected upfront; ≤1KB flips + audits", async () => {
     const db = createDatabase({ enabled: false });
     const p = await seedConfirmed(db, { amount: "10.00" }, {
       provider: "STRIPE",
@@ -105,12 +105,27 @@ describe("SLICE-226-6 round-2 fixes (re-audit)", () => {
       network: "stripe",
       transactionHash: null,
     });
+    // Oversized evidence is refused BEFORE the INITIATED row — the
+    // operator's justification is never silently truncated after the
+    // refund already happened (L-7).
+    const big = await stripeRefund(
+      db,
+      {
+        paymentId: p.id,
+        operator: "ops",
+        evidence: { blob: "x".repeat(3900) },
+      },
+      { refunds: { create: async () => ({ id: "re_n1", status: "succeeded" }) } },
+    );
+    expect(big.ok).toBe(false);
+    if (!big.ok) expect(big.error.code).toBe("BAD_INPUT");
+    expect(await db.finops.adminActions.list({})).toHaveLength(0);
     const r = await stripeRefund(
       db,
       {
         paymentId: p.id,
         operator: "ops",
-        evidence: { blob: "x".repeat(3900) }, // ≈4KB — wrapped must not overflow
+        evidence: { blob: "x".repeat(900) },
       },
       { refunds: { create: async () => ({ id: "re_n1", status: "succeeded" }) } },
     );
@@ -156,7 +171,7 @@ describe("SLICE-226-6 round-2 fixes (re-audit)", () => {
     await db.close();
   });
 
-  it("N4: a failed Stripe refund leaves a terminal audit + unlocks", async () => {
+  it("N4/M-6: pending → UNCERTAIN keeps the lock; definite fail → FAILED unlocks", async () => {
     const db = createDatabase({ enabled: false });
     const p = await seedConfirmed(db, { amount: "10.00" }, {
       provider: "STRIPE",
@@ -174,12 +189,36 @@ describe("SLICE-226-6 round-2 fixes (re-audit)", () => {
       },
     );
     expect(r.ok).toBe(false);
-    // INITIATED + STRIPE_REFUND_FAILED — the failure is on the trail
-    // with the refund id, so the manual path can be unlocked.
+    // INITIATED + STRIPE_REFUND_UNCERTAIN — pending may still settle,
+    // so the trail records the refund id but the lock STAYS (M-6).
     const actions = (await listAdminActions(db, { action: "REFUND" }))
       .map((a) => (a.evidence as Record<string, unknown>)?.kind);
     expect(actions).toContain("STRIPE_REFUND_INITIATED");
-    expect(actions).toContain("STRIPE_REFUND_FAILED");
+    expect(actions).toContain("STRIPE_REFUND_UNCERTAIN");
+    expect(actions).not.toContain("STRIPE_REFUND_FAILED");
+    // A definite rejection (status "failed") IS a terminal row.
+    const p2 = await seedConfirmed(db, { amount: "10.00" }, {
+      provider: "STRIPE",
+      providerReference: "pi_def",
+      network: "stripe",
+      transactionHash: null,
+    });
+    const r2 = await stripeRefund(
+      db,
+      { paymentId: p2.id, operator: "ops" },
+      {
+        refunds: {
+          create: async () => ({ id: "re_def", status: "failed" }),
+        },
+      },
+    );
+    expect(r2.ok).toBe(false);
+    const actions2 = (
+      await db.finops.adminActions.listBySubject("payment", p2.id)
+    )
+      .filter((a) => a.action === "REFUND")
+      .map((a) => (a.evidence as Record<string, unknown>)?.kind);
+    expect(actions2).toContain("STRIPE_REFUND_FAILED");
     await db.close();
   });
 

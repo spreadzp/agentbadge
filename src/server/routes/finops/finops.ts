@@ -125,7 +125,7 @@ export function createFinopsRoutes(deps: FinopsRouteDeps = {}): Hono {
         agentId: str(q.get("agentId")),
         ...(sinceMs !== undefined ? { sinceMs } : {}),
         ...(untilMs !== undefined ? { untilMs } : {}),
-        page: Math.max(1, Number(q.get("page")) || 1),
+        page: Math.max(1, Math.floor(Number(q.get("page")) || 1)),
         ...(perPage !== undefined && Number.isFinite(perPage)
           ? { perPage: Math.min(Math.max(1, Math.floor(perPage)), 200) }
           : {}),

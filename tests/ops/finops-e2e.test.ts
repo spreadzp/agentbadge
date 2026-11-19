@@ -88,7 +88,9 @@ async function seedPayment(opts: SeedOpts = {}) {
           ? null
           : opts.providerReference,
       transactionHash:
-        opts.transactionHash === undefined ? "0xfeed" : opts.transactionHash,
+        opts.transactionHash === undefined
+          ? `0x${Math.random().toString(16).slice(2, 10)}`
+          : opts.transactionHash,
       expiresAtMs: null,
       confirmedAtMs: p.updatedAtMs,
       payload: {},
@@ -295,9 +297,10 @@ describe("e2e — refund lifecycle", () => {
     );
 
     // Audit: STRIPE_REFUND_INITIATED + STRIPE_REFUND + INTENT_OPENED +
-    // INTENT_COMPLETED — one row per audited step (226-6).
+    // INTENT_COMPLETING + INTENT_COMPLETED — one row per audited step
+    // (226-6 round 3, L-6).
     const refunds = await db.finops.adminActions.list({ action: "REFUND" });
-    expect(refunds).toHaveLength(4);
+    expect(refunds).toHaveLength(5);
     expect(refunds.every((a) => a.operator === "ops.e2e")).toBe(true);
   });
 

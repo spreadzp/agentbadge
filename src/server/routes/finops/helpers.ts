@@ -97,28 +97,60 @@ export function respond<T>(
 /** Ops mutations carry small bodies — 64 KB is generous (M7). */
 const BODY_MAX_BYTES = 64 * 1024;
 
-/** POST body from JSON or form-urlencoded (HTMX default). */
+/** L-8: read the raw stream with a byte counter — Content-Length can
+ *  be absent (chunked encoding) or lie, so the cap must count actual
+ *  bytes. `null` = over the cap (caller treats fields as absent). */
+async function readBodyBytes(c: Context): Promise<Uint8Array | null> {
+  const stream = c.req.raw.body;
+  if (!stream) return new Uint8Array(0);
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > BODY_MAX_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const ch of chunks) {
+    buf.set(ch, off);
+    off += ch.byteLength;
+  }
+  return buf;
+}
+
+/** POST body from JSON or form-urlencoded (HTMX default). Multipart/
+ *  file bodies are not supported on the ops surface — small JSON and
+ *  form posts only. */
 export async function readBody(
   c: Context,
 ): Promise<Record<string, unknown>> {
-  const len = Number(c.req.header("content-length"));
-  if (Number.isFinite(len) && len > BODY_MAX_BYTES) {
-    return {}; // oversized → fields read as absent → guard 400s
-  }
+  const bytes = await readBodyBytes(c);
+  if (bytes === null) return {}; // oversized → fields absent → 400s
+  const text = new TextDecoder().decode(bytes);
   const ct = c.req.header("content-type") ?? "";
   if (ct.includes("application/json")) {
     try {
-      const b = (await c.req.json()) as Record<string, unknown>;
+      const b = JSON.parse(text) as Record<string, unknown>;
       return b && typeof b === "object" ? b : {};
     } catch {
       return {};
     }
   }
   try {
-    const b = await c.req.parseBody();
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(b)) {
-      if (typeof v === "string") out[k] = v;
+    for (const [k, v] of new URLSearchParams(text)) {
+      out[k] = v;
     }
     return out;
   } catch {

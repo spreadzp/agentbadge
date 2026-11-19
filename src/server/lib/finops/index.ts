@@ -21,6 +21,7 @@ export {
   isMeaningfulEvidence,
   isEvmAddress,
   normalizeTxHash,
+  checkSerialized,
   OPERATOR_MAX_LEN,
   MAX_TEXT_FIELD,
   MAX_ID_FIELD,
@@ -37,6 +38,7 @@ export {
 export { finReport } from "./reports";
 export {
   recordAdminAction,
+  recordPostEffectAudit,
   reviewPayment,
   retryVerification,
   markExternalReviewed,

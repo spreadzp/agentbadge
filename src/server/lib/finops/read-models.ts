@@ -96,6 +96,12 @@ export async function listPayments(
     list.push(a);
     byPayment.set(a.paymentId, list);
   }
+  // L-13: newest-first per payment — the non-confirmed fallback in
+  // canonicalAttempt must match getPaymentDetail's ordering or list
+  // and detail disagree on provider.
+  for (const list of byPayment.values()) {
+    list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
   const filtered =
     filter.provider === undefined
       ? payments

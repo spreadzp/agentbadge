@@ -121,34 +121,46 @@ async function refundTotals(
   });
   // H6: only refunds completed INSIDE the report window count — an
   // intent completed outside the period is that period's number.
-  const windowed = completedIntents.filter(
-    (ri) =>
-      ri.completedAtMs !== null &&
-      ri.completedAtMs !== undefined &&
-      (period.sinceMs === undefined ||
-        ri.completedAtMs >= period.sinceMs) &&
-      (period.untilMs === undefined ||
-        ri.completedAtMs <= period.untilMs),
-  );
-  const intentByPayment = new Map<string, string[]>();
-  for (const ri of windowed) {
-    intentByPayment.set(ri.paymentId, [
-      ...(intentByPayment.get(ri.paymentId) ?? []),
+  const inWindow = (ri: (typeof completedIntents)[number]): boolean =>
+    ri.completedAtMs !== null &&
+    ri.completedAtMs !== undefined &&
+    (period.sinceMs === undefined ||
+      ri.completedAtMs >= period.sinceMs) &&
+    (period.untilMs === undefined ||
+      ri.completedAtMs <= period.untilMs);
+  const windowedByPayment = new Map<string, string[]>();
+  // L-5: ALL-TIME intents per payment — a REFUNDED payment whose last
+  // intent completed just before the window boundary still refunded
+  // exactly its intents' total, not `p.amount` (that fallback would
+  // double-count a boundary-straddling partial-refund history).
+  const allTimeByPayment = new Map<string, string[]>();
+  for (const ri of completedIntents) {
+    allTimeByPayment.set(ri.paymentId, [
+      ...(allTimeByPayment.get(ri.paymentId) ?? []),
       ri.amount,
     ]);
+    if (inWindow(ri)) {
+      windowedByPayment.set(ri.paymentId, [
+        ...(windowedByPayment.get(ri.paymentId) ?? []),
+        ri.amount,
+      ]);
+    }
   }
   const refundedIds = new Set(
     terminal.filter((p) => p.status === "REFUNDED").map((p) => p.id),
   );
   let refundsTotal = "0";
   for (const p of terminal.filter((x) => x.status === "REFUNDED")) {
-    const intents = intentByPayment.get(p.id);
+    const allTime = allTimeByPayment.get(p.id);
+    // Intents carry exact refunded amounts; `p.amount` only when the
+    // refund went through a path with no intent rows (Stripe).
     refundsTotal = sumDecimals([
       refundsTotal,
-      intents ? sumDecimals(intents) : p.amount,
+      allTime && allTime.length > 0 ? sumDecimals(allTime) : p.amount,
     ]);
   }
-  for (const [pid, amounts] of intentByPayment) {
+  // Still-CONFIRMED payments contribute only their in-window intents.
+  for (const [pid, amounts] of windowedByPayment) {
     if (!refundedIds.has(pid)) {
       refundsTotal = sumDecimals([refundsTotal, sumDecimals(amounts)]);
     }

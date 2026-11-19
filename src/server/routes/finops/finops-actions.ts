@@ -106,10 +106,13 @@ export function createFinopsActionRoutes(
     adminAuth,
     async (c) => {
       const b = await readBody(c);
+      // L-11: the path id IS the subject — an audit row attributed to
+      // a body-supplied subject while the form posted to another id
+      // would mislabel the trail.
       const res = await markExternalReviewed(
         getDb(),
-        typeof b.subjectType === "string" ? b.subjectType : "",
-        typeof b.subjectId === "string" ? b.subjectId : "",
+        "payment",
+        c.req.param("id"),
         typeof b.operator === "string" ? b.operator : "",
         parseEvidence(b.evidence) ?? b.evidence,
       );

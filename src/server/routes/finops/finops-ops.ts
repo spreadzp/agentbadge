@@ -19,7 +19,7 @@ import {
   completeRefundIntent,
   detectFromPaymentExceptions,
   listRefundIntents,
-  recordAdminAction,
+  recordPostEffectAudit,
   requireOperator,
   resolveException,
 } from "../../lib/finops/index";
@@ -28,6 +28,20 @@ import type { FinopsRouteDeps } from "./helpers";
 import { listLimit, readBody, respond } from "./helpers";
 
 const TAG = { tags: ["Admin FinOps"] };
+
+/** M-3: sample ids by serialized byte budget — a count cap alone can
+ *  still overflow the 4 KB audit row (uuid-suffixed ids ~42 chars). */
+function idSample(ids: readonly string[], budget = 1200): string[] {
+  const out: string[] = [];
+  let used = 0;
+  for (const id of ids) {
+    const n = JSON.stringify(id).length + 1; // + comma
+    if (used + n > budget) break;
+    out.push(id);
+    used += n;
+  }
+  return out;
+}
 
 export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
   const routes = new Hono();
@@ -119,24 +133,33 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
         limit: listLimit(b.limit, 100, 100),
       });
       if (!res.ok) return respond(c, res);
-      // N3: bounded evidence — counts + a capped id sample; full id
-      // lists can exceed the 4 KB audit cap and break the audit write
-      // permanently once the backlog is large.
+      // N3 + M-3: bounded evidence — counts + a BYTE-budgeted id
+      // sample (id length varies; a fixed count can still overflow
+      // the 4 KB row). Post-effect helper degrades to minimal
+      // evidence — the rows are already created, the audit must not
+      // vanish on an edge-case overflow.
       const createdIds = res.value.created.map((r) => r.id);
-      const audit = await recordAdminAction(getDb(), {
-        action: "DETECT_EXCEPTIONS",
-        subjectType: "exception",
-        subjectId: "scan",
-        operator,
-        evidence: {
+      const audit = await recordPostEffectAudit(
+        getDb(),
+        {
+          action: "DETECT_EXCEPTIONS",
+          subjectType: "exception",
+          subjectId: "scan",
+          operator,
+          evidence: {
+            createdCount: createdIds.length,
+            skippedCount: res.value.skipped.length,
+            createdIds: idSample(createdIds),
+            skipped: idSample(res.value.skipped),
+          },
+        },
+        {
           createdCount: createdIds.length,
           skippedCount: res.value.skipped.length,
-          createdIds: createdIds.slice(0, 50),
-          idsTruncated: createdIds.length > 50,
-          skipped: res.value.skipped.slice(0, 50),
         },
-      });
-      return respond(c, audit.ok ? res : audit);
+      );
+      void audit;
+      return respond(c, res);
     },
   );
 

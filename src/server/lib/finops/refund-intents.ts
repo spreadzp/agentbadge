@@ -63,41 +63,52 @@ export async function refundUsage(
   return { usage: sumDecimals(intents.map((i) => i.amount)), count: intents.length };
 }
 
-/** Terminal kinds that close a Stripe refund attempt in the trail. */
-const STRIPE_TERMINAL_KINDS = new Set([
+/** Providers that settle on-chain — the intent path refunds these. */
+const ONCHAIN_PROVIDERS = new Set(["DIRECT_USDC", "X402", "HEDERA"]);
+
+/**
+ * Terminal kinds that RELEASE the in-flight lock. M-6:
+ * STRIPE_REFUND_UNCERTAIN deliberately does NOT — a timeout or
+ * pending status may still be moving money, so capacity stays locked
+ * until a definite success/rejection row exists.
+ */
+const STRIPE_LOCK_RELEASE_KINDS = new Set([
   "STRIPE_REFUND",
   "STRIPE_REFUND_FAILED",
 ]);
 
 /**
- * N4: a STRIPE_REFUND_INITIATED row without a matching terminal row
- * means a provider refund may be in flight (pending, crashed, or the
- * response was lost). The payment's refund capacity stays locked
- * until a terminal row exists — the manual intent path must not
- * double-pay meanwhile.
+ * N4 + M-6: a STRIPE_REFUND_INITIATED row without a matching
+ * INITIATION-PAIRED terminal row means a provider refund may be in
+ * flight — the payment's refund capacity stays locked. Rows are
+ * paired by `initiationId` (not row order — ms-timestamp ties can
+ * invert in Postgres), and only domain-written `action: "REFUND"`
+ * rows count: caller evidence on REVIEW/RESOLVE rows cannot inject a
+ * forged `kind` to spoof or clear the lock.
  */
 async function stripeRefundInFlight(
   db: Database,
   paymentId: string,
 ): Promise<boolean> {
-  const rows = await db.finops.adminActions.listBySubject(
-    "payment",
-    paymentId,
-  );
-  let initiated = false;
+  const rows = (
+    await db.finops.adminActions.listBySubject("payment", paymentId)
+  ).filter((r) => r.action === "REFUND");
+  const open = new Set<string>();
   for (const r of rows) {
-    const kind =
+    const e =
       r.evidence !== null &&
       typeof r.evidence === "object" &&
       !Array.isArray(r.evidence)
-        ? (r.evidence as Record<string, unknown>).kind
-        : undefined;
-    if (kind === "STRIPE_REFUND_INITIATED") initiated = true;
-    else if (typeof kind === "string" && STRIPE_TERMINAL_KINDS.has(kind)) {
-      initiated = false;
+        ? (r.evidence as Record<string, unknown>)
+        : null;
+    const kind = e?.kind;
+    const key = typeof e?.initiationId === "string" ? e.initiationId : "legacy";
+    if (kind === "STRIPE_REFUND_INITIATED") open.add(key);
+    else if (typeof kind === "string" && STRIPE_LOCK_RELEASE_KINDS.has(kind)) {
+      open.delete(key);
     }
   }
-  return initiated;
+  return open.size > 0;
 }
 
 /** Open a refund intent on a CONFIRMED payment + audit row. */
@@ -149,51 +160,73 @@ async function createRefundIntentInner(
       `refund intent requires CONFIRMED payment, got ${payment.status}`,
     );
   }
-  // N4: the intent path is the ON-CHAIN refund arm — a card-paid
-  // Stripe payment would get a second full refund to an EVM wallet.
+  // M-5/N4: the intent path is the ON-CHAIN refund arm — every
+  // CONFIRMED attempt must be an on-chain settlement and at least one
+  // must exist. A deny-list on the first attempt misses mixed/double-
+  // paid states: a card-paid payment must never get a manual EVM
+  // refund on top of it.
   const attempts = await db.payments.attempts.listByPayment(payment.id);
-  const confirmedAttempt = attempts.find((a) => a.status === "CONFIRMED");
-  if (confirmedAttempt?.provider === "STRIPE") {
+  const confirmed = attempts.filter((a) => a.status === "CONFIRMED");
+  const settled = confirmed.find((a) => ONCHAIN_PROVIDERS.has(a.provider));
+  if (
+    confirmed.length === 0 ||
+    !settled ||
+    confirmed.some((a) => !ONCHAIN_PROVIDERS.has(a.provider))
+  ) {
     return fail(
       "INVALID_STATE",
-      "payment settled via Stripe — use the stripe refund mode, not a manual intent",
+      "refund intents require a CONFIRMED on-chain-only settlement — Stripe-settled payments use the stripe refund mode",
     );
   }
-  // N4: an initiated Stripe refund without a terminal audit row may
-  // still be moving money — the capacity stays locked.
+  // N4: an initiated Stripe refund without a paired terminal audit
+  // row may still be moving money — the capacity stays locked.
   if (await stripeRefundInFlight(db, payment.id)) {
     return fail(
       "INVALID_STATE",
       "a Stripe refund is in flight for this payment — resolve it before opening an intent",
     );
   }
-  // N11: the intent's asset must match the payment's — a USDC payment
-  // cannot be refunded in another asset on operator say-so.
-  const currency = (input.currency ?? payment.currency ?? "USDC")
+  // M-1/N11: the intent's asset is the settled attempt's currency —
+  // `Payment.currency` is the denomination ("USD"), not the on-chain
+  // asset the verifier must see moved ("USDC"; USD↔USDC priced 1:1).
+  const asset = (settled.currency ?? payment.currency ?? "USDC")
     .trim()
     .toUpperCase();
-  const paymentCurrency = (payment.currency ?? "USDC").toUpperCase();
-  if (currency !== paymentCurrency) {
+  const currency = (input.currency ?? asset).trim().toUpperCase();
+  if (currency !== asset) {
     return fail(
       "BAD_INPUT",
-      `intent currency ${currency} must match payment currency ${paymentCurrency}`,
+      `intent currency ${currency} must match the settled asset ${asset}`,
     );
   }
-  // Amount beyond the payment is invalid input regardless of state.
-  if (!decimalLte(input.amount, payment.amount)) {
+  // Cap against what actually settled on-chain (≤ the payment label
+  // amount in the normal case).
+  const capBase = decimalLte(settled.amount, payment.amount)
+    ? settled.amount
+    : payment.amount;
+  if (!decimalLte(input.amount, capBase)) {
     return fail(
       "BAD_INPUT",
-      `refund amount ${input.amount} exceeds payment amount ${payment.amount}`,
+      `refund amount ${input.amount} exceeds settled amount ${capBase}`,
     );
   }
   // C2: cumulative cap — prior intents (OPEN reserves + COMPLETED)
-  // plus the new amount can never exceed the payment amount.
-  const { usage } = await refundUsage(db, payment.id);
-  const total = sumDecimals([usage, input.amount]);
-  if (!decimalLte(total, payment.amount)) {
+  // plus the new amount can never exceed the settled amount.
+  let usage: string;
+  let total: string;
+  try {
+    usage = (await refundUsage(db, payment.id)).usage;
+    total = sumDecimals([usage, input.amount]);
+  } catch (e) {
+    return fail(
+      "PROVIDER_ERROR",
+      `corrupt amount data: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  if (!decimalLte(total, capBase)) {
     return fail(
       "INVALID_STATE",
-      `cumulative refunds ${total} would exceed payment amount ${payment.amount} (already reserved ${usage})`,
+      `cumulative refunds ${total} would exceed settled amount ${capBase} (already reserved ${usage})`,
     );
   }
   const operator = normalizeOperator(input.operator);

@@ -59,7 +59,8 @@ async function seedPayment(
     amount: "10.00",
     currency: "USD",
     network: "eip155:5042002",
-    transactionHash: "0xfeed",
+    // Unique per attempt — (provider, txHash) dedupes store-side.
+    transactionHash: `0x${Math.random().toString(16).slice(2, 10)}`,
     payload: {},
     ...attemptOverrides,
   });
@@ -414,20 +415,20 @@ describe("SLICE-226-6 hardening", () => {
     expect((await db.payments.payments.getById(p.id))!.status).toBe(
       "CONFIRMED",
     );
-    // INITIATED + terminal FAILED row (N4) — the failure closes the
-    // in-flight lock and keeps the refund id on the trail.
+    // INITIATED + UNCERTAIN row (M-6) — pending may still settle, so
+    // the refund id is on the trail but the in-flight lock STAYS.
     const refunds = await db.finops.adminActions.list({ action: "REFUND" });
     expect(refunds).toHaveLength(2);
     const kinds = refunds.map(
       (r) => (r.evidence as { kind: string }).kind,
     );
     expect(kinds).toContain("STRIPE_REFUND_INITIATED");
-    expect(kinds).toContain("STRIPE_REFUND_FAILED");
-    const failed = refunds.find(
-      (r) => (r.evidence as { kind: string }).kind === "STRIPE_REFUND_FAILED",
+    expect(kinds).toContain("STRIPE_REFUND_UNCERTAIN");
+    const uncertain = refunds.find(
+      (r) => (r.evidence as { kind: string }).kind === "STRIPE_REFUND_UNCERTAIN",
     );
     expect(
-      (failed!.evidence as { stripeRefundId: string }).stripeRefundId,
+      (uncertain!.evidence as { stripeRefundId: string }).stripeRefundId,
     ).toBe("re_pend");
   });
 
