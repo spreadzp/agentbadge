@@ -1,10 +1,13 @@
 /**
  * EPIC-227 / SLICE-227-8 — shared intent→milestone→plan rollup
- * (arc-audit H1). One canonical "everything paid → roll up" used by
- * mark-paid and dispute resolution. CANCELLED legs (SPLIT re-legs)
+ * (arc-audit H1). One canonical "everything paid → roll up", called by
+ * `markLegPaid`; SPLIT re-legs roll up through the next mark-paid —
+ * dispute resolution itself re-legs and reopens only. CANCELLED legs
  * never block: every non-cancelled leg must be COMPLETED, ≥1 of them.
  * Milestone + plan are re-read inside the caller's atomic section —
  * no stale-status writes, no phantom `plan.completed` events (M2).
+ * Events go through the caller's emit buffer (`buf`) so a rolled-back
+ * section leaves nothing behind (R3-M2).
  */
 import type {
   MilestoneRow,
@@ -12,8 +15,8 @@ import type {
 } from "@agentbadge/database";
 import type { SettlementStores } from "@agentbadge/database";
 
+import type { SettlementEmitBuffer } from "../events.js";
 import { isLegalTransition } from "../state-machines.js";
-import type { SettlementCtx } from "./ctx.js";
 
 export interface RollupResult {
   intent: PayoutIntentRow;
@@ -23,7 +26,7 @@ export interface RollupResult {
 }
 
 export async function rollupIntent(
-  ctx: SettlementCtx,
+  buf: SettlementEmitBuffer,
   s: SettlementStores,
   intent: PayoutIntentRow,
   milestone: MilestoneRow,
@@ -51,7 +54,7 @@ export async function rollupIntent(
     completedBy: operator,
   });
   if (!ic) return "MOVED";
-  await ctx.emit.emit({
+  buf.emit({
     entityType: "payout_intent",
     entityId: intent.id,
     eventType: "intent.completed",
@@ -67,7 +70,7 @@ export async function rollupIntent(
   );
   if (rel) {
     nextMilestone = rel;
-    await ctx.emit.emit({
+    buf.emit({
       entityType: "milestone",
       entityId: milestone.id,
       eventType: "milestone.released",
@@ -87,7 +90,7 @@ export async function rollupIntent(
     ) {
       const pc = await s.plans.applyStatus(planId, "ACTIVE", "COMPLETED");
       if (pc) {
-        await ctx.emit.emit({
+        buf.emit({
           entityType: "settlement_plan",
           entityId: planId,
           eventType: "plan.completed",

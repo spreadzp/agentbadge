@@ -28,6 +28,18 @@ export interface SettlementEmitInput {
   payload?: JsonValue;
 }
 
+/**
+ * M-2: events describe COMMITTED state — emit() inside an atomic
+ * section writes straight through (the emitter doesn't join the tx),
+ * so a rollback would leave phantom events in the append-only chain.
+ * `buffer()` queues inputs in memory; `flush()` emits them through
+ * the serialized queue AFTER the atomic resolves.
+ */
+export interface SettlementEmitBuffer {
+  emit(input: SettlementEmitInput): void;
+  flush(): Promise<void>;
+}
+
 const newEventId = (): string => `evt_${crypto.randomUUID()}`;
 
 export class SettlementEventEmitter {
@@ -35,6 +47,18 @@ export class SettlementEventEmitter {
   private tail: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly events: CommerceEventStore) {}
+
+  /** Queue events for post-commit emit (M-2). On flush each input
+   *  runs through the serialized append path in call order. */
+  buffer(): SettlementEmitBuffer {
+    const queue: SettlementEmitInput[] = [];
+    return {
+      emit: (input) => void queue.push(input),
+      flush: async () => {
+        for (const input of queue.splice(0)) await this.emit(input);
+      },
+    };
+  }
 
   /** Best-effort emit: a store outage must not fail the transition the
    *  event describes (the row itself is the state of record). */

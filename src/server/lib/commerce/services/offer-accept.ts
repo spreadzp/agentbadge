@@ -16,10 +16,12 @@ import type {
 } from "@agentbadge/database";
 import { logger } from "@agentbadge/passport/logger";
 import { assertWallet, newId } from "../guards";
+import { checkMilestoneInputs } from "../../settlement/invariants.js";
 import {
   CommerceError,
   conflict,
   forbidden,
+  guardRejected,
 } from "../types";
 import { mustGet, transitionRow, type CommerceCtx } from "./ctx";
 
@@ -88,6 +90,27 @@ export async function acceptOffer(
       { actorWallet: actor },
     );
 
+    // M-5: provider-authored milestone terms ride the offer payload —
+    // validate them before any write (a bad vector would brick every
+    // plan create + milestone-bound review downstream), and snapshot
+    // them into the agreement so a mutable offer row can't move the
+    // canonical payout contract after accept.
+    const offered =
+      offer.payload && typeof offer.payload === "object"
+        ? (offer.payload as Record<string, unknown>)["milestones"]
+        : undefined;
+    if (offered !== undefined) {
+      const bad = checkMilestoneInputs(
+        Array.isArray(offered) ? offered : [],
+        offer.price,
+      );
+      if (!Array.isArray(offered) || bad) {
+        throw guardRejected(
+          `offer payload.milestones invalid: ${!Array.isArray(offered) ? "must be an array" : (bad && !bad.ok ? bad.error.message : "unknown")}`,
+          { offerId },
+        );
+      }
+    }
     // one agreement per offer; ≤maxProviders per task (D-227)
     const agreement = await tx.agreements.create({
       id: newId("ag"),
@@ -99,7 +122,10 @@ export async function acceptOffer(
       currency: offer.currency,
       acceptanceCriteria: task.requirements ?? null,
       status: "ACTIVE",
-      payload: {},
+      payload:
+        Array.isArray(offered) && offered.length > 0
+          ? { milestones: offered }
+          : {},
     });
     if (!agreement) {
       throw conflict("agreement already exists for this task/offer");

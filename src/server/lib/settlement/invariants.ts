@@ -264,6 +264,16 @@ export function checkMilestoneInputs(
     if (m.releasePolicy !== undefined) {
       const rp = checkReleasePolicy(m.releasePolicy);
       if (rp) return rp;
+      // R3-H3: only BUYER_ACCEPT is executable in v1 — an
+      // EVALUATOR_VERDICT milestone can never be approved, which
+      // permanently bricks the agreement. Reject until the evaluator
+      // seam exists.
+      if (m.releasePolicy !== "BUYER_ACCEPT") {
+        return fail(
+          "BAD_INPUT",
+          `releasePolicy ${m.releasePolicy} is not executable in v1 — only BUYER_ACCEPT`,
+        );
+      }
     }
     if (m.legs !== undefined) {
       const lt = checkLegTemplate(m.legs, m.amountUsd, `${label}.legs`);

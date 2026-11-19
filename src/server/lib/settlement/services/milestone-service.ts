@@ -13,13 +13,12 @@ import type { MilestoneRow } from "@agentbadge/database";
 import { MAX_ID_FIELD, checkField } from "../invariants.js";
 import { isLegalTransition } from "../state-machines.js";
 import {
-  type PayoutLegInput,
   type SettlementResult,
   fail,
   ok,
 } from "../types.js";
 import type { SettlementCtx } from "./ctx.js";
-import { newIntentId, newLegId } from "./ctx.js";
+import { doApprove } from "./milestone-approve.js";
 
 /** Guarded single-row transition + event — shared by lifecycle ops. */
 export async function transitionMilestone(
@@ -157,107 +156,5 @@ export async function approveMilestone(
       "milestone has an OPEN dispute — approvals frozen",
     );
   }
-
-  return ctx.db.settlement.atomic(async (s) => {
-    if (!isLegalTransition("milestone", milestone.status, "APPROVED")) {
-      return fail(
-        "INVALID_STATE",
-        `milestone ${milestone.status} cannot be approved`,
-      );
-    }
-    // H2: intent-conflict must fail BEFORE the milestone write — an
-    // APPROVED milestone without its intent is dead state.
-    if (await s.payoutIntents.getByMilestone(milestone.id)) {
-      return fail(
-        "CONFLICT",
-        `payout intent already exists for milestone ${milestone.id}`,
-      );
-    }
-    const updated = await s.milestones.applyStatus(
-      milestone.id,
-      milestone.status,
-      "APPROVED",
-    );
-    if (!updated) {
-      return fail(
-        "INVALID_STATE",
-        "milestone moved concurrently — approve aborted",
-      );
-    }
-    // Leg template from plan-create payload, else default provider leg.
-    const template =
-      (
-        milestone.payload as { payoutTemplate?: PayoutLegInput[] } | null
-      )?.payoutTemplate ?? [
-        {
-          payee: plan.providerWallet,
-          amountUsdc: milestone.amountUsd,
-          role: "PROVIDER" as const,
-        },
-      ];
-    const intent = await s.payoutIntents.create({
-      id: newIntentId(),
-      milestoneRef: milestone.id,
-      executor: "MANUAL",
-      status: "OPEN",
-      createdAtMs: Date.now(),
-      payload: { planId: plan.id, milestoneId: milestone.milestoneId },
-    });
-    if (!intent) {
-      // R2-H3: milestone is already APPROVED — `return fail` here would
-      // commit approved-without-intent dead state that no transition
-      // can recover. Throw to roll the atomic back.
-      throw new Error(
-        `payout intent insert conflicted for milestone ${milestone.id} — aborting`,
-      );
-    }
-    const legIds: string[] = [];
-    for (const leg of template) {
-      const row = await s.payoutLegs.create({
-        id: newLegId(),
-        intentId: intent.id,
-        payee: leg.payee,
-        amountUsdc: leg.amountUsdc,
-        role: leg.role,
-        status: "OPEN",
-        network: "arc",
-        payload: {},
-      });
-      if (!row) {
-        throw new Error("payout leg insert conflict — aborting approve");
-      }
-      legIds.push(row.id);
-      await ctx.emit.emit({
-        entityType: "payout_leg",
-        entityId: row.id,
-        eventType: "leg.opened",
-        actorWallet,
-        payload: {
-          intentId: intent.id,
-          payee: row.payee,
-          amountUsdc: row.amountUsdc,
-          role: row.role,
-        },
-      });
-    }
-    await ctx.emit.emit({
-      entityType: "payout_intent",
-      entityId: intent.id,
-      eventType: "intent.opened",
-      actorWallet,
-      payload: {
-        milestoneRef: milestone.id,
-        executor: intent.executor ?? "MANUAL",
-        legs: legIds,
-      },
-    });
-    await ctx.emit.emit({
-      entityType: "milestone",
-      entityId: milestone.id,
-      eventType: "milestone.approved",
-      actorWallet,
-      payload: { intentId: intent.id },
-    });
-    return ok({ milestone: updated, intentId: intent.id, legs: legIds });
-  });
+  return doApprove(ctx, plan, milestone, actorWallet);
 }

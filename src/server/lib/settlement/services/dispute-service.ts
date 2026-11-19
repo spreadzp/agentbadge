@@ -8,11 +8,7 @@
  * Resolution lives in dispute-resolve.ts.
  */
 
-import type {
-  DisputeRow,
-  MilestonePlanRow,
-  MilestoneRow,
-} from "@agentbadge/database";
+import type { DisputeRow } from "@agentbadge/database";
 import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
 
 import {
@@ -29,41 +25,19 @@ import {
   fail,
   ok,
 } from "../types.js";
+import { SettlementConflictError } from "../types.js";
 import type { SettlementCtx } from "./ctx.js";
 import { newDisputeId } from "./ctx.js";
 
-export interface FreezeMap {
-  /** milestoneRowId → status before the freeze. */
-  milestones: Record<string, string>;
-  intentIds: string[];
-  legIds: string[];
-}
-
-export interface SubjectScope {
-  plan: MilestonePlanRow;
-  milestones: MilestoneRow[];
-}
-
-/** AGREEMENT → plan + all its milestones; MILESTONE → row + its plan. */
-export async function resolveScope(
-  ctx: SettlementCtx,
-  subjectType: string,
-  subjectRef: string,
-): Promise<SubjectScope | null> {
-  if (subjectType === "AGREEMENT") {
-    const plan = await ctx.db.settlement.plans.getByAgreement(subjectRef);
-    if (!plan) return null;
-    return {
-      plan,
-      milestones: await ctx.db.settlement.milestones.listByPlan(plan.id),
-    };
-  }
-  const milestone = await ctx.db.settlement.milestones.getById(subjectRef);
-  if (!milestone) return null;
-  const plan = await ctx.db.settlement.plans.getById(milestone.planId);
-  if (!plan) return null;
-  return { plan, milestones: [milestone] };
-}
+import {
+  type FreezeMap,
+  resolveScope,
+} from "./dispute-scope.js";
+export {
+  type FreezeMap,
+  type SubjectScope,
+  resolveScope,
+} from "./dispute-scope.js";
 
 export async function raiseDispute(
   ctx: SettlementCtx,
@@ -123,22 +97,26 @@ export async function raiseDispute(
     });
   }
 
-  // M2: a dispute on already-terminal work freezes nothing and only
-  // flips the plan to DISPUTED — reject it outright.
+  // M2 (+R3 nit): a dispute on already-terminal work freezes nothing
+  // and only flips the plan to DISPUTED — reject it outright. Applies
+  // to AGREEMENT subjects too: an agreement dispute on a terminal plan
+  // would land an OPEN dispute with an empty freeze map.
   if (
-    input.subjectType === "MILESTONE" &&
     scope.milestones.every((m) =>
       ["RELEASED", "CANCELLED"].includes(m.status),
     )
   ) {
     return fail(
       "INVALID_STATE",
-      "milestone is terminal — nothing left to dispute",
+      "plan work is terminal — nothing left to dispute",
     );
   }
 
   const createdAtMs = Date.now();
-  return ctx.db.settlement.atomic(async (s) => {
+  const buf = ctx.emit.buffer();
+  let res;
+  try {
+    res = await ctx.db.settlement.atomic(async (s) => {
     // H3: dedupe inside the critical section — two concurrent disputes
     // on the same subject must not both pass the pre-check.
     const racing = await s.disputes.listBySubject(
@@ -178,6 +156,22 @@ export async function raiseDispute(
         );
       }
     }
+    // M-4: the plan row is the serialization point — claiming
+    // ACTIVE→DISPUTED before the freeze writes makes two concurrent
+    // plan-scope disputes impossible (the loser's CAS is null under
+    // READ COMMITTED, no SELECT FOR UPDATE needed), and rejects plans
+    // already DISPUTED/terminal outright.
+    const claimed = await s.plans.applyStatus(
+      scope.plan.id,
+      "ACTIVE",
+      "DISPUTED",
+    );
+    if (!claimed) {
+      return fail(
+        "INVALID_STATE",
+        `plan is ${scope.plan.status} — dispute scope already claimed or closed`,
+      );
+    }
     const freeze: FreezeMap = { milestones: {}, intentIds: [], legIds: [] };
     for (const scoped of scope.milestones) {
       // H3: re-read inside the section — no stale statuses.
@@ -202,7 +196,7 @@ export async function raiseDispute(
               if (fl) freeze.legIds.push(leg.id);
             }
           }
-          await ctx.emit.emit({
+          buf.emit({
             entityType: "payout_intent",
             entityId: intent.id,
             eventType: "intent.frozen",
@@ -212,7 +206,7 @@ export async function raiseDispute(
         }
       }
       if (freeze.milestones[m.id] !== undefined) {
-        await ctx.emit.emit({
+        buf.emit({
           entityType: "milestone",
           entityId: m.id,
           eventType: "milestone.disputed",
@@ -221,14 +215,9 @@ export async function raiseDispute(
         });
       }
     }
-    // Plan freeze — guarded; a second dispute on the same plan is a no-op.
-    if (scope.plan.status === "ACTIVE") {
-      await s.plans.applyStatus(scope.plan.id, "ACTIVE", "DISPUTED");
-    }
     const dispute = await s.disputes.create({
       id: newDisputeId(),
       subjectType: input.subjectType,
-
       subjectRef: input.subjectRef,
       raisedBy: input.raisedBy,
       reason: input.reason,
@@ -244,11 +233,12 @@ export async function raiseDispute(
       // R2-H3: a conflict AFTER the freeze writes must roll the whole
       // atomic back — `return fail` commits frozen work with no
       // dispute row to resolve it (permanent lock).
-      throw new Error(
+      throw new SettlementConflictError(
         `dispute insert conflicted for ${input.subjectType}:${input.subjectRef} — aborting`,
+        "INVALID_STATE",
       );
     }
-    await ctx.emit.emit({
+    buf.emit({
       entityType: "settlement_dispute",
       entityId: dispute.id,
       eventType: "dispute.raised",
@@ -265,7 +255,15 @@ export async function raiseDispute(
       frozenLegs: freeze.legIds.length,
       duplicate: false,
     });
-  });
+    });
+  } catch (err) {
+    if (err instanceof SettlementConflictError) {
+      return fail(err.code, err.message);
+    }
+    throw err;
+  }
+  if (res.ok) await buf.flush();
+  return res;
 }
 
 // ---------- queries ----------

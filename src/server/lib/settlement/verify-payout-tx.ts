@@ -42,6 +42,10 @@ export interface PayoutTxExpectation {
   network?: string;
   /** Expected chain id when the adapter pins one. */
   chainId?: string;
+  /** Pinned token contract — when set, an ERC-20 from any other
+   *  contract cannot satisfy the leg (M-6: a fake "USDC" symbol
+   *  is not proof of payment). Absent → only the native rail counts. */
+  token?: string;
   /** Treasury/ops wallet the payout must originate from (H5). */
   expectedPayer?: string;
   /** tx must be included at/after this time (ms epoch). */
@@ -64,6 +68,8 @@ export interface PayoutTxCheck {
   amount?: string;
   /** Payee the verifier observed. */
   payee?: string;
+  /** Token contract the verifier observed moving, or "native". */
+  token?: string;
   confirmations?: number;
 }
 
@@ -205,12 +211,38 @@ export async function verifyLegTx(
       `verifier reports payer ${check.payer}, expected treasury ${expected.expectedPayer}`,
     );
   }
+  // M-6: when a token contract is pinned, an ERC-20 Transfer from any
+  // other contract cannot satisfy the leg — a fake "USDC" symbol is
+  // not proof of payment.
+  if (
+    expected.token !== undefined &&
+    check.token !== undefined &&
+    check.token.toLowerCase() !== expected.token.toLowerCase()
+  ) {
+    return fail(
+      "TX_UNVERIFIED",
+      `verifier reports token ${check.token}, expected ${expected.token}`,
+    );
+  }
   // R2-H2: chain id and network label are DISTINCT fields — comparing
   // check.network to both can never hold, and would DoS every mark-paid.
+  // M-6: normalize before comparing — an adapter may report a number
+  // or a hex ("0x...") chain id; strict equality on raw strings turns
+  // that into a fail-closed DoS.
+  const normChainId = (v: unknown): string | null => {
+    if (typeof v === "number" && Number.isSafeInteger(v) && v >= 0) {
+      return String(v);
+    }
+    if (typeof v !== "string") return null;
+    const t = v.trim().toLowerCase();
+    if (/^0x[0-9a-f]+$/.test(t)) return String(BigInt(t));
+    if (/^[0-9]+$/.test(t)) return String(BigInt(t));
+    return null;
+  };
   if (
     expected.chainId !== undefined &&
     check.chainId !== undefined &&
-    check.chainId !== expected.chainId
+    normChainId(check.chainId) !== normChainId(expected.chainId)
   ) {
     return fail(
       "TX_UNVERIFIED",
@@ -220,7 +252,8 @@ export async function verifyLegTx(
   if (
     check.network !== undefined &&
     expected.network !== undefined &&
-    check.network !== expected.network
+    check.network.trim().toLowerCase() !==
+      expected.network.trim().toLowerCase()
   ) {
     return fail(
       "TX_UNVERIFIED",

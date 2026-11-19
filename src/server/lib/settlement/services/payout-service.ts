@@ -39,6 +39,7 @@ import { rollupIntent } from "./rollup.js";
 import {
   type MarkPaidInput,
   type PayoutVerifyDeps,
+  SettlementConflictError,
   type SettlementResult,
   fail,
   ok,
@@ -167,6 +168,7 @@ async function markLegPaidInner(
       currency: plan.currency ?? "USDC",
       network: leg.network ?? "arc",
       chainId: deps.chainId,
+      token: deps.usdcToken,
       expectedPayer: deps.expectedPayer,
       notBeforeMs: intent.createdAtMs,
     });
@@ -182,7 +184,10 @@ async function markLegPaidInner(
   // ---- effect: set-once txHash + rollup, one atomic section ----
   const operator = normalizeOperator(input.operator);
   const completedAtMs = Date.now();
-  const effect = await ctx.db.settlement.atomic(async (s) => {
+  const buf = ctx.emit.buffer();
+  let effect;
+  try {
+    effect = await ctx.db.settlement.atomic(async (s) => {
     // H2/hoist: re-read the intent inside the critical section BEFORE
     // writing the leg — a concurrent freeze/cancel must fail here, not
     // after the leg's txHash is bound.
@@ -208,7 +213,7 @@ async function markLegPaidInner(
     }
     // M-C: emit before the rollup so the event stream reads
     // leg → intent → milestone → plan, not backwards.
-    await ctx.emit.emit({
+    buf.emit({
       entityType: "payout_leg",
       entityId: leg.id,
       eventType: "leg.completed",
@@ -218,7 +223,7 @@ async function markLegPaidInner(
     // H1: shared rollup — non-CANCELLED legs all COMPLETED → intent
     // COMPLETED → milestone RELEASED → plan COMPLETED (rollup.ts).
     const rolled = await rollupIntent(
-      ctx,
+      buf,
       s,
       live,
       milestone,
@@ -230,13 +235,20 @@ async function markLegPaidInner(
       // `return fail` would commit a paid leg under a moved (frozen)
       // intent and poison every retry with TX_REUSED. Throw to roll
       // the whole atomic back instead.
-      throw new Error(
+      throw new SettlementConflictError(
         `intent ${live.id} moved concurrently — rollup aborted`,
       );
     }
     const { intent: nextIntent, milestone: nextMilestone } = rolled;
     return ok({ leg: done, intent: nextIntent, milestone: nextMilestone });
-  });
+    });
+  } catch (err) {
+    if (err instanceof SettlementConflictError) {
+      return fail(err.code, err.message);
+    }
+    throw err;
+  }
+  if (effect.ok) await buf.flush();
   if (!effect.ok) return effect;
 
   // ---- post-effect audit — surfaced, never swallowed ----

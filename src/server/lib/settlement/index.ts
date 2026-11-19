@@ -36,6 +36,10 @@ export {
   submitForReview,
   transitionMilestone,
 } from "./services/milestone-service.js";
+export {
+  forceApproveMilestone,
+  type ApproveEffect,
+} from "./services/milestone-approve.js";
 export { markLegPaid } from "./services/payout-service.js";
 export {
   getIntentView,

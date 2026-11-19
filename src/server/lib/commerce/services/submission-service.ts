@@ -127,7 +127,32 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
           // still be payable (PENDING). Foreign/stale refs are rejected
           // pre-write; an unwired bridge makes the field meaningless.
           let milestoneRowId: string | null = null;
-          if (input.milestoneRef !== undefined && input.milestoneRef !== null) {
+          let milestoneRef = input.milestoneRef;
+          if (milestoneRef === undefined || milestoneRef === null) {
+            // R3-H2: an unbound submission on a plan-having agreement
+            // completes with nobody paid. Auto-bind the sole open
+            // milestone; when the plan has several, the provider must
+            // name one.
+            if (ctx.settlement) {
+              const open = await ctx.settlement.openMilestones(
+                agreement.id,
+              );
+              // Only unsubmitted (PENDING) milestones are bindable —
+              // a READY one already carries a submission.
+              const bindable = open.filter((o) => o.status === "PENDING");
+              if (bindable.length === 1) {
+                milestoneRef = bindable[0]!.ref;
+                milestoneRowId = bindable[0]!.rowId;
+              } else if (bindable.length > 1) {
+                throw guardRejected(
+                  `milestoneRef required — plan has ${bindable.length} pending milestones`,
+                  { agreementId },
+                );
+              }
+              // 0 open: no plan (heal failed) or nothing left — the
+              // submission is settlement-unbound by state, not choice.
+            }
+          } else {
             if (!ctx.settlement) {
               throw guardRejected(
                 "milestoneRef requires settlement wiring",
@@ -136,7 +161,7 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
             }
             const found = await ctx.settlement.findMilestone(
               agreement.id,
-              input.milestoneRef,
+              milestoneRef,
             );
             if (!found) {
               throw guardRejected(
@@ -147,7 +172,7 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
             if (found.status !== "PENDING") {
               throw guardRejected(
                 `milestone is ${found.status} — cannot submit against it`,
-                { agreementId, milestoneRef: input.milestoneRef },
+                { agreementId, milestoneRef },
               );
             }
             milestoneRowId = found.id;
@@ -158,7 +183,7 @@ export function createSubmissionService(ctx: CommerceCtx): SubmissionService {
             providerWallet: provider,
             summary,
             resultUrl: input.resultUrl ?? null,
-            milestoneRef: input.milestoneRef ?? null,
+            milestoneRef: milestoneRef ?? null,
             status: "SUBMITTED",
             submittedAtMs: Date.now(),
             payload: {

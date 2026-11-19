@@ -26,6 +26,8 @@ export interface SettlementRouteDeps {
   requireVerification?: boolean;
   /** Pinned treasury sender — cross-checked by the verifier (H5). */
   expectedPayer?: string;
+  /** Pinned ERC-20 USDC contract — absent → native rail only (M-6). */
+  usdcToken?: string;
   /** EIP-712 receipt signer — absent → artifact omitted (D-227-8 opt-in). */
   signer?: SettlementReceiptSigner;
   /** Arc chain id bound into the receipt + anchor. */

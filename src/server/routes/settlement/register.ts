@@ -12,8 +12,12 @@ import type { Hono } from "hono";
 
 import { getConfig } from "../../../config/env";
 import { getDatabase } from "../../lib/database";
+import { logger } from "@agentbadge/passport/logger";
 import { invariants } from "../../lib/settlement/index.js";
-import { milestoneVector } from "../../lib/settlement/services/plan-terms.js";
+import {
+  byCodePoint,
+  milestoneVector,
+} from "../../lib/settlement/services/plan-terms.js";
 import {
   type MilestoneInput,
   fail,
@@ -22,6 +26,10 @@ import { mkEoaSend } from "../../lib/eaas/anchor";
 import { keyWallet, opsKey } from "../../lib/eaas/keys";
 import { arcChainFor } from "../../lib/marketplace/chain";
 import { createSettlementReceiptSigner } from "../../lib/settlement/receipt";
+import {
+  createViemPayoutVerifier,
+  treasuryPayerFromEnv,
+} from "../../lib/settlement/verify-payout-tx-viem";
 import { publicClient, resolveVenueNetwork } from "../../lib/venue/chain";
 
 import type { SettlementRouteDeps } from "./helpers";
@@ -44,11 +52,12 @@ export function registerSettlementRoutes(app: Hono): void {
           `commerce agreement not found: ${req.agreementRef}`,
         );
       }
-      // R2-H1: dead agreements can't grow payout contracts.
-      if (a.status === "CANCELLED") {
+      // R2-H1 + nit: allowlist — only a LIVE agreement can grow a
+      // payout contract.
+      if (a.status !== "ACTIVE") {
         return fail(
           "FORBIDDEN",
-          `commerce agreement ${req.agreementRef} is CANCELLED`,
+          `commerce agreement ${req.agreementRef} is ${a.status}, not ACTIVE`,
         );
       }
       try {
@@ -72,29 +81,40 @@ export function registerSettlementRoutes(app: Hono): void {
           "commerce agreement amount is unreadable",
         );
       }
-      // R2-H1: the milestone/leg/policy vector is part of the contract
-      // — the offer payload's declared milestones are canonical; absent
-      // → the bridge's own "full"-amount default.
-      const offer = await db.commerce.offers.getById(a.offerId);
+      // R2-H1/M-5: the milestone/leg/policy vector is part of the
+      // contract — canonical terms were snapshotted into the agreement
+      // at accept (the offer row may have moved since); absent/empty →
+      // the bridge's own "full"-amount default.
       const offered =
-        offer?.payload && typeof offer.payload === "object"
-          ? (offer.payload as Record<string, unknown>)["milestones"]
+        a.payload && typeof a.payload === "object"
+          ? (a.payload as Record<string, unknown>)["milestones"]
           : undefined;
-      const canonical: MilestoneInput[] = Array.isArray(offered)
-        ? (offered as MilestoneInput[]).slice()
-        : [
-            {
-              milestoneId: "full",
-              title: "Full delivery",
-              amountUsd: a.agreedAmount,
-            },
-          ];
+      const canonical: MilestoneInput[] =
+        Array.isArray(offered) && offered.length > 0
+          ? (offered as MilestoneInput[]).slice()
+          : [
+              {
+                milestoneId: "full",
+                title: "Full delivery",
+                amountUsd: a.agreedAmount,
+              },
+            ];
       const sort = (ms: MilestoneInput[]) =>
-        ms.slice().sort((x, y) => x.milestoneId.localeCompare(y.milestoneId));
-      if (
-        milestoneVector(sort(req.milestones)) !==
-        milestoneVector(sort(canonical))
-      ) {
+        ms.slice().sort((x, y) => byCodePoint(x.milestoneId, y.milestoneId));
+      let same: boolean;
+      try {
+        same =
+          milestoneVector(sort(req.milestones)) ===
+          milestoneVector(sort(canonical));
+      } catch {
+        // M-7: provider-authored JSON can't throw a 500 — it's simply
+        // not the canonical contract.
+        return fail(
+          "FORBIDDEN",
+          "plan milestone terms do not match the offer",
+        );
+      }
+      if (!same) {
         return fail(
           "FORBIDDEN",
           "plan milestone terms do not match the offer",
@@ -111,9 +131,11 @@ export function registerSettlementRoutes(app: Hono): void {
     getConfig().bstock?.arcNetwork ?? net.chain.caip2,
   );
   const chainId = chain?.id ?? evm?.chainId;
+  // R3-H1: the chain pin must not depend on the receipt signer key —
+  // chainId is known regardless.
+  if (chainId) deps.chainId = chainId;
   if (receiptKey && chainId) {
     deps.signer = createSettlementReceiptSigner(receiptKey, chainId);
-    deps.chainId = chainId;
     if (process.env.ARC_SETTLEMENT_MEMO_ANCHOR === "1") {
       const ops = keyWallet(opsKey(), chain, net.chain.rpcUrl);
       if (ops.wallet && ops.account) {
@@ -128,11 +150,51 @@ export function registerSettlementRoutes(app: Hono): void {
       }
     }
   }
-  // R2-H2: admin routes must receive the same seam deps — an unwired
-  // mount silently downgrades mark-paid to blind attestation.
-  deps.expectedPayer = process.env.ARC_SETTLEMENT_TREASURY_WALLET;
+  // R2-H2/R3-H1: admin routes must receive the same seam deps — an
+  // unwired mount silently downgrades mark-paid to blind attestation.
+  // The on-chain verifier is real: viem tx+receipt read, native USDC
+  // transfer (Arc's gas token IS USDC) plus optional pinned ERC-20.
+  const treasury = treasuryPayerFromEnv(
+    process.env.ARC_SETTLEMENT_TREASURY_WALLET,
+  );
+  if (process.env.ARC_SETTLEMENT_TREASURY_WALLET && !treasury) {
+    logger.error(
+      "settlement: ARC_SETTLEMENT_TREASURY_WALLET is not a valid EVM address — payer pin disabled",
+    );
+  }
+  deps.expectedPayer = treasury;
+  const usdcPin = process.env.ARC_SETTLEMENT_USDC_TOKEN;
+  if (usdcPin && !/^0x[0-9a-fA-F]{40}$/.test(usdcPin)) {
+    logger.error(
+      "settlement: ARC_SETTLEMENT_USDC_TOKEN is not an EVM address — token pin disabled",
+    );
+  }
+  deps.usdcToken = usdcPin && /^0x[0-9a-fA-F]{40}$/.test(usdcPin) ? usdcPin : undefined;
   deps.requireVerification =
     process.env.ARC_SETTLEMENT_REQUIRE_VERIFY === "1";
+  if (chainId) {
+    deps.verifyTx = createViemPayoutVerifier(publicClient(net), {
+      networkLabel: "arc",
+      chainId: String(chainId),
+      usdcToken: deps.usdcToken as `0x${string}` | undefined,
+    });
+  }
+  // R3-H1/M-6: fail-closed means fail CLOSED — REQUIRE_VERIFY without a
+  // working adapter or treasury pin would attest any same-amount
+  // transfer to the payee. Misconfiguration is a startup failure, not
+  // a warn.
+  if (deps.requireVerification) {
+    if (!deps.verifyTx) {
+      throw new Error(
+        "settlement: ARC_SETTLEMENT_REQUIRE_VERIFY=1 but no VerifyPayoutTx adapter could be built (chainId/RPC missing)",
+      );
+    }
+    if (!deps.expectedPayer) {
+      throw new Error(
+        "settlement: ARC_SETTLEMENT_REQUIRE_VERIFY=1 requires ARC_SETTLEMENT_TREASURY_WALLET — without a payer pin any transfer to the payee satisfies a leg",
+      );
+    }
+  }
   app.route("/", createSettlementRoutes(deps)); // SLICE-227-3: /api/settlement/*
   app.route("/", createSettlementReceiptRoutes(deps)); // SLICE-227-4: receipts + anchor
   app.route("/", createSettlementAdminRoutes(deps)); // SLICE-227-3: /admin/settlement/*

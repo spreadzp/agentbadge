@@ -220,4 +220,22 @@ export interface PayoutVerifyDeps {
   chainId?: string;
   /** Treasury/ops wallet the payout must originate from (H5). */
   expectedPayer?: string;
+  /** Pinned ERC-20 USDC contract — absent → native rail only (M-6). */
+  usdcToken?: string;
+}
+
+/**
+ * M-3: thrown inside an atomic section for post-write concurrency
+ * conflicts. Services catch it at the section boundary and convert to
+ * a typed `fail()` — a plain `Error` would escape as HTTP 500 for a
+ * condition the domain classifies as a 409-level conflict.
+ */
+export class SettlementConflictError extends Error {
+  constructor(
+    message: string,
+    readonly code: "CONFLICT" | "INVALID_STATE" = "CONFLICT",
+  ) {
+    super(message);
+    this.name = "SettlementConflictError";
+  }
 }

@@ -8,10 +8,12 @@ import type { Database } from "@agentbadge/database";
 import {
   approveMilestone,
   createPlan,
+  forceApproveMilestone,
   getAgreementView,
   getIntentView,
   isLegalTransition,
   isTerminal,
+  raiseDispute,
   submitForReview,
 } from "../../src/server/lib/settlement/index.js";
 import type { SettlementCtx } from "../../src/server/lib/settlement/index.js";
@@ -23,6 +25,7 @@ import {
   FEE,
   freshCtx,
   openPlan,
+  OPS,
   PROVIDER,
   STRANGER,
 } from "./helpers.js";
@@ -275,5 +278,102 @@ describe("agreement view", () => {
     expect(view?.milestones).toHaveLength(2);
     expect(view?.intents).toHaveLength(0);
     expect(view?.disputes).toHaveLength(0);
+  });
+});
+
+describe("R3: EVALUATOR_VERDICT + force-approve + freeze guards", () => {
+  it("rejects EVALUATOR_VERDICT at plan create (v1 cannot approve it)", async () => {
+    const r = await createPlan(
+      ctx,
+      {
+        agreementRef: `agr-${crypto.randomUUID()}`,
+        buyerWallet: BUYER,
+        providerWallet: PROVIDER,
+        totalUsd: "10.00",
+        milestones: [
+          {
+            milestoneId: "m1",
+            title: "eval work",
+            amountUsd: "10.00",
+            releasePolicy: "EVALUATOR_VERDICT",
+          },
+        ],
+      },
+      BUYER,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("BAD_INPUT");
+  });
+
+  it("forceApproveMilestone: READY → APPROVED + intent; idempotent on APPROVED", async () => {
+    const { plan, milestones } = await openPlan(ctx);
+    const m = milestones[0]!;
+    await submitForReview(ctx, { milestoneRowId: m.id }, PROVIDER);
+    const ap = await forceApproveMilestone(ctx, m.id, OPS);
+    expect(ap.ok).toBe(true);
+    if (!ap.ok) return;
+    expect(ap.value.milestone.status).toBe("APPROVED");
+    const intent = await db.settlement.payoutIntents.getByMilestone(m.id);
+    expect(intent?.id).toBe(ap.value.intentId);
+    // Idempotent — a second call returns the same intent.
+    const again = await forceApproveMilestone(ctx, m.id, OPS);
+    expect(again.ok).toBe(true);
+    if (again.ok) expect(again.value.intentId).toBe(ap.value.intentId);
+    expect(plan.status).toBe("ACTIVE");
+  });
+
+  it("forceApproveMilestone rejects PENDING milestones and OPEN disputes", async () => {
+    const { milestones } = await openPlan(ctx);
+    const m = milestones[0]!;
+    const pending = await forceApproveMilestone(ctx, m.id, OPS);
+    expect(pending.ok).toBe(false);
+    if (!pending.ok) expect(pending.error.code).toBe("INVALID_STATE");
+
+    await submitForReview(ctx, { milestoneRowId: m.id }, PROVIDER);
+    await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: m.id,
+      raisedBy: BUYER,
+      reason: "gate check",
+    });
+    const blocked = await forceApproveMilestone(ctx, m.id, OPS);
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) expect(blocked.error.code).toBe("INVALID_STATE");
+  });
+
+  it("rejects an AGREEMENT dispute on a terminal plan (empty freeze)", async () => {
+    const { plan, milestones } = await openPlan(ctx);
+    for (const m of milestones) {
+      await db.settlement.milestones.applyStatus(m.id, "PENDING", "CANCELLED");
+    }
+    const r = await raiseDispute(ctx, {
+      subjectType: "AGREEMENT",
+      subjectRef: plan.agreementRef,
+      raisedBy: BUYER,
+      reason: "too late",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("INVALID_STATE");
+  });
+
+  it("rejects a second dispute when the plan is already DISPUTED", async () => {
+    const { plan, milestones } = await openPlan(ctx);
+    const d1 = await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: milestones[0]!.id,
+      raisedBy: BUYER,
+      reason: "first",
+    });
+    expect(d1.ok).toBe(true);
+    // Plan is now DISPUTED — the CAS is the serialization point:
+    // an AGREEMENT-scope dispute cannot re-claim it.
+    const d2 = await raiseDispute(ctx, {
+      subjectType: "AGREEMENT",
+      subjectRef: plan.agreementRef,
+      raisedBy: PROVIDER,
+      reason: "second",
+    });
+    expect(d2.ok).toBe(false);
+    if (!d2.ok) expect(d2.error.code).toBe("INVALID_STATE");
   });
 });

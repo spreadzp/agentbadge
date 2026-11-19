@@ -18,7 +18,9 @@ const TRANSITIONS: Record<CommerceEntityType, ReadonlyMap<string, readonly strin
   task: new Map([
     ["DRAFT", ["OPEN", "CANCELLED"]],
     ["OPEN", ["IN_PROGRESS", "CANCELLED"]],
-    ["IN_PROGRESS", ["SUBMITTED", "CANCELLED"]],
+    // COMPLETED edge: the post-commit completion pass (R3-M-1) — the
+    // last agreement can finish while the task is back IN_PROGRESS.
+    ["IN_PROGRESS", ["SUBMITTED", "COMPLETED", "CANCELLED"]],
     ["SUBMITTED", ["UNDER_REVIEW", "CANCELLED"]],
     // rejected/revision → resubmission round keeps agreement ACTIVE
     ["UNDER_REVIEW", ["COMPLETED", "IN_PROGRESS", "CANCELLED"]],

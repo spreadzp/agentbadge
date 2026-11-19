@@ -123,12 +123,33 @@ export interface AnchorDrainDeps {
   retries?: number;
 }
 
+// R3 nit: the anchor store has no claim CAS — a module-scoped guard
+// serializes drains in-process (the realistic double-send window:
+// route-triggered fire-and-forget vs a concurrent request). Cross-
+// process drains would still race — the memo write is idempotent
+// (same receiptRef → same memo args) so the worst case is a duplicate
+// memo tx, never a corrupted anchor row.
+let drainInFlight = false;
+
 /**
  * One drain pass over PENDING anchors. Each send resolves to a real
  * txHash → ANCHORED; a throw → markAttempt (FAILED at retry cap).
  * Returns the rows touched, newest first — callers may ignore it.
  */
 export async function drainSettlementAnchors(
+  ctx: SettlementCtx,
+  deps: AnchorDrainDeps,
+): Promise<{ anchored: number; attempted: number }> {
+  if (drainInFlight) return { anchored: 0, attempted: 0 };
+  drainInFlight = true;
+  try {
+    return await drainPass(ctx, deps);
+  } finally {
+    drainInFlight = false;
+  }
+}
+
+async function drainPass(
   ctx: SettlementCtx,
   deps: AnchorDrainDeps,
 ): Promise<{ anchored: number; attempted: number }> {

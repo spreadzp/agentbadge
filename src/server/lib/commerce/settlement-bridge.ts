@@ -46,14 +46,23 @@ export interface CommerceSettlementBridge {
     agreementId: string,
     milestoneRef: string,
   ): Promise<{ id: string; status: string } | null>;
+  /** Open (PENDING/READY) milestones on the agreement's plan — heals a
+   *  missing plan first (R3-H2: used to bind unbound submissions). */
+  openMilestones(
+    agreementId: string,
+  ): Promise<{ rowId: string; ref: string; status: string }[]>;
   /** Provider submits the milestone for review (post-commit). */
   submitMilestone(
     milestoneRowId: string,
     actorWallet: string,
     submissionRef?: string,
   ): Promise<void>;
-  /** Buyer approve → APPROVED + payout intent (post-commit). */
-  approveMilestone(milestoneRowId: string, actorWallet: string): Promise<void>;
+  /** Buyer approve → APPROVED + payout intent. Returns the raw result —
+   *  errors still log (settled) but callers can react (R3-H3). */
+  approveMilestone(
+    milestoneRowId: string,
+    actorWallet: string,
+  ): Promise<{ ok: boolean; error?: { code: string; message: string } }>;
   /**
    * Milestones in the agreement's plan still needing work or payment,
    * optionally excluding one row — the review path uses it to keep a
@@ -114,45 +123,51 @@ export function createCommerceSettlementBridge(
       ),
     );
   };
+  // H7: the documented "lazy retry" — a plan missing on a live
+  // agreement means the accept-time ensurePlan failed; heal it from
+  // the offer's declared milestone vector (R2-H5: a bare "full" plan
+  // would mis-shape a multi-milestone agreement). M-D: only for
+  // ACTIVE agreements — a write on a read path needs live state.
+  const healedPlan = async (agreementId: string) => {
+    const existing = await getPlanByAgreement(sctx(), agreementId);
+    if (existing) return existing;
+    const a = await getDb().commerce.agreements.getById(agreementId);
+    if (!a || a.status !== "ACTIVE") return null;
+    // M-5: the canonical vector was snapshotted into the agreement at
+    // accept — the offer row may have moved since.
+    const snap =
+      a.payload && typeof a.payload === "object"
+        ? (a.payload as Record<string, unknown>)["milestones"]
+        : undefined;
+    await ensurePlan({
+      agreementId,
+      buyerWallet: a.buyerWallet,
+      providerWallet: a.providerWallet,
+      agreedAmount: a.agreedAmount,
+      milestones: Array.isArray(snap) ? (snap as MilestoneInput[]) : null,
+    });
+    return getPlanByAgreement(sctx(), agreementId);
+  };
   return {
     ensurePlan,
 
     async findMilestone(agreementId, milestoneRef) {
-      let plan = await getPlanByAgreement(sctx(), agreementId);
-      if (!plan) {
-        // H7: the documented "lazy retry" — a plan missing here means
-        // the accept-time ensurePlan failed; heal it from the
-        // commerce agreement's own terms and re-resolve once.
-        // R2-H5: heal with the OFFER's declared milestone vector — a
-        // bare "full" plan would permanently mis-shape a multi-milestone
-        // agreement and strand every named milestoneRef.
-        const a = await getDb().commerce.agreements.getById(agreementId);
-        // M-D: heal only live agreements — building a plan for a
-        // terminal one is a write on a read path with nothing to gain.
-        if (a && a.status === "ACTIVE") {
-          const offer = await getDb().commerce.offers.getById(a.offerId);
-          const offered =
-            offer?.payload && typeof offer.payload === "object"
-              ? (offer.payload as Record<string, unknown>)["milestones"]
-              : undefined;
-          await ensurePlan({
-            agreementId,
-            buyerWallet: a.buyerWallet,
-            providerWallet: a.providerWallet,
-            agreedAmount: a.agreedAmount,
-            milestones: Array.isArray(offered)
-              ? (offered as MilestoneInput[])
-              : null,
-          });
-          plan = await getPlanByAgreement(sctx(), agreementId);
-        }
-        if (!plan) return null;
-      }
+      const plan = await healedPlan(agreementId);
+      if (!plan) return null;
       const m = await getDb().settlement.milestones.getByPlanMilestone(
         plan.id,
         milestoneRef,
       );
       return m ? { id: m.id, status: m.status } : null;
+    },
+
+    async openMilestones(agreementId) {
+      const plan = await healedPlan(agreementId);
+      if (!plan) return [];
+      const ms = await getDb().settlement.milestones.listByPlan(plan.id);
+      return ms
+        .filter((m) => ["PENDING", "READY"].includes(m.status))
+        .map((m) => ({ rowId: m.id, ref: m.milestoneId, status: m.status }));
     },
 
     // H7: the documented "lazy retry" — every milestone path re-runs
@@ -185,10 +200,9 @@ export function createCommerceSettlementBridge(
     },
 
     async approveMilestone(milestoneRowId, actorWallet) {
-      settled(
-        "approveMilestone",
-        await approveMilestone(sctx(), milestoneRowId, actorWallet),
-      );
+      const res = await approveMilestone(sctx(), milestoneRowId, actorWallet);
+      settled("approveMilestone", res);
+      return res;
     },
   };
 }

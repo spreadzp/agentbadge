@@ -27,13 +27,14 @@ import {
 } from "../invariants.js";
 import {
   type ResolveDisputeInput,
+  SettlementConflictError,
   type SettlementResult,
   fail,
   ok,
 } from "../types.js";
 import type { SettlementCtx } from "./ctx.js";
-import { newLegId } from "./ctx.js";
-import { type FreezeMap, resolveScope } from "./dispute-service.js";
+import { type FreezeMap, resolveScope } from "./dispute-scope.js";
+import { applyFreezeResolution } from "./resolve-apply.js";
 
 export async function resolveDispute(
   ctx: SettlementCtx,
@@ -112,133 +113,83 @@ export async function resolveDispute(
 
   const operator = normalizeOperator(input.operator);
   const resolvedAtMs = Date.now();
-  const effect = await ctx.db.settlement.atomic(async (s) => {
-    // Guarded resolve first — losing the race means another operator
-    // already resolved; report the conflict, never double-apply.
-    const resolved = await s.disputes.resolve(
-      dispute.id,
-      input.resolution,
-      operator,
-      resolvedAtMs,
-      {
-        splitAmounts: (input.splitLegs ?? null) as unknown as JsonValue | null,
-        resolverRef: input.resolverRef ?? null,
-      },
-    );
-    if (!resolved) {
-      return fail(
-        "INVALID_STATE",
-        "dispute resolved concurrently — not applied",
+  const buf = ctx.emit.buffer();
+  let effect;
+  try {
+    effect = await ctx.db.settlement.atomic(async (s) => {
+      // Guarded resolve first — losing the race means another operator
+      // already resolved; report the conflict, never double-apply.
+      const resolved = await s.disputes.resolve(
+        dispute.id,
+        input.resolution,
+        operator,
+        resolvedAtMs,
+        {
+          splitAmounts: (input.splitLegs ?? null) as unknown as JsonValue | null,
+          resolverRef: input.resolverRef ?? null,
+        },
       );
-    }
-    // H3: operate ONLY on what THIS dispute froze — never on live
-    // status (a second OPEN dispute's freeze must survive resolve).
-    const frozenIntentIds = new Set(freeze?.intentIds ?? []);
-    const frozenLegIds = new Set(freeze?.legIds ?? []);
-    for (const scoped of scope.milestones) {
-      const m = (await s.milestones.getById(scoped.id)) ?? scoped;
-      const prev = freeze?.milestones[m.id];
-      const intent = (
-        await Promise.all(
-          [...frozenIntentIds].map((id) => s.payoutIntents.getById(id)),
-        )
-      ).find((i) => i?.milestoneRef === m.id);
-      if (input.resolution === "FOR_BUYER") {
-        if (m.status === "DISPUTED" && prev !== undefined) {
-          await s.milestones.applyStatus(m.id, "DISPUTED", "CANCELLED");
-        }
-        if (intent && intent.status === "FROZEN") {
-          await s.payoutIntents.applyStatus(intent.id, "FROZEN", "CANCELLED");
-          for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-            if (leg.status === "FROZEN" && frozenLegIds.has(leg.id)) {
-              await s.payoutLegs.applyStatus(leg.id, "FROZEN", "CANCELLED");
-            }
-          }
-        }
-      } else {
-        // FOR_PROVIDER | SPLIT — restore the frozen work to payable.
-        if (m.status === "DISPUTED" && prev !== undefined) {
-          const to = input.resolution === "SPLIT" ? "APPROVED" : prev;
-          await s.milestones.applyStatus(m.id, "DISPUTED", to);
-        }
-        if (intent && intent.status === "FROZEN") {
-          if (input.resolution === "SPLIT") {
-            // Re-leg: cancel the frozen legs, create the split set.
-            for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-              if (leg.status === "FROZEN" && frozenLegIds.has(leg.id)) {
-                await s.payoutLegs.applyStatus(leg.id, "FROZEN", "CANCELLED");
-              }
-            }
-            for (const leg of input.splitLegs ?? []) {
-              const row = await s.payoutLegs.create({
-                id: newLegId(),
-                intentId: intent.id,
-                payee: leg.payee,
-                amountUsdc: leg.amountUsdc,
-                role: leg.role,
-                status: "OPEN",
-                network: "arc",
-                payload: { splitOf: dispute.id },
-              });
-              if (!row) {
-                throw new Error(
-                  "split leg insert conflict — aborting resolve",
-                );
-              }
-            }
-          } else {
-            // FOR_PROVIDER — the freeze lifts: legs return to payable.
-            for (const leg of await s.payoutLegs.listByIntent(intent.id)) {
-              if (leg.status === "FROZEN" && frozenLegIds.has(leg.id)) {
-                await s.payoutLegs.applyStatus(leg.id, "FROZEN", "OPEN");
-              }
-            }
-          }
-          await s.payoutIntents.applyStatus(intent.id, "FROZEN", "OPEN");
-        }
+      if (!resolved) {
+        return fail(
+          "INVALID_STATE",
+          "dispute resolved concurrently — not applied",
+        );
       }
-      if (intent) {
-        await ctx.emit.emit({
-          entityType: "payout_intent",
-          entityId: intent.id,
-          eventType:
-            input.resolution === "FOR_BUYER"
-              ? "intent.cancelled"
-              : "intent.unfrozen",
-          actorWallet: operator,
-          payload: { disputeId: dispute.id, resolution: input.resolution },
-        });
+      // H3: operate ONLY on what THIS dispute froze — never on live
+      // status (a second OPEN dispute's freeze must survive resolve).
+      // Extracted to resolve-apply.ts under the 300-line cap.
+      await applyFreezeResolution(
+        s,
+        dispute,
+        scope,
+        freeze,
+        input,
+        buf,
+        operator,
+      );
+      // Plan restore — DISPUTED→ACTIVE only when no OPEN dispute
+      // remains on THIS plan (scoped by payload.planId — the global
+      // OPEN list is default-limited); →CANCELLED when every milestone
+      // cancelled (FOR_BUYER), →COMPLETED only when released work
+      // exists — an all-cancelled plan was never "completed".
+      const open = await s.disputes.list({ status: "OPEN", limit: 1000 });
+      const stillOpen = open.some(
+        (d) =>
+          d.id !== dispute.id &&
+          (d.payload as { planId?: string } | null)?.planId ===
+            scope.plan.id,
+      );
+      const milestones = await s.milestones.listByPlan(scope.plan.id);
+      const allCancelled = milestones.every(
+        (m) => m.status === "CANCELLED",
+      );
+      const allTerminal = milestones.every((m) =>
+        ["RELEASED", "CANCELLED"].includes(m.status),
+      );
+      if (allCancelled) {
+        await s.plans.applyStatus(scope.plan.id, "DISPUTED", "CANCELLED");
+      } else if (allTerminal) {
+        await s.plans.applyStatus(scope.plan.id, "DISPUTED", "COMPLETED");
+      } else if (!stillOpen) {
+        await s.plans.applyStatus(scope.plan.id, "DISPUTED", "ACTIVE");
       }
-    }
-    // Plan restore — DISPUTED→ACTIVE only when no OPEN dispute remains
-    // on this plan; →COMPLETED when every milestone is terminal.
-    const open = await s.disputes.list({ status: "OPEN" });
-    const subjectRefs = new Set([
-      scope.plan.agreementRef,
-      ...scope.milestones.map((m) => m.id),
-    ]);
-    const stillOpen = open.some(
-      (d) => d.id !== dispute.id && subjectRefs.has(d.subjectRef),
-    );
-    const milestones = await s.milestones.listByPlan(scope.plan.id);
-    const allTerminal = milestones.every((m) =>
-      ["RELEASED", "CANCELLED"].includes(m.status),
-    );
-    if (allTerminal) {
-      await s.plans.applyStatus(scope.plan.id, "DISPUTED", "COMPLETED");
-    } else if (!stillOpen) {
-      await s.plans.applyStatus(scope.plan.id, "DISPUTED", "ACTIVE");
-    }
-    await ctx.emit.emit({
-      entityType: "settlement_dispute",
-      entityId: dispute.id,
-      eventType: "dispute.resolved",
-      actorWallet: operator,
-      payload: { resolution: input.resolution },
+      buf.emit({
+        entityType: "settlement_dispute",
+        entityId: dispute.id,
+        eventType: "dispute.resolved",
+        actorWallet: operator,
+        payload: { resolution: input.resolution },
+      });
+      return ok(resolved);
     });
-    return ok(resolved);
-  });
+  } catch (err) {
+    if (err instanceof SettlementConflictError) {
+      return fail(err.code, err.message);
+    }
+    throw err;
+  }
   if (!effect.ok) return effect;
+  await buf.flush();
 
   // ---- post-effect audit — surfaced, never swallowed ----
   const audit = await recordPostEffectAudit(

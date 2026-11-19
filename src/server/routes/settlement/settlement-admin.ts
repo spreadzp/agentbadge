@@ -20,6 +20,7 @@ import z from "zod";
 import { getDatabase } from "../../lib/database";
 import {
   createSettlementCtx,
+  forceApproveMilestone,
   markLegPaid,
   resolveDispute,
 } from "../../lib/settlement/index.js";
@@ -49,6 +50,9 @@ const resolveBody = z.object({
   splitLegs: z.array(splitLeg).max(32).optional(),
   note: z.string().max(4000).optional(),
   resolverRef: z.string().max(128).optional(),
+});
+const operatorBody = z.object({
+  operator: z.string().min(1).max(128),
 });
 export function createSettlementAdminRoutes(
   deps: SettlementRouteDeps = {},
@@ -123,6 +127,7 @@ export function createSettlementAdminRoutes(
           chainId:
             deps.chainId === undefined ? undefined : String(deps.chainId),
           expectedPayer: deps.expectedPayer,
+          usdcToken: deps.usdcToken,
         },
       );
       return respond(c, res);
@@ -184,6 +189,69 @@ export function createSettlementAdminRoutes(
         note: b.data.note,
         resolverRef: b.data.resolverRef,
       });
+      return respond(c, res);
+    },
+  );
+
+  // R3-H3: operator recovery for a milestone stranded READY — the
+  // buyer approve path is unreachable once a review's post-commit
+  // approve missed (pre-R3) or the policy is EVALUATOR_VERDICT on a
+  // legacy plan. Idempotent on APPROVED; blocked by OPEN disputes.
+  r.post(
+    "/admin/settlement/milestones/:id/approve",
+    describeRoute({
+      ...TAG,
+      summary: "Force-approve a READY milestone (operator recovery)",
+      description:
+        "Transitions a READY milestone to APPROVED and opens its payout " +
+        "intent when the buyer path cannot (stranded post-commit state, " +
+        "EVALUATOR_VERDICT legacy plan). Idempotent on APPROVED; an OPEN " +
+        "dispute on the milestone 409s. The event records admin:true.",
+      requestBody: jsonBody(operatorBody),
+      responses: {
+        200: {
+          description: "Milestone approved + payout intent",
+          content: {
+            "application/json": {
+              schema: resolver(
+                z.object({ intentId: z.string() }).passthrough(),
+              ),
+            },
+          },
+        },
+        400: { description: "Missing operator" },
+        401: { description: "Unauthorized" },
+        404: { description: "Milestone not found" },
+        409: { description: "Invalid state / open dispute" },
+      },
+    }),
+    adminAuth,
+    async (c) => {
+      const raw = await readBody(c);
+      if (typeof raw.operator !== "string" || raw.operator.length === 0) {
+        return respond(c, {
+          ok: false,
+          error: {
+            code: "OPERATOR_REQUIRED",
+            message: "operator label required",
+          },
+        });
+      }
+      const b = operatorBody.safeParse(raw);
+      if (!b.success) {
+        return respond(c, {
+          ok: false,
+          error: {
+            code: "BAD_INPUT",
+            message: `invalid approve body: ${b.error.issues[0]?.message ?? "schema mismatch"}`,
+          },
+        });
+      }
+      const res = await forceApproveMilestone(
+        createSettlementCtx(getDb()),
+        c.req.param("id"),
+        b.data.operator,
+      );
       return respond(c, res);
     },
   );

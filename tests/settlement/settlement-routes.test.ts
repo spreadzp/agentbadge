@@ -346,6 +346,77 @@ describe("admin routes", () => {
     const actions = await listAdminActions(db);
     expect(actions.at(-1)?.action).toBe("RESOLVE_SETTLEMENT_DISPUTE");
   });
+
+  // R3-H3: operator force-approve — the recovery path for milestones
+  // stranded READY (pre-R3 swallowed post-commit, EVALUATOR legacy).
+  it("milestones/:id/approve → READY milestone APPROVED + intent; idempotent", async () => {
+    const ctx = createSettlementCtx(db);
+    const plan = await createPlan(
+      ctx,
+      { ...PLAN_BODY(`agr-${randomUUID()}`) },
+      buyer.address,
+    );
+    if (!plan.ok) throw new Error("seed failed");
+    const m = plan.value.milestones[0]!;
+    await submitForReview(
+      ctx,
+      { milestoneRowId: m.id, submissionRef: "ipfs://w" },
+      provider.address,
+    );
+
+    const r = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${m.id}/approve`,
+      { operator: OPS },
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.intentId).toBeTruthy();
+    const intent = await db.settlement.payoutIntents.getByMilestone(m.id);
+    expect(intent?.id).toBe(r.body.intentId);
+    // Idempotent — second call returns the same intent, no error.
+    const again = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${m.id}/approve`,
+      { operator: OPS },
+    );
+    expect(again.status).toBe(200);
+    expect(again.body.intentId).toBe(r.body.intentId);
+  });
+
+  it("milestones/:id/approve → 409 on OPEN dispute; 400 missing operator", async () => {
+    const ctx = createSettlementCtx(db);
+    const plan = await createPlan(
+      ctx,
+      { ...PLAN_BODY(`agr-${randomUUID()}`) },
+      buyer.address,
+    );
+    if (!plan.ok) throw new Error("seed failed");
+    const m = plan.value.milestones[0]!;
+    await submitForReview(
+      ctx,
+      { milestoneRowId: m.id, submissionRef: "ipfs://w" },
+      provider.address,
+    );
+    const noOp = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${m.id}/approve`,
+      {},
+    );
+    expect(noOp.status).toBe(400);
+    await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: m.id,
+      raisedBy: buyer.address,
+      reason: "hold",
+    });
+    const r = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${m.id}/approve`,
+      { operator: OPS },
+    );
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("INVALID_STATE");
+  });
 });
 
 // ---------- SLICE-227-4: receipt artifact + anchor ----------

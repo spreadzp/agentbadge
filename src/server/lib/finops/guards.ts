@@ -203,9 +203,13 @@ export function decimalToMicro(amount: string): bigint {
   const s = neg ? amount.slice(1) : amount;
   const dot = s.indexOf(".");
   const int = dot === -1 ? s : s.slice(0, dot);
-  const frac = (dot === -1 ? "" : s.slice(dot + 1))
-    .padEnd(6, "0")
-    .slice(0, 6);
+  const fracRaw = dot === -1 ? "" : s.slice(dot + 1);
+  // R3-M-6: refuse to truncate — a non-zero digit past 6dp would make
+  // "10.0000009" silently equal 10. Trailing zeros stay exact.
+  if (/[1-9]/.test(fracRaw.slice(6))) {
+    throw new Error(`decimal exceeds micro precision: ${JSON.stringify(amount)}`);
+  }
+  const frac = fracRaw.padEnd(6, "0").slice(0, 6);
   const v = BigInt(int || "0") * MICRO + BigInt(frac || "0");
   return neg ? -v : v;
 }

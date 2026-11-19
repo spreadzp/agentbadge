@@ -7,10 +7,14 @@
  * otherwise it returns to IN_PROGRESS. REJECTED / REVISION_REQUIRED →
  * IN_PROGRESS resubmission round (agreement stays ACTIVE).
  *
- * Post-commit, best-effort: milestone-bound submissions drive the
- * settlement milestone to APPROVED (payout intent auto-created), then
- * the 234-17 fact hooks fire. A bridge/hook failure never rolls back
- * the committed verdict.
+ * Settlement ordering (R3-H3): a milestone-bound ACCEPTED review
+ * approves the settlement milestone BEFORE the verdict commits — an
+ * approve failure keeps the submission SUBMITTED and retryable
+ * instead of a swallowed post-commit miss. APPROVED on pre-read is a
+ * valid resume state (a prior review's approve landed, its verdict
+ * commit did not). Post-commit, a resync re-checks the narrow race
+ * window and the M-1 completion pass finishes agreements stranded by
+ * concurrent sibling reviews; then the 234-17 fact hooks fire.
  */
 import type {
   CommerceAgreementRow,
@@ -21,12 +25,12 @@ import { logger } from "@agentbadge/passport/logger";
 import { assertSummary, assertWallet } from "../guards";
 import {
   SUBMISSION_VERDICTS,
-  conflict,
   forbidden,
   guardRejected,
   type SubmissionVerdict,
 } from "../types";
 import { mustGet, transitionRow, type CommerceCtx } from "./ctx";
+import { resolveSettlementGate } from "./review-settlement";
 
 export async function reviewSubmission(
   ctx: CommerceCtx,
@@ -48,70 +52,15 @@ export async function reviewSubmission(
   // plan still have payable work after this milestone? The agreement
   // must outlive its first accepted submission on multi-milestone
   // plans, else milestones 2..N can never be approved or paid.
-  let settleMilestoneId: string | undefined;
-  let pendingAfter = 0;
-  if (verdict === "ACCEPTED" && ctx.settlement) {
-    const pre = await stores.submissions.getById(submissionId);
-    if (pre?.milestoneRef) {
-      // M-D: the settlement lookup is guarded — a store failure here
-      // becomes a typed 409, not an unhandled throw out of the review.
-      let found: { id: string; status: string } | null;
-      try {
-        found = await ctx.settlement.findMilestone(
-          pre.agreementId,
-          pre.milestoneRef,
-        );
-      } catch (err) {
-        throw conflict(
-          `settlement lookup failed for milestoneRef ${pre.milestoneRef}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-      // R2-H5: a bound-but-unresolved milestoneRef must fail the review
-      // — completing the agreement with pendingAfter=0 pays nobody.
-      if (!found) {
-        throw conflict(
-          `milestoneRef ${pre.milestoneRef} does not resolve on the settlement plan for ${pre.agreementId}`,
-        );
-      }
-      if (found.status !== "READY") {
-        // R2-H5 heal: the submit-time bridge call may have failed —
-        // retry it once rather than stranding the milestone.
-        if (found.status === "PENDING") {
-          const agreement = await stores.agreements.getById(
-            pre.agreementId,
-          );
-          if (agreement) {
-            await ctx.settlement.submitMilestone(
-              found.id,
-              agreement.providerWallet,
-              pre.id,
-            );
-          }
-        }
-        const recheck = await ctx.settlement
-          .findMilestone(pre.agreementId, pre.milestoneRef)
-          .catch(() => null);
-        if (recheck?.status !== "READY") {
-          throw conflict(
-            `milestone ${pre.milestoneRef} is ${recheck?.status ?? "missing"}, not READY — review cannot approve it`,
-          );
-        }
-      }
-      settleMilestoneId = found.id;
-      // M-D: a pending-count failure fails the review too — completing
-      // blind re-opens the unpaid-completion hole.
-      try {
-        pendingAfter = await ctx.settlement.pendingMilestoneCount(
-          pre.agreementId,
-          found.id,
-        );
-      } catch (err) {
-        throw conflict(
-          `settlement pending-count failed for ${pre.agreementId}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    }
-  }
+  // R3-H3: the settlement gate runs BEFORE the verdict commits —
+  // resolveSettlementGate approves the bound milestone and counts
+  // not-yet-accepted work (extracted to review-settlement.ts).
+  const gate =
+    verdict === "ACCEPTED" && ctx.settlement
+      ? await resolveSettlementGate(ctx, actor, submissionId)
+      : { pendingAfter: 0 };
+  const settleMilestoneId = gate.milestoneRowId;
+  const pendingAfter = gate.pendingAfter;
   // C2: preconditions + all graph transitions inside one atomic
   // section — the verdict can never persist without its task/
   // agreement graph updates.
@@ -220,32 +169,47 @@ export async function reviewSubmission(
     return { submission: reviewed, task: taskRow, agreement: agreementRow };
   });
 
-  // SLICE-227-5: post-commit — buyer acceptance approves the bound
-  // settlement milestone (→ APPROVED + payout intent). Best-effort:
-  // bridge failures log; the commerce verdict already committed.
-  if (
-    verdict === "ACCEPTED" &&
-    result.submission.milestoneRef &&
-    ctx.settlement
-  ) {
-    try {
-      // H6: reuse the pre-commit lookup — a re-read could race a
-      // dispute; H7's lazy ensurePlan already healed inside find.
-      const found =
-        settleMilestoneId !== undefined
-          ? { id: settleMilestoneId }
-          : await ctx.settlement.findMilestone(
-              result.agreement.id,
-              result.submission.milestoneRef,
-            );
-      if (found) {
-        await ctx.settlement.approveMilestone(found.id, actor);
+  // SLICE-227-5: post-commit — the bound milestone was approved
+  // PRE-commit (R3-H3), so this is only a resync for the narrow
+  // pre-read-race window + the M-1 completion pass for agreements
+  // still ACTIVE (concurrent reviews on sibling milestones).
+  if (verdict === "ACCEPTED" && ctx.settlement) {
+    if (result.submission.milestoneRef && settleMilestoneId !== undefined) {
+      try {
+        const now = await ctx.settlement.findMilestone(
+          result.agreement.id,
+          result.submission.milestoneRef,
+        );
+        if (now && now.status !== "APPROVED" && now.status !== "RELEASED") {
+          await ctx.settlement.approveMilestone(now.id, actor);
+        }
+      } catch (err) {
+        logger.warn("settlement approveMilestone resync failed", {
+          milestoneRef: result.submission.milestoneRef,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
-    } catch (err) {
-      logger.warn("settlement approveMilestone failed", {
-        milestoneRef: result.submission.milestoneRef,
-        error: err instanceof Error ? err.message : String(err),
-      });
+    }
+    // M-1: pendingAfter was pre-commit — a concurrent sibling review
+    // may have finished the last milestone in between. Re-check and
+    // complete the agreement (+ task) if it now reads zero.
+    if (result.agreement.status === "ACTIVE") {
+      try {
+        const pending = await ctx.settlement.pendingMilestoneCount(
+          result.agreement.id,
+        );
+        if (pending === 0) {
+          await completeAgreementIfClear(
+            ctx,
+            result.agreement.id,
+          );
+        }
+      } catch (err) {
+        logger.warn("settlement completion pass failed", {
+          agreementId: result.agreement.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   }
   // SLICE-234-17: post-commit fact emission (best-effort — a hook
@@ -265,4 +229,44 @@ export async function reviewSubmission(
     }
   }
   return result;
+}
+
+/**
+ * M-1 completion pass — runs AFTER the review commit when the agreement
+ * is still ACTIVE but the settlement plan now reads zero not-yet-
+ * accepted milestones (a concurrent sibling review, or an earlier
+ * swallowed state, can strand it). Completes the agreement, and the
+ * task when it was the last live agreement.
+ */
+export async function completeAgreementIfClear(
+  ctx: CommerceCtx,
+  agreementId: string,
+): Promise<void> {
+  const { stores } = ctx;
+  await stores.atomic(async (tx) => {
+    const txCtx = { ...ctx, stores: tx };
+    const agreement = await tx.agreements.getById(agreementId);
+    if (!agreement || agreement.status !== "ACTIVE") return;
+    const done = await transitionRow(
+      txCtx,
+      "agreement",
+      agreement,
+      "COMPLETED",
+      (from) =>
+        tx.agreements.applyStatus(agreement.id, from, "COMPLETED", {
+          completedAtMs: Date.now(),
+        }),
+    );
+    if (!done) return;
+    const task = await tx.tasks.getById(agreement.taskId);
+    if (!task) return;
+    const remaining = await tx.agreements.countByTaskId(task.id, {
+      excludeStatuses: ["CANCELLED", "COMPLETED"],
+    });
+    if (remaining === 0) {
+      await transitionRow(txCtx, "task", task, "COMPLETED", (from) =>
+        tx.tasks.applyStatus(task.id, from, "COMPLETED"),
+      );
+    }
+  });
 }

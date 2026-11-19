@@ -22,6 +22,7 @@ import { samePlanTerms } from "./plan-terms.js";
 import {
   type CreatePlanInput,
   type MilestoneInput,
+  SettlementConflictError,
   type SettlementResult,
   fail,
   ok,
@@ -145,7 +146,10 @@ export async function createPlan(
     if (va) return va;
   }
 
-  return ctx.db.settlement.atomic(async (s) => {
+  const buf = ctx.emit.buffer();
+  let res;
+  try {
+    res = await ctx.db.settlement.atomic(async (s) => {
     // Natural dedupe — one plan per agreement (unique agreementRef).
     const existing = await s.plans.getByAgreement(input.agreementRef);
     if (existing) {
@@ -199,13 +203,13 @@ export async function createPlan(
         payload: (m.legs ? { payoutTemplate: m.legs } : {}) as JsonValue,
       });
       if (!row) {
-        throw new Error(
+        throw new SettlementConflictError(
           `milestone insert conflict: ${m.milestoneId} — aborting plan create`,
         );
       }
       milestones.push(row);
     }
-    await ctx.emit.emit({
+    buf.emit({
       entityType: "settlement_plan",
       entityId: plan.id,
       eventType: "plan.created",
@@ -218,7 +222,7 @@ export async function createPlan(
       },
     });
     for (const m of milestones) {
-      await ctx.emit.emit({
+      buf.emit({
         entityType: "milestone",
         entityId: m.id,
         eventType: "milestone.created",
@@ -227,5 +231,13 @@ export async function createPlan(
       });
     }
     return ok({ plan, milestones, duplicate: false });
-  });
+    });
+  } catch (err) {
+    if (err instanceof SettlementConflictError) {
+      return fail(err.code, err.message);
+    }
+    throw err;
+  }
+  if (res.ok) await buf.flush();
+  return res;
 }

@@ -16,24 +16,33 @@ export type MilestoneTerm = Pick<
 > &
   Partial<Pick<MilestoneInput, "releasePolicy" | "legs">>;
 
+/** Nit: localeCompare ties NFC/NFD ids (making order significant) —
+ *  sort by code point instead so the vector is canonical. */
+export const byCodePoint = (a: string, b: string): number =>
+  a < b ? -1 : a > b ? 1 : 0;
+
 /** Milestone-vector term hash — id, amount, policy, and the leg
- *  payee/role/amount multiset. */
+ *  payee/role/amount multiset. JSON-encoded rows: an id containing
+ *  `|` or `\n` can never collide into a neighbouring field. */
 export function milestoneVector(milestones: MilestoneTerm[]): string {
   return milestones
     .map((m) => {
       const legs = (m.legs ?? [])
-        .map(
-          (l) =>
-            `${l.role}:${l.payee.toLowerCase()}:${decimalToMicro(l.amountUsdc)}`,
+        .map((l) =>
+          JSON.stringify([
+            l.role,
+            l.payee.toLowerCase(),
+            decimalToMicro(l.amountUsdc).toString(),
+          ]),
         )
-        .sort()
+        .sort(byCodePoint)
         .join(",");
-      return [
+      return JSON.stringify([
         m.milestoneId,
         decimalToMicro(m.amountUsd).toString(),
         m.releasePolicy ?? "BUYER_ACCEPT",
         legs,
-      ].join("|");
+      ]);
     })
     .join("\n");
 }
@@ -88,7 +97,7 @@ export function samePlanTerms(
     };
   };
   const byId = (a: MilestoneTerm, b: MilestoneTerm) =>
-    a.milestoneId.localeCompare(b.milestoneId);
+    byCodePoint(a.milestoneId, b.milestoneId);
   const stored = storedMilestones.map(toTerm).sort(byId);
   const requested = input.milestones.slice().sort(byId);
   return milestoneVector(stored) === milestoneVector(requested);

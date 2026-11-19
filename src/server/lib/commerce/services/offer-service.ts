@@ -9,6 +9,7 @@ import type {
   CommercePaymentRow,
 } from "@agentbadge/database";
 import { idempotentWrite } from "../../contract-guards";
+import { checkMilestoneInputs } from "../../settlement/invariants.js";
 import {
   assertDecimal,
   assertIdempotencyKey,
@@ -118,6 +119,28 @@ export function createOfferService(ctx: CommerceCtx): OfferService {
             400,
             { taskId: task.id },
           );
+        }
+        // M-5: provider-authored milestone terms validate at intake —
+        // a bad vector would brick every downstream plan create +
+        // milestone-bound review (the accept-side check is the
+        // backstop; rejecting here lets the provider resubmit).
+        const offeredMs =
+          input.payload && typeof input.payload === "object"
+            ? (input.payload as Record<string, unknown>)["milestones"]
+            : undefined;
+        if (offeredMs !== undefined) {
+          const bad = checkMilestoneInputs(
+            Array.isArray(offeredMs) ? offeredMs : [],
+            price,
+          );
+          if (!Array.isArray(offeredMs) || bad) {
+            throw new CommerceError(
+              "GUARD_REJECTED",
+              `payload.milestones invalid: ${!Array.isArray(offeredMs) ? "must be an array" : (bad && !bad.ok ? bad.error.message : "unknown")}`,
+              400,
+              { taskId: task.id },
+            );
+          }
         }
         const offer = await stores.offers.create({
           id: newId("of"),
