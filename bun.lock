@@ -12,7 +12,7 @@
         "@agentbadge/database": "0.6.19",
         "@agentbadge/econ-events": "^0.1.4",
         "@agentbadge/evm-core": "^0.1.2",
-        "@agentbadge/hedera-core": "^0.2.1",
+        "@agentbadge/hedera-core": "^0.3.0",
         "@agentbadge/keeperhub": "^0.1.1",
         "@agentbadge/mcp": "0.3.6",
         "@agentbadge/pass-auth": "^0.1.1",
@@ -91,7 +91,7 @@
 
     "@agentbadge/evm-core": ["@agentbadge/evm-core@0.1.2", "", { "dependencies": { "@agentbadge/hedera-core": "^0.2.1", "ethers": "^6.17.0" } }, "sha512-qecaJWw+MLuFnpv8dMV3i+XmztSZpXAjbcBc0DfdfbrL7wHpw1Ilgk2UfImhQ99Tefz7HRpqF9pWWmNDSqAK3g=="],
 
-    "@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.2.1", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-jc5WxaEnOYPVW7EMjV+tFGqUwqxtN1VcPaZ31LGi7GXPNhFNniRchzjG1H2olk7AQZK53R/TbRWeAYVcPeUbCA=="],
+    "@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.3.0", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-2Dw8BOtXbPAbJXFz4dZ1jS7E7B9Mr7EtGpinHLLJVxgK6mEl+UuovMKFPtTgH2F7+DwvG2nK6llWOAqqUGvYsQ=="],
 
     "@agentbadge/keeperhub": ["@agentbadge/keeperhub@0.1.1", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "zod": "^4.0.0" } }, "sha512-GYFT9LUCNFUA/0qyH6iJStoVlqVz3WYxLzlTyPNGg0iLOOhPFPZNyTohRybZ+/t3EzkZMSkZTXgy6kAbKoH4Qw=="],
 
@@ -1688,6 +1688,12 @@
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, ""],
 
     "@agentbadge/a2a/@agentbadge/database": ["@agentbadge/database@0.6.1", "", { "dependencies": { "@agentbadge/econ-events": "^0.1.1", "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-nkjtnCbnN8mvkSlG0w0Ffo1tesJn6U8IFUQju3CmTUCDS7QeQ60NQmhN2yaQta1EX1kPpimDyq73K3S8dUBt2Q=="],
+
+    "@agentbadge/evm-core/@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.2.1", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-jc5WxaEnOYPVW7EMjV+tFGqUwqxtN1VcPaZ31LGi7GXPNhFNniRchzjG1H2olk7AQZK53R/TbRWeAYVcPeUbCA=="],
+
+    "@agentbadge/mcp/@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.2.1", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-jc5WxaEnOYPVW7EMjV+tFGqUwqxtN1VcPaZ31LGi7GXPNhFNniRchzjG1H2olk7AQZK53R/TbRWeAYVcPeUbCA=="],
+
+    "@agentbadge/passport/@agentbadge/hedera-core": ["@agentbadge/hedera-core@0.2.1", "", { "dependencies": { "@hashgraph/sdk": "^2.55.0", "long": "^5.2.0" } }, "sha512-jc5WxaEnOYPVW7EMjV+tFGqUwqxtN1VcPaZ31LGi7GXPNhFNniRchzjG1H2olk7AQZK53R/TbRWeAYVcPeUbCA=="],
 
     "@agentbadge/payments/viem": ["viem@2.57.19", "", { "dependencies": { "@noble/curves": "1.9.1", "@noble/hashes": "1.8.0", "@scure/bip32": "1.7.0", "@scure/bip39": "1.6.0", "abitype": "1.2.3", "isows": "1.0.7", "ox": "0.14.65", "ws": "8.21.0" }, "peerDependencies": { "mppx": ">=0.17.0", "typescript": ">=5.0.4" }, "optionalPeers": ["mppx", "typescript"] }, "sha512-ULAHSwef42oL1reV41Os40iR34PF9BFNIX/RBapHLAJL1X6VmrgQikS4q4ulZ7/8GqlFLqrRI5GoNms3hcxsHw=="],
 
