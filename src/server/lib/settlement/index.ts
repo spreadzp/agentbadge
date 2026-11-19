@@ -13,6 +13,7 @@ export {
   isTerminal,
 } from "./state-machines.js";
 export * as invariants from "./invariants.js";
+export { isParticipant } from "./invariants.js";
 export {
   SettlementEventEmitter,
   createSettlementEmitter,
@@ -47,6 +48,7 @@ export {
   raiseDispute,
 } from "./services/dispute-service.js";
 export { resolveDispute } from "./services/dispute-resolve.js";
+export { getSettlementReceipt } from "./services/receipt.js";
 
 import type { Database } from "@agentbadge/database";
 
