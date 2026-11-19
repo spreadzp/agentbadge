@@ -203,3 +203,80 @@ and the prod-side dimensions are all `None`. A PASS here means
   vectors all unexpired), `reference` field (empty in all vectors
   → `0:` path exercised).
 
+---
+
+# Own invariants (SLICE-255-5) — `results/own-invariants.json`
+
+Not MMF vectors — `source:"own-invariant"`, excluded from the
+conformance counts. These probe OUR guarantees directly.
+
+## 1. Race probe (D-255-Q22) — OBSERVED, not theoretical
+
+`begin`: `registry.get → checkEnvelope(listByWallet) →
+insertReserved(insert)`. The check and the insert are separate
+awaits; nothing atomic joins them.
+
+| Backend | Setup | Result |
+|---|---|---|
+| db-barrier (stub repo, listByWallet blocks until all 8 callers arrive) | dailyUsd $100, 8×$20 parallel | **8/8 reserved, $160 — $60 overshoot**; sequential baseline 5/8 |
+| memory (no barrier, plain Promise.all) | dailyUsd $100, 32×$10 parallel | **32/32 reserved, $320 — $220 overshoot**; sequential baseline 10/32 |
+
+**The memory-backend result matters.** envelope.ts L194-200 calls the
+backend "atomic-enough" claiming sync backends "can't interleave
+between the awaits (microtasks only)". Empirically false: each
+`begin` coroutine interleaves at every await boundary — all 32
+checkEnvelopes ran before any insert landed. A single-process memory
+ledger overshoots 3.2×. With a real DB round-trip the window is
+strictly wider. `OWN-1` → EPIC-234 (atomic check+insert /
+conditional insert / serializable txn).
+
+Post-settle verified: settling the overshoot reservations still
+counts → next begin denied (cap state correct, just exceeded).
+Observation ≠ proof of atomicity either way — we record what
+happened.
+
+## 2. Evidence matrix (D-255-Q24) — 7 branches × 6 fields
+
+| Branch | durable evidence | alert | reservation | wire reason | HTTP |
+|---|---|---|---|---|---|
+| suspended | denied:spend_suspended | wallet.suspended_deny | no | spend_suspended | 402 |
+| kind | denied:kind_not_allowed | spend.kind_denied | no | kind_not_allowed | 402 |
+| cap | denied:{cap} | spend.cap_denied | no | spend_cap | 402 |
+| velocity | denied:{cap} | spend.velocity_denied | no* | velocity_* | 402 |
+| not-registered | **none** | **none** | no | generic 402 body | 402 |
+| registry-throw | **none** | **none** | no | (Hono 500) | 500 |
+| corrupted-json ledger | **spend ALLOWED** | none | yes | — | 200 |
+
+*velocity row's `reservation` = the pre-fill allow that consumed the
+slot; the denied call itself reserves nothing.
+
+Replay column (all): same refId replays → a SECOND denied entry each
+time for emitting branches; no dedup anywhere.
+
+**Findings:**
+- `OWN-2` corrupted-json → **fail-OPEN + history clobber**: garbage
+  `ledger.json` → `readJson` catch → `entries={}` → caps see zero
+  usage → spend allowed; the next insert *overwrites* the corrupt
+  file — history gone silently. (json backend only.)
+- `OWN-3` not-registered + registry-throw deny with **zero evidence**
+  — V21 GATE_EXCEPTION reproduces as a class, not a one-off.
+- Slice extra verified: `emitSpendDeny` insert-throw → 500, no
+  reservation, **no alert** (insert precedes alert — correct
+  fail-closed, but the deny attempt itself leaves no trace either).
+
+## 3. Caller-dedup table (D-255-Q23)
+
+| Caller | refId | Idempotent? | Verified |
+|---|---|---|---|
+| x402-hooks | `x402:{METHOD} {path}` | no — correlation only | code-read + 255-2/3 probes |
+| venue subscribe gate | `sub:{instanceId}` | no | code-read |
+| gate refIdFor fallback | `{kind}:{random12}` | no — random/req | code-read |
+| withEnvelope | caller-supplied | no wired callers | code-read |
+| bstock-freemium | `bstock:{serviceId}` | no — shared per service | code-read |
+| buy-gateway | `buyfx:{fiatPair}` | no — enforcer-mirror path | code-read |
+| delegate-api | — | **not wired** — no route calls `spendAsDelegate` | code-read |
+
+`OWN-4`: refId is never a dedup key — ledger is idempotent only on
+`sp_` uuids. Every retry (client/proxy/x402 replay) double-charges
+caps. Bonus finding: `spendAsDelegate` has no production call sites.
+

@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "corpus_version": "v0.4.24",
+  "source": "own-invariant",
+  "race": {
+    "db_barrier": {
+      "backend": "db-barrier",
+      "n": 8,
+      "allowed": 8,
+      "denied": 0,
+      "threw": 0,
+      "reservedEntries": 8,
+      "reservedUsd": 160,
+      "overshootUsd": 60,
+      "sequentialAllowed": 5
+    },
+    "memory_stress": {
+      "backend": "memory",
+      "n": 32,
+      "allowed": 32,
+      "denied": 0,
+      "threw": 0,
+      "reservedEntries": 32,
+      "reservedUsd": 320,
+      "overshootUsd": 220,
+      "sequentialAllowed": 10
+    },
+    "note": "observation, not proof — absence of overshoot would not prove atomicity"
+  },
+  "evidence": {
+    "matrix": [
+      {
+        "branch": "suspended",
+        "http": 402,
+        "durable": "denied:spend_suspended",
+        "alert": "wallet.suspended_deny",
+        "reservation": false,
+        "reason": "spend_suspended",
+        "replay": "same-refId → 402, 2 denied entries total"
+      },
+      {
+        "branch": "kind",
+        "http": 402,
+        "durable": "denied:kind_not_allowed",
+        "alert": "spend.kind_denied",
+        "reservation": false,
+        "reason": "kind_not_allowed",
+        "replay": "same-refId → 402, 2 denied entries total"
+      },
+      {
+        "branch": "cap",
+        "http": 402,
+        "durable": "denied:perTx",
+        "alert": "spend.cap_denied",
+        "reservation": false,
+        "reason": "spend_cap",
+        "replay": "same-refId → 402, 2 denied entries total"
+      },
+      {
+        "branch": "velocity",
+        "http": 402,
+        "durable": "denied:velocity_tx",
+        "alert": "spend.velocity_denied",
+        "reservation": true,
+        "reason": "velocity_tx",
+        "replay": "pre-filled by 1st allow (200); same-refId 3rd call → 402"
+      },
+      {
+        "branch": "not-registered",
+        "http": 402,
+        "durable": null,
+        "alert": null,
+        "reservation": false,
+        "reason": "wallet not registered — POST /api/wallets first",
+        "replay": "same-refId → 402, 0 denied entries total"
+      },
+      {
+        "branch": "registry-throw",
+        "http": 500,
+        "durable": null,
+        "alert": null,
+        "reservation": false,
+        "reason": null,
+        "replay": "same-refId → 500, 0 denied entries total"
+      },
+      {
+        "branch": "corrupted-json",
+        "http": 200,
+        "durable": null,
+        "alert": null,
+        "reservation": true,
+        "reason": "—",
+        "replay": "corrupt file silently replaced (clobbered=true)"
+      }
+    ],
+    "failClosed": {
+      "http": 500,
+      "reservation": false,
+      "alertEmitted": false
+    }
+  },
+  "callerDedup": [
+    {
+      "caller": "x402-hooks (requirePayment seam)",
+      "site": "src/server/lib/agent-wallet/x402-hooks.ts:28",
+      "refId": "x402:{METHOD} {path}",
+      "idempotency": "none — refId is correlation-only; ledger has no dedup key",
+      "verified": "code-read + replay probes (255-2/255-3 double-reserve)"
+    },
+    {
+      "caller": "envelope-gate middleware (venue subscribe)",
+      "site": "src/server/wiring/agent-wallet.ts:84",
+      "refId": "sub:{instanceId}",
+      "idempotency": "none — same instance resubscribe re-reserves",
+      "verified": "code-read"
+    },
+    {
+      "caller": "envelope-gate fallback refIdFor",
+      "site": "src/server/lib/agent-wallet/envelope-gate.ts:41",
+      "refId": "${kind}:{random12}",
+      "idempotency": "none — random per request, no caller correlation at all",
+      "verified": "code-read"
+    },
+    {
+      "caller": "withEnvelope call-site",
+      "site": "src/server/lib/agent-wallet/envelope-gate.ts:60",
+      "refId": "caller-supplied",
+      "idempotency": "none — no prod call sites found in src/",
+      "verified": "code-read (no wired callers)"
+    },
+    {
+      "caller": "bstock-freemium (mcp/bstock pay path)",
+      "site": "src/server/middleware/bstock-freemium.ts:189",
+      "refId": "bstock:{serviceId}",
+      "idempotency": "none — every payment to a service shares one refId",
+      "verified": "code-read"
+    },
+    {
+      "caller": "buy-gateway (fx-rate → buyPay)",
+      "site": "src/server/lib/buy/fx-rate.ts:67",
+      "refId": "buyfx:{fiatPair}",
+      "idempotency": "none — enforcer-mirror path, same check-then-insert",
+      "verified": "code-read"
+    },
+    {
+      "caller": "delegate-api / spendAsDelegate",
+      "site": "src/server/lib/agent-wallet/delegate.ts:136",
+      "refId": "—",
+      "idempotency": "n/a — NOT WIRED: no route calls spendAsDelegate in src/",
+      "verified": "code-read (grep: only tests + comment refs)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "OWN-1",
+      "title": "check-then-insert TOCTOU: parallel begins overshoot caps",
+      "severity": "high",
+      "evidence": "8/8 parallel begins reserved ($160 vs $100 cap); sequential baseline 5/8",
+      "candidate_for": "EPIC-234: atomic check+insert (conditional insert / lock / serializable txn)"
+    },
+    {
+      "id": "OWN-2",
+      "title": "corrupted-JSON ledger fails OPEN and clobbers history",
+      "severity": "high",
+      "evidence": "garbage ledger.json → readJson catch → entries={} → spend allowed; insert overwrites file",
+      "candidate_for": "EPIC-234: fail-closed on unreadable ledger, or quarantine + alert"
+    },
+    {
+      "id": "OWN-3",
+      "title": "not-registered + registry-throw deny without evidence",
+      "severity": "medium",
+      "evidence": "402/500 with no ledger entry and no alert (V21 GATE_EXCEPTION reproduces)",
+      "candidate_for": "EPIC-234: denied-attempt evidence for all deny paths"
+    },
+    {
+      "id": "OWN-4",
+      "title": "refId is never a dedup key — retries double-charge caps",
+      "severity": "medium",
+      "evidence": "all callers: static per-path/service/instance refIds or random; ledger idempotent only on sp_ uuid",
+      "candidate_for": "EPIC-234: caller idempotency key → ledger unique index"
+    }
+  ]
+}
