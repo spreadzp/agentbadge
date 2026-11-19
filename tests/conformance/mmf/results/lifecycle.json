@@ -1,0 +1,4672 @@
+[
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L01",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": false,
+          "status": "AUTHORIZED"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": true,
+          "status": "AUTHORIZED"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": false,
+          "status": "AUTHORIZED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REPLAY",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "same_params",
+          "expectedCheck": "WITHIN",
+          "expectedReplayed": true,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 2
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": false,
+          "status": "AUTHORIZED"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": true,
+          "status": "AUTHORIZED"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": false,
+          "status": "AUTHORIZED"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "retry after timeout with the same tx_id returns the original decision and reserves nothing"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L02",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "replayed": false
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "diff_amount",
+          "expectedCheck": "TX_CONFLICT",
+          "expectedReplayed": false,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 2
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "replayed": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      }
+    ],
+    "notes": "same tx_id with a different amount is a conflict"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L03",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "TX_CONFLICT"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "diff_payee",
+          "expectedCheck": "TX_CONFLICT",
+          "expectedReplayed": null,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 2
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "TX_CONFLICT"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      }
+    ],
+    "notes": "same tx_id with a different payee is a conflict"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L04",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        {
+          "status": "VOIDED"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "VOID",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t3",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t3",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "void releases reserved budget"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L05",
+    "result": "DIVERGENCE-BUG",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "VELOCITY"
+        },
+        {
+          "status": "VOIDED"
+        },
+        {
+          "allowed": false,
+          "check": "VELOCITY"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "VOID",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "VELOCITY",
+            "rawDeny": "velocity_tx",
+            "replayed": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t3",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1,
+            "velocityEvasion": true
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "VELOCITY"
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "VELOCITY",
+          "rawDeny": "velocity_tx",
+          "replayed": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t3",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "VELOCITY"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1,
+          "velocityEvasion": true
+        }
+      }
+    ],
+    "notes": "void releases the reserved budget but NOT the velocity slot: velocity counts authorizations issued, so authorize-and-void cycling cannot evade the rate limit"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L06",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "SETTLED"
+        },
+        {
+          "status": "SETTLED"
+        },
+        {
+          "error": true
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "REJECTED",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": false,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": false,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": false,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "moved": false,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "settled transactions keep their budget and cannot be voided; settle requires CLAIMED and is idempotent"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L07",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": false,
+          "check": "CAP_EXCEEDED",
+          "status": "DENIED"
+        },
+        {
+          "error": true
+        },
+        {
+          "error": true
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "CAP_EXCEEDED",
+            "rawDeny": "perTx",
+            "replayed": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": "missing",
+            "state": "denied",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": "missing",
+            "state": "denied",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "CAP_EXCEEDED",
+          "status": "DENIED"
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "CAP_EXCEEDED",
+          "rawDeny": "perTx",
+          "replayed": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "moved": "missing",
+          "state": "denied",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "moved": "missing",
+          "state": "denied",
+          "checkId": null
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L08",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "VOIDED"
+        },
+        {
+          "error": true
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": true,
+          "status": "VOIDED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "VOID",
+        "REJECTED",
+        "REPLAY"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": false,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "same_params",
+          "expectedCheck": "WITHIN",
+          "expectedReplayed": true,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 2
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "moved": false,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "replayed": true,
+          "status": "VOIDED"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      }
+    ],
+    "notes": "a voided transaction cannot be settled; replay reports VOIDED"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L09",
+    "result": "DIVERGENCE-BUG",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "VELOCITY"
+        },
+        {
+          "status": "VOIDED"
+        },
+        {
+          "allowed": false,
+          "check": "VELOCITY",
+          "replayed": true,
+          "status": "DENIED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "VOID",
+        "REPLAY"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "VELOCITY",
+            "rawDeny": "velocity_tx",
+            "replayed": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 2,
+            "velocityEvasion": true
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t2",
+          "case": "same_params",
+          "expectedCheck": "VELOCITY",
+          "expectedReplayed": true,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 2
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "VELOCITY"
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "VELOCITY",
+          "rawDeny": "velocity_tx",
+          "replayed": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "VELOCITY",
+          "replayed": true,
+          "status": "DENIED"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 2,
+          "velocityEvasion": true
+        }
+      }
+    ],
+    "notes": "a denial replays as the same denial even after the cause is gone"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L10",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "error": true
+        },
+        {
+          "error": true
+        }
+      ],
+      "events": [
+        "REJECTED",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "settle",
+          "tx_id": "nope",
+          "verdict": "match",
+          "actual": {
+            "moved": "missing",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "nope",
+          "verdict": "match",
+          "actual": {
+            "moved": "missing",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "settle",
+        "tx_id": "nope",
+        "verdict": "match",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "moved": "missing",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "nope",
+        "verdict": "match",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "moved": "missing",
+          "checkId": null
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L11",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "SETTLED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN",
+          "status": "AUTHORIZED"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "authorized transaction is claimed once for dispatch then settled"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L12",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "error": true
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      }
+    ],
+    "notes": "a second dispatcher cannot claim an already-claimed transaction"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L13",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "error": true
+        },
+        {
+          "error": true
+        },
+        {
+          "status": "CLAIMED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED",
+        "REJECTED",
+        "CLAIM"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      }
+    ],
+    "notes": "claim with an instruction that does not bind to the authorized request is rejected"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L14",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "VOIDED"
+        },
+        {
+          "error": true
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "SETTLED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "VOID",
+        "REJECTED",
+        "DECISION",
+        "CLAIM",
+        "SETTLE"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "cancellation": "rail-decline:pay_1",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t2",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "cancellation": "rail-decline:pay_1",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t2",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "a claim permanently consumes the dispatch slot: after the operator confirms the rail was never invoked, void releases the reservation and the retry uses a new t"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L15",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "VOIDED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "VOID"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "cancellation": "rail-decline:pay_1",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "cancellation": "rail-decline:pay_1",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "a claimed transaction can still be voided when the rail declines mid-flight"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L16",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "error": true
+        },
+        {
+          "status": "VOIDED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "REJECTED",
+        "VOID"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": false,
+            "state": "released",
+            "cancellation": "rail-decline:pay_1",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "error": true
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": false,
+          "state": "released",
+          "cancellation": "rail-decline:pay_1",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "a claimed transaction cannot be voided on an uncertain in-flight outcome; it stays CLAIMED until authoritative confirmation releases it"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L17",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "an unresolved claim that outlives the budget window keeps consuming budget: the new request is denied until the open claim is resolved"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L18",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "SETTLED"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "resolved (settled) spend ages out of the rolling window normally: budget is available again after the window passes"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L19",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        {
+          "status": "SETTLED"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "DECISION",
+        "SETTLE",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t3",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t3",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "a reservation that settles after its window ages out by its AUTHORIZATION timestamp: it blocks while unresolved and stops counting the moment it settles"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L20",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "SETTLED"
+        },
+        {
+          "status": "SETTLED"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "VOIDED"
+        },
+        {
+          "status": "VOIDED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "DECISION",
+        "VOID"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": false,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "moved": false,
+            "state": "released",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": false,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "status": "VOIDED"
+        },
+        "actual": {
+          "moved": false,
+          "state": "released",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "repeated settle and repeated void on their target states are idempotent no-ops: unchanged result, no evidence record, no rejection"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L21",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "error": true,
+          "check": "CLAIM:EXPIRED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": false,
+            "checkId": "REVOKED_REGISTRY",
+            "rawDeny": "spend_suspended",
+            "replayed": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "registry": {
+        "mapped_to": "suspended / store.get throw",
+        "equivalence": "Partial"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "op_scoped_checks": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "CLAIM:*/SETTLE:*/VOID:* check-ids have no prod op to emit them"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "REVOKED_REGISTRY",
+          "rawDeny": "spend_suspended",
+          "replayed": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true,
+          "check": "CLAIM:EXPIRED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      }
+    ],
+    "notes": "claim of an expired mandate that is ALSO registry-revoked reports CLAIM:EXPIRED — claim reports local causes before the registry, intentionally unlike enforce ("
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L22",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "error": true,
+          "check": "CLAIM:BINDING",
+          "record": {
+            "payee": "evil",
+            "amount": 61,
+            "currency": "GBP"
+          }
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": false,
+            "checkId": "REVOKED_REGISTRY",
+            "rawDeny": "spend_suspended",
+            "replayed": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "registry": {
+        "mapped_to": "suspended / store.get throw",
+        "equivalence": "Partial"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "op_scoped_checks": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "CLAIM:*/SETTLE:*/VOID:* check-ids have no prod op to emit them"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "REVOKED_REGISTRY",
+          "rawDeny": "spend_suspended",
+          "replayed": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true,
+          "check": "CLAIM:BINDING",
+          "record": {
+            "payee": "evil",
+            "amount": 61,
+            "currency": "GBP"
+          }
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      }
+    ],
+    "notes": "claim that is binding-mismatched AND registry-revoked reports CLAIM:BINDING, and the REJECTED record carries the ATTEMPTED payee/amount/currency, not the stored"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L23",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "error": true,
+          "check": "CLAIM:REVOKED_REGISTRY"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": false,
+            "checkId": "REVOKED_REGISTRY",
+            "rawDeny": "spend_suspended",
+            "replayed": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "registry": {
+        "mapped_to": "suspended / store.get throw",
+        "equivalence": "Partial"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "op_scoped_checks": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "CLAIM:*/SETTLE:*/VOID:* check-ids have no prod op to emit them"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "REVOKED_REGISTRY",
+          "rawDeny": "spend_suspended",
+          "replayed": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true,
+          "check": "CLAIM:REVOKED_REGISTRY"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      }
+    ],
+    "notes": "claim with registry-reported revocation only reports CLAIM:REVOKED_REGISTRY"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L24",
+    "result": "GATE_EXCEPTION",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "error": true,
+          "check": "CLAIM:REGISTRY"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "threw",
+          "actual": {
+            "threw": "http 500: gate threw — fail-closed"
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "registry": {
+        "mapped_to": "suspended / store.get throw",
+        "equivalence": "Partial"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "op_scoped_checks": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "CLAIM:*/SETTLE:*/VOID:* check-ids have no prod op to emit them"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "threw",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "threw": "http 500: gate threw — fail-closed"
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "error": true,
+          "check": "CLAIM:REGISTRY"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      }
+    ],
+    "notes": "claim when the registry cannot be consulted fails closed as CLAIM:REGISTRY"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L25",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "error": true,
+          "check": "SETTLE:STATUS"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "REJECTED"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "op_scoped_checks": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "CLAIM:*/SETTLE:*/VOID:* check-ids have no prod op to emit them"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "error": true,
+          "check": "SETTLE:STATUS"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "settle of an AUTHORIZED (never dispatched) transaction is rejected as SETTLE:STATUS"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L26",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "error": true,
+          "check": "VOID:CANCELLATION"
+        },
+        {
+          "status": "SETTLED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "REJECTED",
+        "SETTLE"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "void",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "moved": true,
+            "state": "released",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "moved": false,
+            "state": "released",
+            "checkId": null
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "bounds_expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "mandate.bounds.expires_in_days has no prod mechanism"
+      },
+      "op_scoped_checks": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "CLAIM:*/SETTLE:*/VOID:* check-ids have no prod op to emit them"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "void",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "error": true,
+          "check": "VOID:CANCELLATION"
+        },
+        "actual": {
+          "moved": true,
+          "state": "released",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": false,
+          "state": "released",
+          "checkId": null
+        }
+      }
+    ],
+    "notes": "void of a CLAIMED transaction without a cancellation reference is rejected as VOID:CANCELLATION and the transaction stays CLAIMED"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L27",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "status": "DENIED",
+          "record": {
+            "mandate_id": "mB",
+            "agent": "b",
+            "payee": "other.example",
+            "amount": 7,
+            "currency": "GBP",
+            "status": "DENIED",
+            "check": "TX_CONFLICT"
+          }
+        },
+        {
+          "status": "CLAIMED"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "CLAIM"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "diff_amount",
+          "expectedCheck": "TX_CONFLICT",
+          "expectedReplayed": null,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 1
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      },
+      "cross_mandate": {
+        "mapped_to": "second AgentWalletRecord (mB wallet)",
+        "equivalence": "Partial",
+        "note": "mandate isolation ≈ per-wallet scoping; tx_id is per-wallet here, global in MMF"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "TX_CONFLICT",
+          "status": "DENIED",
+          "record": {
+            "mandate_id": "mB",
+            "agent": "b",
+            "payee": "other.example",
+            "amount": 7,
+            "currency": "GBP",
+            "status": "DENIED",
+            "check": "TX_CONFLICT"
+          }
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      }
+    ],
+    "notes": "a different mandate reusing an existing tx_id denies TX_CONFLICT; the conflict evidence carries the ATTEMPTING mandate and its submitted instruction, never the "
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L28",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "status": "CLAIMED"
+        },
+        {
+          "status": "SETTLED"
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "CLAIM",
+        "SETTLE",
+        "DECISION",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "claim",
+          "tx_id": "t1",
+          "verdict": "unmapped",
+          "actual": {
+            "note": "no claim op in prod spend path"
+          }
+        },
+        {
+          "kind": "settle",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "moved": true,
+            "state": "settled",
+            "checkId": null
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "match",
+          "actual": {
+            "allowed": false,
+            "checkId": "BUDGET",
+            "rawDeny": "daily",
+            "replayed": false,
+            "state": "denied",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t3",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        }
+      ],
+      "replayMatrix": []
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "claim",
+        "tx_id": "t1",
+        "verdict": "unmapped",
+        "expected": {
+          "status": "CLAIMED"
+        },
+        "actual": {
+          "note": "no claim op in prod spend path"
+        }
+      },
+      {
+        "kind": "settle",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "status": "SETTLED"
+        },
+        "actual": {
+          "moved": true,
+          "state": "settled",
+          "checkId": null
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "match",
+        "expected": {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        "actual": {
+          "allowed": false,
+          "checkId": "BUDGET",
+          "rawDeny": "daily",
+          "replayed": false,
+          "state": "denied",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t3",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      }
+    ],
+    "notes": "the rolling-window lower bound is INCLUSIVE: settled spend authorized at time t still counts at exactly t + window, and stops counting one tick later"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
+    "track": "lifecycle",
+    "vector_id": "L29",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
+    "expected": {
+      "steps": [
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "TX_CONFLICT"
+        },
+        {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "replayed": false
+        },
+        {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "replayed": true
+        },
+        {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "replayed": true
+        },
+        {
+          "allowed": false,
+          "check": "TX_CONFLICT"
+        }
+      ],
+      "events": [
+        "DECISION",
+        "DECISION",
+        "DECISION",
+        "REPLAY",
+        "REPLAY",
+        "DECISION"
+      ]
+    },
+    "actual": {
+      "steps": [
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "match",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t1",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 1
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 2
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 3
+          }
+        },
+        {
+          "kind": "tx",
+          "tx_id": "t2",
+          "verdict": "mismatch",
+          "actual": {
+            "allowed": true,
+            "checkId": "WITHIN",
+            "replayed": false,
+            "state": "reserved",
+            "reservationsForTxId": 4
+          }
+        }
+      ],
+      "replayMatrix": [
+        {
+          "tx_id": "t1",
+          "case": "same_params",
+          "expectedCheck": "TX_CONFLICT",
+          "expectedReplayed": null,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 2
+          }
+        },
+        {
+          "tx_id": "t2",
+          "case": "same_params",
+          "expectedCheck": "NON_POSITIVE",
+          "expectedReplayed": true,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 4
+          }
+        },
+        {
+          "tx_id": "t2",
+          "case": "diff_amount",
+          "expectedCheck": "NON_POSITIVE",
+          "expectedReplayed": true,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 4
+          }
+        },
+        {
+          "tx_id": "t2",
+          "case": "diff_amount",
+          "expectedCheck": "TX_CONFLICT",
+          "expectedReplayed": null,
+          "actual": {
+            "replayed": false,
+            "reservationsForTxId": 4
+          }
+        }
+      ]
+    },
+    "dimensions": {
+      "lifecycle_states": {
+        "mapped_to": "SpendEntry.state reserved→settled/released/denied",
+        "equivalence": "Partial",
+        "note": "no CLAIMED state; VOIDED≈released; transitions via settleEntry/releaseEntry"
+      },
+      "tx_id_dedup": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "refId correlation-only — every repeat creates a fresh sp_ reservation"
+      },
+      "claim_op": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/dispatch-slot concept on the spend path"
+      },
+      "evidence_events": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no DECISION/REPLAY/CLAIM/SETTLE/VOID event stream — ledger rows only"
+      }
+    },
+    "steps": [
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "match",
+        "expected": {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t1",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "TX_CONFLICT"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "replayed": false
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 1
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "replayed": true
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 2
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "NON_POSITIVE",
+          "replayed": true
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 3
+        }
+      },
+      {
+        "kind": "tx",
+        "tx_id": "t2",
+        "verdict": "mismatch",
+        "expected": {
+          "allowed": false,
+          "check": "TX_CONFLICT"
+        },
+        "actual": {
+          "allowed": true,
+          "checkId": "WITHIN",
+          "replayed": false,
+          "state": "reserved",
+          "reservationsForTxId": 4
+        }
+      }
+    ],
+    "notes": "request equality for amounts: a valid amount equals only the same integer; EVERY invalid amount (1.0, 1e0, 49.99, -7 ...) is one equivalence class — identical-c"
+  }
+]
