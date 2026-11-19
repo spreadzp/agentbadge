@@ -168,11 +168,14 @@ async function completeRefundIntentInner(
       `cumulative refunds ${total} would exceed payment amount ${payment.amount} (already completed ${used})`,
     );
   }
-  // N5-2: `||` not `??` — a blank-string currency row must fall back,
-  // not reach the verifier as "" (asset cross-check would silently
-  // compare "" === ""). 
+  // N5-2/N6-2: `||` not `??` — a blank-string currency row must fall
+  // back, not reach the verifier as "" (asset cross-check would
+  // silently compare "" === ""); the trim also closes the
+  // whitespace-only bypass. A corrupt/blank currency falls back to
+  // the payment denomination — which mismatches the on-chain asset,
+  // so the check stays fail-closed.
   const expectedCurrency = (
-    intent.currency ||
+    intent.currency?.trim() ||
     payment.currency ||
     "USDC"
   ).toUpperCase();

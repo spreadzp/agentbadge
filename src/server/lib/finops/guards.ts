@@ -1,8 +1,6 @@
-/**
- * EPIC-226 / SLICE-226-2 — shared contract guards for FinOps domain
- * services: non-empty operator, evidence ≤ 4 KB, decimal-string money
- * math (integer BigInt micro-units — floats never touch money).
- */
+// EPIC-226 / SLICE-226-2 — shared contract guards for FinOps domain
+// services: non-empty operator, evidence ≤ 4 KB, decimal-string money
+// math (integer BigInt micro-units — floats never touch money).
 
 import {
   EVIDENCE_MAX_BYTES,
@@ -23,13 +21,9 @@ export const MAX_CURRENCY_LEN = 16;
 /** Decimal-string length cap — unbounded digit strings stall BigInt (M7). */
 export const MAX_AMOUNT_LEN = 40;
 
-/**
- * H5/226-6 + N6: canonical operator label — controls collapse to
- * spaces, default-ignorable + blank-lookalike code points (zero-width,
- * bidi, hangul/braille fillers) are stripped, whitespace collapsed,
- * capped at 64 code points. Idempotent: normalize(normalize(x)) ===
- * normalize(x), so callers and the audit filter agree on stored form.
- */
+// H5/226-6 + N6: canonical operator label — controls → spaces,
+// default-ignorable + blank-lookalike code points stripped, whitespace
+// collapsed, capped at 64 cp. Idempotent — stored and filter agree.
 const IGNORABLE_OR_BLANK =
   /[\p{Cf}\p{Default_Ignorable_Code_Point}\u115F\u1160\u3164\uFFA0\u2800]/gu;
 
@@ -97,16 +91,31 @@ export function checkSerialized(
   return null;
 }
 
-/**
- * H1/226-6: evidence must carry content — non-blank string, non-empty
- * array, or an object with keys. Bare scalars/empties are not evidence.
- */
+// Zero-width/format chars — invisible, carry no content.
+const INVISIBLE_CHARS = /[\u00AD\u034F\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF\uFFFC]/gu;
+// JSON-ish empty literals that deserialize to nothing.
+const EMPTY_LITERALS = new Set(["", "null", "undefined", "{}", "[]"]);
+
+// H1/226-6 + N6-3: evidence must carry content — a string with ≥1
+// VISIBLE char (zero-width/format chars and bare "null"/"{}" literals
+// don't count), an array with ≥1 meaningful element, or an object
+// with ≥1 meaningful VALUE (`{"a":""}` is an empty husk). Nested
+// numbers/booleans count as content; a bare top-level scalar doesn't.
+const hasContent = (x: unknown): boolean =>
+  typeof x === "number" || typeof x === "boolean" ||
+  isMeaningfulEvidence(x);
+
 export function isMeaningfulEvidence(v: unknown): boolean {
   if (v === undefined || v === null) return false;
-  if (typeof v === "string") return v.trim() !== "";
-  if (Array.isArray(v)) return v.length > 0;
-  if (typeof v === "object") return Object.keys(v as object).length > 0;
-  return false;
+  if (typeof v === "string") {
+    const s = v.replace(INVISIBLE_CHARS, "").trim();
+    return !EMPTY_LITERALS.has(s.toLowerCase());
+  }
+  if (Array.isArray(v)) return v.some(hasContent);
+  if (typeof v === "object") {
+    return Object.values(v as Record<string, unknown>).some(hasContent);
+  }
+  return false; // bare scalar / other types are not evidence
 }
 
 /** `0x` + 40 hex — EVM payout destination (zero address is not one). */

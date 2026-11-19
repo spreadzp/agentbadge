@@ -182,10 +182,11 @@ export async function finalizeRefundCompletion(
       Date.now(),
     );
   } catch (e) {
-    // N5-6: a thrown transition leaves the outcome UNKNOWN — pair
-    // the COMPLETING row with an uncertain abort marker (under the
-    // same payment subject so the trail reads as one story) and fail
-    // controlled; ops must verify the row's actual state.
+    // N5-6/N6-4: a thrown transition leaves the outcome UNKNOWN —
+    // the write may have COMMITTED, so this must not read as a
+    // terminal "aborted". Pair the COMPLETING row with an explicit
+    // UNCERTAIN marker (payment subject, needsReconcile) — ops must
+    // verify the row's actual state before retrying.
     await recordPostEffectAudit(
       db,
       {
@@ -194,13 +195,13 @@ export async function finalizeRefundCompletion(
         subjectId: intent.paymentId,
         operator,
         evidence: {
-          kind: "INTENT_COMPLETE_ABORTED",
+          kind: "INTENT_COMPLETE_UNCERTAIN",
           intentId: intent.id,
           txHash,
-          uncertain: true,
+          needsReconcile: true,
         },
       },
-      { kind: "INTENT_COMPLETE_ABORTED", intentId: intent.id },
+      { kind: "INTENT_COMPLETE_UNCERTAIN", intentId: intent.id },
     );
     return fail(
       "PROVIDER_ERROR",

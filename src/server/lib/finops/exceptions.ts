@@ -52,6 +52,15 @@ const VALID_TYPES = new Set([
   "ORPHAN_TX",
   "REVERTED",
 ]);
+/** Postgres unique-violation (23505) — raced-append signal (N6-5). */
+function isUniqueViolation(e: unknown): boolean {
+  if (e === null || typeof e !== "object") return false;
+  const code = (e as { code?: unknown }).code;
+  if (code === "23505") return true;
+  const msg = e instanceof Error ? e.message : String(e);
+  return /unique constraint|duplicate key/i.test(msg);
+}
+
 const VALID_RESOLUTIONS = new Set([
   "MATCHED",
   "IGNORED",
@@ -101,14 +110,24 @@ export async function detectExceptions(
   const created: ReconciliationExceptionRow[] = [];
   const skipped: string[] = [];
   for (const { id, c } of prepared) {
-    const row = await db.finops.exceptions.append({
-      id,
-      type: c.type,
-      subjectRef: c.subjectRef.trim(),
-      details: c.details ?? {},
-      status: "OPEN",
-      createdAtMs: Date.now(),
-    });
+    let row: ReconciliationExceptionRow | null;
+    try {
+      row = await db.finops.exceptions.append({
+        id,
+        type: c.type,
+        subjectRef: c.subjectRef.trim(),
+        details: c.details ?? {},
+        status: "OPEN",
+        createdAtMs: Date.now(),
+      });
+    } catch (e) {
+      // N6-5: two concurrent scans race check-then-create — the loser's
+      // unique-violation throw must degrade to `skipped` (dedupe
+      // semantics), not kill the batch and strand the audit row.
+      // Anything else is a real store error — let it fail.
+      if (!isUniqueViolation(e)) throw e;
+      row = null;
+    }
     if (row) created.push(row);
     else skipped.push(id);
   }

@@ -44,6 +44,10 @@ export async function detectFromPaymentExceptions(
     (await db.finops.exceptions.list({})).map((r) => r.id),
   );
   const candidates: ExceptionCandidate[] = [];
+  // N6-8: a store that clamps `limit` returns overlapping pages —
+  // dedupe SOURCE rows we've already candidate'd so re-reads can't
+  // inflate the batch or the skipped count.
+  const seen = new Set<string>();
   let requested = target;
   let prevLen = -1;
   for (;;) {
@@ -54,6 +58,8 @@ export async function detectFromPaymentExceptions(
     });
     for (const e of page) {
       if (candidates.length >= target) break;
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
       // N5-7: `rx_<source id>` must never exceed MAX_ID_FIELD — an
       // over-long source id would fail the whole batch and starve
       // every later scan. Hash it deterministically; dedupe still
@@ -63,6 +69,13 @@ export async function detectFromPaymentExceptions(
           ? `rx_${e.id}`
           : `rx_${createHash("sha256").update(e.id).digest("hex").slice(0, 60)}`;
       if (mirrored.has(rxId)) continue; // already in the queue
+      // N6-1: subjectRef is echoed into later audit evidence and
+      // the pre-pass caps it — an over-long source id (e.g. the same
+      // row that triggered the hash above) must be CLAMPED, not left
+      // to fail the whole batch again. A row with NO usable reference
+      // is skipped — one malformed row must never starve the scan.
+      const subjectRef = (e.paymentId ?? e.id).slice(0, MAX_ID_FIELD);
+      if (subjectRef === "") continue;
       // C4b: own-property check — `kind` values like "constructor" or
       // "__proto__" must not reach through the prototype chain.
       const type = Object.hasOwn(TYPE_BY_REASON, e.kind)
@@ -73,7 +86,7 @@ export async function detectFromPaymentExceptions(
         candidates.push({
           id: rxId,
           type: "AMOUNT_MISMATCH",
-          subjectRef: e.paymentId ?? e.id,
+          subjectRef,
           details: { source: "payment-exception", kind: e.kind, details: e.details },
         });
         continue;
@@ -82,7 +95,7 @@ export async function detectFromPaymentExceptions(
       candidates.push({
         id: rxId,
         type,
-        subjectRef: e.paymentId ?? e.id,
+        subjectRef,
         details: { source: "payment-exception", kind: e.kind, attemptId: e.attemptId, details: e.details },
       });
     }

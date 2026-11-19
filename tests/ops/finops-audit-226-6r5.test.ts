@@ -290,7 +290,9 @@ describe("SLICE-226-6 round-5 fixes (re-audit v5)", () => {
       (a) => (a.evidence as { kind?: string }).kind,
     );
     expect(kinds).toContain("INTENT_COMPLETING");
-    expect(kinds).toContain("INTENT_COMPLETE_ABORTED");
+    // N6-4: a thrown transition pairs with an UNCERTAIN marker —
+    // the write may have committed, "aborted" would lie.
+    expect(kinds).toContain("INTENT_COMPLETE_UNCERTAIN");
     await db.close();
   });
 

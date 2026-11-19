@@ -133,11 +133,22 @@ export async function finReport(
   db: Database,
   period: ReportPeriod = {},
 ): Promise<FinOpsResult<FinReport>> {
-  const payments = await db.payments.payments.list({
-    statuses: TERMINAL_PAYMENT_STATUSES,
-    updatedSinceMs: period.sinceMs,
-    updatedUntilMs: period.untilMs,
-  });
+  // N6-6: every store read in the report is behind a containment
+  // boundary — a thrown list (driver error, corrupt row → repo dec())
+  // maps to PROVIDER_ERROR, never a bare 500.
+  let payments;
+  try {
+    payments = await db.payments.payments.list({
+      statuses: TERMINAL_PAYMENT_STATUSES,
+      updatedSinceMs: period.sinceMs,
+      updatedUntilMs: period.untilMs,
+    });
+  } catch (e) {
+    return fail(
+      "PROVIDER_ERROR",
+      `payment list failed: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
   const revenue = payments.filter((p) =>
     REVENUE_STATUSES.includes(p.status),
   );
@@ -153,9 +164,17 @@ export async function finReport(
       `corrupt amount on revenue payment ${corrupt.id} — manual reconciliation required`,
     );
   }
-  const attempts = await db.payments.attempts.list({
-    statuses: ["CONFIRMED"],
-  });
+  let attempts;
+  try {
+    attempts = await db.payments.attempts.list({
+      statuses: ["CONFIRMED"],
+    });
+  } catch (e) {
+    return fail(
+      "PROVIDER_ERROR",
+      `attempt list failed: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
   const confirmedByPayment = groupConfirmedAttempts(attempts);
   const splits = buildSplits(revenue, confirmedByPayment);
   const totals = await refundTotals(db, payments, period);
@@ -172,12 +191,20 @@ export async function finReport(
   );
 
   // RECORD_ONLY mirrors — informational, strictly outside revenue.
-  const mirrors = await db.commerce.payments.list({
-    mode: "RECORD_ONLY",
-    statuses: ["PAYMENT_RECORDED", "PAYMENT_VERIFIED"],
-    recordedSinceMs: period.sinceMs,
-    recordedUntilMs: period.untilMs,
-  });
+  let mirrors;
+  try {
+    mirrors = await db.commerce.payments.list({
+      mode: "RECORD_ONLY",
+      statuses: ["PAYMENT_RECORDED", "PAYMENT_VERIFIED"],
+      recordedSinceMs: period.sinceMs,
+      recordedUntilMs: period.untilMs,
+    });
+  } catch (e) {
+    return fail(
+      "PROVIDER_ERROR",
+      `mirror list failed: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
   const mirrorCurrencies = new Set(
     mirrors.map((m) => m.currency ?? "USD"),
   );
