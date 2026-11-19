@@ -14,6 +14,11 @@ describe("Infrastructure", () => {
     app.get("/llms.txt", (c) => c.text("LLM content", 200));
     // Simulate a dynamic API route
     app.get("/api/search", (c) => c.json({ results: [] }));
+    // Pollable request-inbox routes (must never be cached)
+    app.get("/api/requests/rq_test", (c) => c.json({ state: "submitted" }));
+    app.get("/api/requests/qa", (c) => c.json({ results: [] }));
+    app.get("/api/surveys/open", (c) => c.json({ surveys: [] }));
+    app.get("/api/ops/requests", (c) => c.json({ records: [] }));
     // Simulate a normal page
     app.get("/", (c) => c.html("<html></html>"));
 
@@ -46,6 +51,16 @@ describe("Infrastructure", () => {
     });
 
     expect(res.status).toBe(404);
+  });
+
+  it.each([
+    "/api/requests/rq_test",
+    "/api/requests/qa",
+    "/api/surveys/open",
+    "/api/ops/requests",
+  ])("returns no-store on pollable inbox path %s", async (path) => {
+    const res = await app.request(path);
+    expect(res.headers.get("cache-control")).toBe("no-store");
   });
 
   it("returns rate limit headers on API responses", async () => {

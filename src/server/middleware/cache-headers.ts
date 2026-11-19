@@ -32,6 +32,18 @@ const LONG_LIVED_PATHS = [
 
 const API_PREFIXES = ["/api/", "/passport/", "/verify/", "/agents/", "/market/", "/a2a/", "/did/"];
 
+/**
+ * Pollable/mutable inbox surfaces — any positive max-age serves stale
+ * state (found via browser smoke: a cached "submitted" poll response
+ * hid a completed answer for up to 60s; QA retract lagged the same).
+ */
+const NO_STORE_PREFIXES = [
+  "/api/requests",
+  "/api/surveys",
+  "/api/ops/requests",
+  "/api/ops/surveys",
+];
+
 export function cacheHeadersMiddleware() {
   return async (c: Context, next: Next): Promise<Response | void> => {
     await next();
@@ -44,6 +56,11 @@ export function cacheHeadersMiddleware() {
     // Long-lived static/discovery endpoints
     if (LONG_LIVED_PATHS.includes(path)) {
       c.header("Cache-Control", "public, max-age=3600");
+      return;
+    }
+
+    if (NO_STORE_PREFIXES.some((p) => path.startsWith(p))) {
+      c.header("Cache-Control", "no-store");
       return;
     }
 
