@@ -12167,14 +12167,6 @@
                   "name": "refundIntent_status_createdAtMs_idx_95013a06",
                   "prefix": "refundIntent_status_createdAtMs_idx",
                   "unique": false
-                },
-                {
-                  "columns": [
-                    "txHash"
-                  ],
-                  "name": "refundIntent_txHash_idx_3fbe8b55",
-                  "prefix": "refundIntent_txHash_idx",
-                  "unique": false
                 }
               ],
               "primaryKey": {
@@ -12182,7 +12174,13 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "txHash"
+                  ]
+                }
+              ]
             },
             "reputationFact": {
               "columns": {
@@ -13221,7 +13219,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "44914cdb9d22e153491d56bf480c7bdb5fdbc38b06ef48083e57ad30d332e07f"
+    "storageHash": "5cc05c7580b7916ed4b358c580b28b24d76b9c2825fbe72c359888fb6df0a582"
   },
   "execution": {
     "executionHash": "cda992afecb515ff2c2dd351b5c0b83fb88ef1603d7125472d90da7e198b024b",

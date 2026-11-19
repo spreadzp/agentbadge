@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'44914cdb9d22e153491d56bf480c7bdb5fdbc38b06ef48083e57ad30d332e07f'>;
+  StorageHashBase<'5cc05c7580b7916ed4b358c580b28b24d76b9c2825fbe72c359888fb6df0a582'>;
 export type ExecutionHash =
   ExecutionHashBase<'cda992afecb515ff2c2dd351b5c0b83fb88ef1603d7125472d90da7e198b024b'>;
 export type ProfileHash =
@@ -8202,7 +8202,7 @@ type ContractBase = Omit<
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [];
+              uniques: readonly [{ readonly columns: readonly ['txHash'] }];
               indexes: readonly [
                 {
                   readonly name: 'refundIntent_paymentId_idx_b2fe9a10';
@@ -8220,12 +8220,6 @@ type ContractBase = Omit<
                   readonly name: 'refundIntent_payee_idx_30918ee6';
                   readonly prefix: 'refundIntent_payee_idx';
                   readonly columns: readonly ['payee'];
-                  readonly unique: false;
-                },
-                {
-                  readonly name: 'refundIntent_txHash_idx_3fbe8b55';
-                  readonly prefix: 'refundIntent_txHash_idx';
-                  readonly columns: readonly ['txHash'];
                   readonly unique: false;
                 },
               ];

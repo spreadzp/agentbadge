@@ -1071,7 +1071,7 @@ model CommercePayment {
 // the effect (spec: audit trail always). No update/delete path.
 model AdminAction {
   id          String            @id @default(uuid())
-  action      String // REVIEW|RETRY_VERIFY|MARK_EXTERNAL_REVIEWED|REFUND|RESOLVE_EXCEPTION
+  action      String // REVIEW|RETRY_VERIFY|MARK_EXTERNAL_REVIEWED|REFUND|RESOLVE_EXCEPTION|DETECT_EXCEPTIONS
   subjectType String // payment|attempt|receipt|exception|refund_intent|agreement
   subjectId   String
   operator    String // required label (ADMIN_OPERATORS env or body)
@@ -1109,7 +1109,7 @@ model RefundIntent {
   @@index([paymentId])
   @@index([status, createdAtMs])
   @@index([payee])
-  @@index([txHash])
+  @@unique([txHash])
 }
 
 // Persistent reconciliation work queue (D-226-6). Deterministic ids
