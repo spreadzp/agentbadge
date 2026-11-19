@@ -42,6 +42,9 @@ const NO_STORE_PREFIXES = [
   "/api/surveys",
   "/api/ops/requests",
   "/api/ops/surveys",
+  // EPIC-226 prod-verify A4: admin surfaces are operator-scoped — the
+  // default `public, max-age=300` also leaked onto adminAuth 401s.
+  "/admin/",
 ];
 
 export function cacheHeadersMiddleware() {
