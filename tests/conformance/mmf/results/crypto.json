@@ -1,0 +1,409 @@
+[
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "ee5075b0b5d346b87d6c226ed7c59e84edce0f8869f772f2c4a676484ca74442",
+    "track": "crypto",
+    "vector_id": "C01",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "bounds_payload_hex": "31303a616c69636540636f72707c31303a313730303030303030307c303a7c353a35303030307c333a4742507c32323a616d617a6f6e2e636f2e756b2c746573636f2e636f6d7c323a33307c323a31307c363a3230303030307c323a3330",
+      "bounds_hash": "e36b67c582352d6e1244eed5fa0f783a019959154f0cb15aca976cde9c6de2c1",
+      "payload_hex": "363a6d2d726f6f747c31353a70726f637572656d656e742d626f747c36343a653336623637633538323335326436653132343465656435666130663738336130313939353931353466306362313561636139373663646539633664653263317c31303a31373032353932303030",
+      "signature": "18d1eb221edf899c17e10a219d6f9e83c57fc18b4e4478bc9936413f77414828f5749c0d0af1da30069957dd62c28d42e7252b38fd1e583ed19a985676b8fd08",
+      "valid": true
+    },
+    "actual": {
+      "public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "bounds_payload_hex": "31303a616c69636540636f72707c31303a313730303030303030307c303a7c353a35303030307c333a4742507c32323a616d617a6f6e2e636f2e756b2c746573636f2e636f6d7c323a33307c323a31307c363a3230303030307c323a3330",
+      "bounds_hash": "e36b67c582352d6e1244eed5fa0f783a019959154f0cb15aca976cde9c6de2c1",
+      "payload_hex": "363a6d2d726f6f747c31353a70726f637572656d656e742d626f747c36343a653336623637633538323335326436653132343465656435666130663738336130313939353931353466306362313561636139373663646539633664653263317c31303a31373032353932303030",
+      "signature": "18d1eb221edf899c17e10a219d6f9e83c57fc18b4e4478bc9936413f77414828f5749c0d0af1da30069957dd62c28d42e7252b38fd1e583ed19a985676b8fd08"
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "ee5075b0b5d346b87d6c226ed7c59e84edce0f8869f772f2c4a676484ca74442",
+    "track": "crypto",
+    "vector_id": "C02",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "valid": false
+    },
+    "actual": {
+      "valid": false,
+      "failedChecks": [
+        "signature"
+      ]
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "ee5075b0b5d346b87d6c226ed7c59e84edce0f8869f772f2c4a676484ca74442",
+    "track": "crypto",
+    "vector_id": "C03",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "valid": false
+    },
+    "actual": {
+      "valid": false,
+      "failedChecks": [
+        "signature",
+        "bounds_hash"
+      ]
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "ee5075b0b5d346b87d6c226ed7c59e84edce0f8869f772f2c4a676484ca74442",
+    "track": "crypto",
+    "vector_id": "C04",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "valid": false
+    },
+    "actual": {
+      "valid": false,
+      "failedChecks": [
+        "issuer_key"
+      ]
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "ee5075b0b5d346b87d6c226ed7c59e84edce0f8869f772f2c4a676484ca74442",
+    "track": "crypto",
+    "vector_id": "C05",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "valid": false
+    },
+    "actual": {
+      "valid": false,
+      "failedChecks": [
+        "signature",
+        "agent_binding"
+      ]
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "ee5075b0b5d346b87d6c226ed7c59e84edce0f8869f772f2c4a676484ca74442",
+    "track": "crypto",
+    "vector_id": "C06",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "valid": false
+    },
+    "actual": {
+      "valid": false,
+      "failedChecks": [
+        "signature",
+        "mandate_binding"
+      ]
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "84cf420549f041db2dd191cc22006b0b5dfe119fb2fabc042982e49791d03ea7",
+    "track": "crypto",
+    "vector_id": "E01",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|7:1000000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+        }
+      ],
+      "head": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+    },
+    "actual": {
+      "rows": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|7:1000000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+        }
+      ],
+      "head": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "84cf420549f041db2dd191cc22006b0b5dfe119fb2fabc042982e49791d03ea7",
+    "track": "crypto",
+    "vector_id": "E02",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|9:a:shopbot|13:café.example|4:1250|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|13:1730000000250|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "749d38411da98bc384393e515779a6550f4e1378bc62fd674ad0879d4f04e381"
+        },
+        {
+          "payload": "8:DECISION|2:t2|2:m1|9:a:shopbot|13:café.example|7:invalid|3:GBP|5:false|12:NON_POSITIVE|6:DENIED|0:|13:1730000001000|64:749d38411da98bc384393e515779a6550f4e1378bc62fd674ad0879d4f04e381",
+          "hash": "faf57c842f9d8d94b9a705daec17f3bc00a7bc395367ce432be63ae33ebc09b9"
+        },
+        {
+          "payload": "6:SETTLE|2:t1|2:m1|9:a:shopbot|13:café.example|4:1250|3:GBP|4:true|6:WITHIN|7:SETTLED|0:|13:1730000002500|64:faf57c842f9d8d94b9a705daec17f3bc00a7bc395367ce432be63ae33ebc09b9",
+          "hash": "9b8958db9ed998e68eea3411bd78e4214558c56aedbab600b91d3dc5b895072c"
+        },
+        {
+          "payload": "6:REPLAY|2:t1|2:m1|9:a:shopbot|13:café.example|4:1250|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|13:1730000003000|64:9b8958db9ed998e68eea3411bd78e4214558c56aedbab600b91d3dc5b895072c",
+          "hash": "2bd4c713473dbc71ed60f816852a3fed3c6aa999e8b3ff69f7ac8c2e6a7955b2"
+        }
+      ],
+      "head": "2bd4c713473dbc71ed60f816852a3fed3c6aa999e8b3ff69f7ac8c2e6a7955b2"
+    },
+    "actual": {
+      "rows": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|9:a:shopbot|13:café.example|4:1250|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|13:1730000000250|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "749d38411da98bc384393e515779a6550f4e1378bc62fd674ad0879d4f04e381"
+        },
+        {
+          "payload": "8:DECISION|2:t2|2:m1|9:a:shopbot|13:café.example|7:invalid|3:GBP|5:false|12:NON_POSITIVE|6:DENIED|0:|13:1730000001000|64:749d38411da98bc384393e515779a6550f4e1378bc62fd674ad0879d4f04e381",
+          "hash": "faf57c842f9d8d94b9a705daec17f3bc00a7bc395367ce432be63ae33ebc09b9"
+        },
+        {
+          "payload": "6:SETTLE|2:t1|2:m1|9:a:shopbot|13:café.example|4:1250|3:GBP|4:true|6:WITHIN|7:SETTLED|0:|13:1730000002500|64:faf57c842f9d8d94b9a705daec17f3bc00a7bc395367ce432be63ae33ebc09b9",
+          "hash": "9b8958db9ed998e68eea3411bd78e4214558c56aedbab600b91d3dc5b895072c"
+        },
+        {
+          "payload": "6:REPLAY|2:t1|2:m1|9:a:shopbot|13:café.example|4:1250|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|13:1730000003000|64:9b8958db9ed998e68eea3411bd78e4214558c56aedbab600b91d3dc5b895072c",
+          "hash": "2bd4c713473dbc71ed60f816852a3fed3c6aa999e8b3ff69f7ac8c2e6a7955b2"
+        }
+      ],
+      "head": "2bd4c713473dbc71ed60f816852a3fed3c6aa999e8b3ff69f7ac8c2e6a7955b2"
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "84cf420549f041db2dd191cc22006b0b5dfe119fb2fabc042982e49791d03ea7",
+    "track": "crypto",
+    "vector_id": "E03",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
+    "expected": {
+      "expect": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|7:1000000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+        },
+        {
+          "payload": "5:CLAIM|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|7:CLAIMED|0:|7:1001000|64:94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675",
+          "hash": "f34cad660ad8ae726d8b14886659e4c1e69c6a50885d2a722bbb12c385ef4dae"
+        },
+        {
+          "payload": "8:REJECTED|2:t1|2:m1|1:a|12:evil.example|4:4999|3:GBP|5:false|5:CLAIM|7:CLAIMED|0:|7:1002000|64:f34cad660ad8ae726d8b14886659e4c1e69c6a50885d2a722bbb12c385ef4dae",
+          "hash": "0be5498d4c33113b3ef12473390a9ff2e38bf2854a669e3cefac774857a8998a"
+        },
+        {
+          "payload": "6:SETTLE|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|7:SETTLED|0:|7:1003000|64:0be5498d4c33113b3ef12473390a9ff2e38bf2854a669e3cefac774857a8998a",
+          "hash": "f8885da97aeb23154632c49758a42ef2b926dca689259899dfbc1c17c33044fb"
+        }
+      ],
+      "head": "f8885da97aeb23154632c49758a42ef2b926dca689259899dfbc1c17c33044fb"
+    },
+    "actual": {
+      "rows": [
+        {
+          "payload": "8:DECISION|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|10:AUTHORIZED|0:|7:1000000|64:0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675"
+        },
+        {
+          "payload": "5:CLAIM|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|7:CLAIMED|0:|7:1001000|64:94a1496cb469279e1f9dea14d4b8a618b910be801eeac280fcec972a0d0a8675",
+          "hash": "f34cad660ad8ae726d8b14886659e4c1e69c6a50885d2a722bbb12c385ef4dae"
+        },
+        {
+          "payload": "8:REJECTED|2:t1|2:m1|1:a|12:evil.example|4:4999|3:GBP|5:false|5:CLAIM|7:CLAIMED|0:|7:1002000|64:f34cad660ad8ae726d8b14886659e4c1e69c6a50885d2a722bbb12c385ef4dae",
+          "hash": "0be5498d4c33113b3ef12473390a9ff2e38bf2854a669e3cefac774857a8998a"
+        },
+        {
+          "payload": "6:SETTLE|2:t1|2:m1|1:a|9:tesco.com|4:4999|3:GBP|4:true|6:WITHIN|7:SETTLED|0:|7:1003000|64:0be5498d4c33113b3ef12473390a9ff2e38bf2854a669e3cefac774857a8998a",
+          "hash": "f8885da97aeb23154632c49758a42ef2b926dca689259899dfbc1c17c33044fb"
+        }
+      ],
+      "head": "f8885da97aeb23154632c49758a42ef2b926dca689259899dfbc1c17c33044fb"
+    },
+    "dimensions": {
+      "canonical_form": {
+        "mapped_to": "mmf-canon.ts (test-lib)",
+        "equivalence": "Partial",
+        "note": "spec byte-form reproduced in tests; prod has no §5.6 serializer"
+      },
+      "ed25519_credentials": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod auth is EIP-191/ECDSA wallet-sig — no Ed25519 credential model"
+      },
+      "evidence_hash_chain": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "prod evidence = ledger rows + alert log, no canonical hash chain"
+      }
+    }
+  }
+]
