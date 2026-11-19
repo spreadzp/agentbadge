@@ -26,12 +26,14 @@ import {
 } from "./guards";
 import { type FinOpsResult, fail, ok } from "./types";
 
-// Server-side vocabulary — the published store const plus the action
-// added in 226-6 (DETECT_EXCEPTIONS). The Set dedupes when the
-// package const catches up.
+// Server-side vocabulary — the published store const plus actions
+// added ahead of the package (226-6 DETECT_EXCEPTIONS; 227 settlement
+// kinds). The Set dedupes when the package const catches up.
 const KNOWN_ACTIONS = new Set<string>([
   ...ADMIN_ACTIONS,
   "DETECT_EXCEPTIONS",
+  "MARK_PAYOUT_PAID",
+  "RESOLVE_SETTLEMENT_DISPUTE",
 ]);
 
 /** External-review subjects — closed vocabulary (M1/226-6). */
