@@ -465,6 +465,8 @@ describe("finops exceptions", () => {
       expect(res.value.status).toBe("RESOLVED");
       expect(res.value.resolution).toBe("MANUAL_ADJUSTED");
       expect(res.value.resolvedBy).toBe("ops");
+      // Post-effect audit landed — surfaced, never swallowed (M-2/R3.2).
+      expect(res.value.auditRecorded).toBe(true);
     }
     const audit = await listAdminActions(db, {
       action: "RESOLVE_EXCEPTION",

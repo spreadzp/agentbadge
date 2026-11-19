@@ -275,9 +275,9 @@ export async function resolveException(
     },
   );
   // The state change landed — a degraded audit must not report the
-  // resolve as failed; the minimal row still carries the outcome.
-  void audit;
-  return ok(resolved);
+  // resolve as failed; but a fully-failed audit write surfaces as
+  // auditRecorded:false (stripe-refunds convention) — never swallowed.
+  return ok({ ...resolved, auditRecorded: audit.ok });
 }
 
 /** Newest-first work-queue listing. */

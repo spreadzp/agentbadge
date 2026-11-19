@@ -161,8 +161,13 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
           errorCount: res.value.errors?.length ?? 0,
         },
       );
-      void audit;
-      return respond(c, res);
+      // Audit-always is not absolute here: the effect already landed,
+      // so a failed audit write must be surfaced, not swallowed —
+      // same convention as stripe-refunds' auditRecorded field.
+      return respond(c, {
+        ok: true as const,
+        value: { ...res.value, auditRecorded: audit.ok },
+      });
     },
   );
 
