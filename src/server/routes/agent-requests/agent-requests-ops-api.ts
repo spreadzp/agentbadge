@@ -153,7 +153,14 @@ export function createAgentRequestOpsRoutes(
         return errorResponse(c, 409, ErrorCodes.INVALID_STATE, "terminal");
       }
       const patch = {
-        response: parsed.data.response,
+        // pg/json codec: driver returns json columns already parsed —
+        // codec decode re-parses strings → a top-level string 500s every
+        // read of the row. Normalize to the {answer} convention used by
+        // all existing rows; objects pass through untouched.
+        response:
+          typeof parsed.data.response === "string"
+            ? { answer: parsed.data.response }
+            : parsed.data.response,
         respondedAtMs: now(),
       };
       if (parsed.data.mark_completed === false) {

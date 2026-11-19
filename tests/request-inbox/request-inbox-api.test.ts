@@ -81,6 +81,15 @@ describe("POST /api/requests (SLICE-252-2)", () => {
     expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0);
   });
 
+  it("bare-string payload → wrapped {question} (pg/json top-level-string decode guard)", async () => {
+    const { app, stores } = mkApp();
+    const res = await post(app, { payload: "what chains?" });
+    expect(res.status).toBe(202);
+    const { request_id } = await res.json();
+    const { record } = await stores.requests.get(request_id);
+    expect(record?.payload).toEqual({ question: "what chains?" });
+  });
+
   it("verified agent key lane → verified:true + agentId stored", async () => {
     const { app, stores } = mkApp();
     const res = await post(

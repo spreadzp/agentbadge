@@ -130,6 +130,22 @@ describe("POST respond/state + e2e (SLICE-252-3)", () => {
     expect(body.response).toEqual({ steps: ["a", "b"] });
   });
 
+  it("bare-string response → wrapped {answer} (pg/json top-level-string decode guard)", async () => {
+    const { app } = mkApp();
+    const p = await post(app, { payload: { prompt: "q" } });
+    const { request_id } = await p.json();
+    const resp = await app.request(`/api/ops/requests/${request_id}/respond`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...opsHeaders },
+      body: JSON.stringify({ response: "plain text answer" }),
+    });
+    expect(resp.status).toBe(200);
+    const body = await (
+      await app.request(`/api/requests/${request_id}`)
+    ).json();
+    expect(body.response).toEqual({ answer: "plain text answer" });
+  });
+
   it("respond without mark_completed → working; completed → QA pair materializes", async () => {
     const { app, stores } = mkApp();
     // QA materialization requires publish-consent (D-256-Q13).

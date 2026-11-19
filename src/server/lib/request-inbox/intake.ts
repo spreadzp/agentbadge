@@ -70,7 +70,13 @@ export function parseIntake(raw: string):
   if (!parsed.success || parsed.data.payload === undefined) {
     return { ok: false, error: "invalid" };
   }
-  const { payload, meta } = parsed.data;
+  const { payload: rawPayload, meta } = parsed.data;
+  // pg/json codec: the driver returns json columns already parsed and
+  // decode re-parses strings, so a top-level string payload would 500
+  // every later read of the row (ops queue, poll). A bare string is
+  // semantically the question — wrap it.
+  const payload =
+    typeof rawPayload === "string" ? { question: rawPayload } : rawPayload;
   if (bytes(payload) > PAYLOAD_MAX) {
     return { ok: false, error: "field_too_large", field: "payload" };
   }
@@ -86,7 +92,7 @@ export function parseIntake(raw: string):
       }
     }
   }
-  return { ok: true, body: parsed.data };
+  return { ok: true, body: { ...parsed.data, payload } };
 }
 
 /** True if any string under `v` has NUL or an unpaired surrogate. */
