@@ -71,6 +71,18 @@ describe("Admin API key authentication — SLICE-7-11", () => {
     expect(res.status).toBe(401);
   });
 
+  it("labels the 401 envelope with UNAUTHORIZED, not INTERNAL_ERROR", async () => {
+    const app = makeApp();
+    const res = await app.request("/admin/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenId: "0.0.123", serial: 1, reason: "test" }),
+    });
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.code).toBe("UNAUTHORIZED");
+  });
+
   it("returns 500 when ADMIN_API_KEY not configured", async () => {
     delete process.env.ADMIN_API_KEY;
     const app = makeApp();

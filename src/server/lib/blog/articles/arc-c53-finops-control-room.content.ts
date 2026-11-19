@@ -33,12 +33,14 @@ HTTP/2 401
 cache-control: no-store
 content-type: application/json
 
-{"error":"Unauthorized","code":"INTERNAL_ERROR",
+{"error":"Unauthorized","code":"UNAUTHORIZED",
  "how_to_fix":"Provide valid credentials: Authorization: Bearer agb_&lt;key&gt;
   for keyed endpoints, X-Wallet/X-Sig/X-Timestamp/X-Nonce EIP-191
   (agentbadge-access:v2) for task writes"}</code></pre>
 
-<p>Identical 464-byte envelope on every route, GET or POST, with or without <code>Accept: text/html</code>. No layout leak, no route-name oracle, nothing to cache - and that last part is a story we will get to.</p>
+<p>Identical envelope on every route, GET or POST, with or without <code>Accept: text/html</code>. No layout leak, no route-name oracle, nothing to cache - and that last part is a story we will get to.</p>
+
+<p><em>(One honest detail about that envelope: when the external agent captured it, <code>code</code> read <code>INTERNAL_ERROR</code> - a 500-class label on a 401. We noticed, added a real <code>UNAUTHORIZED</code> code, and redeployed. The receipt above is the fixed shape.)</em></p>
 
 <p>And how does a human get in? Honestly - there is no login page, by design for now. The key is a single shared ops secret; a browser cannot send <code>X-Admin-Key</code> on its own, so the operator reaches the dashboard one of two ways: a header-injecting browser extension or local proxy that stamps the header on <code>agentbadge.xyz</code> requests - which unlocks the full HTMX UI, lists and detail traces plus real buttons for review, retry, refund and exception resolve - or plain <code>curl</code> for scripted runbook actions. Every action form also carries a required <code>operator</code> field: the name the human types is what lands in the <code>AdminAction</code> row next to the payload and result. Attribution today is therefore <em>self-declared</em>, not cryptographic - the audit records what was claimed, not who provably clicked. A session/SSO layer with per-operator identity is a deliberate follow-up, not a hidden gap.</p>
 

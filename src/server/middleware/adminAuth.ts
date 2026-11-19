@@ -41,7 +41,7 @@ export async function adminAuth(c: Context, next: Next): Promise<Response | void
   // Bearer token — || falls through on empty strings too.
   const provided = xAdminKey || bearerKey;
   if (!provided || !safeCompare(provided, apiKey)) {
-    return errorResponse(c, 401, ErrorCodes.INTERNAL_ERROR, "Unauthorized");
+    return errorResponse(c, 401, ErrorCodes.UNAUTHORIZED, "Unauthorized");
   }
 
   await next();

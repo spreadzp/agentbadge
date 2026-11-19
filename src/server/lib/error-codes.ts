@@ -89,6 +89,10 @@ export const ErrorCodes = {
   AGENT_KEY_INVALID: "agent_key_invalid",
   AGENT_KEY_REVOKED: "agent_key_revoked",
 
+  // 401 — shared adminAuth key gate (EPIC-226 A5: the 401 envelope
+  // carried INTERNAL_ERROR — a mislabeled 500-class code)
+  UNAUTHORIZED: "UNAUTHORIZED",
+
   // 4xx — witness layer (EPIC-185; snake_case wire values,
   // charge:never in the catalog — endpoints are free)
   WITNESS_DISABLED: "witness_disabled",
