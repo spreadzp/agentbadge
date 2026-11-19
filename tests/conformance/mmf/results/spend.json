@@ -1,0 +1,2315 @@
+[
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V01",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 4999
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "payee_allowlist": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no payee dimension in envelope model"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V02",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "REVOKED"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "spend_suspended",
+      "checkId": "REVOKED",
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "revocation": {
+        "mapped_to": "AgentWalletRecord.suspended",
+        "equivalence": "Partial",
+        "note": "wallet kill-switch ≈ mandate revocation"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V03",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "EXPIRED"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "expired"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V04",
+    "result": "DIVERGENCE-BUG",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": true,
+      "amount": 0
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no amount-validity check in enforcer"
+      }
+    },
+    "notes": "non-positive amount"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V05",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "CAP_EXCEEDED"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "perTx",
+      "checkId": "CAP_EXCEEDED",
+      "unsafeAmount": false,
+      "amount": 501
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V06",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 500
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V07",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "CURRENCY"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "currency mismatch"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V08",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V09",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "PAYEE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "payee_allowlist": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no payee dimension in envelope model"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "payee not in allowlist"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V10",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V11",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "VELOCITY"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "velocity_tx",
+      "checkId": "VELOCITY",
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "velocity": {
+        "mapped_to": "SpendCaps.maxTxPerHour",
+        "equivalence": "Partial",
+        "note": "MMF window=86400s of issued auths (incl. voided); ours=3600s of reserved+settled"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V12",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "velocity": {
+        "mapped_to": "SpendCaps.maxTxPerHour",
+        "equivalence": "Partial",
+        "note": "MMF window=86400s of issued auths (incl. voided); ours=3600s of reserved+settled"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V13",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V14",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "BUDGET"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "monthly",
+      "checkId": "BUDGET",
+      "unsafeAmount": false,
+      "amount": 100
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "budget_window": {
+        "mapped_to": "SpendCaps.monthlyUsd",
+        "equivalence": "Exact"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V15",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 80
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "budget_window": {
+        "mapped_to": "SpendCaps.monthlyUsd",
+        "equivalence": "Exact"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V16",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 100
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "budget_window": {
+        "mapped_to": "SpendCaps.dailyUsd",
+        "equivalence": "Exact"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V17",
+    "result": "DIVERGENCE-BUG",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": true,
+      "amount": -50
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no amount-validity check in enforcer"
+      }
+    },
+    "notes": "negative amount rejected"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V18",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "REVOKED"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "spend_suspended",
+      "checkId": "REVOKED",
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "payee_allowlist": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no payee dimension in envelope model"
+      },
+      "revocation": {
+        "mapped_to": "AgentWalletRecord.suspended",
+        "equivalence": "Partial",
+        "note": "wallet kill-switch ≈ mandate revocation"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V19",
+    "result": "PASS",
+    "equivalence": "Exact",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "CAP_EXCEEDED",
+      "then": {
+        "allowed": true,
+        "check": "WITHIN"
+      }
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "perTx",
+      "checkId": "CAP_EXCEEDED",
+      "unsafeAmount": false,
+      "amount": 600,
+      "then": {
+        "allowed": true,
+        "unsafeAmount": false,
+        "amount": 500
+      }
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "budget_window": {
+        "mapped_to": "SpendCaps.monthlyUsd",
+        "equivalence": "Exact"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V20",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "REVOKED_REGISTRY"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "spend_suspended",
+      "checkId": "REVOKED_REGISTRY",
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "revocation": {
+        "mapped_to": "AgentWalletRecord.suspended",
+        "equivalence": "Partial",
+        "note": "wallet kill-switch ≈ mandate revocation"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V21",
+    "result": "GATE_EXCEPTION",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "REVOKED_REGISTRY"
+    },
+    "actual": {
+      "threw": "http 500: gate threw — fail-closed (500, no structured deny)",
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "registry_unavailable": {
+        "mapped_to": "AgentWalletStore.get throw",
+        "equivalence": "Partial",
+        "note": "fail-closed probe — prod exception path"
+      }
+    },
+    "notes": "registry unreachable - fail closed"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V22",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "revocation": {
+        "mapped_to": "AgentWalletRecord.suspended",
+        "equivalence": "Partial",
+        "note": "wallet kill-switch ≈ mandate revocation"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V23",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "REVOKED_REGISTRY"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "spend_suspended",
+      "checkId": "REVOKED_REGISTRY",
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "revocation": {
+        "mapped_to": "AgentWalletRecord.suspended",
+        "equivalence": "Partial",
+        "note": "wallet kill-switch ≈ mandate revocation"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V24",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "REVOKED"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "spend_suspended",
+      "checkId": "REVOKED",
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "revocation": {
+        "mapped_to": "AgentWalletRecord.suspended",
+        "equivalence": "Partial",
+        "note": "wallet kill-switch ≈ mandate revocation"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V25",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "EXPIRED"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "perTx",
+      "checkId": "CAP_EXCEEDED",
+      "unsafeAmount": false,
+      "amount": 900
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "ordering - expired AND over cap reports EXPIRED"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V26",
+    "result": "PASS",
+    "equivalence": "Partial",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "CAP_EXCEEDED",
+      "then": {
+        "allowed": true,
+        "check": "WITHIN"
+      }
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "perTx",
+      "checkId": "CAP_EXCEEDED",
+      "unsafeAmount": false,
+      "amount": 500,
+      "then": {
+        "allowed": true,
+        "unsafeAmount": false,
+        "amount": 10
+      }
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "velocity": {
+        "mapped_to": "SpendCaps.maxTxPerHour",
+        "equivalence": "Partial",
+        "note": "MMF window=86400s of issued auths (incl. voided); ours=3600s of reserved+settled"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V27",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 49.99
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no amount-validity check in enforcer"
+      }
+    },
+    "notes": "fractional amount is not a minor-unit integer"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V28",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "perTx",
+      "checkId": "CAP_EXCEEDED",
+      "unsafeAmount": false,
+      "amount": 9007199254740992
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no amount-validity check in enforcer"
+      }
+    },
+    "notes": "amount above 2^53-1 is outside the interoperable integer range"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V29",
+    "result": "DIVERGENCE-BUG",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": true,
+      "amount": "10"
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no amount-validity check in enforcer"
+      }
+    },
+    "notes": "decimal string amount is not accepted on the wire"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V30",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "CURRENCY"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "transaction currency omitted -> CURRENCY (currency is mandatory)"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V31",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 1
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "lexical amount form cannot reach our number API"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "amount token 1.0 has a fractional part in its lexical form: not an integer, so NON_POSITIVE"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V32",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 1
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "lexical amount form cannot reach our number API"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "amount token 1e0 has an exponent: not an integer token, so NON_POSITIVE"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V33",
+    "result": "DIVERGENCE-BUG",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": true,
+      "amount": 0
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "lexical amount form cannot reach our number API"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "amount token -0 is zero: not positive, so NON_POSITIVE"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V34",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": false,
+      "check": "NON_POSITIVE"
+    },
+    "actual": {
+      "allowed": false,
+      "rawDeny": "perTx",
+      "checkId": "CAP_EXCEEDED",
+      "unsafeAmount": false,
+      "amount": 9007199254740992
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "amount_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "lexical amount form cannot reach our number API"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "amount token 9007199254740992 (2^53) exceeds the maximum 2^53-1: NON_POSITIVE"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V35",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "allowed": true,
+      "check": "WITHIN"
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 9007199254740991
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    }
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
+    "track": "spend",
+    "vector_id": "V36",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "createSpendEnforcer.begin→complete",
+    "expected": {
+      "rejected": true
+    },
+    "actual": {
+      "allowed": true,
+      "unsafeAmount": false,
+      "amount": 10
+    },
+    "dimensions": {
+      "amount_bounds": {
+        "mapped_to": "SpendCaps.perTxUsd",
+        "equivalence": "Exact"
+      },
+      "currency_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "scalar projection — no currency concept (D-255-Q16)"
+      },
+      "payee_allowlist": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no payee dimension in envelope model"
+      },
+      "mandate_expiry": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "envelope has no expiry"
+      },
+      "input_validation": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "pre-evaluation input rejection has no analogue"
+      },
+      "replay_key": {
+        "mapped_to": "SpendEntry.refId",
+        "equivalence": "None",
+        "note": "refId is correlation-only, not a dedup key (D-255-Q14)"
+      },
+      "currency": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "allowed_payees": {
+        "mapped_to": null,
+        "equivalence": "None"
+      },
+      "expires_in_days": {
+        "mapped_to": null,
+        "equivalence": "None"
+      }
+    },
+    "notes": "unpaired surrogate in a canonical string field — malformed input rejected before evaluation; no decision, no evidence record. (The JSON escape below decodes to "
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D01",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 1
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 50
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D02",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D03",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "wider amount cap"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D04",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "different currency"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D05",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "payee outside parent allowlist"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D06",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "empty payee list (= any payee) under restricted parent"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D07",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "velocity 0 (= unlimited) under limited parent"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D08",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "higher velocity"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D09",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "null budget (= unlimited) under budgeted parent"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D10",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "higher budget"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D11",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      }
+    ],
+    "notes": "longer expiry window"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D12",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        null,
+        "invalid"
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "revocation": {
+        "mapped_to": "DelegateStore.revoke / owner.suspended",
+        "equivalence": "Partial",
+        "note": "link revocation ≈ parent mandate revocation"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "revoke",
+        "verdict": "match",
+        "detail": {
+          "revoked": "parent",
+          "storeRevoked": false
+        }
+      },
+      {
+        "kind": "delegate",
+        "verdict": "mismatch",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 10
+        }
+      }
+    ],
+    "notes": "cannot delegate from a revoked parent"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D13",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        null,
+        {
+          "allowed": false,
+          "check": "REVOKED"
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "revocation": {
+        "mapped_to": "DelegateStore.revoke / owner.suspended",
+        "equivalence": "Partial",
+        "note": "link revocation ≈ parent mandate revocation"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100
+        }
+      },
+      {
+        "kind": "revoke",
+        "verdict": "match",
+        "detail": {
+          "revoked": "parent",
+          "storeRevoked": true
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": false,
+          "reason": "no-active-delegate",
+          "checkId": "REVOKED",
+          "amount": 10
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D14",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": false,
+          "check": "EXPIRED"
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 1
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "mismatch",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 10
+        }
+      }
+    ],
+    "notes": "parent expiry bounds the child even if the child window is later"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D15",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        "valid",
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 2
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c1",
+          "spendCapUsd": 500
+        }
+      },
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c2",
+          "spendCapUsd": 500
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 80
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "mismatch",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 30
+        }
+      }
+    ],
+    "notes": "sibling spend aggregates against the parent budget"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D16",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "VELOCITY"
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 2
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 500
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 10
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "mismatch",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 10
+        }
+      }
+    ],
+    "notes": "child spend counts against parent velocity"
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D17",
+    "result": "PASS",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        "valid",
+        null,
+        {
+          "allowed": false,
+          "check": "REVOKED"
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 0
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "delegation_chains": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "single-level delegate store — no chain resolution"
+      },
+      "revocation": {
+        "mapped_to": "DelegateStore.revoke / owner.suspended",
+        "equivalence": "Partial",
+        "note": "link revocation ≈ parent mandate revocation"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100
+        }
+      },
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "g",
+          "spendCapUsd": 50
+        }
+      },
+      {
+        "kind": "revoke",
+        "verdict": "match",
+        "detail": {
+          "revoked": "parent",
+          "storeRevoked": true
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": false,
+          "reason": "no-active-delegate",
+          "checkId": "REVOKED",
+          "amount": 10
+        }
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "corpus_version": "v0.4.24",
+    "corpus_sha256": "2218ad5eccc16c72e5b941d568432445090916f855e87a3258fb924d184b5900",
+    "track": "spend",
+    "vector_id": "D18",
+    "result": "NOT_MAPPABLE",
+    "equivalence": "None",
+    "production_path": "spendAsDelegate+DelegateStore",
+    "expected": {
+      "steps": [
+        "valid",
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        null,
+        null,
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        },
+        {
+          "allowed": true,
+          "check": "WITHIN"
+        },
+        {
+          "allowed": false,
+          "check": "BUDGET"
+        }
+      ]
+    },
+    "actual": {
+      "kitCalls": 4
+    },
+    "dimensions": {
+      "stored_cap": {
+        "mapped_to": "DelegateRecord.spendCapUsd→min(owner.perTxUsd)",
+        "equivalence": "Exact",
+        "note": "non-widening implemented post-234-32 (live owner lookup)"
+      },
+      "delegate_lifecycle": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "no claim/settle ops on the delegate path"
+      },
+      "parent_extra_bounds": {
+        "mapped_to": null,
+        "equivalence": "None",
+        "note": "child/parent bounds beyond spendCapUsd are not checked"
+      }
+    },
+    "steps": [
+      {
+        "kind": "delegate",
+        "verdict": "match",
+        "detail": {
+          "delegate": "c",
+          "spendCapUsd": 100
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 60
+        }
+      },
+      {
+        "kind": "claim",
+        "verdict": "unmapped",
+        "detail": {
+          "step": {
+            "claim": {
+              "as": "c",
+              "tx_id": "t1",
+              "payee": "x",
+              "amount": 60,
+              "currency": "GBP"
+            },
+            "at": 2001
+          }
+        }
+      },
+      {
+        "kind": "settle",
+        "verdict": "unmapped",
+        "detail": {
+          "step": {
+            "settle": {
+              "as": "c",
+              "tx_id": "t1"
+            },
+            "at": 2002
+          }
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "mismatch",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 50
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "match",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 40
+        }
+      },
+      {
+        "kind": "tx",
+        "verdict": "mismatch",
+        "detail": {
+          "ok": true,
+          "checkId": "WITHIN",
+          "amount": 70
+        }
+      }
+    ],
+    "notes": "parent window 1 day, child window 2 days (valid): a settled transaction that has aged out of the parent window still counts for the child and denies; an unresol"
+  }
+]
