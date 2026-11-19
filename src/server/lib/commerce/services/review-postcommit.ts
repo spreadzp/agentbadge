@@ -1,12 +1,15 @@
 /**
  * SLICE-227-8 — the review's post-commit settlement sync, extracted
- * under the 300-line cap. Every path is best-effort: a failure logs a
- * warn and never rolls back the committed verdict (the commerce atomic
- * is the state of record; settlement rows follow through CAS-only ops
- * that are safe to retry).
+ * under the 300-line cap. Every path is best-effort: a failure logs
+ * and never rolls back the committed verdict (the commerce atomic is
+ * the state of record; settlement rows follow through CAS-only ops
+ * that are safe to retry). Dangerous leftovers carry a stable `repair`
+ * error-log key so operators can act on them (R8-M2).
  *
  *  - REJECT/REVISION_REQUIRED: release the bound milestone
- *    (READY→PENDING, R4-M5) so the resubmission round can rebind it.
+ *    (READY→PENDING, R4-M5); APPROVED too, but ONLY an `appr_` epoch
+ *    still bound to this submission — resolver (`rsv_`) and operator
+ *    (`ops_`) rulings are never un-done by a verdict (R8-M1).
  *  - ACCEPTED: resync the pre-commit approve for the narrow
  *    pre-read-race window, then the M-1 completion pass finishes
  *    agreements stranded ACTIVE by concurrent sibling reviews.
@@ -19,116 +22,6 @@ import type {
 import { logger } from "@agentbadge/passport/logger";
 import type { SubmissionVerdict } from "../types";
 import { transitionRow, type CommerceCtx } from "./ctx";
-import type { SettlementGate } from "./review-settlement";
-
-/**
- * R4-H1 + R5-H2 + R6-M2 + R7-M4 — undo THIS gate's own pre-commit
- * approve when the verdict atomic failed. Only our approve reverts —
- * a sibling review's APPROVED belongs to its committed verdict.
- * Re-reads the submission first: ACCEPTED → skip (approval belongs to
- * that verdict); REJECTED/REVISION_REQUIRED → release straight to
- * PENDING; SUBMITTED → revert to READY. A FAILED re-read is UNKNOWN,
- * not "not committed" — fail closed and skip (a lost-ack verdict
- * looks identical). After a landed revert, one more re-read heals
- * the sibling-committed-in-the-gap case. `repair` is a stable
- * error-log key — every refused/aborted/ambiguous path is
- * operator-visible.
- */
-export async function revertGateApproval(
-  ctx: CommerceCtx,
-  actor: string,
-  submissionId: string,
-  gate: SettlementGate,
-): Promise<void> {
-  const { stores } = ctx;
-  if (
-    gate.approvedByUs !== true ||
-    !ctx.settlement ||
-    gate.milestoneRowId === undefined
-  ) {
-    return;
-  }
-  const settleMilestoneId = gate.milestoneRowId;
-  try {
-    const sub = await stores.submissions
-      .getById(submissionId)
-      .catch(() => null);
-    if (!sub) {
-      logger.error("approval revert skipped — submission re-read failed", {
-        repair: "review milestone approval",
-        milestoneRowId: settleMilestoneId,
-        submissionId,
-      });
-    } else if (sub.status === "ACCEPTED") {
-      // Sibling ACCEPT committed — approval belongs to that verdict.
-    } else if (
-      sub.status === "SUBMITTED" ||
-      sub.status === "REJECTED" ||
-      sub.status === "REVISION_REQUIRED"
-    ) {
-      const res = await ctx.settlement.revertApproval(
-        settleMilestoneId,
-        actor,
-        {
-          intentId: gate.intentId,
-          approvalToken: gate.approvalToken,
-          release:
-            sub.status === "REJECTED" ||
-            sub.status === "REVISION_REQUIRED",
-        },
-      );
-      if (res && !res.reverted) {
-        logger.error("approval revert refused — approval stands", {
-          repair: "review milestone approval",
-          milestoneRowId: settleMilestoneId,
-          submissionId,
-          intentId: gate.intentId,
-        });
-      }
-      if (res?.reverted) {
-        const after = await stores.submissions
-          .getById(submissionId)
-          .catch(() => null);
-        if (after?.status === "ACCEPTED") {
-          const heal = await ctx.settlement
-            .approveMilestone(settleMilestoneId, actor)
-            .catch(() => null);
-          if (heal?.ok) {
-            logger.warn(
-              "verdict committed during revert — approval healed",
-              { milestoneRowId: settleMilestoneId, submissionId },
-            );
-          } else {
-            logger.error(
-              "settlement repair needed — ACCEPTED verdict has no payable intent",
-              {
-                repair: "re-approve milestone",
-                milestoneRowId: settleMilestoneId,
-                submissionId,
-                code: heal?.error?.code,
-                message: heal?.error?.message,
-              },
-            );
-          }
-        }
-      }
-    } else {
-      logger.error("approval revert skipped — unexpected status", {
-        repair: "review milestone approval",
-        milestoneRowId: settleMilestoneId,
-        submissionId,
-        status: sub.status,
-      });
-    }
-  } catch (revertErr) {
-    logger.error("settlement approval revert failed", {
-      repair: "review milestone approval",
-      milestoneRowId: settleMilestoneId,
-      error:
-        revertErr instanceof Error ? revertErr.message : String(revertErr),
-    });
-  }
-}
 
 export async function postCommitSettlementSync(
   ctx: CommerceCtx,
@@ -156,17 +49,53 @@ export async function postCommitSettlementSync(
           expectedSubmissionRef: result.submission.id,
         });
       } else if (bound && bound.status === "APPROVED") {
-        // R7-M2: a skipped/aborted revert can leave APPROVED + OPEN
-        // intent under a submission whose verdict then commits REJECT
-        // — the READY-only release would strand a payable intent.
-        // release:true goes APPROVED→PENDING and cancels the OPEN
-        // intent in the same atomic.
-        await ctx.settlement!.revertApproval(bound.id, actor, {
-          release: true,
-        });
+        // R7-M2 + R8-M1: a skipped/aborted revert can leave APPROVED +
+        // OPEN intent under a submission whose verdict then commits
+        // REJECT — the READY-only release strands a payable intent.
+        // But the release may undo ONLY a commerce-minted (`appr_`)
+        // epoch still bound to THIS submission: a resolver-restored
+        // (`rsv_`) or operator-forced (`ops_`) approval is a ruling,
+        // and a stale binding is not ours to unbind.
+        const releasable =
+          bound.submissionRef === result.submission.id &&
+          bound.escrowRef?.startsWith("appr_") === true;
+        if (!releasable) {
+          logger.error(
+            "APPROVED milestone on rejected submission left standing — non-commerce epoch or foreign binding",
+            {
+              repair: "review milestone release",
+              milestoneRowId: bound.id,
+              submissionId: result.submission.id,
+              boundSubmissionRef: bound.submissionRef ?? null,
+            },
+          );
+        } else {
+          // release:true goes APPROVED→PENDING and cancels the OPEN
+          // intent in the same atomic. The epoch we just checked is
+          // pinned inside the revert's atomic — a resolver re-stamp
+          // landing between our read and the CAS is refused, not
+          // erased. R8-M2: the result is checked — a null abort or a
+          // refusal stays error-visible.
+          const res = await ctx.settlement!.revertApproval(bound.id, actor, {
+            release: true,
+            approvalToken: bound.escrowRef ?? undefined,
+          });
+          if (res === null || !res.reverted) {
+            logger.error(
+              "reject-release refused/aborted — payable intent stranded",
+              {
+                repair: "review milestone release",
+                milestoneRowId: bound.id,
+                submissionId: result.submission.id,
+                reason: res?.reason,
+              },
+            );
+          }
+        }
       }
     } catch (err) {
-      logger.warn("settlement milestone release failed", {
+      logger.error("settlement milestone release failed", {
+        repair: "review milestone release",
         milestoneRef: result.submission.milestoneRef,
         error: err instanceof Error ? err.message : String(err),
       });
@@ -180,12 +109,27 @@ export async function postCommitSettlementSync(
         result.submission.milestoneRef,
       );
       // Only a READY milestone is resumable — APPROVED already
-      // landed, DISPUTED belongs to the dispute path.
+      // landed, DISPUTED belongs to the dispute path. R8-M2: a failed
+      // resync leaves ACCEPTED + READY + a possibly-cancelled intent —
+      // that needs an operator-visible `repair` signal, not a warn.
       if (now && now.status === "READY") {
-        await ctx.settlement!.approveMilestone(now.id, actor);
+        const ap = await ctx.settlement!.approveMilestone(now.id, actor);
+        if (!ap?.ok) {
+          logger.error(
+            "settlement repair needed — ACCEPTED verdict resync approve failed",
+            {
+              repair: "re-approve milestone",
+              milestoneRowId: now.id,
+              submissionId: result.submission.id,
+              code: ap?.error?.code,
+              message: ap?.error?.message,
+            },
+          );
+        }
       }
     } catch (err) {
-      logger.warn("settlement approveMilestone resync failed", {
+      logger.error("settlement approveMilestone resync failed", {
+        repair: "re-approve milestone",
         milestoneRef: result.submission.milestoneRef,
         error: err instanceof Error ? err.message : String(err),
       });

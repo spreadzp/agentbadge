@@ -30,6 +30,8 @@ import { createCommerceRoutes } from "../../src/server/routes/commerce/index";
 import {
   approveMilestone,
   createSettlementCtx,
+  raiseDispute,
+  resolveDispute,
 } from "../../src/server/lib/settlement/index.js";
 import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
 import { createHash, randomUUID } from "node:crypto";
@@ -372,5 +374,55 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
     expect(
       (await db.settlement.payoutIntents.getById(intent!.id))?.status,
     ).toBe("CANCELLED");
+  });
+
+  it("R8-M1: REJECT cannot undo a resolver-restored approval (rsv_ epoch)", async () => {
+    const app = makeApp();
+    const { subId, milestone } = await boundSubmission(app);
+    const sctx = createSettlementCtx(db);
+    // Gate-style approve → APPROVED + OPEN intent.
+    const ap = await approveMilestone(sctx, milestone.id, buyer.address);
+    expect(ap.ok).toBe(true);
+    const intent = await db.settlement.payoutIntents.getByMilestone(
+      milestone.id,
+    );
+    expect(intent?.status).toBe("OPEN");
+    // A dispute freezes the approval mid-cycle; the resolver restores
+    // it — the epoch is resolver-owned (`rsv_`) from that point on.
+    const d = await raiseDispute(sctx, {
+      subjectType: "MILESTONE",
+      subjectRef: milestone.id,
+      raisedBy: buyer.address,
+      reason: "hold for arbitration",
+    });
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    const res = await resolveDispute(sctx, {
+      disputeId: d.value.dispute.id,
+      operator: "ops-1",
+      resolution: "FOR_PROVIDER",
+      note: "work stands",
+    });
+    expect(res.ok).toBe(true);
+    const restored = await db.settlement.milestones.getById(milestone.id);
+    expect(restored?.status).toBe("APPROVED");
+    expect(restored?.escrowRef).toMatch(/^rsv_/);
+
+    const rev = await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${subId}/review`,
+      { account: buyer, body: { verdict: "REJECTED" } },
+    );
+    expect(rev.status).toBe(200);
+    // The resolver's ruling stands: milestone stays payable and the
+    // intent stays OPEN — a buyer verdict never un-does an operator's
+    // restore (the release only fires on `appr_` epochs).
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("APPROVED");
+    expect(
+      (await db.settlement.payoutIntents.getById(intent!.id))?.status,
+    ).toBe("OPEN");
   });
 });

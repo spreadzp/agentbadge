@@ -57,8 +57,15 @@ export class SettlementEventEmitter {
 
   /** R7-M3: streams whose stale append outlived its grace window —
    *  emits on them are skipped (logged once at poison time) so a
-   *  dead store call can never stall the shared queue. */
+   *  dead store call can never stall the shared queue. R8-M3: the
+   *  poison self-heals — it is lifted the moment the hung append
+   *  finally settles, because the stream tail is then known again
+   *  and the next emit safely re-reads it. */
   private readonly poisoned = new Set<string>();
+
+  /** R8-M3: per-stream count of emits skipped while poisoned —
+   *  operators alarm on a count that keeps growing after recovery. */
+  private readonly poisonSkips = new Map<string, number>();
 
   constructor(private readonly events: CommerceEventStore) {}
 
@@ -86,7 +93,22 @@ export class SettlementEventEmitter {
   emit(input: SettlementEmitInput): Promise<CommerceEventRow | null> {
     const key = `${input.entityType}:${input.entityId}`;
     const run = this.tail.then(async () => {
-      if (this.poisoned.has(key)) return null;
+      if (this.poisoned.has(key)) {
+        // R8-M3: each skipped emit is a real audit gap — count it and
+        // stay log-visible (bounded: every skip for the first 10,
+        // then every 100th so a retry storm can't flood logs).
+        const skips = (this.poisonSkips.get(key) ?? 0) + 1;
+        this.poisonSkips.set(key, skips);
+        if (skips <= 10 || skips % 100 === 0) {
+          logger.warn("settlement event skipped — stream poisoned", {
+            entityType: input.entityType,
+            entityId: input.entityId,
+            eventType: input.eventType,
+            skips,
+          });
+        }
+        return null;
+      }
       const pendingStale = this.stale.get(key);
       if (pendingStale) {
         this.stale.delete(key);
@@ -103,6 +125,13 @@ export class SettlementEventEmitter {
         if (staleTimer) clearTimeout(staleTimer);
         if (!settled) {
           this.poisoned.add(key);
+          // R8-M3 self-heal: once the hung append ACTUALLY settles
+          // (success or failure), the stream tail is known again —
+          // unpoison so the next emit re-reads `listByEntity` safely.
+          void pendingStale.then(
+            () => this.unpoison(key),
+            () => this.unpoison(key),
+          );
           logger.error("settlement event stream poisoned — emits skipped", {
             entityType: input.entityType,
             entityId: input.entityId,
@@ -139,6 +168,16 @@ export class SettlementEventEmitter {
     });
     this.tail = run;
     return run;
+  }
+
+  private unpoison(key: string): void {
+    if (!this.poisoned.delete(key)) return;
+    const skipped = this.poisonSkips.get(key) ?? 0;
+    this.poisonSkips.delete(key);
+    logger.warn("settlement event stream recovered — poison lifted", {
+      key,
+      skipped,
+    });
   }
 
   private async append(

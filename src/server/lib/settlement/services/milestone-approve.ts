@@ -38,13 +38,18 @@ export interface ApproveEffect {
 }
 
 /** Atomic READY→APPROVED + payout intent/legs — caller pre-checks
- *  party/policy; this section owns the CAS + insert integrity. */
+ *  party/policy; this section owns the CAS + insert integrity.
+ *  `epochPrefix` marks the approval's provenance on `escrowRef`
+ *  (R8-M1) — commerce gates mint `appr_`, operator force-approves
+ *  mint `ops_`, resolver restores stamp `rsv_`; a reject-release
+ *  may only undo an `appr_` epoch. */
 export async function doApprove(
   ctx: SettlementCtx,
   plan: MilestonePlanRow,
   milestone: MilestoneRow,
   actorWallet: string,
   eventPayload: Record<string, unknown> = {},
+  epochPrefix = "appr",
 ): Promise<SettlementResult<ApproveEffect>> {
   const buf = ctx.emit.buffer();
   let res: SettlementResult<ApproveEffect>;
@@ -82,7 +87,7 @@ export async function doApprove(
           );
         }
       }
-      const approvalToken = `appr_${crypto.randomUUID()}`;
+      const approvalToken = `${epochPrefix}_${crypto.randomUUID()}`;
       const updated = await s.milestones.applyStatus(
         milestone.id,
         milestone.status,

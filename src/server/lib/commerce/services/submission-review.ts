@@ -30,10 +30,8 @@ import {
   type SubmissionVerdict,
 } from "../types";
 import { mustGet, transitionRow, type CommerceCtx } from "./ctx";
-import {
-  postCommitSettlementSync,
-  revertGateApproval,
-} from "./review-postcommit";
+import { postCommitSettlementSync } from "./review-postcommit";
+import { revertGateApproval } from "./review-revert";
 import { resolveSettlementGate } from "./review-settlement";
 
 export async function reviewSubmission(

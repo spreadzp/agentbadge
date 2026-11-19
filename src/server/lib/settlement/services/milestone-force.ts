@@ -150,7 +150,9 @@ export async function forceApproveMilestone(
     admin: true,
     reason: opts.reason,
     submissionRef: opts.submissionRef ?? null,
-  });
+    // R8-M1: `ops_` marks the epoch operator-owned — a buyer's reject
+    // release must not undo an explicit force-approve ruling.
+  }, "ops");
   if (!effect.ok) return effect;
   // R5-M4: evidence carries the full forensic context (wallets, amount,
   // prior status, bound submissionRef); the degraded fallback keeps a

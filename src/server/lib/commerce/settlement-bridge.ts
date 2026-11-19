@@ -47,7 +47,15 @@ export interface CommerceSettlementBridge {
   findMilestone(
     agreementId: string,
     milestoneRef: string,
-  ): Promise<{ id: string; status: string } | null>;
+  ): Promise<{
+    id: string;
+    status: string;
+    /** R8-M1: the reject-release pins on these — it may undo ONLY an
+     *  `appr_` epoch still bound to the rejected submission, never a
+     *  resolver (`rsv_`) or operator (`ops_`) ruling. */
+    submissionRef?: string | null;
+    escrowRef?: string | null;
+  } | null>;
   /** Open (PENDING/READY) milestones on the agreement's plan — heals a
    *  missing plan first (R3-H2: used to bind unbound submissions). */
   openMilestones(
@@ -83,7 +91,7 @@ export interface CommerceSettlementBridge {
     milestoneRowId: string,
     actorWallet: string,
     opts?: { intentId?: string; release?: boolean; approvalToken?: string },
-  ): Promise<{ reverted: boolean } | null>;
+  ): Promise<{ reverted: boolean; reason?: string } | null>;
   /** R4-M5: READY→PENDING + unbind — a rejected submission frees its
    *  milestone for the resubmission round. Idempotent.
    *  R6 nit 9: `expectedSubmissionRef` makes it compare-and-release —
@@ -190,7 +198,14 @@ export function createCommerceSettlementBridge(
         plan.id,
         milestoneRef,
       );
-      return m ? { id: m.id, status: m.status } : null;
+      return m
+        ? {
+            id: m.id,
+            status: m.status,
+            submissionRef: m.submissionRef,
+            escrowRef: m.escrowRef,
+          }
+        : null;
     },
 
     async openMilestones(agreementId) {

@@ -65,8 +65,10 @@ export async function applyFreezeResolution(
         // R6-M2: a restored APPROVED belongs to the RESOLVER's cycle —
         // re-stamp the approval token so a stale gate revert (whose
         // token was minted by the pre-dispute approve) is refused.
+        // R8-M1: the `rsv_` prefix marks the epoch resolver-owned — a
+        // reject verdict's release must not undo this ruling.
         await s.milestones.applyStatus(m.id, "DISPUTED", to, to === "APPROVED"
-          ? { escrowRef: `appr_${crypto.randomUUID()}` }
+          ? { escrowRef: `rsv_${crypto.randomUUID()}` }
           : undefined);
       }
       if (intent && intent.status === "FROZEN") {

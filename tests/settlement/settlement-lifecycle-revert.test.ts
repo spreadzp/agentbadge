@@ -201,14 +201,21 @@ describe("R7: restore epochs + release coverage", () => {
     const after = await db.settlement.milestones.getById(m.id);
     // Restored to APPROVED — but the epoch belongs to the RESOLVER's
     // cycle now, so the original gate token can no longer revert it.
+    // R8-M1: resolver epochs carry the `rsv_` prefix.
     expect(after?.status).toBe("APPROVED");
-    expect(after?.escrowRef).toMatch(/^appr_/);
+    expect(after?.escrowRef).toMatch(/^rsv_/);
     expect(after?.escrowRef).not.toBe(token);
     const stale = await revertApproval(ctx, m.id, BUYER, {
       intentId,
-      approvalToken: token,
+      approvalToken: token ?? undefined,
     });
-    expect(stale.ok && stale.value.reverted === false).toBe(true);
+    // R8-M2: refusals carry a reason code — callers can tell a benign
+    // stale-epoch no-op from a dangerous paid-leg/intent-state block.
+    expect(
+      stale.ok &&
+        stale.value.reverted === false &&
+        stale.value.reason === "epoch_mismatch",
+    ).toBe(true);
     expect(
       (await db.settlement.payoutIntents.getById(intentId))?.status,
     ).toBe("OPEN");
@@ -239,7 +246,8 @@ describe("R7: restore epochs + release coverage", () => {
     expect(res.ok).toBe(true);
     const after = await db.settlement.milestones.getById(m.id);
     expect(after?.status).toBe("APPROVED");
-    expect(after?.escrowRef).toMatch(/^appr_/);
+    // R8-M1: a SPLIT-restored approval is resolver-owned (`rsv_`).
+    expect(after?.escrowRef).toMatch(/^rsv_/);
     expect(after?.escrowRef).not.toBe(token);
   });
 });
@@ -278,6 +286,46 @@ describe("R7-M3: emitter stream poisoning on a hung append", () => {
       await vi.advanceTimersByTimeAsync(15001);
       await expect(other).resolves.toBeNull(); // its append also hangs,
       // but only ITS stream pays — the queue itself stayed live.
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("R8-M3: the poison lifts once the hung append finally settles", async () => {
+    vi.useFakeTimers();
+    try {
+      // The first append hangs until we release it; later appends land.
+      let release!: (v: unknown) => void;
+      const hung = new Promise((r) => {
+        release = r;
+      });
+      const row = { id: "evt_x", hash: "h", prevHash: "g" };
+      let calls = 0;
+      const store = {
+        listByEntity: () => Promise.resolve([]),
+        append: () => (calls++ === 0 ? hung : Promise.resolve(row)),
+      };
+      const em = new SettlementEventEmitter(store as never);
+      const input = {
+        entityType: "milestone" as const,
+        entityId: "ms_1",
+        eventType: "milestone.test",
+      };
+      const p1 = em.emit(input);
+      await vi.advanceTimersByTimeAsync(15001);
+      await expect(p1).resolves.toBeNull();
+      const p2 = em.emit(input);
+      await vi.advanceTimersByTimeAsync(15001);
+      await expect(p2).resolves.toBeNull();
+      // Third emit is skipped — the stream is poisoned...
+      const p3 = em.emit(input);
+      await expect(p3).resolves.toBeNull();
+      // ...until the hung append actually settles (PG failover that
+      // eventually returns). Then the next emit re-reads the tail and
+      // lands its row — the stream recovers without a restart.
+      release(row);
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(em.emit(input)).resolves.toEqual(row);
     } finally {
       vi.useRealTimers();
     }

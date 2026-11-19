@@ -54,15 +54,23 @@ export interface RevertOptions {
   approvalToken?: string;
 }
 
+export interface RevertResult {
+  reverted: boolean;
+  /** R8-M2: why a refusal happened — callers log ERROR only for the
+   *  dangerous codes (paid_leg, unexpected intent state), not for a
+   *  benign no-op like a sibling having already released the row. */
+  reason?: string;
+}
+
 export async function revertApproval(
   ctx: SettlementCtx,
   milestoneRowId: string,
   actorWallet: string,
   opts: RevertOptions = {},
-): Promise<SettlementResult<{ reverted: boolean }>> {
+): Promise<SettlementResult<RevertResult>> {
   const buf = ctx.emit.buffer();
   const to = opts.release ? "PENDING" : "READY";
-  let res: SettlementResult<{ reverted: boolean }>;
+  let res: SettlementResult<RevertResult>;
   try {
     res = await ctx.db.settlement.atomic(async (s) => {
       const milestone = await s.milestones.getById(milestoneRowId);
@@ -72,7 +80,7 @@ export async function revertApproval(
       // Idempotent — anything but APPROVED means the verdict path no
       // longer owns this row (already reverted, disputed, released).
       if (milestone.status !== "APPROVED") {
-        return ok({ reverted: false });
+        return ok({ reverted: false, reason: "not_approved" });
       }
       // R6-M2: the APPROVED on the row must be the one THIS request's
       // gate minted. A resolver-restored or re-landed approval carries
@@ -81,7 +89,7 @@ export async function revertApproval(
         opts.approvalToken !== undefined &&
         milestone.escrowRef !== opts.approvalToken
       ) {
-        return ok({ reverted: false });
+        return ok({ reverted: false, reason: "epoch_mismatch" });
       }
       const intent = await s.payoutIntents.getByMilestone(milestone.id);
       // H-2: when the caller names the intent it created, a different
@@ -92,7 +100,7 @@ export async function revertApproval(
         opts.intentId !== undefined &&
         intent.id !== opts.intentId
       ) {
-        return ok({ reverted: false });
+        return ok({ reverted: false, reason: "intent_mismatch" });
       }
       // R6 nit 3: only an OPEN intent is ours to cancel — CANCELLED is
       // already undone (milestone still moves back), anything else
@@ -104,7 +112,7 @@ export async function revertApproval(
           intentId: intent.id,
           intentStatus: intent.status,
         });
-        return ok({ reverted: false });
+        return ok({ reverted: false, reason: "intent_state" });
       }
       if (intent && intent.status === "OPEN") {
         const legs = await s.payoutLegs.listByIntent(intent.id);
@@ -125,7 +133,7 @@ export async function revertApproval(
               reason: "paid_leg_present",
             },
           });
-          return ok({ reverted: false });
+          return ok({ reverted: false, reason: "paid_leg" });
         }
       }
       const reverted = await s.milestones.applyStatus(
