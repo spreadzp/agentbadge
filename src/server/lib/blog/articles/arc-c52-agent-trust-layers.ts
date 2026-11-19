@@ -125,7 +125,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/routes/identity-api.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/identity/identity.ts",
         },
       ],
     },
@@ -136,7 +136,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/services/identity-sweeper.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/services/identity-sweeper.ts",
         },
       ],
     },
@@ -158,7 +158,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/225-identity-entitlements-reputation/evidence/devin-prod-verify.md",
+          url: "https://github.com/spreadzp/agentbadge/commit/12d9640",
         },
       ],
     },

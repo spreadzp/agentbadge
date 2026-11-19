@@ -122,7 +122,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/224-agent-commerce/evidence/devin-prod-verify.md",
+          url: "https://github.com/spreadzp/agentbadge/commit/f008c82",
         },
       ],
     },
@@ -133,7 +133,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/packages/database/src/repositories/commerce-repository.ts",
+          url: "https://github.com/spreadzp/agentbadge/tree/main/deploy/database",
         },
       ],
     },
@@ -144,7 +144,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/EPICS/224-agent-commerce/evidence/devin-prod-verify.md",
+          url: "https://github.com/spreadzp/agentbadge/commit/f008c82",
         },
       ],
     },
@@ -155,7 +155,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/routes/commerce/tasks.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/commerce/tasks.ts",
         },
       ],
     },

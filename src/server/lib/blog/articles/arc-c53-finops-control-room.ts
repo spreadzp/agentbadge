@@ -127,7 +127,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/routes/finops/finops.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/finops/finops.ts",
         },
       ],
     },
@@ -138,7 +138,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/finops/admin-actions.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/finops/admin-actions.ts",
         },
       ],
     },
@@ -149,7 +149,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/routes/finops/finops-ops.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/finops/finops-ops.ts",
         },
       ],
     },
@@ -160,7 +160,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/finops/read-models.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/finops/read-models.ts",
         },
       ],
     },
@@ -175,7 +175,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/docs/DEVIN/LOGS/cloud/dispatch-2026-11-19-226.log",
+          url: "https://github.com/spreadzp/agentbadge/commit/97e5f24",
         },
       ],
     },

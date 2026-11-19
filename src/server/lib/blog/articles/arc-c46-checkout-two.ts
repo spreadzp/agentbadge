@@ -93,7 +93,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/checkout-pages.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/pages/checkout-pages.ts",
         },
       ],
     },
@@ -104,7 +104,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/checkout-audit-221-7.test.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/tests/payments/checkout-audit-221-7.test.ts",
         },
       ],
     },

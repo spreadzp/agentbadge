@@ -136,7 +136,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/packages/webmcp/src/registry.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/middleware/webmcp-scope.ts",
         },
       ],
     },
@@ -147,7 +147,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/packages/webmcp/src/registry.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/middleware/webmcp-scope.ts",
         },
       ],
     },
@@ -162,7 +162,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/lib/request-inbox/intake.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/lib/request-inbox/intake.ts",
         },
       ],
     },
@@ -177,7 +177,7 @@ export const article: BlogArticle = {
         },
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/packages/database",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/agent-requests/agent-requests-qa-ops.ts",
         },
       ],
     },
@@ -188,7 +188,7 @@ export const article: BlogArticle = {
       evidence: [
         {
           type: "github",
-          url: "https://github.com/spreadzp/agentbadge/blob/main/hackathon/server/src/server/routes/agent-requests/agent-requests-ops-api.ts",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/agent-requests/agent-requests-ops-api.ts",
         },
       ],
     },
