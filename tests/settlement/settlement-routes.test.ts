@@ -21,6 +21,8 @@ import {
   submitForReview,
 } from "../../src/server/lib/settlement/index.js";
 import { listAdminActions } from "../../src/server/lib/finops/index.js";
+import { createSettlementReceiptSigner } from "../../src/server/lib/settlement/index.js";
+import { createSettlementReceiptRoutes } from "../../src/server/routes/settlement/settlement-receipts";
 import { createSettlementRoutes } from "../../src/server/routes/settlement/settlement";
 import { createSettlementAdminRoutes } from "../../src/server/routes/settlement/settlement-admin";
 import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
@@ -49,6 +51,7 @@ beforeEach(() => {
   app = new Hono();
   app.use(cacheHeadersMiddleware());
   app.route("/", createSettlementRoutes({ getDb: () => db }));
+  app.route("/", createSettlementReceiptRoutes({ getDb: () => db }));
   app.route("/", createSettlementAdminRoutes({ getDb: () => db }));
 });
 
@@ -342,5 +345,125 @@ describe("admin routes", () => {
     expect(r.body.auditRecorded).toBe(true);
     const actions = await listAdminActions(db);
     expect(actions.at(-1)?.action).toBe("RESOLVE_SETTLEMENT_DISPUTE");
+  });
+});
+
+// ---------- SLICE-227-4: receipt artifact + anchor ----------
+
+describe("receipt artifact + anchor", () => {
+  const signerKey =
+    "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"; // anvil
+  const CHAIN_ID = 5042002;
+
+  function appWithDeps(anchorSend?: import("../../src/server/lib/eaas/anchor").SendAnchorFn) {
+    const a = new Hono();
+    a.use(cacheHeadersMiddleware());
+    const signer = createSettlementReceiptSigner(signerKey, CHAIN_ID);
+    a.route("/", createSettlementRoutes({ getDb: () => db }));
+    a.route(
+      "/",
+      createSettlementReceiptRoutes({
+        getDb: () => db,
+        signer,
+        chainId: CHAIN_ID,
+        anchorSend,
+        memo: "0x5294E9927c3306DcBaDb03fe70b92e01cCede505",
+        selfAddress: signer.address as `0x${string}`,
+      }),
+    );
+    return a;
+  }
+
+  it("GET receipt carries the signed artifact once a leg completes", async () => {
+    const { plan, intentId } = await seedApprovedIntent();
+    await adminReq(
+      "POST",
+      `/admin/settlement/intents/${intentId}/mark-paid`,
+      { operator: OPS, txHash: TX },
+    );
+    const a = appWithDeps();
+    const res = await a.fetch(
+      new Request(`http://localhost/api/settlement/receipts/${plan.agreementRef}`, {
+        headers: await sigHeaders(buyer, "GET", `/api/settlement/receipts/${plan.agreementRef}`, ""),
+      }),
+    );
+    const text = await res.text();
+    if (res.status !== 200) console.log("RESP", res.status, text.slice(0, 400));
+    const body = JSON.parse(text);
+    expect(res.status).toBe(200);
+    expect(body.artifact.schema).toBe("agentbadge/settlement-receipt@1");
+    expect(body.artifact.signature).toMatch(/^0x[0-9a-f]{130}$/);
+    expect(body.artifact.milestones[0].legs[0].txHash).toBe(TX);
+  });
+
+  it("POST anchor: unsigned → 401; non-terminal → 409; released → PENDING → drain → ANCHORED", async () => {
+    const { plan, intentId } = await seedApprovedIntent();
+    const MEMO_TX = `0x${"f".repeat(64)}` as const;
+    const sends: { to: string; data: string }[] = [];
+    const a = appWithDeps(async (tx) => {
+      sends.push(tx);
+      return { txHash: MEMO_TX, blockNumber: 9n };
+    });
+    const path = `/api/settlement/receipts/${plan.agreementRef}/anchor`;
+    // unsigned → 401
+    const anon = await a.fetch(
+      new Request(`http://localhost${path}`, { method: "POST" }),
+    );
+    expect(anon.status).toBe(401);
+    // non-terminal (milestone still APPROVED, unpaid) → 409
+    const early = await a.fetch(
+      new Request(`http://localhost${path}`, {
+        method: "POST",
+        headers: await sigHeaders(buyer, "POST", path, ""),
+      }),
+    );
+    expect(early.status).toBe(409);
+    // settle → then anchor
+    await adminReq(
+      "POST",
+      `/admin/settlement/intents/${intentId}/mark-paid`,
+      { operator: OPS, txHash: TX },
+    );
+    // m2 must also be terminal for a two-milestone plan — seed used 1 milestone
+    const ok1 = await a.fetch(
+      new Request(`http://localhost${path}`, {
+        method: "POST",
+        headers: await sigHeaders(buyer, "POST", path, ""),
+      }),
+    );
+    expect(ok1.status).toBe(200);
+    const b1 = await ok1.json();
+    expect(b1.anchor.status).toBe("PENDING");
+    expect(b1.duplicate).toBe(false);
+    // fire-and-forget drain may lag — poll the row
+    for (let i = 0; i < 50; i++) {
+      const row = await db.settlement.anchors.getByReceiptRef(plan.agreementRef);
+      if (row?.status === "ANCHORED") break;
+      await new Promise((r2) => setTimeout(r2, 10));
+    }
+    const row = await db.settlement.anchors.getByReceiptRef(plan.agreementRef);
+    expect(row?.status).toBe("ANCHORED");
+    expect(row?.txHash).toBe(MEMO_TX);
+    // duplicate request → same row
+    const dup = await a.fetch(
+      new Request(`http://localhost${path}`, {
+        method: "POST",
+        headers: await sigHeaders(provider, "POST", path, ""),
+      }),
+    );
+    const b2 = await dup.json();
+    expect(b2.duplicate).toBe(true);
+    expect(b2.anchor.status).toBe("ANCHORED");
+    expect(sends.length).toBe(1);
+    // admin path also reaches the anchor (idempotent → duplicate)
+    const admin = await a.fetch(
+      new Request(`http://localhost${path}`, {
+        method: "POST",
+        headers: { "x-admin-key": ADMIN_KEY, "content-type": "application/json" },
+        body: "{}",
+      }),
+    );
+    expect(admin.status).toBe(200);
+    expect((await admin.json()).duplicate).toBe(true);
   });
 });

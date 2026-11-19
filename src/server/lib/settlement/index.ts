@@ -49,6 +49,32 @@ export {
 } from "./services/dispute-service.js";
 export { resolveDispute } from "./services/dispute-resolve.js";
 export { getSettlementReceipt } from "./services/receipt.js";
+export {
+  drainSettlementAnchors,
+  requestReceiptAnchor,
+} from "./services/anchor.js";
+export type {
+  AnchorDrainDeps,
+  AnchorRequestDeps,
+} from "./services/anchor.js";
+export {
+  buildReceiptPublic,
+  buildSettlementReceipt,
+  createSettlementReceiptSigner,
+  SETTLEMENT_RECEIPT_SCHEMA_ID,
+  settlementReceiptToJson,
+  verifySettlementReceiptSignature,
+} from "./receipt.js";
+export type {
+  SettlementReceipt,
+  SettlementReceiptPublic,
+  SettlementReceiptSigner,
+  SettlementReceiptSigningBody,
+} from "./receipt.js";
+export {
+  SETTLEMENT_RECEIPT_JSON_SCHEMA,
+  SettlementReceiptSchemaV1,
+} from "./receipt-schema.js";
 
 import type { Database } from "@agentbadge/database";
 

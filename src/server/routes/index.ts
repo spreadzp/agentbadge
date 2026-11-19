@@ -18,8 +18,7 @@ import { didRoutes } from "./identity/did";
 import { agentRoutes } from "./agents/agents";
 import { adminRoutes } from "./ops/admin";
 import { createFinopsRoutes } from "./finops/finops";
-import { createSettlementAdminRoutes } from "./settlement/settlement-admin";
-import { createSettlementRoutes } from "./settlement/settlement";
+import { registerSettlementRoutes } from "./settlement/register";
 import { upgradeRoutes } from "./upgrade";
 import { auditRoutes } from "./observability/audit";
 import { eventsRoutes } from "./observability/events";
@@ -139,8 +138,7 @@ export function registerCoreRoutes(app: Hono): void {
   app.route("/", agentRoutes);
   app.route("/", adminRoutes);
   app.route("/", createFinopsRoutes()); // EPIC-226 SLICE-226-3: /admin/finance/*
-  app.route("/", createSettlementRoutes()); // EPIC-227 SLICE-227-3: /api/settlement/*
-  app.route("/", createSettlementAdminRoutes()); // EPIC-227 SLICE-227-3: /admin/settlement/*
+  registerSettlementRoutes(app); // EPIC-227: settlement domain (227-3/4)
   app.route("/", upgradeRoutes);
   app.route("/", auditRoutes);
   app.route("/", eventsRoutes);

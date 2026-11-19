@@ -10,9 +10,11 @@ import type { Database } from "@agentbadge/database";
 
 import type {
   SettlementErrorCode,
+  SettlementReceiptSigner,
   SettlementResult,
   VerifyPayoutTx,
 } from "../../lib/settlement/index.js";
+import type { SendAnchorFn } from "../../lib/eaas/anchor.js";
 
 /** Injected seams — tests pass stubs; prod defaults lazily. */
 export interface SettlementRouteDeps {
@@ -21,6 +23,16 @@ export interface SettlementRouteDeps {
   verifyTx?: VerifyPayoutTx;
   /** Fail-closed mode for mark-paid (D-227-4). */
   requireVerification?: boolean;
+  /** EIP-712 receipt signer — absent → artifact omitted (D-227-8 opt-in). */
+  signer?: SettlementReceiptSigner;
+  /** Arc chain id bound into the receipt + anchor. */
+  chainId?: number;
+  /** Memo-anchor send seam — absent → anchors queue PENDING (no chain). */
+  anchorSend?: SendAnchorFn;
+  /** ARC memo contract address. */
+  memo?: `0x${string}`;
+  /** Sender EOA used as memo target (self-anchor). */
+  selfAddress?: `0x${string}`;
 }
 
 /** Settlement domain error → HTTP status. */

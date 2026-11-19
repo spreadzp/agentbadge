@@ -4,7 +4,9 @@
  *   POST /api/settlement/plans                     create/attach a plan
  *   GET  /api/settlement/agreements/:agreementId   participant read view
  *   POST /api/settlement/milestones/:id/dispute    raise a dispute
- *   GET  /api/settlement/receipts/:agreementId     receipt projection
+ *
+ * (Receipt projection + anchor live in settlement-receipts.ts —
+ * SLICE-227-4.)
  *
  * Auth reuses the commerce sig gate (agentbadge-commerce:v2 challenge,
  * D-224-8) — settlement is agent commerce; the caller wallet must be the
@@ -22,7 +24,6 @@ import {
   createPlan,
   createSettlementCtx,
   getAgreementView,
-  getSettlementReceipt,
   isParticipant,
   raiseDispute,
 } from "../../lib/settlement/index.js";
@@ -222,55 +223,6 @@ export function createSettlementRoutes(
         evidenceRefs: parsed.data.evidenceRefs,
       });
       return respond(c, res);
-    },
-  );
-
-  // GET /api/settlement/receipts/:agreementId — participant receipt
-  r.get(
-    "/api/settlement/receipts/:agreementId",
-    describeRoute({
-      ...TAG,
-      summary: "Settlement receipt projection",
-      description:
-        "Deterministic receipt over settled state — ordered milestones " +
-        "with intents/legs (payee, amount, txHash) plus the memo anchor " +
-        "row once SLICE-227-4 anchors it. Participant-only.",
-      responses: {
-        ...okResp(z.object({ agreementRef: z.string() }).passthrough()),
-        ...errs(401, 404),
-      },
-    }),
-    async (c) => {
-      const viewer = await scopedWallet(c);
-      if (viewer instanceof Response) return viewer;
-      if (viewer === null) {
-        return errorResponse(
-          c,
-          401,
-          ErrorCodes.UNAUTHORIZED,
-          "participant signature required",
-        );
-      }
-      const receipt = await getSettlementReceipt(
-        createSettlementCtx(getDb()),
-        c.req.param("agreementId"),
-      );
-      if (
-        !receipt ||
-        !isParticipant(
-          viewer,
-          receipt.plan.buyerWallet,
-          receipt.plan.providerWallet,
-        )
-      ) {
-        return errorResponse(
-          c,
-          404,
-          ErrorCodes.RESOURCE_NOT_FOUND,
-          `receipt ${c.req.param("agreementId")} not found`,
-        );
-      }
-      return c.json(receipt);
     },
   );
 
