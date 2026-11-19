@@ -55,6 +55,11 @@ export class SettlementEventEmitter {
    *  would carry the same prevHash with no uniqueness to catch it. */
   private readonly stale = new Map<string, Promise<unknown>>();
 
+  /** R7-M3: streams whose stale append outlived its grace window —
+   *  emits on them are skipped (logged once at poison time) so a
+   *  dead store call can never stall the shared queue. */
+  private readonly poisoned = new Set<string>();
+
   constructor(private readonly events: CommerceEventStore) {}
 
   /** Queue events for post-commit emit (M-2). On flush each input
@@ -81,10 +86,29 @@ export class SettlementEventEmitter {
   emit(input: SettlementEmitInput): Promise<CommerceEventRow | null> {
     const key = `${input.entityType}:${input.entityId}`;
     const run = this.tail.then(async () => {
+      if (this.poisoned.has(key)) return null;
       const pendingStale = this.stale.get(key);
       if (pendingStale) {
         this.stale.delete(key);
-        await pendingStale.catch(() => undefined);
+        // R7-M3: bound the wait — after one grace window the stream
+        // is poisoned and emits skip, so a hung store call can't
+        // stall the shared queue (or the caller past its commit).
+        let staleTimer: ReturnType<typeof setTimeout> | undefined;
+        const settled = await Promise.race([
+          pendingStale.then(() => true, () => true),
+          new Promise<false>((res) => {
+            staleTimer = setTimeout(() => res(false), 15000);
+          }),
+        ]);
+        if (staleTimer) clearTimeout(staleTimer);
+        if (!settled) {
+          this.poisoned.add(key);
+          logger.error("settlement event stream poisoned — emits skipped", {
+            entityType: input.entityType,
+            entityId: input.entityId,
+          });
+          return null;
+        }
       }
       let timer: ReturnType<typeof setTimeout> | undefined;
       const appending = this.append(input);

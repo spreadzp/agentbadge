@@ -4,21 +4,26 @@
  * settlement-lifecycle-force.test.ts under the staged-file token cap.
  * Memory bundle — PG parity lives in packages/database.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Database } from "@agentbadge/database";
 
 import {
   approveMilestone,
   forceApproveMilestone,
   forceReopenMilestone,
+  raiseDispute,
   reopenMilestone,
+  resolveDispute,
   revertApproval,
   submitForReview,
 } from "../../src/server/lib/settlement/index.js";
 import type { SettlementCtx } from "../../src/server/lib/settlement/index.js";
+import { SettlementEventEmitter } from "../../src/server/lib/settlement/events.js";
 
 import {
+  approvedIntent,
   BUYER,
+  FEE,
   freshCtx,
   openPlan,
   OPS,
@@ -169,5 +174,112 @@ describe("R6: approval epoch + revert guards + force bounds", () => {
     const after = await db.settlement.milestones.getById(m.id);
     expect(after?.status).toBe("PENDING");
     expect(after?.submissionRef).toBeNull();
+  });
+});
+
+describe("R7: restore epochs + release coverage", () => {
+  it("FOR_PROVIDER restore re-stamps the epoch — stale revert refused", async () => {
+    const { milestone, intentId } = await approvedIntent(ctx);
+    const m = milestone;
+    const token = (await db.settlement.milestones.getById(m.id))!.escrowRef;
+    expect(token).toMatch(/^appr_/);
+    const d = await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: m.id,
+      raisedBy: BUYER,
+      reason: "hold the payout",
+    });
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    const res = await resolveDispute(ctx, {
+      disputeId: d.value.dispute.id,
+      operator: OPS,
+      resolution: "FOR_PROVIDER",
+      note: "work stands",
+    });
+    expect(res.ok).toBe(true);
+    const after = await db.settlement.milestones.getById(m.id);
+    // Restored to APPROVED — but the epoch belongs to the RESOLVER's
+    // cycle now, so the original gate token can no longer revert it.
+    expect(after?.status).toBe("APPROVED");
+    expect(after?.escrowRef).toMatch(/^appr_/);
+    expect(after?.escrowRef).not.toBe(token);
+    const stale = await revertApproval(ctx, m.id, BUYER, {
+      intentId,
+      approvalToken: token,
+    });
+    expect(stale.ok && stale.value.reverted === false).toBe(true);
+    expect(
+      (await db.settlement.payoutIntents.getById(intentId))?.status,
+    ).toBe("OPEN");
+  });
+
+  it("SPLIT restore re-stamps the epoch too", async () => {
+    const { milestone } = await approvedIntent(ctx);
+    const m = milestone;
+    const token = (await db.settlement.milestones.getById(m.id))!.escrowRef;
+    const d = await raiseDispute(ctx, {
+      subjectType: "MILESTONE",
+      subjectRef: m.id,
+      raisedBy: BUYER,
+      reason: "dispute the split",
+    });
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    const res = await resolveDispute(ctx, {
+      disputeId: d.value.dispute.id,
+      operator: OPS,
+      resolution: "SPLIT",
+      splitLegs: [
+        { payee: PROVIDER, amountUsdc: "5.00", role: "PROVIDER" },
+        { payee: FEE, amountUsdc: "2.50", role: "PLATFORM_FEE" },
+      ],
+      note: "60/40",
+    });
+    expect(res.ok).toBe(true);
+    const after = await db.settlement.milestones.getById(m.id);
+    expect(after?.status).toBe("APPROVED");
+    expect(after?.escrowRef).toMatch(/^appr_/);
+    expect(after?.escrowRef).not.toBe(token);
+  });
+});
+
+describe("R7-M3: emitter stream poisoning on a hung append", () => {
+  it("a hung append poisons the stream after one grace window", async () => {
+    vi.useFakeTimers();
+    try {
+      // The store call never settles — both listByEntity and append.
+      const store = {
+        listByEntity: () => Promise.resolve([]),
+        append: () => new Promise(() => {}),
+      };
+      const em = new SettlementEventEmitter(
+        store as never,
+      );
+      const input = {
+        entityType: "milestone" as const,
+        entityId: "ms_1",
+        eventType: "milestone.test",
+      };
+      // First emit: append hangs, times out at 15s — stream marked stale.
+      const p1 = em.emit(input);
+      await vi.advanceTimersByTimeAsync(15001);
+      await expect(p1).resolves.toBeNull();
+      // Second emit: waits for the stale append — one 15s grace window,
+      // then the stream is permanently poisoned.
+      const p2 = em.emit(input);
+      await vi.advanceTimersByTimeAsync(15001);
+      await expect(p2).resolves.toBeNull();
+      // Third emit: skipped immediately — the shared queue never stalls.
+      const p3 = em.emit(input);
+      await expect(p3).resolves.toBeNull();
+      // ...and other entity streams keep working.
+      const other = em.emit({ ...input, entityId: "ms_2" });
+      await vi.advanceTimersByTimeAsync(15001);
+      await expect(other).resolves.toBeNull(); // its append also hangs,
+      // but only ITS stream pays — the queue itself stayed live.
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

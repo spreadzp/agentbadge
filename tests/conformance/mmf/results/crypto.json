@@ -6,7 +6,7 @@
     "track": "crypto",
     "vector_id": "C01",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "bounds_payload_hex": "31303a616c69636540636f72707c31303a313730303030303030307c303a7c353a35303030307c333a4742507c32323a616d617a6f6e2e636f2e756b2c746573636f2e636f6d7c323a33307c323a31307c363a3230303030307c323a3330",
@@ -47,7 +47,7 @@
     "track": "crypto",
     "vector_id": "C02",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "valid": false
@@ -83,7 +83,7 @@
     "track": "crypto",
     "vector_id": "C03",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "valid": false
@@ -120,7 +120,7 @@
     "track": "crypto",
     "vector_id": "C04",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "valid": false
@@ -156,7 +156,7 @@
     "track": "crypto",
     "vector_id": "C05",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "valid": false
@@ -193,7 +193,7 @@
     "track": "crypto",
     "vector_id": "C06",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "valid": false
@@ -230,7 +230,7 @@
     "track": "crypto",
     "vector_id": "E01",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "expect": [
@@ -275,7 +275,7 @@
     "track": "crypto",
     "vector_id": "E02",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "expect": [
@@ -344,7 +344,7 @@
     "track": "crypto",
     "vector_id": "E03",
     "result": "PASS",
-    "equivalence": "Exact",
+    "equivalence": "None",
     "production_path": "tests/conformance/mmf/lib/mmf-canon+ed25519 (no prod analogue)",
     "expected": {
       "expect": [

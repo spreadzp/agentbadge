@@ -44,7 +44,16 @@ export function classifyCore(
   expected: CoreVector["expect"],
 ): ResultStatus {
   if (actual.threw) return "GATE_EXCEPTION";
-  if (expected.rejected) return "NOT_MAPPABLE"; // input-validation dim
+  if (actual.allowed === undefined) return "HARNESS_ERROR"; // before label checks
+  if (expected.rejected) {
+    // The input-validation dimension is absent — but the vector still
+    // produced a real verdict, so calling it unmappable hides what
+    // happened. Both outcomes are the same model gap: prod has no
+    // pre-evaluation rejection layer. allowed===true is the case that
+    // matters most (malformed input accepted); allowed===false is a
+    // rejection for our own reason, not the spec's.
+    return "DIVERGENCE-MODEL";
+  }
   const expectedCheck = expected.check ?? (expected.allowed ? "WITHIN" : "");
   if (!OUR_CHECKS.has(expectedCheck)) {
     // Decisive check has no prod mechanism. When it is an amount-
@@ -62,7 +71,6 @@ export function classifyCore(
       ? "DIVERGENCE-MODEL" // same verdict, unreachable check (e.g. V28)
       : "NOT_MAPPABLE";
   }
-  if (actual.allowed === undefined) return "HARNESS_ERROR";
   if (expected.allowed === actual.allowed) {
     if (!expected.allowed) {
       return actual.checkId === expected.check
@@ -74,17 +82,23 @@ export function classifyCore(
   return actual.unsafeAmount === true ? "DIVERGENCE-BUG" : "DIVERGENCE-MODEL";
 }
 
-/** Step-level verdict compare for delegation steps. */
+/** Step-level verdict compare for delegation steps. When the
+ *  expectation carries a `check`, the emitted checkId must match it —
+ *  a deny for the wrong reason is not a match. */
 export function classifyStep(
   expect: string | Record<string, unknown> | undefined,
-  actual: { ok: boolean },
+  actual: { ok: boolean; checkId?: string | null },
 ): "match" | "mismatch" | "unmapped" {
   if (expect === "valid") return actual.ok ? "match" : "mismatch";
   if (expect === "invalid") return actual.ok ? "mismatch" : "match";
   if (expect && typeof expect === "object") {
-    const e = expect as { allowed?: boolean };
+    const e = expect as { allowed?: boolean; check?: string };
     if (e.allowed !== undefined) {
-      return e.allowed === actual.ok ? "match" : "mismatch";
+      const checkOk = e.check === undefined || e.check === actual.checkId;
+      return e.allowed === actual.ok && checkOk ? "match" : "mismatch";
+    }
+    if (e.check !== undefined) {
+      return e.check === actual.checkId ? "match" : "mismatch";
     }
   }
   return "unmapped";

@@ -9,7 +9,7 @@
  */
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -205,18 +205,22 @@ export async function runEvidenceMatrix(): Promise<MatrixRow[]> {
     // 7. corrupted-JSON ledger — garbage file → readJson{} → ALLOW.
     {
       const dir = mkdtempSync(join(tmpdir(), "mmf-evi-"));
-      const file = join(dir, "ledger.json");
-      writeFileSync(file, "THIS IS NOT JSON {{{");
-      const env = mkEnv({ ledger: createJsonSpendLedger(file) });
-      const first = await fireOnce(env.enforcer, 20);
-      const after = readFileSync(file, "utf8");
-      const clobbered = !after.includes("THIS IS NOT JSON");
-      const row = await summarize(env, "corrupted-json", first, {
-        status: first.status,
-        body: null,
-      });
-      row.replay = `corrupt file silently replaced (clobbered=${clobbered})`;
-      rows.push(row);
+      try {
+        const file = join(dir, "ledger.json");
+        writeFileSync(file, "THIS IS NOT JSON {{{");
+        const env = mkEnv({ ledger: createJsonSpendLedger(file) });
+        const first = await fireOnce(env.enforcer, 20);
+        const after = readFileSync(file, "utf8");
+        const clobbered = !after.includes("THIS IS NOT JSON");
+        const row = await summarize(env, "corrupted-json", first, {
+          status: first.status,
+          body: null,
+        });
+        row.replay = `corrupt file silently replaced (clobbered=${clobbered})`;
+        rows.push(row);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     }
   } finally {
     initSpendAlerts(null);

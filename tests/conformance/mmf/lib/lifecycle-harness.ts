@@ -28,6 +28,7 @@ import {
 import {
   RESULT_SCHEMA_VERSION,
   CORPUS_VERSION,
+  deriveEquivalence,
   type VectorResult,
 } from "./result";
 
@@ -91,7 +92,13 @@ export async function runLifecycleVector(
           ? out.denyBody.error
           : undefined;
     let checkId = rawDeny ? checkIdForDeny(rawDeny) : out.allowed ? "WITHIN" : null;
-    if (v.registry?.revoked && rawDeny === "spend_suspended") {
+    // REVOKED_REGISTRY applies only when THIS wallet's mandate is
+    // revoked — not merely because the scenario lists any revocation.
+    const mandate = tx.as === "m2" ? v.mandate2 : v.mandate;
+    const walletRevoked =
+      (v.registry?.revoked?.includes(mandate?.mandate_id ?? " ") ?? false) ||
+      mandate?.revoked === true;
+    if (walletRevoked && rawDeny === "spend_suspended") {
       checkId = "REVOKED_REGISTRY";
     }
     const statusMatch =
@@ -139,18 +146,22 @@ export async function runLifecycleVector(
     if (at !== undefined) vi.setSystemTime(at);
     const handle = handles.get(`${W1}:${txId}`) ?? handles.get(`${W_M2}:${txId}`);
     const fn = kind === "settle" ? settleEntry : releaseEntry;
-    let moved: boolean | "missing" = "missing";
-    if (handle) moved = await fn(ledger, handle.entry.id);
+    // Always ask prod — an unknown tx_id exercises the real
+    // transition-miss path (L10) instead of skipping it.
+    const moved = await fn(ledger, handle?.entry.id ?? txId);
     const read = await stateOf(ledger, txId, W1);
     const read2 = v.mandate2 ? await stateOf(ledger, txId, W_M2) : undefined;
     const latest = read.latest ?? read2?.latest;
     const statusOk =
       exp.status === undefined ? true : latest === STATE_EQ[String(exp.status)];
-    const errorOk = exp.error === true ? moved !== true : moved !== "missing";
+    const errorOk = exp.error === true ? moved !== true : moved === true;
+    // Prod emits no check-id on settle/void — any expected SETTLE:*/
+    // VOID:* id is unreachable, so an expected check is always a miss.
+    const checkOk = exp.check === undefined;
     return {
       kind,
       tx_id: txId,
-      verdict: errorOk && statusOk ? "match" : "mismatch",
+      verdict: errorOk && statusOk && checkOk ? "match" : "mismatch",
       expected: exp,
       actual: {
         moved,
@@ -234,7 +245,7 @@ export async function runLifecycleVector(
       track: "lifecycle",
       vector_id: v.id,
       result,
-      equivalence: "Partial",
+      equivalence: deriveEquivalence(dimensions),
       production_path: PROD_PATH,
       expected: {
         steps: v.steps.map((s) => s.expect ?? null),

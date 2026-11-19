@@ -34,6 +34,7 @@ import {
 import {
   RESULT_SCHEMA_VERSION,
   CORPUS_VERSION,
+  deriveEquivalence,
   type DimensionNote,
   type VectorResult,
 } from "./result";
@@ -48,20 +49,12 @@ function coreDimensions(v: CoreVector): Record<string, DimensionNote> {
     equivalence: "Exact",
   };
   if (b.total_budget !== undefined) {
+    const W_TO_CAP = { 1: "SpendCaps.dailyUsd", 7: "SpendCaps.weeklyUsd", 30: "SpendCaps.monthlyUsd" } as const;
+    const cap = W_TO_CAP[b.budget_window_days as keyof typeof W_TO_CAP];
     d.budget_window = {
-      mapped_to:
-        b.budget_window_days === 1
-          ? "SpendCaps.dailyUsd"
-          : b.budget_window_days === 30
-            ? "SpendCaps.monthlyUsd"
-            : null,
-      equivalence:
-        b.budget_window_days === 1 || b.budget_window_days === 30
-          ? "Exact"
-          : "None",
-      ...(b.budget_window_days === 1 || b.budget_window_days === 30
-        ? {}
-        : { note: `budget_window_days:${b.budget_window_days} has no window` }),
+      mapped_to: cap ?? null,
+      equivalence: cap ? "Exact" : "None",
+      ...(cap ? {} : { note: `budget_window_days:${b.budget_window_days} has no window` }),
     };
   }
   if (b.velocity_limit !== undefined && b.velocity_limit > 0) {
@@ -222,13 +215,7 @@ export async function runCoreVector(
     const result = results.every((r) => r === "PASS")
       ? "PASS"
       : (results.find((r) => r !== "PASS") ?? "HARNESS_ERROR");
-    const equivalence = Object.values(dimensions).every(
-      (d) => d.equivalence === "Exact",
-    )
-      ? "Exact"
-      : Object.values(dimensions).some((d) => d.equivalence === "None")
-        ? "None"
-        : "Partial";
+    const equivalence = deriveEquivalence(dimensions);
     return {
       schema_version: RESULT_SCHEMA_VERSION,
       corpus_version: CORPUS_VERSION,

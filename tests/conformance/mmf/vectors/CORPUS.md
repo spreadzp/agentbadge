@@ -45,7 +45,7 @@ ee5075b0b5d346b87d6c226ed7c59e84edce0f8869f772f2c4a676484ca74442  credential.jso
 Corpus update = reviewable diff. Run:
 
 ```bash
-hackathon/server/scripts/fetch-mmf-vectors.sh [tag]
+scripts/fetch-mmf-vectors.sh [tag]
 ```
 
 which re-vendors from the given tag, recomputes SHA-256, and rewrites

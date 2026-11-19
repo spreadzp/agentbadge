@@ -34,9 +34,9 @@ tests/conformance/mmf/spend-track.test.ts`).
 
 | Status | Count | Vectors |
 |---|---|---|
-| PASS | 24 | V01, V02, V05, V06, V08, V10, V11, V13–V16, V18–V20, V22–V24, V26, V35, V37–V41 + D01, D02, D13, D17 |
-| DIVERGENCE-MODEL | 16 | V25, V28, V34; D03–D12, D14–D16 |
-| NOT_MAPPABLE | 9 | V03, V07, V09, V27, V30–V33†, V36; D18 (†V33→BUG, V29→BUG — see list) |
+| PASS | 24 | V01, V02, V05, V06, V08, V10–V16, V18–V20, V22–V24, V26, V35 + D01, D02, D13, D17 |
+| DIVERGENCE-MODEL | 17 | V25, V28, V34, V36; D03–D12, D14–D16 |
+| NOT_MAPPABLE | 8 | V03, V07, V09, V27, V30–V32; D18 |
 | DIVERGENCE-BUG | 4 | V04, V17, V29, V33 |
 | GATE_EXCEPTION | 1 | V21 |
 
@@ -125,9 +125,9 @@ reservation OPEN — lifecycle ops act on it by tx_id→entry handle.
 | Status | n | Vectors |
 |---|---|---|
 | PASS | 2 | L07 (denied tx can't settle/void), L10 (unknown tx_id rejected) |
-| DIVERGENCE-MODEL | 16 | replay re-reserves (L01–L03, L08, L27, L29); settle w/o claim (L25); void-claimed w/o cancellation (L26); budget-window semantics (L04, L17, L19…); CLAIM:* errors unreachable (L21–L23) |
+| DIVERGENCE-MODEL | 17 | replay re-reserves (L01–L03, L08, L27, L29); settle w/o claim (L25); void-claimed w/o cancellation (L26); budget-window semantics (L04, L17, L19…); CLAIM:* errors unreachable (L21–L23) |
 | DIVERGENCE-BUG | 2 | **L05, L09 — velocity-void evasion** |
-| NOT_MAPPABLE | 8 | pure claim-path vectors (L11–L16, L18, L20, L28 — all mapped steps matched, only claim steps unmappable) |
+| NOT_MAPPABLE | 7 | pure claim-path vectors (L11–L15, L18, L28 — all mapped steps matched, only claim steps unmappable) |
 | GATE_EXCEPTION | 1 | L24 (registry.unavailable → begin threw, fail-closed 500) |
 
 ## 3. Lifecycle findings (→ EPIC-234)

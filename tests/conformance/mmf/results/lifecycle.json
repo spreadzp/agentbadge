@@ -6,7 +6,7 @@
     "track": "lifecycle",
     "vector_id": "L01",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -174,7 +174,7 @@
     "track": "lifecycle",
     "vector_id": "L02",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -299,7 +299,7 @@
     "track": "lifecycle",
     "vector_id": "L03",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -422,7 +422,7 @@
     "track": "lifecycle",
     "vector_id": "L04",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -594,7 +594,7 @@
     "track": "lifecycle",
     "vector_id": "L05",
     "result": "DIVERGENCE-BUG",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -770,7 +770,7 @@
     "track": "lifecycle",
     "vector_id": "L06",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -838,7 +838,7 @@
         {
           "kind": "settle",
           "tx_id": "t1",
-          "verdict": "match",
+          "verdict": "mismatch",
           "actual": {
             "moved": false,
             "state": "settled",
@@ -936,7 +936,7 @@
       {
         "kind": "settle",
         "tx_id": "t1",
-        "verdict": "match",
+        "verdict": "mismatch",
         "expected": {
           "status": "SETTLED"
         },
@@ -985,7 +985,7 @@
     "track": "lifecycle",
     "vector_id": "L07",
     "result": "PASS",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -1027,7 +1027,7 @@
           "tx_id": "t1",
           "verdict": "match",
           "actual": {
-            "moved": "missing",
+            "moved": false,
             "state": "denied",
             "checkId": null
           }
@@ -1037,7 +1037,7 @@
           "tx_id": "t1",
           "verdict": "match",
           "actual": {
-            "moved": "missing",
+            "moved": false,
             "state": "denied",
             "checkId": null
           }
@@ -1094,7 +1094,7 @@
           "error": true
         },
         "actual": {
-          "moved": "missing",
+          "moved": false,
           "state": "denied",
           "checkId": null
         }
@@ -1107,7 +1107,7 @@
           "error": true
         },
         "actual": {
-          "moved": "missing",
+          "moved": false,
           "state": "denied",
           "checkId": null
         }
@@ -1121,7 +1121,7 @@
     "track": "lifecycle",
     "vector_id": "L08",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -1302,7 +1302,7 @@
     "track": "lifecycle",
     "vector_id": "L09",
     "result": "DIVERGENCE-BUG",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -1493,7 +1493,7 @@
     "track": "lifecycle",
     "vector_id": "L10",
     "result": "PASS",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -1516,7 +1516,7 @@
           "tx_id": "nope",
           "verdict": "match",
           "actual": {
-            "moved": "missing",
+            "moved": false,
             "checkId": null
           }
         },
@@ -1525,7 +1525,7 @@
           "tx_id": "nope",
           "verdict": "match",
           "actual": {
-            "moved": "missing",
+            "moved": false,
             "checkId": null
           }
         }
@@ -1563,7 +1563,7 @@
           "error": true
         },
         "actual": {
-          "moved": "missing",
+          "moved": false,
           "checkId": null
         }
       },
@@ -1575,7 +1575,7 @@
           "error": true
         },
         "actual": {
-          "moved": "missing",
+          "moved": false,
           "checkId": null
         }
       }
@@ -1588,7 +1588,7 @@
     "track": "lifecycle",
     "vector_id": "L11",
     "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -1719,7 +1719,7 @@
     "track": "lifecycle",
     "vector_id": "L12",
     "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -1844,7 +1844,7 @@
     "track": "lifecycle",
     "vector_id": "L13",
     "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -1992,7 +1992,7 @@
     "track": "lifecycle",
     "vector_id": "L14",
     "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -2229,7 +2229,7 @@
     "track": "lifecycle",
     "vector_id": "L15",
     "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -2360,7 +2360,7 @@
     "track": "lifecycle",
     "vector_id": "L16",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -2420,7 +2420,7 @@
         {
           "kind": "void",
           "tx_id": "t1",
-          "verdict": "match",
+          "verdict": "mismatch",
           "actual": {
             "moved": false,
             "state": "released",
@@ -2497,7 +2497,7 @@
       {
         "kind": "void",
         "tx_id": "t1",
-        "verdict": "match",
+        "verdict": "mismatch",
         "expected": {
           "status": "VOIDED"
         },
@@ -2518,7 +2518,7 @@
     "track": "lifecycle",
     "vector_id": "L17",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -2653,7 +2653,7 @@
     "track": "lifecycle",
     "vector_id": "L18",
     "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -2815,7 +2815,7 @@
     "track": "lifecycle",
     "vector_id": "L19",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -3009,8 +3009,8 @@
     "corpus_sha256": "8ec2ffd774bb625aa53d3b02b7085c9ecb6e786e7367e2be83385b4e0f8ca103",
     "track": "lifecycle",
     "vector_id": "L20",
-    "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "result": "DIVERGENCE-MODEL",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -3081,7 +3081,7 @@
         {
           "kind": "settle",
           "tx_id": "t1",
-          "verdict": "match",
+          "verdict": "mismatch",
           "actual": {
             "moved": false,
             "state": "settled",
@@ -3113,7 +3113,7 @@
         {
           "kind": "void",
           "tx_id": "t2",
-          "verdict": "match",
+          "verdict": "mismatch",
           "actual": {
             "moved": false,
             "state": "released",
@@ -3189,7 +3189,7 @@
       {
         "kind": "settle",
         "tx_id": "t1",
-        "verdict": "match",
+        "verdict": "mismatch",
         "expected": {
           "status": "SETTLED"
         },
@@ -3231,7 +3231,7 @@
       {
         "kind": "void",
         "tx_id": "t2",
-        "verdict": "match",
+        "verdict": "mismatch",
         "expected": {
           "status": "VOIDED"
         },
@@ -3251,7 +3251,7 @@
     "track": "lifecycle",
     "vector_id": "L21",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -3371,7 +3371,7 @@
     "track": "lifecycle",
     "vector_id": "L22",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -3501,7 +3501,7 @@
     "track": "lifecycle",
     "vector_id": "L23",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -3621,7 +3621,7 @@
     "track": "lifecycle",
     "vector_id": "L24",
     "result": "GATE_EXCEPTION",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -3731,7 +3731,7 @@
     "track": "lifecycle",
     "vector_id": "L25",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -3849,7 +3849,7 @@
     "track": "lifecycle",
     "vector_id": "L26",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -4017,7 +4017,7 @@
     "track": "lifecycle",
     "vector_id": "L27",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -4188,7 +4188,7 @@
     "track": "lifecycle",
     "vector_id": "L28",
     "result": "NOT_MAPPABLE",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [
@@ -4385,7 +4385,7 @@
     "track": "lifecycle",
     "vector_id": "L29",
     "result": "DIVERGENCE-MODEL",
-    "equivalence": "Partial",
+    "equivalence": "None",
     "production_path": "createSpendEnforcer.begin+settleEntry/releaseEntry",
     "expected": {
       "steps": [

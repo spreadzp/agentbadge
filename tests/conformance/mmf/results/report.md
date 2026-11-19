@@ -11,14 +11,14 @@ implementation we wish we had.* Production was not changed to conform.
 
 | Metric | n | Status | Equivalence |
 |---|---|---|---|
-| spend-decision | 36 | PASS 20 · DIVERGENCE-BUG 4 · DIVERGENCE-MODEL 3 · NOT_MAPPABLE 8 · GATE_EXCEPTION 1 | Exact 7 · Partial 8 · None 21 |
+| spend-decision | 36 | PASS 20 · DIVERGENCE-BUG 4 · DIVERGENCE-MODEL 4 · NOT_MAPPABLE 7 · GATE_EXCEPTION 1 | Exact 7 · Partial 8 · None 21 |
 | delegation | 18 | PASS 4 · DIVERGENCE-MODEL 13 · NOT_MAPPABLE 1 | None 18 |
-| lifecycle | 29 | PASS 2 · DIVERGENCE-BUG 2 · DIVERGENCE-MODEL 16 · NOT_MAPPABLE 8 · GATE_EXCEPTION 1 | Partial 29 |
-| crypto-evidence | 9 | PASS 9 | Exact 9 |
+| lifecycle | 29 | PASS 2 · DIVERGENCE-BUG 2 · DIVERGENCE-MODEL 17 · NOT_MAPPABLE 7 · GATE_EXCEPTION 1 | None 29 |
+| crypto-evidence | 9 | PASS 9 | None 9 |
 | own-invariants | — | probes, not vectors | — |
 
 Crypto PASS = test-lib canonicalizer byte-exact vs §5.6/§7 — prod has
-no Ed25519 credential model nor evidence hash chain (all None dims).
+no Ed25519 credential model nor evidence hash chain (prod-side dims None; canonical_form Partial).
 
 ## Divergences — BUG class (candidates for EPIC-234)
 
@@ -40,12 +40,12 @@ no Ed25519 credential model nor evidence hash chain (all None dims).
 - Velocity window: MMF 86 400 s vs ours 3 600 s (Partial).
 - Revocation ≈ wallet suspend (Partial); mandate-level revoke absent.
 - Expiry / currency / allowed_payees / payee checks — not modeled
-  (NOT_MAPPABLE 17 vectors total).
+  (NOT_MAPPABLE 15 vectors total).
 
 ## GATE_EXCEPTION
 
-- L24
 - V21
+- L24
 — registry failure path throws → fail-closed 500, no deny evidence.
 
 ## Own-invariant findings (probes, not MMF)

@@ -25,6 +25,19 @@ export type ResultStatus =
 
 export type Equivalence = "Exact" | "Partial" | "None";
 
+/** Roll up per-dimension equivalence into the vector-level field —
+ *  one rule for every track: all Exact → Exact, any None → None,
+ *  otherwise Partial. A vector-level grade must never overstate what
+ *  its own dimensions already disclose (independent-review R1). */
+export function deriveEquivalence(
+  dimensions: Record<string, DimensionNote>,
+): Equivalence {
+  const vals = Object.values(dimensions);
+  if (vals.every((d) => d.equivalence === "Exact")) return "Exact";
+  if (vals.some((d) => d.equivalence === "None")) return "None";
+  return "Partial";
+}
+
 export interface DimensionNote {
   /** Prod mechanism this MMF dimension maps to (null = none). */
   mapped_to: string | null;

@@ -30,7 +30,10 @@ import {
   type SubmissionVerdict,
 } from "../types";
 import { mustGet, transitionRow, type CommerceCtx } from "./ctx";
-import { postCommitSettlementSync } from "./review-postcommit";
+import {
+  postCommitSettlementSync,
+  revertGateApproval,
+} from "./review-postcommit";
 import { resolveSettlementGate } from "./review-settlement";
 
 export async function reviewSubmission(
@@ -182,92 +185,10 @@ export async function reviewSubmission(
     });
   } catch (err) {
     // R4-H1: this gate's own pre-commit approve landed but the verdict
-    // didn't — revert APPROVED→READY and cancel the intent so the
-    // failed request leaves no payment authorization behind. Only OUR
-    // approve reverts — a sibling review's APPROVED belongs to its
-    // committed verdict.
-    // R5-H2 + R6-M2: re-read the submission first — when a sibling
-    // verdict already committed, the approval stays (a committed
-    // ACCEPTED needs its intent; a committed REJECT releases straight
-    // to PENDING). A FAILED re-read is UNKNOWN, not "not committed" —
-    // a lost-ack verdict looks identical, so fail closed and skip.
-    if (
-      gate.approvedByUs === true &&
-      ctx.settlement &&
-      settleMilestoneId !== undefined
-    ) {
-      try {
-        const sub = await stores.submissions
-          .getById(submissionId)
-          .catch(() => null);
-        if (!sub) {
-          // R6-M2: cannot distinguish "commit landed, ack lost" from
-          // "never committed" — leaving APPROVED+OPEN is the documented
-          // resume state; a retried review completes it.
-          logger.error("approval revert skipped — submission re-read failed", {
-            milestoneRowId: settleMilestoneId,
-            submissionId,
-          });
-        } else if (sub.status === "ACCEPTED") {
-          // Sibling ACCEPT committed — approval belongs to that verdict.
-        } else if (sub.status === "SUBMITTED" ||
-            sub.status === "REJECTED" ||
-            sub.status === "REVISION_REQUIRED") {
-          const res = await ctx.settlement.revertApproval(
-            settleMilestoneId,
-            actor,
-            {
-              intentId: gate.intentId,
-              approvalToken: gate.approvalToken,
-              release:
-                sub.status === "REJECTED" ||
-                sub.status === "REVISION_REQUIRED",
-            },
-          );
-          // R6-M5: a refused revert is operator-visible — the approval
-          // stands with a paid leg or a foreign intent and nobody can
-          // see it otherwise.
-          if (res && !res.reverted) {
-            logger.error("approval revert refused — approval stands", {
-              milestoneRowId: settleMilestoneId,
-              submissionId,
-              intentId: gate.intentId,
-            });
-          }
-          // R6-M2 reconciler: the sibling verdict may have committed in
-          // the gap between the re-read and the revert's atomic — the
-          // revert then cancelled the intent a committed ACCEPTED
-          // needs. Re-read once and heal by re-approving (the M1-safe
-          // reopen mints fresh legs).
-          if (res?.reverted) {
-            const after = await stores.submissions
-              .getById(submissionId)
-              .catch(() => null);
-            if (after?.status === "ACCEPTED") {
-              logger.warn(
-                "verdict committed during revert — healing approval",
-                { milestoneRowId: settleMilestoneId, submissionId },
-              );
-              await ctx.settlement
-                .approveMilestone(settleMilestoneId, actor)
-                .catch(() => null);
-            }
-          }
-        } else {
-          logger.error("approval revert skipped — unexpected status", {
-            milestoneRowId: settleMilestoneId,
-            submissionId,
-            status: sub.status,
-          });
-        }
-      } catch (revertErr) {
-        logger.error("settlement approval revert failed", {
-          milestoneRowId: settleMilestoneId,
-          error:
-            revertErr instanceof Error ? revertErr.message : String(revertErr),
-        });
-      }
-    }
+    // didn't — revert it so the failed request leaves no payment
+    // authorization behind. Extracted to review-postcommit.ts under
+    // the 300-line cap.
+    await revertGateApproval(ctx, actor, submissionId, gate);
     throw err;
   }
 

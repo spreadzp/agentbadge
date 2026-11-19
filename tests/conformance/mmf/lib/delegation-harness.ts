@@ -34,6 +34,7 @@ import {
 import {
   RESULT_SCHEMA_VERSION,
   CORPUS_VERSION,
+  deriveEquivalence,
   type DimensionNote,
   type VectorResult,
 } from "./result";
@@ -136,9 +137,10 @@ async function execStep(
         detail: { delegate: s.delegate, spendCapUsd: rec.spendCapUsd },
       };
     } catch (e) {
+      // Validation throw IS the rejection when the step expects one.
       return {
         kind: "delegate",
-        verdict: "threw",
+        verdict: s.expect === "invalid" ? "match" : "threw",
         detail: { error: e instanceof Error ? e.message : String(e) },
       };
     }
@@ -157,13 +159,14 @@ async function execStep(
       walletStore: ctx.wallets,
     });
     const rawDeny = out.ok ? undefined : out.reason;
+    const checkId = rawDeny ? checkIdForDeny(rawDeny) : "WITHIN";
     return {
       kind: "tx",
-      verdict: classifyStep(s.expect, { ok: out.ok }),
+      verdict: classifyStep(s.expect, { ok: out.ok, checkId }),
       detail: {
         ok: out.ok,
         reason: rawDeny,
-        checkId: rawDeny ? checkIdForDeny(rawDeny) : "WITHIN",
+        checkId,
         amount,
       },
     };
@@ -173,7 +176,7 @@ async function execStep(
     const did = ctx.store.revoke(OWNER, CHAIN);
     return {
       kind: "revoke",
-      verdict: "match",
+      verdict: did ? "match" : "mismatch",
       detail: { revoked: s.revoke, storeRevoked: did },
     };
   }
@@ -220,21 +223,14 @@ export async function runDelegationVector(
         : hasMismatch
           ? "DIVERGENCE-MODEL"
           : "PASS";
-    const equivalence = Object.values(dimensions).every(
-      (d) => d.equivalence === "Exact",
-    )
-      ? "Exact"
-      : Object.values(dimensions).some((d) => d.equivalence === "None")
-        ? "None"
-        : "Partial";
     return {
       schema_version: RESULT_SCHEMA_VERSION,
       corpus_version: CORPUS_VERSION,
       corpus_sha256: corpusSha256,
-      track: "spend",
+      track: "delegation",
       vector_id: v.id,
       result,
-      equivalence,
+      equivalence: deriveEquivalence(dimensions),
       production_path: PROD_PATH,
       expected: { steps: v.steps.map((s) => s.expect ?? null) },
       actual: { kitCalls: calls.length },
@@ -248,7 +244,7 @@ export async function runDelegationVector(
       schema_version: RESULT_SCHEMA_VERSION,
       corpus_version: CORPUS_VERSION,
       corpus_sha256: corpusSha256,
-      track: "spend",
+      track: "delegation",
       vector_id: v.id,
       result: "HARNESS_ERROR",
       equivalence: "None",

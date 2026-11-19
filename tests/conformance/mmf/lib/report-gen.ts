@@ -11,12 +11,14 @@
 import type { VectorResult } from "./result";
 import { RESULT_SCHEMA_VERSION, CORPUS_VERSION } from "./result";
 
-/** Delegation vectors live inside spend.json (track:"spend") —
- *  the metric splits on D-prefix + spendAsDelegate path. */
+/** Delegation vectors live inside spend.json but carry
+ *  track:"delegation"; the metric splits on the track field with a
+ *  D-prefix/spendAsDelegate fallback for older artifacts. */
 export function metricOf(v: VectorResult): string {
   if (v.track === "lifecycle") return "lifecycle";
   if (v.track === "crypto") return "crypto-evidence";
   if (
+    v.track === "delegation" ||
     v.vector_id.startsWith("D") ||
     v.production_path.includes("spendAsDelegate")
   ) {
@@ -158,7 +160,7 @@ ${metricRow("crypto-evidence")}
 | own-invariants | — | probes, not vectors | — |
 
 Crypto PASS = test-lib canonicalizer byte-exact vs §5.6/§7 — prod has
-no Ed25519 credential model nor evidence hash chain (all None dims).
+no Ed25519 credential model nor evidence hash chain (prod-side dims None; canonical_form Partial).
 
 ## Divergences — BUG class (candidates for EPIC-234)
 

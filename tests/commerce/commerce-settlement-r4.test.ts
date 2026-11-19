@@ -27,6 +27,10 @@ import {
   type CommerceSettlementBridge,
 } from "../../src/server/lib/commerce/settlement-bridge";
 import { createCommerceRoutes } from "../../src/server/routes/commerce/index";
+import {
+  approveMilestone,
+  createSettlementCtx,
+} from "../../src/server/lib/settlement/index.js";
 import { buildCommerceChallenge } from "../../src/server/routes/commerce/shared";
 import { createHash, randomUUID } from "node:crypto";
 
@@ -338,5 +342,35 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
     expect(
       (await db.commerce.agreements.getById(agId))?.status,
     ).toBe("COMPLETED");
+  });
+
+  it("R7-M2: REJECT on an APPROVED milestone releases the intent too", async () => {
+    const app = makeApp();
+    const { subId, milestone } = await boundSubmission(app);
+    // Drive the real approve on the same db — READY → APPROVED + OPEN
+    // intent (the state a skipped/aborted revert leaves behind).
+    const sctx = createSettlementCtx(db);
+    const ap = await approveMilestone(sctx, milestone.id, buyer.address);
+    expect(ap.ok).toBe(true);
+    const intent = await db.settlement.payoutIntents.getByMilestone(
+      milestone.id,
+    );
+    expect(intent?.status).toBe("OPEN");
+
+    const rev = await req(
+      app,
+      "POST",
+      `/api/commerce/submissions/${subId}/review`,
+      { account: buyer, body: { verdict: "REJECTED" } },
+    );
+    expect(rev.status).toBe(200);
+    // R7-M2: the release is no longer READY-only — the payable intent
+    // is cancelled and the milestone frees for the resubmission round.
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("PENDING");
+    expect(
+      (await db.settlement.payoutIntents.getById(intent!.id))?.status,
+    ).toBe("CANCELLED");
   });
 });

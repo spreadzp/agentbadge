@@ -69,10 +69,14 @@ export async function stateOf(
   const rows = (await ledger.listByWallet(wallet)).filter(
     (e) => e.refId === txId,
   );
+  // listByWallet sorts by `at` desc but keeps insertion order on ties —
+  // so "latest" is the LAST row of the max-at group, not rows[0].
+  const maxAt = rows[0]?.at;
+  const latestRow = rows.filter((r) => r.at === maxAt).at(-1) ?? rows[0];
   return {
     count: rows.length,
     states: rows.map((r) => r.state),
-    latest: rows[0]?.state,
+    latest: latestRow?.state,
   };
 }
 

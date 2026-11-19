@@ -150,6 +150,7 @@ export async function approveMilestone(
     milestone: MilestoneRow;
     intentId: string;
     legs: string[];
+    approvalToken: string;
   }>
 > {
   const milestone = await ctx.db.settlement.milestones.getById(milestoneRowId);

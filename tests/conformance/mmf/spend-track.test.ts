@@ -202,7 +202,7 @@ describe("spend track run", () => {
     expect(results).toHaveLength(18);
     for (const r of results) {
       expect(r.schema_version).toBe(RESULT_SCHEMA_VERSION);
-      expect(r.track).toBe("spend");
+      expect(r.track).toBe("delegation");
       expect(r.corpus_sha256).toBe(sha.delegation);
     }
   });
