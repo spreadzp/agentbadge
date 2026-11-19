@@ -281,4 +281,8 @@ export interface DetectResult {
   created: ReconciliationExceptionRow[];
   /** Deterministic-id collisions — already known, skipped. */
   skipped: string[];
+  /** N7-6: per-row store errors — rows already written stay in
+   *  `created` and the audit row still reports them; a mid-batch
+   *  throw no longer strands created rows with no audit trail. */
+  errors?: string[];
 }

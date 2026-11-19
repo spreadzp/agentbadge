@@ -176,7 +176,7 @@ async function completeRefundIntentInner(
   // so the check stays fail-closed.
   const expectedCurrency = (
     intent.currency?.trim() ||
-    payment.currency ||
+    payment.currency?.trim() ||
     "USDC"
   ).toUpperCase();
   // N11 + L-2: the RPC call can throw or hang — a verifier outage is

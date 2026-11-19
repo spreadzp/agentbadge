@@ -18,6 +18,7 @@ import {
 
 import {
   MAX_ID_FIELD,
+  checkEvidence,
   checkTextField,
   guardAction,
   isMeaningfulEvidence,
@@ -194,7 +195,13 @@ export async function markExternalReviewed(
   operator: string,
   evidence: unknown,
 ): Promise<FinOpsResult<AdminActionRow>> {
-  // H1: meaningful evidence is required — "reviewed" without proof is
+  // H1/N7-3: size check FIRST — the serialized bound caps how deep
+  // an array/object can nest before the recursive content check
+  // touches it (a ~30k-deep structure fits under the body cap but
+  // blows the JS stack on recursion).
+  const sizeCheck = checkEvidence(evidence);
+  if (sizeCheck) return sizeCheck;
+  // Meaningful evidence is required — "reviewed" without proof is
   // an audit gap; empty objects/blank strings do not count.
   if (!isMeaningfulEvidence(evidence)) {
     return fail(

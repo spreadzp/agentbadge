@@ -109,6 +109,10 @@ export async function detectExceptions(
   }
   const created: ReconciliationExceptionRow[] = [];
   const skipped: string[] = [];
+  // N7-6: a mid-batch store failure must not strand rows already
+  // written with no audit row — collect per-row errors and keep
+  // going; the DETECT_EXCEPTIONS audit reflects them.
+  const errors: string[] = [];
   for (const { id, c } of prepared) {
     let row: ReconciliationExceptionRow | null;
     try {
@@ -121,17 +125,35 @@ export async function detectExceptions(
         createdAtMs: Date.now(),
       });
     } catch (e) {
-      // N6-5: two concurrent scans race check-then-create — the loser's
-      // unique-violation throw must degrade to `skipped` (dedupe
-      // semantics), not kill the batch and strand the audit row.
-      // Anything else is a real store error — let it fail.
-      if (!isUniqueViolation(e)) throw e;
+      // N6-5/N7-2: two concurrent scans race check-then-create — the
+      // loser's unique-violation throw degrades to `skipped` (dedupe
+      // semantics). The text match is loose, so CONFIRM the row
+      // exists before swallowing — an unrelated failure that merely
+      // echoes "duplicate key" must not be silently reported as
+      // dedupe.
+      if (!isUniqueViolation(e)) {
+        errors.push(`${id}: ${e instanceof Error ? e.message : String(e)}`);
+        continue;
+      }
+      const existing = await db.finops.exceptions
+        .getById(id)
+        .catch(() => null);
+      if (!existing) {
+        errors.push(
+          `${id}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        continue;
+      }
       row = null;
     }
     if (row) created.push(row);
     else skipped.push(id);
   }
-  return ok({ created, skipped });
+  return ok({
+    created,
+    skipped,
+    ...(errors.length > 0 ? { errors } : {}),
+  });
 }
 
 

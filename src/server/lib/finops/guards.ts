@@ -9,6 +9,8 @@ import {
   ok,
 } from "./types";
 
+export { isMeaningfulEvidence } from "./evidence-guards";
+
 /** Operator label cap — H5/226-6: normalized labels stay bounded. */
 export const OPERATOR_MAX_LEN = 64;
 /** Generic free-text cap — applied BEFORE any effect (C1). */
@@ -89,33 +91,6 @@ export function checkSerialized(
     );
   }
   return null;
-}
-
-// Zero-width/format chars — invisible, carry no content.
-const INVISIBLE_CHARS = /[\u00AD\u034F\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF\uFFFC]/gu;
-// JSON-ish empty literals that deserialize to nothing.
-const EMPTY_LITERALS = new Set(["", "null", "undefined", "{}", "[]"]);
-
-// H1/226-6 + N6-3: evidence must carry content — a string with ≥1
-// VISIBLE char (zero-width/format chars and bare "null"/"{}" literals
-// don't count), an array with ≥1 meaningful element, or an object
-// with ≥1 meaningful VALUE (`{"a":""}` is an empty husk). Nested
-// numbers/booleans count as content; a bare top-level scalar doesn't.
-const hasContent = (x: unknown): boolean =>
-  typeof x === "number" || typeof x === "boolean" ||
-  isMeaningfulEvidence(x);
-
-export function isMeaningfulEvidence(v: unknown): boolean {
-  if (v === undefined || v === null) return false;
-  if (typeof v === "string") {
-    const s = v.replace(INVISIBLE_CHARS, "").trim();
-    return !EMPTY_LITERALS.has(s.toLowerCase());
-  }
-  if (Array.isArray(v)) return v.some(hasContent);
-  if (typeof v === "object") {
-    return Object.values(v as Record<string, unknown>).some(hasContent);
-  }
-  return false; // bare scalar / other types are not evidence
 }
 
 /** `0x` + 40 hex — EVM payout destination (zero address is not one). */

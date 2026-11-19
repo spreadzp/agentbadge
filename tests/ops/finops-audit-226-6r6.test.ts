@@ -175,25 +175,23 @@ describe("SLICE-226-6 round-6 fixes (re-audit v6)", () => {
     await db.close();
   });
 
-  it("N6-5: a raced append (unique violation) degrades to skipped, not a batch kill", async () => {
+  it("N6-5+N7-2: a raced append degrades to skipped only when the row really exists", async () => {
     const db = createDatabase({ enabled: false });
-    // Forge the race: every append throws a PG unique-violation.
     const excStore = db.finops.exceptions;
     const orig = excStore.append;
-    excStore.append = (() => {
+    const dupThrow = (() => {
       const e = new Error(
         "duplicate key value violates unique constraint",
       ) as Error & { code?: string };
       e.code = "23505";
       throw e;
     }) as typeof orig;
-    await detectFromPaymentExceptions(db, {});
-    excStore.append = orig;
-    // No source rows → still a clean result; the point is the domain
-    // treats the throw as dedupe, not a crash. Add a source row and
-    // re-run to see it in `skipped`.
+    // Case A — the losing scan's throw is REAL dedupe: the mirrored
+    // snapshot was taken BEFORE the winner wrote, so the source row
+    // reaches append, throws 23505, and getById finds the row.
+    const srcId = uid("pe");
     await db.payments.exceptions.append({
-      id: uid("pe"),
+      id: srcId,
       paymentId: uid("pay"),
       kind: "AMOUNT_MISMATCH",
       severity: "WARN",
@@ -201,19 +199,47 @@ describe("SLICE-226-6 round-6 fixes (re-audit v6)", () => {
       status: "OPEN",
       createdAtMs: Date.now(),
     });
-    excStore.append = (() => {
-      const e = new Error(
-        "duplicate key value violates unique constraint",
-      ) as Error & { code?: string };
-      e.code = "23505";
-      throw e;
-    }) as typeof orig;
+    const origGet = excStore.getById;
+    excStore.append = dupThrow;
+    excStore.getById = (async (id: string) =>
+      id === `rx_${srcId}`
+        ? ({
+            id,
+            type: "AMOUNT_MISMATCH",
+            subjectRef: "x",
+            details: {},
+            status: "OPEN",
+            createdAtMs: Date.now(),
+            createdAt: new Date().toISOString(),
+          } as never)
+        : origGet.call(excStore, id)) as typeof origGet;
     const raced = await detectFromPaymentExceptions(db, {});
     excStore.append = orig;
+    excStore.getById = origGet;
     expect(raced.ok).toBe(true);
     if (raced.ok) {
       expect(raced.value.created.length).toBe(0);
-      expect(raced.value.skipped.length).toBe(1);
+      expect(raced.value.skipped).toContain(`rx_${srcId}`);
+      expect(raced.value.errors ?? []).toHaveLength(0);
+    }
+    // Case B — N7-2: a throw that merely echoes "duplicate key" but
+    // the row does NOT exist must surface as an error, not dedupe.
+    await db.payments.exceptions.append({
+      id: uid("pe"),
+      paymentId: uid("pay"),
+      kind: "WRONG_TOKEN",
+      severity: "WARN",
+      details: {},
+      status: "OPEN",
+      createdAtMs: Date.now(),
+    });
+    excStore.append = dupThrow;
+    const bogus = await detectFromPaymentExceptions(db, {});
+    excStore.append = orig;
+    expect(bogus.ok).toBe(true);
+    if (bogus.ok) {
+      expect(bogus.value.created.length).toBe(0);
+      expect(bogus.value.errors?.length).toBeGreaterThanOrEqual(1);
     }
     await db.close();
   });

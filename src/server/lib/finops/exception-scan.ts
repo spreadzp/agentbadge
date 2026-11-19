@@ -74,7 +74,10 @@ export async function detectFromPaymentExceptions(
       // row that triggered the hash above) must be CLAMPED, not left
       // to fail the whole batch again. A row with NO usable reference
       // is skipped — one malformed row must never starve the scan.
-      const subjectRef = (e.paymentId ?? e.id).slice(0, MAX_ID_FIELD);
+      const subjectRef = (e.paymentId?.trim() || e.id.trim()).slice(
+        0,
+        MAX_ID_FIELD,
+      );
       if (subjectRef === "") continue;
       // C4b: own-property check — `kind` values like "constructor" or
       // "__proto__" must not reach through the prototype chain.

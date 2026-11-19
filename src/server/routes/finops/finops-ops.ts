@@ -149,13 +149,16 @@ export function createFinopsOpsRoutes(deps: FinopsRouteDeps = {}): Hono {
           evidence: {
             createdCount: createdIds.length,
             skippedCount: res.value.skipped.length,
+            errorCount: res.value.errors?.length ?? 0,
             createdIds: idSample(createdIds),
             skipped: idSample(res.value.skipped),
+            errors: res.value.errors?.slice(0, 5) ?? [],
           },
         },
         {
           createdCount: createdIds.length,
           skippedCount: res.value.skipped.length,
+          errorCount: res.value.errors?.length ?? 0,
         },
       );
       void audit;
