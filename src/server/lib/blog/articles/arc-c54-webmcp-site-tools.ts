@@ -6,7 +6,7 @@ export const article: BlogArticle = {
   title:
     "Your Website Has a Menu Now: 16 Page-Scoped Tools for AI Agents, Live on WebMCP",
   description:
-    "A website can now hand a browser agent a structured menu of tools instead of HTML to scrape. We shipped 16 page-scoped WebMCP tools on production - one shared registry behind three facades (in-tab WebMCP, /mcp/public JSON-RPC, plain REST), honest async submit/poll into the ops inbox, and a consent-gated public QA corpus. External verification found two real bugs, both fixed.",
+    "A website can now hand a browser agent a structured menu of tools instead of HTML to scrape. We shipped 16 page-scoped WebMCP tools on production (17 after a post-publication review added submit-survey) - one shared registry driving the in-tab shelf and the discovery files, while /mcp/public stays a deliberately separate 4-tool read whitelist. Honest async submit/poll into the ops inbox, a consent-gated public QA corpus with a janitor retry leg. External verification found two real bugs, both fixed.",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-11-19",
@@ -22,7 +22,7 @@ export const article: BlogArticle = {
   ],
   readingTime: "9 min",
   shortAnswer:
-    "WebMCP is a W3C draft - already documented by OpenAI as Site tools and shipping in Chrome 146+ behind an Origin Trial - that lets a page register typed tools into document.modelContext: the page itself hands an agent a menu, so it stops scraping. We put it on production: agentbadge.xyz exposes 16 tools from one shared registry across three facades (WebMCP in-tab, /mcp/public JSON-RPC, plain REST), page-scoped so a scanner-page agent sees scanner tools only. One write action - submit-request - posts into the ops inbox; poll-request returns honest async states; consented answers materialize into a public QA corpus that search-agent-qa can hit instantly. Live Chrome-OT verification found two shipped bugs - a publicly cacheable submitted poll body and a pg/json codec that 500'd on top-level string writes - both fixed and regression-tested.",
+    "WebMCP is a W3C community-group draft - already documented by OpenAI as Site tools and in Chrome preview behind a testing flag (Chromium 146+, Origin Trial from Chrome 149) - that lets a page register typed tools into document.modelContext: the page itself hands an agent a menu, so it stops scraping. We put it on production: agentbadge.xyz exposes 16 tools (17 after post-review hardening added submit-survey) from one shared registry driving the WebMCP in-tab shelf and the discovery files - with /mcp/public kept as a deliberately separate, minimal 4-tool read whitelist rather than a second facade - page-scoped so a scanner-page agent sees scanner tools only. One write action - submit-request - posts into the ops inbox; poll-request returns honest async states; consented answers materialize into a public QA corpus that search-agent-qa can hit instantly, with a janitor retry leg so consent implies eventual publication. Live Chrome-flag verification found two shipped bugs - a publicly cacheable submitted poll body and a pg/json codec that 500'd on top-level string writes - both fixed and regression-tested.",
   heroImage: "/images/blog/arc-c54-webmcp-site-tools-hero.webp",
   ogImage: "/images/blog/arc-c54-webmcp-site-tools-og.jpeg",
   status: "LIVE",
@@ -46,7 +46,7 @@ export const article: BlogArticle = {
   ],
   concepts: [
     "page-scoped-tools",
-    "one-registry-three-facades",
+    "one-registry-scoped-shelves",
     "honest-async",
     "consent-gated-qa",
     "next-call-contract",
@@ -78,12 +78,12 @@ export const article: BlogArticle = {
     },
     {
       type: "read",
-      label: "Machine-readable tool inventory (16 tools)",
+      label: "Machine-readable tool inventory (17 tools)",
       url: "https://agentbadge.xyz/.well-known/webmcp.json",
     },
     {
       type: "read",
-      label: "Unauthenticated probe: JSON-RPC tools/list",
+      label: "Unauthenticated probe: JSON-RPC tools/list (separate 4-tool read whitelist)",
       url: "https://agentbadge.xyz/mcp/public",
     },
     {
@@ -101,12 +101,12 @@ export const article: BlogArticle = {
     {
       question: "What is WebMCP and why does it matter for a website?",
       answer:
-        "WebMCP is a W3C community draft that lets a page register JavaScript functions - name, description, JSON schema - into document.modelContext, so any WebMCP-aware agent can list and call them with structured arguments. OpenAI documented it as Site tools for the built-in browser in the ChatGPT desktop app, and Chrome 146+ runs it behind an Origin Trial. For a website it means agents stop scraping HTML and start calling typed tools - no API key, no SDK, no parsing.",
+        "WebMCP is a W3C community-group draft report - not a ratified standard - that lets a page register JavaScript functions (name, description, JSON schema) into document.modelContext, so any WebMCP-aware agent can list and call them with structured arguments. OpenAI documented it as Site tools for the built-in browser in the ChatGPT desktop app, and Chrome ships an early preview behind a testing flag on Chromium 146+ with an Origin Trial from Chrome 149. For a website it means agents stop scraping HTML and start calling typed tools - no API key, no SDK, no parsing.",
     },
     {
-      question: "How do the 16 AgentBadge tools stay organized per page?",
+      question: "How do the 17 AgentBadge tools stay organized per page?",
       answer:
-        "One shared registry defines all tools; PAGE_TOOLSETS maps each page to the subset it exposes. document.modelContext.getTools() on / returns the full 16; scoped pages like scanner or market return focused shelves. The same registry feeds the WebMCP in-tab surface, the /mcp/public JSON-RPC endpoint, and .well-known/webmcp.json - REST remains the source of truth underneath.",
+        "One shared registry defines all tools; PAGE_TOOLSETS maps each page to the subset it exposes. document.modelContext.getTools() on / returns the full shelf; scoped pages like scanner or market return focused shelves. The registry drives the WebMCP in-tab surface and the discovery files (.well-known/webmcp.json, llms.txt, agent-card); /mcp/public is a deliberately separate read-only whitelist of four marketplace tools, not a second facade. REST remains the source of truth underneath - and scoping limits visibility, not authorization: the underlying REST endpoints stay directly callable.",
     },
     {
       question: "How does an agent submit a question and get an ops answer?",
@@ -121,14 +121,14 @@ export const article: BlogArticle = {
     {
       question: "What did live production verification find?",
       answer:
-        "Two shipped bugs, both fixed. First: the shared cache middleware stamped public,max-age=60 on pollable inbox GETs, so a browser could serve a stale submitted body after ops answered - inbox routes moved to Cache-Control:no-store (commit 54cc6d9). Second: a top-level JSON string written to a json column 500'd on read because the driver pre-parses json and the pg/json codec calls JSON.parse again - writes are now coerced to {answer}/{question} objects at the edge (commit 4119016), with regression tests.",
+        "Two shipped bugs, both fixed. First: the shared cache middleware stamped public,max-age=60 on pollable inbox GETs, so a browser could serve a stale submitted body after ops answered - inbox routes moved to Cache-Control:no-store (commit 54cc6d9). Second: a top-level JSON string written to a json column 500'd on read because the driver pre-parses json and the pg/json codec calls JSON.parse again - writes are now coerced to {answer}/{question} objects at the edge (commit 4119016), with regression tests. A post-publication review then caught two design gaps: QA materialization failures were silently advisory (now retried by a janitor leg until consent is honored) and surveys were list-only for agents (submit-survey added as tool 17).",
     },
   ],
   claims: [
     {
-      id: "c54-webmcp-sixteen-tools-live",
+      id: "c54-webmcp-tools-live",
       status: "VERIFIED",
-      text: "agentbadge.xyz exposes 16 tools through one shared registry across three facades - WebMCP via document.modelContext (Chrome OT), POST /mcp/public JSON-RPC, and REST - verified live: tools/list returns 16 and .well-known/webmcp.json lists the same inventory.",
+      text: "agentbadge.xyz exposes 17 tools from one shared registry - WebMCP via document.modelContext (testing flag / Chrome OT) plus the discovery files .well-known/webmcp.json, llms.txt, agent-card - verified live: webmcp.json lists the full inventory. POST /mcp/public is a deliberately separate read-only whitelist of four marketplace tools (open_tasks, get_task, task_status, start_here), not a second facade over the registry.",
       evidence: [
         {
           type: "demo",
@@ -138,12 +138,16 @@ export const article: BlogArticle = {
           type: "github",
           url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/middleware/webmcp-scope.ts",
         },
+        {
+          type: "github",
+          url: "https://github.com/spreadzp/agentbadge/blob/main/src/server/routes/mcp/mcp-public.ts",
+        },
       ],
     },
     {
       id: "c54-page-scoped-toolsets",
       status: "VERIFIED",
-      text: "Tool exposure is page-scoped: PAGE_TOOLSETS in the shared registry maps each page to its shelf, so getTools() returns the full 16 on / and focused subsets on scanner/market/verify/agent-guide pages.",
+      text: "Tool exposure is page-scoped: PAGE_TOOLSETS in the shared registry maps each page to its shelf, so getTools() returns the full set on / and focused subsets on scanner/market/verify/agent-guide pages.",
       evidence: [
         {
           type: "github",

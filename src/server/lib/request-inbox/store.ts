@@ -66,6 +66,12 @@ export interface RequestStore {
   ): Promise<InboxQaPair | null>;
   /** Excludes retracted pairs (D-256-Q14 — also the fast-path gate). */
   getQaByHash(questionHash: string): Promise<InboxQaPair | null>;
+  /** SLICE-256-9 (review R-2): retracted INCLUDED — the janitor
+   *  re-materialization leg must distinguish "no pair ever" from
+   *  "pair retracted" (the latter must not resurrect). */
+  getQaByHashIncludingRetracted(
+    questionHash: string,
+  ): Promise<InboxQaPair | null>;
   /** Excludes retracted pairs (D-256-Q14). */
   searchQa(substring: string, limit?: number): Promise<InboxQaPair[]>;
   // janitor legs
@@ -216,6 +222,12 @@ export function createMemoryRequestStore(): RequestStore {
       const pair = id ? qaPairs.get(id) : undefined;
       // D-256-Q14: retracted pairs are invisible to the fast-path.
       return pair && pair.retractedAtMs == null ? { ...pair } : null;
+    },
+
+    async getQaByHashIncludingRetracted(questionHash) {
+      const id = qaByHash.get(questionHash);
+      const pair = id ? qaPairs.get(id) : undefined;
+      return pair ? { ...pair } : null;
     },
 
     async searchQa(substring, limit = 50) {

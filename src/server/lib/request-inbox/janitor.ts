@@ -3,6 +3,11 @@ import { join } from "node:path";
 
 import type { RequestInboxStores } from "./store";
 import type { InboxRequestRecord } from "./types";
+import { normalizeQuestion, questionHashFor } from "./fingerprint";
+import {
+  materializeQaPairForRecord,
+  payloadQuestionText,
+} from "./qa";
 
 /**
  * EPIC-252 (SLICE-252-1, decision 2026-11-14): retention janitor.
@@ -28,6 +33,10 @@ export interface JanitorResult {
   payloadsPurged: number;
   archived: number;
   archiveFile?: string;
+  /** SLICE-256-9 (review R-2): consented completed requests whose
+   *  corpus pair is missing — retried materialization. */
+  qaPendingListed: number;
+  qaRematerialized: number;
   errors: string[];
 }
 
@@ -54,6 +63,8 @@ export async function runInboxJanitor(
     purgeableListed: 0,
     payloadsPurged: 0,
     archived: 0,
+    qaPendingListed: 0,
+    qaRematerialized: 0,
     errors: [],
   };
 
@@ -119,6 +130,38 @@ export async function runInboxJanitor(
       }
     } catch (err) {
       result.errors.push(`purge ${r.id}: ${String(err)}`);
+    }
+  }
+
+  // Leg 3 (SLICE-256-9, review R-2): QA re-materialization. The respond
+  // path deliberately swallows upsert failures (a 5xx must not roll
+  // back a committed transition), so a consented pair can be missing;
+  // this leg closes consent → publication eventually. A live pair with
+  // the same questionHash already covers the question (dedupe bumped
+  // uses), so we only retry rows with no live pair at all.
+  const completed = await stores.requests.listByState({
+    state: "completed",
+    limit,
+  });
+  for (const r of completed) {
+    if (r.publishToQa !== true || r.spamFlag || r.response == null)
+      continue;
+    const question = payloadQuestionText(r.payload);
+    if (!question) continue;
+    result.qaPendingListed += 1;
+    try {
+      const hash = questionHashFor(normalizeQuestion(question));
+      // Any row for this hash — live OR retracted — means "already
+      // handled": a retracted pair must not resurrect (ops retracted
+      // deliberately), a live pair already covers the question.
+      const existing =
+        await stores.requests.getQaByHashIncludingRetracted(hash);
+      if (existing) continue;
+      if (await materializeQaPairForRecord(stores.requests, r)) {
+        result.qaRematerialized += 1;
+      }
+    } catch (err) {
+      result.errors.push(`qa-rematerialize ${r.id}: ${String(err)}`);
     }
   }
 

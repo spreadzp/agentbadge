@@ -11,11 +11,7 @@ import {
   SurveyAnswerDuplicateError,
   type SurveyStore,
 } from "./survey-store";
-import type {
-  SubmitInput,
-  RequestStore,
-  RequestInboxStores,
-} from "./store";
+import type { SubmitInput, RequestStore, RequestInboxStores } from "./store";
 import type {
   InboxFingerprint,
   InboxQaPair,
@@ -182,6 +178,11 @@ export function createDbRequestStore(
 
     async getQaByHash(questionHash) {
       const row = await repo.getQaByHash(questionHash);
+      return row ? toQa(row) : null;
+    },
+
+    async getQaByHashIncludingRetracted(questionHash) {
+      const row = await repo.getQaByHashIncludingRetracted(questionHash);
       return row ? toQa(row) : null;
     },
 

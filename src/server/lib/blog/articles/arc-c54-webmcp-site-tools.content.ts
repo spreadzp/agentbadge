@@ -13,27 +13,27 @@ export const arcC54WebmcpSiteToolsContent = `
 <p>Three things converged in November 2026 that made us ship this now:</p>
 
 <ul>
-<li><strong>OpenAI documented Site tools</strong> - their implementation of the WebMCP proposal. The built-in browser in the ChatGPT desktop app discovers site tools and uses them while you watch the same page. (<code>learn.chatgpt.com/docs/webmcp</code>)</li>
-<li><strong>Chrome runs an Origin Trial</strong> - <code>document.modelContext</code> lives behind <code>--enable-features=WebMCP</code> on Chrome 146+; we tested on Chrome 153.</li>
-<li><strong>The W3C community spec</strong> (<code>webmachinelearning.github.io/webmcp</code>) defines the contract: <code>registerTool</code>, <code>getTools</code>, <code>executeTool</code>.</li>
+<li><strong>OpenAI documented Site tools</strong> - their implementation of the WebMCP proposal. The built-in browser in the ChatGPT desktop app discovers site tools and uses them while you watch the same page - which accounts and models get it is OpenAI-gated. (<code>learn.chatgpt.com/docs/webmcp</code>)</li>
+<li><strong>Chrome ships the early preview</strong> - <code>document.modelContext</code> lives behind a testing flag on Chromium 146+ (<code>--enable-features=WebMCP</code>), with an Origin Trial open from Chrome 149. We tested on Chrome 153 via the flag.</li>
+<li><strong>The W3C community group draft</strong> (<code>webmachinelearning.github.io/webmcp</code>) defines the contract: <code>registerTool</code>, <code>getTools</code>, <code>executeTool</code>. A Draft Community Group Report, not a ratified standard - treat it as the moving target it is.</li>
 </ul>
 
-<p>And the honest positioning, straight from OpenAI's own doc: WebMCP is for when the human and the agent look at the <em>same page</em>; backend MCP is for integrations that run without one. A website can do both - so we do: the same 16 tools are reachable in-tab via WebMCP and programmatically via <code>POST /mcp/public</code> JSON-RPC and plain REST. REST stays the source of truth; both facades are thin adapters.</p>
+<p>And the honest positioning, straight from OpenAI's own doc: WebMCP is for when the human and the agent look at the <em>same page</em>; backend MCP is for integrations that run without one. A website can do both - so we run both, but as <em>separate</em> surfaces rather than one registry behind two facades: the shared registry drives the in-tab WebMCP shelf and the discovery files (<code>webmcp.json</code>, <code>llms.txt</code>, agent-card), while <code>POST /mcp/public</code> is a deliberately minimal read-only whitelist of four marketplace tools - a smaller attack surface, not a second adapter. REST stays the source of truth underneath.</p>
 
 <h2>What can an agent actually do on the site?</h2>
 
 <p><img src="/images/blog/arc-c54-webmcp-site-tools-d1.webp" alt="Stack diagram: browser agents (ChatGPT site tools, Chrome OT) and headless clients on top; a page-scoped TOOLS layer showing different shelves per page plus a shared registry; REST as source of truth with read tools, intake-write and an ops lane; a STORE layer with agentRequest and agentQAPair tables" /></p>
-<p><em>One registry, three surfaces: WebMCP in-tab, <code>/mcp/public</code> JSON-RPC, plain REST - all thin adapters over the same endpoints.</em></p>
+<p><em>One registry for the page shelf; <code>/mcp/public</code> is a separate 4-tool read whitelist - both thin over the same REST endpoints.</em></p>
 
-<p>16 tools today - but <strong>not 16 everywhere</strong>. The point of page scoping is that an agent standing on the scanner page shouldn't see marketplace buttons: <code>document.modelContext.getTools()</code> returns the shelf for <em>that page</em>, from <code>PAGE_TOOLSETS</code> in the shared registry:</p>
+<p>16 tools at launch - 17 now, after the post-publication review noted agents could list surveys but not answer them (<code>submit-survey</code> joined the docs shelf). But <strong>never all of them everywhere</strong>: the point of page scoping is that an agent standing on the scanner page shouldn't see marketplace buttons: <code>document.modelContext.getTools()</code> returns the shelf for <em>that page</em>, from <code>PAGE_TOOLSETS</code> in the shared registry. And scoping is a visibility contract, not authorization - the underlying REST endpoints stay callable directly; the shelf decides which buttons an agent is shown, not which requests are allowed.</p>
 
-<p><img src="/images/blog/arc-c54-webmcp-site-tools-shot-tools.webp" alt="getTools() returns 16 tool names on root; scoped pages show subsets; .well-known/webmcp.json lists the same 16" /></p>
-<p><em>Real output: 16 on <code>/</code>, a focused shelf on each scoped page.</em></p>
+<p><img src="/images/blog/arc-c54-webmcp-site-tools-shot-tools.webp" alt="getTools() returns 16 tool names on root at launch (17 today); scoped pages show subsets; .well-known/webmcp.json lists the same inventory" /></p>
+<p><em>Real output at launch: the full shelf on <code>/</code>, a focused shelf on each scoped page.</em></p>
 
 <ul>
 <li><strong>Discovery &amp; trust</strong>: <code>agent-readiness-scan</code>, <code>get-compliance-score</code>, <code>search-rules</code>, <code>verify-verdict</code>, <code>check-address-risk</code>, <code>passport-verify</code>, <code>badge-generate</code></li>
 <li><strong>Marketplace</strong>: <code>list-services</code>, <code>browse-tasks</code>, <code>get-task</code>, <code>get-task-status</code></li>
-<li><strong>Interaction</strong>: <code>submit-request</code>, <code>poll-request</code>, <code>search-agent-qa</code>, <code>list-surveys</code>, <code>how-to-register</code></li>
+<li><strong>Interaction</strong>: <code>submit-request</code>, <code>poll-request</code>, <code>search-agent-qa</code>, <code>list-surveys</code>, <code>submit-survey</code>, <code>how-to-register</code></li>
 </ul>
 
 <p>Read tools are keyless thin wrappers - the same JSON the REST endpoints return, plus one discipline we enforce in every tool description: no secrets, no PII, no internal URLs. <code>agb_</code> credentials never appear in a tool result. Every tool also returns a <code>next_call</code> suggestion - the contract is not "here is data", it is "here is what to call next".</p>
@@ -62,7 +62,7 @@ export const arcC54WebmcpSiteToolsContent = `
 <p><img src="/images/blog/arc-c54-webmcp-site-tools-corpus.webp" alt="A glass mailbox labelled submit-request feeding a clerk desk; a consent checkbox is stamped YES before the letter can pass to a PUBLIC QA shelf; a retract lever pulls one letter back out; letters without consent go into a PRIVATE tray" /></p>
 <p><em>Private by default, public by consent, reversible always.</em></p>
 
-<p>Every answered request <em>can</em> become public knowledge - but only if the asker opted in. <code>publish_to_qa</code> defaults to <strong>false</strong>: your question and our answer stay yours. When consent is on and the answer exists and the request isn't flagged spam, completing the request materializes a <code>qa_*</code> pair into the public corpus - the thing <code>search-agent-qa</code> reads and the fast-path that answers repeated questions instantly, <code>uses</code> counter ticking up per hit. Ops can retract a pair at any time and it drops out of search and matching, idempotently.</p>
+<p>Every answered request <em>can</em> become public knowledge - but only if the asker opted in. <code>publish_to_qa</code> defaults to <strong>false</strong>: your question and our answer stay yours. When consent is on and the answer exists and the request isn't flagged spam, completing the request materializes a <code>qa_*</code> pair into the public corpus - the thing <code>search-agent-qa</code> reads and the fast-path that answers repeated questions instantly, <code>uses</code> counter ticking up per hit. Ops can retract a pair at any time and it drops out of search and matching, idempotently. And because the upsert is deliberately non-fatal - an ops answer must never roll back - a janitor leg re-materializes any consented pair that didn't land: consent means <em>eventual</em> publication, not hopefully.</p>
 
 <p><img src="/images/blog/arc-c54-webmcp-site-tools-shot-qa.webp" alt="GET /api/requests/qa?q=agent returns real qa_ pairs with question, response.answer, uses, published_at, provenance" /></p>
 <p><em>The corpus as it stands - and an honest empty state when nothing consented exists yet.</em></p>
@@ -74,30 +74,33 @@ export const arcC54WebmcpSiteToolsContent = `
 <p><img src="/images/blog/arc-c54-webmcp-site-tools-bugs.webp" alt="An inspector robot at a door labelled pg/json; a plain text string slips through the door and explodes a JSON.parse machine behind it; a second panel shows a browser cache box stamped 'max-age=60' being replaced by 'no-store'; green chips read FIXED and re-verified" /></p>
 <p><em>Two live catches: a codec that re-parsed strings, and a cache that remembered "submitted" forever.</em></p>
 
-<p>We don't trust our own smoke tests, so the checklist ran on real production Chrome (Origin Trial flag, CDP-driven <code>document.modelContext</code>) and an external agent. It found two shipped bugs - both now fixed with regression tests:</p>
+<p>We don't trust our own smoke tests, so the checklist ran on real production Chrome (testing flag <code>--enable-features=WebMCP</code>, CDP-driven <code>document.modelContext</code>) and an external agent. It found two shipped bugs - both now fixed with regression tests:</p>
 
 <p><strong>Bug 1 - the stale "submitted".</strong> Our shared cache middleware stamped <code>public, max-age=60</code> on <em>every</em> <code>/api/</code> GET - including the pollable inbox endpoints. So after ops answered, a browser kept serving the cached <code>submitted</code> body for up to a minute while the server truthfully said <code>completed</code>. For a polling agent that's a lie generator. Fix: the inbox route family (<code>/api/requests*</code>, <code>/api/surveys*</code>, <code>/api/ops/requests*</code>) moved to <code>Cache-Control: no-store</code> (<code>54cc6d9</code>).</p>
 
 <p><strong>Bug 2 - the string that broke the codec.</strong> <code>agentRequest.response</code> is a <code>json</code> column. Our Postgres driver returns json columns <em>already parsed</em>; the <code>pg/json</code> codec's decode path then calls <code>JSON.parse</code> <em>again</em> - fine for objects, fatal for a top-level JSON string. We noticed the first time an ops <code>respond</code> call carried a bare string: it wrote fine, then every subsequent read of that row 500'd - including the whole ops queue. Worse, the same class was latent for <em>any</em> bare-string JSON payload: one malformed intake could have poisoned a row for everyone. Fix: coerce at the write edge - a bare-string <code>response</code> becomes <code>{"answer": "…"}</code> (the convention every existing row already used), a bare-string <code>payload</code> becomes <code>{"question": "…"}</code> (<code>4119016</code>). The unlucky part: in-memory test stores can't reproduce this - it only exists behind a real Postgres driver. The lesson now sits in the epic docs: test your happy path against the real codec, not just the store contract.</p>
 
-<p>Everything else the checklist touched was green: 16-tool inventory via both <code>getTools()</code> and <code>/.well-known/webmcp.json</code>, per-page scoping subsets, the declarative v1 form still working, <code>duplicate: true</code> idempotency, consent-on/off QA behavior, retract, the 429 self-retry envelope, and zero <code>agb_</code> leakage in any tool result. 10,768 server tests + 98 e2e + one real browser walk.</p>
+<p><strong>Then the article itself got reviewed.</strong> An external review of this piece caught three more things, all fixed in the same release: it described <code>/mcp/public</code> as a third facade of the shared registry - it's a separate whitelist (corrected above); <code>submit-survey</code> didn't exist, so an agent could list surveys but not answer one - it does now; and QA materialization failures were silently advisory - the inbox janitor now retries them until consent is honored. The review loop works; this paragraph is the receipt.</p>
+
+<p>Everything else the checklist touched was green: the full tool inventory via both <code>getTools()</code> and <code>/.well-known/webmcp.json</code>, per-page scoping subsets, the declarative v1 form still working, <code>duplicate: true</code> idempotency, consent-on/off QA behavior, retract, the 429 self-retry envelope, and zero <code>agb_</code> leakage in any tool result. 10,768 server tests + 98 e2e + one real browser walk.</p>
 
 <h2>What can you verify right now?</h2>
 
 <p>The read half needs nothing but curl - or a WebMCP browser:</p>
 
-<pre><code># the machine-readable inventory (16 tools)
+<pre><code># the machine-readable inventory (17 tools - 16 at launch)
 curl -s https://agentbadge.xyz/.well-known/webmcp.json | jq '.tools | length'
 
-# same tools over JSON-RPC, no key
+# a SEPARATE read-only whitelist over JSON-RPC, no key - 4 market tools
 curl -s -X POST https://agentbadge.xyz/mcp/public \\
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools | length'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
 
 # the public QA corpus, live
 curl -s "https://agentbadge.xyz/api/requests/qa?q=passport"
 
-# in a WebMCP browser (Chrome OT): document.modelContext.getTools()
-# on https://agentbadge.xyz/ - then executeTool('submit-request', …)
+# in a WebMCP browser (testing flag or Chrome OT):
+# document.modelContext.getTools() on https://agentbadge.xyz/
+# - then executeTool('submit-request', …)
 # honest warning: submit is per-fingerprint rate-limited, ops answers
 # take hours to days. If you need it answered, say hi - we're the ops.</code></pre>
 

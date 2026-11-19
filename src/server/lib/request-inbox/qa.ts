@@ -68,35 +68,54 @@ export async function transitionWithQa(
 ): Promise<InboxRequestRecord | null> {
   const record = await store.transition(id, from, "completed", patch);
   if (!record) return null;
+  await materializeQaPairForRecord(store, record);
+  return record;
+}
+
+/** SLICE-256-9 (review R-2): materialize the QA pair for a completed
+ *  record when the consent gate allows it. Returns true when a pair is
+ *  present afterwards (written now or already existing via hash dedupe).
+ *
+ *  A failed upsert must not 500 the caller — the transition already
+ *  committed (audit M-2); instead we log and let the janitor leg
+ *  (reMaterializeMissingQaPairs) pick the request up on its next run,
+ *  so consent → publication is guaranteed eventually, not silently lost. */
+export async function materializeQaPairForRecord(
+  store: RequestStore,
+  record: InboxRequestRecord,
+): Promise<boolean> {
   const question = payloadQuestionText(record.payload);
   // Re-audit N-5: a `completed` row with no response must not write a
   // null-answer pair into the corpus — upserts only bump `uses`, so a
   // stale null would persist forever.
   if (
-    question &&
-    record.publishToQa === true &&
-    !record.spamFlag &&
-    record.response != null
+    !question ||
+    record.publishToQa !== true ||
+    record.spamFlag ||
+    record.response == null
   ) {
-    try {
-      // Audit M-2: a failed upsert must not 500 the respond — the
-      // transition already committed; a missing corpus row is a
-      // soft loss, a 409-forever retry is a hard one.
-      await store.upsertQaPair({
-        // D-256-Q14: public qa_id is a fresh uuid — `qa_{requestId}`
-        // leaked the bearer capability id into the public corpus.
-        id: `qa_${crypto.randomUUID().replaceAll("-", "")}`,
-        questionHash: questionHashFor(normalizeQuestion(question)),
-        question: normalizeQuestion(question),
-        response: record.response,
-        sourceRequestId: record.id,
-        createdAtMs: Date.now(),
-      });
-    } catch {
-      /* advisory materialization — respond still succeeds */
-    }
+    return false;
   }
-  return record;
+  try {
+    await store.upsertQaPair({
+      // D-256-Q14: public qa_id is a fresh uuid — `qa_{requestId}`
+      // leaked the bearer capability id into the public corpus.
+      id: `qa_${crypto.randomUUID().replaceAll("-", "")}`,
+      questionHash: questionHashFor(normalizeQuestion(question)),
+      question: normalizeQuestion(question),
+      response: record.response,
+      sourceRequestId: record.id,
+      createdAtMs: Date.now(),
+    });
+    return true;
+  } catch (err) {
+    console.warn(
+      `[request-inbox] QA materialization failed for ${record.id}; ` +
+        `janitor will retry:`,
+      err,
+    );
+    return false;
+  }
 }
 
 /**

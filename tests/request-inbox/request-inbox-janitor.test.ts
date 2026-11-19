@@ -158,4 +158,84 @@ describe("runInboxJanitor", () => {
     expect(res.errors).toEqual([]);
     expect((await stores.requests.getQaByHash("qh"))!.id).toBe("qa1");
   });
+
+
+  it("leg 3: re-materializes missing QA pair for consented completed request, never resurrects retracted", async () => {
+    const nowMs = Date.now();
+    const stores = createMemoryRequestInboxStores();
+
+    // consented + completed + response, pair never written (upsert had failed)
+    await stores.requests.submit(
+      mkSubmit({
+        id: "qa-missing",
+        state: "submitted",
+        publishToQa: true,
+        payload: { question: "how do I register my agent?" },
+        expiresAtMs: nowMs + 60_000,
+      }),
+    );
+    await stores.requests.transition("qa-missing", "submitted", "completed", {
+      response: { answer: "POST /api/v1/agents/register" },
+    });
+
+    // consented + completed, pair exists but RETRACTED — must not resurrect
+    await stores.requests.submit(
+      mkSubmit({
+        id: "qa-retracted",
+        state: "submitted",
+        publishToQa: true,
+        payload: { question: "what is x402?" },
+        expiresAtMs: nowMs + 60_000,
+      }),
+    );
+    await stores.requests.transition("qa-retracted", "submitted", "completed", {
+      response: { answer: "HTTP 402 payment" },
+    });
+    const { questionHashFor, normalizeQuestion } = await import(
+      "../../src/server/lib/request-inbox/fingerprint"
+    );
+    const pair = await stores.requests.upsertQaPair({
+      id: "qa_retracted1",
+      questionHash: questionHashFor(normalizeQuestion("what is x402?")),
+      question: "what is x402?",
+      response: { answer: "HTTP 402 payment" },
+      sourceRequestId: "qa-retracted",
+      createdAtMs: nowMs,
+    });
+    await stores.requests.retractQaPair(pair.id, "ops cleanup", nowMs);
+
+    // completed WITHOUT consent — never materializes
+    await stores.requests.submit(
+      mkSubmit({
+        id: "qa-noconsent",
+        state: "submitted",
+        publishToQa: false,
+        payload: { question: "private question" },
+        expiresAtMs: nowMs + 60_000,
+      }),
+    );
+    await stores.requests.transition("qa-noconsent", "submitted", "completed", {
+      response: { answer: "private answer" },
+    });
+
+    const res = await runInboxJanitor(stores, {
+      payloadRetentionMs: 30 * 24 * 3600 * 1000,
+      nowMs,
+    });
+
+    // two consented candidates seen; only the missing one re-materialized
+    expect(res.qaPendingListed).toBe(2);
+    expect(res.qaRematerialized).toBe(1);
+
+    const h1 = questionHashFor(normalizeQuestion("how do I register my agent?"));
+    const materialized = await stores.requests.getQaByHash(h1);
+    expect(materialized).not.toBeNull();
+    expect(materialized!.sourceRequestId).toBe("qa-missing");
+    expect(materialized!.response).toEqual({ answer: "POST /api/v1/agents/register" });
+
+    // retracted pair still retracted, no new live pair for that hash
+    const h2 = questionHashFor(normalizeQuestion("what is x402?"));
+    expect(await stores.requests.getQaByHash(h2)).toBeNull();
+    expect(res.errors).toEqual([]);
+  });
 });
