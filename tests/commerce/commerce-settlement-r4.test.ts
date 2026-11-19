@@ -30,6 +30,7 @@ import { createCommerceRoutes } from "../../src/server/routes/commerce/index";
 import {
   approveMilestone,
   createSettlementCtx,
+  forceReleaseMilestone,
   markLegPaid,
   raiseDispute,
   resolveDispute,
@@ -431,6 +432,22 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
     // intent on the settlement side, independent of commerce state.
     const agreement = await db.commerce.agreements.getById(agId);
     expect(agreement?.status).toBe("COMPLETED");
+    // R10-M1: the release exit is REFUSED now — releasing under a
+    // completed agreement would orphan the milestone (PENDING work
+    // nothing can submit/review). The remaining exits are paying the
+    // OPEN intent or a FOR_BUYER dispute.
+    const rel = await forceReleaseMilestone(sctx, milestone.id, {
+      operator: "ops-1",
+      reason: "undo the ruling",
+    });
+    expect(rel.ok).toBe(false);
+    if (!rel.ok) expect(rel.error.code).toBe("INVALID_STATE");
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("APPROVED");
+    expect(
+      (await db.settlement.payoutIntents.getById(intent!.id))?.status,
+    ).toBe("OPEN");
   });
 
   it("R9-M2: REJECT on an already-RELEASED bound milestone reconciles the agreement", async () => {

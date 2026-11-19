@@ -36,18 +36,38 @@ export async function forceReleaseMilestone(
       `milestone is ${milestone.status}, not APPROVED — nothing to release`,
     );
   }
+  // R10-M1: releasing under a CLOSED commerce agreement orphans the
+  // milestone — PENDING work nothing can submit or review (submission
+  // and review both require an ACTIVE agreement), and the plan stays
+  // ACTIVE forever. The remaining exits are paying the OPEN intent or
+  // a FOR_BUYER dispute resolution — refuse and say so. A missing
+  // agreement row means a pure-settlement plan: proceed.
+  const plan = await ctx.db.settlement.plans.getById(milestone.planId);
+  if (plan) {
+    const agreement = await ctx.db.commerce.agreements
+      .getById(plan.agreementRef)
+      .catch(() => null);
+    if (agreement && agreement.status !== "ACTIVE") {
+      return fail(
+        "INVALID_STATE",
+        `commerce agreement is ${agreement.status} — releasing would orphan the milestone; pay the OPEN intent or resolve a dispute FOR_BUYER instead`,
+      );
+    }
+  }
   const res = await revertApproval(ctx, milestoneRowId, operator, {
     release: true,
+    admin: true,
+    eventReason: "operator_release",
   });
   if (!res.ok) return res;
   if (!res.value.reverted) {
-    // Refused inside the atomic (paid leg / unexpected intent state) —
-    // the revert already error-logged the cause; no audit row because
-    // no effect landed.
-    return ok({
-      released: false,
-      auditRecorded: false,
-    });
+    // R10-M3: in-atomic refusals are NOT a 200 success — the operator
+    // needs the refusal class to pick the next action.
+    const reason = res.value.reason ?? "unknown";
+    return fail(
+      "INVALID_STATE",
+      `release refused inside the atomic (${reason}) — see server log`,
+    );
   }
   const audit = await recordPostEffectAudit(
     ctx.db,

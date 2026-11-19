@@ -81,10 +81,11 @@ export function settlementMilestoneAdminRoutes(
       description:
         "Transitions a READY milestone to APPROVED and opens its payout " +
         "intent when the buyer path cannot (stranded post-commit state, " +
-        "EVALUATOR_VERDICT legacy plan). Idempotent on APPROVED only " +
-        "while the intent is OPEN; an OPEN dispute on the milestone " +
-        "409s. Requires a reason; writes an AdminAction and the event " +
-        "records admin:true.",
+        "EVALUATOR_VERDICT legacy plan). Idempotent replay only on an " +
+        "`ops_` epoch — a commerce (`appr_`) or resolver (`rsv_`) " +
+        "approval refuses (use force-release or the dispute path); an " +
+        "OPEN dispute on the milestone 409s. Requires a reason; " +
+        "writes an AdminAction and the event records admin:true.",
       requestBody: jsonBody(approveBody),
       responses: {
         200: {
@@ -199,9 +200,13 @@ export function settlementMilestoneAdminRoutes(
       description:
         "Releases an APPROVED milestone back to PENDING and cancels its " +
         "OPEN payout intent — the audited undo for a resolver-restored " +
-        "or force-minted approval a buyer verdict cannot touch. " +
-        "Refuses on a paid leg or a dispute-frozen intent. Requires a " +
-        "reason; writes an AdminAction.",
+        "or force-minted approval a buyer verdict cannot touch. 409 " +
+        "when a leg already paid, the intent is dispute-frozen or " +
+        "otherwise refused inside the atomic, the milestone is not " +
+        "APPROVED, or the commerce agreement is no longer ACTIVE " +
+        "(releasing would orphan the milestone — pay the intent or " +
+        "resolve FOR_BUYER instead). Requires a reason; writes an " +
+        "AdminAction.",
       requestBody: jsonBody(reopenBody),
       responses: {
         200: {

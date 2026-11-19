@@ -16,15 +16,17 @@ export type BridgeRevertResult = {
   reason?: RevertReason;
 } | null;
 
-/** R9-M2b: the BENIGN whitelist — the approval cycle already moved on
- *  to another owner (a sibling released it, the resolver owns the row,
- *  the intent slot belongs to a different cycle). Every other code —
- *  `released`, `paid_leg`, `intent_state`, and anything added later —
- *  is dangerous and errors; the default is fail-closed. */
+/** R9-M2b + R10 nits 5/6: the BENIGN whitelist — ONLY `not_approved`
+ *  (a sibling already reverted/released the row: a genuine no-op).
+ *  `epoch_mismatch` means a resolver/operator re-stamped between our
+ *  read and the CAS — the same "standing ruling" the `!releasable`
+ *  branch reports at error level, so it errors here too (consistent
+ *  signal). `intent_mismatch` under a matching epoch is an
+ *  inconsistent row — never benign. Everything else — `released`,
+ *  `paid_leg`, `intent_state`, anything added later — is dangerous
+ *  and errors; the default is fail-closed. */
 const BENIGN_REVERT_REASONS: ReadonlySet<RevertReason> = new Set([
   "not_approved",
-  "epoch_mismatch",
-  "intent_mismatch",
 ]);
 
 /**

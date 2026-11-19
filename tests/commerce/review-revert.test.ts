@@ -7,7 +7,10 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { logger } from "@agentbadge/passport/logger";
 
-import { logRevertOutcome } from "../../src/server/lib/commerce/services/review-revert";
+import {
+  logRevertOutcome,
+  revertGateApproval,
+} from "../../src/server/lib/commerce/services/review-revert";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -35,7 +38,7 @@ describe("logRevertOutcome classification (R9-M2)", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it.each(["not_approved", "epoch_mismatch", "intent_mismatch"] as const)(
+  it.each(["not_approved"] as const)(
     "benign %s → warn, no repair",
     (reason) => {
       const err = vi
@@ -51,7 +54,18 @@ describe("logRevertOutcome classification (R9-M2)", () => {
     },
   );
 
-  it.each(["released", "paid_leg", "intent_state"] as const)(
+  it.each(
+    [
+      "released",
+      "paid_leg",
+      "intent_state",
+      // R10 nits 5/6: a re-stamped epoch is a standing ruling (same
+      // end-state the !releasable branch reports at error level); an
+      // intent mismatch under a matching epoch is an inconsistent row.
+      "epoch_mismatch",
+      "intent_mismatch",
+    ] as const,
+  )(
     "dangerous %s → error with repair + reason",
     (reason) => {
       const err = vi
@@ -75,5 +89,36 @@ describe("logRevertOutcome classification (R9-M2)", () => {
     logRevertOutcome("reject-release", { reverted: false }, F);
     expect(err).toHaveBeenCalledOnce();
     expect(err.mock.calls[0]![1]).toMatchObject({ reason: "unknown" });
+  });
+});
+
+describe("revertGateApproval token pin (R10 nit 2)", () => {
+  it("approvedByUs without an approvalToken fails closed — error+repair, no revert call", async () => {
+    const err = vi.spyOn(logger, "error").mockImplementation(() => logger);
+    const revertApproval = vi.fn();
+    const ctx = {
+      stores: { submissions: { getById: vi.fn() } },
+      settlement: { revertApproval },
+    };
+    await revertGateApproval(
+      ctx as never,
+      "0xBuyer",
+      "sub_1",
+      {
+        approvedByUs: true,
+        milestoneRowId: "ms_1",
+        intentId: "pi_1",
+        pendingAfter: 0,
+        approvalToken: undefined,
+      },
+    );
+    expect(err).toHaveBeenCalledOnce();
+    expect(err.mock.calls[0]![1]).toMatchObject({
+      repair: "review milestone approval",
+      milestoneRowId: "ms_1",
+    });
+    // Fail closed — an unpinned revert could undo an rsv_/ops_ ruling.
+    expect(revertApproval).not.toHaveBeenCalled();
+    expect(ctx.stores.submissions.getById).not.toHaveBeenCalled();
   });
 });

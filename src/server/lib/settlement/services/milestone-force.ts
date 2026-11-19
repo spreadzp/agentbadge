@@ -109,9 +109,16 @@ export async function forceApproveMilestone(
     if (existing && existing.status === "OPEN") {
       const epoch = milestone.escrowRef ?? "";
       if (!epoch.startsWith("ops_")) {
+        // R10 nit 3: name the epoch kind correctly — null/legacy rows
+        // are not a "commerce cycle".
+        const kind = epoch.startsWith("rsv_")
+          ? "resolver"
+          : epoch.startsWith("appr_")
+            ? "commerce"
+            : "unknown/legacy";
         return fail(
           "INVALID_STATE",
-          `milestone already APPROVED by a ${epoch.startsWith("rsv_") ? "resolver" : "commerce"} cycle — refusing a no-op force-approve (use force-release or the dispute path)`,
+          `milestone already APPROVED by a ${kind} cycle — refusing a no-op force-approve (use force-release or the dispute path)`,
         );
       }
       const legs = await ctx.db.settlement.payoutLegs.listByIntent(

@@ -10,7 +10,9 @@ import type { Database } from "@agentbadge/database";
 import {
   approveMilestone,
   forceApproveMilestone,
+  forceReleaseMilestone,
   forceReopenMilestone,
+  markLegPaid,
   raiseDispute,
   reopenMilestone,
   resolveDispute,
@@ -28,6 +30,7 @@ import {
   openPlan,
   OPS,
   PROVIDER,
+  TX1,
 } from "./helpers.js";
 
 let db: Database;
@@ -329,5 +332,138 @@ describe("R7-M3: emitter stream poisoning on a hung append", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("R10: real-service revert reasons + release guards", () => {
+  it("revert on a RELEASED milestone returns reason 'released'", async () => {
+    const { milestone, intentId, legs } = await approvedIntent(ctx);
+    const paid = await markLegPaid(ctx, {
+      intentId,
+      legId: legs[0]!,
+      txHash: TX1,
+      operator: OPS,
+    });
+    expect(paid.ok).toBe(true);
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("RELEASED");
+    const res = await revertApproval(ctx, milestone.id, BUYER, {
+      release: true,
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value.reverted).toBe(false);
+      expect(res.value.reason).toBe("released");
+    }
+  });
+
+  it("partial multi-leg payout returns reason 'paid_leg' (milestone still APPROVED)", async () => {
+    const { milestones } = await openPlan(ctx, [
+      {
+        milestoneId: "m1",
+        title: "split",
+        amountUsd: "10.00",
+        legs: [
+          { payee: PROVIDER, amountUsdc: "8.00", role: "PROVIDER" },
+          { payee: FEE, amountUsdc: "2.00", role: "PLATFORM_FEE" },
+        ],
+      },
+    ]);
+    const m = milestones[0]!;
+    await submitForReview(ctx, { milestoneRowId: m.id }, PROVIDER);
+    const ap = await approveMilestone(ctx, m.id, BUYER);
+    if (!ap.ok) throw new Error("approve failed");
+    const rows = await db.settlement.payoutLegs.listByIntent(
+      ap.value.intentId,
+    );
+    const paid = await markLegPaid(ctx, {
+      intentId: ap.value.intentId,
+      legId: rows[0]!.id,
+      txHash: TX1,
+      operator: OPS,
+    });
+    expect(paid.ok).toBe(true);
+    // One leg paid, one open — milestone stays APPROVED but money moved.
+    expect(
+      (await db.settlement.milestones.getById(m.id))?.status,
+    ).toBe("APPROVED");
+    const res = await revertApproval(ctx, m.id, BUYER, { release: true });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value.reverted).toBe(false);
+      expect(res.value.reason).toBe("paid_leg");
+    }
+  });
+
+  it("a FROZEN intent returns reason 'intent_state' and force-release maps it to INVALID_STATE", async () => {
+    const { milestone, intentId } = await approvedIntent(ctx);
+    const frozen = await db.settlement.payoutIntents.applyStatus(
+      intentId,
+      "OPEN",
+      "FROZEN",
+    );
+    expect(frozen).toBeTruthy();
+    const res = await revertApproval(ctx, milestone.id, BUYER, {
+      release: true,
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value.reverted).toBe(false);
+      expect(res.value.reason).toBe("intent_state");
+    }
+    // R10-M3: the in-atomic refusal surfaces as a typed failure — not
+    // a 200 `{released:false}` — and mints no audit row.
+    const before = await db.finops.adminActions.list({
+      subjectType: "milestone",
+    });
+    const rel = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "undo a frozen ruling",
+    });
+    expect(rel.ok).toBe(false);
+    if (!rel.ok) {
+      expect(rel.error.code).toBe("INVALID_STATE");
+      expect(rel.error.message).toContain("intent_state");
+    }
+    const after = await db.finops.adminActions.list({
+      subjectType: "milestone",
+    });
+    expect(
+      after.filter((a) => a.action === "FORCE_RELEASE_MILESTONE").length,
+    ).toBe(before.length);
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("APPROVED");
+    expect(
+      (await db.settlement.payoutIntents.getById(intentId))?.status,
+    ).toBe("FROZEN");
+  });
+
+  it("force-release emits operator-labelled events (admin:true + operator_release)", async () => {
+    const { milestone, intentId } = await approvedIntent(ctx);
+    const rel = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "undo the ruling",
+    });
+    expect(rel.ok).toBe(true);
+    const msEvents = await db.commerce.events.listByEntity(
+      "milestone",
+      milestone.id,
+    );
+    const pending = msEvents.find((e) => e.eventType === "milestone.pending");
+    expect(pending?.payload).toMatchObject({
+      reason: "operator_release",
+      admin: true,
+    });
+    const piEvents = await db.commerce.events.listByEntity(
+      "payout_intent",
+      intentId,
+    );
+    const cancelled = piEvents.find((e) => e.eventType === "intent.cancelled");
+    expect(cancelled?.payload).toMatchObject({
+      reason: "operator_release",
+      admin: true,
+    });
   });
 });

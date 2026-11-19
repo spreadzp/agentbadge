@@ -52,6 +52,11 @@ export interface RevertOptions {
   /** R6-M2: approval-epoch token from `doApprove` — refuse when the
    *  row's `escrowRef` moved on to a different approval cycle. */
   approvalToken?: string;
+  /** R10 nit 2: operator-driven revert — events carry `admin:true` and
+   *  the caller's reason instead of "verdict_not_committed". */
+  admin?: boolean;
+  /** R10 nit 2: overrides the emitted event reason. */
+  eventReason?: string;
 }
 
 /** R8-M2/R9-M2: closed union of refusal causes — callers whitelist the
@@ -82,6 +87,10 @@ export async function revertApproval(
 ): Promise<SettlementResult<RevertResult>> {
   const buf = ctx.emit.buffer();
   const to = opts.release ? "PENDING" : "READY";
+  // R10 nit 2: operator reverts are labelled, verdict reverts keep the
+  // historical reason — the event stream distinguishes who undid it.
+  const eventReason = opts.eventReason ?? "verdict_not_committed";
+  const admin = opts.admin === true;
   let res: SettlementResult<RevertResult>;
   try {
     res = await ctx.db.settlement.atomic(async (s) => {
@@ -216,7 +225,7 @@ export async function revertApproval(
           entityId: intent.id,
           eventType: "intent.cancelled",
           actorWallet,
-          payload: { reason: "verdict_not_committed" },
+          payload: { reason: eventReason, ...(admin ? { admin } : {}) },
         });
       }
       buf.emit({
@@ -224,7 +233,11 @@ export async function revertApproval(
         entityId: milestone.id,
         eventType: `milestone.${to.toLowerCase()}`,
         actorWallet,
-        payload: { from: "APPROVED", reason: "verdict_not_committed" },
+        payload: {
+          from: "APPROVED",
+          reason: eventReason,
+          ...(admin ? { admin } : {}),
+        },
       });
       return ok({ reverted: true });
     });

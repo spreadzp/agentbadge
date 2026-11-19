@@ -289,4 +289,32 @@ describe("admin routes", () => {
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe("INVALID_STATE");
   });
+
+  // R10-M3: an in-atomic refusal (frozen intent) is a typed 409, not a
+  // 200 `{released:false}` — scripts must not read refusal as success.
+  it("milestones/:id/release → FROZEN intent refuses with 409 + reason", async () => {
+    const { milestone, intentId } = await seedApprovedIntent();
+    await db.settlement.payoutIntents.applyStatus(
+      intentId,
+      "OPEN",
+      "FROZEN",
+    );
+    const before = (await listAdminActions(db)).length;
+    const r = await adminReq(
+      "POST",
+      `/admin/settlement/milestones/${milestone.id}/release`,
+      { operator: OPS, reason: "undo frozen ruling" },
+    );
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("INVALID_STATE");
+    expect(r.body.error.message).toContain("intent_state");
+    // No audit row and nothing moved.
+    expect((await listAdminActions(db)).length).toBe(before);
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("APPROVED");
+    expect(
+      (await db.settlement.payoutIntents.getById(intentId))?.status,
+    ).toBe("FROZEN");
+  });
 });
