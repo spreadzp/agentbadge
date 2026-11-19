@@ -83,6 +83,9 @@ export async function postCommitSettlementSync(
           const res = await ctx.settlement!.revertApproval(bound.id, actor, {
             release: true,
             approvalToken: bound.escrowRef ?? undefined,
+            // R11 nit 7: the verdict COMMITTED (as reject) — the
+            // default "verdict_not_committed" reason would be wrong.
+            eventReason: "verdict_rejected",
           });
           logRevertOutcome("reject-release", res, {
             milestoneRowId: bound.id,

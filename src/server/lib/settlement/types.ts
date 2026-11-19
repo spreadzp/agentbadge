@@ -125,6 +125,8 @@ export type SettlementErrorCode = (typeof SETTLEMENT_ERRORS)[number];
 export interface SettlementError {
   code: SettlementErrorCode;
   message: string;
+  /** Machine-readable context — scripts must not parse `message`. */
+  details?: Record<string, unknown>;
 }
 
 export type SettlementResult<T> =
@@ -138,7 +140,11 @@ export const ok = <T>(value: T): SettlementResult<T> => ({
 export const fail = (
   code: SettlementErrorCode,
   message: string,
-): SettlementResult<never> => ({ ok: false, error: { code, message } });
+  details?: Record<string, unknown>,
+): SettlementResult<never> => ({
+  ok: false,
+  error: { code, message, ...(details ? { details } : {}) },
+});
 
 // ---------- DTOs ----------
 

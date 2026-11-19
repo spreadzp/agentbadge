@@ -376,6 +376,15 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
     expect(
       (await db.settlement.payoutIntents.getById(intent!.id))?.status,
     ).toBe("CANCELLED");
+    // R11 nit 7: the verdict COMMITTED (as reject) — the emitted
+    // reason must be verdict_rejected, not verdict_not_committed.
+    const piEvents = await db.commerce.events.listByEntity(
+      "payout_intent",
+      intent!.id,
+    );
+    expect(
+      piEvents.find((e) => e.eventType === "intent.cancelled")?.payload,
+    ).toMatchObject({ reason: "verdict_rejected" });
   });
 
   it("R8-M1: REJECT cannot undo a resolver-restored approval (rsv_ epoch)", async () => {

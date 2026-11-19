@@ -200,7 +200,9 @@ export function settlementMilestoneAdminRoutes(
       description:
         "Releases an APPROVED milestone back to PENDING and cancels its " +
         "OPEN payout intent — the audited undo for a resolver-restored " +
-        "or force-minted approval a buyer verdict cannot touch. 409 " +
+        "or force-minted approval a buyer verdict cannot touch; it is " +
+        "also the operator's deliberate un-accept of a commerce " +
+        "(`appr_`) approval while the agreement is ACTIVE. 409 " +
         "when a leg already paid, the intent is dispute-frozen or " +
         "otherwise refused inside the atomic, the milestone is not " +
         "APPROVED, or the commerce agreement is no longer ACTIVE " +
@@ -222,7 +224,11 @@ export function settlementMilestoneAdminRoutes(
         400: { description: "Missing operator / reason" },
         401: { description: "Unauthorized" },
         404: { description: "Milestone not found" },
-        409: { description: "Not APPROVED / paid leg / frozen intent" },
+        409: {
+          description:
+            "Not APPROVED / paid leg / frozen intent / agreement not ACTIVE / verdict in flight",
+        },
+        503: { description: "Cannot verify agreement/submission state" },
       },
     }),
     adminAuth,

@@ -2,7 +2,11 @@
  * SLICE-227-5 (EPIC-227): commerce → settlement bridge.
  *
  * One-directional seam (D-227-2): commerce may drive settlement;
- * settlement never imports commerce. The bridge is injected on
+ * settlement never imports commerce LOGIC. R11 nit 1 — documented
+ * exception: `services/agreement-guard.ts` performs a read-only data
+ * access to `db.commerce.agreements`/`submissions` (status checks for
+ * the release/reopen orphan guard) — no commerce service is imported
+ * and nothing is written. The bridge is injected on
  * CommerceCtx — absent → commerce runs exactly as pre-227 (tests
  * stub it; prod wires the real impl from routes/index.ts).
  *
@@ -91,7 +95,15 @@ export interface CommerceSettlementBridge {
   revertApproval(
     milestoneRowId: string,
     actorWallet: string,
-    opts?: { intentId?: string; release?: boolean; approvalToken?: string },
+    opts?: {
+      intentId?: string;
+      release?: boolean;
+      approvalToken?: string;
+      /** R11 nit 7: the emitted event reason — the committed-REJECT
+       *  release is not "verdict_not_committed". `admin` stays
+       *  settlement-side: commerce never emits admin events. */
+      eventReason?: string;
+    },
   ): Promise<{ reverted: boolean; reason?: RevertReason } | null>;
   /** R4-M5: READY→PENDING + unbind — a rejected submission frees its
    *  milestone for the resubmission round. Idempotent.

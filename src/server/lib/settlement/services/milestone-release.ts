@@ -3,15 +3,18 @@
  * APPROVED→PENDING release. This is the escape the `repair` log key
  * points at: a resolver-restored (`rsv_`) or force-minted (`ops_`)
  * approval left standing under a rejected submission can be un-done
- * ONLY here — buyer verdicts may not. Shares revertApproval's
- * guards: a paid leg or a dispute-owned (FROZEN) intent refuses the
- * release.
+ * ONLY here — buyer verdicts may not. It is intentionally not
+ * epoch-restricted: an operator may also un-accept an `appr_`
+ * approval while the agreement is ACTIVE (the audit row records it).
+ * Shares revertApproval's guards: a paid leg or a dispute-owned
+ * (FROZEN) intent refuses the release.
  */
 import { logger } from "@agentbadge/passport/logger";
 
 import { recordPostEffectAudit } from "../../finops/admin-actions.js";
 import { normalizeOperator } from "../../finops/guards.js";
 import { type SettlementResult, fail, ok } from "../types.js";
+import { checkReleasableAgreement } from "./agreement-guard.js";
 import type { SettlementCtx } from "./ctx.js";
 import { checkForceInput, sha256Hex } from "./milestone-force.js";
 import { revertApproval } from "./milestone-revert.js";
@@ -36,24 +39,15 @@ export async function forceReleaseMilestone(
       `milestone is ${milestone.status}, not APPROVED — nothing to release`,
     );
   }
-  // R10-M1: releasing under a CLOSED commerce agreement orphans the
-  // milestone — PENDING work nothing can submit or review (submission
-  // and review both require an ACTIVE agreement), and the plan stays
-  // ACTIVE forever. The remaining exits are paying the OPEN intent or
-  // a FOR_BUYER dispute resolution — refuse and say so. A missing
-  // agreement row means a pure-settlement plan: proceed.
+  // R10-M1 + R11-M1: releasing under a closed commerce agreement or
+  // while a verdict is in flight orphans/races the milestone — the
+  // shared guard owns the checks (fail-closed on read errors).
   const plan = await ctx.db.settlement.plans.getById(milestone.planId);
-  if (plan) {
-    const agreement = await ctx.db.commerce.agreements
-      .getById(plan.agreementRef)
-      .catch(() => null);
-    if (agreement && agreement.status !== "ACTIVE") {
-      return fail(
-        "INVALID_STATE",
-        `commerce agreement is ${agreement.status} — releasing would orphan the milestone; pay the OPEN intent or resolve a dispute FOR_BUYER instead`,
-      );
-    }
+  if (!plan) {
+    return fail("NOT_FOUND", `plan not found: ${milestone.planId}`);
   }
+  const blocked = await checkReleasableAgreement(ctx, plan, milestone);
+  if (blocked) return blocked;
   const res = await revertApproval(ctx, milestoneRowId, operator, {
     release: true,
     admin: true,
@@ -62,12 +56,34 @@ export async function forceReleaseMilestone(
   if (!res.ok) return res;
   if (!res.value.reverted) {
     // R10-M3: in-atomic refusals are NOT a 200 success — the operator
-    // needs the refusal class to pick the next action.
+    // needs the refusal class to pick the next action. R11 nit 9:
+    // `details.reason` is machine-readable — no prose parsing.
     const reason = res.value.reason ?? "unknown";
     return fail(
       "INVALID_STATE",
-      `release refused inside the atomic (${reason}) — see server log`,
+      `release refused inside the atomic (${reason})`,
+      { reason },
     );
+  }
+  // R11-M2: the guard is a non-atomic cross-store pre-read — a
+  // completion pass can still complete the agreement between our read
+  // and the revert's CAS. Cannot roll back — but it must be
+  // operator-visible, not silent.
+  try {
+    const agreement = await ctx.db.commerce.agreements.getById(
+      plan.agreementRef,
+    );
+    if (agreement && ["COMPLETED", "CANCELLED"].includes(agreement.status)) {
+      logger.error("milestone orphaned after release", {
+        repair: "orphaned milestone after release",
+        milestoneId: milestone.id,
+        agreementRef: plan.agreementRef,
+        agreementStatus: agreement.status,
+        exit: "buyer/provider raises a dispute resolved FOR_BUYER (or a new plan supersedes)",
+      });
+    }
+  } catch {
+    // best-effort post-check — the release already landed
   }
   const audit = await recordPostEffectAudit(
     ctx.db,
@@ -82,7 +98,9 @@ export async function forceReleaseMilestone(
         reason: opts.reason,
         reasonSha256: await sha256Hex(opts.reason),
         boundSubmissionRef: milestone.submissionRef ?? null,
-        approvalEpoch: milestone.escrowRef ?? null,
+        // R11 nit 5: the epoch the ATOMIC actually reverted — the
+        // pre-read `milestone.escrowRef` could be stale under a race.
+        approvalEpoch: res.value.epoch ?? null,
         fromStatus: "APPROVED",
         toStatus: "PENDING",
       },

@@ -77,6 +77,10 @@ export interface RevertResult {
    *  codes (released/paid_leg/intent_state), not for a benign no-op
    *  like a sibling having already released the row. */
   reason?: RevertReason;
+  /** R11 nit 5: the epoch the atomic actually reverted — audit
+   *  evidence must name THIS, not a pre-read value that a race could
+   *  have moved. */
+  epoch?: string | null;
 }
 
 export async function revertApproval(
@@ -159,6 +163,7 @@ export async function revertApproval(
             payload: {
               intentId: intent.id,
               reason: "paid_leg_present",
+              ...(admin ? { admin } : {}),
             },
           });
           return ok({ reverted: false, reason: "paid_leg" });
@@ -216,7 +221,11 @@ export async function revertApproval(
               entityId: leg.id,
               eventType: "leg.cancelled",
               actorWallet,
-              payload: { intentId: intent.id },
+              payload: {
+                intentId: intent.id,
+                reason: eventReason,
+                ...(admin ? { admin } : {}),
+              },
             });
           }
         }
@@ -239,7 +248,7 @@ export async function revertApproval(
           ...(admin ? { admin } : {}),
         },
       });
-      return ok({ reverted: true });
+      return ok({ reverted: true, epoch: milestone.escrowRef });
     });
   } catch (err) {
     if (err instanceof SettlementConflictError) {

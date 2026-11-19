@@ -19,6 +19,7 @@ import {
   requireOperator,
 } from "../../finops/guards.js";
 import { type SettlementResult, fail, ok } from "../types.js";
+import { checkReleasableAgreement } from "./agreement-guard.js";
 import type { SettlementCtx } from "./ctx.js";
 import { doApprove, type ApproveEffect } from "./milestone-approve.js";
 import { reopenMilestone } from "./milestone-service.js";
@@ -28,11 +29,8 @@ export const sha256Hex = async (v: string): Promise<string> =>
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)),
   ).toString("hex");
 
-// R6-M3: the reason cap must leave room for the forensic fields beside
-// it in the 4 KB audit row — wallets, ids, refs and overhead run ~600-
-// 900 serialized bytes, so 2000 binds where the shared 4000 cap did
-// not (a longer reason silently dropped the forensic context into the
-// degraded minimal payload).
+// R6-M3: the reason cap leaves room for the forensic fields beside it
+// in the 4 KB audit row (~600-900 serialized bytes of wallets/ids/refs).
 const MAX_FORCE_REASON = 2000;
 /** Operator-supplied submission refs land in evidence + events. */
 const MAX_FORCE_SUBMISSION_REF = 256;
@@ -42,18 +40,15 @@ export const checkForceInput = (
 ): SettlementResult<never> | null => {
   const op = requireOperator(opts.operator);
   if (op) return op as SettlementResult<never>;
-  if (
-    typeof opts.reason !== "string" ||
-    !/[\p{L}\p{N}]/u.test(opts.reason)
-  ) {
+  if (typeof opts.reason !== "string" || !/[\p{L}\p{N}]/u.test(opts.reason)) {
     // R6 nit 5: a reason of only marks/symbols is not "mandatory
     // evidence" — it must contain a letter or digit like the operator
     // label does.
     return fail("BAD_INPUT", "reason is required for a force action");
   }
-  // R5-M4: bound the reason by SERIALIZED length — raw-length caps let
-  // ~4000 control chars expand past the 4 KB evidence row, which drops
-  // the justification into the degraded minimal payload.
+  // R5-M4: bound the reason by SERIALIZED length — raw caps let ~4000
+  // control chars overflow the 4 KB evidence row into the degraded
+  // minimal payload.
   const r = checkSerialized(opts.reason, "reason", MAX_FORCE_REASON);
   if (r) return r as SettlementResult<never>;
   if (opts.submissionRef !== undefined) {
@@ -109,8 +104,7 @@ export async function forceApproveMilestone(
     if (existing && existing.status === "OPEN") {
       const epoch = milestone.escrowRef ?? "";
       if (!epoch.startsWith("ops_")) {
-        // R10 nit 3: name the epoch kind correctly — null/legacy rows
-        // are not a "commerce cycle".
+        // R10 nit 3: name the epoch kind — null/legacy ≠ "commerce".
         const kind = epoch.startsWith("rsv_")
           ? "resolver"
           : epoch.startsWith("appr_")
@@ -118,7 +112,7 @@ export async function forceApproveMilestone(
             : "unknown/legacy";
         return fail(
           "INVALID_STATE",
-          `milestone already APPROVED by a ${kind} cycle — refusing a no-op force-approve (use force-release or the dispute path)`,
+          `already APPROVED by a ${kind} cycle — no-op force-approve refused (use force-release or the dispute path)`,
         );
       }
       const legs = await ctx.db.settlement.payoutLegs.listByIntent(
@@ -243,9 +237,9 @@ export async function forceReopenMilestone(
   if (milestone.status !== "READY") {
     return ok({ reopened: false, auditRecorded: false });
   }
-  // R6 nit 4: defensive — a live OPEN/FROZEN intent under a READY
-  // milestone is not reachable today, but releasing here would strand
-  // a payable authorization no caller owns. Refuse and surface it.
+  // R6 nit 4: a live OPEN/FROZEN intent under a READY milestone is not
+  // reachable today — releasing here would strand a payable
+  // authorization no caller owns. Refuse and surface it.
   const intent = await ctx.db.settlement.payoutIntents.getByMilestone(
     milestone.id,
   );
@@ -255,8 +249,17 @@ export async function forceReopenMilestone(
       `intent ${intent.id} is ${intent.status} — reopen closed, needs operator review`,
     );
   }
+  // R11 nit 4: same guard as force-release — no freeing to a dead
+  // PENDING row under a closed agreement / in-flight verdict.
+  const plan = await ctx.db.settlement.plans.getById(milestone.planId);
+  if (!plan) {
+    return fail("NOT_FOUND", `plan not found: ${milestone.planId}`);
+  }
+  const blocked = await checkReleasableAgreement(ctx, plan, milestone);
+  if (blocked) return blocked;
   const res = await reopenMilestone(ctx, milestoneRowId, operator);
   if (!res.ok) return res;
+  const reasonHash = await sha256Hex(opts.reason);
   const audit = await recordPostEffectAudit(
     ctx.db,
     {
@@ -268,7 +271,7 @@ export async function forceReopenMilestone(
         milestoneId: milestone.milestoneId,
         planId: milestone.planId,
         reason: opts.reason,
-        reasonSha256: await sha256Hex(opts.reason),
+        reasonSha256: reasonHash,
         boundSubmissionRef: milestone.submissionRef ?? null,
         fromStatus: "READY",
         toStatus: "PENDING",
@@ -279,7 +282,7 @@ export async function forceReopenMilestone(
       outcome: "PENDING",
       boundSubmissionRef: milestone.submissionRef ?? null,
       reasonPrefix: [...opts.reason].slice(0, 200).join(""),
-      reasonSha256: await sha256Hex(opts.reason),
+      reasonSha256: reasonHash,
     },
   );
   if (!audit.ok) {
