@@ -36,22 +36,27 @@ import {
   relationsFor,
   removeEvidence,
   removeRelation,
+  noControlChars,
   supersededBy,
 } from "../lib/knowledge";
-import { requireOperatorRef } from "./admin-operator-guard";
+import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
 
+const idField = z
+  .string()
+  .min(1)
+  .refine(noControlChars, { message: "control characters not allowed" });
 const relationBodySchema = z.object({
-  fromItemId: z.string().min(1),
-  toItemId: z.string().min(1),
+  fromItemId: idField,
+  toItemId: idField,
   type: z.string().min(1),
 });
-const removeRelationBodySchema = z.object({ relationId: z.string().min(1) });
+const removeRelationBodySchema = z.object({ relationId: idField });
 const evidenceBodySchema = z.object({
   type: z.string().min(1),
   uri: z.string().min(1).max(1000),
   label: z.string().max(300).optional(),
 });
-const removeEvidenceBodySchema = z.object({ evidenceId: z.string().min(1) });
+const removeEvidenceBodySchema = z.object({ evidenceId: idField });
 
 const errBody = (error: string) => ({ error: { code: error, message: error } });
 const statusOf = (error: string) => (error.endsWith("_item") || error === "missing_version" ? 404 : 400);
@@ -144,6 +149,8 @@ export function registerKnowledgeRelationRoutes(
       responses: { 200: { description: "{outgoing, incoming}" } },
     }),
     async (c) => {
+      const ctrlBad = rejectCtrl(c, c.req.param("id"));
+      if (ctrlBad) return ctrlBad;
       const rels = await relationsFor(store, c.req.param("id") ?? "");
       const supersedes = await supersededBy(store, c.req.param("id") ?? "");
       return c.json({ ...rels, supersededBy: supersedes });
@@ -172,6 +179,8 @@ export function registerKnowledgeRelationRoutes(
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad evidence body");
       }
       const versionId = c.req.param("vid") ?? "";
+      const ctrlBad = rejectCtrl(c, versionId);
+      if (ctrlBad) return ctrlBad;
       const actorRef = requireOperatorRef(c);
         if (actorRef instanceof Response) return actorRef;
       const res = await idempotentWrite(
@@ -206,6 +215,8 @@ export function registerKnowledgeRelationRoutes(
     }),
     async (c) => {
       const vid = c.req.param("vid") ?? "";
+      const ctrlBad = rejectCtrl(c, vid);
+      if (ctrlBad) return ctrlBad;
       // Parity with POST: unknown version is a 404, not an empty list.
       if ((await store.getVersion(vid)) === null) {
         return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "version not found");
@@ -258,6 +269,8 @@ export function registerKnowledgeRelationRoutes(
     }),
     async (c) => {
       const uri = c.req.query("uri") ?? "";
+      const ctrlBad = rejectCtrl(c, uri);
+      if (ctrlBad) return ctrlBad;
       const rows = await itemsCiting(store, uri);
       return c.json({ evidence: rows, count: rows.length });
     },

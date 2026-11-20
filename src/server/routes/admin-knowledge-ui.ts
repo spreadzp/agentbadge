@@ -19,6 +19,7 @@ import type { Context } from "hono";
 import { adminBrowserAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
+import { rejectCtrl } from "./admin-operator-guard";
 import { wrapFragment } from "./ui/helpers";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
@@ -134,6 +135,8 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
 
   app.get("/admin/knowledge/:id", async (c) => {
     const id = c.req.param("id") ?? "";
+    const ctrlBad = rejectCtrl(c, id);
+    if (ctrlBad) return ctrlBad;
     const item = await store.getItem(id);
     if (!item) {
       return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "no such item");

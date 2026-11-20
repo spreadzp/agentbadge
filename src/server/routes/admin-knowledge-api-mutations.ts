@@ -25,13 +25,18 @@ import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   allowedKnowledgeTransitions,
   KNOWLEDGE_STATUSES,
+  noControlChars,
   transitionKnowledgeItem,
 } from "../lib/knowledge";
-import { requireOperatorRef } from "./admin-operator-guard";
+import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
 
 const transitionBodySchema = z.object({
   to: z.string(),
-  reason: z.string().max(2000).optional(),
+  reason: z
+    .string()
+    .max(2000)
+    .refine(noControlChars, { message: "control characters not allowed" })
+    .optional(),
 });
 
 export function registerKnowledgeTransitionRoutes(
@@ -63,6 +68,8 @@ export function registerKnowledgeTransitionRoutes(
         );
       }
       const itemId = c.req.param("id");
+      const ctrlBad = rejectCtrl(c, itemId);
+      if (ctrlBad) return ctrlBad;
       const to = body.data.to.toUpperCase();
       if (!KNOWLEDGE_STATUSES.includes(to as never)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
@@ -126,6 +133,8 @@ export function registerKnowledgeTransitionRoutes(
       },
     }),
     async (c: Context) => {
+      const ctrlBad = rejectCtrl(c, c.req.param("id"));
+      if (ctrlBad) return ctrlBad;
       const item = await store.getItem(c.req.param("id") ?? "");
       if (!item) {
         return errorResponse(

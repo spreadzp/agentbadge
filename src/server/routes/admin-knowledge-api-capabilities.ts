@@ -27,16 +27,30 @@ import {
   unlinkItemCapability,
   upsertKnowledgeCapability,
   KNOWLEDGE_CAPABILITY_KINDS,
+  noControlChars,
 } from "../lib/knowledge";
-import { requireOperatorRef } from "./admin-operator-guard";
+import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
 
 const capBodySchema = z.object({
-  name: z.string().min(1).max(200),
+  name: z
+    .string()
+    .min(1)
+    .max(200)
+    .refine(noControlChars, { message: "control characters not allowed" }),
   kind: z.string(),
-  description: z.string().max(2000).optional(),
+  description: z
+    .string()
+    .max(2000)
+    .refine(noControlChars, { message: "control characters not allowed" })
+    .optional(),
 });
 
-const linkBodySchema = z.object({ capabilityId: z.string().min(1) });
+const linkBodySchema = z.object({
+  capabilityId: z
+    .string()
+    .min(1)
+    .refine(noControlChars, { message: "control characters not allowed" }),
+});
 
 const errBody = (error: string) => ({ error: { code: error, message: error } });
 
@@ -140,6 +154,8 @@ export function registerKnowledgeCapabilityRoutes(
           return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "capabilityId required");
         }
         const itemId = c.req.param("id") ?? "";
+        const ctrlBad = rejectCtrl(c, itemId);
+        if (ctrlBad) return ctrlBad;
         const capabilityId = body.data.capabilityId;
         const actorRef = requireOperatorRef(c);
         if (actorRef instanceof Response) return actorRef;

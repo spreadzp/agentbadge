@@ -180,8 +180,11 @@ export const KNOWLEDGE_BODY_MAX = 64 * 1024; // 64KB
 export const KNOWLEDGE_SUMMARY_MAX = 2000;
 
 /** H-229 fix: NUL/C0 controls crash the PG driver (500) — reject
- *  them at the schema edge, honest 400. \t \n \r stay legal in body. */
-const noControlChars = (s: string) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(s);
+ *  them at the schema edge, honest 400. \t \n \r stay legal in body.
+ *  Exported: route params (?q, :id, :vid, ?uri) need the same guard —
+ *  prod-verify caught the read-path twin of the write-body bug. */
+export const noControlChars = (s: string) =>
+  !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(s);
 const CTRL_MSG = "control characters (incl. NUL) not allowed";
 
 const titleSchema = z

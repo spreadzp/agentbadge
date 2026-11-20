@@ -124,3 +124,64 @@ describe("229-11: NUL/control chars rejected, never 500", () => {
     expect(r.ok).toBe(false);
   });
 });
+
+/**
+ * 229-12 prod-verify BUG-1 regression — read-path twin of M-1:
+ * NUL/C0 in :id/:vid/?uri/?q params and id-typed body fields →
+ * typed 400, never the unauthenticated 500 the PG driver threw.
+ */
+describe("229-12: read-path NUL/control chars → 400", () => {
+  it("path params :id/:vid/:gapId → 400", async () => {
+    const { app } = mkApp();
+    const gets = [
+      "/admin/api/knowledge/items/%00",
+      "/admin/api/knowledge/items/abc%00def",
+      "/admin/api/knowledge/items/%00/relations",
+      "/admin/api/knowledge/items/%00/transitions",
+      "/admin/api/knowledge/versions/%00/evidence",
+      "/admin/api/knowledge/evidence/citing?uri=%00",
+    ];
+    for (const path of gets) {
+      const r = await app.request(path, { headers: ADMIN });
+      expect(r.status).toBe(400);
+      expect((await r.json()).code).toBe("INVALID_INPUT");
+    }
+  });
+
+  it("mutation path params + id body fields → 400", async () => {
+    const { app } = mkApp();
+    const h = { ...OPH, "idempotency-key": key() };
+    const cases: [string, unknown][] = [
+      ["/admin/api/knowledge/items/pre\u0000post/transition", { to: "PENDING" }],
+      ["/admin/api/knowledge/items/pre\u0000post/capabilities", { capabilityId: "kc_x" }],
+      ["/admin/api/knowledge/versions/kv_\u0000/evidence", { type: "EXTERNAL_URL", uri: "https://x.test" }],
+      ["/admin/api/knowledge/gaps/kg_\u0000/triage", {}],
+      ["/admin/api/knowledge/relations", { fromItemId: "ki_\u0000", toItemId: "ki_y", type: "RELATED_TO" }],
+      ["/admin/api/knowledge/relations/remove", { relationId: "krel_\u0000" }],
+      ["/admin/api/knowledge/evidence/remove", { evidenceId: "kev_\u0000" }],
+    ];
+    for (const [path, body] of cases) {
+      const r = await post(app, path, h, body);
+      expect(r.status).toBe(400);
+    }
+  });
+
+  it("transition reason with NUL → 400, item untouched", async () => {
+    const { app, store } = mkApp();
+    const item = await createKnowledgeItem(
+      store,
+      { kind: "GUIDE", slug: "ctrl-op", title: "t", body: "b" },
+      "ops",
+    );
+    if (!item.ok) throw new Error("seed failed");
+    const h = { ...OPH, "idempotency-key": key() };
+    const r = await post(
+      app,
+      `/admin/api/knowledge/items/${item.item.id}/transition`,
+      h,
+      { to: "PENDING", reason: "r\u0000eason" },
+    );
+    expect(r.status).toBe(400);
+    expect((await store.getItem(item.item.id))?.status).toBe("DRAFT");
+  });
+});

@@ -79,6 +79,24 @@ function mkApp(limits = { ANON: 10, API_KEY: 60, DID: 120 }) {
 }
 
 describe("agent knowledge search (SLICE-229-5)", () => {
+  it("229-12 regression: NUL in ?q/?capability/ask.query → 400, never 500", async () => {
+    const { app } = mkApp();
+    for (const path of [
+      "/api/v1/agent/knowledge/search?q=ab%00cd",
+      "/api/v1/agent/knowledge/search?q=escrow&capability=cap%00x",
+    ]) {
+      const r = await app.request(path);
+      expect(r.status).toBe(400);
+      expect((await r.json()).code).toBe("INVALID_INPUT");
+    }
+    const ask = await app.request("/api/v1/agent/knowledge/ask", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: "ab\u0000cd" }),
+    });
+    expect(ask.status).toBe(400);
+  });
+
   it("PUBLISHED hits only — draft/pending/verified never leak", async () => {
     const { app, store } = mkApp();
     await publish(store, "escrow-guide", "Escrow settlement", "escrow flow");

@@ -23,6 +23,7 @@ import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   KNOWLEDGE_KINDS,
   composeAnswer,
+  noControlChars,
   searchKnowledgeItems,
   type KnowledgeGapRecorder,
 } from "../lib/knowledge";
@@ -66,7 +67,11 @@ function tooMany(c: Context, surface: string) {
 }
 
 const askBodySchema = z.object({
-  query: z.string().min(2).max(500),
+  query: z
+    .string()
+    .min(2)
+    .max(500)
+    .refine(noControlChars, { message: "control characters not allowed" }),
 });
 
 export interface AgentKnowledgeDeps {
@@ -120,6 +125,14 @@ export function createAgentKnowledgeRoutes(
           `q must be ${Q_MIN}..${Q_MAX} chars`,
         );
       }
+      if (!noControlChars(q)) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          "control characters not allowed",
+        );
+      }
       const kind = c.req.query("kind");
       if (kind !== undefined && !KNOWLEDGE_KINDS.includes(kind as never)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad kind");
@@ -130,6 +143,14 @@ export function createAgentKnowledgeRoutes(
           ? Math.min(Math.floor(limitParam), LIMIT_MAX)
           : LIMIT_DEFAULT;
       const capability = c.req.query("capability");
+      if (capability !== undefined && !noControlChars(capability)) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          "control characters not allowed",
+        );
+      }
 
       const res = await searchKnowledgeItems(store, q, {
         status: "PUBLISHED", // hard-forced — never a caller knob

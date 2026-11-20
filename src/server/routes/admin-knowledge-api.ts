@@ -31,7 +31,7 @@ import {
   KNOWLEDGE_STATUSES,
   type CreateKnowledgeItemInput,
 } from "../lib/knowledge";
-import { requireOperatorRef } from "./admin-operator-guard";
+import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
 import { registerKnowledgeTransitionRoutes } from "./admin-knowledge-api-mutations";
 import { registerKnowledgeCapabilityRoutes } from "./admin-knowledge-api-capabilities";
 import { registerKnowledgeRelationRoutes } from "./admin-knowledge-api-relations";
@@ -103,6 +103,8 @@ export function createAdminKnowledgeRoutes(
       },
     }),
     async (c) => {
+      const ctrlBad = rejectCtrl(c, c.req.param("id"));
+      if (ctrlBad) return ctrlBad;
       const item = await store.getItem(c.req.param("id"));
       if (!item) return notFound(c);
       const [versions, events, capabilities, relations] = await Promise.all([

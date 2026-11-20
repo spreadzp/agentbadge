@@ -27,11 +27,17 @@ import {
   listGaps,
   resolveGap,
   triageGap,
+  noControlChars,
   wontfixGap,
 } from "../lib/knowledge";
-import { requireOperatorRef } from "./admin-operator-guard";
+import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
 
-const resolveBodySchema = z.object({ linkedItemId: z.string().min(1) });
+const resolveBodySchema = z.object({
+  linkedItemId: z
+    .string()
+    .min(1)
+    .refine(noControlChars, { message: "control characters not allowed" }),
+});
 
 const errBody = (error: string) => ({ error: { code: error, message: error } });
 const statusOf = (error: string) =>
@@ -83,6 +89,8 @@ export function registerKnowledgeGapRoutes(
         const key = readIdempotencyKey(c);
         if (key instanceof Response) return key;
         const gapId = c.req.param("id") ?? "";
+        const ctrlBad = rejectCtrl(c, gapId);
+        if (ctrlBad) return ctrlBad;
         const actorRef = requireOperatorRef(c);
         if (actorRef instanceof Response) return actorRef;
         const res = await idempotentWrite(

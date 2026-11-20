@@ -26,6 +26,7 @@ import {
   KNOWLEDGE_STATUSES,
 } from "../lib/knowledge";
 import { backWith } from "./admin-knowledge-ui";
+import { rejectCtrl } from "./admin-operator-guard";
 
 const formStr = (b: Record<string, unknown>, k: string): string =>
   typeof b[k] === "string" ? (b[k] as string).trim() : "";
@@ -39,6 +40,8 @@ export function registerKnowledgeUiMutations(
 ): void {
   app.post("/admin/knowledge/create", async (c) => {
     const b = await c.req.parseBody();
+    const bad0 = rejectCtrl(c, formStr(b, "operator"));
+    if (bad0) return bad0;
     const r = await createKnowledgeItem(
       store,
       {
@@ -62,6 +65,8 @@ export function registerKnowledgeUiMutations(
   app.post("/admin/knowledge/:id/update", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
+    const bad1 = rejectCtrl(c, id, formStr(b, "operator"));
+    if (bad1) return bad1;
     const r = await updateKnowledgeDraft(
       store,
       id,
@@ -84,6 +89,8 @@ export function registerKnowledgeUiMutations(
   app.post("/admin/knowledge/:id/transition", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
+    const bad2 = rejectCtrl(c, id, formStr(b, "operator"));
+    if (bad2) return bad2;
     const to = formStr(b, "to");
     if (!KNOWLEDGE_STATUSES.includes(to as never)) {
       return c.redirect(backWith(`/admin/knowledge/${id}`, { err: "bad target" }), 303);
@@ -101,6 +108,8 @@ export function registerKnowledgeUiMutations(
   app.post("/admin/knowledge/:id/restore", async (c) => {
     const id = c.req.param("id") ?? "";
     const b = await c.req.parseBody();
+    const bad3 = rejectCtrl(c, id, formStr(b, "operator"));
+    if (bad3) return bad3;
     const r = await restoreKnowledgeVersion(
       store,
       id,
@@ -122,6 +131,8 @@ export function registerKnowledgeUiMutations(
       async (c) => {
         const id = c.req.param("id") ?? "";
         const b = await c.req.parseBody();
+        const bad4 = rejectCtrl(c, id, formStr(b, "capabilityId"));
+        if (bad4) return bad4;
         const r = unlink
           ? await unlinkItemCapability(store, id, formStr(b, "capabilityId"))
           : await linkItemCapability(store, id, formStr(b, "capabilityId"));
@@ -142,6 +153,11 @@ export function registerKnowledgeUiMutations(
       async (c) => {
         const id = c.req.param("id") ?? "";
         const b = await c.req.parseBody();
+        const bad5 = rejectCtrl(
+          c, id, formStr(b, "relationId"), formStr(b, "toItemId"),
+          formStr(b, "operator"),
+        );
+        if (bad5) return bad5;
         const r = remove
           ? await removeRelation(store, formStr(b, "relationId"))
           : await addRelation(store, {
@@ -164,6 +180,10 @@ export function registerKnowledgeUiMutations(
       async (c) => {
         const id = c.req.param("id") ?? "";
         const b = await c.req.parseBody();
+        const bad6 = rejectCtrl(
+          c, id, formStr(b, "evidenceId"), formStr(b, "operator"),
+        );
+        if (bad6) return bad6;
         const item = await store.getItem(id);
         const vid = item?.latestVersionId ?? "";
         const r = remove
@@ -189,6 +209,8 @@ export function registerKnowledgeUiMutations(
     app.post(`/admin/knowledge/gaps/:id/${action}`, async (c) => {
       const id = c.req.param("id") ?? "";
       const b = await c.req.parseBody();
+      const bad7 = rejectCtrl(c, id, formStr(b, "linkedItemId"));
+      if (bad7) return bad7;
       const r =
         action === "resolve"
           ? await resolveGap(store, id, formStr(b, "linkedItemId"))
