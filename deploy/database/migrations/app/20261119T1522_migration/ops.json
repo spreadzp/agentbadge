@@ -1,0 +1,206 @@
+[
+  {
+    "id": "dropConstraint.commerceAgreement.commerceAgreement_taskId_key",
+    "label": "Drop constraint \"commerceAgreement_taskId_key\" on \"commerceAgreement\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "commerceAgreement_taskId_key",
+        "table": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"commerceAgreement_taskId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceAgreement_taskId_key",
+          "public",
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"commerceAgreement_taskId_key\"",
+        "sql": "ALTER TABLE \"public\".\"commerceAgreement\" DROP CONSTRAINT \"commerceAgreement_taskId_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"commerceAgreement_taskId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "commerceAgreement_taskId_key",
+          "public",
+          "\"public\".\"commerceAgreement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.commerceSubmission.milestoneRef",
+    "label": "Add column \"milestoneRef\" to \"commerceSubmission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "milestoneRef",
+        "table": "commerceSubmission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"milestoneRef\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "commerceSubmission",
+          "milestoneRef"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"milestoneRef\"",
+        "sql": "ALTER TABLE \"public\".\"commerceSubmission\" ADD COLUMN \"milestoneRef\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"milestoneRef\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "commerceSubmission",
+          "milestoneRef"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.commerceTask.maxProviders",
+    "label": "Add column \"maxProviders\" to \"commerceTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "maxProviders",
+        "table": "commerceTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"maxProviders\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "commerceTask",
+          "maxProviders"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"maxProviders\"",
+        "sql": "ALTER TABLE \"public\".\"commerceTask\" ADD COLUMN \"maxProviders\" int4 DEFAULT 1 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"maxProviders\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "commerceTask",
+          "maxProviders"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceAgreement.commerceAgreement_taskId_idx_4965c936",
+    "label": "Create index \"commerceAgreement_taskId_idx_4965c936\" on \"commerceAgreement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceAgreement_taskId_idx_4965c936",
+        "table": "commerceAgreement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceAgreement_taskId_idx_4965c936\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_taskId_idx_4965c936\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceAgreement_taskId_idx_4965c936\"",
+        "sql": "CREATE INDEX \"commerceAgreement_taskId_idx_4965c936\" ON \"public\".\"commerceAgreement\" (\"taskId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceAgreement_taskId_idx_4965c936\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceAgreement_taskId_idx_4965c936\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.commerceSubmission.commerceSubmission_milestoneRef_idx_47b89f34",
+    "label": "Create index \"commerceSubmission_milestoneRef_idx_47b89f34\" on \"commerceSubmission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "commerceSubmission_milestoneRef_idx_47b89f34",
+        "table": "commerceSubmission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"commerceSubmission_milestoneRef_idx_47b89f34\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_milestoneRef_idx_47b89f34\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"commerceSubmission_milestoneRef_idx_47b89f34\"",
+        "sql": "CREATE INDEX \"commerceSubmission_milestoneRef_idx_47b89f34\" ON \"public\".\"commerceSubmission\" (\"milestoneRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"commerceSubmission_milestoneRef_idx_47b89f34\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"commerceSubmission_milestoneRef_idx_47b89f34\""
+        ]
+      }
+    ]
+  }
+]

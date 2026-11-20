@@ -11,7 +11,7 @@ import {
   SurveyAnswerDuplicateError,
   type SurveyStore,
 } from "./survey-store";
-import type { SubmitInput, RequestStore, RequestInboxStores } from "./store";
+import type { SubmitInput, RequestStore } from "./store";
 import type {
   InboxFingerprint,
   InboxQaPair,
@@ -20,8 +20,7 @@ import type {
   InboxSurveyRecord,
 } from "./types";
 
-/** EPIC-252 (SLICE-252-1): Postgres RequestInboxStores adapter — thin
- *  mapper over the repositories (codec rows → domain records). */
+/** EPIC-252 (SLICE-252-1): Postgres adapter — codec rows → domain records. */
 
 // Row types derive from the repository signatures — the emitted
 // `Models` namespace is not part of the package's public surface.
@@ -53,7 +52,21 @@ const toRequest = (r: ReqRow): InboxRequestRecord => ({
   expiresAtMs: num(r.expiresAtMs),
   createdAtMs: num(r.createdAtMs),
   respondedAtMs: numOrNull(r.respondedAtMs),
+  // EPIC-228 interaction columns (null on pre-228 rows).
+  actorResolution: r.actorResolution,
+  actorRef: r.actorRef,
+  sessionId: r.sessionId,
+  channel: r.channel,
+  intent: r.intent,
+  signalType: r.signalType,
+  outcome: r.outcome,
+  knowledgeGap: r.knowledgeGap,
+  topics: json(r.topics),
+  entities: json(r.entities),
+  demandSignals: json(r.demandSignals),
+  classifiedBy: r.classifiedBy,
 });
+export { toRequest };
 
 const toQa = (r: QaRow): InboxQaPair => ({
   id: r.id,
@@ -284,14 +297,4 @@ export function createDbSurveyStore(repo: AgentSurveyRepository): SurveyStore {
   };
 }
 
-export function createDbRequestInboxStores(
-  requests: AgentRequestRepository,
-  surveys: AgentSurveyRepository,
-): RequestInboxStores {
-  return {
-    requests: createDbRequestStore(requests),
-    surveys: createDbSurveyStore(surveys),
-    backend: "postgres",
-  };
-}
 export type { SubmitInput };

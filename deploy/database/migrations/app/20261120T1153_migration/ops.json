@@ -1,0 +1,83 @@
+[
+  {
+    "id": "column.public.spendApproval.dealFingerprint",
+    "label": "Add column \"dealFingerprint\" to \"spendApproval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "dealFingerprint",
+        "table": "spendApproval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"dealFingerprint\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "spendApproval",
+          "dealFingerprint"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"dealFingerprint\"",
+        "sql": "ALTER TABLE \"public\".\"spendApproval\" ADD COLUMN \"dealFingerprint\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"dealFingerprint\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "spendApproval",
+          "dealFingerprint"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.spendApproval.spendApproval_wallet_dealFingerprint_idx_996dbbbb",
+    "label": "Create index \"spendApproval_wallet_dealFingerprint_idx_996dbbbb\" on \"spendApproval\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "spendApproval_wallet_dealFingerprint_idx_996dbbbb",
+        "table": "spendApproval"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"spendApproval_wallet_dealFingerprint_idx_996dbbbb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval_wallet_dealFingerprint_idx_996dbbbb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"spendApproval_wallet_dealFingerprint_idx_996dbbbb\"",
+        "sql": "CREATE UNIQUE INDEX \"spendApproval_wallet_dealFingerprint_idx_996dbbbb\" ON \"public\".\"spendApproval\" (\"wallet\", \"dealFingerprint\") WHERE ((state = 'pending'))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"spendApproval_wallet_dealFingerprint_idx_996dbbbb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"spendApproval_wallet_dealFingerprint_idx_996dbbbb\""
+        ]
+      }
+    ]
+  }
+]

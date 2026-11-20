@@ -131,12 +131,19 @@ model SpendApproval {
   consumedAtMs BigInt?
   expiresAtMs  BigInt
   createdAtMs  BigInt
+  // EPIC-257-4 (D-257-Q6): counterparty-holds bind the permit to one deal.
+  // Typed column because the dedup constraint indexes it — approvalReason /
+  // fingerprintVersion / meta ride inside payload instead.
+  dealFingerprint String?
   payload      Json
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
 
   @@index([wallet, state])
   @@index([wallet, createdAtMs])
+  // At most ONE live pending per (wallet, dealFingerprint) — the
+  // find-or-create backstop; NULLs never conflict (PG unique semantics).
+  @@index([wallet, dealFingerprint], unique: true, where: "(state = 'pending')")
 }
 
 model DelegateRecord {
@@ -842,6 +849,22 @@ model AgentRequest {
   expiresAtMs    BigInt
   createdAtMs    BigInt
   respondedAtMs  BigInt?
+  // ─── EPIC-228 (D-228-10): interaction surface on the shared inbox
+  // row — absorb-not-duplicate. All nullable: rows submitted through
+  // the legacy /api/requests intake simply carry NULLs (channel=NULL).
+  actorResolution String? // ANON|API_KEY|DID — D-228-1
+  actorRef        String? // agentId|did — nullable: anon + retention (O-228-4)
+  sessionId       String? // InteractionSession grouping key (A2A contextId, D-228-2)
+  channel         String? // ingress channel; NULL = pre-228 /api/requests intake
+  // Operator classification (D-228-5) — written only via admin surface:
+  intent          String? // CAPABILITY_DISCOVERY|INTEGRATION_HELP|BUG_REPORT|PAYMENT_METHOD|FEATURE_REQUEST|OTHER
+  signalType      String? // INTEREST|NEED|INTENT|PURCHASE
+  outcome         String?
+  knowledgeGap    Boolean            @default(false)
+  topics          Json?
+  entities        Json?
+  demandSignals   Json?
+  classifiedBy    String? // operatorRef of the last classification
   createdAt      TimestamptzString @default(now())
   updatedAt      temporal.updatedAtString()
 
@@ -850,6 +873,64 @@ model AgentRequest {
   @@index([fpHash])
   @@index([agentId])
   @@index([expiresAtMs])
+  @@index([sessionId])
+  @@index([actorRef])
+  @@index([actorResolution])
+}
+
+// ─── EPIC-228: Agent Interaction Core (D-228-2/4/5, D-228-10) ──────
+// The interaction domain rides on the shared agentRequest row; these
+// tables carry what agentRequest cannot: session grouping, operator
+// response records and the append-only event log. No FK constraints
+// (project convention) — indexes only.
+
+// D-228-2: grouping key without lifecycle (A2A contextId semantics).
+// Client may supply its own id; otherwise server-minted uuid. Auto-
+// upserted on every interaction submit — no open/close/TTL.
+model InteractionSession {
+  id            String            @id @default(uuid())
+  actorRef      String?
+  firstSeenAtMs BigInt
+  lastSeenAtMs  BigInt
+  requestCount  Int               @default(0)
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  @@index([actorRef])
+}
+
+// Operator answers (A7). One row per respond action — the request's
+// legacy `response` Json column is dual-written {answer: body} for
+// /api/requests GET + QA-corpus compat (D-228-10).
+model InteractionResponse {
+  id          String            @id @default(uuid())
+  requestId   String
+  operatorRef String
+  body        String
+  createdAtMs BigInt
+  createdAt   TimestamptzString @default(now())
+
+  @@index([requestId])
+}
+
+// D-228-4/8: append-only interaction log — no update/delete by API
+// shape. visibility: PUBLIC rows are the only ones an agent may ever
+// see; INTERNAL carries classification, ops notes, review markers.
+// (requestId, seq) is the hard per-request ordering invariant.
+// Events intentionally survive their request row (janitor hard-delete)
+// — append-only audit; event-side retention is O-228-4.
+model InteractionEvent {
+  id          String            @id @default(uuid())
+  requestId   String
+  seq         Int
+  kind        String // interaction.request.received|classified|response.sent|review.required
+  visibility  String // PUBLIC|INTERNAL
+  payload     Json
+  createdAtMs BigInt
+  createdAt   TimestamptzString @default(now())
+
+  @@unique([requestId, seq])
+  @@index([kind])
 }
 
 // Open surveys agents can answer (D-252-Q6). `questions` Json holds the
@@ -928,6 +1009,7 @@ model CommerceTask {
   requirements  Json? // spec Task.requirements record
   budget        Decimal? // USD decimal; null = zero-budget OK
   currency      String            @default("USD")
+  maxProviders  Int               @default(1) // D-227: parallel provider slots
   expiresAtMs   BigInt? // informational only — manual cancel (D-224-12)
   status        String // DRAFT|OPEN|IN_PROGRESS|SUBMITTED|UNDER_REVIEW|COMPLETED|CANCELLED
   payload       Json
@@ -959,7 +1041,7 @@ model CommerceOffer {
 
 model CommerceAgreement {
   id                 String            @id @default(uuid())
-  taskId             String            @unique // one agreement per task (single-round, D-224-9)
+  taskId             String // → CommerceTask.id; ≤maxProviders per task (D-227)
   offerId            String            @unique // accepted offer → agreement
   buyerWallet        String
   providerWallet     String
@@ -972,6 +1054,7 @@ model CommerceAgreement {
   createdAt          TimestamptzString @default(now())
   updatedAt          temporal.updatedAtString()
 
+  @@index([taskId])
   @@index([buyerWallet])
   @@index([providerWallet])
   @@index([status])
@@ -983,6 +1066,7 @@ model CommerceSubmission {
   providerWallet String
   summary        String // ≤4000 chars — contract guard (EPIC-206)
   resultUrl      String?
+  milestoneRef   String? // → settlement Milestone.id (D-227)
   status         String // SUBMITTED|ACCEPTED|REJECTED|REVISION_REQUIRED
   reviewNote     String?
   submittedAtMs  BigInt
@@ -994,6 +1078,7 @@ model CommerceSubmission {
   @@index([agreementId, createdAt])
   @@index([status])
   @@index([providerWallet])
+  @@index([milestoneRef])
 }
 
 // Append-only evidence rows (D-224-11: FILE = url+sha256 only).

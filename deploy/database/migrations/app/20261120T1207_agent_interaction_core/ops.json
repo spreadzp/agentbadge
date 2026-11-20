@@ -1,0 +1,899 @@
+[
+  {
+    "id": "table.interactionEvent",
+    "label": "Create table \"interactionEvent\"",
+    "summary": "Creates table \"interactionEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "interactionEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"interactionEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"interactionEvent\"",
+        "sql": "CREATE TABLE \"public\".\"interactionEvent\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"requestId\" text NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"visibility\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"interactionEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.interactionResponse",
+    "label": "Create table \"interactionResponse\"",
+    "summary": "Creates table \"interactionResponse\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "interactionResponse"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"interactionResponse\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionResponse\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"interactionResponse\"",
+        "sql": "CREATE TABLE \"public\".\"interactionResponse\" (\n  \"body\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdAtMs\" int8 NOT NULL,\n  \"id\" text NOT NULL,\n  \"operatorRef\" text NOT NULL,\n  \"requestId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"interactionResponse\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionResponse\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.interactionSession",
+    "label": "Create table \"interactionSession\"",
+    "summary": "Creates table \"interactionSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "interactionSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"interactionSession\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionSession\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"interactionSession\"",
+        "sql": "CREATE TABLE \"public\".\"interactionSession\" (\n  \"actorRef\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"firstSeenAtMs\" int8 NOT NULL,\n  \"id\" text NOT NULL,\n  \"lastSeenAtMs\" int8 NOT NULL,\n  \"requestCount\" int4 DEFAULT 0 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"interactionSession\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionSession\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.actorRef",
+    "label": "Add column \"actorRef\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "actorRef",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"actorRef\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "actorRef"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"actorRef\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"actorRef\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"actorRef\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "actorRef"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.actorResolution",
+    "label": "Add column \"actorResolution\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "actorResolution",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"actorResolution\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "actorResolution"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"actorResolution\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"actorResolution\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"actorResolution\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "actorResolution"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.channel",
+    "label": "Add column \"channel\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "channel",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"channel\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "channel"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"channel\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"channel\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"channel\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "channel"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.classifiedBy",
+    "label": "Add column \"classifiedBy\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "classifiedBy",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"classifiedBy\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "classifiedBy"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"classifiedBy\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"classifiedBy\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"classifiedBy\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "classifiedBy"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.demandSignals",
+    "label": "Add column \"demandSignals\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "demandSignals",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"demandSignals\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "demandSignals"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"demandSignals\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"demandSignals\" json"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"demandSignals\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "demandSignals"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.entities",
+    "label": "Add column \"entities\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "entities",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"entities\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "entities"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"entities\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"entities\" json"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"entities\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "entities"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.intent",
+    "label": "Add column \"intent\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "intent",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"intent\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "intent"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"intent\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"intent\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"intent\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "intent"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.knowledgeGap",
+    "label": "Add column \"knowledgeGap\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "knowledgeGap",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"knowledgeGap\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "knowledgeGap"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"knowledgeGap\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"knowledgeGap\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"knowledgeGap\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "knowledgeGap"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.outcome",
+    "label": "Add column \"outcome\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "outcome",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"outcome\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "outcome"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"outcome\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"outcome\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"outcome\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "outcome"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.sessionId",
+    "label": "Add column \"sessionId\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "sessionId",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"sessionId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "sessionId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"sessionId\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"sessionId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"sessionId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "sessionId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.signalType",
+    "label": "Add column \"signalType\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "signalType",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"signalType\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "signalType"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"signalType\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"signalType\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"signalType\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "signalType"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.agentRequest.topics",
+    "label": "Add column \"topics\" to \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "topics",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"topics\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "topics"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"topics\"",
+        "sql": "ALTER TABLE \"public\".\"agentRequest\" ADD COLUMN \"topics\" json"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"topics\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "agentRequest",
+          "topics"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.interactionEvent.interactionEvent_requestId_seq_key",
+    "label": "Add unique constraint on \"interactionEvent\" (requestId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "interactionEvent_requestId_seq_key",
+        "table": "interactionEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"interactionEvent_requestId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "interactionEvent_requestId_seq_key",
+          "public",
+          "\"public\".\"interactionEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"interactionEvent_requestId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"interactionEvent\" ADD CONSTRAINT \"interactionEvent_requestId_seq_key\" UNIQUE (\"requestId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"interactionEvent_requestId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "interactionEvent_requestId_seq_key",
+          "public",
+          "\"public\".\"interactionEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRequest.agentRequest_actorRef_idx_da577f54",
+    "label": "Create index \"agentRequest_actorRef_idx_da577f54\" on \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRequest_actorRef_idx_da577f54",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRequest_actorRef_idx_da577f54\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_actorRef_idx_da577f54\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRequest_actorRef_idx_da577f54\"",
+        "sql": "CREATE INDEX \"agentRequest_actorRef_idx_da577f54\" ON \"public\".\"agentRequest\" (\"actorRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRequest_actorRef_idx_da577f54\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_actorRef_idx_da577f54\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRequest.agentRequest_actorResolution_idx_42e62734",
+    "label": "Create index \"agentRequest_actorResolution_idx_42e62734\" on \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRequest_actorResolution_idx_42e62734",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRequest_actorResolution_idx_42e62734\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_actorResolution_idx_42e62734\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRequest_actorResolution_idx_42e62734\"",
+        "sql": "CREATE INDEX \"agentRequest_actorResolution_idx_42e62734\" ON \"public\".\"agentRequest\" (\"actorResolution\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRequest_actorResolution_idx_42e62734\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_actorResolution_idx_42e62734\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.agentRequest.agentRequest_sessionId_idx_29f415d4",
+    "label": "Create index \"agentRequest_sessionId_idx_29f415d4\" on \"agentRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "agentRequest_sessionId_idx_29f415d4",
+        "table": "agentRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"agentRequest_sessionId_idx_29f415d4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_sessionId_idx_29f415d4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"agentRequest_sessionId_idx_29f415d4\"",
+        "sql": "CREATE INDEX \"agentRequest_sessionId_idx_29f415d4\" ON \"public\".\"agentRequest\" (\"sessionId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"agentRequest_sessionId_idx_29f415d4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"agentRequest_sessionId_idx_29f415d4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.interactionEvent.interactionEvent_kind_idx_c9ca668f",
+    "label": "Create index \"interactionEvent_kind_idx_c9ca668f\" on \"interactionEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "interactionEvent_kind_idx_c9ca668f",
+        "table": "interactionEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"interactionEvent_kind_idx_c9ca668f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"interactionEvent_kind_idx_c9ca668f\"",
+        "sql": "CREATE INDEX \"interactionEvent_kind_idx_c9ca668f\" ON \"public\".\"interactionEvent\" (\"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"interactionEvent_kind_idx_c9ca668f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.interactionResponse.interactionResponse_requestId_idx_fd667f92",
+    "label": "Create index \"interactionResponse_requestId_idx_fd667f92\" on \"interactionResponse\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "interactionResponse_requestId_idx_fd667f92",
+        "table": "interactionResponse"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"interactionResponse_requestId_idx_fd667f92\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionResponse_requestId_idx_fd667f92\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"interactionResponse_requestId_idx_fd667f92\"",
+        "sql": "CREATE INDEX \"interactionResponse_requestId_idx_fd667f92\" ON \"public\".\"interactionResponse\" (\"requestId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"interactionResponse_requestId_idx_fd667f92\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionResponse_requestId_idx_fd667f92\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.interactionSession.interactionSession_actorRef_idx_da577f54",
+    "label": "Create index \"interactionSession_actorRef_idx_da577f54\" on \"interactionSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "interactionSession_actorRef_idx_da577f54",
+        "table": "interactionSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"interactionSession_actorRef_idx_da577f54\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionSession_actorRef_idx_da577f54\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"interactionSession_actorRef_idx_da577f54\"",
+        "sql": "CREATE INDEX \"interactionSession_actorRef_idx_da577f54\" ON \"public\".\"interactionSession\" (\"actorRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"interactionSession_actorRef_idx_da577f54\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"interactionSession_actorRef_idx_da577f54\""
+        ]
+      }
+    ]
+  }
+]

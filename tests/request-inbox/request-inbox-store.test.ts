@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  createMemoryRequestStore,
-  type RequestStore,
-  type SubmitInput,
+import { createMemoryRequestStore } from "../../src/server/lib/request-inbox/store-memory";
+import type {
+  RequestStore,
+  SubmitInput,
 } from "../../src/server/lib/request-inbox/store";
 import { createMemorySurveyStore } from "../../src/server/lib/request-inbox/survey-store";
 import { pickRequestInboxStores } from "../../src/server/lib/request-inbox/db-stores";

@@ -34,7 +34,7 @@ type RepoRow = Awaited<ReturnType<SpendApprovalRepository["get"]>>;
  * mirror regardless; the repo ops are the multi-process backstop.
  */
 interface SpendApprovalRepo257 extends SpendApprovalRepository {
-  findPendingByFingerprint?(
+  findPendingByFingerprint(
     wallet: string,
     dealFingerprint: string,
   ): Promise<RepoRow>;

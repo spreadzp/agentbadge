@@ -54,6 +54,25 @@ export interface InboxRequestRecord {
   expiresAtMs: number;
   createdAtMs: number;
   respondedAtMs: number | null;
+  // ─── EPIC-228 (D-228-10): interaction columns on the shared row.
+  // NULL on rows written by the legacy /api/requests intake.
+  /** D-228-1: ANON|API_KEY|DID — null on pre-228 rows. */
+  actorResolution: string | null;
+  /** agentId|did — nullable: anon + retention anonymization (O-228-4). */
+  actorRef: string | null;
+  /** InteractionSession grouping key (A2A contextId, D-228-2). */
+  sessionId: string | null;
+  /** Ingress channel — null on legacy intake rows. */
+  channel: string | null;
+  // Operator classification (D-228-5) — admin-surface writes only:
+  intent: string | null;
+  signalType: string | null;
+  outcome: string | null;
+  knowledgeGap: boolean;
+  topics: unknown | null;
+  entities: unknown | null;
+  demandSignals: unknown | null;
+  classifiedBy: string | null;
 }
 
 export interface InboxQaPair {

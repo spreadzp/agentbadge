@@ -281,7 +281,7 @@ describe("db approval store — mirror semantics", () => {
     };
     const cRepo = fakeRepo();
     let putCalls = 0;
-    cRepo.put = async (a: Record<string, unknown>) => {
+    cRepo.put = (async (a: Record<string, unknown>) => {
       putCalls += 1;
       if (putCalls === 1) {
         throw new Error(
@@ -290,7 +290,7 @@ describe("db approval store — mirror semantics", () => {
       }
       cRepo.rows.set(a.id as string, { id: a.id, ...a });
       return a as never;
-    };
+    }) as unknown as typeof cRepo.put;
     cRepo.findPendingByFingerprint = async () =>
       ({
         id: deadPayload.id,

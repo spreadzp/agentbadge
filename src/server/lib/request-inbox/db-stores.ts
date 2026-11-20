@@ -1,26 +1,56 @@
 import type { getDatabase } from "../database";
+import type {
+  AgentRequestRepository,
+  AgentSurveyRepository,
+  InteractionRepository,
+} from "@agentbadge/database";
 
-import { createDbRequestInboxStores } from "./store-db";
+import { createDbRequestStore, createDbSurveyStore } from "./store-db";
+import { createDbInteractionStore } from "./interaction-store-db";
 import {
-  createMemoryRequestStore,
+  createMemoryRequestInboxData,
   type RequestInboxStores,
 } from "./store";
+import { createMemoryRequestStore } from "./store-memory";
+import { createMemoryInteractionStore } from "./interaction-store-memory";
 import { createMemorySurveyStore } from "./survey-store";
 
 /**
- * EPIC-252 (SLICE-252-1): db-first store selection for the request
- * inbox — Postgres adapter when DATABASE_ENABLED supplies the repos,
- * in-memory fallback otherwise (eaas/db-stores.ts precedent).
+ * EPIC-252 (SLICE-252-1) + EPIC-228 (SLICE-228-1): db-first store
+ * selection for the request inbox — Postgres adapters when
+ * DATABASE_ENABLED supplies the repos, in-memory fallback otherwise
+ * (eaas/db-stores.ts precedent).
  */
 type Db = Pick<
   ReturnType<typeof getDatabase>,
   "agentRequests" | "agentSurveys"
->;
+> &
+  /** EPIC-228 — optional so pre-228 test mocks still satisfy the pick;
+   *  a missing repo alongside missing requests → memory fallback. */
+  Partial<Pick<ReturnType<typeof getDatabase>, "agentInteractions">>;
+
+export function createDbRequestInboxStores(
+  requests: AgentRequestRepository,
+  surveys: AgentSurveyRepository,
+  interactions: InteractionRepository,
+): RequestInboxStores {
+  return {
+    requests: createDbRequestStore(requests),
+    surveys: createDbSurveyStore(surveys),
+    interactions: createDbInteractionStore(interactions),
+    backend: "postgres",
+  };
+}
 
 export function createMemoryRequestInboxStores(): RequestInboxStores {
+  // D-228-10: ONE data object for both facets — the interaction store
+  // reads/writes the same `rows` map as the request store, exactly
+  // like the shared agentRequest table in Postgres mode.
+  const data = createMemoryRequestInboxData();
   return {
-    requests: createMemoryRequestStore(),
+    requests: createMemoryRequestStore(data),
     surveys: createMemorySurveyStore(),
+    interactions: createMemoryInteractionStore(data),
     backend: "memory",
   };
 }
@@ -33,8 +63,12 @@ export function createMemoryRequestInboxStores(): RequestInboxStores {
 let sharedMemoryStores: RequestInboxStores | undefined;
 
 export function pickRequestInboxStores(db: Db): RequestInboxStores {
-  if (db.agentRequests && db.agentSurveys) {
-    return createDbRequestInboxStores(db.agentRequests, db.agentSurveys);
+  if (db.agentRequests && db.agentSurveys && db.agentInteractions) {
+    return createDbRequestInboxStores(
+      db.agentRequests,
+      db.agentSurveys,
+      db.agentInteractions,
+    );
   }
   return (sharedMemoryStores ??= createMemoryRequestInboxStores());
 }

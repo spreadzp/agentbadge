@@ -164,6 +164,18 @@
       "model": "ForensicsFunding",
       "namespace": "public"
     },
+    "interactionEvent": {
+      "model": "InteractionEvent",
+      "namespace": "public"
+    },
+    "interactionResponse": {
+      "model": "InteractionResponse",
+      "namespace": "public"
+    },
+    "interactionSession": {
+      "model": "InteractionSession",
+      "namespace": "public"
+    },
     "marketplaceMeta": {
       "model": "MarketplaceMeta",
       "namespace": "public"
@@ -869,7 +881,35 @@
           },
           "AgentRequest": {
             "fields": {
+              "actorRef": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "actorResolution": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "agentId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "channel": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "classifiedBy": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
@@ -887,6 +927,20 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "demandSignals": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "entities": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
                   "kind": "scalar"
                 }
               },
@@ -925,7 +979,28 @@
                   "kind": "scalar"
                 }
               },
+              "intent": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "kind": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "knowledgeGap": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "outcome": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
@@ -960,6 +1035,20 @@
                   "kind": "scalar"
                 }
               },
+              "sessionId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "signalType": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "spamFlag": {
                 "nullable": false,
                 "type": {
@@ -971,6 +1060,13 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "topics": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
                   "kind": "scalar"
                 }
               },
@@ -992,14 +1088,32 @@
             "relations": {},
             "storage": {
               "fields": {
+                "actorRef": {
+                  "column": "actorRef"
+                },
+                "actorResolution": {
+                  "column": "actorResolution"
+                },
                 "agentId": {
                   "column": "agentId"
+                },
+                "channel": {
+                  "column": "channel"
+                },
+                "classifiedBy": {
+                  "column": "classifiedBy"
                 },
                 "createdAt": {
                   "column": "createdAt"
                 },
                 "createdAtMs": {
                   "column": "createdAtMs"
+                },
+                "demandSignals": {
+                  "column": "demandSignals"
+                },
+                "entities": {
+                  "column": "entities"
                 },
                 "expiresAtMs": {
                   "column": "expiresAtMs"
@@ -1016,8 +1130,17 @@
                 "idempotencyKey": {
                   "column": "idempotencyKey"
                 },
+                "intent": {
+                  "column": "intent"
+                },
                 "kind": {
                   "column": "kind"
+                },
+                "knowledgeGap": {
+                  "column": "knowledgeGap"
+                },
+                "outcome": {
+                  "column": "outcome"
                 },
                 "payload": {
                   "column": "payload"
@@ -1031,11 +1154,20 @@
                 "response": {
                   "column": "response"
                 },
+                "sessionId": {
+                  "column": "sessionId"
+                },
+                "signalType": {
+                  "column": "signalType"
+                },
                 "spamFlag": {
                   "column": "spamFlag"
                 },
                 "state": {
                   "column": "state"
+                },
+                "topics": {
+                  "column": "topics"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
@@ -3108,6 +3240,13 @@
                   "kind": "scalar"
                 }
               },
+              "milestoneRef": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "payload": {
                 "nullable": false,
                 "type": {
@@ -3183,6 +3322,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "milestoneRef": {
+                  "column": "milestoneRef"
                 },
                 "payload": {
                   "column": "payload"
@@ -3274,6 +3416,13 @@
                   "kind": "scalar"
                 }
               },
+              "maxProviders": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "payload": {
                 "nullable": false,
                 "type": {
@@ -3336,6 +3485,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "maxProviders": {
+                  "column": "maxProviders"
                 },
                 "payload": {
                   "column": "payload"
@@ -4939,6 +5091,249 @@
               },
               "namespaceId": "public",
               "table": "forensicsFunding"
+            }
+          },
+          "InteractionEvent": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAtMs": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "kind": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "payload": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "seq": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "visibility": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "createdAtMs": {
+                  "column": "createdAtMs"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "kind": {
+                  "column": "kind"
+                },
+                "payload": {
+                  "column": "payload"
+                },
+                "requestId": {
+                  "column": "requestId"
+                },
+                "seq": {
+                  "column": "seq"
+                },
+                "visibility": {
+                  "column": "visibility"
+                }
+              },
+              "namespaceId": "public",
+              "table": "interactionEvent"
+            }
+          },
+          "InteractionResponse": {
+            "fields": {
+              "body": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAtMs": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "operatorRef": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "body": {
+                  "column": "body"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "createdAtMs": {
+                  "column": "createdAtMs"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "operatorRef": {
+                  "column": "operatorRef"
+                },
+                "requestId": {
+                  "column": "requestId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "interactionResponse"
+            }
+          },
+          "InteractionSession": {
+            "fields": {
+              "actorRef": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "firstSeenAtMs": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastSeenAtMs": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestCount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "actorRef": {
+                  "column": "actorRef"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "firstSeenAtMs": {
+                  "column": "firstSeenAtMs"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "lastSeenAtMs": {
+                  "column": "lastSeenAtMs"
+                },
+                "requestCount": {
+                  "column": "requestCount"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "interactionSession"
             }
           },
           "MarketplaceMeta": {
@@ -7522,6 +7917,13 @@
                   "kind": "scalar"
                 }
               },
+              "dealFingerprint": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "decidedAtMs": {
                 "nullable": true,
                 "type": {
@@ -7614,6 +8016,9 @@
                 },
                 "createdAtMs": {
                   "column": "createdAtMs"
+                },
+                "dealFingerprint": {
+                  "column": "dealFingerprint"
                 },
                 "decidedAtMs": {
                   "column": "decidedAtMs"
@@ -8769,7 +9174,27 @@
             },
             "agentRequest": {
               "columns": {
+                "actorRef": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "actorResolution": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "agentId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "channel": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "classifiedBy": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": true
@@ -8787,6 +9212,16 @@
                   "codecId": "pg/int8@1",
                   "nativeType": "int8",
                   "nullable": false
+                },
+                "demandSignals": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "entities": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
                 },
                 "expiresAtMs": {
                   "codecId": "pg/int8@1",
@@ -8813,7 +9248,26 @@
                   "nativeType": "text",
                   "nullable": true
                 },
+                "intent": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "kind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "knowledgeGap": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "outcome": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": true
@@ -8842,6 +9296,16 @@
                   "nativeType": "json",
                   "nullable": true
                 },
+                "sessionId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "signalType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "spamFlag": {
                   "codecId": "pg/bool@1",
                   "default": {
@@ -8855,6 +9319,11 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "topics": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
                 },
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -8873,6 +9342,22 @@
               },
               "foreignKeys": [],
               "indexes": [
+                {
+                  "columns": [
+                    "actorRef"
+                  ],
+                  "name": "agentRequest_actorRef_idx_da577f54",
+                  "prefix": "agentRequest_actorRef_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "actorResolution"
+                  ],
+                  "name": "agentRequest_actorResolution_idx_42e62734",
+                  "prefix": "agentRequest_actorResolution_idx",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "agentId"
@@ -8895,6 +9380,14 @@
                   ],
                   "name": "agentRequest_fpHash_idx_7a44a30a",
                   "prefix": "agentRequest_fpHash_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "sessionId"
+                  ],
+                  "name": "agentRequest_sessionId_idx_29f415d4",
+                  "prefix": "agentRequest_sessionId_idx",
                   "unique": false
                 },
                 {
@@ -10103,6 +10596,14 @@
                   "name": "commerceAgreement_status_idx_e98638ab",
                   "prefix": "commerceAgreement_status_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "taskId"
+                  ],
+                  "name": "commerceAgreement_taskId_idx_4965c936",
+                  "prefix": "commerceAgreement_taskId_idx",
+                  "unique": false
                 }
               ],
               "primaryKey": {
@@ -10111,11 +10612,6 @@
                 ]
               },
               "uniques": [
-                {
-                  "columns": [
-                    "taskId"
-                  ]
-                },
                 {
                   "columns": [
                     "offerId"
@@ -10559,6 +11055,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "milestoneRef": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "payload": {
                   "codecId": "pg/json@1",
                   "nativeType": "json",
@@ -10614,6 +11115,14 @@
                   ],
                   "name": "commerceSubmission_agreementId_createdAt_idx_2d9f80d4",
                   "prefix": "commerceSubmission_agreementId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "milestoneRef"
+                  ],
+                  "name": "commerceSubmission_milestoneRef_idx_47b89f34",
+                  "prefix": "commerceSubmission_milestoneRef_idx",
                   "unique": false
                 },
                 {
@@ -10688,6 +11197,15 @@
                 "id": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
+                  "nullable": false
+                },
+                "maxProviders": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1
+                  },
+                  "nativeType": "int4",
                   "nullable": false
                 },
                 "payload": {
@@ -11998,6 +12516,197 @@
                   ]
                 }
               ]
+            },
+            "interactionEvent": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "createdAtMs": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "kind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "payload": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "requestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "seq": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "visibility": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "kind"
+                  ],
+                  "name": "interactionEvent_kind_idx_c9ca668f",
+                  "prefix": "interactionEvent_kind_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "requestId",
+                    "seq"
+                  ]
+                }
+              ]
+            },
+            "interactionResponse": {
+              "columns": {
+                "body": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "createdAtMs": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "operatorRef": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "requestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "requestId"
+                  ],
+                  "name": "interactionResponse_requestId_idx_fd667f92",
+                  "prefix": "interactionResponse_requestId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "interactionSession": {
+              "columns": {
+                "actorRef": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "firstSeenAtMs": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "lastSeenAtMs": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "requestCount": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorRef"
+                  ],
+                  "name": "interactionSession_actorRef_idx_da577f54",
+                  "prefix": "interactionSession_actorRef_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "marketplaceMeta": {
               "columns": {
@@ -14077,6 +14786,11 @@
                   "nativeType": "int8",
                   "nullable": false
                 },
+                "dealFingerprint": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "decidedAtMs": {
                   "codecId": "pg/int8@1",
                   "nativeType": "int8",
@@ -14147,6 +14861,16 @@
                   "name": "spendApproval_wallet_createdAtMs_idx_70458d62",
                   "prefix": "spendApproval_wallet_createdAtMs_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "wallet",
+                    "dealFingerprint"
+                  ],
+                  "name": "spendApproval_wallet_dealFingerprint_idx_996dbbbb",
+                  "prefix": "spendApproval_wallet_dealFingerprint_idx",
+                  "unique": true,
+                  "where": "(state = 'pending')"
                 },
                 {
                   "columns": [
@@ -14699,10 +15423,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "0a3ebb89baf34c26e2199b84f1b23ea0416e64efec0cd3f67a1405678aeda779"
+    "storageHash": "fb111c796948c0c2daa1c7b70adbbacec44f4d2c77598a081e1fe7900cf9884d"
   },
   "execution": {
-    "executionHash": "c1d96fa5dc0fd50b864424442bd2c1efd0a624a783ed51f04011d30bc34f5c24",
+    "executionHash": "914fdbd7135607b6b3388ac97e519b56e8dcc170781ea4d5ec6c2a46b7818ba1",
     "mutations": {
       "defaults": [
         {
@@ -15491,6 +16215,54 @@
             "column": "id",
             "namespace": "public",
             "table": "forensicsFunding"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "interactionEvent"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "interactionResponse"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "interactionSession"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "interactionSession"
           }
         },
         {
