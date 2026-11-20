@@ -34,6 +34,7 @@ import {
 import { operatorRefOf } from "./agent-interaction/agent-interaction-admin-mutations";
 import { registerKnowledgeTransitionRoutes } from "./admin-knowledge-api-mutations";
 import { registerKnowledgeCapabilityRoutes } from "./admin-knowledge-api-capabilities";
+import { registerKnowledgeRelationRoutes } from "./admin-knowledge-api-relations";
 
 const LIST_LIMIT_MAX = 200;
 
@@ -162,5 +163,6 @@ export function createAdminKnowledgeRoutes(
 
   registerKnowledgeTransitionRoutes(app, store);
   registerKnowledgeCapabilityRoutes(app, store);
+  registerKnowledgeRelationRoutes(app, store);
   return app;
 }

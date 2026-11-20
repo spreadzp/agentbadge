@@ -12,4 +12,6 @@ export * from "./versions";
 export * from "./workflow";
 export * from "./capabilities";
 export * from "./capability-seed";
+export * from "./evidence";
+export * from "./relations";
 export * from "./search";
