@@ -1,0 +1,77 @@
+ЗАДАЧА: прогнать e2e A2A Settlement (EPIC-227) на https://agentbadge.xyz
+как внешний consumer. READ-ONLY к коду — no code changes, no commits.
+
+КОНТЕКСТ: EPIC-227 = milestone settlement layer для agent commerce.
+Репо: spreadzp/agentbadge, рут hackathon/server (клон будет предоставлен
+или работай из текущего checkout — только читай openapi/routes для формы
+эндпоинтов, НЕ меняй ничего).
+
+SECRETS: admin-ключ лежит ЗАКОММЕНТИРОВАННЫМ в hackathon/server/.env
+  (строка вида `# ADMIN_API_KEY="<hex>"`) — источник:
+  export ADMIN_API_KEY=$(grep 'ADMIN_API_KEY=' hackathon/server/.env | grep -o '"[^"]*"' | tr -d '"')
+  (проверка: [ -n "$ADMIN_API_KEY" ] && echo ok — НЕ печатай значение)
+Используй ТОЛЬКО внутри curl-хедера:
+  -H "X-Admin-Key: $ADMIN_API_KEY"
+НИКОГДА не печатай значение ключа, не клади его в отчёт, не логируй.
+
+НЕ ДЕЛАТЬ: no code changes; никаких платных on-chain операций; не трогать
+legacy endpoints; не постить наружу; любые writes — только с
+operator="BOT-TEST-<modelname>" (обязательно, чтобы отличать от реальных).
+
+ТАЙМБОКС: ~20 мин. Ключевой шаг не идёт — НЕ жди, пиши PARTIAL-отчёт.
+
+═══════════════════ ЧЕКЛИСТ ═══════════════════
+
+A. AUTH-КОНТУР (уроки 226: не только статус, но code + cache headers)
+  A1. POST /admin/settlement/intents/x/mark-paid без ключа → 401,
+      body.code=UNAUTHORIZED (НЕ INTERNAL_ERROR), cache-control: no-store.
+      NOTE: GET-листинга /admin/settlement/plans НЕТ — admin-поверхность
+      только POST (см. openapi). Несуществующий путь → 404 not_found,
+      это корректно.
+  A2. POST /admin/settlement/milestones/x/approve без ключа → идентичный
+      401-конверт.
+  A3. Неверный X-Admin-Key → идентичный 401-конверт.
+  A4. /api/settlement/* без подписи → типизированный sig-refusal, не 500.
+
+B. READS ЗА КЛЮЧОМ / PUBLIC
+  B1. GET /api/settlement/agreements/:id (public read) → 200/404 по
+      существованию, форму сверь с OpenAPI.
+  B2. GET /api/settlement/receipts/:agreementId → deterministic response
+      или typed refusal.
+  B3. Сверь форму ответов с openapi/routes — расхождения логируй.
+
+C. SETTLEMENT HAPPY PATH (writes только operator=BOT-TEST-…)
+  C1. POST plan → milestone create → list shows it.
+  C2. dispute raise → intents FROZEN; resolve SPLIT → legs пересчитаны +
+      AdminAction row.
+  C3. mark-paid legs с реальным txHash → receipt; mark-paid БЕЗ txHash →
+      typed 4xx; повторный mark-paid → idempotent/409.
+  C4. Все AdminAction-строки атрибутированы BOT-TEST-*.
+
+D. NEGATIVE/EDGE
+  D1. sum(legs) ≠ milestone → reject. sum(milestones) ≠ agreement → reject.
+  D2. Overlong/blank subjectRef → typed reject.
+  D3. Idempotency-key replay → duplicate:true.
+  D4. Post-effect writes → auditRecorded:true в ответе.
+  D5. code=UNAUTHORIZED + cache-control:no-store на всех /admin/settlement/*.
+
+E. RECEIPT/ANCHOR
+  E1. GET receipt дважды → byte-identical (deterministic EIP-712).
+  E2. anchor PENDING без txHash → не ANCHORED (no fabricated confirmation).
+
+F. SYNTHETIC FULL-CYCLE (если prod-датасет позволяет)
+  task(maxProviders=2) → 2 offers → 2 accepts → 2 plans → submit →
+  buyer accept → PayoutIntent OPEN → mark-paid → receipt.
+  Пустой датасет → честный PARTIAL по пункту, не выдумывать.
+
+═══════════════════ ОТЧЁТ ═══════════════════
+
+Финальный отчёт ПИШИ В ФАЙЛ: prod-verify-<modelname>.md (в корень
+клона / cwd). Формат:
+  # Prod Verify — EPIC-227 — <modelname> — <date>
+  ## Verdict: GREEN | PARTIAL | RED
+  ## Checklist (A..F: PASS/FAIL/SKIP + одна строка evidence)
+  ## Bugs found (severity, repro curl, observed vs expected)
+  ## Curl log (ключевые ответы — статусы + тела, БЕЗ секретов)
+
+Никаких секретов/ключей/токенов в отчёте. curl-логи — sanitize.
