@@ -9,3 +9,4 @@ export * from "./slug";
 export * from "./events";
 export * from "./items";
 export * from "./versions";
+export * from "./workflow";

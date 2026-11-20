@@ -112,6 +112,7 @@ import { boardApiRoutes } from "./board/board-api";
 import { createBoardReadRoutes } from "./board/board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests/agent-requests-api";
 import { wireAgentInteraction } from "../wiring/agent-interaction";
+import { wireKnowledge } from "../wiring/knowledge";
 import { createAgentRequestOpsRoutes } from "./agent-requests/agent-requests-ops-api";
 import { createInboxOpsDigestRoutes } from "./agent-requests/agent-requests-ops-digest";
 import { createAgentSurveyRoutes } from "./agent-surveys/agent-surveys-api";
@@ -297,6 +298,9 @@ export function registerApiRoutes(app: Hono): void {
   // EPIC-228: agent interaction surfaces (228-3 public + 228-4 admin
   // API + 228-5 admin SSR) + TG-notify hook — wiring/agent-interaction.
   wireAgentInteraction(app, requestInboxStores, getConfig().requestInbox);
+  // EPIC-229: knowledge engine — admin JSON API (229-3). Public
+  // search/ask + SSR join here in later slices — wiring/knowledge.
+  wireKnowledge(app);
   // 252-4: surveys → rating lane — public open/answer + ops create.
   app.route(
     "/",
