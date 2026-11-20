@@ -14,5 +14,6 @@ export * from "./capabilities";
 export * from "./capability-seed";
 export * from "./composer";
 export * from "./evidence";
+export * from "./gaps";
 export * from "./relations";
 export * from "./search";
