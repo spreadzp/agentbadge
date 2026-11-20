@@ -130,8 +130,17 @@ export async function forceReleaseMilestone(
   // never saw it. Re-read the bound submission: ACCEPTED now means
   // accepted work with no payable intent — surface it like the
   // orphan check, do not silently succeed.
+  // R15-N2: run the check only when the release actually overrode a
+  // live gate (guard's ackOverrode = pre-state SUBMITTED). Passing
+  // the flag on a bound ACCEPTED row is the deliberate un-accept —
+  // flagging it would be a false positive. R15-N3: ackOverrode is
+  // only set for OWNED submissions, so a foreign binding can't flag.
   let verdictLanded = false;
-  if (opts.acknowledgeInFlight === true && milestone.submissionRef) {
+  if (
+    gate.kind === "proceed" &&
+    gate.ackOverrode === true &&
+    milestone.submissionRef
+  ) {
     try {
       const submission = await ctx.db.commerce.submissions.getById(
         milestone.submissionRef,
@@ -142,14 +151,22 @@ export async function forceReleaseMilestone(
           repair: "accepted submission without payable intent",
           milestoneId: milestone.id,
           submissionId: milestone.submissionRef,
-          exit: "resolve the accepted submission's payout via a dispute or force-approve path",
+          // R15-N6: only the PENDING path reaches this check — the
+          // exit is rebind + force-approve.
+          exit: "provider re-binds via submitForReview, then operator force-approves",
         });
       }
     } catch (err) {
-      logger.warn("post-release submission re-read failed", {
-        milestoneId: milestone.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      // R15-N4: a failed post-read must not look like a clean
+      // "no verdict landed" — error-level, not warn.
+      logger.error(
+        "post-release submission re-read failed — verdict state unverified",
+        {
+          milestoneId: milestone.id,
+          submissionId: milestone.submissionRef,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
     }
   }
   let orphaned = false;

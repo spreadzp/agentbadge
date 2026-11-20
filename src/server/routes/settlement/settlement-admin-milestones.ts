@@ -174,7 +174,10 @@ export function settlementMilestoneAdminRoutes(
         404: { description: "Milestone not found" },
         409: {
           description:
-            "Live OPEN/FROZEN payout intent / verdict in flight",
+            "Live OPEN/FROZEN payout intent / verdict in flight / " +
+            "would_cancel_accepted_work (COMPLETED agreement + ACCEPTED " +
+            "bound submission — the owed entitlement's exit is " +
+            "force-approve, then release with confirmCancel)",
         },
         503: { description: "Cannot verify agreement/submission state" },
       },
@@ -224,8 +227,10 @@ export function settlementMilestoneAdminRoutes(
         "COMPLETED requires `confirmCancel:true` (an APPROVED row " +
         "there is usually an owed payout — 409 " +
         "would_cancel_approved_payout without it). `acknowledgeInFlight:true` " +
-        "overrides a dormant in-flight gate — a verdict landing " +
-        "ACCEPTED afterwards reports `verdictLanded:true`. 409 when a " +
+        "overrides a dormant in-flight gate — a verdict observed " +
+        "ACCEPTED immediately after the release reports " +
+        "`verdictLanded:true` (point-in-time sample — a verdict " +
+        "committing after the read is a documented residual). 409 when a " +
         "leg already paid, the intent is dispute-frozen, the milestone " +
         "is not APPROVED, the approval epoch moved on, or an owned " +
         "verdict is in flight. A release that orphans in the last " +

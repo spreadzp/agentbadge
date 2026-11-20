@@ -18,8 +18,12 @@ import type { SettlementCtx } from "./ctx.js";
 
 /** What the caller may do with the milestone. */
 export type GuardVerdict =
-  /** Agreement live / absent — normal release path. */
-  | { kind: "proceed" }
+  /** Agreement live / absent — normal release path. R15-N2:
+   *  `ackOverrode` marks that the caller's acknowledgeInFlight flag
+   *  actually overrode a live in-flight gate — the post-check keys on
+   *  this, not on the flag alone (a bound ACCEPTED row with no gate
+   *  is the deliberate un-accept, not a landed verdict). */
+  | { kind: "proceed"; ackOverrode?: boolean }
   /** Agreement terminal — PENDING would orphan; the caller takes the
    *  terminal CANCELLED path instead (R12-M1). R13-M2: the status is
    *  carried so the caller can distinguish CANCELLED (auto-cancel —
@@ -88,14 +92,18 @@ export async function checkReleasableAgreement(
         ),
       };
     }
-    if (submission && submission.agreementId === plan.agreementRef) {
-      submissionStatus = submission.status;
-    }
-    inFlight =
+    // R15-N1: one ownership predicate for BOTH the status carry and
+    // the in-flight gate — an agreementId-only match let a foreign
+    // ACCEPTED row over-refuse reopen with the wrong (force-approve)
+    // exit. Legitimate bindings always satisfy both keys.
+    const owned =
       !!submission &&
-      submission.status === "SUBMITTED" &&
       submission.agreementId === plan.agreementRef &&
-      submission.milestoneRef === milestone.milestoneId &&
+      submission.milestoneRef === milestone.milestoneId;
+    if (owned) submissionStatus = submission!.status;
+    inFlight =
+      owned &&
+      submission!.status === "SUBMITTED" &&
       milestone.escrowRef?.startsWith("appr_") === true;
   }
   let agreement;
@@ -143,5 +151,5 @@ export async function checkReleasableAgreement(
       ),
     };
   }
-  return { kind: "proceed" };
+  return { kind: "proceed", ackOverrode: inFlight };
 }
