@@ -14,6 +14,7 @@
 import { Hono } from "hono";
 import type { Context, MiddlewareHandler, Next } from "hono";
 import { describeRoute } from "hono-openapi";
+import { z } from "zod";
 
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
@@ -21,7 +22,9 @@ import { resolveClientIp } from "../middleware/rate-limit";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   KNOWLEDGE_KINDS,
+  composeAnswer,
   searchKnowledgeItems,
+  type KnowledgeGapRecorder,
 } from "../lib/knowledge";
 import {
   createTieredLimiter,
@@ -62,9 +65,14 @@ function tooMany(c: Context) {
   );
 }
 
+const askBodySchema = z.object({
+  query: z.string().min(2).max(500),
+});
+
 export interface AgentKnowledgeDeps {
   store: KnowledgeStore;
   limiter?: TieredLimiter;
+  gapRecorder?: KnowledgeGapRecorder;
 }
 
 export function createAgentKnowledgeRoutes(
@@ -141,6 +149,37 @@ export function createAgentKnowledgeRoutes(
         engine: res.engine,
         tookMs: Date.now() - started,
       });
+    },
+  );
+
+  app.post(
+    "/api/v1/agent/knowledge/ask",
+    rateLimit,
+    describeRoute({
+      summary: "Deterministic answer over published knowledge — no LLM",
+      tags: ["Agent Knowledge"],
+      responses: {
+        200: { description: "{status: ANSWERED|REFUSED, …}" },
+        400: { description: "Query validation failure" },
+        429: { description: "Rate limit" },
+      },
+    }),
+    async (c) => {
+      const body = askBodySchema.safeParse(
+        await c.req.json().catch(() => null),
+      );
+      if (!body.success) {
+        return errorResponse(
+          c,
+          400,
+          ErrorCodes.INVALID_INPUT,
+          "query must be 2..500 chars",
+        );
+      }
+      const answer = await composeAnswer(store, body.data.query.trim(), {
+        gapRecorder: deps.gapRecorder,
+      });
+      return c.json(answer, 200);
     },
   );
 
