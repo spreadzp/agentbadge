@@ -139,6 +139,26 @@ describe("public routes", () => {
     expect(r.body.milestones[0].intent.status).toBe("OPEN");
     expect(r.body.anchor).toBeNull();
   });
+
+  it("prod-verify DELTA-MEDIUM: participant-scoped /api/settlement/* → no-store on 200 AND 401/404", async () => {
+    const body = PLAN_BODY("agr-cache");
+    await req("POST", "/api/settlement/plans", { account: buyer, body });
+    // 200 participant view — no shared-cache copy of scoped data.
+    const mine = await req("GET", "/api/settlement/agreements/agr-cache", {
+      account: provider,
+    });
+    expect(mine.status).toBe(200);
+    expect(mine.cacheControl).toBe("no-store");
+    // Refusals too — a cached 401/404 IS the existence oracle.
+    const anon = await req("GET", "/api/settlement/agreements/agr-cache");
+    expect(anon.status).toBe(401);
+    expect(anon.cacheControl).toBe("no-store");
+    const out = await req("GET", "/api/settlement/agreements/agr-cache", {
+      account: stranger,
+    });
+    expect(out.status).toBe(404);
+    expect(out.cacheControl).toBe("no-store");
+  });
 });
 
 

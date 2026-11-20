@@ -45,6 +45,13 @@ const NO_STORE_PREFIXES = [
   // EPIC-226 prod-verify A4: admin surfaces are operator-scoped — the
   // default `public, max-age=300` also leaked onto adminAuth 401s.
   "/admin/",
+  // EPIC-227 prod-verify (DELTA-MEDIUM, converged by ALPHA): the
+  // settlement + commerce surfaces are participant-scoped behind
+  // wallet signatures — `public, max-age=60` with no Vary lets a
+  // shared cache serve one participant's view (or the 401/404
+  // existence-oracle answer) to another client.
+  "/api/settlement",
+  "/api/commerce",
 ];
 
 export function cacheHeadersMiddleware() {
