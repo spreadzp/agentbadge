@@ -441,12 +441,13 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
     // intent on the settlement side, independent of commerce state.
     const agreement = await db.commerce.agreements.getById(agId);
     expect(agreement?.status).toBe("COMPLETED");
-    // R12-M1: the release exit under a completed agreement lands
-    // CANCELLED, not PENDING — terminal cleanup of the leftover
-    // ruling instead of a refused orphan or dead PENDING work.
+    // R12-M1 + R13-M2: the release exit under a completed agreement
+    // lands CANCELLED, not PENDING — but only with an explicit
+    // confirmCancel (an APPROVED row there is usually an owed payout).
     const rel = await forceReleaseMilestone(sctx, milestone.id, {
       operator: "ops-1",
       reason: "undo the ruling",
+      confirmCancel: true,
     });
     expect(rel.ok).toBe(true);
     if (rel.ok) {

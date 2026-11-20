@@ -110,7 +110,9 @@ export async function reopenMilestone(
   milestoneRowId: string,
   actorWallet: string,
   opts?: { expectedSubmissionRef?: string; to?: "PENDING" | "CANCELLED" },
-): Promise<SettlementResult<MilestoneRow>> {
+): Promise<
+  SettlementResult<{ row: MilestoneRow; transitioned: boolean }>
+> {
   const milestone = await ctx.db.settlement.milestones.getById(
     milestoneRowId,
   );
@@ -118,9 +120,11 @@ export async function reopenMilestone(
     return fail("NOT_FOUND", `milestone not found: ${milestoneRowId}`);
   }
   // Idempotent — only READY unbinds; any other state belongs to a
-  // different flow (approved, disputed, already released).
+  // different flow (approved, disputed, already released). R13-M1:
+  // `transitioned` is the ONLY honest "did we move it" signal — a row
+  // that already sits at the target status must not fake one.
   if (milestone.status !== "READY") {
-    return ok(milestone);
+    return ok({ row: milestone, transitioned: false });
   }
   // R6 nit 9: when the caller names the submission it is releasing,
   // a different binding means a NEWER submission claimed the slot —
@@ -129,17 +133,19 @@ export async function reopenMilestone(
     opts?.expectedSubmissionRef !== undefined &&
     milestone.submissionRef !== opts.expectedSubmissionRef
   ) {
-    return ok(milestone);
+    return ok({ row: milestone, transitioned: false });
   }
   // R12-M1: `to:"CANCELLED"` is the terminal cleanup for a READY row
   // under a closed agreement — PENDING would orphan the same way.
-  return transitionMilestone(
+  const res = await transitionMilestone(
     ctx,
     milestone,
     opts?.to ?? "PENDING",
     actorWallet,
     { submissionRef: null },
   );
+  if (!res.ok) return res;
+  return ok({ row: res.value, transitioned: true });
 }
 
 /**

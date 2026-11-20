@@ -20,9 +20,13 @@ import type { SettlementCtx } from "./ctx.js";
 export type GuardVerdict =
   /** Agreement live / absent — normal release path. */
   | { kind: "proceed" }
-  /** Agreement COMPLETED/CANCELLED — PENDING would orphan; the caller
-   *  takes the terminal CANCELLED path instead (R12-M1). */
-  | { kind: "cancel" }
+  /** Agreement terminal — PENDING would orphan; the caller takes the
+   *  terminal CANCELLED path instead (R12-M1). R13-M2: the status is
+   *  carried so the caller can distinguish CANCELLED (auto-cancel —
+   *  nothing owed under a torn-down agreement) from COMPLETED (an
+   *  APPROVED row there is usually an owed payout — cancel needs an
+   *  explicit operator opt-in). */
+  | { kind: "cancel"; agreementStatus: string }
   /** Hard refusal — carries the SettlementResult to return. */
   | { kind: "refuse"; result: SettlementResult<never> };
 
@@ -45,6 +49,12 @@ export async function checkReleasableAgreement(
     milestoneId: string;
     submissionRef?: string | null;
     escrowRef?: string | null;
+  },
+  opts?: {
+    /** R13-M3: audited operator override for the in-flight gate — a
+     *  dormant owned SUBMITTED row (buyer approved directly, verdict
+     *  never came) would otherwise lock the exit indefinitely. */
+    acknowledgeInFlight?: boolean;
   },
 ): Promise<GuardVerdict> {
   // R12 nit 9: read the submission FIRST — a completion landing between
@@ -108,10 +118,12 @@ export async function checkReleasableAgreement(
   if (agreement && ["COMPLETED", "CANCELLED"].includes(agreement.status)) {
     // R11 nit 3 + R12-M1: only terminal commerce states orphan — a
     // DISPUTED or otherwise live agreement still accepts verdicts.
-    // Terminal is not a refusal: the caller cancels the leftover work.
-    return { kind: "cancel" };
+    // Terminal is not a refusal: the caller cancels the leftover work
+    // (COMPLETED additionally needs the operator's confirmCancel —
+    // see milestone-release.ts).
+    return { kind: "cancel", agreementStatus: agreement.status };
   }
-  if (inFlight) {
+  if (inFlight && opts?.acknowledgeInFlight !== true) {
     return {
       kind: "refuse",
       result: fail(

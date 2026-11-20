@@ -24,7 +24,19 @@ import { revertApproval } from "./milestone-revert.js";
 export async function forceReleaseMilestone(
   ctx: SettlementCtx,
   milestoneRowId: string,
-  opts: { operator: string; reason: string },
+  opts: {
+    operator: string;
+    reason: string;
+    /** R13-M2: explicit opt-in required to cancel an APPROVED payout
+     *  under a COMPLETED agreement — that state is usually an owed
+     *  payout, and the cancel path is unrecoverable. A CANCELLED
+     *  agreement auto-cancels (nothing is owed under a torn-down
+     *  agreement). */
+    confirmCancel?: boolean;
+    /** R13-M3: audited override for the in-flight gate — a dormant
+     *  owned SUBMITTED row would otherwise lock the exit forever. */
+    acknowledgeInFlight?: boolean;
+  },
 ): Promise<
   SettlementResult<{
     released: boolean;
@@ -53,12 +65,34 @@ export async function forceReleaseMilestone(
   if (!plan) {
     return fail("NOT_FOUND", `plan not found: ${milestone.planId}`);
   }
-  const gate = await checkReleasableAgreement(ctx, plan, milestone);
+  const gate = await checkReleasableAgreement(ctx, plan, milestone, {
+    acknowledgeInFlight: opts.acknowledgeInFlight === true,
+  });
   if (gate.kind === "refuse") return gate.result;
   // R12-M1: under a CLOSED agreement PENDING would orphan — the exit
   // the repair logs point at would be dead. The honest end-state for
   // leftover approved work is CANCELLED (intent cancelled too).
-  const cancel = gate.kind === "cancel";
+  // R13-M2: COMPLETED needs an explicit confirmCancel — APPROVED+OPEN
+  // intent there is usually an OWED payout the cancel would destroy
+  // irreversibly. CANCELLED agreements auto-cancel.
+  let cancel = false;
+  if (gate.kind === "cancel") {
+    if (gate.agreementStatus === "COMPLETED" && opts.confirmCancel !== true) {
+      const intent = await ctx.db.settlement.payoutIntents.getByMilestone(
+        milestone.id,
+      );
+      return fail(
+        "INVALID_STATE",
+        `agreement is COMPLETED — release would irreversibly cancel the approved payout intent${intent ? ` ${intent.id}` : ""}; pass confirmCancel:true to proceed`,
+        {
+          reason: "would_cancel_approved_payout",
+          agreementStatus: "COMPLETED",
+          ...(intent ? { intentId: intent.id } : {}),
+        },
+      );
+    }
+    cancel = true;
+  }
   const res = await revertApproval(ctx, milestoneRowId, operator, {
     release: !cancel,
     cancel,
@@ -130,6 +164,10 @@ export async function forceReleaseMilestone(
         planId: milestone.planId,
         reason: opts.reason,
         reasonSha256: reasonHash,
+        ...(opts.confirmCancel === true ? { confirmCancel: true } : {}),
+        ...(opts.acknowledgeInFlight === true
+          ? { acknowledgeInFlight: true }
+          : {}),
         boundSubmissionRef: milestone.submissionRef ?? null,
         // R11 nit 5: the epoch the ATOMIC actually reverted — the
         // pre-read `milestone.escrowRef` could be stale under a race.

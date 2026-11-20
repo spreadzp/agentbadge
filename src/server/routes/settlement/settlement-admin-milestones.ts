@@ -50,6 +50,14 @@ const reopenBody = z.object({
   reason: z.string().min(1).max(2000),
 });
 
+// R13-M2/M3: release gets its own body — confirmCancel opts into the
+// irreversible COMPLETED-agreement cancel; acknowledgeInFlight
+// overrides a dormant in-flight gate (both land in audit evidence).
+const releaseBody = reopenBody.extend({
+  confirmCancel: z.boolean().optional(),
+  acknowledgeInFlight: z.boolean().optional(),
+});
+
 const requireOperatorLabel = async (
   c: Context,
   raw: Record<string, unknown>,
@@ -211,14 +219,17 @@ export function settlementMilestoneAdminRoutes(
         "or force-minted approval a buyer verdict cannot touch; it is " +
         "also the operator's deliberate un-accept of a commerce " +
         "(`appr_`) approval while the agreement is live. Under a " +
-        "COMPLETED/CANCELLED agreement the cleanup lands CANCELLED " +
-        "instead (`cancelled:true`) — a PENDING row would orphan. " +
-        "409 when a leg already paid, the intent is dispute-frozen, " +
-        "the milestone is not APPROVED, the approval epoch moved on, " +
-        "or an owned verdict is still in flight (gate_in_flight). " +
-        "A release that orphans in the last race window reports " +
-        "`orphaned:true`. Requires a reason; writes an AdminAction.",
-      requestBody: jsonBody(reopenBody),
+        "terminal agreement the cleanup lands CANCELLED instead — a " +
+        "PENDING row would orphan; CANCELLED agreements auto-cancel, " +
+        "COMPLETED requires `confirmCancel:true` (an APPROVED row " +
+        "there is usually an owed payout — 409 " +
+        "would_cancel_approved_payout without it). `acknowledgeInFlight:true` " +
+        "overrides a dormant in-flight gate. 409 when a leg already " +
+        "paid, the intent is dispute-frozen, the milestone is not " +
+        "APPROVED, the approval epoch moved on, or an owned verdict " +
+        "is in flight. A release that orphans in the last race window " +
+        "reports `orphaned:true`. Requires a reason; writes an AdminAction.",
+      requestBody: jsonBody(releaseBody),
       responses: {
         200: {
           description: "Milestone released to PENDING + AdminAction",
@@ -245,7 +256,7 @@ export function settlementMilestoneAdminRoutes(
       const raw = await readBody(c);
       const bad = await requireOperatorLabel(c, raw);
       if (bad) return bad;
-      const b = reopenBody.safeParse(raw);
+      const b = releaseBody.safeParse(raw);
       if (!b.success) {
         return respond(c, {
           ok: false,
@@ -258,7 +269,12 @@ export function settlementMilestoneAdminRoutes(
       const res = await forceReleaseMilestone(
         createSettlementCtx(getDb()),
         c.req.param("id"),
-        { operator: b.data.operator, reason: b.data.reason },
+        {
+          operator: b.data.operator,
+          reason: b.data.reason,
+          confirmCancel: b.data.confirmCancel,
+          acknowledgeInFlight: b.data.acknowledgeInFlight,
+        },
       );
       return respond(c, res);
     },

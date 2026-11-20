@@ -53,12 +53,35 @@ describe("R11/R12: agreement/submission guard for release+reopen", () => {
     };
   };
 
-  it("R12-M1: COMPLETED agreement → CANCELLED cleanup, not a refusal", async () => {
+  it("R13-M2: COMPLETED agreement refuses without confirmCancel (owed payout)", async () => {
+    const { milestone } = await approvedIntent(ctx);
+    const restore = patchAgreements({ status: "COMPLETED" });
+    const rel = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "undo ruling",
+    });
+    expect(rel.ok).toBe(false);
+    if (!rel.ok) {
+      expect(rel.error.code).toBe("INVALID_STATE");
+      expect(rel.error.details?.reason).toBe(
+        "would_cancel_approved_payout",
+      );
+      expect(rel.error.details?.intentId).toBeTruthy();
+    }
+    restore();
+    // Nothing moved — the owed payout stands.
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("APPROVED");
+  });
+
+  it("R12-M1+R13-M2: COMPLETED + confirmCancel → CANCELLED cleanup", async () => {
     const { milestone, intentId } = await approvedIntent(ctx);
     const restore = patchAgreements({ status: "COMPLETED" });
     const rel = await forceReleaseMilestone(ctx, milestone.id, {
       operator: OPS,
       reason: "undo ruling",
+      confirmCancel: true,
     });
     expect(rel.ok).toBe(true);
     if (rel.ok) {
@@ -67,12 +90,26 @@ describe("R11/R12: agreement/submission guard for release+reopen", () => {
       expect(rel.value.auditRecorded).toBe(true);
     }
     restore();
-    // Terminal cleanup landed: milestone CANCELLED + intent CANCELLED.
     expect(
       (await db.settlement.milestones.getById(milestone.id))?.status,
     ).toBe("CANCELLED");
     expect(
       (await db.settlement.payoutIntents.getById(intentId))?.status,
+    ).toBe("CANCELLED");
+  });
+
+  it("R13-M2: CANCELLED agreement auto-cancels (nothing owed)", async () => {
+    const { milestone } = await approvedIntent(ctx);
+    const restore = patchAgreements({ status: "CANCELLED" });
+    const rel = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "undo ruling",
+    });
+    expect(rel.ok).toBe(true);
+    if (rel.ok) expect(rel.value.cancelled).toBe(true);
+    restore();
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
     ).toBe("CANCELLED");
   });
 
@@ -208,6 +245,7 @@ describe("R11/R12: agreement/submission guard for release+reopen", () => {
     const rel = await forceReleaseMilestone(ctx, milestone.id, {
       operator: OPS,
       reason: "cleanup under closed agreement",
+      confirmCancel: true,
     });
     expect(rel.ok).toBe(true);
     if (rel.ok) expect(rel.value.cancelled).toBe(true);
@@ -286,6 +324,76 @@ describe("R11/R12: agreement/submission guard for release+reopen", () => {
     expect(
       (await db.settlement.milestones.getById(m.id))?.status,
     ).toBe("CANCELLED");
+  });
+
+  it("R13-M3: dormant owned SUBMITTED + live agreement → acknowledgeInFlight unlocks", async () => {
+    // Buyer approved directly via approveMilestone — the appr_ epoch
+    // minted but the commerce submission sits SUBMITTED indefinitely
+    // (no verdict ever arrives). The gate locks without the audited
+    // override; with it the release lands.
+    const { plan, milestone } = await approvedIntent(ctx);
+    const restore = patchSubmissions(() =>
+      Promise.resolve({
+        status: "SUBMITTED",
+        agreementId: plan.agreementRef,
+        milestoneRef: milestone.milestoneId,
+      }),
+    );
+    const locked = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "undo ruling",
+    });
+    expect(locked.ok).toBe(false);
+    if (!locked.ok) {
+      expect(locked.error.details?.reason).toBe("gate_in_flight");
+    }
+    const rel = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "undo ruling — verdict is dormant",
+      acknowledgeInFlight: true,
+    });
+    expect(rel.ok).toBe(true);
+    restore();
+    expect(
+      (await db.settlement.milestones.getById(milestone.id))?.status,
+    ).toBe("PENDING");
+  });
+
+  it("R13-M1: reopen mints NO audit when a raced release already landed the target", async () => {
+    const { milestones } = await openPlan(ctx);
+    const m = milestones[0]!;
+    await submitForReview(ctx, { milestoneRowId: m.id }, PROVIDER);
+    // The raced reject-release lands PENDING between our pre-read and
+    // reopenMilestone's own read — the row already sits AT the target
+    // status, so a status-equality check would fake a transition.
+    const store = db.settlement.milestones;
+    const orig = store.getById.bind(store);
+    let reads = 0;
+    store.getById = (async (id: string) => {
+      reads += 1;
+      const row = await orig(id);
+      if (reads > 1 && row) {
+        return { ...row, status: "PENDING", submissionRef: null };
+      }
+      return row;
+    }) as never;
+    const before = await db.finops.adminActions.list({
+      subjectType: "milestone",
+    });
+    const r = await forceReopenMilestone(ctx, m.id, {
+      operator: OPS,
+      reason: "free it",
+    });
+    store.getById = orig;
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.reopened).toBe(false);
+      expect(r.value.auditRecorded).toBe(false);
+    }
+    const after = await db.finops.adminActions.list({
+      subjectType: "milestone",
+    });
+    expect(after.length).toBe(before.length);
   });
 
   it("R12-M2: reopen does not mint an audit row when the row moved in the gap", async () => {

@@ -75,11 +75,11 @@ export async function forceReopenMilestone(
     to,
   });
   if (!res.ok) return res;
-  // R12-M2: the row may have moved out of READY in the gap (a buyer
-  // approve, a raced release). Only a row that actually reached the
-  // target earns the audit row and `reopened:true` — an untouched
-  // row must not mint a false audit.
-  if (res.value.status !== to) {
+  // R12-M2 + R13-M1: only a row THIS call transitioned earns the
+  // audit row and `reopened:true` — a row that reached the target
+  // via a concurrent actor (raced release, second operator) must not
+  // mint a false AdminAction under this operator's name.
+  if (!res.value.transitioned) {
     return ok({ reopened: false, auditRecorded: false });
   }
   const reasonHash = await sha256Hex(opts.reason);
