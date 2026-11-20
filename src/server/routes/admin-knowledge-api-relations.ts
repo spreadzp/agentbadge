@@ -205,7 +205,12 @@ export function registerKnowledgeRelationRoutes(
       responses: { 200: { description: "{evidence[]}" } },
     }),
     async (c) => {
-      const rows = await listEvidence(store, c.req.param("vid") ?? "");
+      const vid = c.req.param("vid") ?? "";
+      // Parity with POST: unknown version is a 404, not an empty list.
+      if ((await store.getVersion(vid)) === null) {
+        return errorResponse(c, 404, ErrorCodes.RESOURCE_NOT_FOUND, "version not found");
+      }
+      const rows = await listEvidence(store, vid);
       return c.json({ evidence: rows, count: rows.length });
     },
   );
