@@ -57,6 +57,11 @@ export interface RevertOptions {
   admin?: boolean;
   /** R10 nit 2: overrides the emitted event reason. */
   eventReason?: string;
+  /** R12-M1: go APPROVED→CANCELLED instead of PENDING — the terminal
+   *  cleanup for a standing approval under a closed agreement (a
+   *  PENDING row would orphan; CANCELLED is the honest end-state).
+   *  Wins over `release` when both are set. */
+  cancel?: boolean;
 }
 
 /** R8-M2/R9-M2: closed union of refusal causes — callers whitelist the
@@ -90,7 +95,7 @@ export async function revertApproval(
   opts: RevertOptions = {},
 ): Promise<SettlementResult<RevertResult>> {
   const buf = ctx.emit.buffer();
-  const to = opts.release ? "PENDING" : "READY";
+  const to = opts.cancel ? "CANCELLED" : opts.release ? "PENDING" : "READY";
   // R10 nit 2: operator reverts are labelled, verdict reverts keep the
   // historical reason — the event stream distinguishes who undid it.
   const eventReason = opts.eventReason ?? "verdict_not_committed";
@@ -173,7 +178,7 @@ export async function revertApproval(
         milestone.id,
         "APPROVED",
         to,
-        opts.release
+        opts.release || opts.cancel
           ? { submissionRef: null, escrowRef: null }
           : { escrowRef: null },
       );
@@ -252,7 +257,10 @@ export async function revertApproval(
     });
   } catch (err) {
     if (err instanceof SettlementConflictError) {
-      return fail(err.code, err.message);
+      // R12 nit 5: the conflict path also carries a machine-readable
+      // reason — scripts keyed on `details.reason` must not see a bare
+      // CONFLICT while typed refusals all have one.
+      return fail(err.code, err.message, { reason: "conflict" });
     }
     throw err;
   }

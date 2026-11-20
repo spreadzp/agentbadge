@@ -441,22 +441,24 @@ describe("R4: review gate preconditions + approval revert + milestone release", 
     // intent on the settlement side, independent of commerce state.
     const agreement = await db.commerce.agreements.getById(agId);
     expect(agreement?.status).toBe("COMPLETED");
-    // R10-M1: the release exit is REFUSED now — releasing under a
-    // completed agreement would orphan the milestone (PENDING work
-    // nothing can submit/review). The remaining exits are paying the
-    // OPEN intent or a FOR_BUYER dispute.
+    // R12-M1: the release exit under a completed agreement lands
+    // CANCELLED, not PENDING — terminal cleanup of the leftover
+    // ruling instead of a refused orphan or dead PENDING work.
     const rel = await forceReleaseMilestone(sctx, milestone.id, {
       operator: "ops-1",
       reason: "undo the ruling",
     });
-    expect(rel.ok).toBe(false);
-    if (!rel.ok) expect(rel.error.code).toBe("INVALID_STATE");
+    expect(rel.ok).toBe(true);
+    if (rel.ok) {
+      expect(rel.value.released).toBe(true);
+      expect(rel.value.cancelled).toBe(true);
+    }
     expect(
       (await db.settlement.milestones.getById(milestone.id))?.status,
-    ).toBe("APPROVED");
+    ).toBe("CANCELLED");
     expect(
       (await db.settlement.payoutIntents.getById(intent!.id))?.status,
-    ).toBe("OPEN");
+    ).toBe("CANCELLED");
   });
 
   it("R9-M2: REJECT on an already-RELEASED bound milestone reconciles the agreement", async () => {

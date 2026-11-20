@@ -19,10 +19,8 @@ import {
   requireOperator,
 } from "../../finops/guards.js";
 import { type SettlementResult, fail, ok } from "../types.js";
-import { checkReleasableAgreement } from "./agreement-guard.js";
 import type { SettlementCtx } from "./ctx.js";
 import { doApprove, type ApproveEffect } from "./milestone-approve.js";
-import { reopenMilestone } from "./milestone-service.js";
 
 export const sha256Hex = async (v: string): Promise<string> =>
   Buffer.from(
@@ -215,84 +213,4 @@ export async function forceApproveMilestone(
   }
   return ok({ ...effect.value, auditRecorded: audit.ok });
 }
-
-/**
- * R5-M3 operator recovery — release a milestone stuck READY after a
- * lost/raced reject-release (READY→PENDING + unbind, via
- * `reopenMilestone`). The safe exit that does not pay rejected work
- * (force-approve would). Audited like force-approve.
- */
-export async function forceReopenMilestone(
-  ctx: SettlementCtx,
-  milestoneRowId: string,
-  opts: { operator: string; reason: string },
-): Promise<SettlementResult<{ reopened: boolean; auditRecorded: boolean }>> {
-  const bad = checkForceInput(opts);
-  if (bad) return bad as SettlementResult<never>;
-  const operator = normalizeOperator(opts.operator);
-  const milestone = await ctx.db.settlement.milestones.getById(milestoneRowId);
-  if (!milestone) {
-    return fail("NOT_FOUND", `milestone not found: ${milestoneRowId}`);
-  }
-  if (milestone.status !== "READY") {
-    return ok({ reopened: false, auditRecorded: false });
-  }
-  // R6 nit 4: a live OPEN/FROZEN intent under a READY milestone is not
-  // reachable today — releasing here would strand a payable
-  // authorization no caller owns. Refuse and surface it.
-  const intent = await ctx.db.settlement.payoutIntents.getByMilestone(
-    milestone.id,
-  );
-  if (intent && ["OPEN", "FROZEN"].includes(intent.status)) {
-    return fail(
-      "INVALID_STATE",
-      `intent ${intent.id} is ${intent.status} — reopen closed, needs operator review`,
-    );
-  }
-  // R11 nit 4: same guard as force-release — no freeing to a dead
-  // PENDING row under a closed agreement / in-flight verdict.
-  const plan = await ctx.db.settlement.plans.getById(milestone.planId);
-  if (!plan) {
-    return fail("NOT_FOUND", `plan not found: ${milestone.planId}`);
-  }
-  const blocked = await checkReleasableAgreement(ctx, plan, milestone);
-  if (blocked) return blocked;
-  const res = await reopenMilestone(ctx, milestoneRowId, operator);
-  if (!res.ok) return res;
-  const reasonHash = await sha256Hex(opts.reason);
-  const audit = await recordPostEffectAudit(
-    ctx.db,
-    {
-      action: "REOPEN_MILESTONE",
-      subjectType: "milestone",
-      subjectId: milestone.id,
-      operator,
-      evidence: {
-        milestoneId: milestone.milestoneId,
-        planId: milestone.planId,
-        reason: opts.reason,
-        reasonSha256: reasonHash,
-        boundSubmissionRef: milestone.submissionRef ?? null,
-        fromStatus: "READY",
-        toStatus: "PENDING",
-      },
-    },
-    {
-      milestoneId: milestone.milestoneId,
-      outcome: "PENDING",
-      boundSubmissionRef: milestone.submissionRef ?? null,
-      reasonPrefix: [...opts.reason].slice(0, 200).join(""),
-      reasonSha256: reasonHash,
-    },
-  );
-  if (!audit.ok) {
-    logger.error("force-reopen audit row lost", {
-      milestoneId: milestone.id,
-      operator,
-      error: audit.error?.message,
-    });
-  }
-  return ok({ reopened: true, auditRecorded: audit.ok });
-}
-
 

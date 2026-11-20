@@ -38,10 +38,8 @@ export {
   transitionMilestone,
 } from "./services/milestone-service.js";
 export { type ApproveEffect } from "./services/milestone-approve.js";
-export {
-  forceApproveMilestone,
-  forceReopenMilestone,
-} from "./services/milestone-force.js";
+export { forceApproveMilestone } from "./services/milestone-force.js";
+export { forceReopenMilestone } from "./services/milestone-reopen.js";
 export { forceReleaseMilestone } from "./services/milestone-release.js";
 export { revertApproval } from "./services/milestone-revert.js";
 export type { RevertReason, RevertResult } from "./services/milestone-revert.js";

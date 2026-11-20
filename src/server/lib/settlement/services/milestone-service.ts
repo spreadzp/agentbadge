@@ -109,7 +109,7 @@ export async function reopenMilestone(
   ctx: SettlementCtx,
   milestoneRowId: string,
   actorWallet: string,
-  opts?: { expectedSubmissionRef?: string },
+  opts?: { expectedSubmissionRef?: string; to?: "PENDING" | "CANCELLED" },
 ): Promise<SettlementResult<MilestoneRow>> {
   const milestone = await ctx.db.settlement.milestones.getById(
     milestoneRowId,
@@ -131,9 +131,15 @@ export async function reopenMilestone(
   ) {
     return ok(milestone);
   }
-  return transitionMilestone(ctx, milestone, "PENDING", actorWallet, {
-    submissionRef: null,
-  });
+  // R12-M1: `to:"CANCELLED"` is the terminal cleanup for a READY row
+  // under a closed agreement — PENDING would orphan the same way.
+  return transitionMilestone(
+    ctx,
+    milestone,
+    opts?.to ?? "PENDING",
+    actorWallet,
+    { submissionRef: null },
+  );
 }
 
 /**

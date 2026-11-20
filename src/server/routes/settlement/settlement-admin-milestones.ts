@@ -144,8 +144,11 @@ export function settlementMilestoneAdminRoutes(
       description:
         "Releases a READY milestone back to PENDING and clears its " +
         "submissionRef — the safe exit when a reject-verdict release " +
-        "failed or raced (R4-M5 residual). Idempotent on non-READY; " +
-        "requires a reason; writes an AdminAction.",
+        "failed or raced (R4-M5 residual). Under a CLOSED commerce " +
+        "agreement the cleanup lands CANCELLED instead (`cancelled:true`) " +
+        "— PENDING would orphan. Idempotent on non-READY (reopened:false " +
+        "when the row already moved); requires a reason; writes an " +
+        "AdminAction only when the transition landed.",
       requestBody: jsonBody(reopenBody),
       responses: {
         200: {
@@ -161,6 +164,11 @@ export function settlementMilestoneAdminRoutes(
         400: { description: "Missing operator / reason" },
         401: { description: "Unauthorized" },
         404: { description: "Milestone not found" },
+        409: {
+          description:
+            "Live OPEN/FROZEN payout intent / verdict in flight",
+        },
+        503: { description: "Cannot verify agreement/submission state" },
       },
     }),
     adminAuth,
@@ -202,13 +210,14 @@ export function settlementMilestoneAdminRoutes(
         "OPEN payout intent — the audited undo for a resolver-restored " +
         "or force-minted approval a buyer verdict cannot touch; it is " +
         "also the operator's deliberate un-accept of a commerce " +
-        "(`appr_`) approval while the agreement is ACTIVE. 409 " +
-        "when a leg already paid, the intent is dispute-frozen or " +
-        "otherwise refused inside the atomic, the milestone is not " +
-        "APPROVED, or the commerce agreement is no longer ACTIVE " +
-        "(releasing would orphan the milestone — pay the intent or " +
-        "resolve FOR_BUYER instead). Requires a reason; writes an " +
-        "AdminAction.",
+        "(`appr_`) approval while the agreement is live. Under a " +
+        "COMPLETED/CANCELLED agreement the cleanup lands CANCELLED " +
+        "instead (`cancelled:true`) — a PENDING row would orphan. " +
+        "409 when a leg already paid, the intent is dispute-frozen, " +
+        "the milestone is not APPROVED, the approval epoch moved on, " +
+        "or an owned verdict is still in flight (gate_in_flight). " +
+        "A release that orphans in the last race window reports " +
+        "`orphaned:true`. Requires a reason; writes an AdminAction.",
       requestBody: jsonBody(reopenBody),
       responses: {
         200: {

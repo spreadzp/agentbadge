@@ -1,10 +1,11 @@
 /**
- * EPIC-227 / SLICE-227-8 — R11: the shared release/reopen agreement
+ * EPIC-227 / SLICE-227-8 — R11/R12: the shared release/reopen agreement
  * guard. Releasing a milestone back to PENDING under a closed commerce
- * agreement orphans it: submission and review both require an ACTIVE
- * agreement, so the plan keeps dead work forever. Likewise a still-
- * SUBMITTED binding means a verdict (and its `appr_` gate) is in
- * flight — releasing or unbinding races it.
+ * agreement orphans it: submission and review require a live agreement,
+ * so the plan keeps dead work forever — the caller therefore CANCELS
+ * instead of releasing (terminal, not an orphan). A still-SUBMITTED
+ * binding means a verdict (and its `appr_` gate) is in flight —
+ * releasing or unbinding races it.
  *
  * Layering note: this is a data-layer read of `db.commerce` — no
  * commerce service import. The rule "settlement never imports
@@ -15,21 +16,72 @@ import { logger } from "@agentbadge/passport/logger";
 import { type SettlementResult, fail } from "../types.js";
 import type { SettlementCtx } from "./ctx.js";
 
+/** What the caller may do with the milestone. */
+export type GuardVerdict =
+  /** Agreement live / absent — normal release path. */
+  | { kind: "proceed" }
+  /** Agreement COMPLETED/CANCELLED — PENDING would orphan; the caller
+   *  takes the terminal CANCELLED path instead (R12-M1). */
+  | { kind: "cancel" }
+  /** Hard refusal — carries the SettlementResult to return. */
+  | { kind: "refuse"; result: SettlementResult<never> };
+
 /**
- * Returns a refusal when the milestone must not move to PENDING:
- * - the plan's commerce agreement exists and is COMPLETED/CANCELLED
- *   (orphan — the operator's real exits are paying the OPEN intent or
- *   a participant-raised FOR_BUYER dispute), or
- * - the bound submission is still SUBMITTED (a verdict + gate approve
- *   are in flight — let it land first).
- * A MISSING agreement row is a pure-settlement plan — the only
- * intentional fail-open branch. A failed read fails CLOSED.
+ * Decides whether the milestone may move:
+ * - bound submission SUBMITTED + owned by THIS agreement/milestone +
+ *   a commerce `appr_` epoch → a verdict is in flight → refuse
+ *   `gate_in_flight` (R12-H1: a foreign binding or an `ops_`/`rsv_`
+ *   epoch is NOT a gate — release unbinds it, never locks the exit);
+ * - agreement COMPLETED/CANCELLED → `cancel` (terminal cleanup);
+ * - agreement read throws → `PROVIDER_ERROR` (fail closed);
+ * - a MISSING agreement row is a pure-settlement plan — the only
+ *   intentional fail-open branch.
  */
 export async function checkReleasableAgreement(
   ctx: SettlementCtx,
   plan: { id: string; agreementRef: string },
-  milestone: { id: string; submissionRef?: string | null },
-): Promise<SettlementResult<never> | null> {
+  milestone: {
+    id: string;
+    milestoneId: string;
+    submissionRef?: string | null;
+    escrowRef?: string | null;
+  },
+): Promise<GuardVerdict> {
+  // R12 nit 9: read the submission FIRST — a completion landing between
+  // the two reads then hits the harmless order (a SUBMITTED read
+  // refuses before the stale agreement row can pass). The refusal is
+  // only APPLIED after the agreement read: under a terminal agreement
+  // no verdict is in flight anymore, so `cancel` must win or the exit
+  // deadlocks on a stale SUBMITTED row.
+  let inFlight = false;
+  if (milestone.submissionRef) {
+    let submission;
+    try {
+      submission = await ctx.db.commerce.submissions.getById(
+        milestone.submissionRef,
+      );
+    } catch (err) {
+      logger.error("submission state read failed — refusing release", {
+        repair: "milestone agreement guard",
+        submissionId: milestone.submissionRef,
+        milestoneId: milestone.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return {
+        kind: "refuse",
+        result: fail(
+          "PROVIDER_ERROR",
+          "cannot verify bound submission state — release refused",
+        ),
+      };
+    }
+    inFlight =
+      !!submission &&
+      submission.status === "SUBMITTED" &&
+      submission.agreementId === plan.agreementRef &&
+      submission.milestoneRef === milestone.milestoneId &&
+      milestone.escrowRef?.startsWith("appr_") === true;
+  }
   let agreement;
   try {
     // R11-M1: no `.catch(() => null)` — a thrown read error (statement
@@ -45,45 +97,29 @@ export async function checkReleasableAgreement(
       milestoneId: milestone.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return fail(
-      "PROVIDER_ERROR",
-      "cannot verify commerce agreement state — release refused",
-    );
+    return {
+      kind: "refuse",
+      result: fail(
+        "PROVIDER_ERROR",
+        "cannot verify commerce agreement state — release refused",
+      ),
+    };
   }
   if (agreement && ["COMPLETED", "CANCELLED"].includes(agreement.status)) {
-    // R11 nit 3: only terminal commerce states orphan — a DISPUTED or
-    // otherwise live agreement still accepts submissions/reviews.
-    return fail(
-      "INVALID_STATE",
-      `commerce agreement is ${agreement.status} — releasing would orphan the milestone; pay the OPEN intent, or the buyer/provider raises a dispute resolved FOR_BUYER`,
-      { reason: "agreement_not_active", agreementStatus: agreement.status },
-    );
+    // R11 nit 3 + R12-M1: only terminal commerce states orphan — a
+    // DISPUTED or otherwise live agreement still accepts verdicts.
+    // Terminal is not a refusal: the caller cancels the leftover work.
+    return { kind: "cancel" };
   }
-  if (milestone.submissionRef) {
-    let submission;
-    try {
-      submission = await ctx.db.commerce.submissions.getById(
-        milestone.submissionRef,
-      );
-    } catch (err) {
-      logger.error("submission state read failed — refusing release", {
-        repair: "milestone agreement guard",
-        submissionId: milestone.submissionRef,
-        milestoneId: milestone.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return fail(
-        "PROVIDER_ERROR",
-        "cannot verify bound submission state — release refused",
-      );
-    }
-    if (submission && submission.status === "SUBMITTED") {
-      return fail(
+  if (inFlight) {
+    return {
+      kind: "refuse",
+      result: fail(
         "INVALID_STATE",
         "bound submission is still SUBMITTED — a verdict/gate is in flight; let it commit first",
         { reason: "gate_in_flight" },
-      );
-    }
+      ),
+    };
   }
-  return null;
+  return { kind: "proceed" };
 }

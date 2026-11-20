@@ -5,9 +5,11 @@
  * approval left standing under a rejected submission can be un-done
  * ONLY here — buyer verdicts may not. It is intentionally not
  * epoch-restricted: an operator may also un-accept an `appr_`
- * approval while the agreement is ACTIVE (the audit row records it).
+ * approval while the agreement is live (the audit row records it).
  * Shares revertApproval's guards: a paid leg or a dispute-owned
- * (FROZEN) intent refuses the release.
+ * (FROZEN) intent refuses the release. R12-M1: under a CLOSED
+ * agreement the exit goes APPROVED→CANCELLED instead of PENDING —
+ * terminal cleanup, not an orphan.
  */
 import { logger } from "@agentbadge/passport/logger";
 
@@ -24,7 +26,12 @@ export async function forceReleaseMilestone(
   milestoneRowId: string,
   opts: { operator: string; reason: string },
 ): Promise<
-  SettlementResult<{ released: boolean; auditRecorded: boolean }>
+  SettlementResult<{
+    released: boolean;
+    cancelled?: boolean;
+    orphaned?: boolean;
+    auditRecorded: boolean;
+  }>
 > {
   const bad = checkForceInput(opts);
   if (bad) return bad as SettlementResult<never>;
@@ -46,12 +53,21 @@ export async function forceReleaseMilestone(
   if (!plan) {
     return fail("NOT_FOUND", `plan not found: ${milestone.planId}`);
   }
-  const blocked = await checkReleasableAgreement(ctx, plan, milestone);
-  if (blocked) return blocked;
+  const gate = await checkReleasableAgreement(ctx, plan, milestone);
+  if (gate.kind === "refuse") return gate.result;
+  // R12-M1: under a CLOSED agreement PENDING would orphan — the exit
+  // the repair logs point at would be dead. The honest end-state for
+  // leftover approved work is CANCELLED (intent cancelled too).
+  const cancel = gate.kind === "cancel";
   const res = await revertApproval(ctx, milestoneRowId, operator, {
-    release: true,
+    release: !cancel,
+    cancel,
+    // R12 nit 1: pin the revert to the epoch the operator decided on —
+    // a re-landed approval then refuses (epoch_mismatch) instead of
+    // being silently undone.
+    approvalToken: milestone.escrowRef ?? undefined,
     admin: true,
-    eventReason: "operator_release",
+    eventReason: cancel ? "operator_cancel" : "operator_release",
   });
   if (!res.ok) return res;
   if (!res.value.reverted) {
@@ -68,23 +84,40 @@ export async function forceReleaseMilestone(
   // R11-M2: the guard is a non-atomic cross-store pre-read — a
   // completion pass can still complete the agreement between our read
   // and the revert's CAS. Cannot roll back — but it must be
-  // operator-visible, not silent.
-  try {
-    const agreement = await ctx.db.commerce.agreements.getById(
-      plan.agreementRef,
-    );
-    if (agreement && ["COMPLETED", "CANCELLED"].includes(agreement.status)) {
-      logger.error("milestone orphaned after release", {
-        repair: "orphaned milestone after release",
+  // operator-visible: error log + `orphaned` in response AND evidence
+  // (R12-M3), not just a log line.
+  let orphaned = false;
+  if (!cancel) {
+    try {
+      const agreement = await ctx.db.commerce.agreements.getById(
+        plan.agreementRef,
+      );
+      orphaned =
+        !!agreement &&
+        ["COMPLETED", "CANCELLED"].includes(agreement.status);
+      if (orphaned) {
+        logger.error("milestone orphaned after release", {
+          repair: "orphaned milestone after release",
+          milestoneId: milestone.id,
+          agreementRef: plan.agreementRef,
+          agreementStatus: agreement!.status,
+          // R12-M3: createPlan is unique per agreementRef — no
+          // superseding plan exists. The real exit is a FOR_BUYER
+          // dispute resolution.
+          exit: "buyer/provider raises a dispute resolved FOR_BUYER",
+        });
+      }
+    } catch (err) {
+      // best-effort post-check — the release already landed; the read
+      // failure itself is worth a warn (was silent `catch {}`).
+      logger.warn("post-release agreement re-read failed", {
         milestoneId: milestone.id,
-        agreementRef: plan.agreementRef,
-        agreementStatus: agreement.status,
-        exit: "buyer/provider raises a dispute resolved FOR_BUYER (or a new plan supersedes)",
+        error: err instanceof Error ? err.message : String(err),
       });
     }
-  } catch {
-    // best-effort post-check — the release already landed
   }
+  const toStatus = cancel ? "CANCELLED" : "PENDING";
+  const reasonHash = await sha256Hex(opts.reason);
   const audit = await recordPostEffectAudit(
     ctx.db,
     {
@@ -96,21 +129,22 @@ export async function forceReleaseMilestone(
         milestoneId: milestone.milestoneId,
         planId: milestone.planId,
         reason: opts.reason,
-        reasonSha256: await sha256Hex(opts.reason),
+        reasonSha256: reasonHash,
         boundSubmissionRef: milestone.submissionRef ?? null,
         // R11 nit 5: the epoch the ATOMIC actually reverted — the
         // pre-read `milestone.escrowRef` could be stale under a race.
         approvalEpoch: res.value.epoch ?? null,
         fromStatus: "APPROVED",
-        toStatus: "PENDING",
+        toStatus,
+        ...(orphaned ? { orphaned: true } : {}),
       },
     },
     {
       milestoneId: milestone.milestoneId,
-      outcome: "PENDING",
+      outcome: toStatus,
       boundSubmissionRef: milestone.submissionRef ?? null,
       reasonPrefix: [...opts.reason].slice(0, 200).join(""),
-      reasonSha256: await sha256Hex(opts.reason),
+      reasonSha256: reasonHash,
     },
   );
   if (!audit.ok) {
@@ -120,5 +154,10 @@ export async function forceReleaseMilestone(
       error: audit.error?.message,
     });
   }
-  return ok({ released: true, auditRecorded: audit.ok });
+  return ok({
+    released: true,
+    ...(cancel ? { cancelled: true } : {}),
+    ...(orphaned ? { orphaned: true } : {}),
+    auditRecorded: audit.ok,
+  });
 }
