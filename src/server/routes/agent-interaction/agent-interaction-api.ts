@@ -248,7 +248,9 @@ export function createAgentInteractionRoutes(
             duplicate: true,
             status: statusOfState(res.record.state),
             statusUrl,
-            sessionId,
+            // canonical stored session — not the freshly minted one
+            // (B-2 prod-verify: replay must return the record's view)
+            sessionId: res.record.sessionId ?? sessionId,
           },
           200,
         );

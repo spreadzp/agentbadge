@@ -88,6 +88,26 @@ export function createAgentInteractionAdminUi(
   const { stores } = deps;
   app.use("/admin/interactions", adminBrowserAuth);
   app.use("/admin/interactions/*", adminBrowserAuth);
+  // B-3 prod-verify: browsers auto-attach cached Basic credentials to
+  // cross-site form POSTs (no cookies needed) — require Origin to match
+  // the request host when the header is present (non-browser clients
+  // send none; same-origin forms send our own).
+  app.use("/admin/interactions/*", async (c, next) => {
+    if (c.req.method !== "POST") return next();
+    const origin = c.req.header("origin");
+    if (!origin) return next();
+    try {
+      if (new URL(origin).host === new URL(c.req.url).host) return next();
+    } catch {
+      /* malformed origin → reject below */
+    }
+    return errorResponse(
+      c,
+      403,
+      ErrorCodes.UNAUTHORIZED,
+      "cross-origin form post refused",
+    );
+  });
 
   app.get("/admin/interactions", async (c) => {
     const statusParam = c.req.query("status") ?? "PENDING_REVIEW";

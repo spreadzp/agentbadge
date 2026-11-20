@@ -121,6 +121,30 @@ describe("inbox + detail flow (e2e smoke)", () => {
     expect(ah).toContain("use x402 settle");
     expect(ah).toContain("ops_e2e");
 
+    // B-3 prod-verify: cross-site form POST (mismatched Origin) → 403,
+    // even with valid Basic creds (browsers auto-attach cached Basic).
+    const evil = await app.request(`/admin/interactions/${id}/reject`, {
+      method: "POST",
+      headers: {
+        authorization: basic,
+        "content-type": form(),
+        origin: "https://evil.example",
+      },
+      body: "reason=csrf&operator=ops_e2e",
+    });
+    expect(evil.status).toBe(403);
+    // Same-origin Origin header → allowed (real browser form submit).
+    const same = await app.request(`/admin/interactions/${id}/reject`, {
+      method: "POST",
+      headers: {
+        authorization: basic,
+        "content-type": form(),
+        origin: "http://localhost",
+      },
+      body: "reason=ok&operator=ops_e2e",
+    });
+    expect(same.status).toBe(303);
+
     const pub = await app.request(`/api/v1/agent/requests/${id}`);
     expect((await pub.json()).status).toBe("ANSWERED");
   });

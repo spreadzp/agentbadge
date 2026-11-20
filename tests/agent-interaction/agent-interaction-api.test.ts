@@ -115,6 +115,26 @@ describe("POST /api/v1/agent/interaction", () => {
     expect(bj.requestId).toBe(aj.requestId);
   });
 
+  it("dup replay returns the STORED sessionId (B-2 prod-verify)", async () => {
+    const { app } = mkApp();
+    const a = await post(
+      app,
+      { ...BODY, context: { sessionId: "orig-sess-77" } },
+      { ...KEY, ...IP("10.1.1.9") },
+    );
+    // Replay with a DIFFERENT context session — the stored row wins.
+    const b = await post(
+      app,
+      { ...BODY, context: { sessionId: "other-sess-11" } },
+      { ...KEY, ...IP("10.1.1.9") },
+    );
+    // And a replay with no context at all — no fresh mint leaks.
+    const c = await post(app, BODY, { ...KEY, ...IP("10.1.1.9") });
+    expect((await a.json()).sessionId).toBe("orig-sess-77");
+    expect((await b.json()).sessionId).toBe("orig-sess-77");
+    expect((await c.json()).sessionId).toBe("orig-sess-77");
+  });
+
   it("missing/short idempotency-key → 400", async () => {
     const { app } = mkApp();
     expect((await post(app, BODY, IP("10.1.1.3"))).status).toBe(400);
