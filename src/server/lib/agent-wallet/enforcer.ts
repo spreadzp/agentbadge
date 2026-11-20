@@ -207,6 +207,9 @@ export function createSpendEnforcer(deps: SpendEnforcerDeps): SpendEnforcer {
             amountUsd,
             kind,
             refId,
+            // 257-4: amount-holds are fingerprint-free; reason still
+            // distinguishes them from counterparty holds in alert/UI.
+            approvalReason: "amount_threshold",
           },
           deps.approvalTtlMs ?? DEFAULT_APPROVAL_TTL_MS,
         );

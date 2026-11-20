@@ -70,12 +70,34 @@ function fakeRepo() {
       Object.assign(r, { state: to, decidedBy: actor, decidedAtMs: at });
       return true;
     },
-    async consume(id: string, at: number) {
+    async consume(
+      id: string,
+      at: number,
+      _payload?: unknown,
+      expectedFingerprint?: string,
+    ) {
       calls.push(`consume:${id}`);
       const r = rows.get(id);
       if (!r || r.state !== "approved") return false;
+      if (
+        expectedFingerprint !== undefined &&
+        r.dealFingerprint !== expectedFingerprint
+      )
+        return false;
       Object.assign(r, { state: "consumed", consumedAtMs: at });
       return true;
+    },
+    async findPendingByFingerprint(w: string, fp: string) {
+      calls.push(`findFp:${fp}`);
+      const wl = w.toLowerCase();
+      return (
+        [...rows.values()].find(
+          (r) =>
+            r.wallet === wl &&
+            r.dealFingerprint === fp &&
+            r.state === "pending",
+        ) ?? null
+      );
     },
     async expire(id: string) {
       calls.push(`expire:${id}`);
@@ -179,6 +201,113 @@ describe("db approval store — mirror semantics", () => {
     expect((await store!.get(a.id))!.state).toBe("expired");
     await flush(store!);
     expect(repo.calls).toContain(`expire:${a.id}`);
+  });
+
+  /* ------------------- 257-4 fingerprint dedup ------------------- */
+
+  it("same (wallet, fp) re-park → SAME pending via mirror, no dup", async () => {
+    const w = wallet();
+    const a = (await store!.park(park(w, { dealFingerprint: "fp-A" })))!;
+    const b = (await store!.park(park(w, { dealFingerprint: "fp-A" })))!;
+    expect(b.id).toBe(a.id);
+    expect(await store!.countPending(w)).toBe(1);
+    await flush(store!);
+    expect(repo.calls.filter((c) => c.startsWith("put:"))).toHaveLength(1);
+  });
+
+  it("consume(id, fp): mismatch refuses, match consumes — fp forwarded to repo", async () => {
+    const w = wallet();
+    const a = (await store!.park(park(w, { dealFingerprint: "fp-A" })))!;
+    await store!.decide(a.id, "approve", "0xowner");
+    expect(await store!.consume(a.id, "fp-OTHER")).toBe(false);
+    expect((await store!.get(a.id))!.state).toBe("approved");
+    expect(await store!.consume(a.id, "fp-A")).toBe(true);
+    await flush(store!);
+    expect(repo.calls).toContain(`consume:${a.id}`);
+  });
+
+  it("write-behind unique conflict → mirror reconciles to the PG winner (reconcile-log)", async () => {
+    const w = wallet();
+    const winnerPayload: SpendApproval = {
+      id: "ap_winner00000001",
+      wallet: w,
+      amountUsd: 25,
+      kind: "x402",
+      refId: "r1",
+      state: "pending",
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 3_600_000,
+      dealFingerprint: "fp-C",
+    };
+    const cRepo = fakeRepo();
+    cRepo.put = async () => {
+      throw new Error(
+        "duplicate key value violates unique constraint (23505)",
+      );
+    };
+    cRepo.findPendingByFingerprint = async () =>
+      ({
+        id: winnerPayload.id,
+        wallet: w,
+        state: "pending",
+        dealFingerprint: "fp-C",
+        expiresAtMs: BigInt(winnerPayload.expiresAt),
+        payload: winnerPayload,
+      }) as never;
+    const s = createDbApprovalStore(cRepo, 5)!;
+    await s.ready();
+    const mine = await s.park(park(w, { dealFingerprint: "fp-C" }));
+    expect(mine.id).not.toBe(winnerPayload.id);
+    await s.flush();
+    // Phantom mirror record converged to PG truth.
+    expect(await s.get(mine.id)).toBeNull();
+    const w2 = await s.get(winnerPayload.id);
+    expect(w2?.state).toBe("pending");
+    expect(w2?.dealFingerprint).toBe("fp-C");
+  });
+
+  it("conflict on a dead-but-unswept winner → expire + retry lands ours", async () => {
+    const w = wallet();
+    const deadPayload: SpendApproval = {
+      id: "ap_dead0000000002",
+      wallet: w,
+      amountUsd: 25,
+      kind: "x402",
+      refId: "old",
+      state: "pending",
+      createdAt: Date.now() - 7_200_000,
+      expiresAt: Date.now() - 1_000, // overdue — dead pending
+      dealFingerprint: "fp-D",
+    };
+    const cRepo = fakeRepo();
+    let putCalls = 0;
+    cRepo.put = async (a: Record<string, unknown>) => {
+      putCalls += 1;
+      if (putCalls === 1) {
+        throw new Error(
+          "duplicate key value violates unique constraint (23505)",
+        );
+      }
+      cRepo.rows.set(a.id as string, { id: a.id, ...a });
+      return a as never;
+    };
+    cRepo.findPendingByFingerprint = async () =>
+      ({
+        id: deadPayload.id,
+        wallet: w,
+        state: "pending",
+        dealFingerprint: "fp-D",
+        expiresAtMs: BigInt(deadPayload.expiresAt),
+        payload: deadPayload,
+      }) as never;
+    const s = createDbApprovalStore(cRepo, 5)!;
+    await s.ready();
+    const mine = await s.park(park(w, { dealFingerprint: "fp-D" }));
+    await s.flush();
+    expect(cRepo.calls).toContain(`expire:${deadPayload.id}`);
+    expect(putCalls).toBe(2);
+    // Mirror record stays — it landed in PG on the retry.
+    expect((await s.get(mine.id))?.state).toBe("pending");
   });
 });
 

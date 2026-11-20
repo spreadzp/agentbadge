@@ -287,6 +287,8 @@ export async function buyPay(
     amountUsd,
     kind: "buy-gateway",
     refId,
+    // 257-4: buy-gateway holds are amount-holds (fingerprint-free).
+    approvalReason: "amount_threshold",
   };
 
   const rec = await deps.registry.get(w);

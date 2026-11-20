@@ -150,7 +150,135 @@ function storeSuite(label: string, mk: () => ApprovalStore) {
   });
 }
 
+/**
+ * SLICE-257-4 fingerprint suite — D-257-Q6 find-or-create by
+ * (wallet, dealFingerprint, pending) + fingerprint-bound consume.
+ * Runs on every backend via the same harness as storeSuite.
+ */
+const FP = "sha256:v1:aaa111";
+const FP2 = "sha256:v1:bbb222";
+
+function fpSuite(label: string, mk: () => ApprovalStore) {
+  describe(`approvals fingerprint dedup: ${label}`, () => {
+    it("same (wallet, fp) re-park → SAME pending record, no dup", async () => {
+      const s = mk();
+      const a = await s.park(input({ dealFingerprint: FP }));
+      const b = await s.park(input({ dealFingerprint: FP, refId: "other" }));
+      expect(b.id).toBe(a.id);
+      expect(b.refId).toBe("r1"); // existing record returned as-is
+      expect(await s.countPending(W)).toBe(1);
+      expect(await s.listByWallet(W)).toHaveLength(1);
+    });
+
+    it("same fp on ANOTHER wallet → separate records", async () => {
+      const s = mk();
+      const a = await s.park(input({ dealFingerprint: FP }));
+      const b = await s.park(
+        input({ wallet: W2 as `0x${string}`, dealFingerprint: FP }),
+      );
+      expect(b.id).not.toBe(a.id);
+      expect(await s.countPending(W2)).toBe(1);
+    });
+
+    it("different fp same wallet → separate records", async () => {
+      const s = mk();
+      const a = await s.park(input({ dealFingerprint: FP }));
+      const b = await s.park(input({ dealFingerprint: FP2 }));
+      expect(b.id).not.toBe(a.id);
+      expect(await s.countPending(W)).toBe(2);
+    });
+
+    it("decided pending no longer dedups — same fp parks fresh", async () => {
+      const s = mk();
+      const a = await s.park(input({ dealFingerprint: FP }));
+      await s.decide(a.id, "reject", W);
+      const b = await s.park(input({ dealFingerprint: FP }));
+      expect(b.id).not.toBe(a.id);
+    });
+
+    it("expired-but-unswept pending does NOT dedup — new park wins", async () => {
+      const s = mk();
+      const a = await s.park(
+        input({ dealFingerprint: FP, expiresAt: Date.now() - 1 }),
+      );
+      const b = await s.park(input({ dealFingerprint: FP }));
+      expect(b.id).not.toBe(a.id);
+      expect((await s.get(b.id))!.state).toBe("pending");
+    });
+
+    it("parked record keeps reason/fingerprint/meta verbatim on get+list", async () => {
+      const s = mk();
+      const meta = {
+        verdict: "WARN",
+        reasonCodes: ["young_resource"],
+        checkedAt: "2026-01-01T00:00:00Z",
+      };
+      const a = await s.park(
+        input({
+          approvalReason: "counterparty_warn",
+          dealFingerprint: FP,
+          fingerprintVersion: 1,
+          meta,
+        }),
+      );
+      const got = (await s.get(a.id))!;
+      expect(got.approvalReason).toBe("counterparty_warn");
+      expect(got.dealFingerprint).toBe(FP);
+      expect(got.fingerprintVersion).toBe(1);
+      expect(got.meta).toEqual(meta);
+      expect((await s.listByWallet(W))[0].meta).toEqual(meta);
+    });
+
+    it("consume(id, fp): mismatch refuses WITHOUT consuming; match consumes", async () => {
+      const s = mk();
+      const a = await s.park(input({ dealFingerprint: FP }));
+      await s.decide(a.id, "approve", W);
+      // wrong fingerprint → refusal, permit still approved
+      expect(await s.consume(a.id, FP2)).toBe(false);
+      expect((await s.get(a.id))!.state).toBe("approved");
+      // right fingerprint → single-use consume
+      expect(await s.consume(a.id, FP)).toBe(true);
+      expect((await s.get(a.id))!.state).toBe("consumed");
+    });
+
+    it("consume(id) w/o fingerprint stays legacy-unconditional (amount holds)", async () => {
+      const s = mk();
+      const a = await s.park(input({ dealFingerprint: FP }));
+      await s.decide(a.id, "approve", W);
+      expect(await s.consume(a.id)).toBe(true);
+    });
+
+    it("fingerprint-less records never match a provided fingerprint", async () => {
+      const s = mk();
+      const a = await s.park(input()); // amount-hold: no fp
+      await s.decide(a.id, "approve", W);
+      expect(await s.consume(a.id, FP)).toBe(false);
+      expect(await s.consume(a.id)).toBe(true);
+    });
+  });
+}
+
 storeSuite("memory", () => createMemoryApprovalStore());
+fpSuite("memory", () => createMemoryApprovalStore());
+
+describe("approvals fingerprint dedup — cap interplay (memory)", () => {
+  it("dedup hit beats the queue cap; a NEW fp at full queue still throws", async () => {
+    const s = createMemoryApprovalStore(1);
+    const a = await s.park(input({ dealFingerprint: FP }));
+    // queue is full (1/1) — re-park of the SAME deal dedups, not errors
+    expect((await s.park(input({ dealFingerprint: FP }))).id).toBe(a.id);
+    // a genuinely new hold still hits the cap
+    await expect(s.park(input({ dealFingerprint: FP2 }))).rejects.toThrow(
+      "approval_queue_full",
+    );
+  });
+});
+
+fpSuite("json", () =>
+  createJsonApprovalStore(
+    join(mkdtempSync(join(tmpdir(), "appr-fp-json-")), "approvals.json"),
+  ),
+);
 
 describe("approvals store: json round-trip", () => {
   const dir = mkdtempSync(join(tmpdir(), "appr-"));
@@ -183,6 +311,7 @@ const sqlite = createSqliteApprovalStore(
 );
 if (sqlite) {
   storeSuite("sqlite", () => sqlite);
+  fpSuite("sqlite", () => sqlite);
 }
 
 describe("queue cap via factory + sweeper", () => {

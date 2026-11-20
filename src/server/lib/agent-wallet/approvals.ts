@@ -13,25 +13,31 @@
  * approved→consumed (single-use permit); a second consume returns
  * false — sqlite enforces it with UPDATE ... WHERE state='approved'.
  *
+ * SLICE-257-4 (EPIC-257, D-257-Q6/Q9): counterparty-holds carry a
+ * dealFingerprint binding the permit to ONE deal — park() is atomic
+ * find-or-create by (wallet, dealFingerprint, pending) on every
+ * backend (ROUND-3 §3), and consume(id, expectedFingerprint) refuses
+ * a fingerprint mismatch. C1: consume is NOT payment idempotency —
+ * uncertain money movement is never retried through it.
+ *
  * Backends: json (.data/agent-approvals.json) + sqlite via bun:sqlite
- * (null under node/vitest → json fallback), memory for tests. "db"
- * (Postgres) is wired in 176-11 — same contract as SpendLedger.
+ * (null under node/vitest → json fallback), memory for tests, "db"
+ * (Postgres, 176-11) — same contract as SpendLedger.
  *
  * Queue cap: park() throws when pending count for the wallet reaches
  * maxPending (AGENT_WALLET_MAX_PENDING_APPROVALS, default 20) — the
  * error message is the wire code `approval_queue_full`.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-
 import type { SpendKind } from "./ledger";
 
-// bun:sqlite backend lives in approvals-sqlite; the backend factory
-// (incl. Postgres "db", 176-11) lives in approvals-factory — both
-// re-exported so approvals.ts stays the single import surface
-// (300-line guard).
+// Backends live beside this file; re-exported so approvals.ts stays
+// the single import surface (300-line guard).
 export { createSqliteApprovalStore } from "./approvals-sqlite";
+export {
+  createJsonApprovalStore,
+  createMemoryApprovalStore,
+} from "./approvals-memory";
 export { createApprovalStore } from "./approvals-factory";
 export type { ApprovalStoreBackend } from "./approvals-factory";
 
@@ -43,6 +49,35 @@ export type ApprovalState =
   | "rejected"
   | "expired"
   | "consumed";
+
+/**
+ * Why a parked intent exists — a separate field, NOT part of the
+ * closed SpendKind union (D-257-Q6). Values mirror the
+ * @agentbadge/circle-payments ApprovalReason contract (257-1); the
+ * server consumes the published package, so the union is re-declared
+ * here — keep it verbatim.
+ */
+export type ApprovalReason =
+  | "amount_threshold"
+  | "counterparty_warn"
+  | "counterparty_unmeasured";
+
+/**
+ * Owner-UI-safe check details (D-257-Q6) — verdict/codes/diff/age/
+ * checkedAt only; never request bodies, secrets or raw URLs.
+ */
+export interface ApprovalMeta {
+  /** vet402 wire verdict, when the hold came from a counterparty check. */
+  verdict?: string;
+  /** vet402 + our reason codes. */
+  reasonCodes?: readonly string[];
+  /** Per-field normalized diff when the terms check produced one. */
+  termsDiff?: Record<string, { verified: string; offered: string }>;
+  /** vet402 evidence age, seconds. */
+  evidenceAgeSeconds?: number;
+  /** ISO-8601 when the check ran. */
+  checkedAt?: string;
+}
 
 export interface SpendApproval {
   id: string;
@@ -57,6 +92,14 @@ export interface SpendApproval {
   decidedBy?: string;
   decidedAt?: number;
   consumedAt?: number;
+  /** Why it was parked (amount cap vs counterparty WARN/unmeasured). */
+  approvalReason?: ApprovalReason;
+  /** `sha256:v1:<hex>` binding the permit to one deal (257-1). */
+  dealFingerprint?: string;
+  /** Fingerprint format version — always 1 today. */
+  fingerprintVersion?: 1;
+  /** Owner-UI-safe check details. */
+  meta?: ApprovalMeta;
 }
 
 export interface ApprovalParkInput {
@@ -66,11 +109,25 @@ export interface ApprovalParkInput {
   refId: string;
   /** Absolute expiry epoch ms — enforcer computes from approval TTL. */
   expiresAt: number;
+  approvalReason?: ApprovalReason;
+  /**
+   * When set, park() is atomic find-or-create over
+   * (wallet, dealFingerprint, pending): a concurrent/repeated park of
+   * the same deal returns the EXISTING live pending — never a
+   * duplicate, never an error (D-257-Q6).
+   */
+  dealFingerprint?: string;
+  fingerprintVersion?: 1;
+  meta?: ApprovalMeta;
 }
 
 export interface ApprovalStore {
   name: "json" | "sqlite" | "memory" | "db";
-  /** Park a new pending intent; throws "approval_queue_full" over cap. */
+  /**
+   * Park a new pending intent; throws "approval_queue_full" over cap.
+   * With dealFingerprint: atomic find-or-create — an existing LIVE
+   * pending for the same deal is returned as-is.
+   */
   park(input: ApprovalParkInput): Promise<SpendApproval>;
   /** Lazy expiry applied: overdue pending reads as expired. */
   get(id: string): Promise<SpendApproval | null>;
@@ -84,8 +141,14 @@ export interface ApprovalStore {
     actor: string,
     expiresAt?: number,
   ): Promise<boolean>;
-  /** Atomic approved→consumed; false when already terminal/pending. */
-  consume(id: string): Promise<boolean>;
+  /**
+   * Atomic approved→consumed; false when already terminal/pending.
+   * With expectedFingerprint the transition only fires when the
+   * record's dealFingerprint matches — a mismatched or missing
+   * fingerprint returns false WITHOUT consuming (D-257-Q6: the owner
+   * approved THIS deal, not "some payment to this wallet").
+   */
+  consume(id: string, expectedFingerprint?: string): Promise<boolean>;
   /** Live pending only (expired-but-unswept excluded). */
   countPending(wallet: string): Promise<number>;
   /** Bulk pending→expired for the sweeper; returns newly expired. */
@@ -101,152 +164,73 @@ export function newApprovalId(): string {
  *  silence = denial: overdue pending is not decidable/consumable. */
 export const DEFAULT_APPROVAL_TTL_MS = 3_600_000;
 
-const isOverdue = (a: SpendApproval, now: number) =>
+export const isOverdue = (a: SpendApproval, now: number) =>
   a.state === "pending" && a.expiresAt <= now;
 
-/* ------------------------------- memory/json ------------------------------ */
+/* ------------------------------- shared views ----------------------------- */
 
 /** Lazy expiry is VIEW-ONLY on reads — an overdue pending reads as
  *  "expired" but is not persisted there; expireOverdue() (sweeper) is
  *  the sole persisting actor, which is what lets it emit exactly one
  *  approval.expired alert per record. */
-const expiredView = (a: SpendApproval, now: number): SpendApproval =>
+export const expiredView = (a: SpendApproval, now: number): SpendApproval =>
   isOverdue(a, now) ? { ...a, state: "expired" } : a;
 
-function memoryLikeStore(
-  name: "memory" | "json",
-  path: string | null,
-  maxPending: number,
-): ApprovalStore {
-  const map = new Map<string, SpendApproval>();
-  const load = (): Map<string, SpendApproval> => {
-    if (name === "memory") return map;
-    if (path && existsSync(path)) {
-      try {
-        const raw = JSON.parse(readFileSync(path, "utf8")) as {
-          entries?: Record<string, SpendApproval>;
-        };
-        for (const [id, a] of Object.entries(raw.entries ?? {})) {
-          map.set(id, a);
-        }
-      } catch {
-        /* corrupt file → empty */
-      }
+/** D-257-Q6 dedup scan — a LIVE pending for the same deal wins over
+ *  creating a second record; an expired-but-unswept one never does. */
+export const findLivePendingByFingerprint = (
+  approvals: Iterable<SpendApproval>,
+  wallet: string,
+  dealFingerprint: string,
+  now: number,
+): SpendApproval | undefined => {
+  const w = wallet.toLowerCase();
+  for (const a of approvals) {
+    if (
+      a.state === "pending" &&
+      a.expiresAt > now &&
+      a.wallet.toLowerCase() === w &&
+      a.dealFingerprint === dealFingerprint
+    ) {
+      return a;
     }
-    return map;
-  };
-  const save = (): void => {
-    if (name === "memory" || !path) return;
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(
-      path,
-      JSON.stringify({ entries: Object.fromEntries(map) }),
-    );
-  };
-  const livePending = (wallet: string, now: number): number => {
-    const w = wallet.toLowerCase();
-    return [...map.values()].filter(
-      (a) =>
-        a.state === "pending" &&
-        a.expiresAt > now &&
-        a.wallet.toLowerCase() === w,
-    ).length;
-  };
+  }
+  return undefined;
+};
 
-  return {
-    name,
-    async park(inp) {
-      load();
-      const now = Date.now();
-      if (livePending(inp.wallet, now) >= maxPending) {
-        throw new Error("approval_queue_full");
-      }
-      const rec: SpendApproval = {
-        id: newApprovalId(),
-        wallet: inp.wallet,
-        amountUsd: inp.amountUsd,
-        kind: inp.kind,
-        refId: inp.refId,
-        state: "pending",
-        createdAt: now,
-        expiresAt: inp.expiresAt,
-      };
-      map.set(rec.id, rec);
-      save();
-      return rec;
-    },
-    async get(id) {
-      load();
-      const a = map.get(id);
-      return a ? expiredView(a, Date.now()) : null;
-    },
-    async listByWallet(wallet, state) {
-      load();
-      const now = Date.now();
-      const w = wallet.toLowerCase();
-      return [...map.values()]
-        .map((a) => expiredView(a, now))
-        .filter(
-          (a) => a.wallet.toLowerCase() === w && (!state || a.state === state),
-        )
-        .sort((x, y) => y.createdAt - x.createdAt);
-    },
-    async decide(id, action, actor, expiresAt) {
-      load();
-      const now = Date.now();
-      const a = map.get(id);
-      // pending AND live (overdue-pending reads expired → not decidable)
-      if (!a || a.state !== "pending" || a.expiresAt <= now) return false;
-      map.set(id, {
-        ...a,
-        state: action === "approve" ? "approved" : "rejected",
-        decidedBy: actor,
-        decidedAt: now,
-        ...(expiresAt !== undefined ? { expiresAt } : {}),
-      });
-      save();
-      return true;
-    },
-    async consume(id) {
-      load();
-      const a = map.get(id);
-      // approved never expires — single-use transition only
-      if (!a || a.state !== "approved") return false;
-      map.set(id, { ...a, state: "consumed", consumedAt: Date.now() });
-      save();
-      return true;
-    },
-    async countPending(wallet) {
-      load();
-      return livePending(wallet, Date.now());
-    },
-    async expireOverdue(now = Date.now()) {
-      load();
-      const out: SpendApproval[] = [];
-      for (const a of map.values()) {
-        if (!isOverdue(a, now)) continue;
-        const next = { ...a, state: "expired" as const };
-        map.set(a.id, next);
-        out.push(next);
-      }
-      if (out.length) save();
-      return out;
-    },
-  };
-}
+/** Fingerprint guard for consume — undefined expected = legacy
+ *  unconditional single-use transition. */
+export const fingerprintMatches = (
+  a: SpendApproval,
+  expected: string | undefined,
+): boolean => expected === undefined || a.dealFingerprint === expected;
 
-export function createMemoryApprovalStore(
-  maxPending = 20,
-): ApprovalStore {
-  return memoryLikeStore("memory", null, maxPending);
-}
+/** Defined-only spread for optional record fields — undefined keys are
+ *  never stored, so JSON/sqlite rows stay sparse. */
+const opt = <T extends object>(v: T | false | "" | 0 | null | undefined) =>
+  v ? v : {};
 
-export function createJsonApprovalStore(
-  path = join(process.cwd(), ".data", "agent-approvals.json"),
-  maxPending = 20,
-): ApprovalStore {
-  return memoryLikeStore("json", path, maxPending);
-}
+/** Shared pending-record constructor — every backend's park() builds the
+ *  same shape with the same defined-only optional fields. */
+export const pendingFromParkInput = (
+  inp: ApprovalParkInput,
+  now: number,
+): SpendApproval => ({
+  id: newApprovalId(),
+  wallet: inp.wallet,
+  amountUsd: inp.amountUsd,
+  kind: inp.kind,
+  refId: inp.refId,
+  state: "pending",
+  createdAt: now,
+  expiresAt: inp.expiresAt,
+  ...opt(inp.approvalReason && { approvalReason: inp.approvalReason }),
+  ...opt(inp.dealFingerprint && { dealFingerprint: inp.dealFingerprint }),
+  ...opt(
+    inp.fingerprintVersion && { fingerprintVersion: inp.fingerprintVersion },
+  ),
+  ...opt(inp.meta && { meta: inp.meta }),
+});
 
 /* -------------------------------- sweeper --------------------------------- */
 

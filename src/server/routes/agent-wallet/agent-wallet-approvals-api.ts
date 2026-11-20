@@ -201,6 +201,13 @@ export function createAgentWalletApprovalsRoutes(
             amountUsd: a.amountUsd,
             kind: a.kind,
             refId: a.refId,
+            // 257-4: reason/deal context in the decided alert too (AC6).
+            ...(a.approvalReason
+              ? { approvalReason: a.approvalReason }
+              : {}),
+            ...(a.dealFingerprint
+              ? { dealFingerprint: a.dealFingerprint }
+              : {}),
             ...(body.reason ? { reason: body.reason } : {}),
           },
           p.rec.venueId,

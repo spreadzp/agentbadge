@@ -8,7 +8,11 @@
 
 import { newSpendId, type SpendKind, type SpendLedger } from "./ledger";
 import type { EnvelopeDeny } from "./envelope";
-import type { ApprovalStore } from "./approvals";
+import type {
+  ApprovalMeta,
+  ApprovalReason,
+  ApprovalStore,
+} from "./approvals";
 import { emitSpendAlert } from "./audit";
 
 export interface SpendDenyCtx {
@@ -20,6 +24,15 @@ export interface SpendDenyCtx {
   amountUsd: number;
   kind: SpendKind;
   refId: string;
+  /**
+   * 257-4: counterparty-hold fields — when present the park is a
+   * find-or-create over (wallet, dealFingerprint) and the permit binds
+   * THIS deal only (D-257-Q6). Amount-cap holds leave them undefined.
+   */
+  approvalReason?: ApprovalReason;
+  dealFingerprint?: string;
+  fingerprintVersion?: 1;
+  meta?: ApprovalMeta;
 }
 
 /**
@@ -162,6 +175,12 @@ export async function emitApprovalHold(
     kind: ctx.kind,
     refId: ctx.refId,
     expiresAt,
+    ...(ctx.approvalReason ? { approvalReason: ctx.approvalReason } : {}),
+    ...(ctx.dealFingerprint ? { dealFingerprint: ctx.dealFingerprint } : {}),
+    ...(ctx.fingerprintVersion
+      ? { fingerprintVersion: ctx.fingerprintVersion }
+      : {}),
+    ...(ctx.meta ? { meta: ctx.meta } : {}),
   });
   emitSpendAlert(
     "approval.requested",
@@ -172,6 +191,11 @@ export async function emitApprovalHold(
       kind: ctx.kind,
       refId: ctx.refId,
       expiresAt: a.expiresAt,
+      // 257-4: owner sees WHY the hold exists + the check details —
+      // safe fields only (no URLs, no secrets).
+      ...(a.approvalReason ? { approvalReason: a.approvalReason } : {}),
+      ...(a.dealFingerprint ? { dealFingerprint: a.dealFingerprint } : {}),
+      ...(a.meta ? { meta: a.meta } : {}),
     },
     ctx.venueId,
   );
@@ -182,6 +206,9 @@ export async function emitApprovalHold(
     expiresAt: a.expiresAt,
     amountUsd: ctx.amountUsd,
     kind: ctx.kind,
+    ...(a.approvalReason ? { approvalReason: a.approvalReason } : {}),
+    ...(a.dealFingerprint ? { dealFingerprint: a.dealFingerprint } : {}),
+    ...(a.meta ? { meta: a.meta } : {}),
   };
 }
 

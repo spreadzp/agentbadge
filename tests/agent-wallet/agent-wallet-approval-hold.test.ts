@@ -37,6 +37,10 @@ import {
   createMemoryApprovalStore,
   type ApprovalStore,
 } from "../../src/server/lib/agent-wallet/approvals";
+import {
+  emitApprovalHold,
+  type SpendDenyCtx,
+} from "../../src/server/lib/agent-wallet/deny";
 
 const W = "0x00000000000000000000000000000000000000b1" as `0x${string}`;
 const TTL = 3_600_000;
@@ -227,5 +231,72 @@ describe("approval hold-path (176-7)", () => {
     expect(res.status).toBe(200);
     const entries = await ledger.listByWallet(W);
     expect(entries.some((e) => e.state === "settled")).toBe(true);
+  });
+});
+
+describe("approval hold — counterparty fields (257-4)", () => {
+  const FP = "sha256:v1:ccc333";
+
+  it("emitApprovalHold forwards reason/fingerprint/meta → record + alert + body; re-hold dedups", async () => {
+    const alerts = createMemorySpendAlertStore();
+    initSpendAlerts({ store: alerts });
+    const approvals = createMemoryApprovalStore();
+    const ctx: SpendDenyCtx = {
+      wallet: W,
+      address: W,
+      amountUsd: 7,
+      kind: "x402",
+      refId: "deal-1",
+      approvalReason: "counterparty_warn",
+      dealFingerprint: FP,
+      fingerprintVersion: 1,
+      meta: {
+        verdict: "WARN",
+        reasonCodes: ["young_resource"],
+        checkedAt: "2026-01-01T00:00:00Z",
+      },
+    };
+
+    const body = await emitApprovalHold(approvals, ctx, 60_000);
+    expect(body.error).toBe("approval_required");
+    expect(body.approvalReason).toBe("counterparty_warn");
+    expect(body.dealFingerprint).toBe(FP);
+    expect(body.meta).toEqual(ctx.meta);
+
+    // parked record carries the deal binding verbatim
+    const a = (await approvals.get(body.approvalId as string))!;
+    expect(a.approvalReason).toBe("counterparty_warn");
+    expect(a.dealFingerprint).toBe(FP);
+    expect(a.fingerprintVersion).toBe(1);
+    expect(a.meta).toEqual(ctx.meta);
+
+    // alert carries the owner-visible reason + deal context
+    const evs = await alerts.list({ type: "approval.requested" });
+    expect(evs).toHaveLength(1);
+    expect(evs[0].data.approvalReason).toBe("counterparty_warn");
+    expect(evs[0].data.dealFingerprint).toBe(FP);
+    expect(evs[0].data.meta).toEqual(ctx.meta);
+
+    // retry of the same deal → same approval, not a duplicate
+    const body2 = await emitApprovalHold(approvals, ctx, 60_000);
+    expect(body2.approvalId).toBe(body.approvalId);
+    expect(await approvals.countPending(W)).toBe(1);
+  });
+
+  it("fingerprint-free ctx keeps the legacy hold shape (no new fields)", async () => {
+    const alerts = createMemorySpendAlertStore();
+    initSpendAlerts({ store: alerts });
+    const approvals = createMemoryApprovalStore();
+    const ctx: SpendDenyCtx = {
+      wallet: W,
+      address: W,
+      amountUsd: 7,
+      kind: "x402",
+      refId: "plain",
+    };
+    const body = await emitApprovalHold(approvals, ctx, 60_000);
+    expect(body.approvalReason).toBeUndefined();
+    expect(body.dealFingerprint).toBeUndefined();
+    expect(body.meta).toBeUndefined();
   });
 });
