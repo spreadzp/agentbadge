@@ -9524,6 +9524,108 @@ paths:
           description: Malformed/invalid auth headers
         "429":
           description: Tier rate limit exceeded
+  /api/admin/interactions:
+    get:
+      operationId: getApiAdminInteractions
+      summary: Operator queue — FIFO, default status PENDING_REVIEW
+      tags:
+        - Admin Interactions
+      responses:
+        "200":
+          description: Queue page + nextCursor
+  /api/admin/interactions/{id}:
+    get:
+      operationId: getApiAdminInteractionsById
+      summary: Full interaction detail — payload, classification, thread, events
+      tags:
+        - Admin Interactions
+      responses:
+        "200":
+          description: internalHistory + session thread
+        "404":
+          description: Unknown id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/admin/interactions/{id}/events:
+    get:
+      operationId: getApiAdminInteractionsByIdEvents
+      summary: Full internal event log — both visibilities (audit)
+      tags:
+        - Admin Interactions
+      responses:
+        "200":
+          description: events[] + responses[]
+        "404":
+          description: Unknown id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/admin/interactions/{id}/classify:
+    post:
+      operationId: postApiAdminInteractionsByIdClassify
+      summary: Classify an interaction — vocabulary-validated patch → IN_REVIEW
+      tags:
+        - Admin Interactions
+      responses:
+        "200":
+          description: Applied — {id,status,transitioned}
+        "400":
+          description: Vocabulary/schema violation
+        "404":
+          description: Unknown id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/admin/interactions/{id}/respond:
+    post:
+      operationId: postApiAdminInteractionsByIdRespond
+      summary: Answer an interaction — InteractionResponse + ANSWERED
+      tags:
+        - Admin Interactions
+      responses:
+        "200":
+          description: "{id,status,responseId}"
+        "400":
+          description: Empty/oversized body
+        "404":
+          description: Unknown id
+        "409":
+          description: Terminal row — replay refused, nothing written
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/admin/interactions/{id}/reject:
+    post:
+      operationId: postApiAdminInteractionsByIdReject
+      summary: Reject an interaction — REJECTED + internal event
+      tags:
+        - Admin Interactions
+      responses:
+        "200":
+          description: "{id,status}"
+        "404":
+          description: Unknown id
+        "409":
+          description: Terminal row — replay refused
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /api/surveys/open:
     get:
       operationId: getApiSurveysOpen

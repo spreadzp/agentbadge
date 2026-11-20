@@ -112,6 +112,7 @@ import { boardApiRoutes } from "./board/board-api";
 import { createBoardReadRoutes } from "./board/board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests/agent-requests-api";
 import { createAgentInteractionRoutes } from "./agent-interaction/agent-interaction-api";
+import { createAgentInteractionAdminRoutes } from "./agent-interaction/agent-interaction-admin-api";
 import { createAgentRequestOpsRoutes } from "./agent-requests/agent-requests-ops-api";
 import { createInboxOpsDigestRoutes } from "./agent-requests/agent-requests-ops-digest";
 import { createAgentSurveyRoutes } from "./agent-surveys/agent-surveys-api";
@@ -302,6 +303,14 @@ export function registerApiRoutes(app: Hono): void {
     createAgentInteractionRoutes({
       stores: requestInboxStores,
       env: getConfig().requestInbox,
+    }),
+  );
+  // 228-4: operator surface — queue + classify/respond/reject + audit
+  // log, all behind adminAuth (operator label via X-Operator-Id).
+  app.route(
+    "/",
+    createAgentInteractionAdminRoutes({
+      stores: requestInboxStores,
     }),
   );
   // 252-4: surveys → rating lane — public open/answer + ops create.

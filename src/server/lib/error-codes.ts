@@ -51,6 +51,9 @@ export const ErrorCodes = {
   REQUEST_NOT_FOUND: "REQUEST_NOT_FOUND",
   REQUEST_EXPIRED: "request_expired",
   PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+  // EPIC-228 — interaction terminal-state conflict (replay of
+  // respond/reject on a completed|failed row)
+  INTERACTION_TERMINAL: "interaction_terminal",
 
   // 409 — conflict
   AGENTCARD_DID_CONFLICT: "AGENTCARD_DID_CONFLICT",
