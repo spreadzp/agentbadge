@@ -35,9 +35,9 @@ tests/conformance/mmf/spend-track.test.ts`).
 | Status | Count | Vectors |
 |---|---|---|
 | PASS | 24 | V01, V02, V05, V06, V08, V10–V16, V18–V20, V22–V24, V26, V35 + D01, D02, D13, D17 |
-| DIVERGENCE-MODEL | 17 | V25, V28, V34, V36; D03–D12, D14–D16 |
+| DIVERGENCE-MODEL | 16 | V25, V28, V34; D03–D12, D14–D16 |
 | NOT_MAPPABLE | 8 | V03, V07, V09, V27, V30–V32; D18 |
-| DIVERGENCE-BUG | 4 | V04, V17, V29, V33 |
+| DIVERGENCE-BUG | 5 | V04, V17, V29, V33, V36 |
 | GATE_EXCEPTION | 1 | V21 |
 
 ## 3. Divergences (all recorded, none fixed here — findings → EPIC-234)

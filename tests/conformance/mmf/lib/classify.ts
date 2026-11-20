@@ -46,13 +46,12 @@ export function classifyCore(
   if (actual.threw) return "GATE_EXCEPTION";
   if (actual.allowed === undefined) return "HARNESS_ERROR"; // before label checks
   if (expected.rejected) {
-    // The input-validation dimension is absent — but the vector still
-    // produced a real verdict, so calling it unmappable hides what
-    // happened. Both outcomes are the same model gap: prod has no
-    // pre-evaluation rejection layer. allowed===true is the case that
-    // matters most (malformed input accepted); allowed===false is a
-    // rejection for our own reason, not the spec's.
-    return "DIVERGENCE-MODEL";
+    // Shedrack ruling (mandata#32, Q4): `rejected` binds any impl
+    // that admits the input into its evaluation path — an allowed
+    // spend on malformed input is a genuine non-conformance = BUG.
+    // A deny anyway is a rejection for our own reason, mechanism
+    // differs → MODEL.
+    return actual.allowed === true ? "DIVERGENCE-BUG" : "DIVERGENCE-MODEL";
   }
   const expectedCheck = expected.check ?? (expected.allowed ? "WITHIN" : "");
   if (!OUR_CHECKS.has(expectedCheck)) {

@@ -13,8 +13,8 @@
       "n": 36,
       "by_status": {
         "PASS": 20,
-        "DIVERGENCE-BUG": 4,
-        "DIVERGENCE-MODEL": 4,
+        "DIVERGENCE-BUG": 5,
+        "DIVERGENCE-MODEL": 3,
         "NOT_MAPPABLE": 7,
         "GATE_EXCEPTION": 1
       },
@@ -1358,7 +1358,7 @@
       "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
       "track": "spend",
       "vector_id": "V36",
-      "result": "DIVERGENCE-MODEL",
+      "result": "DIVERGENCE-BUG",
       "equivalence": "None",
       "production_path": "createSpendEnforcer.begin→complete",
       "expected": {
@@ -7559,6 +7559,10 @@
       {
         "vector_id": "V33",
         "note": "amount token -0 is zero: not positive, so NON_POSITIVE"
+      },
+      {
+        "vector_id": "V36",
+        "note": "unpaired surrogate in a canonical string field — malformed input rejected before evaluation; no decision, no evidence record. (The JSON escape below decodes to "
       },
       {
         "vector_id": "L05",

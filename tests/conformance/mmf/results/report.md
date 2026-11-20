@@ -11,7 +11,7 @@ implementation we wish we had.* Production was not changed to conform.
 
 | Metric | n | Status | Equivalence |
 |---|---|---|---|
-| spend-decision | 36 | PASS 20 · DIVERGENCE-BUG 4 · DIVERGENCE-MODEL 4 · NOT_MAPPABLE 7 · GATE_EXCEPTION 1 | Exact 7 · Partial 8 · None 21 |
+| spend-decision | 36 | PASS 20 · DIVERGENCE-BUG 5 · DIVERGENCE-MODEL 3 · NOT_MAPPABLE 7 · GATE_EXCEPTION 1 | Exact 7 · Partial 8 · None 21 |
 | delegation | 18 | PASS 4 · DIVERGENCE-MODEL 13 · NOT_MAPPABLE 1 | None 18 |
 | lifecycle | 29 | PASS 2 · DIVERGENCE-BUG 2 · DIVERGENCE-MODEL 17 · NOT_MAPPABLE 7 · GATE_EXCEPTION 1 | None 29 |
 | crypto-evidence | 9 | PASS 9 | None 9 |
@@ -26,6 +26,7 @@ no Ed25519 credential model nor evidence hash chain (prod-side dims None; canoni
 - **V17** — negative amount rejected
 - **V29** — decimal string amount is not accepted on the wire
 - **V33** — amount token -0 is zero: not positive, so NON_POSITIVE
+- **V36** — unpaired surrogate in a canonical string field — malformed input rejected before evaluation; no decision, no evidence record. (The JSON escape below decodes to 
 - **L05** — void releases the reserved budget but NOT the velocity slot: velocity counts authorizations issued, so authorize-and-void cycling cannot evade the rate limit
 - **L09** — a denial replays as the same denial even after the cause is gone
 

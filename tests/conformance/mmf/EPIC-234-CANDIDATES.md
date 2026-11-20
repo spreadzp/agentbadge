@@ -14,6 +14,19 @@ anywhere before reserve.
 **Fix class:** amount-validity branch (first cap check): finite,
 positive, within integer-safe range → else 402 + denied entry.
 
+## P1 — malformed input admitted to the gate (V36, spec-author ruled BUG)
+
+**Repro:** `payee` = lone UTF-16 surrogate parses fine; the spend is
+**allowed** — `expect.rejected` requires rejection before evaluation
+for any impl that admits the input into evaluation (Shedrack,
+mandata#32 Q4: "the missing validation stage is not an exemption, it
+is exactly the gap the vector exists to catch").
+**Code:** `enforcer.ts::begin` + route layer — no input-validation
+stage anywhere before cap checks.
+**Fix class:** pre-evaluation validation gate — reject malformed
+canonical fields (surrogates, invalid UTF-8, non-JSON-scalar coercions)
+→ 402 + denied entry; same branch family as the amount-validity fix.
+
 ## P1 — check-then-insert TOCTOU overshoot (own-invariant OWN-1)
 
 **Repro:** `runRaceProbe` — 8 parallel begins vs dailyUsd $100 →

@@ -77,7 +77,7 @@ describe("SLICE-255-6 consolidated report", () => {
     expect(report.summary["crypto-evidence"].n).toBe(9);
 
     const bugIds = report.findings.bugs.map((b) => b.vector_id).sort();
-    expect(bugIds).toEqual(["L05", "L09", "V04", "V17", "V29", "V33"]);
+    expect(bugIds).toEqual(["L05", "L09", "V04", "V17", "V29", "V33", "V36"]);
     expect(report.findings.gate_exceptions.sort()).toEqual(["L24", "V21"]);
     expect(report.findings.not_mappable_count).toBe(15);
   });

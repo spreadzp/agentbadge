@@ -1263,7 +1263,7 @@
     "corpus_sha256": "0ba4e805424527892f5c9c7e6cfd894669858580daba06bc8d13b989d59284a9",
     "track": "spend",
     "vector_id": "V36",
-    "result": "DIVERGENCE-MODEL",
+    "result": "DIVERGENCE-BUG",
     "equivalence": "None",
     "production_path": "createSpendEnforcer.begin→complete",
     "expected": {
