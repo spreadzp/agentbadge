@@ -15,6 +15,7 @@ export type SpendAlertType =
   | "spend.cap_denied"
   | "spend.velocity_denied"
   | "spend.kind_denied"
+  | "counterparty.denied"
   | "wallet.suspended_deny"
   | "wallet.suspended"
   | "wallet.resumed"

@@ -46,6 +46,18 @@ import {
   DEFAULT_APPROVAL_TTL_MS,
   type ApprovalStore,
 } from "../agent-wallet/approvals";
+import {
+  bindDeal,
+  counterpartyGate,
+  counterpartyModeFromEnv,
+  getCounterpartyChecker,
+} from "./counterparty-gate";
+import {
+  createCounterpartyPolicy,
+  type CounterpartyChecker,
+  type CounterpartyCheckMode,
+  type CounterpartyPolicy,
+} from "@agentbadge/circle-payments";
 import { getArcEventLogWriter } from "../fx-delta/arc-writer";
 
 const BUY_CLI_VERSION = "0.8.1";
@@ -154,6 +166,16 @@ export interface BuyGatewayOptions {
   fetcher?: BuyFetcher;
   /** Overrides deps (tests) — defaults to getBuyGate(). */
   gate?: BuyGateDeps | null;
+  /**
+   * SLICE-257-5: counterparty gate overrides (tests). mode defaults to
+   * counterpartyModeFromEnv(), checker to the env singleton, policy to
+   * the shared contract matrix.
+   */
+  counterparty?: {
+    checker?: CounterpartyChecker;
+    policy?: CounterpartyPolicy;
+    mode?: CounterpartyCheckMode;
+  };
   /**
    * SLICE-191-10 AC3: companion anchor — the gateway settle-tx is
    * facilitator-submitted so it can't carry our ERC-8021 tag; instead
@@ -322,17 +344,37 @@ export async function buyPay(
       attempts: 0,
     };
   }
+  // 257-5: derive the deal binding ONCE — the selected accepts[] offer
+  // is the terms the CLI will sign; its fingerprint keys any
+  // counterparty permit AND re-verifies it on the consume path.
+  const deal = bindDeal(quote, w);
   // 176-8: consumed owner permit bypasses the hold once.
   let consumed = false;
+  // 257-5: fingerprint-bound counterparty permit — separate flag.
+  let consumedDeal = false;
   if (deps.approvals) {
     const approved = await deps.approvals.listByWallet(w, "approved");
     const match = approved.find(
       (a) =>
         a.amountUsd === amountUsd &&
         a.kind === "buy-gateway" &&
-        a.refId === refId,
+        a.refId === refId &&
+        (a.approvalReason ?? "amount_threshold") === "amount_threshold",
     );
     if (match && (await deps.approvals.consume(match.id))) consumed = true;
+    // consume(id, fp) re-verifies THIS quote's fingerprint atomically —
+    // a changed offer produces a different fp and can never consume.
+    if (deal.fingerprint) {
+      const dealMatch = approved.find(
+        (a) => a.dealFingerprint === deal.fingerprint,
+      );
+      if (
+        dealMatch &&
+        (await deps.approvals.consume(dealMatch.id, deal.fingerprint))
+      ) {
+        consumedDeal = true;
+      }
+    }
   }
   // Order mirrors enforcer.begin: caps check → hold → reserve.
   const verdict = await checkEnvelope(deps.ledger, caps, w, amountUsd);
@@ -358,6 +400,32 @@ export async function buyPay(
       ),
       attempts: 0,
     };
+  }
+  // 257-5: counterparty check — AFTER envelope + amount-hold, BEFORE
+  // reserve/spawn. A consumed fp-permit skips it entirely (the owner
+  // approved THIS deal; consume re-verified the fingerprint).
+  const cpMode = opts.counterparty?.mode ?? counterpartyModeFromEnv();
+  if (!consumedDeal && cpMode !== "off") {
+    const gate = await counterpartyGate(
+      {
+        checker: opts.counterparty?.checker ?? getCounterpartyChecker(),
+        policy: opts.counterparty?.policy ?? createCounterpartyPolicy(),
+        ledger: deps.ledger,
+        approvals: deps.approvals,
+        approvalTtlMs: deps.approvalTtlMs ?? DEFAULT_APPROVAL_TTL_MS,
+        mode: cpMode,
+      },
+      ctx,
+      quote,
+      deal,
+    );
+    if (gate.action !== "pass") {
+      return {
+        status: gate.action === "hold" ? "approval_required" : "denied",
+        deny: gate.deny,
+        attempts: 0,
+      };
+    }
   }
   const entry: SpendEntry = await insertReserved(
     deps.ledger,
