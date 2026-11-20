@@ -34,10 +34,19 @@ export interface TieredLimiter {
   allow(tier: keyof typeof TIER_LIMITS, key: string): boolean;
 }
 
-export function createTieredInteractionLimiter(
-  opts: { now?: () => number } = {},
-): TieredLimiter {
+/**
+ * Generalized factory (SLICE-229-5): the same sliding-window
+ * limiter with caller-supplied tier limits + a named global bucket —
+ * knowledge search reuses it instead of copying the window logic.
+ */
+export function createTieredLimiter(opts: {
+  limits: Record<keyof typeof TIER_LIMITS, number>;
+  globalKey: string;
+  globalMax: number;
+  now?: () => number;
+}): TieredLimiter {
   const now = opts.now ?? (() => Date.now());
+  const limits = opts.limits;
   const hits = new Map<string, number[]>();
   let lastSweep = now();
 
@@ -69,10 +78,21 @@ export function createTieredInteractionLimiter(
 
   return {
     allow(tier, key) {
-      if (!check("g:interaction", GLOBAL_MAX)) return false;
-      return check(key, TIER_LIMITS[tier]);
+      if (!check(opts.globalKey, opts.globalMax)) return false;
+      return check(key, limits[tier]);
     },
   };
+}
+
+export function createTieredInteractionLimiter(
+  opts: { now?: () => number } = {},
+): TieredLimiter {
+  return createTieredLimiter({
+    limits: TIER_LIMITS,
+    globalKey: "g:interaction",
+    globalMax: GLOBAL_MAX,
+    now: opts.now,
+  });
 }
 
 /** Limiter bucket key for the caller — identity when known, else ip+route. */

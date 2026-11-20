@@ -10,8 +10,12 @@ import type { Hono } from "hono";
 import { getDatabase } from "../lib/database";
 import { pickKnowledgeStores } from "../lib/knowledge";
 import { createAdminKnowledgeRoutes } from "../routes/admin-knowledge-api";
+import { createAgentKnowledgeRoutes } from "../routes/agent-knowledge-api";
 
 export function wireKnowledge(app: Hono): void {
   const store = pickKnowledgeStores(getDatabase());
+  // 229-3: operator JSON — /admin/api/knowledge/* (adminAuth).
   app.route("/", createAdminKnowledgeRoutes({ store }));
+  // 229-5: public — GET /api/v1/agent/knowledge/search (PUBLISHED only).
+  app.route("/", createAgentKnowledgeRoutes({ store }));
 }
