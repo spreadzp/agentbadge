@@ -14,6 +14,7 @@ import { describeRoute } from "hono-openapi";
 
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
+import { legacyRequestInboxDeprecation } from "../../lib/contract-guards";
 import { resolveClientIp } from "../../middleware/rate-limit";
 import {
   buildFingerprint,
@@ -27,6 +28,7 @@ import {
   qaFastPathBody,
 } from "../../lib/request-inbox/qa";
 import { registerQaSearchRoute } from "./agent-requests-qa-api";
+import { registerRequestPollRoute } from "./agent-requests-poll-api";
 import {
   createSubmitLanes,
   headerSnapshot,
@@ -74,55 +76,9 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
   });
 
   // QA corpus search — registered BEFORE /:id so "qa" wins the param
-  // slot (route lives in agent-requests-qa-api.ts — file-size guard).
+  // slot (both routes live in split files — file-size guard).
   registerQaSearchRoute(app, stores.requests);
-
-  app.get(
-    "/api/requests/:id",
-    describeRoute({
-      summary: "Poll a request — 202 pending / 200 terminal / 410 expired",
-      tags: ["Requests"],
-      responses: { 200: { description: "Terminal state with response" }, 202: { description: "Still submitted/working" }, 404: { description: "Unknown request id" }, 410: { description: "Expired — must not retry" } },
-    }),
-    async (c) => {
-      const id = c.req.param("id");
-      const { record, expired } = await stores.requests.get(id);
-      if (!record) {
-        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request",);
-      }
-      if (expired) {
-        return errorResponse(
-          c,
-          410,
-          ErrorCodes.REQUEST_EXPIRED,
-          "request expired — do not retry",
-          { retryable: false },
-        );
-      }
-      // D-256-Q16: lifecycle visibility — poll hint stays honest
-      // (ops-pull, hours–days; no SLA promised).
-      const lifecycle = {
-        created_at: record.createdAtMs,
-        expires_at: record.expiresAtMs,
-      };
-      if (record.state === "submitted" || record.state === "working") {
-        c.header("Retry-After", String(RETRY_AFTER_SEC));
-        return c.json(
-          { state: record.state, ...lifecycle, retry_after: RETRY_AFTER_SEC },
-          202,
-        );
-      }
-      return c.json(
-        {
-          state: record.state,
-          response: record.response,
-          ...lifecycle,
-          retry_after: null,
-        },
-        200,
-      );
-    },
-  );
+  registerRequestPollRoute(app, stores.requests);
 
   app.post(
     "/api/requests",
@@ -132,6 +88,8 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
       responses: { 200: { description: "QA fast-path hit — instant answer" }, 202: { description: "Accepted — poll Location" }, 400: { description: "Invalid or oversized body" }, 413: { description: "Body over 512KB" }, 429: { description: "Submit rate-limit per agentId|fpHash" } },
     }),
     async (c) => {
+      // EPIC-228: superseded by POST /api/v1/agent/interaction (D-206-8).
+      legacyRequestInboxDeprecation(c);
       const contentLength = Number(c.req.header("content-length") ?? 0);
       if (contentLength > BODY_MAX) {
         return errorResponse(c, 413, ErrorCodes.PAYLOAD_TOO_LARGE, `body over ${BODY_MAX} bytes`,);

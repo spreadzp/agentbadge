@@ -1365,6 +1365,1052 @@ paths:
           in: path
           name: id
           required: true
+  /api/settlement/plans:
+    post:
+      operationId: postApiSettlementPlans
+      tags:
+        - Settlement
+      summary: Create a milestone settlement plan
+      description: Participant wallet (buyer or provider) declares the milestone
+        structure for an agreement. sum(milestones.amountUsd) must equal
+        totalUsd; optional per-milestone leg templates split the payout. One
+        plan per agreementRef — a replay returns duplicate:true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agreementRef:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                buyerWallet:
+                  type: string
+                  pattern: ^0x[0-9a-fA-F]{40}$
+                providerWallet:
+                  type: string
+                  pattern: ^0x[0-9a-fA-F]{40}$
+                currency:
+                  type: string
+                  minLength: 1
+                  maxLength: 16
+                totalUsd:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                milestones:
+                  minItems: 1
+                  maxItems: 64
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      milestoneId:
+                        type: string
+                        minLength: 1
+                        maxLength: 128
+                      title:
+                        type: string
+                        minLength: 1
+                        maxLength: 256
+                      amountUsd:
+                        type: string
+                        minLength: 1
+                        maxLength: 32
+                      acceptanceCriteria:
+                        type: string
+                        maxLength: 4000
+                      dueAtMs:
+                        type: integer
+                        exclusiveMinimum: 0
+                        maximum: 9007199254740991
+                      releasePolicy:
+                        type: string
+                        enum:
+                          - BUYER_ACCEPT
+                          - EVALUATOR_VERDICT
+                      legs:
+                        maxItems: 32
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            payee:
+                              type: string
+                              pattern: ^0x[0-9a-fA-F]{40}$
+                            amountUsdc:
+                              type: string
+                              minLength: 1
+                              maxLength: 32
+                            role:
+                              type: string
+                              enum:
+                                - PROVIDER
+                                - COLLABORATOR
+                                - PLATFORM_FEE
+                          required:
+                            - payee
+                            - amountUsdc
+                            - role
+                    required:
+                      - milestoneId
+                      - title
+                      - amountUsd
+              required:
+                - agreementRef
+                - buyerWallet
+                - providerWallet
+                - totalUsd
+                - milestones
+      responses:
+        "200":
+          description: Plan already exists (duplicate:true)
+        "201":
+          description: Plan created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  milestones:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                  duplicate:
+                    type: boolean
+                required:
+                  - plan
+                  - milestones
+                  - duplicate
+                additionalProperties: {}
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+  /api/settlement/agreements/{agreementId}:
+    get:
+      operationId: getApiSettlementAgreementsByAgreementId
+      tags:
+        - Settlement
+      summary: Agreement settlement view
+      description: Plan + milestones + payout intents + disputes for an agreement.
+        Participant-only — unsigned or non-party callers get 404
+        (existence-oracle, same as commerce DRAFT).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  milestones:
+                    type: array
+                    items:
+                      type: object
+                      propertyNames:
+                        type: string
+                      additionalProperties: {}
+                required:
+                  - plan
+                  - milestones
+                additionalProperties: {}
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: agreementId
+          required: true
+  /api/settlement/milestones/{id}/dispute:
+    post:
+      operationId: postApiSettlementMilestonesByIdDispute
+      tags:
+        - Settlement
+      summary: Raise a milestone dispute
+      description: Participant-only. Freezes the milestone, its payout intent and
+        legs, and marks the plan DISPUTED until an operator resolves. A second
+        OPEN dispute on the same subject returns duplicate:true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                evidenceRefs:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 1000
+              required:
+                - reason
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dispute:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  duplicate:
+                    type: boolean
+                required:
+                  - dispute
+                  - duplicate
+                additionalProperties: {}
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/settlement/receipts/{agreementId}:
+    get:
+      operationId: getApiSettlementReceiptsByAgreementId
+      tags:
+        - Settlement
+      summary: Settlement receipt projection
+      description: Deterministic receipt over settled state — ordered milestones with
+        intents/legs (payee, amount, txHash) plus the memo anchor row once
+        anchored. `artifact` is the signed EIP-712 receipt when a signer is
+        wired and ≥1 leg completed (else null). Participant-only.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agreementRef:
+                    type: string
+                required:
+                  - agreementRef
+                additionalProperties: {}
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: agreementId
+          required: true
+  /api/settlement/receipts/{agreementId}/anchor:
+    post:
+      operationId: postApiSettlementReceiptsByAgreementIdAnchor
+      tags:
+        - Settlement
+      summary: Request a memo anchor for the settlement receipt
+      description: Gated to fully-terminal plans (every milestone RELEASED/CANCELLED,
+        ≥1 RELEASED). Creates the durable PENDING anchor row — the outbox drain
+        ships memo(target, 0x, memoIdFor('settlement', ref), receiptHash) on Arc
+        and marks it ANCHORED with the real txHash. Idempotent per agreement; a
+        replay returns duplicate:true.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  anchor:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  duplicate:
+                    type: boolean
+                required:
+                  - anchor
+                  - duplicate
+                additionalProperties: {}
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "401":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "403":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+        "503":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Human-readable error message
+                  code:
+                    type: string
+                    description: Machine-readable error code (stable constant)
+                  retryable:
+                    description: Whether the request can be retried
+                    type: boolean
+                  hint:
+                    description: Suggested action for the caller
+                    type: string
+                required:
+                  - error
+                  - code
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: agreementId
+          required: true
+  /admin/settlement/intents/{id}/mark-paid:
+    post:
+      operationId: postAdminSettlementIntentsByIdMarkPaid
+      tags:
+        - Admin Settlement
+      summary: Mark a payout leg paid with a real txHash
+      description: Operator attests the transfer for one leg (legId required when the
+        intent has multiple OPEN legs). txHash is format-validated, replay-bound
+        per (network, hash) and bound set-once; when a VerifyPayoutTx adapter is
+        wired it must pass. Response carries auditRecorded for the append-only
+        AdminAction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operator:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                txHash:
+                  type: string
+                legId:
+                  type: string
+                  maxLength: 128
+              required:
+                - operator
+                - txHash
+      responses:
+        "200":
+          description: Leg completed + AdminAction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auditRecorded:
+                    type: boolean
+                required:
+                  - auditRecorded
+                additionalProperties: {}
+        "400":
+          description: Missing operator / bad txHash
+        "401":
+          description: Unauthorized
+        "404":
+          description: Intent/leg not found
+        "409":
+          description: Invalid state / txHash replay
+        "503":
+          description: Verifier unavailable
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/settlement/disputes/{id}/resolve:
+    post:
+      operationId: postAdminSettlementDisputesByIdResolve
+      tags:
+        - Admin Settlement
+      summary: Resolve an open settlement dispute
+      description: "Operator arbitration: FOR_PROVIDER restores the frozen work to
+        payable, FOR_BUYER cancels it, SPLIT re-legs the intent with a new split
+        that must sum to the milestone amount. Response carries auditRecorded
+        for the append-only AdminAction."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operator:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                resolution:
+                  type: string
+                  enum:
+                    - FOR_BUYER
+                    - FOR_PROVIDER
+                    - SPLIT
+                splitLegs:
+                  maxItems: 32
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      payee:
+                        type: string
+                        pattern: ^0x[0-9a-fA-F]{40}$
+                      amountUsdc:
+                        type: string
+                        minLength: 1
+                        maxLength: 32
+                      role:
+                        type: string
+                        enum:
+                          - PROVIDER
+                          - COLLABORATOR
+                          - PLATFORM_FEE
+                    required:
+                      - payee
+                      - amountUsdc
+                      - role
+                note:
+                  type: string
+                  maxLength: 4000
+                resolverRef:
+                  type: string
+                  maxLength: 128
+              required:
+                - operator
+                - resolution
+      responses:
+        "200":
+          description: Dispute resolved + AdminAction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auditRecorded:
+                    type: boolean
+                required:
+                  - auditRecorded
+                additionalProperties: {}
+        "400":
+          description: Missing operator / bad resolution
+        "401":
+          description: Unauthorized
+        "404":
+          description: Dispute not found
+        "409":
+          description: Invalid state
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/settlement/milestones/{id}/approve:
+    post:
+      operationId: postAdminSettlementMilestonesByIdApprove
+      tags:
+        - Admin Settlement
+      summary: Force-approve a READY milestone (operator recovery)
+      description: Transitions a READY milestone to APPROVED and opens its payout
+        intent when the buyer path cannot (stranded post-commit state,
+        EVALUATOR_VERDICT legacy plan). Idempotent replay only on an `ops_`
+        epoch — a commerce (`appr_`) or resolver (`rsv_`) approval refuses (use
+        force-release or the dispute path); an OPEN dispute on the milestone
+        409s. Requires a reason; writes an AdminAction and the event records
+        admin:true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operator:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                submissionRef:
+                  type: string
+                  maxLength: 128
+              required:
+                - operator
+                - reason
+      responses:
+        "200":
+          description: Milestone approved + payout intent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  intentId:
+                    type: string
+                required:
+                  - intentId
+                additionalProperties: {}
+        "400":
+          description: Missing operator / reason
+        "401":
+          description: Unauthorized
+        "404":
+          description: Milestone not found
+        "409":
+          description: Invalid state / open dispute
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/settlement/milestones/{id}/reopen:
+    post:
+      operationId: postAdminSettlementMilestonesByIdReopen
+      tags:
+        - Admin Settlement
+      summary: Reopen a stuck READY milestone (operator recovery)
+      description: Releases a READY milestone back to PENDING and clears its
+        submissionRef — the safe exit when a reject-verdict release failed or
+        raced (R4-M5 residual). Under a CLOSED commerce agreement the cleanup
+        lands CANCELLED instead (`cancelled:true`) — PENDING would orphan.
+        Idempotent on non-READY (reopened:false when the row already moved);
+        requires a reason; writes an AdminAction only when the transition
+        landed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operator:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+              required:
+                - operator
+                - reason
+      responses:
+        "200":
+          description: Milestone released to PENDING + AdminAction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reopened:
+                    type: boolean
+                required:
+                  - reopened
+                additionalProperties: {}
+        "400":
+          description: Missing operator / reason
+        "401":
+          description: Unauthorized
+        "404":
+          description: Milestone not found
+        "409":
+          description: Live OPEN/FROZEN payout intent / verdict in flight /
+            would_cancel_accepted_work (COMPLETED agreement + ACCEPTED bound
+            submission — the owed entitlement's exit is force-approve, then
+            release with confirmCancel)
+        "503":
+          description: Cannot verify agreement/submission state
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/settlement/milestones/{id}/release:
+    post:
+      operationId: postAdminSettlementMilestonesByIdRelease
+      tags:
+        - Admin Settlement
+      summary: Force-release an APPROVED milestone (operator ruling undo)
+      description: Releases an APPROVED milestone back to PENDING and cancels its OPEN
+        payout intent — the audited undo for a resolver-restored or force-minted
+        approval a buyer verdict cannot touch; it is also the operator's
+        deliberate un-accept of a commerce (`appr_`) approval while the
+        agreement is live. Under a terminal agreement the cleanup lands
+        CANCELLED instead — a PENDING row would orphan; CANCELLED agreements
+        auto-cancel, COMPLETED requires `confirmCancel:true` (an APPROVED row
+        there is usually an owed payout — 409 would_cancel_approved_payout
+        without it). `acknowledgeInFlight:true` overrides a dormant in-flight
+        gate — a verdict observed ACCEPTED immediately after the release reports
+        `verdictLanded:true` (point-in-time sample — a verdict committing after
+        the read is a documented residual). 409 when a leg already paid, the
+        intent is dispute-frozen, the milestone is not APPROVED, the approval
+        epoch moved on, or an owned verdict is in flight. A release that orphans
+        in the last race window reports `orphaned:true`. Requires a reason;
+        writes an AdminAction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operator:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                confirmCancel:
+                  type: boolean
+                acknowledgeInFlight:
+                  type: boolean
+              required:
+                - operator
+                - reason
+      responses:
+        "200":
+          description: Milestone released to PENDING + AdminAction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  released:
+                    type: boolean
+                required:
+                  - released
+                additionalProperties: {}
+        "400":
+          description: Missing operator / reason
+        "401":
+          description: Unauthorized
+        "404":
+          description: Milestone not found
+        "409":
+          description: Not APPROVED / paid leg / frozen intent / agreement not ACTIVE /
+            verdict in flight
+        "503":
+          description: Cannot verify agreement/submission state
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
   /passport/{tokenId}/{serial}/upgrade:
     post:
       operationId: postPassportByTokenIdBySerialUpgrade
@@ -2244,6 +3290,10 @@ paths:
                   anyOf:
                     - type: string
                     - type: "null"
+                maxProviders:
+                  type: integer
+                  minimum: 1
+                  maximum: 32
                 payload: {}
               required:
                 - title
@@ -3334,6 +4384,12 @@ paths:
                   type: array
                   items:
                     type: string
+                milestoneRef:
+                  anyOf:
+                    - type: string
+                      minLength: 1
+                      maxLength: 128
+                    - type: "null"
                 payload: {}
               required:
                 - summary
@@ -8272,7 +9328,7 @@ paths:
   /api/requests/qa:
     get:
       operationId: getApiRequestsQa
-      summary: Search the request-inbox QA corpus (D-252-Q7)
+      summary: Search the request-inbox QA corpus (D-252-Q7, D-256-Q14)
       tags:
         - Requests
       responses:
@@ -8388,6 +9444,86 @@ paths:
           in: path
           name: id
           required: true
+  /api/ops/requests/qa/{id}/retract:
+    post:
+      operationId: postApiOpsRequestsQaByIdRetract
+      summary: Soft-retract a QA pair — audit kept, idempotent (D-256-Q14)
+      tags:
+        - Ops
+      responses:
+        "200":
+          description: Pair retracted (repeat calls return the same record)
+        "400":
+          description: Missing reason
+        "401":
+          description: Admin key required
+        "404":
+          description: Unknown qa id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/agent/requests/{id}:
+    get:
+      operationId: getApiV1AgentRequestsById
+      summary: Poll an interaction request — public projection
+      tags:
+        - Agent Interaction
+      responses:
+        "200":
+          description: Projection {id,status,response?,timestamps}
+        "404":
+          description: Unknown id or other-tenant request
+        "410":
+          description: Expired — do not retry
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/agent/requests/{id}/status:
+    get:
+      operationId: getApiV1AgentRequestsByIdStatus
+      summary: Cheap status-only poll for an interaction request
+      tags:
+        - Agent Interaction
+      responses:
+        "200":
+          description: "{status}"
+        "404":
+          description: Unknown id or other-tenant request
+        "410":
+          description: Expired
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/agent/interaction:
+    post:
+      operationId: postApiV1AgentInteraction
+      summary: Submit an agent interaction request (async, human-answered)
+      description: "Universal entry for agent→human interactions. Idempotent via the
+        idempotency-key header. Response: 202
+        {requestId,status,statusUrl,sessionId}; a replayed key returns 200
+        {requestId,duplicate:true}."
+      tags:
+        - Agent Interaction
+      responses:
+        "200":
+          description: Idempotent replay — same requestId, duplicate:true
+        "202":
+          description: Accepted for review
+        "400":
+          description: Schema/caps violation or missing idempotency-key
+        "401":
+          description: Malformed/invalid auth headers
+        "429":
+          description: Tier rate limit exceeded
   /api/surveys/open:
     get:
       operationId: getApiSurveysOpen

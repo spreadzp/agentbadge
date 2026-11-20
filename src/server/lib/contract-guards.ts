@@ -242,3 +242,19 @@ export function legacyEndpointDeprecation(
     await next();
   };
 }
+
+/**
+ * EPIC-228 (D-206-8 pattern): mark the legacy `/api/requests` submit +
+ * poll handlers deprecated in favour of `/api/v1/agent/*`. Applied
+ * INSIDE the two handlers rather than as path middleware — the
+ * `/api/requests/:id` param pattern would otherwise also catch the
+ * still-supported `/api/requests/qa` corpus search.
+ */
+export function legacyRequestInboxDeprecation(c: Context): void {
+  c.header("Deprecation", "true");
+  c.header("Sunset", LEGACY_SUNSET);
+  c.header(
+    "Link",
+    '</api/v1/agent/interaction>; rel="successor-version"',
+  );
+}

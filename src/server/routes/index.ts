@@ -111,6 +111,7 @@ import { bountyApiRoutes } from "./bounty/bounty-api";
 import { boardApiRoutes } from "./board/board-api";
 import { createBoardReadRoutes } from "./board/board-api-read";
 import { createAgentRequestRoutes } from "./agent-requests/agent-requests-api";
+import { createAgentInteractionRoutes } from "./agent-interaction/agent-interaction-api";
 import { createAgentRequestOpsRoutes } from "./agent-requests/agent-requests-ops-api";
 import { createInboxOpsDigestRoutes } from "./agent-requests/agent-requests-ops-digest";
 import { createAgentSurveyRoutes } from "./agent-surveys/agent-surveys-api";
@@ -291,6 +292,16 @@ export function registerApiRoutes(app: Hono): void {
     "/",
     createAgentRequestOpsRoutes({
       stores: requestInboxStores,
+    }),
+  );
+  // 228-3: agent interaction public API — POST /api/v1/agent/interaction
+  // + GET /api/v1/agent/requests/:id[/status]. Same shared store set —
+  // interactions live on the legacy inbox rows (D-228-10).
+  app.route(
+    "/",
+    createAgentInteractionRoutes({
+      stores: requestInboxStores,
+      env: getConfig().requestInbox,
     }),
   );
   // 252-4: surveys → rating lane — public open/answer + ops create.
