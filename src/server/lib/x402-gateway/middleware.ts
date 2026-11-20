@@ -12,7 +12,13 @@ import type { Context, MiddlewareHandler } from "hono";
 import type { ResourceRegistry } from "@agentbadge/payments";
 import { logger } from "@agentbadge/passport/logger";
 
+import type { X402FulfillmentOutcome } from "@agentbadge/econ-events";
+
 import { errorResponse } from "../error-response.js";
+import {
+  emitX402Fulfillment,
+  type FulfillmentLeg,
+} from "../econ-ledger/x402-fulfillment.js";
 import {
   X402_PAYMENT_KEY,
   paymentRequiredHeader,
@@ -42,12 +48,39 @@ export interface X402GatewayMiddlewareConfig {
     result: import("../x402-settle-seam.js").SettleSeamResult,
     resource: import("@agentbadge/payments").PaidResource,
   ) => void | Promise<void>;
+  /**
+   * SLICE-257-6: post-handler evidence emitter. Runs after the paid
+   * handler settles its outcome; fire-and-forget — must never change
+   * the response. Injectable for tests; defaults to the econ-ledger
+   * `x402_fulfillment` emitter.
+   */
+  emitFulfillment?: (leg: FulfillmentLeg) => void;
+}
+
+/**
+ * Post-handler outcome → honest outcome term. A thrown handler is
+ * direct evidence of server-side failure; a real abort signal means
+ * the stream broke; 2xx is the only status that proves completion —
+ * anything else without a reliable signal is `unknown`, never guessed.
+ */
+export function classifyFulfillmentOutcome(
+  c: Context,
+  handlerThrew: boolean,
+): { outcome: X402FulfillmentOutcome; httpStatus?: number } {
+  if (handlerThrew) return { outcome: "upstream_error" };
+  if (c.req.raw.signal.aborted) return { outcome: "stream_aborted" };
+  const httpStatus = c.res.status;
+  if (httpStatus >= 200 && httpStatus < 300)
+    return { outcome: "handler_completed", httpStatus };
+  if (httpStatus >= 500) return { outcome: "upstream_error", httpStatus };
+  return { outcome: "unknown", httpStatus };
 }
 
 export function x402GatewayMiddleware(
   config: X402GatewayMiddlewareConfig,
 ): MiddlewareHandler {
   const { service, registry } = config;
+  const emitFulfillment = config.emitFulfillment ?? emitX402Fulfillment;
 
   return async (c: Context, next) => {
     // Hono serves HEAD via the GET handler — gate it under the GET
@@ -114,12 +147,14 @@ export function x402GatewayMiddleware(
     // C-1: money already moved — post-settle accounting MUST NOT take the
     // resource down. On failure we still serve + emit PAYMENT-RESPONSE and
     // log a reconciliation record; the UsageRecord is the only lost data.
+    const requestId = service.requestIdFor(c, result);
+    let usage: Awaited<ReturnType<X402PaymentService["recordUsage"]>> = null;
     try {
       const agentId = await service.resolveAgentId(result.payer);
-      await service.recordUsage({
+      usage = await service.recordUsage({
         settleResult: result,
         resource,
-        requestId: service.requestIdFor(c, result),
+        requestId,
         agentId,
         payload: {
           clientRequestId: c.req.header("x-request-id") ?? null,
@@ -141,6 +176,34 @@ export function x402GatewayMiddleware(
       "PAYMENT-RESPONSE",
       paymentResponseHeader(settleResponseFrom(result)),
     );
-    await next();
+
+    // SLICE-257-6: the handler's own outcome is the fulfillment fact.
+    // Emit AFTER next() — never before, and never let it alter what the
+    // client gets back (a thrown handler is rethrown after emitting).
+    let handlerThrew = false;
+    let handlerError: unknown;
+    try {
+      await next();
+    } catch (err) {
+      handlerThrew = true;
+      handlerError = err;
+    }
+    if (usage) {
+      const { outcome, httpStatus } = classifyFulfillmentOutcome(
+        c,
+        handlerThrew,
+      );
+      // Fire-and-forget is a contract on the seam, not just the default
+      // impl — a throwing emitter must never alter the paid response.
+      try {
+        emitFulfillment({ usage, outcome, httpStatus });
+      } catch (err) {
+        logger.warn("x402-gateway: fulfillment emit threw (ignored)", {
+          usageRecordId: usage.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    if (handlerThrew) throw handlerError;
   };
 }
