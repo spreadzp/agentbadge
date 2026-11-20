@@ -30,8 +30,10 @@ import {
 } from "@agentbadge/database";
 import { getDatabase } from "../../lib/database";
 import { createRateLimiter } from "../../middleware/rate-limit";
+import { logger } from "@agentbadge/passport/logger";
 import {
   ADDRESS_RE,
+  EVENT_ID_RE,
   emptyEdges,
   emptyPage,
   errJson,
@@ -129,7 +131,8 @@ export function createEconLedgerRoutes(deps: EconLedgerApiDeps = {}): Hono {
         });
         return c.json(toPage(rows, p.limit));
       } catch (e) {
-        return errJson(c, 500, "unavailable", `ledger read failed: ${String(e)}`);
+        logger.error("ledger agents/events read failed", { error: String(e) });
+        return errJson(c, 500, "unavailable", "ledger read failed");
       }
     },
   );
@@ -176,7 +179,8 @@ export function createEconLedgerRoutes(deps: EconLedgerApiDeps = {}): Hono {
         });
         return c.json({ edges: toUndirected(rows) });
       } catch (e) {
-        return errJson(c, 500, "unavailable", `edge read failed: ${String(e)}`);
+        logger.error("ledger edges read failed", { error: String(e) });
+        return errJson(c, 500, "unavailable", "edge read failed");
       }
     },
   );
@@ -218,7 +222,8 @@ export function createEconLedgerRoutes(deps: EconLedgerApiDeps = {}): Hono {
         );
         return c.json(toPage(rows, p.limit));
       } catch (e) {
-        return errJson(c, 500, "unavailable", `ledger read failed: ${String(e)}`);
+        logger.error("ledger pairs read failed", { error: String(e) });
+        return errJson(c, 500, "unavailable", "ledger read failed");
       }
     },
   );
@@ -242,6 +247,9 @@ export function createEconLedgerRoutes(deps: EconLedgerApiDeps = {}): Hono {
       const rl = await ledgerLimiter(c, async () => {});
       if (rl) return rl;
       const id = c.req.param("id");
+      if (!EVENT_ID_RE.test(id)) {
+        return errJson(c, 400, "invalid_id", "expected event id or idempotency key");
+      }
       const db = getDb();
       if (db.db === null) {
         return errJson(c, 404, "no_data", "ledger disabled (DATABASE_ENABLED=false)");
@@ -253,7 +261,8 @@ export function createEconLedgerRoutes(deps: EconLedgerApiDeps = {}): Hono {
         if (!hit) return errJson(c, 404, "not_found", `event ${id} not found`);
         return c.json(hit.event);
       } catch (e) {
-        return errJson(c, 500, "unavailable", `ledger read failed: ${String(e)}`);
+        logger.error("ledger event read failed", { error: String(e) });
+        return errJson(c, 500, "unavailable", "ledger read failed");
       }
     },
   );

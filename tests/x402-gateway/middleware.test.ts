@@ -130,6 +130,25 @@ describe("x402GatewayMiddleware", () => {
     expect(res.status).toBe(402);
   });
 
+  it("seam throw (facilitator flake) → 503 typed, never 402/500 (audit F-2)", async () => {
+    const res = await mkApp(
+      mkService({
+        verifyAndSettle: async () => {
+          throw new Error("facilitator HTTP unreachable");
+        },
+      }),
+    ).request("http://x/api/v1/passport/request", {
+      method: "POST",
+      headers: { "payment-signature": "sig" },
+    });
+    // Uncertain money movement must not read as "pay again" (402).
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { code?: string; error?: string };
+    expect(body.code).toBe("INTERNAL_ERROR");
+    expect(body.error).not.toContain("facilitator HTTP unreachable");
+    expect(res.headers.get("PAYMENT-REQUIRED")).toBeNull();
+  });
+
   it("HEAD on a GET-gated resource → 402 (audit H-1)", async () => {
     // Hono serves HEAD via the GET handler; the gate must gate it too.
     const res = await mkApp(mkService()).request(

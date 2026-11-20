@@ -6,6 +6,9 @@
 import type { Context } from "hono";
 
 export const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+/** Event id / idempotency key charset — alnum + key separators only;
+ * NUL/control/space/percent → typed 400 before the DB layer (audit F-1). */
+export const EVENT_ID_RE = /^[A-Za-z0-9_.:~@+=-]{1,256}$/;
 const CURSOR_RE = /^\d+$/;
 export const DEFAULT_LIMIT = 50;
 export const MAX_LIMIT = 200;

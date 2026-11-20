@@ -20,6 +20,7 @@ import { createRateLimiter } from "../../middleware/rate-limit";
 import { assessExposure } from "../../lib/econ-ledger/exposure";
 import { assessAddress, type RiskVerdict } from "../../lib/forensics/risk-service";
 import { ADDRESS_RE, errJson } from "../../lib/econ-ledger/api-utils";
+import { logger } from "@agentbadge/passport/logger";
 
 const ledgerLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 
@@ -97,12 +98,8 @@ export function createEconLedgerExposureRoutes(
         );
         return c.json(advice);
       } catch (e) {
-        return errJson(
-          c,
-          500,
-          "unavailable",
-          `exposure read failed: ${String(e)}`,
-        );
+        logger.error("ledger exposure read failed", { error: String(e) });
+        return errJson(c, 500, "unavailable", "exposure read failed");
       }
     },
   );

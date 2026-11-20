@@ -149,7 +149,25 @@ export function x402GatewayMiddleware(
       );
     }
 
-    const result = await service.verifyAndSettle(c, resource, amountAtomic);
+    // Audit F-2 (257-R2): verifyAndSettle throws on facilitator/RPC
+    // flake — an uncaught throw became a bare 500. Money movement is
+    // uncertain at that point, so answer 503 (retryable server state),
+    // never 402 (which would tell the client to just pay again).
+    let result: Awaited<ReturnType<typeof service.verifyAndSettle>>;
+    try {
+      result = await service.verifyAndSettle(c, resource, amountAtomic);
+    } catch (err) {
+      logger.error("x402-gateway: verifyAndSettle threw — payment state uncertain", {
+        resource: resource.id,
+        error: String(err),
+      });
+      return errorResponse(
+        c,
+        503,
+        "INTERNAL_ERROR",
+        "payment verification unavailable — retry later",
+      );
+    }
     if (!result) {
       return errorResponse(
         c,

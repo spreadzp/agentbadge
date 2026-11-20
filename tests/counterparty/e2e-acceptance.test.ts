@@ -353,7 +353,7 @@ describe("257-7 E2E acceptance — buyer contour (mock vet402)", () => {
   it("shadow → enforce: shadow logs the same decision but pays", async () => {
     const info = logger.info;
     const seen: unknown[] = [];
-    logger.info = (m: unknown, ctx: unknown) => {
+    logger.info = (m: string, ctx: unknown) => {
       if (m === "counterparty check") seen.push(ctx);
       return info.call(logger, m, ctx as never);
     };

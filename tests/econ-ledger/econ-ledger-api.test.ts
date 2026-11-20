@@ -5,7 +5,7 @@
  * SDK LedgerClient relies on it (AC: conformance SDK↔API).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import {
   buildEconomicEvent,
@@ -318,5 +318,32 @@ describe("GET /api/ledger/pairs/:a/:b + /events/:id", () => {
     expect(missing.status).toBe(404);
     const body = await missing.json() as { error: { code: string } };
     expect(body.error.code).toBe("not_found");
+  });
+
+  it("control-char id → 400 invalid_id before the DB (audit F-1)", async () => {
+    const db = await makeDb([]);
+    const spy = vi.spyOn(db.econLedger, "getById");
+    const res = await appFor(db).request(
+      "/api/ledger/events/ev:x402:probe%00kill~fulfill:1",
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("invalid_id");
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("db throw → 500 typed WITHOUT raw error leak (audit F-1)", async () => {
+    const db = await makeDb([]);
+    vi.spyOn(db.econLedger, "getById").mockRejectedValue(
+      new Error('SqlQueryError: invalid byte sequence for encoding "UTF8": 0x00'),
+    );
+    const res = await appFor(db).request(
+      "/api/ledger/events/ev:x402:probe~fulfill:1",
+    );
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("unavailable");
+    expect(body.error.message).not.toContain("SqlQueryError");
+    expect(body.error.message).not.toContain("0x00");
   });
 });
