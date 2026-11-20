@@ -9626,6 +9626,321 @@ paths:
           in: path
           name: id
           required: true
+  /admin/api/knowledge/items:
+    get:
+      operationId: getAdminApiKnowledgeItems
+      summary: Knowledge items list — operator console backing
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: Filtered item list
+    post:
+      operationId: postAdminApiKnowledgeItems
+      summary: Create a knowledge item (DRAFT + version 1)
+      tags:
+        - Admin Knowledge
+      responses:
+        "201":
+          description: Created item + first version
+        "400":
+          description: Validation/idempotency-key failure
+        "409":
+          description: Slug taken
+  /admin/api/knowledge/items/{id}:
+    get:
+      operationId: getAdminApiKnowledgeItemsById
+      summary: Knowledge item detail — versions + status audit
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: Item + versions + status events
+        "404":
+          description: Unknown id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/items/{id}/transition:
+    post:
+      operationId: postAdminApiKnowledgeItemsByIdTransition
+      summary: Transition a knowledge item through the approval machine
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: Applied — {item,event}
+        "400":
+          description: Validation/idempotency-key failure
+        "403":
+          description: Agent actor attempted verify/publish
+        "404":
+          description: Unknown id
+        "409":
+          description: INVALID_TRANSITION
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/items/{id}/transitions:
+    get:
+      operationId: getAdminApiKnowledgeItemsByIdTransitions
+      summary: Legal transitions for an item's current status
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{from, allowed[]}"
+        "404":
+          description: Unknown id
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/capabilities:
+    get:
+      operationId: getAdminApiKnowledgeCapabilities
+      summary: List capability registry entries
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: Filtered capability list
+    post:
+      operationId: postAdminApiKnowledgeCapabilities
+      summary: Register a MANUAL capability (verified:false)
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: Upserted — {capability, created}
+        "400":
+          description: Validation/idempotency-key failure
+  /admin/api/knowledge/items/{id}/capabilities:
+    post:
+      operationId: postAdminApiKnowledgeItemsByIdCapabilities
+      summary: Link a capability to an item
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{created}"
+        "400":
+          description: Validation/idempotency-key failure
+        "404":
+          description: Unknown item/capability
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/items/{id}/capabilities/unlink:
+    post:
+      operationId: postAdminApiKnowledgeItemsByIdCapabilitiesUnlink
+      summary: Unlink a capability from an item
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{removed}"
+        "400":
+          description: Validation/idempotency-key failure
+        "404":
+          description: Unknown item/capability
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/relations:
+    post:
+      operationId: postAdminApiKnowledgeRelations
+      summary: Add a typed relation edge (dedup, no self-loop/cycle)
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{relation, created}"
+        "400":
+          description: Validation/self-loop/SUPERSEDES-cycle
+        "404":
+          description: Endpoint item missing
+  /admin/api/knowledge/relations/remove:
+    post:
+      operationId: postAdminApiKnowledgeRelationsRemove
+      summary: Remove a relation edge by id
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{removed}"
+  /admin/api/knowledge/items/{id}/relations:
+    get:
+      operationId: getAdminApiKnowledgeItemsByIdRelations
+      summary: Relation edges for an item — both directions
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{outgoing, incoming}"
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/versions/{vid}/evidence:
+    post:
+      operationId: postAdminApiKnowledgeVersionsByVidEvidence
+      summary: Attach an evidence ref to a version (cap 50)
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{evidence}"
+        "400":
+          description: bad type/uri or cap exceeded
+        "404":
+          description: Version missing
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: vid
+          required: true
+    get:
+      operationId: getAdminApiKnowledgeVersionsByVidEvidence
+      summary: Evidence refs on a version
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{evidence[]}"
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: vid
+          required: true
+  /admin/api/knowledge/evidence/remove:
+    post:
+      operationId: postAdminApiKnowledgeEvidenceRemove
+      summary: Remove an evidence ref by id
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{removed}"
+  /admin/api/knowledge/evidence/citing:
+    get:
+      operationId: getAdminApiKnowledgeEvidenceCiting
+      summary: Versions citing a uri — staleness/withdrawal lookup
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{evidence[]}"
+  /admin/api/knowledge/gaps:
+    get:
+      operationId: getAdminApiKnowledgeGaps
+      summary: List knowledge gaps — deduped agent-signal backlog
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{gaps[], count}"
+  /admin/api/knowledge/gaps/{id}/triage:
+    post:
+      operationId: postAdminApiKnowledgeGapsByIdTriage
+      summary: "Gap lifecycle: triage"
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{gap}"
+        "400":
+          description: Invalid transition / missing linked item
+        "404":
+          description: Unknown gap
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/gaps/{id}/resolve:
+    post:
+      operationId: postAdminApiKnowledgeGapsByIdResolve
+      summary: "Gap lifecycle: resolve"
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{gap}"
+        "400":
+          description: Invalid transition / missing linked item
+        "404":
+          description: Unknown gap
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /admin/api/knowledge/gaps/{id}/wontfix:
+    post:
+      operationId: postAdminApiKnowledgeGapsByIdWontfix
+      summary: "Gap lifecycle: wontfix"
+      tags:
+        - Admin Knowledge
+      responses:
+        "200":
+          description: "{gap}"
+        "400":
+          description: Invalid transition / missing linked item
+        "404":
+          description: Unknown gap
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+  /api/v1/agent/knowledge/search:
+    get:
+      operationId: getApiV1AgentKnowledgeSearch
+      summary: Search published knowledge — deterministic FTS
+      tags:
+        - Agent Knowledge
+      responses:
+        "200":
+          description: "{results, query, tookMs, engine}"
+        "400":
+          description: Query/kind/limit validation failure
+        "429":
+          description: Rate limit
+  /api/v1/agent/knowledge/ask:
+    post:
+      operationId: postApiV1AgentKnowledgeAsk
+      summary: Deterministic answer over published knowledge — no LLM
+      tags:
+        - Agent Knowledge
+      responses:
+        "200":
+          description: "{status: ANSWERED|REFUSED, …}"
+        "400":
+          description: Query validation failure
+        "429":
+          description: Rate limit
   /api/surveys/open:
     get:
       operationId: getApiSurveysOpen
