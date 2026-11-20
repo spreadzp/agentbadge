@@ -57,6 +57,16 @@ export interface X402GatewayMiddlewareConfig {
   emitFulfillment?: (leg: FulfillmentLeg) => void;
 }
 
+/** Response is a live stream whose delivery we can't verify post-next(). */
+function isStreamingResponse(c: Context): boolean {
+  const res = c.res;
+  const type = res.headers.get("content-type") ?? "";
+  return (
+    type.startsWith("text/event-stream") ||
+    res.headers.get("transfer-encoding") === "chunked"
+  );
+}
+
 /**
  * Post-handler outcome → honest outcome term. A thrown handler is
  * direct evidence of server-side failure; a real abort signal means
@@ -71,7 +81,12 @@ export function classifyFulfillmentOutcome(
   if (c.req.raw.signal.aborted) return { outcome: "stream_aborted" };
   const httpStatus = c.res.status;
   if (httpStatus >= 200 && httpStatus < 300)
-    return { outcome: "handler_completed", httpStatus };
+    // A buffered 2xx is fully materialized — completed. A live stream
+    // (SSE/chunked) only proves headers were sent: delivery unverified.
+    return {
+      outcome: isStreamingResponse(c) ? "unknown" : "handler_completed",
+      httpStatus,
+    };
   if (httpStatus >= 500) return { outcome: "upstream_error", httpStatus };
   return { outcome: "unknown", httpStatus };
 }
