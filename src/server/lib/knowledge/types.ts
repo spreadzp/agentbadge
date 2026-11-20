@@ -1,9 +1,12 @@
 /**
- * EPIC-229 (SLICE-229-1, D-229-1..9): domain types for the Knowledge
+ * EPIC-229 (SLICE-229-1/2, D-229-1..9): domain types for the Knowledge
  * Engine. Store implementations (Postgres adapter / in-memory) share
  * these record shapes — DB rows are mapped at the adapter boundary
- * (request-inbox/types.ts precedent).
+ * (request-inbox/types.ts precedent). Zod schemas validate ALL lib
+ * inputs at the edge (D-229-2 limits).
  */
+
+import { z } from "zod";
 
 /** D-229-1: item kinds — closed vocabulary, validated at the lib edge. */
 export const KNOWLEDGE_KINDS = [
@@ -169,3 +172,37 @@ export interface KnowledgeSearchHit {
   snippet: string;
   rank: number;
 }
+
+// ─── SLICE-229-2: input validation (D-229-2 limits) ──────────────
+
+export const KNOWLEDGE_TITLE_MAX = 300;
+export const KNOWLEDGE_BODY_MAX = 64 * 1024; // 64KB
+export const KNOWLEDGE_SUMMARY_MAX = 2000;
+
+const titleSchema = z.string().trim().min(1).max(KNOWLEDGE_TITLE_MAX);
+const bodySchema = z.string().min(1).max(KNOWLEDGE_BODY_MAX);
+const summarySchema = z.string().trim().min(1).max(KNOWLEDGE_SUMMARY_MAX);
+
+export const createKnowledgeItemInputSchema = z.object({
+  slug: z.string().optional(),
+  kind: z.enum(KNOWLEDGE_KINDS),
+  title: titleSchema,
+  body: bodySchema,
+  summary: summarySchema.optional(),
+});
+export type CreateKnowledgeItemInput = z.infer<
+  typeof createKnowledgeItemInputSchema
+>;
+
+export const updateKnowledgeDraftInputSchema = z
+  .object({
+    title: titleSchema.optional(),
+    body: bodySchema.optional(),
+    summary: summarySchema.nullish(),
+  })
+  .refine((v) => v.title !== undefined || v.body !== undefined || v.summary !== undefined, {
+    message: "at least one field required",
+  });
+export type UpdateKnowledgeDraftInput = z.infer<
+  typeof updateKnowledgeDraftInputSchema
+>;
