@@ -19,6 +19,10 @@ describe("Infrastructure", () => {
     app.get("/api/requests/qa", (c) => c.json({ results: [] }));
     app.get("/api/surveys/open", (c) => c.json({ surveys: [] }));
     app.get("/api/ops/requests", (c) => c.json({ records: [] }));
+    // EPIC-228: agent poll + admin API surfaces (must never be cached)
+    app.get("/api/v1/agent/requests/ireq_x", (c) => c.json({ status: "PENDING_REVIEW" }));
+    app.get("/api/v1/agent/requests/ireq_x/status", (c) => c.json({ status: "PENDING_REVIEW" }));
+    app.get("/api/admin/interactions", (c) => c.json({ items: [] }));
     // Simulate a normal page
     app.get("/", (c) => c.html("<html></html>"));
 
@@ -58,6 +62,9 @@ describe("Infrastructure", () => {
     "/api/requests/qa",
     "/api/surveys/open",
     "/api/ops/requests",
+    "/api/v1/agent/requests/ireq_x",
+    "/api/v1/agent/requests/ireq_x/status",
+    "/api/admin/interactions",
   ])("returns no-store on pollable inbox path %s", async (path) => {
     const res = await app.request(path);
     expect(res.headers.get("cache-control")).toBe("no-store");

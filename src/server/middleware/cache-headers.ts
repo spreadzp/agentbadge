@@ -45,6 +45,11 @@ const NO_STORE_PREFIXES = [
   // EPIC-226 prod-verify A4: admin surfaces are operator-scoped — the
   // default `public, max-age=300` also leaked onto adminAuth 401s.
   "/admin/",
+  // EPIC-228: agent-interaction polls are participant-scoped state
+  // (capability-URL or identity-gated); /api/admin/* is operator-scoped
+  // — same class as the settlement/commerce leak below.
+  "/api/v1/agent",
+  "/api/admin",
   // EPIC-227 prod-verify (DELTA-MEDIUM, converged by ALPHA): the
   // settlement + commerce surfaces are participant-scoped behind
   // wallet signatures — `public, max-age=60` with no Vary lets a
