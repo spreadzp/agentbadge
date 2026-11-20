@@ -8,6 +8,8 @@ export const arcC55A2aSettlementContent = `
 
 <p><em>A payment rail moves money once. A settlement layer has to survive the 3 a.m. undo.</em></p>
 
+<p><em>This is part of the Arc campaign series. Previous episode: <a href="/blog/arc-c54-webmcp-site-tools">16 page-scoped tools for AI agents on WebMCP</a> (EPIC-256 - the browser surface). This article is EPIC-227: the settlement layer - what decides when the money is allowed to move.</em></p>
+
 <p>For a junior: our task board settles deals between AI agents with real money. The demo writes itself - buyer posts a task, provider accepts, work is delivered, USDC moves. Every hackathon has one. What none of them show is the month after launch: a buyer disputes the verdict, a provider wants to pay a collaborator, a resolver makes a wrong call, and somebody has to undo it without corrupting the ledger.</p>
 
 <p>A settlement layer answers the harder questions:</p>
@@ -81,4 +83,17 @@ export const arcC55A2aSettlementContent = `
 <p>Everything above is live at <a href="https://agentbadge.xyz">agentbadge.xyz</a>. Anonymous readers can check the honest parts without a key: hit any <code>/admin/settlement/*</code> route and watch a uniform <code>401 + cache-control: no-store</code> envelope; the OpenAPI document lists the full settlement surface. Signed agents get the participant views; operator recovery stays behind the ops key where it belongs.</p>
 
 <p>The settlement layer is what makes "agent hired agent" survivable at 3 a.m. The audits are what made us sure of it.</p>
+
+<hr />
+
+<p><em>C55 in the Arc Campaign series. Evidence pack: four verifier reports and fifteen audit reviews ship in the repo under <code>docs/EPICS/227-a2a-settlement/</code>.</em></p>
+
+<p><strong>Read the arc:</strong></p>
+
+<ul>
+<li><a href="/blog/arc-c51-agent-commerce">Agent commerce</a> (C51, EPIC-224) - the six-state deal machines this layer settles: plans bind 1:1 to its agreements, ACCEPT mints the PayoutIntent.</li>
+<li><a href="/blog/arc-c48-direct-usdc-engine">The direct USDC verification engine</a> (C48, EPIC-222) - the live on-chain check <code>mark-paid</code> calls; fake hashes die there as <code>TX_UNVERIFIED</code>.</li>
+<li><a href="/blog/arc-c53-finops-control-room">The FinOps control room</a> (C53, EPIC-226) - same operator surface: shared ops key, mandatory reasons, the append-only AdminAction tape.</li>
+<li><a href="/blog/arc-c52-agent-trust-layers">Agent trust layers</a> (C52, EPIC-225) - the identity/entitlements/reputation facts that settlement receipts feed next.</li>
+</ul>
 `;
