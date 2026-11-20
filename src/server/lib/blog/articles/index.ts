@@ -59,6 +59,7 @@ import { article as arcC52AgentTrustLayers } from "./arc-c52-agent-trust-layers"
 import { article as arcC53FinopsControlRoom } from "./arc-c53-finops-control-room";
 import { article as arcC54WebmcpSiteTools } from "./arc-c54-webmcp-site-tools";
 import { article as arcC55A2aSettlement } from "./arc-c55-a2a-settlement";
+import { article as arcC57PeachDex } from "./arc-c57-peach-dex";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -120,5 +121,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC53FinopsControlRoom,
   arcC54WebmcpSiteTools,
   arcC55A2aSettlement,
+  arcC57PeachDex,
   devinCloudAudit,
 ];
