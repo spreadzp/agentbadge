@@ -29,7 +29,7 @@ import {
   triageGap,
   wontfixGap,
 } from "../lib/knowledge";
-import { operatorRefOf } from "./agent-interaction/agent-interaction-admin-mutations";
+import { requireOperatorRef } from "./admin-operator-guard";
 
 const resolveBodySchema = z.object({ linkedItemId: z.string().min(1) });
 
@@ -83,7 +83,8 @@ export function registerKnowledgeGapRoutes(
         const key = readIdempotencyKey(c);
         if (key instanceof Response) return key;
         const gapId = c.req.param("id") ?? "";
-        const actorRef = operatorRefOf(c);
+        const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
         const res = await idempotentWrite(
           `POST:/admin/api/knowledge/gaps/${gapId}/${action}`,
           key,

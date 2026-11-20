@@ -19,8 +19,9 @@ import {
 
 const URI_MAX = 1000;
 
-/** http(s)://… or a /path/to/thing — nothing exotic on a trust ref. */
-const URI_RE = /^(https?:\/\/\S+|\/[^\s]*)$/;
+/** http(s)://… or a /path/to/thing — nothing exotic on a trust ref.
+ *  \u0000 excluded explicitly (\S doesn't cover it; PG can't store it). */
+const URI_RE = /^(https?:\/\/[^\s\u0000]+|\/[^\s\u0000]*)$/;
 
 export async function addEvidence(
   store: KnowledgeStore,
@@ -36,6 +37,13 @@ export async function addEvidence(
     return { ok: false, error: "bad_evidence_type", field: "type" };
   }
   const uri = input.uri.trim();
+  const label = input.label ?? null;
+  if (
+    label !== null &&
+    /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(label)
+  ) {
+    return { ok: false, error: "invalid_label", field: "label" };
+  }
   if (uri.length === 0 || uri.length > URI_MAX || !URI_RE.test(uri)) {
     return {
       ok: false,
@@ -48,7 +56,7 @@ export async function addEvidence(
     versionId,
     type: input.type,
     uri,
-    label: input.label ?? null,
+    label,
     addedBy: input.addedBy,
   });
   if (!res.ok) {

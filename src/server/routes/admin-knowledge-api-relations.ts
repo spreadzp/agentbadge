@@ -38,7 +38,7 @@ import {
   removeRelation,
   supersededBy,
 } from "../lib/knowledge";
-import { operatorRefOf } from "./agent-interaction/agent-interaction-admin-mutations";
+import { requireOperatorRef } from "./admin-operator-guard";
 
 const relationBodySchema = z.object({
   fromItemId: z.string().min(1),
@@ -81,7 +81,8 @@ export function registerKnowledgeRelationRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad relation body");
       }
-      const actorRef = operatorRefOf(c);
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const res = await idempotentWrite(
         "POST:/admin/api/knowledge/relations",
         key,
@@ -118,7 +119,8 @@ export function registerKnowledgeRelationRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "relationId required");
       }
-      const actorRef = operatorRefOf(c);
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const res = await idempotentWrite(
         "POST:/admin/api/knowledge/relations/remove",
         key,
@@ -170,7 +172,8 @@ export function registerKnowledgeRelationRoutes(
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad evidence body");
       }
       const versionId = c.req.param("vid") ?? "";
-      const actorRef = operatorRefOf(c);
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const res = await idempotentWrite(
         `POST:/admin/api/knowledge/versions/${versionId}/evidence`,
         key,
@@ -224,7 +227,8 @@ export function registerKnowledgeRelationRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "evidenceId required");
       }
-      const actorRef = operatorRefOf(c);
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const res = await idempotentWrite(
         "POST:/admin/api/knowledge/evidence/remove",
         key,

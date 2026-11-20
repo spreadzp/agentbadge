@@ -27,7 +27,7 @@ import {
   KNOWLEDGE_STATUSES,
   transitionKnowledgeItem,
 } from "../lib/knowledge";
-import { operatorRefOf } from "./agent-interaction/agent-interaction-admin-mutations";
+import { requireOperatorRef } from "./admin-operator-guard";
 
 const transitionBodySchema = z.object({
   to: z.string(),
@@ -67,7 +67,8 @@ export function registerKnowledgeTransitionRoutes(
       if (!KNOWLEDGE_STATUSES.includes(to as never)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
       }
-      const actorRef = operatorRefOf(c);
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
 
       try {
         const res = await idempotentWrite(

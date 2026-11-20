@@ -28,7 +28,7 @@ import {
   upsertKnowledgeCapability,
   KNOWLEDGE_CAPABILITY_KINDS,
 } from "../lib/knowledge";
-import { operatorRefOf } from "./agent-interaction/agent-interaction-admin-mutations";
+import { requireOperatorRef } from "./admin-operator-guard";
 
 const capBodySchema = z.object({
   name: z.string().min(1).max(200),
@@ -87,7 +87,8 @@ export function registerKnowledgeCapabilityRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad capability body");
       }
-      const actorRef = operatorRefOf(c);
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const res = await idempotentWrite(
         "POST:/admin/api/knowledge/capabilities",
         key,
@@ -140,7 +141,8 @@ export function registerKnowledgeCapabilityRoutes(
         }
         const itemId = c.req.param("id") ?? "";
         const capabilityId = body.data.capabilityId;
-        const actorRef = operatorRefOf(c);
+        const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
         const res = await idempotentWrite(
           `POST:/admin/api/knowledge/items/${itemId}/capabilities`,
           key,

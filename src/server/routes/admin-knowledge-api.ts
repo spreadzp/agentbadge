@@ -31,7 +31,7 @@ import {
   KNOWLEDGE_STATUSES,
   type CreateKnowledgeItemInput,
 } from "../lib/knowledge";
-import { operatorRefOf } from "./agent-interaction/agent-interaction-admin-mutations";
+import { requireOperatorRef } from "./admin-operator-guard";
 import { registerKnowledgeTransitionRoutes } from "./admin-knowledge-api-mutations";
 import { registerKnowledgeCapabilityRoutes } from "./admin-knowledge-api-capabilities";
 import { registerKnowledgeRelationRoutes } from "./admin-knowledge-api-relations";
@@ -135,7 +135,8 @@ export function createAdminKnowledgeRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad item body");
       }
-      const actorRef = operatorRefOf(c);
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const res = await idempotentWrite(
         "POST:/admin/api/knowledge/items",
         key,

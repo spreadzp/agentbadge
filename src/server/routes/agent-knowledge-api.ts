@@ -55,12 +55,12 @@ function searchLimiterKey(c: Context): string {
   return `ip:${resolveClientIp(c)}:${c.req.path}`;
 }
 
-function tooMany(c: Context) {
+function tooMany(c: Context, surface: string) {
   return errorResponse(
     c,
     429,
     ErrorCodes.RATE_LIMITED,
-    "rate limit exceeded for knowledge search",
+    `rate limit exceeded for ${surface}`,
     { retryable: true },
   );
 }
@@ -88,16 +88,18 @@ export function createAgentKnowledgeRoutes(
       globalMax: SEARCH_GLOBAL_MAX,
     });
 
-  const rateLimit: MiddlewareHandler = async (c, next: Next) => {
-    if (!limiter.allow(tierOf(c), searchLimiterKey(c))) {
-      return tooMany(c);
-    }
-    return next();
+  const rateLimit = (surface: string): MiddlewareHandler => {
+    return async (c, next: Next) => {
+      if (!limiter.allow(tierOf(c), searchLimiterKey(c))) {
+        return tooMany(c, surface);
+      }
+      return next();
+    };
   };
 
   app.get(
     "/api/v1/agent/knowledge/search",
-    rateLimit,
+    rateLimit("knowledge search"),
     describeRoute({
       summary: "Search published knowledge — deterministic FTS",
       tags: ["Agent Knowledge"],
@@ -154,7 +156,7 @@ export function createAgentKnowledgeRoutes(
 
   app.post(
     "/api/v1/agent/knowledge/ask",
-    rateLimit,
+    rateLimit("knowledge ask"),
     describeRoute({
       summary: "Deterministic answer over published knowledge — no LLM",
       tags: ["Agent Knowledge"],

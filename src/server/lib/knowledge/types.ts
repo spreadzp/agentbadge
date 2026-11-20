@@ -179,9 +179,28 @@ export const KNOWLEDGE_TITLE_MAX = 300;
 export const KNOWLEDGE_BODY_MAX = 64 * 1024; // 64KB
 export const KNOWLEDGE_SUMMARY_MAX = 2000;
 
-const titleSchema = z.string().trim().min(1).max(KNOWLEDGE_TITLE_MAX);
-const bodySchema = z.string().min(1).max(KNOWLEDGE_BODY_MAX);
-const summarySchema = z.string().trim().min(1).max(KNOWLEDGE_SUMMARY_MAX);
+/** H-229 fix: NUL/C0 controls crash the PG driver (500) — reject
+ *  them at the schema edge, honest 400. \t \n \r stay legal in body. */
+const noControlChars = (s: string) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(s);
+const CTRL_MSG = "control characters (incl. NUL) not allowed";
+
+const titleSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(KNOWLEDGE_TITLE_MAX)
+  .refine(noControlChars, { message: CTRL_MSG });
+const bodySchema = z
+  .string()
+  .min(1)
+  .max(KNOWLEDGE_BODY_MAX)
+  .refine(noControlChars, { message: CTRL_MSG });
+const summarySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(KNOWLEDGE_SUMMARY_MAX)
+  .refine(noControlChars, { message: CTRL_MSG });
 
 export const createKnowledgeItemInputSchema = z.object({
   slug: z.string().optional(),

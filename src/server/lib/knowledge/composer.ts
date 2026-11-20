@@ -60,10 +60,12 @@ function tokenize(q: string): string[] {
   ];
 }
 
-/** Fraction of query terms covered by title+summary — engine-agnostic. */
+/** Fraction of query terms covered — title+summary carry editorial
+ *  weight, snippet (ts_headline / memory excerpt) carries the terms
+ *  the engine actually matched in the body. Both are deterministic. */
 function coverageOf(terms: string[], h: KnowledgeSearchHit): number {
   if (terms.length === 0) return 0;
-  const hay = `${h.title} ${h.summary ?? ""}`.toLowerCase();
+  const hay = `${h.title} ${h.summary ?? ""} ${h.snippet}`.toLowerCase();
   let hits = 0;
   for (const t of terms) if (hay.includes(t)) hits += 1;
   return hits / terms.length;
