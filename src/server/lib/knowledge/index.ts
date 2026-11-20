@@ -10,3 +10,5 @@ export * from "./events";
 export * from "./items";
 export * from "./versions";
 export * from "./workflow";
+export * from "./capabilities";
+export * from "./capability-seed";

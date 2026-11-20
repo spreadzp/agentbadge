@@ -81,6 +81,7 @@ flowchart LR
   server_lib["server/lib"] --> agent_readiness_scoring["agent-readiness/scoring"]
   server_lib["server/lib"] --> agents["agents"]
   server_lib["server/lib"] --> config["config"]
+  server_lib["server/lib"] --> mcp["mcp"]
   server_lib["server/lib"] --> pkg_bstock_tracker["pkg: bstock-tracker"]
   server_lib["server/lib"] --> pkg_cache["pkg: cache"]
   server_lib["server/lib"] --> pkg_circle_payments["pkg: circle-payments"]
