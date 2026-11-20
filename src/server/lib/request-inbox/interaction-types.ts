@@ -49,6 +49,7 @@ export const INTERACTION_EVENT_KINDS = [
   "interaction.request.received",
   "interaction.request.classified",
   "interaction.response.sent",
+  "interaction.request.rejected",
   "interaction.review.required",
 ] as const;
 
