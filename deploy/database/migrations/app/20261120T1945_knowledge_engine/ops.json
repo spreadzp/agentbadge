@@ -1,0 +1,1070 @@
+[
+  {
+    "id": "table.knowledgeCapability",
+    "label": "Create table \"knowledgeCapability\"",
+    "summary": "Creates table \"knowledgeCapability\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeCapability"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeCapability\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeCapability\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeCapability\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeCapability\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"source\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verified\" bool DEFAULT false NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeCapability\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeCapability\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.knowledgeEvidence",
+    "label": "Create table \"knowledgeEvidence\"",
+    "summary": "Creates table \"knowledgeEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeEvidence\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeEvidence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeEvidence\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeEvidence\" (\n  \"addedBy\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"label\" text,\n  \"type\" text NOT NULL,\n  \"uri\" text NOT NULL,\n  \"versionId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeEvidence\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeEvidence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.knowledgeGap",
+    "label": "Create table \"knowledgeGap\"",
+    "summary": "Creates table \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeGap\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeGap\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeGap\" (\n  \"capabilityRef\" text,\n  \"count\" int4 DEFAULT 1 NOT NULL,\n  \"firstSeenAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"intent\" text,\n  \"lastSeenAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"linkedItemId\" text,\n  \"normalizedQuery\" text NOT NULL,\n  \"sampleQueries\" json NOT NULL,\n  \"source\" text NOT NULL,\n  \"sourceRef\" text,\n  \"status\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeGap\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.knowledgeItem",
+    "label": "Create table \"knowledgeItem\"",
+    "summary": "Creates table \"knowledgeItem\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeItem\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItem\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeItem\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeItem\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"latestVersionId\" text,\n  \"publishedVersionId\" text,\n  \"slug\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeItem\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItem\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.knowledgeItemCapability",
+    "label": "Create table \"knowledgeItemCapability\"",
+    "summary": "Creates table \"knowledgeItemCapability\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeItemCapability"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeItemCapability\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItemCapability\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeItemCapability\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeItemCapability\" (\n  \"capabilityId\" text NOT NULL,\n  \"itemId\" text NOT NULL,\n  PRIMARY KEY (\"itemId\", \"capabilityId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeItemCapability\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItemCapability\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.knowledgeRelation",
+    "label": "Create table \"knowledgeRelation\"",
+    "summary": "Creates table \"knowledgeRelation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeRelation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeRelation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeRelation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeRelation\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeRelation\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text NOT NULL,\n  \"fromItemId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"toItemId\" text NOT NULL,\n  \"type\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeRelation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeRelation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.knowledgeStatusEvent",
+    "label": "Create table \"knowledgeStatusEvent\"",
+    "summary": "Creates table \"knowledgeStatusEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeStatusEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeStatusEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeStatusEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeStatusEvent\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeStatusEvent\" (\n  \"actor\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"from\" text,\n  \"id\" text NOT NULL,\n  \"itemId\" text NOT NULL,\n  \"reason\" text,\n  \"to\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeStatusEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeStatusEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.knowledgeVersion",
+    "label": "Create table \"knowledgeVersion\"",
+    "summary": "Creates table \"knowledgeVersion\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "knowledgeVersion"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"knowledgeVersion\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeVersion\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"knowledgeVersion\"",
+        "sql": "CREATE TABLE \"public\".\"knowledgeVersion\" (\n  \"body\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"itemId\" text NOT NULL,\n  \"restoredFromVersionId\" text,\n  \"seq\" int4 NOT NULL,\n  \"summary\" text,\n  \"title\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"knowledgeVersion\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeVersion\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.knowledgeCapability.knowledgeCapability_name_key",
+    "label": "Add unique constraint on \"knowledgeCapability\" (name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "knowledgeCapability_name_key",
+        "table": "knowledgeCapability"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"knowledgeCapability_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeCapability_name_key",
+          "public",
+          "\"public\".\"knowledgeCapability\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"knowledgeCapability_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeCapability\" ADD CONSTRAINT \"knowledgeCapability_name_key\" UNIQUE (\"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"knowledgeCapability_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeCapability_name_key",
+          "public",
+          "\"public\".\"knowledgeCapability\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.knowledgeGap.knowledgeGap_normalizedQuery_key",
+    "label": "Add unique constraint on \"knowledgeGap\" (normalizedQuery)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "knowledgeGap_normalizedQuery_key",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"knowledgeGap_normalizedQuery_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeGap_normalizedQuery_key",
+          "public",
+          "\"public\".\"knowledgeGap\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"knowledgeGap_normalizedQuery_key\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeGap\" ADD CONSTRAINT \"knowledgeGap_normalizedQuery_key\" UNIQUE (\"normalizedQuery\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"knowledgeGap_normalizedQuery_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeGap_normalizedQuery_key",
+          "public",
+          "\"public\".\"knowledgeGap\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.knowledgeItem.knowledgeItem_slug_key",
+    "label": "Add unique constraint on \"knowledgeItem\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "knowledgeItem_slug_key",
+        "table": "knowledgeItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"knowledgeItem_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeItem_slug_key",
+          "public",
+          "\"public\".\"knowledgeItem\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"knowledgeItem_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeItem\" ADD CONSTRAINT \"knowledgeItem_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"knowledgeItem_slug_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeItem_slug_key",
+          "public",
+          "\"public\".\"knowledgeItem\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.knowledgeRelation.knowledgeRelation_fromItemId_toItemId_type_key",
+    "label": "Add unique constraint on \"knowledgeRelation\" (fromItemId, toItemId, type)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "knowledgeRelation_fromItemId_toItemId_type_key",
+        "table": "knowledgeRelation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"knowledgeRelation_fromItemId_toItemId_type_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeRelation_fromItemId_toItemId_type_key",
+          "public",
+          "\"public\".\"knowledgeRelation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"knowledgeRelation_fromItemId_toItemId_type_key\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeRelation\" ADD CONSTRAINT \"knowledgeRelation_fromItemId_toItemId_type_key\" UNIQUE (\"fromItemId\", \"toItemId\", \"type\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"knowledgeRelation_fromItemId_toItemId_type_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeRelation_fromItemId_toItemId_type_key",
+          "public",
+          "\"public\".\"knowledgeRelation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.knowledgeVersion.knowledgeVersion_itemId_seq_key",
+    "label": "Add unique constraint on \"knowledgeVersion\" (itemId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "knowledgeVersion_itemId_seq_key",
+        "table": "knowledgeVersion"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"knowledgeVersion_itemId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeVersion_itemId_seq_key",
+          "public",
+          "\"public\".\"knowledgeVersion\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"knowledgeVersion_itemId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"knowledgeVersion\" ADD CONSTRAINT \"knowledgeVersion_itemId_seq_key\" UNIQUE (\"itemId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"knowledgeVersion_itemId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "knowledgeVersion_itemId_seq_key",
+          "public",
+          "\"public\".\"knowledgeVersion\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeCapability.knowledgeCapability_kind_idx_c9ca668f",
+    "label": "Create index \"knowledgeCapability_kind_idx_c9ca668f\" on \"knowledgeCapability\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeCapability_kind_idx_c9ca668f",
+        "table": "knowledgeCapability"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeCapability_kind_idx_c9ca668f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeCapability_kind_idx_c9ca668f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeCapability_kind_idx_c9ca668f\"",
+        "sql": "CREATE INDEX \"knowledgeCapability_kind_idx_c9ca668f\" ON \"public\".\"knowledgeCapability\" (\"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeCapability_kind_idx_c9ca668f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeCapability_kind_idx_c9ca668f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeCapability.knowledgeCapability_verified_idx_1612bd14",
+    "label": "Create index \"knowledgeCapability_verified_idx_1612bd14\" on \"knowledgeCapability\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeCapability_verified_idx_1612bd14",
+        "table": "knowledgeCapability"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeCapability_verified_idx_1612bd14\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeCapability_verified_idx_1612bd14\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeCapability_verified_idx_1612bd14\"",
+        "sql": "CREATE INDEX \"knowledgeCapability_verified_idx_1612bd14\" ON \"public\".\"knowledgeCapability\" (\"verified\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeCapability_verified_idx_1612bd14\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeCapability_verified_idx_1612bd14\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeEvidence.knowledgeEvidence_uri_idx_334ba976",
+    "label": "Create index \"knowledgeEvidence_uri_idx_334ba976\" on \"knowledgeEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeEvidence_uri_idx_334ba976",
+        "table": "knowledgeEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeEvidence_uri_idx_334ba976\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeEvidence_uri_idx_334ba976\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeEvidence_uri_idx_334ba976\"",
+        "sql": "CREATE INDEX \"knowledgeEvidence_uri_idx_334ba976\" ON \"public\".\"knowledgeEvidence\" (\"uri\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeEvidence_uri_idx_334ba976\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeEvidence_uri_idx_334ba976\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeEvidence.knowledgeEvidence_versionId_idx_ef8aa804",
+    "label": "Create index \"knowledgeEvidence_versionId_idx_ef8aa804\" on \"knowledgeEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeEvidence_versionId_idx_ef8aa804",
+        "table": "knowledgeEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeEvidence_versionId_idx_ef8aa804\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeEvidence_versionId_idx_ef8aa804\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeEvidence_versionId_idx_ef8aa804\"",
+        "sql": "CREATE INDEX \"knowledgeEvidence_versionId_idx_ef8aa804\" ON \"public\".\"knowledgeEvidence\" (\"versionId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeEvidence_versionId_idx_ef8aa804\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeEvidence_versionId_idx_ef8aa804\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeGap.knowledgeGap_count_idx_2c782125",
+    "label": "Create index \"knowledgeGap_count_idx_2c782125\" on \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeGap_count_idx_2c782125",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeGap_count_idx_2c782125\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_count_idx_2c782125\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeGap_count_idx_2c782125\"",
+        "sql": "CREATE INDEX \"knowledgeGap_count_idx_2c782125\" ON \"public\".\"knowledgeGap\" (\"count\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeGap_count_idx_2c782125\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_count_idx_2c782125\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeGap.knowledgeGap_status_lastSeenAt_idx_2807638d",
+    "label": "Create index \"knowledgeGap_status_lastSeenAt_idx_2807638d\" on \"knowledgeGap\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeGap_status_lastSeenAt_idx_2807638d",
+        "table": "knowledgeGap"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeGap_status_lastSeenAt_idx_2807638d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_status_lastSeenAt_idx_2807638d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeGap_status_lastSeenAt_idx_2807638d\"",
+        "sql": "CREATE INDEX \"knowledgeGap_status_lastSeenAt_idx_2807638d\" ON \"public\".\"knowledgeGap\" (\"status\", \"lastSeenAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeGap_status_lastSeenAt_idx_2807638d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeGap_status_lastSeenAt_idx_2807638d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeItem.knowledgeItem_kind_idx_c9ca668f",
+    "label": "Create index \"knowledgeItem_kind_idx_c9ca668f\" on \"knowledgeItem\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeItem_kind_idx_c9ca668f",
+        "table": "knowledgeItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeItem_kind_idx_c9ca668f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItem_kind_idx_c9ca668f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeItem_kind_idx_c9ca668f\"",
+        "sql": "CREATE INDEX \"knowledgeItem_kind_idx_c9ca668f\" ON \"public\".\"knowledgeItem\" (\"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeItem_kind_idx_c9ca668f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItem_kind_idx_c9ca668f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeItem.knowledgeItem_status_updatedAt_idx_29f913bb",
+    "label": "Create index \"knowledgeItem_status_updatedAt_idx_29f913bb\" on \"knowledgeItem\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeItem_status_updatedAt_idx_29f913bb",
+        "table": "knowledgeItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeItem_status_updatedAt_idx_29f913bb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItem_status_updatedAt_idx_29f913bb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeItem_status_updatedAt_idx_29f913bb\"",
+        "sql": "CREATE INDEX \"knowledgeItem_status_updatedAt_idx_29f913bb\" ON \"public\".\"knowledgeItem\" (\"status\", \"updatedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeItem_status_updatedAt_idx_29f913bb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItem_status_updatedAt_idx_29f913bb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeItemCapability.knowledgeItemCapability_capabilityId_idx_af7bb943",
+    "label": "Create index \"knowledgeItemCapability_capabilityId_idx_af7bb943\" on \"knowledgeItemCapability\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeItemCapability_capabilityId_idx_af7bb943",
+        "table": "knowledgeItemCapability"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeItemCapability_capabilityId_idx_af7bb943\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItemCapability_capabilityId_idx_af7bb943\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeItemCapability_capabilityId_idx_af7bb943\"",
+        "sql": "CREATE INDEX \"knowledgeItemCapability_capabilityId_idx_af7bb943\" ON \"public\".\"knowledgeItemCapability\" (\"capabilityId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeItemCapability_capabilityId_idx_af7bb943\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeItemCapability_capabilityId_idx_af7bb943\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeRelation.knowledgeRelation_toItemId_idx_2b82da8d",
+    "label": "Create index \"knowledgeRelation_toItemId_idx_2b82da8d\" on \"knowledgeRelation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeRelation_toItemId_idx_2b82da8d",
+        "table": "knowledgeRelation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeRelation_toItemId_idx_2b82da8d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeRelation_toItemId_idx_2b82da8d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeRelation_toItemId_idx_2b82da8d\"",
+        "sql": "CREATE INDEX \"knowledgeRelation_toItemId_idx_2b82da8d\" ON \"public\".\"knowledgeRelation\" (\"toItemId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeRelation_toItemId_idx_2b82da8d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeRelation_toItemId_idx_2b82da8d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeRelation.knowledgeRelation_type_idx_b6b604ea",
+    "label": "Create index \"knowledgeRelation_type_idx_b6b604ea\" on \"knowledgeRelation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeRelation_type_idx_b6b604ea",
+        "table": "knowledgeRelation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeRelation_type_idx_b6b604ea\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeRelation_type_idx_b6b604ea\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeRelation_type_idx_b6b604ea\"",
+        "sql": "CREATE INDEX \"knowledgeRelation_type_idx_b6b604ea\" ON \"public\".\"knowledgeRelation\" (\"type\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeRelation_type_idx_b6b604ea\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeRelation_type_idx_b6b604ea\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeStatusEvent.knowledgeStatusEvent_itemId_createdAt_idx_d577e708",
+    "label": "Create index \"knowledgeStatusEvent_itemId_createdAt_idx_d577e708\" on \"knowledgeStatusEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeStatusEvent_itemId_createdAt_idx_d577e708",
+        "table": "knowledgeStatusEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeStatusEvent_itemId_createdAt_idx_d577e708\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeStatusEvent_itemId_createdAt_idx_d577e708\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeStatusEvent_itemId_createdAt_idx_d577e708\"",
+        "sql": "CREATE INDEX \"knowledgeStatusEvent_itemId_createdAt_idx_d577e708\" ON \"public\".\"knowledgeStatusEvent\" (\"itemId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeStatusEvent_itemId_createdAt_idx_d577e708\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeStatusEvent_itemId_createdAt_idx_d577e708\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeVersion.knowledgeVersion_itemId_idx_41357140",
+    "label": "Create index \"knowledgeVersion_itemId_idx_41357140\" on \"knowledgeVersion\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledgeVersion_itemId_idx_41357140",
+        "table": "knowledgeVersion"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledgeVersion_itemId_idx_41357140\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeVersion_itemId_idx_41357140\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledgeVersion_itemId_idx_41357140\"",
+        "sql": "CREATE INDEX \"knowledgeVersion_itemId_idx_41357140\" ON \"public\".\"knowledgeVersion\" (\"itemId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledgeVersion_itemId_idx_41357140\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledgeVersion_itemId_idx_41357140\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.knowledgeVersion.knowledge_version_fts_a1901957",
+    "label": "Create index \"knowledge_version_fts_a1901957\" on \"knowledgeVersion\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "knowledge_version_fts_a1901957",
+        "table": "knowledgeVersion"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"knowledge_version_fts_a1901957\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledge_version_fts_a1901957\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"knowledge_version_fts_a1901957\"",
+        "sql": "CREATE INDEX \"knowledge_version_fts_a1901957\" ON \"public\".\"knowledgeVersion\" USING \"gin\" (to_tsvector('simple', \"title\" || ' ' || \"body\"))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"knowledge_version_fts_a1901957\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"knowledge_version_fts_a1901957\""
+        ]
+      }
+    ]
+  }
+]

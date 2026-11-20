@@ -1424,3 +1424,154 @@ model SettlementAnchor {
 
   @@index([status])
 }
+
+// ─── EPIC-229: Knowledge Engine (D-229-1..9) ──────────────────────
+// Operator-curated verified knowledge base — Postgres is the source
+// of truth (D-229-1); file-based surfaces stay read-only projections.
+// Agent reads are strictly status=PUBLISHED — enforced at the store
+// seam, never by caller convention. No FK constraints (project
+// convention) — indexes only; composites run inside db.transaction.
+
+// D-229-1/2: the item is a stable shell; content lives in append-only
+// KnowledgeVersion rows. latestVersionId tracks the newest draft,
+// publishedVersionId the version agents may see — set ONLY by the
+// workflow layer on VERIFIED→PUBLISHED, cleared on WITHDRAWN.
+model KnowledgeItem {
+  id                 String            @id @default(uuid())
+  slug               String            @unique // ^[a-z0-9][a-z0-9-]{2,120}$
+  kind               String // GUIDE|CONCEPT|FAQ|POLICY|CAPABILITY_DOC
+  status             String // DRAFT|PENDING|VERIFIED|PUBLISHED|WITHDRAWN
+  latestVersionId    String? // → KnowledgeVersion.id (newest draft)
+  publishedVersionId String? // → KnowledgeVersion.id (agent-visible)
+  createdBy          String // operatorRef of the creator
+  createdAt          TimestamptzString @default(now())
+  updatedAt          temporal.updatedAtString()
+
+  @@index([status, updatedAt])
+  @@index([kind])
+}
+
+// D-229-2: append-only version history — rows are never updated or
+// deleted. Restore = a NEW version copying an old one
+// (restoredFromVersionId). (itemId, seq) unique is the per-item
+// ordering invariant. The functional GIN index covers the 229-5 FTS
+// query expression (contract-managed — no generated column, no drift).
+model KnowledgeVersion {
+  id                    String            @id @default(uuid())
+  itemId                String // → KnowledgeItem.id
+  seq                   Int
+  title                 String
+  body                  String
+  summary               String?
+  restoredFromVersionId String? // → KnowledgeVersion.id (restore-as-copy)
+  createdBy             String // operatorRef
+  createdAt             TimestamptzString @default(now())
+
+  @@unique([itemId, seq])
+  @@index([itemId])
+  // D-229-4 / O-229-1: functional GIN FTS index over the exact
+  // to_tsvector expression the search seam queries ('simple' config).
+  @@index(
+    expression: "to_tsvector('simple', \"title\" || ' ' || \"body\")",
+    type: "gin",
+    name: "knowledge_version_fts"
+  )
+}
+
+// D-229-3: append-only audit of status transitions — written in the
+// SAME transaction as the status flip (InteractionEvent precedent).
+// `from` is NULL on the create event; transitions are human-only.
+model KnowledgeStatusEvent {
+  id        String            @id @default(uuid())
+  itemId    String // → KnowledgeItem.id
+  from      String? // NULL = initial create event
+  to        String // DRAFT|PENDING|VERIFIED|PUBLISHED|WITHDRAWN
+  actor     String // operatorRef
+  reason    String?
+  createdAt TimestamptzString @default(now())
+
+  @@index([itemId, createdAt])
+}
+
+// D-229-5: capability registry — seeded from code sources (scanner
+// checks, x402 packs, MCP tools, manifests) + manual operator entries.
+// SEEDED rows start verified:true; MANUAL start verified:false.
+model KnowledgeCapability {
+  id          String            @id @default(uuid())
+  name        String            @unique // e.g. "x402-settle", "mcp.verify"
+  kind        String // SCANNER_CHECK|X402_PACK|MCP_TOOL|MANIFEST|MANUAL
+  description String?
+  source      String // SEEDED|MANUAL
+  verified    Boolean           @default(false)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([kind])
+  @@index([verified])
+}
+
+// D-229-5 m:n item↔capability — explicit join model (implicit m:n is
+// rejected by the SQL interpreter); compound PK dedupes links.
+model KnowledgeItemCapability {
+  itemId       String // → KnowledgeItem.id
+  capabilityId String // → KnowledgeCapability.id
+
+  @@id([itemId, capabilityId])
+  @@index([capabilityId])
+}
+
+// D-229-8: typed directed edges between ITEMS (not versions) — edges
+// survive version churn. RELATED_TO reads both directions at query
+// time; compound unique dedupes, lib layer bans self-loops and
+// SUPERSEDES A→B / B→A cycles.
+model KnowledgeRelation {
+  id         String            @id @default(uuid())
+  fromItemId String // → KnowledgeItem.id
+  toItemId   String // → KnowledgeItem.id
+  type       String // RELATED_TO|SUPERSEDES|DEPENDS_ON|PART_OF|CONTRADICTS
+  createdBy  String // operatorRef
+  createdAt  TimestamptzString @default(now())
+
+  @@unique([fromItemId, toItemId, type])
+  @@index([toItemId])
+  @@index([type])
+}
+
+// D-229-9: typed evidence refs scoped on a VERSION (a new version may
+// change the evidentiary base). Cap ≤50 refs/version enforced in the
+// lib (D-206-5 analog); `uri` index supports itemsCiting(uri) lookups.
+model KnowledgeEvidence {
+  id        String            @id @default(uuid())
+  versionId String // → KnowledgeVersion.id
+  type      String // INTERNAL_DOC|EXTERNAL_URL|ONCHAIN_TX|API_ENDPOINT|SCAN_REPORT
+  uri       String // ≤1000 — url-or-path
+  label     String?
+  addedBy   String // operatorRef
+  createdAt TimestamptzString @default(now())
+
+  @@index([versionId])
+  @@index([uri])
+}
+
+// D-229-7: persisted unanswered-question gap — upserted on
+// normalizedQuery (demand-registry: trim + lowercase + collapse ws).
+// count/samples grow on repeat sightings; lifecycle is operator-driven.
+// sourceRef ties INTERACTION_SIGNAL gaps back to the agentRequest row
+// that flagged them (O-229-6 — ireq_*); NULL for other sources.
+model KnowledgeGap {
+  id              String            @id @default(uuid())
+  normalizedQuery String            @unique // normalized dedupe key
+  sampleQueries   Json // string[] verbatim agent texts — cap 10
+  count           Int               @default(1)
+  capabilityRef   String? // → KnowledgeCapability.name (attribution)
+  intent          String? // INTERACTION_INTENTS value (228 classify)
+  source          String // COMPOSER_REFUSAL|INTERACTION_SIGNAL|MANUAL
+  sourceRef       String? // ireq_* for INTERACTION_SIGNAL (O-229-6)
+  status          String // OPEN|TRIAGED|RESOLVED|WONTFIX
+  linkedItemId    String? // → KnowledgeItem.id (set on RESOLVED)
+  firstSeenAt     TimestamptzString @default(now())
+  lastSeenAt      TimestamptzString @default(now())
+
+  @@index([status, lastSeenAt])
+  @@index([count])
+}
