@@ -102,6 +102,9 @@ export async function createRequest(
     buildEvent("interaction.request.received", "PUBLIC", {
       requestId: id,
       channel: input.channel,
+      // The requester reading the public log already knows their own
+      // identity — this is disclosure of self, not a leak.
+      actorResolution: input.actor.resolution,
       ...publicSummary(input.payload, kind),
     }),
     buildEvent("interaction.request.received", "INTERNAL", {
