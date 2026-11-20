@@ -34,7 +34,11 @@ export async function forceReleaseMilestone(
      *  agreement). */
     confirmCancel?: boolean;
     /** R13-M3: audited override for the in-flight gate — a dormant
-     *  owned SUBMITTED row would otherwise lock the exit forever. */
+     *  owned SUBMITTED row would otherwise lock the exit forever.
+     *  R14-M1: the epoch pin does NOT backstop a verdict that lands
+     *  ACCEPT (it commits without re-stamping the epoch) — a landed
+     *  ack-release re-reads the bound submission and reports
+     *  `verdictLanded` when it came back ACCEPTED. */
     acknowledgeInFlight?: boolean;
   },
 ): Promise<
@@ -42,6 +46,7 @@ export async function forceReleaseMilestone(
     released: boolean;
     cancelled?: boolean;
     orphaned?: boolean;
+    verdictLanded?: boolean;
     auditRecorded: boolean;
   }>
 > {
@@ -120,6 +125,33 @@ export async function forceReleaseMilestone(
   // and the revert's CAS. Cannot roll back — but it must be
   // operator-visible: error log + `orphaned` in response AND evidence
   // (R12-M3), not just a log line.
+  // R14-M1: an ack-override release can beat an in-flight ACCEPT —
+  // the verdict commits without re-stamping the epoch, so the pin
+  // never saw it. Re-read the bound submission: ACCEPTED now means
+  // accepted work with no payable intent — surface it like the
+  // orphan check, do not silently succeed.
+  let verdictLanded = false;
+  if (opts.acknowledgeInFlight === true && milestone.submissionRef) {
+    try {
+      const submission = await ctx.db.commerce.submissions.getById(
+        milestone.submissionRef,
+      );
+      verdictLanded = submission?.status === "ACCEPTED";
+      if (verdictLanded) {
+        logger.error("verdict ACCEPTED landed after override release", {
+          repair: "accepted submission without payable intent",
+          milestoneId: milestone.id,
+          submissionId: milestone.submissionRef,
+          exit: "resolve the accepted submission's payout via a dispute or force-approve path",
+        });
+      }
+    } catch (err) {
+      logger.warn("post-release submission re-read failed", {
+        milestoneId: milestone.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
   let orphaned = false;
   if (!cancel) {
     try {
@@ -175,6 +207,7 @@ export async function forceReleaseMilestone(
         fromStatus: "APPROVED",
         toStatus,
         ...(orphaned ? { orphaned: true } : {}),
+        ...(verdictLanded ? { verdictLanded: true } : {}),
       },
     },
     {
@@ -196,6 +229,7 @@ export async function forceReleaseMilestone(
     released: true,
     ...(cancel ? { cancelled: true } : {}),
     ...(orphaned ? { orphaned: true } : {}),
+    ...(verdictLanded ? { verdictLanded: true } : {}),
     auditRecorded: audit.ok,
   });
 }

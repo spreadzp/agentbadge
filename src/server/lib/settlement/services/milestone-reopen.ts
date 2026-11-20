@@ -65,6 +65,22 @@ export async function forceReopenMilestone(
   }
   const gate = await checkReleasableAgreement(ctx, plan, milestone);
   if (gate.kind === "refuse") return gate.result;
+  // R14-M2: a READY row under a COMPLETED agreement with an ACCEPTED
+  // bound submission is a stranded-READY owed entitlement (R3-H3:
+  // verdict committed, post-commit approve missed) — force-approve
+  // pays it; CANCELLED would destroy it irreversibly. Dead work
+  // (REJECTED / no submission) still auto-cancels.
+  if (
+    gate.kind === "cancel" &&
+    gate.agreementStatus === "COMPLETED" &&
+    gate.submissionStatus === "ACCEPTED"
+  ) {
+    return fail(
+      "INVALID_STATE",
+      "agreement COMPLETED with an ACCEPTED bound submission — this is an owed payout; use force-approve to pay it, not reopen",
+      { reason: "would_cancel_accepted_work" },
+    );
+  }
   // R12-M1: under a closed agreement READY can never be paid — the
   // cleanup lands CANCELLED, not an orphaned PENDING.
   const to = gate.kind === "cancel" ? "CANCELLED" : "PENDING";

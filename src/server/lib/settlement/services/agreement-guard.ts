@@ -25,8 +25,10 @@ export type GuardVerdict =
    *  carried so the caller can distinguish CANCELLED (auto-cancel —
    *  nothing owed under a torn-down agreement) from COMPLETED (an
    *  APPROVED row there is usually an owed payout — cancel needs an
-   *  explicit operator opt-in). */
-  | { kind: "cancel"; agreementStatus: string }
+   *  explicit operator opt-in). R14-M2: `submissionStatus` lets the
+   *  reopen path tell dead work from a stranded-READY owed
+   *  entitlement (ACCEPTED submission). */
+  | { kind: "cancel"; agreementStatus: string; submissionStatus?: string }
   /** Hard refusal — carries the SettlementResult to return. */
   | { kind: "refuse"; result: SettlementResult<never> };
 
@@ -64,6 +66,7 @@ export async function checkReleasableAgreement(
   // no verdict is in flight anymore, so `cancel` must win or the exit
   // deadlocks on a stale SUBMITTED row.
   let inFlight = false;
+  let submissionStatus: string | undefined;
   if (milestone.submissionRef) {
     let submission;
     try {
@@ -84,6 +87,9 @@ export async function checkReleasableAgreement(
           "cannot verify bound submission state — release refused",
         ),
       };
+    }
+    if (submission && submission.agreementId === plan.agreementRef) {
+      submissionStatus = submission.status;
     }
     inFlight =
       !!submission &&
@@ -121,7 +127,11 @@ export async function checkReleasableAgreement(
     // Terminal is not a refusal: the caller cancels the leftover work
     // (COMPLETED additionally needs the operator's confirmCancel —
     // see milestone-release.ts).
-    return { kind: "cancel", agreementStatus: agreement.status };
+    return {
+      kind: "cancel",
+      agreementStatus: agreement.status,
+      submissionStatus,
+    };
   }
   if (inFlight && opts?.acknowledgeInFlight !== true) {
     return {

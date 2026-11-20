@@ -224,11 +224,13 @@ export function settlementMilestoneAdminRoutes(
         "COMPLETED requires `confirmCancel:true` (an APPROVED row " +
         "there is usually an owed payout — 409 " +
         "would_cancel_approved_payout without it). `acknowledgeInFlight:true` " +
-        "overrides a dormant in-flight gate. 409 when a leg already " +
-        "paid, the intent is dispute-frozen, the milestone is not " +
-        "APPROVED, the approval epoch moved on, or an owned verdict " +
-        "is in flight. A release that orphans in the last race window " +
-        "reports `orphaned:true`. Requires a reason; writes an AdminAction.",
+        "overrides a dormant in-flight gate — a verdict landing " +
+        "ACCEPTED afterwards reports `verdictLanded:true`. 409 when a " +
+        "leg already paid, the intent is dispute-frozen, the milestone " +
+        "is not APPROVED, the approval epoch moved on, or an owned " +
+        "verdict is in flight. A release that orphans in the last " +
+        "race window reports `orphaned:true`. Requires a reason; " +
+        "writes an AdminAction.",
       requestBody: jsonBody(releaseBody),
       responses: {
         200: {

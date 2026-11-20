@@ -359,6 +359,92 @@ describe("R11/R12: agreement/submission guard for release+reopen", () => {
     ).toBe("PENDING");
   });
 
+  it("R14-M1: ack-release reports verdictLanded when an ACCEPT lands behind it", async () => {
+    // Guard sees owned SUBMITTED; ack override releases; by the
+    // post-check the verdict committed ACCEPTED → accepted work with
+    // no payable intent must surface, not a clean 200.
+    const { plan, milestone } = await approvedIntent(ctx);
+    let calls = 0;
+    const restore = patchSubmissions(() => {
+      calls += 1;
+      return Promise.resolve({
+        status: calls === 1 ? "SUBMITTED" : "ACCEPTED",
+        agreementId: plan.agreementRef,
+        milestoneRef: milestone.milestoneId,
+      });
+    });
+    const rel = await forceReleaseMilestone(ctx, milestone.id, {
+      operator: OPS,
+      reason: "beat the dormant gate",
+      acknowledgeInFlight: true,
+    });
+    expect(rel.ok).toBe(true);
+    if (rel.ok) {
+      expect(rel.value.released).toBe(true);
+      expect(rel.value.verdictLanded).toBe(true);
+    }
+    restore();
+  });
+
+  it("R14-M2: reopen under COMPLETED + ACCEPTED submission refuses (stranded entitlement → force-approve)", async () => {
+    const { plan, milestones } = await openPlan(ctx);
+    const m = milestones[0]!;
+    await submitForReview(
+      ctx,
+      { milestoneRowId: m.id, submissionRef: "sub-1" },
+      PROVIDER,
+    );
+    const restoreSub = patchSubmissions(() =>
+      Promise.resolve({
+        status: "ACCEPTED",
+        agreementId: plan.agreementRef,
+        milestoneRef: m.milestoneId,
+      }),
+    );
+    const restoreAgr = patchAgreements({ status: "COMPLETED" });
+    const r = await forceReopenMilestone(ctx, m.id, {
+      operator: OPS,
+      reason: "free it",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.code).toBe("INVALID_STATE");
+      expect(r.error.details?.reason).toBe("would_cancel_accepted_work");
+    }
+    restoreAgr();
+    restoreSub();
+    // Row untouched — force-approve can still pay it.
+    expect((await db.settlement.milestones.getById(m.id))?.status).toBe(
+      "READY",
+    );
+  });
+
+  it("R14-M2: reopen under COMPLETED + REJECTED submission still auto-cancels", async () => {
+    const { plan, milestones } = await openPlan(ctx);
+    const m = milestones[0]!;
+    await submitForReview(
+      ctx,
+      { milestoneRowId: m.id, submissionRef: "sub-1" },
+      PROVIDER,
+    );
+    const restoreSub = patchSubmissions(() =>
+      Promise.resolve({
+        status: "REJECTED",
+        agreementId: plan.agreementRef,
+        milestoneRef: m.milestoneId,
+      }),
+    );
+    const restoreAgr = patchAgreements({ status: "COMPLETED" });
+    const r = await forceReopenMilestone(ctx, m.id, {
+      operator: OPS,
+      reason: "free it",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.cancelled).toBe(true);
+    restoreAgr();
+    restoreSub();
+  });
+
   it("R13-M1: reopen mints NO audit when a raced release already landed the target", async () => {
     const { milestones } = await openPlan(ctx);
     const m = milestones[0]!;
