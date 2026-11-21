@@ -1,0 +1,15 @@
+# no-store регрессия на authed/admin/agent сурфейсах — урок B-1/228 и
+# DELTA-227: sig-gated и admin GET'ы ОБЯЗАНЫ отдавать
+# `cache-control: no-store`, иначе shared-cache отдаёт чужие данные.
+# Scope — через --endpoints глобы слайса (например '/admin/*',
+# '/api/v1/agent/*'); сценарий применяется только к GET.
+name: no-store-audit
+layer: security
+template: contract-basic
+apply:
+  methods: [GET]
+expect:
+  status_in: [200, 201, 202, 204, 301, 302, 400, 401, 402, 403, 404, 405, 422, 429]
+  status_not_in: [500, 502, 503, 504]
+  headers:
+    cache-control: no-store

@@ -146,7 +146,17 @@ bun run probe run --target local --endpoints '/api/foo*' --max-requests 20
 
 Сиды: `contract-basic`, `nul-control`, `bigint-id`, `unicode-id`,
 `traversal`, `sqli`, `malformed-body`, `method-fuzz`, `forged-events`,
-`headers-audit`, `burst-429`, `replay-idem`.
+`headers-audit`, `burst-429`, `replay-idem`, `fts-injection`
+(tsquery-операторы в `?q=` — шаблон `query-variants`),
+`no-store-audit` (assert `cache-control: no-store` на response
+headers — урок B-1), `auth-negative` (мусорный Bearer → typed 401/403,
+на POST-ручках безопасно — отбивается в auth-слое до записи).
+
+Шаблоны YAML: `param-variants` (сегменты пути), `query-variants`
+(`params.param` + `params.values` → `?param=<enc>`), `method-fuzz`,
+`malformed-body`, `header-fuzz`, `auth-negative`, `contract-basic`.
+`expect` поддерживает `status_in`, `status_not_in`, `body_not_includes`,
+`headers` (header → substring, case-insensitive).
 
 ## Safety-рельсы (src/safety.ts)
 
@@ -155,7 +165,7 @@ bun run probe run --target local --endpoints '/api/foo*' --max-requests 20
 - `mutating: true` сценарии — только по явному флагу.
 - `--max-requests` обязателен (дефолт бюджета в заказах — 200).
 - Abort по серии подряд идущих 5xx — отчёт всё равно пишется.
-- `--dry` печатает план без единого запроса.
+- `--dry-run` печатает план без единого запроса.
 - Никогда не шлём валидные платёжные подписи; опасные ручки
   (`/admin/*`, settlement, `indexer/run`) — через allowlist-исключения.
 

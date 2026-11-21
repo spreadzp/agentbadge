@@ -147,6 +147,7 @@ export async function runProbes(opts: RunOpts): Promise<RunSummary> {
     let status: number | null = null;
     let requestId: string | null = null;
     let bodySnippet = "";
+    let resHeaders: Record<string, string> | undefined;
     let error: string | undefined;
     const tStart = Date.now();
 
@@ -168,12 +169,14 @@ export async function runProbes(opts: RunOpts): Promise<RunSummary> {
       status = res.status;
       requestId = res.headers.get("x-request-id");
       bodySnippet = (await res.text()).slice(0, 2048);
+      resHeaders = {};
+      res.headers.forEach((val, key) => { resHeaders![key.toLowerCase()] = val; });
     } catch (e) {
       error = (e as Error).message.slice(0, 200);
     }
     const durationMs = Date.now() - tStart;
 
-    const http = assertHttp({ status, requestId, bodySnippet, error }, v.expect);
+    const http = assertHttp({ status, requestId, bodySnippet, headers: resHeaders, error }, v.expect);
     let verdict: Verdict = http.verdict;
     let note = http.note;
 

@@ -15,7 +15,8 @@ describe("loadScenarios (seed set)", () => {
     const names = all.map(s => s.name);
     for (const n of ["nul-control", "traversal", "sqli", "bigint-id",
       "unicode-id", "forged-events", "method-fuzz", "malformed-body",
-      "headers-audit", "contract-basic", "burst-429", "replay-idem"]) {
+      "headers-audit", "contract-basic", "burst-429", "replay-idem",
+      "fts-injection", "no-store-audit", "auth-negative"]) {
       expect(names).toContain(n);
     }
   });
@@ -66,6 +67,28 @@ params: { methods: [PUT, GET, DELETE] }
     const [s] = await loadScenarios(dir);
     const vs = await s.variants(ep());
     expect(vs.map(v => v.method)).toEqual(["PUT", "DELETE"]);
+  });
+
+  it("query-variants строит ?param=<enc> и кодирует значения", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sc-"));
+    writeFileSync(join(dir, "q.yaml"), `
+name: q
+template: query-variants
+params: { param: q, values: ["&", "\\x00"] }
+apply: { methods: [GET] }
+`);
+    const [s] = await loadScenarios(dir);
+    const vs = await s.variants(ep({ path: "/api/search" }));
+    expect(vs.map(v => v.path)).toEqual([
+      "/api/search?q=%26", "/api/search?q=%00",
+    ]);
+  });
+
+  it("query-variants без params.param → ошибка при генерации", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sc-"));
+    writeFileSync(join(dir, "q.yaml"), "name: q\ntemplate: query-variants\nparams: { values: [x] }\n");
+    const [s] = await loadScenarios(dir);
+    expect(() => s.variants(ep())).toThrow(/params\.param/);
   });
 
   it("невалидный template → ошибка при генерации вариантов", async () => {

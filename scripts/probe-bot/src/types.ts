@@ -26,6 +26,8 @@ export interface ExpectSpec {
   statusIn?: number[];
   statusNotIn?: number[];
   bodyNotIncludes?: string[];
+  /** Response header must contain substring (case-insensitive both sides). */
+  headers?: Record<string, string>;
 }
 
 export interface Scenario {

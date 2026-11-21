@@ -33,6 +33,31 @@ describe("assertHttp", () => {
     expect(r.note).toContain("blockdaemon");
   });
 
+  it("headers-assert: pass когда header содержит подстроку (case-insensitive)", () => {
+    const r = assertHttp(
+      { status: 401, requestId: "r", bodySnippet: "",
+        headers: { "cache-control": "private, no-store, max-age=0" } },
+      { statusIn: [401], headers: { "cache-control": "no-store" } },
+    );
+    expect(r.verdict).toBe("pass");
+  });
+
+  it("headers-assert: fail когда header отсутствует или без подстроки", () => {
+    const missing = assertHttp(
+      { status: 200, requestId: "r", bodySnippet: "", headers: {} },
+      { statusIn: [200], headers: { "cache-control": "no-store" } },
+    );
+    expect(missing.verdict).toBe("fail");
+    expect(missing.note).toContain("cache-control");
+    const wrong = assertHttp(
+      { status: 200, requestId: "r", bodySnippet: "",
+        headers: { "cache-control": "public, max-age=60" } },
+      { statusIn: [200], headers: { "cache-control": "no-store" } },
+    );
+    expect(wrong.verdict).toBe("fail");
+    expect(wrong.note).toContain("public, max-age=60");
+  });
+
   it("inconclusive без ответа (timeout/throw)", () => {
     const r = assertHttp(
       { status: null, requestId: null, bodySnippet: "", error: "timeout" },

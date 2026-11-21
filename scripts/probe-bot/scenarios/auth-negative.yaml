@@ -1,0 +1,11 @@
+# Невалидные креды → typed 401/403 (не 200-silent-anon, не 500).
+# Шлёт метод самого endpoint'а с мусорным Bearer — на POST-ручках
+# безопасно для прода: отбивается в auth-слое ДО записи.
+name: auth-negative
+layer: security
+template: auth-negative
+apply:
+  methods: [GET, POST, PUT, DELETE, PATCH]
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 422, 429]
+  status_not_in: [500, 502, 503, 504]

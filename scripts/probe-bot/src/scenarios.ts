@@ -12,6 +12,7 @@
  *
  * Templates:
  *   param-variants — append each params.values[] as trailing segment
+ *   query-variants — params.param + params.values[] → `path?param=<v>`
  *   method-fuzz    — same path, methods from params.methods[]
  *   malformed-body — POST with params.bodies[] (raw strings)
  *   header-fuzz    — GET with each params.headers[] header-set
@@ -52,11 +53,13 @@ interface YamlScenario {
     bodies?: string[];
     headers?: Record<string, string>[];
     method?: string;
+    param?: string;
   };
   expect?: {
     status_in?: number[];
     status_not_in?: number[];
     body_not_includes?: string[];
+    headers?: Record<string, string>;
   };
 }
 
@@ -74,6 +77,7 @@ function yamlExpect(y: YamlScenario): ExpectSpec {
     statusIn: y.expect?.status_in ?? base.statusIn,
     statusNotIn: y.expect?.status_not_in ?? base.statusNotIn,
     bodyNotIncludes: y.expect?.body_not_includes ?? base.bodyNotIncludes,
+    headers: y.expect?.headers,
   };
 }
 
@@ -97,6 +101,15 @@ function compileYaml(y: YamlScenario): Scenario {
           path: substitutePathParam(ep.path, v), expect,
           note: `param-variant ${v.slice(0, 24)}`,
         }));
+      case "query-variants": {
+        const qp = p.param;
+        if (!qp) throw new Error(`query-variants (${y.name}) needs params.param`);
+        return (p.values ?? []).map(v => ({
+          method: ep.method,
+          path: `${ep.path}${ep.path.includes("?") ? "&" : "?"}${encodeURIComponent(qp)}=${encodeURIComponent(v)}`,
+          expect, note: `query ${qp}=${v.slice(0, 24)}`,
+        }));
+      }
       case "method-fuzz":
         return (p.methods ?? ["PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
           .filter(m => m !== ep.method.toUpperCase())

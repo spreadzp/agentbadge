@@ -13,6 +13,8 @@ export interface HttpObservation {
   status: number | null;         // null = fetch threw / timeout
   requestId: string | null;
   bodySnippet: string;
+  /** Lowercased-name → value map of response headers (for headers asserts). */
+  headers?: Record<string, string>;
   error?: string;
 }
 
@@ -29,6 +31,12 @@ export function assertHttp(obs: HttpObservation, expect: ExpectSpec): { verdict:
   }
   for (const bad of expect.bodyNotIncludes ?? []) {
     if (obs.bodySnippet.includes(bad)) problems.push(`body leaks "${bad}"`);
+  }
+  for (const [h, want] of Object.entries(expect.headers ?? {})) {
+    const got = obs.headers?.[h.toLowerCase()] ?? "";
+    if (!got.toLowerCase().includes(want.toLowerCase())) {
+      problems.push(`header ${h} lacks "${want}" (got "${got || "—"}")`);
+    }
   }
   return problems.length
     ? { verdict: "fail", note: problems.join("; ") }
