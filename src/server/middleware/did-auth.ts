@@ -74,11 +74,14 @@ export function getDidAuthMode(): DidAuthMode {
   // Prod foot-gun (arc-audit H-1): warn silently disables DID-auth
   // entirely; refuse it under NODE_ENV=production so a staging env
   // var can't leak through unnoticed.
-  if (resolved === "warn" && process.env.NODE_ENV === "production") {
+  if (
+    (resolved === "warn" || resolved === "off") &&
+    process.env.NODE_ENV === "production"
+  ) {
     if (!_warnedProdWarnMode) {
       _warnedProdWarnMode = true;
       logger.warn(
-        "DID_AUTH_MODE=warn ignored in production — forcing enforce",
+        `DID_AUTH_MODE=${resolved} ignored in production — forcing enforce`,
       );
     }
     return "enforce";
@@ -104,8 +107,10 @@ export function requireDidSignature(
       return;
     }
 
-    // Skip -with-key convenience endpoints (reserved for EPIC-83)
-    if (c.req.path.includes("-with-key")) {
+    // Skip -with-key convenience endpoints (reserved for EPIC-83).
+    // Arc-audit R2-M4: substring match also skipped unrelated paths
+    // ("…-with-keyring") — match on a path segment's suffix instead.
+    if (c.req.path.split("/").some((seg) => seg.endsWith("-with-key"))) {
       await next();
       return;
     }
@@ -241,15 +246,17 @@ export function requireDidSignature(
     if (rawBody) {
       try {
         const bodyJson = JSON.parse(rawBody) as Record<string, unknown>;
-        for (const field of ACTOR_FIELDS) {
-          if (field in bodyJson) {
-            if (bodyJson[field] !== did) {
+        if (bodyJson !== null && typeof bodyJson === "object") {
+          // Arc-audit R2-M3: check EVERY present actor field — a body
+          // with both posterDid and claimerDid previously validated
+          // only the first and let a mismatched second field through.
+          for (const field of ACTOR_FIELDS) {
+            if (field in bodyJson && bodyJson[field] !== did) {
               return errorResponse(
                 c, 403, ErrorCodes.PASSPORT_OWNERSHIP_MISMATCH,
                 `Verified DID does not match body field '${field}'`,
               );
             }
-            break;
           }
         }
       } catch {

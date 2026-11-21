@@ -45,8 +45,27 @@ export async function upsertSession(
   let sanitized = false;
   let sessionId: string;
   const parsed = sanitizeSessionId(opts.sessionId);
+  const callerRef = opts.actorRef ?? null;
   if (parsed.ok) {
-    sessionId = parsed.sessionId;
+    // Arc-audit M5: a claimed id owned by a different (non-null)
+    // actorRef is refused — mint a fresh session rather than joining
+    // another actor's thread / inflating their requestCount. The
+    // `isess_` prefix is the server-minted namespace: echoing an
+    // EXISTING minted id is fine (uuid-unguessable capability), but a
+    // client can't squat a fresh isess_* name — that would let them
+    // pre-create/fix server-looking sessions.
+    const existing = await stores.interactions.getSession(parsed.sessionId);
+    if (
+      (existing &&
+        existing.actorRef !== null &&
+        existing.actorRef !== callerRef) ||
+      (!existing && parsed.sessionId.startsWith("isess_"))
+    ) {
+      sanitized = true;
+      sessionId = mintSessionId();
+    } else {
+      sessionId = parsed.sessionId;
+    }
   } else {
     if (opts.sessionId !== undefined && opts.sessionId !== null) sanitized = true;
     sessionId = mintSessionId();

@@ -144,6 +144,27 @@ const DEFAULT_MAX_ENTRIES = 10_000;
  * fall to a shared "unknown" bucket (documented trade-off: those
  * clients share one limit instead of none at all).
  */
+/**
+ * Arc-audit R2-M7: rate-bucket key normalization — IPv6 clients
+ * rotate freely inside their /64 (privacy extensions), so per-IP
+ * buckets are trivially evaded; bucket IPv6 on the /64 prefix.
+ * IPv4-mapped IPv6 (::ffff:a.b.c.d) buckets as plain IPv4.
+ */
+function bucketIp(ip: string): string {
+  if (isIP(ip) !== 6) return ip;
+  const v4tail = ip.match(/:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  if (v4tail && isIP(v4tail[1]) === 4) return v4tail[1];
+  const [head = "", tail = ""] = ip.split("::");
+  const headParts = head ? head.split(":") : [];
+  const tailParts = tail ? tail.split(":") : [];
+  const full = [
+    ...headParts,
+    ...Array(Math.max(8 - headParts.length - tailParts.length, 0)).fill("0"),
+    ...tailParts,
+  ];
+  return `${full.slice(0, 4).join(":")}::`;
+}
+
 export function resolveClientIp(c: Context): string {
   const onFly = Boolean(
     process.env.FLY_APP_NAME || process.env.FLY_MACHINE_ID,
@@ -151,7 +172,7 @@ export function resolveClientIp(c: Context): string {
   if (onFly) {
     const flyIp = c.req.header("fly-client-ip")?.trim();
     // Audit M-10: a non-IP value must not mint a fresh bucket.
-    if (flyIp && isIP(flyIp)) return flyIp;
+    if (flyIp && isIP(flyIp)) return bucketIp(flyIp);
   }
 
   if (process.env.TRUST_PROXY_HEADERS === "true") {
@@ -159,11 +180,11 @@ export function resolveClientIp(c: Context): string {
     if (xff) {
       const parts = xff.split(",").map((s) => s.trim());
       const rightmost = parts[parts.length - 1];
-      if (rightmost && isIP(rightmost)) return rightmost;
+      if (rightmost && isIP(rightmost)) return bucketIp(rightmost);
     }
 
     const realIp = c.req.header("x-real-ip")?.trim();
-    if (realIp && isIP(realIp)) return realIp;
+    if (realIp && isIP(realIp)) return bucketIp(realIp);
   }
 
   return "unknown";

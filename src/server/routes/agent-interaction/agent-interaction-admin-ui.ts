@@ -66,16 +66,20 @@ const backToDetail = (id: string, flash: { ok?: string; err?: string }) => {
   if (flash.err) q.set("err", flash.err);
   else if (flash.ok) q.set("ok", flash.ok);
   const qs = q.toString();
-  return `/admin/interactions/${id}${qs ? `?${qs}` : ""}`;
+  return `/admin/interactions/${encodeURIComponent(id)}${qs ? `?${qs}` : ""}`;
 };
 
-const csvToList = (v: unknown): string[] | undefined =>
-  typeof v === "string"
-    ? v
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : undefined;
+// Arc-audit M3: a blank field must mean "leave the stored list
+// alone" — returning [] for "" silently wiped topics/entities on
+// every re-classify. Operators clear lists via the JSON API ([]).
+const csvToList = (v: unknown): string[] | undefined => {
+  if (typeof v !== "string") return undefined;
+  const list = v
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length > 0 ? list : undefined;
+};
 
 export interface AgentInteractionAdminUiDeps {
   stores: RequestInboxStores;
@@ -181,7 +185,7 @@ export function createAgentInteractionAdminUi(
     const id = c.req.param("id");
     const b = await c.req.parseBody();
     const operator =
-      typeof b.operator === "string" ? b.operator.trim() : "";
+      typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
     if (!operator) {
       return c.redirect(backToDetail(id, { err: "operator label required" }), 303);
     }
@@ -192,7 +196,10 @@ export function createAgentInteractionAdminUi(
         intent: b.intent ? String(b.intent) : undefined,
         signalType: b.signalType ? String(b.signalType) : undefined,
         outcome: b.outcome ? String(b.outcome) : undefined,
-        knowledgeGap: b.knowledgeGap === "1" ? true : undefined,
+        // hidden marker distinguishes "unchecked" (→ false) from
+        // an old form that never rendered the box (→ keep).
+        knowledgeGap:
+          b.knowledgeGap_present === "1" ? b.knowledgeGap === "1" : undefined,
         topics: csvToList(b.topics),
         entities: csvToList(b.entities),
         demandSignals: csvToList(b.demandSignals),
@@ -214,7 +221,7 @@ export function createAgentInteractionAdminUi(
     const id = c.req.param("id");
     const b = await c.req.parseBody();
     const operator =
-      typeof b.operator === "string" ? b.operator.trim() : "";
+      typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
     if (!operator) {
       return c.redirect(backToDetail(id, { err: "operator label required" }), 303);
     }
@@ -224,7 +231,9 @@ export function createAgentInteractionAdminUi(
         "reason" in r
           ? r.reason === "missing"
             ? "request not found"
-            : "request already terminal — nothing written"
+            : r.reason === "expired"
+              ? "request expired"
+              : "request already terminal — nothing written"
           : r.error;
       return c.redirect(backToDetail(id, { err: msg }), 303);
     }
@@ -235,7 +244,7 @@ export function createAgentInteractionAdminUi(
     const id = c.req.param("id");
     const b = await c.req.parseBody();
     const operator =
-      typeof b.operator === "string" ? b.operator.trim() : "";
+      typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
     if (!operator) {
       return c.redirect(backToDetail(id, { err: "operator label required" }), 303);
     }
@@ -245,7 +254,9 @@ export function createAgentInteractionAdminUi(
         "reason" in r
           ? r.reason === "missing"
             ? "request not found"
-            : "request already terminal — nothing written"
+            : r.reason === "expired"
+              ? "request expired"
+              : "request already terminal — nothing written"
           : r.error;
       return c.redirect(backToDetail(id, { err: msg }), 303);
     }

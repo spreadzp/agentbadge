@@ -16,6 +16,16 @@ const TERMINAL = new Set(["completed", "failed"]);
 function cloneInteraction(r: InboxRequestRecord): InboxRequestRecord {
   return {
     ...r,
+    // Deep-copy the mutable JSON fields — a caller mutating
+    // record.payload/topics would otherwise write straight into the
+    // store's row (arc nit).
+    payload: r.payload == null ? r.payload : structuredClone(r.payload),
+    response: r.response == null ? r.response : structuredClone(r.response),
+    topics: Array.isArray(r.topics) ? [...r.topics] : r.topics,
+    entities: Array.isArray(r.entities) ? [...r.entities] : r.entities,
+    demandSignals: Array.isArray(r.demandSignals)
+      ? [...r.demandSignals]
+      : r.demandSignals,
     fingerprint: { ...r.fingerprint, headers: { ...r.fingerprint.headers } },
   };
 }
@@ -203,9 +213,13 @@ export function createMemoryInteractionStore(
         out = out.filter((r) => r.actorResolution === opts.actorResolution);
       }
       if (opts?.beforeMs !== undefined) {
-        out = out.filter((r) => r.createdAtMs < opts.beforeMs!);
+        // Keyset cursor: next page = rows strictly AFTER the last
+        // seen createdAtMs (arc H/M2 — `<` replayed the oldest page).
+        out = out.filter((r) => r.createdAtMs > opts.beforeMs!);
       }
-      out.sort((a, b) => a.createdAtMs - b.createdAtMs);
+      out.sort(
+        (a, b) => a.createdAtMs - b.createdAtMs || (a.id < b.id ? -1 : 1),
+      );
       return out.slice(0, opts?.limit ?? 500).map(cloneInteraction);
     },
 

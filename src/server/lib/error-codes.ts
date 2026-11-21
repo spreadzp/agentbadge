@@ -54,6 +54,9 @@ export const ErrorCodes = {
   // EPIC-228 — interaction terminal-state conflict (replay of
   // respond/reject on a completed|failed row)
   INTERACTION_TERMINAL: "interaction_terminal",
+  // EPIC-228 — idempotency-key replayed under a different actor
+  // (arc-audit H2: never disclose another tenant's request ids)
+  INTERACTION_IDEMPOTENCY_ACTOR: "interaction_idempotency_actor",
 
   // 409 — conflict
   AGENTCARD_DID_CONFLICT: "AGENTCARD_DID_CONFLICT",

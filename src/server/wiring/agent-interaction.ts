@@ -37,7 +37,15 @@ function notifyInteractionReceived(
   ];
   const excerpt = payload.excerpt;
   if (typeof excerpt === "string" && excerpt.length > 0) {
-    lines.push(escHtml(excerpt.slice(0, 200)));
+    // Arc-audit M10: newlines + bidi/control chars let a submitter
+    // inject fake operator-looking lines into the operator channel —
+    // collapse whitespace and drop non-printing chars before escHtml.
+    const clean = excerpt
+      .replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 200);
+    if (clean.length > 0) lines.push(escHtml(clean));
   }
   lines.push(`<a href="${ADMIN_BASE}/${escHtml(requestId)}">open in inbox</a>`);
   sendTelegramMessage(lines.join("\n"), cfg).catch((err) => {

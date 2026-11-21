@@ -262,4 +262,40 @@ describe("InteractionStore (memory backend, D-228-10 shared row)", () => {
     });
     expect(apiKeyOnly.map((r) => r.id)).toEqual([b.record.id]);
   });
+
+  it("queue cursor advances past the last page (arc M2/H1 — no replay)", async () => {
+    const stores = createMemoryRequestInboxStores();
+    // 120 FIFO rows — the auditor's repro: rows past the first page
+    // were unreachable because the cursor re-matched the oldest page.
+    for (let i = 1; i <= 120; i++) {
+      await stores.interactions.submitInteraction(
+        mkSubmit({ id: `r${i}`, createdAtMs: i }),
+        [],
+      );
+    }
+    const page1 = await stores.interactions.listQueue({ limit: 50 });
+    expect(page1.map((r) => r.id)).toEqual(
+      Array.from({ length: 50 }, (_, i) => `r${i + 1}`),
+    );
+    const cursor = Number(page1[page1.length - 1].createdAtMs);
+    const page2 = await stores.interactions.listQueue({
+      limit: 50,
+      beforeMs: cursor,
+    });
+    expect(page2.map((r) => r.id)).toEqual(
+      Array.from({ length: 50 }, (_, i) => `r${i + 51}`),
+    );
+    const page3 = await stores.interactions.listQueue({
+      limit: 50,
+      beforeMs: Number(page2[page2.length - 1].createdAtMs),
+    });
+    expect(page3.map((r) => r.id)).toEqual(
+      Array.from({ length: 20 }, (_, i) => `r${i + 101}`),
+    );
+    const page4 = await stores.interactions.listQueue({
+      limit: 50,
+      beforeMs: Number(page3[page3.length - 1].createdAtMs),
+    });
+    expect(page4).toEqual([]);
+  });
 });

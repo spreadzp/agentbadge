@@ -17,6 +17,7 @@ import type {
   InteractionSessionRecord,
 } from "../request-inbox/interaction-types";
 import type { RequestInboxStores } from "../request-inbox/store";
+import { canonicalJson } from "../request-inbox/qa";
 import type { ResolvedActor } from "./actor";
 import { buildEvent, emitInteractionHooks } from "./events";
 
@@ -67,7 +68,14 @@ export type CreateRequestResult =
       duplicate: boolean;
       session: InteractionSessionRecord | null;
     }
-  | { ok: false; error: "payload_too_large" | "invalid_kind" };
+  | {
+      ok: false;
+      error:
+        | "payload_too_large"
+        | "invalid_kind"
+        | "actor_mismatch"
+        | "payload_mismatch";
+    };
 
 /** Short PUBLIC-safe excerpt — first ≤200 chars of the text field. */
 function publicSummary(
@@ -77,7 +85,9 @@ function publicSummary(
   let excerpt: string | undefined;
   if (payload && typeof payload === "object") {
     const text = (payload as Record<string, unknown>).text;
-    if (typeof text === "string") excerpt = text.slice(0, 200);
+    // Code-point slice — a UTF-16 slice can sever a surrogate pair
+    // and emit an invalid string into the PUBLIC event (arc M7).
+    if (typeof text === "string") excerpt = [...text].slice(0, 200).join("");
   }
   return { kind, ...(excerpt !== undefined ? { excerpt } : {}) };
 }
@@ -142,7 +152,25 @@ export async function createRequest(
     events,
   );
 
-  if (!res.duplicate) emitInteractionHooks(id, events);
+  if (res.duplicate) {
+    const stored = res.record;
+    // H2 (arc-audit): (key, fpHash) alone is not the replay contract —
+    // a different actor must never receive the stored ids (cross-
+    // tenant disclosure via shared-NAT fpHash), and a different
+    // payload must not be silently dropped (legacy does 422). A
+    // janitor-purged payload can't be compared — key+fpHash stands.
+    if ((stored.actorRef ?? null) !== (input.actor.actorRef ?? null)) {
+      return { ok: false, error: "actor_mismatch" };
+    }
+    if (
+      stored.payload !== null &&
+      canonicalJson(stored.payload) !== canonicalJson(input.payload)
+    ) {
+      return { ok: false, error: "payload_mismatch" };
+    }
+  } else {
+    emitInteractionHooks(id, events);
+  }
   return {
     ok: true,
     record: res.record,

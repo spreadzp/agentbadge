@@ -33,6 +33,10 @@ export async function classify(
   if (Object.keys(v.patch).length === 0) {
     return { ok: false, error: "empty classification", field: "body" };
   }
+  // Arc-audit M4: same lazy-expiry gap as respond/reject — patching a
+  // row the agent already sees as 410 is a split-brain transition.
+  const { expired } = await stores.requests.get(requestId);
+  if (expired) return { ok: false, error: "request expired" };
 
   const event = buildEvent("interaction.request.classified", "INTERNAL", {
     requestId,

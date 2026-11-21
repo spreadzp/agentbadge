@@ -59,11 +59,19 @@ const NO_STORE_PREFIXES = [
   "/api/commerce",
 ];
 
+/** Exact paths that lack a trailing-slash prefix in NO_STORE_PREFIXES
+ *  but are the same surfaces (bare "/admin" is covered by "/admin/"
+ *  only for subpaths). */
+const NO_STORE_EXACT = ["/admin"];
+
 export function cacheHeadersMiddleware() {
   return async (c: Context, next: Next): Promise<Response | void> => {
     await next();
 
-    const path = new URL(c.req.url).pathname;
+    // Arc-audit R2-M9: `new URL(url).pathname` keeps percent-encoding —
+    // `/api/%72equests/:id` bypassed the no-store prefix and got a
+    // cacheable default. `c.req.path` is the route's decoded path.
+    const path = c.req.path;
 
     // Don't override if already set
     if (c.res.headers.get("Cache-Control")) return;
@@ -74,16 +82,18 @@ export function cacheHeadersMiddleware() {
       return;
     }
 
-    if (NO_STORE_PREFIXES.some((p) => path.startsWith(p))) {
+    if (
+      NO_STORE_EXACT.includes(path) ||
+      NO_STORE_PREFIXES.some((p) => path.startsWith(p))
+    ) {
       c.header("Cache-Control", "no-store");
       return;
     }
 
-    // API endpoints — short cache
+    // API endpoints — short cache (no synthetic rate-limit headers —
+    // they never reflected real limiter state and could mask a 429)
     if (API_PREFIXES.some((p) => path.startsWith(p))) {
       c.header("Cache-Control", "public, max-age=60");
-      c.header("X-RateLimit-Limit", "60");
-      c.header("X-RateLimit-Remaining", "59");
       return;
     }
 

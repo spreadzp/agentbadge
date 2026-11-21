@@ -15,6 +15,7 @@ import { describeRoute } from "hono-openapi";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { legacyRequestInboxDeprecation } from "../../lib/contract-guards";
+import { resolveActor } from "../../lib/agent-interaction/actor";
 import type { RequestStore } from "../../lib/request-inbox/store";
 
 const RETRY_AFTER_SEC = 5; // poll hint — how often agents should retry
@@ -36,6 +37,21 @@ export function registerRequestPollRoute(
       const id = c.req.param("id");
       const { record, expired } = await requests.get(id);
       if (!record) {
+        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request",);
+      }
+      // Arc-audit R2-H2: this route reads the SHARED agentRequest row,
+      // so it must not become a side door around the v1 identity gate.
+      // Same rule as v1 tenantDeny: API_KEY-owned rows require the
+      // owning key; identified callers can't read foreign identified
+      // rows; DID/ANON stay capability-URL (no DID auth on GET).
+      const callerRef = resolveActor(c).actorRef;
+      if (
+        (record.actorResolution === "API_KEY" &&
+          callerRef !== record.actorRef) ||
+        (callerRef !== null &&
+          record.actorRef !== null &&
+          callerRef !== record.actorRef)
+      ) {
         return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request",);
       }
       if (expired) {

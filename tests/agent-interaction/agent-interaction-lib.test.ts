@@ -103,6 +103,36 @@ describe("upsertSession", () => {
     expect(b.created).toBe(false);
     expect(b.session.requestCount).toBe(a.session.requestCount + 1);
   });
+  it("arc M5: a claimed id owned by another actor mints fresh, no join", async () => {
+    const stores = createMemoryRequestInboxStores();
+    await upsertSession(stores, { sessionId: "owned", actorRef: "ag_A" });
+    const thief = await upsertSession(stores, {
+      sessionId: "owned",
+      actorRef: "ag_B",
+    });
+    expect(thief.sanitized).toBe(true);
+    expect(thief.sessionId).toMatch(/^isess_/);
+    // the owner's session is untouched — no count inflation
+    expect(
+      (await stores.interactions.getSession("owned"))!.requestCount,
+    ).toBe(1);
+  });
+  it("arc M5: isess_ squat refused, echo of an existing minted id allowed", async () => {
+    const stores = createMemoryRequestInboxStores();
+    const squatter = await upsertSession(stores, {
+      sessionId: "isess_forged-123",
+    });
+    expect(squatter.sanitized).toBe(true);
+    expect(squatter.sessionId).not.toBe("isess_forged-123");
+    // a real minted id stays usable (server returns it to the caller)
+    const minted = await upsertSession(stores, { actorRef: "ag_C" });
+    const echo = await upsertSession(stores, {
+      sessionId: minted.sessionId,
+      actorRef: "ag_C",
+    });
+    expect(echo.sessionId).toBe(minted.sessionId);
+    expect(echo.sanitized).toBe(false);
+  });
 });
 
 describe("createRequest", () => {
@@ -281,6 +311,51 @@ describe("classify / respond / reject", () => {
       ok: false,
       error: "reason_too_large",
     });
+  });
+  it("arc M4: respond/reject/classify on an expired row refuse — zero writes", async () => {
+    const stores = createMemoryRequestInboxStores();
+    const r = await createRequest(
+      stores,
+      mkInput({ expiresAtMs: Date.now() - 1 }),
+    );
+    if (!r.ok) throw new Error("seed failed");
+    const id = r.record.id;
+    expect(await respond(stores, id, "op", "too late")).toEqual({
+      ok: false,
+      reason: "expired",
+    });
+    expect(await reject(stores, id, "op")).toEqual({
+      ok: false,
+      reason: "expired",
+    });
+    expect(await classify(stores, id, { intent: "BUG_REPORT" }, "op")).toEqual(
+      { ok: false, error: "request expired" },
+    );
+    // nothing was written: state stays submitted, no response rows
+    expect(
+      (await stores.requests.get(id)).record!.state,
+    ).toBe("submitted");
+    expect(await stores.interactions.listResponses(id)).toHaveLength(0);
+  });
+  it("arc M6: operatorRef stays out of the PUBLIC response event", async () => {
+    const stores = createMemoryRequestInboxStores();
+    const id = await seed(stores);
+    const r = await respond(stores, id, "op_secret_handle", "ans");
+    expect(r.ok).toBe(true);
+    const pub = await stores.interactions.listEvents(id, {
+      visibility: "PUBLIC",
+    });
+    const sent = pub.find((e) => e.kind === "interaction.response.sent");
+    expect(sent).toBeDefined();
+    expect(JSON.stringify(sent!.payload)).not.toContain("op_secret_handle");
+    // attribution lives on the INTERNAL event + the response row
+    const internal = await stores.interactions.listEvents(id, {
+      visibility: "INTERNAL",
+    });
+    expect(
+      internal.find((e) => e.kind === "interaction.response.attributed")
+        ?.payload,
+    ).toMatchObject({ operatorRef: "op_secret_handle" });
   });
 });
 

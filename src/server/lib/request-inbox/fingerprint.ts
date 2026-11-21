@@ -11,7 +11,9 @@ import type { InboxFingerprint } from "./types";
  * typed, queryable dedupe/rate key that makes the raw IP
  * irrecoverable. The fingerprint snapshot keeps capped UA/referer/src
  * and a sanitized header copy — credential-style and IP-carrier
- * headers are dropped outright (raw IP is never persisted).
+ * headers are dropped outright. The resolved IP IS persisted
+ * (ops-only, abuse investigation — C49 article amendment 2026-11-14);
+ * public endpoints never return it; rate lanes key off HMAC(ip).
  */
 
 /**
@@ -171,8 +173,9 @@ export function buildFingerprint(input: {
         .digest("hex")
       : null,
     fingerprint: {
-      // Ops-visible raw IP — stored for abuse investigation;
-      // never surfaced to public request/survey endpoints.
+      // Ops-visible raw IP — stored for abuse investigation
+      // (deliberate, documented in the C49 article); never surfaced
+      // to public request/survey endpoints.
       ip: input.ip,
       ua,
       referer: input.referer ? cleanField(input.referer) : null,

@@ -29,12 +29,24 @@ const expired410 = (c: Context) =>
     retryable: false,
   });
 
-/** 404 when an identified caller polls a request they don't own. */
+/** 404 when the caller may not read this row (identical-oracle:
+ *  foreign ids look exactly like unknown ids).
+ *
+ *  Arc-audit M1: API_KEY-owned rows now require the owning key on
+ *  GET too (agentKeyAuth is global and resolves on GET) — an
+ *  anonymous caller who learns the id can no longer read them.
+ *  DID/ANON rows stay capability-URL readable: the DID scheme only
+ *  authenticates mutations (middleware skips GET/HEAD), so the
+ *  unguessable ireq_* id is the only read mechanism those callers
+ *  have — document that honestly rather than brick the owner. */
 function tenantDeny(
   c: Context,
   record: InboxRequestRecord,
 ): Response | null {
   const actor = resolveActor(c);
+  if (record.actorResolution === "API_KEY") {
+    return actor.actorRef === record.actorRef ? null : notFound(c);
+  }
   if (
     actor.actorRef !== null &&
     record.actorRef !== null &&
@@ -61,9 +73,9 @@ export function registerInteractionGetRoutes(
       },
     }),
     async (c) => {
-      const { record, expired } = await stores.requests.get(
-        c.req.param("id"),
-      );
+      const id = c.req.param("id");
+      if (id.length > 128) return notFound(c);
+      const { record, expired } = await stores.requests.get(id);
       if (!record) return notFound(c);
       if (expired) return expired410(c);
       const deny = tenantDeny(c, record);
@@ -84,9 +96,9 @@ export function registerInteractionGetRoutes(
       },
     }),
     async (c) => {
-      const { record, expired } = await stores.requests.get(
-        c.req.param("id"),
-      );
+      const id = c.req.param("id");
+      if (id.length > 128) return notFound(c);
+      const { record, expired } = await stores.requests.get(id);
       if (!record) return notFound(c);
       if (expired) return expired410(c);
       const deny = tenantDeny(c, record);

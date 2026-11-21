@@ -161,6 +161,7 @@ function classifySection(d: DetailData) {
         ${listField("entities", "entities", c.entities)}
         ${listField("demandSignals", "demandSignals", c.demandSignals)}
         <label class="flex items-center gap-2 text-xs text-slate-400">
+          <input type="hidden" name="knowledgeGap_present" value="1" />
           <input type="checkbox" name="knowledgeGap" value="1"
             ${c.knowledgeGap === true ? "checked" : ""}
             class="rounded border-slate-700 bg-slate-900" />

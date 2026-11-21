@@ -43,6 +43,9 @@ export function createTieredLimiter(opts: {
   limits: Record<keyof typeof TIER_LIMITS, number>;
   globalKey: string;
   globalMax: number;
+  /** Optional per-tier group buckets checked before the global one —
+   *  an ANON rotation-flood then cannot starve authenticated tiers. */
+  tierGroups?: Partial<Record<keyof typeof TIER_LIMITS, { key: string; max: number }>>;
   now?: () => number;
 }): TieredLimiter {
   const now = opts.now ?? (() => Date.now());
@@ -78,8 +81,14 @@ export function createTieredLimiter(opts: {
 
   return {
     allow(tier, key) {
-      if (!check(opts.globalKey, opts.globalMax)) return false;
-      return check(key, limits[tier]);
+      // Per-key first: a rejected request must not burn the shared
+      // global window (arc-audit H1 — one IP could lock out every
+      // tier). A caller rejected at the group/global stage consumes
+      // its own per-key slot only.
+      if (!check(key, limits[tier])) return false;
+      const group = opts.tierGroups?.[tier];
+      if (group && !check(group.key, group.max)) return false;
+      return check(opts.globalKey, opts.globalMax);
     },
   };
 }
@@ -91,8 +100,37 @@ export function createTieredInteractionLimiter(
     limits: TIER_LIMITS,
     globalKey: "g:interaction",
     globalMax: GLOBAL_MAX,
+    tierGroups: {
+      // ANON rotation-flood can fill the shared global bucket; cap the
+      // anonymous lane separately so API_KEY/DID callers survive.
+      ANON: { key: "g:interaction:anon", max: GLOBAL_MAX / 10 },
+    },
     now: opts.now,
   });
+}
+
+/** Fixed-rate sliding-window limiter (one key space, one limit) —
+ *  for cheap pre-auth throttles that run before identity is known. */
+export function createFixedLimiter(
+  max: number,
+  opts: { windowMs?: number; now?: () => number } = {},
+): { allow(key: string): boolean } {
+  const windowMs = opts.windowMs ?? WINDOW_MS;
+  const now = opts.now ?? (() => Date.now());
+  const hits = new Map<string, number[]>();
+  return {
+    allow(key) {
+      const t = now();
+      const arr = (hits.get(key) ?? []).filter((x) => t - x < windowMs);
+      if (arr.length >= max) {
+        hits.set(key, arr);
+        return false;
+      }
+      arr.push(t);
+      hits.set(key, arr);
+      return true;
+    },
+  };
 }
 
 /** Limiter bucket key for the caller — identity when known, else ip+route. */

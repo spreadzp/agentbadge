@@ -207,6 +207,10 @@ export function createAgentRequestRoutes(deps: AgentRequestRoutesDeps): Hono {
           publishToQa: publish_to_qa ?? false,
           idempotencyKey,
           expiresAtMs: now() + env.requestTtlMs,
+          // Arc-audit M9: legacy intake writes into the SHARED queue —
+          // stamp the origin so operators can tell these rows apart
+          // from v1 interactions (which carry their own caps/limits).
+          channel: "legacy",
         }));
       } catch {
         // Audit M-1 + re-audit N-1: store failure post-lane → 503,

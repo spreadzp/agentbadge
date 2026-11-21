@@ -47,6 +47,9 @@ export async function sendTelegramMessage(
         parse_mode: "HTML",
         disable_web_page_preview: true,
       }),
+      // Arc-audit M10: no timeout → a wedged api.telegram.org parks
+      // the promise forever behind the fire-and-forget hook.
+      signal: AbortSignal.timeout(10_000),
     },
   );
   const data = (await res.json()) as {
@@ -114,7 +117,7 @@ export async function sendTelegramDocument(
 
   const res = await fetch(
     `https://api.telegram.org/bot${cfg.token}/sendDocument`,
-    { method: "POST", body: form },
+    { method: "POST", body: form, signal: AbortSignal.timeout(15_000) },
   );
   const data = (await res.json()) as {
     ok: boolean;

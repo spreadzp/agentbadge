@@ -21,7 +21,20 @@ import { RESPOND_BODY_MAX } from "./vocabulary";
 
 export const REJECT_REASON_MAX = 512;
 
-export type TerminalRefusalReason = "missing" | "terminal";
+export type TerminalRefusalReason = "missing" | "terminal" | "expired";
+
+/** Arc-audit M4: expiry is enforced lazily on reads — without a
+ *  mutation-side check an operator could respond/reject a row the
+ *  agent already sees as 410 Gone (split-brain outcome). */
+async function refuseIfMissingOrExpired(
+  stores: RequestInboxStores,
+  requestId: string,
+): Promise<TerminalRefusalReason | null> {
+  const { record, expired } = await stores.requests.get(requestId);
+  if (!record) return "missing";
+  if (expired) return "expired";
+  return null;
+}
 
 export type RespondResult =
   | { ok: true; record: InboxRequestRecord; responseId: string }
@@ -40,9 +53,17 @@ export async function respond(
   if (Buffer.byteLength(body, "utf8") > RESPOND_BODY_MAX) {
     return { ok: false, error: "body_too_large" };
   }
+  const refuse = await refuseIfMissingOrExpired(stores, requestId);
+  if (refuse) return { ok: false, reason: refuse };
 
   const responseId = `irsp_${randomUUID()}`;
-  const event = buildEvent("interaction.response.sent", "PUBLIC", {
+  // Arc-audit M6: the PUBLIC event is agent-visible — operator
+  // attribution stays on the INTERNAL event + the response row.
+  const pubEvent = buildEvent("interaction.response.sent", "PUBLIC", {
+    requestId,
+    responseId,
+  });
+  const opEvent = buildEvent("interaction.response.attributed", "INTERNAL", {
     requestId,
     responseId,
     operatorRef,
@@ -50,11 +71,11 @@ export async function respond(
   const res = await stores.interactions.respond(
     requestId,
     { id: responseId, requestId, operatorRef, body },
-    [event],
+    [pubEvent, opEvent],
   );
   if (!res.record) return { ok: false, reason: "missing" };
   if (!res.transitioned) return { ok: false, reason: "terminal" };
-  emitInteractionHooks(requestId, [event]);
+  emitInteractionHooks(requestId, [pubEvent, opEvent]);
   return { ok: true, record: res.record, responseId };
 }
 
@@ -77,6 +98,8 @@ export async function reject(
       return { ok: false, error: "reason_too_large" };
     }
   }
+  const refuse = await refuseIfMissingOrExpired(stores, requestId);
+  if (refuse) return { ok: false, reason: refuse };
 
   const event = buildEvent("interaction.request.rejected", "INTERNAL", {
     requestId,

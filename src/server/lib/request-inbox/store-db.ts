@@ -128,7 +128,7 @@ export function createDbRequestStore(
         publishToQa: input.publishToQa ?? false,
         idempotencyKey: input.idempotencyKey ?? null,
         expiresAtMs: input.expiresAtMs,
-        createdAtMs: input.createdAtMs ?? Date.now(),
+        createdAtMs: input.createdAtMs ?? Date.now(), channel: input.channel ?? null,
       };
       const row = await repo.put(upsert);
       return { record: toRequest(row), duplicate: false };

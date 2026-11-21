@@ -55,6 +55,11 @@ const terminal409 = (c: Context) =>
     { retryable: false },
   );
 
+const expired410 = (c: Context) =>
+  errorResponse(c, 410, ErrorCodes.REQUEST_EXPIRED, "request expired — do not retry", {
+    retryable: false,
+  });
+
 export function registerInteractionMutationRoutes(
   app: Hono,
   stores: RequestInboxStores,
@@ -121,7 +126,8 @@ export function registerInteractionMutationRoutes(
         body.data.body,
       );
       if (!r.ok && "reason" in r) {
-        return r.reason === "missing" ? notFound(c) : terminal409(c);
+        return r.reason === "missing" ? notFound(c)
+          : r.reason === "expired" ? expired410(c) : terminal409(c);
       }
       if (!r.ok) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, r.error);
@@ -159,7 +165,8 @@ export function registerInteractionMutationRoutes(
         body.data.reason,
       );
       if (!r.ok && "reason" in r) {
-        return r.reason === "missing" ? notFound(c) : terminal409(c);
+        return r.reason === "missing" ? notFound(c)
+          : r.reason === "expired" ? expired410(c) : terminal409(c);
       }
       if (!r.ok) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, r.error);

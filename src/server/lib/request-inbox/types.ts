@@ -18,7 +18,8 @@ export type InboxRequestState =
  * is still never returned by public endpoints, only via ops routes.
  */
 export interface InboxFingerprint {
-  /** Resolved client IP — ops-only, kept out of public responses. */
+  /** Resolved client IP — ops-only (abuse investigation, C49
+   *  article), never surfaced to public endpoints. */
   ip: string | null;
   ua: string | null;
   referer: string | null;

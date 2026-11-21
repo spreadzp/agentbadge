@@ -14,14 +14,13 @@
  */
 
 import { Hono } from "hono";
-import type { Context, MiddlewareHandler, Next } from "hono";
+import type { Context } from "hono";
 import { describeRoute } from "hono-openapi";
 import { z } from "zod";
 
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { readIdempotencyKey } from "../../lib/contract-guards";
-import { requireDidSignature } from "../../middleware/did-auth";
 import { buildFingerprint } from "../../lib/request-inbox/fingerprint";
 import {
   hasJsonbUnsafe,
@@ -45,44 +44,15 @@ import {
 } from "../../lib/agent-interaction";
 import { registerInteractionGetRoutes } from "./agent-interaction-gets";
 import {
+  createPreDidGuard,
+  ingressScan,
+  optionalDidSignature,
+} from "./agent-interaction-ingress";
+import {
   createTieredInteractionLimiter,
   limiterKey,
   type TieredLimiter,
 } from "./rate-limits";
-
-/** EPIC-187 seam — payload scan/policies land here later. No-op by
- *  design so the mount order is already correct when it lands. */
-function ingressScan(): MiddlewareHandler {
-  return async (_c: Context, next: Next) => next();
-}
-
-/**
- * Optional DID upgrade: all four auth headers present → full
- * verification (a bad signature is a 401, never silent anon);
- * none present → anonymous passthrough; partial → 401 malformed.
- */
-function optionalDidSignature(): MiddlewareHandler {
-  const verify = requireDidSignature();
-  return async (c, next) => {
-    const headers = [
-      c.req.header("X-AgentBadge-Signature"),
-      c.req.header("X-AgentBadge-Timestamp"),
-      c.req.header("X-AgentBadge-Nonce"),
-      c.req.header("X-AgentBadge-Did"),
-    ];
-    const present = headers.filter(Boolean).length;
-    if (present === 0) return next();
-    if (present < 4) {
-      return errorResponse(
-        c,
-        401,
-        ErrorCodes.MISSING_FIELDS,
-        "incomplete DID auth headers — send all four X-AgentBadge-* headers or none",
-      );
-    }
-    return verify(c, next);
-  };
-}
 
 const postBodySchema = z.object({
   type: z.enum(INTERACTION_KINDS).optional(),
@@ -150,6 +120,13 @@ export function createAgentInteractionRoutes(
         429: { description: "Tier rate limit exceeded" },
       },
     }),
+    // Arc-audit H3: did-auth buffers+hashes the body, resolves the DID
+    // and writes a nonce BEFORE the tier limiter can see the request —
+    // unauthenticated CPU/memory amplification with no per-IP budget.
+    // On the DID path only: charge a cheap pre-auth IP bucket and cap
+    // the body first, then hand did-auth the SAME bytes (the signature
+    // hash is computed over them) so verification is unchanged.
+    createPreDidGuard(),
     optionalDidSignature(),
     async (c) => {
       const key = readIdempotencyKey(c);
@@ -230,6 +207,24 @@ export function createAgentInteractionRoutes(
         expiresAtMs: now() + env.requestTtlMs,
       });
       if (!res.ok) {
+        if (res.error === "actor_mismatch") {
+          // Same (key, fpHash) under a different actor — disclose
+          // nothing about the stored row.
+          return errorResponse(
+            c,
+            409,
+            ErrorCodes.INTERACTION_IDEMPOTENCY_ACTOR,
+            "idempotency-key already used by a different actor",
+          );
+        }
+        if (res.error === "payload_mismatch") {
+          return errorResponse(
+            c,
+            422,
+            ErrorCodes.INVALID_INPUT,
+            "idempotency-key reused with a different payload",
+          );
+        }
         return errorResponse(
           c,
           400,

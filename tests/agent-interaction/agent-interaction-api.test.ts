@@ -122,17 +122,54 @@ describe("POST /api/v1/agent/interaction", () => {
       { ...BODY, context: { sessionId: "orig-sess-77" } },
       { ...KEY, ...IP("10.1.1.9") },
     );
-    // Replay with a DIFFERENT context session — the stored row wins.
+    // Identical-body replay — stored session wins, nothing minted.
     const b = await post(
+      app,
+      { ...BODY, context: { sessionId: "orig-sess-77" } },
+      { ...KEY, ...IP("10.1.1.9") },
+    );
+    expect((await a.json()).sessionId).toBe("orig-sess-77");
+    const bj = await b.json();
+    expect(bj.duplicate).toBe(true);
+    expect(bj.sessionId).toBe("orig-sess-77");
+  });
+
+  it("same key + different payload → 422 (arc H2, no silent drop)", async () => {
+    const { app } = mkApp();
+    const a = await post(app, BODY, { ...KEY, ...IP("10.1.1.9") });
+    expect(a.status).toBe(202);
+    // Different text → different payload → honest 422, not a fake dup.
+    const b = await post(
+      app,
+      { ...BODY, text: "totally different question" },
+      { ...KEY, ...IP("10.1.1.9") },
+    );
+    expect(b.status).toBe(422);
+    // Different context is a different payload too.
+    const d = await post(
       app,
       { ...BODY, context: { sessionId: "other-sess-11" } },
       { ...KEY, ...IP("10.1.1.9") },
     );
-    // And a replay with no context at all — no fresh mint leaks.
-    const c = await post(app, BODY, { ...KEY, ...IP("10.1.1.9") });
-    expect((await a.json()).sessionId).toBe("orig-sess-77");
-    expect((await b.json()).sessionId).toBe("orig-sess-77");
-    expect((await c.json()).sessionId).toBe("orig-sess-77");
+    expect(d.status).toBe(422);
+  });
+
+  it("same key + different actor → 409, no id disclosure (arc H2)", async () => {
+    const { app } = mkApp();
+    const a = await post(app, BODY, {
+      ...KEY, ...IP("10.1.1.9"), "x-test-agent": "agent_a",
+    });
+    expect(a.status).toBe(202);
+    const victimId = (await a.json()).requestId;
+    // Same key + same fingerprint + different actor → 409, and the
+    // response must NOT contain the stored requestId/sessionId.
+    const b = await post(app, BODY, {
+      ...KEY, ...IP("10.1.1.9"), "x-test-agent": "agent_b",
+    });
+    expect(b.status).toBe(409);
+    const bj = await b.json();
+    expect(bj.code).toBe("interaction_idempotency_actor");
+    expect(JSON.stringify(bj)).not.toContain(victimId);
   });
 
   it("missing/short idempotency-key → 400", async () => {
@@ -241,19 +278,28 @@ describe("GET polls", () => {
     expect(await r.json()).toEqual({ status: "PENDING_REVIEW" });
   });
 
-  it("other-tenant identified actor → 404; anon capability → 200", async () => {
+  it("API_KEY row: owner → 200; foreign key AND anon → 404 (arc M1)", async () => {
     const { app } = mkApp();
     const id = await seed(app, "agent_owner");
     const denied = await app.request(`/api/v1/agent/requests/${id}`, {
       headers: { "x-test-agent": "agent_other" },
     });
     expect(denied.status).toBe(404);
+    // arc-audit M1: anonymous callers can no longer read identified
+    // rows by id alone — an authenticating factor (the key) exists.
     const anon = await app.request(`/api/v1/agent/requests/${id}`);
-    expect(anon.status).toBe(200);
+    expect(anon.status).toBe(404);
     const owner = await app.request(`/api/v1/agent/requests/${id}`, {
       headers: { "x-test-agent": "agent_owner" },
     });
     expect(owner.status).toBe(200);
+  });
+
+  it("ANON row stays capability-URL readable by anyone", async () => {
+    const { app } = mkApp();
+    const id = await seed(app); // anonymous submit
+    const r = await app.request(`/api/v1/agent/requests/${id}`);
+    expect(r.status).toBe(200);
   });
 
   it("unknown id → 404; expired → 410", async () => {
