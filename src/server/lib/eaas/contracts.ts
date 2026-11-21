@@ -16,9 +16,9 @@ import { getAddress, isAddress } from "viem";
 import {
   ERC8183_ABI,
   ERC8183_ACP_ABI,
-  ERC8183_REF_ABI,
   type ReadClient,
 } from "@agentbadge/circle-payments";
+import { ERC8183_REF_ABI } from "../board/erc8183-ref";
 
 export interface EaasContract {
   address: `0x${string}`;
