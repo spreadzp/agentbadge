@@ -58,3 +58,24 @@ endpoints:
       bodyTemplate:
         query: "BOT-PROBE {case_key}: what is attestcoin?"
       idField: query
+
+  # EPIC-229: knowledge item create (admin). POST {slug?,kind,title,
+  # body,summary?} + x-admin-key + x-operator-id + idempotency-key →
+  # 201 {item:{id:"ki_*",slug,status:"DRAFT"},version}. lifecycleAdmin
+  # НЕ ставим — interaction-lifecycle 228-формы (classify/respond)
+  # на нас не распространяется; полный цикл закрывает
+  # knowledge-lifecycle (transitions + published-проекция).
+  - path: /admin/api/knowledge/items
+    method: POST
+    contract:
+      bodyTemplate:
+        slug: "{case_key}"
+        kind: FAQ
+        title: "BOT-PROBE {case_key} probe item"
+        body: "Deterministic probe coverage — BOT-PROBE {case_key}."
+        summary: "BOT-PROBE {case_key}"
+      idempotencyField: "header:idempotency-key"
+      replayInvariant: [item.id]
+      idField: item.id
+      ssrPath: "/admin/knowledge/items/{id}"
+      terminalStates: [WITHDRAWN]
