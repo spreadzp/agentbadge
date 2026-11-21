@@ -55,7 +55,7 @@
     "@agentbadge/a2a": "^0.1.1",
     "@agentbadge/bstock-tracker": "0.1.7",
     "@agentbadge/cache": "^0.2.1",
-    "@agentbadge/circle-payments": "^0.1.25",
+    "@agentbadge/circle-payments": "^0.1.27",
     "@agentbadge/database": "0.6.23",
     "@agentbadge/econ-events": "^0.1.6",
     "@agentbadge/evm-core": "^0.1.2",

@@ -8,7 +8,7 @@
         "@agentbadge/a2a": "^0.1.1",
         "@agentbadge/bstock-tracker": "0.1.7",
         "@agentbadge/cache": "^0.2.1",
-        "@agentbadge/circle-payments": "^0.1.25",
+        "@agentbadge/circle-payments": "^0.1.27",
         "@agentbadge/database": "0.6.23",
         "@agentbadge/econ-events": "^0.1.6",
         "@agentbadge/evm-core": "^0.1.2",
@@ -83,7 +83,7 @@
 
     "@agentbadge/cache": ["@agentbadge/cache@0.2.1", "", { "dependencies": { "@upstash/redis": "^1.39.0", "ioredis": "^6.0.0" } }, "sha512-a9gdEhhT9KMKM6LCAcaMqnZ5wh04X7IYaGavk/X7pePMU21zASWqOJJcbMfL/qY6KRzDBYbd9O9SCBaIp62zoQ=="],
 
-    "@agentbadge/circle-payments": ["@agentbadge/circle-payments@0.1.25", "", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" }, "bin": { "agentbadge-pay": "dist/cli/pay.js" } }, "sha512-VVwl9j9KDr9L9QzzG4MDXCXsbia7RQvusWBeB/5CL9vXhkrSLHkk/auPadfAyMiA53fLwbd3CUNiCZXYOJj6Vg=="],
+    "@agentbadge/circle-payments": ["@agentbadge/circle-payments@0.1.27", "", { "dependencies": { "@circle-fin/x402-batching": "^3.5.0", "@x402/core": "^2.3.0", "@x402/evm": "^2.3.0", "viem": "^2.0.0" }, "peerDependencies": { "hono": "^4.7.0" }, "bin": { "agentbadge-pay": "dist/cli/pay.js" } }, "sha512-S7YS9fzi3ptqh+OpeFm8cnz5/9xa5eHHtmfO3cpGmzfLbJApP7r/jT99Al+aRJb1LYh5e6hzblmvk9zT+WYpbQ=="],
 
     "@agentbadge/database": ["@agentbadge/database@0.6.23", "", { "dependencies": { "@agentbadge/econ-events": "^0.1.3", "@prisma/orm-postgres": "8.0.0-rc.11", "dotenv": "^18.0.3" } }, "sha512-Mu9zP0kyzQNLQXn8OZJkKDtiNTiuHeJI0Ecn/4hU1sSykSWYMXX3GN5TYm03WpUnX+v0KrYJlgDUAqPWdg+ijw=="],
 
