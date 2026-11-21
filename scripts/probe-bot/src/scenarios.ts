@@ -100,7 +100,14 @@ function compileYaml(y: YamlScenario): Scenario {
       case "method-fuzz":
         return (p.methods ?? ["PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
           .filter(m => m !== ep.method.toUpperCase())
-          .map(m => ({ method: m, path: ep.path, expect, note: `method ${m}` }));
+          .map(m => ({
+            method: m, path: ep.path,
+            // OPTIONS preflight отвечает 204/200 by design (CORS) — не нарушение
+            expect: m === "OPTIONS" && expect.statusIn
+              ? { ...expect, statusIn: [...new Set([...expect.statusIn, 200, 204])] }
+              : expect,
+            note: `method ${m}`,
+          }));
       case "malformed-body":
         return (p.bodies ?? []).map(b => ({
           method: "POST", path: ep.path, body: b,
