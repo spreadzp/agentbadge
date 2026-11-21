@@ -1,0 +1,9 @@
+# template-injection / special-var probes (numeric side effects → 4xx/escape)
+{{7*7}}
+${7*7}
+<%= 7*7 %>
+#{7*7}
+{{constructor.constructor('return this')()}}
+${T(java.lang.Runtime)}
+{{config}}
+{{self._TemplateReference__context}}

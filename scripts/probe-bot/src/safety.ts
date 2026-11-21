@@ -10,6 +10,8 @@
  *   that attaches PAYMENT-SIGNATURE; documented as invariant.
  */
 
+import type { Variant } from "./types";
+
 export const DEFAULT_ALLOWED_HOSTS = [
   "agentbadge.xyz",
   "www.agentbadge.xyz",
@@ -72,7 +74,7 @@ export interface PlanItem {
   mutating: boolean;
   dbVerify: boolean;
   variantHash: string;
-  variant: { method: string; path: string; headers?: Record<string, string>; body?: string; note?: string; expect?: unknown };
+  variant: Variant;
   skippedReason?: string;
 }
 

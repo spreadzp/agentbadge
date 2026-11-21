@@ -56,9 +56,14 @@ export function caseKey(input: {
   return createHash("sha1").update(raw).digest("hex").slice(0, 16);
 }
 
-export function variantHash(v: { method: string; path: string; headers?: Record<string, string>; body?: string }): string {
+export function variantHash(v: {
+  method: string; path: string;
+  headers?: Record<string, string>; body?: string;
+  flow?: { steps: unknown };
+}): string {
   const hdrs = Object.keys(v.headers ?? {}).sort().map(k => `${k}=${v.headers![k]}`).join(";");
-  return createHash("sha1").update(`${v.method}|${v.path}|${hdrs}|${v.body ?? ""}`).digest("hex").slice(0, 12);
+  const steps = v.flow ? JSON.stringify(v.flow.steps) : "";
+  return createHash("sha1").update(`${v.method}|${v.path}|${hdrs}|${v.body ?? ""}|${steps}`).digest("hex").slice(0, 12);
 }
 
 export interface CaseRow {

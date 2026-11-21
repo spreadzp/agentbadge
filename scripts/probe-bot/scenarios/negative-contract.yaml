@@ -1,0 +1,10 @@
+name: negative-contract
+layer: security
+template: negative-contract
+dbVerify: true
+mutating: true
+apply:
+  methods: [POST]
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 409, 422, 429]
+  status_not_in: [200, 201, 202, 500, 502, 503, 504]

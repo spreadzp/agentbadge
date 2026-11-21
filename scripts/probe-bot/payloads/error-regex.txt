@@ -1,0 +1,10 @@
+# re:-prefixed regexes for body_not_includes — error-leak fingerprinting
+re:TypeError:|ReferenceError:|SyntaxError:
+re:at\s+\S+\s+\(/src/server/
+re:ECONNREFUSED|ETIMEDOUT|ENOTFOUND
+re:pg|postgres|Prisma|PrismaClient
+re:\.ts:\d+:\d+
+re:stack|Stack
+re:internal|Internal
+re:Bearer\s+[A-Za-z0-9._-]{20,}
+re:api[_-]?key|secret|token

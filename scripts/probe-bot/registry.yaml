@@ -13,3 +13,48 @@ endpoints:
     method: GET
   - path: /.well-known/agent-card.json
     method: GET
+  # Корень для endpoint-discovery (path-feed сценарий применяется к "/").
+  - path: /
+    method: GET
+
+  # ── contract-блоки (SLICE-234-40) ────────────────────────────────
+  # Семантика endpoint'ов для contract-aware сценариев. Токены:
+  # {case_key} — стабильный per-case ид (идемпотентность-дружественный),
+  # {run_id} — id прогона, {ts} — unixtime. Секреты — только env,
+  # сюда литералами НЕ писать.
+
+  # EPIC-228: agent-interaction intake (async, human-answered).
+  # POST {type?,text,context?{sessionId,channel,meta}} +
+  # обязательный заголовок idempotency-key → 202 {requestId,status,
+  # statusUrl,sessionId}. Public-проекция — GET statusUrl.
+  - path: /api/v1/agent/interaction
+    method: POST
+    contract:
+      bodyTemplate:
+        type: question
+        text: "BOT-PROBE {case_key}: what is the SLA for refunds?"
+        context:
+          sessionId: "probe-session-{case_key}"
+          channel: probe-bot
+      idempotencyField: "header:idempotency-key"
+      replayInvariant: [requestId, sessionId]
+      readPathField: statusUrl
+      idField: requestId
+      ssrPath: "/admin/interactions/{id}"
+      projectionDenylist:
+        - context.text
+        - operatorNote
+        - internalMeta
+        - fingerprint
+      lifecycleAdmin: /api/admin/interactions
+      terminalStates: [ANSWERED, REJECTED]
+
+  # EPIC-229: knowledge ask — POST {query 2..500} → 200 {results,query,
+  # tookMs,engine}. Без идемпотентности — negative-contract и
+  # mass-assignment применимы, replay — нет.
+  - path: /api/v1/agent/knowledge/ask
+    method: POST
+    contract:
+      bodyTemplate:
+        query: "BOT-PROBE {case_key}: what is attestcoin?"
+      idField: query

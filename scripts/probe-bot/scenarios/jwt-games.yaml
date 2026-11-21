@@ -1,0 +1,17 @@
+name: jwt-games
+layer: security
+template: header-fuzz
+dbVerify: true
+apply:
+  methods: [GET]
+  pathRegex: admin|wallets|api/v1/agent/requests
+params:
+  headers:
+    - authorization: "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiIsImFkbWluIjp0cnVlfQ."
+    - authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MX0.invalid"
+    - authorization: "Bearer eyJraWQiOiIuLi8uLi9ldGMvcGFzc3dkIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiJhZG1pbiJ9.x"
+    - authorization: "Bearer null"
+    - authorization: "Bearer undefined"
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 429]
+  status_not_in: [200, 201, 202, 500, 502, 503, 504]

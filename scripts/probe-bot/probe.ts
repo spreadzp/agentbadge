@@ -109,10 +109,14 @@ async function cmdRun() {
 }
 
 async function syncInventory(state: ProbeState, target: string, skipSync: boolean): Promise<Endpoint[]> {
-  if (skipSync && state.listEndpoints().length) return state.listEndpoints();
+  const { endpointsFromRegistry, mergeContracts } = await import("./src/inventory");
+  if (skipSync && state.listEndpoints().length) {
+    // state хранит path/method/source без contract — досливаем из registry
+    return mergeContracts([...state.listEndpoints(), ...endpointsFromRegistry()]);
+  }
   const eps = await collectEndpoints({ target });
   for (const ep of eps) state.upsertEndpoint(ep);
-  return state.listEndpoints();
+  return mergeContracts([...state.listEndpoints(), ...endpointsFromRegistry()]);
 }
 
 async function cmdStatus() {

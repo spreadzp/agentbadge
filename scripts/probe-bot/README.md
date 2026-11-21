@@ -153,10 +153,97 @@ headers — урок B-1), `auth-negative` (мусорный Bearer → typed 40
 на POST-ручках безопасно — отбивается в auth-слое до записи).
 
 Шаблоны YAML: `param-variants` (сегменты пути), `query-variants`
-(`params.param` + `params.values` → `?param=<enc>`), `method-fuzz`,
+(`params.param` + `params.values` → `?param=<enc>`), `path-feed`
+(абсолютные пути из `values_file` — endpoint-discovery), `method-fuzz`,
 `malformed-body`, `header-fuzz`, `auth-negative`, `contract-basic`.
-`expect` поддерживает `status_in`, `status_not_in`, `body_not_includes`,
-`headers` (header → substring, case-insensitive).
+`expect` поддерживает `status_in`, `status_not_in`, `body_not_includes`
+(строки или `re:<regex>`), `headers` (header → substring,
+case-insensitive), `json.*` (см. ниже).
+
+## Семантический слой (SLICE-234-40)
+
+Три дополнения поверх статус/header-asserts: **json-asserts**,
+**contract-блоки**, **stateful flow**.
+
+### `expect.json` — asserts по JSON-телу
+
+```yaml
+expect:
+  status_in: [200, 201, 202]
+  json:
+    present: [requestId, sessionId]      # пути обязаны существовать
+    absent: [internal, prisma, context.text]  # denylist (projection-leak)
+    equals: { status: PENDING_REVIEW }   # точные значения
+    regex: { requestId: "^rq_" }         # regex на String(value)
+    schema_ref: "#/components/schemas/InteractionAccepted"  # опц.
+```
+
+Пути — dot-notation (`a.b`, `a[0].c`, `$.a`). `schema_ref` резолвится
+против `/openapi.json` таргета (required + shallow types); недоступная
+схема — мягкий скип.
+
+### `contract:` в `registry.yaml`
+
+Контракт мёржится на любой endpoint с тем же `method+path` (openapi/
+code-scan получают семантику из реестра автоматически):
+
+```yaml
+- path: /api/v1/agent/interaction
+  method: POST
+  contract:
+    bodyTemplate: {text: "BOT-PROBE {case_key}", context: {sessionId: "s-{case_key}"}}
+    idempotencyField: "header:idempotency-key"   # или имя поля тела
+    replayInvariant: [requestId, sessionId]      # равны R1==R2 на реплее
+    replayExpect: {duplicate: true}              # json.equals на ответе реплея
+    readPathField: statusUrl                     # откуда читать проекцию
+    idField: requestId                           # поле с id ресурса
+    ssrPath: "/admin/interactions/{id}"          # для xss-ssr
+    projectionDenylist: [context.text, fingerprint]
+    lifecycleAdmin: /api/admin/interactions      # для lifecycle-сценариев
+    terminalStates: [ANSWERED, REJECTED]
+    identities: [agent, operator]                # bola-idor (env PROBE_ID_*)
+    freeAction: {method: POST, path: "/x/{id}/withdraw"}  # use-after-free
+```
+
+Токены в `bodyTemplate`: `{case_key}` (стабильный per-case —
+идемпотентность-дружественный), `{run_id}`, `{ts}`. Если объявлен
+`idempotencyField: header:X` — заголовок `X: BOT-PROBE-<caseToken>`
+пришивается ко всем contract-сабмитам (иначе guard отобьёт до схемы).
+
+Contract-aware шаблоны: `contract-submit`, `negative-contract`
+(per-field мутации → 4xx), `ignored-auth` (forged creds),
+`mass-assignment` (admin/role/`__proto__` поля), `ssrf-guard`
+(url_field → 169.254.169.254), `origin-guard` (Origin: evil),
+`unsupported-method` (WebDAV feed), `deprecation-pair`.
+
+### Stateful flow (`Variant.flow`)
+
+TS-сценарий возвращает вариант с `flow.steps[]`; раннер исполняет
+шаги последовательно в рамках ОДНОГО кейса:
+
+- `path`/`headers`/`body` шага поддерживают `{stepN.<json-path>}` —
+  значение из тела ответа шага N (1-based);
+- per-step `expect` (иначе `expect` варианта); шаг-фейл обрывает флоу;
+- `flow.assert(obs[])` — cross-step проверки → список проблем.
+
+Сценарии: `replay-idem-v2` (submit+replay одним ключом → инварианты),
+`projection-leak` (submit → GET проекции → denylist absent),
+`session-grouping`, `xss-ssr` (payload → SSR → escape-проверка),
+`use-after-free` (create → freeAction → GET → 404), `bola-idor`
+(чужой id → 401/403/404; env `PROBE_ID_<NAME>`),
+`interaction-lifecycle`, `terminal-replay` (терминал + transition → 409).
+
+Идентичности/секреты — только env (`ADMIN_API_KEY`, `PROBE_ID_*`);
+без env сценарий не применяется (`applies → false`), секретов в
+orders/reports нет. Атрибуция: `x-operator-id: BOT-PROBE-<case>`.
+
+### Payload-фиды (`payloads/`)
+
+`values_file`/`methods_file`/`bodies_file` в params — вендорные списки
+(строки, `#` — комментарий): `nul-variants`, `sqli-generic`,
+`traversal-lfi`, `xss-basic`, `ssti-special-vars`,
+`http-methods-webdav`, `error-regex` (`re:`-паттерны для
+body_not_includes), `hidden-paths` (endpoint-discovery, cap 150).
 
 ## Safety-рельсы (src/safety.ts)
 

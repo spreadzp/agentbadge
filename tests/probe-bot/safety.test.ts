@@ -4,7 +4,7 @@ import { applySafety, checkTarget, isHardDenied, normalizeTarget, type PlanItem 
 const item = (over: Partial<PlanItem> = {}): PlanItem => ({
   caseKey: "k", endpoint: "/e", method: "GET", scenario: "s",
   layer: "security", mutating: false, dbVerify: false, variantHash: "vh",
-  variant: { method: "GET", path: "/e" },
+  variant: { method: "GET", path: "/e", expect: {} },
   ...over,
 });
 
@@ -54,7 +54,7 @@ describe("applySafety", () => {
   });
 
   it("hard-deny режет даже mutating-allowed", () => {
-    const plan = [item({ mutating: true, variant: { method: "POST", path: "/api/payments/x" } })];
+    const plan = [item({ mutating: true, variant: { method: "POST", path: "/api/payments/x", expect: {} } })];
     const r = applySafety(plan, { allowMutations: true, maxRequests: 100 });
     expect(r.fire).toHaveLength(0);
     expect(r.skipped[0].skippedReason).toBe("hard-deny path");

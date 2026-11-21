@@ -15,7 +15,52 @@ export interface HttpObservation {
   bodySnippet: string;
   /** Lowercased-name → value map of response headers (for headers asserts). */
   headers?: Record<string, string>;
+  /** Parsed JSON body (undefined when body isn't JSON). */
+  bodyJson?: unknown;
   error?: string;
+}
+
+/** dot-path getter: "a.b.c", "$.a.b", "a[0].b" → value | undefined. */
+export function getPath(obj: unknown, path: string): unknown {
+  let cur: unknown = obj;
+  for (const seg of path.replace(/^\$\.?/, "").split(".")) {
+    if (cur == null) return undefined;
+    const m = seg.match(/^([^[]+)(?:\[(\d+)\])?$/);
+    if (!m) return undefined;
+    cur = (cur as Record<string, unknown>)[m[1]];
+    if (m[2] != null) cur = (cur as unknown[])?.[Number(m[2])];
+  }
+  return cur;
+}
+
+const JSON_TYPE: Record<string, (v: unknown) => boolean> = {
+  string: v => typeof v === "string",
+  number: v => typeof v === "number",
+  integer: v => Number.isInteger(v),
+  boolean: v => typeof v === "boolean",
+  object: v => v != null && typeof v === "object" && !Array.isArray(v),
+  array: v => Array.isArray(v),
+};
+
+/** Resolved-openapi-lite check: required fields + shallow prop types. */
+export function checkSchemaLite(
+  body: unknown,
+  schema: { required?: string[]; props?: Record<string, string> },
+): string[] {
+  const problems: string[] = [];
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return ["body is not a JSON object (schema check)"];
+  }
+  const rec = body as Record<string, unknown>;
+  for (const r of schema.required ?? []) {
+    if (!(r in rec)) problems.push(`schema: missing required "${r}"`);
+  }
+  for (const [k, t] of Object.entries(schema.props ?? {})) {
+    if (k in rec && rec[k] != null && !JSON_TYPE[t]?.(rec[k])) {
+      problems.push(`schema: "${k}" expected ${t}, got ${typeof rec[k]}`);
+    }
+  }
+  return problems;
 }
 
 export function assertHttp(obs: HttpObservation, expect: ExpectSpec): { verdict: Verdict; note: string } {
@@ -30,12 +75,43 @@ export function assertHttp(obs: HttpObservation, expect: ExpectSpec): { verdict:
     problems.push(`status ${obs.status} in deny-set`);
   }
   for (const bad of expect.bodyNotIncludes ?? []) {
-    if (obs.bodySnippet.includes(bad)) problems.push(`body leaks "${bad}"`);
+    if (bad.startsWith("re:")) {
+      if (new RegExp(bad.slice(3)).test(obs.bodySnippet)) {
+        problems.push(`body leaks /${bad.slice(3)}/`);
+      }
+    } else if (obs.bodySnippet.includes(bad)) {
+      problems.push(`body leaks "${bad}"`);
+    }
   }
   for (const [h, want] of Object.entries(expect.headers ?? {})) {
     const got = obs.headers?.[h.toLowerCase()] ?? "";
     if (!got.toLowerCase().includes(want.toLowerCase())) {
       problems.push(`header ${h} lacks "${want}" (got "${got || "—"}")`);
+    }
+  }
+  const j = expect.json;
+  if (j) {
+    if (obs.bodyJson === undefined && ((j.present?.length ?? 0) + (j.absent?.length ?? 0)
+        + Object.keys(j.equals ?? {}).length + Object.keys(j.regex ?? {}).length) > 0) {
+      problems.push("body is not JSON (json.* asserts)");
+    } else {
+      for (const p of j.present ?? []) {
+        if (getPath(obs.bodyJson, p) === undefined) problems.push(`json.present missing "${p}"`);
+      }
+      for (const p of j.absent ?? []) {
+        if (getPath(obs.bodyJson, p) !== undefined) problems.push(`json.absent leaked "${p}"`);
+      }
+      for (const [p, want] of Object.entries(j.equals ?? {})) {
+        const got = getPath(obs.bodyJson, p);
+        if (got !== want) problems.push(`json.equals "${p}" = ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+      }
+      for (const [p, re] of Object.entries(j.regex ?? {})) {
+        const got = getPath(obs.bodyJson, p);
+        if (got === undefined || !new RegExp(re).test(String(got))) {
+          problems.push(`json.regex "${p}"=${JSON.stringify(got)} !~ /${re}/`);
+        }
+      }
+      if (j.schema) problems.push(...checkSchemaLite(obs.bodyJson, j.schema));
     }
   }
   return problems.length

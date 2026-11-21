@@ -5,6 +5,7 @@ template: param-variants
 apply:
   methods: [GET]
 params:
+  values_file: traversal-lfi.txt
   values: ["..%2F..%2Fetc%2Fpasswd", "%2e%2e%2f", "..%252F..%252F", "..;/etc/passwd"]
 expect:
   status_in: [400, 401, 402, 403, 404, 405, 414, 422, 429]

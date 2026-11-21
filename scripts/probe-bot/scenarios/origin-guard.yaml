@@ -1,0 +1,12 @@
+name: origin-guard
+layer: security
+template: origin-guard
+dbVerify: true
+mutating: true
+apply:
+  methods: [POST]
+params:
+  origin: https://evil.example
+expect:
+  status_in: [400, 401, 403, 404, 405, 409, 422, 429]
+  status_not_in: [500, 502, 503, 504]

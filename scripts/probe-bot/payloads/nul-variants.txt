@@ -1,0 +1,15 @@
+# NUL / control-char payload feed (SLICE-234-40)
+# C0 controls, UTF8/URL-encoded forms, truncation tricks
+%00
+%2500
+a%00b
+%00admin
+admin%00
+file.txt%00.png
+
+	
+
+
+%0a%0d
+%c0%80
+𐀀

@@ -1,0 +1,8 @@
+# basic XSS payloads — check escaping in SSR/JSON reflections
+<script>alert(1)</script>
+"><img src=x onerror=alert(1)>
+'><svg onload=alert(1)>
+javascript:alert(1)
+<svg/onload=alert(1)>
+"><script>alert(1)</script>
+&lt;script&gt;alert(1)&lt;/script&gt;

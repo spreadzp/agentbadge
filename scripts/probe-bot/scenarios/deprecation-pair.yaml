@@ -1,0 +1,10 @@
+name: deprecation-pair
+layer: contract
+template: deprecation-pair
+apply:
+  methods: [GET]
+  pathRegex: deprecated|legacy|v0
+expect:
+  status_in: [200, 301, 302, 404, 410]
+  headers:
+    deprecation: "true"

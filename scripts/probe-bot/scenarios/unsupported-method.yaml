@@ -1,0 +1,10 @@
+name: unsupported-method
+layer: security
+template: unsupported-method
+apply:
+  methods: [GET, POST]
+params:
+  methods_file: http-methods-webdav.txt
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 414, 429, 501]
+  status_not_in: [200, 201, 202, 500, 502, 503, 504]

@@ -1,0 +1,17 @@
+name: ssrf-guard
+layer: security
+template: ssrf-guard
+dbVerify: true
+mutating: true
+apply:
+  methods: [POST]
+params:
+  url_field: webhookUrl
+  values:
+    - http://169.254.169.254/latest/meta-data
+    - http://127.0.0.1:8080/internal
+    - http://[::1]:6379/
+    - file:///etc/passwd
+expect:
+  status_in: [400, 401, 403, 404, 409, 422, 429]
+  status_not_in: [200, 201, 202, 500, 502, 503, 504]

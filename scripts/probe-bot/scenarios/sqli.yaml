@@ -5,6 +5,7 @@ template: param-variants
 apply:
   methods: [GET]
 params:
+  values_file: sqli-generic.txt
   values: ["';DROP--", "0x';DROP--", "' OR '1'='1", "1;SELECT 1"]
 expect:
   status_in: [400, 401, 402, 403, 404, 405, 422, 429]

@@ -1,0 +1,11 @@
+name: endpoint-discovery
+layer: security
+template: path-feed
+apply:
+  methods: [GET]
+  pathRegex: ^/$
+params:
+  values_file: hidden-paths.txt
+expect:
+  status_in: [301, 302, 400, 401, 402, 403, 404, 405, 408, 410, 414, 429]
+  status_not_in: [200, 201, 202, 500, 502, 503, 504]

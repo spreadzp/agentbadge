@@ -1,0 +1,12 @@
+name: ssti
+layer: security
+template: query-variants
+apply:
+  methods: [GET]
+  pathRegex: search|ask|query
+params:
+  param: q
+  values_file: ssti-special-vars.txt
+expect:
+  status_in: [200, 400, 401, 404, 405, 414, 422, 429]
+  status_not_in: [500, 502, 503, 504]

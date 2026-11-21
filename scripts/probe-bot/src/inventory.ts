@@ -14,7 +14,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
-import type { Endpoint, Source } from "./types";
+import type { Endpoint, EndpointContract, Source } from "./types";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const REGISTRY_PATH = join(HERE, "..", "registry.yaml");
@@ -94,13 +94,34 @@ export function endpointsFromCode(routesDir = ROUTES_DIR): Endpoint[] {
 
 export function endpointsFromRegistry(path = REGISTRY_PATH): Endpoint[] {
   try {
-    const doc = YAML.parse(readFileSync(path, "utf8")) as { endpoints?: { path: string; method?: string }[] };
+    const doc = YAML.parse(readFileSync(path, "utf8")) as {
+      endpoints?: { path: string; method?: string; contract?: EndpointContract }[];
+    };
     return (doc?.endpoints ?? [])
       .filter(e => e.path?.startsWith("/"))
-      .map(e => ({ path: e.path, method: (e.method ?? "GET").toUpperCase(), source: "manual" as Source }));
+      .map(e => ({
+        path: e.path, method: (e.method ?? "GET").toUpperCase(),
+        source: "manual" as Source, contract: e.contract,
+      }));
   } catch {
     return [];
   }
+}
+
+/** Сливает contract из registry-записей на совпадающие endpoints
+ *  (path+method) — openapi/code endpoint получает семантику из
+ *  ручного реестра. */
+export function mergeContracts(eps: Endpoint[]): Endpoint[] {
+  const contracts = new Map<string, EndpointContract>();
+  for (const e of eps) {
+    if (e.contract) contracts.set(`${e.method} ${e.path}`, e.contract);
+  }
+  if (!contracts.size) return eps;
+  return eps.map(e => {
+    if (e.contract) return e;
+    const c = contracts.get(`${e.method} ${e.path}`);
+    return c ? { ...e, contract: c } : e;
+  });
 }
 
 // ---------- union ----------
@@ -136,7 +157,7 @@ export async function collectEndpoints(opts: {
   all.push(...endpointsFromCode(opts.codeDir ?? ROUTES_DIR));
   all.push(...endpointsFromRegistry(opts.registryPath ?? REGISTRY_PATH));
 
-  return all;
+  return mergeContracts(all);
 }
 
 /** Glob-ish match: '*' wildcard, else prefix. */

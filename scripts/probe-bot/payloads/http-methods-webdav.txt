@@ -1,0 +1,13 @@
+# WebDAV + obscure HTTP methods — 404/405 expected, never 5xx, never 2xx side effects
+PROPFIND
+PROPPATCH
+MKCOL
+COPY
+MOVE
+LOCK
+UNLOCK
+SEARCH
+TRACK
+TRACE
+DEBUG
+CONNECT
