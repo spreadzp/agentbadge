@@ -17,6 +17,7 @@ import { ErrorCodes } from "../../lib/error-codes";
 import { legacyRequestInboxDeprecation } from "../../lib/contract-guards";
 import { resolveActor } from "../../lib/agent-interaction/actor";
 import type { RequestStore } from "../../lib/request-inbox/store";
+import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
 
 const RETRY_AFTER_SEC = 5; // poll hint — how often agents should retry
 
@@ -35,6 +36,9 @@ export function registerRequestPollRoute(
       // EPIC-228: superseded by GET /api/v1/agent/requests/:id (D-206-8).
       legacyRequestInboxDeprecation(c);
       const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) {
+        return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
+      }
       const { record, expired } = await requests.get(id);
       if (!record) {
         return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request",);

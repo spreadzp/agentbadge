@@ -20,6 +20,7 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import { wrapFragment } from "../ui/helpers";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
+import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
 import {
   statusOfState,
   type InteractionStatus,
@@ -144,6 +145,9 @@ export function createAgentInteractionAdminUi(
 
   app.get("/admin/interactions/:id", async (c) => {
     const id = c.req.param("id");
+    if (!REQUEST_ID_RE.test(id)) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
+    }
     const h = await internalHistory(stores, id);
     if (!h) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
@@ -183,6 +187,9 @@ export function createAgentInteractionAdminUi(
 
   app.post("/admin/interactions/:id/classify", async (c) => {
     const id = c.req.param("id");
+    if (!REQUEST_ID_RE.test(id)) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
+    }
     const b = await c.req.parseBody();
     const operator =
       typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
@@ -219,6 +226,9 @@ export function createAgentInteractionAdminUi(
 
   app.post("/admin/interactions/:id/respond", async (c) => {
     const id = c.req.param("id");
+    if (!REQUEST_ID_RE.test(id)) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
+    }
     const b = await c.req.parseBody();
     const operator =
       typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";
@@ -242,6 +252,9 @@ export function createAgentInteractionAdminUi(
 
   app.post("/admin/interactions/:id/reject", async (c) => {
     const id = c.req.param("id");
+    if (!REQUEST_ID_RE.test(id)) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
+    }
     const b = await c.req.parseBody();
     const operator =
       typeof b.operator === "string" ? b.operator.trim().slice(0, 128) : "";

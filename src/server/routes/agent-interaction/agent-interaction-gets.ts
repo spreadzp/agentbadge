@@ -15,7 +15,7 @@ import { describeRoute } from "hono-openapi";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
-import type { InboxRequestRecord } from "../../lib/request-inbox/types";
+import { REQUEST_ID_RE, type InboxRequestRecord } from "../../lib/request-inbox/types";
 import {
   publicProjection,
   resolveActor,
@@ -74,7 +74,7 @@ export function registerInteractionGetRoutes(
     }),
     async (c) => {
       const id = c.req.param("id");
-      if (id.length > 128) return notFound(c);
+      if (!REQUEST_ID_RE.test(id)) return notFound(c);
       const { record, expired } = await stores.requests.get(id);
       if (!record) return notFound(c);
       if (expired) return expired410(c);
@@ -97,7 +97,7 @@ export function registerInteractionGetRoutes(
     }),
     async (c) => {
       const id = c.req.param("id");
-      if (id.length > 128) return notFound(c);
+      if (!REQUEST_ID_RE.test(id)) return notFound(c);
       const { record, expired } = await stores.requests.get(id);
       if (!record) return notFound(c);
       if (expired) return expired410(c);

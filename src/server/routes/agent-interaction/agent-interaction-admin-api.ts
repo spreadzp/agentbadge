@@ -23,6 +23,7 @@ import { adminAuth } from "../../middleware/adminAuth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
+import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
 import type { InboxRequestRecord } from "../../lib/request-inbox/types";
 import {
   statusOfState,
@@ -53,6 +54,9 @@ function excerptOf(record: InboxRequestRecord): string {
 
 const notFound = (c: Context) =>
   errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
+
+const badId = (c: Context) =>
+  errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid request id");
 
 export interface AgentInteractionAdminDeps {
   stores: RequestInboxStores;
@@ -147,7 +151,9 @@ export function createAgentInteractionAdminRoutes(
       },
     }),
     async (c) => {
-      const h = await internalHistory(stores, c.req.param("id"));
+      const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) return badId(c);
+      const h = await internalHistory(stores, id);
       if (!h) return notFound(c);
       const thread = h.request.sessionId
         ? await stores.interactions.listBySession(h.request.sessionId)
@@ -200,6 +206,7 @@ export function createAgentInteractionAdminRoutes(
     }),
     async (c) => {
       const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) return badId(c);
       const { record } = await stores.requests.get(id);
       if (!record) return notFound(c);
       const [events, responses] = await Promise.all([

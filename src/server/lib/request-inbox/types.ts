@@ -121,3 +121,11 @@ export interface InboxSurveyAnswer {
   rated: boolean;
   createdAtMs: number;
 }
+
+/**
+ * Request/session id charset — alnum + id separators only (ledger
+ * EVENT_ID_RE precedent). Prod runtime passes %00/control bytes into
+ * :id params where the pg driver then throws → typed rejection must
+ * happen BEFORE the store layer (probe-bot nul-control, prod verify).
+ */
+export const REQUEST_ID_RE = /^[A-Za-z0-9_.:~@+=-]{1,128}$/;

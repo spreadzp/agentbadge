@@ -18,6 +18,7 @@ import { adminAuth } from "../../middleware/adminAuth";
 import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
+import { REQUEST_ID_RE } from "../../lib/request-inbox/types";
 import { statusOfState } from "../../lib/request-inbox/interaction-types";
 import { classify, reject, respond } from "../../lib/agent-interaction";
 
@@ -82,9 +83,13 @@ export function registerInteractionMutationRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad classify body");
       }
+      const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid request id");
+      }
       const r = await classify(
         stores,
-        c.req.param("id"),
+        id,
         body.data,
         operatorRefOf(c),
       );
@@ -119,9 +124,13 @@ export function registerInteractionMutationRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "body required");
       }
+      const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid request id");
+      }
       const r = await respond(
         stores,
-        c.req.param("id"),
+        id,
         operatorRefOf(c),
         body.data.body,
       );
@@ -158,9 +167,13 @@ export function registerInteractionMutationRoutes(
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad reject body");
       }
+      const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) {
+        return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid request id");
+      }
       const r = await reject(
         stores,
-        c.req.param("id"),
+        id,
         operatorRefOf(c),
         body.data.reason,
       );

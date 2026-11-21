@@ -22,7 +22,7 @@ import { transitionWithQa } from "../../lib/request-inbox/qa";
 import { registerQaOpsRoutes } from "./agent-requests-qa-ops";
 import { sanitizeHeaders } from "../../lib/request-inbox/fingerprint";
 import type { RequestInboxStores } from "../../lib/request-inbox/store";
-import type { InboxRequestRecord } from "../../lib/request-inbox/types";
+import { REQUEST_ID_RE, type InboxRequestRecord } from "../../lib/request-inbox/types";
 
 const TERMINAL = new Set(["completed", "failed"]);
 
@@ -123,6 +123,7 @@ export function createAgentRequestOpsRoutes(
     }),
     async (c) => {
       const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
       const parsed = respondSchema.safeParse(await c.req.json().catch(() => null));
       if (!parsed.success || parsed.data.response === undefined) {
         return errorResponse(
@@ -203,6 +204,7 @@ export function createAgentRequestOpsRoutes(
     }),
     async (c) => {
       const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
       const parsed = stateSchema.safeParse(await c.req.json().catch(() => null));
       if (!parsed.success) {
         return errorResponse(
@@ -262,6 +264,7 @@ export function createAgentRequestOpsRoutes(
     }),
     async (c) => {
       const id = c.req.param("id");
+      if (!REQUEST_ID_RE.test(id)) return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such request");
       const parsed = spamSchema.safeParse(await c.req.json().catch(() => null));
       if (!parsed.success) {
         return errorResponse(
