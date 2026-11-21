@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   atomicToUnits,
+  decimalsForNetwork,
   buyPay,
   buyQuote,
   classifyBuyFailure,
@@ -74,6 +75,24 @@ describe("atomicToUnits (402 challenge → envelope USD)", () => {
     expect(atomicToUnits("50000")).toBe("0.05");
     expect(atomicToUnits("1000000")).toBe("1");
     expect(atomicToUnits("0")).toBe("0");
+  });
+
+  it("M-2: negative/hex/empty/whitespace → typed invalid, never BigInt coercion", () => {
+    for (const bad of ["-1000000", "0x3e8", "", "  ", "NaN", "1.5"]) {
+      expect(() => atomicToUnits(bad)).toThrow(/invalid atomic amount/);
+    }
+    // >78 digits exceeds uint256 — rejected before BigInt (N-4)
+    expect(() => atomicToUnits("9".repeat(100))).toThrow(/invalid atomic/);
+  });
+
+  it("M-9: decimals by network — 18-dec BNB, 7-dec Stellar, unknown → -1", () => {
+    expect(decimalsForNetwork("eip155:56")).toBe(18);
+    expect(decimalsForNetwork("eip155:056")).toBe(18); // normalized lookup
+    expect(decimalsForNetwork("stellar:pubnet")).toBe(7);
+    expect(decimalsForNetwork("eip155:5042002")).toBe(6); // eip155 default
+    expect(decimalsForNetwork("btc:mainnet")).toBe(-1); // unknown → uncomparable
+    expect(atomicToUnits("1000000000000000000", 18)).toBe("1");
+    expect(atomicToUnits("10000000", 7)).toBe("1");
   });
 });
 

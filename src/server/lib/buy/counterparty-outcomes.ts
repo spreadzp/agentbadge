@@ -131,7 +131,7 @@ export async function counterpartyPermitRecheck(
   url: string,
 ): Promise<CounterpartyGateResult> {
   const assessment: Vet402Assessment | null = deps.checker
-    ? await deps.checker.check({ resourceUrl: url }).catch(() => null)
+    ? await deps.checker.check({ resourceUrl: url, wallet: ctx.wallet }).catch(() => null)
     : null;
   const blocked =
     assessment?.kind === "verdict" && assessment.verdict === "BLOCK";

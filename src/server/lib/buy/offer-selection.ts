@@ -58,6 +58,11 @@ export function selectSigningOffer(
   maxAmountAtomic: string,
 ): { ok: true; offer: OfferedTerms } | { ok: false; error: OfferSelectionError } {
   const r = (raw ?? {}) as Record<string, unknown>;
+  // M-2: an unparseable ceiling means the signable set cannot be
+  // bounded at all — typed deny, never a raw BigInt throw.
+  if (!/^\d{1,78}$/.test(maxAmountAtomic.trim())) {
+    return { ok: false, error: "unverifiable_challenge" };
+  }
   const ceiling = BigInt(maxAmountAtomic);
   const candidates: unknown[] = Array.isArray(r.accepts) ? r.accepts : [r];
   const signable: { offer: OfferedTerms; norm: NormalizedTerms }[] = [];

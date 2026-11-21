@@ -47,7 +47,7 @@ import {
 } from "../agent-wallet/approvals";
 import {
   counterpartyGate,
-  counterpartyModeFromEnv,
+  counterpartyModeDefault,
   counterpartyPermitRecheck,
   getCounterpartyChecker,
 } from "./counterparty-gate";
@@ -56,6 +56,7 @@ import {
   anchorBuy,
   anchorSafeUrl,
   atomicToUnits,
+  decimalsForNetwork,
   classifyBuyFailure,
   defaultFetcher,
   defaultRunner,
@@ -69,6 +70,7 @@ import {
 export {
   anchorSafeUrl,
   atomicToUnits,
+  decimalsForNetwork,
   classifyBuyFailure,
   TX_RE,
 } from "./gateway-utils";
@@ -80,6 +82,7 @@ export type {
 } from "./gateway-utils";
 import {
   createCounterpartyPolicy,
+  DEAL_FINGERPRINT_VERSION,
   normalizeAmount,
   type CounterpartyChecker,
   type CounterpartyCheckMode,
@@ -194,9 +197,14 @@ export async function buyQuote(
     );
   }
   const raw = (await res.json()) as {
-    accepts?: { amount?: string; maxAmountRequired?: string }[];
+    accepts?: {
+      amount?: string;
+      maxAmountRequired?: string;
+      network?: string;
+    }[];
     amount?: string;
     maxAmountRequired?: string;
+    network?: string;
   };
   // C-2 (arc-audit): derive the ceiling through the SAME normalization
   // the gate uses — `amount ?? maxAmountRequired` (V2 first), never
@@ -208,6 +216,7 @@ export async function buyQuote(
       ? raw.accepts
       : [raw];
   let max: string | undefined;
+  let maxNet: string | undefined;
   for (const e of entries) {
     const amt = e?.amount ?? e?.maxAmountRequired;
     if (typeof amt !== "string") continue;
@@ -217,16 +226,24 @@ export async function buyQuote(
     } catch {
       continue; // malformed entry — gate's blind-spot rule decides
     }
-    if (max === undefined || BigInt(norm) > BigInt(max)) max = norm;
+    if (max === undefined || BigInt(norm) > BigInt(max)) {
+      max = norm;
+      maxNet = typeof e?.network === "string" ? e.network : undefined;
+    }
   }
   if (!max) {
     throw new Error("402 challenge missing usable amount/maxAmountRequired");
   }
+  // M-9: decimals come from the winning entry's network — an
+  // unrecognized namespace yields "uncomparable" so buyPay denies
+  // typed-invalid instead of silently under-capping on a 6-dec guess.
+  // A missing network field is the legacy/v1 shape → default 6.
+  const dec = maxNet === undefined ? 6 : decimalsForNetwork(maxNet);
   return {
     url,
     method,
     body,
-    maxAmount: atomicToUnits(max),
+    maxAmount: dec >= 0 ? atomicToUnits(max, dec) : "uncomparable",
     maxAmountAtomic: max,
     raw,
   };
@@ -255,6 +272,15 @@ export async function buyPay(
   }
   if (!deps || !isAddress(wallet)) {
     return { status: "denied", deny: { error: "buy_gate_unwired" }, attempts: 0 };
+  }
+  // M-2: a non-finite or negative amount must never reach caps or the
+  // ledger (negative entries could offset the daily total).
+  if (!Number.isFinite(amountUsd) || amountUsd < 0) {
+    return {
+      status: "denied",
+      deny: { error: "invalid_amount" },
+      attempts: 0,
+    };
   }
   const w = wallet.toLowerCase() as `0x${string}`;
   const ctx: SpendDenyCtx = {
@@ -302,7 +328,7 @@ export async function buyPay(
   // is the terms the CLI will sign; its fingerprint keys any
   // counterparty permit AND re-verifies it on the consume path.
   const deal = bindDeal(quote, w);
-  const cpMode = opts.counterparty?.mode ?? counterpartyModeFromEnv();
+  const cpMode = opts.counterparty?.mode ?? counterpartyModeDefault();
 
   // 257-14 (H-1) park-commit: a live approved permit SHORT-CIRCUITS
   // its gate, but is CONSUMED only after every gate passed — right
@@ -328,7 +354,9 @@ export async function buyPay(
     // (shadow still runs the gate below for the decision record).
     if (cpMode === "enforce" && deal.fingerprint) {
       dealPermit = approved.find(
-        (a) => a.dealFingerprint === deal.fingerprint,
+        (a) =>
+          a.dealFingerprint === deal.fingerprint &&
+          a.fingerprintVersion === DEAL_FINGERPRINT_VERSION,
       );
     }
   }

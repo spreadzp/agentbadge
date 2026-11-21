@@ -6,6 +6,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 
+import { normalizeNetwork } from "@agentbadge/circle-payments";
 import { getArcEventLogWriter } from "../fx-delta/arc-writer";
 
 /* ------------------------------- runner ---------------------------------- */
@@ -57,11 +58,44 @@ export const defaultFetcher: BuyFetcher = async (url, init) => {
 
 /* ------------------------------- units ----------------------------------- */
 
-/** atomic → human token units (6 decimals), precision-safe via bigint. */
-export function atomicToUnits(atomic: string): string {
-  const v = BigInt(atomic.trim());
-  const whole = v / 1_000_000n;
-  const frac = (v % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+/** Asset decimals by NORMALIZED network (M-9). eip155 stables are
+ *  6-dec; BNB USD1 is 18-dec; Stellar is 7-dec. An unknown namespace
+ *  returns -1 — the caller treats that as uncomparable, never a
+ *  silent under-cap conversion (audit M-9). */
+const ASSET_DECIMALS: Record<string, number> = {
+  "eip155:56": 18, // BNB Chain — USD1 is 18-dec
+  "stellar:pubnet": 7,
+  "stellar:testnet": 7,
+};
+export function decimalsForNetwork(network: string): number {
+  let n: string;
+  try {
+    n = normalizeNetwork(network);
+  } catch {
+    return -1;
+  }
+  if (ASSET_DECIMALS[n] !== undefined) return ASSET_DECIMALS[n];
+  if (n.startsWith("eip155:")) return 6;
+  return -1; // unknown namespace — refuse to guess
+}
+
+const ATOMIC_RE = /^\d{1,78}$/; // M-2/N-4: digits only, ≤ uint256 width
+
+/** atomic → human token units, precision-safe via bigint.
+ *  M-2: strict `^\d+$` — negative/hex/NaN/empty is a typed throw,
+ *  never a silent `BigInt` coercion into caps or the ledger. */
+export function atomicToUnits(atomic: string, decimals = 6): string {
+  const t = atomic.trim();
+  if (!ATOMIC_RE.test(t)) {
+    throw new Error(`invalid atomic amount: ${JSON.stringify(atomic)}`);
+  }
+  const scale = 10n ** BigInt(decimals);
+  const v = BigInt(t);
+  const whole = v / scale;
+  const frac = (v % scale)
+    .toString()
+    .padStart(decimals, "0")
+    .replace(/0+$/, "");
   return frac ? `${whole}.${frac}` : whole.toString();
 }
 

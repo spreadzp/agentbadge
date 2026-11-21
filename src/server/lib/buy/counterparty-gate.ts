@@ -12,6 +12,7 @@
 
 import { logger } from "@agentbadge/passport/logger";
 import {
+  DEAL_FINGERPRINT_VERSION,
   matchTerms,
   Vet402Client,
   vet402ClientOptionsFromEnv,
@@ -39,13 +40,40 @@ export {
 } from "./offer-selection";
 export { counterpartyPermitRecheck } from "./counterparty-outcomes";
 
-/** COUNTERPARTY_CHECK_MODE — prod default enforce (D-257-Q3). */
+/** COUNTERPARTY_CHECK_MODE — prod default enforce (D-257-Q3).
+ * M-1: NODE_ENV unset/unrecognized defaults to ENFORCE (fail-closed —
+ * a prod container without NODE_ENV must never silently run open);
+ * explicit dev/test values still default to off. */
+const DEV_ENVS = new Set(["development", "dev", "test"]);
 export function counterpartyModeFromEnv(
   env: Record<string, string | undefined> = process.env,
 ): CounterpartyCheckMode {
   const v = env.COUNTERPARTY_CHECK_MODE;
   if (v === "off" || v === "shadow" || v === "enforce") return v;
-  return env.NODE_ENV === "production" ? "enforce" : "off";
+  if (env.NODE_ENV === "production") return "enforce";
+  return DEV_ENVS.has(env.NODE_ENV ?? "") ? "off" : "enforce";
+}
+
+// M-1: the env-derived default is resolved ONCE (boot), not re-read
+// per request — and it is loud: off/shadow under NODE_ENV=production
+// or an unrecognized NODE_ENV gets a boot-level warn.
+let _modeOnce: CounterpartyCheckMode | undefined;
+export function counterpartyModeDefault(): CounterpartyCheckMode {
+  if (_modeOnce !== undefined) return _modeOnce;
+  const v = process.env.COUNTERPARTY_CHECK_MODE;
+  const ne = process.env.NODE_ENV;
+  _modeOnce = counterpartyModeFromEnv();
+  if ((v === "off" || v === "shadow") && ne === "production") {
+    logger.warn("counterparty-gate: counterparty checks disabled in production", {
+      mode: v,
+      nodeEnv: ne,
+    });
+  } else if (v === undefined && ne !== "production" && !DEV_ENVS.has(ne ?? "")) {
+    logger.warn("counterparty-gate: NODE_ENV unset/unrecognized — defaulting to enforce (fail-closed)", {
+      nodeEnv: ne ?? "unset",
+    });
+  }
+  return _modeOnce;
 }
 
 let _checker: CounterpartyChecker | null = null;
@@ -115,7 +143,7 @@ export async function counterpartyGate(
   const assessment: Vet402Assessment | null = selectionUnverifiable
     ? null
     : deps.checker
-      ? await deps.checker.check({ resourceUrl: quote.url })
+      ? await deps.checker.check({ resourceUrl: quote.url, wallet: ctx.wallet })
       : {
           kind: "unavailable",
           failure: "network_error",
@@ -201,7 +229,9 @@ export async function counterpartyGate(
         ...ctx,
         approvalReason: decision.holdHint as SpendDenyCtx["approvalReason"],
         dealFingerprint: deal.fingerprint,
-        fingerprintVersion: deal.fingerprint ? 1 : undefined,
+        fingerprintVersion: deal.fingerprint
+          ? DEAL_FINGERPRINT_VERSION
+          : undefined,
         meta,
       },
       deps.approvalTtlMs,
