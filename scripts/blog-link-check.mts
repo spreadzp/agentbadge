@@ -34,9 +34,10 @@ const TIMEOUT_MS = 15_000;
 const CONCURRENCY = 5;
 const SOFT_STATUSES = new Set([401, 403, 429, 999]);
 
+const FLAG_VALUE_ARGS = new Set(["--base"]);
 const slugs = ALL
   ? BLOG_ARTICLES.map((a) => a.slug)
-  : ARGS.filter((a) => !a.startsWith("--"));
+  : ARGS.filter((a, i) => !a.startsWith("--") && !FLAG_VALUE_ARGS.has(ARGS[i - 1]));
 
 if (slugs.length === 0) {
   console.error("usage: bun scripts/blog-link-check.mts <slug> [<slug>...] | --all [--only-internal]");
