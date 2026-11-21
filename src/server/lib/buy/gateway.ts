@@ -141,7 +141,7 @@ export function atomicToUnits(atomic: string): string {
 
 export type BuyClass =
   | "paid" // settled — output usable
-  | "refused" // pre-settlement refusal (4xx/503) — safe to retry later
+  | "refused" // pre-signature 402 challenge — safe to retry later
   | "uncertain"; // settle state unknown — NEVER retry automatically
 
 export interface BuyResult {
@@ -278,27 +278,37 @@ export async function buyQuote(
 
 /* --------------------------- failure classify ---------------------------- */
 
-/** buy-skill table: only pre-settlement refusals may be retried. */
+const TX_RE = /0x[0-9a-fA-F]{64}/;
+
+/**
+ * Money-path taxonomy (257-16, H-6 — x402 «Timeouts and Safe Retries»:
+ * once the PAYMENT-SIGNATURE could have left the process, the settle
+ * outcome is UNKNOWN and the purchase must never be auto-repaid):
+ *
+ *   pre-signature, structural 402 challenge → "refused"   (retryable)
+ *   payment trace or any other non-zero output → "uncertain" (never)
+ */
 export function classifyBuyFailure(r: ExecResult): BuyClass {
   const text = `${r.stdout}\n${r.stderr}`;
+  // Payment trace: tx hash, signature header echo or upstream
+  // non-retryable markers — the signature may have left, money may be
+  // on-chain regardless of any 4xx/503 text accompanying it.
   if (
-    /settle_uncertain|provision_failed/i.test(text) ||
+    TX_RE.test(text) ||
+    /PAYMENT-SIGNATURE|settle_uncertain|provision_failed/i.test(text) ||
     /"retryable"\s*:\s*false/.test(text)
   ) {
     return "uncertain"; // money may have moved — never retry
   }
-  if (
-    /verify_payment_failed|invalid_request|no_matching_requirements|insufficient[_ ](funds|balance)|\b40[0-9]\b|\b503\b/i.test(
-      text,
-    )
-  ) {
-    return "refused"; // pre-settlement — nothing signed, safe to retry
+  // "refused" ONLY on a structural pre-signature signal: the CLI printed
+  // a fresh 402 payment-required challenge and no payment trace. A bare
+  // 4xx/503 line after spawn is post-signature seller output (H-6).
+  if (/PAYMENT-REQUIRED|"x402Version"/i.test(text)) {
+    return "refused"; // nothing signed — safe to retry
   }
   // Network interruption after payment is also "unknown" upstream.
   return "uncertain";
 }
-
-const TX_RE = /0x[0-9a-fA-F]{64}/;
 
 /* --------------------------------- pay ----------------------------------- */
 
@@ -524,11 +534,23 @@ export async function buyPay(
     }
     if (r.code === 0) {
       const txHash = TX_RE.exec(r.stdout)?.[0];
-      await deps.ledger.transition(
-        entry.id,
-        "settled",
-        txHash as `0x${string}` | undefined,
-      );
+      // M-10: the payment already settled — a ledger failure must
+      // surface as a typed "uncertain" for manual reconcile, never an
+      // exception a caller could interpret as safe-to-retry.
+      try {
+        await deps.ledger.transition(
+          entry.id,
+          "settled",
+          txHash as `0x${string}` | undefined,
+        );
+      } catch (e) {
+        return {
+          status: "uncertain",
+          txHash,
+          output: `payment settled but ledger transition failed: ${String(e)}`,
+          attempts,
+        };
+      }
       void anchorBuy(opts.anchor, {
         kind: "buy-gateway",
         refId,

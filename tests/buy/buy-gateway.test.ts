@@ -90,18 +90,35 @@ describe("classifyBuyFailure (buy-skill retry table)", () => {
     }
   });
 
-  it("4xx / 503 / verify_payment_failed → refused (pre-settlement)", () => {
+  it("structural 402 challenge + no payment trace → refused", () => {
     for (const stderr of [
-      "402 verify_payment_failed",
-      "400 invalid_request",
-      "503 service unavailable",
-      // sandbox/CLI-side refusals — nothing signed, pre-settlement
-      '{"error":{"code":"no_matching_requirements"}}',
-      "insufficient_funds: USDC balance too low",
+      'PAYMENT-REQUIRED: {"x402Version":1,"accepts":[{}]}',
+      'error: {"x402Version":2,"accepts":[{"amount":"50000"}]}',
     ]) {
       expect(
         classifyBuyFailure({ code: 1, stdout: "", stderr }),
       ).toBe("refused");
+    }
+  });
+
+  it("post-signature text / tx trace → uncertain (H-6: never re-pay)", () => {
+    const tx = "0x" + "ab".repeat(32);
+    for (const stderr of [
+      // bare seller 4xx/503 after spawn — signature may have left
+      "503 service unavailable",
+      "400 invalid_request",
+      "404 not found",
+      "402 verify_payment_failed",
+      '{"error":{"code":"no_matching_requirements"}}',
+      "insufficient_funds: USDC balance too low",
+      // payment trace overrides any refusal-looking text
+      `503 settle failed, tx ${tx}`,
+      `PAYMENT-REQUIRED after send, tx ${tx}`,
+      "PAYMENT-SIGNATURE echoed then 400",
+    ]) {
+      expect(
+        classifyBuyFailure({ code: 1, stdout: "", stderr }),
+      ).toBe("uncertain");
     }
   });
 });
@@ -252,7 +269,7 @@ describe("buyPay — retry discipline", () => {
     else process.env.BUY_GATEWAY_ENABLED = env;
   });
 
-  it("refused (503) → retries once then released", async () => {
+  it("refused (structural 402) → retries once then released", async () => {
     const { deps, ledger } = gate();
     await registerWallet(deps.registry);
     let calls = 0;
@@ -261,12 +278,69 @@ describe("buyPay — retry discipline", () => {
       maxRetries: 1,
       runner: async () => {
         calls++;
-        return { code: 1, stdout: "", stderr: "503 unavailable" };
+        return {
+          code: 1,
+          stdout: "",
+          stderr: 'PAYMENT-REQUIRED {"x402Version":1,"accepts":[{}]}',
+        };
       },
     });
     expect(res.status).toBe("refused");
     expect(calls).toBe(2); // initial + 1 retry
     expect((await ledger.listByWallet(WALLET))[0]?.state).toBe("released");
+  });
+
+  it("post-settlement 503 → NO retry, entry failed (H-6)", async () => {
+    const { deps, ledger } = gate();
+    await registerWallet(deps.registry);
+    let calls = 0;
+    const res = await buyPay(quote(), WALLET, "r7b", {
+      gate: deps,
+      maxRetries: 1,
+      runner: async () => {
+        calls++;
+        return { code: 1, stdout: "", stderr: "503 unavailable" };
+      },
+    });
+    expect(res.status).toBe("uncertain");
+    expect(calls).toBe(1); // post-signature text — never re-paid
+    expect((await ledger.listByWallet(WALLET))[0]?.state).toBe("failed");
+  });
+
+  it("tx hash + non-zero exit → uncertain, never re-paid", async () => {
+    const { deps, ledger } = gate();
+    await registerWallet(deps.registry);
+    let calls = 0;
+    const tx = "0x" + "cd".repeat(32);
+    const res = await buyPay(quote(), WALLET, "r7c", {
+      gate: deps,
+      runner: async () => {
+        calls++;
+        return { code: 1, stdout: `paid ${tx}`, stderr: "404" };
+      },
+    });
+    expect(res.status).toBe("uncertain");
+    expect(calls).toBe(1);
+    expect((await ledger.listByWallet(WALLET))[0]?.state).toBe("failed");
+  });
+
+  it("transition throw after paid → typed uncertain, not exception (M-10)", async () => {
+    const ledger = createMemorySpendLedger();
+    const real = ledger.transition.bind(ledger);
+    ledger.transition = (id, to, txHash, sourceChain) =>
+      to === "settled"
+        ? Promise.reject(new Error("db down"))
+        : real(id, to, txHash, sourceChain);
+    const { deps } = gate({ ledger });
+    await registerWallet(deps.registry);
+    const tx = "0x" + "ef".repeat(32);
+    const res = await buyPay(quote(), WALLET, "r9", {
+      gate: deps,
+      runner: async () => ({ code: 0, stdout: `ok ${tx}`, stderr: "" }),
+    });
+    expect(res.status).toBe("uncertain");
+    expect(res.txHash).toBe(tx);
+    expect(res.output).toContain("ledger transition failed");
   });
 
   it("settle_uncertain → NO retry, entry failed", async () => {
