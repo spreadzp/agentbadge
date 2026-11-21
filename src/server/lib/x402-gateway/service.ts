@@ -168,10 +168,16 @@ export function createX402PaymentService(
     return rec?.agentId ?? null;
   };
 
+  // M-5: the fulfillment-event schema caps requestId at 128 chars;
+  // a client-controlled x-request-id beyond that would make
+  // buildEconomicEvent throw and silently suppress paid evidence.
+  // Cap at ingress instead — the event is emitted either way.
+  const capReqId = (v: string | undefined): string | undefined =>
+    v === undefined ? undefined : v.slice(0, 128);
   const requestIdFor: X402PaymentService["requestIdFor"] = (c, settle) =>
     settle?.tx ??
-    c.req.header("x-request-id") ??
-    c.req.header("idempotency-key") ??
+    capReqId(c.req.header("x-request-id")) ??
+    capReqId(c.req.header("idempotency-key")) ??
     `req_${crypto.randomUUID()}`;
 
   return {

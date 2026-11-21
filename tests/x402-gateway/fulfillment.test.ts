@@ -4,8 +4,10 @@
  * ACs: 2xx → handler_completed with usage/payment/request links;
  * 5xx|throw → upstream_error (response semantics unchanged);
  * no completion signal → unknown; emit failure → 200 + full event
- * in warn log + metric; replay dedupes; no usage row → no event;
- * no counterparty → no trust edge, revenue unchanged.
+ * in warn log + metric; replay dedupes; no usage row → requestId
+ * fallback event (M-5); no counterparty → no trust edge.
+ * 257-18: live stream → unknown/stream_aborted honestly; buffered 2xx
+ * survives a late client drop (M-7); sync append throw replays (M-6).
  */
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -163,7 +165,7 @@ describe("x402_fulfillment emission (257-6)", () => {
     expect(legs[0].outcome).toBe("unknown");
   });
 
-  it("no usage record persisted → no fulfillment event", async () => {
+  it("no usage record persisted → event keyed by requestId (M-5)", async () => {
     const legs: FulfillmentLeg[] = [];
     const res = await paidRequest(
       mkApp(
@@ -173,7 +175,74 @@ describe("x402_fulfillment emission (257-6)", () => {
       ),
     );
     expect(res.status).toBe(200);
-    expect(legs).toHaveLength(0);
+    expect(legs).toHaveLength(1);
+    expect(legs[0].usage).toBeNull();
+    expect(legs[0].requestId).toBe("req_test");
+    expect(legs[0].outcome).toBe("handler_completed");
+  });
+
+  it("NDJSON ReadableStream 200 → unknown, not handler_completed (H-8)", async () => {
+    const legs: FulfillmentLeg[] = [];
+    const stream = new ReadableStream({
+      start(c) {
+        c.enqueue('{"a":1}\n');
+      },
+    });
+    const res = await paidRequest(
+      mkApp(
+        mkService(),
+        () =>
+          new Response(stream as BodyInit, {
+            headers: { "content-type": "application/x-ndjson" },
+          }),
+        (leg) => legs.push(leg),
+      ),
+    );
+    expect(res.status).toBe(200);
+    expect(legs[0].outcome).toBe("unknown");
+  });
+
+  it("client drops after buffered 200 → handler_completed, not stream_aborted (M-7)", async () => {
+    const legs: FulfillmentLeg[] = [];
+    const app = mkApp(
+      mkService(),
+      (c) => c.json({ ok: true }),
+      (leg) => legs.push(leg),
+    );
+    const ac = new AbortController();
+    ac.abort(); // client gone — but the handler already materialized the body
+    const res = await app.request(
+      new Request(`http://x${PAID_PATH}`, {
+        method: "POST",
+        headers: { "payment-signature": "sig" },
+        signal: ac.signal,
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(legs[0].outcome).toBe("handler_completed");
+  });
+
+  it("client drops mid-stream (SSE) → stream_aborted (M-7)", async () => {
+    const legs: FulfillmentLeg[] = [];
+    const app = mkApp(
+      mkService(),
+      () =>
+        new Response(new ReadableStream({ start() {} }) as BodyInit, {
+          headers: { "content-type": "text/event-stream" },
+        }),
+      (leg) => legs.push(leg),
+    );
+    const ac = new AbortController();
+    ac.abort();
+    const res = await app.request(
+      new Request(`http://x${PAID_PATH}`, {
+        method: "POST",
+        headers: { "payment-signature": "sig" },
+        signal: ac.signal,
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(legs[0].outcome).toBe("stream_aborted");
   });
 
   it("throwing emit seam → paid 200 survives (fire-and-forget)", async () => {
@@ -226,6 +295,46 @@ describe("emitX402Fulfillment (257-6)", () => {
     );
     await new Promise((r) => setTimeout(r, 20));
     expect(await ledger.scan(0n)).toHaveLength(1);
+  });
+
+  it("synchronous append throw → full replay record still logged (M-6)", async () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const counterValue = async () =>
+      (await x402FulfillmentEmitFailedTotal.get()).values[0]?.value ?? 0;
+    const before = await counterValue();
+    const syncFailing = {
+      append: () => {
+        throw new Error("sync ledger boom");
+      },
+    } as unknown as InMemoryEconLedgerStore;
+    emitX402Fulfillment(LEG, syncFailing);
+    await vi.waitFor(async () =>
+      expect(await counterValue()).toBe(before + 1),
+    );
+    const logged = warn.mock.calls.find(
+      ([msg]) => typeof msg === "string" && msg.includes("replayable"),
+    );
+    expect(logged).toBeDefined();
+    const ctx = logged![1] as { event?: EconomicEvent };
+    expect(ctx.event?.idempotencyKey).toBe("ev:x402:ur_test123~fulfill:1");
+    warn.mockRestore();
+  });
+
+  it("usage=null leg → event keyed by requestId (M-5)", async () => {
+    const ledger = new InMemoryEconLedgerStore();
+    emitX402Fulfillment(
+      { usage: null, requestId: "req_fallback", outcome: "unknown", httpStatus: 200 },
+      ledger,
+    );
+    await vi.waitFor(async () =>
+      expect(await ledger.scan(0n)).toHaveLength(1),
+    );
+    const event = (await ledger.scan(0n))[0].event as EconomicEvent;
+    expect(event.sourceId).toBe("req_fallback~fulfill");
+    const payload = event.payload as Record<string, unknown>;
+    expect(payload.usageRecordId).toBe("req_fallback");
+    expect(payload.requestId).toBe("req_fallback");
+    expect(payload.outcome).toBe("unknown");
   });
 
   it("append failure → warn log carries the FULL replayable event + metric", async () => {

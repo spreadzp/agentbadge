@@ -57,36 +57,53 @@ export interface X402GatewayMiddlewareConfig {
   emitFulfillment?: (leg: FulfillmentLeg) => void;
 }
 
-/** Response is a live stream whose delivery we can't verify post-next(). */
+/**
+ * Response is a live stream whose delivery we can't verify post-next().
+ * H-8: headers seen ≠ delivered — a body the handler did NOT fully
+ * materialize means we observed at most the headers. Detect by the
+ * streaming content-type family (SSE/NDJSON/octet-stream) and by
+ * chunked transfer-encoding, which Hono sets for streaming bodies.
+ * Residual (documented): `res.body instanceof ReadableStream` can't
+ * discriminate — undici/Bun wrap even buffered string bodies as
+ * ReadableStream — so a live stream labeled with a buffered content
+ * type (e.g. application/json) is indistinguishable post-next().
+ */
 function isStreamingResponse(c: Context): boolean {
   const res = c.res;
-  const type = res.headers.get("content-type") ?? "";
+  const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
   return (
-    type.startsWith("text/event-stream") ||
+    type === "text/event-stream" ||
+    type === "application/x-ndjson" ||
+    type === "application/octet-stream" ||
+    type === "application/stream+json" ||
     res.headers.get("transfer-encoding") === "chunked"
   );
 }
 
 /**
  * Post-handler outcome → honest outcome term. A thrown handler is
- * direct evidence of server-side failure; a real abort signal means
- * the stream broke; 2xx is the only status that proves completion —
- * anything else without a reliable signal is `unknown`, never guessed.
+ * direct evidence of server-side failure. For a LIVE stream the abort
+ * signal means the stream really broke (headers ≠ delivered, so
+ * `stream_aborted` only there); for a BUFFERED response the handler
+ * fully materialized the body — a client dropping afterwards cannot
+ * undo delivery, so the outcome comes from the status alone (M-7).
+ * 2xx is the only status that proves completion — anything else
+ * without a reliable signal is `unknown`, never guessed.
  */
 export function classifyFulfillmentOutcome(
   c: Context,
   handlerThrew: boolean,
 ): { outcome: X402FulfillmentOutcome; httpStatus?: number } {
   if (handlerThrew) return { outcome: "upstream_error" };
-  if (c.req.raw.signal.aborted) return { outcome: "stream_aborted" };
   const httpStatus = c.res.status;
-  if (httpStatus >= 200 && httpStatus < 300)
-    // A buffered 2xx is fully materialized — completed. A live stream
-    // (SSE/chunked) only proves headers were sent: delivery unverified.
+  if (isStreamingResponse(c)) {
     return {
-      outcome: isStreamingResponse(c) ? "unknown" : "handler_completed",
+      outcome: c.req.raw.signal.aborted ? "stream_aborted" : "unknown",
       httpStatus,
     };
+  }
+  if (httpStatus >= 200 && httpStatus < 300)
+    return { outcome: "handler_completed", httpStatus };
   if (httpStatus >= 500) return { outcome: "upstream_error", httpStatus };
   return { outcome: "unknown", httpStatus };
 }
@@ -213,6 +230,9 @@ export function x402GatewayMiddleware(
     // SLICE-257-6: the handler's own outcome is the fulfillment fact.
     // Emit AFTER next() — never before, and never let it alter what the
     // client gets back (a thrown handler is rethrown after emitting).
+    // N-9: Hono routes Error throws through onError — next() resolves
+    // with a 500 c.res that the classifier maps to upstream_error via
+    // status. Only non-Error throws reach this catch.
     let handlerThrew = false;
     let handlerError: unknown;
     try {
@@ -221,21 +241,21 @@ export function x402GatewayMiddleware(
       handlerThrew = true;
       handlerError = err;
     }
-    if (usage) {
-      const { outcome, httpStatus } = classifyFulfillmentOutcome(
-        c,
-        handlerThrew,
-      );
-      // Fire-and-forget is a contract on the seam, not just the default
-      // impl — a throwing emitter must never alter the paid response.
-      try {
-        emitFulfillment({ usage, outcome, httpStatus });
-      } catch (err) {
-        logger.warn("x402-gateway: fulfillment emit threw (ignored)", {
-          usageRecordId: usage.id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
+    const { outcome, httpStatus } = classifyFulfillmentOutcome(
+      c,
+      handlerThrew,
+    );
+    // Fire-and-forget is a contract on the seam, not just the default
+    // impl — a throwing emitter must never alter the paid response.
+    // M-5: emit even without a UsageRecord — the requestId fallback
+    // keeps evidence when the usage store is down.
+    try {
+      emitFulfillment({ usage, requestId, outcome, httpStatus });
+    } catch (err) {
+      logger.warn("x402-gateway: fulfillment emit threw (ignored)", {
+        usageRecordId: usage?.id ?? requestId,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
     if (handlerThrew) throw handlerError;
   };

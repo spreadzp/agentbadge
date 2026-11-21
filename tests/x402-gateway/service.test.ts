@@ -141,4 +141,18 @@ describe("x402PaymentService", () => {
     expect(svc.requestIdFor(c({ "idempotency-key": "ik_2" }))).toBe("ik_2");
     expect(svc.requestIdFor(c({}))).toMatch(/^req_/);
   });
+
+  it("requestIdFor caps client ids at 128 (M-5) — event build can't throw", () => {
+    const svc = createX402PaymentService({ router });
+    const c = (h: Record<string, string>) =>
+      ({
+        req: {
+          url: "https://x/paid",
+          header: (n: string) => h[n.toLowerCase()],
+        },
+      }) as never;
+    const long = "x".repeat(300);
+    expect(svc.requestIdFor(c({ "x-request-id": long }))).toHaveLength(128);
+    expect(svc.requestIdFor(c({ "idempotency-key": long }))).toHaveLength(128);
+  });
 });
