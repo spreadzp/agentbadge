@@ -35,7 +35,7 @@ import {
   initSpendEnforcer,
   spendEnvelopeGate,
 } from "../lib/agent-wallet/enforcer";
-import { initBuyGate } from "../lib/buy/gateway";
+import { initBuyGate } from "../lib/buy";
 import { createAgentWalletRoutes } from "../routes/agent-wallet/agent-wallet-api";
 import { createAgentWalletKillswitchRoutes } from "../routes/agent-wallet/agent-wallet-killswitch-api";
 import { createAgentWalletApprovalsRoutes } from "../routes/agent-wallet/agent-wallet-approvals-api";

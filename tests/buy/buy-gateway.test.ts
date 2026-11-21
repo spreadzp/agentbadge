@@ -27,6 +27,24 @@ import {
   createMemoryApprovalStore,
   type ApprovalStore,
 } from "../../src/server/lib/agent-wallet/approvals";
+import {
+  createCounterpartyPolicy,
+  type CounterpartyChecker,
+  type Vet402Assessment,
+} from "@agentbadge/circle-payments";
+
+const allowChecker = (): CounterpartyChecker & { calls: number } => {
+  const a: Vet402Assessment = {
+    kind: "verdict",
+    verdict: "ALLOW",
+    reasonCodes: [],
+    verifiedTerms: null,
+    checkedAt: "2026-11-20T00:00:00.000Z",
+    cacheHit: false,
+  };
+  const c = { calls: 0, check: async () => (c.calls += 1, a) };
+  return c;
+};
 
 const WALLET = "0x1111111111111111111111111111111111111111";
 
@@ -302,6 +320,25 @@ describe("buyPay — envelope gate", () => {
       runner: async () => ({ code: 0, stdout: "", stderr: "" }),
     });
     expect(res.status).toBe("denied");
+  });
+
+  it("M-2: uncomparable amount (unknown-decimals network) → typed deny before caps", async () => {
+    const { deps } = gate();
+    await registerWallet(deps.registry);
+    const checker = allowChecker();
+    const res = await buyPay(quote({ maxAmount: "uncomparable" }), WALLET, "r-uc", {
+      gate: deps,
+      runner: async () => ({ code: 0, stdout: "{}", stderr: "" }),
+      counterparty: {
+        checker,
+        policy: createCounterpartyPolicy(),
+        mode: "enforce",
+      },
+    });
+    expect(res.status).toBe("denied");
+    if (res.status !== "denied") expect.unreachable();
+    expect(res.deny?.error).toBe("invalid_amount");
+    expect(checker.calls).toBe(0); // denied before the counterparty gate
   });
 });
 
