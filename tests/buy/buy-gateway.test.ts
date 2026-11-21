@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   atomicToUnits,
   buyPay,
+  buyQuote,
   classifyBuyFailure,
   type BuyQuote,
   type BuyRunner,
@@ -282,5 +283,49 @@ describe("buyPay — retry discipline", () => {
     expect(res.status).toBe("uncertain");
     expect(calls).toBe(1); // never retried
     expect((await ledger.listByWallet(WALLET))[0]?.state).toBe("failed");
+  });
+});
+
+describe("buyQuote — C-2 whole-challenge ceiling", () => {
+  const f402 = (body: unknown) => async () => ({
+    status: 402,
+    json: async () => body,
+  });
+
+  it("V2-only challenge (amount, no maxAmountRequired) → works", async () => {
+    const q = await buyQuote("https://x", "GET", undefined, {
+      fetcher: f402({ accepts: [{ amount: "60000" }] }),
+    });
+    expect(q.maxAmountAtomic).toBe("60000");
+    expect(q.maxAmount).toBe("0.06");
+  });
+
+  it("V2 amount wins over V1 maxAmountRequired; ceiling = max across entries", async () => {
+    const q = await buyQuote("https://x", "GET", undefined, {
+      fetcher: f402({
+        accepts: [
+          { maxAmountRequired: "5", amount: "900" }, // V2 wins → 900
+          { maxAmountRequired: "700" },              // V1 only → 700
+        ],
+      }),
+    });
+    // old code anchored on accepts[0].maxAmountRequired → "5"
+    expect(q.maxAmountAtomic).toBe("900");
+    expect(q.maxAmount).toBe("0.0009");
+  });
+
+  it("V1 flat challenge → top-level maxAmountRequired", async () => {
+    const q = await buyQuote("https://x", "GET", undefined, {
+      fetcher: f402({ maxAmountRequired: "50000" }),
+    });
+    expect(q.maxAmountAtomic).toBe("50000");
+  });
+
+  it("no usable amount field → throws", async () => {
+    await expect(
+      buyQuote("https://x", "GET", undefined, {
+        fetcher: f402({ accepts: [{ payTo: "0x1" }] }),
+      }),
+    ).rejects.toThrow(/missing usable amount/);
   });
 });

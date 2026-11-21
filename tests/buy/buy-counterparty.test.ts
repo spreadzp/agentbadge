@@ -134,16 +134,33 @@ function payOpts(
   };
 }
 
-describe("selectSigningOffer (D-257-Q8)", () => {
-  it("picks the accepts entry matching maxAmountAtomic", () => {
-    const cheap = { ...ACCEPT, amount: "10000", payTo: `0x${"4".repeat(40)}` };
-    const sel = selectSigningOffer(
-      { x402Version: 2, accepts: [cheap, ACCEPT] },
-      "50000",
-    );
+describe("selectSigningOffer (D-257-Q8 → 257-13 whole-challenge)", () => {
+  it("single offer → vetted", () => {
+    const sel = selectSigningOffer({ accepts: [ACCEPT] }, "50000");
     expect(sel.ok && sel.offer.payTo === PAY_TO).toBe(true);
   });
-  it("no amount match → no_matching_offer; dupes → ambiguous", () => {
+  it("identical-terms duplicates → vetted (same deal, not ambiguous)", () => {
+    const sel = selectSigningOffer({ accepts: [ACCEPT, { ...ACCEPT }] }, "50000");
+    expect(sel.ok && sel.offer.payTo === PAY_TO).toBe(true);
+  });
+  it("C-1: cheaper signable entry with different terms → unverifiable_challenge", () => {
+    const cheap = { ...ACCEPT, amount: "10000", payTo: `0x${"4".repeat(40)}` };
+    expect(
+      selectSigningOffer({ accepts: [cheap, ACCEPT] }, "50000"),
+    ).toEqual({ ok: false, error: "unverifiable_challenge" });
+  });
+  it("C-2: field-confusion entry (maxAmountRequired≠amount) is still signable → unverifiable", () => {
+    // E0 carries V1 1000000 but V2-normalizes to 999 attacker terms.
+    const e0 = {
+      scheme: "exact", network: NETWORK, asset: ASSET,
+      maxAmountRequired: "50000", amount: "49999",
+      payTo: `0x${"4".repeat(40)}`,
+    };
+    expect(
+      selectSigningOffer({ accepts: [e0, ACCEPT] }, "50000"),
+    ).toEqual({ ok: false, error: "unverifiable_challenge" });
+  });
+  it("no at-cap entry → no_matching_offer; distinct at-cap terms → ambiguous", () => {
     expect(
       selectSigningOffer({ accepts: [{ ...ACCEPT, amount: "1" }] }, "50000"),
     ).toEqual({ ok: false, error: "no_matching_offer" });
@@ -151,6 +168,16 @@ describe("selectSigningOffer (D-257-Q8)", () => {
     expect(
       selectSigningOffer({ accepts: [ACCEPT, dupe] }, "50000"),
     ).toEqual({ ok: false, error: "ambiguous_offers" });
+  });
+  it("unparseable under-ceiling entry → unverifiable_challenge; above ceiling → ignored", () => {
+    const tron = (amount: string) => ({
+      scheme: "exact", network: "tron:x", payTo: "T", asset: "T", amount,
+    });
+    expect(
+      selectSigningOffer({ accepts: [ACCEPT, tron("49999")] }, "50000"),
+    ).toEqual({ ok: false, error: "unverifiable_challenge" });
+    const sel = selectSigningOffer({ accepts: [ACCEPT, tron("99999")] }, "50000");
+    expect(sel.ok && sel.offer.payTo === PAY_TO).toBe(true);
   });
 });
 
@@ -287,6 +314,29 @@ describe("buyPay counterparty gate (enforce)", () => {
     expect(pending[0].dealFingerprint).toBeUndefined();
     expect(pending[0].approvalReason).toBe("counterparty_unmeasured");
     expect(spawned.n).toBe(0);
+  });
+
+  it("C-1: unverifiable challenge → deny, zero vet402 calls, zero spawn", async () => {
+    const cheap = { ...ACCEPT, amount: "10000", payTo: `0x${"4".repeat(40)}` };
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const checker = stubChecker(verdictA("ALLOW"));
+    const spawned = { n: 0 };
+    const r = await buyPay(
+      quote({ raw: { x402Version: 2, accepts: [cheap, ACCEPT] } }),
+      WALLET,
+      "ref-uv",
+      payOpts(f, checker, spawned),
+    );
+    expect(r.status).toBe("denied");
+    expect(r.deny?.error).toBe("unverifiable_challenge");
+    expect(checker.calls).toBe(0); // hostile shape — no assessment spent
+    expect(spawned.n).toBe(0);
+    // deny is durable in the spend ledger
+    const denied = await f.ledger.listByWallet(WALLET);
+    expect(denied.some((e) => e.denialReason === "unverifiable_challenge")).toBe(
+      true,
+    );
   });
 });
 

@@ -47,13 +47,14 @@ import {
   type ApprovalStore,
 } from "../agent-wallet/approvals";
 import {
-  bindDeal,
   counterpartyGate,
   counterpartyModeFromEnv,
   getCounterpartyChecker,
 } from "./counterparty-gate";
+import { bindDeal } from "./offer-selection";
 import {
   createCounterpartyPolicy,
+  normalizeAmount,
   type CounterpartyChecker,
   type CounterpartyCheckMode,
   type CounterpartyPolicy,
@@ -235,14 +236,33 @@ export async function buyQuote(
     );
   }
   const raw = (await res.json()) as {
-    accepts?: { maxAmountRequired?: string }[];
+    accepts?: { amount?: string; maxAmountRequired?: string }[];
+    amount?: string;
     maxAmountRequired?: string;
   };
-  // x402 v2 returns `accepts[]` (pick USDC-compatible offer); v1 top-level.
-  const max =
-    raw.accepts?.[0]?.maxAmountRequired ?? raw.maxAmountRequired;
+  // C-2 (arc-audit): derive the ceiling through the SAME normalization
+  // the gate uses — `amount ?? maxAmountRequired` (V2 first), never
+  // accepts[0]-anchored, never V1-field-only. The ceiling is the
+  // highest offer amount; the gate's whole-challenge rule then proves
+  // every signable entry shares the vetted terms.
+  const entries =
+    Array.isArray(raw.accepts) && raw.accepts.length > 0
+      ? raw.accepts
+      : [raw];
+  let max: string | undefined;
+  for (const e of entries) {
+    const amt = e?.amount ?? e?.maxAmountRequired;
+    if (typeof amt !== "string") continue;
+    let norm: string;
+    try {
+      norm = normalizeAmount(amt);
+    } catch {
+      continue; // malformed entry — gate's blind-spot rule decides
+    }
+    if (max === undefined || BigInt(norm) > BigInt(max)) max = norm;
+  }
   if (!max) {
-    throw new Error("402 challenge missing maxAmountRequired");
+    throw new Error("402 challenge missing usable amount/maxAmountRequired");
   }
   return {
     url,

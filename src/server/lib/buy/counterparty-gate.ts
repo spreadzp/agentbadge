@@ -1,10 +1,9 @@
 // SLICE-257-5: counterparty trust gate for buyPay — AFTER envelope
 // checks / amount-hold, BEFORE reserve/spawn/signing.
 //
-// Offer selection (D-257-Q8): the accepts[] entry whose amount equals
-// quote.maxAmountAtomic is what --max-amount constrains the CLI to
-// sign — NOT accepts[0], NOT all entries. Fingerprint + terms-match
-// bind THAT offer only (C2: match per payment).
+// Offer selection lives in ./offer-selection (SLICE-257-13, arc-audit
+// C-1/C-2): the whole signable set must normalize to one deal or the
+// gate denies `unverifiable_challenge` before any vet402 call.
 //
 // Mode (D-257-Q3): off → skip; shadow → evaluate+record+pass;
 // enforce → apply. Prod sets COUNTERPARTY_CHECK_MODE=enforce; dev/test
@@ -13,14 +12,11 @@
 
 import { logger } from "@agentbadge/passport/logger";
 import {
-  dealFingerprint,
   matchTerms,
-  offeredTermsFromRequirements,
   Vet402Client,
   vet402ClientOptionsFromEnv,
   type CounterpartyChecker,
   type CounterpartyCheckMode,
-  type OfferedTerms,
   type TermsMatch,
   type Vet402Assessment,
 } from "@agentbadge/circle-payments";
@@ -29,74 +25,14 @@ import { emitSpendAlert } from "../agent-wallet/audit";
 import { tryApprovalHold, type SpendDenyCtx } from "../agent-wallet/deny";
 import { newSpendId, type SpendLedger } from "../agent-wallet/ledger";
 import type { BuyQuote } from "./gateway";
+import type { DealBinding } from "./offer-selection";
 
-/** What the deal-binding step derived from the quote's raw challenge. */
-export interface DealBinding {
-  /** The accepts entry the payment will sign (when unambiguous). */
-  offer?: OfferedTerms;
-  /** sha256:v1 fingerprint over wallet+url+offer — the permit key. */
-  fingerprint?: string;
-  /** Why no binding could be derived (unselectable challenge). */
-  offerError?: string;
-}
-
-export type OfferSelectionError =
-  | "no_matching_offer"
-  | "ambiguous_offers"
-  | "uncomparable_offer";
-
-/**
- * Pick THE signing offer: accepts[] entries whose amount equals
- * maxAmountAtomic. Exactly one → it; zero → no_matching_offer; more →
- * ambiguous_offers (refuse to guess which the CLI would sign). A v1
- * flat challenge (no accepts[]) falls back to top-level fields.
- */
-export function selectSigningOffer(
-  raw: unknown,
-  maxAmountAtomic: string,
-): { ok: true; offer: OfferedTerms } | { ok: false; error: OfferSelectionError } {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  const want = BigInt(maxAmountAtomic);
-  const hits: OfferedTerms[] = [];
-  const candidates: unknown[] = Array.isArray(r.accepts) ? r.accepts : [r];
-  for (const e of candidates) {
-    let t: OfferedTerms;
-    try {
-      t = offeredTermsFromRequirements(e as never);
-    } catch {
-      continue; // malformed/uncomparable entry — not a candidate
-    }
-    if (BigInt(t.amount) === want) hits.push(t);
-  }
-  if (hits.length === 1) return { ok: true, offer: hits[0] };
-  if (hits.length > 1) return { ok: false, error: "ambiguous_offers" };
-  return { ok: false, error: "no_matching_offer" };
-}
-
-/**
- * Derive the deal binding for this quote+wallet — offer + fingerprint.
- * Fingerprint failure (unknown network, bad address) yields offer-only:
- * terms-match still runs, the hold just parks without a fingerprint.
- */
-export function bindDeal(quote: BuyQuote, wallet: string): DealBinding {
-  const sel = selectSigningOffer(quote.raw, quote.maxAmountAtomic);
-  if (!sel.ok) return { offerError: sel.error };
-  try {
-    return {
-      offer: sel.offer,
-      fingerprint: dealFingerprint({
-        wallet,
-        url: quote.url,
-        offer: sel.offer,
-      }),
-    };
-  } catch (e) {
-    return {
-      offer: sel.offer,
-      offerError: `fingerprint: ${e instanceof Error ? e.message : String(e)}`,
-    };
-  }
-}
+export {
+  bindDeal,
+  selectSigningOffer,
+  type DealBinding,
+  type OfferSelectionError,
+} from "./offer-selection";
 
 /** COUNTERPARTY_CHECK_MODE — prod default enforce (D-257-Q3). */
 export function counterpartyModeFromEnv(
@@ -183,20 +119,32 @@ export async function counterpartyGate(
 ): Promise<CounterpartyGateResult> {
   if (deps.mode === "off") return { action: "pass" };
 
-  const assessment: Vet402Assessment = deps.checker
-    ? await deps.checker.check({ resourceUrl: quote.url })
-    : {
-        kind: "unavailable",
-        failure: "network_error",
-        checkedAt: new Date().toISOString(),
-        cacheHit: false,
-      };
+  // C-1: a challenge whose signable set is not uniform can never be
+  // proven — checked A, signed B. Deny WITHOUT an assessment: the
+  // shape itself is hostile, owner approval cannot fix it, and a
+  // vet402 call would spend quota for nothing.
+  const selectionUnverifiable =
+    deal.offerError === "unverifiable_challenge" ||
+    deal.offerError === "ambiguous_offers";
+
+  const assessment: Vet402Assessment | null = selectionUnverifiable
+    ? null
+    : deps.checker
+      ? await deps.checker.check({ resourceUrl: quote.url })
+      : {
+          kind: "unavailable",
+          failure: "network_error",
+          checkedAt: new Date().toISOString(),
+          cacheHit: false,
+        };
   const verified =
-    assessment.kind === "verdict" ? assessment.verifiedTerms : null;
+    assessment?.kind === "verdict" ? assessment.verifiedTerms : null;
   const termsMatch: TermsMatch = deal.offer
     ? matchTerms(verified, deal.offer)
     : { result: "uncomparable", reason: `offer: ${deal.offerError}` };
-  const decision = deps.policy.evaluate({ assessment, termsMatch });
+  const decision = selectionUnverifiable
+    ? { action: "deny" as const, reasonCode: deal.offerError as string }
+    : deps.policy.evaluate({ assessment: assessment!, termsMatch });
 
   // C5: self-record every decision (shadow included) — sanitized view.
   let host = "unparseable";
@@ -209,7 +157,9 @@ export async function counterpartyGate(
     mode: deps.mode,
     wallet: ctx.wallet,
     host,
-    assessment: assessmentView(assessment),
+    assessment: assessment
+      ? assessmentView(assessment)
+      : { kind: "not_checked" },
     termsMatch,
     decision,
     ...(deal.fingerprint ? { dealFingerprint: deal.fingerprint } : {}),
@@ -226,23 +176,22 @@ export async function counterpartyGate(
       const deny = { error: "counterparty_hold_no_store", reasonCode: decision.reasonCode };
       return { action: "deny", deny };
     }
+    // hold ⇒ assessment ran (unverifiable selections deny above).
+    const a = assessment!;
     const meta: ApprovalMeta = {
-      ...(assessment.kind === "verdict"
+      ...(a.kind === "verdict"
         ? {
-            verdict: assessment.verdict,
-            reasonCodes: [
-              ...assessment.reasonCodes,
-              decision.reasonCode,
-            ],
-            ...(assessment.evidenceAgeSeconds !== undefined
-              ? { evidenceAgeSeconds: assessment.evidenceAgeSeconds }
+            verdict: a.verdict,
+            reasonCodes: [...a.reasonCodes, decision.reasonCode],
+            ...(a.evidenceAgeSeconds !== undefined
+              ? { evidenceAgeSeconds: a.evidenceAgeSeconds }
               : {}),
           }
-        : { verdict: assessment.kind, reasonCodes: [decision.reasonCode] }),
+        : { verdict: a.kind, reasonCodes: [decision.reasonCode] }),
       ...(termsMatch.result === "mismatch"
         ? { termsDiff: termsMatch.diff }
         : {}),
-      checkedAt: assessment.checkedAt,
+      checkedAt: a.checkedAt,
     };
     const deny = await tryApprovalHold(
       deps.approvals,
@@ -278,7 +227,9 @@ export async function counterpartyGate(
     ctx.address,
     {
       reasonCode: decision.reasonCode,
-      assessment: assessmentView(assessment),
+      assessment: assessment
+        ? assessmentView(assessment)
+        : { kind: "not_checked" },
       amountUsd: ctx.amountUsd,
       kind: ctx.kind,
       refId: ctx.refId,
@@ -290,7 +241,9 @@ export async function counterpartyGate(
     action: "deny",
     deny: {
       error: decision.reasonCode,
-      counterparty: assessmentView(assessment),
+      counterparty: assessment
+        ? assessmentView(assessment)
+        : { kind: "not_checked" },
       termsMatch: termsMatch.result,
       ...(decision.action === "unavailable" ? { retryable: true } : {}),
       ...(deal.fingerprint ? { dealFingerprint: deal.fingerprint } : {}),

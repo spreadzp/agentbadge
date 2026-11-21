@@ -167,9 +167,9 @@ describe("257-7 E2E acceptance — buyer contour (mock vet402)", () => {
     },
   );
 
-  it("multi-accepts[] → match only the selected (maxAmountAtomic) offer", async () => {
-    // second accepts entry at a different price — verified_terms match
-    // the 50000 entry the CLI would actually sign.
+  it("C-1: cheaper signable accepts[] entry → deny unverifiable_challenge", async () => {
+    // 257-13: the old expectation (pay the vetted entry while a cheaper
+    // attacker entry stays signable) was the audit's exploit shape.
     const cheap = { ...ACCEPT, amount: "10000", payTo: `0x${"4".repeat(40)}` };
     mock.onDecision = () =>
       decisionBody({ verified_terms: matchingTerms() });
@@ -182,7 +182,48 @@ describe("257-7 E2E acceptance — buyer contour (mock vet402)", () => {
       "r1",
       opts(f, checker, spawned),
     );
+    expect(r.status).toBe("denied");
+    expect(r.deny?.error).toBe("unverifiable_challenge");
+    expect(spawned.n).toBe(0);
+    expect(mock.decisionHits).toBe(0); // no assessment on hostile shape
+  });
+
+  it("identical-terms duplicate accepts[] → pays (uniform signable set)", async () => {
+    mock.onDecision = () =>
+      decisionBody({ verified_terms: matchingTerms() });
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const spawned = { n: 0 };
+    const r = await buyPay(
+      quote({ raw: { x402Version: 2, accepts: [ACCEPT, { ...ACCEPT }] } }),
+      WALLET,
+      "r1",
+      opts(f, checker, spawned),
+    );
     expect(r.status).toBe("paid");
+  });
+
+  it("C-2: field-confusion entry (V1 vs V2 amount) → deny unverifiable", async () => {
+    const e0 = {
+      ...ACCEPT,
+      maxAmountRequired: "50000",
+      amount: "49999",
+      payTo: `0x${"4".repeat(40)}`,
+    };
+    mock.onDecision = () =>
+      decisionBody({ verified_terms: matchingTerms() });
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const spawned = { n: 0 };
+    const r = await buyPay(
+      quote({ raw: { x402Version: 2, accepts: [e0, ACCEPT] } }),
+      WALLET,
+      "r1",
+      opts(f, checker, spawned),
+    );
+    expect(r.status).toBe("denied");
+    expect(r.deny?.error).toBe("unverifiable_challenge");
+    expect(spawned.n).toBe(0);
   });
 
   it("BLOCK → deny counterparty_blocked", async () => {
