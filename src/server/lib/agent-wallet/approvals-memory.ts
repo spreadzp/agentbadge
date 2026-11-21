@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import {
+  APPROVED_PERMIT_TTL_MS,
   expiredView,
   findLivePendingByFingerprint,
   fingerprintMatches,
@@ -127,7 +128,13 @@ function memoryLikeStore(
         state: action === "approve" ? "approved" : "rejected",
         decidedBy: actor,
         decidedAt: now,
-        ...(expiresAt !== undefined ? { expiresAt } : {}),
+        // 257-14 (H-3): approve grants a bounded permit window — the
+        // caller may override, the default is APPROVED_PERMIT_TTL_MS.
+        ...(action === "approve"
+          ? { expiresAt: expiresAt ?? now + APPROVED_PERMIT_TTL_MS }
+          : expiresAt !== undefined
+            ? { expiresAt }
+            : {}),
       });
       save();
       return true;
@@ -135,8 +142,10 @@ function memoryLikeStore(
     async consume(id, expectedFingerprint) {
       load();
       const a = map.get(id);
-      // approved never expires — single-use transition only
-      if (!a || a.state !== "approved") return false;
+      // 257-14 (H-3): approved permits expire too — consume refuses a
+      // stale permit (the caller re-holds instead of silently paying).
+      if (!a || a.state !== "approved" || a.expiresAt <= Date.now())
+        return false;
       if (!fingerprintMatches(a, expectedFingerprint)) return false;
       map.set(id, { ...a, state: "consumed", consumedAt: Date.now() });
       save();

@@ -18,7 +18,7 @@ import type {
   ApprovalStore,
   SpendApproval,
 } from "./approvals";
-import { expiredView, pendingFromParkInput } from "./approvals";
+import { APPROVED_PERMIT_TTL_MS, expiredView, pendingFromParkInput } from "./approvals";
 
 type SqliteDatabase = InstanceType<typeof import("bun:sqlite").Database>;
 const nodeRequire = createRequire(import.meta.url);
@@ -238,7 +238,8 @@ export function createSqliteApprovalStore(
     },
     async decide(id, action, actor, expiresAt) {
       const now = Date.now();
-      // Atomic: pending AND not-expired → decided in one statement.
+      // Atomic decide. 257-14 (H-3): approve defaults expiresAt to
+      // now + APPROVED_PERMIT_TTL_MS (caller override wins).
       const res = db.run(
         `UPDATE spend_approvals
          SET state = ?, decidedBy = ?, decidedAt = ?, expiresAt = COALESCE(?, expiresAt)
@@ -247,7 +248,9 @@ export function createSqliteApprovalStore(
           action === "approve" ? "approved" : "rejected",
           actor,
           now,
-          expiresAt ?? null,
+          action === "approve"
+            ? (expiresAt ?? now + APPROVED_PERMIT_TTL_MS)
+            : (expiresAt ?? null),
           id,
           now,
         ],
@@ -256,21 +259,20 @@ export function createSqliteApprovalStore(
     },
     async consume(id, expectedFingerprint) {
       const now = Date.now();
-      // Atomic single-use: approved never expires (expiry only applies
-      // to pending). With a fingerprint the WHERE additionally pins
-      // dealFingerprint — NULL-safe IS: a fingerprint-less record never
-      // matches a provided one (D-257-Q6).
+      // Atomic single-use; WHERE pins expiresAt > now (H-3: stale
+      // permit fails → caller re-holds) + dealFingerprint IS (D-257-Q6).
       const res =
         expectedFingerprint === undefined
           ? db.run(
               `UPDATE spend_approvals SET state = 'consumed', consumedAt = ?
-               WHERE id = ? AND state = 'approved'`,
-              [now, id],
+               WHERE id = ? AND state = 'approved' AND expiresAt > ?`,
+              [now, id, now],
             )
           : db.run(
               `UPDATE spend_approvals SET state = 'consumed', consumedAt = ?
-               WHERE id = ? AND state = 'approved' AND dealFingerprint IS ?`,
-              [now, id, expectedFingerprint],
+               WHERE id = ? AND state = 'approved' AND expiresAt > ?
+               AND dealFingerprint IS ?`,
+              [now, id, now, expectedFingerprint],
             );
       return res.changes > 0;
     },

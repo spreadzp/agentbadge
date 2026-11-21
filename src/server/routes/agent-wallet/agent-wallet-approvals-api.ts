@@ -17,6 +17,7 @@ import { errorResponse } from "../../lib/error-response";
 import { ErrorCodes } from "../../lib/error-codes";
 import type { AgentWalletStore } from "../../lib/agent-wallet/registry";
 import type { ApprovalStore, ApprovalState } from "../../lib/agent-wallet/approvals";
+import { APPROVED_PERMIT_TTL_MS } from "../../lib/agent-wallet/approvals";
 import { emitSpendAlert } from "../../lib/agent-wallet/audit";
 import { requireVenueAccess } from "../../middleware/venue-auth";
 import {
@@ -175,10 +176,13 @@ export function createAgentWalletApprovalsRoutes(
         const body = (await c.req.json().catch(() => ({}))) as {
           reason?: string;
         };
-        // Approve grants a fresh permit window (env TTL); reject keeps the
-        // original expiresAt for audit correlation.
+        // Approve grants a fresh PERMIT window (257-14 H-3: bounded,
+        // constant — the owner approved this deal now, not a rewritten
+        // one later); reject keeps the original expiresAt for audit.
         const expiresAt =
-          action === "approve" ? Date.now() + deps.approvalTtlMs : undefined;
+          action === "approve"
+            ? Date.now() + APPROVED_PERMIT_TTL_MS
+            : undefined;
         const ok = await deps.approvals.decide(
           id,
           action,

@@ -12,6 +12,7 @@ import { logger } from "@agentbadge/passport/logger";
 
 import { DbWriteBehind } from "../db-mirror";
 import {
+  APPROVED_PERMIT_TTL_MS,
   expiredView,
   findLivePendingByFingerprint,
   fingerprintMatches,
@@ -215,7 +216,11 @@ export function createDbApprovalStore(
         state: action === "approve" ? "approved" : "rejected",
         decidedBy: actor,
         decidedAt: now,
-        ...(expiresAt !== undefined ? { expiresAt } : {}),
+        ...(action === "approve"
+          ? { expiresAt: expiresAt ?? now + APPROVED_PERMIT_TTL_MS }
+          : expiresAt !== undefined
+            ? { expiresAt }
+            : {}),
       };
       map.set(id, next);
       wb.enqueue(() =>
@@ -225,7 +230,9 @@ export function createDbApprovalStore(
             next.state === "approved" ? "approved" : "rejected",
             actor,
             now,
-            expiresAt,
+            // resolved permit window (approve defaults to
+            // APPROVED_PERMIT_TTL_MS), not the raw optional arg.
+            next.expiresAt,
             next as unknown as RepoPayload,
           )
           .then(() => undefined),
@@ -234,10 +241,11 @@ export function createDbApprovalStore(
     },
     async consume(id, expectedFingerprint) {
       const a = map.get(id);
-      // approved never expires — single-use transition only; fingerprint
-      // mismatch refuses WITHOUT consuming (D-257-Q6, mirrored in the
-      // repo's conditional WHERE).
-      if (!a || a.state !== "approved") return false;
+      // 257-14 (H-3): approved permits expire — consume refuses a
+      // stale permit; fingerprint mismatch refuses WITHOUT consuming
+      // (D-257-Q6, mirrored in the repo's conditional WHERE).
+      if (!a || a.state !== "approved" || a.expiresAt <= Date.now())
+        return false;
       if (!fingerprintMatches(a, expectedFingerprint)) return false;
       const next: SpendApproval = {
         ...a,

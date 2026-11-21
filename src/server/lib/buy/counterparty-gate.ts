@@ -21,10 +21,13 @@ import {
   type Vet402Assessment,
 } from "@agentbadge/circle-payments";
 import type { ApprovalMeta, ApprovalStore } from "../agent-wallet/approvals";
-import { emitSpendAlert } from "../agent-wallet/audit";
 import { tryApprovalHold, type SpendDenyCtx } from "../agent-wallet/deny";
-import { newSpendId, type SpendLedger } from "../agent-wallet/ledger";
+import type { SpendLedger } from "../agent-wallet/ledger";
 import type { BuyQuote } from "./gateway";
+import {
+  assessmentView,
+  denyOutcome,
+} from "./counterparty-outcomes";
 import type { DealBinding } from "./offer-selection";
 
 export {
@@ -33,6 +36,7 @@ export {
   type DealBinding,
   type OfferSelectionError,
 } from "./offer-selection";
+export { counterpartyPermitRecheck } from "./counterparty-outcomes";
 
 /** COUNTERPARTY_CHECK_MODE — prod default enforce (D-257-Q3). */
 export function counterpartyModeFromEnv(
@@ -84,26 +88,6 @@ export interface CounterpartyGateDeps {
 export type CounterpartyGateResult =
   | { action: "pass" }
   | { action: "deny" | "hold"; deny: Record<string, unknown> };
-
-/** Assessment summary for the C5 record — sanitized, no secrets. */
-function assessmentView(a: Vet402Assessment): Record<string, unknown> {
-  const base = { kind: a.kind, checkedAt: a.checkedAt, cacheHit: a.cacheHit };
-  if (a.kind === "verdict") {
-    return {
-      ...base,
-      verdict: a.verdict,
-      reasonCodes: a.reasonCodes,
-      ...(a.evidenceAgeSeconds !== undefined
-        ? { evidenceAgeSeconds: a.evidenceAgeSeconds }
-        : {}),
-      ...(a.degraded !== undefined ? { degraded: a.degraded } : {}),
-    };
-  }
-  if (a.kind === "unavailable") return { ...base, failure: a.failure };
-  return a.kind === "privacy_unmeasurable" && a.sanitizeBlock
-    ? { ...base, sanitizeBlock: a.sanitizeBlock }
-    : base;
-}
 
 /**
  * The gate itself. deny/unavailable → durable denied ledger entry +
@@ -176,6 +160,23 @@ export async function counterpartyGate(
       const deny = { error: "counterparty_hold_no_store", reasonCode: decision.reasonCode };
       return { action: "deny", deny };
     }
+    // 257-14 (H-2): a hold without a deal fingerprint is an approval
+    // placebo — the parked intent could never bind to (or be consumed
+    // for) this deal, so it only bloats the queue. Deny instead.
+    if (!deal.fingerprint) {
+      return {
+        action: "deny",
+        deny: await denyOutcome(
+          deps,
+          ctx,
+          deal,
+          decision.reasonCode,
+          assessment,
+          termsMatch,
+          "counterparty_unapprovable",
+        ),
+      };
+    }
     // hold ⇒ assessment ran (unverifiable selections deny above).
     const a = assessment!;
     const meta: ApprovalMeta = {
@@ -207,46 +208,18 @@ export async function counterpartyGate(
     return { action: "hold", deny };
   }
 
-  // deny | unavailable — durable denied entry + alert + body
-  // (emitSpendDeny convention, fail-closed). counterparty_unavailable
-  // is a retryable PREFLIGHT refusal: retry = a fresh buyPay preflight,
-  // never a money-retry through this mechanism (C1).
-  await deps.ledger.insert({
-    id: newSpendId(),
-    wallet: ctx.wallet,
-    amountUsd: ctx.amountUsd,
-    kind: ctx.kind,
-    refId: ctx.refId,
-    state: "denied",
-    denialReason: decision.reasonCode,
-    at: Date.now(),
-    ...(ctx.venueId ? { venueId: ctx.venueId } : {}),
-  });
-  emitSpendAlert(
-    "counterparty.denied",
-    ctx.address,
-    {
-      reasonCode: decision.reasonCode,
-      assessment: assessment
-        ? assessmentView(assessment)
-        : { kind: "not_checked" },
-      amountUsd: ctx.amountUsd,
-      kind: ctx.kind,
-      refId: ctx.refId,
-      ...(deal.fingerprint ? { dealFingerprint: deal.fingerprint } : {}),
-    },
-    ctx.venueId,
-  );
+  // deny | unavailable — durable denied entry + alert + body.
   return {
     action: "deny",
-    deny: {
-      error: decision.reasonCode,
-      counterparty: assessment
-        ? assessmentView(assessment)
-        : { kind: "not_checked" },
-      termsMatch: termsMatch.result,
-      ...(decision.action === "unavailable" ? { retryable: true } : {}),
-      ...(deal.fingerprint ? { dealFingerprint: deal.fingerprint } : {}),
-    },
+    deny: await denyOutcome(
+      deps,
+      ctx,
+      deal,
+      decision.reasonCode,
+      assessment,
+      termsMatch,
+      undefined,
+      decision.action === "unavailable",
+    ),
   };
 }

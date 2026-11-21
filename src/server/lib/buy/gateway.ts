@@ -45,10 +45,12 @@ import {
 import {
   DEFAULT_APPROVAL_TTL_MS,
   type ApprovalStore,
+  type SpendApproval,
 } from "../agent-wallet/approvals";
 import {
   counterpartyGate,
   counterpartyModeFromEnv,
+  counterpartyPermitRecheck,
   getCounterpartyChecker,
 } from "./counterparty-gate";
 import { bindDeal } from "./offer-selection";
@@ -368,32 +370,34 @@ export async function buyPay(
   // is the terms the CLI will sign; its fingerprint keys any
   // counterparty permit AND re-verifies it on the consume path.
   const deal = bindDeal(quote, w);
-  // 176-8: consumed owner permit bypasses the hold once.
-  let consumed = false;
-  // 257-5: fingerprint-bound counterparty permit — separate flag.
-  let consumedDeal = false;
+  const cpMode = opts.counterparty?.mode ?? counterpartyModeFromEnv();
+
+  // 257-14 (H-1) park-commit: a live approved permit SHORT-CIRCUITS
+  // its gate, but is CONSUMED only after every gate passed — right
+  // before reserve. Consuming up-front burned a permit whenever a
+  // later gate parked, which livelocked a WARN+amountAbove deal
+  // (each call burned one permit and parked the other kind).
+  // Expired approved permits don't count — the gate runs and re-holds.
+  let amountPermit: SpendApproval | undefined;
+  let dealPermit: SpendApproval | undefined;
   if (deps.approvals) {
-    const approved = await deps.approvals.listByWallet(w, "approved");
-    const match = approved.find(
+    const now = Date.now();
+    const approved = (await deps.approvals.listByWallet(w, "approved")).filter(
+      (a) => a.expiresAt > now,
+    );
+    amountPermit = approved.find(
       (a) =>
         a.amountUsd === amountUsd &&
         a.kind === "buy-gateway" &&
         a.refId === refId &&
         (a.approvalReason ?? "amount_threshold") === "amount_threshold",
     );
-    if (match && (await deps.approvals.consume(match.id))) consumed = true;
-    // consume(id, fp) re-verifies THIS quote's fingerprint atomically —
-    // a changed offer produces a different fp and can never consume.
-    if (deal.fingerprint) {
-      const dealMatch = approved.find(
+    // N-7: cp permits exist only for enforce — off/shadow never consume
+    // (shadow still runs the gate below for the decision record).
+    if (cpMode === "enforce" && deal.fingerprint) {
+      dealPermit = approved.find(
         (a) => a.dealFingerprint === deal.fingerprint,
       );
-      if (
-        dealMatch &&
-        (await deps.approvals.consume(dealMatch.id, deal.fingerprint))
-      ) {
-        consumedDeal = true;
-      }
     }
   }
   // Order mirrors enforcer.begin: caps check → hold → reserve.
@@ -405,8 +409,36 @@ export async function buyPay(
       attempts: 0,
     };
   }
+  // 257-14 (N-11): counterparty gate BEFORE the amount-hold — a
+  // counterparty deny must not waste an owner approval round on an
+  // amount permit the deal can never use.
+  if (cpMode !== "off") {
+    const cpDeps = {
+      checker: opts.counterparty?.checker ?? getCounterpartyChecker(),
+      policy: opts.counterparty?.policy ?? createCounterpartyPolicy(),
+      ledger: deps.ledger,
+      approvals: deps.approvals,
+      approvalTtlMs: deps.approvalTtlMs ?? DEFAULT_APPROVAL_TTL_MS,
+      mode: cpMode,
+    };
+    // A live fp-permit skips the hold but NOT the check (H-3):
+    // consume-time re-verifies BLOCK against a fresh assessment.
+    const gate =
+      dealPermit && cpMode === "enforce"
+        ? await counterpartyPermitRecheck(cpDeps, ctx, deal, quote.url)
+        : await counterpartyGate(cpDeps, ctx, quote, deal);
+    if (gate.action !== "pass") {
+      return {
+        status: gate.action === "hold" ? "approval_required" : "denied",
+        deny: gate.deny,
+        attempts: 0,
+      };
+    }
+  }
+  // 176-8: approved amount permit bypasses the hold (consumed at
+  // commit below — a live-but-unconsumed permit is what matters here).
   if (
-    !consumed &&
+    !amountPermit &&
     deps.approvals &&
     caps.approvalAboveUsd !== undefined &&
     amountUsd > caps.approvalAboveUsd
@@ -421,28 +453,27 @@ export async function buyPay(
       attempts: 0,
     };
   }
-  // 257-5: counterparty check — AFTER envelope + amount-hold, BEFORE
-  // reserve/spawn. A consumed fp-permit skips it entirely (the owner
-  // approved THIS deal; consume re-verified the fingerprint).
-  const cpMode = opts.counterparty?.mode ?? counterpartyModeFromEnv();
-  if (!consumedDeal && cpMode !== "off") {
-    const gate = await counterpartyGate(
-      {
-        checker: opts.counterparty?.checker ?? getCounterpartyChecker(),
-        policy: opts.counterparty?.policy ?? createCounterpartyPolicy(),
-        ledger: deps.ledger,
-        approvals: deps.approvals,
-        approvalTtlMs: deps.approvalTtlMs ?? DEFAULT_APPROVAL_TTL_MS,
-        mode: cpMode,
-      },
-      ctx,
-      quote,
-      deal,
-    );
-    if (gate.action !== "pass") {
+  // Park-commit (H-1): every gate passed — consume the permits that
+  // short-circuited them. consume() re-verifies the fingerprint
+  // atomically (a changed offer produces a different fp and can never
+  // consume); a false means the permit was lost to expiry or a
+  // concurrent consume — honest deny, no money moved yet.
+  if (dealPermit) {
+    const ok = await deps.approvals!.consume(dealPermit.id, deal.fingerprint);
+    if (!ok) {
       return {
-        status: gate.action === "hold" ? "approval_required" : "denied",
-        deny: gate.deny,
+        status: "denied",
+        deny: { error: "approval_permit_lost", approvalId: dealPermit.id },
+        attempts: 0,
+      };
+    }
+  }
+  if (amountPermit) {
+    const ok = await deps.approvals!.consume(amountPermit.id);
+    if (!ok) {
+      return {
+        status: "denied",
+        deny: { error: "approval_permit_lost", approvalId: amountPermit.id },
         attempts: 0,
       };
     }

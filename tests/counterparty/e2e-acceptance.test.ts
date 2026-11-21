@@ -387,7 +387,12 @@ describe("257-7 E2E acceptance — buyer contour (mock vet402)", () => {
       buyPay(quote(), WALLET, "ref-race", opts(f, checker, spawned)),
     ]);
     const statuses = [a.status, b.status].sort();
-    expect(statuses).toEqual(["approval_required", "paid"]);
+    // 257-14 park-commit: both lookups see the live permit and skip
+    // the gate; commit-time consume is atomic — the loser denies
+    // honestly instead of re-holding or double-paying.
+    expect(statuses).toEqual(["denied", "paid"]);
+    const loser = a.status === "denied" ? a : b;
+    expect(loser.deny?.error).toBe("approval_permit_lost");
     expect(spawned.n).toBe(1); // only the consume winner signed
   });
 

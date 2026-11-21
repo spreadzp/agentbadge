@@ -164,6 +164,15 @@ export function newApprovalId(): string {
  *  silence = denial: overdue pending is not decidable/consumable. */
 export const DEFAULT_APPROVAL_TTL_MS = 3_600_000;
 
+/**
+ * 257-14 (arc-audit H-3): an APPROVED permit is not eternal — the
+ * owner approved a deal as it was, not a deal the seller may rewrite
+ * tomorrow. approve grants a fresh window of this length when the
+ * caller doesn't pass an explicit expiry; consume() refuses past it.
+ * Constant, not config: the permit window is a security invariant.
+ */
+export const APPROVED_PERMIT_TTL_MS = 30 * 60 * 1000;
+
 export const isOverdue = (a: SpendApproval, now: number) =>
   a.state === "pending" && a.expiresAt <= now;
 

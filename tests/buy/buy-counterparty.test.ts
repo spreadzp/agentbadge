@@ -272,13 +272,14 @@ describe("buyPay counterparty gate (enforce)", () => {
     expect(pending[0].approvalReason).toBe("counterparty_warn");
     expect(pending[0].meta?.checkedAt).toBe("2026-11-20T00:00:00.000Z");
 
-    // Owner approves → same quote re-pays: consume(fp) re-verifies the
-    // identical deal → permit consumed → gate skipped → paid.
+    // Owner approves → same quote re-pays: the fp-permit skips the
+    // HOLD but not the check — consume-time BLOCK re-verification
+    // costs exactly one assessment (257-14 H-3).
     expect(await f.approvals.decide(pending[0].id, "approve", "owner")).toBe(true);
     const r2 = await buyPay(quote(), WALLET, "ref-1", opts);
     expect(r2.status).toBe("paid");
     expect(spawned.n).toBe(1);
-    expect(checker.calls).toBe(1); // permit path never re-checks
+    expect(checker.calls).toBe(2); // hold + permit BLOCK re-check
 
     // A CHANGED deal (different URL → different fp) → the consumed
     // permit can't cover it: fresh check → WARN again → new pending
@@ -292,13 +293,13 @@ describe("buyPay counterparty gate (enforce)", () => {
     );
     expect(r3.status).toBe("approval_required");
     expect(spawned.n).toBe(1);
-    expect(checker.calls).toBe(2);
+    expect(checker.calls).toBe(3);
     const pending2 = await f.approvals.listByWallet(WALLET, "pending");
     expect(pending2).toHaveLength(1);
     expect(pending2[0].dealFingerprint).not.toBe(deal.fingerprint);
   });
 
-  it("unselectable offer → terms_uncomparable hold, no fingerprint", async () => {
+  it("unselectable offer → fp-less hold is unapprovable → deny (H-2)", async () => {
     const f = fixture();
     await f.registry.put(f.rec);
     const checker = stubChecker(verdictA("ALLOW"));
@@ -309,10 +310,12 @@ describe("buyPay counterparty gate (enforce)", () => {
       "ref-1",
       payOpts(f, checker, spawned),
     );
-    expect(r.status).toBe("approval_required");
+    // 257-14 (H-2): a hold without a dealFingerprint can never be
+    // consumed — parking it was an approval placebo + queue bloat.
+    expect(r.status).toBe("denied");
+    expect(r.deny?.error).toBe("counterparty_unapprovable");
     const pending = await f.approvals.listByWallet(WALLET, "pending");
-    expect(pending[0].dealFingerprint).toBeUndefined();
-    expect(pending[0].approvalReason).toBe("counterparty_unmeasured");
+    expect(pending).toHaveLength(0); // no placebo in the queue
     expect(spawned.n).toBe(0);
   });
 
@@ -337,6 +340,157 @@ describe("buyPay counterparty gate (enforce)", () => {
     expect(denied.some((e) => e.denialReason === "unverifiable_challenge")).toBe(
       true,
     );
+  });
+
+  it("H-1: WARN + amountAbove → two approves → paid (no livelock burn)", async () => {
+    const f = fixture({ approvalAboveUsd: 0.01 });
+    await f.registry.put(f.rec);
+    const checker = stubChecker(verdictA("WARN"));
+    const spawned = { n: 0 };
+    const opts = payOpts(f, checker, spawned);
+    const q = quote();
+
+    // call 1: cp-gate FIRST (N-11) → WARN → cp-hold; the amount-hold
+    // is never reached, so no wasted amount approval.
+    const r1 = await buyPay(q, WALLET, "ref-ll", opts);
+    expect(r1.status).toBe("approval_required");
+    let pending = await f.approvals.listByWallet(WALLET, "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].approvalReason).toBe("counterparty_warn");
+    expect(pending[0].dealFingerprint).toMatch(/^sha256:v1:/);
+    await f.approvals.decide(pending[0].id, "approve", "owner");
+
+    // call 2: live fp-permit short-circuits the hold (one BLOCK
+    // re-check) → the amount-hold parks — the cp permit was NOT
+    // consumed, it stays live for the commit.
+    const r2 = await buyPay(q, WALLET, "ref-ll", opts);
+    expect(r2.status).toBe("approval_required");
+    pending = await f.approvals.listByWallet(WALLET, "pending");
+    expect(pending).toHaveLength(1);
+    expect(pending[0].approvalReason).toBe("amount_threshold");
+    await f.approvals.decide(pending[0].id, "approve", "owner");
+
+    // call 3: both permits live → commit consumes both → paid.
+    // The old consume-up-front order alternately burned permits
+    // forever — this deal could never settle.
+    const r3 = await buyPay(q, WALLET, "ref-ll", opts);
+    expect(r3.status).toBe("paid");
+    expect(spawned.n).toBe(1);
+    const approved = await f.approvals.listByWallet(WALLET, "approved");
+    expect(approved).toHaveLength(0); // both consumed
+  });
+
+  it("H-3: expired approved permit → consume refuses → re-hold, never silent pay", async () => {
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const checker = stubChecker(verdictA("WARN"));
+    const spawned = { n: 0 };
+    const opts = payOpts(f, checker, spawned);
+
+    const r1 = await buyPay(quote(), WALLET, "ref-exp", opts);
+    expect(r1.status).toBe("approval_required");
+    const pending = await f.approvals.listByWallet(WALLET, "pending");
+    // Approve with an ALREADY-EXPIRED window — the permit is dead
+    // on arrival (the 30-min default lives in decide(); an explicit
+    // expiry overrides).
+    await f.approvals.decide(
+      pending[0].id,
+      "approve",
+      "owner",
+      Date.now() - 1,
+    );
+    const r2 = await buyPay(quote(), WALLET, "ref-exp", opts);
+    expect(r2.status).toBe("approval_required"); // re-hold, not paid
+    expect(spawned.n).toBe(0);
+    // a fresh pending for the same deal parked (fp find-or-create)
+    const repending = await f.approvals.listByWallet(WALLET, "pending");
+    expect(repending).toHaveLength(1);
+    expect(repending[0].id).not.toBe(pending[0].id);
+  });
+
+  it("H-3: live permit + seller flipped BLOCK → deny (consume re-check)", async () => {
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const checker = stubChecker(verdictA("WARN"));
+    const spawned = { n: 0 };
+    const r1 = await buyPay(
+      quote(),
+      WALLET,
+      "ref-flip",
+      payOpts(f, checker, spawned),
+    );
+    expect(r1.status).toBe("approval_required");
+    const pending = await f.approvals.listByWallet(WALLET, "pending");
+    await f.approvals.decide(pending[0].id, "approve", "owner");
+
+    // seller flipped after the owner approved — the permit skips the
+    // hold, never the check.
+    checker.check = async () => verdictA("BLOCK");
+    const r2 = await buyPay(
+      quote(),
+      WALLET,
+      "ref-flip",
+      payOpts(f, checker, spawned),
+    );
+    expect(r2.status).toBe("denied");
+    expect(r2.deny?.error).toBe("counterparty_blocked");
+    expect(spawned.n).toBe(0);
+    // the permit was NOT consumed by the deny path
+    const rec = await f.approvals.get(pending[0].id);
+    expect(rec?.state).toBe("approved");
+  });
+
+  it("H-3: vet402 down at consume → permit still pays (logged)", async () => {
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const checker = stubChecker(verdictA("WARN"));
+    const spawned = { n: 0 };
+    const opts = payOpts(f, checker, spawned);
+    const r1 = await buyPay(quote(), WALLET, "ref-down", opts);
+    expect(r1.status).toBe("approval_required");
+    const pending = await f.approvals.listByWallet(WALLET, "pending");
+    await f.approvals.decide(pending[0].id, "approve", "owner");
+
+    checker.check = async () => ({
+      kind: "unavailable",
+      failure: "network_error",
+      checkedAt: new Date().toISOString(),
+      cacheHit: false,
+    });
+    const r2 = await buyPay(quote(), WALLET, "ref-down", opts);
+    expect(r2.status).toBe("paid");
+    expect(spawned.n).toBe(1);
+  });
+
+  it("N-7: shadow never consumes the permit (stays approved)", async () => {
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const checker = stubChecker(verdictA("WARN"));
+    const spawned = { n: 0 };
+
+    // Seed an approved fp-permit directly.
+    const deal = bindDeal(quote(), WALLET.toLowerCase());
+    const parked = await f.approvals.park({
+      wallet: WALLET.toLowerCase() as `0x${string}`,
+      amountUsd: 0.05,
+      kind: "buy-gateway",
+      refId: "ref-seed",
+      expiresAt: Date.now() + 60_000,
+      approvalReason: "counterparty_warn",
+      dealFingerprint: deal.fingerprint,
+      meta: { checkedAt: "2026-11-20T00:00:00.000Z" },
+    });
+    await f.approvals.decide(parked.id, "approve", "owner");
+
+    const r = await buyPay(
+      quote(),
+      WALLET,
+      "ref-seed",
+      payOpts(f, checker, spawned, "shadow"),
+    );
+    expect(r.status).toBe("paid");
+    const rec = await f.approvals.get(parked.id);
+    expect(rec?.state).toBe("approved"); // untouched by shadow
   });
 });
 
