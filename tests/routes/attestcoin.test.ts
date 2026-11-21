@@ -115,6 +115,18 @@ describe("Attestcoin routes", () => {
       expect(res.status).toBe(400);
     });
 
+    // SLICE-234-39: BigInt() бросал до try → 500. Теперь невалидный
+    // taskId отклоняется 400 до любого RPC-вызова.
+    for (const bad of ["taskId", "abc", "0x12", "-1", "1.5", "99999999999999999999999999", "🚀"]) {
+      it(`GET /api/attestcoin/tasks/${bad} → 400 (не 500)`, async () => {
+        const app = makeApp();
+        const res = await app.request(`/api/attestcoin/tasks/${encodeURIComponent(bad)}`);
+        expect(res.status).toBe(400);
+        const body = await res.json();
+        expect(String(body.error ?? "")).not.toContain("BigInt");
+      });
+    }
+
     it("POST /api/attestcoin/verify with missing body returns 400", async () => {
       const app = makeApp();
       const res = await app.request("/api/attestcoin/verify", {

@@ -169,6 +169,9 @@ attestcoinRoutes.get(
     }
 
     const taskIdStr = c.req.param("taskId");
+    if (!/^\d{1,20}$/.test(taskIdStr)) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "invalid taskId");
+    }
     const taskId = BigInt(taskIdStr);
 
     try {
