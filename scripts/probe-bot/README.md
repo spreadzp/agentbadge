@@ -23,14 +23,17 @@ endpoints по сценариям, запоминает покрытые кей�
 
 | URL | Что показывает |
 |---|---|
-| `GET /probe` | Страница probe-bot: кнопки прогонов, таблица кейсов, джобы и лог |
-| `GET /probe/cases` | HTMX-фрагмент таблицы кейсов (автообновление 10s) |
-| `GET /api/probe/cases` | Тот же state в JSON: `{counts, cases[]}` |
+| `GET /probe` | Страница probe-bot: кнопки прогонов, фильтры, таблица кейсов с пагинацией, джобы и лог |
+| `GET /probe/endpoints` | Агрегат по endpoint'ам: последний статус (5xx/4xx цветом), худший вердикт, число кейсов — problem-first |
+| `GET /probe/cases?verdict=&scenario=&target=&q=&page=` | HTMX-фрагмент таблицы (фильтры + пагинация 50/стр, автообновление 10s сохраняет фильтры) |
+| `GET /probe/endpoints/rows?target=&cls=&q=` | HTMX-фрагмент endpoints-таблицы (cls: `5xx`/`4xx`/`2xx`/`none`) |
+| `GET /api/probe/cases` | JSON `{counts, total, cases[]}` — те же фильтры + `per` |
+| `GET /api/probe/endpoints` | JSON-агрегат по endpoint'ам (last_status, verdict, n, fails) |
 | `GET /` | Главная панель ботов (не probe-специфично) |
 | `GET /jobs` | HTMX-фрагмент списка джоб |
 | `GET /jobs/<id>/log` | Лог конкретной джобы |
 | `POST /probe/run` | Кнопки: `contract` / `security` / `new` / `suspect` / `dry` / `sync` |
-| `POST /probe/requeue` | `requeue=<glob>` — вернуть кейсы в очередь |
+| `POST /probe/requeue` | `case_key` — вернуть кейс в очередь (фильтры сохраняются) |
 
 Прогоны из панели спавнят **локальный `bun`**, не `devin -p`
 (облачная сессия не нужна и не тратится).
