@@ -1,0 +1,17 @@
+# Аудит заголовков — port probe-headers.sh: спуфинг клиентских полей
+# не должен менять семантику авторизации
+name: headers-audit
+layer: security
+template: header-fuzz
+apply:
+  methods: [GET]
+params:
+  headers:
+    - x-forwarded-for: "127.0.0.1"
+    - x-forwarded-for: "::1, 10.0.0.1"
+    - x-admin: "true"
+    - x-request-id: "probe-forged-rid"
+    - authorization: "Bearer probe-invalid-token"
+expect:
+  status_in: [200, 301, 302, 400, 401, 402, 403, 404, 405, 429]
+  status_not_in: [500, 502, 503, 504]

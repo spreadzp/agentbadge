@@ -1,0 +1,12 @@
+# Метод-фазз на GET-эндпоинтах — PUT/DELETE/PATCH/OPTIONS/HEAD должны
+# отбиваться 405/404/401, никогда не 500
+name: method-fuzz
+layer: security
+template: method-fuzz
+apply:
+  methods: [GET]
+params:
+  methods: [PUT, DELETE, PATCH, OPTIONS, HEAD]
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 501, 429]
+  status_not_in: [500, 502, 503, 504]

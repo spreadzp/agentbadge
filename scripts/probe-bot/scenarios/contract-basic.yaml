@@ -1,0 +1,12 @@
+# Contract-слой: endpoint отвечает как заявлено — GET'ы отдают
+# документированные коды, никогда не 5xx. Бежит каждый прогон.
+name: contract-basic
+layer: contract
+template: contract-basic
+dbVerify: false
+apply:
+  methods: [GET, POST, PUT, DELETE, PATCH]
+expect:
+  status_in: [200, 201, 202, 204, 301, 302, 304, 400, 401, 402, 403, 404, 405, 409, 422, 429]
+  status_not_in: [500, 501, 502, 503, 504, 505]
+  body_not_includes: ["rpc.", "blockdaemon", "prisma", "ENOTFOUND", "stack"]

@@ -1,0 +1,15 @@
+# registry.yaml — ручной реестр endpoint'ов, которых нет в openapi/code
+# (edge-роуты, ops-ручки). Только безопасные GET — мутирующие ручки
+# сюда НЕ добавлять (см. hard-deny в src/safety.ts).
+#
+# ВНИМАНИЕ: /ops/stats-digest имеет TG-side-effect (шлёт дайджест) —
+# сюда его не вносим сознательно.
+endpoints:
+  - path: /metrics
+    method: GET
+  - path: /api/ledger/revenue
+    method: GET
+  - path: /.well-known/x402.json
+    method: GET
+  - path: /.well-known/agent-card.json
+    method: GET

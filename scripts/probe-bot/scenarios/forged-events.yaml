@@ -1,0 +1,16 @@
+# Поддельные event-ID — проверка что сервер не принимает фейковые
+# ev:x402:* / probe-rN как реальные (probe-r2 = 'probe round 2')
+name: forged-events
+layer: security
+template: param-variants
+dbVerify: true
+apply:
+  methods: [GET]
+  pathRegex: "events|settlement|intents"
+params:
+  values: ["ev:x402:deadbeef", "probe-r1", "probe-r2",
+           "ev:x402:probe-r2~fulfill:1", "x"]
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 422, 429]
+  status_not_in: [500, 502, 503, 504]
+  body_not_includes: ["deadbeef"]

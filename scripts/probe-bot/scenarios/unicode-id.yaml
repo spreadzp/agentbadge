@@ -1,0 +1,11 @@
+# Unicode/emoji в path-параметре — из hermes-фазза (ключ-🔥, 🔥🔥)
+name: unicode-id
+layer: security
+template: param-variants
+apply:
+  methods: [GET]
+params:
+  values: ["🔥🔥", "ключ-🔥", "%E2%82%AC", "Ω≈ç√"]
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 422, 429]
+  status_not_in: [500, 502, 503, 504]

@@ -1,0 +1,20 @@
+# Битые тела на POST-ручках — port probe-fuzz-post.sh из hermes-probes:
+# пустое, обрезанный JSON, массив, скаляр, дуп-ключи
+name: malformed-body
+layer: security
+template: malformed-body
+mutating: true          # POST может создавать объекты — только с --allow-mutations
+apply:
+  methods: [POST]
+params:
+  bodies:
+    - ""
+    - '{"type":"question",'
+    - "[]"
+    - '"just a string"'
+    - '{"a":1,"a":2}'
+    - "null"
+expect:
+  status_in: [400, 401, 402, 403, 404, 405, 409, 413, 422, 429]
+  status_not_in: [500, 502, 503, 504]
+  body_not_includes: ["prisma", "syntax error", "internal"]

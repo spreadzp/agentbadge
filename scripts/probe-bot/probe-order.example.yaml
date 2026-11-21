@@ -1,0 +1,18 @@
+# probe-order.yaml — заказ на прогон (D-234-38-Q16).
+# Встраивается в слайс как готовый блок или передаётся через bridge
+# .req (ARG = путь к файлу или однострочный JSON-эквивалент).
+target: https://agentbadge.xyz
+endpoints:                # глобы; пусто = весь инвентарь
+  - /api/ledger/events/*
+  - /api/attestcoin/*
+scenarios:                # пусто = все сценарии слоя
+  - nul-control
+  - bigint-id
+  - forged-events
+layer: security
+dbVerify: true            # сверять по event-таблице через X-Request-Id
+deliverTo: session        # session|file|tg — куда ответ
+maxRequests: 60
+rps: 2
+dryRun: false
+allowMutations: false

@@ -26,3 +26,6 @@ scripts/local/
 # Generated output (CLI scan report, vitest coverage)
 /agentbadge-report.*
 coverage/
+
+# probe-bot local state (per-machine, D-234-38-Q8)
+scripts/probe-bot/probe-state.db*
