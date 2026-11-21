@@ -11,13 +11,17 @@ const scenario: Scenario = {
   layer: "security",
   dbVerify: true,
   mutating: true,
+  // ADMIN_API_KEY обязателен: без auth SSR-GET отвечает 401 и assert
+  // проходит молча — сценарий ничего не проверяет.
   applies: ep => ep.method === "POST" && !!ep.contract?.bodyTemplate?.text &&
-    !!ep.contract?.ssrPath && !!ep.contract?.idField,
+    !!ep.contract?.ssrPath && !!ep.contract?.idField && !!process.env.ADMIN_API_KEY,
   variants: (ep, ctx) => {
     const c = ep.contract!;
     const payloads = loadPayloadFile("xss-basic.txt").slice(0, 3);
     const expect = {
-      statusIn: [200, 201, 202, 400, 401, 402, 403, 404, 409, 422, 429],
+      // 301: step1 не создал строку (429/4xx) → ssr-URL пуст →
+      // /admin/interactions/ → trailing-slash canonicalization.
+      statusIn: [200, 201, 202, 301, 400, 401, 402, 403, 404, 409, 422, 429],
       statusNotIn: [500, 502, 503, 504],
     };
     return payloads.map((pl, i) => {
@@ -34,9 +38,14 @@ const scenario: Scenario = {
         note: `xss ${pl.slice(0, 30)} → ssr`,
         flow: {
           steps: [
-            { method: "POST", path: ep.path, headers: { "content-type": "application/json" }, body, note: "submit xss" },
+            { method: "POST", path: ep.path,
+              headers: { "content-type": "application/json", "idempotency-key": `pbssr-${tokens.case_key}-${tokens.run_id}` },
+              body, note: "submit xss" },
             { method: "GET", path: c.ssrPath!.replace("{id}", `{step1.${c.idField}}`), note: "ssr read",
-              expect: { statusIn: [200, 400, 401, 404, 429], statusNotIn: [500, 502, 503, 504] } },
+              headers: { "x-admin-key": process.env.ADMIN_API_KEY! },
+              // 301 = step1 не создал строку (429/4xx) → шаблон пуст →
+              // /admin/interactions/ → trailing-slash canonicalization.
+              expect: { statusIn: [200, 301, 400, 401, 404, 429], statusNotIn: [500, 502, 503, 504] } },
           ],
           assert: obs => {
             const problems: string[] = [];

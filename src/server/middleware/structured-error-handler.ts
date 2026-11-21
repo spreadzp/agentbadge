@@ -46,8 +46,14 @@ function handleNotFound(c: Context): Response {
     );
   }
 
-  // Check text/html first — browsers and explicit HTML requests should get HTML
+  // Check text/html first — browsers and explicit HTML requests should get HTML.
+  // Path is HTML-escaped: the raw request path is attacker-controlled input.
   if (accept.includes("text/html") || !accept) {
+    const safePath = path
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
     return c.html(
       `<!DOCTYPE html>
 <html lang="en">
@@ -57,7 +63,7 @@ function handleNotFound(c: Context): Response {
 </head>
 <body>
 <h1>404 — Not Found</h1>
-<p>The page <code>${path}</code> does not exist.</p>
+<p>The page <code>${safePath}</code> does not exist.</p>
 <p><a href="/">Return to homepage</a></p>
 </body>
 </html>`,
@@ -68,12 +74,13 @@ function handleNotFound(c: Context): Response {
   if (accept.includes("application/json") || accept.includes("*/*")) {
     // SLICE-234-30: intent-aware suggestions — whitelist only, live
     // endpoints only (guard-test), excluded probes get bare 404.
+    // The raw request path is attacker input — do not reflect it in
+    // API error bodies (probe-bot traversal rule / reflected-input).
     const suggestions = notFoundSuggestions(path);
     return c.json(
       {
         error: "not_found",
-        message: `Resource not found: ${path}`,
-        path,
+        message: "Resource not found",
         status: 404,
         ...(suggestions ? { suggestions } : {}),
       },
@@ -82,5 +89,5 @@ function handleNotFound(c: Context): Response {
     );
   }
 
-  return c.text(`404 Not Found: ${path}`, 404);
+  return c.text("404 Not Found", 404);
 }

@@ -41,9 +41,9 @@ const scenario: Scenario = {
         steps: [
           { method: "POST", path: ep.path, headers: submitH, body, note: "submit" },
           { method: "POST", path: `${adminBase}/{step1.requestId}/classify`,
-            headers: adminH, body: JSON.stringify({ decision: "answer" }), note: "classify" },
+            headers: adminH, body: JSON.stringify({ intent: "OTHER", outcome: "answer" }), note: "classify" },
           { method: "POST", path: `${adminBase}/{step1.requestId}/respond`,
-            headers: adminH, body: JSON.stringify({ text: `BOT-PROBE answer ${key.slice(-8)}` }),
+            headers: adminH, body: JSON.stringify({ body: `BOT-PROBE answer ${key.slice(-8)}` }),
             note: "respond" },
           { method: "GET", path: "{step1.statusUrl}", note: "poll" },
         ],

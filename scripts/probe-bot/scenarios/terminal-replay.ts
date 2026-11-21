@@ -29,7 +29,7 @@ const scenario: Scenario = {
     const adminBase = c.lifecycleAdmin!;
     const respond = {
       method: "POST", path: `${adminBase}/{step1.requestId}/respond`,
-      headers: adminH, body: JSON.stringify({ text: `BOT-PROBE ${key.slice(-8)}` }),
+      headers: adminH, body: JSON.stringify({ body: `BOT-PROBE ${key.slice(-8)}` }),
     };
     return [{
       method: "POST", path: ep.path,
