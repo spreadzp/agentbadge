@@ -45,6 +45,8 @@ import {
   useMemoryStoreForTesting,
 } from "../../src/server/lib/venue/store";
 
+import { APPROVED_PERMIT_TTL_MS } from "../../src/server/lib/agent-wallet/approvals";
+
 const OWNER = "0x00000000000000000000000000000000000000aa";
 const W = "0x00000000000000000000000000000000000000b1" as `0x${string}`;
 const STRANGER = "0x00000000000000000000000000000000000000dd";
@@ -235,14 +237,18 @@ describe("POST .../approvals/:id/approve|reject", () => {
   it("approve → state approved + expiresAt=now+TTL + approval.decided alert", async () => {
     const f = mkApp();
     const id = await f.hold();
-    const before = await f.approvals.get(id);
 
     const res = await post(f.app, `/api/wallets/${W}/approvals/${id}/approve`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.approval.state).toBe("approved");
     expect(body.approval.decidedBy).toBe(OWNER.toLowerCase());
-    expect(body.approval.expiresAt).toBeGreaterThan(before!.expiresAt - 1);
+    // 257-14 (H-3): approve grants a fresh 30-min PERMIT window — not a
+    // continuation of the parked 1h intent TTL.
+    expect(body.approval.expiresAt).toBeGreaterThan(Date.now());
+    expect(body.approval.expiresAt).toBeLessThanOrEqual(
+      Date.now() + APPROVED_PERMIT_TTL_MS + 1000,
+    );
 
     const evs = await f.alerts.list({ type: "approval.decided" });
     expect(evs.length).toBe(1);

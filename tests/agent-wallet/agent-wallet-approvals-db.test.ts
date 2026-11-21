@@ -63,17 +63,31 @@ function fakeRepo() {
     async listAll() {
       return [...rows.values()];
     },
-    async decide(id: string, to: string, actor: string, at: number) {
+    async decide(
+      id: string,
+      to: string,
+      actor: string,
+      at: number,
+      _expiresAtMs?: number,
+      payload?: unknown,
+    ) {
       calls.push(`decide:${id}:${to}`);
       const r = rows.get(id);
       if (!r || r.state !== "pending") return false;
-      Object.assign(r, { state: to, decidedBy: actor, decidedAtMs: at });
+      // Real repo writes the caller-updated payload column too — the
+      // fake must keep payload.state in sync for toApproval hydration.
+      Object.assign(r, {
+        state: to,
+        decidedBy: actor,
+        decidedAtMs: at,
+        ...(payload !== undefined ? { payload } : {}),
+      });
       return true;
     },
     async consume(
       id: string,
       at: number,
-      _payload?: unknown,
+      payload?: unknown,
       expectedFingerprint?: string,
     ) {
       calls.push(`consume:${id}`);
@@ -84,7 +98,11 @@ function fakeRepo() {
         r.dealFingerprint !== expectedFingerprint
       )
         return false;
-      Object.assign(r, { state: "consumed", consumedAtMs: at });
+      Object.assign(r, {
+        state: "consumed",
+        consumedAtMs: at,
+        ...(payload !== undefined ? { payload } : {}),
+      });
       return true;
     },
     async findPendingByFingerprint(w: string, fp: string) {
@@ -99,11 +117,14 @@ function fakeRepo() {
         ) ?? null
       );
     },
-    async expire(id: string) {
+    async expire(id: string, payload?: unknown) {
       calls.push(`expire:${id}`);
       const r = rows.get(id);
       if (!r || r.state !== "pending") return false;
-      r.state = "expired";
+      Object.assign(r, {
+        state: "expired",
+        ...(payload !== undefined ? { payload } : {}),
+      });
       return true;
     },
     async listPending() {
@@ -226,7 +247,7 @@ describe("db approval store — mirror semantics", () => {
     expect(repo.calls).toContain(`consume:${a.id}`);
   });
 
-  it("write-behind unique conflict → mirror reconciles to the PG winner (reconcile-log)", async () => {
+  it("fp-bound park unique conflict → returns the live PG winner, no phantom (M-8)", async () => {
     const w = wallet();
     const winnerPayload: SpendApproval = {
       id: "ap_winner00000001",
@@ -257,13 +278,61 @@ describe("db approval store — mirror semantics", () => {
     const s = createDbApprovalStore(cRepo, 5)!;
     await s.ready();
     const mine = await s.park(park(w, { dealFingerprint: "fp-C" }));
-    expect(mine.id).not.toBe(winnerPayload.id);
-    await s.flush();
-    // Phantom mirror record converged to PG truth.
-    expect(await s.get(mine.id)).toBeNull();
+    // M-8: the 23505 resolves synchronously — the caller gets the real
+    // winner id, never a phantom that reconcile would delete.
+    expect(mine.id).toBe(winnerPayload.id);
     const w2 = await s.get(winnerPayload.id);
     expect(w2?.state).toBe("pending");
     expect(w2?.dealFingerprint).toBe("fp-C");
+  });
+
+  it("H-7: two replicas racing consume → exactly one true (repo is the arbiter)", async () => {
+    const w = wallet();
+    const a = (await store!.park(park(w, { dealFingerprint: "fp-X" })))!;
+    await store!.decide(a.id, "approve", "0xowner");
+    await store!.flush();
+    // Second "replica" — separate mirror hydrated from the same repo.
+    const s2 = createDbApprovalStore(repo, 5)!;
+    await s2.ready();
+    expect((await s2.get(a.id))!.state).toBe("approved");
+    const [r1, r2] = await Promise.all([
+      store!.consume(a.id, "fp-X"),
+      s2.consume(a.id, "fp-X"),
+    ]);
+    expect([r1, r2].sort()).toEqual([false, true]);
+    // Both mirrors converge to PG truth — no replayable permit.
+    expect((await store!.get(a.id))!.state).toBe("consumed");
+    expect((await s2.get(a.id))!.state).toBe("consumed");
+  });
+
+  it("H-7 crash-window: consume → true means the repo row is consumed", async () => {
+    const w = wallet();
+    const a = (await store!.park(park(w, { dealFingerprint: "fp-Y" })))!;
+    await store!.decide(a.id, "approve", "0xowner");
+    expect(await store!.consume(a.id, "fp-Y")).toBe(true);
+    // "Crash" before any flush — a fresh adapter hydrates from repo only.
+    const s2 = createDbApprovalStore(repo, 5)!;
+    await s2.ready();
+    expect((await s2.get(a.id))!.state).toBe("consumed");
+    expect(await s2.consume(a.id, "fp-Y")).toBe(false);
+  });
+
+  it("consume: repo refuse → mirror reconciles to PG truth, returns false", async () => {
+    const w = wallet();
+    const a = (await store!.park(park(w, { dealFingerprint: "fp-Z" })))!;
+    await store!.decide(a.id, "approve", "0xowner");
+    await store!.flush();
+    // An outside actor consumes the row directly in the repo — with
+    // the consumed payload, as a real writer would persist it.
+    const consumedRec: SpendApproval = {
+      ...a,
+      state: "consumed",
+      consumedAt: Date.now(),
+    };
+    await repo.consume(a.id, Date.now(), consumedRec as never);
+    // Mirror still believes 'approved' — consume must refuse + reconcile.
+    expect(await store!.consume(a.id, "fp-Z")).toBe(false);
+    expect((await store!.get(a.id))!.state).toBe("consumed");
   });
 
   it("conflict on a dead-but-unswept winner → expire + retry lands ours", async () => {

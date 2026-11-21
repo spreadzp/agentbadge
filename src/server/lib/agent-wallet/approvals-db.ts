@@ -25,28 +25,6 @@ import {
 /** Repo payload column type (JsonValue) — avoids importing codec-types. */
 type RepoPayload = Parameters<SpendApprovalRepository["put"]>[0]["payload"];
 
-type RepoRow = Awaited<ReturnType<SpendApprovalRepository["get"]>>;
-
-/**
- * 257-4 repo surface — published @agentbadge/database@0.6.19 predates
- * these ops (contract.prisma + repo updated in-source; bump the pin
- * when it ships). Declared optional and gated on runtime presence of
- * findPendingByFingerprint: single-process correctness lives in the
- * mirror regardless; the repo ops are the multi-process backstop.
- */
-interface SpendApprovalRepo257 extends SpendApprovalRepository {
-  findPendingByFingerprint(
-    wallet: string,
-    dealFingerprint: string,
-  ): Promise<RepoRow>;
-  consume(
-    id: string,
-    consumedAtMs: number,
-    payload?: RepoPayload,
-    expectedFingerprint?: string,
-  ): Promise<boolean>;
-}
-
 const HYDRATE_LIMIT = 2_000;
 
 export interface DbApprovalStore extends ApprovalStore {
@@ -87,7 +65,6 @@ export function createDbApprovalStore(
   maxPending = 20,
 ): DbApprovalStore | null {
   if (!repo) return null;
-  const repo257 = repo as SpendApprovalRepo257;
   const map = new Map<string, SpendApproval>();
 
   const wb = new DbWriteBehind("agent-wallet.approvals", async () => {
@@ -95,16 +72,75 @@ export function createDbApprovalStore(
     for (const r of rows) map.set(r.id, toApproval(r));
   });
 
+  const buildPending = (
+    input: ApprovalParkInput,
+    now: number,
+  ): SpendApproval => ({
+    id: `ap_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`,
+    wallet: input.wallet,
+    amountUsd: input.amountUsd,
+    kind: input.kind,
+    refId: input.refId,
+    state: "pending",
+    createdAt: now,
+    expiresAt: input.expiresAt,
+    ...(input.approvalReason ? { approvalReason: input.approvalReason } : {}),
+    ...(input.dealFingerprint
+      ? { dealFingerprint: input.dealFingerprint }
+      : {}),
+    ...(input.fingerprintVersion
+      ? { fingerprintVersion: input.fingerprintVersion }
+      : {}),
+    ...(input.meta ? { meta: input.meta } : {}),
+  });
+
+  /**
+   * M-8 fp-bound park lands SYNCHRONOUSLY — a returned id always exists
+   * in PG. A 23505 on the partial unique index resolves right here:
+   * live winner → return it; dead winner → expire + retry once.
+   */
+  const parkFpBound = async (
+    a: SpendApproval,
+    fp: string,
+  ): Promise<SpendApproval> => {
+    try {
+      await repo.put(toRow(a));
+      map.set(a.id, a);
+      return a;
+    } catch (err) {
+      if (!isUniqueConflict(err)) throw err;
+    }
+    const winner = await repo
+      .findPendingByFingerprint(a.wallet, fp)
+      .catch(() => null);
+    if (winner && winner.expiresAtMs <= BigInt(Date.now())) {
+      // Dead-but-unswept pending still trips the constraint — expire it,
+      // then our row lands on the retry.
+      const dead = expiredView(toApproval(winner), Date.now());
+      await repo
+        .expire(winner.id, dead as unknown as RepoPayload)
+        .catch(() => false);
+      await repo.put(toRow(a));
+      map.set(a.id, a);
+      return a;
+    }
+    if (winner) {
+      const w = toApproval(winner);
+      map.set(w.id, w);
+      return w;
+    }
+    throw new Error("approval_park_conflict");
+  };
+
   return {
     name: "db",
     ready: () => wb.ready(),
     flush: () => wb.flush(),
     async park(input: ApprovalParkInput) {
       const now = Date.now();
-      // D-257-Q6 find-or-create — the mirror is authoritative in-process
-      // (sync scan+set); the PG partial unique constraint is only a
-      // backstop for a multi-process race. A write-behind conflict is
-      // reconcile-logged, never a silent drop (ROUND-3 §3).
+      // M-8: hydration must finish before the dedup scan — an unhydrated
+      // mirror misses live pendings parked by other replicas.
+      await wb.ready();
       if (input.dealFingerprint) {
         const hit = findLivePendingByFingerprint(
           map.values(),
@@ -121,73 +157,12 @@ export function createDbApprovalStore(
           a.expiresAt > now,
       ).length;
       if (live >= maxPending) throw new Error("approval_queue_full");
-      const a: SpendApproval = {
-        id: `ap_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`,
-        wallet: input.wallet,
-        amountUsd: input.amountUsd,
-        kind: input.kind,
-        refId: input.refId,
-        state: "pending",
-        createdAt: now,
-        expiresAt: input.expiresAt,
-        ...(input.approvalReason
-          ? { approvalReason: input.approvalReason }
-          : {}),
-        ...(input.dealFingerprint
-          ? { dealFingerprint: input.dealFingerprint }
-          : {}),
-        ...(input.fingerprintVersion
-          ? { fingerprintVersion: input.fingerprintVersion }
-          : {}),
-        ...(input.meta ? { meta: input.meta } : {}),
-      };
+      const a = buildPending(input, now);
+      // fp-bound → sync put (the returned id is real); fp-less has no
+      // unique constraint to trip — write-behind stays.
+      if (input.dealFingerprint) return parkFpBound(a, input.dealFingerprint);
       map.set(a.id, a);
-      wb.enqueue(() =>
-        repo
-          .put(toRow(a))
-          .then(() => undefined)
-          .catch(async (err) => {
-            if (!isUniqueConflict(err) || !a.dealFingerprint) throw err;
-            // The partial unique constraint fired — find the conflicting
-            // pending and reconcile the mirror to PG truth; never a
-            // silent drop (ROUND-3 §3). findPendingByFingerprint may be
-            // absent on the published repo — then we can only log + drop
-            // the phantom (a constraint that can't fire pre-migration).
-            const winner =
-              (await repo257
-                .findPendingByFingerprint?.(a.wallet, a.dealFingerprint)
-                .catch(() => null)) ?? null;
-            if (winner && winner.expiresAtMs <= BigInt(Date.now())) {
-              // Dead-but-unswept pending still trips the constraint —
-              // expire it, then our row lands on retry.
-              const dead = expiredView(toApproval(winner), Date.now());
-              await repo
-                .expire(winner.id, dead as unknown as RepoPayload)
-                .catch(() => false);
-              const ok = await repo
-                .put(toRow(a))
-                .then(() => true)
-                .catch(() => false);
-              logger.error("approval park reconcile: dead row expired", {
-                approvalId: a.id,
-                dealFingerprint: a.dealFingerprint,
-                deadId: winner.id,
-                retried: ok,
-              });
-              if (!ok) map.delete(a.id);
-              return;
-            }
-            // A live winner (or an unresolvable conflict) — the mirror's
-            // record is a phantom; converge to PG truth.
-            map.delete(a.id);
-            if (winner) map.set(winner.id, toApproval(winner));
-            logger.error("approval park reconcile: unique conflict", {
-              approvalId: a.id,
-              dealFingerprint: a.dealFingerprint,
-              winnerId: winner?.id ?? null,
-            });
-          }),
-      );
+      wb.enqueue(() => repo.put(toRow(a)).then(() => undefined));
       return a;
     },
     async get(id) {
@@ -240,6 +215,12 @@ export function createDbApprovalStore(
       return true;
     },
     async consume(id, expectedFingerprint) {
+      // H-7: hydration + pending writes must land before the atomic
+      // UPDATE — an unflushed decide leaves the repo row 'pending' and
+      // the conditional WHERE would refuse a legitimately approved
+      // permit.
+      await wb.ready();
+      await wb.flush();
       const a = map.get(id);
       // 257-14 (H-3): approved permits expire — consume refuses a
       // stale permit; fingerprint mismatch refuses WITHOUT consuming
@@ -247,27 +228,39 @@ export function createDbApprovalStore(
       if (!a || a.state !== "approved" || a.expiresAt <= Date.now())
         return false;
       if (!fingerprintMatches(a, expectedFingerprint)) return false;
-      const next: SpendApproval = {
-        ...a,
-        state: "consumed",
-        consumedAt: Date.now(),
-      };
+      const consumedAt = Date.now();
+      const next: SpendApproval = { ...a, state: "consumed", consumedAt };
+      // H-7: the repo conditional UPDATE (id AND state='approved' AND
+      // dealFingerprint=?) is the single cross-replica arbiter — two
+      // processes both holding 'approved' mirrors yield exactly one
+      // true. No mirror-first flip: a crash between mirror set and a
+      // write-behind flush would leave a replayable approved permit.
+      let ok: boolean;
+      try {
+        ok = await repo.consume(
+          id,
+          consumedAt,
+          next as unknown as RepoPayload,
+          expectedFingerprint,
+        );
+      } catch (err) {
+        // Unknown outcome — fail closed (no spend); a landed consume
+        // self-heals on the next attempt via the reconcile below.
+        logger.error("approval consume repo call failed", {
+          approvalId: id,
+          err: String(err),
+        });
+        return false;
+      }
+      if (!ok) {
+        // Repo refused — converge the mirror to PG truth (consumed or
+        // expired elsewhere, or a phantom mirror record).
+        const row = await repo.get(id).catch(() => null);
+        if (row) map.set(id, toApproval(row));
+        else map.delete(id);
+        return false;
+      }
       map.set(id, next);
-      // Published repo lacks the 4th consume arg — the mirror fp-check
-      // above is authoritative in-process; the WHERE pin is extra
-      // multi-process defense forwarded only when the op exists.
-      const fpAware = typeof repo257.findPendingByFingerprint === "function";
-      wb.enqueue(() =>
-        (fpAware
-          ? repo257.consume(
-              id,
-              next.consumedAt!,
-              next as unknown as RepoPayload,
-              expectedFingerprint,
-            )
-          : repo.consume(id, next.consumedAt!, next as unknown as RepoPayload)
-        ).then(() => undefined),
-      );
       return true;
     },
     async countPending(wallet) {

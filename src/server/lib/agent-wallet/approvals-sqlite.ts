@@ -208,15 +208,15 @@ export function createSqliteApprovalStore(
         }
         const rec = pendingFromParkInput(inp, now);
         const res = db.run(INSERT_SQL, insertArgs(rec));
-        if (res.changes === 0 && inp.dealFingerprint) {
+        if (res.changes === 0) {
           // Unique index fired — a concurrent insert won; its pending
-          // IS our answer (never a dup, never an error).
-          const won = livePendingByFingerprint(
-            inp.wallet,
-            inp.dealFingerprint,
-            now,
-          );
+          // IS our answer. No fp/winner → a swallowed constraint with
+          // no dedup answer: never hand out a phantom id (M-8).
+          const won = inp.dealFingerprint
+            ? livePendingByFingerprint(inp.wallet, inp.dealFingerprint, now)
+            : null;
           if (won) return rowToApproval(won);
+          throw new Error("approval_park_conflict");
         }
         return rec;
       })();
