@@ -173,6 +173,34 @@ describe("buyPay — envelope gate", () => {
     expect(entries[0]?.state).toBe("settled");
   });
 
+  it("anchor payload carries only origin+pathname — no query/secret (H-5)", async () => {
+    const { deps } = gate();
+    await registerWallet(deps.registry, { perTxUsd: 1 });
+    let payload = "";
+    await buyPay(
+      quote({ url: "https://api.example.com/v1/data?sig=SECRET&k=1#frag" }),
+      WALLET,
+      "r2a",
+      {
+        gate: deps,
+        runner: async () => ({
+          code: 0,
+          stdout: 'paid tx 0x' + "cd".repeat(32),
+          stderr: "",
+        }),
+        anchor: async (p) => {
+          payload = p;
+          return "ok";
+        },
+      },
+    );
+    const anchored = JSON.parse(payload) as { url: string };
+    expect(anchored.url).toBe("https://api.example.com/v1/data");
+    expect(anchored.url).not.toContain("?");
+    expect(anchored.url).not.toContain("#");
+    expect(payload).not.toContain("SECRET");
+  });
+
   it("BUY_SANDBOX=true → `-s` global flag BEFORE curl subcommand", async () => {
     process.env.BUY_SANDBOX = "true";
     const { deps } = gate();

@@ -25,8 +25,6 @@
  * Kill-switch: BUY_GATEWAY_ENABLED !== "true" → refuses without spawn.
  */
 
-import { spawn } from "node:child_process";
-
 import { isAddress } from "viem";
 
 import type { AgentWalletStore } from "../agent-wallet/registry";
@@ -55,55 +53,40 @@ import {
 } from "./counterparty-gate";
 import { bindDeal } from "./offer-selection";
 import {
+  anchorBuy,
+  anchorSafeUrl,
+  atomicToUnits,
+  classifyBuyFailure,
+  defaultFetcher,
+  defaultRunner,
+  TX_RE,
+  type BuyClass,
+  type BuyFetcher,
+  type BuyRunner,
+  type ExecResult,
+} from "./gateway-utils";
+
+export {
+  anchorSafeUrl,
+  atomicToUnits,
+  classifyBuyFailure,
+  TX_RE,
+} from "./gateway-utils";
+export type {
+  BuyClass,
+  BuyFetcher,
+  BuyRunner,
+  ExecResult,
+} from "./gateway-utils";
+import {
   createCounterpartyPolicy,
   normalizeAmount,
   type CounterpartyChecker,
   type CounterpartyCheckMode,
   type CounterpartyPolicy,
 } from "@agentbadge/circle-payments";
-import { getArcEventLogWriter } from "../fx-delta/arc-writer";
-
 const BUY_CLI_VERSION = "0.8.1";
 export const BUY_CATALOG_URL = "https://gateway.usebuy.ai/v1/catalog";
-
-/* ------------------------------- runner ---------------------------------- */
-
-export interface ExecResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-}
-
-/** Injectable process runner — tests substitute a mock. */
-export type BuyRunner = (args: string[]) => Promise<ExecResult>;
-
-const defaultRunner: BuyRunner = (args) =>
-  new Promise((resolve, reject) => {
-    const p = spawn("npx", args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-    p.stdout.on("data", (d) => (stdout += d));
-    p.stderr.on("data", (d) => (stderr += d));
-    p.on("error", reject);
-    p.on("close", (code) =>
-      resolve({ code: code ?? 1, stdout, stderr }),
-    );
-  });
-
-export type BuyFetcher = (
-  url: string,
-  init?: { method?: string; body?: string },
-) => Promise<{ status: number; json: () => Promise<unknown> }>;
-
-const defaultFetcher: BuyFetcher = async (url, init) => {
-  const res = await fetch(url, {
-    method: init?.method ?? "GET",
-    ...(init?.body
-      ? { headers: { "content-type": "application/json" }, body: init.body }
-      : {}),
-  });
-  return { status: res.status, json: () => res.json() };
-};
 
 /* -------------------------------- types ---------------------------------- */
 
@@ -130,19 +113,6 @@ export interface BuyQuote {
   /** Raw 402 challenge for auditing. */
   raw: unknown;
 }
-
-/** atomic → human token units (6 decimals), precision-safe via bigint. */
-export function atomicToUnits(atomic: string): string {
-  const v = BigInt(atomic.trim());
-  const whole = v / 1_000_000n;
-  const frac = (v % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
-  return frac ? `${whole}.${frac}` : whole.toString();
-}
-
-export type BuyClass =
-  | "paid" // settled — output usable
-  | "refused" // pre-signature 402 challenge — safe to retry later
-  | "uncertain"; // settle state unknown — NEVER retry automatically
 
 export interface BuyResult {
   status: BuyClass | "denied" | "approval_required" | "disabled";
@@ -188,20 +158,6 @@ export interface BuyGatewayOptions {
    * failures are swallowed (anchoring must not fail the purchase).
    */
   anchor?: (payloadJson: string, topic: string) => Promise<string>;
-}
-
-/** Emit the companion buy anchor; best-effort, never throws. */
-async function anchorBuy(
-  anchor: ((p: string, t: string) => Promise<string>) | undefined,
-  payload: Record<string, unknown>,
-): Promise<void> {
-  const w = anchor ?? getArcEventLogWriter()?.writer;
-  if (!w) return;
-  try {
-    await w(JSON.stringify(payload), "fxdelta-buy");
-  } catch {
-    // anchoring is auxiliary — purchase already settled
-  }
 }
 
 /* ------------------------------ catalog/quote ---------------------------- */
@@ -274,40 +230,6 @@ export async function buyQuote(
     maxAmountAtomic: max,
     raw,
   };
-}
-
-/* --------------------------- failure classify ---------------------------- */
-
-const TX_RE = /0x[0-9a-fA-F]{64}/;
-
-/**
- * Money-path taxonomy (257-16, H-6 — x402 «Timeouts and Safe Retries»:
- * once the PAYMENT-SIGNATURE could have left the process, the settle
- * outcome is UNKNOWN and the purchase must never be auto-repaid):
- *
- *   pre-signature, structural 402 challenge → "refused"   (retryable)
- *   payment trace or any other non-zero output → "uncertain" (never)
- */
-export function classifyBuyFailure(r: ExecResult): BuyClass {
-  const text = `${r.stdout}\n${r.stderr}`;
-  // Payment trace: tx hash, signature header echo or upstream
-  // non-retryable markers — the signature may have left, money may be
-  // on-chain regardless of any 4xx/503 text accompanying it.
-  if (
-    TX_RE.test(text) ||
-    /PAYMENT-SIGNATURE|settle_uncertain|provision_failed/i.test(text) ||
-    /"retryable"\s*:\s*false/.test(text)
-  ) {
-    return "uncertain"; // money may have moved — never retry
-  }
-  // "refused" ONLY on a structural pre-signature signal: the CLI printed
-  // a fresh 402 payment-required challenge and no payment trace. A bare
-  // 4xx/503 line after spawn is post-signature seller output (H-6).
-  if (/PAYMENT-REQUIRED|"x402Version"/i.test(text)) {
-    return "refused"; // nothing signed — safe to retry
-  }
-  // Network interruption after payment is also "unknown" upstream.
-  return "uncertain";
 }
 
 /* --------------------------------- pay ----------------------------------- */
@@ -557,7 +479,7 @@ export async function buyPay(
         wallet: w,
         amountUsd,
         purchaseTxHash: txHash ?? null,
-        url: quote.url,
+        url: anchorSafeUrl(quote.url),
         method: quote.method,
         at: Date.now(),
       });

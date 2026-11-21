@@ -366,6 +366,21 @@ describe("257-7 E2E acceptance — buyer contour (mock vet402)", () => {
     expect(r.status).toBe("approval_required");
   });
 
+  it("token in hostname label → 0 outbound, privacy HOLD (H-4)", async () => {
+    const f = fixture();
+    await f.registry.put(f.rec);
+    const r = await buyPay(
+      quote({
+        url: "https://k3j9x2m8q1x7z5c4v6b0n2l9p8o7i6u5r4.pages.dev/api",
+      }),
+      WALLET,
+      "r1h",
+      opts(f, checker, { n: 0 }),
+    );
+    expect(mock.totalHits).toBe(0); // hostname secret — nothing sent
+    expect(r.status).toBe("approval_required");
+  });
+
   it("not_in_catalog → HOLD (unknown seller, parked for owner)", async () => {
     mock.onResolve = (q) => resolveNotInCatalog(q);
     const f = fixture();
