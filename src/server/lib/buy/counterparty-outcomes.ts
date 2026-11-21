@@ -13,6 +13,32 @@ import type {
 } from "./counterparty-gate";
 import type { DealBinding } from "./offer-selection";
 
+/**
+ * N-8: `termsMatch.reason`/`diff.offered` embed raw seller strings
+ * (unbounded — hostile or MITM'd input is a stored-injection source in
+ * logs and the owner UI). Bound at the log/meta boundary: strip
+ * control characters, cap every string at 200 chars.
+ */
+export function boundTermsMatch(t: TermsMatch): TermsMatch {
+  const bound = (s: string) =>
+    s.replace(/[\u0000-\u001F\u007F]+/g, " ").slice(0, 200);
+  const diff = t.diff
+    ? Object.fromEntries(
+        Object.entries(t.diff)
+          .filter((e): e is [string, NonNullable<typeof e[1]>] => e[1] != null)
+          .map(([k, v]) => [
+            k,
+            { verified: bound(v.verified), offered: bound(v.offered) },
+          ]),
+      )
+    : undefined;
+  return {
+    result: t.result,
+    ...(t.reason !== undefined ? { reason: bound(t.reason) } : {}),
+    ...(diff ? { diff } : {}),
+  };
+}
+
 /** Assessment summary for the C5 record — sanitized, no secrets. */
 export function assessmentView(
   a: Vet402Assessment,

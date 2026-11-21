@@ -26,6 +26,7 @@ import type { SpendLedger } from "../agent-wallet/ledger";
 import type { BuyQuote } from "./gateway";
 import {
   assessmentView,
+  boundTermsMatch,
   denyOutcome,
 } from "./counterparty-outcomes";
 import type { DealBinding } from "./offer-selection";
@@ -144,7 +145,7 @@ export async function counterpartyGate(
     assessment: assessment
       ? assessmentView(assessment)
       : { kind: "not_checked" },
-    termsMatch,
+    termsMatch: boundTermsMatch(termsMatch),
     decision,
     ...(deal.fingerprint ? { dealFingerprint: deal.fingerprint } : {}),
   });
@@ -190,7 +191,7 @@ export async function counterpartyGate(
           }
         : { verdict: a.kind, reasonCodes: [decision.reasonCode] }),
       ...(termsMatch.result === "mismatch"
-        ? { termsDiff: termsMatch.diff }
+        ? { termsDiff: boundTermsMatch(termsMatch).diff }
         : {}),
       checkedAt: a.checkedAt,
     };
