@@ -39,6 +39,8 @@ interface Detail {
   verdict: string;
   summary: string;
   domain: string;
+  /** D-258-Q19: domain sits on shared hosting — own-name record only. */
+  scope?: "shared_hosting_name";
   probe_stability?: "stable_across_probe_window";
   coverage: ProofCoverage;
   perAddress: DetailPerAddress[];
@@ -104,6 +106,7 @@ export const checkerX402PaytoProof: SemanticChecker = (sources): SemanticCheckRe
     verdict: mapped.verdict,
     summary: mapped.summary,
     domain: inputs.domain,
+    ...(inputs.pslStopped ? { scope: "shared_hosting_name" as const } : {}),
     ...(inputs.probed > 0 && !inputs.divergentSeen
       ? { probe_stability: "stable_across_probe_window" as const }
       : {}),

@@ -1,0 +1,18 @@
+{
+  "recorded": "2026-11-22",
+  "note": "Real DoH TXT answers recorded for the e2e outcome matrix (SLICE-258-11). Signatures are live-published EIP-191 proofs — kept verbatim so signature verification runs against real material.",
+  "records": {
+    "_x402-payto.agentbadge.xyz": {
+      "ttl": 600,
+      "data": "v=x402payto1; a=0x23dd386015c154758ee765d2a063b94eabb251b3; d=2026-11-22; s=0x0b88fdbcb2cbd0bb4cf5a99fedec34072270f0936c894fba6a8f419b71d09c4841ac4a79db2a99145456d8d3aae4c008e5d1fa89d9b9b842f73521127406cfc41b"
+    },
+    "_x402-payto.madebydevx.com": {
+      "ttl": 300,
+      "data": "v=x402payto1; a=0xb3cddccee6b150c8effd55b961afc0ecefe7f247; d=2026-11-06; s=0xab4bbfd9e177b312339559a8da0297ff6e9282c5aa5ff089e101ecdd498f4c6262f43ccabe68e8ec0b7fb53d689229b94b1f8e529b3a8ca4cc442df98431efde1c"
+    },
+    "_x402-payto.api.settlewatch.com": {
+      "ttl": 300,
+      "data": "v=x402payto1;a=0xbbe2744114581fe1941ddeca921bbf55dfc5a01a;d=2026-11-19;s=0x62d84c05c36b4362c9aa9dd385a3f63b9c678f80d4cb7e2bd9ee47dabc047c0845ba7dcfebdabe1dee34a31b0406b96842512de337b946a58f731468cf1c9b1d1c"
+    }
+  }
+}

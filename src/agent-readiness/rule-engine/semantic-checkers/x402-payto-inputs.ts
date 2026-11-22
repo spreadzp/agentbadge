@@ -61,6 +61,8 @@ export interface PaytoInputs {
   dnsState: "ok" | "unchecked";
   siteState: "ok" | "absent" | "unchecked";
   liveRecheckDone: boolean;
+  /** DNS walk was truncated by a shared-hosting suffix (D-258-Q19). */
+  pslStopped: boolean;
   observedAt: string;
   /** Endpoints actually double-probed. */
   probed: number;
@@ -104,6 +106,8 @@ export interface ProofInputs {
   dnsState: "ok" | "unchecked";
   siteState: "ok" | "absent" | "unchecked";
   liveRecheckDone: boolean;
+  /** DNS walk was truncated by a shared-hosting suffix (D-258-Q19). */
+  pslStopped: boolean;
 }
 
 /**
@@ -127,10 +131,12 @@ export function collectProofInputs(
   const dnsEntries: ProofEntry[] = [];
   let malformedCount = 0;
 
+  let pslStopped = false;
   const dnsResult = tryParse(dnsSnap?.body) as PayToDnsFetchResult | null;
   if (dnsResult && typeof dnsResult === "object") {
     domain = dnsResult.domain ?? "";
     dnsState = dnsResult.status === "unchecked" ? "unchecked" : "ok";
+    pslStopped = dnsResult.pslStopped === true;
     // A fresh lookup in this scan IS the live re-check (dogfood parity);
     // a cache hit cannot prove substitution.
     liveRecheckDone = dnsResult.fromCache === false;
@@ -172,6 +178,7 @@ export function collectProofInputs(
     dnsState,
     siteState,
     liveRecheckDone,
+    pslStopped,
   };
 }
 
