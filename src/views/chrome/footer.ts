@@ -171,6 +171,9 @@ export function Footer(): ReturnType<typeof html> {
         <a href="https://mcprush.com/spreadzp/agentbadge-mcp" target="_blank" rel="noopener" title="mcprush grade A, trust 95/100">
           <img src="https://img.shields.io/badge/mcprush-A%20%C2%B7%2095%2F100-334155?style=flat-square" alt="mcprush grade A, trust 95/100" loading="lazy" decoding="async" class="h-5 w-auto" />
         </a>
+        <a href="https://viberank.dev/apps/AgentBadge" target="_blank" rel="noopener" title="AgentBadge on VibeRank — community leaderboard">
+          <img src="https://viberank.dev/badge?app=AgentBadge&amp;theme=dark" alt="AgentBadge on VibeRank" loading="lazy" decoding="async" class="h-5 w-auto" />
+        </a>
       </span>
     </div>
   </footer>`;

@@ -45,6 +45,19 @@ describe("Layout — footer", () => {
     expect(githubBlock).toContain('rel="noopener"');
   });
 
+  it("renders VibeRank badge linking to the public listing", () => {
+    const html = Layout("<p>test</p>").toString();
+
+    expect(html).toContain('href="https://viberank.dev/apps/AgentBadge"');
+    expect(html).toContain('src="https://viberank.dev/badge?app=AgentBadge&amp;theme=dark"');
+
+    // External listing link — new tab + noopener like the other badges
+    const idx = html.indexOf('viberank.dev/apps/AgentBadge');
+    const block = html.substring(idx - 100, idx + 60);
+    expect(block).toContain('target="_blank"');
+    expect(block).toContain('rel="noopener"');
+  });
+
   it("renders project description in footer", () => {
     const html = Layout("<p>test</p>").toString();
     expect(html).toContain("AgentBadge");
