@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "domain": "agentbadge.xyz",
+  "payTo": [
+    {
+      "address": "0x23dd386015c154758ee765d2a063b94eabb251b3",
+      "issued": "2026-11-22",
+      "signature": "0x0b88fdbcb2cbd0bb4cf5a99fedec34072270f0936c894fba6a8f419b71d09c4841ac4a79db2a99145456d8d3aae4c008e5d1fa89d9b9b842f73521127406cfc41b"
+    }
+  ]
+}
