@@ -78,7 +78,7 @@ export function Layout(children: string, title?: string, meta?: PageMeta, jsonLd
         ${raw(jsonLdHtml)}
         ${analytics ? raw(getGA4Script()) : ""}
         ${analytics ? raw(getPlausibleScript()) : ""}
-        <script src="/vendor/htmx.min.js" defer></script>
+        <script src="/js/vendor/htmx.min.js" defer></script>
         <link rel="stylesheet" href="/css/tailwind.css?v=3" />
         <style>
           @keyframes nav-pop {

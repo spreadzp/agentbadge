@@ -194,7 +194,7 @@ describe("Arc R4 — M-11 admin chrome", () => {
 
   it("htmx is vendored — no unpkg anywhere in the chrome", () => {
     const html = Layout("x", "t", meta("/admin/knowledge")).toString();
-    expect(html).toContain("/vendor/htmx.min.js");
+    expect(html).toContain("/js/vendor/htmx.min.js");
     expect(html).not.toContain("unpkg.com");
   });
 
