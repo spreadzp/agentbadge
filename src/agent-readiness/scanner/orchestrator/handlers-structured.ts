@@ -10,6 +10,8 @@ import { fetchBotAuth } from "../fetchers/bot-auth-fetcher";
 import { fetchLinkHeaders } from "../fetchers/link-headers-fetcher";
 import { fetchContentSignals } from "../fetchers/content-signals-fetcher";
 import { fetchDnsAid } from "../fetchers/dns-aid-fetcher";
+import { fetchPayToDns } from "../fetchers/payto-dns-fetcher";
+import { fetchPayToWellknown } from "../fetchers/payto-wellknown-fetcher";
 import { fetchWebmcpRuntime } from "../fetchers/webmcp-runtime-fetcher";
 import { fetchOgMeta } from "../fetchers/og-meta-fetcher";
 import { fetchAeoContent } from "../fetchers/aeo-content-fetcher";
@@ -69,6 +71,27 @@ export const structuredHandlers: Record<string, ResourceHandler> = {
     return createSnapshot({
       url: `_agent.${domain}`, status: r.found ? 200 : 404, body: JSON.stringify(r),
       resolvedIp: null, fetchTimeMs: r.fetchTime,
+    });
+  },
+  x402_payto_dns: async ({ baseUrl }) => {
+    const domain = new URL(baseUrl).hostname;
+    const r = await fetchPayToDns(domain);
+    return createSnapshot({
+      url: `_x402-payto.${domain}`,
+      status: r.status === "hit" ? 200 : r.status === "absent" ? 404 : 0,
+      body: JSON.stringify(r),
+      resolvedIp: null,
+      fetchTimeMs: r.fetchTime,
+    });
+  },
+  x402_payto_site: async ({ baseUrl }) => {
+    const r = await fetchPayToWellknown(baseUrl);
+    return createSnapshot({
+      url: r.url,
+      status: r.status,
+      body: JSON.stringify(r),
+      resolvedIp: r.resolvedIp,
+      fetchTimeMs: r.fetchTime,
     });
   },
   webmcp_runtime: async ({ baseUrl }) => {

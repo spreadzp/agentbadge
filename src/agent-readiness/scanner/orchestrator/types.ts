@@ -56,6 +56,8 @@ export const DEFAULT_RESOURCES = [
   "content_signals",
   "web_bot_auth",
   "dns_aid",
+  "x402_payto_dns",
+  "x402_payto_site",
   "webmcp_runtime",
   "l402",
   "og_meta",
