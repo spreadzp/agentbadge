@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { emitKnowledgeEvent } from "./events";
 import type { KnowledgeResult } from "./items";
 import type { KnowledgeStore } from "./store";
+import { isOperatorRef } from "./types";
 import type {
   KnowledgeItemRecord,
   KnowledgeStatus,
@@ -26,29 +27,33 @@ import type {
  * - VERIFIED→PUBLISHED pins `publishedVersionId = latestVersionId`;
  *   WITHDRAWN clears it. This is the ONLY layer that may touch
  *   `publishedVersionId` (domain lib 229-2 never sets it).
- * - §16.5: verify/publish require an OPERATOR actor — agent-shaped
- *   refs (did:/agt_/agent: prefixes) are refused at the lib edge, on
- *   top of the adminAuth route boundary.
+ * - §16.5 + Arc R1 H2: verify/publish require an OPERATOR actor —
+ *   isOperatorRef (allowlist shape + agent-prefix denylist) at the
+ *   lib edge, on top of the adminAuth route boundary. Separation of
+ *   duties: verifier ≠ submitter, publisher ≠ verifier — one ref can
+ *   no longer walk an item through the whole machine alone.
+ * - Arc R1 H4: entering VERIFIED requires ≥1 evidence ref on the
+ *   latest version — "verified" without provenance is dishonest.
  * - Illegal transitions return INVALID_TRANSITION honestly — nothing
  *   is written (CAS refusal inside the store).
  */
 
-/** (from → set of legal targets). WITHDRAWN is terminal. */
+/** (from → set of legal targets). WITHDRAWN is terminal.
+ *  Arc R1 M14: VERIFIED→DRAFT reopens a verified-but-not-published
+ *  item for corrections — the verify event stays in the audit trail
+ *  and re-review is mandatory (PENDING→VERIFIED again). */
 const TRANSITIONS: Readonly<Record<string, ReadonlySet<string>>> = {
   DRAFT: new Set(["PENDING", "WITHDRAWN"]),
   PENDING: new Set(["VERIFIED", "DRAFT", "WITHDRAWN"]),
-  VERIFIED: new Set(["PUBLISHED", "WITHDRAWN"]),
+  VERIFIED: new Set(["PUBLISHED", "DRAFT", "WITHDRAWN"]),
   PUBLISHED: new Set(["WITHDRAWN"]),
   WITHDRAWN: new Set(),
 };
 
-/** Agent-shaped actor refs — never operators (§16.5). */
-const AGENT_REF_PREFIXES = ["did:", "agt_", "agent:", "agent_"] as const;
-
+/** Arc R1 H2: operator check = shared isOperatorRef — no more
+ *  bypassable prefix-only denylist (\u200b/fullwidth/agent-7). */
 export function isOperatorActor(actorRef: string): boolean {
-  if (!actorRef || actorRef.trim().length === 0) return false;
-  const lower = actorRef.toLowerCase();
-  return !AGENT_REF_PREFIXES.some((p) => lower.startsWith(p));
+  return isOperatorRef(actorRef);
 }
 
 const EVENT_FOR: Readonly<Record<string, string>> = {
@@ -85,6 +90,16 @@ export async function transitionKnowledgeItem(
   const item = await store.getItem(itemId);
   if (!item) return { ok: false, error: "not_found" };
 
+  // §16.5 — only operator actors may move an item INTO VERIFIED or
+  // PUBLISHED (submit/reject/withdraw are operator-only anyway via
+  // the adminAuth boundary, but the verify/publish guard is the
+  // security-critical one). Checked BEFORE legality: an agent actor
+  // gets the same refusal regardless of current status — the error
+  // doesn't leak where the item actually sits.
+  if ((to === "VERIFIED" || to === "PUBLISHED") && !isOperatorActor(actorRef)) {
+    return { ok: false, error: "ACTOR_NOT_OPERATOR" };
+  }
+
   const from = item.status;
   const legal = TRANSITIONS[from];
   if (!legal?.has(to)) {
@@ -95,12 +110,29 @@ export async function transitionKnowledgeItem(
     };
   }
 
-  // §16.5 — only operator actors may move an item INTO VERIFIED or
-  // PUBLISHED (submit/reject/withdraw are operator-only anyway via
-  // the adminAuth boundary, but the verify/publish guard is the
-  // security-critical one).
-  if ((to === "VERIFIED" || to === "PUBLISHED") && !isOperatorActor(actorRef)) {
-    return { ok: false, error: "ACTOR_NOT_OPERATOR" };
+  // Arc R1 H4 — a version cannot be "verified" without provenance:
+  // ≥1 evidence ref must sit on the version under review.
+  if (to === "VERIFIED") {
+    const ev = item.latestVersionId
+      ? await store.listEvidence(item.latestVersionId)
+      : [];
+    if (ev.length === 0) {
+      return { ok: false, error: "evidence_required", field: "evidence" };
+    }
+  }
+
+  // Arc R1 H2 — separation of duties on the approval machine:
+  // the verifier must differ from the submitter, and the publisher
+  // from the verifier. Reads the persisted audit trail, not claims.
+  if (to === "VERIFIED" || to === "PUBLISHED") {
+    const events = await store.listStatusEvents(itemId);
+    const prior =
+      to === "VERIFIED"
+        ? [...events].reverse().find((e) => e.to === "PENDING")
+        : [...events].reverse().find((e) => e.to === "VERIFIED");
+    if (prior && prior.actor === actorRef) {
+      return { ok: false, error: "SEPARATION_OF_DUTIES", field: "actor" };
+    }
   }
 
   const res = await store.transitionItem(itemId, {

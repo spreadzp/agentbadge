@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addEvidence,
   composeAnswer,
   createKnowledgeItem,
   createMemoryKnowledgeStores,
@@ -60,8 +61,9 @@ describe("knowledge gaps (SLICE-229-8)", () => {
       });
     }
     const gaps = await listGaps(store, {});
+    // Arc R1 H3: punctuation is normalized away — "?" variants dedupe too.
     const main = gaps.find(
-      (g) => g.normalizedQuery === "how does escrow work?",
+      (g) => g.normalizedQuery === "how does escrow work",
     );
     expect(main).toBeDefined();
     expect(main!.sampleQueries.length).toBeLessThanOrEqual(10);
@@ -74,6 +76,18 @@ describe("knowledge gaps (SLICE-229-8)", () => {
       store, { kind: "FAQ", slug: "gap-answer", title: "t", body: "b" }, OP,
     );
     if (!c.ok) throw new Error("create failed");
+    // Arc R1 M7: RESOLVED requires a PUBLISHED linked item — walk the
+    // item up (evidence → submit → verify-by-other → publish).
+    const ev = await addEvidence(store, c.version.id, {
+      type: "INTERNAL_DOC", uri: "internal://runbook/gap", addedBy: OP,
+    });
+    if (!ev.ok) throw new Error("evidence failed");
+    const steps: Array<[string, string]> = [
+      ["PENDING", OP], ["VERIFIED", "ops_review"], ["PUBLISHED", OP],
+    ];
+    for (const [to, actor] of steps) {
+      await transitionKnowledgeItem(store, c.item.id, to, actor);
+    }
     const g = await recordGap(store, { query: "gap x", source: "MANUAL" });
     if (!g.ok) throw new Error("gap failed");
 
@@ -99,12 +113,12 @@ describe("knowledge gaps (SLICE-229-8)", () => {
     expect(w.ok && w.gap.status).toBe("WONTFIX");
   });
 
-  it("emits knowledge.gap.detected only on first sighting", async () => {
+  it("emits knowledge.gap_detected only on first sighting", async () => {
     const store = createMemoryKnowledgeStores();
     const seen: string[] = [];
     setKnowledgeEventsGateForTests(() => true);
     const off = onKnowledgeEvent((e) => {
-      if (e.kind === "knowledge.gap.detected") {
+      if (e.kind === "knowledge.gap_detected") {
         seen.push(String(e.payload.gapId));
       }
     });
@@ -141,8 +155,14 @@ describe("knowledge gaps (SLICE-229-8)", () => {
       OP,
     );
     if (!c.ok) throw new Error("create failed");
-    for (const to of ["PENDING", "VERIFIED", "PUBLISHED"] as const) {
-      await transitionKnowledgeItem(store, c.item.id, to, OP);
+    await addEvidence(store, c.version.id, {
+      type: "INTERNAL_DOC", uri: "internal://runbook/unrel", addedBy: OP,
+    });
+    const steps2: Array<[string, string]> = [
+      ["PENDING", OP], ["VERIFIED", "ops_review"], ["PUBLISHED", OP],
+    ];
+    for (const [to, actor] of steps2) {
+      await transitionKnowledgeItem(store, c.item.id, to, actor);
     }
     const a = await composeAnswer(store, "totally missing topic", {
       gapRecorder: knowledgeGapRecorder(store),

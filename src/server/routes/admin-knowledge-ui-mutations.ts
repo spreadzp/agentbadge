@@ -4,35 +4,33 @@
  * lib directly (228 precedent); operator label is an optional
  * `operator` field, default "admin-browser" — the JSON API remains
  * the surface with X-Operator-Id + idempotency-key.
+ * Taxonomy mutations (capability/relation/evidence) live in
+ * admin-knowledge-ui-mutations-taxonomy.ts (300-line file cap).
  */
 
 import type { Hono } from "hono";
 
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
-  addEvidence,
-  addRelation,
   createKnowledgeItem,
-  linkItemCapability,
-  removeEvidence,
-  removeRelation,
   resolveGap,
   restoreKnowledgeVersion,
   transitionKnowledgeItem,
   triageGap,
-  unlinkItemCapability,
   updateKnowledgeDraft,
   wontfixGap,
   KNOWLEDGE_STATUSES,
 } from "../lib/knowledge";
 import { backWith } from "./admin-knowledge-ui";
 import { rejectCtrl } from "./admin-operator-guard";
-
-const formStr = (b: Record<string, unknown>, k: string): string =>
-  typeof b[k] === "string" ? (b[k] as string).trim() : "";
-
-const opOf = (b: Record<string, unknown>): string =>
-  formStr(b, "operator") || "admin-browser";
+import {
+  formStr,
+  formRaw,
+  opOf,
+  opBad,
+  readSeq,
+  ssrWrite,
+} from "./admin-knowledge-ui-mutations-shared";
 
 export function registerKnowledgeUiMutations(
   app: Hono,
@@ -42,16 +40,21 @@ export function registerKnowledgeUiMutations(
     const b = await c.req.parseBody();
     const bad0 = rejectCtrl(c, formStr(b, "operator"));
     if (bad0) return bad0;
-    const r = await createKnowledgeItem(
-      store,
-      {
-        kind: formStr(b, "kind") as never,
-        title: formStr(b, "title"),
-        body: formStr(b, "body"),
-        summary: formStr(b, "summary") || undefined,
-        slug: formStr(b, "slug") || undefined,
-      },
-      opOf(b),
+    if (opBad(b)) {
+      return c.redirect(
+        backWith("/admin/knowledge", { err: "bad_operator_ref" }),
+        303,
+      );
+    }
+    const input = {
+      kind: formStr(b, "kind") as never,
+      title: formStr(b, "title"),
+      body: formRaw(b, "body"),
+      summary: formStr(b, "summary") || undefined,
+      slug: formStr(b, "slug") || undefined,
+    };
+    const r = await ssrWrite("create", input, () =>
+      createKnowledgeItem(store, input, opOf(b)),
     );
     if (!r.ok) {
       return c.redirect(backWith("/admin/knowledge", { err: r.error }), 303);
@@ -67,15 +70,20 @@ export function registerKnowledgeUiMutations(
     const b = await c.req.parseBody();
     const bad1 = rejectCtrl(c, id, formStr(b, "operator"));
     if (bad1) return bad1;
-    const r = await updateKnowledgeDraft(
-      store,
-      id,
-      {
-        title: formStr(b, "title") || undefined,
-        body: formStr(b, "body") || undefined,
-        summary: formStr(b, "summary"),
-      },
-      opOf(b),
+    if (opBad(b)) {
+      return c.redirect(
+        backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
+        303,
+      );
+    }
+    const input = {
+      title: formStr(b, "title") || undefined,
+      body: formRaw(b, "body") || undefined,
+      // empty field = explicit clear (null), parity with the JSON API
+      summary: formStr(b, "summary") || null,
+    };
+    const r = await ssrWrite("update", { id, ...input }, () =>
+      updateKnowledgeDraft(store, id, input, opOf(b)),
     );
     return c.redirect(
       backWith(
@@ -91,11 +99,19 @@ export function registerKnowledgeUiMutations(
     const b = await c.req.parseBody();
     const bad2 = rejectCtrl(c, id, formStr(b, "operator"));
     if (bad2) return bad2;
+    if (opBad(b)) {
+      return c.redirect(
+        backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
+        303,
+      );
+    }
     const to = formStr(b, "to");
     if (!KNOWLEDGE_STATUSES.includes(to as never)) {
       return c.redirect(backWith(`/admin/knowledge/${id}`, { err: "bad target" }), 303);
     }
-    const r = await transitionKnowledgeItem(store, id, to, opOf(b));
+    const r = await ssrWrite("transition", { id, to }, () =>
+      transitionKnowledgeItem(store, id, to, opOf(b)),
+    );
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
@@ -110,11 +126,21 @@ export function registerKnowledgeUiMutations(
     const b = await c.req.parseBody();
     const bad3 = rejectCtrl(c, id, formStr(b, "operator"));
     if (bad3) return bad3;
-    const r = await restoreKnowledgeVersion(
-      store,
-      id,
-      Number(formStr(b, "seq")),
-      opOf(b),
+    if (opBad(b)) {
+      return c.redirect(
+        backWith(`/admin/knowledge/${id}`, { err: "bad_operator_ref" }),
+        303,
+      );
+    }
+    const seq = readSeq(b);
+    if (seq === null) {
+      return c.redirect(
+        backWith(`/admin/knowledge/${id}`, { err: "bad_seq" }),
+        303,
+      );
+    }
+    const r = await ssrWrite("restore", { id, seq }, () =>
+      restoreKnowledgeVersion(store, id, seq, opOf(b)),
     );
     return c.redirect(
       backWith(
@@ -125,98 +151,25 @@ export function registerKnowledgeUiMutations(
     );
   });
 
-  for (const unlink of [false, true] as const) {
-    app.post(
-      `/admin/knowledge/:id/capability/${unlink ? "unlink" : "link"}`,
-      async (c) => {
-        const id = c.req.param("id") ?? "";
-        const b = await c.req.parseBody();
-        const bad4 = rejectCtrl(c, id, formStr(b, "capabilityId"));
-        if (bad4) return bad4;
-        const r = unlink
-          ? await unlinkItemCapability(store, id, formStr(b, "capabilityId"))
-          : await linkItemCapability(store, id, formStr(b, "capabilityId"));
-        return c.redirect(
-          backWith(
-            `/admin/knowledge/${id}`,
-            r.ok ? { ok: unlink ? "unlinked" : "linked" } : { err: r.error },
-          ),
-          303,
-        );
-      },
-    );
-  }
-
-  for (const remove of [false, true] as const) {
-    app.post(
-      `/admin/knowledge/:id/relation/${remove ? "remove" : "add"}`,
-      async (c) => {
-        const id = c.req.param("id") ?? "";
-        const b = await c.req.parseBody();
-        const bad5 = rejectCtrl(
-          c, id, formStr(b, "relationId"), formStr(b, "toItemId"),
-          formStr(b, "operator"),
-        );
-        if (bad5) return bad5;
-        const r = remove
-          ? await removeRelation(store, formStr(b, "relationId"))
-          : await addRelation(store, {
-              fromItemId: id,
-              toItemId: formStr(b, "toItemId"),
-              type: formStr(b, "type"),
-              actorRef: opOf(b),
-            });
-        return c.redirect(
-          backWith(
-            `/admin/knowledge/${id}`,
-            r.ok ? { ok: "edge saved" } : { err: r.error },
-          ),
-          303,
-        );
-      },
-    );
-    app.post(
-      `/admin/knowledge/:id/evidence/${remove ? "remove" : "add"}`,
-      async (c) => {
-        const id = c.req.param("id") ?? "";
-        const b = await c.req.parseBody();
-        const bad6 = rejectCtrl(
-          c, id, formStr(b, "evidenceId"), formStr(b, "operator"),
-        );
-        if (bad6) return bad6;
-        const item = await store.getItem(id);
-        const vid = item?.latestVersionId ?? "";
-        const r = remove
-          ? await removeEvidence(store, formStr(b, "evidenceId"))
-          : await addEvidence(store, vid, {
-              type: formStr(b, "type"),
-              uri: formStr(b, "uri"),
-              label: formStr(b, "label") || null,
-              addedBy: opOf(b),
-            });
-        return c.redirect(
-          backWith(
-            `/admin/knowledge/${id}`,
-            r.ok ? { ok: "evidence saved" } : { err: r.error },
-          ),
-          303,
-        );
-      },
-    );
-  }
-
   for (const action of ["triage", "resolve", "wontfix"] as const) {
     app.post(`/admin/knowledge/gaps/:id/${action}`, async (c) => {
       const id = c.req.param("id") ?? "";
       const b = await c.req.parseBody();
       const bad7 = rejectCtrl(c, id, formStr(b, "linkedItemId"));
       if (bad7) return bad7;
-      const r =
+      const actor = opOf(b);
+      const binding = {
+        id,
+        action,
+        linkedItemId: formStr(b, "linkedItemId"),
+      };
+      const r = await ssrWrite("gap", binding, () =>
         action === "resolve"
-          ? await resolveGap(store, id, formStr(b, "linkedItemId"))
+          ? resolveGap(store, id, formStr(b, "linkedItemId"), actor)
           : action === "triage"
-            ? await triageGap(store, id)
-            : await wontfixGap(store, id);
+            ? triageGap(store, id, actor)
+            : wontfixGap(store, id, actor),
+      );
       return c.redirect(
         backWith(
           "/admin/knowledge/gaps",

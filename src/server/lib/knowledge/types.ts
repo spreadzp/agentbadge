@@ -185,6 +185,24 @@ export const KNOWLEDGE_SUMMARY_MAX = 2000;
  *  prod-verify caught the read-path twin of the write-body bug. */
 export const noControlChars = (s: string) =>
   !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(s);
+/** Arc R1 M8: single-line fields (ids, refs, params, uri, q) get the
+ *  STRICTER predicate — additionally refuses \t \n \r, DEL, and
+ *  format chars (ZWSP/bidi) that smuggle past the loose one. */
+export const noCtrlStrict = (s: string) =>
+  !/[\u0000-\u001F\u007F\p{Cf}]/u.test(s);
+
+/** Arc R1 H2: operator refs are an allowlist SHAPE + an agent-ref
+ *  denylist. The shape alone kills unicode/fullwidth/zero-width
+ *  bypasses; the denylist kills agent-shaped refs that match it
+ *  (agent-7, agt_x, bot, svc, did refs). Shared by requireOperatorRef
+ *  (route edge, honest 400) and isOperatorActor (lib edge). */
+export const OPERATOR_REF_RE = /^[a-z0-9._@-]{1,80}$/;
+const AGENT_REF_DENY = /^(did:|agt[-_:.]|agent|bot[-_:.]|svc[-_:.]|key:)/i;
+export function isOperatorRef(ref: string): boolean {
+  const s = ref.normalize("NFKC").trim();
+  return OPERATOR_REF_RE.test(s) && !AGENT_REF_DENY.test(s);
+}
+
 const CTRL_MSG = "control characters (incl. NUL) not allowed";
 
 const titleSchema = z

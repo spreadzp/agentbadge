@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
 import {
+  addEvidence,
   createMemoryKnowledgeStores,
   createKnowledgeItem,
   transitionKnowledgeItem,
@@ -23,6 +24,9 @@ import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
  */
 
 const OP = "ops_test";
+// Arc R1: verifier must differ from submitter (separation of duties);
+// publisher must differ from verifier — submitter MAY publish.
+const OP2 = "ops_review";
 
 async function mkItem(store: ReturnType<typeof createMemoryKnowledgeStores>) {
   const r = await createKnowledgeItem(
@@ -31,6 +35,25 @@ async function mkItem(store: ReturnType<typeof createMemoryKnowledgeStores>) {
     OP,
   );
   if (!r.ok) throw new Error("create failed");
+  return r.item;
+}
+
+/** Arc R1 H4: VERIFIED now requires ≥1 evidence on the version. */
+async function mkItemWithEvidence(
+  store: ReturnType<typeof createMemoryKnowledgeStores>,
+) {
+  const r = await createKnowledgeItem(
+    store,
+    { kind: "GUIDE", title: "wf item", body: "b" },
+    OP,
+  );
+  if (!r.ok) throw new Error("create failed");
+  const ev = await addEvidence(store, r.version.id, {
+    type: "INTERNAL_DOC",
+    uri: "internal://runbook/wf",
+    addedBy: OP,
+  });
+  if (!ev.ok) throw new Error(`evidence: ${ev.error}`);
   return r.item;
 }
 
@@ -43,14 +66,14 @@ describe("knowledge workflow (SLICE-229-3)", () => {
     });
     setKnowledgeEventsGateForTests(() => true);
     try {
-      const item = await mkItem(store);
-      const steps: Array<[KnowledgeStatus, string]> = [
-        ["PENDING", "knowledge.submitted"],
-        ["VERIFIED", "knowledge.verified"],
-        ["PUBLISHED", "knowledge.published"],
+      const item = await mkItemWithEvidence(store);
+      const steps: Array<[KnowledgeStatus, string, string]> = [
+        ["PENDING", "knowledge.submitted", OP],
+        ["VERIFIED", "knowledge.verified", OP2],
+        ["PUBLISHED", "knowledge.published", OP],
       ];
-      for (const [to, kind] of steps) {
-        const r = await transitionKnowledgeItem(store, item.id, to, OP);
+      for (const [to, kind, actor] of steps) {
+        const r = await transitionKnowledgeItem(store, item.id, to, actor);
         expect(r.ok).toBe(true);
         expect(events.at(-1)?.kind).toBe(kind);
       }
@@ -62,7 +85,8 @@ describe("knowledge workflow (SLICE-229-3)", () => {
       expect(audit.map((e) => e.to)).toEqual([
         "DRAFT", "PENDING", "VERIFIED", "PUBLISHED",
       ]);
-      expect(audit.every((e) => e.actor === OP)).toBe(true);
+      // Separation of duties shows up in the audit trail.
+      expect(audit.map((e) => e.actor)).toEqual([OP, OP, OP2, OP]);
     } finally {
       off();
       setKnowledgeEventsGateForTests(null);
@@ -101,7 +125,7 @@ describe("knowledge workflow (SLICE-229-3)", () => {
       expect(r).toMatchObject({ ok: false, error: "INVALID_TRANSITION" });
     }
     // VERIFIED→PENDING (skip backwards) refused.
-    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP);
+    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP2);
     const back = await transitionKnowledgeItem(store, item.id, "PENDING", OP);
     expect(back).toMatchObject({ ok: false, error: "INVALID_TRANSITION" });
     // WITHDRAWN is terminal — nothing escapes.
@@ -113,9 +137,9 @@ describe("knowledge workflow (SLICE-229-3)", () => {
 
   it("WITHDRAWN clears publishedVersionId", async () => {
     const store = createMemoryKnowledgeStores();
-    const item = await mkItem(store);
+    const item = await mkItemWithEvidence(store);
     await transitionKnowledgeItem(store, item.id, "PENDING", OP);
-    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP);
+    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP2);
     await transitionKnowledgeItem(store, item.id, "PUBLISHED", OP);
     expect((await store.getItem(item.id))?.publishedVersionId).not.toBeNull();
     const w = await transitionKnowledgeItem(store, item.id, "WITHDRAWN", OP);
@@ -126,14 +150,21 @@ describe("knowledge workflow (SLICE-229-3)", () => {
 
   it("§16.5: agent actors cannot verify or publish", async () => {
     const store = createMemoryKnowledgeStores();
-    const item = await mkItem(store);
+    const item = await mkItemWithEvidence(store);
     await transitionKnowledgeItem(store, item.id, "PENDING", OP);
     for (const agent of ["did:hedera:testnet:0.0.1", "agt_abc", "agent:x"]) {
       expect(isOperatorActor(agent)).toBe(false);
       const v = await transitionKnowledgeItem(store, item.id, "VERIFIED", agent);
       expect(v).toMatchObject({ ok: false, error: "ACTOR_NOT_OPERATOR" });
     }
-    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP);
+    // Arc R1 H2: the bypass shapes the old prefix-only list missed.
+    // Fullwidth agent refs NFKC-collapse to ASCII then hit the deny.
+    for (const bypass of ["agent-7", "agt-1", "\u200bops", "ｄｉｄ:foo"]) {
+      expect(isOperatorActor(bypass)).toBe(false);
+      const v = await transitionKnowledgeItem(store, item.id, "VERIFIED", bypass);
+      expect(v).toMatchObject({ ok: false, error: "ACTOR_NOT_OPERATOR" });
+    }
+    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP2);
     const p = await transitionKnowledgeItem(
       store, item.id, "PUBLISHED", "did:hedera:testnet:0.0.9",
     );
@@ -225,13 +256,34 @@ describe("admin knowledge API (SLICE-229-3)", () => {
         kind: "GUIDE", slug: "api-guide", title: "api", body: "b",
       }),
     });
-    const { item } = await created.json();
-    for (const to of ["PENDING", "VERIFIED", "PUBLISHED"]) {
+    const { item, version } = await created.json();
+    // Arc R1 H4: attach evidence before verify (gate at VERIFIED).
+    const ev = await app.request(
+      `/admin/api/knowledge/versions/${version.id}/evidence`,
+      {
+        method: "POST",
+        headers: writeHeaders(),
+        body: JSON.stringify({
+          type: "INTERNAL_DOC",
+          uri: "internal://runbook/api-guide",
+        }),
+      },
+    );
+    expect(ev.status).toBe(200);
+    // Separation of duties: verifier differs from submitter.
+    for (const [to, op] of [
+      ["PENDING", "ops_test"],
+      ["VERIFIED", "ops_review"],
+      ["PUBLISHED", "ops_test"],
+    ] as const) {
       const r = await app.request(
         `/admin/api/knowledge/items/${item.id}/transition`,
         {
           method: "POST",
-          headers: writeHeaders(),
+          headers: writeHeaders({
+            ...ADMIN,
+            "x-operator-id": op,
+          }),
           body: JSON.stringify({ to }),
         },
       );

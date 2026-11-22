@@ -20,10 +20,6 @@ import { z } from "zod";
 import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import {
-  idempotentWrite,
-  readIdempotencyKey,
-} from "../lib/contract-guards";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   createKnowledgeItem,
@@ -31,7 +27,12 @@ import {
   KNOWLEDGE_STATUSES,
   type CreateKnowledgeItemInput,
 } from "../lib/knowledge";
-import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
+import {
+  rejectCtrl,
+  requestFingerprint,
+  requireOperatorRef,
+  runKnowledgeWrite,
+} from "./admin-operator-guard";
 import { registerKnowledgeTransitionRoutes } from "./admin-knowledge-api-mutations";
 import { registerKnowledgeCapabilityRoutes } from "./admin-knowledge-api-capabilities";
 import { registerKnowledgeRelationRoutes } from "./admin-knowledge-api-relations";
@@ -71,7 +72,13 @@ export function createAdminKnowledgeRoutes(
     async (c) => {
       const status = c.req.query("status");
       const kind = c.req.query("kind");
-      if (status !== undefined && !KNOWLEDGE_STATUSES.includes(status as never)) {
+      // "all" is a first-class filter (parity with the console) —
+      // previously rejected by the enum check before reaching here.
+      if (
+        status !== undefined &&
+        status !== "all" &&
+        !KNOWLEDGE_STATUSES.includes(status as never)
+      ) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
       }
       if (kind !== undefined && !KNOWLEDGE_KINDS.includes(kind as never)) {
@@ -130,18 +137,19 @@ export function createAdminKnowledgeRoutes(
       },
     }),
     async (c) => {
-      const key = readIdempotencyKey(c);
-      if (key instanceof Response) return key;
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const raw = await c.req.json().catch(() => null);
       const body = createBodySchema.safeParse(raw);
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad item body");
       }
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
-      const res = await idempotentWrite(
+      // Arc R1 H1: the write is bound to the canonical body — a
+      // replayed key with a different title is a 409, not a silent
+      // return of the first item.
+      return runKnowledgeWrite(
+        c,
         "POST:/admin/api/knowledge/items",
-        key,
         async () => {
           const r = await createKnowledgeItem(
             store,
@@ -159,9 +167,8 @@ export function createAdminKnowledgeRoutes(
           }
           return { status: 201, body: { item: r.item, version: r.version } };
         },
-        { owner: actorRef },
+        { owner: actorRef, fingerprint: requestFingerprint(body.data) },
       );
-      return c.json(res.body, res.status as 201);
     },
   );
 

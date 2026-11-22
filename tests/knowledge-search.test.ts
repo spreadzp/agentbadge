@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
 import {
+  addEvidence,
   createMemoryKnowledgeStores,
   createKnowledgeItem,
   transitionKnowledgeItem,
@@ -23,6 +24,7 @@ import { createTieredLimiter } from "../src/server/routes/agent-interaction/rate
  */
 
 const OP = "ops_test";
+const OP2 = "ops_review";
 
 async function publish(
   store: ReturnType<typeof createMemoryKnowledgeStores>,
@@ -36,8 +38,19 @@ async function publish(
     OP,
   );
   if (!c.ok) throw new Error("create failed");
-  for (const to of ["PENDING", "VERIFIED", "PUBLISHED"] as const) {
-    const r = await transitionKnowledgeItem(store, c.item.id, to, OP);
+  const ev = await addEvidence(store, c.version.id, {
+    type: "INTERNAL_DOC",
+    uri: `internal://runbook/${slug}`,
+    addedBy: OP,
+  });
+  if (!ev.ok) throw new Error(`evidence failed: ${ev.error}`);
+  const steps: Array<[string, string]> = [
+    ["PENDING", OP],
+    ["VERIFIED", OP2],
+    ["PUBLISHED", OP],
+  ];
+  for (const [to, actor] of steps) {
+    const r = await transitionKnowledgeItem(store, c.item.id, to, actor);
     if (!r.ok) throw new Error(`transition ${to} failed`);
   }
   return c.item;
@@ -57,7 +70,10 @@ async function leaveIn(
   if (status === "DRAFT") return c.item;
   await transitionKnowledgeItem(store, c.item.id, "PENDING", OP);
   if (status === "PENDING") return c.item;
-  await transitionKnowledgeItem(store, c.item.id, "VERIFIED", OP);
+  await addEvidence(store, c.version.id, {
+    type: "INTERNAL_DOC", uri: "internal://runbook/x", addedBy: OP,
+  });
+  await transitionKnowledgeItem(store, c.item.id, "VERIFIED", OP2);
   return c.item;
 }
 

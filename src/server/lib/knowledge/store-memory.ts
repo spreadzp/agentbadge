@@ -12,23 +12,27 @@ import type {
 } from "./store";
 import type { MemoryKnowledgeData } from "./memory-data";
 import { MemoryKnowledgeCore } from "./store-memory-core";
+import { MemoryKnowledgeGaps } from "./store-memory-gaps";
 import { MemoryKnowledgeTaxonomy } from "./store-memory-taxonomy";
 
 /**
  * EPIC-229 (SLICE-229-1): in-memory KnowledgeStore — the
  * DATABASE_ENABLED=off fallback that MUST match the Postgres
- * adapter's contract (D-143). Facade over the core-aggregate and
- * taxonomy halves (300-line file cap forced the split — mirrors the
- * DB-side KnowledgeRepository / KnowledgeTaxonomyRepository split).
+ * adapter's contract (D-143). Facade over the core-aggregate,
+ * taxonomy and gaps slices (300-line file cap forced the splits —
+ * mirrors the DB-side KnowledgeRepository /
+ * KnowledgeTaxonomyRepository split).
  */
 export class MemoryKnowledgeStore implements KnowledgeStore {
   readonly backend = "memory" as const;
   private readonly core: MemoryKnowledgeCore;
   private readonly taxonomy: MemoryKnowledgeTaxonomy;
+  private readonly gaps: MemoryKnowledgeGaps;
 
   constructor(data: MemoryKnowledgeData) {
     this.core = new MemoryKnowledgeCore(data);
     this.taxonomy = new MemoryKnowledgeTaxonomy(data);
+    this.gaps = new MemoryKnowledgeGaps(data);
   }
 
   // ─── items / versions / events ──
@@ -82,19 +86,21 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
   addEvidence = (input: KnowledgeEvidenceInsert) =>
     this.taxonomy.addEvidence(input);
   listEvidence = (versionId: string) => this.taxonomy.listEvidence(versionId);
+  getEvidence = (id: string) => this.taxonomy.getEvidence(id);
   removeEvidence = (id: string) => this.taxonomy.removeEvidence(id);
   itemsCiting = (uri: string) => this.taxonomy.itemsCiting(uri);
 
   // ─── gaps ──
-  recordGap = (input: KnowledgeGapUpsert) => this.taxonomy.recordGap(input);
-  getGap = (id: string) => this.taxonomy.getGap(id);
+  recordGap = (input: KnowledgeGapUpsert) => this.gaps.recordGap(input);
+  getGap = (id: string) => this.gaps.getGap(id);
+  countGaps = (status: string) => this.gaps.countGaps(status);
   listGaps = (opts?: {
     status?: string;
     orderBy?: "count" | "lastSeen";
     limit?: number;
-  }) => this.taxonomy.listGaps(opts);
+  }) => this.gaps.listGaps(opts);
   transitionGap = (
     id: string,
     input: { from: string; to: string; linkedItemId?: string | null },
-  ) => this.taxonomy.transitionGap(id, input);
+  ) => this.gaps.transitionGap(id, input);
 }

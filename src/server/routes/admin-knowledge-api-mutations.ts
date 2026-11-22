@@ -17,10 +17,6 @@ import { z } from "zod";
 import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import {
-  idempotentWrite,
-  readIdempotencyKey,
-} from "../lib/contract-guards";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   allowedKnowledgeTransitions,
@@ -28,7 +24,12 @@ import {
   noControlChars,
   transitionKnowledgeItem,
 } from "../lib/knowledge";
-import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
+import {
+  rejectCtrl,
+  requestFingerprint,
+  requireOperatorRef,
+  runKnowledgeWrite,
+} from "./admin-operator-guard";
 
 const transitionBodySchema = z.object({
   to: z.string(),
@@ -58,8 +59,11 @@ export function registerKnowledgeTransitionRoutes(
       },
     }),
     async (c) => {
-      const key = readIdempotencyKey(c);
-      if (key instanceof Response) return key;
+      const itemId = c.req.param("id");
+      const ctrlBad = rejectCtrl(c, itemId);
+      if (ctrlBad) return ctrlBad;
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const raw = await c.req.json().catch(() => null);
       const body = transitionBodySchema.safeParse(raw);
       if (!body.success) {
@@ -67,55 +71,47 @@ export function registerKnowledgeTransitionRoutes(
           c, 400, ErrorCodes.INVALID_INPUT, "bad transition body",
         );
       }
-      const itemId = c.req.param("id");
-      const ctrlBad = rejectCtrl(c, itemId);
-      if (ctrlBad) return ctrlBad;
       const to = body.data.to.toUpperCase();
       if (!KNOWLEDGE_STATUSES.includes(to as never)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
       }
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
 
-      try {
-        const res = await idempotentWrite(
-          `POST:/admin/api/knowledge/items/${itemId}/transition`,
-          key,
-          async () => {
-            const r = await transitionKnowledgeItem(
-              store, itemId, to, actorRef, body.data.reason ?? null,
-            );
-            if (!r.ok) {
-              const status =
-                r.error === "not_found" ? 404
-                : r.error === "ACTOR_NOT_OPERATOR" ? 403
-                : 409;
-              return {
-                status,
-                body: {
-                  error: {
-                    code:
-                      r.error === "not_found" ? "NOT_FOUND" : r.error,
-                    message: r.error,
-                    ...(r.field ? { detail: r.field } : {}),
-                  },
-                },
-              };
-            }
-            return { status: 200, body: { item: r.item, event: r.event } };
-          },
-          { owner: actorRef, resource: itemId },
-        );
-        return c.json(res.body, res.status as 200);
-      } catch (err) {
-        if (err instanceof Error && err.name === "IdempotencyConflictError") {
-          return errorResponse(
-            c, 409, ErrorCodes.CONFLICT,
-            "idempotency key reused with a different request body",
+      // Arc R1 H1: the write is bound to the canonical body — the
+      // same key under {to:PENDING} can no longer replay as
+      // {to:WITHDRAWN} and silently swallow the withdrawal.
+      return runKnowledgeWrite(
+        c,
+        `POST:/admin/api/knowledge/items/${itemId}/transition`,
+        async () => {
+          const r = await transitionKnowledgeItem(
+            store, itemId, to, actorRef, body.data.reason ?? null,
           );
-        }
-        throw err;
-      }
+          if (!r.ok) {
+            const status =
+              r.error === "not_found" ? 404
+              : r.error === "ACTOR_NOT_OPERATOR" ||
+                  r.error === "SEPARATION_OF_DUTIES" ? 403
+              : 409;
+            return {
+              status,
+              body: {
+                error: {
+                  code:
+                    r.error === "not_found" ? "NOT_FOUND" : r.error,
+                  message: r.error,
+                  ...(r.field ? { detail: r.field } : {}),
+                },
+              },
+            };
+          }
+          return { status: 200, body: { item: r.item, event: r.event } };
+        },
+        {
+          owner: actorRef,
+          resource: itemId,
+          fingerprint: requestFingerprint(body.data),
+        },
+      );
     },
   );
 

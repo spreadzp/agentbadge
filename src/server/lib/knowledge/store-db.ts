@@ -53,8 +53,13 @@ export class DbKnowledgeStore implements KnowledgeStore {
     return this.core.createItemWithVersion(item, version, event);
   }
 
-  addVersion(version: KnowledgeVersionInsert) {
-    return this.core.addVersion(version);
+  addVersion(
+    version: Omit<KnowledgeVersionInsert, "seq"> & {
+      copyEvidenceFromVersionId?: string;
+    },
+    opts?: { requireStatus?: string },
+  ) {
+    return this.core.addVersion(version, opts);
   }
 
   // ─── versions ──
@@ -154,7 +159,10 @@ export class DbKnowledgeStore implements KnowledgeStore {
     if (!r.ok) {
       return {
         ok: false as const,
-        reason: r.reason as "missing_version" | "cap_exceeded",
+        reason: r.reason as
+          | "missing_version"
+          | "cap_exceeded"
+          | "not_editable",
       };
     }
     return { ok: true as const, row: r.row };
@@ -162,6 +170,10 @@ export class DbKnowledgeStore implements KnowledgeStore {
 
   listEvidence(versionId: string) {
     return this.taxonomy.listEvidence(versionId);
+  }
+
+  getEvidence(id: string) {
+    return this.taxonomy.getEvidence(id);
   }
 
   removeEvidence(id: string) {
@@ -182,6 +194,10 @@ export class DbKnowledgeStore implements KnowledgeStore {
   async getGap(id: string) {
     const row = await this.taxonomy.getGap(id);
     return row ? mapGap(row) : null;
+  }
+
+  countGaps(status: string) {
+    return this.taxonomy.countGaps(status);
   }
 
   async listGaps(opts?: {

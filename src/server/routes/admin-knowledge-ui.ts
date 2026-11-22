@@ -29,6 +29,7 @@ import {
   relationsFor,
   listEvidence,
   supersededBy,
+  KNOWLEDGE_GAP_STATUSES,
   KNOWLEDGE_STATUSES,
 } from "../lib/knowledge";
 import { knowledgeListPage } from "../../views/admin-knowledge/list";
@@ -36,6 +37,7 @@ import { knowledgeDetailPage } from "../../views/admin-knowledge/detail";
 import { taxonomyFragment } from "../../views/admin-knowledge/detail-taxonomy";
 import { knowledgeGapsPage } from "../../views/admin-knowledge/gaps";
 import { registerKnowledgeUiMutations } from "./admin-knowledge-ui-mutations";
+import { registerKnowledgeUiTaxonomyMutations } from "./admin-knowledge-ui-mutations-taxonomy";
 
 const page = (c: Context, frag: string, title: string): Response =>
   c.html(
@@ -48,13 +50,19 @@ const page = (c: Context, frag: string, title: string): Response =>
     { "Cache-Control": "no-store" },
   );
 
+/** Arc R1 M11: flash text is server-generated, not user prose —
+ *  cap it so a param can't smuggle a paragraph into a trusted
+ *  admin banner (social-engineering surface). */
+const flashCap = (s: string | undefined) =>
+  s === undefined ? undefined : [...s].slice(0, 120).join("");
+
 export const backWith = (
   base: string,
   flash: { ok?: string; err?: string },
 ): string => {
   const q = new URLSearchParams();
-  if (flash.err) q.set("err", flash.err);
-  else if (flash.ok) q.set("ok", flash.ok);
+  if (flash.err) q.set("err", flashCap(flash.err) ?? "");
+  else if (flash.ok) q.set("ok", flashCap(flash.ok) ?? "");
   const qs = q.toString();
   return `${base}${qs ? `?${qs}` : ""}`;
 };
@@ -67,6 +75,18 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
   // POSTs — same-host Origin required when the header is present.
   app.use("/admin/knowledge/*", async (c, next) => {
     if (c.req.method !== "POST") return next();
+    // Arc R1 M11: browsers always send Sec-Fetch-Site on cross-site
+    // posts — reject explicitly; Origin stays the fallback for
+    // clients that don't send it.
+    const fetchSite = c.req.header("sec-fetch-site");
+    if (fetchSite === "cross-site" || fetchSite === "cross_origin") {
+      return errorResponse(
+        c,
+        403,
+        ErrorCodes.UNAUTHORIZED,
+        "cross-site form post refused",
+      );
+    }
     const origin = c.req.header("origin");
     if (!origin) return next();
     try {
@@ -115,6 +135,14 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
 
   app.get("/admin/knowledge/gaps", async (c) => {
     const status = c.req.query("status") ?? "OPEN";
+    // Arc R1 M8: unvalidated ?status= reached the PG driver → 500
+    // on %00 etc. Same enum + "all" contract as the JSON API.
+    if (
+      status !== "all" &&
+      !KNOWLEDGE_GAP_STATUSES.includes(status as never)
+    ) {
+      return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
+    }
     const gaps = await listGaps(store, {
       status: status === "all" ? undefined : status,
       sort: "count",
@@ -187,5 +215,6 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
   });
 
   registerKnowledgeUiMutations(app, store);
+  registerKnowledgeUiTaxonomyMutations(app, store);
   return app;
 }

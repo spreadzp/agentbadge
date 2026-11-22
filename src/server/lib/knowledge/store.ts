@@ -149,10 +149,22 @@ export interface KnowledgeStore {
     version: KnowledgeVersionInsert,
     event: KnowledgeStatusEventInsert,
   ): Promise<{ item: KnowledgeItemRecord; version: KnowledgeVersionRecord }>;
-  /** Append version + bump latestVersionId — atomic. */
+  /** Arc R1 H5: append version inside one tx that row-locks the item,
+   *  asserts status === requireStatus (default DRAFT) and computes
+   *  seq = max+1 under the lock — a concurrent submit can no longer
+   *  pin a version the reviewer never saw, and seq races can't reach
+   *  the unique index. copyEvidenceFromVersionId copies the previous
+   *  version's evidence refs into the new row atomically (D-229-9:
+   *  provenance survives re-versioning). Refusal is honest. */
   addVersion(
-    version: KnowledgeVersionInsert,
-  ): Promise<KnowledgeVersionRecord>;
+    version: Omit<KnowledgeVersionInsert, "seq"> & {
+      copyEvidenceFromVersionId?: string;
+    },
+    opts?: { requireStatus?: string },
+  ): Promise<
+    | { ok: true; version: KnowledgeVersionRecord }
+    | { ok: false; reason: "missing" | "not_draft" }
+  >;
 
   // ─── versions (append-only) ──
   getVersion(id: string): Promise<KnowledgeVersionRecord | null>;
@@ -200,21 +212,36 @@ export interface KnowledgeStore {
   addRelation(
     input: KnowledgeRelationInsert,
   ): Promise<{ row: KnowledgeRelationRecord | null; created: boolean }>;
-  removeRelation(id: string): Promise<{ removed: boolean }>;
+  /** Returns the deleted row when found — the audit event needs the
+   *  edge's endpoints + type (Arc R1 H4: no silent mutations). */
+  removeRelation(
+    id: string,
+  ): Promise<{ removed: boolean; row?: KnowledgeRelationRecord }>;
   relationsFor(itemId: string): Promise<{
     outgoing: KnowledgeRelationRecord[];
     incoming: KnowledgeRelationRecord[];
   }>;
 
   // ─── evidence ──
+  /** Arc R1 H4: refuses unless the parent item is DRAFT or PENDING
+   *  and the target is its latest version (evidence freezes once the
+   *  item leaves the review lane). */
   addEvidence(
     input: KnowledgeEvidenceInsert,
   ): Promise<
     | { ok: true; row: KnowledgeEvidenceRecord }
-    | { ok: false; reason: "missing_version" | "cap_exceeded" }
+    | {
+        ok: false;
+        reason: "missing_version" | "cap_exceeded" | "not_editable";
+      }
   >;
   listEvidence(versionId: string): Promise<KnowledgeEvidenceRecord[]>;
-  removeEvidence(id: string): Promise<{ removed: boolean }>;
+  /** Arc R1 H4: evidence lookup by id — the DRAFT+latest guard on
+   *  removeEvidence needs version → item resolution. */
+  getEvidence(id: string): Promise<KnowledgeEvidenceRecord | null>;
+  removeEvidence(
+    id: string,
+  ): Promise<{ removed: boolean; reason?: "not_editable" }>;
   itemsCiting(uri: string): Promise<KnowledgeEvidenceRecord[]>;
 
   // ─── gaps ──
@@ -222,6 +249,10 @@ export interface KnowledgeStore {
     input: KnowledgeGapUpsert,
   ): Promise<{ row: KnowledgeGapRecord; created: boolean }>;
   getGap(id: string): Promise<KnowledgeGapRecord | null>;
+  /** Arc R1 H3: backlog bound — the public ask surface creates rows,
+   *  so OPEN gaps are capped (COUNT(*) is cheap, unique key is not
+   *  a bound on DISTINCT queries). */
+  countGaps(status: string): Promise<number>;
   listGaps(opts?: {
     status?: string;
     orderBy?: "count" | "lastSeen";

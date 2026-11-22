@@ -34,7 +34,9 @@ export function isValidCapabilityName(name: string): boolean {
 export async function upsertKnowledgeCapability(
   store: KnowledgeStore,
   input: CapabilityInput,
-): Promise<KnowledgeResult<{ capability: KnowledgeCapabilityRecord }>> {
+): Promise<
+  KnowledgeResult<{ capability: KnowledgeCapabilityRecord; created: boolean }>
+> {
   if (!isValidCapabilityName(input.name)) {
     return { ok: false, error: "invalid_name", field: "name" };
   }
@@ -42,6 +44,8 @@ export async function upsertKnowledgeCapability(
     return { ok: false, error: "invalid_kind", field: "kind" };
   }
   const verified = input.source === "SEEDED";
+  // Arc R1 M3: the store computes `created` honestly (xmax=0) —
+  // pass it through instead of re-deriving it at the route.
   const r = await store.upsertCapability({
     id: `kc_${randomUUID()}`,
     name: input.name,
@@ -50,7 +54,7 @@ export async function upsertKnowledgeCapability(
     source: input.source,
     verified,
   });
-  return { ok: true, capability: r.row };
+  return { ok: true, capability: r.row, created: r.created };
 }
 
 /** Link item ↔ capability. Compound-PK dedupe — repeat = created:false. */

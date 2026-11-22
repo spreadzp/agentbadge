@@ -17,10 +17,6 @@ import { z } from "zod";
 import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import {
-  idempotentWrite,
-  readIdempotencyKey,
-} from "../lib/contract-guards";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   KNOWLEDGE_GAP_STATUSES,
@@ -30,7 +26,12 @@ import {
   noControlChars,
   wontfixGap,
 } from "../lib/knowledge";
-import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
+import {
+  rejectCtrl,
+  requestFingerprint,
+  requireOperatorRef,
+  runKnowledgeWrite,
+} from "./admin-operator-guard";
 
 const resolveBodySchema = z.object({
   linkedItemId: z
@@ -86,28 +87,37 @@ export function registerKnowledgeGapRoutes(
         },
       }),
       async (c) => {
-        const key = readIdempotencyKey(c);
-        if (key instanceof Response) return key;
         const gapId = c.req.param("id") ?? "";
         const ctrlBad = rejectCtrl(c, gapId);
         if (ctrlBad) return ctrlBad;
         const actorRef = requireOperatorRef(c);
         if (actorRef instanceof Response) return actorRef;
-        const res = await idempotentWrite(
+        // Body is parsed OUTSIDE the produce closure (Arc R1 H1):
+        // the fingerprint must cover it before the key binds.
+        const raw = action === "resolve"
+          ? await c.req.json().catch(() => null)
+          : null;
+        const body =
+          action === "resolve" ? resolveBodySchema.safeParse(raw) : null;
+        if (body && !body.success) {
+          return errorResponse(
+            c,
+            400,
+            ErrorCodes.INVALID_INPUT,
+            "linkedItemId required",
+          );
+        }
+        return runKnowledgeWrite(
+          c,
           `POST:/admin/api/knowledge/gaps/${gapId}/${action}`,
-          key,
           async () => {
-            if (action === "resolve") {
-              const body = resolveBodySchema.safeParse(
-                await c.req.json().catch(() => null),
+            if (action === "resolve" && body?.success) {
+              const r = await resolveGap(
+                store,
+                gapId,
+                body.data.linkedItemId,
+                actorRef,
               );
-              if (!body.success) {
-                return {
-                  status: 400,
-                  body: errBody("LINKED_ITEM_ID_REQUIRED"),
-                };
-              }
-              const r = await resolveGap(store, gapId, body.data.linkedItemId);
               if (!r.ok) {
                 return {
                   status: statusOf(r.error),
@@ -118,8 +128,8 @@ export function registerKnowledgeGapRoutes(
             }
             const r =
               action === "triage"
-                ? await triageGap(store, gapId)
-                : await wontfixGap(store, gapId);
+                ? await triageGap(store, gapId, actorRef)
+                : await wontfixGap(store, gapId, actorRef);
             if (!r.ok) {
               return {
                 status: statusOf(r.error),
@@ -128,9 +138,12 @@ export function registerKnowledgeGapRoutes(
             }
             return { status: 200, body: { gap: r.gap } };
           },
-          { owner: actorRef, resource: `${gapId}:${action}` },
+          {
+            owner: actorRef,
+            resource: `${gapId}:${action}`,
+            fingerprint: requestFingerprint(body?.success ? body.data : {}),
+          },
         );
-        return c.json(res.body, res.status as 200);
       },
     );
   }

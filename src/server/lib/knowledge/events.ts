@@ -27,8 +27,13 @@ export const KNOWLEDGE_EVENT_KINDS = [
   "knowledge.published",
   "knowledge.withdrawn",
   "knowledge.relation_added",
+  "knowledge.relation_removed",
   "knowledge.evidence_added",
+  "knowledge.evidence_removed",
   "knowledge.gap_detected",
+  "knowledge.gap_triaged",
+  "knowledge.gap_resolved",
+  "knowledge.gap_wontfix",
 ] as const;
 export type KnowledgeEventKind = (typeof KNOWLEDGE_EVENT_KINDS)[number];
 

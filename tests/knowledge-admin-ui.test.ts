@@ -2,9 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
 import {
+  addEvidence,
   createKnowledgeItem,
   createMemoryKnowledgeStores,
   recordGap,
+  transitionKnowledgeItem,
 } from "../src/server/lib/knowledge";
 import { createAdminKnowledgeUi } from "../src/server/routes/admin-knowledge-ui";
 
@@ -86,19 +88,34 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
     expect(page).not.toContain("Publish");
     expect(page).not.toContain("Verify");
 
-    for (const [to, marker] of [
-      ["PENDING", "Verify"],
-      ["VERIFIED", "Publish"],
-    ] as const) {
-      const t = await post(app, `/admin/knowledge/${id}/transition`, {
-        to, operator: "ui-op",
-      });
-      expect(t.status).toBe(303);
-      page = await (await get(app, `/admin/knowledge/${id}`)).text();
-      expect(page).toContain(marker);
-    }
+    const sub = await post(app, `/admin/knowledge/${id}/transition`, {
+      to: "PENDING",
+      operator: "ui-op",
+    });
+    expect(sub.status).toBe(303);
+    page = await (await get(app, `/admin/knowledge/${id}`)).text();
+    expect(page).toContain("Verify");
+
+    // Arc R1 H4: verify refuses without evidence — attach via the
+    // console form (editable while PENDING), then verify as a
+    // DIFFERENT operator (separation of duties).
+    const ev = await post(app, `/admin/knowledge/${id}/evidence/add`, {
+      type: "INTERNAL_DOC",
+      uri: "internal://runbook/ui-flow",
+      operator: "ui-op",
+    });
+    expect(ev.status).toBe(303);
+    const ver = await post(app, `/admin/knowledge/${id}/transition`, {
+      to: "VERIFIED",
+      operator: "ui-review",
+    });
+    expect(ver.status).toBe(303);
+    page = await (await get(app, `/admin/knowledge/${id}`)).text();
+    expect(page).toContain("Publish");
+
     const pub = await post(app, `/admin/knowledge/${id}/transition`, {
       to: "PUBLISHED",
+      operator: "ui-op",
     });
     expect(pub.status).toBe(303);
     page = await (await get(app, `/admin/knowledge/${id}`)).text();
@@ -142,6 +159,15 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
       store, { kind: "FAQ", slug: "fee-schedule", title: "t", body: "b" }, OP,
     );
     if (!c.ok) throw new Error("create failed");
+    // Arc R1 M7: RESOLVED requires the linked item PUBLISHED.
+    await addEvidence(store, c.version.id, {
+      type: "INTERNAL_DOC", uri: "internal://runbook/fee", addedBy: OP,
+    });
+    for (const [to, actor] of [
+      ["PENDING", OP], ["VERIFIED", "ops_review"], ["PUBLISHED", OP],
+    ] as const) {
+      await transitionKnowledgeItem(store, c.item.id, to, actor);
+    }
 
     let page = await (await get(app, "/admin/knowledge/gaps")).text();
     expect(page).toContain("what is the fee schedule");

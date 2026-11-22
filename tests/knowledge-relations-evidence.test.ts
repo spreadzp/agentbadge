@@ -126,14 +126,17 @@ describe("knowledge evidence (SLICE-229-6)", () => {
     });
     expect(missing.ok).toBe(false);
     if (!missing.ok) expect(missing.error).toBe("missing_version");
-    // Valid shapes: https:// and /path.
-    for (const uri of ["https://docs.example/x", "/internal/spec.md"]) {
-      const r = await addEvidence(store, vId, {
-        type: "EXTERNAL_URL", uri, addedBy: OP,
-      });
+    // Valid shapes: https:// for EXTERNAL_URL; /path is internal
+    // provenance — refused as an EXTERNAL_URL (Arc R1 M9).
+    for (const [type, uri] of [
+      ["EXTERNAL_URL", "https://docs.example/x"],
+      ["INTERNAL_DOC", "/internal/spec.md"],
+      ["INTERNAL_DOC", "internal://runbook/spec"],
+    ] as const) {
+      const r = await addEvidence(store, vId, { type, uri, addedBy: OP });
       expect(r.ok).toBe(true);
     }
-    expect((await listEvidence(store, vId)).length).toBe(2);
+    expect((await listEvidence(store, vId)).length).toBe(3);
   });
 
   it("cap 50 enforced; itemsCiting + removeEvidence work", async () => {

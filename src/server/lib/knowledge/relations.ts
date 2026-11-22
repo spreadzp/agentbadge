@@ -32,6 +32,32 @@ export interface KnowledgeRelations {
   incoming: KnowledgeRelationEdge[];
 }
 
+/** Arc R1 M1: does a SUPERSEDES path already run from → to?
+ *  Bounded DFS (≤32 hops) over outgoing SUPERSEDES edges. */
+const SUPERSEDES_DFS_CAP = 32;
+async function supersedesPathExists(
+  store: KnowledgeStore,
+  fromId: string,
+  toId: string,
+): Promise<boolean> {
+  const seen = new Set<string>([fromId]);
+  const stack: { id: string; depth: number }[] = [{ id: fromId, depth: 0 }];
+  while (stack.length > 0) {
+    const cur = stack.pop();
+    if (!cur || cur.depth > SUPERSEDES_DFS_CAP) continue;
+    const rels = await store.relationsFor(cur.id);
+    for (const e of rels.outgoing) {
+      if (e.type !== "SUPERSEDES") continue;
+      if (e.toItemId === toId) return true;
+      if (!seen.has(e.toItemId)) {
+        seen.add(e.toItemId);
+        stack.push({ id: e.toItemId, depth: cur.depth + 1 });
+      }
+    }
+  }
+  return false;
+}
+
 export async function addRelation(
   store: KnowledgeStore,
   input: {
@@ -57,11 +83,14 @@ export async function addRelation(
     return { ok: false, error: "missing_item", field: "toItemId" };
   }
   if (input.type === "SUPERSEDES") {
-    const incoming = await store.relationsFor(input.fromItemId);
-    const cycled = incoming.incoming.some(
-      (r) => r.type === "SUPERSEDES" && r.fromItemId === input.toItemId,
-    );
-    if (cycled) {
+    // Arc R1 M1: walk the SUPERSEDES graph, not just 2-cycles —
+    // A→B→C→A was accepted before. Bounded DFS from the new edge's
+    // target back to its source; depth cap keeps pathological
+    // graphs cheap (a deeper chain is still caught up to the cap,
+    // and anything longer is refused anyway).
+    if (
+      await supersedesPathExists(store, input.toItemId, input.fromItemId)
+    ) {
       return { ok: false, error: "supersedes_cycle", field: "type" };
     }
   }
@@ -101,6 +130,19 @@ export async function removeRelation(
   id: string,
 ): Promise<KnowledgeResult<{ removed: boolean }>> {
   const res = await store.removeRelation(id);
+  // Arc R1 H4: edge deletes are audited too — a silent relation
+  // removal rewrote the graph with no trace.
+  if (res.removed && res.row) {
+    emitKnowledgeEvent(
+      "knowledge.relation_removed",
+      {
+        relationId: res.row.id,
+        toItemId: res.row.toItemId,
+        type: res.row.type,
+      },
+      res.row.fromItemId,
+    );
+  }
   return { ok: true, removed: res.removed };
 }
 

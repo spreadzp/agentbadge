@@ -47,19 +47,29 @@ export async function restoreKnowledgeVersion(
   const source = await store.getVersionBySeq(itemId, seq);
   if (!source) return { ok: false, error: "version_not_found" };
 
+  // Arc R1 H5+H4: seq under the store's item lock + evidence copied
+  // from the LATEST version (the one under review), not the source.
   const latest = item.latestVersionId
     ? await store.getVersion(item.latestVersionId)
     : null;
-  const version = await store.addVersion({
+  const added = await store.addVersion({
     id: `kv_${randomUUID()}`,
     itemId,
-    seq: (latest?.seq ?? 0) + 1,
     title: source.title,
     body: source.body,
     summary: source.summary,
     restoredFromVersionId: source.id,
+    copyEvidenceFromVersionId: latest?.id,
     createdBy: actorRef,
   });
+  if (!added.ok) {
+    return {
+      ok: false,
+      error:
+        added.reason === "not_draft" ? "not_editable_in_status" : "not_found",
+    };
+  }
+  const version = added.version;
   emitKnowledgeEvent(
     "knowledge.version_created",
     { slug: item.slug, seq: version.seq, restoredFrom: seq, actor: actorRef },

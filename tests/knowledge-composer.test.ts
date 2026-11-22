@@ -23,6 +23,9 @@ import { createTieredLimiter } from "../src/server/routes/agent-interaction/rate
  */
 
 const OP = "ops_test";
+// Arc R1 fix: verify needs a DIFFERENT actor than submitter
+// (separation of duties) and ≥1 evidence on the version (H4).
+const OP2 = "ops_review";
 
 async function publish(
   store: ReturnType<typeof createMemoryKnowledgeStores>,
@@ -30,6 +33,7 @@ async function publish(
   title: string,
   body: string,
   summary?: string,
+  extraEvidence?: Array<{ type: string; uri: string; label?: string }>,
 ) {
   const c = await createKnowledgeItem(
     store,
@@ -37,8 +41,23 @@ async function publish(
     OP,
   );
   if (!c.ok) throw new Error(`create ${slug}: ${c.error}`);
-  for (const to of ["PENDING", "VERIFIED", "PUBLISHED"] as const) {
-    const r = await transitionKnowledgeItem(store, c.item.id, to, OP);
+  const ev = await addEvidence(store, c.version.id, {
+    type: "INTERNAL_DOC",
+    uri: `internal://runbook/${slug}`,
+    addedBy: OP,
+  });
+  if (!ev.ok) throw new Error(`evidence ${slug}: ${ev.error}`);
+  for (const e of extraEvidence ?? []) {
+    const r = await addEvidence(store, c.version.id, { ...e, addedBy: OP });
+    if (!r.ok) throw new Error(`extra evidence ${slug}: ${r.error}`);
+  }
+  const steps: Array<[string, string]> = [
+    ["PENDING", OP],
+    ["VERIFIED", OP2],
+    ["PUBLISHED", OP],
+  ];
+  for (const [to, actor] of steps) {
+    const r = await transitionKnowledgeItem(store, c.item.id, to, actor);
     if (!r.ok) throw new Error(`transition ${to}: ${r.error}`);
   }
   return c.item;
@@ -51,31 +70,35 @@ function mkStore() {
 describe("composeAnswer (SLICE-229-7)", () => {
   it("known query → ANSWERED with typed evidence sources", async () => {
     const store = mkStore();
-    const it1 = await publish(
+    await publish(
       store,
       "escrow-x402",
       "x402 escrow settlement",
       "Escrow settles via x402 pack",
       "Escrow payments settle through the x402 pack",
+      [
+        {
+          type: "API_ENDPOINT",
+          uri: "https://api.example/x402",
+          label: "x402 api",
+        },
+      ],
     );
-    const v = it1.publishedVersionId ?? "";
-    await addEvidence(store, v, {
-      type: "X402_PACK" as never,
-      uri: "https://docs.example/x402",
-      addedBy: OP,
-    }).catch(() => undefined);
-    await addEvidence(store, v, {
-      type: "API_ENDPOINT",
-      uri: "https://api.example/x402",
-      label: "x402 api",
-      addedBy: OP,
-    });
     const a = await composeAnswer(store, "escrow x402 settlement");
     expect(a.status).toBe("ANSWERED");
     expect(a.sources.length).toBeGreaterThanOrEqual(1);
     expect(a.sources[0]?.slug).toBe("escrow-x402");
-    expect(a.sources[0]?.evidence).toHaveLength(1);
-    expect(a.sources[0]?.evidence[0]?.type).toBe("API_ENDPOINT");
+    // Evidence lands pre-publish (immutable after); INTERNAL_DOC's
+    // uri is redacted in the public payload (Arc R1 H4).
+    const types = a.sources[0]?.evidence.map((e) => e.type) ?? [];
+    expect(types).toContain("API_ENDPOINT");
+    expect(types).toContain("INTERNAL_DOC");
+    expect(
+      a.sources[0]?.evidence.find((e) => e.type === "INTERNAL_DOC")?.uri,
+    ).toBeNull();
+    expect(
+      a.sources[0]?.evidence.find((e) => e.type === "API_ENDPOINT")?.uri,
+    ).toBe("https://api.example/x402");
     expect(a.answerText).toContain("verified knowledge");
     expect(a.confidence).toBeGreaterThanOrEqual(0.6);
     expect(a.reason).toBeNull();
@@ -88,6 +111,7 @@ describe("composeAnswer (SLICE-229-7)", () => {
     const gapRecorder: KnowledgeGapRecorder = {
       recordGap(input) {
         gaps.push({ query: input.query, source: input.source });
+        return true;
       },
     };
     const a = await composeAnswer(store, "zzzy nonexistent topic", {

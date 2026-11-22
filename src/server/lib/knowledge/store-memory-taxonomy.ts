@@ -1,18 +1,15 @@
 import type {
   KnowledgeCapabilityUpsert,
   KnowledgeEvidenceInsert,
-  KnowledgeGapUpsert,
   KnowledgeRelationInsert,
 } from "./store";
 import type {
   KnowledgeCapabilityRecord,
   KnowledgeEvidenceRecord,
-  KnowledgeGapRecord,
   KnowledgeRelationRecord,
 } from "./types";
 import {
   KNOWLEDGE_EVIDENCE_CAP,
-  KNOWLEDGE_GAP_SAMPLES_CAP,
   linkKey,
   nowIso,
   type MemoryKnowledgeData,
@@ -34,11 +31,18 @@ export class MemoryKnowledgeTaxonomy {
       (c) => c.name === input.name,
     );
     if (existing) {
-      existing.kind = input.kind;
-      existing.description = input.description ?? null;
-      existing.verified = input.verified;
-      existing.source = input.source;
-      existing.updatedAt = nowIso();
+      // Arc R1 M3: a MANUAL upsert must not silently downgrade a
+      // SEEDED entry — code-derived fields survive; a SEEDED refresh
+      // still updates them.
+      const seededProtected =
+        existing.source === "SEEDED" && input.source !== "SEEDED";
+      if (!seededProtected) {
+        existing.kind = input.kind;
+        existing.description = input.description ?? null;
+        existing.verified = input.verified;
+        if (input.source === "SEEDED") existing.source = "SEEDED";
+        existing.updatedAt = nowIso();
+      }
       return { row: existing, created: false };
     }
     const now = nowIso();
@@ -136,7 +140,9 @@ export class MemoryKnowledgeTaxonomy {
   }
 
   async removeRelation(id: string) {
-    return { removed: this.data.relations.delete(id) };
+    const row = this.data.relations.get(id);
+    const removed = this.data.relations.delete(id);
+    return removed ? { removed: true, row } : { removed: false };
   }
 
   async relationsFor(itemId: string) {
@@ -146,14 +152,33 @@ export class MemoryKnowledgeTaxonomy {
       if (r.fromItemId === itemId) outgoing.push(r);
       if (r.toItemId === itemId) incoming.push(r);
     }
-    return { outgoing, incoming };
+    const byEdge = (
+      a: KnowledgeRelationRecord,
+      b: KnowledgeRelationRecord,
+    ) => a.type.localeCompare(b.type) || a.id.localeCompare(b.id);
+    return {
+      outgoing: outgoing.sort(byEdge),
+      incoming: incoming.sort(byEdge),
+    };
   }
 
   // ─── evidence ──
 
   async addEvidence(input: KnowledgeEvidenceInsert) {
-    if (!this.data.versions.has(input.versionId)) {
+    const version = this.data.versions.get(input.versionId);
+    if (!version) {
       return { ok: false as const, reason: "missing_version" as const };
+    }
+    // Arc R1 H4: evidence is immutable once the item leaves the
+    // review lane — editable while DRAFT or PENDING (the version a
+    // verifier examines), always on the LATEST version only.
+    const item = this.data.items.get(version.itemId);
+    if (
+      !item ||
+      (item.status !== "DRAFT" && item.status !== "PENDING") ||
+      item.latestVersionId !== input.versionId
+    ) {
+      return { ok: false as const, reason: "not_editable" as const };
     }
     const count = [...this.data.evidence.values()].filter(
       (e) => e.versionId === input.versionId,
@@ -180,92 +205,26 @@ export class MemoryKnowledgeTaxonomy {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
+  async getEvidence(id: string) {
+    return this.data.evidence.get(id) ?? null;
+  }
+
   async removeEvidence(id: string) {
+    const row = this.data.evidence.get(id);
+    if (!row) return { removed: false };
+    const version = this.data.versions.get(row.versionId);
+    const item = version ? this.data.items.get(version.itemId) : null;
+    if (
+      !item ||
+      (item.status !== "DRAFT" && item.status !== "PENDING") ||
+      item.latestVersionId !== row.versionId
+    ) {
+      return { removed: false, reason: "not_editable" as const };
+    }
     return { removed: this.data.evidence.delete(id) };
   }
 
   async itemsCiting(uri: string) {
     return [...this.data.evidence.values()].filter((e) => e.uri === uri);
-  }
-
-  // ─── gaps ──
-
-  async recordGap(input: KnowledgeGapUpsert) {
-    const now = nowIso();
-    for (const gap of this.data.gaps.values()) {
-      if (gap.normalizedQuery !== input.normalizedQuery) continue;
-      gap.count += 1;
-      gap.lastSeenAt = now;
-      if (gap.capabilityRef == null && input.capabilityRef != null) {
-        gap.capabilityRef = input.capabilityRef;
-      }
-      if (gap.intent == null && input.intent != null) {
-        gap.intent = input.intent;
-      }
-      if (
-        gap.sampleQueries.length < KNOWLEDGE_GAP_SAMPLES_CAP &&
-        !gap.sampleQueries.includes(input.sampleQuery)
-      ) {
-        gap.sampleQueries.push(input.sampleQuery);
-      }
-      return { row: gap, created: false };
-    }
-    const gap: KnowledgeGapRecord = {
-      id: input.id,
-      normalizedQuery: input.normalizedQuery,
-      sampleQueries: [input.sampleQuery],
-      count: 1,
-      capabilityRef: input.capabilityRef ?? null,
-      intent: input.intent ?? null,
-      source: input.source,
-      sourceRef: input.sourceRef ?? null,
-      status: "OPEN",
-      linkedItemId: null,
-      firstSeenAt: now,
-      lastSeenAt: now,
-    };
-    this.data.gaps.set(gap.id, gap);
-    return { row: gap, created: true };
-  }
-
-  async getGap(id: string) {
-    return this.data.gaps.get(id) ?? null;
-  }
-
-  async listGaps(opts?: {
-    status?: string;
-    orderBy?: "count" | "lastSeen";
-    limit?: number;
-  }) {
-    let rows = [...this.data.gaps.values()];
-    if (opts?.status !== undefined) {
-      rows = rows.filter((g) => g.status === opts.status);
-    }
-    rows.sort(
-      opts?.orderBy === "lastSeen"
-        ? (a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt)
-        : (a, b) => b.count - a.count,
-    );
-    return rows.slice(0, opts?.limit ?? 500);
-  }
-
-  async transitionGap(
-    id: string,
-    input: { from: string; to: string; linkedItemId?: string | null },
-  ) {
-    const gap = this.data.gaps.get(id);
-    if (!gap) {
-      return { gap: null, transitioned: false, reason: "missing" as const };
-    }
-    if (gap.status !== input.from) {
-      return {
-        gap,
-        transitioned: false,
-        reason: "status_mismatch" as const,
-      };
-    }
-    gap.status = input.to;
-    if (input.linkedItemId !== undefined) gap.linkedItemId = input.linkedItemId;
-    return { gap, transitioned: true };
   }
 }

@@ -50,7 +50,10 @@ export class MemoryKnowledgeCore {
     if (opts?.kind !== undefined) {
       rows = rows.filter((r) => r.kind === opts.kind);
     }
-    rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    rows.sort(
+      (a, b) =>
+        b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id),
+    );
     return rows.slice(0, opts?.limit ?? 500);
   }
 
@@ -97,20 +100,30 @@ export class MemoryKnowledgeCore {
     return { item: it, version: v };
   }
 
-  /** Append version + bump latestVersionId — atomic. */
-  async addVersion(version: KnowledgeVersionInsert) {
-    const dup = [...this.data.versions.values()].some(
-      (v) => v.itemId === version.itemId && v.seq === version.seq,
-    );
-    if (dup) {
-      throw new Error(
-        `knowledge version unique violation: (${version.itemId}, ${version.seq})`,
-      );
+  /** Arc R1 H5: same contract as the DB adapter — assert required
+   *  status (DRAFT), compute seq = max+1, copy evidence refs from
+   *  the prior version when asked. Single-threaded maps make the
+   *  composite trivially atomic. */
+  async addVersion(
+    version: Omit<KnowledgeVersionInsert, "seq"> & {
+      copyEvidenceFromVersionId?: string;
+    },
+    opts?: { requireStatus?: string },
+  ) {
+    const item = this.data.items.get(version.itemId);
+    if (!item) return { ok: false as const, reason: "missing" as const };
+    const requireStatus = opts?.requireStatus ?? "DRAFT";
+    if (item.status !== requireStatus) {
+      return { ok: false as const, reason: "not_draft" as const };
+    }
+    let seq = 1;
+    for (const v of this.data.versions.values()) {
+      if (v.itemId === version.itemId && v.seq >= seq) seq = v.seq + 1;
     }
     const v: KnowledgeVersionRecord = {
       id: version.id,
       itemId: version.itemId,
-      seq: version.seq,
+      seq,
       title: version.title,
       body: version.body,
       summary: version.summary ?? null,
@@ -119,12 +132,20 @@ export class MemoryKnowledgeCore {
       createdAt: nowIso(),
     };
     this.data.versions.set(v.id, v);
-    const item = this.data.items.get(version.itemId);
-    if (item) {
-      item.latestVersionId = v.id;
-      item.updatedAt = v.createdAt;
+    if (version.copyEvidenceFromVersionId) {
+      for (const e of this.data.evidence.values()) {
+        if (e.versionId !== version.copyEvidenceFromVersionId) continue;
+        const copy: typeof e = {
+          ...e,
+          id: `kev_${crypto.randomUUID()}`,
+          versionId: v.id,
+        };
+        this.data.evidence.set(copy.id, copy);
+      }
     }
-    return v;
+    item.latestVersionId = v.id;
+    item.updatedAt = v.createdAt;
+    return { ok: true as const, version: v };
   }
 
   // ─── versions ──
@@ -221,7 +242,9 @@ export class MemoryKnowledgeCore {
         rank,
       });
     }
-    out.sort((a, b) => b.rank - a.rank);
+    // Arc R1 M5: rank ties get a stable tiebreak (slug asc) — same
+    // ordering contract as the FTS path.
+    out.sort((a, b) => b.rank - a.rank || a.slug.localeCompare(b.slug));
     return out.slice(0, opts.limit ?? 20);
   }
 

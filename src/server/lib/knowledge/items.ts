@@ -33,15 +33,10 @@ export type KnowledgeResult<T> =
   | ({ ok: true } & T)
   | { ok: false; error: string; field?: string };
 
-async function nextSeq(
-  store: KnowledgeStore,
-  item: KnowledgeItemRecord,
-): Promise<number> {
-  const latest = item.latestVersionId
-    ? await store.getVersion(item.latestVersionId)
-    : null;
-  return (latest?.seq ?? 0) + 1;
-}
+/** Arc R1 M12: unique-index races (concurrent same-slug creates)
+ *  surface as honest slug_taken instead of a driver 500. */
+const isUniqueLike = (err: unknown) =>
+  /unique|duplicate/i.test(err instanceof Error ? err.message : String(err));
 
 export async function createKnowledgeItem(
   store: KnowledgeStore,
@@ -80,7 +75,8 @@ export async function createKnowledgeItem(
   }
 
   const itemId = `ki_${randomUUID()}`;
-  const { item, version } = await store.createItemWithVersion(
+  const created = await store
+    .createItemWithVersion(
     {
       id: itemId,
       slug,
@@ -105,7 +101,14 @@ export async function createKnowledgeItem(
       actor: actorRef,
       reason: "created",
     },
-  );
+    ).catch((err: unknown) => {
+      if (isUniqueLike(err)) {
+        return null;
+      }
+      throw err;
+    });
+  if (!created) return { ok: false, error: "slug_taken", field: "slug" };
+  const { item, version } = created;
   emitKnowledgeEvent(
     "knowledge.created",
     { slug: item.slug, kind: item.kind, actor: actorRef },
@@ -146,18 +149,44 @@ export async function updateKnowledgeDraft(
   const prev = item.latestVersionId
     ? await store.getVersion(item.latestVersionId)
     : null;
-  const version = await store.addVersion({
-    id: `kv_${randomUUID()}`,
-    itemId,
-    seq: await nextSeq(store, item),
+  const merged = {
     title: input.title ?? prev?.title ?? "",
     body: input.body ?? prev?.body ?? "",
     summary:
       input.summary === undefined
         ? (prev?.summary ?? null)
         : (input.summary ?? null),
+  };
+  // No-op saves append no version (and emit no event) — an identical
+  // merge is reported honestly instead of inflating the audit trail.
+  if (
+    prev &&
+    merged.title === prev.title &&
+    merged.body === prev.body &&
+    merged.summary === prev.summary
+  ) {
+    return { ok: true, item, version: prev };
+  }
+  // Arc R1 H5+H4: the store locks the item row, re-asserts DRAFT,
+  // computes seq under the lock and copies the previous version's
+  // evidence refs — provenance survives re-versioning.
+  const added = await store.addVersion({
+    id: `kv_${randomUUID()}`,
+    itemId,
+    title: merged.title,
+    body: merged.body,
+    summary: merged.summary,
+    copyEvidenceFromVersionId: prev?.id,
     createdBy: actorRef,
   });
+  if (!added.ok) {
+    return {
+      ok: false,
+      error:
+        added.reason === "not_draft" ? "not_editable_in_status" : "not_found",
+    };
+  }
+  const version = added.version;
   emitKnowledgeEvent(
     "knowledge.version_created",
     { slug: item.slug, seq: version.seq, actor: actorRef },

@@ -19,9 +19,33 @@ import {
 
 const URI_MAX = 1000;
 
-/** http(s)://… or a /path/to/thing — nothing exotic on a trust ref.
- *  \u0000 excluded explicitly (\S doesn't cover it; PG can't store it). */
-const URI_RE = /^(https?:\/\/[^\s\u0000]+|\/[^\s\u0000]*)$/;
+/** Types whose URI must be a fetchable absolute http(s) URL —
+ *  an "external" claim backed by a site-local path is nonsense. */
+const HTTP_ONLY_EVIDENCE = new Set(["EXTERNAL_URL", "ONCHAIN_TX"]);
+
+/** Arc R1 M9: URI shape is parsed, not regex'd — `//host` and `/\x`
+ *  were protocol-relative/backslash smuggles agents resolve as
+ *  external URLs; control chars beyond NUL slipped through \S.
+ *  Schemes: http(s) everywhere; `internal:` + site-local `/path`
+ *  for internal provenance types (seed/docs use them). */
+function isValidEvidenceUri(type: string, uri: string): boolean {
+  if (/[\p{C}\s]/u.test(uri)) return false;
+  if (uri.startsWith("/")) {
+    return (
+      !HTTP_ONLY_EVIDENCE.has(type) &&
+      uri.length > 1 &&
+      uri[1] !== "/" &&
+      uri[1] !== "\\"
+    );
+  }
+  try {
+    const u = new URL(uri);
+    if (u.protocol === "https:" || u.protocol === "http:") return true;
+    return u.protocol === "internal:" && !HTTP_ONLY_EVIDENCE.has(type);
+  } catch {
+    return false;
+  }
+}
 
 export async function addEvidence(
   store: KnowledgeStore,
@@ -44,7 +68,11 @@ export async function addEvidence(
   ) {
     return { ok: false, error: "invalid_label", field: "label" };
   }
-  if (uri.length === 0 || uri.length > URI_MAX || !URI_RE.test(uri)) {
+  if (
+    uri.length === 0 ||
+    uri.length > URI_MAX ||
+    !isValidEvidenceUri(input.type, uri)
+  ) {
     return {
       ok: false,
       error: "invalid_uri",
@@ -63,7 +91,11 @@ export async function addEvidence(
     return {
       ok: false,
       error:
-        res.reason === "cap_exceeded" ? "evidence_cap" : "missing_version",
+        res.reason === "cap_exceeded"
+          ? "evidence_cap"
+          : res.reason === "not_editable"
+            ? "not_editable_in_status"
+            : "missing_version",
     };
   }
   emitKnowledgeEvent("knowledge.evidence_added", {
@@ -95,5 +127,13 @@ export async function removeEvidence(
   id: string,
 ): Promise<KnowledgeResult<{ removed: boolean }>> {
   const res = await store.removeEvidence(id);
+  // Arc R1 H4: published/non-draft evidence is immutable — the
+  // store's not_editable refusal maps to an honest error.
+  if (res.reason === "not_editable") {
+    return { ok: false, error: "not_editable_in_status" };
+  }
+  if (res.removed) {
+    emitKnowledgeEvent("knowledge.evidence_removed", { evidenceId: id });
+  }
   return { ok: true, removed: res.removed };
 }

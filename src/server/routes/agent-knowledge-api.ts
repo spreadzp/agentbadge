@@ -24,6 +24,7 @@ import {
   KNOWLEDGE_KINDS,
   composeAnswer,
   noControlChars,
+  noCtrlStrict,
   searchKnowledgeItems,
   type KnowledgeGapRecorder,
 } from "../lib/knowledge";
@@ -53,7 +54,10 @@ function searchLimiterKey(c: Context): string {
   if (typeof agentId === "string" && agentId.length > 0) {
     return `key:${agentId}`;
   }
-  return `ip:${resolveClientIp(c)}:${c.req.path}`;
+  // Arc R1 M13: one shared anon bucket for search+ask — path-suffixed
+  // keys gave an anonymous caller 2x the intended budget (10/min on
+  // EACH surface). Identity-keyed tiers stay per-actor anyway.
+  return `ip:${resolveClientIp(c)}:knowledge`;
 }
 
 function tooMany(c: Context, surface: string) {
@@ -67,8 +71,11 @@ function tooMany(c: Context, surface: string) {
 }
 
 const askBodySchema = z.object({
+  // trim BEFORE length checks — "a " previously passed min(2) then
+  // trimmed to "a" and died in the gap recorder instead of a 400.
   query: z
     .string()
+    .trim()
     .min(2)
     .max(500)
     .refine(noControlChars, { message: "control characters not allowed" }),
@@ -91,6 +98,11 @@ export function createAgentKnowledgeRoutes(
       limits: SEARCH_TIER_LIMITS,
       globalKey: "g:knowledge-search",
       globalMax: SEARCH_GLOBAL_MAX,
+      // Arc R1 M13: anon rotation-flood can't starve DID/API_KEY
+      // tiers out of the shared global bucket (228 H1 class).
+      tierGroups: {
+        ANON: { key: "g:knowledge-search:anon", max: SEARCH_GLOBAL_MAX / 10 },
+      },
     });
 
   const rateLimit = (surface: string): MiddlewareHandler => {
@@ -137,13 +149,16 @@ export function createAgentKnowledgeRoutes(
       if (kind !== undefined && !KNOWLEDGE_KINDS.includes(kind as never)) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad kind");
       }
-      const limitParam = Number(c.req.query("limit") ?? String(LIMIT_DEFAULT));
-      const limit =
-        Number.isFinite(limitParam) && limitParam > 0
-          ? Math.min(Math.floor(limitParam), LIMIT_MAX)
-          : LIMIT_DEFAULT;
+      const limitRaw = c.req.query("limit") ?? String(LIMIT_DEFAULT);
+      // Arc R1 nit: Number() accepts "0x10"/"1e1" — digits only.
+      const limit = /^\d{1,3}$/.test(limitRaw)
+        ? Math.min(Math.max(parseInt(limitRaw, 10), 1), LIMIT_MAX)
+        : LIMIT_DEFAULT;
       const capability = c.req.query("capability");
-      if (capability !== undefined && !noControlChars(capability)) {
+      if (
+        capability !== undefined &&
+        (capability.length > 200 || !noCtrlStrict(capability))
+      ) {
         return errorResponse(
           c,
           400,
@@ -199,7 +214,7 @@ export function createAgentKnowledgeRoutes(
           "query must be 2..500 chars",
         );
       }
-      const answer = await composeAnswer(store, body.data.query.trim(), {
+      const answer = await composeAnswer(store, body.data.query, {
         gapRecorder: deps.gapRecorder,
       });
       return c.json(answer, 200);

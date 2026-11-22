@@ -14,6 +14,8 @@
  *    `Deprecation: true` + `Sunset`. If a route already emits Deprecation,
  *    we don't clobber it — `Warning: 299` is appended instead.
  */
+import { createHash } from "node:crypto";
+
 import type { Context, MiddlewareHandler } from "hono";
 import { z } from "zod";
 import { CONTRACT_LIMITS } from "./machine-entry";
@@ -95,6 +97,31 @@ export interface IdempotentScope {
   resource?: string;
   /** sha256(canonicalJson(body)) — same key + different body = conflict. */
   fingerprint?: string;
+  /** Arc-229 R1 H1: cache only statuses < 400 — a stored failure
+   *  (400/409/404) otherwise replays forever even after the caller
+   *  fixed state and retries honestly. Default true = legacy behavior
+   *  for older call sites; knowledge admin writes pass false. */
+  cacheErrors?: boolean;
+}
+
+/** sha256 over canonical JSON (recursively sorted object keys) —
+ *  the body fingerprint knowledge admin writes bind to their
+ *  idempotency key (Arc R1 H1). */
+export function requestFingerprint(value: unknown): string {
+  const canonical = JSON.stringify(value, (_k, v) =>
+    v !== null && typeof v === "object" && !Array.isArray(v)
+      ? Object.keys(v as Record<string, unknown>)
+          .sort()
+          .reduce(
+            (acc, k) => ({
+              ...acc,
+              [k]: (v as Record<string, unknown>)[k],
+            }),
+            {},
+          )
+      : v,
+  );
+  return createHash("sha256").update(canonical).digest("hex");
 }
 
 /** Thrown when a key is reused under a different body fingerprint. */
@@ -164,6 +191,16 @@ export async function idempotentWrite(
 
   const exec = (async (): Promise<IdempotentResult> => {
     const stored = await produce();
+    // Arc-229 R1 H1: callers may refuse caching failures — a stale
+    // 4xx under the key must not shadow an honest later retry.
+    if (stored.status >= 400 && opts?.cacheErrors === false) {
+      return {
+        status: stored.status,
+        body: stored.body as Record<string, unknown>,
+        duplicate: false,
+        fingerprint: opts?.fingerprint,
+      };
+    }
     if (dedupeStore.size >= IDEM_MAX_ENTRIES) {
       // FIFO evict oldest — Map preserves insertion order.
       const oldest = dedupeStore.keys().next().value;

@@ -23,10 +23,6 @@ import { z } from "zod";
 import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import {
-  idempotentWrite,
-  readIdempotencyKey,
-} from "../lib/contract-guards";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   addEvidence,
@@ -39,7 +35,12 @@ import {
   noControlChars,
   supersededBy,
 } from "../lib/knowledge";
-import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
+import {
+  rejectCtrl,
+  requestFingerprint,
+  requireOperatorRef,
+  runKnowledgeWrite,
+} from "./admin-operator-guard";
 
 const idField = z
   .string()
@@ -78,19 +79,17 @@ export function registerKnowledgeRelationRoutes(
       },
     }),
     async (c) => {
-      const key = readIdempotencyKey(c);
-      if (key instanceof Response) return key;
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const body = relationBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad relation body");
       }
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
-      const res = await idempotentWrite(
+      return runKnowledgeWrite(
+        c,
         "POST:/admin/api/knowledge/relations",
-        key,
         async () => {
           const r = await addRelation(store, { ...body.data, actorRef });
           if (!r.ok) {
@@ -101,9 +100,12 @@ export function registerKnowledgeRelationRoutes(
           }
           return { status: 200, body: { relation: r.relation, created: r.created } };
         },
-        { owner: actorRef, resource: `${body.data.fromItemId}:${body.data.toItemId}:${body.data.type}` },
+        {
+          owner: actorRef,
+          resource: `${body.data.fromItemId}:${body.data.toItemId}:${body.data.type}`,
+          fingerprint: requestFingerprint(body.data),
+        },
       );
-      return c.json(res.body, res.status as 200);
     },
   );
 
@@ -116,27 +118,28 @@ export function registerKnowledgeRelationRoutes(
       responses: { 200: { description: "{removed}" } },
     }),
     async (c) => {
-      const key = readIdempotencyKey(c);
-      if (key instanceof Response) return key;
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const body = removeRelationBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "relationId required");
       }
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
-      const res = await idempotentWrite(
+      return runKnowledgeWrite(
+        c,
         "POST:/admin/api/knowledge/relations/remove",
-        key,
         async () => {
           const r = await removeRelation(store, body.data.relationId);
           if (!r.ok) return { status: 400, body: errBody(r.error.toUpperCase()) };
           return { status: 200, body: { removed: r.removed } };
         },
-        { owner: actorRef, resource: body.data.relationId },
+        {
+          owner: actorRef,
+          resource: body.data.relationId,
+          fingerprint: requestFingerprint(body.data),
+        },
       );
-      return c.json(res.body, res.status as 200);
     },
   );
 
@@ -170,22 +173,20 @@ export function registerKnowledgeRelationRoutes(
       },
     }),
     async (c) => {
-      const key = readIdempotencyKey(c);
-      if (key instanceof Response) return key;
+      const versionId = c.req.param("vid") ?? "";
+      const ctrlBad = rejectCtrl(c, versionId);
+      if (ctrlBad) return ctrlBad;
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const body = evidenceBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad evidence body");
       }
-      const versionId = c.req.param("vid") ?? "";
-      const ctrlBad = rejectCtrl(c, versionId);
-      if (ctrlBad) return ctrlBad;
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
-      const res = await idempotentWrite(
+      return runKnowledgeWrite(
+        c,
         `POST:/admin/api/knowledge/versions/${versionId}/evidence`,
-        key,
         async () => {
           const r = await addEvidence(store, versionId, {
             ...body.data,
@@ -193,15 +194,21 @@ export function registerKnowledgeRelationRoutes(
           });
           if (!r.ok) {
             return {
-              status: r.error === "missing_version" ? 404 : 400,
+              status:
+                r.error === "missing_version" ? 404
+                : r.error === "not_editable_in_status" ? 409
+                : 400,
               body: errBody(r.error.toUpperCase()),
             };
           }
           return { status: 200, body: { evidence: r.evidence } };
         },
-        { owner: actorRef, resource: `${versionId}:${body.data.uri}` },
+        {
+          owner: actorRef,
+          resource: `${versionId}:${body.data.uri}`,
+          fingerprint: requestFingerprint(body.data),
+        },
       );
-      return c.json(res.body, res.status as 200);
     },
   );
 
@@ -235,27 +242,33 @@ export function registerKnowledgeRelationRoutes(
       responses: { 200: { description: "{removed}" } },
     }),
     async (c) => {
-      const key = readIdempotencyKey(c);
-      if (key instanceof Response) return key;
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const body = removeEvidenceBodySchema.safeParse(
         await c.req.json().catch(() => null),
       );
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "evidenceId required");
       }
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
-      const res = await idempotentWrite(
+      return runKnowledgeWrite(
+        c,
         "POST:/admin/api/knowledge/evidence/remove",
-        key,
         async () => {
           const r = await removeEvidence(store, body.data.evidenceId);
-          if (!r.ok) return { status: 400, body: errBody(r.error.toUpperCase()) };
+          if (!r.ok) {
+            return {
+              status: r.error === "not_editable_in_status" ? 409 : 400,
+              body: errBody(r.error.toUpperCase()),
+            };
+          }
           return { status: 200, body: { removed: r.removed } };
         },
-        { owner: actorRef, resource: body.data.evidenceId },
+        {
+          owner: actorRef,
+          resource: body.data.evidenceId,
+          fingerprint: requestFingerprint(body.data),
+        },
       );
-      return c.json(res.body, res.status as 200);
     },
   );
 

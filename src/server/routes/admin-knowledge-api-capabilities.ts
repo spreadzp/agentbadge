@@ -16,10 +16,6 @@ import { z } from "zod";
 import { adminAuth } from "../middleware/adminAuth";
 import { errorResponse } from "../lib/error-response";
 import { ErrorCodes } from "../lib/error-codes";
-import {
-  idempotentWrite,
-  readIdempotencyKey,
-} from "../lib/contract-guards";
 import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   linkItemCapability,
@@ -29,7 +25,12 @@ import {
   KNOWLEDGE_CAPABILITY_KINDS,
   noControlChars,
 } from "../lib/knowledge";
-import { rejectCtrl, requireOperatorRef } from "./admin-operator-guard";
+import {
+  rejectCtrl,
+  requestFingerprint,
+  requireOperatorRef,
+  runKnowledgeWrite,
+} from "./admin-operator-guard";
 
 const capBodySchema = z.object({
   name: z
@@ -95,17 +96,15 @@ export function registerKnowledgeCapabilityRoutes(
       },
     }),
     async (c) => {
-      const key = readIdempotencyKey(c);
-      if (key instanceof Response) return key;
+      const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
       const body = capBodySchema.safeParse(await c.req.json().catch(() => null));
       if (!body.success) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad capability body");
       }
-      const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
-      const res = await idempotentWrite(
+      return runKnowledgeWrite(
+        c,
         "POST:/admin/api/knowledge/capabilities",
-        key,
         async () => {
           const r = await upsertKnowledgeCapability(store, {
             name: body.data.name,
@@ -116,18 +115,15 @@ export function registerKnowledgeCapabilityRoutes(
           if (!r.ok) {
             return { status: 400, body: errBody(r.error.toUpperCase()) };
           }
-          const existing = await store.getCapabilityByName(body.data.name);
+          // Arc R1 M3: `created` comes from the store's xmax check —
+          // the old re-read compared createdAt to itself (always true).
           return {
             status: 200,
-            body: {
-              capability: r.capability,
-              created: existing?.createdAt === r.capability.createdAt,
-            },
+            body: { capability: r.capability, created: r.created },
           };
         },
-        { owner: actorRef },
+        { owner: actorRef, fingerprint: requestFingerprint(body.data) },
       );
-      return c.json(res.body, res.status as 200);
     },
   );
 
@@ -145,23 +141,21 @@ export function registerKnowledgeCapabilityRoutes(
         },
       }),
       async (c) => {
-        const key = readIdempotencyKey(c);
-        if (key instanceof Response) return key;
+        const itemId = c.req.param("id") ?? "";
+        const ctrlBad = rejectCtrl(c, itemId);
+        if (ctrlBad) return ctrlBad;
+        const actorRef = requireOperatorRef(c);
+        if (actorRef instanceof Response) return actorRef;
         const body = linkBodySchema.safeParse(
           await c.req.json().catch(() => null),
         );
         if (!body.success) {
           return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "capabilityId required");
         }
-        const itemId = c.req.param("id") ?? "";
-        const ctrlBad = rejectCtrl(c, itemId);
-        if (ctrlBad) return ctrlBad;
         const capabilityId = body.data.capabilityId;
-        const actorRef = requireOperatorRef(c);
-        if (actorRef instanceof Response) return actorRef;
-        const res = await idempotentWrite(
+        return runKnowledgeWrite(
+          c,
           `POST:/admin/api/knowledge/items/${itemId}/capabilities`,
-          key,
           async () => {
             if (unlink) {
               const r = await unlinkItemCapability(store, itemId, capabilityId);
@@ -178,9 +172,9 @@ export function registerKnowledgeCapabilityRoutes(
           {
             owner: actorRef,
             resource: `${itemId}:${capabilityId}:${unlink ? "unlink" : "link"}`,
+            fingerprint: requestFingerprint({ ...body.data, unlink }),
           },
         );
-        return c.json(res.body, res.status as 200);
       },
     );
   }

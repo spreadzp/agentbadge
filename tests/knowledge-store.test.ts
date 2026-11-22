@@ -51,20 +51,36 @@ describe("MemoryKnowledgeStore (SLICE-229-1 contract)", () => {
   it("addVersion is append-only + bumps latestVersionId", async () => {
     const s = createMemoryKnowledgeStores();
     const { item } = await mkItem(s, "v-test");
-    const v2 = await s.addVersion({
-      id: id("kv"), itemId: item.id, seq: 2, title: "t2", body: "b2",
+    const r2 = await s.addVersion({
+      id: id("kv"), itemId: item.id, title: "t2", body: "b2",
       createdBy: "ops",
     });
-    expect((await s.getItem(item.id))?.latestVersionId).toBe(v2.id);
+    expect(r2.ok).toBe(true);
+    if (!r2.ok) throw new Error("expected ok");
+    expect(r2.version.seq).toBe(2);
+    expect((await s.getItem(item.id))?.latestVersionId).toBe(r2.version.id);
     expect((await s.listVersions(item.id)).map((v) => v.seq)).toEqual([2, 1]);
     expect((await s.getVersionBySeq(item.id, 1))?.title).toBe("t");
-    // (itemId, seq) dup → throw (append-only integrity).
-    await expect(
-      s.addVersion({
-        id: id("kv"), itemId: item.id, seq: 2, title: "x", body: "x",
-        createdBy: "ops",
-      }),
-    ).rejects.toThrow();
+    // seq computed under the item lock — a third append lands at 3.
+    const r3 = await s.addVersion({
+      id: id("kv"), itemId: item.id, title: "t3", body: "b3",
+      createdBy: "ops",
+    });
+    expect(r3.ok && r3.version.seq).toBe(3);
+    // Arc R1 H5: non-DRAFT → honest refusal, nothing written.
+    await s.transitionItem(item.id, {
+      from: "DRAFT", to: "PENDING", actor: "ops",
+    });
+    const refused = await s.addVersion({
+      id: id("kv"), itemId: item.id, title: "x", body: "x",
+      createdBy: "ops",
+    });
+    expect(refused).toMatchObject({ ok: false, reason: "not_draft" });
+    const ghost = await s.addVersion({
+      id: id("kv"), itemId: id("ki"), title: "x", body: "x",
+      createdBy: "ops",
+    });
+    expect(ghost).toMatchObject({ ok: false, reason: "missing" });
   });
 
   it("transitionItem: honest refusal writes nothing; publish pointer flips", async () => {
