@@ -29,12 +29,18 @@ const HTTP_ONLY_EVIDENCE = new Set(["EXTERNAL_URL", "ONCHAIN_TX"]);
  *  were protocol-relative/backslash smuggles agents resolve as
  *  external URLs; control chars beyond NUL slipped through \S.
  *  Schemes: http(s) everywhere; `internal:` + site-local `/path`
- *  for internal provenance types (seed/docs use them). */
-function isValidEvidenceUri(type: string, uri: string): boolean {
+ *  for internal provenance types (seed/docs use them).
+ *  Exported with an injectable httpOnly set so review evidence
+ *  (EPIC-230, "consistent with D-229-9") reuses the ONE parser. */
+export function isValidEvidenceUri(
+  type: string,
+  uri: string,
+  httpOnly: ReadonlySet<string> = HTTP_ONLY_EVIDENCE,
+): boolean {
   if (/[\p{C}\s]/u.test(uri)) return false;
   if (uri.startsWith("/")) {
     return (
-      !HTTP_ONLY_EVIDENCE.has(type) &&
+      !httpOnly.has(type) &&
       uri.length > 1 &&
       uri[1] !== "/" &&
       uri[1] !== "\\"
@@ -46,12 +52,12 @@ function isValidEvidenceUri(type: string, uri: string): boolean {
       // Arc R3 M-3: userinfo is never stored (it lands in events);
       // external-claim types must cite a PUBLIC host at add time.
       if (u.username !== "" || u.password !== "") return false;
-      return HTTP_ONLY_EVIDENCE.has(type)
+      return httpOnly.has(type)
         ? isPublicEvidenceUri(uri)
         : true;
     }
     // Arc R3 M-3: `internal:` only for internal provenance types.
-    return u.protocol === "internal:" && !HTTP_ONLY_EVIDENCE.has(type);
+    return u.protocol === "internal:" && !httpOnly.has(type);
   } catch {
     return false;
   }
