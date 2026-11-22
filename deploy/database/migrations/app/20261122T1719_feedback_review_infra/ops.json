@@ -1,0 +1,914 @@
+[
+  {
+    "id": "table.feedback",
+    "label": "Create table \"feedback\"",
+    "summary": "Creates table \"feedback\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "feedback"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"feedback\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"feedback\"",
+        "sql": "CREATE TABLE \"public\".\"feedback\" (\n  \"actorRef\" text,\n  \"actorResolution\" text NOT NULL,\n  \"closedAt\" timestamptz,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"dedupeScope\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"kind\" text,\n  \"knowledgeConverted\" bool DEFAULT false NOT NULL,\n  \"knowledgeItemId\" text,\n  \"normalized\" text NOT NULL,\n  \"relatedCount\" int4 DEFAULT 1 NOT NULL,\n  \"relatedFeedbackId\" text,\n  \"severity\" text,\n  \"status\" text NOT NULL,\n  \"suggestion\" text,\n  \"target\" text,\n  \"text\" text NOT NULL,\n  \"triagedAt\" timestamptz,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"feedback\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.feedbackEvent",
+    "label": "Create table \"feedbackEvent\"",
+    "summary": "Creates table \"feedbackEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "feedbackEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"feedbackEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedbackEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"feedbackEvent\"",
+        "sql": "CREATE TABLE \"public\".\"feedbackEvent\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"feedbackId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"visibility\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"feedbackEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedbackEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reviewCase",
+    "label": "Create table \"reviewCase\"",
+    "summary": "Creates table \"reviewCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reviewCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reviewCase\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reviewCase\"",
+        "sql": "CREATE TABLE \"public\".\"reviewCase\" (\n  \"actorRef\" text,\n  \"actorResolution\" text NOT NULL,\n  \"agentCriteria\" json,\n  \"assignee\" text,\n  \"claimedAt\" timestamptz,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"decidedAt\" timestamptz,\n  \"declineReason\" text,\n  \"dedupeScope\" text NOT NULL,\n  \"deliveredAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"knowledgeConverted\" bool DEFAULT false NOT NULL,\n  \"knowledgeItemId\" text,\n  \"latestDecisionSeq\" int4,\n  \"reopenCount\" int4 DEFAULT 0 NOT NULL,\n  \"reviewType\" text NOT NULL,\n  \"status\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"workRef\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reviewCase\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reviewDecision",
+    "label": "Create table \"reviewDecision\"",
+    "summary": "Creates table \"reviewDecision\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reviewDecision"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reviewDecision\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewDecision\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reviewDecision\"",
+        "sql": "CREATE TABLE \"public\".\"reviewDecision\" (\n  \"criteriaResults\" json NOT NULL,\n  \"decidedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"decidedBy\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"outcome\" text NOT NULL,\n  \"reviewId\" text NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"summary\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reviewDecision\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewDecision\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reviewEvent",
+    "label": "Create table \"reviewEvent\"",
+    "summary": "Creates table \"reviewEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reviewEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reviewEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reviewEvent\"",
+        "sql": "CREATE TABLE \"public\".\"reviewEvent\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"reviewId\" text NOT NULL,\n  \"seq\" int4 NOT NULL,\n  \"visibility\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reviewEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reviewEvidence",
+    "label": "Create table \"reviewEvidence\"",
+    "summary": "Creates table \"reviewEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reviewEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reviewEvidence\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvidence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reviewEvidence\"",
+        "sql": "CREATE TABLE \"public\".\"reviewEvidence\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text,\n  \"id\" text NOT NULL,\n  \"label\" text,\n  \"reviewId\" text NOT NULL,\n  \"submittedBy\" text NOT NULL,\n  \"type\" text NOT NULL,\n  \"uri\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reviewEvidence\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvidence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.feedback.feedback_idempotencyKey_dedupeScope_key",
+    "label": "Add unique constraint on \"feedback\" (idempotencyKey, dedupeScope)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "feedback_idempotencyKey_dedupeScope_key",
+        "table": "feedback"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"feedback_idempotencyKey_dedupeScope_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "feedback_idempotencyKey_dedupeScope_key",
+          "public",
+          "\"public\".\"feedback\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"feedback_idempotencyKey_dedupeScope_key\"",
+        "sql": "ALTER TABLE \"public\".\"feedback\" ADD CONSTRAINT \"feedback_idempotencyKey_dedupeScope_key\" UNIQUE (\"idempotencyKey\", \"dedupeScope\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"feedback_idempotencyKey_dedupeScope_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "feedback_idempotencyKey_dedupeScope_key",
+          "public",
+          "\"public\".\"feedback\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.feedbackEvent.feedbackEvent_feedbackId_seq_key",
+    "label": "Add unique constraint on \"feedbackEvent\" (feedbackId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "feedbackEvent_feedbackId_seq_key",
+        "table": "feedbackEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"feedbackEvent_feedbackId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "feedbackEvent_feedbackId_seq_key",
+          "public",
+          "\"public\".\"feedbackEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"feedbackEvent_feedbackId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"feedbackEvent\" ADD CONSTRAINT \"feedbackEvent_feedbackId_seq_key\" UNIQUE (\"feedbackId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"feedbackEvent_feedbackId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "feedbackEvent_feedbackId_seq_key",
+          "public",
+          "\"public\".\"feedbackEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.reviewCase.reviewCase_idempotencyKey_dedupeScope_key",
+    "label": "Add unique constraint on \"reviewCase\" (idempotencyKey, dedupeScope)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "reviewCase_idempotencyKey_dedupeScope_key",
+        "table": "reviewCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"reviewCase_idempotencyKey_dedupeScope_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reviewCase_idempotencyKey_dedupeScope_key",
+          "public",
+          "\"public\".\"reviewCase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"reviewCase_idempotencyKey_dedupeScope_key\"",
+        "sql": "ALTER TABLE \"public\".\"reviewCase\" ADD CONSTRAINT \"reviewCase_idempotencyKey_dedupeScope_key\" UNIQUE (\"idempotencyKey\", \"dedupeScope\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"reviewCase_idempotencyKey_dedupeScope_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reviewCase_idempotencyKey_dedupeScope_key",
+          "public",
+          "\"public\".\"reviewCase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.reviewDecision.reviewDecision_reviewId_seq_key",
+    "label": "Add unique constraint on \"reviewDecision\" (reviewId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "reviewDecision_reviewId_seq_key",
+        "table": "reviewDecision"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"reviewDecision_reviewId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reviewDecision_reviewId_seq_key",
+          "public",
+          "\"public\".\"reviewDecision\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"reviewDecision_reviewId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"reviewDecision\" ADD CONSTRAINT \"reviewDecision_reviewId_seq_key\" UNIQUE (\"reviewId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"reviewDecision_reviewId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reviewDecision_reviewId_seq_key",
+          "public",
+          "\"public\".\"reviewDecision\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.reviewEvent.reviewEvent_reviewId_seq_key",
+    "label": "Add unique constraint on \"reviewEvent\" (reviewId, seq)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "reviewEvent_reviewId_seq_key",
+        "table": "reviewEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"reviewEvent_reviewId_seq_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reviewEvent_reviewId_seq_key",
+          "public",
+          "\"public\".\"reviewEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"reviewEvent_reviewId_seq_key\"",
+        "sql": "ALTER TABLE \"public\".\"reviewEvent\" ADD CONSTRAINT \"reviewEvent_reviewId_seq_key\" UNIQUE (\"reviewId\", \"seq\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"reviewEvent_reviewId_seq_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reviewEvent_reviewId_seq_key",
+          "public",
+          "\"public\".\"reviewEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.feedback.feedback_actorRef_idx_da577f54",
+    "label": "Create index \"feedback_actorRef_idx_da577f54\" on \"feedback\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "feedback_actorRef_idx_da577f54",
+        "table": "feedback"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"feedback_actorRef_idx_da577f54\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_actorRef_idx_da577f54\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"feedback_actorRef_idx_da577f54\"",
+        "sql": "CREATE INDEX \"feedback_actorRef_idx_da577f54\" ON \"public\".\"feedback\" (\"actorRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"feedback_actorRef_idx_da577f54\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_actorRef_idx_da577f54\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.feedback.feedback_normalized_idx_323bea3e",
+    "label": "Create index \"feedback_normalized_idx_323bea3e\" on \"feedback\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "feedback_normalized_idx_323bea3e",
+        "table": "feedback"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"feedback_normalized_idx_323bea3e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_normalized_idx_323bea3e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"feedback_normalized_idx_323bea3e\"",
+        "sql": "CREATE INDEX \"feedback_normalized_idx_323bea3e\" ON \"public\".\"feedback\" (\"normalized\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"feedback_normalized_idx_323bea3e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_normalized_idx_323bea3e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.feedback.feedback_relatedFeedbackId_idx_1063a6bb",
+    "label": "Create index \"feedback_relatedFeedbackId_idx_1063a6bb\" on \"feedback\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "feedback_relatedFeedbackId_idx_1063a6bb",
+        "table": "feedback"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"feedback_relatedFeedbackId_idx_1063a6bb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_relatedFeedbackId_idx_1063a6bb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"feedback_relatedFeedbackId_idx_1063a6bb\"",
+        "sql": "CREATE INDEX \"feedback_relatedFeedbackId_idx_1063a6bb\" ON \"public\".\"feedback\" (\"relatedFeedbackId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"feedback_relatedFeedbackId_idx_1063a6bb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_relatedFeedbackId_idx_1063a6bb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.feedback.feedback_status_createdAt_idx_58610442",
+    "label": "Create index \"feedback_status_createdAt_idx_58610442\" on \"feedback\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "feedback_status_createdAt_idx_58610442",
+        "table": "feedback"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"feedback_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"feedback_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"feedback_status_createdAt_idx_58610442\" ON \"public\".\"feedback\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"feedback_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedback_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.feedbackEvent.feedbackEvent_kind_idx_c9ca668f",
+    "label": "Create index \"feedbackEvent_kind_idx_c9ca668f\" on \"feedbackEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "feedbackEvent_kind_idx_c9ca668f",
+        "table": "feedbackEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"feedbackEvent_kind_idx_c9ca668f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedbackEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"feedbackEvent_kind_idx_c9ca668f\"",
+        "sql": "CREATE INDEX \"feedbackEvent_kind_idx_c9ca668f\" ON \"public\".\"feedbackEvent\" (\"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"feedbackEvent_kind_idx_c9ca668f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"feedbackEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reviewCase.reviewCase_actorRef_idx_da577f54",
+    "label": "Create index \"reviewCase_actorRef_idx_da577f54\" on \"reviewCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reviewCase_actorRef_idx_da577f54",
+        "table": "reviewCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reviewCase_actorRef_idx_da577f54\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_actorRef_idx_da577f54\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reviewCase_actorRef_idx_da577f54\"",
+        "sql": "CREATE INDEX \"reviewCase_actorRef_idx_da577f54\" ON \"public\".\"reviewCase\" (\"actorRef\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reviewCase_actorRef_idx_da577f54\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_actorRef_idx_da577f54\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reviewCase.reviewCase_assignee_idx_3f8c0463",
+    "label": "Create index \"reviewCase_assignee_idx_3f8c0463\" on \"reviewCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reviewCase_assignee_idx_3f8c0463",
+        "table": "reviewCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reviewCase_assignee_idx_3f8c0463\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_assignee_idx_3f8c0463\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reviewCase_assignee_idx_3f8c0463\"",
+        "sql": "CREATE INDEX \"reviewCase_assignee_idx_3f8c0463\" ON \"public\".\"reviewCase\" (\"assignee\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reviewCase_assignee_idx_3f8c0463\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_assignee_idx_3f8c0463\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reviewCase.reviewCase_reviewType_idx_916784d4",
+    "label": "Create index \"reviewCase_reviewType_idx_916784d4\" on \"reviewCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reviewCase_reviewType_idx_916784d4",
+        "table": "reviewCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reviewCase_reviewType_idx_916784d4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_reviewType_idx_916784d4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reviewCase_reviewType_idx_916784d4\"",
+        "sql": "CREATE INDEX \"reviewCase_reviewType_idx_916784d4\" ON \"public\".\"reviewCase\" (\"reviewType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reviewCase_reviewType_idx_916784d4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_reviewType_idx_916784d4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reviewCase.reviewCase_status_createdAt_idx_58610442",
+    "label": "Create index \"reviewCase_status_createdAt_idx_58610442\" on \"reviewCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reviewCase_status_createdAt_idx_58610442",
+        "table": "reviewCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reviewCase_status_createdAt_idx_58610442\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_status_createdAt_idx_58610442\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reviewCase_status_createdAt_idx_58610442\"",
+        "sql": "CREATE INDEX \"reviewCase_status_createdAt_idx_58610442\" ON \"public\".\"reviewCase\" (\"status\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reviewCase_status_createdAt_idx_58610442\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewCase_status_createdAt_idx_58610442\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reviewDecision.reviewDecision_reviewId_idx_2f51da17",
+    "label": "Create index \"reviewDecision_reviewId_idx_2f51da17\" on \"reviewDecision\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reviewDecision_reviewId_idx_2f51da17",
+        "table": "reviewDecision"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reviewDecision_reviewId_idx_2f51da17\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewDecision_reviewId_idx_2f51da17\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reviewDecision_reviewId_idx_2f51da17\"",
+        "sql": "CREATE INDEX \"reviewDecision_reviewId_idx_2f51da17\" ON \"public\".\"reviewDecision\" (\"reviewId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reviewDecision_reviewId_idx_2f51da17\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewDecision_reviewId_idx_2f51da17\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reviewEvent.reviewEvent_kind_idx_c9ca668f",
+    "label": "Create index \"reviewEvent_kind_idx_c9ca668f\" on \"reviewEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reviewEvent_kind_idx_c9ca668f",
+        "table": "reviewEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reviewEvent_kind_idx_c9ca668f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reviewEvent_kind_idx_c9ca668f\"",
+        "sql": "CREATE INDEX \"reviewEvent_kind_idx_c9ca668f\" ON \"public\".\"reviewEvent\" (\"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reviewEvent_kind_idx_c9ca668f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvent_kind_idx_c9ca668f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.reviewEvidence.reviewEvidence_reviewId_idx_2f51da17",
+    "label": "Create index \"reviewEvidence_reviewId_idx_2f51da17\" on \"reviewEvidence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "reviewEvidence_reviewId_idx_2f51da17",
+        "table": "reviewEvidence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"reviewEvidence_reviewId_idx_2f51da17\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvidence_reviewId_idx_2f51da17\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"reviewEvidence_reviewId_idx_2f51da17\"",
+        "sql": "CREATE INDEX \"reviewEvidence_reviewId_idx_2f51da17\" ON \"public\".\"reviewEvidence\" (\"reviewId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"reviewEvidence_reviewId_idx_2f51da17\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reviewEvidence_reviewId_idx_2f51da17\""
+        ]
+      }
+    ]
+  }
+]

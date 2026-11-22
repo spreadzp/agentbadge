@@ -1575,3 +1575,141 @@ model KnowledgeGap {
   @@index([status, lastSeenAt])
   @@index([count])
 }
+
+// ─── EPIC-230: Feedback & Review Infrastructure (D-230-1..9) ──────
+// Two domains sharing the 228 conventions: actor tiers + actorRef,
+// idempotent intake on (idempotencyKey, dedupeScope), append-only
+// PUBLIC|INTERNAL event logs, no FK constraints (indexes only).
+// Review is deliberately NOT an EaaS-verdict — the advisory decision
+// lives in reviewDecision rows, no signature/onchain anchor.
+
+// D-230-4: agent feedback — required `text` + optional typed fields
+// the operator confirms/edits at triage. `normalized` is the
+// auto-dedup key (normalized text+target): a repeat submission links
+// to the canonical row via relatedFeedbackId and bumps its
+// relatedCount; DUPLICATE stays an operator-applied status.
+model Feedback {
+  id                String            @id @default(uuid())
+  actorResolution   String // ANON|API_KEY|DID — D-230-3
+  actorRef          String? // agentId|did — NULL for anon + retention
+  dedupeScope       String // actor scope for the idempotency unique pair
+  idempotencyKey    String?
+  text              String // ≤16KB
+  kind              String? // BUG|FEATURE|DOCS|DX|OTHER
+  target            String? // agent-guide|api|docs|venue|mcp|other
+  severity          String? // hint LOW|MEDIUM|HIGH
+  normalized        String // sha256(normalize(text)+target) — dedup key
+  relatedCount      Int               @default(1)
+  relatedFeedbackId String? // → canonical Feedback.id (NULL = canonical)
+  suggestion        String? // operator short formulation
+  status            String // RECEIVED|TRIAGED|ACCEPTED|DECLINED|DUPLICATE|CLOSED
+  knowledgeConverted Boolean           @default(false)
+  knowledgeItemId   String? // → KnowledgeItem.id (D-230-10 seam)
+  createdAt         TimestamptzString @default(now())
+  triagedAt         TimestamptzString?
+  closedAt          TimestamptzString?
+  updatedAt         temporal.updatedAtString()
+
+  @@unique([idempotencyKey, dedupeScope])
+  @@index([status, createdAt])
+  @@index([normalized])
+  @@index([actorRef])
+  @@index([relatedFeedbackId])
+}
+
+// D-230-5: review case — a request for human review of the agent's
+// work. PENDING_TRIAGE→IN_REVIEW→DECIDED + DECLINED (declineReason
+// enum) + REOPENED→PENDING_TRIAGE with reopenCount for §17.3.
+// assignee/claimedAt set on the IN_REVIEW transition; delivery is
+// automatic at DECIDED (deliveredAt = decidedAt).
+model ReviewCase {
+  id                String            @id @default(uuid())
+  actorResolution   String // ANON|API_KEY|DID
+  actorRef          String?
+  dedupeScope       String
+  idempotencyKey    String?
+  reviewType        String // API_SURFACE|DOCS|CODE_SNIPPET|INTEGRATION|OTHER
+  workRef           String // uri — the work under review
+  agentCriteria     Json? // string[] — agent wishes, never scored (D-230-6)
+  status            String // PENDING_TRIAGE|IN_REVIEW|DECIDED|DECLINED|REOPENED
+  assignee          String? // operatorRef — set on IN_REVIEW claim
+  claimedAt         TimestamptzString?
+  decidedAt         TimestamptzString?
+  deliveredAt       TimestamptzString? // auto-delivery at DECIDED
+  declineReason     String? // OUT_OF_SCOPE|SPAM|INSUFFICIENT_EVIDENCE|DUPLICATE|OTHER
+  reopenCount       Int               @default(0)
+  latestDecisionSeq Int? // → ReviewDecision.seq (append-only pointer)
+  knowledgeConverted Boolean           @default(false)
+  knowledgeItemId   String?
+  createdAt         TimestamptzString @default(now())
+  updatedAt         temporal.updatedAtString()
+
+  @@unique([idempotencyKey, dedupeScope])
+  @@index([status, createdAt])
+  @@index([actorRef])
+  @@index([assignee])
+  @@index([reviewType])
+}
+
+// D-230-7: typed two-sided evidence. AGENT rows are claims (§16.2 —
+// submitted ≠ verified); OPERATOR rows are collected during
+// IN_REVIEW. Cap ≤50/review enforced in the store (D-206-5 analog).
+model ReviewEvidence {
+  id          String            @id @default(uuid())
+  reviewId    String // → ReviewCase.id
+  type        String // EXTERNAL_URL|API_ENDPOINT|ONCHAIN_TX|REPO_LINK|ARTIFACT_REF|OTHER
+  uri         String // ≤1000 — validated by the 229 classifier
+  label       String?
+  description String?
+  submittedBy String // AGENT|OPERATOR
+  createdAt   TimestamptzString @default(now())
+
+  @@index([reviewId])
+}
+
+// D-230-8: append-only decisions — rows are never updated or
+// deleted. REOPENED + re-decide appends seq+1; ReviewCase.
+// latestDecisionSeq points at the newest. criteriaResults is the
+// per-criterion snapshot of the platform template at decision time.
+model ReviewDecision {
+  id              String            @id @default(uuid())
+  reviewId        String // → ReviewCase.id
+  seq             Int
+  outcome         String // APPROVED|APPROVED_WITH_NOTES|CHANGES_REQUESTED|REJECTED
+  criteriaResults Json // [{key,result:PASS|FAIL|NA,note?}]
+  summary         String
+  decidedBy       String // operatorRef
+  decidedAt       TimestamptzString @default(now())
+
+  @@unique([reviewId, seq])
+  @@index([reviewId])
+}
+
+// D-230-1 + D-228-4/8 convention: append-only domain event logs —
+// no update/delete by API shape; (entityId, seq) is the ordering
+// invariant. PUBLIC rows are the only ones an agent may ever see.
+model FeedbackEvent {
+  id         String            @id @default(uuid())
+  feedbackId String
+  seq        Int
+  kind       String // feedback.received|triaged|accepted|declined|duplicate|closed|knowledge_converted
+  visibility String // PUBLIC|INTERNAL
+  payload    Json
+  createdAt  TimestamptzString @default(now())
+
+  @@unique([feedbackId, seq])
+  @@index([kind])
+}
+
+model ReviewEvent {
+  id         String            @id @default(uuid())
+  reviewId   String
+  seq        Int
+  kind       String // review.received|claimed|evidence_added|decided|declined|reopened|knowledge_converted
+  visibility String // PUBLIC|INTERNAL
+  payload    Json
+  createdAt  TimestamptzString @default(now())
+
+  @@unique([reviewId, seq])
+  @@index([kind])
+}
