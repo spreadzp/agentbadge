@@ -62,6 +62,7 @@ import { article as arcC55A2aSettlement } from "./arc-c55-a2a-settlement";
 import { article as arcC57PeachDex } from "./arc-c57-peach-dex";
 import { article as arcC58CounterpartyTrust } from "./arc-c58-counterparty-trust";
 import { article as arcC59KnowledgeEngine } from "./arc-c59-knowledge-engine";
+import { article as arcC60InteractionCore } from "./arc-c60-interaction-core";
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   whatIsAgentReadiness,
@@ -126,5 +127,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   arcC57PeachDex,
   arcC58CounterpartyTrust,
   arcC59KnowledgeEngine,
+  arcC60InteractionCore,
   devinCloudAudit,
 ];
