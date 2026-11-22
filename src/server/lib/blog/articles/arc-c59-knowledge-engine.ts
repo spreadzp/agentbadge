@@ -6,11 +6,11 @@ export const article: BlogArticle = {
   title:
     "We Gave Our Agent a Knowledge Base That Would Rather Say \"I Don't Know\" Than Guess",
   description:
-    "EPIC-229 Knowledge Engine, live on agentbadge.xyz: versioned knowledge items behind a human-only approval workflow (DRAFT→PENDING→VERIFIED→PUBLISHED→WITHDRAWN), Postgres FTS with parameterized plainto_tsquery, and a deterministic ask composer that ANSWERs with sources - or REFUSES and files the miss as a tracked knowledge gap. No LLM in the answer path, no vector DB, published-only reads verified by a probe-bot lifecycle scenario.",
+    "EPIC-229 Knowledge Engine, live on agentbadge.xyz: versioned knowledge items behind a human-only approval workflow (DRAFT→PENDING→VERIFIED→PUBLISHED→WITHDRAWN), Postgres FTS with parameterized plainto_tsquery, and a deterministic ask composer that ANSWERs with sources - or REFUSES and files the miss as a tracked knowledge gap. No LLM in the answer path, no vector DB, published-only reads verified by a probe-bot lifecycle scenario plus an external adversarial code audit (19 findings remediated).",
   author: "AgentBadge Team",
   authorRole: "Agency for the Agentic Web",
   date: "2026-11-21",
-  dateModified: "2026-11-21",
+  dateModified: "2026-11-22",
   tags: [
     "knowledge-engine",
     "full-text-search",
@@ -22,7 +22,7 @@ export const article: BlogArticle = {
   ],
   readingTime: "8 min",
   shortAnswer:
-    "An agent that answers from memory invents sources. EPIC-229 ships a knowledge engine where every answerable fact is a versioned, human-approved item: operators move items through DRAFT→PENDING→VERIFIED→PUBLISHED (agent-shaped actor refs are refused at the lib edge), public search runs Postgres FTS over published versions only, and the ask endpoint is a deterministic coverage scorer - ANSWERED with sources+confidence, or REFUSED insufficient_verified_knowledge, which writes a deduplicated knowledge gap. Verified through two audit rounds (one real NUL-byte 500 class found and fixed on prod) plus a probe-bot lifecycle scenario that now owns the regression forever.",
+    "An agent that answers from memory invents sources. EPIC-229 ships a knowledge engine where every answerable fact is a versioned, human-approved item: operators move items through DRAFT→PENDING→VERIFIED→PUBLISHED under a strict operator allowlist plus separation-of-duties (verifier≠submitter, publisher≠verifier), public search runs Postgres FTS over published versions only, and the ask endpoint is a deterministic coverage scorer - ANSWERED with sources+confidence, or REFUSED insufficient_verified_knowledge, which writes a deduplicated knowledge gap. Verified through three audit rounds - wire-level probes plus an external Arc Studio code audit that found and fixed 19 findings - and a probe-bot lifecycle scenario that now owns the regression forever.",
   heroImage: "/images/blog/arc-c59-knowledge-engine-hero.webp",
   ogImage: "/images/blog/arc-c59-knowledge-engine-og.jpeg",
   status: "LIVE",
@@ -107,12 +107,12 @@ export const article: BlogArticle = {
     {
       question: "Who can publish knowledge, and how is it enforced?",
       answer:
-        "Only operator actor refs may move an item into VERIFIED or PUBLISHED; agent-shaped refs (did:, agt_, agent:) are refused at the library edge on top of adminAuth, and every admin mutation requires an x-operator-id header for attribution plus an idempotency-key. Items are immutable-versioned - edits create new version rows and the publishedVersionId pointer only moves through the CAS-guarded workflow, so history is never rewritten.",
+        "Only operator actor refs may move an item into VERIFIED or PUBLISHED: refs must match a strict [a-z0-9._@-] allowlist (agent-shaped forms like did:, agt_, agent, bot, svc, key: are refused outright), and the workflow enforces separation of duties - verifier≠submitter, publisher≠verifier, recovered from the persisted audit events. A version needs at least one evidence reference before it can enter VERIFIED. Every admin mutation requires an x-operator-id header for attribution plus an idempotency-key bound to the request body. Items are immutable-versioned - edits create new version rows and the publishedVersionId pointer only moves through the CAS-guarded workflow, so history is never rewritten.",
     },
     {
       question: "What did the verification loop actually find?",
       answer:
-        "Two real bug classes. Local audit round 1 found x-operator-id unenforced (mutations silently attributed to admin) and NUL bytes in write bodies causing 500s; round 2 went GREEN 50/50. The production audit then found a third: NUL bytes on READ paths (query string, item ids, evidence URIs) produced unauthenticated 500s - the write fix had covered bodies only. Fixed by a shared rejectCtrl guard on every param/query sink (commit 6fc16185, deployed 22d5c3ef). A probe-bot pass then re-verified prod deterministically: 142 knowledge cases, 0 failures, all no-store.",
+        "Three waves. Wire-level local audit round 1 found x-operator-id unenforced and NUL bytes in write bodies causing 500s; round 2 went GREEN 50/50. The production audit then found NUL bytes on READ paths producing unauthenticated 500s (fixed 6fc16185, deployed 22d5c3ef). A probe-bot pass re-verified prod deterministically: 142 knowledge cases, 0 failures. An external Arc Studio code audit then found 19 more findings - 0 critical, 5 high: operator-identity unicode bypasses, idempotency keys ignoring the request body, a version-submission TOCTOU, mutable published evidence, and unbounded anonymous gap writes - all remediated and folded into a 14-test regression file.",
     },
   ],
   claims: [
@@ -134,7 +134,7 @@ export const article: BlogArticle = {
     {
       id: "c59-human-only-publish",
       status: "VERIFIED",
-      text: "Knowledge items move DRAFT→PENDING→VERIFIED→PUBLISHED→WITHDRAWN through CAS-guarded transitions with audit events; agent-shaped actor refs are refused for verify/publish at the lib edge, mutations require x-operator-id + idempotency-key, and only PUBLISHED versions are visible on the public surface.",
+      text: "Knowledge items move DRAFT→PENDING→VERIFIED→PUBLISHED→WITHDRAWN through CAS-guarded transitions with audit events; operator refs pass a strict [a-z0-9._@-] allowlist with agent-shaped forms refused, separation of duties is enforced from persisted events (verifier≠submitter, publisher≠verifier), VERIFIED requires evidence, mutations require x-operator-id + body-bound idempotency-key, and only PUBLISHED versions are visible on the public surface.",
       evidence: [
         {
           type: "github",
@@ -164,7 +164,7 @@ export const article: BlogArticle = {
     {
       id: "c59-audit-to-probe-regression",
       status: "VERIFIED",
-      text: "Verification arc: local audit r1 PARTIAL (operator-id unenforced, NUL write 500s) → r2 GREEN 50/50 → prod audit found NUL read-path 500s (fixed 6fc16185, deployed 22d5c3ef) → probe-bot prod pass 142 knowledge cases / 0 failures incl. ?q=%00→400 and no-store on all surfaces; a knowledge-lifecycle scenario now walks create→publish→withdraw→terminal-409 deterministically.",
+      text: "Verification arc: local audit r1 PARTIAL (operator-id unenforced, NUL write 500s) → r2 GREEN 50/50 → prod audit found NUL read-path 500s (fixed 6fc16185, deployed 22d5c3ef) → probe-bot prod pass 142 knowledge cases / 0 failures incl. ?q=%00→400 and no-store on all surfaces → external Arc Studio code audit R1 found 19 findings (0C/5H/14M: operator-identity bypasses, idempotency body-binding, version TOCTOU, mutable published evidence, unbounded gap writes) — all remediated with a 14-test regression file; a knowledge-lifecycle scenario now walks create→publish→withdraw→terminal-409 deterministically.",
       evidence: [
         {
           type: "github",

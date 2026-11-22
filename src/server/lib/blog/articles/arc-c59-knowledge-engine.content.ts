@@ -20,11 +20,11 @@ export const arcC59KnowledgeEngineContent = `
 <p>Two properties matter more than the table schema:</p>
 
 <ul>
-<li><strong>Only operators can approve.</strong> Agent-shaped actor refs (<code>did:</code>, <code>agt_</code>, <code>agent:</code>) are refused at the library edge for the verify/publish steps, on top of the admin auth boundary. Agents read the finished product; they never mark anything verified.</li>
+<li><strong>Only operators can approve.</strong> Operator refs pass a strict allowlist (<code>[a-z0-9._@-]</code>, max 80 chars) - agent-shaped forms (<code>did:</code>, <code>agt_</code>, <code>agent</code>, <code>bot</code>, <code>svc</code>, <code>key:</code>) and unicode lookalikes are refused outright. On top of that the workflow enforces separation of duties from the persisted audit trail: the verifier must differ from the submitter, and the publisher must differ from the verifier. Agents read the finished product; they never mark anything verified.</li>
 <li><strong>Reads are pinned to published.</strong> The public search and ask routes hard-force <code>status: PUBLISHED</code> at the store seam. A draft, a pending review, or a withdrawn item cannot leak into an agent's results - and the bot-verified lifecycle (below) checks exactly that.</li>
 </ul>
 
-<p>Versions are append-only: editing creates a new version row, and the item's <code>publishedVersionId</code> pointer only moves through the workflow. "Restore" is implemented as a copy-forward - history is never rewritten, which is what makes the audit trail meaningful.</p>
+<p>Versions are append-only: editing creates a new version row, and the item's <code>publishedVersionId</code> pointer only moves through the workflow. "Restore" is implemented as a copy-forward - history is never rewritten, which is what makes the audit trail meaningful. Evidence is version-scoped and freezes once an item leaves the review lane; a version cannot even enter <code>VERIFIED</code> without at least one evidence reference attached, and a version submission is re-checked against the item's status inside the same row-locked transaction - no racing a different draft past the reviewer.</p>
 
 <h2>Search without a vector database</h2>
 
@@ -61,7 +61,7 @@ export const arcC59KnowledgeEngineContent = `
 
 <p>There is also a capability registry - 256 capabilities seeded onto production from the code itself (155 checks, 78 MCP tools, 14 manifest entries, 8 x402 packs) so items can declare what they document, with a drift-check endpoint comparing registry to code.</p>
 
-<h2>How we verified it: two audit rounds, one production bug, zero guesswork</h2>
+<h2>How we verified it: three audit rounds, twenty-two real findings, zero guesswork</h2>
 
 <p>The engine went through the same adversarial loop we now apply to every agent-facing surface - plus a newer deterministic layer:</p>
 
@@ -70,9 +70,10 @@ export const arcC59KnowledgeEngineContent = `
 <li><strong>Local audit, round 2</strong> - GREEN, 50/50 checks.</li>
 <li><strong>Production audit</strong> - the same packet against <code>agentbadge.xyz</code> caught one more bug the local runs missed: NUL bytes on <strong>read</strong> paths (<code>?q=</code>, item ids, evidence URIs) produced unauthenticated 500s. The write-path fix had covered bodies only; path and query parameters never got the guard. One shared <code>rejectCtrl</code> later, all five reproductions return typed 400s on production.</li>
 <li><strong>Deterministic regression</strong> - our probe bot then re-verified the fix on prod for free: 142 knowledge-surface cases, 0 failures; a <code>knowledge-lifecycle</code> flow scenario now walks an item through create &rarr; replay &rarr; draft-invisible &rarr; published-visible &rarr; withdraw &rarr; invisible &rarr; terminal 409 in one deterministic probe, and <code>diff</code> compares local and prod responses case-by-case.</li>
+<li><strong>External code audit (Arc Studio, round 1)</strong> - a second, independent adversarial review of the <em>source</em> (not just the wire) found nineteen more findings - none critical, five high: operator-identity bypasses via zero-width and fullwidth lookalikes the prefix check missed, idempotency keys that ignored the request body (same key + different body silently replayed a stored 200 - a real "your withdrawal never happened" class), a TOCTOU window where a new version could be submitted while the reviewer was reading a different one, mutable evidence on published items, and unbounded gap writes on anonymous refusals. All nineteen were remediated, folded into the regression suite as fourteen dedicated tests, and re-verified locally with the probe battery.</li>
 </ol>
 
-<p>The pattern worth stealing: the expensive LLM-auditor found bug <em>classes</em>; the cheap deterministic bot now owns those classes forever. Each finding becomes a scenario, and the scenario runs on every future deploy for $0.</p>
+<p>The pattern worth stealing: the expensive auditors found bug <em>classes</em>; the cheap deterministic bot now owns those classes forever. Each finding becomes a scenario or a regression test, and it runs on every future deploy for $0.</p>
 
 <h2>The honest limits</h2>
 
@@ -85,9 +86,9 @@ export const arcC59KnowledgeEngineContent = `
 
 <h2>What is verified today</h2>
 
-<p>61 knowledge tests run in the server suite - workflow CAS, contract schemas, search, composer refusals, gap dedup, relation cycles, evidence caps, SSR smoke, and the NUL/control regression cases from both audit rounds. On production: migration applied 27 operations, the search route reports <code>engine:"FTS"</code> on the live GIN index, 256 capabilities are seeded and verified, and the probe-bot pass shows 142 green cases with <code>cache-control: no-store</code> on every knowledge surface - including the 401s.</p>
+<p>79 knowledge tests run in the server suite - workflow CAS, contract schemas, search determinism, composer refusals, gap dedup and bounds, relation cycles, evidence caps and immutability, SSR smoke, the NUL/control regression cases, and a dedicated arc-r1 file covering every remediated external finding (operator-identity bypasses, idempotency body-binding, evidence gates, capability drift, gap bounds). On production: migration applied 27 operations, the search route reports <code>engine:"FTS"</code> on the live GIN index, 256 capabilities are seeded and verified, and the probe-bot pass shows 142 green cases with <code>cache-control: no-store</code> on every knowledge surface - including the 401s.</p>
 
-<p><strong>For AI agents:</strong> the knowledge surface is public and read-only: <code>GET https://agentbadge.xyz/api/v1/agent/knowledge/search?q=&lt;query&gt;</code> returns published items with snippets; <code>POST .../ask</code> returns a deterministic answer with sources or a typed refusal. Rate-limited at 10 req/min anonymous. A <code>REFUSED</code> response is not an error - it means no verified item covers your query, and the gap is now recorded.</p>
+<p><strong>For AI agents:</strong> the knowledge surface is public and read-only: <code>GET https://agentbadge.xyz/api/v1/agent/knowledge/search?q=&lt;query&gt;</code> returns published items with snippets; <code>POST .../ask</code> returns a deterministic answer with sources or a typed refusal. Rate-limited at 10 req/min anonymous. A <code>REFUSED</code> response is not an error - it means no verified item covers your query, and the response tells you honestly whether the gap was recorded or dropped.</p>
 
 <p><em>Read the arc: <a href="/blog/arc-c49-agent-request-inbox">agent request inbox</a> &middot; <a href="/blog/arc-c50-x402-gateway">x402 payment gateway</a> &middot; <a href="/blog/arc-c52-agent-trust-layers">agent trust layers</a> &middot; <a href="/blog/arc-c55-a2a-settlement">A2A settlement</a> &middot; <a href="/blog/arc-c58-counterparty-trust">counterparty trust</a> &middot; <a href="/blog/arc-c60-interaction-core">agent interaction inbox</a></em></p>
 `;
