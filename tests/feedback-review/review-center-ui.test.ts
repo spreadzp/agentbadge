@@ -13,6 +13,8 @@ import {
   createMemoryReviewStore,
 } from "../../src/server/lib/reviews/store-memory";
 import { resetIdempotencyStore } from "../../src/server/lib/contract-guards";
+import { createMemoryKnowledgeStores } from "../../src/server/lib/knowledge/db-stores";
+import { knowledgeDraftPort } from "../../src/server/lib/knowledge-draft/port";
 
 /**
  * SLICE-230-5 DoD — Review Center SSR smoke over the memory backend.
@@ -33,6 +35,7 @@ function mkApp() {
   const stores = {
     feedback: createMemoryFeedbackStore(createMemoryFeedbackData()),
     reviews: createMemoryReviewStore(createMemoryReviewData()),
+    draftPort: knowledgeDraftPort(createMemoryKnowledgeStores()),
   };
   const app = new Hono();
   app.route("/", createAgentFeedbackRoutes({ store: stores.feedback }));
@@ -318,5 +321,72 @@ describe("review operator flow", () => {
       "http://localhost",
     );
     expect(same.status).toBe(303);
+  });
+});
+
+describe("knowledge-draft conversion (230-6)", () => {
+  it("ACCEPTED feedback → POST /convert → knowledgeItemId renders", async () => {
+    const { app } = mkApp();
+    const fid = await submitFeedback(app, "convert me");
+
+    let d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    await post(
+      app,
+      `/admin/review-center/feedback/${fid}/triage`,
+      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+    );
+    d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    await post(
+      app,
+      `/admin/review-center/feedback/${fid}/resolve`,
+      `formToken=${tokenOf(d.html)}&to=ACCEPTED&operator=ops_e2e`,
+    );
+
+    d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    expect(d.html).toContain("→ Knowledge draft");
+    const r = await post(
+      app,
+      `/admin/review-center/feedback/${fid}/convert`,
+      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+    );
+    expect(r.headers.get("location")).toContain("ok=converted");
+
+    d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    expect(d.html).toContain("knowledgeConverted");
+    expect(d.html).toContain("ki_");
+    expect(d.html).toContain("feedback.knowledge_converted");
+    // convert form is gone — the row is marked
+    expect(d.html).not.toContain("→ Knowledge draft");
+
+    // second convert → already_converted flash (no second item)
+    const r2 = await post(
+      app,
+      `/admin/review-center/feedback/${fid}/convert`,
+      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+    );
+    expect(r2.headers.get("location")).toContain("err=already_converted");
+  });
+
+  it("non-ACCEPTED feedback → not_convertible_status; draft.json exports", async () => {
+    const { app } = mkApp();
+    const fid = await submitFeedback(app, "still raw");
+    const d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    const r = await post(
+      app,
+      `/admin/review-center/feedback/${fid}/convert`,
+      `formToken=${tokenOf(d.html)}&operator=ops_e2e`,
+    );
+    expect(r.headers.get("location")).toContain(
+      "err=not_convertible_status",
+    );
+
+    const dump = await app.request(
+      `/admin/review-center/feedback/${fid}/draft.json`,
+      { headers: { authorization: basic } },
+    );
+    expect(dump.status).toBe(200);
+    const payload = await dump.json();
+    expect(payload.sourceRef).toBe(`feedback:${fid}`);
+    expect(payload.body).toContain("still raw");
   });
 });

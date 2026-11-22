@@ -24,6 +24,11 @@ import { feedbackIdSchema } from "../../lib/feedback/validate";
 import { reviewIdSchema } from "../../lib/reviews/validate";
 import type { FeedbackReviewStores } from "./mount";
 import {
+  draftExportPayload,
+  feedbackDraftInput,
+  reviewDraftInput,
+} from "../../lib/knowledge-draft/convert";
+import {
   readOffset,
   readQueue,
   readStatus,
@@ -169,6 +174,44 @@ export function createReviewCenter(deps: {
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),
       rec.id,
+    );
+  });
+
+  // D-230-10 JSON-export fallback — the would-be draft payload, so
+  // an operator can file it by hand when the port is unavailable.
+  app.get("/admin/review-center/feedback/:id/draft.json", async (c) => {
+    const id = feedbackIdSchema.safeParse(c.req.param("id"));
+    if (!id.success) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such feedback");
+    }
+    const rec = await stores.feedback.getFeedback(id.data);
+    if (!rec) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such feedback");
+    }
+    return c.json(
+      JSON.parse(draftExportPayload(feedbackDraftInput(rec), `feedback:${rec.id}`)),
+      200,
+      { "Cache-Control": "no-store" },
+    );
+  });
+
+  app.get("/admin/review-center/reviews/:id/draft.json", async (c) => {
+    const id = reviewIdSchema.safeParse(c.req.param("id"));
+    if (!id.success) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such review");
+    }
+    const rec = await stores.reviews.getReview(id.data);
+    if (!rec) {
+      return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such review");
+    }
+    const [evidence, decisions] = await Promise.all([
+      stores.reviews.listEvidence(id.data),
+      stores.reviews.listDecisions(id.data),
+    ]);
+    return c.json(
+      JSON.parse(draftExportPayload(reviewDraftInput(rec, evidence, decisions), `review:${rec.id}`)),
+      200,
+      { "Cache-Control": "no-store" },
     );
   });
 

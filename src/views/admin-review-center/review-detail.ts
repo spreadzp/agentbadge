@@ -26,6 +26,7 @@ import {
 } from "./shared";
 import {
   claimForm,
+  convertForm,
   decideForm,
   declineForm,
   evidenceForm,
@@ -207,6 +208,7 @@ export function reviewDetailPage(input: {
     ${claimForm(r, input.formToken)} ${decideForm(r, input.formToken)}
     ${declineForm(r, input.formToken)} ${reopenForm(r, input.formToken)}
     ${returnForm(r, input.formToken)} ${evidenceForm(r, input.formToken)}
+    ${convertForm(r, input.formToken)}
     ${eventsSection(input.events)}
   `;
   return reviewCenterShell(`Review ${r.id}`, body).toString();

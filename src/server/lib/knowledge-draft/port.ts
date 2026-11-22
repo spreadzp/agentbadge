@@ -1,0 +1,85 @@
+/**
+ * EPIC-230 (SLICE-230-6, D-230-10): KnowledgeDraftPort — the soft seam
+ * from feedback/review outcomes into EPIC-229 knowledge items.
+ *
+ * Semantics:
+ *  - createDraft builds a real knowledge item + v1 in DRAFT via
+ *    createKnowledgeItem (229 service) — human approval stays in the
+ *    229 workflow; nothing here publishes.
+ *  - evidence rows are best-effort additions on the created v1; a
+ *    refused row is logged and skipped, it never sinks the draft.
+ *  - unavailablePort() is the degraded path (port not wired) —
+ *    callers surface NOT_AVAILABLE and can offer JSON export.
+ */
+
+import { addEvidence } from "../knowledge/evidence";
+import { createKnowledgeItem } from "../knowledge/items";
+import type { KnowledgeStore } from "../knowledge/store";
+import type { KnowledgeKind } from "../knowledge/types";
+
+export interface DraftEvidenceInput {
+  type: string;
+  uri: string;
+  label?: string | null;
+}
+
+export interface CreateDraftInput {
+  kind: KnowledgeKind;
+  title: string;
+  body: string;
+  summary?: string;
+  evidence: DraftEvidenceInput[];
+}
+
+export type DraftResult =
+  | { ok: true; itemId: string }
+  | { ok: false; error: string };
+
+export interface KnowledgeDraftPort {
+  readonly available: boolean;
+  createDraft(input: CreateDraftInput, actorRef: string): Promise<DraftResult>;
+}
+
+/** Real adapter over the shipped EPIC-229 service. */
+export function knowledgeDraftPort(store: KnowledgeStore): KnowledgeDraftPort {
+  return {
+    available: true,
+    async createDraft(input, actorRef) {
+      const r = await createKnowledgeItem(
+        store,
+        {
+          kind: input.kind,
+          title: input.title,
+          body: input.body,
+          summary: input.summary,
+        },
+        actorRef,
+      );
+      if (!r.ok) return { ok: false, error: r.error };
+      for (const ev of input.evidence) {
+        const added = await addEvidence(store, r.version.id, {
+          type: ev.type,
+          uri: ev.uri,
+          label: ev.label ?? null,
+          addedBy: actorRef,
+        }).catch(() => null);
+        if (added === null || !added.ok) {
+          // best-effort — the draft stands without this row
+          console.warn("knowledge-draft: evidence row skipped", {
+            itemId: r.item.id,
+            uri: ev.uri,
+          });
+        }
+      }
+      return { ok: true, itemId: r.item.id };
+    },
+  };
+}
+
+/** Degraded port — seam not wired. Callers may JSON-export instead. */
+export function unavailableDraftPort(): KnowledgeDraftPort {
+  return {
+    available: false,
+    createDraft: () => Promise.resolve({ ok: false, error: "not_available" }),
+  };
+}

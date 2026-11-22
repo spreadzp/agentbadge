@@ -25,6 +25,11 @@ import {
 import { decideReview } from "../../lib/reviews/decide";
 import { addReviewEvidence } from "../../lib/reviews/evidence";
 import { criteriaForReview } from "../../lib/reviews/criteria";
+import {
+  convertFeedbackToDraft,
+  convertReviewToDraft,
+} from "../../lib/knowledge-draft/convert";
+import { unavailableDraftPort } from "../../lib/knowledge-draft/port";
 import { feedbackIdSchema } from "../../lib/feedback/validate";
 import { reviewIdSchema } from "../../lib/reviews/validate";
 import type { FeedbackReviewStores } from "./mount";
@@ -241,6 +246,46 @@ export function registerReviewCenterMutations(
         "reviews",
         g.id,
         r.ok ? { ok: "evidence_added" } : { err: r.error },
+      ),
+      303,
+    );
+  });
+
+  // ── knowledge-draft conversion (D-230-10) ───────────────────
+
+  app.post("/admin/review-center/feedback/:id/convert", async (c) => {
+    const g = await guardMutation(c, "feedback", c.req.param("id"), feedbackIdSchema);
+    if (!g.ok) return g.res;
+    const r = await convertFeedbackToDraft(
+      stores.feedback,
+      stores.draftPort ?? unavailableDraftPort(),
+      g.id,
+      g.operator,
+    );
+    return c.redirect(
+      backTo(
+        "feedback",
+        g.id,
+        r.ok ? { ok: "converted" } : { err: r.error },
+      ),
+      303,
+    );
+  });
+
+  app.post("/admin/review-center/reviews/:id/convert", async (c) => {
+    const g = await guardMutation(c, "reviews", c.req.param("id"), reviewIdSchema);
+    if (!g.ok) return g.res;
+    const r = await convertReviewToDraft(
+      stores.reviews,
+      stores.draftPort ?? unavailableDraftPort(),
+      g.id,
+      g.operator,
+    );
+    return c.redirect(
+      backTo(
+        "reviews",
+        g.id,
+        r.ok ? { ok: "converted" } : { err: r.error },
       ),
       303,
     );

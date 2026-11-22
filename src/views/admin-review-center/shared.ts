@@ -125,6 +125,7 @@ const FLASH_ERR_MSG: Record<string, string> = {
   invalid_uri: "evidence uri refused by the classifier",
   not_available: "knowledge conversion unavailable",
   already_converted: "already converted to a knowledge draft",
+  not_convertible_status: "status does not allow knowledge conversion",
 };
 
 export const safeOkCode = (code: string): string =>

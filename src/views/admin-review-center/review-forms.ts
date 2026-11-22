@@ -185,6 +185,25 @@ export function returnForm(r: ReviewCaseRecord, token: string) {
   </section>`;
 }
 
+export function convertForm(r: ReviewCaseRecord, token: string) {
+  if (r.status !== "DECIDED" || r.knowledgeConverted) return "";
+  return html`<section
+    class="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-3"
+  >
+    <h3 class="mb-2 text-xs font-semibold uppercase text-slate-500">
+      → Knowledge draft (creates a DRAFT — 229 approval stays human)
+    </h3>
+    <form method="post" action="/admin/review-center/reviews/${r.id}/convert">
+      ${tokenField(token)} ${opField()} ${formBtn("Convert →")}
+      <a
+        href="/admin/review-center/reviews/${r.id}/draft.json"
+        class="ml-3 text-xs text-slate-400 underline"
+        >export draft JSON</a
+      >
+    </form>
+  </section>`;
+}
+
 export function evidenceForm(r: ReviewCaseRecord, token: string) {
   if (r.status !== "IN_REVIEW") return "";
   return html`<section

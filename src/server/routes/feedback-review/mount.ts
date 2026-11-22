@@ -8,6 +8,7 @@ import type { Hono } from "hono";
 
 import type { FeedbackStore } from "../../lib/feedback/store";
 import type { ReviewStore } from "../../lib/reviews/store";
+import type { KnowledgeDraftPort } from "../../lib/knowledge-draft/port";
 import { createAgentFeedbackRoutes } from "./agent-feedback-api";
 import { createAgentReviewsRoutes } from "./agent-reviews-api";
 import { createReviewCenter } from "./review-center";
@@ -15,6 +16,8 @@ import { createReviewCenter } from "./review-center";
 export interface FeedbackReviewStores {
   feedback: FeedbackStore;
   reviews: ReviewStore;
+  /** D-230-10 seam — optional; absent → NOT_AVAILABLE + JSON export. */
+  draftPort?: KnowledgeDraftPort;
 }
 
 export function mountFeedbackReviewRoutes(
