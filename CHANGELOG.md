@@ -4,6 +4,18 @@ All notable changes to AgentBadge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added — x402 Payout Proof (EPIC-258)
+
+- **AB-188 "Payout Address Proof"** (payments/verifiability, informational) — verifies quoted `payTo` addresses against domain-published proofs per draft-x402payto1: `_x402-payto.<domain>` TXT (dual-DoH, parent-walk with PSL exclusion) takes precedence over `/.well-known/x402-payto.json`. Outcome axes kept separate: per-address outcome / proof level (`dns_signed`/`site_signed`/`dns`/`site`) / signature status (`valid`/`invalid`/`unverifiable`/`none`/`unsupported`). Live 402 `accepts[]` are authoritative; manifest is hint-only and never causes a mismatch. Mismatch → CONFLICT after live re-check; divergent double-probe → `possible_per_payment_address` (INFERRED, exempt)
+- **AB-189 "MPP Payout Recipient Proof"** — same proof evaluation applied to `WWW-Authenticate: Payment` challenge recipients (l402 double-probe + tempo/stripe quotes captured on x402 probes)
+- **AB-190 "Offer-and-Receipt Extension Declared"** — presence-only detection of `extensions["offer-receipt"].info.offers[]` (eip712/jws); VERIFIED means *declared* — signature and did:web key-binding verification explicitly `not_implemented`
+- **Fetcher evidence** — `x402_payto_dns`, `x402_payto_site` snapshots; x402 fetcher double-probes paid endpoints discovered via `/.well-known/x402.json` (SSRF-guarded paths only)
+- **Dogfood**: `_x402-payto.agentbadge.xyz` TXT + `/.well-known/x402-payto.json` published (EIP-191, `a=0x23dd…251B3`, issued 2026-11-22) — AB-188 VERIFIED `dns_signed`; `scripts/x402-payto-dogfood.mts` for inventory/sign/check
+- **Upstream fix**: dual-resolver DoH agreement now normalizes RFC-1035 quoted vs bare TXT `data` before comparison (`txtCanonical`) — finding credited in the proof spec
+- **E2E outcome matrix** — 31 scenarios through the full scan pipeline incl. shared-hosting scope (`scope:"shared_hosting_name"` surfaced in rule detail)
+
 ## [0.16.0] — 2026-10-04
 
 ### Added — Legacy x402 Consolidation (EPIC-157)
