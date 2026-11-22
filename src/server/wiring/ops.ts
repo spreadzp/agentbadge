@@ -78,6 +78,15 @@ export function wireStaticOps(app: Hono): void {
     c.header("Cache-Control", "public, max-age=300");
     return next();
   }, serveStatic({ root: "./public" }));
+  // SLICE-258-6: x402 payout proof (draft-x402payto1) — short cache,
+  // proof rotates on issued-date/payTo change.
+  app.use("/.well-known/x402-payto.json", (c, next) => {
+    c.header("Cache-Control", "public, max-age=300");
+    return serveStatic({
+      root: "./public",
+      path: "/.well-known/x402-payto.json",
+    })(c, next);
+  });
 }
 
 // OpenAPI spec + Swagger UI — openAPIRouteHandler(app) introspects the app at
