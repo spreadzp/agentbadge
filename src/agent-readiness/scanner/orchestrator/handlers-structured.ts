@@ -103,9 +103,18 @@ export const structuredHandlers: Record<string, ResourceHandler> = {
   },
   l402: async ({ baseUrl }) => {
     const r = await fetchL402Challenge(baseUrl);
+    // SLICE-258-5: the double-probe's second attempt rides along under
+    // clearly-synthetic x-agentbadge-probe2-* keys — attempt-1 headers
+    // stay verbatim so AB-070/71/72 see the same contract as before.
+    const headers = { ...r.headers };
+    if (r.secondAttempt) {
+      headers["x-agentbadge-probe2-status"] = String(r.secondAttempt.status);
+      const wa2 = r.secondAttempt.headers["www-authenticate"];
+      if (wa2) headers["x-agentbadge-probe2-www-authenticate"] = wa2;
+    }
     return createSnapshot({
       url: r.url, status: r.status, body: r.body,
-      resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime, headers: r.headers,
+      resolvedIp: r.resolvedIp, fetchTimeMs: r.fetchTime, headers,
     });
   },
   og_meta: async ({ baseUrl }) =>

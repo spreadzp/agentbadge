@@ -5,15 +5,22 @@
 // (weaker tier, shadowed by any DNS proof), x402 (manifest hint +
 // live-402 double-probe results embedded by the fetcher).
 //
-// Mapping (schema.md / D-258-Q14): verified→found, partial→partial,
-// any mismatch→conflict, absent→absent(GAP), malformed→absent(GAP+fix),
-// unchecked/manifest-only→not_applicable, possible_per_payment→partial
-// (exempt). Mismatch requires a live DNS re-check — a cached result
-// (`fromCache`) downgrades a non-match to unchecked + no_live_recheck
-// instead of a proven substitution.
+// Mapping (schema.md / D-258-Q14) shared with AB-189 — see
+// payto-proof-verdict.ts. Mismatch requires a live DNS re-check — a
+// cached result (`fromCache`) downgrades a non-match to unchecked +
+// no_live_recheck instead of a proven substitution.
 import type { SemanticChecker, SemanticCheckResult } from "./helpers";
-import { evaluatePaytoProofs, type ProofOutcome } from "../../../../../../packages/x402-payto-proof/src/index.ts";
+import {
+  evaluatePaytoProofs,
+  observationKey,
+} from "../../../../../../packages/x402-payto-proof/src/index.ts";
 import { collectPaytoInputs } from "./x402-payto-inputs";
+import {
+  liveRows,
+  coverageOf,
+  mapEvaluationVerdict,
+  type ProofCoverage,
+} from "./payto-proof-verdict";
 
 interface DetailPerAddress {
   key: string;
@@ -24,6 +31,7 @@ interface DetailPerAddress {
   level?: string;
   issued?: string;
   signatureStatus: string;
+  evidence_tier: "live402" | "manifest";
   anomalies: string[];
 }
 
@@ -32,14 +40,7 @@ interface Detail {
   summary: string;
   domain: string;
   probe_stability?: "stable_across_probe_window";
-  coverage: {
-    accepts_found: number;
-    probed: number;
-    verified: number;
-    mismatch: number;
-    absent_or_unchecked: number;
-    skip_reasons: string[];
-  };
+  coverage: ProofCoverage;
   perAddress: DetailPerAddress[];
   anomalies: string[];
   fix?: string;
@@ -63,19 +64,29 @@ export const checkerX402PaytoProof: SemanticChecker = (sources): SemanticCheckRe
     domain: inputs.domain,
   });
 
-  const live = result.perAddress.filter((a) => inputs.liveKeys.has(a.key));
-  const liveCount = (o: ProofOutcome) => live.filter((a) => a.outcome === o).length;
+  const live = liveRows(result, inputs.liveKeys);
+  const coverage = coverageOf(
+    live,
+    inputs.probed,
+    inputs.liveKeys.size,
+    result.conflicts,
+    inputs.skipReasons,
+  );
+  const mapped = mapEvaluationVerdict(
+    result,
+    live,
+    coverage,
+    { anyProbe: inputs.anyProbe, observationsLen: inputs.observations.length },
+    {
+      subject: "Payout address",
+      noPaymentsSummary: "Site does not advertise x402 payments",
+    },
+  );
 
-  const coverage = {
-    accepts_found: inputs.liveKeys.size,
-    probed: inputs.probed,
-    verified: liveCount("verified"),
-    mismatch: result.conflicts.length,
-    absent_or_unchecked:
-      liveCount("absent") + liveCount("unchecked") + liveCount("malformed"),
-    skip_reasons: [...inputs.skipReasons],
-  };
-
+  // observation.key → evidence tier for the honest detail annotation.
+  const tierOf = new Map(
+    inputs.observations.map((o) => [observationKey(o), o.source]),
+  );
   const perAddress: DetailPerAddress[] = result.perAddress.map((a) => ({
     key: a.key,
     payTo: a.payTo,
@@ -85,76 +96,13 @@ export const checkerX402PaytoProof: SemanticChecker = (sources): SemanticCheckRe
     level: a.level,
     issued: a.issued,
     signatureStatus: a.signatureStatus,
+    evidence_tier: tierOf.get(a.key) === "manifest" ? "manifest" : "live402",
     anomalies: a.anomalies,
   }));
 
-  // D-258-Q12/ChatGPT round-2: divergent probes are exempt evidence,
-  // never silent — surface as INFERRED with the explicit reason.
-  const allPerPayment =
-    live.length > 0 && live.every((a) => a.outcome === "possible_per_payment_address");
-
-  let outcome: SemanticCheckResult["outcome"];
-  let verdict: string;
-  let summary: string;
-  let fix: string | undefined;
-
-  if (result.conflicts.length > 0 || result.aggregate === "mismatch") {
-    outcome = "conflict";
-    verdict = "conflict";
-    const who = result.conflicts
-      .map((c) => `${c.payTo}${c.network ? ` (${c.network})` : ""}`)
-      .join(", ");
-    summary = `Quoted payout address does not match the published proof: ${who}`;
-  } else {
-    switch (result.aggregate) {
-      case "verified": {
-        outcome = "found";
-        verdict = "verified";
-        const v = live.find((a) => a.outcome === "verified");
-        summary = `Payout address proven at ${v?.level ?? "dns/site"} level${v?.issued ? `, issued ${v.issued}` : ""}`;
-        break;
-      }
-      case "partial":
-        outcome = "partial";
-        verdict = "partial";
-        summary = `Payout proof covers ${coverage.verified}/${coverage.accepts_found} quoted addresses — see per-address breakdown`;
-        break;
-      case "absent":
-        outcome = "absent";
-        verdict = "absent";
-        summary = "No x402 payout proof published";
-        fix =
-          "Publish a payout proof: DNS TXT at _x402-payto.<domain> or /.well-known/x402-payto.json (draft-x402payto1)";
-        break;
-      case "malformed":
-        outcome = "absent";
-        verdict = "malformed";
-        summary = "x402 payout proof present but unparseable";
-        fix =
-          "Repair the proof record — expected v=x402payto1; a=<address>; d=<YYYY-MM-DD>; s=<sig> (draft-x402payto1)";
-        break;
-      default:
-        // "unchecked" aggregate — distinguish the per-payment exempt
-        // case (divergent double-probe) from "could not evaluate".
-        if (allPerPayment) {
-          outcome = "partial";
-          verdict = "possible_per_payment_address";
-          summary =
-            "Endpoint quoted different payTo addresses across two probes — possible per-payment/deposit addressing (exempt)";
-        } else {
-          outcome = "not_applicable";
-          verdict = inputs.observations.length === 0 && !inputs.anyProbe ? "no_payments" : "unchecked";
-          summary =
-            verdict === "no_payments"
-              ? "Site does not advertise x402 payments"
-              : "Payout proof could not be evaluated (probe/DNS unreachable or inconclusive)";
-        }
-    }
-  }
-
   const detail: Detail = {
-    verdict,
-    summary,
+    verdict: mapped.verdict,
+    summary: mapped.summary,
     domain: inputs.domain,
     ...(inputs.probed > 0 && !inputs.divergentSeen
       ? { probe_stability: "stable_across_probe_window" as const }
@@ -162,7 +110,7 @@ export const checkerX402PaytoProof: SemanticChecker = (sources): SemanticCheckRe
     coverage,
     perAddress,
     anomalies: result.anomalies,
-    ...(fix ? { fix } : {}),
+    ...(mapped.fix ? { fix: mapped.fix } : {}),
   };
-  return { outcome, detail: JSON.stringify(detail) };
+  return { outcome: mapped.outcome, detail: JSON.stringify(detail) };
 };

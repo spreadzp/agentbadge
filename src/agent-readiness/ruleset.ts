@@ -143,6 +143,7 @@ import { AB185 } from "./rules/AB185";
 import { AB186 } from "./rules/AB186";
 import { AB187 } from "./rules/AB187";
 import { AB188 } from "./rules/AB188";
+import { AB189 } from "./rules/AB189";
 
 export const AGENT_READINESS_RULESET = {
   name: "agent-readiness",
@@ -315,6 +316,7 @@ export const AGENT_READINESS_RULESET = {
     AB187,
     // x402 payout proof (EPIC-258)
     AB188,
+    AB189,
   ] as AgentReadinessRule[],
 } as const;
 

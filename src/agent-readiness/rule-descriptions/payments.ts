@@ -145,4 +145,16 @@ export const paymentsRules: RuleDescription[] = [
     effort_hint: "complex",
     estimated_cost: "$100+",
   },
+  {
+    rule_id: "AB-189",
+    category: "payments",
+    icon: "🔏",
+    title: "MPP Payout Recipient Proof",
+    short_description: "Your domain proves it owns the wallet named in MPP Payment challenges, so agents can check they're not paying an impersonator.",
+    user_value: "An agent that follows a Payment challenge has no way to tell your real recipient wallet from a swapped one unless a proof is published.",
+    wrong_example: "No payout proof published — agents must trust the challenged recipient blindly.",
+    right_example: "A signed payout proof is published for the domain and matches the recipient in the Payment challenge.",
+    effort_hint: "complex",
+    estimated_cost: "$100+",
+  },
 ];

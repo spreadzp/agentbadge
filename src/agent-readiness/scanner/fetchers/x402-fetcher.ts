@@ -18,6 +18,11 @@ import { safeFetch } from "../ssrf/safe-fetch";
 import { resolveAndPin } from "../ssrf/dns-pin";
 import { fetchPinned } from "../ssrf/pinned-fetch";
 import { sha256 } from "./robots-fetcher";
+import {
+  parsePaymentChallengeQuotes,
+  mppQuotesDivergent,
+  type MppQuote,
+} from "./mpp-payment-challenge";
 
 export interface X402ProbeAccept {
   scheme?: string;
@@ -33,6 +38,12 @@ export interface X402ProbeAttempt {
   observedAt: string;
   /** Decoded accepts[] when the 402 carried parseable payment payload, else null. */
   accepts: X402ProbeAccept[] | null;
+  /**
+   * SLICE-258-5: MPP `WWW-Authenticate: Payment` recipient quotes on the
+   * same response — a mixed-protocol endpoint advertises both rails in
+   * one challenge block, no extra traffic needed.
+   */
+  mppQuotes?: MppQuote[];
 }
 
 export interface X402DoubleProbe {
@@ -41,6 +52,8 @@ export interface X402DoubleProbe {
   attempts: X402ProbeAttempt[];
   /** Second probe quoted a different payTo set → possible per-payment address. */
   divergent: boolean;
+  /** Same, over the MPP recipient sets (AB-189). */
+  mppDivergent: boolean;
 }
 
 export interface X402FetchResult {
@@ -164,9 +177,13 @@ async function probeOnce(baseUrl: string, path: string, method: "GET" | "POST"):
       status: response.status,
       observedAt,
       accepts: response.status === 402 ? acceptsFromPaymentPayload(headers, bodyText) : null,
+      mppQuotes:
+        response.status === 402
+          ? parsePaymentChallengeQuotes(headers["www-authenticate"])
+          : [],
     };
   } catch {
-    return { status: 0, observedAt, accepts: null };
+    return { status: 0, observedAt, accepts: null, mppQuotes: [] };
   }
 }
 
@@ -259,6 +276,7 @@ export async function fetchX402Discovery(
         method,
         attempts: [first, second],
         divergent: probePayTosDivergent(first, second),
+        mppDivergent: mppQuotesDivergent(first.mppQuotes, second.mppQuotes),
       });
       break; // D-258-Q12: two probes on ONE endpoint
     }

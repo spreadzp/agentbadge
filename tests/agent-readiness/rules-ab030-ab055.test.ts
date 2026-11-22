@@ -11,8 +11,8 @@ const newRuleIds = [
 ];
 
 describe("Rules AB-030 through AB-055", () => {
-  it("ruleset has 157 total rules", () => {
-    expect(AGENT_READINESS_RULESET.rules.length).toBe(157);
+  it("ruleset has 158 total rules", () => {
+    expect(AGENT_READINESS_RULESET.rules.length).toBe(158);
   });
 
   for (const ruleId of newRuleIds) {

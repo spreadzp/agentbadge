@@ -96,11 +96,29 @@ function hostOf(url: string): string {
 
 // ─── Assembly ───────────────────────────────────────────────────────────────
 
-export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
+export interface ProofInputs {
+  domain: string;
+  dnsEntries: ProofEntry[];
+  siteEntries: ProofEntry[];
+  malformedCount: number;
+  dnsState: "ok" | "unchecked";
+  siteState: "ok" | "absent" | "unchecked";
+  liveRecheckDone: boolean;
+}
+
+/**
+ * The protocol-agnostic proof tier (shared by AB-188 and AB-189,
+ * SLICE-258-5): `_x402-payto` DNS TXT + `/.well-known/x402-payto.json`
+ * publish one proof SET that any payment protocol's quoted address is
+ * checked against. `domainHints` are snapshot urls to fall back to
+ * when the DNS result carries no domain.
+ */
+export function collectProofInputs(
+  sources: Snapshots,
+  domainHints: (string | undefined)[] = [],
+): ProofInputs {
   const dnsSnap = sources["x402_payto_dns"] ?? null;
   const siteSnap = sources["x402_payto_site"] ?? null;
-  const x402Snap = sources["x402"] ?? null;
-  if (!dnsSnap && !siteSnap && !x402Snap) return null;
 
   // DNS tier
   let domain = "";
@@ -142,9 +160,28 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
   if (!domain) {
     domain =
       (siteResult ? hostOf(siteResult.url) : "") ||
-      (x402Snap ? hostOf(x402Snap.url) : "") ||
+      domainHints.map((u) => (u ? hostOf(u) : "")).find((h) => h) ||
       (dnsSnap ? hostOf(dnsSnap.url) : "");
   }
+
+  return {
+    domain,
+    dnsEntries,
+    siteEntries,
+    malformedCount,
+    dnsState,
+    siteState,
+    liveRecheckDone,
+  };
+}
+
+export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
+  const dnsSnap = sources["x402_payto_dns"] ?? null;
+  const siteSnap = sources["x402_payto_site"] ?? null;
+  const x402Snap = sources["x402"] ?? null;
+  if (!dnsSnap && !siteSnap && !x402Snap) return null;
+
+  const proof = collectProofInputs(sources, [x402Snap?.url]);
 
   // Observations: live402 accepts (authoritative) from probe results
   const observations: PayToObservation[] = [];
@@ -223,15 +260,9 @@ export function collectPaytoInputs(sources: Snapshots): PaytoInputs | null {
   }
 
   return {
-    domain,
+    ...proof,
     observations,
     liveKeys,
-    dnsEntries,
-    siteEntries,
-    malformedCount,
-    dnsState,
-    siteState,
-    liveRecheckDone,
     observedAt: x402Snap?.fetchedAt ?? dnsSnap?.fetchedAt ?? new Date().toISOString(),
     probed,
     anyProbe,
