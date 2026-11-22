@@ -79,3 +79,55 @@ endpoints:
       idField: item.id
       ssrPath: "/admin/knowledge/items/{id}"
       terminalStates: [WITHDRAWN]
+
+  # EPIC-230: feedback intake — POST {text,kind?,target?,severity?} +
+  # обязательный idempotency-key → {id:"fb_*",statusUrl}. Public GET —
+  # statusUrl (проекция {id,status,createdAt,updatedAt}).
+  - path: /api/v1/agent/feedback
+    method: POST
+    contract:
+      bodyTemplate:
+        text: "BOT-PROBE {case_key}: deploy-verify feedback probe"
+        kind: OTHER
+        target: api
+        severity: LOW
+      idempotencyField: "header:idempotency-key"
+      replayInvariant: [id]
+      readPathField: statusUrl
+      idField: id
+      projectionDenylist:
+        - dedupeScope
+        - idempotencyKey
+        - normalized
+        - actorRef
+        - fingerprint
+        - relatedFeedbackId
+
+  # EPIC-230: review request — POST {reviewType,workRef URI,
+  # agentCriteria?,evidence?} + idempotency-key → {id:"rv_*",
+  # statusUrl}. workRef должен быть URI (internal:/https://path).
+  # Public GET — statusUrl; decisions публичны без criterion note (M9).
+  - path: /api/v1/agent/reviews
+    method: POST
+    contract:
+      bodyTemplate:
+        reviewType: API_SURFACE
+        workRef: "internal:bot-probe-{case_key}"
+        agentCriteria:
+          - "BOT-PROBE {case_key} deploy-verify"
+        evidence:
+          - type: ARTIFACT_REF
+            uri: "internal:bot-probe-evidence-{case_key}"
+            label: "BOT-PROBE {case_key}"
+      idempotencyField: "header:idempotency-key"
+      replayInvariant: [id]
+      readPathField: statusUrl
+      idField: id
+      projectionDenylist:
+        - dedupeScope
+        - idempotencyKey
+        - assignee
+        - fingerprint
+        - operatorNote
+        - latestDecisionSeq
+        - note
