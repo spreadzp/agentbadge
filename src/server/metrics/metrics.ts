@@ -84,3 +84,53 @@ export const cacheMisses = new Counter({
   help: "Cache misses",
   registers: [registry],
 });
+
+/** EPIC-230 (SLICE-230-7, spec §17.3): Review Performance metrics.
+ *  Wired in server/wiring/feedback-review.ts off the post-commit
+ *  event hooks — a metric failure must never break a write. */
+export const reviewPending = new Gauge({
+  name: "agentbadge_review_pending",
+  help: "Review cases awaiting operator attention (PENDING_TRIAGE + REOPENED)",
+  registers: [registry],
+});
+
+export const reviewDurationSeconds = new Histogram({
+  name: "agentbadge_review_duration_seconds",
+  help: "Submission-to-decision latency of review cases",
+  buckets: [60, 300, 900, 3600, 14400, 86400, 259200],
+  registers: [registry],
+});
+
+export const reviewsDecidedTotal = new Counter({
+  name: "agentbadge_reviews_decided_total",
+  help: "Review decisions appended (reviews per operator)",
+  labelNames: ["operator", "outcome"],
+  registers: [registry],
+});
+
+export const reviewsReopenedTotal = new Counter({
+  name: "agentbadge_reviews_reopened_total",
+  help: "Review cases reopened after a decision",
+  registers: [registry],
+});
+
+export const reviewsSubmittedTotal = new Counter({
+  name: "agentbadge_reviews_submitted_total",
+  help: "Review requests submitted by agents",
+  labelNames: ["review_type"],
+  registers: [registry],
+});
+
+export const feedbackReceivedTotal = new Counter({
+  name: "agentbadge_feedback_received_total",
+  help: "Agent feedback submissions",
+  labelNames: ["kind", "target"],
+  registers: [registry],
+});
+
+export const knowledgeConversionsTotal = new Counter({
+  name: "agentbadge_knowledge_conversions_total",
+  help: "Feedback/review outcomes converted to knowledge drafts",
+  labelNames: ["source"],
+  registers: [registry],
+});
