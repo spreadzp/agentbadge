@@ -23,7 +23,7 @@ import {
   listGaps,
   resolveGap,
   triageGap,
-  noControlChars,
+  noCtrlStrict,
   wontfixGap,
 } from "../lib/knowledge";
 import {
@@ -37,7 +37,7 @@ const resolveBodySchema = z.object({
   linkedItemId: z
     .string()
     .min(1)
-    .refine(noControlChars, { message: "control characters not allowed" }),
+    .refine(noCtrlStrict, { message: "control characters not allowed" }),
 });
 
 const errBody = (error: string) => ({ error: { code: error, message: error } });
@@ -60,16 +60,28 @@ export function registerKnowledgeGapRoutes(
       const status = c.req.query("status");
       if (
         status !== undefined &&
+        status !== "all" &&
         !KNOWLEDGE_GAP_STATUSES.includes(status as never)
       ) {
         return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
       }
       const sort = c.req.query("sort");
+      // Arc R4 M-9: paging params — floor to int (a fractional
+      // ?offset=1.5 used to bind a non-integer to the int4 param and
+      // 500 on PG), clamp to sane bounds.
+      const int = (raw: string | undefined, dflt: number, max: number) => {
+        const n = Math.floor(Number(raw ?? dflt));
+        return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : dflt;
+      };
+      const limit = int(c.req.query("limit"), 100, 500);
+      const offset = int(c.req.query("offset"), 0, 1_000_000);
       const rows = await listGaps(store, {
-        status,
+        status: status === "all" ? undefined : status,
         sort: sort === "lastSeen" ? "lastSeen" : "count",
+        limit,
+        offset,
       });
-      return c.json({ gaps: rows, count: rows.length });
+      return c.json({ gaps: rows, count: rows.length, limit, offset });
     },
   );
 

@@ -16,7 +16,7 @@ import type {
   KnowledgeTransitionResult,
   KnowledgeVersionInsert,
 } from "./store";
-import { orTsquery } from "./terms";
+import { cjkTerms, orTsquery } from "./terms";
 import type { KnowledgeGapRecord } from "./types";
 
 /**
@@ -108,7 +108,15 @@ export class DbKnowledgeStore implements KnowledgeStore {
     // stopword stripping, so plain questions refused to match.
     const tsquery = orTsquery(opts.query);
     if (tsquery === undefined) return [];
-    return this.core.searchItems({ ...opts, tsquery });
+    // Arc R4 M-5: the tsquery lane can't match CJK bigrams inside
+    // unsegmented runs — hand the repo the same term list for its
+    // ILIKE substring lane.
+    const cjk = cjkTerms(opts.query);
+    return this.core.searchItems({
+      ...opts,
+      tsquery,
+      cjkTerms: cjk.length > 0 ? cjk.join("|") : undefined,
+    });
   }
 
   // ─── capabilities ──

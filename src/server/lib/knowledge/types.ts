@@ -252,6 +252,16 @@ export type CreateKnowledgeItemInput = z.infer<
   typeof createKnowledgeItemInputSchema
 >;
 
+/** Arc R4 M-7: the MERGED field set re-validates too — the update
+ *  schema only checked caller-provided fields, so a pre-R3 row with
+ *  a newline title or bidi body carried forward untouched on every
+ *  save/restore and published as-is. */
+export const versionFieldsSchema = z.object({
+  title: titleSchema,
+  body: bodySchema,
+  summary: summarySchema.nullish(),
+});
+
 export const updateKnowledgeDraftInputSchema = z
   .object({
     title: titleSchema.optional(),

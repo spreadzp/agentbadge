@@ -122,6 +122,13 @@ export interface SeedReport {
   /** Arc R3 M-10: MANUAL rows a SEEDED upsert refused to colonize —
    *  the symmetric provenance guard keeps them operator-owned. */
   manualOwned: string[];
+  /** Arc R4 M-8: rows actually un-verified this run (drift applied). */
+  unverified: string[];
+  /** Arc R4 M-8: drift detected but NOT applied — the manifest looked
+   *  degraded (stale rows ≥ half of it, or it came back empty), so
+   *  mass un-verification is refused rather than run on a broken
+   *  input. Investigate the manifest, then re-run. */
+  driftGuardTripped: boolean;
 }
 
 /**
@@ -141,6 +148,8 @@ export async function seedCapabilities(
     dbOnlySeeded: [],
     failed: [],
     manualOwned: [],
+    unverified: [],
+    driftGuardTripped: false,
   };
   for (const seed of wanted) {
     const before = await store.getCapabilityByName(seed.name);
@@ -175,19 +184,35 @@ export async function seedCapabilities(
   for (const row of dbRows) {
     if (row.source === "SEEDED" && !wantedNames.has(row.name)) {
       report.dbOnlySeeded.push(row.name);
-      if (row.verified) {
-        await store.upsertCapability({
-          id: row.id,
-          name: row.name,
-          kind: row.kind,
-          description: row.description,
-          source: "SEEDED",
-          verified: false,
-        });
-      }
     }
   }
   report.dbOnlySeeded.sort();
+  // Arc R4 M-8: degraded-manifest guard — un-verifying more stale
+  // rows than half the manifest (or running on an empty one) is the
+  // signature of a broken seed source, not real drift. Report the
+  // drift; skip the mutation.
+  const degraded =
+    wanted.length === 0 ||
+    report.dbOnlySeeded.length > Math.floor(wanted.length / 2);
+  report.driftGuardTripped = degraded && report.dbOnlySeeded.length > 0;
+  if (degraded) return report;
+  for (const row of dbRows) {
+    if (
+      row.source === "SEEDED" &&
+      !wantedNames.has(row.name) &&
+      row.verified
+    ) {
+      await store.upsertCapability({
+        id: row.id,
+        name: row.name,
+        kind: row.kind,
+        description: row.description,
+        source: "SEEDED",
+        verified: false,
+      });
+      report.unverified.push(row.name);
+    }
+  }
   return report;
 }
 

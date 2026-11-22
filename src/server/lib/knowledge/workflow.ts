@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { emitKnowledgeEvent } from "./events";
 import type { KnowledgeResult } from "./items";
-import type { KnowledgeStore } from "./store";
+import { KNOWLEDGE_TRANSITIONS, type KnowledgeStore } from "./store";
 import { isOperatorRef, normalizeOperatorRef } from "./types";
 import type {
   KnowledgeItemRecord,
@@ -42,13 +42,7 @@ import type {
  *  Arc R1 M14: VERIFIED→DRAFT reopens a verified-but-not-published
  *  item for corrections — the verify event stays in the audit trail
  *  and re-review is mandatory (PENDING→VERIFIED again). */
-const TRANSITIONS: Readonly<Record<string, ReadonlySet<string>>> = {
-  DRAFT: new Set(["PENDING", "WITHDRAWN"]),
-  PENDING: new Set(["VERIFIED", "DRAFT", "WITHDRAWN"]),
-  VERIFIED: new Set(["PUBLISHED", "DRAFT", "WITHDRAWN"]),
-  PUBLISHED: new Set(["WITHDRAWN"]),
-  WITHDRAWN: new Set(),
-};
+const TRANSITIONS = KNOWLEDGE_TRANSITIONS;
 
 /** Arc R1 H2: operator check = shared isOperatorRef — no more
  *  bypassable prefix-only denylist (\u200b/fullwidth/agent-7). */
@@ -150,8 +144,6 @@ export async function transitionKnowledgeItem(
     to,
     actor,
     reason: reason ?? null,
-    publish: to === "PUBLISHED",
-    unpublish: to === "WITHDRAWN",
     eventId: `kse_${randomUUID()}`,
     expectedVersionId: opts?.expectedVersionId,
     expectedEvidence: opts?.expectedEvidence,
@@ -174,6 +166,8 @@ export async function transitionKnowledgeItem(
     if (res.reason === "separation_of_duties") {
       return { ok: false, error: "SEPARATION_OF_DUTIES", field: "actor" };
     }
+    // "illegal" lands here too — a race between this lib check and
+    // the store's own state machine resolves to the same refusal.
     return {
       ok: false,
       error: "INVALID_TRANSITION",

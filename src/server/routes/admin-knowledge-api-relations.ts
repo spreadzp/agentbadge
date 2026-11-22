@@ -32,7 +32,7 @@ import {
   relationsFor,
   removeEvidence,
   removeRelation,
-  noControlChars,
+  noCtrlStrict,
   supersededBy,
 } from "../lib/knowledge";
 import {
@@ -45,7 +45,7 @@ import {
 const idField = z
   .string()
   .min(1)
-  .refine(noControlChars, { message: "control characters not allowed" });
+  .refine(noCtrlStrict, { message: "control characters not allowed" });
 const relationBodySchema = z.object({
   fromItemId: idField,
   toItemId: idField,
@@ -130,7 +130,7 @@ export function registerKnowledgeRelationRoutes(
         c,
         "POST:/admin/api/knowledge/relations/remove",
         async () => {
-          const r = await removeRelation(store, body.data.relationId);
+          const r = await removeRelation(store, body.data.relationId, actorRef);
           if (!r.ok) return { status: 400, body: errBody(r.error.toUpperCase()) };
           return { status: 200, body: { removed: r.removed } };
         },
@@ -254,7 +254,7 @@ export function registerKnowledgeRelationRoutes(
         c,
         "POST:/admin/api/knowledge/evidence/remove",
         async () => {
-          const r = await removeEvidence(store, body.data.evidenceId);
+          const r = await removeEvidence(store, body.data.evidenceId, actorRef);
           if (!r.ok) {
             return {
               status: r.error === "not_editable_in_status" ? 409 : 400,

@@ -68,8 +68,8 @@ export async function addRelation(
     type: input.type,
     createdBy: input.actorRef,
   });
-  if (res.reason === "supersedes_cycle") {
-    return { ok: false, error: "supersedes_cycle", field: "type" };
+  if (res.reason === "supersedes_cycle" || res.reason === "supersedes_bound") {
+    return { ok: false, error: res.reason, field: "type" };
   }
   if (res.reason === "items_missing") {
     return { ok: false, error: "missing_item", field: "toItemId" };

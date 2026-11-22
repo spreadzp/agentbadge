@@ -143,22 +143,38 @@ export class MemoryKnowledgeTaxonomy {
         if (r.type !== "SUPERSEDES") continue;
         adj.set(r.fromItemId, [...(adj.get(r.fromItemId) ?? []), r.toItemId]);
       }
-      const queue: [string, number][] = [[input.toItemId, 0]];
-      const seen = new Set<string>();
-      let overflow = false;
-      for (let qi = 0; qi < queue.length && !overflow; qi++) {
+      // Arc R4: mirror the PG CTE exactly — the queue seeds with
+      // toItemId's direct neighbors (depth 1), `reached` counts
+      // DISTINCT visited nodes excluding the start (the old queue
+      // counted the start, so the 2000 bound tripped one early),
+      // and a proven path is `supersedes_cycle` while a bound hit
+      // is `supersedes_bound`.
+      const queue: [string, number][] = (adj.get(input.toItemId) ?? []).map(
+        (n) => [n, 1],
+      );
+      const reached = new Set<string>();
+      let reason: "supersedes_cycle" | "supersedes_bound" | null = null;
+      for (let qi = 0; qi < queue.length && reason === null; qi++) {
         const [node, depth] = queue[qi]!;
-        // Arc R3 M-1: hitting the depth bound means the traversal
-        // may be truncated — refuse rather than pass "no path".
-        if (node === input.fromItemId || seen.size >= 2000 || depth >= 128) {
-          overflow = true;
-        } else if (!seen.has(node)) {
-          seen.add(node);
+        if (node === input.fromItemId) {
+          reason = "supersedes_cycle";
+        } else if (depth >= 128) {
+          // Hitting the bound may truncate the traversal — refuse
+          // rather than pass "no path" (PG maxDepth>=128 same).
+          reason = "supersedes_bound";
+        } else if (!reached.has(node)) {
+          reached.add(node);
+          // PG refuses when DISTINCT reached nodes >= 2000 — the
+          // 2000th node already trips the bound, no 2001st needed.
+          if (reached.size >= 2000) {
+            reason = "supersedes_bound";
+            break;
+          }
           for (const nxt of adj.get(node) ?? []) queue.push([nxt, depth + 1]);
         }
       }
-      if (overflow) {
-        return { row: null, created: false, reason: "supersedes_cycle" as const };
+      if (reason !== null) {
+        return { row: null, created: false, reason };
       }
     }
     const row: KnowledgeRelationRecord = {

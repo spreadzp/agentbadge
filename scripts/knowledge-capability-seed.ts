@@ -61,10 +61,13 @@ async function main() {
       process.exit(1);
     }
     console.log("no drift");
+    await database.close();
     return;
   }
 
   const report = await seedCapabilities(store);
+  // Arc R4 M-8: the report used to drop failed/manualOwned and exit
+  // 0 on failures — a silently broken seed looked green.
   console.log(
     JSON.stringify(
       {
@@ -73,13 +76,24 @@ async function main() {
         added: report.added,
         existing: report.existing,
         newlyAdded: report.newlyAddedNames,
+        manualOwned: report.manualOwned,
+        failed: report.failed,
         dbOnlySeededDrift: report.dbOnlySeeded,
+        driftUnverified: report.unverified,
+        driftGuardTripped: report.driftGuardTripped,
       },
       null,
       2,
     ),
   );
   await database.close();
+  if (report.failed.length > 0 || report.driftGuardTripped) {
+    console.error(
+      `seed incomplete: ${report.failed.length} failed` +
+        (report.driftGuardTripped ? ", drift unverify guarded off" : ""),
+    );
+    process.exit(1);
+  }
 }
 
 main().catch((err) => {

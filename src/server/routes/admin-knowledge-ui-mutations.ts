@@ -65,7 +65,7 @@ export function registerKnowledgeUiMutations(
       return c.redirect(backWith("/admin/knowledge", { err: r.error }), 303);
     }
     return c.redirect(
-      backWith(`/admin/knowledge/${r.item.id}`, { ok: "draft created" }),
+      backWith(`/admin/knowledge/${r.item.id}`, { ok: "draft_created" }),
       303,
     );
   });
@@ -102,7 +102,7 @@ export function registerKnowledgeUiMutations(
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
-        r.ok ? { ok: `saved v${r.version.seq}` } : { err: r.error },
+        r.ok ? { ok: `saved_v${r.version.seq}` } : { err: r.error },
       ),
       303,
     );
@@ -141,7 +141,7 @@ export function registerKnowledgeUiMutations(
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
-        r.ok ? { ok: `→ ${to}` } : { err: r.error },
+        r.ok ? { ok: `transitioned_${to}` } : { err: r.error },
       ),
       303,
     );
@@ -175,7 +175,7 @@ export function registerKnowledgeUiMutations(
     return c.redirect(
       backWith(
         `/admin/knowledge/${id}`,
-        r.ok ? { ok: `restored as v${r.version.seq}` } : { err: r.error },
+        r.ok ? { ok: `restored_v${r.version.seq}` } : { err: r.error },
       ),
       303,
     );
@@ -210,7 +210,7 @@ export function registerKnowledgeUiMutations(
       return c.redirect(
         backWith(
           "/admin/knowledge/gaps",
-          r.ok ? { ok: `gap ${action}d` } : { err: r.error },
+          r.ok ? { ok: `gap_${action}d` } : { err: r.error },
         ),
         303,
       );

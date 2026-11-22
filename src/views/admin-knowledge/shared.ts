@@ -18,8 +18,26 @@ export const tokenField = () =>
  *  domain text — anything that isn't a code-shaped token renders as
  *  a generic refusal so a crafted ?err= can't billboard the chrome. */
 const capFlash = (s: string) => (s.length > 300 ? `${s.slice(0, 300)}…` : s);
+// Arc R4 M-6: `>` widened in — domain codes carry it
+// (`invalid_transition:DRAFT->PUBLISHED`) and were collapsing to the
+// generic refusal, which hid the actual reason from the operator.
+// Escaping happens downstream in hono/html; this gate is only about
+// shape, so printable-safe punctuation is fine.
 const flashErr = (s: string) =>
-  /^[A-Za-z0-9_.:-]{1,120}$/.test(s) ? capFlash(s) : "request_refused";
+  /^[A-Za-z0-9_.:>+-]{1,120}$/.test(s) ? capFlash(s) : "request_refused";
+// Same whitelist on the success side — a crafted ?ok=→ PUBLISHED
+// used to paint a green false-success banner. Known prefixes get a
+// friendlier render; the rest show the code as-is.
+const flashOk = (s: string) => {
+  if (!/^[A-Za-z0-9_.:-]{1,120}$/.test(s)) return "done";
+  if (s.startsWith("transitioned_")) {
+    return `→ ${s.slice("transitioned_".length).toUpperCase()}`;
+  }
+  if (s.startsWith("saved_v") || s.startsWith("restored_v")) {
+    return `${s.startsWith("r") ? "Restored" : "Saved"} ${s.slice(s.indexOf("_") + 1)}`;
+  }
+  return s.replaceAll("_", " ");
+};
 
 const STATUS_PILL: Record<string, string> = {
   DRAFT: "bg-slate-800 text-slate-300",
@@ -115,7 +133,7 @@ export const flashBanner = (c: { ok?: string; err?: string }) => {
   if (c.ok) {
     return html`<div
       class="mb-3 rounded border border-emerald-800 bg-emerald-900/40 px-3 py-2 text-sm text-emerald-300"
-      >${capFlash(c.ok)}</div
+      >${flashOk(c.ok)}</div
     >`;
   }
   return "";

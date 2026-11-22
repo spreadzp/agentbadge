@@ -70,6 +70,11 @@ export async function recordGap(
      *  (backlog full / WONTFIX final) — callers must not claim a
      *  recording that didn't happen. */
     recorded: boolean;
+    /** Arc R4 M-1: distinct flag — true only when the row actually
+     *  re-entered the OPEN queue. A capped RESOLVED row records the
+     *  sighting (recorded:true) without reopening — callers should
+     *  not phrase it as "back in review". */
+    reopened: boolean;
   }>
 > {
   if (!KNOWLEDGE_GAP_SOURCES.includes(input.source as never)) {
@@ -137,49 +142,12 @@ export async function recordGap(
     gap: res.row,
     created: res.created,
     recorded: res.recorded,
+    reopened: res.reopened === true,
   };
 }
 
 /** Arc R1 M8: the 228 hook's fields get validated — an ireq_*
  *  sourceRef shape, bounded single-line intent/capabilityRef. */
-const IREQ_REF_RE = /^ireq_[A-Za-z0-9_-]{1,80}$/;
-const bounded = (s: string | null | undefined, max: number) =>
-  s === null || s === undefined || (s.length <= max && noCtrlStrict(s));
-
-export function recordInteractionGap(
-  store: KnowledgeStore,
-  input: {
-    requestId: string;
-    query: string;
-    intent?: string | null;
-    capabilityRef?: string | null;
-  },
-): Promise<
-  KnowledgeResult<{
-    gap: KnowledgeGapRecord | null;
-    created: boolean;
-    recorded: boolean;
-  }>
-> {
-  if (
-    !IREQ_REF_RE.test(input.requestId) ||
-    !bounded(input.intent, 200) ||
-    !bounded(input.capabilityRef, 200)
-  ) {
-    return Promise.resolve({
-      ok: false,
-      error: "bad_source_ref",
-      field: "sourceRef",
-    });
-  }
-  return recordGap(store, {
-    query: input.query,
-    source: "INTERACTION_SIGNAL",
-    sourceRef: input.requestId,
-    intent: input.intent,
-    capabilityRef: input.capabilityRef,
-  });
-}
 
 /** 229-7 composer seam — the KnowledgeGapRecorder interface impl.
  *  Arc R1 H3 + R2 M-1: reports whether the write actually LANDED

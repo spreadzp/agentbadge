@@ -66,7 +66,13 @@ function isValidEvidenceUri(type: string, uri: string): boolean {
  *  mapped/rfc6145/rfc6052/6to4/teredo/site-local/discard/orchid/SR
  *  (v6) all refuse — transition mechanisms aren't citation hosts. */
 function isPrivateHost(host: string): boolean {
-  const h = host.replace(/^\[|\]$/g, "").toLowerCase();
+  // Arc R4 H-1: WHATWG keeps a trailing dot in URL.hostname, so
+  // `localhost.`/`intranet.`/`x.internal.` sailed past every
+  // string check — strip it first (`.` alone collapses to "").
+  const h = host
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
+    .replace(/\.+$/, "");
   if (
     h === "" ||
     h === "localhost" ||
@@ -80,9 +86,23 @@ function isPrivateHost(host: string): boolean {
   if (h.includes(":")) {
     if (!ipaddr.IPv6.isValid(h)) return true; // unparseable v6 → refuse
     const v6 = ipaddr.IPv6.parse(h);
-    // ::ffff:a.b.c.d (hextet form too) — classify the embedded v4.
-    if (v6.isIPv4MappedAddress()) {
-      return v6.toIPv4Address().range() !== "unicast";
+    const p = v6.parts;
+    // Arc R4 H-1: classify ANY v4-embedded v6 by the embedded
+    // address — ipaddr's isIPv4MappedAddress is string-shaped
+    // (::1.2.3.4 → true but ::102:304, the SAME address in hextets,
+    // → false), so hextet-form compat/mapped slipped through as
+    // `unicast` — including ::7f00:1 = 127.0.0.1. First-80-bits-zero
+    // + part5 ∈ {0,ffff} covers mapped, compat (dotted or hextet),
+    // ::1 and :: uniformly.
+    if (
+      p[0] === 0 && p[1] === 0 && p[2] === 0 && p[3] === 0 &&
+      p[4] === 0 && (p[5] === 0 || p[5] === 0xffff)
+    ) {
+      return (
+        ipaddr.IPv4.parse(
+          `${p[6]! >> 8}.${p[6]! & 0xff}.${p[7]! >> 8}.${p[7]! & 0xff}`,
+        ).range() !== "unicast"
+      );
     }
     return v6.range() !== "unicast";
   }

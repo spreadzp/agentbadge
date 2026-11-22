@@ -21,7 +21,6 @@ import type { KnowledgeStore } from "../lib/knowledge/store";
 import {
   allowedKnowledgeTransitions,
   KNOWLEDGE_STATUSES,
-  noControlChars,
   noCtrlStrict,
   transitionKnowledgeItem,
 } from "../lib/knowledge";
@@ -37,7 +36,7 @@ const transitionBodySchema = z.object({
   reason: z
     .string()
     .max(2000)
-    .refine(noControlChars, { message: "control characters not allowed" })
+    .refine(noCtrlStrict, { message: "control characters not allowed" })
     .optional(),
   /** Arc R2 H-2 + R3 M-11: stale-page precondition — REQUIRED by the
    *  store for VERIFIED/PUBLISHED (precondition_required → 400). */

@@ -152,9 +152,11 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
     }
     // Arc R3 M-9: ?offset= paging — a fixed limit-200 hid the tail
     // of a capped 2000-row backlog from triage entirely.
+    // Arc R4 M-9: floor — ?offset=1.5 otherwise binds a non-integer
+    // to the int4 param and 500s on PG.
     const offset = Math.max(
       0,
-      Math.min(100000, Number(c.req.query("offset") ?? 0) || 0),
+      Math.min(100000, Math.floor(Number(c.req.query("offset") ?? 0)) || 0),
     );
     const gaps = await listGaps(store, {
       status: status === "all" ? undefined : status,

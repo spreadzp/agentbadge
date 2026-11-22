@@ -10,6 +10,7 @@ import type { KnowledgeStore } from "./store";
 import {
   createKnowledgeItemInputSchema,
   updateKnowledgeDraftInputSchema,
+  versionFieldsSchema,
   type CreateKnowledgeItemInput,
   type KnowledgeItemRecord,
   type KnowledgeVersionRecord,
@@ -157,6 +158,17 @@ export async function updateKnowledgeDraft(
         ? (prev?.summary ?? null)
         : (input.summary ?? null),
   };
+  // Arc R4 M-7: the merged triple validates like fresh input — a
+  // legacy row's dirty title/body can't ride forward untouched;
+  // the operator must supply a corrected field to save at all.
+  const mv = versionFieldsSchema.safeParse(merged);
+  if (!mv.success) {
+    return {
+      ok: false,
+      error: "content_invalid",
+      field: String(mv.error.issues[0]?.path[0] ?? "title"),
+    };
+  }
   // No-op saves append no version (and emit no event) — an identical
   // merge is reported honestly instead of inflating the audit trail.
   if (

@@ -100,7 +100,7 @@ export function registerKnowledgeUiTaxonomyMutations(
         return c.redirect(
           backWith(
             `/admin/knowledge/${id}`,
-            r.ok ? { ok: "edge saved" } : { err: r.error },
+            r.ok ? { ok: "edge_saved" } : { err: r.error },
           ),
           303,
         );
@@ -142,7 +142,7 @@ export function registerKnowledgeUiTaxonomyMutations(
         return c.redirect(
           backWith(
             `/admin/knowledge/${id}`,
-            r.ok ? { ok: "evidence saved" } : { err: r.error },
+            r.ok ? { ok: "evidence_saved" } : { err: r.error },
           ),
           303,
         );

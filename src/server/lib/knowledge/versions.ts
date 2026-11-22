@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { emitKnowledgeEvent } from "./events";
 import type { KnowledgeResult } from "./items";
 import type { KnowledgeStore } from "./store";
+import { versionFieldsSchema } from "./types";
 import type { KnowledgeVersionRecord } from "./types";
 
 /**
@@ -47,6 +48,22 @@ export async function restoreKnowledgeVersion(
   const source = await store.getVersionBySeq(itemId, seq);
   if (!source) return { ok: false, error: "version_not_found" };
 
+  // Arc R4 M-7: the source validates like fresh input — restoring a
+  // pre-R3 version with dirty content must fail honestly (fix it
+  // via updateDraft instead), not re-publish invisible junk.
+  const sv = versionFieldsSchema.safeParse({
+    title: source.title,
+    body: source.body,
+    summary: source.summary,
+  });
+  if (!sv.success) {
+    return {
+      ok: false,
+      error: "content_invalid",
+      field: String(sv.error.issues[0]?.path[0] ?? "title"),
+    };
+  }
+
   // Arc R1 H5+H4 / R2 M-8: seq under the store's item lock +
   // evidence copied from the latest version AS LOCKED (the one
   // under review), never a caller-stale source id. expectedSeq
@@ -68,13 +85,15 @@ export async function restoreKnowledgeVersion(
   if (!added.ok) {
     // Arc R3 nit: stale_seq got flattened to not_found — map it to
     // its own honest error like updateKnowledgeDraft does.
+    // Arc R4 nit: same precondition failure, same string — updateDraft
+    // reports `stale_seq`, so restore now does too (was stale_version).
     return {
       ok: false,
       error:
         added.reason === "not_draft"
           ? "not_editable_in_status"
           : added.reason === "stale_seq"
-            ? "stale_version"
+            ? "stale_seq"
             : "not_found",
     };
   }

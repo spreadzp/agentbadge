@@ -15,6 +15,7 @@ import { MemoryKnowledgeCore } from "./store-memory-core";
 import { MemoryKnowledgeEvidence } from "./store-memory-evidence";
 import { MemoryKnowledgeGaps } from "./store-memory-gaps";
 import { MemoryKnowledgeTaxonomy } from "./store-memory-taxonomy";
+import { MemoryKnowledgeTransitions } from "./store-memory-transitions";
 
 /**
  * EPIC-229 (SLICE-229-1): in-memory KnowledgeStore — the
@@ -30,12 +31,14 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
   private readonly taxonomy: MemoryKnowledgeTaxonomy;
   private readonly evidence: MemoryKnowledgeEvidence;
   private readonly gaps: MemoryKnowledgeGaps;
+  private readonly transitions: MemoryKnowledgeTransitions;
 
   constructor(data: MemoryKnowledgeData) {
     this.core = new MemoryKnowledgeCore(data);
     this.taxonomy = new MemoryKnowledgeTaxonomy(data);
     this.evidence = new MemoryKnowledgeEvidence(data);
     this.gaps = new MemoryKnowledgeGaps(data);
+    this.transitions = new MemoryKnowledgeTransitions(data);
   }
 
   // ─── items / versions / events ──
@@ -60,8 +63,9 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
     this.core.getVersionBySeq(itemId, seq);
   listVersions = (itemId: string) => this.core.listVersions(itemId);
   transitionItem = (id: string, input: KnowledgeTransitionInput) =>
-    this.core.transitionItem(id, input);
-  listStatusEvents = (itemId: string) => this.core.listStatusEvents(itemId);
+    this.transitions.transitionItem(id, input);
+  listStatusEvents = (itemId: string) =>
+    this.transitions.listStatusEvents(itemId);
   searchItems = (opts: KnowledgeSearchOpts) =>
     this.taxonomy.searchItems(opts);
 

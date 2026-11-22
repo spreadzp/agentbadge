@@ -48,49 +48,18 @@ export interface KnowledgeStatusEventInsert {
   reason?: string | null;
 }
 
-export interface KnowledgeTransitionInput {
-  from: string;
-  to: string;
-  actor: string;
-  reason?: string | null;
-  /** Set publishedVersionId = latestVersionId (VERIFIED→PUBLISHED). */
-  publish?: boolean;
-  /** Clear publishedVersionId (WITHDRAWN). */
-  unpublish?: boolean;
-  eventId?: string;
-  /** Arc R2 H-2: stale-page/ABA precondition — the tx refuses unless
-   *  latestVersionId still equals this under the row lock.
-   *  Arc R3 M-11: REQUIRED for VERIFIED/PUBLISHED (precondition_required). */
-  expectedVersionId?: string;
-  /** Arc R3 H-2: pins the evidence SET a reviewer saw — canonical
-   *  fingerprint = sorted evidence ids of the latest version joined
-   *  by "|". Recomputed under the row lock for VERIFIED; mismatch
-   *  refuses "evidence_changed". REQUIRED for VERIFIED. */
-  expectedEvidence?: string;
-  /** Arc R2 H-2 + R3 M-11: approval gates INSIDE the CAS lock,
-   *  derived purely from `to` (VERIFIED→evidence+SoD+fingerprint,
-   *  PUBLISHED→SoD) — no caller flag can widen or narrow them. */
-}
-
-export type KnowledgeTransitionResult =
-  | {
-      item: KnowledgeItemRecord;
-      event: KnowledgeStatusEventRecord;
-      transitioned: true;
-    }
-  | {
-      item: KnowledgeItemRecord | null;
-      event: null;
-      transitioned: false;
-      reason:
-        | "missing"
-        | "status_mismatch"
-        | "stale_version"
-        | "evidence_required"
-        | "evidence_changed"
-        | "precondition_required"
-        | "separation_of_duties";
-    };
+/** Arc R4 M-4: the legal from→to table enforced INSIDE the store
+ *  — previously workflow-only, so a direct store call could jump
+ *  DRAFT→PUBLISHED. Mirror of the PG copy (no cross-package import). */
+import type {
+  KnowledgeTransitionInput,
+  KnowledgeTransitionResult,
+} from "./transitions";
+export {
+  KNOWLEDGE_TRANSITIONS,
+  type KnowledgeTransitionInput,
+  type KnowledgeTransitionResult,
+} from "./transitions";
 
 export interface KnowledgeCapabilityUpsert {
   id: string;
@@ -221,7 +190,7 @@ export interface KnowledgeStore {
   ): Promise<{
     row: KnowledgeRelationRecord | null;
     created: boolean;
-    reason?: "supersedes_cycle" | "items_missing";
+    reason?: "supersedes_cycle" | "supersedes_bound" | "items_missing";
   }>;
   /** Returns the deleted row when found — the audit event needs the
    *  edge's endpoints + type (Arc R1 H4: no silent mutations). */

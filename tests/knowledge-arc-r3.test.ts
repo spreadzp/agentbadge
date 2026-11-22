@@ -154,6 +154,18 @@ describe("Arc R3 — M-3 public evidence URI boundary", () => {
       ["http://intranet/x", false], // dotless = single-label
       ["http://user:pw@example.com/x", false], // userinfo
       ["http://2130706433/x", false], // dword loopback
+      // Arc R4 H-1: trailing dot kept by WHATWG — every string
+      // check missed it; compat v6 (hextet or dotted) hid v4.
+      ["http://localhost./x", false],
+      ["http://intranet./x", false],
+      ["http://jenkins.internal./x", false],
+      ["http://metadata./x", false],
+      ["http://[::7f00:1]/x", false], // compat hextet = 127.0.0.1
+      ["http://[::a00:1]/x", false], // compat hextet = 10.0.0.1
+      ["http://[::1.2.3.4]/x", true], // compat dotted, public v4
+      ["http://[::102:304]/x", true], // compat hextet, same 1.2.3.4
+      ["http://[::ffff:8.8.8.8]/x", true], // mapped public stays public
+      ["http://[::ffff:a00:1]/x", false], // mapped private
     ] as const) {
       expect(isPublicEvidenceUri(uri), uri).toBe(isPublic);
     }

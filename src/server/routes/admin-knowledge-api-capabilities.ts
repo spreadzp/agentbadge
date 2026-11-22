@@ -23,7 +23,7 @@ import {
   unlinkItemCapability,
   upsertKnowledgeCapability,
   KNOWLEDGE_CAPABILITY_KINDS,
-  noControlChars,
+  noCtrlStrict,
 } from "../lib/knowledge";
 import {
   rejectCtrl,
@@ -37,12 +37,14 @@ const capBodySchema = z.object({
     .string()
     .min(1)
     .max(200)
-    .refine(noControlChars, { message: "control characters not allowed" }),
+    // Arc R4 M-7: single-line fields get the strict predicate — a
+    // bidi mark or newline in a capability name forges console UI.
+    .refine(noCtrlStrict, { message: "control characters not allowed" }),
   kind: z.string(),
   description: z
     .string()
     .max(2000)
-    .refine(noControlChars, { message: "control characters not allowed" })
+    .refine(noCtrlStrict, { message: "control characters not allowed" })
     .optional(),
 });
 
@@ -50,7 +52,7 @@ const linkBodySchema = z.object({
   capabilityId: z
     .string()
     .min(1)
-    .refine(noControlChars, { message: "control characters not allowed" }),
+    .refine(noCtrlStrict, { message: "control characters not allowed" }),
 });
 
 const errBody = (error: string) => ({ error: { code: error, message: error } });

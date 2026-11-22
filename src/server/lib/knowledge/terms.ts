@@ -25,24 +25,34 @@ export const STOPWORDS = new Set([
  *  lane's ≥2-char rule dropped 税 entirely and kept 支払いについて
  *  as one unmatchable blob. CJK runs emit bigrams (plus the single
  *  char when the run is one), which the memory scorer can
- *  substring-match and which stay injection-free for to_tsquery. */
-const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]+/gu;
+ *  substring-match and which stay injection-free for to_tsquery.
+ *
+ *  Arc R4 M-5: Hangul is out of this lane — Korean is space-segmented,
+ *  so its words tokenize through the latin lane; keeping it here
+ *  double-counted 한국어 as word + both bigrams. Pure-hiragana terms
+ *  are dropped too: hiragana-only bigrams are particles/conjugations
+ *  (につ, いて) that hit every Japanese document and inflate coverage
+ *  into false ANSWERED results. A query made only of particles now
+ *  honestly refuses + records a gap. */
+const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+/gu;
+const HIRAGANA_ONLY = /^\p{Script=Hiragana}+$/u;
 
 /** True for terms produced by the CJK lane — scorers substring-match
  *  these (unsegmented text has no word boundary to anchor on). */
 export const CJK_TERM =
-  /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]+$/u;
+  /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+$/u;
 
-function cjkTerms(q: string): string[] {
+export function cjkTerms(q: string): string[] {
   const out: string[] = [];
   for (const run of q.match(CJK_RUN) ?? []) {
     const chars = [...run];
     if (chars.length === 1) {
-      out.push(chars[0]!);
+      if (!HIRAGANA_ONLY.test(chars[0]!)) out.push(chars[0]!);
       continue;
     }
     for (let i = 0; i + 1 < chars.length; i++) {
-      out.push(chars[i]! + chars[i + 1]!);
+      const bg = chars[i]! + chars[i + 1]!;
+      if (!HIRAGANA_ONLY.test(bg)) out.push(bg);
     }
   }
   return out;
