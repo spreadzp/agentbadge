@@ -5,8 +5,12 @@
  * Плюс idempotent-replay на create (duplicate:true, item.id равен).
  *
  * Требует ADMIN_API_KEY в env (секрет только из .env). Атрибуция:
- * x-operator-id = BOT-PROBE-<case>. Применяется к
- * POST /admin/api/knowledge/items (contract.bodyTemplate +
+ * x-operator-id = probe-<case> (Arc R1 H2: строгий allowlist
+ * [a-z0-9._@-] + agent-shape denylist — uppercase и bot-* формы
+ * больше не проходят). Separation of duties:
+ * submit/publish — probe-<case>, verify — probe-<case>-v;
+ * VERIFIED требует evidence → шаг evidence-add перед верификацией.
+ * Применяется к POST /admin/api/knowledge/items (contract.bodyTemplate +
  * contract.idField="item.id"). Мутирует — только local/dev,
  * на проде создаёт реальные строки (human-queue).
  */
@@ -32,14 +36,23 @@ const scenario: Scenario = {
     const submitH = {
       "content-type": "application/json",
       "x-admin-key": adminKey,
-      "x-operator-id": `BOT-PROBE-${tok}`,
-      "idempotency-key": `BOT-PROBE-${tok}`,
+      "x-operator-id": `probe-${tok}`,
+      "idempotency-key": `probe-${tok}`,
     };
     const adminH = (idem: string) => ({
       "content-type": "application/json",
       "x-admin-key": adminKey,
-      "x-operator-id": `BOT-PROBE-${tok}`,
-      "idempotency-key": `BOT-PROBE-${tok}-${idem}`,
+      "x-operator-id": `probe-${tok}`,
+      "idempotency-key": `probe-${tok}-${idem}`,
+    });
+    // Arc R1: verify идёт ДРУГИМ оператором (separation of duties —
+    // publisher ≠ verifier), и перед ним нужен evidence-шаг (гейт на
+    // ≥1 evidence у версии под ревью).
+    const verifyH = (idem: string) => ({
+      "content-type": "application/json",
+      "x-admin-key": adminKey,
+      "x-operator-id": `probe-${tok}-v`,
+      "idempotency-key": `probe-${tok}-${idem}`,
     });
     const expect = {
       statusIn: [200, 201, 202, 400, 401, 402, 403, 404, 409, 422, 429],
@@ -53,6 +66,24 @@ const scenario: Scenario = {
       body: JSON.stringify({ to: status }),
       note: `→ ${status}`,
     });
+    const verify = (n: number) => ({
+      method: "POST",
+      path: adminBase,
+      headers: verifyH(`v${n}`),
+      body: JSON.stringify({ to: "VERIFIED" }),
+      note: "→ VERIFIED (op2)",
+    });
+    const evidenceStep = {
+      method: "POST",
+      path: `/admin/api/knowledge/versions/{step1.version.id}/evidence`,
+      headers: adminH("ev"),
+      body: JSON.stringify({
+        type: "EXTERNAL_URL",
+        uri: "https://example.com/probe-evidence",
+        label: "probe evidence",
+      }),
+      note: "evidence add",
+    };
     // slug = "{case_key}" = "pb<hash>" — ОДИН numword-токен: PG-парсер
     // держит hyphenated-строку как цельный лексем в запросе, а
     // 'bot-probe-pb…' как токен в документе отсутствует → q=slug
@@ -66,7 +97,7 @@ const scenario: Scenario = {
           { method: "POST", path: ep.path, headers: submitH, body, note: "create" },
           { method: "POST", path: ep.path, headers: submitH, body, note: "create replay" },
           { method: "GET", path: searchPath, note: "draft invisible" },
-          to("PENDING", 1), to("VERIFIED", 2), to("PUBLISHED", 3),
+          to("PENDING", 1), evidenceStep, verify(2), to("PUBLISHED", 3),
           { method: "GET", path: searchPath, note: "published visible" },
           to("WITHDRAWN", 4),
           { method: "GET", path: searchPath, note: "withdrawn invisible" },
@@ -75,7 +106,9 @@ const scenario: Scenario = {
         ],
         assert: obs => {
           const problems: string[] = [];
-          const [create, replay, draftS, pend, , , pubS, , withS] = obs;
+          // obs: 0 create, 1 replay, 2 draftS, 3 PENDING, 4 evidence,
+          //      5 VERIFIED, 6 PUBLISHED, 7 pubS, 8 WITHDRAWN, 9 withS
+          const [create, replay, draftS, pend, , , , pubS, , withS] = obs;
           const itemId = getPath(create?.bodyJson, "item.id");
           if (!itemId) return problems;
           // Идемпотентный rerun: slug/key детерминированы — requeue'нутый
