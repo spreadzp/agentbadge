@@ -41,7 +41,7 @@ export const nowIso = () => new Date().toISOString();
 export const linkKey = (itemId: string, capabilityId: string) =>
   `${itemId}::${capabilityId}`;
 
-import { tokenizeTerms } from "./terms";
+import { CJK_TERM, tokenizeTerms } from "./terms";
 
 const hayTokens = (text: string) =>
   new Set(
@@ -65,9 +65,14 @@ export function memorySearchScore(
 ): number {
   const terms = tokenizeTerms(query);
   if (terms.length === 0) return 0;
-  const hay = hayTokens(`${title} ${body}`);
+  const text = `${title} ${body}`.normalize("NFC").toLowerCase();
+  const hay = hayTokens(text);
   let hits = 0;
-  for (const t of terms) if (hay.has(t)) hits += 1;
+  // Arc R3 M-7: CJK terms substring-match (no word boundary exists
+  // in unsegmented text) — same rule as composer coverage.
+  for (const t of terms) {
+    if (CJK_TERM.test(t) ? text.includes(t) : hay.has(t)) hits += 1;
+  }
   return hits / terms.length;
 }
 

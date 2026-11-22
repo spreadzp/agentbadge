@@ -116,6 +116,12 @@ export interface SeedReport {
   /** In the registry but no longer in code — MANUAL rows are fine,
    *  SEEDED rows flagged here are DRIFT (code removed/renamed). */
   dbOnlySeeded: string[];
+  /** Arc R3 M-10: seeds the upsert REJECTED — `total ≠ added +
+   *  existing` used to be the only clue failures happened. */
+  failed: { name: string; error: string }[];
+  /** Arc R3 M-10: MANUAL rows a SEEDED upsert refused to colonize —
+   *  the symmetric provenance guard keeps them operator-owned. */
+  manualOwned: string[];
 }
 
 /**
@@ -133,6 +139,8 @@ export async function seedCapabilities(
     existing: 0,
     newlyAddedNames: [],
     dbOnlySeeded: [],
+    failed: [],
+    manualOwned: [],
   };
   for (const seed of wanted) {
     const before = await store.getCapabilityByName(seed.name);
@@ -142,21 +150,41 @@ export async function seedCapabilities(
       description: seed.description,
       source: "SEEDED",
     });
-    if (!r.ok) continue;
+    if (!r.ok) {
+      report.failed.push({ name: seed.name, error: r.error });
+      continue;
+    }
     if (before === null) {
       report.added += 1;
       report.newlyAddedNames.push(seed.name);
+    } else if (before.source === "MANUAL") {
+      // Arc R3 M-10: the upsert kept the operator-owned row —
+      // surface it instead of silently counting "existing".
+      report.manualOwned.push(seed.name);
     } else {
       report.existing += 1;
     }
   }
 
-  // Drift: seeded registry rows the code no longer emits.
+  // Drift: seeded registry rows the code no longer emits. Arc R3
+  // M-10: a stale SEEDED row stayed verified=true forever — flip
+  // it off so the registry stops asserting a capability code no
+  // longer produces.
   const wantedNames = new Set(wanted.map((w) => w.name));
   const dbRows = await store.listCapabilities({ limit: 10_000 });
   for (const row of dbRows) {
     if (row.source === "SEEDED" && !wantedNames.has(row.name)) {
       report.dbOnlySeeded.push(row.name);
+      if (row.verified) {
+        await store.upsertCapability({
+          id: row.id,
+          name: row.name,
+          kind: row.kind,
+          description: row.description,
+          source: "SEEDED",
+          verified: false,
+        });
+      }
     }
   }
   report.dbOnlySeeded.sort();

@@ -39,11 +39,18 @@ const transitionBodySchema = z.object({
     .max(2000)
     .refine(noControlChars, { message: "control characters not allowed" })
     .optional(),
-  /** Arc R2 H-2: optional stale-page precondition — the version the
-   *  caller reviewed; re-checked under the store's row lock. */
+  /** Arc R2 H-2 + R3 M-11: stale-page precondition — REQUIRED by the
+   *  store for VERIFIED/PUBLISHED (precondition_required → 400). */
   expectedVersionId: z
     .string()
     .max(80)
+    .refine(noCtrlStrict, { message: "control characters not allowed" })
+    .optional(),
+  /** Arc R3 H-2: pins the evidence SET the caller reviewed — sorted
+   *  ids joined by "|"; REQUIRED by the store for VERIFIED. */
+  expectedEvidence: z
+    .string()
+    .max(4000)
     .refine(noCtrlStrict, { message: "control characters not allowed" })
     .optional(),
 });
@@ -93,11 +100,15 @@ export function registerKnowledgeTransitionRoutes(
         async () => {
           const r = await transitionKnowledgeItem(
             store, itemId, to, actorRef, body.data.reason ?? null,
-            { expectedVersionId: body.data.expectedVersionId },
+            {
+              expectedVersionId: body.data.expectedVersionId,
+              expectedEvidence: body.data.expectedEvidence,
+            },
           );
           if (!r.ok) {
             const status =
               r.error === "not_found" ? 404
+              : r.error === "precondition_required" ? 400
               : r.error === "ACTOR_NOT_OPERATOR" ||
                   r.error === "SEPARATION_OF_DUTIES" ? 403
               : 409;

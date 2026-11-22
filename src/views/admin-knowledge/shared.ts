@@ -14,9 +14,12 @@ import { mintFormToken } from "../../server/lib/knowledge/form-tokens";
 export const tokenField = () =>
   html`<input type="hidden" name="formToken" value="${mintFormToken()}" />`;
 
-/** Arc R2 M-5: flash text renders verbatim — cap it so a hostile
- *  ?err= query can't turn the console chrome into a billboard. */
+/** Arc R2 M-5 + R3 M-5: flash errs carry structured codes, not raw
+ *  domain text — anything that isn't a code-shaped token renders as
+ *  a generic refusal so a crafted ?err= can't billboard the chrome. */
 const capFlash = (s: string) => (s.length > 300 ? `${s.slice(0, 300)}…` : s);
+const flashErr = (s: string) =>
+  /^[A-Za-z0-9_.:-]{1,120}$/.test(s) ? capFlash(s) : "request_refused";
 
 const STATUS_PILL: Record<string, string> = {
   DRAFT: "bg-slate-800 text-slate-300",
@@ -106,7 +109,7 @@ export const flashBanner = (c: { ok?: string; err?: string }) => {
   if (c.err) {
     return html`<div
       class="mb-3 rounded border border-red-800 bg-red-900/40 px-3 py-2 text-sm text-red-300"
-      >${capFlash(c.err)}</div
+      >${flashErr(c.err)}</div
     >`;
   }
   if (c.ok) {

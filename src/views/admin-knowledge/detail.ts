@@ -29,6 +29,9 @@ export interface DetailInput {
   versions: KnowledgeVersionRecord[];
   events: KnowledgeStatusEventRecord[];
   allowedTransitions: string[];
+  /** Arc R3 H-2: fingerprint of the latest version's evidence set —
+   *  echoed by transition forms, re-checked under the row lock. */
+  evidenceFp: string;
   taxonomy: unknown; // pre-rendered fragment (detail-taxonomy.ts)
   flash?: { ok?: string; err?: string };
 }
@@ -51,6 +54,7 @@ const section = (title: string, body: unknown) => html`<div
 const transitionButtons = (
   item: KnowledgeItemRecord,
   allowed: string[],
+  evidenceFp: string,
 ) => {
   if (allowed.length === 0) {
     return html`<p class="text-xs text-slate-500">
@@ -70,6 +74,11 @@ const transitionButtons = (
           type="hidden"
           name="expectedVersionId"
           value="${item.latestVersionId}"
+        />
+        <input
+          type="hidden"
+          name="expectedEvidence"
+          value="${evidenceFp}"
         />
         <input
           type="text"
@@ -151,7 +160,10 @@ export function knowledgeDetailPage(input: DetailInput): string {
           : "none"}
       </div>`,
     )}
-    ${section("Workflow", transitionButtons(i, input.allowedTransitions))}
+    ${section(
+      "Workflow",
+      transitionButtons(i, input.allowedTransitions, input.evidenceFp),
+    )}
     ${section(
       "Latest version preview",
       input.latest

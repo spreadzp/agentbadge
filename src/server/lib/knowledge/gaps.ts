@@ -42,7 +42,9 @@ export function normalizeQuery(q: string): string {
   return q
     .normalize("NFKC")
     .toLowerCase()
-    .replace(/[\p{Cf}\p{M}]/gu, "")
+    // Arc R3 M-7: keep \p{M} — stripping marks destroyed Indic
+    // vowel signs (हिन्दी → हनद) and collapsed distinct words.
+    .replace(/\p{Cf}/gu, "")
     .replace(/[\p{P}\p{S}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -73,15 +75,26 @@ export async function recordGap(
   if (!KNOWLEDGE_GAP_SOURCES.includes(input.source as never)) {
     return { ok: false, error: "bad_gap_source", field: "source" };
   }
-  const query = input.query.trim();
-  // Arc R2 M-1: the raw query was unvalidated at the lib edge —
-  // control/format chars went straight into sampleQueries (verbatim
-  // operator console render) and normalized dedupe.
+  // Arc R3 M-7: collapse whitespace BEFORE the strict check — a
+  // newline/tab in an agent prompt dropped the whole demand signal
+  // as bad_query. The stored sample is the collapsed form.
+  const query = input.query.replace(/\s+/g, " ").trim();
   if (query.length === 0 || !noCtrlStrict(query)) {
     return { ok: false, error: "bad_query", field: "query" };
   }
   const normalized = normalizeQuery(query);
-  if (normalized.length < 2 || normalized.length > 500) {
+  // Arc R3 M-7: length judges the RAW query (c++, c#, 税 are real
+  // questions); the normalized key only has to be non-empty/bounded.
+  const hasCjk =
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(
+      query,
+    );
+  const rawLen = [...query].length;
+  if (
+    (rawLen < 2 && !hasCjk) ||
+    normalized.length === 0 ||
+    normalized.length > 500
+  ) {
     return { ok: false, error: "bad_query", field: "query" };
   }
   // Arc R2 M-1: the OPEN cap moved inside the store's write tx —
@@ -190,12 +203,20 @@ export function knowledgeGapRecorder(store: KnowledgeStore) {
 
 export function listGaps(
   store: KnowledgeStore,
-  opts: { status?: string; sort?: "count" | "lastSeen"; limit?: number } = {},
+  opts: {
+    status?: string;
+    sort?: "count" | "lastSeen";
+    limit?: number;
+    /** Arc R3 M-9: the console must be able to page the backlog it
+     *  creates — limit-200 hid ≥1800 of a capped 2000-row queue. */
+    offset?: number;
+  } = {},
 ): Promise<KnowledgeGapRecord[]> {
   return store.listGaps({
     status: opts.status,
     orderBy: opts.sort ?? "count",
     limit: opts.limit ?? 100,
+    offset: opts.offset,
   });
 }
 

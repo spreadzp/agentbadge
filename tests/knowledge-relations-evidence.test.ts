@@ -113,7 +113,7 @@ describe("knowledge evidence (SLICE-229-6)", () => {
     const a = await mk(store, "ev-a");
     const vId = a.latestVersionId ?? "";
     for (const bad of [
-      { type: "BOGUS", uri: "https://x.test" },
+      { type: "BOGUS", uri: "https://x.example.com" },
       { type: "EXTERNAL_URL", uri: "not a uri" },
       { type: "EXTERNAL_URL", uri: `/${"x".repeat(1001)}` },
       { type: "EXTERNAL_URL", uri: "ftp://nope" },
@@ -122,14 +122,14 @@ describe("knowledge evidence (SLICE-229-6)", () => {
       expect(r.ok).toBe(false);
     }
     const missing = await addEvidence(store, "kv_missing", {
-      type: "EXTERNAL_URL", uri: "https://x.test", addedBy: OP,
+      type: "EXTERNAL_URL", uri: "https://x.example.com", addedBy: OP,
     });
     expect(missing.ok).toBe(false);
     if (!missing.ok) expect(missing.error).toBe("missing_version");
     // Valid shapes: https:// for EXTERNAL_URL; /path is internal
     // provenance — refused as an EXTERNAL_URL (Arc R1 M9).
     for (const [type, uri] of [
-      ["EXTERNAL_URL", "https://docs.example/x"],
+      ["EXTERNAL_URL", "https://docs.example.com/x"],
       ["INTERNAL_DOC", "/internal/spec.md"],
       ["INTERNAL_DOC", "internal://runbook/spec"],
     ] as const) {
@@ -146,23 +146,23 @@ describe("knowledge evidence (SLICE-229-6)", () => {
     for (let i = 0; i < 50; i += 1) {
       const r = await addEvidence(store, vId, {
         type: "API_ENDPOINT",
-        uri: `https://api.example/e${i === 10 ? "/shared" : `/${i}`}`,
+        uri: `https://api.example.com/e${i === 10 ? "/shared" : `/${i}`}`,
         addedBy: OP,
       });
       expect(r.ok).toBe(true);
     }
     const overflow = await addEvidence(store, vId, {
-      type: "API_ENDPOINT", uri: "https://api.example/e51", addedBy: OP,
+      type: "API_ENDPOINT", uri: "https://api.example.com/e51", addedBy: OP,
     });
     expect(overflow.ok).toBe(false);
     if (!overflow.ok) expect(overflow.error).toBe("evidence_cap");
 
-    const citing = await itemsCiting(store, "https://api.example/e/shared");
+    const citing = await itemsCiting(store, "https://api.example.com/e/shared");
     expect(citing).toHaveLength(1);
     const rm = await removeEvidence(store, citing[0]?.id ?? "");
     expect(rm.ok && rm.removed).toBe(true);
     expect(
-      (await itemsCiting(store, "https://api.example/e/shared")).length,
+      (await itemsCiting(store, "https://api.example.com/e/shared")).length,
     ).toBe(0);
   });
 });

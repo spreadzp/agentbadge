@@ -5,13 +5,13 @@ import {
   addEvidence,
   createMemoryKnowledgeStores,
   createKnowledgeItem,
-  transitionKnowledgeItem,
   upsertKnowledgeCapability,
   linkItemCapability,
   searchKnowledgeItems,
 } from "../src/server/lib/knowledge";
 import { createAgentKnowledgeRoutes } from "../src/server/routes/agent-knowledge-api";
 import { createTieredLimiter } from "../src/server/routes/agent-interaction/rate-limits";
+import { approveTransition } from "./helpers/knowledge";
 
 /**
  * SLICE-229-5 DoD — public search surface:
@@ -50,7 +50,7 @@ async function publish(
     ["PUBLISHED", OP],
   ];
   for (const [to, actor] of steps) {
-    const r = await transitionKnowledgeItem(store, c.item.id, to, actor);
+    const r = await approveTransition(store, c.item.id, to, actor);
     if (!r.ok) throw new Error(`transition ${to} failed`);
   }
   return c.item;
@@ -68,12 +68,12 @@ async function leaveIn(
   );
   if (!c.ok) throw new Error("create failed");
   if (status === "DRAFT") return c.item;
-  await transitionKnowledgeItem(store, c.item.id, "PENDING", OP);
+  await approveTransition(store, c.item.id, "PENDING", OP);
   if (status === "PENDING") return c.item;
   await addEvidence(store, c.version.id, {
     type: "INTERNAL_DOC", uri: "internal://runbook/x", addedBy: OP,
   });
-  await transitionKnowledgeItem(store, c.item.id, "VERIFIED", OP2);
+  await approveTransition(store, c.item.id, "VERIFIED", OP2);
   return c.item;
 }
 

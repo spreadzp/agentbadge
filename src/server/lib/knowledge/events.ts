@@ -24,6 +24,7 @@ export const KNOWLEDGE_EVENT_KINDS = [
   "knowledge.submitted",
   "knowledge.verified",
   "knowledge.rejected",
+  "knowledge.reopened",
   "knowledge.published",
   "knowledge.withdrawn",
   "knowledge.relation_added",

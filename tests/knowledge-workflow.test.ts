@@ -4,8 +4,8 @@ import { Hono } from "hono";
 import {
   addEvidence,
   createMemoryKnowledgeStores,
+  evidenceFingerprint,
   createKnowledgeItem,
-  transitionKnowledgeItem,
   isOperatorActor,
   onKnowledgeEvent,
   setKnowledgeEventsGateForTests,
@@ -14,6 +14,7 @@ import {
 } from "../src/server/lib/knowledge";
 import { createAdminKnowledgeRoutes } from "../src/server/routes/admin-knowledge-api";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
+import { approveTransition } from "./helpers/knowledge";
 
 /**
  * SLICE-229-3 DoD — approval machine: every legal transition walks,
@@ -73,7 +74,7 @@ describe("knowledge workflow (SLICE-229-3)", () => {
         ["PUBLISHED", "knowledge.published", OP],
       ];
       for (const [to, kind, actor] of steps) {
-        const r = await transitionKnowledgeItem(store, item.id, to, actor);
+        const r = await approveTransition(store, item.id, to, actor);
         expect(r.ok).toBe(true);
         expect(events.at(-1)?.kind).toBe(kind);
       }
@@ -96,8 +97,8 @@ describe("knowledge workflow (SLICE-229-3)", () => {
   it("PENDING→DRAFT reject emits knowledge.rejected; reason persisted", async () => {
     const store = createMemoryKnowledgeStores();
     const item = await mkItem(store);
-    await transitionKnowledgeItem(store, item.id, "PENDING", OP);
-    const r = await transitionKnowledgeItem(
+    await approveTransition(store, item.id, "PENDING", OP);
+    const r = await approveTransition(
       store, item.id, "DRAFT", OP, "needs sources",
     );
     expect(r.ok).toBe(true);
@@ -112,37 +113,37 @@ describe("knowledge workflow (SLICE-229-3)", () => {
     const item = await mkItem(store);
     const bad: KnowledgeStatus[] = ["VERIFIED", "PUBLISHED", "DRAFT" as never];
     for (const to of bad.slice(0, 2)) {
-      const r = await transitionKnowledgeItem(store, item.id, to, OP);
+      const r = await approveTransition(store, item.id, to, OP);
       expect(r).toMatchObject({ ok: false, error: "INVALID_TRANSITION" });
     }
     // DRAFT→WITHDRAWN is legal (discard) — verify it from each state.
     const auditBefore = await store.listStatusEvents(item.id);
     expect(auditBefore).toHaveLength(1); // only the create event
-    const pending = await transitionKnowledgeItem(store, item.id, "PENDING", OP);
+    const pending = await approveTransition(store, item.id, "PENDING", OP);
     expect(pending.ok).toBe(true);
     for (const to of ["PUBLISHED", "PENDING"] as const) {
-      const r = await transitionKnowledgeItem(store, item.id, to, OP);
+      const r = await approveTransition(store, item.id, to, OP);
       expect(r).toMatchObject({ ok: false, error: "INVALID_TRANSITION" });
     }
     // VERIFIED→PENDING (skip backwards) refused.
-    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP2);
-    const back = await transitionKnowledgeItem(store, item.id, "PENDING", OP);
+    await approveTransition(store, item.id, "VERIFIED", OP2);
+    const back = await approveTransition(store, item.id, "PENDING", OP);
     expect(back).toMatchObject({ ok: false, error: "INVALID_TRANSITION" });
     // WITHDRAWN is terminal — nothing escapes.
-    await transitionKnowledgeItem(store, item.id, "PUBLISHED", OP);
-    await transitionKnowledgeItem(store, item.id, "WITHDRAWN", OP);
-    const dead = await transitionKnowledgeItem(store, item.id, "DRAFT", OP);
+    await approveTransition(store, item.id, "PUBLISHED", OP);
+    await approveTransition(store, item.id, "WITHDRAWN", OP);
+    const dead = await approveTransition(store, item.id, "DRAFT", OP);
     expect(dead).toMatchObject({ ok: false, error: "INVALID_TRANSITION" });
   });
 
   it("WITHDRAWN clears publishedVersionId", async () => {
     const store = createMemoryKnowledgeStores();
     const item = await mkItemWithEvidence(store);
-    await transitionKnowledgeItem(store, item.id, "PENDING", OP);
-    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP2);
-    await transitionKnowledgeItem(store, item.id, "PUBLISHED", OP);
+    await approveTransition(store, item.id, "PENDING", OP);
+    await approveTransition(store, item.id, "VERIFIED", OP2);
+    await approveTransition(store, item.id, "PUBLISHED", OP);
     expect((await store.getItem(item.id))?.publishedVersionId).not.toBeNull();
-    const w = await transitionKnowledgeItem(store, item.id, "WITHDRAWN", OP);
+    const w = await approveTransition(store, item.id, "WITHDRAWN", OP);
     expect(w.ok).toBe(true);
     expect(w.ok && w.item.publishedVersionId).toBeNull();
     expect(w.ok && w.item.status).toBe("WITHDRAWN");
@@ -151,21 +152,21 @@ describe("knowledge workflow (SLICE-229-3)", () => {
   it("§16.5: agent actors cannot verify or publish", async () => {
     const store = createMemoryKnowledgeStores();
     const item = await mkItemWithEvidence(store);
-    await transitionKnowledgeItem(store, item.id, "PENDING", OP);
+    await approveTransition(store, item.id, "PENDING", OP);
     for (const agent of ["did:hedera:testnet:0.0.1", "agt_abc", "agent:x"]) {
       expect(isOperatorActor(agent)).toBe(false);
-      const v = await transitionKnowledgeItem(store, item.id, "VERIFIED", agent);
+      const v = await approveTransition(store, item.id, "VERIFIED", agent);
       expect(v).toMatchObject({ ok: false, error: "ACTOR_NOT_OPERATOR" });
     }
     // Arc R1 H2: the bypass shapes the old prefix-only list missed.
     // Fullwidth agent refs NFKC-collapse to ASCII then hit the deny.
     for (const bypass of ["agent-7", "agt-1", "\u200bops", "ｄｉｄ:foo"]) {
       expect(isOperatorActor(bypass)).toBe(false);
-      const v = await transitionKnowledgeItem(store, item.id, "VERIFIED", bypass);
+      const v = await approveTransition(store, item.id, "VERIFIED", bypass);
       expect(v).toMatchObject({ ok: false, error: "ACTOR_NOT_OPERATOR" });
     }
-    await transitionKnowledgeItem(store, item.id, "VERIFIED", OP2);
-    const p = await transitionKnowledgeItem(
+    await approveTransition(store, item.id, "VERIFIED", OP2);
+    const p = await approveTransition(
       store, item.id, "PUBLISHED", "did:hedera:testnet:0.0.9",
     );
     expect(p).toMatchObject({ ok: false, error: "ACTOR_NOT_OPERATOR" });
@@ -276,6 +277,12 @@ describe("admin knowledge API (SLICE-229-3)", () => {
       ["VERIFIED", "ops_review"],
       ["PUBLISHED", "ops_test"],
     ] as const) {
+      // Arc R3: VERIFIED/PUBLISHED require the stale-page preconditions —
+      // pin the current version + evidence fingerprint like the UI does.
+      const cur = await store.getItem(item.id);
+      const ev = cur?.latestVersionId
+        ? await store.listEvidence(cur.latestVersionId)
+        : [];
       const r = await app.request(
         `/admin/api/knowledge/items/${item.id}/transition`,
         {
@@ -284,7 +291,11 @@ describe("admin knowledge API (SLICE-229-3)", () => {
             ...ADMIN,
             "x-operator-id": op,
           }),
-          body: JSON.stringify({ to }),
+          body: JSON.stringify({
+            to,
+            expectedVersionId: cur?.latestVersionId ?? undefined,
+            expectedEvidence: evidenceFingerprint(ev),
+          }),
         },
       );
       expect(r.status).toBe(200);

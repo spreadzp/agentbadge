@@ -6,9 +6,9 @@ import {
   createKnowledgeItem,
   createMemoryKnowledgeStores,
   recordGap,
-  transitionKnowledgeItem,
 } from "../src/server/lib/knowledge";
 import { createAdminKnowledgeUi } from "../src/server/routes/admin-knowledge-ui";
+import { approveTransition } from "./helpers/knowledge";
 
 /**
  * SLICE-229-9 DoD — operator SSR console:
@@ -45,21 +45,44 @@ const post = (app: Hono, path: string, body: Record<string, string>) =>
     body: new URLSearchParams(body).toString(),
   });
 
-/** Arc R2 H-1: mutation posts need a render-minted single-use token —
- *  GET the page containing the form, lift the token, then POST. */
-const TOKEN_RE = /name="formToken" value="([^"]+)"/;
-async function formToken(app: Hono, pagePath: string): Promise<string> {
-  const html = await (await get(app, pagePath)).text();
-  const t = TOKEN_RE.exec(html)?.[1];
-  if (!t) throw new Error(`no formToken on ${pagePath}`);
-  return t;
-}
+/** Arc R2 H-1 + R3: mutation posts need the render-minted hidden
+ *  fields — token AND stale-page preconditions — exactly like a real
+ *  browser submit. Lift every hidden input from the form whose action
+ *  matches postPath (disambiguated by `to` when several share it). */
+const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const hiddenFields = (formHtml: string) => {
+  const out: Record<string, string> = {};
+  for (const m of formHtml.matchAll(/<input\b[^>]*>/g)) {
+    const tag = m[0];
+    if (!/type="hidden"/.test(tag)) continue;
+    const name = /name="([^"]+)"/.exec(tag)?.[1];
+    const value = /value="([^"]*)"/.exec(tag)?.[1] ?? "";
+    if (name) out[name] = value;
+  }
+  return out;
+};
 const postForm = async (
   app: Hono,
   pagePath: string,
   postPath: string,
   body: Record<string, string>,
-) => post(app, postPath, { ...body, formToken: await formToken(app, pagePath) });
+) => {
+  const html = await (await get(app, pagePath)).text();
+  const forms = [
+    ...html.matchAll(
+      new RegExp(
+        `<form\\b[^>]*action="${escRe(postPath)}"[^>]*>([\\s\\S]*?)</form>`,
+        "g",
+      ),
+    ),
+  ].map((m) => m[1]!);
+  let form = forms[0];
+  if (forms.length > 1 && body.to !== undefined) {
+    form = forms.find((f) => f.includes(`value="${body.to}"`)) ?? forms[0];
+  }
+  if (!form) throw new Error(`no form posting to ${postPath} on ${pagePath}`);
+  return post(app, postPath, { ...hiddenFields(form), ...body });
+};
 
 beforeAll(() => {
   process.env.ADMIN_API_KEY = KEY;
@@ -195,7 +218,7 @@ describe("admin knowledge UI (SLICE-229-9)", () => {
     for (const [to, actor] of [
       ["PENDING", OP], ["VERIFIED", "ops_review"], ["PUBLISHED", OP],
     ] as const) {
-      await transitionKnowledgeItem(store, c.item.id, to, actor);
+      await approveTransition(store, c.item.id, to, actor);
     }
 
     let page = await (await get(app, "/admin/knowledge/gaps")).text();

@@ -1,7 +1,7 @@
 import { isPublicEvidenceUri, listEvidence } from "./evidence";
 import { relationsFor } from "./relations";
 import { searchKnowledgeItems } from "./search";
-import { stripHeadlineMarkup, tokenizeTerms } from "./terms";
+import { CJK_TERM, stripHeadlineMarkup, tokenizeTerms } from "./terms";
 import type { KnowledgeStore } from "./store";
 import type { KnowledgeSearchHit } from "./types";
 
@@ -67,16 +67,18 @@ const PRIVATE_EVIDENCE_TYPES = new Set(["INTERNAL_DOC", "SCAN_REPORT"]);
  *  the terms the engine actually matched in the body.
  *  Arc R2 M-2: the snippet is markup-stripped first — otherwise
  *  "&amp;"/"<mark>" become coverage tokens. */
+// Arc R3 M-7: CJK terms substring-match — exported from terms.ts.
+
 function coverageOf(terms: string[], h: KnowledgeSearchHit): number {
   if (terms.length === 0) return 0;
-  const hay = new Set(
-    `${h.title} ${h.summary ?? ""} ${stripHeadlineMarkup(h.snippet)}`
-      .normalize("NFC")
-      .toLowerCase()
-      .match(/[\p{L}\p{M}\p{N}]+/gu) ?? [],
-  );
+  const text = `${h.title} ${h.summary ?? ""} ${stripHeadlineMarkup(h.snippet)}`
+    .normalize("NFC")
+    .toLowerCase();
+  const hay = new Set(text.match(/[\p{L}\p{M}\p{N}]+/gu) ?? []);
   let hits = 0;
-  for (const t of terms) if (hay.has(t)) hits += 1;
+  for (const t of terms) {
+    if (CJK_TERM.test(t) ? text.includes(t) : hay.has(t)) hits += 1;
+  }
   return hits / terms.length;
 }
 
@@ -113,15 +115,29 @@ function computeConfidence(
   return Math.min(1, top * 0.8 + support * 0.2);
 }
 
+/** Arc R3 M-6: the answer must be the text that earned coverage —
+ *  a hit can score on snippet terms while its summary says nothing
+ *  about them. Pick whichever field covers more query terms. */
+function bestAnswerField(top: KnowledgeSearchHit, terms: string[]): string {
+  const snippet = stripHeadlineMarkup(top.snippet);
+  if (top.summary === null || top.summary === "") return snippet;
+  const cov = (txt: string) =>
+    coverageOf(terms, {
+      title: "",
+      summary: txt,
+      snippet: "",
+    } as KnowledgeSearchHit);
+  return cov(top.summary) >= cov(snippet) ? top.summary : snippet;
+}
+
 function composeText(
   top: KnowledgeSearchHit,
   rest: KnowledgeSearchHit[],
   related: { slug: string; title: string; type: string }[],
+  terms: string[],
 ): string {
   const lines = ["Based on verified knowledge:", ""];
-  // Arc R2 M-2: snippet is engine markup (<mark>+entities) — strip
-  // before it becomes public answerText.
-  lines.push(top.summary ?? stripHeadlineMarkup(top.snippet));
+  lines.push(bestAnswerField(top, terms));
   if (rest.length > 0) {
     lines.push("", "See also:");
     for (const h of rest) lines.push(`- ${h.slug} — ${h.title}`);
@@ -219,19 +235,26 @@ export async function composeAnswer(
         // Arc R2 M-4: type alone isn't the boundary — an EXTERNAL_URL
         // pointing at internal:/localhost/private/userinfo leaks the
         // same way. URI-shape check complements the type check.
+        // Arc R3 M-3: the label goes out the same gate as the uri —
+        // a redacted URI beside a "jenkins deploy log" label still
+        // leaks internal naming.
         uri:
           !PRIVATE_EVIDENCE_TYPES.has(e.type) &&
           isPublicEvidenceUri(e.uri)
             ? e.uri
             : null,
-        label: PRIVATE_EVIDENCE_TYPES.has(e.type) ? null : e.label,
+        label:
+          !PRIVATE_EVIDENCE_TYPES.has(e.type) &&
+          isPublicEvidenceUri(e.uri)
+            ? e.label
+            : null,
       })),
     })),
   );
 
   return {
     status: "ANSWERED",
-    answerText: composeText(top, rest, relatedClean),
+    answerText: composeText(top, rest, relatedClean, terms),
     sources,
     related: relatedClean,
     confidence,

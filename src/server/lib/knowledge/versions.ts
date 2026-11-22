@@ -66,10 +66,16 @@ export async function restoreKnowledgeVersion(
     createdBy: actorRef,
   });
   if (!added.ok) {
+    // Arc R3 nit: stale_seq got flattened to not_found — map it to
+    // its own honest error like updateKnowledgeDraft does.
     return {
       ok: false,
       error:
-        added.reason === "not_draft" ? "not_editable_in_status" : "not_found",
+        added.reason === "not_draft"
+          ? "not_editable_in_status"
+          : added.reason === "stale_seq"
+            ? "stale_version"
+            : "not_found",
     };
   }
   const version = added.version;

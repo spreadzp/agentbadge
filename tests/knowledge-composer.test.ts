@@ -7,11 +7,11 @@ import {
   composeAnswer,
   createKnowledgeItem,
   createMemoryKnowledgeStores,
-  transitionKnowledgeItem,
   type KnowledgeGapRecorder,
 } from "../src/server/lib/knowledge";
 import { createAgentKnowledgeRoutes } from "../src/server/routes/agent-knowledge-api";
 import { createTieredLimiter } from "../src/server/routes/agent-interaction/rate-limits";
+import { approveTransition } from "./helpers/knowledge";
 
 /**
  * SLICE-229-7 DoD — deterministic answer composer:
@@ -57,7 +57,7 @@ async function publish(
     ["PUBLISHED", OP],
   ];
   for (const [to, actor] of steps) {
-    const r = await transitionKnowledgeItem(store, c.item.id, to, actor);
+    const r = await approveTransition(store, c.item.id, to, actor);
     if (!r.ok) throw new Error(`transition ${to}: ${r.error}`);
   }
   return c.item;
@@ -79,7 +79,7 @@ describe("composeAnswer (SLICE-229-7)", () => {
       [
         {
           type: "API_ENDPOINT",
-          uri: "https://api.example/x402",
+          uri: "https://api.example.com/x402",
           label: "x402 api",
         },
       ],
@@ -98,7 +98,7 @@ describe("composeAnswer (SLICE-229-7)", () => {
     ).toBeNull();
     expect(
       a.sources[0]?.evidence.find((e) => e.type === "API_ENDPOINT")?.uri,
-    ).toBe("https://api.example/x402");
+    ).toBe("https://api.example.com/x402");
     expect(a.answerText).toContain("verified knowledge");
     expect(a.confidence).toBeGreaterThanOrEqual(0.6);
     expect(a.reason).toBeNull();

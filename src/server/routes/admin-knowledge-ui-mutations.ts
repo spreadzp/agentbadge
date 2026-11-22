@@ -127,14 +127,16 @@ export function registerKnowledgeUiMutations(
     }
     const to = formStr(b, "to");
     if (!KNOWLEDGE_STATUSES.includes(to as never)) {
-      return c.redirect(backWith(`/admin/knowledge/${id}`, { err: "bad target" }), 303);
+      return c.redirect(backWith(`/admin/knowledge/${id}`, { err: "bad_target" }), 303);
     }
-    // Arc R2 H-2: the verify/publish form carries the version the
-    // operator reviewed — a re-versioned item refuses stale_page
-    // rather than pinning a version nobody saw.
+    // Arc R2/R3 H-2: the verify/publish form carries the version +
+    // evidence fingerprint the operator reviewed — re-versioned or
+    // re-evidenced items refuse rather than approving unseen state.
     const expectedVersionId = formStr(b, "expectedVersionId") || undefined;
+    const expectedEvidence = formStr(b, "expectedEvidence") || undefined;
     const r = await transitionKnowledgeItem(store, id, to, opOf(b), null, {
       expectedVersionId,
+      expectedEvidence,
     });
     return c.redirect(
       backWith(

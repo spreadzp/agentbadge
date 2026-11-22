@@ -16,22 +16,46 @@
 export const STOPWORDS = new Set([
   "an", "as", "at", "be", "by", "do", "for", "how", "if", "in", "is",
   "it", "of", "on", "or", "so", "the", "to", "up", "we", "a", "i",
-  "am", "are", "can", "did", "has", "me", "my", "no", "not", "our",
+  "am", "are", "can", "did", "has", "me", "my", "our",
   "us", "was", "you", "your", "what", "when", "where", "who", "why",
   "does", "and", "with", "that", "this", "from", "about", "into",
 ]);
 
+/** Arc R3 M-7: unsegmented scripts need their own lane — the latin
+ *  lane's ≥2-char rule dropped 税 entirely and kept 支払いについて
+ *  as one unmatchable blob. CJK runs emit bigrams (plus the single
+ *  char when the run is one), which the memory scorer can
+ *  substring-match and which stay injection-free for to_tsquery. */
+const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]+/gu;
+
+/** True for terms produced by the CJK lane — scorers substring-match
+ *  these (unsegmented text has no word boundary to anchor on). */
+export const CJK_TERM =
+  /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]+$/u;
+
+function cjkTerms(q: string): string[] {
+  const out: string[] = [];
+  for (const run of q.match(CJK_RUN) ?? []) {
+    const chars = [...run];
+    if (chars.length === 1) {
+      out.push(chars[0]!);
+      continue;
+    }
+    for (let i = 0; i + 1 < chars.length; i++) {
+      out.push(chars[i]! + chars[i + 1]!);
+    }
+  }
+  return out;
+}
+
 export function tokenizeTerms(q: string): string[] {
-  return [
-    ...new Set(
-      (
-        q
-          .normalize("NFC")
-          .toLowerCase()
-          .match(/[\p{L}\p{M}\p{N}]{2,}/gu) ?? []
-      ).filter((t) => !STOPWORDS.has(t)),
-    ),
-  ];
+  const nfc = q.normalize("NFC").toLowerCase();
+  const latin = (nfc.match(/[\p{L}\p{M}\p{N}]{2,}/gu) ?? []).filter(
+    (t) => !STOPWORDS.has(t),
+  );
+  // Cap the term set — a 500-char CJK query would otherwise mint
+  // ~500 OR-tsquery terms.
+  return [...new Set([...latin, ...cjkTerms(nfc)])].slice(0, 64);
 }
 
 /** Arc R2 M-3: Postgres OR-tsquery text for a natural-language

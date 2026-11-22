@@ -11,12 +11,12 @@ import {
   recordGap,
   recordInteractionGap,
   resolveGap,
-  transitionKnowledgeItem,
   triageGap,
   wontfixGap,
   onKnowledgeEvent,
   setKnowledgeEventsGateForTests,
 } from "../src/server/lib/knowledge";
+import { approveTransition } from "./helpers/knowledge";
 
 /**
  * SLICE-229-8 DoD — persisted knowledge gaps:
@@ -86,7 +86,7 @@ describe("knowledge gaps (SLICE-229-8)", () => {
       ["PENDING", OP], ["VERIFIED", "ops_review"], ["PUBLISHED", OP],
     ];
     for (const [to, actor] of steps) {
-      await transitionKnowledgeItem(store, c.item.id, to, actor);
+      await approveTransition(store, c.item.id, to, actor);
     }
     const g = await recordGap(store, { query: "gap x", source: "MANUAL" });
     if (!g.ok) throw new Error("gap failed");
@@ -162,7 +162,7 @@ describe("knowledge gaps (SLICE-229-8)", () => {
       ["PENDING", OP], ["VERIFIED", "ops_review"], ["PUBLISHED", OP],
     ];
     for (const [to, actor] of steps2) {
-      await transitionKnowledgeItem(store, c.item.id, to, actor);
+      await approveTransition(store, c.item.id, to, actor);
     }
     const a = await composeAnswer(store, "totally missing topic", {
       gapRecorder: knowledgeGapRecorder(store),

@@ -6,6 +6,7 @@ import {
   addRelation,
   createKnowledgeItem,
   createMemoryKnowledgeStores,
+  evidenceFingerprint,
   listEvidence,
   recordGap,
   transitionKnowledgeItem,
@@ -13,6 +14,7 @@ import {
 } from "../src/server/lib/knowledge";
 import { createAdminKnowledgeUi } from "../src/server/routes/admin-knowledge-ui";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
+import { approveTransition } from "./helpers/knowledge";
 
 /**
  * Arc Studio R2 regression pack — one test per finding class:
@@ -102,7 +104,7 @@ describe("Arc R2 — H-2 gates under the lock", () => {
       type: "EXTERNAL_URL", uri: "https://e.com/x", addedBy: OP,
     });
     expect(ok.ok).toBe(true);
-    await transitionKnowledgeItem(store, c.item.id, "PENDING", OP);
+    await approveTransition(store, c.item.id, "PENDING", OP);
     // PENDING: frozen — the verifier's set is final.
     const frozen = await addEvidence(store, c.version.id, {
       type: "EXTERNAL_URL", uri: "https://e.com/y", addedBy: OP,
@@ -126,11 +128,15 @@ describe("Arc R2 — H-2 gates under the lock", () => {
       store, c.item.id, { title: "t2" }, OP,
     );
     expect(up.ok).toBe(true);
-    await transitionKnowledgeItem(store, c.item.id, "PENDING", OP);
+    await approveTransition(store, c.item.id, "PENDING", OP);
     // Reviewer opened the page at seq=1 — the precondition must refuse.
+    const cur0 = await store.getItem(c.item.id);
+    const fp0 = evidenceFingerprint(
+      await listEvidence(store, cur0!.latestVersionId!),
+    );
     const stale = await transitionKnowledgeItem(
       store, c.item.id, "VERIFIED", OP2, null,
-      { expectedVersionId: staleVersionId },
+      { expectedVersionId: staleVersionId, expectedEvidence: fp0 },
     );
     expect(stale).toMatchObject({ ok: false, error: "stale_version" });
     expect((await store.getItem(c.item.id))?.status).toBe("PENDING");
@@ -138,7 +144,7 @@ describe("Arc R2 — H-2 gates under the lock", () => {
     const cur = await store.getItem(c.item.id);
     const fresh = await transitionKnowledgeItem(
       store, c.item.id, "VERIFIED", OP2, null,
-      { expectedVersionId: cur!.latestVersionId! },
+      { expectedVersionId: cur!.latestVersionId!, expectedEvidence: fp0 },
     );
     expect(fresh.ok).toBe(true);
   });
@@ -174,7 +180,7 @@ describe("Arc R2 — M-1 gap semantics", () => {
     for (const [to, actor] of [
       ["PENDING", OP], ["VERIFIED", OP2], ["PUBLISHED", OP],
     ] as const) {
-      await transitionKnowledgeItem(store, pub.item.id, to, actor);
+      await approveTransition(store, pub.item.id, to, actor);
     }
     await resolveGap(store, g2.gap!.id, pub.item.id, OP);
     const re = await recordGap(store, { query: "res q", source: "MANUAL" });

@@ -59,14 +59,17 @@ export interface KnowledgeTransitionInput {
   unpublish?: boolean;
   eventId?: string;
   /** Arc R2 H-2: stale-page/ABA precondition — the tx refuses unless
-   *  latestVersionId still equals this under the row lock. */
+   *  latestVersionId still equals this under the row lock.
+   *  Arc R3 M-11: REQUIRED for VERIFIED/PUBLISHED (precondition_required). */
   expectedVersionId?: string;
-  /** Arc R2 H-2: approval gates INSIDE the CAS lock — requireEvidence:
-   *  VERIFIED needs ≥1 evidence on the locked latest version;
-   *  separationOfDuties: VERIFIED refuses the latest PENDING actor,
-   *  PUBLISHED refuses the latest VERIFIED actor. */
-  requireEvidence?: boolean;
-  separationOfDuties?: boolean;
+  /** Arc R3 H-2: pins the evidence SET a reviewer saw — canonical
+   *  fingerprint = sorted evidence ids of the latest version joined
+   *  by "|". Recomputed under the row lock for VERIFIED; mismatch
+   *  refuses "evidence_changed". REQUIRED for VERIFIED. */
+  expectedEvidence?: string;
+  /** Arc R2 H-2 + R3 M-11: approval gates INSIDE the CAS lock,
+   *  derived purely from `to` (VERIFIED→evidence+SoD+fingerprint,
+   *  PUBLISHED→SoD) — no caller flag can widen or narrow them. */
 }
 
 export type KnowledgeTransitionResult =
@@ -84,6 +87,8 @@ export type KnowledgeTransitionResult =
         | "status_mismatch"
         | "stale_version"
         | "evidence_required"
+        | "evidence_changed"
+        | "precondition_required"
         | "separation_of_duties";
     };
 
@@ -245,9 +250,15 @@ export interface KnowledgeStore {
   /** Arc R1 H4: evidence lookup by id — the DRAFT+latest guard on
    *  removeEvidence needs version → item resolution. */
   getEvidence(id: string): Promise<KnowledgeEvidenceRecord | null>;
+  /** Arc R3 M-12: returns the deleted row — the audit event carries
+   *  what was removed (type/uri), not just an id. */
   removeEvidence(
     id: string,
-  ): Promise<{ removed: boolean; reason?: "not_editable" }>;
+  ): Promise<{
+    removed: boolean;
+    reason?: "not_editable";
+    row?: KnowledgeEvidenceRecord;
+  }>;
   itemsCiting(uri: string): Promise<KnowledgeEvidenceRecord[]>;
 
   // ─── gaps ──

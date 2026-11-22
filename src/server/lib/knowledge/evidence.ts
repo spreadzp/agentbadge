@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import ipaddr from "ipaddr.js";
 
 import { emitKnowledgeEvent } from "./events";
 import type { KnowledgeResult } from "./items";
@@ -41,29 +42,64 @@ function isValidEvidenceUri(type: string, uri: string): boolean {
   }
   try {
     const u = new URL(uri);
-    if (u.protocol === "https:" || u.protocol === "http:") return true;
+    if (u.protocol === "https:" || u.protocol === "http:") {
+      // Arc R3 M-3: userinfo is never stored (it lands in events);
+      // external-claim types must cite a PUBLIC host at add time.
+      if (u.username !== "" || u.password !== "") return false;
+      return HTTP_ONLY_EVIDENCE.has(type)
+        ? isPublicEvidenceUri(uri)
+        : true;
+    }
+    // Arc R3 M-3: `internal:` only for internal provenance types.
     return u.protocol === "internal:" && !HTTP_ONLY_EVIDENCE.has(type);
   } catch {
     return false;
   }
 }
 
-/** Arc R2 M-4: public projection boundary for evidence URIs — type
- *  alone isn't enough (an EXTERNAL_URL can point at loopback,
- *  private ranges, userinfo, or non-http schemes). A uri is public
- *  iff it's absolute http(s), carries no userinfo, and resolves to
- *  a public hostname. SSRF-shape smuggles get the same redaction
- *  as INTERNAL_DOC/SCAN_REPORT. */
-const PRIVATE_HOST_RE =
-  /^(localhost|.*\.local|127\.|0\.|10\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|\[::1\]|\[?fe80|\[?fc|\[?fd)/i;
+/** Arc R3 M-3: parsed classification via ipaddr.js range() — RFC
+ *  tables stay maintained upstream instead of a hand-rolled denylist
+ *  (the old `\[?fc|\[?fd` prefix regex matched `fda.gov`/`fcc.gov` AND
+ *  missed mapped v6, NAT64, CGNAT, site-local and dotless hosts).
+ *  Only `unicast` counts as public: private/loopback/linkLocal/
+ *  multicast/reserved/CGNAT/broadcast/as112 (v4) and uniqueLocal/
+ *  mapped/rfc6145/rfc6052/6to4/teredo/site-local/discard/orchid/SR
+ *  (v6) all refuse — transition mechanisms aren't citation hosts. */
+function isPrivateHost(host: string): boolean {
+  const h = host.replace(/^\[|\]$/g, "").toLowerCase();
+  if (
+    h === "" ||
+    h === "localhost" ||
+    /\.(local|internal|lan|corp|home|test|invalid|example|localhost)$/.test(h)
+  ) {
+    return true;
+  }
+  if (ipaddr.IPv4.isValid(h)) {
+    return ipaddr.IPv4.parse(h).range() !== "unicast";
+  }
+  if (h.includes(":")) {
+    if (!ipaddr.IPv6.isValid(h)) return true; // unparseable v6 → refuse
+    const v6 = ipaddr.IPv6.parse(h);
+    // ::ffff:a.b.c.d (hextet form too) — classify the embedded v4.
+    if (v6.isIPv4MappedAddress()) {
+      return v6.toIPv4Address().range() !== "unicast";
+    }
+    return v6.range() !== "unicast";
+  }
+  // dotless = intranet single-label name
+  return !h.includes(".");
+}
+
+/** Arc R2 M-4 + R3 M-3: public projection boundary for evidence
+ *  URIs. A uri is public iff it's absolute http(s), carries no
+ *  userinfo, and parses to a global hostname — no IP literal
+ *  unless global unicast, no dotless/intranet names. */
 export function isPublicEvidenceUri(uri: string): boolean {
   try {
     const u = new URL(uri);
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     if (u.username !== "" || u.password !== "") return false;
-    const host = u.hostname.replace(/^\[|\]$/g, "");
-    if (PRIVATE_HOST_RE.test(host) || host === "") return false;
-    return true;
+    return !isPrivateHost(u.hostname);
   } catch {
     return false;
   }
@@ -144,6 +180,17 @@ export function itemsCiting(
   return store.itemsCiting(uri);
 }
 
+/** Arc R3 H-2: canonical fingerprint of an evidence SET — sorted
+ *  ids joined by "|". Rendered into transition forms as
+ *  `expectedEvidence` and recomputed under the item row lock at
+ *  VERIFY, so a stale page can't approve evidence it never saw. */
+export function evidenceFingerprint(rows: { id: string }[]): string {
+  return rows
+    .map((r) => r.id)
+    .sort()
+    .join("|");
+}
+
 export async function removeEvidence(
   store: KnowledgeStore,
   id: string,
@@ -156,10 +203,12 @@ export async function removeEvidence(
     return { ok: false, error: "not_editable_in_status" };
   }
   if (res.removed) {
-    // Arc R2 M-11: actor attribution — an unattributed removal is
-    // an audit hole.
+    // Arc R2 M-11 + R3 M-12: actor attribution + WHAT was removed —
+    // an unattributed/unlabeled removal is an audit hole.
     emitKnowledgeEvent("knowledge.evidence_removed", {
       evidenceId: id,
+      type: res.row?.type ?? null,
+      uri: res.row?.uri ?? null,
       actor: actor ?? null,
     });
   }

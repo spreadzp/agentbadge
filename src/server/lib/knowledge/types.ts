@@ -193,6 +193,12 @@ export const noControlChars = (s: string) =>
  *  bidi marks stay allowed — emoji, Persian, Hebrew need them. */
 export const noCtrlStrict = (s: string) =>
   !/[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF\uFFF9-\uFFFB\uE000-\uF8FF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u.test(s);
+/** Arc R3 M-4: body keeps \t \n \r formatting but still refuses
+ *  Trojan-Source material — other Cc/C1, bidi overrides + isolates,
+ *  BOM/interlinear sentinels, ALL PUA (the headline sentinels are
+ *  repo-internal, never legitimate content), tags and VS-supp. */
+export const noCtrlBody = (s: string) =>
+  !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF\uFFF9-\uFFFB\uE000-\uF8FF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u.test(s);
 
 /** Arc R1 H2 + R2 M6: operator refs canonicalize via
  *  normalizeOperatorRef (NFKC + lowercase) so "Alice" and
@@ -216,12 +222,15 @@ const titleSchema = z
   .trim()
   .min(1)
   .max(KNOWLEDGE_TITLE_MAX)
-  .refine(noControlChars, { message: CTRL_MSG });
+  // Arc R3 M-4: single-line fields get the STRICT predicate — a
+  // newline or bidi mark in a title forges fake composer bullets.
+  .refine(noCtrlStrict, { message: CTRL_MSG });
 const bodySchema = z
   .string()
   .min(1)
   .max(KNOWLEDGE_BODY_MAX)
-  .refine(noControlChars, { message: CTRL_MSG })
+  // Arc R3 M-4: bidi/format junk refused; \t \n \r stay legal.
+  .refine(noCtrlBody, { message: CTRL_MSG })
   // Arc R2 nit: body keeps its formatting (no .trim()), but an
   // all-whitespace blob is not content.
   .refine((v) => v.trim().length > 0, { message: "body must not be blank" });
@@ -230,7 +239,7 @@ const summarySchema = z
   .trim()
   .min(1)
   .max(KNOWLEDGE_SUMMARY_MAX)
-  .refine(noControlChars, { message: CTRL_MSG });
+  .refine(noCtrlStrict, { message: CTRL_MSG });
 
 export const createKnowledgeItemInputSchema = z.object({
   slug: z.string().optional(),

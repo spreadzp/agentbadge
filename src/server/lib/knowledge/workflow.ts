@@ -81,9 +81,11 @@ export async function transitionKnowledgeItem(
   to: KnowledgeStatus | string,
   actorRef: string,
   reason?: string | null,
-  /** Arc R2 H-2: stale-page precondition — the version the operator
-   *  was looking at; the store re-checks it under the row lock. */
-  opts?: { expectedVersionId?: string },
+  /** Arc R2 H-2 + R3 H-2: stale-page preconditions — the version and
+   *  evidence fingerprint the operator was looking at; the store
+   *  re-checks both under the row lock. Required for VERIFIED and
+   *  PUBLISHED targets. */
+  opts?: { expectedVersionId?: string; expectedEvidence?: string },
 ): Promise<
   KnowledgeResult<{
     item: KnowledgeItemRecord;
@@ -152,14 +154,19 @@ export async function transitionKnowledgeItem(
     unpublish: to === "WITHDRAWN",
     eventId: `kse_${randomUUID()}`,
     expectedVersionId: opts?.expectedVersionId,
-    requireEvidence: to === "VERIFIED",
-    separationOfDuties: to === "VERIFIED" || to === "PUBLISHED",
+    expectedEvidence: opts?.expectedEvidence,
   });
   if (!res.transitioned) {
     // Arc R2 H-2: the in-lock gates refuse honestly — each reason
     // maps to its own error, not a blanket "race".
     if (res.reason === "stale_version") {
       return { ok: false, error: "stale_version", field: "expectedVersionId" };
+    }
+    if (res.reason === "evidence_changed") {
+      return { ok: false, error: "evidence_changed", field: "expectedEvidence" };
+    }
+    if (res.reason === "precondition_required") {
+      return { ok: false, error: "precondition_required" };
     }
     if (res.reason === "evidence_required") {
       return { ok: false, error: "evidence_required", field: "evidence" };
@@ -174,7 +181,12 @@ export async function transitionKnowledgeItem(
     };
   }
 
-  const eventKind = EVENT_FOR[to] ?? `knowledge.${to.toLowerCase()}`;
+  // Arc R3 nit: VERIFIED→DRAFT is a reopen, not a rejection — the
+  // key is (from,to), not just `to`.
+  const eventKind =
+    to === "DRAFT" && from === "VERIFIED"
+      ? "knowledge.reopened"
+      : (EVENT_FOR[to] ?? `knowledge.${to.toLowerCase()}`);
   emitKnowledgeEvent(
     eventKind,
     { slug: res.item.slug, from, to, actor, reason: reason ?? null },

@@ -28,6 +28,7 @@ import {
   listKnowledgeCapabilities,
   relationsFor,
   listEvidence,
+  evidenceFingerprint,
   supersededBy,
   KNOWLEDGE_GAP_STATUSES,
   KNOWLEDGE_STATUSES,
@@ -47,7 +48,10 @@ const page = (c: Context, frag: string, title: string): Response =>
       description: `Admin Knowledge — ${title}`,
     }),
     200,
-    { "Cache-Control": "no-store" },
+    // Arc R3 nit: wrapFragment returns a bare fragment for HX-Request
+    // vs a full page otherwise — Vary keeps shared caches honest even
+    // though no-store already applies to this console.
+    { "Cache-Control": "no-store", Vary: "HX-Request" },
   );
 
 /** Arc R1 M11: flash text is server-generated, not user prose —
@@ -146,10 +150,17 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
     ) {
       return errorResponse(c, 400, ErrorCodes.INVALID_INPUT, "bad status");
     }
+    // Arc R3 M-9: ?offset= paging — a fixed limit-200 hid the tail
+    // of a capped 2000-row backlog from triage entirely.
+    const offset = Math.max(
+      0,
+      Math.min(100000, Number(c.req.query("offset") ?? 0) || 0),
+    );
     const gaps = await listGaps(store, {
       status: status === "all" ? undefined : status,
       sort: "count",
       limit: 200,
+      offset,
     });
     const items = await store.listItems({ limit: 200 });
     return page(
@@ -158,6 +169,7 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
         gaps,
         status,
         items,
+        offset,
         flash: { ok: c.req.query("ok"), err: c.req.query("err") },
       }),
       "Gaps",
@@ -198,6 +210,7 @@ export function createAdminKnowledgeUi(store: KnowledgeStore): Hono {
         versions: [...versions].sort((a, b) => b.seq - a.seq),
         events: [...events].reverse(),
         allowedTransitions: [...allowedKnowledgeTransitions(item.status)],
+        evidenceFp: evidenceFingerprint(evidence),
         taxonomy: taxonomyFragment({
           item,
           capabilities: caps,

@@ -27,7 +27,20 @@ export class MemoryKnowledgeGaps {
       }
       // RESOLVED gaps reopen on renewed demand; OPEN/TRIAGED just
       // bump. Reopened flags the caller to emit an event.
-      const reopened = gap.status === "RESOLVED";
+      // Arc R3 M-8: the reopen is cap-guarded — a full backlog can't
+      // be re-flooded by replaying resolved queries (PG same).
+      let reopened = false;
+      if (gap.status === "RESOLVED") {
+        let open = 0;
+        if (opts?.openCap !== undefined) {
+          for (const g of this.data.gaps.values()) {
+            if (g.status === "OPEN") open += 1;
+          }
+        }
+        if (opts?.openCap === undefined || open < opts.openCap) {
+          reopened = true;
+        }
+      }
       gap.count += 1;
       gap.lastSeenAt = now;
       if (gap.capabilityRef == null && input.capabilityRef != null) {

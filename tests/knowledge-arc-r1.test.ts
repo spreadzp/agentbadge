@@ -12,13 +12,13 @@ import {
   resolveGap,
   recordGap,
   searchKnowledgeItems,
-  transitionKnowledgeItem,
   upsertKnowledgeCapability,
   type KnowledgeGapRecorder,
 } from "../src/server/lib/knowledge";
 import { createAdminKnowledgeRoutes } from "../src/server/routes/admin-knowledge-api";
 import { createAdminKnowledgeUi } from "../src/server/routes/admin-knowledge-ui";
 import { resetIdempotencyStore } from "../src/server/lib/contract-guards";
+import { approveTransition } from "./helpers/knowledge";
 
 /**
  * Arc Studio R1 regression pack — one test per finding class so a
@@ -79,7 +79,7 @@ async function publishItem(
     ["VERIFIED", OP2],
     ["PUBLISHED", OP],
   ] as const) {
-    const r = await transitionKnowledgeItem(store, c.item.id, to, actor);
+    const r = await approveTransition(store, c.item.id, to, actor);
     if (!r.ok) throw new Error(`transition ${to}: ${r.error}`);
   }
   return c;
@@ -155,19 +155,19 @@ describe("Arc R1 — H2 operator identity", () => {
     await addEvidence(store, c.version.id, {
       type: "INTERNAL_DOC", uri: "internal://x", addedBy: OP,
     });
-    await transitionKnowledgeItem(store, c.item.id, "PENDING", OP);
-    const self = await transitionKnowledgeItem(store, c.item.id, "VERIFIED", OP);
+    await approveTransition(store, c.item.id, "PENDING", OP);
+    const self = await approveTransition(store, c.item.id, "VERIFIED", OP);
     expect(self).toMatchObject({ ok: false, error: "SEPARATION_OF_DUTIES" });
-    const other = await transitionKnowledgeItem(
+    const other = await approveTransition(
       store, c.item.id, "VERIFIED", OP2,
     );
     expect(other.ok).toBe(true);
     // Verifier cannot publish — submitter may.
-    const vp = await transitionKnowledgeItem(
+    const vp = await approveTransition(
       store, c.item.id, "PUBLISHED", OP2,
     );
     expect(vp).toMatchObject({ ok: false, error: "SEPARATION_OF_DUTIES" });
-    const sp = await transitionKnowledgeItem(
+    const sp = await approveTransition(
       store, c.item.id, "PUBLISHED", OP,
     );
     expect(sp.ok).toBe(true);
@@ -181,8 +181,8 @@ describe("Arc R1 — H4 evidence immutability + verify gate", () => {
       store, { kind: "GUIDE", title: "noev", body: "b" }, OP,
     );
     if (!c.ok) throw new Error("create failed");
-    await transitionKnowledgeItem(store, c.item.id, "PENDING", OP);
-    const r = await transitionKnowledgeItem(store, c.item.id, "VERIFIED", OP2);
+    await approveTransition(store, c.item.id, "PENDING", OP);
+    const r = await approveTransition(store, c.item.id, "VERIFIED", OP2);
     expect(r).toMatchObject({ ok: false, error: "evidence_required" });
   });
 
@@ -191,7 +191,7 @@ describe("Arc R1 — H4 evidence immutability + verify gate", () => {
     const c = await publishItem(store, "ev-lock");
     const vid = c.item.publishedVersionId ?? "";
     const add = await addEvidence(store, vid, {
-      type: "EXTERNAL_URL", uri: "https://x.test", addedBy: OP,
+      type: "EXTERNAL_URL", uri: "https://x.example.com", addedBy: OP,
     });
     expect(add.ok).toBe(false);
     if (!add.ok) expect(add.error).toBe("not_editable_in_status");

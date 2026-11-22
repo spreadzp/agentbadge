@@ -23,6 +23,8 @@ export interface GapsInput {
   gaps: KnowledgeGapRecord[];
   status: string;
   items: KnowledgeItemRecord[];
+  /** Arc R3 M-9: current page offset for the backlog pager. */
+  offset?: number;
   flash?: { ok?: string; err?: string };
 }
 
@@ -134,6 +136,24 @@ export function knowledgeGapsPage(input: GapsInput): string {
           ["normalized query", "count", "status", "source", "last seen", "samples", "actions"],
           html`${input.gaps.map((g) => row(g, input.items))}`,
         )}
+    ${(input.offset ?? 0) > 0 || input.gaps.length === 200
+      ? html`<p class="mt-2 text-[11px]">
+          ${(input.offset ?? 0) > 0
+            ? html`<a
+                href="/admin/knowledge/gaps?status=${input.status}&offset=${Math.max(0, (input.offset ?? 0) - 200)}"
+                class="text-sky-400 hover:underline"
+                >← prev page</a
+              >`
+            : ""}
+          ${input.gaps.length === 200
+            ? html`<a
+                href="/admin/knowledge/gaps?status=${input.status}&offset=${(input.offset ?? 0) + 200}"
+                class="ml-3 text-sky-400 hover:underline"
+                >next page →</a
+              >`
+            : ""}
+        </p>`
+      : ""}
     <p class="mt-3 text-[11px] text-slate-500">
       Repeated unanswered agent queries land here (COMPOSER_REFUSAL
       from /ask, INTERACTION_SIGNAL from 228 classify, MANUAL).

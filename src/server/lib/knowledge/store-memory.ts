@@ -12,6 +12,7 @@ import type {
 } from "./store";
 import type { MemoryKnowledgeData } from "./memory-data";
 import { MemoryKnowledgeCore } from "./store-memory-core";
+import { MemoryKnowledgeEvidence } from "./store-memory-evidence";
 import { MemoryKnowledgeGaps } from "./store-memory-gaps";
 import { MemoryKnowledgeTaxonomy } from "./store-memory-taxonomy";
 
@@ -27,11 +28,13 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
   readonly backend = "memory" as const;
   private readonly core: MemoryKnowledgeCore;
   private readonly taxonomy: MemoryKnowledgeTaxonomy;
+  private readonly evidence: MemoryKnowledgeEvidence;
   private readonly gaps: MemoryKnowledgeGaps;
 
   constructor(data: MemoryKnowledgeData) {
     this.core = new MemoryKnowledgeCore(data);
     this.taxonomy = new MemoryKnowledgeTaxonomy(data);
+    this.evidence = new MemoryKnowledgeEvidence(data);
     this.gaps = new MemoryKnowledgeGaps(data);
   }
 
@@ -45,8 +48,13 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
     version: KnowledgeVersionInsert,
     event: KnowledgeStatusEventInsert,
   ) => this.core.createItemWithVersion(item, version, event);
-  addVersion = (version: KnowledgeVersionInsert) =>
-    this.core.addVersion(version);
+  addVersion = (
+    version: Omit<KnowledgeVersionInsert, "seq"> & {
+      copyEvidenceFromLatest?: boolean;
+      expectedSeq?: number;
+    },
+    opts?: { requireStatus?: string },
+  ) => this.core.addVersion(version, opts);
   getVersion = (id: string) => this.core.getVersion(id);
   getVersionBySeq = (itemId: string, seq: number) =>
     this.core.getVersionBySeq(itemId, seq);
@@ -85,20 +93,24 @@ export class MemoryKnowledgeStore implements KnowledgeStore {
 
   // ─── evidence ──
   addEvidence = (input: KnowledgeEvidenceInsert) =>
-    this.taxonomy.addEvidence(input);
-  listEvidence = (versionId: string) => this.taxonomy.listEvidence(versionId);
-  getEvidence = (id: string) => this.taxonomy.getEvidence(id);
-  removeEvidence = (id: string) => this.taxonomy.removeEvidence(id);
-  itemsCiting = (uri: string) => this.taxonomy.itemsCiting(uri);
+    this.evidence.addEvidence(input);
+  listEvidence = (versionId: string) => this.evidence.listEvidence(versionId);
+  getEvidence = (id: string) => this.evidence.getEvidence(id);
+  removeEvidence = (id: string) => this.evidence.removeEvidence(id);
+  itemsCiting = (uri: string) => this.evidence.itemsCiting(uri);
 
   // ─── gaps ──
-  recordGap = (input: KnowledgeGapUpsert) => this.gaps.recordGap(input);
+  recordGap = (
+    input: KnowledgeGapUpsert,
+    opts?: { openCap?: number },
+  ) => this.gaps.recordGap(input, opts);
   getGap = (id: string) => this.gaps.getGap(id);
   countGaps = (status: string) => this.gaps.countGaps(status);
   listGaps = (opts?: {
     status?: string;
     orderBy?: "count" | "lastSeen";
     limit?: number;
+    offset?: number;
   }) => this.gaps.listGaps(opts);
   transitionGap = (
     id: string,

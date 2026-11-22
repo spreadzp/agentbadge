@@ -35,6 +35,43 @@ async function mkItem(
   );
 }
 
+/** Arc R3: approval transitions require render-minted preconditions —
+ *  pin the current version + evidence fingerprint; VERIFIED also
+ *  needs ≥1 evidence row on the latest version. */
+async function approve(
+  s: KnowledgeStore,
+  item: { id: string; latestVersionId: string | null },
+  from: string,
+  to: string,
+  actor: string,
+) {
+  const evidence = item.latestVersionId
+    ? await s.listEvidence(item.latestVersionId)
+    : [];
+  return s.transitionItem(item.id, {
+    from,
+    to,
+    actor,
+    publish: to === "PUBLISHED",
+    unpublish: to === "WITHDRAWN",
+    expectedVersionId: item.latestVersionId ?? undefined,
+    expectedEvidence: evidence.map((e) => e.id).sort().join("|"),
+  });
+}
+
+/** Store-level evidence attach (DRAFT-only — freezes at PENDING). */
+async function pinEvidence(s: KnowledgeStore, versionId: string) {
+  const r = await s.addEvidence({
+    id: id("kev"),
+    versionId,
+    type: "EXTERNAL_URL",
+    uri: "https://ev.example.com/x",
+    label: null,
+    addedBy: "ops",
+  });
+  if (!r.ok) throw new Error("pinEvidence failed");
+}
+
 describe("MemoryKnowledgeStore (SLICE-229-1 contract)", () => {
   it("createItemWithVersion: item+version+create-event+pointer", async () => {
     const s = createMemoryKnowledgeStores();
@@ -98,15 +135,14 @@ describe("MemoryKnowledgeStore (SLICE-229-1 contract)", () => {
     });
     expect((await s.listStatusEvents(item.id))).toHaveLength(1); // unchanged
 
-    for (const [from, to] of [
-      ["DRAFT", "PENDING"], ["PENDING", "VERIFIED"],
+    await pinEvidence(s, item.latestVersionId!);
+    for (const [from, to, actor] of [
+      ["DRAFT", "PENDING", "ops"], ["PENDING", "VERIFIED", "ops2"],
     ] as const) {
-      const r = await s.transitionItem(item.id, { from, to, actor: "ops" });
+      const r = await approve(s, item, from, to, actor);
       expect(r.transitioned).toBe(true);
     }
-    const pub = await s.transitionItem(item.id, {
-      from: "VERIFIED", to: "PUBLISHED", actor: "ops", publish: true,
-    });
+    const pub = await approve(s, item, "VERIFIED", "PUBLISHED", "ops");
     expect(pub.transitioned).toBe(true);
     expect(pub.item?.publishedVersionId).toBe(item.latestVersionId);
     const w = await s.transitionItem(item.id, {
@@ -122,11 +158,10 @@ describe("MemoryKnowledgeStore (SLICE-229-1 contract)", () => {
     );
     // DRAFT invisible to the seam even before status filter logic.
     expect(await s.searchItems({ query: "escrow" })).toHaveLength(0);
-    await s.transitionItem(item.id, { from: "DRAFT", to: "PENDING", actor: "o" });
-    await s.transitionItem(item.id, { from: "PENDING", to: "VERIFIED", actor: "o" });
-    await s.transitionItem(item.id, {
-      from: "VERIFIED", to: "PUBLISHED", actor: "o", publish: true,
-    });
+    await pinEvidence(s, item.latestVersionId!);
+    await approve(s, item, "DRAFT", "PENDING", "o1");
+    await approve(s, item, "PENDING", "VERIFIED", "o2");
+    await approve(s, item, "VERIFIED", "PUBLISHED", "o1");
     const hits = await s.searchItems({ query: "escrow" });
     expect(hits).toHaveLength(1);
     expect(hits[0]).toMatchObject({
