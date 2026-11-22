@@ -126,12 +126,13 @@ const FLASH_ERR_MSG: Record<string, string> = {
   not_available: "knowledge conversion unavailable",
   already_converted: "already converted to a knowledge draft",
   not_convertible_status: "status does not allow knowledge conversion",
+  not_assignee: "only the assigned operator may decide this case",
 };
 
 export const safeOkCode = (code: string): string =>
-  code in FLASH_OK_MSG ? code : "done";
+  Object.hasOwn(FLASH_OK_MSG, code) ? code : "done";
 export const safeErrCode = (code: string): string =>
-  code in FLASH_ERR_MSG ? code : "operation_failed";
+  Object.hasOwn(FLASH_ERR_MSG, code) ? code : "operation_failed";
 
 export const flashBanner = (c: { ok?: string; err?: string }) => {
   if (c.err) {

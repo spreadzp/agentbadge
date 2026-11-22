@@ -6,12 +6,20 @@
  * operator-shape checks reuse the 229 shared module verbatim.
  */
 
+import type { Context } from "hono";
+
 import { FEEDBACK_STATUSES } from "../../lib/feedback/types";
 import { REVIEW_STATUSES } from "../../lib/reviews/types";
 import {
   safeErrCode,
   safeOkCode,
 } from "../../../views/admin-review-center/shared";
+import {
+  opBad,
+  opOf,
+  tokenConsumed,
+  FORM_TOKEN_ERR,
+} from "../admin-knowledge-ui-mutations-shared";
 
 export {
   formStr,
@@ -21,6 +29,43 @@ export {
   tokenConsumed,
   FORM_TOKEN_ERR,
 } from "../admin-knowledge-ui-mutations-shared";
+
+export const badId = () => new Response(null, { status: 404 });
+
+/** Codepoint-safe clip — .slice() can split a surrogate pair and
+ *  jsonb refuses lone surrogates (Arc nit: UTF-16 slicing). */
+export const clipCp = (s: string, n: number) => [...s].slice(0, n).join("");
+
+/** Shared POST prelude: parse → id → token → operator guards.
+ *  Returns {body, operator} or a redirect Response. */
+export async function guardMutation(
+  c: Context,
+  queue: "feedback" | "reviews",
+  rawId: string,
+  idSchema: { safeParse: (v: unknown) => { success: boolean; data?: string } },
+): Promise<
+  | { ok: true; body: Record<string, unknown>; operator: string; id: string }
+  | { ok: false; res: Response }
+> {
+  const id = idSchema.safeParse(rawId);
+  if (!id.success || id.data === undefined) {
+    return { ok: false, res: badId() };
+  }
+  const body = (await c.req.parseBody()) as Record<string, unknown>;
+  if (!tokenConsumed(body)) {
+    return {
+      ok: false,
+      res: c.redirect(backTo(queue, id.data, { err: FORM_TOKEN_ERR }), 303),
+    };
+  }
+  if (opBad(body)) {
+    return {
+      ok: false,
+      res: c.redirect(backTo(queue, id.data, { err: "bad_operator" }), 303),
+    };
+  }
+  return { ok: true, body, operator: opOf(body), id: id.data };
+}
 
 export const backTo = (
   queue: "feedback" | "reviews",

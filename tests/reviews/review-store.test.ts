@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { REVIEW_CRITERIA_KEYS } from "@agentbadge/database";
 import {
   createMemoryReviewStores,
   pickReviewStore,
 } from "../../src/server/lib/reviews/db-stores";
+import { criteriaForReview } from "../../src/server/lib/reviews/criteria";
 import type {
   ReviewStore,
   ReviewSubmitInput,
@@ -41,6 +43,12 @@ const ev = (kind = "review.submitted") => ({
   visibility: "PUBLIC",
   payload: {},
 });
+
+/** Full API_SURFACE rubric — Arc 230-8 moved the coverage check
+ *  inside the store unit, so decide calls need the whole template. */
+const RUBRIC = (over: Record<string, string> = {}) =>
+  ["contract-accuracy", "error-shapes", "breaking-changes", "auth-and-limits"]
+    .map((k) => ({ key: k, result: over[k] ?? "PASS" }));
 
 const evRow = (reviewId: string, over: Record<string, unknown> = {}) => ({
   id: `ev_${crypto.randomUUID()}`,
@@ -175,7 +183,7 @@ describe("ReviewStore (memory backend, SLICE-230-1)", () => {
       record.id,
       {
         outcome: "CHANGES_REQUESTED",
-        criteriaResults: [{ key: "correctness", result: "FAIL", note: "n" }],
+        criteriaResults: RUBRIC({ "contract-accuracy": "FAIL" }),
         summary: "fix it",
         decidedBy: "ops:1",
       },
@@ -203,7 +211,7 @@ describe("ReviewStore (memory backend, SLICE-230-1)", () => {
     await claim(s, record.id, "ops:bob");
     await s.decideReview(
       record.id,
-      { outcome: "REJECTED", criteriaResults: [], summary: "no", decidedBy: "ops:bob" },
+      { outcome: "REJECTED", criteriaResults: RUBRIC(), summary: "no", decidedBy: "ops:bob" },
       ev("review.decided"),
     );
     const ro = await s.transitionReview(
@@ -263,16 +271,33 @@ describe("ReviewStore (memory backend, SLICE-230-1)", () => {
     expect(await s.listEvidence(record.id)).toHaveLength(REVIEW_EVIDENCE_CAP);
   });
 
-  it("markKnowledgeConverted stamps flags + event", async () => {
+  it("markKnowledgeConverted stamps flags + event (CAS)", async () => {
     const s = createMemoryReviewStores();
     const { record } = await submit(s);
-    const out = await s.markKnowledgeConverted(record.id, "ki_9", {
-      kind: "review.knowledge_converted",
-      visibility: "INTERNAL",
-      payload: {},
-    });
-    expect(out?.knowledgeConverted).toBe(true);
-    expect(out?.knowledgeItemId).toBe("ki_9");
+    const out = await s.markKnowledgeConverted(
+      record.id,
+      "ki_9",
+      {
+        kind: "review.knowledge_converted",
+        visibility: "INTERNAL",
+        payload: {},
+      },
+      { status: "PENDING_TRIAGE", latestDecisionSeq: null },
+    );
+    expect(out.marked).toBe(true);
+    if (out.marked) {
+      expect(out.record.knowledgeConverted).toBe(true);
+      expect(out.record.knowledgeItemId).toBe("ki_9");
+    }
+    // CAS refusals: double convert + decision drift (a reopen + new
+    // decide bumps latestDecisionSeq — the stale claim must refuse).
+    const again = await s.markKnowledgeConverted(
+      record.id,
+      "ki_10",
+      { kind: "review.knowledge_converted", visibility: "INTERNAL", payload: {} },
+      { status: "PENDING_TRIAGE", latestDecisionSeq: null },
+    );
+    expect(again).toEqual({ marked: false, reason: "already_converted" });
   });
 
   it("queue FIFO + filters", async () => {
@@ -293,12 +318,100 @@ describe("ReviewStore (memory backend, SLICE-230-1)", () => {
     expect([...REVIEW_TRANSITIONS.PENDING_TRIAGE].sort()).toEqual(
       ["DECLINED", "IN_REVIEW"].sort(),
     );
-    expect([...REVIEW_TRANSITIONS.IN_REVIEW].sort()).toEqual(
-      ["DECIDED", "DECLINED"].sort(),
-    );
+    // Arc 230-8 H3: DECIDED is decideReview's edge only — the generic
+    // transition table must not expose it.
+    expect([...REVIEW_TRANSITIONS.IN_REVIEW].sort()).toEqual(["DECLINED"]);
     expect([...REVIEW_TRANSITIONS.DECIDED]).toEqual(["REOPENED"]);
     expect([...REVIEW_TRANSITIONS.REOPENED]).toEqual(["PENDING_TRIAGE"]);
     expect(REVIEW_TRANSITIONS.DECLINED.size).toBe(0);
+  });
+
+  it("repo REVIEW_CRITERIA_KEYS mirrors the lib templates (Arc H3 note)", () => {
+    // The PG repo can't import lib code — its store-level decide
+    // guards run against this exported mirror. If a template key is
+    // added/renamed in criteria.ts this test forces the mirror to
+    // move with it.
+    for (const type of [
+      "API_SURFACE",
+      "DOCS",
+      "CODE_SNIPPET",
+      "INTEGRATION",
+      "OTHER",
+    ]) {
+      const template = criteriaForReview(type);
+      const mirror = REVIEW_CRITERIA_KEYS[type];
+      expect(mirror, `missing mirror for ${type}`).toBeDefined();
+      expect([...mirror!.allowed].sort()).toEqual(
+        template.map((c) => c.key).sort(),
+      );
+      expect([...mirror!.required].sort()).toEqual(
+        template.filter((c) => c.required).map((c) => c.key).sort(),
+      );
+    }
+  });
+
+  it("store-level decide guards: facade bypass still refuses", async () => {
+    // Arc 230-8 H3 note — the invariants live in the store unit, so
+    // calling store.decideReview directly with a bad rubric refuses.
+    const s = createMemoryReviewStores();
+    const { record } = await submit(s, { reviewType: "DOCS" });
+    await s.transitionReview(
+      record.id,
+      { from: "PENDING_TRIAGE", to: "IN_REVIEW", actor: "ops:alice" },
+      { kind: "review.claimed", visibility: "INTERNAL", payload: {} },
+    );
+    const ev = {
+      kind: "review.decided",
+      visibility: "INTERNAL" as const,
+      payload: {},
+    };
+    const wrongAssignee = await s.decideReview(
+      record.id,
+      {
+        outcome: "APPROVED",
+        criteriaResults: [],
+        summary: "x",
+        decidedBy: "ops:mallory",
+      },
+      ev,
+    );
+    expect(wrongAssignee.transitioned).toBe(false);
+    if (!wrongAssignee.transitioned) {
+      expect(wrongAssignee.reason).toBe("not_assignee");
+    }
+    const partial = await s.decideReview(
+      record.id,
+      {
+        outcome: "APPROVED",
+        criteriaResults: [{ key: "accuracy", result: "PASS" }],
+        summary: "x",
+        decidedBy: "ops:alice",
+      },
+      ev,
+    );
+    expect(partial.transitioned).toBe(false);
+    if (!partial.transitioned) {
+      expect(partial.reason).toBe("missing_criteria");
+    }
+    const rubberStamp = await s.decideReview(
+      record.id,
+      {
+        outcome: "APPROVED",
+        criteriaResults: [
+          { key: "accuracy", result: "NA" },
+          { key: "completeness", result: "PASS" },
+          { key: "examples-valid", result: "PASS" },
+          { key: "links-integrity", result: "PASS" },
+        ],
+        summary: "x",
+        decidedBy: "ops:alice",
+      },
+      ev,
+    );
+    expect(rubberStamp.transitioned).toBe(false);
+    if (!rubberStamp.transitioned) {
+      expect(rubberStamp.reason).toBe("inconsistent_outcome");
+    }
   });
 
   it("pick falls back to shared memory when repos absent", async () => {

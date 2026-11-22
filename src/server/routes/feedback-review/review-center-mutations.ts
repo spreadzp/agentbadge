@@ -9,7 +9,7 @@
  *  - flash values are whitelist codes via backTo(), never free text
  */
 
-import type { Context, Hono } from "hono";
+import type { Hono } from "hono";
 
 import {
   closeFeedback,
@@ -25,55 +25,16 @@ import {
 import { decideReview } from "../../lib/reviews/decide";
 import { addReviewEvidence } from "../../lib/reviews/evidence";
 import { criteriaForReview } from "../../lib/reviews/criteria";
-import {
-  convertFeedbackToDraft,
-  convertReviewToDraft,
-} from "../../lib/knowledge-draft/convert";
-import { unavailableDraftPort } from "../../lib/knowledge-draft/port";
 import { feedbackIdSchema } from "../../lib/feedback/validate";
 import { reviewIdSchema } from "../../lib/reviews/validate";
 import type { FeedbackReviewStores } from "./mount";
 import {
   backTo,
-  FORM_TOKEN_ERR,
+  badId,
+  clipCp,
   formStr,
-  opBad,
-  opOf,
-  tokenConsumed,
+  guardMutation,
 } from "./review-center-shared";
-
-const badId = () => new Response(null, { status: 404 });
-
-/** Shared POST prelude: parse → id → token → operator guards.
- *  Returns {body, operator} or a redirect Response. */
-async function guardMutation(
-  c: Context,
-  queue: "feedback" | "reviews",
-  rawId: string,
-  idSchema: { safeParse: (v: unknown) => { success: boolean; data?: string } },
-): Promise<
-  | { ok: true; body: Record<string, unknown>; operator: string; id: string }
-  | { ok: false; res: Response }
-> {
-  const id = idSchema.safeParse(rawId);
-  if (!id.success || id.data === undefined) {
-    return { ok: false, res: badId() };
-  }
-  const body = (await c.req.parseBody()) as Record<string, unknown>;
-  if (!tokenConsumed(body)) {
-    return {
-      ok: false,
-      res: c.redirect(backTo(queue, id.data, { err: FORM_TOKEN_ERR }), 303),
-    };
-  }
-  if (opBad(body)) {
-    return {
-      ok: false,
-      res: c.redirect(backTo(queue, id.data, { err: "bad_operator" }), 303),
-    };
-  }
-  return { ok: true, body, operator: opOf(body), id: id.data };
-}
 
 export function registerReviewCenterMutations(
   app: Hono,
@@ -113,7 +74,9 @@ export function registerReviewCenterMutations(
     }
     const suggestion = formStr(g.body, "suggestion");
     const r = await resolveFeedback(stores.feedback, g.id, to, g.operator, {
-      suggestion: suggestion === "" ? undefined : suggestion,
+      // Arc 230-8 nit: the form pre-fills the current value, so a
+      // blank submission is a deliberate CLEAR, not "leave as is".
+      suggestion: suggestion === "" ? null : suggestion,
     });
     return c.redirect(
       backTo("feedback", g.id, r.ok ? { ok: "resolved" } : { err: r.error }),
@@ -124,7 +87,9 @@ export function registerReviewCenterMutations(
   app.post("/admin/review-center/feedback/:id/close", async (c) => {
     const g = await guardMutation(c, "feedback", c.req.param("id"), feedbackIdSchema);
     if (!g.ok) return g.res;
-    const r = await closeFeedback(stores.feedback, g.id, g.operator);
+    const r = await closeFeedback(stores.feedback, g.id, g.operator, {
+      from: formStr(g.body, "fromStatus") || undefined,
+    });
     return c.redirect(
       backTo("feedback", g.id, r.ok ? { ok: "closed" } : { err: r.error }),
       303,
@@ -152,7 +117,10 @@ export function registerReviewCenterMutations(
       g.id,
       formStr(g.body, "declineReason"),
       g.operator,
-      { reason: note === "" ? null : note.slice(0, 300) },
+      {
+        reason: note === "" ? null : clipCp(note, 300),
+        from: formStr(g.body, "fromStatus") || undefined,
+      },
     );
     return c.redirect(
       backTo("reviews", g.id, r.ok ? { ok: "declined" } : { err: r.error }),
@@ -178,7 +146,7 @@ export function registerReviewCenterMutations(
           {
             key: tpl.key,
             result,
-            ...(note !== "" ? { note: note.slice(0, 1000) } : {}),
+            ...(note !== "" ? { note: clipCp(note, 1000) } : {}),
           },
         ];
       },
@@ -204,7 +172,7 @@ export function registerReviewCenterMutations(
     if (!g.ok) return g.res;
     const reason = formStr(g.body, "reason");
     const r = await reopenReview(stores.reviews, g.id, g.operator, {
-      reason: reason === "" ? null : reason.slice(0, 300),
+      reason: reason === "" ? null : clipCp(reason, 300),
     });
     return c.redirect(
       backTo("reviews", g.id, r.ok ? { ok: "reopened" } : { err: r.error }),
@@ -251,43 +219,4 @@ export function registerReviewCenterMutations(
     );
   });
 
-  // ── knowledge-draft conversion (D-230-10) ───────────────────
-
-  app.post("/admin/review-center/feedback/:id/convert", async (c) => {
-    const g = await guardMutation(c, "feedback", c.req.param("id"), feedbackIdSchema);
-    if (!g.ok) return g.res;
-    const r = await convertFeedbackToDraft(
-      stores.feedback,
-      stores.draftPort ?? unavailableDraftPort(),
-      g.id,
-      g.operator,
-    );
-    return c.redirect(
-      backTo(
-        "feedback",
-        g.id,
-        r.ok ? { ok: "converted" } : { err: r.error },
-      ),
-      303,
-    );
-  });
-
-  app.post("/admin/review-center/reviews/:id/convert", async (c) => {
-    const g = await guardMutation(c, "reviews", c.req.param("id"), reviewIdSchema);
-    if (!g.ok) return g.res;
-    const r = await convertReviewToDraft(
-      stores.reviews,
-      stores.draftPort ?? unavailableDraftPort(),
-      g.id,
-      g.operator,
-    );
-    return c.redirect(
-      backTo(
-        "reviews",
-        g.id,
-        r.ok ? { ok: "converted" } : { err: r.error },
-      ),
-      303,
-    );
-  });
 }

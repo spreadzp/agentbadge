@@ -171,11 +171,22 @@ export function createAgentReviewsRoutes(
     async (c) => {
       const id = reviewIdSchema.safeParse(c.req.param("id"));
       if (!id.success) return notFound(c);
+      // Arc 230-8 M6: polls are rate-limited too.
+      const actor = resolveActor(c);
+      if (!limiter.allow(actor.resolution, limiterKey(c, actor))) {
+        return errorResponse(
+          c,
+          429,
+          ErrorCodes.RATE_LIMITED,
+          `rate limit exceeded for ${actor.resolution} tier — retry in a minute`,
+          { retryable: true },
+        );
+      }
       const rec = await store.getReview(id.data);
       if (!rec) return notFound(c);
       const deny = tenantDeny(c, rec);
       if (deny) return deny;
-      return c.json(await getReviewStatus(store, id.data));
+      return c.json(await getReviewStatus(store, id.data, rec));
     },
   );
 
@@ -258,9 +269,9 @@ export function createAgentReviewsRoutes(
           const err = (out.body as { error?: string }).error ?? "invalid";
           return errorFor(c, { error: err });
         }
-        // status is always 200 here — store errors produce a ≥400
-        // marker that errorFor re-maps (and cacheErrors:false keeps
-        // them out of the replay window).
+        // Past the guard out.status === 200 — store errors came back
+        // as ≥400 markers that errorFor re-mapped above (and
+        // cacheErrors:false keeps them out of the replay window).
         return c.json({ ...out.body, duplicate: out.duplicate }, 200);
       } catch (err) {
         if (err instanceof IdempotencyConflictError) {

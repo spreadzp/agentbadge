@@ -25,6 +25,16 @@ import { submitFeedbackSchema } from "./validate";
 /** D-206-5 scope convention: method+routePath namespaces the key. */
 export const FEEDBACK_DEDUPE_SCOPE = "POST:/api/v1/agent/feedback";
 
+/** Arc 230-8 M1: the idempotency namespace is per-actor — a global
+ *  keyspace lets one actor squat or probe another's keys. ANON
+ *  actors share the anon bucket (no distinguishing ref exists);
+ *  capability-ids are still the replay contract there. */
+const scopeFor = (
+  base: string,
+  actorRef: string | null,
+  override?: string | null,
+) => override ?? `${base}:${actorRef ?? "anon"}`;
+
 export type FeedbackResult<T> =
   | ({ ok: true } & T)
   | { ok: false; error: string; field?: string };
@@ -83,7 +93,11 @@ export async function submitFeedback(
       id,
       actorResolution: actor.resolution,
       actorRef: actor.actorRef,
-      dedupeScope: opts?.dedupeScope ?? FEEDBACK_DEDUPE_SCOPE,
+      dedupeScope: scopeFor(
+        FEEDBACK_DEDUPE_SCOPE,
+        actor.actorRef,
+        opts?.dedupeScope,
+      ),
       idempotencyKey: opts?.idempotencyKey ?? null,
       text: input.text,
       kind: input.kind ?? null,
@@ -153,7 +167,8 @@ export function publicFeedbackProjection(
 export async function getFeedbackStatus(
   store: FeedbackStore,
   id: string,
+  rec?: FeedbackRecord | null,
 ): Promise<PublicFeedbackProjection | null> {
-  const rec = await store.getFeedback(id);
-  return rec ? publicFeedbackProjection(rec) : null;
+  const row = rec ?? (await store.getFeedback(id));
+  return row ? publicFeedbackProjection(row) : null;
 }

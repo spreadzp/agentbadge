@@ -51,8 +51,13 @@ export type AppendEvents = (
   evts: ReviewEventInput[],
 ) => ReviewEventRecord[];
 
+/** Arc 230-8 M14: idempotency probes must not be an O(store) scan —
+ *  the public submit path drives one per POST. */
+const idemKey = (scope: string, key: string) => `${scope} ${key}`;
+
 export function createMemoryReviewStore(data: ReviewMemoryData): ReviewStore {
   const { cases, events } = data;
+  const byIdem = new Map<string, ReviewCaseRecord>();
   const now = () => new Date().toISOString();
 
   const appendEventsMem: AppendEvents = (reviewId, evts) => {
@@ -90,15 +95,8 @@ export function createMemoryReviewStore(data: ReviewMemoryData): ReviewStore {
     },
 
     async findByIdempotency(idempotencyKey, dedupeScope) {
-      for (const r of cases.values()) {
-        if (
-          r.idempotencyKey === idempotencyKey &&
-          r.dedupeScope === dedupeScope
-        ) {
-          return clone(r);
-        }
-      }
-      return null;
+      const hit = byIdem.get(idemKey(dedupeScope, idempotencyKey));
+      return hit ? clone(hit) : null;
     },
 
     async listReviews(opts) {
@@ -117,7 +115,9 @@ export function createMemoryReviewStore(data: ReviewMemoryData): ReviewStore {
           a.createdAt.localeCompare(b.createdAt) || (a.id < b.id ? -1 : 1),
       );
       const offset = Math.max(0, opts?.offset ?? 0);
-      return out.slice(offset, offset + (opts?.limit ?? 100)).map(clone);
+      // Arc 230-8 nit: store-side limit ceiling (repo parity: ≤1000).
+      const limit = Math.min(opts?.limit ?? 100, 1000);
+      return out.slice(offset, offset + limit).map(clone);
     },
 
     async submitReview(input, rows, evts) {
@@ -152,6 +152,9 @@ export function createMemoryReviewStore(data: ReviewMemoryData): ReviewStore {
         updatedAt: t,
       };
       cases.set(record.id, record);
+      if (record.idempotencyKey !== null) {
+        byIdem.set(idemKey(record.dedupeScope, record.idempotencyKey), record);
+      }
       const list = data.evidence.get(record.id) ?? [];
       for (const e of rows) {
         list.push({
@@ -190,6 +193,11 @@ export function createMemoryReviewStore(data: ReviewMemoryData): ReviewStore {
       if (input.to === "DECLINED" && !input.declineReason) {
         return { record: clone(cur), event: null, transitioned: false, reason: "precondition_required" };
       }
+      if (input.to === "DECIDED") {
+        // Arc 230-8 H3: DECIDED is decideReview's edge — a bare
+        // transition would flip status with no decision row.
+        return { record: clone(cur), event: null, transitioned: false, reason: "precondition_required" };
+      }
       const t = input.now ?? now();
       cur.status = input.to;
       cur.updatedAt = t;
@@ -203,6 +211,10 @@ export function createMemoryReviewStore(data: ReviewMemoryData): ReviewStore {
         cur.reopenCount += 1;
         cur.decidedAt = null;
         cur.deliveredAt = null;
+        // Arc 230-8 M11: a reopened case may convert again after the
+        // next decision — the superseded draft keeps its own item id.
+        cur.knowledgeConverted = false;
+        cur.knowledgeItemId = null;
       }
       if (input.to === "PENDING_TRIAGE") {
         cur.assignee = null;
@@ -229,14 +241,24 @@ export function createMemoryReviewStore(data: ReviewMemoryData): ReviewStore {
         .map(cloneEvent);
     },
 
-    async markKnowledgeConverted(id, knowledgeItemId, event) {
+    async markKnowledgeConverted(id, knowledgeItemId, event, expected) {
       const cur = cases.get(id);
-      if (!cur) return null;
+      if (!cur) return { marked: false, reason: "missing" };
+      if (cur.knowledgeConverted) {
+        return { marked: false, reason: "already_converted" };
+      }
+      if (
+        cur.status !== expected.status ||
+        (expected.latestDecisionSeq !== undefined &&
+          cur.latestDecisionSeq !== expected.latestDecisionSeq)
+      ) {
+        return { marked: false, reason: "status_mismatch" };
+      }
       cur.knowledgeConverted = true;
       cur.knowledgeItemId = knowledgeItemId;
       cur.updatedAt = now();
       appendEventsMem(id, [event]);
-      return clone(cur);
+      return { marked: true, record: clone(cur) };
     },
   };
 }

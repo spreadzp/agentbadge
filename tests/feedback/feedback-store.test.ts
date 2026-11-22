@@ -212,17 +212,37 @@ describe("FeedbackStore (memory backend, SLICE-230-1)", () => {
     expect(pub.map((e) => e.seq)).toEqual([1, 3]);
   });
 
-  it("markKnowledgeConverted stamps flags + event", async () => {
+  it("markKnowledgeConverted stamps flags + event (CAS)", async () => {
     const s = createMemoryFeedbackStores();
     const { record } = await submit(s);
     const out = await s.markKnowledgeConverted(
       record.id,
       "ki_1",
       ev("feedback.knowledge_converted"),
+      { status: "RECEIVED" },
     );
-    expect(out?.knowledgeConverted).toBe(true);
-    expect(out?.knowledgeItemId).toBe("ki_1");
-    expect(await s.markKnowledgeConverted("fb_none", "ki_1", ev())).toBeNull();
+    expect(out.marked).toBe(true);
+    if (out.marked) {
+      expect(out.record.knowledgeConverted).toBe(true);
+      expect(out.record.knowledgeItemId).toBe("ki_1");
+    }
+    // CAS refusals: missing row, double convert, status drift.
+    const miss = await s.markKnowledgeConverted("fb_none", "ki_1", ev(), {
+      status: "RECEIVED",
+    });
+    expect(miss).toEqual({ marked: false, reason: "missing" });
+    const again = await s.markKnowledgeConverted(
+      record.id,
+      "ki_2",
+      ev(),
+      { status: "RECEIVED" },
+    );
+    expect(again).toEqual({ marked: false, reason: "already_converted" });
+    const { record: other } = await submit(s);
+    const drift = await s.markKnowledgeConverted(other.id, "ki_3", ev(), {
+      status: "ACCEPTED",
+    });
+    expect(drift).toEqual({ marked: false, reason: "status_mismatch" });
   });
 
   it("queue FIFO + filters + offset pagination", async () => {

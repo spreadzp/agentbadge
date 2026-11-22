@@ -10,6 +10,8 @@
  * → graceful no-op (228 precedent).
  */
 
+import { createHash } from "node:crypto";
+
 import type { Hono } from "hono";
 import { logger } from "@agentbadge/passport/logger";
 
@@ -37,14 +39,22 @@ import {
 } from "../metrics/metrics";
 import { mountFeedbackReviewRoutes } from "../routes/feedback-review/mount";
 
-const ADMIN_BASE = "https://agentbadge.xyz/admin/review-center";
+const ADMIN_BASE =
+  process.env.REVIEW_CENTER_BASE ??
+  "https://agentbadge.xyz/admin/review-center";
+
+/** §17.3 "reviews per operator" label — the operator ref is
+ *  operator-chosen free text (up to 80 chars); hash to keep
+ *  Prometheus cardinality bounded (Arc 230-8 nit). */
+const opLabel = (ref: string) =>
+  createHash("sha256").update(ref).digest("hex").slice(0, 10);
 
 /** Arc-audit M10 lesson: collapse whitespace + strip bidi/ctrl chars
  *  BEFORE escaping — a submitter must not inject fake operator lines
  *  into the operator channel. */
 const cleanExcerpt = (s: string) =>
   s
-    .replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+    .replace(/[\u0000-\u001f\u007f\u061c\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 200);
@@ -64,17 +74,25 @@ function notify(
 }
 
 /** §17.3 "Pending reviews" — PENDING_TRIAGE + REOPENED both sit in
- *  the operator queue. Recomputed fire-and-forget off each review
- *  event; a store failure leaves the last value and logs. */
-function refreshReviewPending(reviews: ReviewStore): void {
+ *  the operator queue. Arc 230-8 M7: derived from transition deltas
+ *  (payload from/to) instead of re-scanning the table per event —
+ *  the public intake path would otherwise drive two 10k-row reads
+ *  per submitted review. Seeded once at wire time. */
+const PENDING_STATUSES = new Set(["PENDING_TRIAGE", "REOPENED"]);
+
+const pendingDelta = (from: unknown, to: unknown): number =>
+  (PENDING_STATUSES.has(String(to)) ? 1 : 0) -
+  (PENDING_STATUSES.has(String(from)) ? 1 : 0);
+
+function seedReviewPending(reviews: ReviewStore): void {
   void (async () => {
     const [triage, reopened] = await Promise.all([
-      reviews.listReviews({ status: "PENDING_TRIAGE", limit: 10_000 }),
-      reviews.listReviews({ status: "REOPENED", limit: 10_000 }),
+      reviews.listReviews({ status: "PENDING_TRIAGE", limit: 1000 }),
+      reviews.listReviews({ status: "REOPENED", limit: 1000 }),
     ]);
     reviewPending.set(triage.length + reopened.length);
   })().catch((err) =>
-    logger.warn("feedback-review: pending gauge refresh failed", {
+    logger.warn("feedback-review: pending gauge seed failed", {
       err: err instanceof Error ? err.message : String(err),
     }),
   );
@@ -85,6 +103,7 @@ let hookRegistered = false;
 function registerHooks(reviews: ReviewStore): void {
   if (hookRegistered) return; // single hook per process (tests remount)
   hookRegistered = true;
+  seedReviewPending(reviews);
 
   onFeedbackEvent((feedbackId, event) => {
     const p = (event.payload ?? {}) as Record<string, unknown>;
@@ -117,11 +136,17 @@ function registerHooks(reviews: ReviewStore): void {
   });
 
   onReviewEvent((reviewId, event) => {
-    refreshReviewPending(reviews);
     const p = (event.payload ?? {}) as Record<string, unknown>;
+    // M7: pending gauge rides the transition's from/to — submitted
+    // has no `from`, it is always +1.
+    const delta =
+      event.kind === "review.submitted"
+        ? 1
+        : pendingDelta(p.from, p.to);
+    if (delta !== 0) reviewPending.inc(delta);
     switch (event.kind) {
       case "review.decided": {
-        const operator = String(p.decidedBy ?? "unknown");
+        const operator = opLabel(String(p.decidedBy ?? "unknown"));
         reviewsDecidedTotal.inc({
           operator,
           outcome: String(p.outcome ?? "UNKNOWN"),

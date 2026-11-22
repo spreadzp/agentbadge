@@ -24,15 +24,15 @@ export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 /**
  * Legal from→to table — enforced INSIDE the store on BOTH backends
- * (Arc R4 M-4 lesson). PENDING_TRIAGE→DECIDED is NOT a legal direct
- * jump: decideReview owns that edge so the append-only decision row
- * always lands with the flip.
+ * (Arc R4 M-4 lesson). *→DECIDED is NOT a legal transitionReview edge
+ * at all (Arc 230-8 H3): decideReview owns that flip so the
+ * append-only decision row always lands with it.
  */
 export const REVIEW_TRANSITIONS: Readonly<
   Record<ReviewStatus, ReadonlySet<ReviewStatus>>
 > = {
   PENDING_TRIAGE: new Set(["IN_REVIEW", "DECLINED"]),
-  IN_REVIEW: new Set(["DECIDED", "DECLINED"]),
+  IN_REVIEW: new Set(["DECLINED"]),
   DECIDED: new Set(["REOPENED"]),
   DECLINED: new Set(),
   REOPENED: new Set(["PENDING_TRIAGE"]),

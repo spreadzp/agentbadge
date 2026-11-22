@@ -252,13 +252,16 @@ export function createDbReviewStore(repo: ReviewRepository): ReviewStore {
       ).map(toEvent);
     },
 
-    async markKnowledgeConverted(id, knowledgeItemId, event) {
-      const row = await repo.markKnowledgeConverted(
+    async markKnowledgeConverted(id, knowledgeItemId, event, expected) {
+      const res = await repo.markKnowledgeConverted(
         id,
         knowledgeItemId,
         repoEvent(event),
+        expected,
       );
-      return row ? toRecord(row) : null;
+      return res.marked
+        ? { marked: true, record: toRecord(res.record) }
+        : res;
     },
   };
 }

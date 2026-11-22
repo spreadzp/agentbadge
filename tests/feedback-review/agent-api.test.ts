@@ -115,9 +115,11 @@ describe("POST /api/v1/agent/feedback", () => {
     const diff = await post(app, "/api/v1/agent/feedback", { text: "y" },
       { ...KEY("fb-mm"), ...AGENT("agt_a") });
     expect(diff.status).toBe(422);
+    // Arc 230-8 M1: idempotency is actor-scoped — a different actor
+    // reusing the same key mints a NEW row, not a 409.
     const foreign = await post(app, "/api/v1/agent/feedback", { text: "x" },
       { ...KEY("fb-mm"), ...AGENT("agt_b") });
-    expect(foreign.status).toBe(409);
+    expect(foreign.status).toBe(202);
   });
 
   it("invalid body → 400 with field hint; unknown kind → 400", async () => {

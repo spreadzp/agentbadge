@@ -106,14 +106,21 @@ export async function resolveFeedback(
   operatorRef: string,
   opts?: { suggestion?: string | null; reason?: string | null },
 ): Promise<FeedbackResult<{ record: FeedbackRecord }>> {
-  const patch =
-    opts?.suggestion !== undefined ? { suggestion: opts.suggestion } : {};
-  if (patch.suggestion !== undefined) {
-    const check = triageFeedbackSchema.shape.suggestion.safeParse(
-      patch.suggestion,
-    );
-    if (!check.success) {
-      return { ok: false, error: "invalid suggestion", field: "suggestion" };
+  const patch: { suggestion?: string | null } = {};
+  if (opts?.suggestion !== undefined) {
+    // Arc 230-8 nit: null = explicit clear (the pre-filled form makes
+    // blank deliberate); a string is stored TRIMMED — validating the
+    // raw input and storing it anyway was a mismatch.
+    if (opts.suggestion !== null) {
+      const check = triageFeedbackSchema.shape.suggestion.safeParse(
+        opts.suggestion,
+      );
+      if (!check.success || check.data === undefined || check.data === null) {
+        return { ok: false, error: "invalid suggestion", field: "suggestion" };
+      }
+      patch.suggestion = check.data;
+    } else {
+      patch.suggestion = null;
     }
   }
   return doTransition(store, id, "TRIAGED", to, operatorRef, {
@@ -122,14 +129,21 @@ export async function resolveFeedback(
   });
 }
 
-/** ACCEPTED|DECLINED|DUPLICATE→CLOSED — terminal archive. The
- *  precondition is the status read under the store lock. */
+/** ACCEPTED|DECLINED|DUPLICATE→CLOSED — terminal archive. Arc 230-8
+ *  M12: the caller's observed status is the `from` (stale screen
+ *  protection), not a fresh read under the lock. */
 export async function closeFeedback(
   store: FeedbackStore,
   id: string,
   operatorRef: string,
+  opts?: { from?: string },
 ): Promise<FeedbackResult<{ record: FeedbackRecord }>> {
-  const cur = await store.getFeedback(id);
-  if (!cur) return { ok: false, error: "not_found" };
-  return doTransition(store, id, cur.status, "CLOSED", operatorRef);
+  const from = opts?.from;
+  if (
+    from === undefined ||
+    (from !== "ACCEPTED" && from !== "DECLINED" && from !== "DUPLICATE")
+  ) {
+    return { ok: false, error: "illegal_transition" };
+  }
+  return doTransition(store, id, from, "CLOSED", operatorRef);
 }

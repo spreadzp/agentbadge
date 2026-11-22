@@ -1,3 +1,4 @@
+import { decideGuardFailure } from "./decide-guards";
 import type { ReviewDecisionRecord } from "./types";
 import type {
   ReviewDecideInput,
@@ -53,6 +54,20 @@ export function createMemoryDecisionOps(
           event: null,
           transitioned: false,
           reason: "status_mismatch",
+        };
+      }
+      // Arc 230-8 H3 note + M8: assignee/criteria/outcome invariants
+      // inside the store unit — a facade bypass can't write a bad
+      // decision row, and a re-claim racing the facade pre-check
+      // loses under the lock (memory ops are synchronous).
+      const guard = decideGuardFailure(cur, input);
+      if (guard !== null) {
+        return {
+          record: cloneCase(cur),
+          decision: null,
+          event: null,
+          transitioned: false,
+          reason: guard,
         };
       }
       const list = decisions.get(id) ?? [];

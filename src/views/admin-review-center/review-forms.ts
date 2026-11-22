@@ -45,7 +45,7 @@ const sel = (
 >
   ${options.map(
     (o) =>
-      html`<option value="${o}" ${o === current ? "selected" : ""}>${o}</option>`,
+      html`<option value="${o}" ${o === current ? "selected" : ""}>${o === "" ? "—" : o}</option>`,
   )}
 </select>`;
 
@@ -77,6 +77,7 @@ export function declineForm(r: ReviewCaseRecord, token: string) {
       class="space-y-2"
     >
       ${tokenField(token)}
+      <input type="hidden" name="fromStatus" value="${r.status}" />
       <label class="block text-xs text-slate-500"
         >declineReason
         ${sel("declineReason", REVIEW_DECLINE_REASONS, "OUT_OF_SCOPE")}
@@ -118,18 +119,18 @@ export function decideForm(r: ReviewCaseRecord, token: string) {
                 ? html`<span class="text-amber-400">*</span>`
                 : ""}</span
             >
-            ${sel(`crit_${c.key}`, ["PASS", "FAIL", "NA"], "PASS")}
+            ${sel(`crit_${c.key}`, ["", "PASS", "FAIL", "NA"], "")}
             <input
               name="note_${c.key}"
               maxlength="1000"
-              placeholder="note (optional)"
+              placeholder="note (internal — not shown to agent)"
               class="${inputCls} flex-1"
             />
           </div>`,
         )}
       </div>
       <label class="block text-xs text-slate-500"
-        >outcome ${sel("outcome", REVIEW_DECISION_OUTCOMES, "APPROVED")}
+        >outcome ${sel("outcome", ["", ...REVIEW_DECISION_OUTCOMES], "")}
       </label>
       <label class="block text-xs text-slate-500">
         summary (public — returned to the agent)

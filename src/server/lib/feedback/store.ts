@@ -125,10 +125,20 @@ export interface FeedbackStore {
     opts?: { visibility?: string },
   ): Promise<FeedbackEventRecord[]>;
 
-  /** D-230-10 seam — sets knowledgeConverted + knowledgeItemId. */
+  /** D-230-10 seam — CAS: sets knowledgeConverted + knowledgeItemId
+   *  ONLY when the row is unconverted and still in `expected.status`
+   *  (Arc 230-8 H1: two converts must not mint two drafts). */
   markKnowledgeConverted(
     id: string,
     knowledgeItemId: string,
     event: FeedbackEventInput,
-  ): Promise<FeedbackRecord | null>;
+    expected: { status: string },
+  ): Promise<MarkConvertedResult<FeedbackRecord>>;
 }
+
+export type MarkConvertedResult<R> =
+  | { marked: true; record: R }
+  | {
+      marked: false;
+      reason: "missing" | "already_converted" | "status_mismatch";
+    };

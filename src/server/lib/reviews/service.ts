@@ -34,6 +34,13 @@ import { submitReviewSchema } from "./validate";
 /** D-206-5 scope convention: method+routePath namespaces the key. */
 export const REVIEW_DEDUPE_SCOPE = "POST:/api/v1/agent/reviews";
 
+/** Arc 230-8 M1: per-actor idempotency namespace (see feedback). */
+const scopeFor = (
+  base: string,
+  actorRef: string | null,
+  override?: string | null,
+) => override ?? `${base}:${actorRef ?? "anon"}`;
+
 /**
  * workRef is "the URI of the work under review" — validated with
  * the SAME classifier as evidence (D-229-9 consistent). ARTIFACT_REF
@@ -100,7 +107,11 @@ export async function submitReview(
       id,
       actorResolution: actor.resolution,
       actorRef: actor.actorRef,
-      dedupeScope: opts?.dedupeScope ?? REVIEW_DEDUPE_SCOPE,
+      dedupeScope: scopeFor(
+        REVIEW_DEDUPE_SCOPE,
+        actor.actorRef,
+        opts?.dedupeScope,
+      ),
       idempotencyKey: opts?.idempotencyKey ?? null,
       reviewType: input.reviewType,
       workRef: input.workRef,
@@ -120,6 +131,26 @@ export async function submitReview(
       stored.workRef !== input.workRef ||
       JSON.stringify(stored.agentCriteria ?? null) !==
         JSON.stringify(input.agentCriteria ?? null)
+    ) {
+      return { ok: false, error: "payload_mismatch" };
+    }
+    // Arc 230-8 M2: evidence is part of the payload contract — a
+    // retry with a changed bundle must not silently drop rows.
+    const storedEvidence = await store.listEvidence(stored.id);
+    const norm = (e: {
+      type: string;
+      uri: string;
+      label?: string | null;
+      description?: string | null;
+    }) =>
+      `${e.type}${e.uri}${e.label ?? ""}${e.description ?? ""}`;
+    // Multiset compare — batch rows share createdAt, so row order is
+    // not part of the contract.
+    const a = storedEvidence.map(norm).sort();
+    const b = evidence.map(norm).sort();
+    if (
+      a.length !== b.length ||
+      a.some((v, i) => v !== b[i])
     ) {
       return { ok: false, error: "payload_mismatch" };
     }
@@ -161,10 +192,21 @@ function projectDecision(
   d: ReviewDecisionRecord | null,
 ): PublicDecision | undefined {
   if (!d) return undefined;
+  // Arc 230-8 M9: per-criterion `note` is operator-internal — the
+  // public rubric carries key+result only, and unknown keys never
+  // pass through.
+  const results = (
+    Array.isArray(d.criteriaResults) ? d.criteriaResults : []
+  ).flatMap((r) => {
+    const row = r as { key?: unknown; result?: unknown };
+    return typeof row.key === "string" && typeof row.result === "string"
+      ? [{ key: row.key, result: row.result }]
+      : [];
+  });
   return {
     outcome: d.outcome,
     summary: d.summary,
-    criteriaResults: d.criteriaResults,
+    criteriaResults: results,
     binding: "ADVISORY_HUMAN",
     decidedBy: "OPERATOR",
   };
@@ -207,7 +249,8 @@ export async function publicReviewProjection(
 export async function getReviewStatus(
   store: ReviewStore,
   id: string,
+  rec?: ReviewCaseRecord | null,
 ): Promise<PublicReviewProjection | null> {
-  const rec = await store.getReview(id);
-  return rec ? publicReviewProjection(store, rec) : null;
+  const row = rec ?? (await store.getReview(id));
+  return row ? publicReviewProjection(store, row) : null;
 }

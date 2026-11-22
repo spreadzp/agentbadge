@@ -84,18 +84,27 @@ export async function decideReview(
   if (cur.status !== "IN_REVIEW") {
     return { ok: false, error: "status_mismatch" };
   }
+  // Arc 230-8 M8: the claim is an accountability boundary — only the
+  // assignee decides (or an explicit re-claim changes the assignee).
+  if (cur.assignee !== operatorRef) {
+    return { ok: false, error: "not_assignee" };
+  }
 
   const template = criteriaForReview(cur.reviewType);
   const cv = validateCriteriaResults(template, input.criteriaResults);
   if (!cv.ok) return cv;
 
-  const requiredFailed = input.criteriaResults.some(
-    (r) =>
-      r.result === "FAIL" &&
-      template.find((c) => c.key === r.key)?.required === true,
-  );
-  if (requiredFailed && APPROVING.has(input.outcome)) {
-    return { ok: false, error: "inconsistent_outcome", field: "outcome" };
+  // Arc 230-8 M8: an approving outcome requires every required
+  // criterion to be an explicit PASS — NA is not approval.
+  if (APPROVING.has(input.outcome)) {
+    const badRequired = input.criteriaResults.some(
+      (r) =>
+        r.result !== "PASS" &&
+        template.find((c) => c.key === r.key)?.required === true,
+    );
+    if (badRequired) {
+      return { ok: false, error: "inconsistent_outcome", field: "outcome" };
+    }
   }
 
   const event = buildReviewEvent("review.decided", "INTERNAL", {
@@ -115,9 +124,11 @@ export async function decideReview(
     event,
   );
   if (!res.transitioned) {
+    // Store-level guard reasons use the same vocabulary as the
+    // facade errors (Arc 230-8 H3 note) — pass them through.
     return {
       ok: false,
-      error: res.reason === "missing" ? "not_found" : "status_mismatch",
+      error: res.reason === "missing" ? "not_found" : res.reason,
     };
   }
   emitReviewHooks(id, [event]);

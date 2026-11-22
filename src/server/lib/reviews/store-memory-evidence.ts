@@ -32,6 +32,10 @@ export function createMemoryEvidenceOps(
     > {
       const cur = cases.get(reviewId);
       if (!cur) return { ok: false, reason: "missing" };
+      // Arc 230-8 nit: a mixed-side batch must not ride rows[0]'s
+      // gate — refuse unless every row carries the same side.
+      const sides = new Set(rows.map((r) => r.submittedBy));
+      if (sides.size > 1) return { ok: false, reason: "not_editable" };
       const submittedBy = rows[0]?.submittedBy ?? "AGENT";
       // D-230-7 gate: agents only while PENDING_TRIAGE, operators
       // only while IN_REVIEW — same rule as the repo lock.

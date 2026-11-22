@@ -171,7 +171,9 @@ function actionsSection(r: FeedbackRecord, token: string) {
           class="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-3"
         >
           <form method="post" action="${base}/close">
-            ${tokenField(token)} ${opField()}
+            ${tokenField(token)}
+            <input type="hidden" name="fromStatus" value="${r.status}" />
+            ${opField()}
             ${formBtn("Close →", "bg-slate-700 hover:bg-slate-600")}
           </form>
         </section>`

@@ -167,14 +167,21 @@ export function createDbFeedbackStore(
       return rows.map(toEvent);
     },
 
-    async markKnowledgeConverted(id, knowledgeItemId, event) {
-      const row = await repo.markKnowledgeConverted(id, knowledgeItemId, {
-        id: event.id,
-        kind: event.kind,
-        visibility: event.visibility,
-        payload: event.payload as RepoEventInput["payload"],
-      });
-      return row ? toRecord(row) : null;
+    async markKnowledgeConverted(id, knowledgeItemId, event, expected) {
+      const res = await repo.markKnowledgeConverted(
+        id,
+        knowledgeItemId,
+        {
+          id: event.id,
+          kind: event.kind,
+          visibility: event.visibility,
+          payload: event.payload as RepoEventInput["payload"],
+        },
+        expected,
+      );
+      return res.marked
+        ? { marked: true, record: toRecord(res.record) }
+        : res;
     },
   };
 }

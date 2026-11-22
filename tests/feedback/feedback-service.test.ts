@@ -200,7 +200,9 @@ describe("feedback workflow", () => {
       suggestion: "will fix",
     });
     expect(r.ok).toBe(true);
-    const c = await closeFeedback(store, id, "ops:alice");
+    const c = await closeFeedback(store, id, "ops:alice", {
+      from: "ACCEPTED",
+    });
     expect(c.ok).toBe(true);
     if (!c.ok) return;
     expect(c.record.status).toBe("CLOSED");

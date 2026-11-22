@@ -31,10 +31,17 @@ const cloneEvent = (e: FeedbackEventRecord): FeedbackEventRecord => ({
   ...e,
 });
 
+/** Arc 230-8 M14: an unauthenticated caller must not be able to make
+ *  every submit an O(store) scan. Idempotency and normalized probes
+ *  go through secondary indexes; list* stays a scan (admin-side). */
+const idemKey = (scope: string, key: string) => `${scope}\u0000${key}`;
+
 export function createMemoryFeedbackStore(
   data: FeedbackMemoryData,
 ): FeedbackStore {
   const { rows, events } = data;
+  const byIdem = new Map<string, FeedbackRecord>();
+  const byNormalized = new Map<string, FeedbackRecord[]>();
   const now = () => new Date().toISOString();
 
   const appendEventsMem = (
@@ -72,15 +79,8 @@ export function createMemoryFeedbackStore(
     },
 
     async findByIdempotency(idempotencyKey, dedupeScope) {
-      for (const r of rows.values()) {
-        if (
-          r.idempotencyKey === idempotencyKey &&
-          r.dedupeScope === dedupeScope
-        ) {
-          return clone(r);
-        }
-      }
-      return null;
+      const hit = byIdem.get(idemKey(dedupeScope, idempotencyKey));
+      return hit ? clone(hit) : null;
     },
 
     async listFeedback(opts) {
@@ -99,8 +99,10 @@ export function createMemoryFeedbackStore(
           a.createdAt.localeCompare(b.createdAt) || (a.id < b.id ? -1 : 1),
       );
       const offset = Math.max(0, opts?.offset ?? 0);
+      // Arc 230-8 nit: store-side limit ceiling (repo parity: ≤1000).
+      const limit = Math.min(opts?.limit ?? 100, 1000);
       return out
-        .slice(offset, offset + (opts?.limit ?? 100))
+        .slice(offset, offset + limit)
         .map(clone);
     },
 
@@ -114,8 +116,9 @@ export function createMemoryFeedbackStore(
       }
       // Auto-dedup link — earliest OPEN canonical sharing the
       // normalized key (same rule as the repo's FOR UPDATE probe).
+      // M14: scan only this key's bucket, not the whole store.
       let canonical: FeedbackRecord | null = null;
-      for (const r of rows.values()) {
+      for (const r of byNormalized.get(input.normalized) ?? []) {
         if (
           r.normalized === input.normalized &&
           r.relatedFeedbackId === null &&
@@ -151,9 +154,17 @@ export function createMemoryFeedbackStore(
         updatedAt: t,
       };
       rows.set(record.id, record);
+      if (record.idempotencyKey !== null) {
+        byIdem.set(idemKey(record.dedupeScope, record.idempotencyKey), record);
+      }
+      const bucket = byNormalized.get(record.normalized) ?? [];
+      bucket.push(record);
+      byNormalized.set(record.normalized, bucket);
       if (canonical) {
         canonical.relatedCount += 1;
-        canonical.updatedAt = t;
+        // Arc 230-8 M4: no updatedAt bump — the canonical row's owner
+        // would otherwise see other tenants' dedupe hits via the
+        // public projection.
       }
       appendEventsMem(record.id, evts);
       return {
@@ -208,14 +219,20 @@ export function createMemoryFeedbackStore(
         .map(cloneEvent);
     },
 
-    async markKnowledgeConverted(id, knowledgeItemId, event) {
+    async markKnowledgeConverted(id, knowledgeItemId, event, expected) {
       const cur = rows.get(id);
-      if (!cur) return null;
+      if (!cur) return { marked: false, reason: "missing" };
+      if (cur.knowledgeConverted) {
+        return { marked: false, reason: "already_converted" };
+      }
+      if (cur.status !== expected.status) {
+        return { marked: false, reason: "status_mismatch" };
+      }
       cur.knowledgeConverted = true;
       cur.knowledgeItemId = knowledgeItemId;
       cur.updatedAt = now();
       appendEventsMem(id, [event]);
-      return clone(cur);
+      return { marked: true, record: clone(cur) };
     },
   };
 }

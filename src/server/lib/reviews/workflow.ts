@@ -100,15 +100,23 @@ export async function declineReview(
   id: string,
   rawReason: unknown,
   operatorRef: string,
-  opts?: { reason?: string | null },
+  opts?: { reason?: string | null; from?: string },
 ): Promise<ReviewResult<{ record: ReviewCaseRecord }>> {
   const reason = declineReasonSchema.safeParse(rawReason);
   if (!reason.success) {
     return { ok: false, error: "invalid_decline_reason", field: "declineReason" };
   }
-  const cur = await store.getReview(id);
-  if (!cur) return { ok: false, error: "not_found" };
-  return doTransition(store, id, cur.status, "DECLINED", operatorRef, {
+  // Arc 230-8 M12: decline has two legal sources — the caller's
+  // observed status is the `from`, not a fresh read (stale screen
+  // can't silently drive someone else's claimed case to DECLINED).
+  const from = opts?.from;
+  if (
+    from === undefined ||
+    (from !== "PENDING_TRIAGE" && from !== "IN_REVIEW")
+  ) {
+    return { ok: false, error: "illegal_transition" };
+  }
+  return doTransition(store, id, from, "DECLINED", operatorRef, {
     declineReason: reason.data satisfies ReviewDeclineReason,
     reason: opts?.reason ?? null,
   });

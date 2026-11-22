@@ -138,11 +138,23 @@ export function createAgentFeedbackRoutes(
     async (c) => {
       const id = feedbackIdSchema.safeParse(c.req.param("id"));
       if (!id.success) return notFound(c);
+      // Arc 230-8 M6: polls are rate-limited too (unauthenticated
+      // callers drove ~4 reads/req unthrottled).
+      const actor = resolveActor(c);
+      if (!limiter.allow(actor.resolution, limiterKey(c, actor))) {
+        return errorResponse(
+          c,
+          429,
+          ErrorCodes.RATE_LIMITED,
+          `rate limit exceeded for ${actor.resolution} tier — retry in a minute`,
+          { retryable: true },
+        );
+      }
       const rec = await store.getFeedback(id.data);
       if (!rec) return notFound(c);
       const deny = tenantDeny(c, rec);
       if (deny) return deny;
-      const p = await getFeedbackStatus(store, id.data);
+      const p = await getFeedbackStatus(store, id.data, rec);
       return c.json(p);
     },
   );

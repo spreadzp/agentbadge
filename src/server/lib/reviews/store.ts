@@ -107,7 +107,19 @@ export type ReviewDecideResult =
       decision: null;
       event: null;
       transitioned: false;
-      reason: "missing" | "status_mismatch";
+      /** Arc 230-8 H3 note: the decision invariants (assignee,
+       *  criteria coverage, outcome consistency) are enforced INSIDE
+       *  the store unit via decide-guards.ts — the reason vocabulary
+       *  is the same the facade returns. */
+      reason:
+        | "missing"
+        | "status_mismatch"
+        | "not_assignee"
+        | "invalid_criteria"
+        | "missing_criteria"
+        | "unknown_criterion"
+        | "duplicate_criterion"
+        | "inconsistent_outcome";
     };
 
 export interface ReviewListOpts {
@@ -185,10 +197,22 @@ export interface ReviewStore {
     opts?: { visibility?: string },
   ): Promise<ReviewEventRecord[]>;
 
-  /** D-230-10 seam — sets knowledgeConverted + knowledgeItemId. */
+  /** D-230-10 seam — CAS: sets knowledgeConverted + knowledgeItemId
+   *  ONLY when the row is unconverted, still `expected.status` and
+   *  still on `expected.latestDecisionSeq` (Arc 230-8 H1+M11: a
+   *  reopen between read and mark must not convert the superseded
+   *  decision). */
   markKnowledgeConverted(
     id: string,
     knowledgeItemId: string,
     event: ReviewEventInput,
-  ): Promise<ReviewCaseRecord | null>;
+    expected: { status: string; latestDecisionSeq: number | null },
+  ): Promise<MarkConvertedResult<ReviewCaseRecord>>;
 }
+
+export type MarkConvertedResult<R> =
+  | { marked: true; record: R }
+  | {
+      marked: false;
+      reason: "missing" | "already_converted" | "status_mismatch";
+    };

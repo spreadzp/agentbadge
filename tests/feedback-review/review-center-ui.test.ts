@@ -167,7 +167,7 @@ describe("feedback operator flow", () => {
     const cls = await post(
       app,
       `/admin/review-center/feedback/${fid}/close`,
-      `formToken=${t3}&operator=ops_e2e`,
+      `formToken=${t3}&operator=ops_e2e&fromStatus=ACCEPTED`,
     );
     expect(cls.status).toBe(303);
     const d4 = await getHtml(app, `/admin/review-center/feedback/${fid}`);
@@ -367,7 +367,7 @@ describe("knowledge-draft conversion (230-6)", () => {
     expect(r2.headers.get("location")).toContain("err=already_converted");
   });
 
-  it("non-ACCEPTED feedback → not_convertible_status; draft.json exports", async () => {
+  it("non-ACCEPTED feedback → not_convertible_status; draft.json gated + exports", async () => {
     const { app } = mkApp();
     const fid = await submitFeedback(app, "still raw");
     const d = await getHtml(app, `/admin/review-center/feedback/${fid}`);
@@ -378,6 +378,28 @@ describe("knowledge-draft conversion (230-6)", () => {
     );
     expect(r.headers.get("location")).toContain(
       "err=not_convertible_status",
+    );
+
+    // Arc 230-8: draft.json mirrors the convert gate — a raw row
+    // exports nothing.
+    const early = await app.request(
+      `/admin/review-center/feedback/${fid}/draft.json`,
+      { headers: { authorization: basic } },
+    );
+    expect(early.status).toBe(409);
+
+    // Drive to ACCEPTED, then the fallback export opens up.
+    let d2 = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    await post(
+      app,
+      `/admin/review-center/feedback/${fid}/triage`,
+      `formToken=${tokenOf(d2.html)}&operator=ops_e2e`,
+    );
+    d2 = await getHtml(app, `/admin/review-center/feedback/${fid}`);
+    await post(
+      app,
+      `/admin/review-center/feedback/${fid}/resolve`,
+      `formToken=${tokenOf(d2.html)}&to=ACCEPTED&operator=ops_e2e`,
     );
 
     const dump = await app.request(

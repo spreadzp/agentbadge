@@ -34,6 +34,7 @@ import {
   readStatus,
 } from "./review-center-shared";
 import { registerReviewCenterMutations } from "./review-center-mutations";
+import { registerReviewCenterConversions } from "./review-center-convert";
 import {
   feedbackQueuePage,
   reviewsQueuePage,
@@ -69,6 +70,10 @@ export function createReviewCenter(deps: {
     const origin = c.req.header("origin");
     if (!origin) return next();
     try {
+      // Host-only compare (229 convention): behind TLS-terminating
+      // proxies c.req.url's scheme may differ from the browser's —
+      // the single-use form token is the real CSRF control (Arc
+      // 230-8 nit, accepted tradeoff).
       if (new URL(origin).host === new URL(c.req.url).host) return next();
     } catch {
       /* malformed origin → reject below */
@@ -188,6 +193,16 @@ export function createReviewCenter(deps: {
     if (!rec) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such feedback");
     }
+    // Arc 230-8 nit: export only what could actually convert —
+    // ACCEPTED feedback, mirroring the convert-button gate.
+    if (rec.status !== "ACCEPTED") {
+      return errorResponse(
+        c,
+        409,
+        ErrorCodes.INVALID_STATE,
+        "draft export needs an ACCEPTED feedback",
+      );
+    }
     return c.json(
       JSON.parse(draftExportPayload(feedbackDraftInput(rec), `feedback:${rec.id}`)),
       200,
@@ -204,6 +219,16 @@ export function createReviewCenter(deps: {
     if (!rec) {
       return errorResponse(c, 404, ErrorCodes.REQUEST_NOT_FOUND, "no such review");
     }
+    // Arc 230-8 nit: export only what could actually convert —
+    // DECIDED reviews, mirroring the convert-button gate.
+    if (rec.status !== "DECIDED") {
+      return errorResponse(
+        c,
+        409,
+        ErrorCodes.INVALID_STATE,
+        "draft export needs a DECIDED review",
+      );
+    }
     const [evidence, decisions] = await Promise.all([
       stores.reviews.listEvidence(id.data),
       stores.reviews.listDecisions(id.data),
@@ -216,5 +241,6 @@ export function createReviewCenter(deps: {
   });
 
   registerReviewCenterMutations(app, stores);
+  registerReviewCenterConversions(app, stores);
   return app;
 }
