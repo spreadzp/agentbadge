@@ -156,7 +156,7 @@ describe("Arc R2 — M-1 gap semantics", () => {
     await triageGap(store, g1.gap!.id, OP);
     await wontfixGap(store, g1.gap!.id, OP);
     const again = await recordGap(store, { query: "wontfix q", source: "MANUAL" });
-    expect(again.ok).toBe(true);
+    if (!again.ok) throw new Error("again");
     expect(again.recorded).toBe(false);
     expect((await store.getGap(g1.gap!.id))?.status).toBe("WONTFIX");
 
@@ -178,7 +178,7 @@ describe("Arc R2 — M-1 gap semantics", () => {
     }
     await resolveGap(store, g2.gap!.id, pub.item.id, OP);
     const re = await recordGap(store, { query: "res q", source: "MANUAL" });
-    expect(re.ok).toBe(true);
+    if (!re.ok) throw new Error("re");
     expect(re.recorded).toBe(true);
     expect((await store.getGap(g2.gap!.id))?.status).toBe("OPEN");
   });
@@ -199,24 +199,24 @@ describe("Arc R2 — M-7/M-8 store-level guards", () => {
     const d = await mk("cyc-decoy");
     // a→b and a→decoy (decoy is NOT on the a→b path).
     expect((await addRelation(store, {
-      id: "kr_1", fromItemId: a, toItemId: b,
-      type: "SUPERSEDES", createdBy: OP,
+      fromItemId: a, toItemId: b,
+      type: "SUPERSEDES", actorRef: OP,
     })).ok).toBe(true);
     expect((await addRelation(store, {
-      id: "kr_2", fromItemId: a, toItemId: d,
-      type: "SUPERSEDES", createdBy: OP,
+      fromItemId: a, toItemId: d,
+      type: "SUPERSEDES", actorRef: OP,
     })).ok).toBe(true);
     // b→a closes a real cycle — the store must refuse even though a
     // naive "visited" DFS could stop at the decoy edge instead.
     const cyc = await addRelation(store, {
-      id: "kr_3", fromItemId: b, toItemId: a,
-      type: "SUPERSEDES", createdBy: OP,
+      fromItemId: b, toItemId: a,
+      type: "SUPERSEDES", actorRef: OP,
     });
     expect(cyc).toMatchObject({ ok: false, error: "supersedes_cycle" });
     // Non-SUPERSEDES edges are unaffected by the cycle guard.
     expect((await addRelation(store, {
-      id: "kr_4", fromItemId: b, toItemId: a,
-      type: "RELATED_TO", createdBy: OP,
+      fromItemId: b, toItemId: a,
+      type: "RELATED_TO", actorRef: OP,
     })).ok).toBe(true);
   });
 

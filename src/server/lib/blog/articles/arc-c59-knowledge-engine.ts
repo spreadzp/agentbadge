@@ -22,7 +22,7 @@ export const article: BlogArticle = {
   ],
   readingTime: "8 min",
   shortAnswer:
-    "An agent that answers from memory invents sources. EPIC-229 ships a knowledge engine where every answerable fact is a versioned, human-approved item: operators move items through DRAFT→PENDING→VERIFIED→PUBLISHED under a strict operator allowlist plus separation-of-duties (verifier≠submitter, publisher≠verifier), public search runs Postgres FTS over published versions only, and the ask endpoint is a deterministic coverage scorer - ANSWERED with sources+confidence, or REFUSED insufficient_verified_knowledge, which writes a deduplicated knowledge gap. Verified through three audit rounds - wire-level probes plus an external Arc Studio code audit that found and fixed 19 findings - and a probe-bot lifecycle scenario that now owns the regression forever.",
+    "An agent that answers from memory invents sources. EPIC-229 ships a knowledge engine where every answerable fact is a versioned, human-approved item: operators move items through DRAFT→PENDING→VERIFIED→PUBLISHED under a strict operator allowlist plus separation-of-duties (verifier≠submitter, publisher≠verifier), public search runs Postgres FTS over published versions only, and the ask endpoint is a deterministic coverage scorer - ANSWERED with sources+confidence, or REFUSED insufficient_verified_knowledge, which writes a deduplicated knowledge gap. Verified through four audit rounds - wire-level probes plus two external Arc Studio code audits that found and fixed 38 findings - and a probe-bot lifecycle scenario that now owns the regression forever.",
   heroImage: "/images/blog/arc-c59-knowledge-engine-hero.webp",
   ogImage: "/images/blog/arc-c59-knowledge-engine-og.jpeg",
   status: "LIVE",
@@ -112,7 +112,7 @@ export const article: BlogArticle = {
     {
       question: "What did the verification loop actually find?",
       answer:
-        "Three waves. Wire-level local audit round 1 found x-operator-id unenforced and NUL bytes in write bodies causing 500s; round 2 went GREEN 50/50. The production audit then found NUL bytes on READ paths producing unauthenticated 500s (fixed 6fc16185, deployed 22d5c3ef). A probe-bot pass re-verified prod deterministically: 142 knowledge cases, 0 failures. An external Arc Studio code audit then found 19 more findings - 0 critical, 5 high: operator-identity unicode bypasses, idempotency keys ignoring the request body, a version-submission TOCTOU, mutable published evidence, and unbounded anonymous gap writes - all remediated and folded into a 14-test regression file.",
+        "Three waves. Wire-level local audit round 1 found x-operator-id unenforced and NUL bytes in write bodies causing 500s; round 2 went GREEN 50/50. The production audit then found NUL bytes on READ paths producing unauthenticated 500s (fixed 6fc16185, deployed 22d5c3ef). A probe-bot pass re-verified prod deterministically: 142 knowledge cases, 0 failures. An external Arc Studio code audit then found 19 findings - 0 critical, 5 high (operator-identity unicode bypasses, idempotency keys ignoring the request body, version-submission TOCTOU, mutable published evidence, unbounded anonymous gap writes) - remediated into a 14-test regression file. A confirmation audit found 19 more - 0 critical, 3 high including a real regression in our own dedupe fix - now replaced by single-use form tokens, approval gates inside the row lock, an evidence freeze at submit-time, and a locked recursive SUPERSEDES cycle check.",
     },
   ],
   claims: [
