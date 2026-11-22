@@ -10,6 +10,7 @@ import type { FeedbackStore } from "../../lib/feedback/store";
 import type { ReviewStore } from "../../lib/reviews/store";
 import { createAgentFeedbackRoutes } from "./agent-feedback-api";
 import { createAgentReviewsRoutes } from "./agent-reviews-api";
+import { createReviewCenter } from "./review-center";
 
 export interface FeedbackReviewStores {
   feedback: FeedbackStore;
@@ -23,4 +24,6 @@ export function mountFeedbackReviewRoutes(
   // 230-4: public — POST/GET /api/v1/agent/feedback|reviews.
   app.route("/", createAgentFeedbackRoutes({ store: stores.feedback }));
   app.route("/", createAgentReviewsRoutes({ store: stores.reviews }));
+  // 230-5: operator SSR — /admin/review-center?queue= behind adminBrowserAuth.
+  app.route("/", createReviewCenter({ stores }));
 }
